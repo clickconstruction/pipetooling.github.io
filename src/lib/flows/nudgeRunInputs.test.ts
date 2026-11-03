@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { flowRows as editorRows } from './editor'
+import type { FactId, PaperId } from './facts'
 import type { FlowRows } from './load'
 import { planNudgeRun } from './nudgeDispatch'
 import {
@@ -308,6 +309,26 @@ describe('nudgeRunReads: everyone’s flow for the morning run', () => {
     )
     expect(input.people.map((p) => p.id)).toEqual(['tom'])
     expect(unread).toEqual(['greg'])
+  })
+
+  it('reads everyone the morning a migration adds a fact and a step this code does not know (2026-11-03)', () => {
+    // The rows reach the database before the code that reads them is deployed: Papers in gains a fact, and a step that
+    // turns on a paper this code does not know comes after Portal opened.
+    const seed = editorRows(SEED_FLOWS.trade)
+    const portal = seed.find((r) => r.step_key === 'portal')
+    if (!portal) throw new Error('fixture')
+    const newer: RunStepRow[] = [
+      ...seed.map((r) => (r.step_key === 'papers' ? { ...r, facts: [...r.facts, 'a_newer_fact' as FactId] } : r)),
+      { ...portal, step_key: 'newer', name: 'A newer step', position: portal.position + 0.5, facts: ['a_newer_fact' as FactId], papers: ['a_newer_paper' as PaperId] },
+    ].map((r) => ({ ...r, flows: { kind: 'trade' } }))
+    const on: Partial<NudgeRunRows> = { appSends: { trade: { portal: true } } }
+    const today = nudgeRunReads(rowsFor({ ...on, steps: newer }), MORNING, { origin: ORIGIN })
+    const before = nudgeRunReads(rowsFor(on), MORNING, { origin: ORIGIN })
+    expect(today.unread).toEqual([])
+    expect(today.input.people.map((p) => p.reading.nowStepId)).toEqual(['portal'])
+    // Tom gets the text he would have had before the migration.
+    expect(planNudgeRun(today.input).texts.map((t) => t.body)).toEqual(planNudgeRun(before.input).texts.map((t) => t.body))
+    expect(planNudgeRun(today.input).texts).toHaveLength(1)
   })
 
   it('leaves the walk kit’s contact out of the morning entirely, not even as unread (punch list #142 PR 6)', () => {

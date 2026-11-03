@@ -118,7 +118,10 @@ export interface NudgeRunReads {
   input: NudgeRunInput
   /** The number each text goes to, by contact. */
   channelIds: Partial<Record<string, string>>
-  /** Contacts whose flow rows did not come back, or whose kind has no flow, for the run's log. The run leaves them out. */
+  /**
+   * Contacts whose flow rows did not come back, whose kind has no flow, or whose flow did not read, for the run's log.
+   * The run leaves them out and goes on with everyone else.
+   */
   unread: string[]
 }
 
@@ -338,13 +341,15 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
     // A residential contact's record is on the contact itself; `flow_rows` names a customer's and an architect's on the card.
     const customerId = flowRows.card?.customer_id ?? contact.customer_id ?? null
     const first = flowFirst(contact, flowRows.card)
-    // A residential customer's steps read their Pipeline rows (v2.6232), cut from everyone's as their own panel reads them.
-    const rowsOf =
-      kind === 'residential' && rows.pipeline
-        ? { ...flowRows, residential: residentialRowsOf(rows.pipeline, { contact: flowRows.contact, firstName: first, customerId, userNames: flowRows.userNames, skips: flowRows.skips }) }
-        : flowRows
-    people.push(
-      personFlowFrom({
+    // One person whose flow does not read is left out and counted, never the whole morning (2026-11-03).
+    let person: PersonFlow
+    try {
+      // A residential customer's steps read their Pipeline rows (v2.6232), cut from everyone's as their own panel reads them.
+      const rowsOf =
+        kind === 'residential' && rows.pipeline
+          ? { ...flowRows, residential: residentialRowsOf(rows.pipeline, { contact: flowRows.contact, firstName: first, customerId, userNames: flowRows.userNames, skips: flowRows.skips }) }
+          : flowRows
+      person = personFlowFrom({
         id: contact.id,
         first,
         flow,
@@ -356,8 +361,12 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
         lines: newestLines(theirLines),
         owed: rows.owed,
         portal: kind === 'customer' && customerId ? (rows.portals?.[customerId] ?? null) : null,
-      }),
-    )
+      })
+    } catch {
+      unread.push(contact.id)
+      continue
+    }
+    people.push(person)
     const number = textNumberOf(channels.get(contact.id) ?? [], theirLines)
     numbers[contact.id] = { number: number.number, optedOut: number.optedOut }
     if (number.channelId && !number.optedOut) channelIds[contact.id] = number.channelId

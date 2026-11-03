@@ -309,7 +309,8 @@ export function stampDay(at: string | null | undefined): string | null {
 
 /**
  * One fact for one person, from the stamps of the lane or round it sits on. No stamp reads `no`. A fact on a library
- * paper (`doc:<uuid>:signed`) rides in `FactId`'s type from the database and reads the same way.
+ * paper (`doc:<uuid>:signed`) rides in `FactId`'s type from the database and reads the same way. A fact this code does
+ * not know throws, so the flow's read (`readFlow`) asks only for the facts it knows.
  */
 export function factRead(stamps: readonly FactStamp[], fact: FactId): FactReading {
   const f = stepFactById(fact)
@@ -384,7 +385,10 @@ type StepPre = {
   facts: FactReading[]
   rounds: RoundReading[]
   open: RoundReading | null
-  /** Its facts as a round not opened yet reads them: what a loop between two rounds is waiting for. */
+  /**
+   * Its facts as a round not opened yet reads them: what a loop between two rounds is waiting for. Only the facts this
+   * code knows, so an empty list is a step it cannot read.
+   */
   fresh: FactReading[]
   isTrue: boolean
   /** Every fact was true once (ok or bad), so a bad one makes the step lapsed rather than not reached. */
@@ -397,14 +401,17 @@ function preRead(step: FlowStep, lane: LaneStamps, person: LaneStamps, jobId: st
   // A Per job lane reads its job's stamps, and a person's own facts (their papers) from the person.
   const factsFrom = (own: readonly FactStamp[]) => (fid: FactId) =>
     factById(fid)?.scope === 'person' && lane !== person ? factRead(person.stamps, fid) : factRead(own, fid)
+  // A fact this code does not know is left out of the read. A migration that adds one to a flow's rows reaches the
+  // database before the code that reads it, and the code already running must go on reading everyone.
+  const known = step.facts.filter((fid) => stepFactById(fid) != null)
   const rounds: RoundReading[] = (step.loop ? lane.rounds[step.id] ?? [] : []).map((r) => {
-    const facts = step.facts.map(factsFrom(r.stamps))
+    const facts = known.map(factsFrom(r.stamps))
     const state: RoundState = stepTrue(step, facts) ? 'done' : r.opened ? 'now' : 'next'
     return { key: r.key, name: r.name, state, opened: stampDay(r.opened), facts, day: state === 'done' ? null : stepDay(r.due, now) }
   })
   const open = rounds.find((r) => r.state === 'now') ?? null
-  const fresh = step.facts.map(factsFrom([]))
-  const facts = step.loop ? (open ?? rounds[rounds.length - 1])?.facts ?? fresh : step.facts.map(factsFrom(lane.stamps))
+  const fresh = known.map(factsFrom([]))
+  const facts = step.loop ? (open ?? rounds[rounds.length - 1])?.facts ?? fresh : known.map(factsFrom(lane.stamps))
   const isTrue = step.loop ? rounds.length > 0 && rounds.every((r) => r.state === 'done') : stepTrue(step, facts)
   const wasTrue = (x: FactReading) => x.mark === 'ok' || x.mark === 'bad'
   const lapsed =
@@ -433,6 +440,8 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
   const states: StepState[] = pre.map((p, i) => {
     const s = p.step
     if (p.skip) return 'skipped'
+    // A step with no fact this code knows (none yet, or only facts a newer flow added) holds nobody and is never next.
+    if (!p.fresh.length) return 'later'
     if (s.aside) return p.open ? 'now' : p.isTrue ? 'done' : 'later'
     if (ended) return 'later'
     if (head == null && started) {
@@ -451,7 +460,6 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
         return 'done'
       }
       if (p.lapsed) return 'lapsed'
-      if (!s.facts.length) return 'later'
       head = i
       return 'now'
     }
@@ -481,7 +489,7 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
       // The day the step before it in the chain finished.
       for (let j = i - 1; j >= 0 && since == null; j--) {
         const b = pre[j]
-        if (!b || b.skip || b.step.aside || !b.step.facts.length) continue
+        if (!b || b.skip || b.step.aside || !b.fresh.length) continue
         since = b.step.loop ? finishedOn(b.rounds.filter((r) => r.state === 'done').flatMap((r) => r.facts)) : finishedOn(b.facts)
         break
       }
@@ -509,11 +517,11 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
 }
 
 /**
- * Reads where one person stands on a flow, from their stamps alone. The chain in each lane passes a
- * step that is done, lapsed, skipped or has no facts yet, and stops at the first that is none of
- * these: that step is on now. After it, one step is next and the rest are later, except a step
- * whose facts already read true (done) and a loop with a round open (now). An aside step reads from
- * its rounds and is never on the chain. A way out ends its lane: a fork's, or one that finished every round of a loop.
+ * Reads where one person stands on a flow, from their stamps alone. The chain in each lane passes a step that is done,
+ * lapsed, skipped or has no fact this code knows (none yet, or only facts a newer flow added), and stops at the first
+ * that is none of these: that step is on now. After it, one step this code can read is next and the rest are later,
+ * except a step whose facts already read true (done) and a loop with a round open (now). An aside step reads from its
+ * rounds and is never on the chain. A way out ends its lane: a fork's, or one that finished every round of a loop.
  */
 export function readFlow(flow: FlowDef, stamps: FlowStamps, now: Date): FlowReading {
   const lanes: LaneReading[] = []
