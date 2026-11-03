@@ -157,6 +157,11 @@ export function checkWantsAPass(c: IndexCheck): boolean {
   return c.filesWithNoRow > 0 || c.filesChangedSinceRow > 0
 }
 
+/** Whether a call that failed is worth asking again: the signal lost, the rate limit or the platform's own failure, never the function's refusal in words. */
+export function askAgainAfter(status: number): boolean {
+  return status === 0 || status === 429 || status >= 500
+}
+
 /** How many rounds a fill takes at most, each of up to CHECK_SAMPLE_MAX files. */
 export const FILL_ROUNDS_MAX = 200
 
@@ -197,6 +202,40 @@ export function fillWords(t: FillTally): string {
   const refused = Object.entries(t.refused).map(([words, count]) => `${n(count)} × ${words}`)
   const parts = [`Asked about ${plural(t.asked, 'file', 'files')}: ${plural(t.rows, 'row', 'rows')} written`]
   if (held.length) parts.push(`of them with no text ${held.join(', ')}`)
+  if (refused.length) parts.push(`refused ${refused.join(', ')}`)
+  return `${parts.join('; ')}.`
+}
+
+/** What a pass of `index_home` did, added up over its calls. */
+export interface RehomeTally {
+  asked: number
+  homed: number
+  none: number
+  unanswered: number
+  failed: number
+  refused: Record<string, number>
+}
+
+export const emptyRehome = (): RehomeTally => ({ asked: 0, homed: 0, none: 0, unanswered: 0, failed: 0, refused: {} })
+
+/** One call's answer, read defensively. */
+export function addRehomeAnswer(t: RehomeTally, asked: number, answer: unknown): RehomeTally {
+  const o = (answer ?? {}) as Record<string, unknown>
+  const num = (k: string) => (typeof o[k] === 'number' ? (o[k] as number) : 0)
+  return { ...t, asked: t.asked + asked, homed: t.homed + num('homed'), none: t.none + num('none'), unanswered: t.unanswered + num('unanswered'), failed: t.failed + num('failed') }
+}
+
+/** One call the function refused, or stopped on. */
+export function addRehomeRefusal(t: RehomeTally, asked: number, words: string): RehomeTally {
+  return { ...t, asked: t.asked + asked, refused: { ...t.refused, [words]: (t.refused[words] ?? 0) + 1 } }
+}
+
+/** The pass's line, counts only. */
+export function rehomeWords(t: RehomeTally): string {
+  const parts = [`Walked ${plural(t.asked, 'row', 'rows')} up: ${n(t.homed)} on a job or bid, ${n(t.none)} still on nothing`]
+  if (t.unanswered) parts.push(`Drive did not answer for ${n(t.unanswered)}`)
+  if (t.failed) parts.push(`${n(t.failed)} failed to write`)
+  const refused = Object.entries(t.refused).map(([words, count]) => `${n(count)} × ${words}`)
   if (refused.length) parts.push(`refused ${refused.join(', ')}`)
   return `${parts.join('; ')}.`
 }

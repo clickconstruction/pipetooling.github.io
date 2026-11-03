@@ -16,6 +16,7 @@ import type { JobRef } from './driveLink.ts'
 import { driveFolderMeta, jobsRootFolderId } from './driveSettings.ts'
 import { fileTextWithin } from './fileText.ts'
 import { folderHomes, folderMetaReader, type HomeAt } from './fileHomes.ts'
+import { WALK_MAX } from './fileIndexKernel.ts'
 import {
   DRIVE_FOLDER_KIND,
   INDEX_BUDGET_MS,
@@ -85,7 +86,8 @@ export async function fileMeta(google: string, id: string): Promise<DriveFileMet
 /** A folder's files and its subfolders' too, to the depth and cap, folders left out of the answer. */
 export async function filesUnder(google: string, folderId: string, out: DriveFileMeta[], opts: { depth?: number; maxDepth?: number; max?: number; seen?: Set<string> } = {}): Promise<void> {
   const depth = opts.depth ?? 0
-  const maxDepth = opts.maxDepth ?? 3
+  // As deep as a walk climbs: a plan export sat nine folders down, and a bid's folder outside the Shared Drive has no other way in (v2.6403).
+  const maxDepth = opts.maxDepth ?? WALK_MAX
   const max = opts.max ?? 2000
   const seen = opts.seen ?? new Set<string>()
   if (seen.has(folderId)) return

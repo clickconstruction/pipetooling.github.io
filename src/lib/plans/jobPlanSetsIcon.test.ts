@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PlanSetRow } from './planSets'
-import { jobPlansPickerView, jobPlansPickerWords, jobPlansPress, type JobPlanSetsEntry } from './jobPlanSetsIcon'
+import { jobPlansPickerView, jobPlansPickerWords, jobPlansPress, openableSets, type JobPlanSetsEntry } from './jobPlanSetsIcon'
 
 function set(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
   return {
@@ -41,6 +41,13 @@ describe('jobPlansPress', () => {
     const entry: JobPlanSetsEntry = { partId: 'p1', currentSetId: 's2', sets: [permit, waiting] }
     expect(jobPlansPress(entry, null)).toEqual({ kind: 'open', link: 'https://drive.google.com/drive/folders/permit', title: 'Job plans · Permit set' })
   })
+  it('a paper with a link is never a set to open or to count', () => {
+    const spec = set({ id: 's5', name: 'Spec book', kind: 'spec', source: 'supplier', marks_up_set_id: 's1', link: 'https://drive.google.com/file/d/spec/view' })
+    const entry: JobPlanSetsEntry = { partId: 'p1', currentSetId: 's1', sets: [issued, spec] }
+    expect(openableSets(entry).map((s) => s.id)).toEqual(['s1'])
+    expect(jobPlansPress(entry, null)).toEqual({ kind: 'open', link: issued.link, title: 'Job plans · Issued set' })
+  })
+
   it('two or more open the picker, the title naming the set the job builds from', () => {
     expect(jobPlansPress({ partId: 'p1', currentSetId: 's2', sets: [issued, permit, asBuilt] }, null)).toEqual({ kind: 'pick', title: 'Job plans · Permit set · 3 sets', count: 3 })
     expect(jobPlansPress({ partId: 'p1', currentSetId: null, sets: [issued, permit] }, null)).toEqual({ kind: 'pick', title: 'Job plans · 2 sets', count: 2 })

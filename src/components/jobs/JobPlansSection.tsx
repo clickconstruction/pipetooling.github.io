@@ -32,6 +32,7 @@ import {
 } from '../../lib/plans/planSets'
 import { supabaseJobPlansIo, type JobPlansIo, type JobPlansRead } from '../../lib/plans/planSetsIo'
 import { EmptyState } from '../EmptyState'
+import { JobPapersSection } from '../papers/JobPapersSection'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { PlanSetChangesLine } from '../plans/PlanSetChangesLine'
 import { documentsHeading, documentsQuietButton } from './jobDocumentsStyles'
@@ -398,6 +399,21 @@ export function JobPlansSection({
             </div>
           ) : null}
           {form?.kind === 'set' || form?.kind === 'as_built' ? setForm_(form) : form?.kind === 'part' ? partForm(form) : null}
+          {view.part ? (
+            <JobPapersSection
+              io={io}
+              partId={view.part.id}
+              partName={view.part.name}
+              sets={read.sets}
+              currentSetId={view.part.current_set_id}
+              jobId={job.id}
+              jobLabel={jobShortLabel(job)}
+              developmentId={read.job.development_id}
+              siteName={read.job.development_name?.trim() || jobShortLabel(job)}
+              userId={user?.id ?? null}
+              canWrite
+            />
+          ) : null}
           {problem && !form ? <p style={{ ...muted, color: 'var(--text-amber-800)' }}>{problem}</p> : null}
         </>
       )}
