@@ -197,9 +197,9 @@ INSERT INTO public.job_expected_hours (id, job_id, hours, why, cleared_at) VALUE
   ('00000000-0000-0000-0000-000000252f32', '00000000-0000-0000-0000-000000252b03', 90, 'Bed target older', now() - interval '1 day'),
   ('00000000-0000-0000-0000-000000252f33', '00000000-0000-0000-0000-000000252b01', 80, 'Target open', NULL);
 -- Work orders: both jobs hold a live one for Pat.
-INSERT INTO public.step_commitments (id, job_id, person_id, display_name, status) VALUES
-  ('00000000-0000-0000-0000-000000252f41', '00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252e01', 'Pat Sub', 'draft'),
-  ('00000000-0000-0000-0000-000000252f42', '00000000-0000-0000-0000-000000252b01', '00000000-0000-0000-0000-000000252e01', 'Pat Sub', 'draft');
+INSERT INTO public.step_commitments (id, job_id, person_id, display_name, amount, status) VALUES
+  ('00000000-0000-0000-0000-000000252f41', '00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252e01', 'Pat Sub', 1500, 'draft'),
+  ('00000000-0000-0000-0000-000000252f42', '00000000-0000-0000-0000-000000252b01', '00000000-0000-0000-0000-000000252e01', 'Pat Sub', 1500, 'draft');
 -- Let go on purpose: the drive-time cache, the paid-job mail queue, the note count cache (recomputed from the notes).
 INSERT INTO public.job_travel_times (from_job_id, to_job_id, duration_seconds, distance_meters) VALUES
   ('00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252b01', 600, 5000),
