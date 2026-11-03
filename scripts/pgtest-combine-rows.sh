@@ -4,8 +4,9 @@
 #
 #   npm run test:pg:combine-rows
 #
-# The same bed as scripts/pgtest-job-people.sh: the Supabase Postgres image with every file in supabase/migrations
-# applied in order, then the combine migration a second time, which must change nothing. The scenario, inside one
+# The same bed as scripts/pgtest-job-people.sh: the Supabase Postgres image migrated through pgtest_migrate (every file
+# in supabase/migrations in order, or in CI the leg's migrated copy, which already holds them), then the combine
+# migration a second time, which must change nothing. The scenario, inside one
 # transaction that rolls back: a first combine onto a target with none of the one-per-job rows (a plan part, a baseline,
 # a budget, a property owner, a photo-save tick), which move; a split that moves a line and its stage window; a combine
 # refused on a work-order collision, which moves nothing; and a second combine onto a target that holds every merge case
@@ -36,8 +37,7 @@ for _ in $(seq 1 90); do docker exec "$NAME" pg_isready -U postgres -h localhost
 sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
-psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
-pgtest_apply supabase/migrations/*.sql
+pgtest_migrate
 # A second run must change nothing: every function is CREATE OR REPLACE, the trigger CREATE OR REPLACE TRIGGER.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/combine_rows/20_scenario.sql 2>&1 || true)"
