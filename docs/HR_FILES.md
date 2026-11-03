@@ -71,7 +71,11 @@ Files written before v2.6392 (`entry_id` or neither key) stay as they were: on t
   Path convention: `<person_id>/<uuid>-<sanitized-filename>`; insert the
   metadata row in the same session. An agent that files evidence writes the
   `person_file_evidence` row first, the attachment rows with its `evidence_id`,
-  then asks `hr-evidence-drive` for the record (a dev-mcp verb for this is a card of its own).
+  then asks `hr-evidence-drive` for the record — which is what dev-mcp's `plan_person_evidence` →
+  `apply_person_evidence` does for a dev's coding agent since v2.6426 ([`dev-mcp/README.md`](./dev-mcp/README.md)):
+  the files as `content_base64`, staged by the function as the dev under the path rule above, the rows through
+  `dev_person_evidence_write` (migration `20261103060000`, the dry-run pattern of the second door below, the dev
+  named as author), then the Drive ask, fail-soft.
 - **Storage setup (out-of-band, one-time — matches how the project's existing
   buckets were created; storage schema is not in the migration ledger):**
 
