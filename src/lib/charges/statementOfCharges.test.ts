@@ -66,6 +66,9 @@ describe('the Statement of charges (punch list #254)', () => {
     expect(office).toContain('Office only · never on the customer copy')
     expect(office).toContain('<b>Premium</b>')
     expect(office).toContain('passed through at cost · a rental · Robert')
+    // the note sits under the grid, not inside it, so the figures keep their column
+    expect(office).toMatch(/every line is the record<\/div>|a rental · Robert<\/div>/)
+    expect(office).toContain('</div></div>\n    <p class="note">')
     expect(office).toContain('Week of Apr 20')
     expect(office).toContain('Zack, Trace')
     expect(customer).not.toContain('<th class="n">Cost</th>')

@@ -188,7 +188,7 @@ export function buildChargeStatementHtml(ctx: ChargeStatementHtmlContext): strin
     <b>${charges.premium.kind === 'premium' ? 'Premium' : charges.premium.kind === 'shortfall' ? 'Shortfall' : 'Even'}</b><div>${charges.premium.kind === 'even' ? 'The price and the charges are even.' : `${m(charges.premium.amount)} · ${esc(charges.premium.sentence)}`}</div>
     <b>Materials</b><div>cost ${m(charges.materials.totals.cost)} · margin ${m(charges.materials.totals.markup)}${charges.materials.markupPct != null ? ` (${Math.round((charges.materials.markupPct / (100 + charges.materials.markupPct)) * 1000) / 10}% of the sale)` : ''}</div>
     <b>Labor behind it</b><div>${h2(charges.totals.personHours)} person-hours across ${charges.totals.days} crew-days; labor cost at wages is on each person’s hours statement</div>
-    ${adjustments.length ? `<b>Adjustments</b><div>${adjustments.map(esc).join('<br>')}</div>` : '<b>Adjustments</b><div>none; every line is the record</div>'}
+    ${adjustments.length ? `<b>Adjustments</b><div>${adjustments.map(esc).join('<br>')}</div>` : '<b>Adjustments</b><div>none; every line is the record</div>'}</div>
     <p class="note">${esc(PREMIUM_CARRIES)}</p></div>`
     : ''
 
