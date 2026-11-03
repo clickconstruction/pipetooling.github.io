@@ -14,7 +14,7 @@
  * still live on another table and keep matching client-side over loaded rows.
  */
 import { supabase } from '../supabase'
-import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { errorKindOf, formatErrorMessage, withSupabaseRetry, type DatabaseErrorKind } from '../../utils/errorHandling'
 
 export const LEAN_JOB_SEARCH_LIMIT = 200
 
@@ -79,7 +79,8 @@ export function buildLeanJobNumberOr(digits: string): string {
 
 export type LeanJobSearchResult =
   | { ok: true; ids: string[] }
-  | { ok: false; error: string }
+  /** `errorKind` tells a lost signal (Retry) from a refusal (its reason, no Retry). */
+  | { ok: false; error: string; errorKind: DatabaseErrorKind }
 
 async function runLeanSearch(orExpr: string, customerFilter: string | null): Promise<LeanJobSearchResult> {
   try {
@@ -88,7 +89,7 @@ async function runLeanSearch(orExpr: string, customerFilter: string | null): Pro
     const rows = (await withSupabaseRetry(async () => q, 'lean job search')) as Array<{ id: string }> | null
     return { ok: true, ids: (rows ?? []).map((r) => r.id) }
   } catch (e) {
-    return { ok: false, error: formatErrorMessage(e, 'Search failed') }
+    return { ok: false, error: formatErrorMessage(e, 'Search failed'), errorKind: errorKindOf(e) }
   }
 }
 
@@ -101,7 +102,7 @@ export async function fetchLeanJobSearchIds(
   try {
     developmentIds = await fetchDevelopmentIdsMatching(term)
   } catch (e) {
-    return { ok: false, error: formatErrorMessage(e, 'Search failed') }
+    return { ok: false, error: formatErrorMessage(e, 'Search failed'), errorKind: errorKindOf(e) }
   }
   return runLeanSearch(buildLeanJobSearchOr(term, developmentIds), customerFilter)
 }

@@ -28059,6 +28059,7 @@ export type Database = {
           ask_lane: string | null
           ask_request_id: string | null
           came_at: string
+          changes: string
           check_note: string | null
           checked_at: string | null
           created_at: string
@@ -28084,6 +28085,7 @@ export type Database = {
           ask_lane?: string | null
           ask_request_id?: string | null
           came_at?: string
+          changes?: string
           check_note?: string | null
           checked_at?: string | null
           created_at?: string
@@ -28109,6 +28111,7 @@ export type Database = {
           ask_lane?: string | null
           ask_request_id?: string | null
           came_at?: string
+          changes?: string
           check_note?: string | null
           checked_at?: string | null
           created_at?: string

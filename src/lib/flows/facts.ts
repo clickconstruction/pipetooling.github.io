@@ -23,8 +23,11 @@ export type FlowKind = 'customer' | 'trade' | 'arch' | 'residential' | 'sub' | '
  */
 export const FLOW_KINDS: readonly FlowKind[] = ['customer', 'trade', 'arch', 'unknown', 'residential', 'sub', 'candidate']
 
-/** Who a flow's person is as a contact: a residential customer is a customer; every other flow is its kind's own. */
-export function flowContactKind(kind: FlowKind): ContactKind {
+/**
+ * Who a flow's person is as a contact: a residential customer is a customer; every other flow is its kind's own. Takes a
+ * contact's kind too, which it hands back, so a reader holding either names the person's contact kind.
+ */
+export function flowContactKind(kind: FlowKind | ContactKind): ContactKind {
   return kind === 'residential' ? 'customer' : kind
 }
 

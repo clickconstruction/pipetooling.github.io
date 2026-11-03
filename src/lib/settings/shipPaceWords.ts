@@ -21,4 +21,10 @@ export const SHIP_PACE_WORDS = {
   openNow: 'Open now',
   inQueue: 'In the merge queue',
   queueNotRead: 'not read',
+  /** The card under the tiles (v2.6401): the merge queue's line, so a person can find their change on its way to the app. */
+  queueTitle: 'In line now',
+  queueOrder: 'The order changes go live in, the top one next.',
+  /** The empty state's who: *Nothing waiting on the queue.* */
+  queueWho: 'the queue',
+  queueUnread: 'The queue was not read. Ask a dev about the token’s scopes.',
 } as const

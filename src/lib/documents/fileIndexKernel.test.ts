@@ -149,6 +149,32 @@ describe('indexPlan', () => {
     expect(retryDue('not a time', now)).toBe(true)
     expect(RETRY_HOLD_MS).toBe(60 * 60 * 1000)
   })
+
+  it('takes a scan once OCR is set up, when it was never tried or tried over a day ago (PR 3)', () => {
+    const now = new Date('2026-11-02T12:00:00Z')
+    expect(indexPlan(listed, known, { ocr: true, now }).toIndex.map((f) => f.id)).toEqual(['new', 'moved', 'scan'])
+    const tried = new Map(known)
+    tried.set('scan', { ...known.get('scan')!, ocr_tried_at: '2026-11-02T08:00:00Z' })
+    expect(indexPlan(listed, tried, { ocr: true, now }).toIndex.map((f) => f.id)).toEqual(['new', 'moved'])
+    tried.set('scan', { ...known.get('scan')!, ocr_tried_at: '2026-10-30T08:00:00Z' })
+    const due = indexPlan(listed, tried, { ocr: true, now })
+    expect(due.toIndex.map((f) => f.id)).toEqual(['new', 'moved', 'scan'])
+    expect([...due.forOcr]).toEqual(['scan'])
+    // A scan of a kind Document AI does not read (a phone's HEIC) is never due, however old its try, so it cannot
+    // hold the OCR queue or keep a job from being done.
+    const heic = file({ id: 'heic', name: 'IMG_0412.heic', mimeType: 'image/heic' })
+    const withHeic = new Map(tried)
+    withHeic.set('heic', { drive_file_id: 'heic', modified_at: heic.modifiedTime ?? null, text_why: 'scan', text_source: null, checked_at: '2026-11-02T05:00:00Z', ocr_tried_at: null })
+    const plan = indexPlan([...listed, heic], withHeic, { ocr: true, now })
+    expect(plan.toIndex.map((f) => f.id)).toEqual(['new', 'moved', 'scan'])
+    expect(plan.skipped).toContainEqual({ id: 'heic', why: 'current' })
+    expect(plan.forOcr.has('heic')).toBe(false)
+    // A scan past Document AI's inline cap is the same: stamped once with the reason, never due again.
+    const large = file({ id: 'large', name: 'Set.pdf', size: String(30 * 1024 * 1024) })
+    const withLarge = new Map(tried)
+    withLarge.set('large', { drive_file_id: 'large', modified_at: large.modifiedTime ?? null, text_why: 'scan', text_source: null, checked_at: '2026-11-02T05:00:00Z', ocr_tried_at: null })
+    expect(indexPlan([large], withLarge, { ocr: true, now }).toIndex).toEqual([])
+  })
 })
 
 describe('indexRowOf and readingRowOf', () => {
@@ -164,10 +190,21 @@ describe('indexRowOf and readingRowOf', () => {
   it('a read with no text keeps why and no source; a bid’s file keeps the bid; the reading stamp is a row with why reading', () => {
     const held = indexRowOf(file({ size: null, name: '' }), { home: BID, via: null, names: [], path: '' }, { why: 'scan' }, NOW)
     expect(held).toMatchObject({ bid_id: 'bid-1', jobs_ledger_id: null, customer_id: null, folder_kind: 'other', name: 'Untitled', bytes: null, text: null, text_source: null, text_why: 'scan', pages: null })
-    expect(readingRowOf(file(), walk, NOW)).toMatchObject({ text: null, text_why: 'reading', text_source: null })
+    expect(readingRowOf(file(), walk, NOW)).toMatchObject({ text: null, text_why: 'reading', text_source: null, ocr_tried_at: null, ocr_pages: null, ocr_note: null })
     expect(settledWhy('reading')).toBe('slow')
     expect(settledWhy('big')).toBe('big')
     expect(settledWhy(null)).toBeNull()
+  })
+})
+
+describe('the OCR columns on a row (PR 3)', () => {
+  const walk = { home: JOB, via: null, names: [], path: '' }
+  it('a scan read by OCR keeps the source, the pages and the try; a refused try keeps the reason and stays a scan; no try leaves the columns null', () => {
+    const read = indexRowOf(file({ name: 'Permit scan.pdf' }), walk, { text: 'PERMIT 2026-0412', source: 'ocr', pages: 2 }, NOW, { tried: true, note: null })
+    expect(read).toMatchObject({ text: 'PERMIT 2026-0412', text_source: 'ocr', text_why: null, pages: 2, ocr_tried_at: NOW.toISOString(), ocr_pages: 2, ocr_note: null })
+    const refused = indexRowOf(file({ name: 'Permit scan.pdf' }), walk, { why: 'scan' }, NOW, { tried: true, note: 'Document AI answered PERMISSION_DENIED: the API is not enabled.' })
+    expect(refused).toMatchObject({ text: null, text_source: null, text_why: 'scan', ocr_tried_at: NOW.toISOString(), ocr_pages: null, ocr_note: 'Document AI answered PERMISSION_DENIED: the API is not enabled.' })
+    expect(indexRowOf(file(), walk, { why: 'scan' }, NOW)).toMatchObject({ ocr_tried_at: null, ocr_pages: null, ocr_note: null })
   })
 })
 
@@ -302,30 +339,32 @@ describe('a PDF inside its time budget (v2.6332)', () => {
 
   it('lets a pass start a file only when it fits: the first always, the rest by what they should cost and hold', () => {
     const pdf = (mb: number) => file({ size: String(mb * 1024 * 1024) })
-    // The first file of a request always starts, however large, so a call makes progress.
-    expect(passMayTake(pdf(50), newPassSpend())).toBe(true)
+    // The first file of a request always starts, so a call makes progress.
+    expect(passMayTake(pdf(12), newPassSpend())).toBe(true)
     // A PDF over the cap is held with no download, so it costs nothing and never stops a pass.
-    expect(passMayTake(pdf(51), { ms: 5000, bytes: 49 * 1024 * 1024 })).toBe(true)
+    expect(passMayTake(pdf(13), { ms: 5000, bytes: 15 * 1024 * 1024 })).toBe(true)
     // A small PDF fits where a dense one does not.
     expect(passMayTake(pdf(1), { ms: 1000, bytes: 1 })).toBe(true)
     expect(passMayTake(pdf(8), { ms: 1000, bytes: 1 })).toBe(false)
     expect(passMayTake(pdf(8), { ms: 400, bytes: 1 })).toBe(true)
     // The bytes one request holds: a second large set waits for the next request, whatever the clock says.
-    expect(passMayTake(pdf(30), { ms: 10, bytes: 31 * 1024 * 1024 })).toBe(false)
-    expect(passMayTake(pdf(29), { ms: 10, bytes: 31 * 1024 * 1024 })).toBe(true)
+    expect(passMayTake(pdf(10), { ms: 10, bytes: 7 * 1024 * 1024 })).toBe(false)
+    expect(passMayTake(pdf(9), { ms: 10, bytes: 7 * 1024 * 1024 })).toBe(true)
     // A file with no parse goes on until the budget is spent, and an unknown size reads as small.
     const doc1 = file({ name: 'Scope.gdoc', mimeType: 'application/vnd.google-apps.document', size: null })
     expect(passMayTake(doc1, { ms: PASS_READ_BUDGET_MS - 1, bytes: 0 })).toBe(true)
     expect(passMayTake(doc1, { ms: PASS_READ_BUDGET_MS, bytes: 0 })).toBe(false)
     expect(passMayTake(file({ size: null }), { ms: 1100, bytes: 0 })).toBe(true)
-    // The budgets fit under the platform's two seconds of CPU, however the worst file lands.
+    // The budgets fit under the platform's two seconds of CPU, and its 256 MB, however the worst file lands.
     expect(PASS_READ_BUDGET_MS - 150 + PDF_READ_BUDGET_MS).toBeLessThan(2000)
     expect(PASS_READ_MAX_BYTES).toBeGreaterThan(TEXT_PDF_MAX_BYTES)
+    expect(PASS_READ_MAX_BYTES).toBeLessThanOrEqual(16 * 1024 * 1024)
   })
 
   it('reads for the index and for a search’s ten excerpts by different limits', () => {
-    expect(INDEX_PDF_LIMITS.maxBytes).toBe(50 * 1024 * 1024)
-    expect(EXCERPT_PDF_LIMITS).toEqual({ maxBytes: 8 * 1024 * 1024, maxPages: 40, budgetMs: 300, passBudgetMs: 1000 })
+    // A 25 MB plan set alone ran a worker out of memory on prod, and an 11 MB one read through (v2.6408).
+    expect(INDEX_PDF_LIMITS).toMatchObject({ maxBytes: 12 * 1024 * 1024, passMaxBytes: 16 * 1024 * 1024 })
+    expect(EXCERPT_PDF_LIMITS).toEqual({ maxBytes: 8 * 1024 * 1024, maxPages: 40, budgetMs: 300, passBudgetMs: 1000, passMaxBytes: 24 * 1024 * 1024 })
   })
 
   it('a row keeps the pages and how many its read reached; a file read whole reads the same; a held file has neither', () => {

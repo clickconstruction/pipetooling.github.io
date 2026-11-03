@@ -53,4 +53,4 @@ The read as each sample account, read only and rolled back, counts only:
 
 Every role on the board reads the same rows, where before the push the superintendent read none of them. A call with one job's id answers with that one job, the phone card's read: about 730 bytes on the ZZ test job, which has no crew rows. Both functions are definer with `search_path=public`, and `anon` cannot execute them.
 
-`npm run gen-types:linked` goes in a `chore(types)` PR, which removes the hook's cast.
+The types landed with #6883, another session's regeneration, which matched this push's exactly. The hook dropped its cast right after, and a whole-board read now sends no `p_job_ids` at all, so the function's default stands.

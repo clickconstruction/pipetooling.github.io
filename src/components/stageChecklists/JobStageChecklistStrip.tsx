@@ -5,9 +5,11 @@
  * window stands exactly as before until the office types the questions or adds a check. Since #237 PR 1 the sheet it
  * opens carries the items added for the job's stage, and whoever authors on the job adds one from it: the office, a
  * superintendent on their own job, an estimator on a job they priced (PR 1b). Those last two have no Documents tab, so
- * on those jobs they also see a stage with no question yet, and the first check has a door.
+ * on those jobs they also see a stage with no question yet, and the first check has a door. The Dispatch inbox's **Open
+ * the check** (punch list #245) hands the window `openStage`, and the strip opens that stage's sheet with that row open
+ * once the read lands.
  */
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobStageChecklists } from '../../hooks/useJobStageChecklists'
 import { skippedFor, stageChecklistLine, standingWords, type JobStageChecklist } from '../../lib/jobs/stageChecklist'
@@ -38,10 +40,24 @@ const tag: Record<'ready' | 'not_ready' | 'none', CSSProperties> = {
   none: { fontSize: '0.75rem', fontWeight: 700, padding: '0 0.5rem', borderRadius: 999, background: 'var(--bg-subtle)', color: 'var(--text-muted)', whiteSpace: 'nowrap' },
 }
 
-export function JobStageChecklistStrip({ jobId, io, rev = 0, plansUrl = null }: { jobId: string | null | undefined; io?: StageChecklistSheetIo; rev?: number; plansUrl?: string | null }) {
+/** A stage, and a check on it, to open the sheet on as soon as the read lands (#245). */
+export interface OpenStageChecklistAsk {
+  fixtureId: string
+  questionId?: string | null
+}
+
+export function JobStageChecklistStrip({ jobId, io, rev = 0, plansUrl = null, openStage = null }: { jobId: string | null | undefined; io?: StageChecklistSheetIo; rev?: number; plansUrl?: string | null; openStage?: OpenStageChecklistAsk | null }) {
   const { user, profileName, role } = useAuth()
   const read = useJobStageChecklists(jobId, io, rev, asksMayAuthor(role))
   const [open, setOpen] = useState<JobStageChecklist | null>(null)
+  const [openedFor, setOpenedFor] = useState<OpenStageChecklistAsk | null>(null)
+  const rowsRead = read.rows
+  useEffect(() => {
+    if (!openStage || openStage === openedFor || !rowsRead) return
+    const row = rowsRead.find((r) => r.fixtureId === openStage.fixtureId)
+    setOpenedFor(openStage)
+    if (row) setOpen(row)
+  }, [openStage, openedFor, rowsRead])
   const who = useMemo(() => ({ userId: user?.id ?? null, name: profileName ?? '' }), [user?.id, profileName])
   const rows = read.rows
   // A stage with a checklist is listed for everyone; one that takes a checklist but has no question yet is listed for
@@ -77,6 +93,7 @@ export function JobStageChecklistStrip({ jobId, io, rev = 0, plansUrl = null }: 
           onQuestionAdded={read.putQuestion}
           onQuestionRetired={read.dropQuestion}
           onQuestionsChanged={read.putQuestions}
+          initialOpenQuestionId={openStage && openStage.fixtureId === current.fixtureId ? openStage.questionId ?? null : null}
           onClose={() => setOpen(null)}
         />
       ) : null}

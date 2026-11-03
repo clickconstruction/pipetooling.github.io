@@ -4,9 +4,13 @@
  * its own part, made with its first set; a job inside a development names one of the site's parts, or makes one
  * named after itself. When another part of the site carries a set, a notice says so (the owner, 2026-11-01), with
  * a door to the site's Plans look. The job's old plans link follows the current set by the database's own mirror,
- * so *Open plans* on the Job tab opens the new set the moment the part switches.
+ * so *Open plans* on the Job tab opens the new set the moment the part switches. A set or as-built added with no
+ * link gets its own folder under the job's Plans folder in Drive (punch list #239, PR 5, `plan-set-files`), and the
+ * crew's as-built takes photos or a PDF, filed one by one past any that fails. A file that fails stays with its reason
+ * and files again into the same set; an as-built takes more files later, and a set with no link can still make its
+ * folder, so a job whose Drive folder comes tomorrow never needs a second row.
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -22,16 +26,22 @@ import {
   newSetDraftProblem,
   otherPlansNotice,
   partNameForJob,
+  partTimeline,
   setLineWords,
+  timelineEntryFor,
   todayYmd,
   type NewSetDraft,
   type PlanSetKind,
   type PlanSetRow,
 } from '../../lib/plans/planSets'
 import { supabaseJobPlansIo, type JobPlansIo, type JobPlansRead } from '../../lib/plans/planSetsIo'
+import { AS_BUILT_ACCEPT, PLAN_SET_FILES_WORDS, asBuiltFileName, fileAgainLabel, filedWords, filingWords, heldBehindLine, splitReadyFiles } from '../../lib/plans/planSetFiles'
+import { supabasePlanSetFilesIo, type PlanSetFilesIo } from '../../lib/plans/planSetFilesIo'
+import type { BatchOutcome } from '../../lib/batchWords'
 import { EmptyState } from '../EmptyState'
 import { JobPapersSection } from '../papers/JobPapersSection'
 import { PlanSetForm } from '../plans/PlanSetForm'
+import { PlanSetChangesLine } from '../plans/PlanSetChangesLine'
 import { documentsHeading, documentsQuietButton } from './jobDocumentsStyles'
 
 const OFFICE: ReadonlySet<string> = new Set(['dev', 'master_technician', 'assistant', 'controller', 'estimator'])
@@ -50,14 +60,52 @@ const ul: CSSProperties = { margin: 0, padding: 0, listStyle: 'none', display: '
 
 type Form = { kind: 'set'; draft: NewSetDraft } | { kind: 'as_built'; draft: NewSetDraft } | { kind: 'part'; name: string; pick: string } | null
 
+/** What a filing came to: what landed, the files that did not with their reasons, the files held back when picked. */
+type FiledFiles = {
+  setId: string
+  outcome: BatchOutcome
+  /** Kept, so the press can file them again into the same set. */
+  failed: Array<{ file: File; why: string }>
+  held: Array<{ name: string; why: string }>
+  folderUrl: string | null
+}
+
+/** Picks photos or a PDF for a set already on the list, and hands them up. */
+function AddFilesPress({ setName, disabled, onPick }: { setName: string; disabled: boolean; onPick: (files: File[]) => void }) {
+  const input = useRef<HTMLInputElement>(null)
+  return (
+    <>
+      <input
+        ref={input}
+        type="file"
+        accept={AS_BUILT_ACCEPT}
+        multiple
+        aria-label={`${PLAN_SET_FILES_WORDS.addToSet} to ${setName}`}
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? [])
+          e.target.value = ''
+          if (files.length) onPick(files)
+        }}
+      />
+      <button type="button" style={smallLinkBtn} disabled={disabled} title={PLAN_SET_FILES_WORDS.addToSetTitle} onClick={() => input.current?.click()}>
+        {PLAN_SET_FILES_WORDS.addToSet}
+      </button>
+    </>
+  )
+}
+
 export function JobPlansSection({
   job,
   io: ioProp,
+  filesIo = supabasePlanSetFilesIo,
   onPlansLinkChanged,
   onLeave,
 }: {
   job: { id: string; job_name?: string | null; click_number?: string | null; hcp_number?: string | null }
   io?: JobPlansIo
+  /** The set's Drive folder and the files in it; the real one by default, a fake in tests. */
+  filesIo?: PlanSetFilesIo
   /** The current set's link, after a press that changed what the job builds from: the window patches its copy of the job. */
   onPlansLinkChanged?: (link: string) => void
   /** Called before the notice's door leaves for the site's page, so the window closes first. */
@@ -74,6 +122,10 @@ export function JobPlansSection({
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  // The as-built's photos or PDF (PR 5): picked here, filed after the row saves, one by one past any that fails.
+  const [asBuiltFiles, setAsBuiltFiles] = useState<File[]>([])
+  const [filing, setFiling] = useState<{ done: number; total: number } | null>(null)
+  const [filed, setFiled] = useState<FiledFiles | null>(null)
 
   useEffect(() => {
     let live = true
@@ -88,6 +140,7 @@ export function JobPlansSection({
   }, [io, job.id, tick])
 
   const view = useMemo(() => buildJobPlansView(read?.part ?? null, read?.sets ?? []), [read])
+  const timeline = useMemo(() => partTimeline([...(view.current ? [view.current] : []), ...view.older]), [view])
   const noticeWords = read?.job.development_id ? otherPlansNotice({ developmentName: read.job.development_name, myPartId: read.part?.id ?? null, parts: read.developmentParts }) : null
   const nameOf = (id: string | null) => (id ? (read?.names[id] ?? null) : null)
   const reload = () => setTick((t) => t + 1)
@@ -127,18 +180,43 @@ export function JobPlansSection({
     const draft = emptyNewSetDraft(kind)
     draft.name = defaultSetName(kind, read?.sets ?? [])
     setProblem(null)
+    setFiled(null)
     setForm({ kind: 'set', draft })
   }
   const openAsBuiltForm = () => {
     const draft = emptyNewSetDraft('as_built')
     draft.name = defaultAsBuiltName(jobShortLabel(job), todayYmd())
     setProblem(null)
+    setFiled(null)
+    setAsBuiltFiles([])
     setForm({ kind: 'as_built', draft })
   }
   const openPartForm = () => {
     setProblem(null)
     setForm({ kind: 'part', name: partNameForJob(job), pick: '' })
   }
+
+  /** Up one by one into the set's own folder: a file that fails is named and kept for a second try, the rest still go. */
+  const fileInto = async (setId: string, files: File[], held: FiledFiles['held'], folderUrlBefore: string | null = null): Promise<string | null> => {
+    const ymd = todayYmd()
+    const failed: FiledFiles['failed'] = []
+    let folderUrl = folderUrlBefore
+    for (let i = 0; i < files.length; i += 1) {
+      const file = files[i]!
+      setFiling({ done: i, total: files.length })
+      try {
+        const r = await filesIo.put(setId, file, asBuiltFileName(jobShortLabel(job), ymd, i + 1, files.length, file))
+        folderUrl = r.folderUrl
+      } catch (e) {
+        failed.push({ file, why: formatErrorMessage(e, 'It did not land.') })
+      }
+    }
+    setFiling(null)
+    setFiled({ setId, outcome: filedWords(files.length - failed.length, failed.length), failed, held, folderUrl })
+    return folderUrl
+  }
+
+  const heldOf = (held: ReadonlyArray<{ file: File; why: string }>): FiledFiles['held'] => held.map((h) => ({ name: h.file.name, why: h.why }))
 
   const addSet = (draft: NewSetDraft, makeCurrent: boolean) =>
     run(async () => {
@@ -154,8 +232,69 @@ export function JobPlansSection({
         jobId: draft.kind === 'as_built' ? job.id : null,
         userId: user?.id ?? null,
       })
-      if (makeCurrent && made.link) onPlansLinkChanged?.(made.link)
+      let link = made.link
+      const picked = splitReadyFiles(draft.kind === 'as_built' ? asBuiltFiles : [])
+      const held = heldOf(picked.held)
+      if (picked.ready.length) {
+        const folderUrl = await fileInto(made.id, picked.ready, held)
+        if (folderUrl && !link) link = folderUrl
+      } else {
+        let folderUrl: string | null = null
+        let folderProblem: string | null = null
+        // A set with no link gets its own folder under Plans; the register mirrors Drive. A hold here is said, not fatal.
+        if (!draft.link.trim()) {
+          try {
+            folderUrl = (await filesIo.folder(made.id)).url
+            link = folderUrl
+          } catch (e) {
+            folderProblem = formatErrorMessage(e, 'The set’s folder was not made.')
+          }
+        }
+        if (folderProblem) setFiled({ setId: made.id, outcome: { line: folderProblem, head: null, tone: 'warning' }, failed: [], held, folderUrl: null })
+        else if (held.length) setFiled({ setId: made.id, outcome: filedWords(0, 0), failed: [], held, folderUrl })
+      }
+      setAsBuiltFiles([])
+      if (makeCurrent && link) onPlansLinkChanged?.(link)
     }, 'The set did not save.')
+
+  /** The press on a filing that left files behind: only those, into the same set, never a second row. */
+  const fileAgain = () => {
+    if (!filed || filed.failed.length === 0) return
+    const { setId, failed, held, folderUrl } = filed
+    void run(async () => {
+      await fileInto(
+        setId,
+        failed.map((f) => f.file),
+        held,
+        folderUrl,
+      )
+    }, 'The files did not land.')
+  }
+
+  /** More photos or a PDF for an as-built already on the list. */
+  const addFilesTo = (setId: string, files: File[]) => {
+    const picked = splitReadyFiles(files)
+    const held = heldOf(picked.held)
+    setFiled(null)
+    void run(async () => {
+      if (picked.ready.length) await fileInto(setId, picked.ready, held)
+      else setFiled({ setId, outcome: filedWords(0, 0), failed: [], held, folderUrl: null })
+    }, 'The files did not land.')
+  }
+
+  /** A set still with no link: its own folder now, as when the job's Drive folder came after the set. */
+  const makeFolder = (s: PlanSetRow, current: boolean) =>
+    run(async () => {
+      const f = await filesIo.folder(s.id)
+      if (current) onPlansLinkChanged?.(f.url)
+    }, 'The set’s folder was not made.')
+
+  const makeFolderPress = (s: PlanSetRow, current: boolean) =>
+    canWrite ? (
+      <button type="button" style={smallLinkBtn} disabled={busy} title={PLAN_SET_FILES_WORDS.makeFolderTitle} onClick={() => void makeFolder(s, current)}>
+        {PLAN_SET_FILES_WORDS.makeFolder}
+      </button>
+    ) : null
 
   const buildFrom = (s: PlanSetRow) =>
     run(async () => {
@@ -168,7 +307,18 @@ export function JobPlansSection({
     run(async () => {
       await io.removeSet(s.id)
       setPendingRemove(null)
+      if (filed?.setId === s.id) setFiled(null)
     }, 'The set did not come off.')
+
+  /** The change line written on a set already on the part; true when it took, so the editor closes. */
+  const saveChanges = async (setId: string, changes: string): Promise<boolean> => {
+    let ok = false
+    await run(async () => {
+      await io.updateChanges(setId, changes)
+      ok = true
+    }, 'What changed did not save.')
+    return ok
+  }
 
   const goToSite = () => {
     if (!read?.job.development_id) return
@@ -185,13 +335,17 @@ export function JobPlansSection({
       </span>
       <span style={{ ...muted }}>{setLineWords(s)}</span>
       {s.memo ? <span style={{ ...muted, flexBasis: '100%' }}>{s.memo}</span> : null}
+      <PlanSetChangesLine entry={timelineEntryFor(timeline, s)} canWrite={canWrite} busy={busy} onSave={saveChanges} style={{ flexBasis: '100%' }} />
       <span style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
         {s.link ? (
           <button type="button" style={smallLinkBtn} onClick={() => openInExternalBrowser(s.link)}>
             Open ↗
           </button>
         ) : (
-          <span style={muted}>link still to come</span>
+          <>
+            <span style={muted}>link still to come</span>
+            {makeFolderPress(s, current)}
+          </>
         )}
         {canWrite && !current ? (
           <button type="button" style={smallLinkBtn} disabled={busy} onClick={() => void buildFrom(s)}>
@@ -229,6 +383,7 @@ export function JobPlansSection({
       problem={problem}
       onAdd={(makeCurrent) => void addSet(f.draft, makeCurrent)}
       onCancel={() => setForm(null)}
+      {...(f.kind === 'as_built' ? { files: asBuiltFiles, onFiles: setAsBuiltFiles, filing } : {})}
     />
   )
 
@@ -266,6 +421,8 @@ export function JobPlansSection({
   )
 
   const state = !read && !error ? 'loading' : error ? 'failed' : view.current ? 'current' : view.part ? 'no-current' : 'no-part'
+  // Green only when nothing stayed behind: a held file is a word the person still has to act on.
+  const filedTone = filed?.outcome.tone === 'success' && filed.held.length > 0 ? 'warning' : filed?.outcome.tone
 
   return (
     <section aria-labelledby="job-documents-plans" data-job-documents-plans={state} style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
@@ -322,10 +479,13 @@ export function JobPlansSection({
                     Open ↗
                   </button>
                 ) : (
-                  <span style={muted}>· link still to come</span>
+                  <>
+                    <span style={muted}>· link still to come</span> {makeFolderPress(view.current, true)}
+                  </>
                 )}
               </p>
               {view.current.memo ? <p style={muted}>{view.current.memo}</p> : null}
+              <PlanSetChangesLine entry={timelineEntryFor(timeline, view.current)} canWrite={canWrite} busy={busy} onSave={saveChanges} style={{ display: 'flex' }} />
               {buildingFromLine(view, nameOf(view.part?.current_set_by ?? null)) ? <p style={muted}>{buildingFromLine(view, nameOf(view.part?.current_set_by ?? null))}</p> : null}
             </div>
           ) : view.part && view.older.length > 0 ? (
@@ -360,6 +520,7 @@ export function JobPlansSection({
                       ) : (
                         <span style={muted}>link still to come</span>
                       )}
+                      {canWrite || (s.created_by && s.created_by === user?.id) ? <AddFilesPress setName={s.name} disabled={busy} onPick={(files) => addFilesTo(s.id, files)} /> : null}
                       {canWrite || (s.created_by && s.created_by === user?.id) ? (
                         pendingRemove === s.id ? (
                           <>
@@ -399,6 +560,35 @@ export function JobPlansSection({
             />
           ) : null}
           {problem && !form ? <p style={{ ...muted, color: 'var(--text-amber-800)' }}>{problem}</p> : null}
+          {filing && form?.kind !== 'as_built' ? <p style={muted}>{filingWords(filing.done, filing.total)}</p> : null}
+          {filed ? (
+            <div data-testid="job-plans-filed" data-tone={filedTone} style={{ ...muted, color: filedTone === 'success' ? 'var(--text-green-700)' : 'var(--text-amber-800)', display: 'grid', gap: '0.2rem' }}>
+              <span>
+                {filed.outcome.line}{' '}
+                {filed.folderUrl ? (
+                  <button type="button" style={smallLinkBtn} onClick={() => openInExternalBrowser(filed.folderUrl!)}>
+                    Open the folder ↗
+                  </button>
+                ) : null}
+              </span>
+              {filed.outcome.head ? <span>{filed.outcome.head}</span> : null}
+              {filed.failed.map((f, i) => (
+                <span key={`${f.file.name}-${i}`}>
+                  {f.file.name} · {f.why}
+                </span>
+              ))}
+              {filed.failed.length > 0 ? (
+                <span>
+                  <button type="button" style={smallLinkBtn} disabled={busy} onClick={fileAgain}>
+                    {fileAgainLabel(filed.failed.length)}
+                  </button>
+                </span>
+              ) : null}
+              {filed.held.map((h, i) => (
+                <span key={`${h.name}-${i}`}>{heldBehindLine(h.name, h.why)}</span>
+              ))}
+            </div>
+          ) : null}
         </>
       )}
     </section>

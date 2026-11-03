@@ -68,9 +68,13 @@ else
   apply() { cat "$1"; }
 fi
 
-for f in supabase/migrations/*.sql; do
-  apply "$f" | psql_as postgres -f - >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
-done
+if [ -n "${PGTEST_PGBIN:-}" ]; then
+  for f in supabase/migrations/*.sql; do
+    apply "$f" | psql_as postgres -f - >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  done
+else
+  pgtest_apply supabase/migrations/*.sql
+fi
 # A second run must change nothing: every function is replaced as it was, and the guard's DO block
 # makes no second trigger. The later migrations that replace a function go after the earlier ones, in
 # order, so the bed runs on the functions as prod has them.

@@ -24,4 +24,4 @@ Through the app's own client as the dev, on a ZZ Test job: a first target, a sec
 
 ## After the push
 
-Nothing calls the table until PR 3 (the board); PR 2's hook ships ahead of it, so `check:calls-ahead` labels the PR *push right after the merge* and the deploy holds until the push. Run `npm run gen-types:linked` in a `chore(types)` PR when convenient; the hook reads through a cast until then.
+Nothing calls the table until PR 3 (the board); PR 2's hook ships ahead of it, so `check:calls-ahead` labels the PR *push right after the merge* and the deploy holds until the push. The types landed with #6799, and the hook dropped its cast on 2026-11-03. `p_from_hours` still passes its null as `null as unknown as number`, since the generated types cannot say that an argument takes null.

@@ -73,6 +73,12 @@ A paper often arrives as an attachment. Open the mail in **My Mail**. When the m
 
 Press it. The form opens with the kind, the name, the sender and the day filled from the mail. Check them. Pick the set it **Goes with**. Press {{button:blue|Keep the paper}}.
 
+The mail's files follow the paper. The files land in the paper's own folder under the job's **Plans** folder in Drive. The line under the mail says how many landed.
+
+The line turns amber when a file stayed behind, and it names the file with its reason. A file too big for us to keep stays in Gmail. Press {{button:outline|File 1 file again}} when a file did not land. The file goes into the same paper's folder.
+
+A mail that is not on the job yet cannot bring its files. The form says so. Press {{button:outline|Put it on the job}} first, then keep the paper.
+
 A job inside a development may not have named its part yet. The form then asks which part of the site the paper is for. A job outside any development gets its own part made for it.
 
 ## See the papers on the whole site

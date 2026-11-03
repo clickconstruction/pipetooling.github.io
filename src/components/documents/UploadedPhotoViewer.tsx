@@ -26,6 +26,8 @@ export function UploadedPhotoViewer({
   onJob,
   onSource,
   onPerson,
+  titleOf,
+  onEditWords,
 }: {
   rows: ReadonlyArray<UploadedPhotoRow>
   index: number
@@ -37,6 +39,10 @@ export function UploadedPhotoViewer({
   /** The source's door; null when the row has none to offer. */
   onSource: ((row: UploadedPhotoRow) => void) | null
   onPerson: (name: string) => void
+  /** The title bar's words, when the caller's list is one job's (punch list #244): the caption alone, never the job again. */
+  titleOf?: (row: UploadedPhotoRow) => string
+  /** Edit the words on a job photo (punch list #244): offered on a `job` row when the caller allows it. */
+  onEditWords?: ((row: UploadedPhotoRow) => void) | null
 }) {
   const row = rows[index]
   const [full, setFull] = useState<string | null>(null)
@@ -86,6 +92,11 @@ export function UploadedPhotoViewer({
           Open the job
         </button>
       ) : null}
+      {onEditWords && row.source === 'job' ? (
+        <button type="button" style={S.secondaryBtn} onClick={() => onEditWords(row)}>
+          Edit the words
+        </button>
+      ) : null}
       {person ? (
         <button type="button" style={S.secondaryBtn} onClick={() => onPerson(row.by_name)}>
           Only {person}’s photos
@@ -98,7 +109,7 @@ export function UploadedPhotoViewer({
   )
 
   return (
-    <ResponsiveModalShell title={viewerTitle(row)} onRequestClose={onClose} footer={footer} maxWidthDesktop={900} fullScreenKey="uploaded-photos">
+    <ResponsiveModalShell title={titleOf ? titleOf(row) : viewerTitle(row)} onRequestClose={onClose} footer={footer} maxWidthDesktop={900} fullScreenKey="uploaded-photos">
       <div data-uploaded-photo-open={row.id} style={{ display: 'grid', gap: '0.75rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
           <button type="button" style={{ ...S.secondaryBtn, minHeight: 40, ...(index <= 0 ? S.disabled : {}) }} disabled={index <= 0} onClick={() => onIndex(index - 1)}>

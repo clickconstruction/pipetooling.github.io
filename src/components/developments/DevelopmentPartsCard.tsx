@@ -16,7 +16,8 @@ import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, newSetDraftProblem,
 import { olderSetsFor, sitePlansAskCount, sitePlansChipWords, sitePlansLeftOutWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
 import { plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import { EmptyState } from '../EmptyState'
-import { setRowDayWords, setRowLineWords } from '../../lib/plans/planSets'
+import { partTimeline, setRowDayWords, setRowLineWords, timelineEntryFor } from '../../lib/plans/planSets'
+import { PlanSetChangesLine } from '../plans/PlanSetChangesLine'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
 import { buildPapersView, kindLabel, paperChipWords, paperLineWords, type Paper } from '../../lib/papers/papers'
@@ -28,6 +29,8 @@ export type SitePlansWrites = {
   addSet: (partId: string, draft: NewSetDraft, makeCurrent: boolean, replacesSetId: string | null) => Promise<boolean>
   buildFrom: (partId: string, setId: string) => Promise<boolean>
   removeSet: (setId: string) => Promise<boolean>
+  /** What changed from the set before it, written on a set already on the part (v2.6356). */
+  writeChanges: (setId: string, changes: string) => Promise<boolean>
   /** Many jobs onto one part in one press (the Gun Dog spike, 2026-11-02); true when any took it. */
 }
 
@@ -84,6 +87,14 @@ export function DevelopmentPartsCard({
       setPartName(null)
       setPendingRemove(null)
     }
+  }
+  const saveChanges = async (setId: string, changes: string): Promise<boolean> => {
+    if (!writes || busy) return false
+    setBusy(true)
+    setProblem(null)
+    const ok = await writes.writeChanges(setId, changes)
+    setBusy(false)
+    return ok
   }
   const openSetForm = (row: SitePartRow) => {
     const kind = row.current ? 'addendum' : 'issued'
@@ -158,6 +169,7 @@ export function DevelopmentPartsCard({
           // Each part's pieces, drawn once: a table row on the desk, a card on a phone (the Gun Dog spike, 2026-11-02: the seven-column table ran 584 wide in a 375 screen).
           const partBlocks = view.parts.map((row) => {
             const older = olderSetsFor(row)
+            const timeline = partTimeline([...(row.current ? [row.current] : []), ...row.older])
             const setBy = row.part.current_set_by ? (names[row.part.current_set_by] ?? null) : null
             const replacedLine = [row.replaced ? `replaced ${row.replaced.name}${row.part.current_set_at ? ` on ${shortDayWords(row.part.current_set_at)}` : ''}` : '', setBy ? `set by ${setBy}` : ''].filter(Boolean).join(' · ')
             const building = (
@@ -177,6 +189,7 @@ export function DevelopmentPartsCard({
             const dated = row.current?.dated ? shortDay(row.current.dated) : <span style={{ color: 'var(--text-faint)' }}>—</span>
             const came = row.current ? shortDay(row.current.came_at) : <span style={{ color: 'var(--text-faint)' }}>—</span>
             const memo = row.current?.memo ? row.current.memo : <span style={{ color: 'var(--text-faint)' }}>—</span>
+            const changes = row.current ? <PlanSetChangesLine entry={timelineEntryFor(timeline, row.current)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ display: 'flex', marginTop: 2 }} /> : null
             const jobsCell = row.jobs.length ? carriers(row.jobs) : <span style={muted}>none yet</span>
             const olderPress = (
               <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
@@ -208,6 +221,7 @@ export function DevelopmentPartsCard({
                         <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
                           <span>{s.name}</span> <span style={muted}>{setRowLineWords(s)}</span>
                           {s.memo ? <div style={muted}>{s.memo}</div> : null}
+                          <PlanSetChangesLine entry={timelineEntryFor(timeline, s)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ display: 'flex' }} />
                         </div>
                         <span style={{ display: 'inline-flex', gap: 10, alignItems: 'baseline', marginLeft: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap' }} data-testid="site-older-presses">
                           {openLink(s)}
@@ -285,7 +299,7 @@ export function DevelopmentPartsCard({
               form && form.partId === row.part.id ? (
                 <PlanSetForm mode="set" draft={form.draft} onChange={(d) => setForm({ partId: row.part.id, draft: d })} existing={[...row.older, ...(row.current ? [row.current] : []), ...row.asBuilts]} current={row.current} busy={busy} problem={problem} onAdd={(mk) => addSet(row, form.draft, mk)} onCancel={() => setForm(null)} />
               ) : null
-            return { row, building, dated, came, memo, jobsCell, olderPress, olderList, papersCell, papersList, asBuilts, setForm: setFormNode, hasMemo: !!row.current?.memo }
+            return { row, building, dated, came, memo, changes, jobsCell, olderPress, olderList, papersCell, papersList, asBuilts, setForm: setFormNode, hasMemo: !!row.current?.memo }
           })
           if (phone) {
             // The phone's shape: one card per part, the dates on one line, the memo as a paragraph, the older sets and + New set at the foot.
@@ -301,6 +315,7 @@ export function DevelopmentPartsCard({
                       </div>
                     ) : null}
                     {b.hasMemo ? <div style={{ ...muted, overflowWrap: 'anywhere' }}>{b.memo}</div> : null}
+                    {b.changes}
                     <div>
                       <span style={{ ...muted, fontWeight: 600 }}>Jobs</span> {b.jobsCell}
                     </div>
@@ -342,7 +357,10 @@ export function DevelopmentPartsCard({
                       <td style={td}>{b.building}</td>
                       <td style={td}>{b.dated}</td>
                       <td style={td}>{b.came}</td>
-                      <td style={{ ...td, minWidth: 160 }}>{b.memo}</td>
+                      <td style={{ ...td, minWidth: 160 }}>
+                        {b.memo}
+                        {b.changes}
+                      </td>
                       <td style={td}>{b.jobsCell}</td>
                       <td style={td}>{b.olderPress}</td>
                       {hasPapers ? <td style={td}>{b.papersCell}</td> : null}

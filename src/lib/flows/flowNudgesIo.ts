@@ -13,19 +13,27 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { firstName } from '../contacts/kernel'
 import { loadCustomerPortalReadBack } from '../portal/customerPortalViewsIo'
 import type { ContactCard, FlowRowsKindAnswer } from './boardRead'
-import type { FlowKind } from './facts'
+import { contactFlowKindOf, type FlowKind } from './facts'
 import { loadFlowDef, loadFlowRowsKind } from './flowsIo'
 import type { FlowRows } from './load'
 import type { PersonFlow } from './nudges'
 import { personFlowFrom, type HoldRow, type OwedRow, type PortalReadBackRow, type SentRow, type StepNoteRow, type ThreadLineRow } from './person'
+import { NO_PIPELINE_ROWS, residentialRowsOf, type PipelineRows } from './residentialRows'
+import { readPipelineRows } from './residentialRowsIo'
 import type { FlowDef } from './state'
 
 // Untyped until the types regenerate after the flows' push.
 const db = supabase as unknown as SupabaseClient
 
-/** The kinds a reminder goes to: a number nobody has named has no flow of steps to nudge. */
-export const NUDGE_KINDS = ['customer', 'trade', 'arch'] as const satisfies readonly FlowKind[]
+/**
+ * The kinds a reminder goes to: a number nobody has named has no flow of steps to nudge. The residential flow joined
+ * in v2.6394: a homeowner's contact is kind `customer`, so they come back in the customer read, and their flow is told
+ * from the card's `customer_type` (`contactFlowKindOf`).
+ */
+export const NUDGE_KINDS = ['customer', 'trade', 'arch', 'residential'] as const satisfies readonly FlowKind[]
 export type NudgeKind = (typeof NUDGE_KINDS)[number]
+/** The kinds `flow_rows_kind` reads: contacts' kinds, which `residential` is not. */
+const READ_KINDS = ['customer', 'trade', 'arch'] as const satisfies readonly NudgeKind[]
 
 /** The thread's lines read back this far, for quiet days and whose court it is. */
 export const LINE_DAYS = 120
@@ -79,20 +87,29 @@ async function orNone<T>(read: () => Promise<T[] | null>): Promise<T[]> {
 export async function loadNudgeBatch(now: Date): Promise<NudgeBatch> {
   const [defs, answers] = await Promise.all([
     Promise.all(NUDGE_KINDS.map((k) => loadFlowDef(k))),
-    Promise.all(NUDGE_KINDS.map((k) => loadFlowRowsKind(k))),
+    Promise.all(READ_KINDS.map((k) => loadFlowRowsKind(k))),
   ])
   const flows = Object.fromEntries(NUDGE_KINDS.map((k, i) => [k, defs[i]])) as Record<NudgeKind, FlowDef>
-  const entries = NUDGE_KINDS.flatMap((k, i) =>
-    Object.entries((answers[i] ?? {}) as FlowRowsKindAnswer)
-      .filter(([, e]) => e.contact.kind === k)
-      .map(([id, e]) => ({ id, kind: k, entry: e })),
+  // Each person on the flow their contact's kind and their customers row put them on (v2.6394): a customer contact whose
+  // row says residential is a homeowner on the residential flow; a kind the definer answered with that is not read here is left out.
+  const isNudgeKind = (k: FlowKind): k is NudgeKind => (NUDGE_KINDS as readonly FlowKind[]).includes(k)
+  const entries = READ_KINDS.flatMap((_, i) =>
+    Object.entries((answers[i] ?? {}) as FlowRowsKindAnswer).flatMap(([id, e]) => {
+      const kind = contactFlowKindOf(e.contact.kind, e.card.customer_type)
+      return isNudgeKind(kind) ? [{ id, kind, entry: e }] : []
+    }),
   )
   const ids = entries.map((e) => e.id)
   if (!ids.length) return { people: [], names: new Map(), flows }
   const since = new Date(now.getTime() - LINE_DAYS * 86_400_000).toISOString()
-  // Only a customer has a page to read back; a trade partner's and an architect's portal stay unread here.
+  // Only a GC customer has a page to read back; a trade partner's and an architect's portal stay unread here.
   const customerIds = entries.flatMap(({ kind, entry }) => (kind === 'customer' && entry.card.customer_id ? [entry.card.customer_id] : []))
-  const [holds, sent, notes, lines, owed, readBack] = await Promise.all([
+  // A homeowner's steps read from their Pipeline rows (v2.6232), everyone's at once here as the morning run reads them.
+  const residential = entries.filter((e) => e.kind === 'residential')
+  const pipelineRead: Promise<PipelineRows> = residential.length
+    ? readPipelineRows({ customerIds: residential.map((e) => e.entry.card.customer_id), contactIds: residential.map((e) => e.id) }).catch(() => NO_PIPELINE_ROWS)
+    : Promise.resolve(NO_PIPELINE_ROWS)
+  const [holds, sent, notes, lines, owed, readBack, pipeline] = await Promise.all([
     orNone(() =>
       withSupabaseRetry<Keyed<HoldRow>[]>(
         () => db.from('nudge_holds').select('id, contact_id, step_key, project_id, jobs_ledger_id, until_on, released_at').in('contact_id', ids).is('released_at', null),
@@ -121,6 +138,7 @@ export async function loadNudgeBatch(now: Date): Promise<NudgeBatch> {
       withSupabaseRetry<OwedRow[]>(() => db.from('contact_owed').select('contact_id, done_at').in('contact_id', ids).is('done_at', null), 'read what we owe'),
     ),
     loadCustomerPortalReadBack(customerIds).catch((): ReadonlyMap<string, PortalReadBackRow> => new Map()),
+    pipelineRead,
   ])
   const holdsOf = byContact<HoldRow>(holds)
   const sentOf = byContact<SentRow>(sent)
@@ -133,11 +151,15 @@ export async function loadNudgeBatch(now: Date): Promise<NudgeBatch> {
   const people = entries.map(({ id, kind, entry }) => {
     const { name, first } = nudgeNamesOf(entry.card)
     names.set(id, { name, first, kind })
+    const rows = entry as unknown as FlowRows
     return personFlowFrom({
       id,
       first,
       flow: flows[kind],
-      rows: entry as unknown as FlowRows,
+      rows:
+        kind === 'residential'
+          ? { ...rows, residential: residentialRowsOf(pipeline, { contact: rows.contact, firstName: first, customerId: entry.card.customer_id, userNames: rows.userNames, skips: rows.skips }) }
+          : rows,
       now,
       holds: holdsOf.get(id) ?? [],
       sent: sentOf.get(id) ?? [],

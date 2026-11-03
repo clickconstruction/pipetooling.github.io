@@ -5,9 +5,12 @@
  * the one place the card's numbers are assembled — the superintendent's phone card (PR 4) reads
  * the same `projectPace`, so the office and the field can never disagree. Pure.
  *
- * - The gate: a job Working with a stage In order (set on the Bill tab or recognized from the
- *   line names, the way the Pipeline reads stages) or priced at $25,000 and up (#238's kind
- *   replaces the guess when it ships). Service calls stay out.
+ * - The gate: a job Working whose kind reads Project (`jobKindOfRow`, punch list #238, the same
+ *   read as the job's chip). A job reading Service call stays off, whatever its price. A job reading
+ *   Kind not set keeps the guess the kind replaced until the office presses, a stage In order (set
+ *   on the Bill tab or recognized from the line names, the way the Pipeline reads stages) or a price
+ *   of $25,000 and up: a card that should not be there costs nothing, a missing one costs the morning
+ *   read. A billing-only job stays off, as on the Pipeline's Working column: nobody clocks on it.
  * - Who sees it: the leader, the superintendents, the assistant and the controller. Who moves
  *   the expected hours: the leader and the office; a superintendent reads his own number.
  * - The track: the labor budget in hours from the Costs baseline (bid, then typed), else the
@@ -17,6 +20,7 @@
  */
 import { isAssistantLike } from '../subcontractorLikeRole'
 import { applyRecognizedStages } from './stageRecognition'
+import { jobKindOfRow, type JobKind, type JobKindRowLike } from './jobKind'
 import { calcLineBudget, lineBudgetEntryOf, lineBudgetFor, sumLineBudgets, type LineBudgetColumns, type LineBudgetSettings } from './lineBudgets'
 import type { JobBudgetSource } from './jobBudget'
 import { laborEventsOf, teamHoursOf, type ProjectBoardJob } from './projectBoardRead'
@@ -37,7 +41,8 @@ export type ProjectFixture = Partial<LineBudgetColumns> & {
   sequence_order: number | string | null
 }
 
-export type ProjectRow = {
+/** `kind` and the facts beside it are what the job's kind reads; a read older than them leaves `kind` undefined. */
+export type ProjectRow = Pick<JobKindRowLike, 'kind' | 'bid_id' | 'project_id' | 'first_work_date' | 'billing_only'> & {
   id: string
   hcp_number: string | number | null
   click_number: string | number | null
@@ -49,13 +54,18 @@ export type ProjectRow = {
   fixtures: ProjectFixture[] | null
 }
 
-/** A working job priced here or above is a project even with no stage marked. */
+/** A working job with no kind yet, priced here or above, is a project even with no stage marked. */
 export const PROJECT_PRICE_GATE_USD = 25000
+
+/** What lands a job on the board, in the page's words: under the cards, and beside a job that is not here. */
+export const PROJECT_GATE_WORDS = `A project is a Working job whose kind reads Project. A job with no kind yet lands here with a stage In order or a price of $${PROJECT_PRICE_GATE_USD.toLocaleString('en-US')} and up. A service call stays off at any price.`
 
 const num = (v: number | string | null | undefined, fallback = 0): number => {
   const n = typeof v === 'string' ? Number(v) : v
   return n != null && Number.isFinite(n) ? n : fallback
 }
+
+const numOrNull = (v: number | string | null | undefined): number | null => (v == null ? null : num(v))
 
 /** The job's lines with the Pipeline's stage recognition applied: an In-order plan by name when none was marked. */
 export function stagedFixtures(fixtures: ReadonlyArray<ProjectFixture>): ProjectFixture[] {
@@ -63,10 +73,27 @@ export function stagedFixtures(fixtures: ReadonlyArray<ProjectFixture>): Project
   return applyRecognizedStages(normal).fixtures.map((f) => ({ ...f }))
 }
 
-export function isWorkingProject(row: ProjectRow): boolean {
-  if ((row.status ?? '').toLowerCase() !== 'working') return false
+/** The kind as the job's chip reads it, or null when it reads not set. A read older than the facts says nothing, so it reads not set too. */
+function kindOfProjectRow(row: ProjectRow): JobKind | null {
+  if (row.kind === undefined) return null
+  return jobKindOfRow({
+    ...row,
+    hcp_number: row.hcp_number == null ? null : String(row.hcp_number),
+    click_number: row.click_number == null ? null : String(row.click_number),
+    fixtures: row.fixtures?.map((f) => ({ ...f, count: numOrNull(f.count), line_unit_price: numOrNull(f.line_unit_price), sequence_order: numOrNull(f.sequence_order) })),
+  }).kind
+}
+
+/** The guess a job with no kind keeps: a stage In order, marked or recognized, or the price. */
+function looksLikeAProject(row: ProjectRow): boolean {
   if (stagedFixtures(row.fixtures ?? []).some((f) => f.stage_kind === 'order')) return true
   return num(row.revenue) >= PROJECT_PRICE_GATE_USD
+}
+
+export function isWorkingProject(row: ProjectRow): boolean {
+  if ((row.status ?? '').toLowerCase() !== 'working' || row.billing_only) return false
+  const kind = kindOfProjectRow(row)
+  return kind === 'project' || (kind === null && looksLikeAProject(row))
 }
 
 type Role = string | null | undefined

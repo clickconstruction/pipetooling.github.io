@@ -8,14 +8,10 @@
  * migration made, then the hook reads again so every card reads the same ledger.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { changesOf, openTargetsOf, undoOf, type ExpectedHoursChange, type ExpectedHoursRow, type ExpectedHoursTarget, type ExpectedHoursUndo } from '../lib/jobs/expectedHours'
-
-// The table is younger than the generated types; the types PR after the push removes this cast.
-const db = supabase as unknown as SupabaseClient
 
 const COLS = 'id, job_id, hours, from_hours, set_by, set_by_name, set_at, why, cleared_at, cleared_by, cleared_by_name'
 const NO_ROWS: readonly ExpectedHoursRow[] = []
@@ -60,7 +56,7 @@ export function useExpectedHours(jobIds: ReadonlyArray<string>, enabled = true):
       try {
         const got = await fetchAllRowsChunkedIn<ExpectedHoursRow, string>(
           ids,
-          (chunk, from, to) => db.from('job_expected_hours').select(COLS).in('job_id', chunk).order('set_at', { ascending: false }).range(from, to),
+          (chunk, from, to) => supabase.from('job_expected_hours').select(COLS).in('job_id', chunk).order('set_at', { ascending: false }).range(from, to),
           'load expected hours ledger',
         )
         if (cancelled || mine !== seq.current) return
@@ -97,10 +93,10 @@ export function useExpectedHours(jobIds: ReadonlyArray<string>, enabled = true):
 
   const setTarget = useCallback(
     (jobId: string, hours: number, from: number | null, why: string) =>
-      write('set_job_expected_hours', () => db.rpc('set_job_expected_hours', { p_job_id: jobId, p_hours: Math.max(0, Math.round(hours)), p_from_hours: from != null ? Math.round(from) : null, p_why: why.trim() })),
+      write('set_job_expected_hours', () => supabase.rpc('set_job_expected_hours', { p_job_id: jobId, p_hours: Math.max(0, Math.round(hours)), p_from_hours: from != null ? Math.round(from) : (null as unknown as number), p_why: why.trim() })),
     [write],
   )
-  const clearTarget = useCallback((jobId: string) => write('clear_job_expected_hours', () => db.rpc('clear_job_expected_hours', { p_job_id: jobId })), [write])
+  const clearTarget = useCallback((jobId: string) => write('clear_job_expected_hours', () => supabase.rpc('clear_job_expected_hours', { p_job_id: jobId })), [write])
 
   const byJob = useMemo(() => openTargetsOf(rows), [rows])
   const history = useMemo(() => changesOf(rows), [rows])
