@@ -9,6 +9,9 @@
  *
  * `which: 'scan'` (Contract Forms PR 6) opens the paper scan a staff member
  * keyed the answers from instead of the flattened PDF — same gate, same log.
+ *
+ * A signed hours statement with the pay left off (punch list #212, v2.6411)
+ * opens for an assistant as well: the hours-only paper is theirs to make.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -62,6 +65,12 @@ serve(async (req) => {
     if (!allowed && role === 'master_technician') {
       const { data: pam } = await admin.from('pay_approved_masters').select('master_id').eq('master_id', user.id).maybeSingle()
       allowed = Boolean(pam)
+    }
+    // A signed hours statement with the pay left off (punch list #212, v2.6411) opens for an assistant too: the
+    // hours-only paper is theirs to make (`can_touch_hours_statement`), so its signed copy is theirs to read.
+    if (!allowed && role === 'assistant') {
+      const { data: hs } = await admin.from('hours_statements').select('id, with_pay').eq('contract_document_id', docId).maybeSingle()
+      allowed = Boolean(hs) && (hs as { with_pay?: boolean }).with_pay === false
     }
     if (!allowed) return json({ error: 'Only a dev, controller, or pay-approved master can open a signed form.', code: 'forbidden' }, 403)
 

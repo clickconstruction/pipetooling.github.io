@@ -5,7 +5,7 @@ file: docs/CONTRACT_FORMS.md
 type: Specialist
 purpose: How a Contract Book entry becomes a fillable form (an uploaded PDF plus dev-placed entry boxes), the FormSchema reference, the agent workflow for drafting a form from a PDF, and the out-of-band storage setup.
 audience: Developers, AI Agents
-last_updated: 2026-10-12
+last_updated: 2026-11-02
 key_sections:
   - name: "What a form is"
   - name: "FormSchema reference"
@@ -13,6 +13,7 @@ key_sections:
   - name: "Enter from paper"
   - name: "Two-party forms: the office section"
   - name: "Forms Click authors itself"
+  - name: "A form drawn per record: the signed hours statement"
   - name: "New revisions of a form"
   - name: "The Form Studio"
   - name: "The signer's page"
@@ -139,6 +140,12 @@ Not every form is somebody else's PDF. `npm run forms:author` (`scripts/forms/au
 
 Shipped sources: **Direct Deposit Authorization** (`directDeposit.ts`; routing and account numbers sensitive) and the **four Texas statutory lien waivers** (`lienWaivers.ts`; Tex. Prop. Code § 53.284(b)–(e) verbatim, each statutory blank a box with its caption under the underline; `paragraphWithBlanks` wraps text around unbreakable blanks; on the unconditional forms the notice is bold at the page's largest type size, per (c)(1) / (e)(1)). They are written for a **subcontractor signing to Click** (maker of check and person contracted with = constants; payee and company name prefill from the roster). Published through the studio's normal import: the Direct Deposit Authorization on 2026-09-06, the four lien waivers on 2026-09-07 into a **Lien waivers** packet (audience sub, no assignees). A waiver is sent from the sub's pay row — Jobs → Sub labor → **Lien waiver…** ([`LienWaiverSendModal`](../src/components/jobs/LienWaiverSendModal.tsx), kernel [`lienWaiverPick.ts`](../src/lib/subWorkOrders/lienWaiverPick.ts), v2.3062) picks the § 53.284 form from whether the money has landed and whether the payment is final, warns on the unconditional pair, and seeds the sub's boxes by writing `form_values` on the unsent row; guide `send-a-lien-waiver.md`.
 
+## A form drawn per record: the signed hours statement (v2.6411)
+
+The forms above are one template, many signers. The **signed hours statement** (punch list #212, [`GLOSSARY.md`](./GLOSSARY.md) → *Signed hours statement*) is the other way round: every statement is its own paper, drawn from its row's snapshot, so every statement gets its own template. `hours-statement-signing` (`prepare`) draws it with pdf-lib — [`_shared/hoursStatementPdf.ts`](../supabase/functions/_shared/hoursStatementPdf.ts), the paper `buildHoursStatementHtml` prints, recording a `FormSchema` as it draws, as `scripts/forms/author/lib.ts` does — uploads the PDF to `contract-form-templates/hours-statements/<statement id>/statement.pdf`, writes one `contract_form_templates` row (`doc_type = 'hours_statement'`, `status = 'published'`, the record id as `revision_label`) and one `person_contract_documents` copy (`doc_type = 'hours_statement'`, the worker's roster row, the office's stated days as `form_values` seeds), and ties the `hours_statements` row to the copy (`contract_document_id`). From there nothing is special: `send-contract-for-signature` mints the link (by email, or `mode: 'link'` alone for a text, the clipboard or the device in hand with `?inperson=1`), `get-contract-for-signer` serves the schema and the template, the signer fills the real page on `/contract/accept`, `accept-contract` flattens into `contract-form-pdfs/<copy id>/signed.pdf` and — the one addition — marks the statement signed with the days typed into the stated boxes, and `open-contract-form-pdf` opens it (an assistant too, on an hours-only statement). The paper path is `file_scan` on the same function: the office keys the days the worker wrote, attaches the scan, and the copy is filed `form_source = 'paper'` as *Enter from paper* files one.
+
+The boxes ([`_shared/hoursStatementForm.ts`](../supabase/functions/_shared/hoursStatementForm.ts)): `stated_<n>_day` · `stated_<n>_hours` · `stated_<n>_note` per stated row (every day the office stated, then three blank rows; a day in any shape the worker types, `parseStatedDay`), `printed_name` (required, prefilled from the roster), `signature`, `signed_on` (today). The Form Studio leaves these templates out of its list (`listFormTemplates` filters the kind); a person's Paperwork names the chip *Signed hours statement*. Migration `20261102230000_hours_statement_doc_type.sql` widens the two `doc_type` checks to the kind.
+
 ## New revisions of a form
 
 When the IRS (or anyone) issues a new PDF: open the form in the studio, **Replace PDF…** (boxes are kept; pages re-measured), then **Import PDF fields** (adds only fields no box binds yet), fix labels, **Preview filled PDF**, republish. Person copies already signed are untouched; new copies use the new PDF. From the terminal, `npm run forms:preview -- new.pdf docs/forms/<schema>.json --out /tmp/p.pdf` prints any binds the new PDF no longer has as `skipped` — that list must be empty before republishing.
@@ -198,3 +205,4 @@ create policy "Devs manage contract form templates" on storage.objects
 | `supabase/functions/_shared/formParties.ts`, `supabase/functions/complete-contract-form-office/`, `ContractFormOfficeModal.tsx`, migrations `20260905013000_contract_form_office_section.sql` + `20260905020000_contract_form_office_attested.sql` | Two-party forms + the office flow (PR 7–8) |
 | `scripts/forms/author/`, `docs/forms/authored/` | Forms Click authors itself (PR 10) |
 | `src/lib/subWorkOrders/lienWaiverPick.ts`, `src/components/jobs/LienWaiverSendModal.tsx` | The pay-row lien-waiver picker that seeds a form's boxes (v2.3062) |
+| `supabase/functions/_shared/hoursStatementPdf.ts`, `_shared/hoursStatementForm.ts`, `supabase/functions/hours-statement-signing/`, `src/components/jobs/HoursStatementSendSheet.tsx`, `HoursStatementScanSheet.tsx`, migration `20261102230000_hours_statement_doc_type.sql` | A form drawn per record: the signed hours statement (v2.6411, punch list #212) |

@@ -860,6 +860,10 @@ verify_jwt = false
 [functions.contract-form-paper-entry]
 verify_jwt = false
 
+# Signed hours statement (punch list #212, v2.6411): JWT validated in the body; the statement's RLS is the gate.
+[functions.hours-statement-signing]
+verify_jwt = false
+
 [functions.complete-contract-form-office]
 verify_jwt = false
 

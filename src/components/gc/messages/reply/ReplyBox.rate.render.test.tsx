@@ -8,6 +8,11 @@ import type { ReplyIo } from '../../../../lib/messages/replyIo'
 import type { QuickReply } from '../../../../lib/quickReplies/kernel'
 import type { QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import { ReplyBox } from './ReplyBox'
+import type { PapersIo } from '../../../../lib/messages/papersIo'
+
+// The box reads no papers here: its bills and estimates are ReplyBox.papers.render.test.tsx's, and without a stub the
+// read goes through the real client (v2.6436).
+const noPapers: PapersIo = { load: () => Promise.resolve([]) }
 
 // Send texts is on, so the Text tab draws its strip; the step they are on reads as nothing, so no read waits.
 vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
@@ -67,6 +72,7 @@ function draw(over: { job?: boolean; mint?: RatingLinkIo['mint'] } = {}) {
   const ratingLinkIo: RatingLinkIo = { mint: vi.fn(over.mint ?? (() => Promise.resolve(LINK))), asksOn: vi.fn(() => Promise.resolve([])) }
   renderWithProviders(
     <ReplyBox
+      papersIo={noPapers}
       contact={DANA}
       io={fakeIo()}
       quickIo={fakeQuick()}

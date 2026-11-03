@@ -17,6 +17,11 @@ import type { QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
 import { ReplyBox } from './ReplyBox'
+import type { PapersIo } from '../../../../lib/messages/papersIo'
+
+// The box reads no papers here: its bills and estimates are ReplyBox.papers.render.test.tsx's, and without a stub the
+// read goes through the real client (v2.6436).
+const noPapers: PapersIo = { load: () => Promise.resolve([]) }
 
 vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
 
@@ -68,7 +73,7 @@ function box(more: { io?: ReplyIo; kinds?: readonly ('text' | 'email' | 'note' |
   renderWithProviders(
     <MessagesRereadContext.Provider value={reread}>
       <OpenThreadContext.Provider value={open}>
-        <ReplyBox contact={contact} io={io} quickIo={fakeQuick()} kinds={more.kinds} job={more.job} />
+        <ReplyBox papersIo={noPapers} contact={contact} io={io} quickIo={fakeQuick()} kinds={more.kinds} job={more.job} />
       </OpenThreadContext.Provider>
     </MessagesRereadContext.Provider>,
   )

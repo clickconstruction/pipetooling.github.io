@@ -17,6 +17,11 @@ import type { Contact } from '../../../../lib/contacts/kernel'
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
 import { ReplyBox } from './ReplyBox'
+import type { PapersIo } from '../../../../lib/messages/papersIo'
+
+// The box reads no papers here: its bills and estimates are ReplyBox.papers.render.test.tsx's, and without a stub the
+// read goes through the real client (v2.6436).
+const noPapers: PapersIo = { load: () => Promise.resolve([]) }
 
 vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
 // The step on now, as cut 4's read would give it: Greg asked to quote, or on no step.
@@ -67,7 +72,7 @@ function box(more: { nudge?: 'text' | 'email'; stop?: boolean; noWay?: boolean }
   renderWithProviders(
     <MessagesRereadContext.Provider value={vi.fn()}>
       <OpenThreadContext.Provider value={open}>
-        <ReplyBox contact={contact} io={fakeIo()} quickIo={fakeQuick()} nudge={more.nudge ?? null} />
+        <ReplyBox papersIo={noPapers} contact={contact} io={fakeIo()} quickIo={fakeQuick()} nudge={more.nudge ?? null} />
       </OpenThreadContext.Provider>
     </MessagesRereadContext.Provider>,
   )

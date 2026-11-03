@@ -10767,9 +10767,6 @@ export type Database = {
           mime: string
           modified_at: string | null
           name: string
-          ocr_note: string | null
-          ocr_pages: number | null
-          ocr_tried_at: string | null
           pages: number | null
           pages_read: number | null
           path: string
@@ -10790,9 +10787,6 @@ export type Database = {
           mime: string
           modified_at?: string | null
           name: string
-          ocr_note?: string | null
-          ocr_pages?: number | null
-          ocr_tried_at?: string | null
           pages?: number | null
           pages_read?: number | null
           path?: string
@@ -10813,9 +10807,6 @@ export type Database = {
           mime?: string
           modified_at?: string | null
           name?: string
-          ocr_note?: string | null
-          ocr_pages?: number | null
-          ocr_tried_at?: string | null
           pages?: number | null
           pages_read?: number | null
           path?: string
@@ -18453,8 +18444,8 @@ export type Database = {
           fields: Json
           first_viewed_at: string | null
           id: string
-          initials: Json | null
           job_id: string
+          initials: Json | null
           kind: string
           last_sent_at: string | null
           last_viewed_at: string | null
@@ -18514,8 +18505,8 @@ export type Database = {
           fields?: Json
           first_viewed_at?: string | null
           id?: string
-          initials?: Json | null
           job_id: string
+          initials?: Json | null
           kind?: string
           last_sent_at?: string | null
           last_viewed_at?: string | null
@@ -18575,8 +18566,8 @@ export type Database = {
           fields?: Json
           first_viewed_at?: string | null
           id?: string
-          initials?: Json | null
           job_id?: string
+          initials?: Json | null
           kind?: string
           last_sent_at?: string | null
           last_viewed_at?: string | null
@@ -38322,7 +38313,6 @@ export type Database = {
       holds_vehicle: { Args: { p_vehicle_id: string }; Returns: boolean }
       hr_agent_write: { Args: { p: Json }; Returns: Json }
       humanize_job_status: { Args: { p: string }; Returns: string }
-      import_clock_sessions: { Args: { p_rows: Json }; Returns: Json }
       insert_accounting_label_suggestion_service: {
         Args: { p_rows: Json }
         Returns: number

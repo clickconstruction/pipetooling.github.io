@@ -254,20 +254,33 @@ serve(async (req) => {
       })
     }
 
-    const body = (await req.json()) as SigningRequestBody & { trade_email?: unknown }
+    const body = (await req.json()) as SigningRequestBody & { trade_email?: unknown; mode?: unknown }
     // A trade partner company's paper takes its own path (sendCompanyPaper, above); the person path below is pinned
     // against main and never sees one.
     if (body.trade_email !== undefined) return await sendCompanyPaper(body, { userId: user.id, supabaseUrl, serviceKey })
     const { person_contract_document_id, signer_email, public_origin } = body
-    // The request's own refusals (_shared/contractSigningSend.ts, pinned against main).
-    const requestRefusal = signingRequestRefusal(body)
-    if (requestRefusal) {
-      return new Response(JSON.stringify({ error: requestRefusal.error }), {
-        status: requestRefusal.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    // The link alone (v2.6411, punch list #212): `mode: 'link'` mints or renews the signing link and hands it back with
+    // nothing emailed, so the office can text it, copy it, or open it on the device in hand — what send-job-contract's
+    // link mode does for a job's agreement. The email path below is unchanged.
+    const mode: 'email' | 'link' = body.mode === 'link' ? 'link' : 'email'
+    if (mode === 'link') {
+      if (typeof person_contract_document_id !== 'string' || !/^[0-9a-f-]{36}$/i.test(person_contract_document_id)) {
+        return new Response(JSON.stringify({ error: 'person_contract_document_id required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    } else {
+      // The request's own refusals (_shared/contractSigningSend.ts, pinned against main).
+      const requestRefusal = signingRequestRefusal(body)
+      if (requestRefusal) {
+        return new Response(JSON.stringify({ error: requestRefusal.error }), {
+          status: requestRefusal.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
     }
-    const signerEmail = signer_email as string
+    const signerEmail = (signer_email ?? '') as string
 
     const { data: row, error: selErr } = await userClient
       .from('person_contract_documents')
@@ -329,6 +342,14 @@ serve(async (req) => {
       console.error(upErr)
       return new Response(JSON.stringify({ error: 'Could not activate signing link' }), {
         status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Link mode stops here: the row is sent, the link is the office's to hand on, and no email goes.
+    if (mode === 'link') {
+      return new Response(JSON.stringify({ ok: true, emailed: false, accept_url: acceptUrl }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
