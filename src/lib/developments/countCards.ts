@@ -6,7 +6,7 @@
  * `headCounts` reads, so a card can never disagree with its tile. An empty count holds a sentence:
  * what it would count, and the press that fills it.
  */
-import { bidMoney, bidStatusWord, bidUndecided, jobOpenOnBill, requestIsOpen, type MemberBid, type MemberJob, type MemberRequest, type Members } from './overview'
+import { bidMoney, bidStatusWord, bidUndecided, jobOpenOnBill, requestIsOpen, type MemberBid, type MemberJob, type MemberRequest, type Members, jobOpen } from './overview'
 
 export type CountKey = 'waiting' | 'bids' | 'jobs' | 'bidUndecided' | 'openOnBills'
 
@@ -326,12 +326,19 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
           const d = dnb(j)
           return { ...jobRow(j, inp), value: d != null ? `${inp.money(d)} done, not billed` : 'no percent yet' }
         })
+        // The waiting jobs with money left (the Gun Dog spike, 2026-11-02): never billed, so the tile reads *Not yet billed* and the card says where it sits.
+        const leftOf = (j: MemberJob) => Math.max(0, (j.revenue ?? 0) - (j.payments_made ?? 0))
+        const waiting = members.jobs.filter((j) => (j.status ?? '').toLowerCase() === 'waiting' && leftOf(j) > 0).sort((a, b) => leftOf(b) - leftOf(a))
+        const waitingRows = waiting.map((j) => ({ ...jobRow(j, inp), value: noMoney(inp) ? null : `${inp.money(leftOf(j))} left` }))
+        const left = members.jobs.filter(jobOpen).reduce((s, j) => s + leftOf(j), 0)
         const c = cap([
           { label: 'Billed, not yet paid', state: 'none', rows: [] },
           { label: 'Ready to bill', state: ready.length ? plural(ready.length, 'job') : 'none', rows: ready.map((j) => jobRow(j, inp)) },
           { label: 'Working, toward a bill', state: working.length ? plural(working.length, 'job') : 'none', rows: workingRows },
+          { label: 'Waiting, not yet billed', state: waiting.length ? plural(waiting.length, 'job') : 'none', rows: waitingRows },
         ])
-        return { head: 'Nothing billed is unpaid', headMeta: 'what is nearest a bill', groups: c.groups, more: c.more, folded: null, foot: { door: 'gcReview', label: 'GC Review ›', note: 'the statement and Find a check' }, empty: null }
+        const head = left > 0 && !noMoney(inp) ? `${inp.money(left)} not yet billed` : 'Nothing billed is unpaid'
+        return { head, headMeta: left > 0 && !noMoney(inp) ? 'nothing billed is unpaid · what is nearest a bill' : 'what is nearest a bill', groups: c.groups, more: c.more, folded: null, foot: { door: 'gcReview', label: 'GC Review ›', note: 'the statement and Find a check' }, empty: null }
       }
       const c = cap([{ label: 'Billed, not yet paid', rows }])
       return {
