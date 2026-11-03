@@ -1,25 +1,25 @@
-import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type RefObject } from 'react'
+import { useEffect, useState, type RefObject } from 'react'
 import { useToastContext } from '../contexts/ToastContext'
-import { formatErrorMessage } from '../utils/errorHandling'
 import type { ReportPhotoStage } from '../components/reports/ReportPhotoTiles'
-import { newPhotoId, photosInFlight, reportPhotoCaption, ridingTiles, sentTiles, tilesOnStage, type ReportPhotoTile } from '../lib/photos/reportPhotos'
-import { type ReportPhotoSendError, attachReportPhotos, discardReportPhotos, jobHasDriveFolder, loadReportPhotoSize, sendReportPhoto } from '../lib/photos/reportPhotosIo'
-import { keptPhotos } from '../lib/offline/keptPhotos'
+import { photosInFlight, reportPhotoCaption, ridingTiles, sentTiles, tilesOnStage, type ReportPhotoTile } from '../lib/photos/reportPhotos'
+import { attachReportPhotos, discardReportPhotos, sendReportPhoto } from '../lib/photos/reportPhotosIo'
+import type { ShotIo } from '../lib/photos/jobPhotoNotesIo'
 import type { KeptReportPhoto } from '../lib/offline/outbox'
 import { answerFailWords, checklistAnswerWrites, checklistPhotoChips, tileAnswering, tileOnStage, type ChecklistPhotoChip } from '../lib/photos/reportPhotoChecklist'
 import { loadQuestionsForJob } from '../lib/jobs/stageChecklistIo'
 import { answerQuestionsWithReportPhotos } from '../lib/jobs/stageChecklistSheetIo'
 import type { StageChecklistQuestion } from '../lib/jobs/stageChecklist'
-import { edgeFor, shrinkReportPhoto, shrinkWords, withinCap, type ReportPhotoSize } from '../lib/photos/shrink'
-import { readTakenAt } from '../lib/photos/photoTakenAt'
+import type { ReportPhotoSize } from '../lib/photos/shrink'
+import { useShotTileEngine, type ShotInputProps } from './useShotTiles'
 
 /**
  * A report form's photos (punch list #229, PR 1): the state the camera-first report built (punch list #189, PR 5b
- * and PR 6), lifted out of `AdditionalReportModal` so every form that writes a report mounts the same block. A shot
- * comes in through the one hidden file input, is shrunk on the device to the office's size, sent to the bucket with
- * its row, and sits as a tile until Save ties it to the report (`attach`) or the form is closed without saving
- * (`drop`). The stage chips, the checklist question chips, Retry and Remove are the same on every host. The host
- * draws the tiles (`ReportPhotoTiles`) and owns the report; this hook owns the shots.
+ * and PR 6), lifted out of `AdditionalReportModal` so every form that writes a report mounts the same block. The shot
+ * itself runs on the shot-tile engine (`useShotTileEngine`, the fold of v2.6453): one shot a press through the one
+ * hidden file input, shrunk on the device to the office's size, sent to the bucket with its row, and sitting as a tile
+ * until Save ties it to the report (`attach`) or the form is closed without saving (`drop`). This hook keeps what is
+ * the report's own: its io, the stage chips' rule, the checklist question chips, the attach and the queued photos. The
+ * host draws the tiles (`ReportPhotoTiles`) and owns the report; the engine owns the shots.
  *
  * The block is off when `jobId` is null (a report on a project or a bid: `report_photos` is keyed to a ledger job),
  * and the tiles are dropped when the host's job changes under them, since a sent shot sits under its job's path.
@@ -28,6 +28,12 @@ import { readTakenAt } from '../lib/photos/photoTakenAt'
  * the host's Save then queues the report with the photos' facts (`queuedPhotos`), and the replay sends the bytes,
  * lands the report and ties them to it. `markQueued` tells the hook the press owns the shots, so a close drops nothing.
  */
+
+/** A report's shots go to `report_photos` and its bucket. */
+const reportShotIo: ShotIo = {
+  send: (shot) => sendReportPhoto(shot),
+  discard: (photos) => discardReportPhotos(photos),
+}
 
 export interface UseReportPhotosInput {
   open: boolean
@@ -62,17 +68,7 @@ export interface ReportPhotosHost {
   chips: ChecklistPhotoChip[]
   /** The one hidden file input: the host renders `<input {...inputProps} />` once inside its form. */
   inputRef: RefObject<HTMLInputElement>
-  inputProps: {
-    ref: RefObject<HTMLInputElement>
-    type: 'file'
-    accept: string
-    capture: 'environment' | undefined
-    onChange: (e: ChangeEvent<HTMLInputElement>) => void
-    tabIndex: -1
-    'aria-hidden': true
-    style: CSSProperties
-    'data-testid': string
-  }
+  inputProps: ShotInputProps
   /** The camera (the file picker at a desk), for a stage or for none. */
   openCamera: (stage: ReportPhotoStage | null) => void
   retry: (tileId: string) => void
@@ -98,26 +94,27 @@ export interface ReportPhotosHost {
 export function useReportPhotos(input: UseReportPhotosInput): ReportPhotosHost {
   const { open, jobId, authUserId, byName, cameraFirst, stages } = input
   const { showToast } = useToastContext()
-  const [tiles, setTiles] = useState<ReportPhotoTile[]>([])
-  const [photoSize, setPhotoSize] = useState<ReportPhotoSize>('medium')
-  const [lastShrink, setLastShrink] = useState<string | null>(null)
+  const shots = useShotTileEngine<ReportPhotoTile>({
+    open,
+    jobId,
+    authUserId,
+    byName,
+    cameraFirst,
+    io: reportShotIo,
+    jobHasFolder: input.jobHasFolder,
+    tile: (base) => ({ ...base, questionId: null, questionWords: null }),
+    multiple: false,
+    sendErrorName: 'ReportPhotoSendError',
+    noJobWords: 'Photos ride on a job’s report.',
+    pickedAt: () => new Date().toISOString(),
+    testId: 'report-camera-input',
+  })
   const [questions, setQuestions] = useState<StageChecklistQuestion[]>([])
-  const [folderRead, setFolderRead] = useState<boolean | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const cameraStageRef = useRef<ReportPhotoStage | null>(null)
-  const originalsRef = useRef<Map<string, File>>(new Map())
-  const urlsRef = useRef<string[]>([])
-  const attachedRef = useRef(false)
-  const tilesRef = useRef<ReportPhotoTile[]>([])
-  tilesRef.current = tiles
 
-  // The office's size and the live questions, once per open. A failed read offers no chips; the form never waits.
+  // The live questions, once per open. A failed read offers no chips; the form never waits.
   useEffect(() => {
     if (!open || !jobId) return
     let live = true
-    void loadReportPhotoSize().then((size) => {
-      if (live) setPhotoSize(size)
-    })
     loadQuestionsForJob(jobId).then(
       (qs) => {
         if (live) setQuestions(qs)
@@ -131,167 +128,14 @@ export function useReportPhotos(input: UseReportPhotosInput): ReportPhotosHost {
     }
   }, [open, jobId])
 
-  // Whether the job has a Drive folder, for the line over the tiles: the host's own read when it has one.
-  const hostKnowsFolder = input.jobHasFolder !== undefined
-  useEffect(() => {
-    if (!open || !jobId || hostKnowsFolder) return
-    let live = true
-    setFolderRead(null)
-    let read: Promise<boolean | null>
-    try {
-      read = jobHasDriveFolder(jobId)
-    } catch {
-      read = Promise.resolve(null)
-    }
-    void read.then(
-      (has) => {
-        if (live) setFolderRead(has)
-      },
-      () => {
-        if (live) setFolderRead(null)
-      },
-    )
-    return () => {
-      live = false
-    }
-  }, [open, jobId, hostKnowsFolder])
-
-  function keepUrl(url: string): string {
-    urlsRef.current.push(url)
-    return url
-  }
-
-  /** The shots of a form that was not saved leave the bucket and the table, the kept ones the phone; every object URL is let go. */
-  function drop() {
-    const unsaved = attachedRef.current ? [] : tilesRef.current.filter((t) => t.status === 'sent').map((t) => ({ id: t.id, storagePath: t.storagePath }))
-    if (unsaved.length) void discardReportPhotos(unsaved)
-    const keptIds = attachedRef.current ? [] : tilesRef.current.filter((t) => t.status === 'kept').map((t) => t.id)
-    if (keptIds.length) void keptPhotos.drop(keptIds)
-    for (const u of urlsRef.current) URL.revokeObjectURL(u)
-    urlsRef.current = []
-    originalsRef.current.clear()
-    attachedRef.current = false
-    setTiles([])
-    setLastShrink(null)
-  }
-  const dropRef = useRef(drop)
-  dropRef.current = drop
-
-  // The job changed under the form (the desk's job search): the sent shots sit under the old job's path, so they go.
-  const lastJobRef = useRef<string | null>(jobId)
-  useEffect(() => {
-    if (lastJobRef.current !== jobId) {
-      lastJobRef.current = jobId
-      if (tilesRef.current.length) dropRef.current()
-    }
-  }, [jobId])
-
-  function openCamera(stage: ReportPhotoStage | null) {
-    cameraStageRef.current = stage
-    inputRef.current?.click()
-  }
-
-  /**
-   * Shrink on the device, keep the bytes, then send: the tile reads each step. A send lost to the signal leaves the
-   * tile kept on the phone (PR 6), to go with the report; any other failure keeps the tile with Retry.
-   */
-  async function shrinkAndSend(id: string, file: File, pickedAt: string) {
-    let held = false
-    try {
-      // The photo's time is the file's own when the camera wrote one (punch list #247, PR 3), else the moment it was picked.
-      const takenAt = await readTakenAt(file, Date.parse(pickedAt) || Date.now())
-      const shot = await shrinkReportPhoto(file, photoSize)
-      if (!withinCap(shot.blob.size)) throw new Error('The photo is over 2 MB even after the shrink.')
-      const preview = shot.shrunk ? keepUrl(URL.createObjectURL(shot.blob)) : null
-      setTiles((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, status: 'sending', takenAt, bytes: shot.blob.size, width: shot.width, height: shot.height, shrunk: shot.shrunk, ...(preview ? { previewUrl: preview } : null) } : t)),
-      )
-      setLastShrink(shrinkWords({ before: file.size, after: shot.blob.size, longEdge: edgeFor(photoSize), shrunk: shot.shrunk }))
-      if (!authUserId) throw new Error('Sign in again to send a photo.')
-      if (!jobId) throw new Error('Photos ride on a job’s report.')
-      held = await keptPhotos.keep(id, shot.blob)
-      const sent = await sendReportPhoto({ id, jobId, blob: shot.blob, byUserId: authUserId, byName, takenAt, originalBytes: file.size, width: shot.width, height: shot.height })
-      setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'sent', storagePath: sent.storagePath, failWhy: null } : t)))
-      void keptPhotos.drop([id])
-    } catch (err) {
-      // The class by name, not instanceof: a smoke that stubs the io throws a plain error and must still fail the tile.
-      const lostSignal = typeof err === 'object' && err != null && (err as { name?: unknown }).name === 'ReportPhotoSendError' && (err as ReportPhotoSendError).kind === 'network'
-      if (lostSignal && held) {
-        setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'kept', failWhy: null } : t)))
-        return
-      }
-      if (held) void keptPhotos.drop([id])
-      setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'failed', failWhy: formatErrorMessage(err, 'The photo did not send.') } : t)))
-    }
-  }
-
-  function onCameraFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    const stage = cameraStageRef.current
-    cameraStageRef.current = null
-    const id = newPhotoId()
-    const takenAt = new Date().toISOString()
-    originalsRef.current.set(id, file)
-    setTiles((prev) => [
-      ...prev,
-      {
-        id,
-        status: 'shrinking',
-        previewUrl: keepUrl(URL.createObjectURL(file)),
-        originalBytes: file.size,
-        bytes: 0,
-        width: 0,
-        height: 0,
-        longEdge: edgeFor(photoSize),
-        shrunk: false,
-        fixtureId: stage?.fixtureId ?? null,
-        stageName: stage?.name ?? null,
-        questionId: null,
-        questionWords: null,
-        storagePath: null,
-        takenAt,
-        failWhy: null,
-      },
-    ])
-    void shrinkAndSend(id, file, takenAt)
-  }
-
-  function retry(id: string) {
-    const file = originalsRef.current.get(id)
-    const tile = tilesRef.current.find((t) => t.id === id)
-    if (!file || !tile) return
-    setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'shrinking', failWhy: null } : t)))
-    void shrinkAndSend(id, file, tile.takenAt)
-  }
-
-  function remove(id: string) {
-    const tile = tilesRef.current.find((t) => t.id === id)
-    if (!tile) return
-    if (tile.status === 'sent') void discardReportPhotos([{ id: tile.id, storagePath: tile.storagePath }])
-    if (tile.status === 'kept') void keptPhotos.drop([id])
-    originalsRef.current.delete(id)
-    setTiles((prev) => prev.filter((t) => t.id !== id))
-  }
-
-  function putOnStage(tileId: string, stage: ReportPhotoStage) {
-    setTiles((prev) => prev.map((t) => (t.id === tileId ? tileOnStage(t, stage) : t)))
-  }
-
-  /** A question chip (PR 6): the tile goes on the question's stage and is its answer once the report saves. */
-  function putOnQuestion(tileId: string, chip: ChecklistPhotoChip) {
-    setTiles((prev) => prev.map((t) => (t.id === tileId ? tileAnswering(t, chip) : t)))
-  }
-
   async function attach(reportId: string, whatGotDone: string) {
-    const riding = sentTiles(tilesRef.current)
+    const riding = sentTiles(shots.current())
     if (!jobId || riding.length === 0) return
     const attached = await attachReportPhotos(
       reportId,
       riding.map((t) => ({ id: t.id, fixtureId: t.fixtureId, stageName: t.stageName, caption: reportPhotoCaption({ stageName: t.stageName, whatGotDone, questionWords: t.questionWords }) })),
     )
-    attachedRef.current = true
+    shots.own()
     if (attached.failed.length) {
       showToast(`Report saved, but ${attached.failed.length === 1 ? 'a photo' : `${attached.failed.length} photos`} did not attach: ${attached.failed[0]}`, 'warning')
     }
@@ -306,7 +150,7 @@ export function useReportPhotos(input: UseReportPhotosInput): ReportPhotosHost {
   }
 
   function queuedPhotos(whatGotDone: string): KeptReportPhoto[] {
-    return ridingTiles(tilesRef.current).map((t) => ({
+    return ridingTiles(shots.current()).map((t) => ({
       id: t.id,
       sent: t.status === 'sent',
       fixtureId: t.fixtureId,
@@ -323,42 +167,28 @@ export function useReportPhotos(input: UseReportPhotosInput): ReportPhotosHost {
     }))
   }
 
-  const jobHasFolder = hostKnowsFolder ? (input.jobHasFolder ?? null) : folderRead
-  const inputProps: ReportPhotosHost['inputProps'] = {
-    ref: inputRef,
-    type: 'file',
-    accept: 'image/*',
-    capture: cameraFirst ? 'environment' : undefined,
-    onChange: onCameraFile,
-    tabIndex: -1,
-    'aria-hidden': true,
-    style: { display: 'none' },
-    'data-testid': 'report-camera-input',
-  }
-
+  const { tiles } = shots
   return {
     tiles,
     riding: ridingTiles(tiles),
     kept: tiles.filter((t) => t.status === 'kept').length,
     inFlight: photosInFlight(tiles),
-    photoSize,
-    lastShrink,
-    jobHasFolder,
+    photoSize: shots.photoSize,
+    lastShrink: shots.lastShrink,
+    jobHasFolder: shots.jobHasFolder,
     stages,
     chips: checklistPhotoChips(stages, questions),
-    inputRef,
-    inputProps,
-    openCamera,
-    retry,
-    remove,
-    putOnStage,
-    putOnQuestion,
+    inputRef: shots.inputRef,
+    inputProps: shots.inputProps,
+    openCamera: (stage) => shots.openCamera(stage),
+    retry: shots.retry,
+    remove: shots.remove,
+    putOnStage: (tileId, stage) => shots.edit(tileId, (t) => tileOnStage(t, stage)),
+    putOnQuestion: (tileId, chip) => shots.edit(tileId, (t) => tileAnswering(t, chip)),
     onStage: (fixtureId) => tilesOnStage(tiles, fixtureId),
-    drop,
+    drop: shots.drop,
     queuedPhotos,
-    markQueued: () => {
-      attachedRef.current = true
-    },
+    markQueued: shots.own,
     attach,
   }
 }

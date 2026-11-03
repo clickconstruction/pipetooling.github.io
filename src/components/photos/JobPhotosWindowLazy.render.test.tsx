@@ -35,7 +35,8 @@ describe('JobPhotosWindowLazy', () => {
   it('answers the press with Opening the job’s photos…, then shows the window', async () => {
     renderWithProviders(<JobPhotosWindowLazy job={job} onClose={() => {}} io={io} />)
     expect(screen.getByText('Opening the job’s photos…')).toBeTruthy()
-    expect(await screen.findByText('Job photos')).toBeTruthy()
+    // The chunk's first import can take seconds on a busy runner: wait for it rather than for the default second.
+    expect(await screen.findByText('Job photos', {}, { timeout: 10_000 })).toBeTruthy()
     expect(screen.queryByText('Opening the job’s photos…')).toBeNull()
   })
 })
