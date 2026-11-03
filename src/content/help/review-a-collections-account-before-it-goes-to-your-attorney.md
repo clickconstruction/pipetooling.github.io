@@ -49,7 +49,7 @@ Six tabs, built from the records the firm's portal is built from:
 - **Narrative** is your account of the matter, in your own words. The firm reads it first. It is described below.
 - **Account** shows who owes, contacts, the jobs, and every invoice and payment in date order. A running balance ends on the balance owed. Each job's property record follows. The property record is the job's own site, not the payer's address. The record shows the owner of record and the owner's mailing address, so the letters have somewhere to go.
 - **Paper** shows agreements per job with the sworn-account column, *Where each job stands*, demand letters and *The paper that went out*. *Where each job stands* shows each job's notice and affidavit dates, drawn from its approved hours, its filings and the property kind. It opens on the calendar. Each paper is a bar from its first day to its last, and today is a line. Press **Steps** for the same dates as a list. The desk remembers your choice. The next step sits above the calendar with its button, such as {{button:dark|Draft the notice…}}. The button opens the Lien desk or the Lien window where that paper is made. *The paper that went out* lists each notice, affidavit and release. An affidavit is the sworn lien filing. The monthly notice applies when a GC pays. *Supply houses* shows each house that sold materials on a job. The card reads what the house is paid and owed and when the house's own notice is due. The figures come from the same books as the Lien window. Press **Mark paid…** on a house to record a payment, with the day and the invoices it covered. The Lien window and Held for suppliers read the same mark.
-- **Evidence** shows field reports and clock sessions per job. It shows how many carry GPS, hours, first and last work day, and photo and Drive links. It also holds the **Documents for the firm**, described below.
+- **Evidence** shows field reports and clock sessions per job. It shows how many carry GPS, hours, first and last work day, and photo and Drive links. Under each job sit its **Signed statements**, described below. It also holds the **Documents for the firm**, described below.
 - **With the firm** holds the offers log, the conversation with the firm and its fees and costs. It ends with **What goes to the firm**. That is the records that go with the packet, one fold per kind. Each fold is lettered the way the firm's own packet letters it. Open a fold to see what is inside. Its door reaches the tab that holds the full rows.
 - **Timeline** is one dated line of everything on the matter, with notes. Four lane chips narrow it. **Said** is what was said, ours and theirs: contacts, promises, calls and the collections note. **Did** is what was done: bills, payments, events, the firm's entries. **Paper** is the documents, the demand letters, the lien paper and the clock's deadlines. **Planned** is what comes next. The tab is described below.
 
@@ -68,6 +68,17 @@ Each county wears the color of the law firm that covers it. A gray county has no
 **Who covers what** lists each firm with its counties, its cases and what they owe. Tap a county to list its cases on the card under it. Tap a dot to pick one case out. Press **Open on the desk ›** on a case and the desk opens on that account under **Accounts**.
 
 Scroll on the map to zoom. Drag it to move. Press {{button:outline|Central Texas}} or {{button:outline|All of Texas}} to reset the view. A dev colors the counties on **Settings**, then **Jobs & billing**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
+
+
+## Signed hours statements on the matter
+
+A worker can sign a paper on what they did on the job and what the company paid for it. See [make a signed hours statement](/help/make-a-signed-hours-statement). On the **Evidence** tab, each job in **Proof the work happened** has a **Signed statements** line under it. It lists every statement made for the job. Each shows its record, the worker, the period, the hours and where it stands.
+
+Press **Ask <name>…** to ask a worker who clocked on the job. The Hours statement window opens on that job with the worker picked. Send it for a signature from there.
+
+Press {{button:outline|Add to evidence}} on a signed statement. The signed PDF is copied onto the matter under **Documents for the firm**. The copy is titled with its record and dated the day it was signed. One line says who signed for how many hours, where and when. The statement then shows {{button:outline|Show on Evidence ↗}}, which lands on the copy. The firm reads it with the other documents. **What goes to the firm** letters the signed statements as their own exhibit under field evidence.
+
+A job the app has no clock for reads as a gap job. The line says the app recorded nothing before its first day. A statement there would be the worker's own account, not the company's record. The line asks no one.
 
 ## Documents for the firm
 
