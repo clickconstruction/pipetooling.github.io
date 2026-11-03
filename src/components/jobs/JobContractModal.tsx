@@ -510,7 +510,8 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setKind(next)
     if (next === 'warranty' && fields.initial_lines.length === 0) {
       setInitialsText(DEFAULT_WARRANTY_INITIAL_LINES.join('\n'))
-      setFields((prev) => ({ ...prev, initial_lines: [...DEFAULT_WARRANTY_INITIAL_LINES] }))
+      // The lines say the price is due when the work is done, so the payment line says the same unless the office picked one.
+      setFields((prev) => ({ ...prev, initial_lines: [...DEFAULT_WARRANTY_INITIAL_LINES], payment_terms_key: prev.payment_terms_key === 'half_down' ? 'on_completion' : prev.payment_terms_key }))
     }
     setTemplateId(templates.find((t) => templateKind(t) === next)?.id ?? BUILTIN_TEMPLATE_ID)
   }

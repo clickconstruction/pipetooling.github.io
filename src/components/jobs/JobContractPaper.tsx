@@ -10,7 +10,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { ContractBodyDisplay } from '../contracts/ContractBodyDisplay'
-import { formatContractMoney, jobContractHeading, PAYMENT_TERMS_PRESETS, paymentTermsSentence, type JobContractFields, type JobContractIssuer, type PaymentTermsKey } from '../../lib/jobs/jobContractDocument'
+import { formatContractMoney, PAYMENT_TERMS_PRESETS, paymentTermsSentence, type JobContractFields, type JobContractIssuer, type PaymentTermsKey } from '../../lib/jobs/jobContractDocument'
+import { jobAgreementHeading } from '../../lib/jobs/jobAgreementKind'
 import { contractAmountDoorLabel, contractAmountSourceLabel, type ContractAmountSource } from '../../lib/jobs/contractAmountSource'
 
 export type JobContractPaperProps = {
@@ -190,7 +191,7 @@ export default function JobContractPaper(p: JobContractPaperProps) {
         {p.brandImageUrl ? <img src={p.brandImageUrl} alt="" style={{ maxWidth: 140, maxHeight: 56 }} /> : null}
       </div>
 
-      <h1 style={{ font: '700 19px/1.2 -apple-system, "Segoe UI", Roboto, sans-serif', margin: '14px 0 3px', color: INK }}>{jobContractHeading(p.job)}</h1>
+      <h1 style={{ font: '700 19px/1.2 -apple-system, "Segoe UI", Roboto, sans-serif', margin: '14px 0 3px', color: INK }}>{jobAgreementHeading(p.kind ?? 'contract', p.job)}</h1>
       <div style={{ ...kv, display: 'flex', flexWrap: 'wrap', gap: '0 4px', alignItems: 'baseline' }}>
         <span>
           Job <b style={{ color: INK }}>#{p.jobNumber}</b> · for{' '}
