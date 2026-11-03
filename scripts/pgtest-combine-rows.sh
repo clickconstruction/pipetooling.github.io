@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 # Runs supabase/tests/combine_rows against a throwaway copy of the WHOLE schema (punch list #252: a combine moves every
-# row that would have gone with the source job's delete, migration *_combine_moves_every_row).
+# row that would have gone with the source job's delete, migrations *_combine_moves_every_row and
+# *_combine_moves_money_and_legal_rows).
 #
 #   npm run test:pg:combine-rows
 #
 # The same bed as scripts/pgtest-job-people.sh: the Supabase Postgres image migrated through pgtest_migrate (every file
-# in supabase/migrations in order, or in CI the leg's migrated copy, which already holds them), then the combine
+# in supabase/migrations in order, or in CI the leg's migrated copy, which already holds them), then the newest combine
 # migration a second time, which must change nothing. The scenario, inside one
 # transaction that rolls back: a first combine onto a target with none of the one-per-job rows (a plan part, a baseline,
-# a budget, a property owner, a photo-save tick), which move; a split that moves a line and its stage window; a combine
-# refused on a work-order collision, which moves nothing; and a second combine onto a target that holds every merge case
-# (places and containers by name, Messages links and holds, watchers, supply-house accounts and words, Team board marks,
-# the hours target, plans), with the let-go caches gone. It writes down each thing lost and raises at the end with the
+# a budget, a property owner, a photo-save tick, a promised pay date, a claim correction), which move; a split that moves
+# a line and its stage window; a combine refused three times in turn (a work order, an open agreement, a pay application
+# on both jobs), each time moving nothing; and a second combine onto a target that holds every merge case (places and
+# containers by name, Messages links and holds, watchers, supply-house accounts and words, Team board marks, the hours
+# target, plans, the promised date, the claim correction, Lien desk items, legal matter links), with the money and legal
+# rows moved and the let-go caches gone. It writes down each thing lost and raises at the end with the
 # whole list, so one run says everything; it ends with "combine_rows PASSED". PGTEST_KEEP=1 leaves the container up.
 # Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never
 # touches prod.
@@ -21,7 +24,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55549}"
 NAME="pgtest-combine-rows"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_combine_moves_every_row.sql)"
+WRITES="$(ls supabase/migrations/*_combine_moves_money_and_legal_rows.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
