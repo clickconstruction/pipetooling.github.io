@@ -97,6 +97,7 @@ SELECT rfl.same('a second seed adds nothing', public.flows_seed()::text, '0');
 -- 6 · The kind rule (v2.6394): no contact is kind residential. A homeowner's contact is kind customer, as
 -- contact_find_or_make writes every customer's, and their flow is told from the customers row, which flow_rows_for
 -- carries on the card as customer_type (a commercial customer's reads commercial; a trade partner's card has none).
+INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-0000000007d1', 'dev@residential.test') ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
   ('00000000-0000-0000-0000-0000000007d1', 'dev@residential.test', 'Residential Dev', 'dev', false, false)
   ON CONFLICT (id) DO NOTHING;
