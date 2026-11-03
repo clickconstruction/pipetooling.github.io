@@ -137,19 +137,19 @@ INSERT INTO public.job_places (id, job_id, name) VALUES
   ('00000000-0000-0000-0000-000000252e62', '00000000-0000-0000-0000-000000252b03', 'Dock'),
   ('00000000-0000-0000-0000-000000252e63', '00000000-0000-0000-0000-000000252b01', 'Yard');
 INSERT INTO public.job_containers (id, job_id, label, kind, place_id) VALUES
-  ('00000000-0000-0000-0000-000000252e71', '00000000-0000-0000-0000-000000252b03', 'Unsorted', 'unsorted', '00000000-0000-0000-0000-000000252e61'),
-  ('00000000-0000-0000-0000-000000252e72', '00000000-0000-0000-0000-000000252b03', 'Cage A', 'cage', '00000000-0000-0000-0000-000000252e62'),
-  ('00000000-0000-0000-0000-000000252e73', '00000000-0000-0000-0000-000000252b03', 'Cage B', 'cage', NULL),
-  ('00000000-0000-0000-0000-000000252e74', '00000000-0000-0000-0000-000000252b01', 'Unsorted', 'unsorted', NULL),
-  ('00000000-0000-0000-0000-000000252e75', '00000000-0000-0000-0000-000000252b01', 'Cage B', 'cage', NULL);
+  ('c252e071-0000-0000-0000-000000252e71', '00000000-0000-0000-0000-000000252b03', 'Unsorted', 'unsorted', '00000000-0000-0000-0000-000000252e61'),
+  ('c252e072-0000-0000-0000-000000252e72', '00000000-0000-0000-0000-000000252b03', 'Cage A', 'cage', '00000000-0000-0000-0000-000000252e62'),
+  ('c252e073-0000-0000-0000-000000252e73', '00000000-0000-0000-0000-000000252b03', 'Cage B', 'cage', NULL),
+  ('c252e074-0000-0000-0000-000000252e74', '00000000-0000-0000-0000-000000252b01', 'Unsorted', 'unsorted', NULL),
+  ('c252e075-0000-0000-0000-000000252e75', '00000000-0000-0000-0000-000000252b01', 'Cage B', 'cage', NULL);
 INSERT INTO public.job_material_movements (id, job_id, part_name, quantity, reason, from_container_id, to_container_id) VALUES
-  ('00000000-0000-0000-0000-000000252e81', '00000000-0000-0000-0000-000000252b03', 'Combine bed elbow', 10, 'delivered', NULL, '00000000-0000-0000-0000-000000252e71'),
-  ('00000000-0000-0000-0000-000000252e82', '00000000-0000-0000-0000-000000252b03', 'Combine bed elbow', 4, 'moved', '00000000-0000-0000-0000-000000252e71', '00000000-0000-0000-0000-000000252e72'),
-  ('00000000-0000-0000-0000-000000252e83', '00000000-0000-0000-0000-000000252b03', 'Combine bed tee', 2, 'delivered', NULL, '00000000-0000-0000-0000-000000252e73');
-INSERT INTO public.job_container_moves (id, container_id, from_place_id, to_place_id) VALUES ('00000000-0000-0000-0000-000000252e84', '00000000-0000-0000-0000-000000252e71', '00000000-0000-0000-0000-000000252e61', '00000000-0000-0000-0000-000000252e62');
+  ('00000000-0000-0000-0000-000000252e81', '00000000-0000-0000-0000-000000252b03', 'Combine bed elbow', 10, 'delivered', NULL, 'c252e071-0000-0000-0000-000000252e71'),
+  ('00000000-0000-0000-0000-000000252e82', '00000000-0000-0000-0000-000000252b03', 'Combine bed elbow', 4, 'moved', 'c252e071-0000-0000-0000-000000252e71', 'c252e072-0000-0000-0000-000000252e72'),
+  ('00000000-0000-0000-0000-000000252e83', '00000000-0000-0000-0000-000000252b03', 'Combine bed tee', 2, 'delivered', NULL, 'c252e073-0000-0000-0000-000000252e73');
+INSERT INTO public.job_container_moves (id, container_id, from_place_id, to_place_id) VALUES ('00000000-0000-0000-0000-000000252e84', 'c252e071-0000-0000-0000-000000252e71', '00000000-0000-0000-0000-000000252e61', '00000000-0000-0000-0000-000000252e62');
 INSERT INTO public.job_box_photos (id, job_id, container_id, file_name) VALUES
-  ('00000000-0000-0000-0000-000000252e85', '00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252e71', 'unsorted.jpg'),
-  ('00000000-0000-0000-0000-000000252e86', '00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252e73', 'cage-b.jpg');
+  ('00000000-0000-0000-0000-000000252e85', '00000000-0000-0000-0000-000000252b03', 'c252e071-0000-0000-0000-000000252e71', 'unsorted.jpg'),
+  ('00000000-0000-0000-0000-000000252e86', '00000000-0000-0000-0000-000000252b03', 'c252e073-0000-0000-0000-000000252e73', 'cage-b.jpg');
 -- Messages: an open call, skip and hold T already holds for Kay's step one; a second step and done rows that move.
 INSERT INTO public.call_tasks (id, contact_id, step_key, jobs_ledger_id, due_on, what, done_at, done_how) VALUES
   ('00000000-0000-0000-0000-000000252e91', '00000000-0000-0000-0000-000000252c11', 's1', '00000000-0000-0000-0000-000000252b03', '2026-11-05', 'Call about the bed', NULL, NULL),
@@ -219,7 +219,7 @@ SELECT cr.same('two live work orders for one sub: the combine holds', :'refused'
 SELECT cr.same('and names the sub', :'refused'::jsonb ->> 'error', 'Both jobs hold a live work order for Pat Sub. Cancel one of them, then combine.');
 SELECT cr.same('the held combine moved nothing: the source stands', (SELECT count(*)::text FROM public.jobs_ledger WHERE id = '00000000-0000-0000-0000-000000252b03'), '1');
 SELECT cr.same('the held combine moved nothing: the incident is on the source', (SELECT job_id::text FROM public.job_hazmat_incidents WHERE id = '00000000-0000-0000-0000-000000252e48'), '00000000-0000-0000-0000-000000252b03');
-SELECT cr.same('the held combine moved nothing: the source''s Unsorted stands', (SELECT count(*)::text FROM public.job_containers WHERE id = '00000000-0000-0000-0000-000000252e71'), '1');
+SELECT cr.same('the held combine moved nothing: the source''s Unsorted stands', (SELECT count(*)::text FROM public.job_containers WHERE id = 'c252e071-0000-0000-0000-000000252e71'), '1');
 UPDATE public.step_commitments SET status = 'cancelled' WHERE id = '00000000-0000-0000-0000-000000252f42';
 
 -- 3b. The combine.
@@ -274,17 +274,17 @@ SELECT cr.same('the source''s tick went', (SELECT count(*)::text FROM public.pho
 SELECT cr.same('the source''s Yard folded into the target''s', (SELECT count(*)::text FROM public.job_places WHERE id = '00000000-0000-0000-0000-000000252e61'), '0');
 SELECT cr.same('the source''s Dock moved', (SELECT job_id::text FROM public.job_places WHERE id = '00000000-0000-0000-0000-000000252e62'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('the target has one Yard and one Dock', (SELECT string_agg(name, ', ' ORDER BY name) FROM public.job_places WHERE job_id = '00000000-0000-0000-0000-000000252b01'), 'Dock, Yard');
-SELECT cr.same('the source''s Unsorted folded into the target''s', (SELECT count(*)::text FROM public.job_containers WHERE id = '00000000-0000-0000-0000-000000252e71'), '0');
-SELECT cr.same('Cage A moved', (SELECT job_id::text FROM public.job_containers WHERE id = '00000000-0000-0000-0000-000000252e72'), '00000000-0000-0000-0000-000000252b01');
-SELECT cr.same('and stands in the Dock that moved', (SELECT place_id::text FROM public.job_containers WHERE id = '00000000-0000-0000-0000-000000252e72'), '00000000-0000-0000-0000-000000252e62');
-SELECT cr.same('the source''s Cage B moved under a numbered label', (SELECT label FROM public.job_containers WHERE id = '00000000-0000-0000-0000-000000252e73'), 'Cage B (2)');
-SELECT cr.same('and keeps its code', (SELECT job_id::text FROM public.job_containers WHERE id = '00000000-0000-0000-0000-000000252e73'), '00000000-0000-0000-0000-000000252b01');
-SELECT cr.same('a delivery into the source''s Unsorted now names the target''s', (SELECT to_container_id::text FROM public.job_material_movements WHERE id = '00000000-0000-0000-0000-000000252e81'), '00000000-0000-0000-0000-000000252e74');
-SELECT cr.same('a move out of it names the target''s', (SELECT from_container_id::text || ' to ' || to_container_id::text FROM public.job_material_movements WHERE id = '00000000-0000-0000-0000-000000252e82'), '00000000-0000-0000-0000-000000252e74 to 00000000-0000-0000-0000-000000252e72');
+SELECT cr.same('the source''s Unsorted folded into the target''s', (SELECT count(*)::text FROM public.job_containers WHERE id = 'c252e071-0000-0000-0000-000000252e71'), '0');
+SELECT cr.same('Cage A moved', (SELECT job_id::text FROM public.job_containers WHERE id = 'c252e072-0000-0000-0000-000000252e72'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('and stands in the Dock that moved', (SELECT place_id::text FROM public.job_containers WHERE id = 'c252e072-0000-0000-0000-000000252e72'), '00000000-0000-0000-0000-000000252e62');
+SELECT cr.same('the source''s Cage B moved under a numbered label', (SELECT label FROM public.job_containers WHERE id = 'c252e073-0000-0000-0000-000000252e73'), 'Cage B (2)');
+SELECT cr.same('and keeps its code', (SELECT job_id::text FROM public.job_containers WHERE id = 'c252e073-0000-0000-0000-000000252e73'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a delivery into the source''s Unsorted now names the target''s', (SELECT to_container_id::text FROM public.job_material_movements WHERE id = '00000000-0000-0000-0000-000000252e81'), 'c252e074-0000-0000-0000-000000252e74');
+SELECT cr.same('a move out of it names the target''s', (SELECT from_container_id::text || ' to ' || to_container_id::text FROM public.job_material_movements WHERE id = '00000000-0000-0000-0000-000000252e82'), 'c252e074-0000-0000-0000-000000252e74 to c252e072-0000-0000-0000-000000252e72');
 SELECT cr.same('every movement is on the target', (SELECT count(*)::text FROM public.job_material_movements WHERE job_id = '00000000-0000-0000-0000-000000252b01'), '3');
-SELECT cr.same('the Unsorted pile''s move names the target''s pile and places', (SELECT container_id::text || ' ' || from_place_id::text || ' ' || to_place_id::text FROM public.job_container_moves WHERE id = '00000000-0000-0000-0000-000000252e84'), '00000000-0000-0000-0000-000000252e74 00000000-0000-0000-0000-000000252e63 00000000-0000-0000-0000-000000252e62');
-SELECT cr.same('a photo of the Unsorted pile names the target''s', (SELECT job_id::text || ' ' || container_id::text FROM public.job_box_photos WHERE id = '00000000-0000-0000-0000-000000252e85'), '00000000-0000-0000-0000-000000252b01 00000000-0000-0000-0000-000000252e74');
-SELECT cr.same('a photo of Cage B moved', (SELECT job_id::text || ' ' || container_id::text FROM public.job_box_photos WHERE id = '00000000-0000-0000-0000-000000252e86'), '00000000-0000-0000-0000-000000252b01 00000000-0000-0000-0000-000000252e73');
+SELECT cr.same('the Unsorted pile''s move names the target''s pile and places', (SELECT container_id::text || ' ' || from_place_id::text || ' ' || to_place_id::text FROM public.job_container_moves WHERE id = '00000000-0000-0000-0000-000000252e84'), 'c252e074-0000-0000-0000-000000252e74 00000000-0000-0000-0000-000000252e63 00000000-0000-0000-0000-000000252e62');
+SELECT cr.same('a photo of the Unsorted pile names the target''s', (SELECT job_id::text || ' ' || container_id::text FROM public.job_box_photos WHERE id = '00000000-0000-0000-0000-000000252e85'), '00000000-0000-0000-0000-000000252b01 c252e074-0000-0000-0000-000000252e74');
+SELECT cr.same('a photo of Cage B moved', (SELECT job_id::text || ' ' || container_id::text FROM public.job_box_photos WHERE id = '00000000-0000-0000-0000-000000252e86'), '00000000-0000-0000-0000-000000252b01 c252e073-0000-0000-0000-000000252e73');
 
 -- Messages.
 SELECT cr.same('an open call the target already has stands once', (SELECT count(*)::text FROM public.call_tasks WHERE id = '00000000-0000-0000-0000-000000252e91'), '0');
