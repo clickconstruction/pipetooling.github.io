@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { OFFER_HELD } from '../flows/nudgeDispatch'
-import { HELD_NEWER, HELD_NO_NUMBER, heldSentWords, morningSendOn, offerRefusalWords, rateJobsOf, readyRows, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, withSentHolds, type OfferRow, type TodaysSendsInput } from './offers'
+import { HELD_NEWER, HELD_NO_NUMBER, heldSentWords, heldStaleWords, morningSendOn, offerRefusalWords, rateJobsOf, readyRows, staleOn, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, withSentHolds, type OfferRow, type TodaysSendsInput } from './offers'
 
 const offer = (over: Partial<OfferRow> = {}): OfferRow => ({
   id: 'o1',
@@ -14,6 +14,7 @@ const offer = (over: Partial<OfferRow> = {}): OfferRow => ({
   preparedAt: '2026-10-17T14:00:00Z',
   preparedBy: 'app',
   sendOn: null,
+  aboutOn: null,
   heldWhy: null,
   ...over,
 })
@@ -85,6 +86,44 @@ describe('withAnsweredHolds: a review offer on a job answered already', () => {
     const rows = withAnsweredHolds([offer({ id: 'r1', stepKey: 'review', body: REVIEW, channelId: null, heldWhy: HELD_NO_NUMBER }), offer({ id: 'r2', stepKey: 'review', body: REVIEW.replace('{rate}', 'https://clicktooling.com/rate?t=ab12') })], new Set(['job-1312']))
     expect(rows.map((r) => r.heldWhy)).toEqual([OFFER_HELD.answered, null])
     expect(withAnsweredHolds([offer({ id: 'r1', stepKey: 'review', body: REVIEW })], new Set())).toEqual([offer({ id: 'r1', stepKey: 'review', body: REVIEW })])
+  })
+})
+
+// A moved visit's text expires with its visit (v2.6387): the row carries the day its words are about.
+describe('a text about a day that has passed', () => {
+  // Mon Nov 2 2026, 1:12 PM Central is 19:12Z.
+  const NOW = new Date('2026-11-02T19:12:00Z')
+  const moved = (over: Partial<OfferRow> = {}) => offer({ id: 'moved', stepKey: 'booked', preparedBy: 'office', preparedAt: '2026-10-19T14:55:00Z', body: 'Dana, your visit moved to Thursday, October 22, 2026, 8:00 AM to 12:00 PM.', ...over })
+
+  it('is held with the day and the door, Send all skips it, and the line counts it held', () => {
+    const rows = todaysSends(input([moved({ aboutOn: '2026-10-22' }), offer({ id: 'other' })]), NOW)
+    expect(rows.map((r) => [r.id, r.held])).toEqual([
+      ['other', null],
+      ['moved', 'This text names a visit on Thu Oct 22. That day has passed. Put this one away with Not this one.'],
+    ])
+    expect(readyRows(rows).map((r) => r.id)).toEqual(['other'])
+    expect(todaysSendsLine(rows)).toBe('1 text ready to send, 1 held')
+    expect(plainWordsFailures(heldStaleWords('2026-10-22'))).toEqual([])
+  })
+
+  it('is ready on the day itself and before it, and a text about no day is never stale', () => {
+    expect(staleOn({ aboutOn: '2026-11-02' }, '2026-11-02')).toBe(false)
+    expect(staleOn({ aboutOn: '2026-11-10' }, '2026-11-02')).toBe(false)
+    expect(staleOn({ aboutOn: '2026-11-01' }, '2026-11-02')).toBe(true)
+    expect(staleOn({ aboutOn: null }, '2026-11-02')).toBe(false)
+    const rows = todaysSends(input([moved({ aboutOn: '2026-11-02' }), moved({ id: 'later', aboutOn: '2026-11-10' }), moved({ id: 'no-day' })]), NOW)
+    expect(rows.map((r) => r.held)).toEqual([null, null, null])
+  })
+
+  it('reads the day in the app’s zone: late on the visit day in Central time it is still that day', () => {
+    // 11:30 PM Central on Oct 22 is 04:30Z on Oct 23.
+    expect(todaysSends(input([moved({ aboutOn: '2026-10-22' })]), new Date('2026-10-23T04:30:00Z'))[0]?.held).toBeNull()
+    expect(todaysSends(input([moved({ aboutOn: '2026-10-22' })]), new Date('2026-10-23T14:30:00Z'))[0]?.held).toBe(heldStaleWords('2026-10-22'))
+  })
+
+  it('wins over the run’s own hold and over a missing number: there is nothing to fix on it', () => {
+    const rows = todaysSends(input([moved({ aboutOn: '2026-10-22', channelId: null }), moved({ id: 'held', aboutOn: '2026-10-22', heldWhy: OFFER_HELD['opted out'] })]), NOW)
+    expect(rows.map((r) => r.held)).toEqual([heldStaleWords('2026-10-22'), heldStaleWords('2026-10-22')])
   })
 })
 

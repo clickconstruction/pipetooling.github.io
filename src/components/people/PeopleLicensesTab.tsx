@@ -4,9 +4,10 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import PersonLicenseHoursLogModal from './PersonLicenseHoursLogModal'
-import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
-import { LICENSES_EXPIRING_EMPTY, personLicensesEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { LICENSES_EXPIRED_EMPTY, LICENSES_EXPIRING_EMPTY, personLicensesEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { expiredLicensesHeading, lapsedWords, licenseExpiryBuckets, type ExpiredLicense, type ExpiringLicense } from '../../lib/people/licenseExpiry'
 
 type PersonLicenseCostLine = { id: string; person_license_id: string; amount: number; note: string | null; date: string; created_at: string | null }
 type PersonLicense = {
@@ -32,13 +33,69 @@ export type PeopleLicensesTabProps = {
   users: UserRow[]
 }
 
+const stripThStyle = { padding: '0.5rem', textAlign: 'left' as const, borderBottom: '1px solid var(--border)' }
+
+/**
+ * The rows of the Expired section and the thirty-day strip (v2.6424): person, license, expiry,
+ * cost, with the days column each section names second, so a phone reads it without scrolling
+ * sideways. The person is a press that opens their licenses in the roster below.
+ */
+function LicenseExpiryTable<T extends PersonLicense>({
+  rows,
+  daysHeading,
+  daysCell,
+  onPickPerson,
+}: {
+  rows: readonly T[]
+  daysHeading: string
+  daysCell: (row: T) => string
+  onPickPerson: (personName: string) => void
+}) {
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+        <thead>
+          <tr>
+            <th style={stripThStyle}>Person</th>
+            <th style={stripThStyle}>{daysHeading}</th>
+            <th style={stripThStyle}>License and #</th>
+            <th style={stripThStyle}>Date of Expiry</th>
+            <th style={stripThStyle}>Cost to Company</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((l) => (
+            <tr key={l.id} data-license-strip-row={l.id} style={{ borderBottom: '1px solid var(--border)' }}>
+              <td style={{ padding: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => onPickPerson(l.person_name)}
+                  title={`Open ${l.person_name}'s licenses`}
+                  style={{ padding: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                >
+                  {l.person_name}
+                </button>
+              </td>
+              <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{daysCell(l)}</td>
+              <td style={{ padding: '0.5rem' }}>{l.license_type}</td>
+              <td style={{ padding: '0.5rem' }}>{l.date_of_expiry}</td>
+              <td style={{ padding: '0.5rem' }}>{costLinesTotal(l.person_license_cost_lines) > 0 ? `$${costLinesTotal(l.person_license_cost_lines).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabProps) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [licenses, setLicenses] = useState<PersonLicense[]>([])
   const [licensesLoading, setLicensesLoading] = useState(false)
   const [licensesError, setLicensesError] = useState<string | null>(null)
-  const [licensesExpiringSoon, setLicensesExpiringSoon] = useState<PersonLicense[]>([])
+  const [licensesExpired, setLicensesExpired] = useState<Array<ExpiredLicense<PersonLicense>>>([])
+  const [licensesExpiringSoon, setLicensesExpiringSoon] = useState<Array<ExpiringLicense<PersonLicense>>>([])
   const [selectedLicensePersonName, setSelectedLicensePersonName] = useState<string | null>(null)
   const [licenseFormOpen, setLicenseFormOpen] = useState(false)
   const [editingLicense, setEditingLicense] = useState<PersonLicense | null>(null)
@@ -64,12 +121,20 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
     else {
       const list = (data ?? []) as PersonLicense[]
       setLicenses(list)
-      const today = todayYmdInAppTz()
-      const in30 = new Date()
-      in30.setDate(in30.getDate() + 30)
-      const todayPlus30 = localCalendarDayKey(in30)
-      setLicensesExpiringSoon(list.filter((l) => l.date_of_expiry >= today && l.date_of_expiry <= todayPlus30))
+      // Expired first, then the thirty-day strip (v2.6424): the strip alone hid every lapsed license.
+      const buckets = licenseExpiryBuckets(list, todayYmdInAppTz())
+      setLicensesExpired(buckets.expired)
+      setLicensesExpiringSoon(buckets.expiringSoon)
     }
+  }
+
+  /** A press on a person in the Expired section or the strip: their roster row opens and comes into view. */
+  function pickPersonFromStrip(personName: string) {
+    setSelectedLicensePersonName(personName)
+    requestAnimationFrame(() => {
+      const row = [...document.querySelectorAll('[data-license-person]')].find((el) => el.getAttribute('data-license-person') === personName)
+      row?.scrollIntoView?.({ block: 'center' })
+    })
   }
 
   function openLicenseForm(personName?: string, license?: PersonLicense) {
@@ -228,40 +293,20 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
           <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
         ) : (
           <>
-            <section style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-amber-tint)', borderRadius: 6, border: '1px solid var(--border-amber-soft)' }}>
+            <section data-licenses-expired style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-red-tint)', borderRadius: 6, border: '1px solid var(--border-red)' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>{expiredLicensesHeading(licensesExpired.length)}</h3>
+              {licensesExpired.length === 0 ? (
+                <EmptyState compact {...LICENSES_EXPIRED_EMPTY} />
+              ) : (
+                <LicenseExpiryTable rows={licensesExpired} daysHeading="Lapsed" daysCell={(l) => lapsedWords(l.daysSince)} onPickPerson={pickPersonFromStrip} />
+              )}
+            </section>
+            <section data-licenses-expiring style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-amber-tint)', borderRadius: 6, border: '1px solid var(--border-amber-soft)' }}>
               <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>Licenses expiring in the next 30 days</h3>
               {licensesExpiringSoon.length === 0 ? (
                 <EmptyState compact {...LICENSES_EXPIRING_EMPTY} />
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Person</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>License and #</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date of Expiry</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Cost to Company</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Days left</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {licensesExpiringSoon.map((l) => {
-                        const today = new Date()
-                        const expiry = new Date(l.date_of_expiry + 'T12:00:00')
-                        const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-                        return (
-                          <tr key={l.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '0.5rem' }}>{l.person_name}</td>
-                            <td style={{ padding: '0.5rem' }}>{l.license_type}</td>
-                            <td style={{ padding: '0.5rem' }}>{l.date_of_expiry}</td>
-                            <td style={{ padding: '0.5rem' }}>{costLinesTotal(l.person_license_cost_lines) > 0 ? `$${costLinesTotal(l.person_license_cost_lines).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '—'}</td>
-                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>{daysLeft}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <LicenseExpiryTable rows={licensesExpiringSoon} daysHeading="Days left" daysCell={(l) => String(l.daysLeft)} onPickPerson={pickPersonFromStrip} />
               )}
             </section>
             <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
@@ -288,6 +333,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                       return (
                         <Fragment key={personName}>
                           <tr
+                            data-license-person={personName}
                             style={{
                               borderBottom: '1px solid var(--border)',
                               cursor: 'pointer',
