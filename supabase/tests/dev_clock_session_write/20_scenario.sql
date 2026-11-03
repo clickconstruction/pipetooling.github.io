@@ -57,10 +57,15 @@ INSERT INTO public.users (id, email, name, role) VALUES
   ('00000000-0000-0000-0000-0000000007d3', 'estimator@clock.test', 'Clock Estimator', 'estimator')
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
 
--- Two jobs.
-INSERT INTO public.jobs_ledger (id, job_name) VALUES
-  ('00000000-0000-0000-0000-0000000007a1', 'Clock bed job A'),
-  ('00000000-0000-0000-0000-0000000007a2', 'Clock bed job B');
+-- The second look is on, so the approval guard holds the dev's own day and the hours the dev typed (off by default).
+INSERT INTO public.app_settings (key, value_text) VALUES ('typed_hours_second_look_v1', 'on')
+  ON CONFLICT (key) DO UPDATE SET value_text = EXCLUDED.value_text;
+
+-- Two jobs under the dev, on one service type.
+INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000007f1', 'Clock bed work');
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name) VALUES
+  ('00000000-0000-0000-0000-0000000007a1', '00000000-0000-0000-0000-0000000007d1', '00000000-0000-0000-0000-0000000007f1', 'Clock bed job A'),
+  ('00000000-0000-0000-0000-0000000007a2', '00000000-0000-0000-0000-0000000007d1', '00000000-0000-0000-0000-0000000007f1', 'Clock bed job B');
 
 -- Sessions: the worker's approved day (s1), the worker's day waiting for approval (s2) and a second one (s4),
 -- the dev's own waiting day (s3), and a revoked one (s5).
@@ -139,7 +144,7 @@ BEGIN
   r := dcs.door('[{"op":"approve","session_id":"00000000-0000-0000-0000-0000000007e4"},
                  {"op":"approve","session_id":"00000000-0000-0000-0000-0000000007e3"}]'::jsonb, false);
   PERFORM dcs.same('the worker''s day is approved', r->'ops'->0->>'outcome', 'applied');
-  PERFORM dcs.same('the dev''s own day is not applied', CASE WHEN r->'ops'->1->>'outcome' IN ('held', 'refused') THEN 'not applied' ELSE r->'ops'->1->>'outcome' END, 'not applied');
+  PERFORM dcs.same('the dev''s own day is held for someone else', r->'ops'->1->>'outcome' || ' · ' || (r->'ops'->1->>'words'), 'held · held: your own session waits for someone else''s approval');
 END $$;
 SELECT dcs.same('the worker''s day reads approved', (SELECT CASE WHEN approved_at IS NULL THEN 'waiting' ELSE 'approved' END FROM public.clock_sessions WHERE id = '00000000-0000-0000-0000-0000000007e4'), 'approved');
 SELECT dcs.same('the dev''s own day still waits', (SELECT CASE WHEN approved_at IS NULL THEN 'waiting' ELSE 'approved' END FROM public.clock_sessions WHERE id = '00000000-0000-0000-0000-0000000007e3'), 'waiting');
