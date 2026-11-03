@@ -1,0 +1,128 @@
+/**
+ * The clock's hours on a site's jobs, by job and by person (v2.6407, punch list #250, the
+ * Development page's scoreboard). The same split the Job window and Job Summary make
+ * (`utils/teamLabor.ts`, which MUST stay in parity): a salaried person's day is 8 h Monday to
+ * Friday, an hourly person's day is the recorded hours, and a crew day is split over its jobs by
+ * each assignment's percent. Days are counted once each, at every level: a person's days on a
+ * job, a job's days, the site's days. The crew row names the day's lead, so a person's lead days
+ * are kept for the Lead tag. Pure; `fetchSiteLabor.ts` reads the rows.
+ */
+import { buildHoursMap, hoursForCrewRow, type CrewJobAssignment } from '../../utils/teamLabor'
+
+export type SiteCrewRow = {
+  work_date: string
+  person_name: string
+  person_id: string | null
+  job_assignments: CrewJobAssignment[] | null
+  crew_lead_person_name?: string | null
+}
+
+export type SiteHoursRow = { person_name: string; person_id: string | null; work_date: string; hours: number }
+
+export type SitePayConfig = Record<string, { hourly_wage: number; is_salary: boolean }>
+
+export type SiteLaborPerson = {
+  personName: string
+  personId: string | null
+  hours: number
+  costUsd: number
+  /** Days with hours on this job, counted once each. */
+  days: number
+  /** Days this person was the crew's lead on this job. */
+  leadDays: number
+}
+
+export type SiteLaborJob = {
+  jobId: string
+  hours: number
+  costUsd: number
+  /** Days with hours on the job, counted once each, whoever worked. */
+  days: number
+  people: SiteLaborPerson[]
+}
+
+export type SiteLabor = {
+  byJobId: Map<string, SiteLaborJob>
+  /** Days with hours on any of the site's jobs, counted once each. */
+  siteDays: number
+  /** People with hours on the site. */
+  people: number
+}
+
+/** What the page holds: reading, read, or failed (the cells say so, never a false zero). */
+export type SiteLaborRead = { state: 'reading' } | { state: 'read'; labor: SiteLabor } | { state: 'failed' }
+
+/** A crew day's hours: 8 on a weekday for a salaried person, the recorded hours for an hourly one. */
+export function crewDayHours(cfg: { is_salary: boolean } | undefined, row: SiteCrewRow, hoursMap: Record<string, number>): number {
+  if (cfg?.is_salary) {
+    const day = new Date(row.work_date + 'T12:00:00').getDay()
+    return day >= 1 && day <= 5 ? 8 : 0
+  }
+  return hoursForCrewRow(hoursMap, row)
+}
+
+export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRows: ReadonlyArray<SiteCrewRow>; hoursRows: ReadonlyArray<SiteHoursRow>; config: SitePayConfig }): SiteLabor {
+  const jobSet = new Set(args.jobIds)
+  const hoursMap = buildHoursMap([...args.hoursRows])
+  // A crew row holds a whole day's assignments, so the same row comes back for every job of the site it names: keep it once.
+  const seen = new Set<string>()
+  type Acc = { hours: number; costUsd: number; days: Set<string>; leadDays: number; personId: string | null }
+  const byJob = new Map<string, Map<string, Acc>>()
+  const jobDays = new Map<string, Set<string>>()
+  const siteDays = new Set<string>()
+  const sitePeople = new Set<string>()
+  for (const r of args.crewRows) {
+    const key = `${r.work_date}:${r.person_name}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const assignments = Array.isArray(r.job_assignments) ? r.job_assignments : []
+    const cfg = (r.person_id ? args.config[`id:${r.person_id}`] : undefined) ?? args.config[r.person_name]
+    const hours = crewDayHours(cfg, r, hoursMap)
+    const rate = cfg?.hourly_wage ?? 0
+    const lead = r.crew_lead_person_name != null && r.crew_lead_person_name.trim() === r.person_name.trim()
+    for (const a of assignments) {
+      if (!jobSet.has(a.job_id)) continue
+      const pctHrs = hours * (a.pct / 100)
+      if (!(pctHrs > 0)) continue
+      let people = byJob.get(a.job_id)
+      if (!people) {
+        people = new Map()
+        byJob.set(a.job_id, people)
+      }
+      let acc = people.get(r.person_name)
+      if (!acc) {
+        acc = { hours: 0, costUsd: 0, days: new Set(), leadDays: 0, personId: r.person_id ?? null }
+        people.set(r.person_name, acc)
+      }
+      acc.hours += pctHrs
+      acc.costUsd += pctHrs * rate
+      acc.days.add(r.work_date)
+      if (lead) acc.leadDays += 1
+      if (!acc.personId && r.person_id) acc.personId = r.person_id
+      let jd = jobDays.get(a.job_id)
+      if (!jd) {
+        jd = new Set()
+        jobDays.set(a.job_id, jd)
+      }
+      jd.add(r.work_date)
+      siteDays.add(r.work_date)
+      sitePeople.add(r.person_name)
+    }
+  }
+  const byJobId = new Map<string, SiteLaborJob>()
+  for (const jobId of args.jobIds) {
+    const people = byJob.get(jobId)
+    if (!people) continue
+    const rows: SiteLaborPerson[] = [...people.entries()]
+      .map(([personName, a]) => ({ personName, personId: a.personId, hours: a.hours, costUsd: a.costUsd, days: a.days.size, leadDays: a.leadDays }))
+      .sort((x, y) => y.hours - x.hours || x.personName.localeCompare(y.personName))
+    byJobId.set(jobId, {
+      jobId,
+      hours: rows.reduce((s, p) => s + p.hours, 0),
+      costUsd: rows.reduce((s, p) => s + p.costUsd, 0),
+      days: jobDays.get(jobId)?.size ?? 0,
+      people: rows,
+    })
+  }
+  return { byJobId, siteDays: siteDays.size, people: sitePeople.size }
+}

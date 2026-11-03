@@ -2,10 +2,12 @@
  * A residential customer's Pipeline rows, read from the client (v2.6394; out of `flowPersonIo.ts`'s v2.6232 read, so
  * Follow up's nudges read them too). `flow_rows_for` carries days and marks and never an amount, and the residential
  * loader (`residentialLoad.ts`) reads bills and payments, so the jobs, blocks, clock-ins, reports, estimates, moves,
- * bills, payments and texts are selected here, the columns `residentialRows.ts`'s `PIPELINE_SELECTS` names, for one
+ * bills, payments, texts and job agreements (the warranties sent in place of a contract, v2.6400) are selected here, the
+ * columns `residentialRows.ts`'s `PIPELINE_SELECTS` names, for one
  * homeowner (the step card) or every homeowner at once (Follow up's nudges, as the morning run reads them); each person's
  * are cut out by `residentialRowsOf`. The two pay-day RPCs read soft: a role the gate refuses reads no pace, and the
- * bill's due day stays unset. A table the reader may not read fails with its reason.
+ * bill's due day stays unset. A table the reader may not read fails with its reason, except `job_contracts`, read soft:
+ * a role that cannot read it (a tech on Job Mode) reads no Warranty rounds rather than a card that fails.
  */
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -62,7 +64,9 @@ export async function readPipelineRows(who: PipelineWho): Promise<PipelineRows> 
   const ids = jobs.map((j) => j.id)
   const on = <T>(name: string, select: string, column: string, what: string): Promise<T[]> =>
     ids.length ? (table(name).select(select).in(column, ids) as unknown as Promise<Answer<T[]>>).then((a) => check(a, what) ?? []) : Promise.resolve([])
-  const [blocks, clockSessions, reports, estimates, statusEvents, invoices, payments] = await Promise.all([
+  const soft = <T>(name: string, select: string, column: string): Promise<T[]> =>
+    ids.length ? (table(name).select(select).in(column, ids) as unknown as Promise<Answer<T[]>>).then((a) => (a.error ? [] : a.data ?? [])).catch(() => []) : Promise.resolve([])
+  const [blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, agreements] = await Promise.all([
     on<PipelineRows['blocks'][number]>('job_schedule_blocks', PIPELINE_SELECTS.blocks, 'job_id', 'Their visits'),
     on<PipelineRows['clockSessions'][number]>('clock_sessions', PIPELINE_SELECTS.clockSessions, 'job_ledger_id', 'Their visits'),
     on<PipelineRows['reports'][number]>('reports', PIPELINE_SELECTS.reports, 'job_ledger_id', 'Their reports'),
@@ -70,6 +74,8 @@ export async function readPipelineRows(who: PipelineWho): Promise<PipelineRows> 
     on<PipelineRows['statusEvents'][number]>('job_status_events', PIPELINE_SELECTS.statusEvents, 'job_id', 'Their jobs'),
     on<PipelineRows['invoices'][number]>('jobs_ledger_invoices', PIPELINE_SELECTS.invoices, 'job_id', 'Their bills'),
     on<PipelineRows['payments'][number]>('jobs_ledger_payments', PIPELINE_SELECTS.payments, 'job_id', 'Their payments'),
+    // The warranty in place of a contract (2026-11-02): the Warranty step's rounds, from the Contract Desk's rows.
+    soft<NonNullable<PipelineRows['agreements']>[number]>('job_contracts', PIPELINE_SELECTS.agreements, 'job_id'),
   ])
-  return { ...NO_PIPELINE_ROWS, jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, texts: check(textsA, 'Their texts') ?? [], paySpeeds, promisedPay }
+  return { ...NO_PIPELINE_ROWS, jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, agreements, texts: check(textsA, 'Their texts') ?? [], paySpeeds, promisedPay }
 }

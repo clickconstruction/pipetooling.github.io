@@ -19,6 +19,10 @@
  * job's box, the newest open bill anywhere in a person's thread. `defaultEstimatePaper` is the same rule for a line that
  * holds `{estimate}`: a job's box speaks of the job's own estimate and no other job's. `{estimate}` is a link made for
  * the message when the line goes in (`ReplyBox`, `estimateLinkIo.ts`, PR 3).
+ *
+ * A warranty (the one sent in place of a contract, 2026-11-02) is offered while it is out to sign with a live link, and
+ * once signed as a copy; its link is the Contract Desk's own durable one, read off the row (`papersIo.ts`), so `{warranty}`
+ * fills at once with no minting. `defaultWarrantyPaper` is `defaultEstimatePaper`'s rule for it.
  */
 import { computeBillTruth, jobIsUncollectible, type BillTruthInvoice, type BillTruthJob, type BillTruthPayment } from '../billing/billTruth.ts'
 import { isPayLinkId, payLinkUrl } from '../billing/payLink.ts'
@@ -54,6 +58,21 @@ export type PaperEstimateRow = {
   job_ledger_id: string | null
 }
 
+/** `job_contracts` of kind `warranty`, with the job's name and number and the signing link the read made from the row. */
+export type PaperWarrantyRow = {
+  id: string
+  job_id: string
+  status: string | null
+  sent_at: string | null
+  signed_at: string | null
+  voided_at: string | null
+  /** The job's name and number, from the jobs the read holds. */
+  job: string | null
+  number: string | null
+  /** The signing page's URL while the link is live; null once it has lapsed (the window re-sends). */
+  url: string | null
+}
+
 // ---------- the papers ----------
 
 export interface BillPaper {
@@ -86,7 +105,22 @@ export interface EstimatePaper {
   sentYmd: string | null
 }
 
-export type Paper = BillPaper | EstimatePaper
+export interface WarrantyPaper {
+  kind: 'warranty'
+  id: string
+  jobId: string
+  /** The job's name: "Water heater". */
+  job: string
+  /** The job's number: "1312". '' when it has none. */
+  number: string
+  signed: boolean
+  sentYmd: string | null
+  signedYmd: string | null
+  /** The signing page; null when the link lapsed, so the line is left for the person. */
+  url: string | null
+}
+
+export type Paper = BillPaper | EstimatePaper | WarrantyPaper
 
 const newestFirst = (a: string | null, b: string | null) => (b ?? '').localeCompare(a ?? '')
 
@@ -137,6 +171,24 @@ export function estimatePapers(rows: readonly PaperEstimateRow[]): EstimatePaper
     .sort((a, b) => Number(a.approved) - Number(b.approved) || newestFirst(a.sentYmd, b.sentYmd) || a.id.localeCompare(b.id))
 }
 
+/** A customer's warranties: the ones out to sign with a live link first, then the signed ones, the newest first. A draft or a voided one is not offered. */
+export function warrantyPapers(rows: readonly PaperWarrantyRow[]): WarrantyPaper[] {
+  return rows
+    .filter((w) => !w.voided_at && ((w.status === 'sent' && w.url) || w.status === 'signed'))
+    .map((w) => ({
+      kind: 'warranty' as const,
+      id: w.id,
+      jobId: w.job_id,
+      job: (w.job ?? '').trim(),
+      number: (w.number ?? '').trim(),
+      signed: w.status === 'signed',
+      sentYmd: w.sent_at ? calendarYmdInAppTzFromIso(w.sent_at) || null : null,
+      signedYmd: w.signed_at ? calendarYmdInAppTzFromIso(w.signed_at) || null : null,
+      url: w.url,
+    }))
+    .sort((a, b) => Number(a.signed) - Number(b.signed) || newestFirst(a.sentYmd ?? a.signedYmd, b.sentYmd ?? b.signedYmd) || a.id.localeCompare(b.id))
+}
+
 /** The papers in a box: the job's own first when the box is a job's, each kind keeping its order. */
 export function papersFor<T extends Paper>(papers: readonly T[], jobId: string | null): T[] {
   if (!jobId) return [...papers]
@@ -151,10 +203,13 @@ export interface PaperFills {
   amount?: string | null
   number?: string | null
   job?: string | null
+  /** The warranty's signing link, off the row (2026-11-02). */
+  warranty?: string | null
 }
 
 export function paperFills(paper: Paper): PaperFills {
   if (paper.kind === 'bill') return { bill: paper.payUrl, amount: billMoney(paper.amount), number: paper.number || null, job: paper.job || null }
+  if (paper.kind === 'warranty') return { warranty: paper.url, number: paper.number || null, job: paper.job || null }
   return { amount: billMoney(paper.amount), number: paper.number || null, job: paper.job || null }
 }
 
@@ -184,6 +239,17 @@ export function defaultEstimatePaper(papers: readonly Paper[], jobId: string | n
   return (jobOnly ? own : (own ?? listed[0])) ?? null
 }
 
+/**
+ * The warranty a line that holds `{warranty}` speaks of when nobody picked one (2026-11-02), by `defaultEstimatePaper`'s
+ * rule: a job's box speaks of the job's own warranty, the one out to sign first, else the signed one, never another
+ * job's; a thread speaks of the tied job's, else their newest. Null when there is none, and the blank is left.
+ */
+export function defaultWarrantyPaper(papers: readonly Paper[], jobId: string | null, jobOnly = false): WarrantyPaper | null {
+  const listed = listedPapers(papers, 'warranty', jobId).filter((p): p is WarrantyPaper => p.kind === 'warranty')
+  const own = jobId ? listed.find((w) => w.jobId === jobId) : undefined
+  return (jobOnly ? own : (own ?? listed[0])) ?? null
+}
+
 // ---------- a paper in the / list (#127 PR 2) ----------
 
 /**
@@ -202,17 +268,22 @@ export const PAPER_LINES = {
   estimate: '{first}, here is your estimate {number} for {job}, {amount}. Open it to choose the option you want: {estimate}',
   /** An approved estimate has been chosen already, so it goes in as a copy, as a paid bill does (v2.5645). */
   approvedEstimate: '{first}, here is a copy of your approved estimate {number} for {job}, {amount}: {estimate}',
+  /** The warranty in place of a contract (2026-11-02): out to sign, and once signed as a copy. */
+  warranty: '{first}, here is our warranty for {job}. It takes a minute to initial each line and sign on your phone: {warranty}',
+  signedWarranty: '{first}, here is a copy of your signed warranty for {job}: {warranty}',
 } as const
 
 /** The app's words for a paper: an open bill's, a paid bill's, an estimate's or an approved estimate's. */
 export function paperLineWords(paper: Paper): string {
   if (paper.kind === 'estimate') return paper.approved ? PAPER_LINES.approvedEstimate : PAPER_LINES.estimate
+  if (paper.kind === 'warranty') return paper.signed ? PAPER_LINES.signedWarranty : PAPER_LINES.warranty
   return paper.open ? PAPER_LINES.openBill : PAPER_LINES.paidBill
 }
 
 /** The papers the list offers for a kind: the job's first; bills open then the newest few paid; estimates while their links are on. */
-export function listedPapers(papers: readonly Paper[], kind: 'bill' | 'estimate', jobId: string | null, estimatesOn = ESTIMATE_LINKS_ON): Paper[] {
+export function listedPapers(papers: readonly Paper[], kind: 'bill' | 'estimate' | 'warranty', jobId: string | null, estimatesOn = ESTIMATE_LINKS_ON): Paper[] {
   if (kind === 'estimate') return estimatesOn ? papersFor(papers.filter((p) => p.kind === 'estimate'), jobId) : []
+  if (kind === 'warranty') return papersFor(papers.filter((p) => p.kind === 'warranty'), jobId)
   const bills = papersFor(
     papers.filter((p): p is BillPaper => p.kind === 'bill'),
     jobId,
@@ -225,6 +296,16 @@ export function listedPapers(papers: readonly Paper[], kind: 'bill' | 'estimate'
 /** A paper's row in the list: its number, what it is for, and its money and state. */
 export function paperRowWords(paper: Paper): { number: string; what: string; when: string; money: string; state: string; tone: 'open' | 'paid' | 'sent' | 'approved' } {
   const day = (ymd: string | null) => (ymd ? shortDate(ymd) : '')
+  if (paper.kind === 'warranty') {
+    return {
+      number: paper.number ? `Warranty · J${paper.number}` : 'Warranty',
+      what: paper.job || 'A warranty',
+      when: paper.signed ? (paper.signedYmd ? `signed ${day(paper.signedYmd)}` : 'signed') : paper.sentYmd ? `sent ${day(paper.sentYmd)}` : 'sent',
+      money: '',
+      state: paper.signed ? 'signed' : 'waiting for initials and a signature',
+      tone: paper.signed ? 'approved' : 'sent',
+    }
+  }
   if (paper.kind === 'estimate') {
     return {
       number: paper.number ? `Estimate ${paper.number}` : 'Estimate',
@@ -246,7 +327,7 @@ export function paperRowWords(paper: Paper): { number: string; what: string; whe
 }
 
 /** The list's title for a kind's papers: "Dana's bills". */
-export function papersTitle(first: string | null, kind: 'bill' | 'estimate'): string {
+export function papersTitle(first: string | null, kind: 'bill' | 'estimate' | 'warranty'): string {
   const whose = first?.trim() ? `${first.trim()}'s` : 'Their'
-  return `${whose} ${kind === 'bill' ? 'bills' : 'estimates'}`
+  return `${whose} ${kind === 'bill' ? 'bills' : kind === 'warranty' ? 'warranties' : 'estimates'}`
 }

@@ -1,0 +1,5 @@
+# 20261103063000_hours_statement_payroll_roles.sql (2026-11-03, v2.6450)
+
+Signed hours statement (punch list #212): the paper is payroll data, so only a dev and the controller may see or make one — Diane's call of 2026-11-02, revising the owner's call 6 of 2026-10-29, which let a pay-approved master make the paper with the money and an assistant the hours-only paper. This re-creates `can_touch_hours_statement(p_with_pay)` as `is_dev() OR is_controller()`; the four policies on `hours_statements` call it unchanged, so the table refuses everyone else whatever the screen shows. The argument stays so the policies need no rewrite; the pay switch no longer changes who may touch a row. `CREATE OR REPLACE` on a function takes no table lock.
+
+Apply from the main checkout after the PR merges (`supabase db push`), then deploy `open-contract-form-pdf` (its assistant allowance goes with this). Until the push, the old table lets a pay-approved master or an assistant read a row the new client no longer shows them; nothing misreads.
