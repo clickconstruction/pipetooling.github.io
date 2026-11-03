@@ -9105,11 +9105,13 @@ export type Database = {
       dispatch_requests: {
         Row: {
           bid_id: string | null
+          checklist_question_id: string | null
           closed_at: string | null
           closed_by_user_id: string | null
           closed_note: string | null
           created_at: string
           development_id: string | null
+          fixture_id: string | null
           from_user_id: string
           id: string
           job_ledger_id: string | null
@@ -9129,11 +9131,13 @@ export type Database = {
         }
         Insert: {
           bid_id?: string | null
+          checklist_question_id?: string | null
           closed_at?: string | null
           closed_by_user_id?: string | null
           closed_note?: string | null
           created_at?: string
           development_id?: string | null
+          fixture_id?: string | null
           from_user_id: string
           id?: string
           job_ledger_id?: string | null
@@ -9153,11 +9157,13 @@ export type Database = {
         }
         Update: {
           bid_id?: string | null
+          checklist_question_id?: string | null
           closed_at?: string | null
           closed_by_user_id?: string | null
           closed_note?: string | null
           created_at?: string
           development_id?: string | null
+          fixture_id?: string | null
           from_user_id?: string
           id?: string
           job_ledger_id?: string | null
@@ -9184,6 +9190,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "dispatch_requests_checklist_question_id_fkey"
+            columns: ["checklist_question_id"]
+            isOneToOne: false
+            referencedRelation: "stage_checklist_templates"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "dispatch_requests_closed_by_user_id_fkey"
             columns: ["closed_by_user_id"]
             isOneToOne: false
@@ -9195,6 +9208,13 @@ export type Database = {
             columns: ["development_id"]
             isOneToOne: false
             referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_requests_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
             referencedColumns: ["id"]
           },
           {
@@ -10747,7 +10767,11 @@ export type Database = {
           mime: string
           modified_at: string | null
           name: string
+          ocr_note: string | null
+          ocr_pages: number | null
+          ocr_tried_at: string | null
           pages: number | null
+          pages_read: number | null
           path: string
           search: unknown
           text: string | null
@@ -10766,7 +10790,11 @@ export type Database = {
           mime: string
           modified_at?: string | null
           name: string
+          ocr_note?: string | null
+          ocr_pages?: number | null
+          ocr_tried_at?: string | null
           pages?: number | null
+          pages_read?: number | null
           path?: string
           search?: unknown
           text?: string | null
@@ -10785,7 +10813,11 @@ export type Database = {
           mime?: string
           modified_at?: string | null
           name?: string
+          ocr_note?: string | null
+          ocr_pages?: number | null
+          ocr_tried_at?: string | null
           pages?: number | null
+          pages_read?: number | null
           path?: string
           search?: unknown
           text?: string | null
@@ -18421,7 +18453,9 @@ export type Database = {
           fields: Json
           first_viewed_at: string | null
           id: string
+          initials: Json | null
           job_id: string
+          kind: string
           last_sent_at: string | null
           last_viewed_at: string | null
           minted_pdf_path: string | null
@@ -18480,7 +18514,9 @@ export type Database = {
           fields?: Json
           first_viewed_at?: string | null
           id?: string
+          initials?: Json | null
           job_id: string
+          kind?: string
           last_sent_at?: string | null
           last_viewed_at?: string | null
           minted_pdf_path?: string | null
@@ -18539,7 +18575,9 @@ export type Database = {
           fields?: Json
           first_viewed_at?: string | null
           id?: string
+          initials?: Json | null
           job_id?: string
+          kind?: string
           last_sent_at?: string | null
           last_viewed_at?: string | null
           minted_pdf_path?: string | null
@@ -36788,6 +36826,7 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean; p_link?: Json }
         Returns: Json
       }
+      dev_file_index_status: { Args: never; Returns: Json }
       dev_health_connections: { Args: never; Returns: Json }
       dev_health_locks: { Args: never; Returns: Json }
       dev_health_sampler_gaps: { Args: { p_hours?: number }; Returns: Json }
@@ -38283,6 +38322,7 @@ export type Database = {
       holds_vehicle: { Args: { p_vehicle_id: string }; Returns: boolean }
       hr_agent_write: { Args: { p: Json }; Returns: Json }
       humanize_job_status: { Args: { p: string }; Returns: string }
+      import_clock_sessions: { Args: { p_rows: Json }; Returns: Json }
       insert_accounting_label_suggestion_service: {
         Args: { p_rows: Json }
         Returns: number
