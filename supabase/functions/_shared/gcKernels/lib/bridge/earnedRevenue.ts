@@ -11,7 +11,10 @@
  *
  * Rules (documented on the page, deliberately simple for v1):
  * - Finished jobs (ready_to_bill / billed / paid) are 100% — expected hours =
- *   lifetime hours, so the whole contract has been earned across its hours.
+ *   lifetime hours, so the whole contract has been earned across its hours. A
+ *   caller with its own word on done (Job Summary: the % column resolves to
+ *   100, v2.6388) passes `finished`, and that decides instead of the status —
+ *   a billed job whose % is 40 earns by the 40 there.
  * - Open jobs use pct_complete (0–100); with no pct they are ASSUMED 50% done
  *   and counted in `assumedHalfJobs` so the page can say so.
  * - Jobs with no contract revenue set earn $0 and are counted in
@@ -48,9 +51,10 @@ export type EarnedRevenueResult = {
 
 const FINISHED = new Set(['ready_to_bill', 'billed', 'paid'])
 
-export function expectedHoursForJob(job: EarnedRevenueJob): { hours: number; assumedHalf: boolean } {
+export function expectedHoursForJob(job: EarnedRevenueJob, opts?: { finished?: boolean }): { hours: number; assumedHalf: boolean } {
   const life = Math.max(0, job.lifetimeHours)
-  if (FINISHED.has(job.status)) return { hours: life, assumedHalf: false }
+  const finished = opts?.finished ?? FINISHED.has(job.status)
+  if (finished) return { hours: life, assumedHalf: false }
   const pct = job.pctComplete
   if (pct != null && Number.isFinite(pct) && pct > 0) return { hours: life / Math.min(1, pct / 100), assumedHalf: false }
   return { hours: life / 0.5, assumedHalf: true }
@@ -100,12 +104,18 @@ export function earnedRevenueInWindow(input: {
   /** 0–100 or null (null → assumed 50%, as `expectedHoursForJob` does). */
   pctComplete: number | null
   status: string
+  /**
+   * The caller's own word on whether the job is done (v2.6388). Set, it decides: `false` earns by
+   * the % whatever the status says, `true` earns the whole contract across the hours. Omitted, the
+   * status decides as `expectedHoursForJob` does (ready_to_bill / billed / paid = done).
+   */
+  finished?: boolean
   hoursInWindow: number
   lifetimeHours: number
 }): { usd: number; expectedHours: number; assumedHalf: boolean } | null {
   const life = Math.max(0, input.lifetimeHours)
   if (!(life > 0) || !(input.contractUsd > 0)) return null
-  const { hours, assumedHalf } = expectedHoursForJob({ id: '', revenueUsd: input.contractUsd, pctComplete: input.pctComplete, status: input.status, lifetimeHours: life })
+  const { hours, assumedHalf } = expectedHoursForJob({ id: '', revenueUsd: input.contractUsd, pctComplete: input.pctComplete, status: input.status, lifetimeHours: life }, { finished: input.finished })
   if (!(hours > 0)) return null
   return { usd: Math.max(0, input.hoursInWindow) * (input.contractUsd / hours), expectedHours: hours, assumedHalf }
 }

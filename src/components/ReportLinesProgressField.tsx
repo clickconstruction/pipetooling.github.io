@@ -62,7 +62,7 @@ export function ReportLinesProgressField({
   openId: string | null
   onOpen: (fixtureId: string | null) => void
   onPct: (fixtureId: string, pct: number) => void
-  /** The job's number on record, for the job line's "was". */
+  /** The job's number on record, for the job line's "was" and what the lines nobody has reported count as (v2.6391). */
   recordedPct?: number | null
   /** When given, the link under the job line that brings the whole-job slider back. */
   onSwitchToWholeJob?: () => void
@@ -71,7 +71,7 @@ export function ReportLinesProgressField({
 }) {
   const [showHow, setShowHow] = useState(false)
   const job = jobLine(rows, picks, recordedPct)
-  const how = showHow ? howRows(rows, picks) : null
+  const how = showHow ? howRows(rows, picks, recordedPct) : null
 
   return (
     <div style={{ marginBottom: '0.75rem', width: '100%' }} data-testid="report-lines-progress">
