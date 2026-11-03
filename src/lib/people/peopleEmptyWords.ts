@@ -248,6 +248,9 @@ export function portalVisitsEmptyWords(s: { filter: 'all' | 'outside' | 'staff';
 /** Licenses due soon: empty is the good state. */
 export const LICENSES_EXPIRING_EMPTY: EmptyStateWords = { main: 'Nothing expires in the next 30 days.' }
 
+/** The Expired section above it (v2.6424): empty is the good state. */
+export const LICENSES_EXPIRED_EMPTY: EmptyStateWords = { main: 'Nothing on file has expired.' }
+
 /** One person's licenses, opened on People → Licenses: + Add license is the row's own button. */
 export function personLicensesEmptyWords(addLicense: Press): EmptyStateWords {
   return emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'licenses', control: '+ Add license' }), { onPress: addLicense })
