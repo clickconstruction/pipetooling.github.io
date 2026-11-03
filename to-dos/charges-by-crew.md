@@ -2,7 +2,7 @@
 name: "Charges by crew: a rate card by who was out, a markup on materials, the Statement of charges, and the Job Summary's Charges window"
 number: 254
 group: ready
-status: all four PRs built 2026-11-03 (v2.6441, v2.6445, v2.6447, v2.6448) with #251's PR 2 (v2.6446) between them, and the live pass's fixes (v2.6461), landing one after another · nobody has a standing yet and the rate card's missing rows are the owner's · the live pass at three widths follows the last merge
+status: live 2026-11-03: all four PRs (v2.6441, v2.6445, v2.6447, v2.6448), #251's PR 2 (v2.6446) and the live pass's fixes (v2.6461, v2.6471) are on main and deployed · every standing, the Gun Dog jobs' rule, the three blank rate rows and the markup are the owner's
 mockup: the canvas and its critique — https://claude.ai/artifact/8zmhz5CJPUg8UUrrRZ3ecy (eight artboards, A to H); no static copy in the repo, because the papers on it are drawn from one person's reconstructed hours, which stay out of git
 summary: >
   Punch list #251 gave the company one rate for an hour. The owner's next asks, all on 2026-11-03: the rate is
@@ -14,9 +14,9 @@ summary: >
   True profit; and a click on a Charges cell should open a window that shows every line and lets the office
   adjust a day's crew, leave a line off, or pass a material through at cost, with a reason, without touching
   anyone's clock session. Four PRs, smallest first.
-next: PR 1 — the person's standing, the rate card and the markup in Settings (the v2.6431 card grows into the rate card), the crew-day kernel over approved sessions, and tests. Cut it now; the owner's missing rows ship blank and the kernel refuses to price a shape with no rate.
+next: the owner sets each person's Charged as in Settings → Jobs & billing → Rates charged by crew → Who counts as what, and the Gun Dog jobs' rule in each Charges window; then a session reads one priced job live and retires this card
 size: S + L + L + S
-blocker: #251's PR 2 (the hours statement's window, print and gate on the charged basis) lands first, so the Statement of charges copies one layout; the rate card's rows for a master alone, two helpers and three or more are the owner's
+blocker: the owner's presses and nothing else; no priced day has been seen saved on the app's own data yet, only previewed with the standings and the rule patched in a test browser
 ver: —
 opinion: build — every input exists (sessions, invoices, tally parts, typed charges, revenue, the people's roles); the new facts are a standing, seven rates, a markup, a job's rule and a table of adjustments, and the rest is kernels over rows the Job Summary already loads
 ---
@@ -148,9 +148,11 @@ clock session is unchanged. The customer copy shows no cost, markup, margin, pre
 
 ## Not verified
 
+A priced day saved on the app's own data: nobody has a standing yet. The final pass previewed it with the standings and the job's rule patched in a test browser, and every priced surface read correctly.
+
 The ledger's dynamic headers (the artboard draws them approximately); the per-day overlap rule when one person leaves
 early (the longest day stands in for it until the owner wants a finer cut).
 
 ## Where it stands
 
-Drawn 2026-11-03. Built the same day: PR 1 (v2.6441, the standings, the rate card, the markup), PR 3 (v2.6445, the Job Summary's columns and chip, the Charges window, `job_charge_adjustments`), #251's PR 2 (v2.6446, the charged hours paper on crew-days) and PR 2 (v2.6447, the Statement of charges: the window, the two prints, `job_charge_statements`, the Documents section). PR 4 (v2.6448, the Edit Job row *Charging the customer*, the directory and the glossary) closes the train. The live pass on the app's own data, after PRs 1 and 3 and #251's PR 2 landed, found every person with no standing, so every crew-day priced at nothing and the Charges column was blank on every job: v2.6461 adds *Who counts as what* to the rate card and has the Charges window, the Statement of charges window and the Job Summary's note name who counts as nobody, with links to fix it. Setting each person's standing is the owner's. A printed customer copy of a Statement of charges is kept under *Sent from this job* (v2.6447). Each lands after the one before it merges, with its migration pushed right after; the live pass at three widths follows the last.
+Drawn 2026-11-03. Built the same day: PR 1 (v2.6441, the standings, the rate card, the markup), PR 3 (v2.6445, the Job Summary's columns and chip, the Charges window, `job_charge_adjustments`), #251's PR 2 (v2.6446, the charged hours paper on crew-days) and PR 2 (v2.6447, the Statement of charges: the window, the two prints, `job_charge_statements`, the Documents section). PR 4 (v2.6448, the Edit Job row *Charging the customer*, the directory and the glossary) closes the train. The live pass on the app's own data, after PRs 1 and 3 and #251's PR 2 landed, found every person with no standing, so every crew-day priced at nothing and the Charges column was blank on every job: v2.6461 adds *Who counts as what* to the rate card and has the Charges window, the Statement of charges window and the Job Summary's note name who counts as nobody, with links to fix it. Setting each person's standing is the owner's. A printed customer copy of a Statement of charges is kept under *Sent from this job* (v2.6447). All of it reached the app on 2026-11-03. The final pass ran on main's code at 375, 768, 1280 and dark, and it found the Job Summary's total reading a $0.00 premium while every job's premium waited, fixed in v2.6471. Each lands after the one before it merges, with its migration pushed right after; the live pass at three widths follows the last.
