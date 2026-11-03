@@ -51,8 +51,10 @@ export type DevelopmentPageData = {
   submissionEntries: Array<{ id: string; bid_id: string; occurred_at: string; contact_method: string | null; notes: string | null; created_by: string | null }>
   bidChanges: Array<{ id: number; bid_id: string; changed_at: string; changed: string[]; changed_by: string | null }>
   statusEvents: Array<{ id: string; job_id: string; changed_at: string; from_status: string | null; to_status: string; changed_by_user_id: string | null }>
-  invoices: Array<{ id: string; job_id: string; amount: number; status: string; billed_at: string | null; sent_to_customer_at: string | null; created_at: string | null }>
-  payments: Array<{ id: string; job_id: string; amount: number; paid_on: string | null; created_at: string | null }>
+  /** `sent_by_user_id` (v2.6457): who sent the bill, for the Scoreboard's office line; absent on an older read. */
+  invoices: Array<{ id: string; job_id: string; amount: number; status: string; billed_at: string | null; sent_to_customer_at: string | null; created_at: string | null; sent_by_user_id?: string | null }>
+  /** `created_by` (v2.6457): who booked the payment, for the Scoreboard's office line; absent on an older read. */
+  payments: Array<{ id: string; job_id: string; amount: number; paid_on: string | null; created_at: string | null; created_by?: string | null }>
   threadNotes: Array<{ id: string; job_id: string; created_at: string; author_user_id: string; body: string }>
   /** A bid's thread notes, keyed by the bid's id (`estimate_id`). */
   bidNotes: Array<{ id: string; estimate_id: string; created_at: string; author_user_id: string; body: string }>
@@ -254,9 +256,9 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
       ? supabase.from('job_status_events').select('id, job_id, changed_at, from_status, to_status, changed_by_user_id').in('job_id', jobIds).order('changed_at', { ascending: false }).limit(500)
       : Promise.resolve({ data: [], error: null }),
     office && jobIds.length
-      ? supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sent_to_customer_at, created_at').in('job_id', jobIds).limit(500)
+      ? supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sent_to_customer_at, created_at, sent_by_user_id').in('job_id', jobIds).limit(500)
       : Promise.resolve({ data: [], error: null }),
-    office && jobIds.length ? supabase.from('jobs_ledger_payments').select('id, job_id, amount, paid_on, created_at').in('job_id', jobIds).limit(500) : Promise.resolve({ data: [], error: null }),
+    office && jobIds.length ? supabase.from('jobs_ledger_payments').select('id, job_id, amount, paid_on, created_at, created_by').in('job_id', jobIds).limit(500) : Promise.resolve({ data: [], error: null }),
     office && jobIds.length
       ? supabase.from('jobs_ledger_thread_notes').select('id, job_id, created_at, author_user_id, body').in('job_id', jobIds).order('created_at', { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
@@ -305,6 +307,9 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   for (const c of (contactsRes.data ?? []) as Array<{ created_by: string | null }>) if (c.created_by) userIds.add(c.created_by)
   for (const h of (historyRes.data ?? []) as unknown as HistoryRow[]) if (h.author_user_id) userIds.add(h.author_user_id)
   for (const t of teamMembers) userIds.add(t.user_id)
+  // Who sent the bills and booked the payments, named on the Scoreboard's office line (v2.6457).
+  for (const i of (invoicesRes.data ?? []) as Array<{ sent_by_user_id?: string | null }>) if (i.sent_by_user_id) userIds.add(i.sent_by_user_id)
+  for (const p of (paymentsRes.data ?? []) as Array<{ created_by?: string | null }>) if (p.created_by) userIds.add(p.created_by)
   const { names, twinUserIds } = await readUserNamesAndTwins([...userIds])
   const customers = (customersRes.data ?? []) as Array<{ id: string; name: string; contact_info: unknown; payment_terms_note: string | null; lien_notice_policy_note: string | null }>
   const customer = customerId ? customers.find((c) => c.id === customerId) ?? null : null

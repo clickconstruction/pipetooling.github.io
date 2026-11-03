@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MemberJob } from './overview'
+import type { CardHolder } from './cardHolders'
 import type { SiteCostsRead } from './siteCosts'
 import type { SiteLaborRead } from './siteLabor'
 import {
@@ -7,12 +8,18 @@ import {
   nextScoreboardSort,
   scoreboardCellStands,
   scoreboardCellWords,
+  scoreboardCompactWords,
   scoreboardColumnsFor,
+  scoreboardColumnWidths,
   scoreboardFoldWords,
   scoreboardFoldedKeys,
   scoreboardPct,
   scoreboardWorkWords,
   SCOREBOARD_COLUMNS,
+  scoreboardMembers,
+  scoreboardNoMembersWords,
+  scoreboardPendingWords,
+  type ScoreboardMembersInput,
   type SiteOverheadRead,
 } from './scoreboard'
 
@@ -42,10 +49,10 @@ const labor: SiteLaborRead = {
       ['j1091', { jobId: 'j1091', hours: 99, costUsd: 2594, days: 7, people: [] }],
     ]),
     siteDays: 125,
-    people: 5,
+    people: 5, daysKnown: true,
   },
 }
-const costRow = (jobId: string, subs: number, supply: number, card: number) => ({ jobId, subLabor: subs, parts: { supplyInvoices: supply, cardCharges: card, tallyParts: 0, otherCharges: 0 }, total: subs + supply + card })
+const costRow = (jobId: string, subs: number, supply: number, card: number) => ({ jobId, subLabor: subs, parts: { supplyInvoices: supply, cardCharges: card, tallyParts: 0, otherCharges: 0 }, total: subs + supply + card, breakdown: { subs: [], suppliers: [], cardLines: [], tallyLines: 0, otherLines: 0 } })
 const costs: SiteCostsRead = {
   state: 'read',
   byJobId: new Map([
@@ -143,5 +150,229 @@ describe('the columns and the words', () => {
     expect(scoreboardCellWords('days', 118)).toBe('118 d')
     expect(scoreboardCellWords('profit', -7216.4)).toBe('−$7,216')
     expect(scoreboardCellWords('earned', 241431)).toBe('$241,431')
+  })
+})
+
+describe('the rows under an open job (v2.6457)', () => {
+  const person = (over: Partial<{ personName: string; personId: string | null; userId: string | null; hours: number; costUsd: number; days: number; leadDays: number }>) => ({
+    personName: 'Mateo', personId: 'p-mateo', userId: null, hours: 100, costUsd: 3000, days: 12, leadDays: 0, ...over,
+  })
+  const laborRead: SiteLaborRead = {
+    state: 'read',
+    labor: {
+      byJobId: new Map([
+        ['j1', { jobId: 'j1', hours: 0, costUsd: 0, days: 0, people: [person({}), person({ personName: 'Luis', personId: 'p-luis', userId: 'u-luis', hours: 80, costUsd: 2800, days: 10, leadDays: 6 }), person({ personName: 'Tom', personId: null, hours: 120, costUsd: 3240, days: 14 })] }],
+      ]),
+      siteDays: 20,
+      people: 3, daysKnown: true,
+    },
+  }
+  const costsRead: SiteCostsRead = {
+    state: 'read',
+    byJobId: new Map([
+      [
+        'j1',
+        {
+          jobId: 'j1',
+          parts: { supplyInvoices: 5000, cardCharges: 900, tallyParts: 120, otherCharges: 400 },
+          subLabor: 1800,
+          total: 8220,
+          breakdown: {
+            subs: [{ name: 'Reyes Excavating', usd: 1800, sheets: 2 }],
+            // the allocation read came back short: the houses hold 4,800 of the 5,000
+            suppliers: [{ name: 'Ferguson', usd: 3600, invoices: 4 }, { name: 'Moore Supply', usd: 1200, invoices: 1 }],
+            cardLines: [{ txId: 'tx1', usd: 500 }, { txId: 'tx2', usd: 300 }, { txId: 'tx3', usd: 100 }],
+            tallyLines: 3,
+            otherLines: 2,
+          },
+        },
+      ],
+    ]),
+  }
+  const overheadRead: SiteOverheadRead = { state: 'read', byJobId: new Map([['j1', { usd: 610, days: 9 }]]) }
+  const holders = { state: 'read' as const, byTxId: new Map([['tx1', { cardId: 'c1', name: 'Luis', userId: 'u-luis' }], ['tx2', { cardId: 'c2', name: 'Shop card', userId: null }], ['tx3', { cardId: 'c1', name: 'Luis', userId: 'u-luis' }]]) }
+  const jobCost = 3000 + 2800 + 3240 + 1800 + 5000 + 900 + 120 + 400 + 610
+  const base: ScoreboardMembersInput = {
+    jobId: 'j1',
+    jobCost,
+    seesCosts: true,
+    labor: laborRead,
+    costs: costsRead,
+    overhead: overheadRead,
+    cardHolders: holders,
+    invoices: [{ job_id: 'j1', sent_by_user_id: 'u-dana' }, { job_id: 'j1', sent_by_user_id: 'u-dana' }, { job_id: 'j2', sent_by_user_id: 'u-dana' }],
+    payments: [{ job_id: 'j1', created_by: 'u-dana' }, { job_id: 'j1', created_by: 'u-sam' }],
+    names: new Map([['u-dana', 'Dana'], ['u-sam', 'Sam']]),
+    viewer: { userId: 'u-dana', name: 'Dana' },
+  }
+
+  it('every row with money fills Cost, and the rows add up to the job’s Cost', () => {
+    const { members, pending } = scoreboardMembers(base)
+    expect(pending).toBeNull()
+    const sum = members.reduce((t, m) => t + (m.cost ?? 0), 0)
+    expect(sum).toBeCloseTo(jobCost, 2)
+    const shares = members.reduce((t, m) => t + (m.share ?? 0), 0)
+    expect(shares).toBeCloseTo(1, 6)
+  })
+
+  it('the order: leads, the crew by hours, subs, houses with their gap, card holders, the tally, other charges, overhead, the office', () => {
+    const { members } = scoreboardMembers(base)
+    expect(members.map((m) => `${m.kind}:${m.name}`)).toEqual([
+      'lead:Luis',
+      'crew:Tom',
+      'crew:Mateo',
+      'sub:Reyes Excavating',
+      'supplier:Ferguson',
+      'supplier:Moore Supply',
+      'supplier:Other supply invoices',
+      'card:Luis',
+      'card:Shop card',
+      'tally:The tally',
+      'other:Other job charges',
+      'overhead:Day share',
+      'office:Dana',
+      'office:Sam',
+    ])
+  })
+
+  it('each row says what it put in, in its own cells, with the small words beside its name', () => {
+    const { members } = scoreboardMembers(base)
+    const by = (k: string) => members.find((m) => `${m.kind}:${m.name}` === k)!
+    expect(by('lead:Luis')).toMatchObject({ kit: 'led 6 of 10 days', m: { hours: 80, days: 10, labor: 2800 }, cost: 2800 })
+    expect(by('crew:Tom').kit).toBeNull()
+    expect(by('sub:Reyes Excavating')).toMatchObject({ kit: '2 sheets', m: { subs: 1800 } })
+    expect(by('supplier:Other supply invoices')).toMatchObject({ m: { parts: 200 }, cost: 200 })
+    expect(by('card:Luis')).toMatchObject({ kit: '2 charges', m: { parts: 600 } })
+    expect(by('tally:The tally').kit).toBe('3 lines')
+    expect(by('overhead:Day share')).toMatchObject({ kit: '9 days charged', m: { overhead: 610 } })
+    expect(by('office:Dana')).toMatchObject({ words: 'sent 2 bills · booked 1 payment', cost: null, share: null })
+    expect(by('office:Sam').words).toBe('booked 1 payment')
+  })
+
+  it('the gold row: the viewer by login, a person with no login by name, the viewer’s card', () => {
+    const asLuis = scoreboardMembers({ ...base, viewer: { userId: 'u-luis', name: 'Luis Ortega' } }).members
+    expect(asLuis.filter((m) => m.you).map((m) => `${m.kind}:${m.name}`)).toEqual(['lead:Luis', 'card:Luis'])
+    const asTom = scoreboardMembers({ ...base, viewer: { userId: 'u-tom', name: ' tom ' } }).members
+    expect(asTom.filter((m) => m.you).map((m) => m.name)).toEqual(['Tom'])
+    // a person with a login is never matched by name alone
+    const asMateoByName = scoreboardMembers({ ...base, viewer: { userId: 'u-other', name: 'Luis' } }).members
+    expect(asMateoByName.filter((m) => m.you)).toEqual([])
+    expect(scoreboardMembers(base).members.filter((m) => m.you).map((m) => `${m.kind}:${m.name}`)).toEqual(['office:Dana'])
+  })
+
+  it('the lead’s board lists the people with hours and days and nothing else', () => {
+    const { members } = scoreboardMembers({ ...base, seesCosts: false })
+    expect(members.map((m) => m.name)).toEqual(['Luis', 'Tom', 'Mateo'])
+    expect(members.every((m) => m.cost === null && m.share === null && m.m.labor === undefined)).toBe(true)
+    expect(members[0]!.m).toEqual({ hours: 80, days: 10 })
+  })
+
+  it('the card read not in yet, or failed: one Card row for the job, still adding up', () => {
+    for (const cardHolders of [{ state: 'reading' as const }, { state: 'failed' as const }, undefined]) {
+      const { members } = scoreboardMembers({ ...base, cardHolders })
+      const cards = members.filter((m) => m.kind === 'card')
+      expect(cards.map((m) => [m.name, m.kit, m.cost])).toEqual([['Card', '3 charges', 900]])
+    }
+  })
+
+  it('a card total the lines fall short of gets its reconciling row', () => {
+    const j1Row = costsRead.state === 'read' ? costsRead.byJobId.get('j1')! : null
+    const short: SiteCostsRead = { state: 'read', byJobId: new Map([['j1', { ...j1Row!, parts: { supplyInvoices: 4800, cardCharges: 1000, tallyParts: 0, otherCharges: 0 } }]]) }
+    const { members } = scoreboardMembers({ ...base, costs: short })
+    expect(members.filter((m) => m.kind === 'card').map((m) => [m.name, m.cost])).toEqual([
+      ['Luis', 600],
+      ['Shop card', 300],
+      ['Card charges not split', 100],
+    ])
+    expect(members.some((m) => m.name === 'Other supply invoices')).toBe(false)
+  })
+
+  it('payments out of the bank with no card on them are one Bank row, counted as payments, still adding up', () => {
+    const j1Row = costsRead.state === 'read' ? costsRead.byJobId.get('j1')! : null
+    const withBank: SiteCostsRead = {
+      state: 'read',
+      byJobId: new Map([['j1', { ...j1Row!, parts: { ...j1Row!.parts, cardCharges: 1400 }, breakdown: { ...j1Row!.breakdown, cardLines: [...j1Row!.breakdown.cardLines, { txId: 'tx4', usd: 250 }, { txId: 'tx5', usd: 250 }] } }]]),
+    }
+    const bank: CardHolder = { cardId: null, name: 'Bank payments', userId: null, bank: true }
+    const cardHolders = { state: 'read' as const, byTxId: new Map<string, CardHolder>([...holders.byTxId, ['tx4', bank], ['tx5', bank]]) }
+    const { members } = scoreboardMembers({ ...base, jobCost: jobCost + 500, costs: withBank, cardHolders })
+    expect(members.filter((m) => m.kind === 'card' || m.kind === 'bank').map((m) => [m.kind, m.name, m.kit, m.cost])).toEqual([
+      ['card', 'Luis', '2 charges', 600],
+      ['bank', 'Bank payments', '2 payments', 500],
+      ['card', 'Shop card', '1 charge', 300],
+    ])
+    expect(members.reduce((t, m) => t + (m.cost ?? 0), 0)).toBeCloseTo(jobCost + 500, 2)
+    expect(members.some((m) => m.name === 'Card charges not split')).toBe(false)
+  })
+
+  it('a read still out says so in one line; a refusal names that the Job window has the rows', () => {
+    expect(scoreboardMembers({ ...base, costs: { state: 'reading' } }).pending).toBe('reading')
+    expect(scoreboardMembers({ ...base, overhead: { state: 'failed' }, costs: { state: 'reading' } }).pending).toBe('failed')
+    expect(scoreboardMembers({ ...base, seesCosts: false, costs: { state: 'failed' } }).pending).toBeNull()
+    expect(scoreboardPendingWords('reading')).toBe('Some rows are still reading.')
+    expect(scoreboardPendingWords('failed')).toBe('A source would not read. The Job window has these rows.')
+    expect(scoreboardPendingWords(null)).toBeNull()
+    expect(scoreboardNoMembersWords(true)).toBe('Nothing is on this job yet.')
+    expect(scoreboardNoMembersWords(false)).toBe('No hours are on this job yet.')
+  })
+})
+
+describe('scoreboardCompactWords (v2.6457)', () => {
+  it('money reads short as the phone strip reads it; hours and days stay whole; a loss keeps its sign', () => {
+    expect(scoreboardCompactWords('earned', 2_437_520)).toBe('$2.4M')
+    expect(scoreboardCompactWords('earned', 2_000_000)).toBe('$2M')
+    expect(scoreboardCompactWords('earned', 12_400_000)).toBe('$12M')
+    expect(scoreboardCompactWords('parts', 712_380)).toBe('$712k')
+    expect(scoreboardCompactWords('overhead', 14_720)).toBe('$15k')
+    expect(scoreboardCompactWords('labor', 9_380)).toBe('$9.4k')
+    expect(scoreboardCompactWords('profit', -7_960)).toBe('−$8k')
+    expect(scoreboardCompactWords('cost', 1_790)).toBe('$1.8k')
+    expect(scoreboardCompactWords('cost', 999)).toBe('$999')
+    expect(scoreboardCompactWords('profit', -26_840)).toBe('−$27k')
+    expect(scoreboardCompactWords('profit', -214)).toBe('−$214')
+    expect(scoreboardCompactWords('hours', 12_345)).toBe('12,345 h')
+    expect(scoreboardCompactWords('days', 57)).toBe('57 d')
+  })
+})
+
+describe('scoreboardColumnWidths (v2.6457)', () => {
+  const pct = (w: string | undefined) => Number(String(w).replace('%', ''))
+  it('the full board at whole dollars weights its columns: Profit the widest, Hours and Days the narrowest, all of it a hundred', () => {
+    const cols = scoreboardColumnsFor(true)
+    const { job, columns } = scoreboardColumnWidths(cols, false)
+    const by = Object.fromEntries(cols.map((c, i) => [c.key, pct(columns[i])]))
+    expect(job).toBe('25%')
+    expect(by.profit).toBe(12)
+    expect(by.hours).toBe(6.5)
+    expect(by.days).toBe(6.5)
+    expect(by.earned).toBeCloseTo(50 / 6, 2)
+    expect(pct(job) + Object.values(by).reduce((a, b) => a + b, 0)).toBeCloseTo(100, 1)
+  })
+  it('without the days the money takes their room', () => {
+    const cols = scoreboardColumnsFor(true, false)
+    const { columns } = scoreboardColumnWidths(cols, false)
+    expect(columns).toHaveLength(8)
+    expect(25 + columns.reduce((a, w) => a + pct(w), 0)).toBeCloseTo(100, 1)
+  })
+  it('short money words share alike; the leader’s board gives the Job column nearly half', () => {
+    expect(scoreboardColumnWidths(scoreboardColumnsFor(true), true)).toEqual({ job: '26%', columns: Array(9).fill(undefined) })
+    expect(scoreboardColumnWidths(scoreboardColumnsFor(false), false)).toEqual({ job: '46%', columns: [undefined, undefined, undefined] })
+  })
+})
+
+describe('a reader with the hours but not the days (v2.6457)', () => {
+  it('the lead’s board drops Days; the full board keeps its money three folded', () => {
+    expect(scoreboardColumnsFor(false, false).map((c) => c.key)).toEqual(['hours', 'earned'])
+    expect([...scoreboardFoldedKeys(scoreboardColumnsFor(false, false))]).toEqual(['hours', 'earned'])
+    expect([...scoreboardFoldedKeys(scoreboardColumnsFor(true, false))]).toEqual(['earned', 'cost', 'profit'])
+    expect(scoreboardColumnsFor(true, false).some((c) => c.key === 'days')).toBe(false)
+  })
+  it('a person’s row carries hours alone, and nobody reads as a Lead without the days', () => {
+    const labor: SiteLaborRead = {
+      state: 'read',
+      labor: { byJobId: new Map([['j1', { jobId: 'j1', hours: 50, costUsd: 0, days: 0, people: [{ personName: 'Luis', personId: null, userId: null, hours: 50, costUsd: 0, days: 0, leadDays: 3 }] }]]), siteDays: 0, people: 1, daysKnown: false },
+    }
+    const { members } = scoreboardMembers({ jobId: 'j1', jobCost: 0, seesCosts: false, labor, invoices: [], payments: [], names: new Map(), viewer: { userId: null, name: 'Luis' } })
+    expect(members).toEqual([{ key: 'person:Luis', kind: 'crew', name: 'Luis', kit: null, m: { hours: 50 }, cost: null, share: null, words: null, you: true }])
   })
 })

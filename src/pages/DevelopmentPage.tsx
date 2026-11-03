@@ -41,7 +41,8 @@ import { buildAtAddressCard, buildCountCard, type CountCard, type CountDoor, typ
 import { DevelopmentNotInChips, type NotInChip } from '../components/developments/DevelopmentNotInChips'
 import { DevelopmentMoney } from '../components/developments/DevelopmentMoney'
 import { DevelopmentScoreboard } from '../components/developments/DevelopmentScoreboard'
-import { buildScoreboard, nextScoreboardSort, scoreboardColumnsFor, SCOREBOARD_DEFAULT_SORT, type ScoreboardSort } from '../lib/developments/scoreboard'
+import { buildScoreboard, nextScoreboardSort, scoreboardColumnsFor, scoreboardMembers, SCOREBOARD_DEFAULT_SORT, type ScoreboardSort } from '../lib/developments/scoreboard'
+import { useSiteCardHolders } from '../hooks/useSiteCardHolders'
 import { useSiteLabor } from '../hooks/useSiteLabor'
 import { useSiteOverhead } from '../hooks/useSiteOverhead'
 import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, unbilledTileWords, type MoneySortMode } from '../lib/developments/siteMoney'
@@ -126,7 +127,7 @@ export default function DevelopmentPage() {
   const bidPreview = useBidPreview()
   const jobDetail = useJobDetailModal()
   const jobForm = useJobFormModal()
-  const { user: authUser, role, loading: authLoading } = useAuth()
+  const { user: authUser, role, loading: authLoading, profileName } = useAuth()
   // The reader's door (PR 6): the office reads every table and the money; an estimator reads the pieces through the definer read and sees no dollar and no Job window.
   const door = developmentDoorFor(role)
   const moneyShown = door === 'office'
@@ -282,6 +283,9 @@ export default function DevelopmentPage() {
   const scoreboardOpen = moneyShown && moneyView === 'scoreboard'
   const laborRead = useSiteLabor(shownJobIds, scoreboardOpen)
   const overheadRead = useSiteOverhead(shownJobIds, scoreboardOpen && canSeeSiteCosts(role))
+  // Who holds the card each counted charge went on (v2.6457): the card id alone out of each bank record, while the board is open.
+  const cardTxIds = useMemo(() => (costsByJobId?.state === 'read' ? [...costsByJobId.byJobId.values()].flatMap((r) => r.breakdown.cardLines.map((l) => l.txId).filter((id): id is string => !!id)) : []), [costsByJobId])
+  const cardHoldersRead = useSiteCardHolders(cardTxIds, scoreboardOpen && canSeeSiteCosts(role))
   // The site's photos (punch list #247): the census and the row, read once for the strip's sixth look and the Photos card.
   const shownBidIds = useMemo(() => (shown ? shown.bids.map((b) => b.id) : []), [shown])
   const sitePhotos = useSitePhotos({ jobIds: shownJobIds, bidIds: shownBidIds, enabled: !!data })
@@ -1310,7 +1314,23 @@ export default function DevelopmentPage() {
             }
           >
             {moneyView === 'scoreboard' ? (
-              <DevelopmentScoreboard model={scoreboard} columns={scoreboardColumnsFor(canSeeSiteCosts(role))} phone={phone} onSort={(k) => setScoreSort((s) => nextScoreboardSort(s, k))} openJob={openJob} head={scoreboardHead} />
+              <DevelopmentScoreboard model={scoreboard} columns={scoreboardColumnsFor(canSeeSiteCosts(role), laborRead?.state !== 'read' || laborRead.labor.daysKnown)} phone={phone} onSort={(k) => setScoreSort((s) => nextScoreboardSort(s, k))} openJob={openJob} head={scoreboardHead}
+                membersOf={(r) =>
+                  scoreboardMembers({
+                    jobId: r.jobId,
+                    jobCost: r.m.cost,
+                    seesCosts: canSeeSiteCosts(role),
+                    labor: laborRead,
+                    costs: costsByJobId,
+                    overhead: overheadRead,
+                    cardHolders: cardHoldersRead,
+                    invoices: data.invoices,
+                    payments: data.payments,
+                    names: data.names,
+                    viewer: { userId: authUser?.id ?? null, name: profileName ?? null },
+                  })
+                }
+              />
             ) : (
               <DevelopmentMoney model={siteMoney} phone={phone} sort={moneySort} onSort={setMoneySortMode} isFolded={(k, d) => isFolded(moneyFolds, k, d)} onToggleFold={toggleMoneyFold} openJob={openJob} onAskForDate={(jobId) => openJob(jobId)} onLienDesk={() => navigate('/jobs?tab=stages&liendesk=1')} />
             )}

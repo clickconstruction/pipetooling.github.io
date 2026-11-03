@@ -2,7 +2,7 @@
 name: "A scoreboard for a development: its jobs, their money, and who put what in"
 number: 250
 group: ready
-status: design 2026-11-02 · draft 1 shown, the owner said *great potential, needs a refinement pass* · draft 2 the same day, read against the game's board (one header, one rule at four levels, the Cost column as the spine every member fills, a dark render) · the owner on draft 2: *right way*, and he took all seven defaults the same evening · PR 1 waits for the Gun Dog stack to land · nothing built
+status: design 2026-11-02 · draft 1 shown, the owner said *great potential, needs a refinement pass* · draft 2 the same day, read against the game's board (one header, one rule at four levels, the Cost column as the spine every member fills, a dark render) · the owner on draft 2: *right way*, and he took all seven defaults the same evening · PR 1 the board by job shipped as v2.6407 (#6886, merged 2026-11-03 after the Gun Dog stack and the photos PRs, main merged in five times) · PR 2 the rows under each job and the gold row v2.6457
 summary: >
   The owner saw the game Squad's end-of-match scoreboard and asked for its shape on the Development
   page: one grid where the same columns mean the same thing at every level, a team banner with the
@@ -16,12 +16,12 @@ summary: >
   Draft 2 holds one rule at four levels: the site, a part, a job and a member each fold to three
   figures and open to nine and their children, and every member fills Cost, so a job is the sum of
   the rows under it.
-next: Cut PR 1 from fresh main once the Gun Dog stack (#6846 to #6849) and the photos PRs (#6839, #6840) are on it; the kernel, its tests and the site labor read can start before that, since none of them touches the page.
-size: M (PR 1 the board by job) + M (PR 2 the people under each job, the gold row) + S (PR 3 the view chips, the lead's tier, the headline) + M (PR 4 the cuts and the window)
-blocker: The Development page is a hot surface today; PR 1's page seam waits for the stack on it to land.
+next: PR 3: the *Right now* headline under the flag block (`scoreboardHeadline()`: a job with no price that is costing, else the job that carried the site). Then PR 4, the cuts by part of the site and by person and the time window.
+size: M (PR 1 the board by job) + M (PR 2 the people under each job, the gold row) + S (PR 3 the headline; the view chips and the lead's tier came with PR 1) + M (PR 4 the cuts and the window)
+blocker: None. PR 3 and PR 4 follow the train.
 opinion: build — the owner took the design and all seven defaults; every column already exists for one job in Job Summary, and the board turns the page's Money look into the site's P&L with the rows under each job summing to it; the one new weight is the day ledger read for Overhead, which opens lazily with the view
 mockup: to-dos/development-scoreboard/mockup.html
-ver: v2.6040 · v2.6215 base
+ver: v2.6040 · v2.6215 base · v2.6407 · v2.6457
 ---
 
 # A scoreboard for a development: its jobs, their money, and who put what in (#250)
@@ -243,14 +243,14 @@ since the kernel holds the same triples: job, contributor, measures.
 Each PR from fresh `main` after the one before it merges, with its release note, fragment and guide
 words. PR 1 waits for the Gun Dog stack and the photos PRs so the page seam is cut once, after them.
 
-1. **PR 1 · the board by job (M).** `src/lib/developments/scoreboard.ts` (+ tests): the rows from the
+1. **PR 1 · the board by job (M). Shipped as v2.6407 (#6886), with the view chips and the lead's tier.** `src/lib/developments/scoreboard.ts` (+ tests): the rows from the
    page's reads (value, percent, bills, `useSiteCosts`) and a new batched read of the site's crew
    hours (`fetchSiteLabor.ts`); `jobEarned()` lifted out of `enrichJobSummaryRows` and called by both;
    Overhead through `loadJobDayLedger` when the view opens, the cells *reading…* until it lands.
    `DevelopmentScoreboard.tsx` with the one header, the nine, the sort, the status chips, the fold
    and the foot, desk and phone; the view chips on the Money card's head; dev and controller. Page
    seam: one import, the view state, the component inside the Money card.
-2. **PR 2 · the rows under each job (M).** Lead and Crew rows from the clock, Sub rows from the
+2. **PR 2 · the rows under each job (M). v2.6457.** Lead and Crew rows from the clock, Sub rows from the
    sheets, Supplier rows from the invoices' house, Card rows from the card parse, the Overhead row,
    the Office line from the bills' and payments' authors; each filling Cost with its share bar; the
    gold row; the counts beside a name.

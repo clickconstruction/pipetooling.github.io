@@ -24,6 +24,8 @@ export type SitePayConfig = Record<string, { hourly_wage: number; is_salary: boo
 export type SiteLaborPerson = {
   personName: string
   personId: string | null
+  /** The login the roster person signs in with (`people.account_user_id`), for the viewer's gold row (v2.6457); null when none or unread. */
+  userId: string | null
   hours: number
   costUsd: number
   /** Days with hours on this job, counted once each. */
@@ -43,6 +45,12 @@ export type SiteLaborJob = {
 
 export type SiteLabor = {
   byJobId: Map<string, SiteLaborJob>
+  /**
+   * Whether the days are known (v2.6457): the clock's rows give days; a reader those rows are closed to (a
+   * master without payroll approval) gets the hours from `get_man_hours_by_job` alone, and the board leaves
+   * the Days column out rather than show a false zero.
+   */
+  daysKnown: boolean
   /** Days with hours on any of the site's jobs, counted once each. */
   siteDays: number
   /** People with hours on the site. */
@@ -61,7 +69,7 @@ export function crewDayHours(cfg: { is_salary: boolean } | undefined, row: SiteC
   return hoursForCrewRow(hoursMap, row)
 }
 
-export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRows: ReadonlyArray<SiteCrewRow>; hoursRows: ReadonlyArray<SiteHoursRow>; config: SitePayConfig }): SiteLabor {
+export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRows: ReadonlyArray<SiteCrewRow>; hoursRows: ReadonlyArray<SiteHoursRow>; config: SitePayConfig; userIdByPersonId?: ReadonlyMap<string, string> }): SiteLabor {
   const jobSet = new Set(args.jobIds)
   const hoursMap = buildHoursMap([...args.hoursRows])
   // A crew row holds a whole day's assignments, so the same row comes back for every job of the site it names: keep it once.
@@ -114,7 +122,7 @@ export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRow
     const people = byJob.get(jobId)
     if (!people) continue
     const rows: SiteLaborPerson[] = [...people.entries()]
-      .map(([personName, a]) => ({ personName, personId: a.personId, hours: a.hours, costUsd: a.costUsd, days: a.days.size, leadDays: a.leadDays }))
+      .map(([personName, a]) => ({ personName, personId: a.personId, userId: (a.personId ? args.userIdByPersonId?.get(a.personId) : undefined) ?? null, hours: a.hours, costUsd: a.costUsd, days: a.days.size, leadDays: a.leadDays }))
       .sort((x, y) => y.hours - x.hours || x.personName.localeCompare(y.personName))
     byJobId.set(jobId, {
       jobId,
@@ -124,5 +132,33 @@ export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRow
       people: rows,
     })
   }
-  return { byJobId, siteDays: siteDays.size, people: sitePeople.size }
+  return { byJobId, siteDays: siteDays.size, people: sitePeople.size, daysKnown: true }
+}
+
+/**
+ * The hours alone, from the man-hours read (v2.6457), for a reader the clock's rows are closed to: each
+ * person's hours on each job, no wage, no days, no lead. The board then leaves Days out.
+ */
+export function siteLaborFromManHours(jobIds: ReadonlyArray<string>, rows: ReadonlyArray<{ job_id: string; person_name: string; man_hours: number | string }>): SiteLabor {
+  const jobSet = new Set(jobIds)
+  const byJob = new Map<string, Map<string, number>>()
+  const names = new Set<string>()
+  for (const r of rows) {
+    const hours = Number(r.man_hours) || 0
+    if (!jobSet.has(r.job_id) || !(hours > 0)) continue
+    const people = byJob.get(r.job_id) ?? new Map<string, number>()
+    people.set(r.person_name, (people.get(r.person_name) ?? 0) + hours)
+    byJob.set(r.job_id, people)
+    names.add(r.person_name)
+  }
+  const byJobId = new Map<string, SiteLaborJob>()
+  for (const jobId of jobIds) {
+    const people = byJob.get(jobId)
+    if (!people) continue
+    const list: SiteLaborPerson[] = [...people.entries()]
+      .map(([personName, hours]) => ({ personName, personId: null, userId: null, hours, costUsd: 0, days: 0, leadDays: 0 }))
+      .sort((a, b) => b.hours - a.hours || a.personName.localeCompare(b.personName))
+    byJobId.set(jobId, { jobId, hours: list.reduce((t, p) => t + p.hours, 0), costUsd: 0, days: 0, people: list })
+  }
+  return { byJobId, siteDays: 0, people: names.size, daysKnown: false }
 }

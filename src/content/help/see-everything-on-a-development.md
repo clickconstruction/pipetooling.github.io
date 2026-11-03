@@ -138,7 +138,11 @@ Earned follows the percent done. A finished job earns its whole price. A working
 
 Jobs with nothing on them yet fold under one line. Press {{button:outline|Show them}} to see them.
 
-A dev or a controller reads every column. A leader or an assistant reads hours, days and earned only. The page remembers the view you were in.
+Open a job to see who put something into it. Each person shows hours, days and labor. A Lead row led the crew on some of the days. Each sub, supply house and card holder shows what it cost. The bank payments, the tally, the other charges and the overhead day share have rows too.
+
+Each row fills Cost, and a thin bar shows its share. The rows add up to the job. The Office row says who sent the bills and booked the payments. Your own rows are gold and say You.
+
+A dev or a controller reads every column and every row. A leader or an assistant reads hours, days and earned only. Under an open job they see the people alone. The page remembers the view you were in.
 
 ## Check the plans and the questions
 
