@@ -1,9 +1,9 @@
 # The whole-schema SQL beds that run in CI (.github/workflows/sql-beds.yml), one per line: the
 # name N runs scripts/pgtest-N.sh. Add a bed by adding its line here with its script and its
 # supabase/tests/<bed>/ folder; the workflow needs no edit. Beds share a runner (scripts/sql-beds-run.sh), so its script
-# needs a container NAME of its own, takes its port from PGTEST_PORT and applies the migrations with pgtest_apply
-# (scripts/pgtest-pull.sh), since one `docker exec` per file costs every bed in its leg. A line starting with # is a
-# comment.
+# needs a container NAME of its own, takes its port from PGTEST_PORT and starts with pgtest_migrate
+# (scripts/pgtest-pull.sh), so it can begin from the leg's migrated copy instead of applying every migration itself. A
+# line starting with # is a comment.
 gc-schedule
 bid-changes
 ar-unbanked-checks
