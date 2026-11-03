@@ -15,6 +15,13 @@
  *   from the branch before its squash-merge passes as byte-identical and no grace window hides a
  *   real one. If the download fails, commit dates decide, with a grace (default 72h,
  *   EDGE_DRIFT_GRACE_HOURS) for that deploy-before-merge.
+ * - A commit's time is when it LANDED on main, not when git says it was made: a merge-queue squash
+ *   carries the time the queue built it, and a deploy made from main between that build and the
+ *   landing read as current while it lacked the PR (v2.6452: #6899 built 10:07Z, landed 10:35Z,
+ *   drive-link deployed 10:18Z). Every squash built within a window (default 24h,
+ *   EDGE_DRIFT_LANDING_WINDOW_HOURS) before a deploy is timed by its pull's mergedAt, asked of
+ *   GitHub through `gh api graphql` (GH_TOKEN in CI). When gh cannot answer, those commits are
+ *   read as landed now, so every function they touch is downloaded and compared instead.
  * - `--full` downloads every function, not just those changed since their deploy, to catch a deploy
  *   made from an old tree after the change merged. The daily run uses it.
  * - Deployed source this checkout's history never had -> warning only (a branch deployed before
@@ -35,13 +42,17 @@ import { promisify } from 'node:util'
 import {
   commitsByFile,
   commitsSince,
+  commitsToLand,
   compareBundles,
   configVerifyJwt,
   historyBlobIds,
+  pullNumberOf,
   walkBundle,
+  withLandingTimes,
 } from './lib/edgeBundle.mjs'
 
 const GRACE_MS = Number(process.env.EDGE_DRIFT_GRACE_HOURS || 72) * 3600 * 1000
+const LANDING_WINDOW_MS = Number(process.env.EDGE_DRIFT_LANDING_WINDOW_HOURS || 24) * 3600 * 1000
 const FULL = process.argv.includes('--full')
 const DOWNLOAD_JOBS = 4
 
@@ -108,7 +119,40 @@ async function deployedBundle(slug) {
 }
 
 const day = (ms) => new Date(ms).toISOString().slice(0, 10)
+const minute = (ms) => `${new Date(ms).toISOString().slice(0, 16)}Z`
 const short = (path) => path.replace(`${FUNCTIONS_DIR}/`, '')
+
+/** This checkout's GitHub repository as [owner, name], from CI's variable or the origin remote. */
+function repoOwnerName() {
+  const fromEnv = /^([^/]+)\/(.+)$/.exec(process.env.GITHUB_REPOSITORY ?? '')
+  if (fromEnv) return [fromEnv[1], fromEnv[2]]
+  const url = git('remote', 'get-url', 'origin').trim()
+  const m = /github\.com[:/]([^/]+)\/(.+?)(?:\.git)?\/?$/.exec(url)
+  if (!m) throw new Error(`origin is not a GitHub remote: ${url}`)
+  return [m[1], m[2]]
+}
+
+/**
+ * When each queued squash landed on main, from GitHub: pull -> ms, fifty pulls a call. A pull whose merge
+ * commit is not the commit named is left out (not a squash of this history). Throws when gh cannot answer.
+ */
+function landingTimes(toLand) {
+  const out = new Map()
+  if (toLand.length === 0) return out
+  const [owner, name] = repoOwnerName()
+  for (let i = 0; i < toLand.length; i += 50) {
+    const batch = toLand.slice(i, i + 50)
+    const fields = batch.map((t) => `p${t.pull}: pullRequest(number: ${t.pull}) { mergedAt mergeCommit { oid } }`).join(' ')
+    const query = `{ repository(owner: "${owner}", name: "${name}") { ${fields} } }`
+    const raw = execFileSync('gh', ['api', 'graphql', '-f', `query=${query}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    const data = JSON.parse(raw).data?.repository ?? {}
+    for (const t of batch) {
+      const pr = data[`p${t.pull}`]
+      if (pr?.mergedAt && pr.mergeCommit?.oid?.startsWith(t.hash)) out.set(t.pull, Date.parse(pr.mergedAt))
+    }
+  }
+  return out
+}
 
 const repo = repoFunctionSlugs()
 const deployedList = deployedFunctionList()
@@ -120,16 +164,31 @@ const repoSet = new Set(repo)
 const missing = repo.filter((s) => !deployedSet.has(s))
 const extras = deployed.filter((s) => !repoSet.has(s))
 
-// Each function's bundle, and the commits since its deploy that touch any file in it.
+// Each function's bundle, and the commits since its deploy that touch any file in it. A commit's time is
+// when it landed on main: a queue squash built before a deploy may still have landed after it.
 const fsio = { readFile: (p) => readFileSync(p, 'utf8'), exists: (p) => existsSync(p) && statSync(p).isFile() }
-const byFile = commitsByFile(git('log', '--format=@%ct%x09%h%x09%s', '--name-only', '--', FUNCTIONS_DIR))
+const deployedMsOf = (fn) => Number(fn.updated_at ?? fn.created_at ?? 0)
+const built = commitsByFile(git('log', '--format=@%ct%x09%h%x09%s', '--name-only', '--', FUNCTIONS_DIR))
+const toLand = commitsToLand(built, repo.filter((s) => deployedBySlug.has(s)).map((s) => deployedMsOf(deployedBySlug.get(s))), LANDING_WINDOW_MS)
+let landed = null
+let landingError = null
+try {
+  landed = landingTimes(toLand)
+} catch (e) {
+  landingError = String(e.stderr || e.message || e).trim().split('\n').pop().slice(0, 200)
+}
+const unlanded = new Set(toLand.map((t) => t.hash))
+const byFile = withLandingTimes(built, (c) => {
+  if (landed) return landed.get(pullNumberOf(c.subject)) ?? null
+  return unlanded.has(c.hash) ? Date.now() : null // not known: read as landed now, so the download decides
+})
 const checks = []
 for (const slug of repo) {
   const fn = deployedBySlug.get(slug)
   if (!fn) continue // missing entirely -> reported by the presence check
   const bundle = walkBundle(process.cwd(), join(FUNCTIONS_DIR, slug, 'index.ts'), fsio)
   for (const u of bundle.unresolved) console.warn(`warning: ${slug} imports a file that is not in the repo: ${u}`)
-  const deployedMs = Number(fn.updated_at ?? fn.created_at ?? 0)
+  const deployedMs = deployedMsOf(fn)
   const since = commitsSince(bundle.files, byFile, deployedMs)
   if (FULL || since.length > 0) checks.push({ slug, fn, deployedMs, files: bundle.files, since })
 }
@@ -185,6 +244,13 @@ if (elsewhere.length > 0) {
   )
 }
 
+if (landingError && toLand.length > 0) {
+  console.warn(
+    `warning: could not ask GitHub when ${toLand.length} queued commit(s) landed on main (${landingError}), ` +
+      'so they are read as landed now and every function they touch is downloaded and compared.',
+  )
+}
+
 if (unverified.length > 0) {
   console.warn(
     'warning: could not read the deployed source, so commit dates decided (grace ' +
@@ -209,9 +275,10 @@ if (stale.length > 0) {
     const files = r
       ? [...r.changed.map(short), ...r.added.map((p) => `+${short(p)}`), ...r.dropped.map((p) => `-${short(p)}`)]
       : [...new Set(c.since.flatMap((s) => c.files.filter((f) => byFile.get(f)?.includes(s))).map(short))]
+    const landedAfter = (s) => (s.builtMs != null && s.builtMs <= c.deployedMs ? ` (built ${minute(s.builtMs)}, landed ${minute(s.ms)}, deployed ${minute(c.deployedMs)})` : '')
     const why =
       c.since.length > 0
-        ? c.since.map((s) => `      ${s.hash} ${day(s.ms)} ${s.subject}`).join('\n')
+        ? c.since.map((s) => `      ${s.hash} ${day(s.ms)} ${s.subject}${landedAfter(s)}`).join('\n')
         : '      (no commit since the deploy: it was made from an older tree)'
     return `  - ${c.slug}  (deployed ${day(c.deployedMs)} v${c.fn.version}${r ? '' : ', judged by commit dates'}): ${files.join(', ')}\n${why}`
   }
@@ -229,5 +296,6 @@ if (missing.length > 0 || stale.length > 0) process.exit(1)
 
 console.log(
   `edge-function drift check OK: all ${repo.length} repo functions are deployed and current ` +
-    `(${checks.length - unverified.length} checked against the deployed source${FULL ? ', --full' : ''}; ${deployed.length} deployed total).`,
+    `(${checks.length - unverified.length} checked against the deployed source${FULL ? ', --full' : ''}; ${deployed.length} deployed total` +
+    `${toLand.length > 0 ? `; ${toLand.length} queued squash${toLand.length === 1 ? '' : 'es'} timed by when ${toLand.length === 1 ? 'it' : 'they'} landed` : ''}).`,
 )
