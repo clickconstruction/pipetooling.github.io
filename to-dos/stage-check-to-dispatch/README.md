@@ -15,7 +15,7 @@ summary: >
 next: PR 2, the context window and the loop back. PR 3, the marks, can follow it: #246's door is on main.
 size: M as a train of three (S · M · S); one migration (two columns on dispatch_requests); no edge function beyond the push that already sends
 blocker: none. Call 1 (the reason set) and call 2 (who may close) take the recommendations below as defaults.
-ver: v2.6360 · 6328 · 6347 · 6052 · 6214 · 3246 · 6087 · 6084
+ver: v2.6360 · 6462 · 6328 · 6347 · 6052 · 6214 · 3246 · 6087 · 6084
 opinion: now — the sheet's second pass made the row the place the crew stands; a dead end there sends them to a text message, and the context is lost the moment they type one
 mockup: to-dos/stage-check-to-dispatch/mockup.html
 ---
@@ -108,8 +108,8 @@ The owner's, each with the recommendation the build takes unless he says otherwi
 2. **Who may close.** The dispatch group and a dev, as every request; the sender may not close
    their own, but the row closes itself when the check is settled. Recommended as is.
 3. **Does a high-priority send text the group like a portal request does?** Recommended no: the
-   push is enough for a crew that is standing there; the *Customer waiting* card already leads
-   the inbox.
+   push is enough for a crew that is standing there; the row already leads the inbox under its red
+   *Can't do it · waiting* line (v2.6462).
 
 ## Where it plugs in
 
@@ -184,5 +184,8 @@ walk added a job item for Trim Set first. Then **Send to Dispatch** with *Need a
 the toast, the request with both columns filled, the push function answering 200, the inbox row's
 *Stage check* tag with both doors working, and last the request closed with a note and the check
 taken off (both kept as ZZ rows). Found in the walk's reading: a *Can't do it* send draws as the
-*Customer waiting* card, which keeps the doors but drops the *Stage check* tag; PR 2 draws the tag
-there too. PR 2 is next; PR 3 can follow it.
+*Customer waiting* card, which keeps the doors but drops the *Stage check* tag; v2.6462 draws it as
+its own row instead: the tag, the title and both doors under a red *Can't do it · waiting 4 min*
+line, with **Lower priority** beside the thread. The app-wide *Customer waiting* banner still counts
+such a check and names it *A customer*; whether a stopped crew raises that banner is the owner's
+call. PR 2 is next; PR 3 can follow it.
