@@ -7,8 +7,7 @@
  * of the count and named under the chips with its reason, v2.6351), with **Ask the estimators about the N**;
  * **+ Part** names a new part; **+ New
  * set** on a row adds a set through the one form (`PlanSetForm`). Bids keep their own pinned sets and are
- * listed as such. A job's empty Plans folder is no longer a set, and no job can be "on an older set". Each set
- * carries its change line (v2.6356, `PlanSetChangesLine`): what moved from the set before it, or *Write what changed*.
+ * listed as such. A job's empty Plans folder is no longer a set, and no job can be "on an older set".
  */
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -21,6 +20,8 @@ import { partTimeline, setRowDayWords, setRowLineWords, timelineEntryFor } from 
 import { PlanSetChangesLine } from '../plans/PlanSetChangesLine'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
+import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { DEVELOPMENT_PHONE_QUERY } from './DevelopmentJumpStrip'
 
 export type SitePlansWrites = {
   addPart: (name: string) => Promise<boolean>
@@ -29,6 +30,7 @@ export type SitePlansWrites = {
   removeSet: (setId: string) => Promise<boolean>
   /** What changed from the set before it, written on a set already on the part (v2.6356). */
   writeChanges: (setId: string, changes: string) => Promise<boolean>
+  /** Many jobs onto one part in one press (the Gun Dog spike, 2026-11-02); true when any took it. */
 }
 
 const th: CSSProperties = { textAlign: 'left', padding: '4px 8px', fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-faint)', borderBottom: '1px solid var(--border)' }
@@ -63,6 +65,7 @@ export function DevelopmentPartsCard({
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  const phone = useMatchMedia(DEVELOPMENT_PHONE_QUERY)
 
   if (!view) return <p style={{ ...muted, margin: 0 }}>Reading the plans…</p>
 
@@ -155,130 +158,185 @@ export function DevelopmentPartsCard({
           {...(canWrite && writes ? { next: { label: '+ Part', onPress: () => setPartName('') }, tail: 'names the first part, such as the Lodge or the Bunker. Then + New set puts its plans on it.' } : { tail: 'The office names the parts of the site and puts each one’s plans on it.' })}
         />
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }} data-testid="site-plans-table">
-          <thead>
-            <tr>
-              <th style={th}>Part</th>
-              <th style={th}>Building from</th>
-              <th style={th}>Dated</th>
-              <th style={th}>Came</th>
-              <th style={th}>Memo</th>
-              <th style={th}>Jobs</th>
-              <th style={th}>Older sets</th>
-            </tr>
-          </thead>
-          <tbody>
-            {view.parts.map((row) => {
-              const older = olderSetsFor(row)
-              const timeline = partTimeline([...(row.current ? [row.current] : []), ...row.older])
-              const setBy = row.part.current_set_by ? (names[row.part.current_set_by] ?? null) : null
-              const replacedLine = [row.replaced ? `replaced ${row.replaced.name}${row.part.current_set_at ? ` on ${shortDayWords(row.part.current_set_at)}` : ''}` : '', setBy ? `set by ${setBy}` : ''].filter(Boolean).join(' · ')
-              return (
-                <RowGroup key={row.part.id}>
-                  <tr data-testid={`site-part-${row.part.id}`}>
-                    <td style={{ ...td, fontWeight: 700 }}>{row.part.name}</td>
-                    <td style={td}>
-                      {row.current ? (
-                        <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
-                          <span style={{ fontWeight: 600 }}>{row.current.name}</span>
-                          <span style={muted}>{setLineWords(row.current)}</span>
-                          {openLink(row.current)}
-                        </span>
-                      ) : (
-                        <Chip label="no set yet" color="#b45309" soft />
-                      )}
-                      {replacedLine ? <div style={muted}>{replacedLine}</div> : null}
-                    </td>
-                    <td style={td}>{row.current?.dated ? shortDay(row.current.dated) : <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
-                    <td style={td}>{row.current ? shortDay(row.current.came_at) : <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
-                    <td style={{ ...td, minWidth: 160 }}>
-                      {row.current?.memo ? row.current.memo : <span style={{ color: 'var(--text-faint)' }}>—</span>}
-                      {row.current ? <PlanSetChangesLine entry={timelineEntryFor(timeline, row.current)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ display: 'flex', marginTop: 2 }} /> : null}
-                    </td>
-                    <td style={td}>{row.jobs.length ? carriers(row.jobs) : <span style={muted}>none yet</span>}</td>
-                    <td style={td}>
-                      <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
-                        {older.length ? (
-                          <button type="button" className={`developmentChipPress${openOlder[row.part.id] ? ' isOn' : ''}`} aria-expanded={!!openOlder[row.part.id]} onClick={() => setOpenOlder((o) => ({ ...o, [row.part.id]: !o[row.part.id] }))} data-testid={`site-older-${row.part.id}`}>
-                            {older.length} older <span aria-hidden>{openOlder[row.part.id] ? '▾' : '▸'}</span>
-                          </button>
-                        ) : (
-                          <span style={muted}>—</span>
-                        )}
-                        {canWrite && writes ? (
-                          <LinkButton onClick={() => openSetForm(row)} nowrap>
-                            + New set
-                          </LinkButton>
-                        ) : null}
+        (() => {
+          // Each part's pieces, drawn once: a table row on the desk, a card on a phone (the Gun Dog spike, 2026-11-02: the seven-column table ran 584 wide in a 375 screen).
+          const partBlocks = view.parts.map((row) => {
+            const older = olderSetsFor(row)
+            const timeline = partTimeline([...(row.current ? [row.current] : []), ...row.older])
+            const setBy = row.part.current_set_by ? (names[row.part.current_set_by] ?? null) : null
+            const replacedLine = [row.replaced ? `replaced ${row.replaced.name}${row.part.current_set_at ? ` on ${shortDayWords(row.part.current_set_at)}` : ''}` : '', setBy ? `set by ${setBy}` : ''].filter(Boolean).join(' · ')
+            const building = (
+              <>
+                {row.current ? (
+                  <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                    <span style={{ fontWeight: 600 }}>{row.current.name}</span>
+                    <span style={muted}>{setLineWords(row.current)}</span>
+                    {openLink(row.current)}
+                  </span>
+                ) : (
+                  <Chip label="no set yet" color="#b45309" soft />
+                )}
+                {replacedLine ? <div style={muted}>{replacedLine}</div> : null}
+              </>
+            )
+            const dated = row.current?.dated ? shortDay(row.current.dated) : <span style={{ color: 'var(--text-faint)' }}>—</span>
+            const came = row.current ? shortDay(row.current.came_at) : <span style={{ color: 'var(--text-faint)' }}>—</span>
+            const memo = row.current?.memo ? row.current.memo : <span style={{ color: 'var(--text-faint)' }}>—</span>
+            const changes = row.current ? <PlanSetChangesLine entry={timelineEntryFor(timeline, row.current)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ display: 'flex', marginTop: 2 }} /> : null
+            const jobsCell = row.jobs.length ? carriers(row.jobs) : <span style={muted}>none yet</span>
+            const olderPress = (
+              <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                {older.length ? (
+                  <button type="button" className={`developmentChipPress${openOlder[row.part.id] ? ' isOn' : ''}`} aria-expanded={!!openOlder[row.part.id]} onClick={() => setOpenOlder((o) => ({ ...o, [row.part.id]: !o[row.part.id] }))} data-testid={`site-older-${row.part.id}`}>
+                    {older.length} older <span aria-hidden>{openOlder[row.part.id] ? '▾' : '▸'}</span>
+                  </button>
+                ) : (
+                  <span style={muted}>—</span>
+                )}
+                {canWrite && writes ? (
+                  <LinkButton onClick={() => openSetForm(row)} nowrap>
+                    + New set
+                  </LinkButton>
+                ) : null}
+              </span>
+            )
+            const olderList =
+              openOlder[row.part.id] && older.length ? (
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none' }} data-testid={`site-older-list-${row.part.id}`}>
+                  {/* Each set reads date first, as people sort them; a dashed rule between neighbours; Open ↗, Build
+                      from this set and × as one group at the right edge that wraps as a unit (the owner, 2026-11-02). */}
+                  {older.map((s, i) => (
+                    <li key={s.id} style={{ display: 'grid', gridTemplateColumns: '7rem minmax(0, 1fr)', columnGap: 10, alignItems: 'baseline', padding: '5px 0', borderTop: i ? '1px dashed var(--border)' : 'none' }} data-testid="site-older-set">
+                      <span style={muted} data-testid="site-older-day">
+                        {setRowDayWords(s)}
                       </span>
-                    </td>
-                  </tr>
-                  {openOlder[row.part.id] && older.length ? (
-                    <tr>
-                      <td style={{ ...td, borderBottom: 'none' }} />
-                      <td style={td} colSpan={6}>
-                        <ul style={{ margin: 0, padding: 0, listStyle: 'none' }} data-testid={`site-older-list-${row.part.id}`}>
-                          {/* Each set reads date first, as people sort them; a dashed rule between neighbours; Open ↗, Build
-                              from this set and × as one group at the right edge that wraps as a unit (the owner, 2026-11-02). */}
-                          {older.map((s, i) => (
-                            <li key={s.id} style={{ display: 'grid', gridTemplateColumns: '7rem minmax(0, 1fr)', columnGap: 10, alignItems: 'baseline', padding: '5px 0', borderTop: i ? '1px dashed var(--border)' : 'none' }} data-testid="site-older-set">
-                              <span style={muted} data-testid="site-older-day">
-                                {setRowDayWords(s)}
-                              </span>
-                              <div style={{ display: 'flex', columnGap: 10, rowGap: 2, flexWrap: 'wrap', alignItems: 'baseline', minWidth: 0 }}>
-                                <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
-                                  <span>{s.name}</span> <span style={muted}>{setRowLineWords(s)}</span>
-                                  {s.memo ? <div style={muted}>{s.memo}</div> : null}
-                                  <PlanSetChangesLine entry={timelineEntryFor(timeline, s)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ display: 'flex' }} />
-                                </div>
-                                <span style={{ display: 'inline-flex', gap: 10, alignItems: 'baseline', marginLeft: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap' }} data-testid="site-older-presses">
-                                  {openLink(s)}
-                                  {canWrite && writes ? (
-                                    <LinkButton onClick={() => void run(() => writes.buildFrom(row.part.id, s.id))} nowrap>
-                                      Build from this set
-                                    </LinkButton>
-                                  ) : null}
-                                  {removePress(s)}
-                                </span>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
+                      <div style={{ display: 'flex', columnGap: 10, rowGap: 2, flexWrap: 'wrap', alignItems: 'baseline', minWidth: 0 }}>
+                        <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+                          <span>{s.name}</span> <span style={muted}>{setRowLineWords(s)}</span>
+                          {s.memo ? <div style={muted}>{s.memo}</div> : null}
+                          <PlanSetChangesLine entry={timelineEntryFor(timeline, s)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ display: 'flex' }} />
+                        </div>
+                        <span style={{ display: 'inline-flex', gap: 10, alignItems: 'baseline', marginLeft: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap' }} data-testid="site-older-presses">
+                          {openLink(s)}
+                          {canWrite && writes ? (
+                            <LinkButton onClick={() => void run(() => writes.buildFrom(row.part.id, s.id))} nowrap>
+                              Build from this set
+                            </LinkButton>
+                          ) : null}
+                          {removePress(s)}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : null
+            const asBuilts = row.asBuilts.length ? (
+              <>
+                <span style={{ ...muted, fontWeight: 600 }}>Our as-builts · {row.asBuilts.length}</span>
+                <ul style={{ margin: '4px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 4 }}>
+                  {row.asBuilts.map((s) => (
+                    <li key={s.id} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                      <span>{s.name}</span>
+                      <span style={muted}>{asBuiltLineWords(s, s.created_by ? (names[s.created_by] ?? null) : null, [...row.older, ...(row.current ? [row.current] : [])])}</span>
+                      {s.memo ? <span style={muted}>{s.memo}</span> : null}
+                      {openLink(s)}
+                      {removePress(s)}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null
+            const setFormNode =
+              form && form.partId === row.part.id ? (
+                <PlanSetForm mode="set" draft={form.draft} onChange={(d) => setForm({ partId: row.part.id, draft: d })} existing={[...row.older, ...(row.current ? [row.current] : []), ...row.asBuilts]} current={row.current} busy={busy} problem={problem} onAdd={(mk) => addSet(row, form.draft, mk)} onCancel={() => setForm(null)} />
+              ) : null
+            return { row, building, dated, came, memo, changes, jobsCell, olderPress, olderList, asBuilts, setForm: setFormNode, hasMemo: !!row.current?.memo }
+          })
+          if (phone) {
+            // The phone's shape: one card per part, the dates on one line, the memo as a paragraph, the older sets and + New set at the foot.
+            return (
+              <div style={{ display: 'grid', gap: 8 }} data-testid="site-plans-cards">
+                {partBlocks.map((b) => (
+                  <div key={b.row.part.id} data-testid={`site-part-${b.row.part.id}`} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', background: 'var(--surface)', display: 'grid', gap: 6, fontSize: '0.84rem', minWidth: 0 }}>
+                    <strong style={{ color: 'var(--text-strong)', fontSize: '0.92rem' }}>{b.row.part.name}</strong>
+                    <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{b.building}</div>
+                    {b.row.current ? (
+                      <div style={muted}>
+                        dated {b.dated} · came {b.came}
+                      </div>
+                    ) : null}
+                    {b.hasMemo ? <div style={{ ...muted, overflowWrap: 'anywhere' }}>{b.memo}</div> : null}
+                    {b.changes}
+                    <div>
+                      <span style={{ ...muted, fontWeight: 600 }}>Jobs</span> {b.jobsCell}
+                    </div>
+                    <div>{b.olderPress}</div>
+                    {b.olderList}
+                    {b.asBuilts ? <div>{b.asBuilts}</div> : null}
+                    {b.setForm}
+                  </div>
+                ))}
+              </div>
+            )
+          }
+          return (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }} data-testid="site-plans-table">
+              <thead>
+                <tr>
+                  <th style={th}>Part</th>
+                  <th style={th}>Building from</th>
+                  <th style={th}>Dated</th>
+                  <th style={th}>Came</th>
+                  <th style={th}>Memo</th>
+                  <th style={th}>Jobs</th>
+                  <th style={th}>Older sets</th>
+                </tr>
+              </thead>
+              <tbody>
+                {partBlocks.map((b) => (
+                  <RowGroup key={b.row.part.id}>
+                    <tr data-testid={`site-part-${b.row.part.id}`}>
+                      <td style={{ ...td, fontWeight: 700 }}>{b.row.part.name}</td>
+                      <td style={td}>{b.building}</td>
+                      <td style={td}>{b.dated}</td>
+                      <td style={td}>{b.came}</td>
+                      <td style={{ ...td, minWidth: 160 }}>
+                        {b.memo}
+                        {b.changes}
                       </td>
+                      <td style={td}>{b.jobsCell}</td>
+                      <td style={td}>{b.olderPress}</td>
                     </tr>
-                  ) : null}
-                  {row.asBuilts.length ? (
-                    <tr>
-                      <td style={{ ...td, borderBottom: 'none' }} />
-                      <td style={td} colSpan={6}>
-                        <span style={{ ...muted, fontWeight: 600 }}>Our as-builts · {row.asBuilts.length}</span>
-                        <ul style={{ margin: '4px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 4 }}>
-                          {row.asBuilts.map((s) => (
-                            <li key={s.id} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
-                              <span>{s.name}</span>
-                              <span style={muted}>{asBuiltLineWords(s, s.created_by ? (names[s.created_by] ?? null) : null, [...row.older, ...(row.current ? [row.current] : [])])}</span>
-                              {s.memo ? <span style={muted}>{s.memo}</span> : null}
-                              {openLink(s)}
-                              {removePress(s)}
-                            </li>
-                          ))}
-                        </ul>
-                      </td>
-                    </tr>
-                  ) : null}
-                  {form && form.partId === row.part.id ? (
-                    <tr>
-                      <td style={{ ...td, borderBottom: 'none' }} />
-                      <td style={td} colSpan={6}>
-                        <PlanSetForm mode="set" draft={form.draft} onChange={(d) => setForm({ partId: row.part.id, draft: d })} existing={[...row.older, ...(row.current ? [row.current] : []), ...row.asBuilts]} current={row.current} busy={busy} problem={problem} onAdd={(mk) => addSet(row, form.draft, mk)} onCancel={() => setForm(null)} />
-                      </td>
-                    </tr>
-                  ) : null}
-                </RowGroup>
-              )
-            })}
-          </tbody>
-        </table>
+                    {b.olderList ? (
+                      <tr>
+                        <td style={{ ...td, borderBottom: 'none' }} />
+                        <td style={td} colSpan={6}>
+                          {b.olderList}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {b.asBuilts ? (
+                      <tr>
+                        <td style={{ ...td, borderBottom: 'none' }} />
+                        <td style={td} colSpan={6}>
+                          {b.asBuilts}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {b.setForm ? (
+                      <tr>
+                        <td style={{ ...td, borderBottom: 'none' }} />
+                        <td style={td} colSpan={6}>
+                          {b.setForm}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </RowGroup>
+                ))}
+              </tbody>
+            </table>
+          )
+        })()
       )}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }} data-testid="site-plans-chips">
         {chips.noSet ? (

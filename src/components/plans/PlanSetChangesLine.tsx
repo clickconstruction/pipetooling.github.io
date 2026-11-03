@@ -8,7 +8,7 @@
 import { useState, type CSSProperties } from 'react'
 import { CHANGES_PRESS, changesLineWords, changesMissing, changesPlaceholder, type TimelineEntry } from '../../lib/plans/planSets'
 
-const muted: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
+const muted: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)', minWidth: 0, overflowWrap: 'anywhere' }
 const press: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }
 const area: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.3rem 0.45rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: '100%', boxSizing: 'border-box', minHeight: '3.4rem', resize: 'vertical' }
 const quiet: CSSProperties = { padding: '0.25rem 0.6rem', fontSize: '0.78rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
