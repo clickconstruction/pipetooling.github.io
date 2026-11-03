@@ -43,7 +43,7 @@ export type JobLineProgress = {
   setOpenId: (id: string | null) => void
   /** `jobs_ledger.pct_complete`, the job's number on record (the office may have typed it). */
   recordedPct: number | null
-  /** What the lines say with the picks; null while the list is off. */
+  /** What the lines say with the picks, the lines nobody has reported seeded from the record; null while the list is off. */
   derivedPct: number | null
   moved: MovedLine[]
 }
@@ -102,7 +102,9 @@ export function useJobLineProgress(jobId: string | null | undefined, open: boole
   const setPick = useCallback((fixtureId: string, pct: number) => {
     setPicks((prev) => (prev[fixtureId] === pct ? prev : { ...prev, [fixtureId]: pct }))
   }, [])
-  const derivedPct = useMemo(() => (lines ? jobPercentFromLines(lines, picks) : null), [lines, picks])
+  // The lines nobody has reported count from the job's record (v2.6391), so a move never drops the job for them.
+  const recordedPct = current?.recordedPct ?? null
+  const derivedPct = useMemo(() => (lines ? jobPercentFromLines(lines, picks, recordedPct) : null), [lines, picks, recordedPct])
   const moved = useMemo(() => (lines ? movedLines(lines, picks) : []), [lines, picks])
 
   return {
@@ -114,7 +116,7 @@ export function useJobLineProgress(jobId: string | null | undefined, open: boole
     setPick,
     openId,
     setOpenId,
-    recordedPct: current?.recordedPct ?? null,
+    recordedPct,
     derivedPct,
     moved,
   }

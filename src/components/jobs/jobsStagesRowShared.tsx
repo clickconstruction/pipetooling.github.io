@@ -73,6 +73,8 @@ export type StagesRowRenderContext = {
   crewByJobId: ReadonlyMap<string, JobCrewPosition>
   /** A checklist per stage (punch list #164, PR 4): each stage's standing for a row's line items, or null while no question exists (`stageChecklistMarks`). */
   checklistMarksFor?: (job: { fixtures?: ReadonlyArray<MarkFixture> | null }) => ReadonlyMap<string, StageChecklistState> | null
+  /** The checklist door (punch list #246): opens the row's checklists sheet beside the row; absent, the icon and the mark's press are not drawn. */
+  openChecklistDoor?: (job: JobWithDetails) => void
   stagesLaborBreakdownByJobId: Map<string, Array<{ personName: string; hours: number }>>
   expandedJobThreadId: string | null
   toggleStagesJobThreadExpanded: (id: string) => void

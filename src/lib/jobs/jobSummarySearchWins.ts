@@ -1,4 +1,6 @@
 import {
+  JOB_SUMMARY_STATUS_OPTIONS,
+  JOB_SUMMARY_WINDOW_OPTIONS,
   jobSummaryRowInBudgetFilter,
   jobSummaryRowInStatus,
   jobSummaryRowInWindow,
@@ -168,4 +170,24 @@ export function jobSummarySearchNote<R extends JobSummaryLedgerRowInput>(args: J
     sentences.push('Press show all under the table to see them.')
   }
   return { on: true, matched, heldByStatus, heldByWindow, heldByBudget, lifted, sentences, sentence: sentences.join(' ') }
+}
+
+const lowerFirst = (s: string): string => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s)
+
+/** The words the Jobs tile reads while the search box holds something. */
+export const JOB_SUMMARY_JOBS_TILE_SEARCH_WORDS = 'matching your search'
+
+/**
+ * The Jobs tile's second line (v2.6388). With nothing typed it names the two chips
+ * in force — "finished (100%) · worked since January 1" — because they are what
+ * chose the rows. While the box holds something the chips have stepped aside, so the
+ * line says what the rows are instead: the tile read *finished (100%)* over the one
+ * in-progress row a search for 804 had drawn, while the note under the controls said
+ * the job was still in progress.
+ */
+export function jobSummaryJobsTileWords(args: { prefs: Pick<JobSummaryViewPrefs, 'status' | 'window'>; search: string }): string {
+  if (jobSummarySearchOn(args.search)) return JOB_SUMMARY_JOBS_TILE_SEARCH_WORDS
+  const status = JOB_SUMMARY_STATUS_OPTIONS.find((s) => s.key === args.prefs.status)?.label ?? ''
+  const window = JOB_SUMMARY_WINDOW_OPTIONS.find((w) => w.key === args.prefs.window)?.title ?? ''
+  return `${lowerFirst(status)} · ${lowerFirst(window)}`
 }
