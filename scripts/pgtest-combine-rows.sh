@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs supabase/tests/combine_rows against a throwaway copy of the WHOLE schema (punch list #252: a combine moves every
-# row that would have gone with the source job's delete, migrations *_combine_moves_every_row and
-# *_combine_moves_money_and_legal_rows).
+# row that would have gone with the source job's delete; the newest migration that restates
+# migrate_job_ledger_costs_and_delete is the one applied a second time).
 #
 #   npm run test:pg:combine-rows
 #
@@ -24,7 +24,8 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55549}"
 NAME="pgtest-combine-rows"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_combine_moves_money_and_legal_rows.sql)"
+# The newest file that restates the combine, so the next restatement needs no edit here.
+WRITES="$(grep -l 'CREATE OR REPLACE FUNCTION public.migrate_job_ledger_costs_and_delete' supabase/migrations/*.sql | sort | tail -1)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

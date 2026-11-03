@@ -2,7 +2,7 @@
 name: "Combine: every row that goes with the source job, sorted"
 number: 252
 group: gated
-status: PR 1 built 2026-11-02 (v2.6423, the move, merge and let-go rows that are not money or legal); PR 2 built 2026-11-03 (v2.6458, the money and legal rows, on the owner's word); left are the six soft job pointers under *Also noted*
+status: PR 1 built 2026-11-02 (v2.6423, the move, merge and let-go rows that are not money or legal); PR 2 built 2026-11-03 (v2.6458, the money and legal rows, on the owner's word); v2.6460 names a set-aside Lien desk draft on the target's activity; left are the six soft job pointers under *Also noted*
 mockup: not required — a database rule and a guide section, no screen changes
 summary: >
   A job combine moved a named list of tables and deleted the source row, and ON DELETE CASCADE took every other row
@@ -13,7 +13,7 @@ summary: >
 next: A third small migration for the six tables under *Also noted* that name a job in a plain uuid column: a rule and a bed row each (the AR cases and the rating move; the notices, offers and schedule events are history that moves too, or is let go with a reason), then retire the card.
 size: S
 blocker: none
-opinion: build — the rules are the ones the tables' own keys ask for; the one open call, a live Lien desk item on both jobs, was built as *the source's comes over voided* and is a one-line flip to a refusal if the desk wants the hold
+opinion: build — the rules are the ones the tables' own keys ask for; a live Lien desk item on both jobs stays *the source's comes over voided* (the owner, 2026-11-03, over a hold that would have had no door), named on the target's activity since v2.6460
 ---
 
 # Combine: every row that goes with the source job, sorted (#252)
@@ -104,7 +104,7 @@ line per table, and the bed holds a row each. Bills and payments keep the guard.
 | `job_promised_pay_dates` | One per job; went. | Merge: the later `marked_at` stands. The move keeps the date, so `job_promised_pay_dates_log_promise` writes no second promise. |
 | `job_payment_chase_touches` | The chase call log pinned to the job went. | Move. |
 | `job_lien_filings`, `job_lien_releases`, `job_demand_letters` | § 53.056 notices, affidavits, waivers and demand letters sent went. | Move; they are the record of what went out. A bid's waiver names no job and is untouched. The activity triggers fire on state changes only, so a move writes no event. |
-| `job_lien_desk_items` | The desk's queue items went. One live per job and kind (`job_lien_desk_items_live_uniq`: not voided, not sent or missed). | Move; a live item of a kind the target holds live comes over voided (`voided_at`), so the desk still reads it and nothing is lost; the target's stands. The refusal was the other way offered; a hold on a draft was judged the worse trade, and it is a one-line flip. |
+| `job_lien_desk_items` | The desk's queue items went. One live per job and kind (`job_lien_desk_items_live_uniq`: not voided, not sent or missed). | Move; a live item of a kind the target holds live comes over voided (`voided_at`) and the target's stands. Every desk reader skips a voided item, so since v2.6460 the target's job activity gets a Combined line naming the draft, its kind and its months, with the item's id in `detail.desk_item_id` for a dev to restore. Nothing the desk tracks is lost: `list_lien_notice_months` works a job's due months out from its bills and work, its noticed months from the filings and its missed months from the missed items, and all of those move. A hold was weighed and dropped (the owner, 2026-11-03): no press clears a live desk item, so a hold would have had no door. |
 | `job_lien_claim_corrections` | One per job; went. | Merge: the target's stands, else the source's moves. |
 | `legal_matter_jobs` | The matter's link to the job went. | Merge: the matter links to the target once. |
 | `job_contracts` | Agreements went, with their signed PDFs and the customer's links. One live (draft or sent) per job. | Move; both jobs with an open agreement: `agreement_collision`, *Both jobs hold an open agreement. Void one of them, then combine.* |
