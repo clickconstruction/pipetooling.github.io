@@ -14,7 +14,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../overheadOfficeJobSettings'
 import { formatDenverTimeOnly } from '../../utils/dateUtils'
 import { stubNetPay } from '../payStubDeductions'
-import { hoursStatementRoundHours, hoursStatementWeekLabel, type HoursStatementInput, type HoursStatementPayGroup, type HoursStatementRow } from './hoursStatement'
+import { hoursStatementRoundHours, hoursStatementStanding, hoursStatementWeekLabel, type HoursStatementInput, type HoursStatementPayGroup, type HoursStatementRow } from './hoursStatement'
 
 /** The job's number as the papers print it: the HCP number, else the click number, else the id's first eight. */
 export function hoursStatementJobNumber(job: { id: string; hcp_number: string | null; click_number: string | null }): string {
@@ -89,22 +89,8 @@ export async function listHoursStatementJobs(userId: string): Promise<HoursState
   return Array.from(byJob.values()).sort((a, b) => (a.lastDay > b.lastDay ? -1 : a.lastDay < b.lastDay ? 1 : a.name.localeCompare(b.name)))
 }
 
-/** The standing the paper prints after the worker's name, from the login's role. */
-export function hoursStatementStanding(role: string, salaried: boolean): string {
-  const words: Record<string, string> = {
-    helpers: 'helper',
-    master_technician: 'master plumber',
-    subcontractor: 'subcontractor',
-    assistant: 'assistant',
-    controller: 'controller',
-    estimator: 'estimator',
-    dev: 'developer',
-    primary: 'primary',
-    superintendent: 'superintendent',
-  }
-  const w = words[role] ?? 'employee'
-  return salaried ? `${w}, salaried` : w
-}
+/** The standing the paper prints after the worker's name: the shared kernel's (`hoursStatementStanding`), re-exported for the window. */
+export { hoursStatementStanding }
 
 type UserRow = { id: string; name: string | null; role: string | null }
 type PersonRow = { id: string; name: string | null }

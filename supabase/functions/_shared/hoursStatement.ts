@@ -252,6 +252,23 @@ function payNote(kind: HoursStatementKind): string {
   return 'A week’s pay covers every job that week. The share for this job is the hours above at the rate on the pay report.'
 }
 
+/** The standing the paper prints after the worker's name, from the login's role (since v2.6414 here, so the dev MCP's read names it the same way). */
+export function hoursStatementStanding(role: string, salaried: boolean): string {
+  const words: Record<string, string> = {
+    helpers: 'helper',
+    master_technician: 'master plumber',
+    subcontractor: 'subcontractor',
+    assistant: 'assistant',
+    controller: 'controller',
+    estimator: 'estimator',
+    dev: 'developer',
+    primary: 'primary',
+    superintendent: 'superintendent',
+  }
+  const w = words[role] ?? 'employee'
+  return salaried ? `${w}, salaried` : w
+}
+
 /** The gap: the part of the period before the app's first row, or null when the app recorded the whole period. */
 export function hoursStatementGap(periodStart: string, periodEnd: string, firstRecordedDay: string | null | undefined): { from: string; to: string } | null {
   if (!firstRecordedDay || !parts(firstRecordedDay) || !parts(periodStart) || !parts(periodEnd)) return null

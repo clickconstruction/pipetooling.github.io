@@ -75,6 +75,11 @@ export const WRITE_VERBS = {
   apply_movement: { rpc: 'dev_on_site_write', step: 'apply' },
   plan_count: { rpc: 'dev_on_site_write', step: 'plan' },
   apply_count: { rpc: 'dev_on_site_write', step: 'apply' },
+  // v2.6414 / 0.18.0 (punch list #212 PR 5): a signed hours statement — the row the window saves from a snapshot the
+  // server reads through the shared kernel (dev_hours_statement_write, action make), its signing link through the
+  // signing functions as the dev (send), and a signed copy onto a matter's Evidence tab (action file_on_matter).
+  plan_hours_statement: { rpc: 'dev_hours_statement_write', step: 'plan' },
+  apply_hours_statement: { rpc: 'dev_hours_statement_write', step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -198,6 +203,50 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
         if (typeof item.note === 'string') p.note = item.note
       }
       target = entryId
+    }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target, planHash }
+  }
+  if (verb === 'plan_hours_statement' || verb === 'apply_hours_statement') {
+    // v2.6414: the server shaped `statement` into the RPC's p first (devMcpHoursStatement.ts: the job and the worker
+    // resolved, the clock read into the snapshot, or the signed PDF read into its file facts). This checks that shape.
+    const st = obj(input.statement)
+    const action = st && typeof st.action === 'string' ? st.action.trim() : ''
+    const shape = `${verb} needs statement — the server shapes it; the agent's shape is in plan_hours_statement's description.`
+    if (!st || (action !== 'make' && action !== 'file_on_matter')) return { ok: false, error: shape }
+    const s = (k: string) => (typeof st[k] === 'string' ? (st[k] as string).trim() : '')
+    const p: Json = { action }
+    let target: string
+    if (action === 'make') {
+      if (!UUID_RE.test(s('job_ledger_id')) || !UUID_RE.test(s('user_id')) || !YMD_RE.test(s('period_start')) || !YMD_RE.test(s('period_end'))) return { ok: false, error: shape }
+      if (!['clock', 'sheet', 'schedule'].includes(s('kind'))) return { ok: false, error: shape }
+      if (!obj(st.snapshot) || !Array.isArray(st.stated_days)) return { ok: false, error: shape }
+      p.job_ledger_id = s('job_ledger_id')
+      p.user_id = s('user_id')
+      p.person_id = UUID_RE.test(s('person_id')) ? s('person_id') : null
+      p.period_start = s('period_start')
+      p.period_end = s('period_end')
+      p.with_pay = st.with_pay !== false
+      p.kind = s('kind')
+      p.stated_days = st.stated_days as Json[]
+      p.gap_from = YMD_RE.test(s('gap_from')) ? s('gap_from') : null
+      p.gap_to = YMD_RE.test(s('gap_to')) ? s('gap_to') : null
+      p.snapshot = st.snapshot as Json
+      const send = obj(st.send)
+      if (send && (send.how === 'email' || send.how === 'link')) p.send = { how: send.how }
+      target = s('job_ledger_id')
+    } else {
+      if (!UUID_RE.test(s('statement_id')) || !UUID_RE.test(s('matter_id'))) return { ok: false, error: shape }
+      if (!s('mime') || typeof st.size_bytes !== 'number' || !/^[0-9a-f]{64}$/.test(s('sha256')) || !s('original_name')) return { ok: false, error: `${verb}: the signed PDF's facts (mime, size_bytes, sha256, original_name) are missing — the server reads them through the gate; plan again.` }
+      p.statement_id = s('statement_id')
+      p.matter_id = s('matter_id')
+      p.title = s('title').slice(0, 200)
+      p.shows = s('shows').slice(0, 2000)
+      p.original_name = s('original_name').slice(0, 200)
+      p.mime = s('mime')
+      p.size_bytes = st.size_bytes
+      p.sha256 = s('sha256')
+      if (YMD_RE.test(s('dated_on'))) p.dated_on = s('dated_on')
+      target = s('matter_id')
     }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target, planHash }
   }
@@ -657,8 +706,9 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const filePlans = verb === 'apply_file_plans'
   const planSet = verb === 'apply_plan_set'
   const paper = verb === 'apply_paper'
-  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : `on this person${when}`
-  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : planSet ? 'The set is on the part; read_rows on plan_sets by part_id shows it, and the job\'s Plans section lists it. A second set of the same name needs a new plan with a different name, date or link.' : paper ? 'The paper is on the part; read_rows on plan_sets by part_id shows it. A new copy is a new paper (replaces_paper_id); an owed one that landed is plan_paper { action: came }.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const hours = verb === 'apply_hours_statement'
+  const what = hours ? `on this job${when}` : cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : `on this person${when}`
+  const again = hours ? 'The statement is under the job’s Hours statements (read_rows on hours_statements by job_ledger_id); plan another span, or file_on_matter once it is signed.' : cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : planSet ? 'The set is on the part; read_rows on plan_sets by part_id shows it, and the job\'s Plans section lists it. A second set of the same name needs a new plan with a different name, date or link.' : paper ? 'The paper is on the part; read_rows on plan_sets by part_id shows it. A new copy is a new paper (replaces_paper_id); an owed one that landed is plan_paper { action: came }.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 

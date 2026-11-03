@@ -4,7 +4,8 @@
  * minds — into `legal_matter_documents` under the matter's folder with a title, a `shows` line and the signing day, and
  * points the statement at the copy (`matter_document_id`), so the desk's Evidence row and the statement's row each know
  * the other. The firm then reads it under Documents from the office and the packet letters it as *Signed hours
- * statements*. Pure words here plus one orchestration against an injected io, so the band's smoke hands a fake.
+ * statements*. The words are `supabase/functions/_shared/hoursStatementEvidenceWords.ts` since v2.6414, so the dev MCP's
+ * `file_on_matter` names a copy the same way; one orchestration here against an injected io, so the band's smoke hands a fake.
  */
 import type { LegalEvidenceStatement } from './legalPacket'
 
@@ -21,24 +22,8 @@ export type HoursStatementEvidenceIo = {
   retireDocument: (matterDocumentId: string) => Promise<void>
 }
 
-/** *Signed hours statement HS-1042-0007 · Marcus Reyes*. */
-export function hoursStatementEvidenceTitle(s: Pick<LegalEvidenceStatement, 'recordId' | 'workerName'>): string {
-  return `Signed hours statement ${s.recordId} · ${s.workerName}`
-}
-
-/** The one line the firm reads beside the title: who, how much, where, when, and that the worker signed for it. */
-export function hoursStatementEvidenceShows(s: Pick<LegalEvidenceStatement, 'workerName' | 'hours' | 'periodLabel' | 'withPay' | 'statedDays'>, job: { label: string; site: string | null }): string {
-  const where = job.site ? ` at ${job.site}` : ''
-  const hours = s.hours > 0 ? `${s.hours % 1 === 0 ? s.hours : s.hours.toFixed(1)} h` : 'the hours'
-  const pay = s.withPay ? ' and what the company paid for it' : ''
-  const stated = s.statedDays > 0 ? ` ${s.statedDays} ${s.statedDays === 1 ? 'day is' : 'days are'} as the worker states them, not as the company recorded them.` : ''
-  return `${s.workerName} signed for ${hours} of work on job ${job.label}${where}, ${s.periodLabel}${pay}, from the clock and the pay reports as they stood.${stated}`
-}
-
-/** `HS-1042-0007 signed.pdf`. */
-export function hoursStatementEvidenceFileName(recordId: string): string {
-  return `${recordId.replace(/[\\/:*?"<>|]+/g, ' ').trim()} signed.pdf`
-}
+export { hoursStatementEvidenceFileName, hoursStatementEvidenceShows, hoursStatementEvidenceTitle } from '../../../supabase/functions/_shared/hoursStatementEvidenceWords'
+import { hoursStatementEvidenceFileName, hoursStatementEvidenceShows, hoursStatementEvidenceTitle } from '../../../supabase/functions/_shared/hoursStatementEvidenceWords'
 
 /** Why Add to evidence cannot be pressed, or null. */
 export function hoursStatementEvidenceProblem(s: Pick<LegalEvidenceStatement, 'signed' | 'contractDocumentId' | 'matterDocumentId'>, matter: { id: string | null; canEdit: boolean }): string | null {
