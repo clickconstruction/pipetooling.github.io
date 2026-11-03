@@ -69,9 +69,9 @@ describe('archiveFromBoardBlockedReason', () => {
     )
   })
 
-  it('the sent reason wins over the outcome, so a sent-and-lost bid says sent', () => {
-    expect(archiveFromBoardBlockedReason(bid({ bid_date_sent: '2026-09-12', outcome: 'lost' }), ME, 'dev')).toMatch(
-      /^Archive is for bids that have not been sent\./,
+  it('the sent reason wins over the outcome, and a sent-and-lost bid says it is already off the working piles', () => {
+    expect(archiveFromBoardBlockedReason(bid({ bid_date_sent: '2026-09-12', outcome: 'lost' }), ME, 'dev')).toBe(
+      'Archive is for bids that have not been sent. This one was sent Sep 12, 2026 and is Lost, so it is already off the working piles. Nothing to archive.',
     )
   })
 
@@ -100,5 +100,39 @@ describe('archiveFromBoardBlockedReason', () => {
   it('no bid or no signed-in user: nothing to say', () => {
     expect(archiveFromBoardBlockedReason(undefined, ME, 'dev')).toBeNull()
     expect(archiveFromBoardBlockedReason(bid(), undefined, 'dev')).toBeNull()
+  })
+})
+
+describe('archiveFromBoardBlockedReason · a bid with GC packets (BP391, 2026-11-02)', () => {
+  // On a bid with versions the Win / Loss segment is locked ("set per GC"), so the old words
+  // pointed Grace at a dead control. The door is each GC's card in the Sent panel.
+  const sent = (overrides: Partial<BidWithBuilder> = {}) =>
+    bid({ bid_date_sent: '2026-09-01', estimator_id: ME, account_manager_id: ME, ...overrides })
+  const real = (outcome: string | null) => ({ outcome, sentOn: '2026-09-01' as string | null })
+  const shared = { outcome: null, sentOn: '2026-09-01' as string | null, sharedLetter: true }
+
+  it('names the GC cards, not the locked Win / Loss segment, while a GC is still waiting', () => {
+    expect(archiveFromBoardBlockedReason(sent(), ME, 'estimator', {}, [real('lost'), real(null), shared])).toBe(
+      "Archive is for bids that have not been sent. This one was sent Sep 1, 2026. To archive it, press Un-send… on each GC's card in the Sent panel first. If the bid is dead, press Lost… on each GC's card instead. The bid moves to Lost once every GC has said no.",
+    )
+  })
+
+  it('every GC said no but the bid still reads open: it belongs in Lost, and the words name the press that moves it', () => {
+    expect(archiveFromBoardBlockedReason(sent(), ME, 'estimator', {}, [real('lost'), real('lost'), shared])).toBe(
+      "Archive is for bids that have not been sent. This one was sent Sep 1, 2026. Every GC on it has said no, so it belongs in Lost, not the archive. Press ↩ waiting and then Lost… on one GC's card and the bid moves to Lost.",
+    )
+  })
+
+  it('a sent bid that is already Lost: off the working piles, nothing to archive — packets or not', () => {
+    expect(archiveFromBoardBlockedReason(sent({ outcome: 'lost' }), ME, 'estimator', {}, [real('lost'), real('lost'), shared])).toBe(
+      'Archive is for bids that have not been sent. This one was sent Sep 1, 2026 and is Lost, so it is already off the working piles. Nothing to archive.',
+    )
+  })
+
+  it('with no real packet (no versions) the sent words still point at Bid Date Sent and Win / Loss', () => {
+    const noVersions = 'Archive is for bids that have not been sent. This one was sent Sep 1, 2026. To archive it, clear its Bid Date Sent first. If the bid is dead, set Win / Loss to Lost instead.'
+    expect(archiveFromBoardBlockedReason(sent(), ME, 'estimator')).toBe(noVersions)
+    expect(archiveFromBoardBlockedReason(sent(), ME, 'estimator', {}, [])).toBe(noVersions)
+    expect(archiveFromBoardBlockedReason(sent(), ME, 'estimator', {}, [shared])).toBe(noVersions)
   })
 })

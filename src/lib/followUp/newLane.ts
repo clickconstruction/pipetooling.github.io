@@ -354,7 +354,7 @@ export interface NewRecordMake {
   trade?: string
 }
 
-/** A company's name as its domain spells it: "maxxbuilders.com" reads Maxxbuilders, "bexar-steel.example" Bexar Steel. '' for none. */
+/** A company's name as its domain spells it: "ridgewaybuilders.example" reads Ridgewaybuilders, "bexar-steel.example" Bexar Steel. '' for none. */
 export function companyFromDomain(domain: string): string {
   const label = domain.trim().toLowerCase().split('.')[0] ?? ''
   return label

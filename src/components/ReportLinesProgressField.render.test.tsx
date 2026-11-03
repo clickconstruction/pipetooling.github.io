@@ -95,4 +95,23 @@ describe('ReportLinesProgressField', () => {
     // No whole-job link when the host gives none (the stepper on a one-line job never gets here).
     expect(screen.queryByText('Set the whole-job % instead')).toBeNull()
   })
+
+  it('a job the office set to 100 stays at 100 when one stage is marked done; the others read not started and count as done under how? (v2.6391, job 804)', () => {
+    const job804: StageProgressRow[] = [
+      { fixtureId: 'r', name: 'Rough In', kind: 'order', sequenceOrder: 1, weightPct: 40, progressPct: null, drawPaid: false },
+      { fixtureId: 't', name: 'Top Out', kind: 'order', sequenceOrder: 2, weightPct: 40, progressPct: null, drawPaid: false },
+      { fixtureId: 's', name: 'Trim Set', kind: 'order', sequenceOrder: 3, weightPct: 20, progressPct: null, drawPaid: false },
+    ]
+    render(<ReportLinesProgressField rows={job804} picks={{ r: 100 }} openId="r" onOpen={vi.fn()} onPct={vi.fn()} recordedPct={100} />)
+    expect(screen.getByRole('button', { name: 'Rough In: — → ✓ Done', expanded: true })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Top Out: not started' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Trim Set: not started' })).toBeTruthy()
+    expect(screen.getByText('Job 100% → 100%')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'how?' }))
+    const how = screen.getByTestId('report-lines-how')
+    expect(how.textContent).toContain('40% of the job · done')
+    expect(how.textContent).toContain('40% of the job · counts as 100%')
+    expect(how.textContent).toContain('20% of the job · counts as 100%')
+    expect(how.textContent).toContain('100%')
+  })
 })

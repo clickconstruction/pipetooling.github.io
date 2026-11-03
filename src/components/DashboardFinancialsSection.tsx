@@ -26,6 +26,7 @@ import { formatCurrency } from '../lib/format'
 import { formatMoneyShortK } from '../lib/formatMoneyShortK'
 import { financeCardBarSegments, financeCardRisk } from '../lib/financeCardAging'
 import DashboardMoneyInStrip from './DashboardMoneyInStrip'
+import DashboardProjectsStrip from './dashboard/DashboardProjectsStrip'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useAuth } from '../hooks/useAuth'
@@ -1806,6 +1807,8 @@ export default function DashboardFinancialsSection({ overheadCard = null }: { ov
           money as a week line, pressed open. Mounted here so both Financials homes (the
           Dashboard and Dispatch Mode home) carry it, and so it reuses the cards' AR items. */}
       {!loading && !error && data ? <DashboardMoneyInStrip ar={data.ar.items} collections={data.arCollections.items} /> : null}
+      {/* Projects (punch list #242, PR 6): the leader's one line under Money in, pressed open to the board's cards. */}
+      {!loading && (role === 'dev' || role === 'master_technician') ? <DashboardProjectsStrip /> : null}
       {openCard && data ? (
         <ItemsModal
           cardKey={openCard}

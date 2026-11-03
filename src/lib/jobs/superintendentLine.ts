@@ -106,7 +106,8 @@ export function superintendentLine(i: SuperintendentLineInput): SuperintendentLi
   const hoursPerDayRead = workedDays.length >= 2
   const crewDay = hoursPerDayRead ? workedDays.reduce((s, d) => s + d.hours, 0) / workedDays.length : i.crewHoursPerDay ?? 24
   const donePct = clamp(i.pctDone ?? 0)
-  const hoursPct = i.hoursBudget > 0 && i.hoursUsed != null ? clamp((i.hoursUsed / i.hoursBudget) * 100) : 0
+  // Not capped at the budget's edge: a job 242 h past its budget is that far behind, never "on pace".
+  const hoursPct = i.hoursBudget > 0 && i.hoursUsed != null ? Math.max(0, (i.hoursUsed / i.hoursBudget) * 100) : 0
   const hoursWords = i.hoursBudget > 0 ? `${Math.round(i.hoursBudget)} h budget ${BUDGET_SOURCE_WORDS[i.budgetSource]} · ${i.hoursUsed != null ? Math.round(i.hoursUsed) : '—'} h in` : 'no hours budget yet'
   const early = i.pctDone == null || i.hoursUsed == null || i.hoursUsed < 8 || i.hoursBudget <= 0
   // Hours saved or lost against the work done, read in crew days.
@@ -147,7 +148,7 @@ export function superintendentLine(i: SuperintendentLineInput): SuperintendentLi
   const proof = [
     i.certifiedPct != null ? `Certified: pay app at ${Math.round(i.certifiedPct)}%` : 'No certified pay app yet',
     i.checklist.asked > 0 ? `checklist ${i.checklist.answered} of ${i.checklist.asked} ready` : 'no checklist on the stages yet',
-    i.pctDone != null ? `your ${Math.round(i.pctDone)}% reads provisional until the next pay app` : 'set the percent to read a pace',
+    i.pctDone != null ? `the crew's ${Math.round(i.pctDone)}% reads provisional until the next pay app` : 'set the percent to read a pace',
   ]
   const proofWords = `${proof.join(' · ')}.`
   const move: SuperintendentLine['move'] =

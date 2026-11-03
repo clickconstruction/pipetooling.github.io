@@ -152,15 +152,35 @@ export function homeOutcome(home, tally, ms, error) {
   }
 }
 
+/**
+ * The state after one home: done when the walk ended clean, so a second run skips it; a home the function refused or
+ * stopped on, or that ran out of rounds, stays to walk again with its counts kept apart. A worker stopped at the CPU limit
+ * answers a refusal after rows are already written, so a refusal never means the home was not read. File names never go in
+ * the state.
+ */
+export function recordOutcome(state, out) {
+  const { heldFiles: _names, ...counts } = out
+  const done = { ...(state.done ?? {}) }
+  const stopped = { ...(state.stopped ?? {}) }
+  if (out.error || out.remaining > 0) {
+    delete done[out.id]
+    stopped[out.id] = counts
+  } else {
+    delete stopped[out.id]
+    done[out.id] = counts
+  }
+  return { ...state, done, stopped }
+}
+
 /** The totals over every home's line. */
 export function totalsOf(outcomes) {
-  const t = { homes: 0, jobs: 0, bids: 0, files: 0, indexed: 0, withText: 0, held: { scan: 0, kind: 0, big: 0, slow: 0, error: 0 }, unopened: 0, unfinished: 0, rounds: 0, ms: 0 }
+  const t = { homes: 0, jobs: 0, bids: 0, files: 0, indexed: 0, withText: 0, held: { scan: 0, kind: 0, big: 0, slow: 0, error: 0 }, stopped: 0, unfinished: 0, rounds: 0, ms: 0 }
   for (const o of outcomes) {
     t.homes += 1
     if (o.kind === 'bid') t.bids += 1
     else t.jobs += 1
     if (o.error) {
-      t.unopened += 1
+      t.stopped += 1
       continue
     }
     t.files += o.files
@@ -195,7 +215,7 @@ export function summaryWords(t) {
   const held = heldWords(t.held)
   const parts = [`${plural(t.files, 'file', 'files')}`, `${n(t.withText)} with text`, `${n(none)} with none${held ? ` (${held})` : ''}`]
   let line = `Walked ${homes}: ${parts.join(', ')}.`
-  if (t.unopened) line += ` ${plural(t.unopened, 'home', 'homes')} the app could not open.`
+  if (t.stopped) line += ` ${plural(t.stopped, 'home', 'homes')} the function refused or stopped on, to walk again.`
   if (t.unfinished) line += ` ${plural(t.unfinished, 'home', 'homes')} still ${t.unfinished === 1 ? 'has' : 'have'} files to go.`
   return line
 }

@@ -21,7 +21,7 @@ const BID_COLUMNS_NO_MONEY = BID_COLUMNS.split(', ')
   .filter((c) => c !== 'bid_value' && c !== 'agreed_value' && c !== 'priced_revenue_usd')
   .join(', ')
 const JOB_COLUMNS =
-  'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, plan_part_id, created_at, updated_at, service_type_id, account_manager_user_id, pct_complete, collections_note'
+  'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, plan_part_id, billing_only, kind, created_at, updated_at, service_type_id, account_manager_user_id, pct_complete, collections_note'
 const REQUEST_COLUMNS = 'id, title, status, priority, created_at, closed_at, closed_note, from_user_id, bid_id, job_ledger_id, development_id, reference_summary'
 
 export type DevelopmentRow = {
@@ -58,6 +58,8 @@ export type DevelopmentPageData = {
   bidNotes: Array<{ id: string; estimate_id: string; created_at: string; author_user_id: string; body: string }>
   teamMembers: Array<{ job_id: string; user_id: string }>
   names: Map<string, string>
+  /** The robot estimators among the people named (`users.is_digital_twin`): their bids are shadows, shown and not counted. */
+  twinUserIds: ReadonlySet<string>
   /** The pay-speed read the Pipeline's billed rows make (`get_billed_customer_pay_speeds`), for the Money look's expected day; null when the read fails. */
   paySpeed: PaySpeedData | null
 }
@@ -157,12 +159,21 @@ export async function readRequestsWhere(lane: 'estimators' | 'dispatch', filter:
 
 /** The people's names by id, for the lines that say who; a name that is blank reads as a dash. */
 export async function readUserNames(userIds: readonly string[]): Promise<Map<string, string>> {
+  return (await readUserNamesAndTwins(userIds)).names
+}
+
+/** The names, and which of the people are digital twins (the robot estimators), in one read. */
+export async function readUserNamesAndTwins(userIds: readonly string[]): Promise<{ names: Map<string, string>; twinUserIds: Set<string> }> {
   const names = new Map<string, string>()
-  if (userIds.length === 0) return names
-  const usersRes = await supabase.from('users').select('id, name').in('id', [...userIds]).limit(500)
+  const twinUserIds = new Set<string>()
+  if (userIds.length === 0) return { names, twinUserIds }
+  const usersRes = await supabase.from('users').select('id, name, is_digital_twin').in('id', [...userIds]).limit(500)
   fail('people', usersRes.error)
-  for (const u of (usersRes.data ?? []) as Array<{ id: string; name: string | null }>) names.set(u.id, (u.name ?? '').trim() || '—')
-  return names
+  for (const u of (usersRes.data ?? []) as Array<{ id: string; name: string | null; is_digital_twin: boolean | null }>) {
+    names.set(u.id, (u.name ?? '').trim() || '—')
+    if (u.is_digital_twin) twinUserIds.add(u.id)
+  }
+  return { names, twinUserIds }
 }
 
 /**
@@ -172,29 +183,48 @@ export async function readUserNames(userIds: readonly string[]): Promise<Map<str
  * table; the overview door reads the pieces through the definer read and no money at all.
  */
 export async function fetchDevelopmentPage(developmentId: string, includeAddress: boolean, door: DevelopmentDoor = 'office'): Promise<DevelopmentPageData> {
-  const devRow = (await withSupabaseRetry(
-    () => supabase.from('developments').select('id, name, gc_customer_id, city, notes, archived_at, created_at').eq('id', developmentId).maybeSingle(),
-    'development: row',
-  )) as unknown as DevelopmentRow | null
+  const office = door === 'office'
+  // The read is four round trips deep, not seven (the Gun Dog spike, 2026-11-02): the row and the members go
+  // out together, the pay-speed RPC leaves at once since it depends on nothing here, the prior numbers ride in
+  // the fan-out, and only the names wait on everything.
+  // The Money look's expected day reads the payer's pace the way the Pipeline does; a failed read leaves the day out, never the page. The overview door has no Money look, so it does not ask.
+  const paySpeedP: Promise<PaySpeedData | null> = office
+    ? (async () => {
+        try {
+          const speeds = await supabase.rpc('get_billed_customer_pay_speeds' as never)
+          return speeds.error ? null : parsePaySpeedsRpc(speeds.data as unknown)
+        } catch {
+          return null
+        }
+      })()
+    : Promise.resolve(null)
+  const [devRow, members] = await Promise.all([
+    withSupabaseRetry(
+      () => supabase.from('developments').select('id, name, gc_customer_id, city, notes, archived_at, created_at').eq('id', developmentId).maybeSingle(),
+      'development: row',
+    ) as unknown as Promise<DevelopmentRow | null>,
+    readMembers(developmentId, door),
+  ])
   if (!devRow) throw new Error('This development is not here. It may have been deleted, or it belongs to another company.')
   const development = devRow
-  const office = door === 'office'
 
-  const { inIt, atAddress, overview } = await readMembers(developmentId, door)
+  const { inIt, atAddress, overview } = members
   const shown: Members = includeAddress ? { bids: [...inIt.bids, ...atAddress.bids], jobs: [...inIt.jobs, ...atAddress.jobs] } : inIt
   const bidIds = shown.bids.map((b) => b.id)
   const jobIds = shown.jobs.map((j) => j.id)
-  // The numbers a job answered to before a combine (v2.6226): a read of its own that fails soft, so the page
-  // stands before the column's migration is pushed and the figure is a courtesy after.
-  if (jobIds.length) {
-    try {
-      const { data } = await supabase.from('jobs_ledger').select('id, prior_numbers').in('id', jobIds).limit(500)
-      const byId = new Map((data ?? []).map((r) => [r.id as string, (r.prior_numbers ?? []) as string[]]))
-      for (const j of shown.jobs) j.prior_numbers = byId.get(j.id) ?? []
-    } catch {
-      /* the column is not there yet, or the read failed: the job lines carry no prior numbers */
-    }
-  }
+  // The numbers a job answered to before a combine (v2.6226): a read that fails soft, so the page stands before
+  // the column's migration is pushed and the figure is a courtesy after. It rides with the fan-out below.
+  const priorNumbersP: Promise<void> = jobIds.length
+    ? (async () => {
+        try {
+          const { data } = await supabase.from('jobs_ledger').select('id, prior_numbers').in('id', jobIds).limit(500)
+          const byId = new Map((data ?? []).map((r) => [r.id as string, (r.prior_numbers ?? []) as string[]]))
+          for (const j of shown.jobs) j.prior_numbers = byId.get(j.id) ?? []
+        } catch {
+          /* the column is not there yet, or the read failed: the job lines carry no prior numbers */
+        }
+      })()
+    : Promise.resolve()
 
   const customerTally = new Map<string, number>()
   for (const b of shown.bids) if (b.customer_id) customerTally.set(b.customer_id, (customerTally.get(b.customer_id) ?? 0) + 1)
@@ -239,6 +269,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
       ? supabase.from('customer_contacts').select('id, customer_id, contact_date, contact_method, details, created_by').in('customer_id', customerIds).order('contact_date', { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
     supabase.from('development_history_entries' as never).select('*').eq('development_id', developmentId).order('happened_at', { ascending: false }).limit(500),
+    priorNumbersP,
   ])
   fail('submission entries', entriesRes.error)
   fail('bid changes', changesRes.error)
@@ -274,21 +305,12 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   for (const c of (contactsRes.data ?? []) as Array<{ created_by: string | null }>) if (c.created_by) userIds.add(c.created_by)
   for (const h of (historyRes.data ?? []) as unknown as HistoryRow[]) if (h.author_user_id) userIds.add(h.author_user_id)
   for (const t of teamMembers) userIds.add(t.user_id)
-  const names = await readUserNames([...userIds])
+  const { names, twinUserIds } = await readUserNamesAndTwins([...userIds])
   const customers = (customersRes.data ?? []) as Array<{ id: string; name: string; contact_info: unknown; payment_terms_note: string | null; lien_notice_policy_note: string | null }>
   const customer = customerId ? customers.find((c) => c.id === customerId) ?? null : null
   const gc = development.gc_customer_id ? customers.find((c) => c.id === development.gc_customer_id) ?? null : null
 
-  // The Money look's expected day reads the payer's pace the way the Pipeline does; a failed read leaves the day out, never the page. The overview door has no Money look, so it does not ask.
-  let paySpeed: PaySpeedData | null = null
-  if (office) {
-    try {
-      const speeds = await supabase.rpc('get_billed_customer_pay_speeds' as never)
-      paySpeed = speeds.error ? null : parsePaySpeedsRpc(speeds.data as unknown)
-    } catch {
-      paySpeed = null
-    }
-  }
+  const paySpeed = await paySpeedP
 
   return {
     development,
@@ -309,6 +331,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     historyEntries: historyRes.error ? [] : ((historyRes.data ?? []) as unknown as HistoryRow[]).map((h) => rowToEntry(h, names)),
     teamMembers,
     names,
+    twinUserIds,
     paySpeed,
   }
 }

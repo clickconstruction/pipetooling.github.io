@@ -13,6 +13,7 @@ import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionCho
 import { HEARTBEAT_STATES, HEARTBEAT_STEPS, normalizeHeartbeatProgress, type HeartbeatHeld, type HeartbeatProgress } from '../_shared/twinHeartbeat.ts'
 import { bidRef, buildShadowQueue, HELD_ON_CHECK_IN, isShadowShellName, shadowHold, shellHold, shellHoldWords, type ShadowCandidateBid, type ShadowHoldReason, type ShadowQueue, type ShadowRunStatus } from '../_shared/shadowEligibility.ts'
 import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, classifyTwinQuestionKind, effectiveTwinQuestionKind, isTwinQuestionKind } from '../_shared/twinQuestionKind.ts'
+import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planLinkKey, type FiledPlansJob, type FiledPlansPart } from '../_shared/devMcpPlanSets.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
 // A minimal, dependency-free Model Context Protocol server over streamable HTTP
@@ -879,6 +880,63 @@ async function loadPricerRequest(
   return { request, bid: bid as { id: string; bid_number: string; project_name: string | null } }
 }
 /** A pricer may stamp the ledger of a bid whose request it holds (working or ready). */
+/**
+ * v2.6317 (punch list #239): a set file_plans filed lands as rows too — a plan_sets row on the plan part of each job
+ * the bid has (filedPlansTargets, current where the part had no set), and the bid's own bid_plan_sets row when none
+ * carries the link yet (the bid pins what it was priced on). Admin writes, as put_plan_memo's: drive-intake already
+ * held the bid to this twin. A part that refuses is named with its reason and the rest go on.
+ */
+async function landFiledPlans(admin: SupabaseClient, twin: { twinUserId: string }, ref: string, plansLink: string, fileName: string | null): Promise<Record<string, unknown>> {
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  let q = admin.from('bids').select('id, bid_number, project_name')
+  q = uuidRe.test(ref) ? q.eq('id', ref) : q.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+  const { data: bid, error } = await q.maybeSingle()
+  if (error || !bid) return { note: `The set is in Drive, but the bid could not be read back for its rows: ${error?.message ?? 'no bid'}` }
+  const setName = (fileName ?? '').replace(/\.pdf$/i, '').trim().slice(0, 120) || 'Plans'
+  const nowIso = new Date().toISOString()
+  const out: Record<string, unknown> = {}
+  // The bid's own row, once per link.
+  const { data: bidSets } = await admin.from('bid_plan_sets').select('id, link').eq('bid_id', bid.id)
+  const have = (bidSets ?? []).find((r) => planLinkKey(r.link) === planLinkKey(plansLink))
+  if (have) out.bid_plan_set = { id: have.id, existing: true }
+  else {
+    const { data: made, error: insErr } = await admin.from('bid_plan_sets').insert({ bid_id: bid.id, name: setName, link: plansLink, memo: 'Filed by the robot (file_plans)', file_name: fileName, created_by: twin.twinUserId }).select('id').single()
+    out.bid_plan_set = insErr ? { error: insErr.message } : { id: made?.id ?? null, existing: false }
+  }
+  // The job's part, when the bid's job names one.
+  const { data: jobs } = await admin.from('jobs_ledger').select('id, job_name, click_number, hcp_number, plan_part_id').eq('bid_id', bid.id).not('plan_part_id', 'is', null)
+  const partJobs = (jobs ?? []) as FiledPlansJob[]
+  let parts: FiledPlansPart[] = []
+  if (partJobs.length) {
+    const { data: partRows } = await admin.from('plan_parts').select('id, name, current_set_id').in('id', [...new Set(partJobs.map((j) => j.plan_part_id as string))])
+    parts = (partRows ?? []) as FiledPlansPart[]
+  }
+  const targets = filedPlansTargets(partJobs, parts)
+  const partSets: Array<{ part: string; set_id: string | null; builds_from: boolean; existing?: boolean; error?: string }> = []
+  for (const t of targets) {
+    const { data: onPart } = await admin.from('plan_sets').select('id, link').eq('part_id', t.part_id)
+    const same = (onPart ?? []).find((r) => planLinkKey(r.link) === planLinkKey(plansLink))
+    if (same) {
+      partSets.push({ part: t.part_name, set_id: same.id, builds_from: false, existing: true })
+      continue
+    }
+    const row = filedPlansSetRow(t, { name: setName, link: plansLink, memo: 'Filed by the robot (file_plans)', file_name: fileName, file_size: null, pages: null, createdBy: twin.twinUserId }, nowIso)
+    const { data: made, error: insErr } = await admin.from('plan_sets').insert(row as never).select('id').single()
+    if (insErr || !made?.id) {
+      partSets.push({ part: t.part_name, set_id: null, builds_from: false, error: insErr?.message ?? 'no row returned' })
+      continue
+    }
+    let current = false
+    if (t.make_current) {
+      const { error: upErr } = await admin.from('plan_parts').update({ current_set_id: made.id, current_set_by: twin.twinUserId, current_set_at: nowIso }).eq('id', t.part_id)
+      current = !upErr
+    }
+    partSets.push({ part: t.part_name, set_id: made.id, builds_from: current })
+  }
+  out.plan_parts = { words: filedPlansWords(targets), sets: partSets }
+  return out
+}
+
 async function pricerMayTouchBid(admin: SupabaseClient, twin: ResolvedTwin, bidId: string): Promise<boolean> {
   if (twin.kind !== 'pricer') return false
   const { data } = await admin.from('bid_price_matrix_requests').select('id').eq('bid_id', bidId).eq('claimed_by', twin.twinUserId).in('status', ['working', 'ready']).limit(1)
@@ -2425,7 +2483,14 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) return textContent(`file_plans failed (${res.status}): ${body.error ?? 'unknown'}`, true)
-      return textContent(JSON.stringify(body, null, 2))
+      // v2.6317: the filed set as rows — on the bid, and on the plan part of the bid's job when it names one.
+      const plansLink = typeof body.plans_link === 'string' ? body.plans_link.trim() : ''
+      if (!plansLink) return textContent(JSON.stringify(body, null, 2))
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const landed = await landFiledPlans(admin, twin, String(args.bid ?? '').trim(), plansLink, typeof args.plans_file_name === 'string' ? args.plans_file_name : null)
+      return textContent(JSON.stringify({ ...body, sets: landed }, null, 2))
     }
     case 'submit_report': {
       const mission = String(args.mission ?? args.label ?? '').trim() || 'unlabeled'
@@ -3937,7 +4002,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.10.1' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.11.0' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

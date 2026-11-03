@@ -64,6 +64,7 @@ function data(members: { bids: MemberBid[]; jobs: MemberJob[] }, invoices: Devel
     teamMembers: [],
     names: new Map([['u-est', 'Dana']]),
     paySpeed: null,
+    twinUserIds: new Set<string>(),
   }
 }
 

@@ -9,6 +9,8 @@ import { EmptyState } from '../EmptyState'
  * what the subs charged, what was bought, and the report's percent if one was
  * filed. On a phone, where nothing hovers, a tap opens the same day as a
  * window. The same events the Costs tab's timeline draws, read for one date.
+ * `hoursOnly` is every viewer whose own read carries no wages: each person's
+ * hours and the report, with no dollar and no subs or purchases to misread.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem' }
 const head: CSSProperties = { fontSize: '0.66rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '0.35rem' }
@@ -32,30 +34,30 @@ function dayOf(ymd: string, events: readonly JobChargeEvent[], valueEvents: read
 }
 
 /** The day's rows, shared by the hover card and the window. */
-export function DayDetailsBody({ ymd, events, valueEvents }: { ymd: string; events: readonly JobChargeEvent[]; valueEvents: readonly JobValueEvent[] }) {
+export function DayDetailsBody({ ymd, events, valueEvents, hoursOnly = false }: { ymd: string; events: readonly JobChargeEvent[]; valueEvents: readonly JobValueEvent[]; hoursOnly?: boolean }) {
   const d = dayOf(ymd, events, valueEvents)
   return (
     <div style={{ display: 'grid', gap: '0.1rem' }} data-testid="day-details">
       {/* The day's size first: the hours and the money, before who and what. */}
-      <div style={{ fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', marginTop: '0.15rem' }}>{Math.round(d.teamHours * 10) / 10} h · {usd(d.total)}</div>
+      <div style={{ fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', marginTop: '0.15rem' }}>{Math.round(d.teamHours * 10) / 10} h{hoursOnly ? '' : ` · ${usd(d.total)}`}</div>
       <div style={head}>Who was on it</div>
       {d.team.length === 0 ? <EmptyState compact main="Nobody clocked on this job that day." /> : null}
       {d.team.map((e, i) => (
         <div key={i} style={row}>
           <span>{e.who ?? e.label}</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{e.hours != null ? `${Math.round(e.hours * 10) / 10} h` : ''} <span style={muted}>· {usd(e.amount)}</span></span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{e.hours != null ? `${Math.round(e.hours * 10) / 10} h` : ''}{hoursOnly ? null : <> <span style={muted}>· {usd(e.amount)}</span></>}</span>
         </div>
       ))}
-      {d.subs.length ? <div style={head}>Subs</div> : null}
-      {d.subs.map((e, i) => (
+      {!hoursOnly && d.subs.length ? <div style={head}>Subs</div> : null}
+      {(hoursOnly ? [] : d.subs).map((e, i) => (
         <div key={i} style={row}>
           <span>{e.who ?? e.label}</span>
           <span style={{ fontVariantNumeric: 'tabular-nums' }}>{usd(e.amount)}</span>
         </div>
       ))}
-      <div style={head}>Bought that day</div>
-      {d.bought.length === 0 ? <EmptyState compact main="Nothing bought or charged that day." /> : null}
-      {d.bought.map((e, i) => (
+      {hoursOnly ? null : <div style={head}>Bought that day</div>}
+      {!hoursOnly && d.bought.length === 0 ? <EmptyState compact main="Nothing bought or charged that day." /> : null}
+      {(hoursOnly ? [] : d.bought).map((e, i) => (
         <div key={i} style={row}>
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.label}</span>
           <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{usd(e.amount)}</span>
@@ -74,19 +76,19 @@ export function DayDetailsBody({ ymd, events, valueEvents }: { ymd: string; even
 }
 
 /** The day off the cursor: a card pinned near the pointer, never under it, that takes no clicks. */
-export function DayHoverCard({ jobLabel, ymd, x, y, events, valueEvents }: { jobLabel: string; ymd: string; x: number; y: number; events: readonly JobChargeEvent[]; valueEvents: readonly JobValueEvent[] }) {
+export function DayHoverCard({ jobLabel, ymd, x, y, events, valueEvents, hoursOnly = false }: { jobLabel: string; ymd: string; x: number; y: number; events: readonly JobChargeEvent[]; valueEvents: readonly JobValueEvent[]; hoursOnly?: boolean }) {
   const width = 300
   const left = Math.max(8, Math.min(x + 14, (typeof window !== 'undefined' ? window.innerWidth : 1200) - width - 8))
   const flip = typeof window !== 'undefined' && y > window.innerHeight * 0.6
   return (
     <div data-testid="day-hover" style={{ position: 'fixed', left, top: flip ? undefined : y + 16, bottom: flip ? window.innerHeight - y + 12 : undefined, width, zIndex: 1200, pointerEvents: 'none', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 8px 28px rgba(0,0,0,0.28)', padding: '0.55rem 0.7rem' }}>
       <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{dayWords(ymd)} <span style={{ ...muted, fontWeight: 400 }}>· {jobLabel}</span></div>
-      <DayDetailsBody ymd={ymd} events={events} valueEvents={valueEvents} />
+      <DayDetailsBody ymd={ymd} events={events} valueEvents={valueEvents} hoursOnly={hoursOnly} />
     </div>
   )
 }
 
-export function DayDetailsModal({ jobLabel, ymd, events, valueEvents, onClose }: { jobLabel: string; ymd: string; events: readonly JobChargeEvent[]; valueEvents: readonly JobValueEvent[]; onClose: () => void }) {
+export function DayDetailsModal({ jobLabel, ymd, events, valueEvents, onClose, hoursOnly = false }: { jobLabel: string; ymd: string; events: readonly JobChargeEvent[]; valueEvents: readonly JobValueEvent[]; onClose: () => void; hoursOnly?: boolean }) {
   const foot = (
     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
       <button type="button" onClick={onClose} style={{ minHeight: 40, padding: '0 1rem', borderRadius: 10, border: '1.5px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontWeight: 700, cursor: 'pointer' }}>Close</button>
@@ -94,7 +96,7 @@ export function DayDetailsModal({ jobLabel, ymd, events, valueEvents, onClose }:
   )
   return (
     <ResponsiveModalShell title={`${dayWords(ymd)} · ${jobLabel}`} onRequestClose={onClose} footer={foot} maxWidthDesktop={480} zIndex={1160}>
-      <DayDetailsBody ymd={ymd} events={events} valueEvents={valueEvents} />
+      <DayDetailsBody ymd={ymd} events={events} valueEvents={valueEvents} hoursOnly={hoursOnly} />
     </ResponsiveModalShell>
   )
 }
