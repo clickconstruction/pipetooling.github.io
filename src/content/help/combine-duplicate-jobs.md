@@ -48,7 +48,7 @@ Payment promises and chase calls go to the target. So does the trace of a paymen
 Lien notices, affidavits, lien releases and demand letters move too. They are the record of what went out. Lien desk items, agreements and pay applications move as well. A legal matter that named the source now names the target once.
 
 :::example Both jobs hold a live Lien desk item of the same kind
-Say both cards hold a drafted lien notice. The target's stands. The source's comes over voided, so the Lien desk still reads it.
+Say both cards hold a drafted lien notice. The target's draft stands. The source's draft is set aside, and the Lien desk no longer lists it. The target's **Job activity** gets a line that names the draft and its months. No month goes missing, because the desk works out what is due from the job's bills. A dev can bring the draft back if you need it.
 :::
 
 The combine holds in two more cases and says which. Both jobs hold an open agreement, a draft or one sent for signing. Void one of them, then press Combine again. Both jobs hold pay applications. Their numbers are on paper the GC holds, so the combine never renumbers them. Delete one job's applications, then press Combine again.

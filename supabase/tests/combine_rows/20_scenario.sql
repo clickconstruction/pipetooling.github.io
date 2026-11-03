@@ -1,5 +1,6 @@
 -- A combine moves every row that would have gone with the source job's delete (punch list #252, migrations
--- *_combine_moves_every_row and *_combine_moves_money_and_legal_rows). Two combines and a split on made-up jobs: the
+-- *_combine_moves_every_row, *_combine_moves_money_and_legal_rows and *_combine_names_set_aside_desk_drafts). Two
+-- combines and a split on made-up jobs: the
 -- first combine onto a target with none of the one-per-job rows (they move), a split that moves a line and its window,
 -- a combine refused three times in turn (a work order, an open agreement, a pay application on both jobs; nothing
 -- moves), and a second combine onto a target that holds every merge case, the money and legal rows among them. Each
@@ -216,16 +217,16 @@ INSERT INTO public.job_payment_promises (id, job_id, promised_date, said_by) VAL
 INSERT INTO public.job_payment_chase_touches (id, customer_id, job_id, outcome, note) VALUES ('00000000-0000-0000-0000-000000252104', '00000000-0000-0000-0000-000000252c01', '00000000-0000-0000-0000-000000252b03', 'note', 'Bed chase note');
 INSERT INTO public.job_promised_pay_dates (job_id, promised_date, marked_at) VALUES ('00000000-0000-0000-0000-000000252b03', '2026-11-28', '2026-10-15 10:00+00');
 -- Lien paper: a notice filing, a release and a demand letter on the source. Desk items: a live notice on both (the
--- source's comes over voided), an affidavit and a sent notice on the source alone. A claim correction on the source;
--- the target holds the one it took in the first combine.
+-- source's comes over voided, and the target's activity names it with its months), an affidavit and a sent notice on
+-- the source alone. A claim correction on the source; the target holds the one it took in the first combine.
 INSERT INTO public.job_lien_filings (id, job_id, kind, amount) VALUES ('00000000-0000-0000-0000-000000252105', '00000000-0000-0000-0000-000000252b03', 'notice_53_056', 900);
 INSERT INTO public.job_lien_releases (id, job_id, form_type, amount) VALUES ('00000000-0000-0000-0000-000000252106', '00000000-0000-0000-0000-000000252b03', 'conditional_progress', 400);
 INSERT INTO public.job_demand_letters (id, job_id, amount) VALUES ('00000000-0000-0000-0000-000000252107', '00000000-0000-0000-0000-000000252b03', 900);
-INSERT INTO public.job_lien_desk_items (id, job_id, kind, status) VALUES
-  ('00000000-0000-0000-0000-000000252108', '00000000-0000-0000-0000-000000252b03', 'notice_53_056', 'drafted'),
-  ('00000000-0000-0000-0000-000000252109', '00000000-0000-0000-0000-000000252b03', 'affidavit', 'drafted'),
-  ('00000000-0000-0000-0000-00000025210a', '00000000-0000-0000-0000-000000252b03', 'notice_53_056', 'sent'),
-  ('00000000-0000-0000-0000-00000025210b', '00000000-0000-0000-0000-000000252b01', 'notice_53_056', 'awaiting_approval');
+INSERT INTO public.job_lien_desk_items (id, job_id, kind, status, months) VALUES
+  ('00000000-0000-0000-0000-000000252108', '00000000-0000-0000-0000-000000252b03', 'notice_53_056', 'drafted', ARRAY['2026-10', '2026-09']),
+  ('00000000-0000-0000-0000-000000252109', '00000000-0000-0000-0000-000000252b03', 'affidavit', 'drafted', '{}'),
+  ('00000000-0000-0000-0000-00000025210a', '00000000-0000-0000-0000-000000252b03', 'notice_53_056', 'sent', '{}'),
+  ('00000000-0000-0000-0000-00000025210b', '00000000-0000-0000-0000-000000252b01', 'notice_53_056', 'awaiting_approval', '{}');
 INSERT INTO public.job_lien_claim_corrections (job_id, amount_off, reason) VALUES ('00000000-0000-0000-0000-000000252b03', 50, 'Bed correction source');
 -- Legal matters: one names both jobs, one names the source alone.
 INSERT INTO public.legal_matters (id, payer_key) VALUES
@@ -398,6 +399,9 @@ SELECT cr.same('a lien release moved', (SELECT job_id::text FROM public.job_lien
 SELECT cr.same('a demand letter moved', (SELECT job_id::text FROM public.job_demand_letters WHERE id = '00000000-0000-0000-0000-000000252107'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('a live desk notice the target already holds comes over voided', (SELECT job_id::text || ' ' || (voided_at IS NOT NULL)::text FROM public.job_lien_desk_items WHERE id = '00000000-0000-0000-0000-000000252108'), '00000000-0000-0000-0000-000000252b01 true');
 SELECT cr.same('the target''s own notice stands live', (SELECT (voided_at IS NULL)::text || ' ' || status FROM public.job_lien_desk_items WHERE id = '00000000-0000-0000-0000-00000025210b'), 'true awaiting_approval');
+SELECT cr.same('the target''s activity names the draft set aside, with its months in order', (SELECT summary FROM public.job_activity_events WHERE job_id = '00000000-0000-0000-0000-000000252b01' AND event_type = 'job_combined' AND detail ->> 'desk_item_id' = '00000000-0000-0000-0000-000000252108'), 'Lien notice draft set aside in the combine — from Job #9103 · Sep 2026, Oct 2026');
+SELECT cr.same('and the line is financial, so the crew does not read it', (SELECT financial::text FROM public.job_activity_events WHERE job_id = '00000000-0000-0000-0000-000000252b01' AND event_type = 'job_combined' AND detail ->> 'desk_item_id' = '00000000-0000-0000-0000-000000252108'), 'true');
+SELECT cr.same('only the draft set aside gets a line', (SELECT count(*)::text FROM public.job_activity_events WHERE job_id = '00000000-0000-0000-0000-000000252b01' AND event_type = 'job_combined' AND detail ? 'desk_item_id'), '1');
 SELECT cr.same('an affidavit item the target lacked moved live', (SELECT job_id::text || ' ' || (voided_at IS NULL)::text FROM public.job_lien_desk_items WHERE id = '00000000-0000-0000-0000-000000252109'), '00000000-0000-0000-0000-000000252b01 true');
 SELECT cr.same('a sent notice moved as history', (SELECT job_id::text || ' ' || status FROM public.job_lien_desk_items WHERE id = '00000000-0000-0000-0000-00000025210a'), '00000000-0000-0000-0000-000000252b01 sent');
 SELECT cr.same('the target keeps its claim correction', (SELECT amount_off::text FROM public.job_lien_claim_corrections WHERE job_id = '00000000-0000-0000-0000-000000252b01'), '15');
