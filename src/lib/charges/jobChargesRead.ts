@@ -6,6 +6,7 @@
  * job's new columns are read and written through casts until the generated types catch up.
  */
 import { supabase } from '../supabase'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import type { CrewSessionInput, JobChargeRule } from './crewDays'
 import { jobChargeRuleFrom } from './crewDays'
 import { isEstimateCharge, type MaterialLineInput } from './materialsCharged'
@@ -136,7 +137,7 @@ export async function loadJobCharges(jobId: string): Promise<JobChargesReadResul
     loadRateCard(),
     loadChargeAdjustments(jobId).then(
       (rows) => ({ rows, error: null as string | null }),
-      (e: unknown) => ({ rows: [] as ChargeAdjustment[], error: e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : 'The adjustments could not be read.' }),
+      (e: unknown) => ({ rows: [] as ChargeAdjustment[], error: formatErrorMessage(e, 'The adjustments could not be read.') }),
     ),
   ])
   if (jerr) throw jerr
