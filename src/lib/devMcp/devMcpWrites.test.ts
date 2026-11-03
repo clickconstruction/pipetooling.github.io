@@ -1,7 +1,8 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ROBOT_PLANS_SHARED_DRIVE, robotPlansDivisionFolderName, robotPlansPathWords } from '../../../supabase/functions/_shared/bidPlansFolders'
 import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, canonicalJson, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { DEFAULT_JOB_LEDGER_PREFIX, formatJobLedgerNumberLabel } from '../ledgerDisplayPrefixes'
 
 const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_batches.sql', 'utf8')
 const HR_MIGRATION = readFileSync('supabase/migrations/20260922102017_dev_hr_entry_write.sql', 'utf8')
@@ -14,6 +15,17 @@ const BID_MIGRATION = readFileSync('supabase/migrations/20261030210000_dev_bid_w
 const STATEMENT_MIGRATION = readFileSync('supabase/migrations/20261031190000_dev_legal_statement_write.sql', 'utf8')
 const CLOCK_MIGRATION = readFileSync('supabase/migrations/20261103050000_dev_clock_session_write.sql', 'utf8')
 const ON_SITE_MIGRATION = readFileSync('supabase/migrations/20261102100000_dev_on_site_write.sql', 'utf8')
+const ON_SITE_FIXES_MIGRATION = readFileSync('supabase/migrations/20261103143000_on_site_small_fixes.sql', 'utf8')
+/** The newest migration that (re)defines a function: a later CREATE OR REPLACE replaces the body, so its rules are held there. */
+function newestDefinition(fn: string): { file: string; body: string } {
+  const files = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort().reverse()
+  for (const file of files) {
+    const sql = readFileSync(`supabase/migrations/${file}`, 'utf8')
+    const at = sql.indexOf(`CREATE OR REPLACE FUNCTION public.${fn}(`)
+    if (at >= 0) return { file, body: sql.slice(at, sql.indexOf('$fn$;', sql.indexOf('AS $fn$', at)) + 5) }
+  }
+  throw new Error(`no definition of public.${fn}`)
+}
 const EVIDENCE_MIGRATION = readFileSync('supabase/migrations/20261103060000_dev_person_evidence_write.sql', 'utf8')
 const HOURS_MIGRATION = readFileSync('supabase/migrations/20261103003000_dev_hours_statement_write.sql', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
@@ -557,7 +569,8 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     expect(ON_SITE_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_on_site_write(jsonb, boolean) TO authenticated;')
     expect(ON_SITE_MIGRATION).not.toMatch(/CREATE TABLE/i)
     // SECURITY INVOKER on purpose: every insert lands under the dev's own RLS, the gate and the fences as on the screen.
-    const wrapper = ON_SITE_MIGRATION.slice(ON_SITE_MIGRATION.indexOf('FUNCTION public.dev_on_site_write('), ON_SITE_MIGRATION.indexOf('REVOKE ALL ON FUNCTION public.dev_on_site_write'))
+    // Held on the newest definition: v2.6456 re-stated the wrapper whole, and a later one must keep every rule.
+    const wrapper = newestDefinition('dev_on_site_write').body
     expect(wrapper).toContain('SECURITY INVOKER')
     expect(wrapper).not.toContain('SECURITY DEFINER')
     for (const action of ['add_container', 'move_container', 'retire_container', 'bring_back_container', 'delivery', 'movement', 'count']) expect(wrapper).toContain(`v_action = '${action}'`)
@@ -572,6 +585,30 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     // The ledger's arithmetic in SQL beside the kernel's: a count resets, the rest sum.
     expect(ON_SITE_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.on_site_line_on_hand(p_container_id uuid, p_part_id uuid, p_part_name text)')
     expect(ON_SITE_MIGRATION).toContain('MCP as')
+  })
+  it('v2.6456: a trigger fills who made a cage or a place, the on-hand read takes one part argument, and the wrapper names the job as the app does', () => {
+    expect(ON_SITE_FIXES_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(ON_SITE_FIXES_MIGRATION).not.toMatch(/CREATE TABLE/i)
+    // The screens send created_by: null; the trigger fills it from the signed-in user and keeps one that was given.
+    expect(ON_SITE_FIXES_MIGRATION).toContain('IF NEW.created_by IS NULL THEN\n    NEW.created_by := auth.uid();')
+    for (const table of ['job_containers', 'job_places']) expect(ON_SITE_FIXES_MIGRATION).toContain(`CREATE OR REPLACE TRIGGER ${table}_fill_created_by BEFORE INSERT ON public.${table}\n  FOR EACH ROW EXECUTE FUNCTION public.on_site_fill_created_by();`)
+    // A GET cannot send a null, so the seat's call_read names one part argument and the other defaults.
+    const onHand = newestDefinition('on_site_line_on_hand')
+    expect(onHand.file).toBe('20261103143000_on_site_small_fixes.sql')
+    expect(onHand.body).toContain('public.on_site_line_on_hand(p_container_id uuid, p_part_id uuid DEFAULT NULL, p_part_name text DEFAULT NULL)')
+    expect(ON_SITE_FIXES_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.on_site_line_on_hand(uuid, uuid, text) TO authenticated;')
+    // The job's label as the app writes it (formatJobLedgerNumberLabel over effectiveJobLedgerNumber): the service
+    // type's job prefix, else J, then the HCP number, else the Click number.
+    const wrapper = newestDefinition('dev_on_site_write')
+    expect(wrapper.file).toBe('20261103143000_on_site_small_fixes.sql')
+    expect(wrapper.body).toContain("COALESCE(NULLIF(btrim(st.ledger_job_prefix), ''), 'J') || COALESCE(NULLIF(btrim(j.hcp_number), ''), NULLIF(btrim(j.click_number), ''), '—')")
+    expect(wrapper.body).toContain('LEFT JOIN public.service_types st ON st.id = j.service_type_id')
+    expect(DEFAULT_JOB_LEDGER_PREFIX).toBe('J')
+    expect(formatJobLedgerNumberLabel('JP', '972', null)).toBe('JP972')
+    expect(formatJobLedgerNumberLabel('', '', '1085')).toBe('J1085')
+    expect(formatJobLedgerNumberLabel('', ' ', '')).toBe('J—')
+    expect(ON_SITE_FIXES_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_on_site_write(jsonb, boolean) TO authenticated;')
+    expect(ON_SITE_FIXES_MIGRATION).toContain('REVOKE ALL ON FUNCTION public.dev_on_site_write(jsonb, boolean) FROM anon;')
   })
   it('a container plan: add with its stencil, kind, where and place; move, retire and bring back name the box; refusals in words', () => {
     const add = writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'the receiving robot', label: ' a2 ', kind: 'Cage', where: 'by the north stair', place: 'Level 2' } })

@@ -5,7 +5,7 @@ file: docs/MATERIALS_ON_SITE_ARCHITECTURE.md
 type: Architecture map
 purpose: The objects, the writes and their rules, the screens, the agent's door and the gaps of Materials on site (punch list #209) — what is in the stencilled cages and boxes a crew leaves on a big job site. Read it before touching `src/lib/materials/onSite*.ts`, the On site tab, Jobs → Materials or the dev MCP's on-site verbs.
 audience: Developers, AI agents
-last_updated: 2026-11-02
+last_updated: 2026-11-03
 sections:
   - The idea
   - The objects
@@ -58,7 +58,7 @@ One pure kernel, [`src/lib/materials/onSite.ts`](../src/lib/materials/onSite.ts)
 - **Words**: `REASON_WORDS`, `pressLabel` (*Mark 4 used*, *Move 10 to A1*, *Save 12*), `leftWords` (*A2 will have 10 left.*), `containerWords`, `nextLabel` (A1 → A2), `compareLabels` (A1, A2, A10), `groupByPlace` (Unsorted first on its own, then the places in name order, no-place last).
 - **Money**: `missingMoney(diff, unitPrice)` prices a shortfall; [`onSiteSummary.ts`](../src/lib/materials/onSiteSummary.ts) gives the desk, the Job window's tab, the ⋯ menu and the Needs you line one job's facts (live containers, lines on site, the week's missing lines and money, the stale boxes, credits due). The price today is one remembered off an invoice on the device (`priceOf` in the store) — call 5, the parts-book price with its checked date, is not built.
 
-The same arithmetic lives once more, in SQL, as `on_site_line_on_hand(container, part_id, part_name)` ([`20261102100000`](./migrations/20261102100000_dev_on_site_write.md)), so the agent's plans can say a line's before and after without a round trip; `read_on_site` reads the kernel, so the two can be held against each other.
+The same arithmetic lives once more, in SQL, as `on_site_line_on_hand(container, part_id, part_name)` ([`20261102100000`](./migrations/20261102100000_dev_on_site_write.md)), so the agent's plans can say a line's before and after without a round trip; `read_on_site` reads the kernel, so the two can be held against each other, and on 2026-11-03 they agreed on all 118 live lines of the yard job. Both part arguments default to null since v2.6456, so the seat's `call_read` names just one.
 
 Beside the kernel: [`flowRow.ts`](../src/lib/materials/flowRow.ts) (the four figures came in → on site → used → missing, and the phone's three), [`labels.ts`](../src/lib/materials/labels.ts) (`boxCode`, `PRTS.CO/B/<CODE>`, the label's ruled rows), [`manifest.ts`](../src/lib/materials/manifest.ts) (an invoice's text read into lines; the three-way comparison of bought, reported and left), [`boxSearch.ts`](../src/lib/materials/boxSearch.ts) (the Go anywhere group *Boxes on site*), [`photo.ts`](../src/lib/materials/photo.ts) and [`photoShrink.ts`](../src/lib/materials/photoShrink.ts).
 
@@ -66,7 +66,7 @@ Beside the kernel: [`flowRow.ts`](../src/lib/materials/flowRow.ts) (the four fig
 
 The screens write the tables **directly** through [`onSiteStore.ts`](../src/lib/materials/onSiteStore.ts): a cache of each job (places, containers, moves, movements, photos; `loadJob`, `loadDesk` for every job with a live container, `MOVEMENTS_LIMIT = 5000`), reads as plain functions so a screen renders without waiting, and each write landing in the cache first and going to the table behind it (`afterWrite`: a refusal is said through the screen's toast and the job read again). There is no RPC for a press; **the rules are the tables' own** — the CHECKs above, the gate below, the training-mode blocks and the digital-twin fence — and the store's few shapes:
 
-- `addPlace` (the same name twice is one place), `addContainer` (the stencil upper-cased and trimmed), `moveContainer` (the row's `place_id` and a `job_container_moves` row), `pinContainer`, `retireContainer` (`retired_at = now()`; the phone refuses while any line has parts on hand), `unretireContainer` (v2.6406: `retired_at` cleared after `unretireVerdict` in `lib/materials/unretire.ts` finds no live box carrying the stencil), `unsortedContainer` (made on first use), `addMovement` (quantity rounded, never negative), `addPhoto` / `updatePhoto`.
+- `addPlace` (the same name twice is one place), `addContainer` (the stencil upper-cased and trimmed; `created_by` filled by the database since v2.6456), `moveContainer` (the row's `place_id` and a `job_container_moves` row), `pinContainer`, `retireContainer` (`retired_at = now()`; the phone refuses while any line has parts on hand), `unretireContainer` (v2.6406: `retired_at` cleared after `unretireVerdict` in `lib/materials/unretire.ts` finds no live box carrying the stencil), `unsortedContainer` (made on first use), `addMovement` (quantity rounded, never negative), `addPhoto` / `updatePhoto`.
 - **The phone caps a press at what the box has** (the number sheet's `max = onHand`); *Add a part* is a `delivered` row into the box; a count writes a row even when the number is right.
 - **The office** lands a delivery as one `delivered` row per line into Unsorted with the invoice or PO as `source` and the unit as `note` (Deliveries: the job's Drive folder first, or pasted text read by `manifest.ts`); *Correct…* is a `counted` row in the office's name with the note *office correction*; *Add a container* is a cage with its place.
 - **The writer** is the signed-in person: `by_user_id` and `by_name` from the session; the store's `onError` names a refused write.
@@ -107,7 +107,7 @@ Read as a dev through the seat (`read_rows` on the five tables, two pages of the
 - **No Unsorted row exists on any job.** Every delivery so far reads `added on site`: the phone's Add a part straight into a cage. The office's Deliveries panel has landed nothing, so `source` is null on every row and no delivery names an invoice.
 - **Typed names outnumber book parts**: 18 of 282 rows carry a `part_id`; the newest 200 rows name 81 distinct parts by text. The kernel's name fold (`partKey`) is doing the matching on this job, not the book.
 - **4 container moves, 92 box photos**, all 92 `filed` with words, 90 containers photographed, no `fail_why`.
-- **`created_by` is null on all 100 containers.** No screen writes it (the column has no default); only `dev_on_site_write` stamps it, so the row says who made a cage only when an agent did. A small fix: the column defaults to `auth.uid()`, which covers every screen at once.
+- **`created_by` was null on all 100 containers.** No screen passes the signed-in user to the store, which sends `created_by: null`. Since v2.6456 a trigger fills it from `auth.uid()` on every new cage, box and place, for every client at once. The rows written before stay null.
 - **`code` is the id's first eight characters upper-cased** on every row, as the generated column promises; `prts.co/b/<code>` resolves each.
 - **Reading the ledger through the seat**: `read_rows` returns at most 200 rows and cuts its text at 80,000 characters, so a full ledger read pages by `at` with a narrow `select`; `read_on_site` pages 200 at a time inside the server up to the store's 5,000 cap, so an agent reads a job whole in one call.
 
@@ -124,5 +124,4 @@ From the card's Left list and this reading, each one small PR:
 - **The real-phone checks**: the camera scan of a printed label and the share sheet on iPhone and Android.
 - **Offline writes**: a press that writes waits for signal until #163's queue exists (call 6 went the other way for now).
 - **A yard that is not a job**: the company's own stock sits on a paid job today (the reading above); the surface wants a home for it — a job of its own kind, or a company place — so a count there is not a count against a customer.
-- **`created_by` on a cage or a place**: no screen writes it; a default of `auth.uid()` on both columns fills it for every screen and the wrapper alike.
 - **V2 and V3 as drawn**: the takeoff-based *should be left* guess, loss by week with money, engraved items on `item_id`.
