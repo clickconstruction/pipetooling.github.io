@@ -139,10 +139,18 @@ export type OfficeAsk =
   | { action: 'search'; words: string }
   /** The index (punch list #240, PR 1): one file by its Drive id, or a job's folder tree, into file_index; `retry` takes held rows again. */
   | { action: 'index'; driveFileId: string }
+  /** The index check (v2.6364): every file in the Shared Drive against every row; `max` caps the listing, `sample` how many files with no row it names. */
+  | { action: 'index_check'; max: number | null; sample: number | null }
+  /** A row's home again (v2.6403): these files' rows walked up to their job or bid, nothing read out of the files. */
+  | { action: 'index_home'; driveFileIds: string[] }
   | { action: 'index_job'; job: JobRef; retry: boolean }
+  /** The dev's one made-up call through the OCR provider (PR 3). */
+  | { action: 'ocr_probe' }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DRIVE_ID = /^[A-Za-z0-9_-]{10,200}$/
+/** How many rows one `index_home` call walks: folders are read once a call, so a batch costs little more than one. */
+export const INDEX_HOME_MAX_FILES = 40
 
 function jobOf(v: unknown): JobRef | null {
   const o = (v ?? {}) as Record<string, unknown>
@@ -195,6 +203,14 @@ export function parseOfficeAsk(body: unknown): OfficeAsk | null {
       const words = str(b.words, 200)
       return words && words.length >= 2 ? { action: 'search', words } : null
     }
+    case 'index_home': {
+      const ids = Array.isArray(b.driveFileIds) ? b.driveFileIds.filter((v): v is string => typeof v === 'string' && DRIVE_ID.test(v)).slice(0, INDEX_HOME_MAX_FILES) : []
+      return ids.length > 0 ? { action: 'index_home', driveFileIds: ids } : null
+    }
+    case 'index_check': {
+      const max = typeof b.max === 'number' && Number.isFinite(b.max) && b.max >= 1 ? Math.floor(b.max) : null
+      return { action: 'index_check', max, sample: typeof b.sample === 'number' ? b.sample : null }
+    }
     case 'index': {
       const driveFileId = typeof b.driveFileId === 'string' && DRIVE_ID.test(b.driveFileId) ? b.driveFileId : null
       return driveFileId ? { action: 'index', driveFileId } : null
@@ -203,6 +219,8 @@ export function parseOfficeAsk(body: unknown): OfficeAsk | null {
       const job = jobOf(b.job)
       return job ? { action: 'index_job', job, retry: b.retry === true } : null
     }
+    case 'ocr_probe':
+      return { action: 'ocr_probe' }
     default:
       return null
   }

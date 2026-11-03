@@ -59,8 +59,11 @@ export function BridgeDial({ reading, moved, onChange, onReset }: { reading: Dia
           </button>
         )}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto 240px', gap: '0.5rem 1.6rem', alignItems: 'start' }}>
-        <div>
+      {/* The slider, the number and the spark share a row that wraps: on a phone the slider takes the whole row and the
+          number and the spark drop under it, each hugging the right. A fixed 240 px column collapsed the slider to nothing
+          at 375 and ran the spark past the screen. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.6rem', alignItems: 'flex-start' }}>
+        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
           <div style={{ position: 'relative', height: 54 }}>
             <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 12, height: 8, borderRadius: 4, background: `linear-gradient(90deg, var(--bg-blue-tint, var(--border)) 0 ${Math.round(reading.zone.exploitShare * 100)}%, var(--bg-amber-tint, var(--border)) ${Math.round(reading.zone.exploitShare * 100)}% 100%)` }} />
             {marks.map((m) => (
@@ -78,13 +81,13 @@ export function BridgeDial({ reading, moved, onChange, onReset }: { reading: Dia
             <span>{reading.zone.right}</span>
           </div>
         </div>
-        <div style={{ textAlign: 'right', minWidth: 110 }}>
+        <div style={{ textAlign: 'right', minWidth: 110, flex: '0 0 auto', marginLeft: 'auto' }}>
           <div style={{ fontSize: '1.4rem', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }} data-testid="bridge-dial-value">
             {reading.valueText}
           </div>
           <div style={{ ...det, whiteSpace: 'nowrap' }}>{reading.unitText}</div>
         </div>
-        <div>
+        <div style={{ flex: '0 1 240px', minWidth: 0, maxWidth: '100%', marginLeft: 'auto' }}>
           <svg viewBox="0 0 260 70" role="img" aria-label="The pile over the next twelve weeks at the chosen pace" style={{ width: '100%', height: 'auto', display: 'block' }}>
             <line x1="6" y1="58" x2="206" y2="58" stroke="var(--border)" strokeWidth="1" />
             <polyline points={pts(reading.spark.oldSeries)} fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeDasharray="3 3" />

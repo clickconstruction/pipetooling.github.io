@@ -51,6 +51,8 @@ export interface RunSummary {
   prepared: number
   /** Texts the office prepared for this morning that went (Send in the morning); counted in `sent` too. */
   morningSent: number
+  /** Texts put away before planning because the visit day they named had passed (v2.6387); on a dry run, the texts that would be. */
+  expired: number
   /** The summary in plain words, one sentence each. */
   words: string[]
 }
@@ -85,6 +87,7 @@ export function summaryWords(s: Omit<RunSummary, 'words'>): string[] {
   else words.push(s.sent === 0 ? 'No text went.' : `${many(s.sent, 'text', 'texts')} went.`)
   if (s.morningSent) words.push(`${many(s.morningSent, 'text', 'texts')} the office prepared for this morning went.`)
   if (s.prepared) words.push(s.dry ? `${many(s.prepared, 'text', 'texts')} would be prepared for Today’s sends.` : `${many(s.prepared, 'text was', 'texts were')} prepared for Today’s sends.`)
+  if (s.expired) words.push(s.dry ? `${many(s.expired, 'text', 'texts')} would be put away because the visit day passed.` : `${many(s.expired, 'text was', 'texts were')} put away because the visit day passed.`)
   for (const why of KEPT_ORDER) {
     const n = s.kept[why] ?? 0
     if (n) words.push(`${many(n, 'reminder was', 'reminders were')} kept back because ${KEPT_WHY[why]}.`)
@@ -109,6 +112,8 @@ export function runSummary(i: {
   prepared?: number
   /** Texts the office prepared for this morning that went. */
   morningSent?: number
+  /** Texts put away because the visit day they named had passed (v2.6387). */
+  expired?: number
   now: Date
   dry: boolean
 }): RunSummary {
@@ -126,6 +131,7 @@ export function runSummary(i: {
     customersHeld: i.customersHeld,
     prepared: i.prepared ?? 0,
     morningSent: i.morningSent ?? 0,
+    expired: i.expired ?? 0,
   }
   return { ...base, words: summaryWords(base) }
 }

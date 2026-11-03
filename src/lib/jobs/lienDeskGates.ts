@@ -45,6 +45,8 @@ export interface LienDeskGatesInput {
   monthLabels: string[]
   /** How many months the notice names right now — none picked blocks the send. */
   pickedMonthsCount: number
+  /** How many months the job has at all, open or closed (v2.6384): with none, gate 4 says *No month open* instead of asking for a tick the grid cannot give — a sent notice whose every window has closed (job 890). Absent reads as some. */
+  monthsOnJob?: number
   pendingSessions: number
   /** The job has no approved clock hours: its one month is the month it was created (v2.3747) — the gate says so instead of "Approved hours". */
   datedFromCreation?: boolean
@@ -101,7 +103,9 @@ export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate
             tone: 'ok',
             title: input.pendingSessions > 0 ? `${input.pendingSessions} ${input.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted` : 'Work months with approved hours',
           }
-      : { n: 4, key: 'months', label: input.datedFromCreation ? 'Dated from creation' : 'Approved hours', value: 'No month picked', tone: 'blocker', title: 'Pick at least one month for the notice to name' }
+      : input.monthsOnJob === 0
+        ? { n: 4, key: 'months', label: 'Approved hours', value: 'No month open', tone: 'blocker', title: 'Every month’s window has closed — nothing is left for a new notice to name' }
+        : { n: 4, key: 'months', label: input.datedFromCreation ? 'Dated from creation' : 'Approved hours', value: 'No month picked', tone: 'blocker', title: 'Pick at least one month for the notice to name' }
 
   // The fifth gate (v2.4969) is drawn only when it blocks: nothing owed on the sent bills while money is still on the
   // job — work not yet billed, or a bill still at Ready to Bill. A notice claims what is billed, so the send waits.
@@ -201,7 +205,7 @@ export function lienFootBlockedSentence(gate: Pick<LienGate, 'key' | 'value' | '
     if (v === 'public property') return `${stop} This is public property, so no lien notice can go. Ask the attorney about the payment bond.`
   }
   if (gate.key === 'gc') return `${stop} Set the GC on the job first.`
-  if (gate.key === 'months') return `${stop} Pick at least one month first.`
+  if (gate.key === 'months') return v === 'no month open' ? `${stop} Every month’s window has closed, so no new notice can name a month.` : `${stop} Pick at least one month first.`
   if (gate.key === 'kind') return `${stop} Set the property kind on the property record first.`
   if (gate.key === 'billed') return `${stop} Bill the work first. A notice claims what is billed.`
   return `${stop} Clear gate ${gate.n}, ${gate.label.toLowerCase()}, first.`
@@ -215,7 +219,7 @@ export function lienGateShortWords(gate: Pick<LienGate, 'key' | 'value' | 'label
   const v = gate.value.toLowerCase()
   if (gate.key === 'owner') return v === 'missing' ? 'owner of record missing' : v === 'no mailing address' ? 'owner has no mailing address' : v === 'public property' ? 'public property' : `${gate.label.toLowerCase()} ${v}`
   if (gate.key === 'gc') return 'no GC on the job'
-  if (gate.key === 'months') return 'no month picked'
+  if (gate.key === 'months') return v === 'no month open' ? 'no month open' : 'no month picked'
   if (gate.key === 'kind') return 'property kind unknown'
   if (gate.key === 'billed') return 'nothing billed'
   return `${gate.label.toLowerCase()} ${v}`

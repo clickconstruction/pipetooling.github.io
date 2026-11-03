@@ -40,7 +40,7 @@ export type JobsStagesCommandBarProps = {
   serverSearchBusy: boolean
   /** Null hides the Session notes chip (office roles only). */
   onOpenSessionNotes: (() => void) | null
-  onJumpToNumber: (digits: string) => boolean | Promise<boolean>
+  onJumpToNumber: (digits: string) => boolean | Promise<boolean | 'failed'>
   filters: StagesToolsFilters
   onClearSort: () => void
   onClearContract: () => void

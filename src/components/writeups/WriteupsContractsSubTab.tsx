@@ -9,6 +9,7 @@ import { WriteupTemplateManagerModal, type WriteupTemplateRow } from './WriteupT
 import { NcnsDetailModal } from './NcnsDetailModal'
 import { AttendanceStripCard } from './AttendanceStripCard'
 import { NCNS_TEMPLATE_SORT_KEY, type LateTimelineEntry, type NcnsListRow, type WriteupsTimelineRow } from './writeupsTimelineTypes'
+import { composeWriteupsTimeline, WRITEUPS_SHOW_ATTENDANCE_DEFAULT } from '../../lib/people/writeupsTimeline'
 import {
   fetchClockInsForUsersInRange,
   fetchScheduleBlocksForRange,
@@ -27,7 +28,6 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz, ymdAddDays } from '../../ut
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
-const LATE_TEMPLATE_SORT_KEY = 'Late arrival (derived)'
 /** The strip's window (v2.6140): ninety days to today, the rows fetched to match. */
 const ATTENDANCE_WINDOW_DAYS = ATTENDANCE_STRIP_DAYS
 
@@ -68,7 +68,8 @@ export function WriteupsContractsSubTab({
   // Derived attendance (v2.2551): raw inputs for the lateness kernel, last 90 days.
   const [attendanceBlocks, setAttendanceBlocks] = useState<LatenessBlockRow[]>([])
   const [attendanceSessions, setAttendanceSessions] = useState<LatenessSessionRow[]>([])
-  const [showAttendance, setShowAttendance] = useState(true)
+  /** Off when the page opens (v2.6433, the owner's call): the derived lates buried the write-ups and no-shows, 175 rows to 13. */
+  const [showAttendance, setShowAttendance] = useState(WRITEUPS_SHOW_ATTENDANCE_DEFAULT)
   const [annotations, setAnnotations] = useState<AttendanceAnnotationRow[]>([])
   /** Inline excuse composer: which late row is open + its draft. */
   const [noteOpenKey, setNoteOpenKey] = useState<string | null>(null)
@@ -281,58 +282,19 @@ export function WriteupsContractsSubTab({
     })
   }, [focusUser, attendanceBlocks, attendanceSessions, ncnsRows, annotationByCell])
 
-  const filteredSorted = useMemo((): WriteupsTimelineRow[] => {
-    let wRows = [...writeups]
-    const q = filterSubject.trim().toLowerCase()
-    if (q) wRows = wRows.filter((r) => r.subject_name.toLowerCase().includes(q))
-    if (filterTemplateId) wRows = wRows.filter((r) => r.template_id === filterTemplateId)
-    if (filterStatus !== 'all') wRows = wRows.filter((r) => r.status === filterStatus)
-    if (filterDisclosure !== 'all') wRows = wRows.filter((r) => r.disclosure === filterDisclosure)
-
-    const includeNcns = !filterTemplateId && filterStatus === 'all' && filterDisclosure === 'all'
-    let nRows = includeNcns ? [...ncnsRows] : []
-    if (q) nRows = nRows.filter((r) => r.subject_name.toLowerCase().includes(q))
-
-    let lRows = includeNcns && showAttendance ? [...lateEntries] : []
-    if (q) lRows = lRows.filter((r) => r.subject_name.toLowerCase().includes(q))
-
-    const timeline: WriteupsTimelineRow[] = [
-      ...wRows.map((w) => ({
-        kind: 'writeup' as const,
-        sortMs: new Date(w.created_at).getTime(),
-        writeup: w,
-      })),
-      ...nRows.map((n) => ({
-        kind: 'ncns' as const,
-        sortMs: new Date(n.created_at).getTime(),
-        ncns: n,
-      })),
-      ...lRows.map((l) => ({
-        kind: 'late' as const,
-        sortMs: new Date(`${l.work_date}T12:00:00`).getTime(),
-        late: l,
-      })),
-    ]
-
-    timeline.sort((a, b) => {
-      if (sortKey === 'subject') {
-        const sa = a.kind === 'writeup' ? a.writeup.subject_name : a.kind === 'ncns' ? a.ncns.subject_name : a.late.subject_name
-        const sb = b.kind === 'writeup' ? b.writeup.subject_name : b.kind === 'ncns' ? b.ncns.subject_name : b.late.subject_name
-        const c = sa.localeCompare(sb, undefined, { sensitivity: 'base' })
-        if (c !== 0) return c
-        return b.sortMs - a.sortMs
-      }
-      if (sortKey === 'template') {
-        const ta = a.kind === 'writeup' ? a.writeup.template_name : a.kind === 'ncns' ? NCNS_TEMPLATE_SORT_KEY : LATE_TEMPLATE_SORT_KEY
-        const tb = b.kind === 'writeup' ? b.writeup.template_name : b.kind === 'ncns' ? NCNS_TEMPLATE_SORT_KEY : LATE_TEMPLATE_SORT_KEY
-        const c = ta.localeCompare(tb, undefined, { sensitivity: 'base' })
-        if (c !== 0) return c
-        return b.sortMs - a.sortMs
-      }
-      return b.sortMs - a.sortMs
-    })
-    return timeline
-  }, [writeups, ncnsRows, lateEntries, showAttendance, filterSubject, filterTemplateId, filterStatus, filterDisclosure, sortKey])
+  /** The list: the kernel's composition (v2.6433) over the three sources, the filters and the sort. */
+  const filteredSorted = useMemo(
+    (): WriteupsTimelineRow[] =>
+      composeWriteupsTimeline({
+        writeups,
+        ncnsRows,
+        lateEntries,
+        showAttendance,
+        filters: { subject: filterSubject, templateId: filterTemplateId, status: filterStatus, disclosure: filterDisclosure },
+        sortKey,
+      }),
+    [writeups, ncnsRows, lateEntries, showAttendance, filterSubject, filterTemplateId, filterStatus, filterDisclosure, sortKey],
+  )
 
   async function deleteWriteup(r: WriteupListRow) {
     if (r.status === 'submitted' && !isDev) {

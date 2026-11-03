@@ -204,16 +204,32 @@ function pileForItem(item: LienDeskItemRow, hasOwner: boolean): LienDeskPile {
 }
 
 /**
+ * The job row's own facts (v2.6376): what an entry falls back on when the RPC has no month row for the job —
+ * its links, and (v2.6380) what its sent bills still owe, `lienBilledOpen` on the client, the RPC's own rule.
+ */
+export type LienDeskQueueJob = { customer_id?: string | null; gc_customer_id?: string | null; billed_open?: number | null }
+
+/**
  * Fold the RPC rows and the stored items into one entry per job. Jobs whose
  * every month is already noticed and that have no live item are left out —
  * nothing to do. `items` may include sent rows: those stay for
  * LIEN_DESK_SENT_DAYS after `sent_at`.
+ *
+ * `jobs` (v2.6376): the jobs' own rows by id. A job the RPC no longer lists — every
+ * window closed more than a week ago, nothing billed, or the balance paid — stays on
+ * the desk through its sent item alone, with no month row to read; its GC and its
+ * customer then come from the job row, so the gates never say *No GC on the job*
+ * about a job that has one (job 890, 2026-11-02), and its money is what the job's
+ * sent bills still owe (`billed_open`, v2.6380), so the row never reads $0 beside
+ * *letter two overdue* and gate 5 never says *Nothing billed* over a sent bill. A
+ * month row still wins.
  */
 export function buildLienDeskQueue(
   rows: ReadonlyArray<LienNoticeMonthRow>,
   items: ReadonlyArray<LienDeskItemRow>,
   policyByCustomer: Readonly<Record<string, LienNoticePolicy>>,
   todayYmd: string,
+  jobs?: Readonly<Record<string, LienDeskQueueJob | undefined>>,
 ): LienDeskQueue {
   const byJob = new Map<string, LienNoticeMonthRow[]>()
   for (const r of rows) {
@@ -263,8 +279,9 @@ export function buildLienDeskQueue(
     const missedUnrecorded = missedMonths.filter((m) => !recordedClosedByJob.get(jobId)?.has(m))
     const item = itemByJob.get(jobId) ?? sentByJob.get(jobId) ?? null
     const hasOwner = first?.has_owner ?? false
-    const customerId = first?.customer_id ?? item?.job_id ?? null
-    const gcCustomerId = first?.gc_customer_id ?? null
+    const job = jobs?.[jobId]
+    const customerId = first?.customer_id ?? job?.customer_id ?? null
+    const gcCustomerId = first?.gc_customer_id ?? job?.gc_customer_id ?? null
     const policy = parseLienNoticePolicy(gcCustomerId ? policyByCustomer[gcCustomerId] : undefined)
     // The deadline the entry is judged by: the item's months when it has
     // them (a draft names its months), else what a new notice would name.
@@ -282,7 +299,7 @@ export function buildLienDeskQueue(
       jobId,
       customerId,
       gcCustomerId,
-      openBalance: Number(first?.open_balance ?? 0) || 0,
+      openBalance: Number(first?.open_balance ?? job?.billed_open ?? 0) || 0,
       hasOwner,
       propertyKind: first?.property_kind ?? '',
       months,

@@ -10,10 +10,14 @@ import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
 import { excerptOf, type Excerpt } from '../_shared/excerpt.ts'
 import { fileTextWithin } from '../_shared/fileText.ts'
 import { folderHomes, folderMetaReader } from '../_shared/fileHomes.ts'
-import { filesUnder as indexFilesUnder, heldRowsFor, indexContext, indexFiles, fileMeta } from '../_shared/fileIndex.ts'
-import { EXCERPT_READ_MS, INDEX_JOB_MAX_FILES, walkUp, type DriveFileMeta, type FileHome } from '../_shared/fileIndexKernel.ts'
+import { heldRowsFor, indexContext, indexFiles, fileMeta, jobFilesToIndex } from '../_shared/fileIndex.ts'
+import { OCR_PROBE_PNG, ocrSetup, ocrText } from '../_shared/ocr.ts'
+import { OCR_PROCESSOR_SECRET, ocrStateWords } from '../_shared/ocrKernel.ts'
+import { type DriveFileMeta, EXCERPT_PDF_LIMITS, EXCERPT_READ_MS, type FileHome, INDEX_JOB_MAX_FILES, newPassSpend, type PassSpend, walkUp } from '../_shared/fileIndexKernel.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
+import { indexCheck } from '../_shared/fileIndexCheck.ts'
+import { rehomeFiles } from '../_shared/fileIndexRehome.ts'
 import {
   DRIVE_FOLDER_MIME,
   STREAM_CAP_BYTES,
@@ -69,6 +73,15 @@ import {
  *                                                        call → { indexed, held, remaining, total }; the Documents tab's Index
  *                                                        this job's files presses it until remaining is 0; `retry` takes the
  *                                                        held rows again
+ *   POST { action: 'index_check', max?, sample? }    → every file in the Shared Drive against every file_index row (v2.6364):
+ *                                                        counts of files with no row, files changed since their row, rows the
+ *                                                        listing did not show, rows with and without text by reason, and the
+ *                                                        first `sample` files with no row → IndexCheck; a read, a dev's door
+ *   POST { action: 'index_home', driveFileIds }      → these files' rows walked up to their job or bid again, up to 40 a call, nothing
+ *                                                        read out of the files (v2.6403) → { homed, none, unanswered, failed }; a dev's door
+ *   POST { action: 'ocr_probe' }                        → a dev's one made-up call through the OCR provider (PR 3, v2.6336): a
+ *                                                        one-pixel PNG to the Document AI processor the secret names →
+ *                                                        { configured, secret, words, answer }; answer null while unset
  *   POST { action: 'link', job, driveFileId, messageId } → our link to a file inside the job's folder → { linkId, url }
  *   POST { action: 'save', attachmentId, half }          → a file that came in, from our bucket into the job's folder →
  *                                                        { driveFileId, url }; the row keeps drive_file_id. A photo goes
@@ -206,14 +219,6 @@ async function putFolderFor(admin: SupabaseClient, google: string, job: JobRef, 
   return folder.plansId ?? landingFolder(google, folder, ['Plans'])
 }
 
-/** A Pipeline job's plans and pictures folders by their links, for an index of the job: usually inside its folder, on an older job elsewhere. */
-async function jobLinkedFolders(admin: SupabaseClient, job: JobRef): Promise<string[]> {
-  if (!('jobs_ledger_id' in job)) return []
-  const { data } = await admin.from('jobs_ledger').select('job_plans_link, job_pictures_link').eq('id', job.jobs_ledger_id).maybeSingle()
-  const row = (data ?? {}) as { job_plans_link?: string | null; job_pictures_link?: string | null }
-  return [driveFolderIdFromUrl(row.job_plans_link ?? null), driveFolderIdFromUrl(row.job_pictures_link ?? null)].filter((id): id is string => Boolean(id))
-}
-
 /** A hit of Find a file, as Drive lists it. */
 type SearchListed = DriveFileMeta
 
@@ -234,11 +239,14 @@ const EXCERPT_MAX_HITS = 10
  * The excerpt for a hit (v2.6306): the shared reader (`_shared/fileText.ts`, the index's too) raced against the timer; a
  * read that fails or finds no words costs the excerpt, never the search.
  */
-async function excerptFor(google: string, f: SearchListed, words: string): Promise<{ excerpt: Excerpt | null; excerptWhy: ExcerptWhy | null }> {
-  const r = await fileTextWithin(google, f, EXCERPT_READ_MS)
+async function excerptFor(google: string, f: SearchListed, words: string, spend: PassSpend): Promise<{ excerpt: Excerpt | null; excerptWhy: ExcerptWhy | null }> {
+  const r = await fileTextWithin(google, f, EXCERPT_READ_MS, { limits: EXCERPT_PDF_LIMITS, spend })
   if ('why' in r) return { excerpt: null, excerptWhy: r.why === 'error' ? 'kind' : r.why }
   const excerpt = excerptOf(r.text, words)
-  return excerpt ? { excerpt, excerptWhy: null } : { excerpt: null, excerptWhy: 'kind' }
+  if (excerpt) return { excerpt, excerptWhy: null }
+  // The words sit past the pages this read had time for: too big to show, never a kind we do not read.
+  const partly = r.pages != null && r.pagesRead != null && r.pagesRead < r.pages
+  return { excerpt: null, excerptWhy: partly ? 'big' : 'kind' }
 }
 
 /**
@@ -262,11 +270,13 @@ async function searchFiles(admin: SupabaseClient, google: string, words: string)
   if (files.length === 0) return { hits: [], more: false, noRoot: false }
   const homes = await folderHomes(admin)
   const metaOf = folderMetaReader(google)
+  // One clock for the ten excerpts: they read at once in one worker, and the platform counts their CPU as one request's.
+  const spend = newPassSpend()
   const hits = await Promise.all(
     files.map(async (f, i) => {
       const [{ home, path }, ex] = await Promise.all([
         walkUp(f.parents?.[0] ?? null, homes, rootId, metaOf).then((w) => ({ home: w.home ? boxHome(w.home) : null, path: w.path })),
-        i < EXCERPT_MAX_HITS ? excerptFor(google, f, words) : Promise.resolve({ excerpt: null, excerptWhy: null }),
+        i < EXCERPT_MAX_HITS ? excerptFor(google, f, words, spend) : Promise.resolve({ excerpt: null, excerptWhy: null }),
       ])
       return { id: f.id, name: f.name, mime: f.mimeType, bytes: f.size == null ? null : Number(f.size), modified: f.modifiedTime ?? null, url: f.webViewLink ?? driveViewUrl(f.id, f.mimeType), home, path, ...ex }
     }),
@@ -288,7 +298,7 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)
   // Training mode reads everything and writes nothing: a list and an open are reads.
-  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search' && ask.action !== 'list_company') return json({ error: 'A training account cannot change Drive.' }, 403)
+  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search' && ask.action !== 'list_company' && ask.action !== 'ocr_probe') return json({ error: 'A training account cannot change Drive.' }, 403)
   if (ask.action === 'put_company' && !COMPANY_PUT_ROLES.includes(String(who.role))) return json({ error: 'The office puts papers in the company folder.' }, 403)
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
   if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 500)
@@ -349,8 +359,35 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
 
   // The index (punch list #240, PR 1): one file by its id, or a job's folder tree, into file_index through the one
   // pass every indexer runs (`_shared/fileIndex.ts`). Writes our table, never Drive; a training account was refused above.
-  if (ask.action === 'index') {
+  // The index check (punch list #240, v2.6364): every file in the Shared Drive against every row, counts and the first
+  // files with no row; a read of Drive and of our table, a dev's door (the training-account line above stays as it is).
+  if (ask.action === 'index_check') {
+    if (String(who.role) !== 'dev') return json({ error: 'The index check is a dev’s door.' }, 403)
     const ctx = await indexContext(admin, google)
+    if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
+    return json(await indexCheck(ctx, { max: ask.max, sample: ask.sample }))
+  }
+
+  // A row's home again (punch list #240, v2.6403): walked up from the folders as they stand, written on the row, nothing
+  // read out of the file and nothing written to Drive; a dev's door.
+  if (ask.action === 'index_home') {
+    if (String(who.role) !== 'dev') return json({ error: 'Setting a row’s home again is a dev’s door.' }, 403)
+    const ctx = await indexContext(admin, google)
+    if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
+    return json(await rehomeFiles(ctx, ask.driveFileIds))
+  }
+
+  // The dev's one made-up call through the OCR provider (PR 3): a one-pixel PNG to the processor, the provider's own
+  // words back, so "it is set up" is proven by an answer and never by a secret's presence alone.
+  if (ask.action === 'ocr_probe') {
+    if (who.role !== 'dev') return json({ error: 'A dev runs the OCR probe.' }, 403)
+    const setup = ocrSetup(saJson)
+    const answer = setup ? await ocrText(setup, OCR_PROBE_PNG, 'image/png', { maxPages: 1 }) : null
+    return json({ configured: Boolean(setup), secret: OCR_PROCESSOR_SECRET, words: ocrStateWords(Boolean(setup)), answer })
+  }
+
+  if (ask.action === 'index') {
+    const ctx = await indexContext(admin, google, saJson)
     if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
     const meta = await fileMeta(google, ask.driveFileId)
     if (!meta) return json({ error: 'Drive did not answer for that file.' }, 404)
@@ -362,11 +399,9 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   if (!folder) return json({ error: 'That job has no Drive folder yet.' }, 409)
 
   if (ask.action === 'index_job') {
-    const ctx = await indexContext(admin, google)
+    const ctx = await indexContext(admin, google, saJson)
     if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
-    const listed: DriveFileMeta[] = []
-    const seen = new Set<string>()
-    for (const id of [folder.folderId, ...(await jobLinkedFolders(admin, ask.job))]) await indexFilesUnder(google, id, listed, { seen })
+    const listed = (await jobFilesToIndex(admin, google, ask.job)) ?? []
     const pass = await indexFiles(ctx, listed, { retry: ask.retry, max: INDEX_JOB_MAX_FILES })
     // Once the job is done, the held list is every held row of the job, not this call's alone: a second press reports the standing.
     const held = pass.remaining === 0 ? await heldRowsFor(admin, listed.map((f) => f.id)) : pass.held

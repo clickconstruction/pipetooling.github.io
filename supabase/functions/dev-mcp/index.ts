@@ -6,11 +6,15 @@ import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_share
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, writeRpcBody } from '../_shared/devMcpWrites.ts'
+import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planLinkKey, planPartApply, planPartDryRun, readPlanPartWorld, type FiledPlansJob, type FiledPlansPart, type PartReads, type PartWrites, type PlanPartPayload } from '../_shared/devMcpPlanSets.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { findExistingFile, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { ROBOT_PLANS_SHARED_DRIVE, divisionBidFolderByKey, driveFolderUrl, robotPlansDivisionFolderName, robotPlansPathWords } from '../_shared/bidPlansFolders.ts'
+import { indexContext, indexFiles, jobFilesToIndex } from '../_shared/fileIndex.ts'
+import { SWEEP_STAMP_KEY } from '../_shared/fileIndexKernel.ts'
+import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitment, backfillJobPassedReply, backfillJobsQuery, backfillPlanReply, cursorLostWords, nextBackfillJob, parseBackfillPlan, statusReading, type BackfillJob } from '../_shared/devMcpIndexBackfill.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
 // DEV's agent reads PipeTooling through. Public address: https://mcp.clicktooling.com/dev
@@ -27,17 +31,24 @@ import { ROBOT_PLANS_SHARED_DRIVE, divisionBidFolderByKey, driveFolderUrl, robot
 // Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0; a matter's planned steps v2.5800 / 0.6.0; a document
 // on a matter's Evidence tab v2.6004 / 0.7.0; an answer on a packet gap v2.6005 / 0.8.0; a History line on a development v2.6044 / 0.9.0;
 // a new bid v2.6183 / 0.10.0; its plan set into Drive and onto the bid v2.6185 / 0.11.0; a sworn statement drafted onto a
-// matter's Timeline v2.6244 / 0.13.0) are a SECOND path, not a
-// loosening of the first: twenty-one verbs (_shared/devMcpWrites.ts) POST one of ten hard-coded, dev-gated definer RPCs as the dev —
+// matter's Timeline v2.6244 / 0.13.0; a set of drawings or a paper on a plan part v2.6317 / 0.14.0) are a SECOND path, not a
+// loosening of the first: twenty-five verbs (_shared/devMcpWrites.ts) — twenty-one POST one of ten hard-coded, dev-gated
+// definer RPCs as the dev; the four plan-part verbs (v2.6317) write the rows the job window's Plans section writes
+// (plan_sets, plan_parts, a lane's request) as the dev under the same RLS, since no RPC exists for them —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
-// plan's hash. Never a generic POST, never a table write, never through view_as. One more
+// plan's hash. Never a generic POST, never a table the agent names, never through view_as. One more
 // (v2.6187 / 0.12.0): mint_twin_setup_code asks twin-setup for a ten-minute setup code as the
-// dev — the key it leads to never crosses this door.
+// dev — the key it leads to never crosses this door. The file index (v2.6332 / 0.14.0, punch list #240 PR 2):
+// read_file_index_status reads dev_file_index_status as the dev; plan_index_backfill lists the jobs a backfill
+// would walk under a plan_hash, and apply_index_backfill runs the one index pass (_shared/fileIndex.ts, the
+// same code under drive-link's index_job and the sweep) over one job's next files per call, as the service
+// role into file_index and never into Drive — the agent loops with a cursor; an apply may run as often as the
+// plan has files left, so the one-apply-per-plan rule does not hold it.
 //
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.13.0'
+const SERVER_VERSION = '0.15.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -264,6 +275,41 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { plans: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['plans', 'plan_hash'] },
   },
   {
+    name: 'plan_plan_set',
+    description: "Dry-run a set of drawings onto a plan part (v2.6317, punch list #239): what the job window's Plans section adds — an issued, addendum, bulletin, revised, permit, construction or assembled set, or our as-built — on the part a job builds from (part_id, or job_id for the job's own part), with its name, its source (the GC, the architect, us), the date on the sheets, a memo and its Drive link, the set it replaces and, for an as-built, the set it marks up. make_current says the part builds from it: true when the part has no set yet, false otherwise unless you pass it; never for an as-built. The dry run reads the part as you and replies with the part as it stands (its sets, what it builds from), the set as its line will read and what the part builds from after, under a plan_hash; nothing is written. A paper (a spec, a submittal, a schedule, a task list) is plan_paper.",
+    inputSchema: { type: 'object', properties: { set: { type: 'object', description: '{ part_id? | job_id?, name, kind, source, dated?, memo?, link?, replaces_set_id?, marks_up_set_id?, make_current? }' } }, required: ['set'] },
+  },
+  {
+    name: 'apply_plan_set',
+    description: "Add the set you planned: the same set plus the plan_hash from plan_plan_set. Reads the part again first and writes only when it still matches — a set added to the part or a switch of what it builds from since refuses it: plan again. Written as you, under the same RLS as the Plans section: the plan_sets row and, when make_current, the part's current set (the job's old plans link follows by the database's trigger). The job's Plans section and the site's Plans look show it at once.",
+    inputSchema: { type: 'object', properties: { set: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['set', 'plan_hash'] },
+  },
+  {
+    name: 'plan_paper',
+    description: "Dry-run a paper onto a plan part (v2.6317, punch list #239's papers): a spec, submittal, schedule, scope, change order, meeting notes, task list, report, sheet or other, kept beside the set it goes with (goes_with_set_id) on the part a job builds from (part_id, or job_id for the job's part, which the paper is then kept on), from the owner/GC, the architect, the engineer, a supplier or us, with the day it came (today when left out), a memo, its link, the paper it replaces, and the question it asks of us — ask { lane: estimators | dispatch, words } lands in that inbox as the Development page's Ask does. owed: true keeps a paper we are waiting on: no link, and the ask says who owes it. action came marks an owed paper landed: paper_id and its link. The dry run reads the part as you and replies with the paper as its line will read, the ask as it will land and the History line the database will write, under a plan_hash; nothing is written.",
+    inputSchema: { type: 'object', properties: { paper: { type: 'object', description: '{ action?: keep | came; keep: part_id? | job_id?, kind, name, from, came_on?, memo?, link?, goes_with_set_id?, replaces_paper_id?, owed?, ask? { lane, words }; came: paper_id, link }' } }, required: ['paper'] },
+  },
+  {
+    name: 'apply_paper',
+    description: "Keep the paper you planned: the same paper plus the plan_hash from plan_paper. Reads the part again first and writes only when it still matches. Written as you, as the Plans section writes it: the question first into its lane's inbox (estimator_requests or dispatch_requests, then the lane's push), then the plan_sets row naming it; the site's History line is the database's own trigger. For action came: owed clears, the link lands and came_at is now.",
+    inputSchema: { type: 'object', properties: { paper: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['paper', 'plan_hash'] },
+  },
+  {
+    name: 'read_file_index_status',
+    description: 'Where our own file index stands (v2.6332, punch list #240): rows, rows with text, counts by source (export, pdf_layer, plain, ocr), by why (scan, kind, big, slow, error, reading) and by folder, the jobs and bids with rows, the PDFs read only in part, the live and paid jobs with a Drive folder and how many have no row yet, the newest indexed stamp, the oldest recheck and the sweep’s last look. One call of dev_file_index_status as you. Read it before a backfill and after.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'plan_index_backfill',
+    description: "Dry-run the one-time backfill of the file index (v2.6332, punch list #240): the jobs a scope would walk — live (every job with a Drive folder not Paid in Full, oldest first by created_at), paid (the back catalogue, newest first) or job (one job by jobs_ledger.id) — at most 500 a plan (after_job inside the plan starts the list after that job: the next 500, or going on past a job that left the scope), with how many already have rows and the sweep’s last look, under a plan_hash that commits to the job list. Nothing is read from Drive and nothing is written. retry: true takes held rows (slow, error, big, a stopped read) again.",
+    inputSchema: { type: 'object', properties: { plan: { type: 'object', description: '{ scope: live | paid | job, job_id?, limit? (jobs, at most 500), retry?, after_job? (a job id: the list starts after it) }' } }, required: ['plan'] },
+  },
+  {
+    name: 'apply_index_backfill',
+    description: "Run the backfill you planned, one job’s next files per call: the same plan plus the plan_hash from plan_index_backfill, after_job (the next_after of the last answer; leave it out to start at the first job) and batch (files this call takes, 25, at most 40). Lists the job’s Drive folders, indexes the files not in the table or changed since (one at a time inside the request’s budget: walked up to the job, the text read, the row written to file_index as the service role; never a write to Drive) and answers indexed, held with the reason, remaining, job_done and next_after. Call again with the same after_job while remaining is above 0, then with next_after; sleep a few seconds between calls. Every answer is already written, so a stopped loop loses nothing. The plan’s hash is checked on every call: a job added to the scope since refuses it, so plan again. A job whose folder Drive refuses is passed over with its reason (job_passed) and next_after moves on, so one bad folder never strands the loop. An after_job the plan does not hold is refused: plan again with that job as the plan’s own after_job.",
+    inputSchema: { type: 'object', properties: { plan: { type: 'object' }, plan_hash: { type: 'string' }, after_job: { type: 'string', description: 'The job id the last answer named as next_after' }, batch: { type: 'number' } }, required: ['plan', 'plan_hash'] },
+  },
+  {
     name: 'mint_twin_setup_code',
     description: "Mint a ten-minute, single-use setup code for a twin (v2.6187) — the code Settings → Digital twins → Set up on this Mac makes — so the Mac your agent runs on can hold a twin key and run /bid itself. The key never comes back through this door: the reply is the code and the command that redeems it (python3 scripts/twin/redeem_setup_code.py <code>), which mints the key server-side, writes it to ~/pt-twin-digest/twin.token (mode 600), saves the kickoff beside it and prints nothing secret. Devs only (a dev may set up any twin); ten codes per ten minutes; twin_setup_codes keeps who minted it and the Mac that redeemed it, and the key is revoked by its label at Settings → Digital twins.",
     inputSchema: { type: 'object', properties: { label: { type: 'string', description: "The key's label as the fleet lists it, e.g. \"Todd's agent on todd-mbp\" — the name it is revoked by" }, twin: { type: 'string', description: "The twin's users.id or email (twin-estimator-N@twins.pipetooling.local); the first estimator twin when left out" }, rounds: { type: 'boolean', description: 'true: the redeemer gets the rounds kickoff (a Mac that stays on and makes a round every five minutes)' } }, required: ['label'] },
@@ -285,7 +331,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are twenty-one verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database) and plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are twenty-five verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -365,6 +411,25 @@ async function restPost(jwt: string, path: string, body: Record<string, unknown>
   const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${path}`, {
     method: 'POST',
     headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const text = await res.text()
+  let parsed: unknown = text
+  try {
+    parsed = text ? JSON.parse(text) : null
+  } catch { /* a non-JSON reply is reported as text */ }
+  return { ok: res.ok, status: res.status, body: parsed }
+}
+
+/**
+ * The plan-part verbs' table writes (v2.6317): a POST that returns the row, or a PATCH by query — plan_sets,
+ * plan_parts, a lane's requests table — as the dev, the rows the job window's Plans section writes under the same
+ * RLS. Reached only from that branch and apply_file_plans' part leg; every other write is restPost to a named RPC.
+ */
+async function restRows(jwt: string, method: 'POST' | 'PATCH', table: string, query: string, body: Record<string, unknown>): Promise<{ ok: boolean; status: number; body: unknown }> {
+  const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${table}${query ? `?${query}` : ''}`, {
+    method,
+    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, Accept: 'application/json', 'Content-Type': 'application/json', Prefer: method === 'POST' ? 'return=representation' : 'return=minimal' },
     body: JSON.stringify(body),
   })
   const text = await res.text()
@@ -587,7 +652,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       return ok({
         reads_as: { name: who.name, email: who.email, role: who.role },
         door: { method: 'GET only — the database runs it in a read-only transaction', row_limit: ROWS_MAX_LIMIT, secrets: 'token / hash / password columns are redacted', never_read: [...DENIED_TABLES] },
-        writes: { verbs: Object.keys(WRITE_VERBS), rule: 'plan_ first (a dry run), then apply_ quoting the plan_hash; apply re-runs the dry run and writes only when it still matches. Each is one dev-gated RPC, as you, audited with your name. Never through view_as.' },
+        writes: { verbs: Object.keys(WRITE_VERBS), rule: 'plan_ first (a dry run), then apply_ quoting the plan_hash; apply re-runs the dry run and writes only when it still matches. Each is one dev-gated RPC as you — or, for a set of drawings and a paper on a plan part, the rows the Plans section writes under the same RLS — audited with your name. Never through view_as.' },
         catalog: { tables_and_views: Object.keys(CATALOG_TABLES).length, rpcs: Object.keys(CATALOG_RPCS).length },
         server: `pipetooling-dev-mcp ${SERVER_VERSION}`,
       })
@@ -724,6 +789,157 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         then: 'The script mints the key server-side, writes it to ~/pt-twin-digest/twin.token (mode 600) and saves the kickoff beside it; it prints the twin, the label and the connector, never the key. After it, python3 scripts/twin/twin.py get_brief answers, /bid bNNN runs, and bash scripts/twin-session.sh starts a Code session with the twin-mcp connector live. The code is single-use and lasts ten minutes. Revoke the key by its label at Settings → Digital twins.',
       }, { target: twinEmail ?? twinUserId })
     }
+    case 'plan_plan_set':
+    case 'apply_plan_set':
+    case 'plan_paper':
+    case 'apply_paper': {
+      // v2.6317 (punch list #239): a set of drawings or a paper on a plan part — the rows the job window's Plans
+      // section writes (planSetsIo addSet / keepPaper / markPaperCame), as the dev under RLS, in the seat's own
+      // grammar. No RPC: the dry run is this server's read of the part (devMcpPlanSets.ts), hashed with the payload;
+      // apply reads again and writes only when the hash still matches. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as PlanPartPayload
+      const reads: PartReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+      }
+      const world = await readPlanPartWorld(reads, p)
+      const dry = planPartDryRun(p, world, todayYmdInAppTz())
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const writes: PartWrites = {
+        insert: async (table, row) => {
+          const res = await restRows(session, 'POST', table, '', row)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          const made = Array.isArray(res.body) ? res.body[0] : res.body
+          if (!made || typeof made !== 'object') throw new Error(`${table} returned no row`)
+          return made as Record<string, unknown>
+        },
+        update: async (table, query, patch) => {
+          const res = await restRows(session, 'PATCH', table, query, patch)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+        },
+        invoke: async (fn, body) => {
+          // The lane's push, as the app's sendAsk invokes it: a push that does not go never fails the keep.
+          try {
+            const res = await fetch(`${env('SUPABASE_URL')}/functions/v1/${fn}`, { method: 'POST', headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${session}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+            return { ok: res.ok, error: res.ok ? null : `${fn} answered ${res.status}: ${(await res.text()).slice(0, 200)}` }
+          } catch (e) {
+            return { ok: false, error: `${fn} could not be reached: ${e instanceof Error ? e.message : String(e)}` }
+          }
+        },
+      }
+      try {
+        const reply = await planPartApply(writes, p, dry.reply, { userId: who.userId }, new Date().toISOString())
+        return ok(reply, { target: typeof reply.part_id === 'string' ? reply.part_id : built.target })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e)
+        return { log: { status: 'error', target: built.target, error: message }, text: message, isError: true }
+      }
+    }
+    case 'read_file_index_status': {
+      // v2.6332 (punch list #240, PR 2): one GET of the dev-gated RPC as you; the reading line opens the reply.
+      const res = await restGet(await jwt(), 'rpc/dev_file_index_status', '')
+      if (!res.ok) {
+        const message = restError(res.status, res.body)
+        return { log: { status: 'error', target: 'dev_file_index_status', error: message }, text: message, isError: true }
+      }
+      const body = res.body && typeof res.body === 'object' && !Array.isArray(res.body) ? (res.body as Record<string, unknown>) : { data: res.body }
+      if (typeof body.refused === 'string') return refused(body.refused, { target: 'dev_file_index_status' })
+      return ok({ reading: statusReading(body), ...body }, { target: 'dev_file_index_status' })
+    }
+    case 'plan_index_backfill':
+    case 'apply_index_backfill': {
+      // v2.6332 (punch list #240, PR 2): the agent's one-time backfill of file_index. The plan lists the jobs a scope
+      // walks and commits to them under a hash; the apply runs the one index pass (_shared/fileIndex.ts, the same
+      // code under drive-link's index_job and the sweep) over one job's next files per call, as the service role into
+      // our own table and never into Drive, and hands back the cursor. The plan's hash is checked on every apply; an
+      // apply may run as often as files remain, so priorApply is not consulted here.
+      if (who.role !== 'dev') return refused(`${name} runs only as you, with a dev's own key.`)
+      const parsed = parseBackfillPlan(args.plan)
+      if (!parsed.ok) return refused(parsed.error)
+      const plan = parsed.plan
+      const admin = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { autoRefreshToken: false, persistSession: false } })
+      const q = backfillJobsQuery(plan)
+      // The walk's order is created_at then id, a total order: a job number ties on '' for every click-only job, and a
+      // tie would place the cursor differently on every read. The plan's own after_job starts the list after that job,
+      // read fresh so a job that left the scope still places it.
+      let jobsQuery = admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, status, created_at').not('google_drive_link', 'is', null)
+      if (q.status === 'one') jobsQuery = jobsQuery.eq('id', q.jobId!)
+      else if (q.status === 'paid') jobsQuery = jobsQuery.eq('status', 'paid')
+      else jobsQuery = jobsQuery.or('status.is.null,status.neq.paid')
+      if (q.afterJob) {
+        const { data: at } = await admin.from('jobs_ledger').select('id, created_at').eq('id', q.afterJob).maybeSingle()
+        const atRow = at as { id: string; created_at: string | null } | null
+        if (!atRow) return refused(`No job has the id the plan's after_job names (${q.afterJob}).`)
+        if (!atRow.created_at) return refused(`Job ${q.afterJob} has no created_at, so nothing sorts after it; start the plan after another job.`)
+        jobsQuery = jobsQuery.or(backfillAfterFilter(atRow.created_at, atRow.id, q.ascending))
+      }
+      const { data: jobRows, error: jobsErr } = await jobsQuery.order('created_at', { ascending: q.ascending, nullsFirst: false }).order('id', { ascending: true }).limit(q.limit)
+      if (jobsErr) return refused(`The jobs did not read: ${jobsErr.message}`)
+      const jobs: BackfillJob[] = ((jobRows ?? []) as { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; status: string | null }[]).map((j) => ({
+        id: j.id,
+        number: j.hcp_number || j.click_number || null,
+        name: j.job_name,
+        status: j.status,
+        rows: null,
+      }))
+      if (jobs.length === 0) return refused(q.status === 'one' ? 'No job with that id has a Drive folder.' : `No ${q.status} job has a Drive folder.`)
+      const hash = await sha256Hex(JSON.stringify(backfillCommitment(plan, jobs)))
+      const target = plan.scope === 'job' ? plan.job_id : `${plan.scope}:${jobs.length}`
+      if (name === 'plan_index_backfill') {
+        // Which jobs already have rows: the ids per chunk of jobs, a thousand rows a page (PostgREST's cap) until a
+        // short page, so a few jobs with many files never hide the rest of the chunk.
+        const withRows = new Set<string>()
+        for (let i = 0; i < jobs.length; i += 100) {
+          const ids = jobs.slice(i, i + 100).map((j) => j.id)
+          for (let from = 0; ; from += 1000) {
+            const { data } = await admin.from('file_index').select('jobs_ledger_id').in('jobs_ledger_id', ids).order('drive_file_id').range(from, from + 999)
+            const rows = (data ?? []) as { jobs_ledger_id: string }[]
+            for (const r of rows) withRows.add(r.jobs_ledger_id)
+            if (rows.length < 1000) break
+          }
+        }
+        for (const j of jobs) j.rows = withRows.has(j.id) ? 1 : 0
+        const { data: stamp } = await admin.from('app_settings').select('value_text').eq('key', SWEEP_STAMP_KEY).maybeSingle()
+        return ok({ plan_hash: hash, ...backfillPlanReply(plan, jobs, (stamp as { value_text?: string | null } | null)?.value_text ?? null) }, { target })
+      }
+      const quoted = typeof args.plan_hash === 'string' ? args.plan_hash.trim().toLowerCase() : ''
+      if (!quoted) return refused('apply_index_backfill needs plan_hash — the value plan_index_backfill replied with.')
+      if (quoted !== hash) return refused(`Nothing indexed: the plan you quoted (${quoted.slice(0, 12)}…) is not what this scope gives now (${hash.slice(0, 12)}…) — a job joined or left the scope since. Call plan_index_backfill again and read it.`, { target })
+      const afterJob = typeof args.after_job === 'string' && args.after_job.trim() ? args.after_job.trim() : null
+      const step = nextBackfillJob(jobs, afterJob)
+      if (step.lost) return refused(cursorLostWords(afterJob!), { target })
+      const { job, position } = step
+      if (!job) return ok({ job: null, jobs_done: jobs.length, jobs_left: 0, next: 'Every job in the plan is done. Read read_file_index_status and write the counts into the card.' }, { target })
+      const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+      if (!saJson) return refused('Drive is not set up on this project (GOOGLE_SERVICE_ACCOUNT_JSON, docs/DRIVE_INTAKE_SETUP.md).', { target })
+      const google = await googleAccessToken(saJson)
+      const ctx = await indexContext(admin, google, saJson)
+      if ('noRoot' in ctx) return refused('The jobs root is not set yet (Documents → Where files go), so there is nothing to walk.', { target })
+      let listed: Awaited<ReturnType<typeof jobFilesToIndex>>
+      try {
+        listed = await jobFilesToIndex(admin, google, { jobs_ledger_id: job.id })
+      } catch (e) {
+        // Drive refused the job's folder (a 404 on one the account cannot open): the job is passed over with the
+        // reason and the cursor moves on, so one bad folder never strands the loop.
+        const why = (e as { message?: string } | null)?.message ?? String(e)
+        return ok(backfillJobPassedReply(job, `Drive refused its folder (${why})`, position, jobs.length), { target: `${target}:${job.number ?? job.id}` })
+      }
+      if (!listed) return ok(backfillJobPassedReply(job, 'no Drive folder the account can open', position, jobs.length), { target: `${target}:${job.number ?? job.id}` })
+      const pass = await indexFiles(ctx, listed, { retry: plan.retry, max: backfillBatch(args.batch) })
+      return ok(backfillApplyReply(job, pass, listed.length, position, jobs.length), { target: `${target}:${job.number ?? job.id}`, rowCount: pass.indexed })
+    }
     case 'plan_file_plans':
     case 'apply_file_plans': {
       // v2.6185: the plan set into Drive and onto the bid — the same grammar as every write
@@ -745,12 +961,26 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const stagePath = robotPlansStagePath(plans.bid_id, plans.sha256)
       const dry = await restPost(session, rpcPath, built.dryRunBody ?? built.body)
       if (!dry.ok) return fail(dry.status, dry.body)
-      const fresh = await planHash(name, built.body.p, dry.body)
+      // v2.6317 (punch list #239): the set lands on the plan part of each job the bid has too, when the job names one
+      // (filedPlansTargets); the plan commits to the parts it saw, so a part made or switched since refuses the apply.
+      const jobsRes = await restGet(session, 'jobs_ledger', `select=id,job_name,click_number,hcp_number,plan_part_id&bid_id=eq.${plans.bid_id}&plan_part_id=not.is.null`)
+      if (!jobsRes.ok) return fail(jobsRes.status, jobsRes.body)
+      const partJobs = (Array.isArray(jobsRes.body) ? jobsRes.body : []) as FiledPlansJob[]
+      let parts: FiledPlansPart[] = []
+      if (partJobs.length) {
+        const partsRes = await restGet(session, 'plan_parts', `select=id,name,current_set_id&id=in.(${[...new Set(partJobs.map((j) => j.plan_part_id))].join(',')})`)
+        if (!partsRes.ok) return fail(partsRes.status, partsRes.body)
+        parts = (Array.isArray(partsRes.body) ? partsRes.body : []) as FiledPlansPart[]
+      }
+      const targets = filedPlansTargets(partJobs, parts)
+      const committed = { ...((dry.body as Record<string, unknown> | null) ?? {}), job_parts: targets }
+      const fresh = await planHash(name, built.body.p, committed)
       if (built.step === 'plan') {
         const upload = await stagedUploadUrl(session, stagePath)
         if ('error' in upload) return errored(upload.error)
         return ok({
-          ...planReply(name, redactSecrets(dry.body), fresh),
+          ...planReply(name, redactSecrets(committed), fresh),
+          lands_on_parts: filedPlansWords(targets),
           upload_url: upload.url,
           staged_path: `${ROBOT_PLANS_BUCKET}/${stagePath}`,
           upload_expires_in: '2 hours',
@@ -814,6 +1044,32 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       }
       const res = await restPost(session, rpcPath, { ...built.body, p_link: { folder_link: folderLink, file_link: fileLink, pages } })
       if (!res.ok) return errored(`${restError(res.status, res.body)} — the set IS in Drive at ${fileLink} (folder ${folderLink}): paste the folder link on the bid form, or plan again with replace: true.`)
+      // v2.6317: the same set as a plan_sets row on each part the plan named, current where the part had none. A part
+      // that refuses is named with its reason and the rest go on (the bid's own row is already written).
+      const partSets: Array<{ part: string; set_id: string | null; builds_from: boolean; existing?: boolean; error?: string }> = []
+      for (const t of targets) {
+        // A part that already holds this link keeps its row (planLinkKey, the database's plan_set_link_key): a re-filing
+        // lands in the same project folder, and a job opened from the bid took the bid's set by trigger (v2.6342).
+        const onPart = await restGet(session, 'plan_sets', `select=id,link&part_id=eq.${t.part_id}`)
+        const same = onPart.ok && Array.isArray(onPart.body) ? (onPart.body as Array<{ id: string; link: string }>).find((r) => planLinkKey(r.link) === planLinkKey(folderLink)) : undefined
+        if (same) {
+          partSets.push({ part: t.part_name, set_id: same.id, builds_from: false, existing: true })
+          continue
+        }
+        const row = filedPlansSetRow(t, { name: String(after.set_name ?? plans.file_name.replace(/\.pdf$/i, '')).slice(0, 200), link: folderLink, memo: String(after.memo ?? 'Filed by the dev seat'), file_name: plans.file_name, file_size: bytes.length, pages, createdBy: who.userId }, new Date().toISOString())
+        const ins = await restRows(session, 'POST', 'plan_sets', '', row)
+        const made = ins.ok && Array.isArray(ins.body) ? (ins.body[0] as { id?: string } | undefined) : undefined
+        if (!ins.ok || !made?.id) {
+          partSets.push({ part: t.part_name, set_id: null, builds_from: false, error: restError(ins.status, ins.body) })
+          continue
+        }
+        let current = false
+        if (t.make_current) {
+          const up = await restRows(session, 'PATCH', 'plan_parts', `id=eq.${t.part_id}`, { current_set_id: made.id, current_set_by: who.userId, current_set_at: new Date().toISOString() })
+          current = up.ok
+        }
+        partSets.push({ part: t.part_name, set_id: made.id, builds_from: current })
+      }
       const stagedRemoved = await stagedRemove(session, stagePath)
       const probe = await probePlans(session, plans.bid_id)
       const reply = (redactSecrets(res.body) ?? {}) as Record<string, unknown>
@@ -823,6 +1079,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         drive: { folder_link: folderLink, file_link: fileLink, folder_name: folderName, path: robotPlansPathWords(division.key, folderName), division: division.key, file_reused: reused },
         pages,
         bytes: bytes.length,
+        plan_parts: { words: filedPlansWords(targets), sets: partSets },
         staged_removed: stagedRemoved,
         probe,
         next: probe.readable === true
@@ -974,7 +1231,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
     if (name === 'view_as') {
       const verb = String(args.verb ?? '')
       if (!verb || verb === 'view_as') return finish(refused('view_as needs a `verb` — any read verb of this server except view_as.'))
-      if (isWriteVerb(verb) || verb === 'mint_twin_setup_code') return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
+      if (isWriteVerb(verb) || verb === 'mint_twin_setup_code' || verb === 'plan_index_backfill' || verb === 'apply_index_backfill') return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
       const target = await resolveViewAsTarget(admin, args)
       if ('error' in target) return finish(refused(target.error))
       const inner = (args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {}) as Record<string, unknown>

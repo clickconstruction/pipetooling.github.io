@@ -2,7 +2,7 @@
 title: see what is on every job site and what walked away
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: materials on site, materials desk, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print labels, box label, prts.co, map, drive folders
+keywords: materials on site, materials desk, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders
 order: 45
 ---
 The Materials tab on Jobs is the office side of the cages and boxes on a big site. It reads the same ledger the crew writes on the phone. You see what came in, what is on site, what was used and what is missing, job by job.
@@ -40,6 +40,20 @@ To land it now, press **Paste the text instead** and paste the invoice's lines. 
 ## Print a label
 
 Press **Label** on a box to print that box alone, or **Print labels** for every box on the job. A label carries the stencil, the job, the place, a small code and ruled lines to write on. The crew's camera opens the box from the code.
+
+## Print a manifest
+
+A manifest is the paper that hangs on a box and says what is in it. Press **Print the manifest** on a job's page. The window opens on every box. Press a stencil to leave that box out. **None** clears them and **Every box** picks them all again. The press names its count, such as {{button:blue|Print 2 manifests}}.
+
+Each box prints on its own Letter page in large plain type. The page carries the stencil, the job and the site. It carries the same code the label has, so the crew's camera opens the box from the manifest. The page shows the day the manifest was printed. The page also shows the day something was last recorded in the box, and by whom. Under the dates it lists what is in the box with each number. Ruled lines at the foot take what is added on site by hand. Each line has room for the item, the quantity, who added it and the day.
+
+Laminate the page and hang it on the box in a document holder. The manifest is a plain print and files no copy. When someone writes a line on it, press the same thing in the app so the count stays true.
+
+## Bring back a retired box
+
+A job's container list ends with a fold named Retired. Open it to see every cage or box retired on the job, with the day it left. Press **Bring back G4** and the box is live again. Its QR label works as before, and nothing in its history changes.
+
+The press is withheld when a live box on the job already carries that stencil. The fold says which one, so no job carries two G4s. Retire the live one first, or give it another stencil.
 
 ## Find a box from anywhere
 

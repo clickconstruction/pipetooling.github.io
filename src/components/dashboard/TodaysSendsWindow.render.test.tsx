@@ -28,6 +28,7 @@ const offer = (over: Partial<OfferRow> = {}): OfferRow => ({
   preparedAt: '2026-10-17T14:00:00Z',
   preparedBy: 'app',
   sendOn: null,
+  aboutOn: null,
   heldWhy: null,
   ...over,
 })
@@ -125,6 +126,15 @@ describe('TodaysSendsWindow', { timeout: 15_000 }, () => {
     const dana = await rowOf('Dana Whitfield · Approved')
     fireEvent.click(within(dana).getByTestId('todays-send-stop'))
     await waitFor(() => expect(io.stop).toHaveBeenCalledWith({ id: 'o-dana', contactId: 'c-dana', jobKey: 'pipeline:job-1312', stepKey: 'approved' }, 'Stopped from Today’s sends'))
+  })
+
+  it('a Stop refused because the step is not on the flow names the step, the person and the door (v2.6385)', async () => {
+    const io = fakeIo()
+    io.stop.mockRejectedValueOnce(new Error('Failed to stop the reminders: stepUnknown'))
+    mount(io)
+    const sam = await rowOf('Sam Ortiz')
+    fireEvent.click(within(sam).getByTestId('todays-send-stop'))
+    expect(await screen.findByText('The step Booked is not on Sam Ortiz’s flow, so there is nothing to stop or hold. Put this text away with Not this one.')).toBeTruthy()
   })
 
   it('says so when nothing waits', async () => {

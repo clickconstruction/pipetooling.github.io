@@ -2,7 +2,7 @@
 name: "Plan sets by part: an updated set mid-project, and our own as-builts kept with the build"
 number: 239
 group: ready
-status: building 2026-11-01 · PR 1 the tables merged as v2.6297 (#6743), migration 20261101210000 pushed · PR 2 the Plans section in the job window's Documents tab merged as v2.6298 (#6744) · PR 3 the Development page's Plans look by part merged as v2.6302 (#6749)
+status: building 2026-11-01 · PR 1 the tables merged as v2.6297 (#6743), migration 20261101210000 pushed · PR 2 the Plans section in the job window's Documents tab merged as v2.6298 (#6744) · PR 3 the Development page's Plans look by part merged as v2.6302 (#6749) · the papers ground v2.6312 (#6760) and doors v2.6313 (#6762) merged, migration 20261102010000 pushed · PR 4 the bid's priced-on and the hand-off v2.6342 (#6789) and PR 6 the row and History v2.6344 (#6790) merged, both migrations pushed · PR 5 Drive and photos merged as v2.6345 (#6793) and `plan-set-files` deployed; its live check on a ZZ Test job passed on 2026-11-03 (an as-built's photos land in its own folder under Plans, a later photo takes the next name, a set with no link gets its folder) · the live walk of the papers doors passed on 2026-11-02
 summary: >
   The owner, 2026-11-01, after a read-only assessment of a development's Plans look: on a project they
   often get an updated set of plans halfway through, or the crew makes its own as-builts and wants them
@@ -13,10 +13,10 @@ summary: >
   site (the Lodge, the Bunker, the whole site), each part has one set it builds from, a job names its
   part and follows it, a bid pins what it was priced on, and an as-built is ours, on the job, marking up
   the set it built from. A job outside any development owns its own part, so it gets the same thing.
-next: A live pass on a ZZ Test job by How to verify; then PR 4 the bid's priced-on and the hand-off to the job, PR 5 the Drive subfolder per set and the crew's Add our as-built with photos, PR 6 the Pipeline row's picker and the History lines.
+next: The real site's papers are kept through Keep a paper now that the doors are live, and the walk's fixes open. A mail's file following its paper is still to be seen live, since no ZZ Test mail with a file is tagged to a ZZ Test job. An as-built's author can still move the row to another job at the row level (`plan_sets_update`), a card of its own.
 size: S (PR 1 the tables) + M (PR 2 the job section) + M (PR 3 the site look) + S (PR 4 the bid) + M (PR 5 Drive and photos) + S (PR 6 the row and History)
-blocker: None. The migration is pushed (check:migration-drift read fully applied on 2026-11-01); the types stay hand-carried until the next chore(types).
-ver: v2.6297 · 6298 · 6302
+blocker: None in the code. Every migration of the train is pushed (check:migration-drift read fully applied on 2026-11-03); the types stay hand-carried until the next chore(types). The real site's papers wait on one call of the owner's, about which part a few of them go on.
+ver: v2.6297 · 6298 · 6302 · 6312 · 6313 · 6342 · 6344 · 6345
 opinion: build the train as ordered; the one judgement call left to the owner is PR 3's "join an existing part" when a lone job is put into a development
 ---
 
@@ -61,7 +61,7 @@ The one call the owner still makes, in PR 3: when a lone job is put into a devel
 - Job window: `src/components/jobs/JobWindowDocumentsTab.tsx` gains a Plans section (PR 2, `JobPlansSection.tsx` over the kernel `src/lib/plans/planSets.ts`).
 - Development page: `src/lib/developments/plans.ts` and `DevelopmentSideCards.tsx`'s Plans card read the parts (PR 3).
 - Bid: `BidPlanSetsField.tsx` gains *priced on*; the New job from bid path seeds the job's part (PR 4).
-- Drive: `_shared/jobFolders.ts` makes one subfolder per set inside the job's Plans folder; the crew's press files photos or a PDF (PR 5, an edge function).
+- Drive: the edge function `plan-set-files` (its rules in `_shared/planSetFilesRun.ts`) makes one subfolder per set inside the job's Plans folder and files the crew's photos or PDF, and a mail's files, into it (PR 5).
 - Pipeline row: the plans icon reads the part (PR 6).
 
 ## The plan
@@ -73,6 +73,18 @@ The one call the owner still makes, in PR 3: when a lone job is put into a devel
 5. **PR 5 — Drive and photos**: one subfolder per set under the job's Plans folder, the register mirrored; the crew's *Add our as-built* takes photos of the marked sheets or a PDF and files them.
 6. **PR 6 — the row and History**: the Pipeline row's plans icon opens the current set or the picker; a History line on every job of a part when the part switches.
 
+## The papers train (added 2026-11-01)
+
+The owner, sorting the documents that came with a real site's sets: *I feel like each one needs either an action item or an event description. They all seem important to save to a job.* Mock-up (`papers-on-a-job.html` in the session's notes), critique, spike behind `?papers=1`, then: *I think this is pretty good. Let's build it right here and right now.*
+
+A paper is a document on a part, kept in the same register as the sets (a `plan_sets` row with a paper kind), beside the set it goes with (`marks_up_set_id`), carrying the question it raised (`ask_lane` + `ask_request_id`, the lane's own inbox) and an *owed* state for one that has not come. Keeping one writes the History line by trigger. A paper can never be what a part builds from.
+
+- **PR A — the ground** (v2.6312, migration `20261102010000`): kinds, sources, the three columns, the two triggers, the crew's insert.
+- **PR B — the doors** (v2.6313): `src/lib/papers/papers.ts`; *Papers with the plans* under the job's Plans (`JobPapersSection.tsx`); *Keep this mail as a paper on JP…* in My Mail (`MailPaperDoor.tsx`); the Plans look's *Papers* column. Guide *keep the papers with the plans*.
+- **Later**: dev-mcp verbs `plan_paper → apply_paper` and `plan_plan_set → apply_plan_set`, and `file_plans` onto parts (#6843). The mail door files the attachment into Drive with PR 5 (#6793).
+
 ## How to verify
 
 PR 2: as the dev on a ZZ Test job with no development, Documents → Plans: add an issued set, then an addendum that replaces it and becomes current; *Open plans* on the Job tab now opens the addendum's link (the mirror); add an as-built; remove it. Then on a ZZ Test job inside a ZZ Test development with a second part carrying a set: the notice reads and its door opens the site's Plans look. Delete every ZZ Test row after.
+
+PR 5, once `plan-set-files` is deployed: as the dev on a ZZ Test job with a Drive folder, Add our as-built with two photos from this computer; they land in Plans › <the as-built's name> and the as-built's Open ↗ opens that folder. Make its folder on a set with no link gives it its folder. A ZZ Test mail kept as a paper in My Mail brings its file into the paper's folder. Delete every ZZ Test row and folder after.

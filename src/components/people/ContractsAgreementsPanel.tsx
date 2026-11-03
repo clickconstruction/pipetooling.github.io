@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
+  AGREEMENTS_NOTHING_LIVE_MAIN,
+  AGREEMENTS_NOTHING_LIVE_TAIL,
   formatAgreementShortDate,
+  idleAgreementsFoldLabel,
+  splitAgreementSummaries,
   type AgreementComplianceState,
   type AgreementSummary,
 } from '../../lib/contractsAgreementsPanel'
@@ -13,7 +17,9 @@ import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
  * Desktop Agreements panel for People → Contracts (v2.1407): one card per
  * document with assigned · signed counts and a progress bar; expanding shows
  * per-person compliance (sent / last viewed / signed) with the chase states
- * called out. Presentational — the tab owns data and the jump-to-person hook.
+ * called out. Since v2.6427 the documents someone holds draw open and every
+ * other Book entry sits behind one press that counts them (`splitAgreementSummaries`).
+ * Presentational — the tab owns data and the jump-to-person hook.
  */
 
 const STATE_CHIP: Record<Exclude<AgreementComplianceState, 'signed'>, { label: string; background: string; color: string }> = {
@@ -34,6 +40,21 @@ const tdStyle: CSSProperties = {
   borderTop: '1px solid var(--border)',
 }
 
+const foldStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.35rem',
+  margin: '0.25rem 0 0.75rem',
+  padding: '0.3rem 0.6rem',
+  fontSize: '0.75rem',
+  fontWeight: 500,
+  border: '1px solid var(--border-strong)',
+  borderRadius: 6,
+  background: 'var(--surface)',
+  color: 'var(--text-muted)',
+  cursor: 'pointer',
+}
+
 export function ContractsAgreementsPanel({
   summaries,
   onJumpToPerson,
@@ -52,6 +73,138 @@ export function ContractsAgreementsPanel({
   quickSendDocumentNames?: ReadonlySet<string>
 }) {
   const [expandedDocumentName, setExpandedDocumentName] = useState<string | null>(null)
+  /** The Book entries nobody holds, opened by the fold's press (v2.6427). */
+  const [idleOpen, setIdleOpen] = useState(false)
+  const { live, idle } = useMemo(() => splitAgreementSummaries(summaries), [summaries])
+  const foldLabel = idleAgreementsFoldLabel(idle.length, idleOpen)
+
+  const renderCard = (s: AgreementSummary) => {
+    const expanded = expandedDocumentName === s.documentName
+    const pct = s.assignedCount > 0 ? Math.round((s.signedCount / s.assignedCount) * 100) : 0
+    return (
+      <div
+        key={s.documentName}
+        style={{
+          border: `1px solid ${expanded ? 'var(--border-strong)' : 'var(--border)'}`,
+          borderRadius: 8,
+          padding: '0.55rem 0.7rem',
+          marginBottom: '0.5rem',
+          background: expanded ? 'var(--bg-subtle)' : 'var(--surface)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={() => setExpandedDocumentName((prev) => (prev === s.documentName ? null : s.documentName))}
+            aria-expanded={expanded}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}
+          >
+            <span style={{ flex: 1, minWidth: 0, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>
+              {s.documentName}
+            </span>
+            <span style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
+              {s.assignedCount} assigned ·{' '}
+              <span style={{ color: 'var(--text-green-800)', fontWeight: 600 }}>{s.signedCount} signed</span>
+            </span>
+            <span aria-hidden style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {expanded ? '▾' : '▸'}
+            </span>
+          </button>
+          {onQuickSend && quickSendDocumentNames?.has(s.documentName) ? (
+            <button
+              type="button"
+              onClick={() => onQuickSend(s.documentName)}
+              title={`Send ${s.documentName} to a person`}
+              style={{
+                flexShrink: 0,
+                padding: '0.2rem 0.5rem',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                background: SKY_UNDER_WORDS,
+                color: WORDS_ON_SKY,
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Send to…
+            </button>
+          ) : null}
+        </div>
+        <div
+          aria-hidden
+          style={{ marginTop: '0.4rem', height: 5, borderRadius: 3, background: 'var(--bg-200)', overflow: 'hidden' }}
+          title={`${pct}% signed`}
+        >
+          <div style={{ width: `${pct}%`, height: '100%', background: '#22c55e' }} />
+        </div>
+        {expanded ? (
+          <div style={{ marginTop: '0.5rem' }}>
+            {s.templateNames.length > 0 ? (
+              <p style={{ margin: '0 0 0.35rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                Assigned via {s.templateNames.join(', ')}
+              </p>
+            ) : null}
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', tableLayout: 'fixed' }}>
+              <thead>
+                <tr>
+                  <th style={{ ...thStyle, width: '30%' }}>Person</th>
+                  <th style={thStyle}>Sent</th>
+                  <th style={thStyle}>Last viewed</th>
+                  <th style={{ ...thStyle, width: '32%' }}>Signed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {s.rows.map((r) => (
+                  <tr key={r.personName}>
+                    <td style={{ ...tdStyle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => onJumpToPerson(r.personName)}
+                        title={`Jump to ${r.personName} in the people list`}
+                        style={{ padding: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                      >
+                        {r.personName}
+                      </button>
+                    </td>
+                    <td style={{ ...tdStyle, color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
+                      {formatAgreementShortDate(r.sentAt) ?? (r.state === 'unsent' ? 'not sent' : '—')}
+                    </td>
+                    <td style={{ ...tdStyle, color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
+                      {formatAgreementShortDate(r.lastViewedAt) ?? '—'}
+                    </td>
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                      {r.state === 'signed' ? (
+                        <span style={{ color: 'var(--text-green-800)', fontWeight: 600 }}>
+                          {formatAgreementShortDate(r.signedAt) ?? '✓'}{formatAgreementShortDate(r.signedAt) ? ' ✓' : ''}
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 500,
+                            padding: '0.1rem 0.4rem',
+                            borderRadius: 999,
+                            ...STATE_CHIP[r.state],
+                          }}
+                        >
+                          {STATE_CHIP[r.state].label}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+              &ldquo;Last viewed&rdquo; records from Aug 5, 2026 onward.
+            </p>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -79,133 +232,17 @@ export function ContractsAgreementsPanel({
       {summaries.length === 0 ? (
         <EmptyState compact {...agreementsEmptyWords(onOpenContractLibrary ?? null)} />
       ) : null}
-      {summaries.map((s) => {
-        const expanded = expandedDocumentName === s.documentName
-        const pct = s.assignedCount > 0 ? Math.round((s.signedCount / s.assignedCount) * 100) : 0
-        return (
-          <div
-            key={s.documentName}
-            style={{
-              border: `1px solid ${expanded ? 'var(--border-strong)' : 'var(--border)'}`,
-              borderRadius: 8,
-              padding: '0.55rem 0.7rem',
-              marginBottom: '0.5rem',
-              background: expanded ? 'var(--bg-subtle)' : 'var(--surface)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => setExpandedDocumentName((prev) => (prev === s.documentName ? null : s.documentName))}
-                aria-expanded={expanded}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}
-              >
-                <span style={{ flex: 1, minWidth: 0, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>
-                  {s.documentName}
-                </span>
-                <span style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
-                  {s.assignedCount} assigned ·{' '}
-                  <span style={{ color: 'var(--text-green-800)', fontWeight: 600 }}>{s.signedCount} signed</span>
-                </span>
-                <span aria-hidden style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {expanded ? '▾' : '▸'}
-                </span>
-              </button>
-              {onQuickSend && quickSendDocumentNames?.has(s.documentName) ? (
-                <button
-                  type="button"
-                  onClick={() => onQuickSend(s.documentName)}
-                  title={`Send ${s.documentName} to a person`}
-                  style={{
-                    flexShrink: 0,
-                    padding: '0.2rem 0.5rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    background: SKY_UNDER_WORDS,
-                    color: WORDS_ON_SKY,
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Send to…
-                </button>
-              ) : null}
-            </div>
-            <div
-              aria-hidden
-              style={{ marginTop: '0.4rem', height: 5, borderRadius: 3, background: 'var(--bg-200)', overflow: 'hidden' }}
-              title={`${pct}% signed`}
-            >
-              <div style={{ width: `${pct}%`, height: '100%', background: '#22c55e' }} />
-            </div>
-            {expanded ? (
-              <div style={{ marginTop: '0.5rem' }}>
-                {s.templateNames.length > 0 ? (
-                  <p style={{ margin: '0 0 0.35rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    Assigned via {s.templateNames.join(', ')}
-                  </p>
-                ) : null}
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', tableLayout: 'fixed' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ ...thStyle, width: '30%' }}>Person</th>
-                      <th style={thStyle}>Sent</th>
-                      <th style={thStyle}>Last viewed</th>
-                      <th style={{ ...thStyle, width: '32%' }}>Signed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {s.rows.map((r) => (
-                      <tr key={r.personName}>
-                        <td style={{ ...tdStyle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          <button
-                            type="button"
-                            onClick={() => onJumpToPerson(r.personName)}
-                            title={`Jump to ${r.personName} in the people list`}
-                            style={{ padding: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
-                          >
-                            {r.personName}
-                          </button>
-                        </td>
-                        <td style={{ ...tdStyle, color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
-                          {formatAgreementShortDate(r.sentAt) ?? (r.state === 'unsent' ? 'not sent' : '—')}
-                        </td>
-                        <td style={{ ...tdStyle, color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
-                          {formatAgreementShortDate(r.lastViewedAt) ?? '—'}
-                        </td>
-                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                          {r.state === 'signed' ? (
-                            <span style={{ color: 'var(--text-green-800)', fontWeight: 600 }}>
-                              {formatAgreementShortDate(r.signedAt) ?? '✓'}{formatAgreementShortDate(r.signedAt) ? ' ✓' : ''}
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                fontSize: '0.7rem',
-                                fontWeight: 500,
-                                padding: '0.1rem 0.4rem',
-                                borderRadius: 999,
-                                ...STATE_CHIP[r.state],
-                              }}
-                            >
-                              {STATE_CHIP[r.state].label}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p style={{ margin: '0.35rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-                  &ldquo;Last viewed&rdquo; records from Aug 5, 2026 onward.
-                </p>
-              </div>
-            ) : null}
-          </div>
-        )
-      })}
+      {live.length === 0 && idle.length > 0 && !idleOpen ? (
+        <EmptyState compact main={AGREEMENTS_NOTHING_LIVE_MAIN} next={{ label: foldLabel, onPress: () => setIdleOpen(true) }} tail={AGREEMENTS_NOTHING_LIVE_TAIL} />
+      ) : null}
+      {live.map(renderCard)}
+      {idle.length > 0 && (live.length > 0 || idleOpen) ? (
+        <button type="button" data-agreements-fold aria-expanded={idleOpen} onClick={() => setIdleOpen((v) => !v)} style={foldStyle}>
+          <span aria-hidden>{idleOpen ? '▾' : '▸'}</span>
+          {foldLabel}
+        </button>
+      ) : null}
+      {idleOpen ? idle.map(renderCard) : null}
     </div>
   )
 }

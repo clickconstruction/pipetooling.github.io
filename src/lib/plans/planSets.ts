@@ -38,6 +38,8 @@ export type PlanSetRow = {
   /** The day it reached us, an ISO stamp. */
   came_at: string
   memo: string
+  /** What changed from the set before it (v2.6356): empty or absent until someone writes it, and on a first set. */
+  changes?: string
   /** A Drive folder or file link, or '' while the files are on their way. */
   link: string
   replaces_set_id: string | null
@@ -49,6 +51,10 @@ export type PlanSetRow = {
   file_count: number | null
   checked_at: string | null
   check_note: string | null
+  /** The papers train (migration 20261102010000): a paper we are waiting on, the lane and id of the question it raised. */
+  owed: boolean
+  ask_lane: string | null
+  ask_request_id: string | null
   created_by: string | null
   created_at: string
   updated_at: string
@@ -85,6 +91,14 @@ export function isAsBuilt(s: Pick<PlanSetRow, 'kind'>): boolean {
   return s.kind === 'as_built'
 }
 
+/**
+ * A set of drawings: the only kind a part builds from or a set list shows. Papers (a spec, a schedule, a task list;
+ * migration 20261102010000) live in the same table and read in their own block, never as a set.
+ */
+export function isDrawingSet(s: Pick<PlanSetRow, 'kind'>): boolean {
+  return PLAN_SET_KINDS.some((k) => k.kind === s.kind)
+}
+
 /** Newest date first; undated after the dated; among equals the one that came last first. */
 export function compareSets(a: Pick<PlanSetRow, 'dated' | 'came_at'>, b: Pick<PlanSetRow, 'dated' | 'came_at'>): number {
   if (a.dated && b.dated && a.dated !== b.dated) return a.dated < b.dated ? 1 : -1
@@ -107,7 +121,7 @@ export type JobPlansView = {
 
 export function buildJobPlansView(part: PlanPartRow | null, sets: ReadonlyArray<PlanSetRow>): JobPlansView {
   if (!part) return { part: null, current: null, replaced: null, older: [], asBuilts: [] }
-  const mine = sets.filter((s) => s.part_id === part.id)
+  const mine = sets.filter((s) => s.part_id === part.id && isDrawingSet(s))
   const asBuilts = mine.filter(isAsBuilt).sort(compareSets)
   const plain = mine.filter((s) => !isAsBuilt(s)).sort(compareSets)
   const current = plain.find((s) => s.id === part.current_set_id) ?? null
@@ -193,7 +207,7 @@ export function otherPlansNotice(args: { developmentName: string | null; myPartI
   return `${site} has plans on ${others.length === 1 ? 'another part' : `${others.length} other parts`} of the site: ${list}. A set on another part may touch this job.`
 }
 
-export type NewSetDraft = { name: string; kind: PlanSetKind; source: PlanSetSource; dated: string; memo: string; link: string }
+export type NewSetDraft = { name: string; kind: PlanSetKind; source: PlanSetSource; dated: string; memo: string; link: string; changes?: string }
 
 export function emptyNewSetDraft(kind: PlanSetKind = 'issued'): NewSetDraft {
   return { name: '', kind, source: kind === 'as_built' || kind === 'assembled' ? 'ours' : 'gc', dated: '', memo: '', link: '' }
@@ -250,3 +264,41 @@ export function todayYmd(now: Date = new Date()): string {
 export function addSetPressWords(current: Pick<PlanSetRow, 'name'> | null): { makeCurrent: string; keep: string | null } {
   return { makeCurrent: current ? 'Add the set and build from it' : 'Add the set', keep: current ? `Add it, keep ${current.name} current` : null }
 }
+
+/**
+ * A set in its part's run of plain sets, with the set before it: the change line reads between the two (v2.6356,
+ * the owner: *what changed between plans … seems like the most important thing to record*). `previous` is the set
+ * this one says it replaces when that row is still on the part, else the next older by date.
+ */
+export type TimelineEntry = { set: PlanSetRow; previous: PlanSetRow | null }
+
+/** The part's plain sets, as-builts aside, newest first, each with the set that came before it. */
+export function partTimeline(sets: ReadonlyArray<PlanSetRow>): TimelineEntry[] {
+  const plain = sets.filter((s) => !isAsBuilt(s)).sort(compareSets)
+  return plain.map((set, i) => ({ set, previous: (set.replaces_set_id ? plain.find((x) => x.id === set.replaces_set_id && x !== set) : null) ?? plain[i + 1] ?? null }))
+}
+
+/** The entry for one set out of the timeline, so a row can draw its change line; a set not in it stands alone. */
+export function timelineEntryFor(timeline: ReadonlyArray<TimelineEntry>, set: PlanSetRow): TimelineEntry {
+  return timeline.find((e) => e.set.id === set.id) ?? { set, previous: null }
+}
+
+/** The set's change line: *What changed from Issued set: the riser moved to the north wall*; null until someone writes it. */
+export function changesLineWords(e: TimelineEntry): string | null {
+  const words = (e.set.changes ?? '').trim()
+  if (!words) return null
+  return e.previous ? `What changed from ${e.previous.name}: ${words}` : `What changed: ${words}`
+}
+
+/** True when the set followed another and nobody has written what changed: the row offers *Write what changed*. */
+export function changesMissing(e: TimelineEntry): boolean {
+  return !!e.previous && !(e.set.changes ?? '').trim()
+}
+
+/** The cue under *What changed* on the form, naming the set the new one would replace. */
+export function changesPlaceholder(replaces: Pick<PlanSetRow, 'name'> | null): string {
+  return replaces ? `What moved from ${replaces.name}: which sheets or areas, and what it means for our work. Nothing, for a reissue.` : 'What this set settles, in a line. Leave it empty on a first set.'
+}
+
+/** The presses around the change line: the one on a set with none, the one that edits it, and the one that saves. */
+export const CHANGES_PRESS = { write: 'Write what changed', edit: 'Edit what changed', save: 'Save what changed' } as const

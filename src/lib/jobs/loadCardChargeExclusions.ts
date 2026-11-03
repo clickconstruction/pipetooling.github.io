@@ -16,6 +16,7 @@ export async function fetchMercuryTxIdsLinkedToSupplyInvoices(txIds: readonly st
         .order('id')
         .range(from, to),
     'mercury invoice links by tx',
+    { parallel: 4 },
   )) as Array<{ mercury_transaction_id: string }>
   return new Set(rows.map((r) => r.mercury_transaction_id))
 }

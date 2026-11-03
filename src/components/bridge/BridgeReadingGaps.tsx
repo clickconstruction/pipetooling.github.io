@@ -10,7 +10,8 @@ import type { ReadingGap } from '../../lib/bridge/readingGaps'
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 const panel: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem' }
-const chip: CSSProperties = { display: 'inline-block', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-amber-900)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 999, padding: '0.1rem 0.6rem', whiteSpace: 'nowrap' }
+/** A chip holds its line while it fits; only one wider than the row wraps its words, so it never pushes the row past the screen. */
+const chip: CSSProperties = { display: 'inline-block', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-amber-900)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 999, padding: '0.1rem 0.6rem', maxWidth: '100%' }
 
 export function BridgeReadingGaps({ gaps }: { gaps: ReadingGap[] }) {
   return (
@@ -22,9 +23,11 @@ export function BridgeReadingGaps({ gaps }: { gaps: ReadingGap[] }) {
       {gaps.length > 0 && (
         <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
           {gaps.map((g) => (
-            <li key={g.key} style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', padding: '0.35rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem' }} data-testid={`bridge-gap-${g.key}`}>
+            // The row wraps: a chip too long for a phone's line ("5 jobs worked this window with no % complete") used to
+            // shrink the words to nothing and push the door past the screen; now the words and the door drop under it.
+            <li key={g.key} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'baseline', padding: '0.35rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem' }} data-testid={`bridge-gap-${g.key}`}>
               <span style={chip}>{g.chip}</span>
-              <span style={{ flex: 1, minWidth: 0, color: 'var(--text)' }}>{g.moves}</span>
+              <span style={{ flex: '1 1 8rem', minWidth: 0, color: 'var(--text)' }}>{g.moves}</span>
               {g.door ? (
                 <Link to={g.door.to} style={{ whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
                   {g.door.label}

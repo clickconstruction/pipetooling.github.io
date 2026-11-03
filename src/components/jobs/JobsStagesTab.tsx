@@ -89,6 +89,8 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useJobCrewPositions } from '../../hooks/useJobCrewPositions'
 import { useStageChecklistStates } from '../../hooks/useStageChecklistStates'
 import { stageChecklistMarks, type MarkFixture } from '../../lib/jobs/stageChecklistMarks'
+import { doorJobLabel } from '../../lib/jobs/pipelineChecklistDoor'
+import { PipelineChecklistSheet } from '../stageChecklists/PipelineChecklistSheet'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 import JobsContractSweepModal from './JobsContractSweepModal'
 import {
@@ -267,6 +269,8 @@ import { StagesSendBackJobModal } from './StagesSendBackJobModal'
 import { StagesCreatePartialInvoiceModal } from './StagesCreatePartialInvoiceModal'
 import { JobsMapCard } from './JobsMapCard'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
+import { StagesSearchHeldBackHint } from './StagesSearchHeldBackHint'
+import { StagesSearchLookupFailed } from './StagesSearchLookupFailed'
 import SessionNotesModal from './SessionNotesModal'
 import StagesBilledMoneyModals from './StagesBilledMoneyModals'
 import { StagesCrewModalContext } from '../../contexts/StagesCrewModalContext'
@@ -295,6 +299,8 @@ import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
 import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from '../../lib/jobs/stagesPaidSearchHint'
+import { countStagesSearchHeldBack, countStagesZzHeldBack, stagesSearchHeldBackLines } from '../../lib/jobs/stagesSearchHeldBack'
+import { stagesNumberLookupFailedWords, type StagesSearchLookupFailure } from '../../lib/jobs/stagesSearchLookupFailed'
 import StagesCustomerTimelineChips from './StagesCustomerTimelineChips'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
@@ -693,6 +699,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     leanBilledRows: cacheLeanBilledRows,
     setJobs: cacheSetJobs,
     zzTestJobCount: cacheZzTestJobCount,
+    zzTestJobIds: cacheZzTestJobIds,
   } = useJobsListCache()
   /**
    * A dev's ZZ test jobs switch (punch list #61, v2.5120); every other role never holds the rows. It shows
@@ -767,6 +774,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [stagesSearchExtraJobIds, setStagesSearchExtraJobIds] = useState<ReadonlySet<string>>(() => new Set())
   const [stagesServerSearchIds, setStagesServerSearchIds] = useState<ReadonlySet<string>>(() => new Set())
   const [stagesServerSearchBusy, setStagesServerSearchBusy] = useState(false)
+  /**
+   * The press on *2 matches are hidden by your filters* (`stagesSearchHeldBack.ts`): the filters step aside for this
+   * search, and clearing the search puts them back. What the filters say stays saved either way.
+   */
+  const [stagesSearchShowsHeldBack, setStagesSearchShowsHeldBack] = useState(false)
+  /**
+   * The server lookup failed, or the rows it found did not load (`stagesSearchLookupFailed.ts`): the board says what
+   * was not searched instead of *No match anywhere*. Retry bumps the attempt, which runs the lookup again.
+   */
+  const [stagesServerSearchFailure, setStagesServerSearchFailure] = useState<StagesSearchLookupFailure | null>(null)
+  const [stagesServerSearchAttempt, setStagesServerSearchAttempt] = useState(0)
+  const retryStagesServerSearch = useCallback(() => setStagesServerSearchAttempt((n) => n + 1), [])
+  useEffect(() => {
+    if (stagesSearchQuery.trim() === '') setStagesSearchShowsHeldBack(false)
+  }, [stagesSearchQuery])
   const jobsRef = useRef(jobs)
   jobsRef.current = jobs
   const stagesCombinedExtraJobIds = useMemo(() => {
@@ -923,6 +945,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   })
   const stagesKindCounts = useMemo(() => jobKindCounts(jobs), [jobs])
   const [aiaG702StagesJob, setAiaG702StagesJob] = useState<JobWithDetails | null>(null)
+  // The checklist door (punch list #246): the row whose checklists sheet is open beside it; the board re-reads its marks when it closes.
+  const [checklistDoorJob, setChecklistDoorJob] = useState<JobWithDetails | null>(null)
+  const reloadChecklistStates = checklistStates.reload
+  const closeChecklistDoor = useCallback(() => {
+    setChecklistDoorJob(null)
+    reloadChecklistStates()
+  }, [reloadChecklistStates])
   /** Release of lien (v2.2579): in-app waiver-and-release modal — same office set as the hazmat gate. */
   const [lienReleaseModal, setLienReleaseModal] = useState<{
     job: JobWithDetails
@@ -1484,32 +1513,48 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     })
   }, [])
   const stagesExclusionCount = countStagesExclusions(stagesExcludeFilters)
+  /** The jobs every board filter lets through, before the search. */
+  const stagesJobsUnderFilters = useMemo(
+    () =>
+      filterJobsByKind(
+        filterJobsByContractCoverage(
+          filterJobsByAccountMan(
+            filterJobsByDevelopment(
+              filterJobsByGcCustomer(filterJobsByExclusions(jobs, stagesExcludeFilters), stagesGcFilter || null),
+              stagesDevelopmentFilter || null,
+            ),
+            stagesAccountManFilter || null,
+          ),
+          jobContractCoverageByJobId,
+          stagesContractFilter,
+          contractFloorCents,
+        ),
+        stagesKindFilter,
+      ),
+    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, contractFloorCents, stagesKindFilter],
+  )
+  const stagesSeesPastFilters = stagesSearchShowsHeldBack && stagesSearchQuery.trim() !== ''
   const stagesBoardLists = useMemo(
     () =>
       buildJobsStagesBoardLists(
-        filterJobsByKind(
-          filterJobsByContractCoverage(
-            filterJobsByAccountMan(
-              filterJobsByDevelopment(
-                filterJobsByGcCustomer(filterJobsByExclusions(jobs, stagesExcludeFilters), stagesGcFilter || null),
-                stagesDevelopmentFilter || null,
-              ),
-              stagesAccountManFilter || null,
-            ),
-            jobContractCoverageByJobId,
-            stagesContractFilter,
-            contractFloorCents,
-          ),
-          stagesKindFilter,
-        ),
+        stagesSeesPastFilters ? jobs : stagesJobsUnderFilters,
         stagesSearchQuery,
         stagesCombinedExtraJobIds,
         stagesSortMode,
         // v2.3788: the next-first order reads the same upcoming map the strip draws.
         stagesSortMode === 'next' ? makeStagesNextFirstComparator(stagesUpcomingByJobId, sortStagesJobsByEffectiveNumberDesc) : null,
       ),
-    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, contractFloorCents, stagesKindFilter, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode, stagesUpcomingByJobId],
+    [jobs, stagesJobsUnderFilters, stagesSeesPastFilters, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode, stagesUpcomingByJobId],
   )
+  const stagesSearchHeldBackCount = useMemo(
+    () => countStagesSearchHeldBack(jobs, stagesJobsUnderFilters, stagesSearchQuery, stagesCombinedExtraJobIds),
+    [jobs, stagesJobsUnderFilters, stagesSearchQuery, stagesCombinedExtraJobIds],
+  )
+  const stagesZzHeldBackCount = countStagesZzHeldBack({
+    lookupIds: stagesServerSearchIds,
+    zzJobIds: cacheZzTestJobIds,
+    devHidesZz: zzTestJobsLine != null && !zzTestJobsLine.shown,
+  })
   // v2.3788: the Working header's schedule pills — All / Not scheduled / This week / Later,
   // counted from the strip's own "when" state; the pick filters the Working rows only.
   const [stagesWhenPill, setStagesWhenPill] = useState<StagesWhenPill>('all')
@@ -1928,12 +1973,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!active) {
       setStagesServerSearchIds(new Set())
       setStagesServerSearchBusy(false)
+      setStagesServerSearchFailure(null)
       return
     }
     const q = stagesSearchQuery.trim()
     if (q.length < 2) {
       setStagesServerSearchIds(new Set())
       setStagesServerSearchBusy(false)
+      setStagesServerSearchFailure(null)
       return
     }
     let cancelled = false
@@ -1943,20 +1990,28 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         const res = await fetchLeanJobSearchIds(q, customerFilterForFetch)
         if (cancelled) return
         if (!res.ok) {
+          // The board searched only the rows it holds: it says so (never "No match anywhere"), and an earlier
+          // term's ids stop riding along as matches for this one.
+          setStagesServerSearchIds(new Set())
+          setStagesServerSearchFailure({ failure: { kind: res.errorKind, message: res.error }, unloadedMatches: null })
           setStagesServerSearchBusy(false)
           return
         }
         const loaded = new Set(jobsRef.current.map((j) => j.id))
         const missing = res.ids.filter((id) => !loaded.has(id))
+        let rowsFailure: StagesSearchLookupFailure | null = null
         if (missing.length > 0) {
           const full = await fetchJobsLedgerWithDetailsForStages({ ids: missing })
           if (cancelled) return
           if (full.ok) {
             const fetchedIds = new Set(full.jobs.map((j) => j.id))
             cacheSetJobs((prev) => [...prev.filter((p) => !fetchedIds.has(p.id)), ...full.jobs])
+          } else {
+            rowsFailure = { failure: { kind: full.errorKind, message: full.error }, unloadedMatches: missing.length }
           }
         }
         setStagesServerSearchIds(new Set(res.ids))
+        setStagesServerSearchFailure(rowsFailure)
         setStagesServerSearchBusy(false)
       })()
     }, 300)
@@ -1965,7 +2020,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       window.clearTimeout(t)
       setStagesServerSearchBusy(false)
     }
-  }, [active, stagesSearchQuery, customerFilterForFetch, cacheSetJobs])
+  }, [active, stagesSearchQuery, customerFilterForFetch, cacheSetJobs, stagesServerSearchAttempt])
 
   // v2.1819 (scoped-load plan PR 0): searching no longer auto-prefetches the
   // full paid list (~667 fully-embedded jobs on the first keystroke — the
@@ -2006,26 +2061,33 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    * resolver and paid-scope fallback retire with it.
    */
   const jumpViaLeanLookup = useCallback(
-    async (digits: string): Promise<boolean> => {
+    async (digits: string): Promise<boolean | 'failed'> => {
       const res = await fetchLeanJobIdsByNumber(digits, customerFilterForFetch)
-      if (!res.ok || res.ids.length === 0) return false
+      // A lookup that failed is not "no job" (`stagesSearchLookupFailed.ts`): the toast says why, the chip keeps the digits.
+      if (!res.ok) {
+        showToast(stagesNumberLookupFailedWords(digits, { kind: res.errorKind, message: res.error }), 'error')
+        return 'failed'
+      }
+      if (res.ids.length === 0) return false
       const loaded = new Set(jobsRef.current.map((j) => j.id))
       const missing = res.ids.filter((id) => !loaded.has(id))
       let fetched: JobWithDetails[] = []
       if (missing.length > 0) {
         const full = await fetchJobsLedgerWithDetailsForStages({ ids: missing })
-        if (full.ok) {
-          fetched = full.jobs
-          const fetchedIds = new Set(fetched.map((j) => j.id))
-          cacheSetJobs((prev) => [...prev.filter((p) => !fetchedIds.has(p.id)), ...fetched])
+        if (!full.ok) {
+          showToast(stagesNumberLookupFailedWords(digits, { kind: full.errorKind, message: full.error }), 'error')
+          return 'failed'
         }
+        fetched = full.jobs
+        const fetchedIds = new Set(fetched.map((j) => j.id))
+        cacheSetJobs((prev) => [...prev.filter((p) => !fetchedIds.has(p.id)), ...fetched])
       }
       const idSet = new Set(res.ids)
       const candidates = [...jobsRef.current.filter((j) => idSet.has(j.id)), ...fetched]
       const matches = findJobsByNumber(candidates, digits)
       return jumpToNumberMatches(matches, digits)
     },
-    [customerFilterForFetch, cacheSetJobs, jumpToNumberMatches],
+    [customerFilterForFetch, cacheSetJobs, jumpToNumberMatches, showToast],
   )
 
   const bankPaymentsModalBilledRows = useMemo(
@@ -2520,6 +2582,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     stagesManHoursLoading,
     crewByJobId,
     checklistMarksFor,
+    openChecklistDoor: setChecklistDoorJob,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded: (id: string) => setExpandedJobThreadId((prev) => (prev === id ? null : id)),
@@ -2631,7 +2694,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const groupEmptyFor = (group: string, opts?: { filtered?: boolean; done?: boolean }): StagesGroupEmptyContext => ({
     group,
     search: stagesSearchQuery,
-    filtered: stagesBoardFiltered || Boolean(opts?.filtered),
+    filtered: (stagesBoardFiltered && !stagesSeesPastFilters) || Boolean(opts?.filtered),
     done: opts?.done,
     onClearSearch: () => setStagesSearchQuery(''),
   })
@@ -3612,6 +3675,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 waiting.length + working.length + readyToBillRows.length + billedActiveRows.length + collectionsRows.length + uncollectibleRows.length,
               paidMatchCount: paid.length,
               serverSearchBusy: stagesServerSearchBusy,
+              heldBackCount: (stagesSeesPastFilters ? 0 : stagesSearchHeldBackCount) + stagesZzHeldBackCount,
+              serverSearchFailed: stagesServerSearchFailure != null,
             })
             return (
               <>
@@ -3663,6 +3728,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       <span>{paidSearchHint.label}</span>
                     )}
                   </div>
+                ) : null}
+                <StagesSearchHeldBackHint
+                  lines={stagesSearchHeldBackLines({
+                    searchActive: stagesSearchActive,
+                    heldBackCount: stagesSearchHeldBackCount,
+                    showingHeldBack: stagesSeesPastFilters,
+                    zzHeldBackCount: stagesZzHeldBackCount,
+                  })}
+                  onPress={(kind) => {
+                    if (kind === 'zz') setStagesHideGroupsModalOpen(true)
+                    else setStagesSearchShowsHeldBack(kind === 'filters')
+                  }}
+                />
+                {stagesSearchActive ? (
+                  <StagesSearchLookupFailed failure={stagesServerSearchFailure} onRetry={retryStagesServerSearch} busy={stagesServerSearchBusy} />
                 ) : null}
                 <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('waiting')} style={{ ...(stageColorVar('waiting') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
@@ -4140,7 +4220,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     // lean lookup already merged — "Expand to load" was a lie there,
                     // the one that made a found paid job look lost.
                     const countPart = stagesSearchActive
-                      ? stagesPaidHeaderSearchCount(paid.length, stagesServerSearchBusy)
+                      ? stagesPaidHeaderSearchCount(
+                          paid.length,
+                          stagesServerSearchBusy,
+                          stagesServerSearchFailure?.unloadedMatches === null && !cacheMergedScopes.has('paid'),
+                        )
                       : paidJobsLoading
                         ? '…'
                         : paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null
@@ -4798,6 +4882,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setStagesContractFilter('missing')
         }}
       />
+      {checklistDoorJob ? (
+        <PipelineChecklistSheet
+          job={{ id: checklistDoorJob.id, label: doorJobLabel(checklistDoorJob), job_plans_link: checklistDoorJob.job_plans_link }}
+          onClose={closeChecklistDoor}
+          onOpenDocuments={() => {
+            const j = checklistDoorJob
+            closeChecklistDoor()
+            openEdit(j, { initialTab: 'documents' })
+          }}
+        />
+      ) : null}
       <AiaG702G703Modal
         open={aiaG702StagesJob != null}
         onClose={() => setAiaG702StagesJob(null)}

@@ -17,6 +17,7 @@ import {
   skipsOf,
   waitsOf,
 } from './load'
+import { contactFlowKindOf } from './facts'
 import { SEED_FLOWS } from './seed'
 import type { FlowReading } from './state'
 import { readFlow } from './state'
@@ -163,7 +164,11 @@ const JONAH: FlowRows = {
   ],
 }
 
-const fromRows = (rows: FlowRows) => readFlow(SEED_FLOWS[rows.contact.kind], flowStampsFor(rows.contact.kind, rows, NOW), NOW)
+// The contact row's kind is the contact's (v2.6394); the flow it reads on is told from it and the card.
+const fromRows = (rows: FlowRows) => {
+  const kind = contactFlowKindOf(rows.contact.kind, rows.card?.customer_type)
+  return readFlow(SEED_FLOWS[kind], flowStampsFor(kind, rows, NOW), NOW)
+}
 const fromFixture = (id: string) => {
   const p = flowFixture(id)
   return readFlow(SEED_FLOWS[p.kind], p.stamps, NOW)

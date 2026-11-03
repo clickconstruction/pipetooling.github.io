@@ -1,4 +1,6 @@
 import {
+  JOB_SUMMARY_STATUS_OPTIONS,
+  JOB_SUMMARY_WINDOW_OPTIONS,
   jobSummaryRowInBudgetFilter,
   jobSummaryRowInStatus,
   jobSummaryRowInWindow,
@@ -110,6 +112,25 @@ const jobLabel = (job: JobSummarySearchable): string => {
 }
 const floorName = (floor: number) => `the HCP # ${floor} floor`
 
+/**
+ * One searched row billed to its contract while its % is under 100 (v2.6389): the note
+ * names the contradiction and reads the margin both ways, so the reader sees what each
+ * answer means before deciding which is wrong.
+ */
+function billedInFullSentences(r: JobSummaryEnrichedRow, subject: string): string[] {
+  if (r.pct == null) return [`${subject} is billed in full, but has no % yet.`]
+  const who = r.pctSource === 'crew-report' ? "the crew's last report says" : 'its % says'
+  const out = [`${subject} is billed in full, but ${who} ${r.pct}% done.`]
+  const trueWord = r.overheadUsd != null ? 'true ' : ''
+  const now = r.trueMarginPct ?? r.marginPct
+  if (now != null) out.push(now < 0 ? `Read at ${r.pct}% it is under water.` : `Read at ${r.pct}% its ${trueWord}margin is ${Math.round(now)}%.`)
+  if (r.contractUsd > 0) {
+    const spent = r.laborUsd + r.subsUsd + r.partsUsd + (r.overheadUsd ?? 0)
+    out.push(`Read as finished its ${trueWord}margin is ${Math.round(((r.contractUsd - spent) / r.contractUsd) * 100)}%.`)
+  }
+  return out
+}
+
 /** The line under the controls while a search is on: what matched, and what each chip or the floor would have hidden. */
 export function jobSummarySearchNote<R extends JobSummaryLedgerRowInput>(args: JobSummarySearchNoteInput<R>): JobSummarySearchNote {
   const { search, rows, prefs, startYmd, endYmd, floor } = args
@@ -152,6 +173,7 @@ export function jobSummarySearchNote<R extends JobSummaryLedgerRowInput>(args: J
       else if (heldByStatus > 0) sentences.push(`${subject} ${statusWhy}, so the Show chip stepped aside.`)
       else if (heldByWindow > 0) sentences.push(`${subject} was not worked in this window, so the Worked in chip stepped aside.`)
       if (heldByBudget > 0) sentences.push(`${subject} is not on the Budget chip's footing, so that chip stepped aside.`)
+      if (first.billedInFull) sentences.push(...billedInFullSentences(first, subject))
     } else {
       if (heldByStatus > 0) sentences.push(`${heldByStatus} ${heldByStatus === 1 ? 'is' : 'are'} ${prefs.status === 'finished' ? 'still in progress' : 'finished already'}.`)
       if (heldByWindow > 0) sentences.push(`${heldByWindow} ${heldByWindow === 1 ? 'was' : 'were'} not worked in this window.`)
@@ -168,4 +190,24 @@ export function jobSummarySearchNote<R extends JobSummaryLedgerRowInput>(args: J
     sentences.push('Press show all under the table to see them.')
   }
   return { on: true, matched, heldByStatus, heldByWindow, heldByBudget, lifted, sentences, sentence: sentences.join(' ') }
+}
+
+const lowerFirst = (s: string): string => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s)
+
+/** The words the Jobs tile reads while the search box holds something. */
+export const JOB_SUMMARY_JOBS_TILE_SEARCH_WORDS = 'matching your search'
+
+/**
+ * The Jobs tile's second line (v2.6388). With nothing typed it names the two chips
+ * in force — "finished (100%) · worked since January 1" — because they are what
+ * chose the rows. While the box holds something the chips have stepped aside, so the
+ * line says what the rows are instead: the tile read *finished (100%)* over the one
+ * in-progress row a search for 804 had drawn, while the note under the controls said
+ * the job was still in progress.
+ */
+export function jobSummaryJobsTileWords(args: { prefs: Pick<JobSummaryViewPrefs, 'status' | 'window'>; search: string }): string {
+  if (jobSummarySearchOn(args.search)) return JOB_SUMMARY_JOBS_TILE_SEARCH_WORDS
+  const status = JOB_SUMMARY_STATUS_OPTIONS.find((s) => s.key === args.prefs.status)?.label ?? ''
+  const window = JOB_SUMMARY_WINDOW_OPTIONS.find((w) => w.key === args.prefs.window)?.title ?? ''
+  return `${lowerFirst(status)} · ${lowerFirst(window)}`
 }

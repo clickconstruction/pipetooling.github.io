@@ -20,6 +20,8 @@ import {
   type JobSummarySortKey,
 } from '../../lib/jobs/jobSummaryLedgerView'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { jobSummaryJobsTileWords } from '../../lib/jobs/jobSummarySearchWins'
+import { jobSummaryTileWords, jobSummaryWindowChipsFold } from '../../lib/jobs/jobSummaryHeaderWords'
 import { SignedAmountSmallCents } from '../AmountSmallCents'
 import { JOB_SUMMARY_MONTHS_BOOK_OPTIONS } from '../../lib/jobs/jobSummaryMonths'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
@@ -115,7 +117,6 @@ const money = (v: number | null | undefined): string => (v == null ? '—' : `${
 export function JobSummaryTileMoney({ value }: { value: number | null | undefined }) {
   return <SignedAmountSmallCents value={value} />
 }
-const pct = (v: number | null | undefined): string => (v == null ? '—' : `${Math.round(v)}%`)
 const pts = (v: number): string => `${v.toFixed(1)} pts`
 
 export default function JobSummaryLedgerToolbar({
@@ -136,7 +137,12 @@ export default function JobSummaryLedgerToolbar({
   const { prefs, setPrefs, totals, hygiene, ledgerLoading, ledgerError, reloadLedger, compare, rows, overhead } = view
   const [discountFoldOpen, setDiscountFoldOpen] = useState(false)
   const [dialsOpen, setDialsOpen] = useState(false)
+  // v2.6389: the window-wide hygiene chips fold into one line while a search is on; a press opens them.
+  const [windowChipsOpen, setWindowChipsOpen] = useState(false)
   const methodLabel = JOB_OVERHEAD_METHODS.find((m) => m.key === prefs.method)?.label ?? 'Day-share'
+  const tw = jobSummaryTileWords({ totals, rows, methodLabel })
+  const fold = jobSummaryWindowChipsFold({ search, window: prefs.window, showMoney, dayShare: prefs.method === 'day', hygiene })
+  const windowChipsShown = !fold || windowChipsOpen
   const c = compare?.comparison ?? null
   const vs = prefs.compareTo === 'lastYear' ? 'last year' : 'prior period'
   const cmpLoading = compare?.ledgerLoading ?? false
@@ -228,25 +234,35 @@ export default function JobSummaryLedgerToolbar({
       ) : null}
       {prefs.view !== 'jobs' ? null : (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.5rem' }}>
-        <Tile k="Jobs" v={totals.jobs} s={`${JOB_SUMMARY_STATUS_OPTIONS.find((s) => s.key === prefs.status)?.label.toLowerCase() ?? ''} · ${JOB_SUMMARY_WINDOW_OPTIONS.find((w) => w.key === prefs.window)?.title.toLowerCase() ?? ''}`} d={dl(c?.jobs, (a) => String(Math.round(a)))} />
-        <Tile k="Revenue" v={<JobSummaryTileMoney value={totals.revenueUsd} />} s={totals.earnedRows > 0 ? `${totals.earnedRows} in-progress earned by hours worked` : 'contract on jobs_ledger'} d={dl(c?.revenueUsd, money)} />
+        {/* v2.6388: the chips' names with nothing typed; "matching your search" once the search has made them step aside. */}
+        <Tile k="Jobs" v={totals.jobs} s={jobSummaryJobsTileWords({ prefs, search })} d={dl(c?.jobs, (a) => String(Math.round(a)))} />
+        {/* v2.6389: every tile's second line says which moment its figure belongs to — to date, or at 100% (Heading for). */}
+        <Tile k={tw.revenue.label} v={<JobSummaryTileMoney value={totals.revenueUsd} />} s={tw.revenue.sub} d={dl(c?.revenueUsd, money)} />
         {showMoney ? (
           <>
-            <Tile k="Gross profit" v={<JobSummaryTileMoney value={totals.grossUsd} />} s={`${pct(totals.marginPct)} margin${c?.marginPts.delta != null ? ` (${c.marginPts.delta >= 0 ? '+' : '−'}${pts(Math.abs(c.marginPts.delta))})` : ''}`} tone={totals.grossUsd < 0 ? 'red' : undefined} d={dl(c?.grossUsd, money)} />
+            <Tile k="Gross profit" v={<JobSummaryTileMoney value={totals.grossUsd} />} s={`${tw.gross.sub}${c?.marginPts.delta != null ? ` (${c.marginPts.delta >= 0 ? '+' : '−'}${pts(Math.abs(c.marginPts.delta))})` : ''}`} tone={totals.grossUsd < 0 ? 'red' : undefined} d={dl(c?.grossUsd, money)} />
             <Tile
               k="Overhead charged"
               v={<JobSummaryTileMoney value={totals.overheadUsd} />}
-              s={totals.overheadUsd == null ? (ledgerLoading ? 'loading…' : 'not available') : `${methodLabel.toLowerCase()} · ${totals.grossUsd > 0 ? pct((totals.overheadUsd / totals.grossUsd) * 100) : '—'} of gross`}
+              s={totals.overheadUsd == null ? (ledgerLoading ? 'loading…' : 'not available') : tw.overhead.sub}
               d={dl(c?.overheadUsd, money, false)}
             />
             <Tile
               k="True profit"
               v={<JobSummaryTileMoney value={totals.trueProfitUsd} />}
-              s={`${pct(totals.trueMarginPct)} true margin${c?.trueMarginPts.delta != null ? ` (${c.trueMarginPts.delta >= 0 ? '+' : '−'}${pts(Math.abs(c.trueMarginPts.delta))})` : ''}${prefs.targetTrueMarginPct > 0 ? ` · target ${prefs.targetTrueMarginPct}%` : ''}`}
+              s={`${tw.trueProfit.sub}${c?.trueMarginPts.delta != null ? ` (${c.trueMarginPts.delta >= 0 ? '+' : '−'}${pts(Math.abs(c.trueMarginPts.delta))})` : ''}${prefs.targetTrueMarginPct > 0 ? ` · target ${prefs.targetTrueMarginPct}%` : ''}`}
               tone={totals.trueProfitUsd == null ? undefined : totals.trueProfitUsd < 0 || (prefs.targetTrueMarginPct > 0 && totals.trueMarginPct != null && totals.trueMarginPct < prefs.targetTrueMarginPct) ? 'red' : 'green'}
               d={dl(c?.trueProfitUsd, money)}
             />
-            <Tile k="Per field hour" v={<JobSummaryTileMoney value={totals.truePerHourUsd} />} s={`${totals.hours.toFixed(1)} h on these jobs`} d={dl(c?.truePerHourUsd, (a) => `$${a.toFixed(2)}`)} />
+            {tw.headingFor ? (
+              <Tile
+                k="Heading for"
+                v={<JobSummaryTileMoney value={tw.headingFor.usd} />}
+                s={tw.headingFor.sub}
+                tone={tw.headingFor.usd < 0 || (prefs.targetTrueMarginPct > 0 && tw.headingFor.pct != null && tw.headingFor.pct < prefs.targetTrueMarginPct) ? 'red' : 'green'}
+              />
+            ) : null}
+            <Tile k="Per field hour" v={<JobSummaryTileMoney value={totals.truePerHourUsd} />} s={tw.perHour.sub} d={dl(c?.truePerHourUsd, (a) => `$${a.toFixed(2)}`)} />
           </>
         ) : (
           <Tile k="Field hours" v={totals.hours.toFixed(1)} s="recorded, in the window" d={dl(c?.hours, (a) => `${a.toFixed(1)} h`)} />
@@ -288,24 +304,41 @@ export default function JobSummaryLedgerToolbar({
         ) : null}
         {totals.noRevenueJobs > 0 ? <span style={chip}>⚠ {totals.noRevenueJobs} {totals.noRevenueJobs === 1 ? 'job has' : 'jobs have'} no contract $</span> : null}
         {totals.noPctJobs > 0 ? <span style={chip}>⚠ {totals.noPctJobs} {totals.noPctJobs === 1 ? 'job has' : 'jobs have'} no % complete</span> : null}
-        {hygiene && hygiene.pendingFieldSessions > 0 ? (
+        {totals.billedInFullJobs > 0 ? (
+          <span style={chipRed} title="The invoices on these jobs add up to the contract, but the % is under 100 — the office or the crew is wrong. The % cell marks each one">
+            ⚠ {totals.billedInFullJobs} {totals.billedInFullJobs === 1 ? 'job is' : 'jobs are'} billed in full but under 100%
+          </span>
+        ) : null}
+        {fold ? (
+          <button
+            type="button"
+            onClick={() => setWindowChipsOpen((o) => !o)}
+            aria-expanded={windowChipsOpen}
+            data-testid="job-summary-window-chips-fold"
+            title={windowChipsOpen ? 'Fold the window-wide chips away again' : 'These chips speak for the whole window, not the jobs your search matched. Press to open them'}
+            style={{ ...chipMuted, border: '1px dashed var(--border-strong)', cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}
+          >
+            {fold.summary} {windowChipsOpen ? '▴' : '▾'}
+          </button>
+        ) : null}
+        {windowChipsShown && hygiene && hygiene.pendingFieldSessions > 0 ? (
           <span style={chip}>
             {/* v2.3261: recorded time everywhere — these hours already count in Labor, Hours · days and overhead; approval only matters if it becomes a rejection. */}
             ⏳ {hygiene.pendingFieldSessions} {hygiene.pendingFieldSessions === 1 ? 'session awaits' : 'sessions await'} approval · {hygiene.pendingFieldHours.toFixed(1)} h counted as recorded time — reject in People → Hours to remove
           </span>
         ) : null}
         {totals.priorHoursJobs > 0 ? <span style={chipMuted}>{totals.priorHoursJobs} {totals.priorHoursJobs === 1 ? 'job has' : 'jobs have'} hours before the window — not charged; widen the window to charge them</span> : null}
-        {showMoney && hygiene && hygiene.unallocatedUsd > 0 ? (
+        {windowChipsShown && showMoney && hygiene && hygiene.unallocatedUsd > 0 ? (
           <span style={chipMuted} title="Office cost with nobody to charge — days with no field hours (and, with carry on, no open job) inside the smoothing window">
             {money(hygiene.unallocatedUsd)} of overhead had nobody to charge on {hygiene.unallocatedDays} {hygiene.unallocatedDays === 1 ? 'day' : 'days'} — shown, not charged
           </span>
         ) : null}
-        {showMoney && hygiene && hygiene.inFlightUsd > 0.5 ? (
+        {windowChipsShown && showMoney && hygiene && hygiene.inFlightUsd > 0.5 ? (
           <span style={chipMuted} title="Office cost from the last days of the window that the smoothing spreads past today — it lands on jobs as those days arrive">
             {money(hygiene.inFlightUsd)} of overhead is in flight — spreads past today, lands as days arrive
           </span>
         ) : null}
-        {showMoney && hygiene && prefs.method === 'day' && hygiene.offListUsd > 0.5 ? (
+        {windowChipsShown && showMoney && hygiene && prefs.method === 'day' && hygiene.offListUsd > 0.5 ? (
           <span style={chipMuted} title="The pool spreads over every approved field hour, including hours on jobs this list leaves out — the HCP # floor under the table (Hide older imported jobs with HCP # at or below …) drops them before the table is built. Overhead charged counts shown jobs only, so it reads lower than the dials strip's by hours + carry by this amount. Lower the floor to see those jobs.">
             {money(hygiene.offListUsd)} of overhead landed on {hygiene.offListJobs} {hygiene.offListJobs === 1 ? 'job' : 'jobs'} this list leaves out (HCP # floor) — charged, not shown
           </span>

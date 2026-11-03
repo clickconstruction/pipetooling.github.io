@@ -5,12 +5,15 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import type { PipelineChecklistDoor } from '../../lib/jobs/pipelineChecklistDoor'
 import {
   StagesAiaG702Button,
+  StagesChecklistDoorButton,
   StagesHazmatFeeButton,
   StagesJobFolderButton,
   StagesLienInstrumentsButton,
   StagesLienReleaseButton,
+  StagesPhotosButton,
   StagesRowIcons,
   StagesTestReportButton,
 } from './StagesRowActionButtons'
@@ -97,5 +100,63 @@ describe('StagesRowActionButtons', () => {
     expect(onOpenTabBare).toHaveBeenCalledTimes(1)
     expect(open).toHaveBeenCalledTimes(1)
     open.mockRestore()
+  })
+
+  it('the Photos icon opens the window on a click, the photo folder on a ⌘-click, and greys out without a folder (punch list #244)', () => {
+    const onOpen = vi.fn()
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const pictures = 'https://drive.google.com/drive/folders/1PicturesFolderIdAbCdEf'
+    const folder = 'https://drive.google.com/drive/folders/1JobFolderIdAbCdEfGhIj'
+    const { unmount } = render(<StagesPhotosButton picturesUrl={pictures} folderUrl={folder} onOpen={onOpen} />)
+    const made = screen.getByLabelText('Open the job’s photos')
+    expect(made.getAttribute('title')).toMatch(/⌘-click opens the photo folder in Drive/)
+    expect(made.style.color).toBe('rgb(217, 119, 6)')
+    fireEvent.click(made)
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    fireEvent.click(made, { metaKey: true })
+    expect(open).toHaveBeenCalledWith(pictures, '_blank', 'noopener,noreferrer')
+    unmount()
+
+    const onOpenFolderOnly = vi.fn()
+    const second = render(<StagesPhotosButton picturesUrl={null} folderUrl={folder} onOpen={onOpenFolderOnly} />)
+    fireEvent.click(screen.getByLabelText('Open the job’s photos'), { ctrlKey: true })
+    expect(open).toHaveBeenLastCalledWith(folder, '_blank', 'noopener,noreferrer')
+    second.unmount()
+
+    const onOpenBare = vi.fn()
+    render(<StagesPhotosButton picturesUrl={null} folderUrl={null} onOpen={onOpenBare} />)
+    const bare = screen.getByLabelText('Open the job’s photos')
+    expect(bare.getAttribute('title')).toMatch(/the first photo makes the job’s Drive folder/)
+    expect(bare.style.color).toBe('var(--text-muted)')
+    fireEvent.click(bare, { metaKey: true })
+    expect(onOpenBare).toHaveBeenCalledTimes(1)
+    expect(open).toHaveBeenCalledTimes(2)
+    open.mockRestore()
+  })
+
+  it('the checklist door reads its tone and count, carries its words, fires its click, and is nothing with no stage that takes a checklist (#246)', () => {
+    const door = (over: Partial<PipelineChecklistDoor>): PipelineChecklistDoor => ({ kind: 'open', tone: 'amber', answered: 3, asked: 6, count: '3/6', title: 'Checklists · Trim Set 3 of 6 · Rough In filled', aria: 'Checklists on this job · 3 of 6 answered', badge: '3 of 6', ...over })
+    const onClick = vi.fn()
+    const { unmount, container } = render(<StagesChecklistDoorButton door={door({})} onClick={onClick} />)
+    const open = screen.getByLabelText('Checklists on this job · 3 of 6 answered')
+    expect(open.getAttribute('title')).toBe('Checklists · Trim Set 3 of 6 · Rough In filled')
+    expect(open.getAttribute('data-stages-checklist-door')).toBe('open')
+    expect(open.style.color).toBe('var(--text-amber-700)')
+    expect(container.querySelector('[data-stages-checklist-count]')?.textContent).toBe('3/6')
+    fireEvent.click(open)
+    expect(onClick).toHaveBeenCalledTimes(1)
+    unmount()
+
+    const filled = render(<StagesChecklistDoorButton door={door({ kind: 'filled', tone: 'green', count: '', aria: 'Checklists on this job · every stage filled' })} onClick={vi.fn()} />)
+    expect(screen.getByLabelText('Checklists on this job · every stage filled').style.color).toBe('var(--text-green-700)')
+    expect(filled.container.querySelector('[data-stages-checklist-count]')).toBeNull()
+    filled.unmount()
+
+    const empty = render(<StagesChecklistDoorButton door={door({ kind: 'empty', tone: 'muted', count: '', aria: 'Checklists on this job · no questions yet' })} onClick={vi.fn()} />)
+    expect(screen.getByLabelText('Checklists on this job · no questions yet').style.color).toBe('var(--text-muted)')
+    empty.unmount()
+
+    const none = render(<StagesChecklistDoorButton door={door({ kind: 'none' })} onClick={vi.fn()} />)
+    expect(none.container.querySelector('button')).toBeNull()
   })
 })

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { canSeeProjectsBoard, canSetExpectedHours, checklistCountOf, isWorkingProject, paceRank, projectLabel, projectPace, sortByPace, type ProjectFixture, type ProjectRow } from './projectsBoard'
+import { canSeeProjectsBoard, canSetExpectedHours, checklistCountOf, isWorkingProject, paceCounts, paceRank, PROJECT_GATE_WORDS, projectLabel, projectPace, sortByPace, worstWords, type ProjectFixture, type ProjectRow } from './projectsBoard'
+import { plainWordsFailures } from '../plainWords'
 import { DEFAULT_LINE_BUDGET_SETTINGS } from './lineBudgets'
-import { JOB_BURN_DEFAULT_TARGET_MARGIN_PCT } from './jobBurn'
-import type { JobChargeEvent } from '../jobChargesTimeline'
 import type { SuperintendentLine } from './superintendentLine'
+import type { ProjectBoardJob } from './projectBoardRead'
 
 const fixture = (p: Partial<ProjectFixture> & { id: string }): ProjectFixture => ({ name: p.id, stage_kind: 'any', line_kind: 'fixture', line_unit_price: 1000, count: 1, progress_pct: null, sequence_order: 0, ...p })
 const row = (p: Partial<ProjectRow> & { id: string }): ProjectRow => ({ hcp_number: '1044', click_number: null, job_name: 'The Lodge', job_address: '1 Hill Rd', status: 'working', pct_complete: null, revenue: null, fixtures: [], ...p })
@@ -17,16 +17,54 @@ const staged = [
 ]
 
 describe('the gate', () => {
-  it('takes a working job with a stage In order, marked or recognized from its names', () => {
-    expect(isWorkingProject(row({ id: 'a', fixtures: [fixture({ id: 'x', name: 'Whole house', stage_kind: 'order' })] }))).toBe(true)
-    expect(isWorkingProject(row({ id: 'b', fixtures: staged }))).toBe(true)
+  // A job the read says everything about: already worked, nothing behind it, no press yet.
+  const known = (p: Partial<ProjectRow> & { id: string }) => row({ kind: null, bid_id: null, project_id: null, first_work_date: '2026-10-01', billing_only: false, ...p })
+  const repipe = [fixture({ id: 'x', name: 'Repipe' })]
+
+  it('takes a job reading Project, at any price', () => {
+    expect(isWorkingProject(known({ id: 'pressed', kind: 'project', revenue: 900, fixtures: repipe }))).toBe(true)
+    expect(isWorkingProject(known({ id: 'before', first_work_date: null, revenue: 900, fixtures: repipe }))).toBe(true)
+    expect(isWorkingProject(known({ id: 'bid', bid_id: 'b1', fixtures: repipe }))).toBe(true)
+    expect(isWorkingProject(known({ id: 'gc', project_id: 'p1', fixtures: repipe }))).toBe(true)
+    expect(isWorkingProject(known({ id: 'marked', fixtures: [fixture({ id: 'x', name: 'Whole house', stage_kind: 'order' })] }))).toBe(true)
+    expect(isWorkingProject(known({ id: 'named', fixtures: staged }))).toBe(true)
   })
 
-  it('takes a working job priced at $25,000 and up with no stage, and nothing else', () => {
-    expect(isWorkingProject(row({ id: 'c', revenue: 25000, fixtures: [fixture({ id: 'x', name: 'Repipe' })] }))).toBe(true)
-    expect(isWorkingProject(row({ id: 'd', revenue: '24999', fixtures: [fixture({ id: 'x', name: 'Repipe' })] }))).toBe(false)
+  it('leaves off a job reading Service call, even priced over the gate', () => {
+    // An HCP number with nothing before it reads Service call by the kernel's order, whatever the price.
+    expect(isWorkingProject(known({ id: 'hcp', revenue: 90000, fixtures: repipe }))).toBe(false)
+    // The office's press wins over a stage and a price alike.
+    expect(isWorkingProject(known({ id: 'pressed', kind: 'service', revenue: 90000, fixtures: staged }))).toBe(false)
+  })
+
+  it('keeps the guess for a job reading Kind not set: $25,000 and up is on, under it is off', () => {
+    const unset = (p: Partial<ProjectRow> & { id: string }) => known({ hcp_number: '', click_number: 'C77', fixtures: repipe, ...p })
+    expect(isWorkingProject(unset({ id: 'at', revenue: 25000 }))).toBe(true)
+    expect(isWorkingProject(unset({ id: 'over', revenue: '90000' }))).toBe(true)
+    expect(isWorkingProject(unset({ id: 'under', revenue: '24999' }))).toBe(false)
+    expect(isWorkingProject(unset({ id: 'none', revenue: null }))).toBe(false)
+  })
+
+  it('leaves off a billing-only job, which nobody clocks on, though it reads Project', () => {
+    expect(isWorkingProject(known({ id: 'bills', billing_only: true, revenue: 90000, fixtures: staged }))).toBe(false)
+  })
+
+  it('leaves off a job that is not Working, whatever it reads', () => {
+    expect(isWorkingProject(known({ id: 'billed', status: 'billed', kind: 'project', revenue: 90000, fixtures: staged }))).toBe(false)
+  })
+
+  it('keeps the whole guess on a read older than the facts, so no job drops off before the function is pushed', () => {
+    expect(isWorkingProject(row({ id: 'a', fixtures: [fixture({ id: 'x', name: 'Whole house', stage_kind: 'order' })] }))).toBe(true)
+    expect(isWorkingProject(row({ id: 'b', fixtures: staged }))).toBe(true)
+    expect(isWorkingProject(row({ id: 'c', revenue: 25000, fixtures: repipe }))).toBe(true)
+    expect(isWorkingProject(row({ id: 'd', revenue: '24999', fixtures: repipe }))).toBe(false)
     expect(isWorkingProject(row({ id: 'e', status: 'billed', revenue: 90000, fixtures: staged }))).toBe(false)
     expect(isWorkingProject(row({ id: 'f', fixtures: [fixture({ id: 'x', name: 'Diagnostic' }), fixture({ id: 'y', name: 'Parts' })] }))).toBe(false)
+  })
+
+  it('says the rule in plain words, with the price from the one constant', () => {
+    expect(PROJECT_GATE_WORDS).toContain('$25,000')
+    expect(plainWordsFailures(PROJECT_GATE_WORDS)).toEqual([])
   })
 })
 
@@ -47,16 +85,13 @@ describe('projectLabel', () => {
   })
 })
 
-const events: JobChargeEvent[] = [
-  { source: 'team_labor', dateKey: '2026-10-20', amount: 1080, label: 'a', hours: 24 },
-  { source: 'team_labor', dateKey: '2026-10-21', amount: 1080, label: 'b', hours: 24 },
-  { source: 'supply_house', dateKey: '2026-10-21', amount: 2000, label: 'c' },
-]
 const settings = DEFAULT_LINE_BUDGET_SETTINGS
+const job = (p: Partial<ProjectBoardJob> = {}): ProjectBoardJob => ({ ...row({ id: 'a', pct_complete: 50, fixtures: staged }), budgetKind: null, budgetHours: null, labor: [{ ymd: '2026-10-20', who: 'Ana', hours: 24 }, { ymd: '2026-10-21', who: 'Ana', hours: 24 }], values: [], spentPct: 24, ...p })
+const none = { answered: 0, asked: 0 }
 
 describe('projectPace', () => {
-  it('reads the track from the lines\' sum as assumed when the job has no budget row, cut by its stages', () => {
-    const pace = projectPace({ row: row({ id: 'a', pct_complete: 50, fixtures: staged }), budgetRow: null, burn: { chargeEvents: events, teamHours: 48, revenue: 27000 }, target: null, checklist: { answered: 0, asked: 0 }, settings, targetMarginPct: null })
+  it('reads the track from the lines\' sum as assumed when the job has no baseline, cut by its stages', () => {
+    const pace = projectPace({ job: job(), target: null, checklist: none, settings })
     expect(pace.baseHours).toBe(260)
     expect(pace.baseSource).toBe('assumed')
     expect(pace.budgetEdge).toBe(260)
@@ -64,27 +99,36 @@ describe('projectPace', () => {
     expect(pace.stages[0]).toMatchObject({ hours: 90, laborUsd: 90 * 45, pctDone: 100 })
     expect(pace.input).toMatchObject({ hoursBudget: 260, budgetSource: 'assumed', hoursUsed: 48, pctDone: 50 })
     expect(pace.input.laborDays).toEqual([{ ymd: '2026-10-20', hours: 24 }, { ymd: '2026-10-21', hours: 24 }])
-    // $27,000 at the Burn default margin of 35%: a $17,550 direct budget, $4,160 spent.
-    expect(pace.budgetUsd).toBe(27000 * (1 - JOB_BURN_DEFAULT_TARGET_MARGIN_PCT / 100))
-    expect(pace.input.money).toEqual({ spentUsd: 4160, budgetUsd: 17550 })
     // 50% done on 48 of 260 h (18%): well ahead.
     expect(pace.line.tone).toBe('ahead')
   })
 
-  it('reads the track from the bid\'s hours when the budget row carries them, the stages scaled to it', () => {
-    const budgetRow = { kind: 'bid', labor_hours: 180, labor_rate: 45, labor_usd: 8100, materials_usd: 9000, subs_usd: 0, other_usd: 0, total_direct_usd: 17100 }
-    const pace = projectPace({ row: row({ id: 'a', pct_complete: 50, fixtures: staged }), budgetRow, burn: { chargeEvents: events, teamHours: 48, revenue: 27000 }, target: null, checklist: { answered: 0, asked: 0 }, settings, targetMarginPct: 25 })
+  it('reads the read\'s percent as the money, over a budget of 100, and no money with no percent', () => {
+    const pace = projectPace({ job: job({ spentPct: 78 }), target: null, checklist: none, settings })
+    expect(pace.input.money).toEqual({ spentUsd: 78, budgetUsd: 100 })
+    expect(pace.line.money).toMatchObject({ spentPct: 78, leads: true })
+    expect(pace.line.headline).toBe('Spending 28 points ahead of the work.')
+    expect(projectPace({ job: job({ spentPct: null }), target: null, checklist: none, settings }).line.money).toBeNull()
+  })
+
+  it('reads the track from the baseline\'s hours when it carries them, the stages scaled to it', () => {
+    const pace = projectPace({ job: job({ budgetKind: 'bid', budgetHours: 180 }), target: null, checklist: none, settings })
     expect(pace.baseHours).toBe(180)
     expect(pace.baseSource).toBe('bid')
     // 90 · 90 · 80 of 260, scaled to the bid's 180.
     expect(pace.stages.map((s) => Math.round(s.hours))).toEqual([62, 62, 55])
-    expect(pace.budgetUsd).toBe(17100)
     expect(pace.line.hoursWords).toContain('◆ from the bid')
+    expect(projectPace({ job: job({ budgetKind: 'typed', budgetHours: 200 }), target: null, checklist: none, settings }).baseSource).toBe('typed')
+  })
+
+  it('falls back to the lines when the baseline has no hours or is not a real footing', () => {
+    expect(projectPace({ job: job({ budgetKind: 'bid', budgetHours: 0 }), target: null, checklist: none, settings })).toMatchObject({ baseHours: 260, baseSource: 'assumed' })
+    expect(projectPace({ job: job({ budgetKind: 'other', budgetHours: 100 }), target: null, checklist: none, settings })).toMatchObject({ baseHours: 260, baseSource: 'assumed' })
   })
 
   it('reads the expected hours as the budget when a target is set, the words naming who and why', () => {
     const target = { id: 't1', jobId: 'a', hours: 200, from: 260, by: 'Robert', at: '2026-11-01T20:00:00Z', why: 'framed in a week' }
-    const pace = projectPace({ row: row({ id: 'a', pct_complete: 50, fixtures: staged }), budgetRow: null, burn: { chargeEvents: events, teamHours: 48, revenue: 27000 }, target, checklist: { answered: 2, asked: 5 }, settings, targetMarginPct: null })
+    const pace = projectPace({ job: job(), target, checklist: { answered: 2, asked: 5 }, settings })
     expect(pace.input).toMatchObject({ hoursBudget: 200, budgetSource: 'target' })
     expect(pace.line.targetLine).toBe('Expected 200 h, set by Robert on Nov 1 (was 260 h): framed in a week')
     // The track's edge stays the base budget; the target is a mark inside it.
@@ -92,25 +136,25 @@ describe('projectPace', () => {
     expect(pace.line.proofWords).toContain('checklist 2 of 5 ready')
   })
 
-  it('reads no hours, no days and no money while the cost events load', () => {
-    const pace = projectPace({ row: row({ id: 'a', pct_complete: 50, fixtures: staged }), budgetRow: null, burn: null, target: null, checklist: { answered: 0, asked: 0 }, settings, targetMarginPct: null })
-    expect(pace.input).toMatchObject({ hoursUsed: null, laborDays: [], money: null })
+  it('is too early to call on a job with no hours on it yet', () => {
+    const pace = projectPace({ job: job({ labor: [] }), target: null, checklist: none, settings })
+    expect(pace.input).toMatchObject({ hoursUsed: 0, laborDays: [] })
     expect(pace.line.tone).toBe('early')
   })
 
   it('reads a tuned line\'s own split from the five budget columns, so its stage\'s share moves (PR 5)', () => {
     // Rough In tuned to 60% labor: $5,400 at $45/h is 120 h, where the company split read 90.
     const tuned = staged.map((f) => (f.id === 'r' ? { ...f, budget_labor_pct: 60, budget_materials_pct: 25, budget_source: 'tuned', budget_tuned_at: '2026-11-01T20:00:00Z', budget_rate_usd: 45 } : f))
-    const pace = projectPace({ row: row({ id: 'a', fixtures: tuned }), budgetRow: null, burn: null, target: null, checklist: { answered: 0, asked: 0 }, settings, targetMarginPct: null })
+    const pace = projectPace({ job: job({ fixtures: tuned }), target: null, checklist: none, settings })
     expect(pace.baseHours).toBe(290)
     expect(pace.stages.map((s) => Math.round(s.hours))).toEqual([120, 90, 80])
     // A split with no source stored reads the company split, as before.
     const unsourced = staged.map((f) => (f.id === 'r' ? { ...f, budget_labor_pct: 60, budget_materials_pct: 25, budget_source: null } : f))
-    expect(projectPace({ row: row({ id: 'a', fixtures: unsourced }), budgetRow: null, burn: null, target: null, checklist: { answered: 0, asked: 0 }, settings, targetMarginPct: null }).baseHours).toBe(260)
+    expect(projectPace({ job: job({ fixtures: unsourced }), target: null, checklist: none, settings }).baseHours).toBe(260)
   })
 
   it('leaves a discount line out of the budget and the shares', () => {
-    const pace = projectPace({ row: row({ id: 'a', fixtures: [...staged, fixture({ id: 'd', name: 'Discount', line_kind: 'discount', line_unit_price: -5000 })] }), budgetRow: null, burn: null, target: null, checklist: { answered: 0, asked: 0 }, settings, targetMarginPct: null })
+    const pace = projectPace({ job: job({ fixtures: [...staged, fixture({ id: 'd', name: 'Discount', line_kind: 'discount', line_unit_price: -5000 })] }), target: null, checklist: none, settings })
     expect(pace.baseHours).toBe(260)
     expect(pace.stages).toHaveLength(3)
   })
@@ -139,5 +183,20 @@ describe('checklistCountOf', () => {
     const answers = new Map([['r', [{ questionId: 'q1', pick: 'yes' as const, note: '', photo: null }]]])
     expect(checklistCountOf(staged, questions, answers)).toEqual({ answered: 1, asked: 3 })
     expect(checklistCountOf(staged, [], new Map())).toEqual({ answered: 0, asked: 0 })
+  })
+})
+
+describe('the Dashboard strip\'s counts and the worst project\'s words (PR 6)', () => {
+  const line = (tone: 'ahead' | 'behind' | 'even' | 'early', days: number, money: { leads: boolean; wrong?: boolean } | null = null) => ({ tone, days, money } as unknown as SuperintendentLine)
+  it('counts the projects by tone, the money leaders inside behind', () => {
+    expect(paceCounts([line('behind', -3), line('behind', 0, { leads: true }), line('ahead', 2), line('even', 0), line('early', 0)])).toEqual({ total: 5, behind: 2, moneyLeading: 1, even: 1, ahead: 1, early: 1 })
+    expect(paceCounts([])).toEqual({ total: 0, behind: 0, moneyLeading: 0, even: 0, ahead: 0, early: 0 })
+  })
+  it('names the worst in three words, or none when it is not behind', () => {
+    expect(worstWords(line('behind', -3))).toBe('3 d behind')
+    expect(worstWords(line('behind', 0, { leads: true }))).toBe('money ahead')
+    expect(worstWords(line('behind', 0, { leads: true, wrong: true }))).toBe('budget?')
+    expect(worstWords(line('ahead', 2))).toBeNull()
+    expect(worstWords(line('early', 0))).toBeNull()
   })
 })

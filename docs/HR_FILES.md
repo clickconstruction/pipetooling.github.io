@@ -5,7 +5,7 @@ file: docs/HR_FILES.md
 type: Feature reference + agent writing convention
 purpose: The dev-only per-person HR files system — schema, access model, the People → HR tab, and (most importantly) the convention any agent or dev follows when writing to it.
 audience: Developers, AI Agents
-last_updated: 2026-10-05
+last_updated: 2026-11-02
 ---
 
 ## What this is
@@ -18,6 +18,7 @@ Per-person HR files, visible to **devs only**, maintained mostly by an AI agent 
 | **Summary** | `person_files` (`kind='summary'`) | Rewritten freely — **prior versions auto-archive** (v2.2232) | ≤1 page: trajectory, reliability, pay, watch items. Read first. |
 | **Narrative** | `person_files` (`kind='narrative'`) | Extended, occasionally consolidated — **prior versions auto-archive** (v2.2232) | The chronological story, oldest → newest. |
 | **Doc history** | `person_file_revisions` | Written only by trigger; dev read-only | Prior version of every summary/narrative rewrite (v2.2232). |
+| **Evidence** | `person_file_evidence` + `person_file_attachments` | **Append-only** (no UPDATE/DELETE policies; the Drive stamps are the service role's) | A piece of evidence (v2.6392): the day it is about, a title, a memo on what it shows, its files, filed in Drive under People › the person › the day and the title (v2.6393). |
 
 Shipped in the v2.2220–v2.2221 train: migration `20260824025109_person_hr_files.sql` (see `docs/migrations/`), tab `src/components/people/PeopleHrTab.tsx`, freshness kernel `src/lib/people/personFileFreshness.ts`. Extended in v2.2232 (`20260824141540_person_hr_files_v2.sql`): revisions table + archive trigger, `person_files.covered_through` (explicit coverage marker), `author_label` provenance columns, the `hr_agent_write(jsonb)` RPC, and the least-privilege `hr_agent` role.
 
@@ -51,20 +52,26 @@ Any agent (or dev) writing to these tables follows this:
 
 ## The tab
 
-People → **HR** (dev-only cluster, next to Review/Scoreboard; `?tab=hr`, no URL gate — Scoreboard's async-`isDev` pattern). Left: roster grouped by kind, searchable, archived collapsed; freshness dot (green current / amber stale + days behind / grey empty) and entry count per person. Right: person header, then **Summary | Narrative | Raw entries**. The composer on Raw entries is the **only UI write**; curated docs are read-only in the UI and written by the agent directly (Supabase MCP / SQL).
+People → **HR** (dev-only cluster, next to Review/Scoreboard; `?tab=hr`, no URL gate — Scoreboard's async-`isDev` pattern). Left: roster grouped by kind, searchable, archived collapsed; freshness dot (green current / amber stale + days behind / grey empty) and entry count per person. Right, since v2.6392, **the person file** (`src/components/people/personFile/PersonFilePanel.tsx`): a fact strip, then **Timeline | Evidence | Narrative**.
 
-## Exhibits (v2.2231)
+- **Timeline** (the kernel `supabase/functions/_shared/personTimeline.ts`, since v2.6418 shared with the dev seat, `src/lib/people/personTimeline.ts` the app's door; the reads in `personTimelineIo.ts`): one dated line of everything on record, on the day it is ABOUT — the raw entries by source beside what the app already knows happened (papers signed, sent or owed and their expiries, licenses on file and lapsed, write-ups with their disclosure, no-shows, excused lates, field reports waiting to be filed, the start and last days), in lanes Said · Did · Paper · Missed · Ahead, by month, what lies ahead on top. Every source is read under the viewer's own RLS and a held one is named under the strip. A waiting field report carries **File to the record** / **Dismiss…** on its line (the queue's RPCs). **+ Add entry** opens the composer, the **only UI write** besides evidence; files attached to an entry become an evidence record on that entry.
+- **Evidence**: the records newest first (day · title · memo · file chips · the Drive state · Open the folder in Drive › or Try Drive again · by · kept), then *Files from before records*. **Add evidence** asks for the day it is about, a title, a memo and the files (`evidenceDraftProblem` requires all four), shrinks a photo on the way in, and says where it lands.
+- **Narrative**: the summary with its freshness and stale banner, then the narrative with its jump list. Both read-only here, written by the agent.
 
-Files attach to a person's HR file (and optionally a specific entry) via
-`person_file_attachments` + the **private `hr-files` bucket**. UI: Exhibits
-panel + composer "Attach files" on the Raw entries view; chips open a file the browser can show (a PDF,
-a picture) through a 10-minute signed URL and, since v2.4610, save any other kind from the
-app's own address (`storageSave.ts`, so Safari asks once). No UPDATE path — replace and note, like entry corrections.
+The queue of field reports (below) folds to one line while a file is open; on a phone the roster and the file take turns.
+
+## Evidence (v2.6392; exhibits since v2.2231)
+
+A piece of evidence is a **record** (`person_file_evidence`): the day it is about, a title, a memo on what it shows, and its files (`person_file_attachments` rows naming the record through `evidence_id`). The files are staged in the **private `hr-files` bucket** as they are picked (`<person>/evidence/<record>/<file id>-<name>`, `evidenceStoragePath` in the kernel `supabase/functions/_shared/personEvidence.ts`, since v2.6418 shared with the dev seat, `src/lib/people/personEvidence.ts` the app's door) and filed by `hr-evidence-drive` (v2.6393, `EDGE_FUNCTIONS.md`) into the People folder the office set on Documents → Where files go, as *People › <person> › <YYYY-MM-DD · title> › the files*; each file keeps `drive_file_id` / `drive_url` / `filed_at`, the record its folder, and a refusal is written as `fail_why` for the panel (*Not in Drive: …*, **Try Drive again**). The bucket copy stays as the app's own, opened through the HR tables' RLS; Drive is where the office finds it. **The People folder lives in a Shared Drive of its own** (the owner's call, 2026-11-02): the Jobs drive's members would read the evidence there, so the save refuses a folder inside it. No UPDATE path — a correction is a new record, like an entry.
+
+Files written before v2.6392 (`entry_id` or neither key) stay as they were: on the entry they were attached to, opened through a 10-minute signed URL (a PDF, a picture) or saved from the app's own address since v2.4610 (`storageSave.ts`), listed under *Files from before records*.
 
 - **Agent uploads**: metadata inserts work as `hr_agent`; the byte upload needs
   the storage API (service key) — `POST /storage/v1/object/hr-files/<path>`.
   Path convention: `<person_id>/<uuid>-<sanitized-filename>`; insert the
-  metadata row in the same session.
+  metadata row in the same session. An agent that files evidence writes the
+  `person_file_evidence` row first, the attachment rows with its `evidence_id`,
+  then asks `hr-evidence-drive` for the record (a dev-mcp verb for this is a card of its own).
 - **Storage setup (out-of-band, one-time — matches how the project's existing
   buckets were created; storage schema is not in the migration ledger):**
 
@@ -136,7 +143,7 @@ file / Dismiss…** (reason required). Since v2.2895 (journey-map #40) it lists
 (3) old (`usePendingHrReportsNudge`, action → `/people?tab=hr`). Clicking
 **Open their file** on an amber/red row records `aging_item_opened`.
 
-Filing goes through `file_person_report(p_report_id)` — appends the
+Since v2.6392 a waiting report also stands on the person's Timeline with **File to the record** and **Dismiss…** on its own line, so the dev files it while reading the person. Filing goes through `file_person_report(p_report_id)` — appends the
 append-only `person_file_entries` row (source `report`, `entry_date` =
 `occurred_date`, "Reported by <author> — " preamble), links it back via
 `filed_entry_id`, marks the report filed. `dismiss_person_report(p_report_id,

@@ -54,7 +54,7 @@ describe('FindAFile', () => {
     type('rock clause')
     await screen.findByText(/^Job .*1187 · Maple Court townhomes$/)
     expect(io.search).toHaveBeenCalledTimes(1)
-    expect(io.search).toHaveBeenCalledWith('rock clause')
+    expect(io.search).toHaveBeenCalledWith('rock clause', expect.any(Function))
     expect(screen.getByText('3 files say “rock clause”, from Drive.')).toBeTruthy()
     expect((screen.getByRole('link', { name: 'Permit 2026-0412.pdf' }) as HTMLAnchorElement).href).toBe('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view')
     expect(screen.getByText('Plans · Oct 14 · 410 KB')).toBeTruthy()
@@ -89,6 +89,48 @@ describe('FindAFile', () => {
     type('rock clause')
     await screen.findByText('1 file says “rock clause”, from our index.')
     expect(document.querySelector('[data-find-source="index"]')).toBeTruthy()
+  })
+
+  it('shows the index’s hits the moment they come, says Drive is still looking, and adds Drive’s behind them (v2.6369)', async () => {
+    let finish: (read: FindAFileRead) => void = () => {}
+    const fromIndex = hit({ id: 'from-index', name: 'Index letter.pdf', excerpt: { text: 'the rock clause as written', marks: [[4, 15]] } })
+    const fromDrive = hit({ id: 'from-drive', name: 'Drive scan.pdf' })
+    const search = vi.fn((_words: string, onFirst?: (read: FindAFileRead) => void) => {
+      onFirst?.({ hits: [fromIndex], more: false, noRoot: false, source: 'index' })
+      return new Promise<FindAFileRead>((resolve) => {
+        finish = resolve
+      })
+    })
+    renderWithProviders(<FindAFile io={{ search }} debounceMs={0} />)
+    type('rock clause')
+    await screen.findByText('1 file says “rock clause”, from our index.')
+    expect(screen.getByRole('link', { name: 'Index letter.pdf' })).toBeTruthy()
+    expect(screen.getByText('Drive’s search is still looking…')).toBeTruthy()
+    expect(screen.queryByText('Searching…')).toBeNull()
+    finish({ hits: [fromIndex, fromDrive], more: false, noRoot: false, source: 'index' })
+    await screen.findByText('2 files say “rock clause”, from our index.')
+    expect(screen.getByRole('link', { name: 'Drive scan.pdf' })).toBeTruthy()
+    expect(screen.queryByText('Drive’s search is still looking…')).toBeNull()
+  })
+
+  it('words typed since never hear an older search: not its first hits, and not its answer', async () => {
+    const answers: Record<string, { first: (read: FindAFileRead) => void; finish: (read: FindAFileRead) => void }> = {}
+    const search = vi.fn((words: string, onFirst?: (read: FindAFileRead) => void) => new Promise<FindAFileRead>((resolve) => {
+      answers[words] = { first: onFirst ?? (() => {}), finish: resolve }
+    }))
+    renderWithProviders(<FindAFile io={{ search }} debounceMs={0} />)
+    type('rock')
+    await waitFor(() => expect(answers.rock).toBeTruthy())
+    type('rock clause')
+    await waitFor(() => expect(answers['rock clause']).toBeTruthy())
+    answers.rock!.first({ hits: [hit({ id: 'old', name: 'Old first.pdf' })], more: false, noRoot: false, source: 'index' })
+    answers.rock!.finish({ hits: [hit({ id: 'old2', name: 'Old answer.pdf' })], more: false, noRoot: false, source: 'index' })
+    await new Promise((r) => setTimeout(r, 20))
+    expect(screen.queryByText('Old first.pdf')).toBeNull()
+    expect(screen.queryByText('Old answer.pdf')).toBeNull()
+    expect(screen.getByText('Searching…')).toBeTruthy()
+    answers['rock clause']!.finish({ hits: [hit({ id: 'new', name: 'New answer.pdf' })], more: false, noRoot: false, source: 'drive' })
+    await screen.findByRole('link', { name: 'New answer.pdf' })
   })
 
   it('one letter searches nothing', async () => {

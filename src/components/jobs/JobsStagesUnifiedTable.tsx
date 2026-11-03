@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import type { StagesPhoneRowsMode } from './stagesPhoneRowsMode'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
@@ -9,6 +9,7 @@ import { type InvoiceWithJob, type StageRow } from '../../lib/jobsStagesBoard'
 import { type StagesExpandedThreadRowShared } from './StagesExpandedThreadRow'
 import { StagesUnifiedInvoiceRow } from './StagesUnifiedInvoiceRow'
 import { StagesUnifiedJobRow } from './StagesUnifiedJobRow'
+import { JobPhotosWindow } from '../photos/JobPhotosWindow'
 import { stagesUnifiedRowKey } from '../../lib/jobs/stagesUnifiedRowKey'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
@@ -136,6 +137,7 @@ export type JobsStagesUnifiedTableProps = {
   stagesManHoursLoading: StagesRowRenderContext['stagesManHoursLoading']
   crewByJobId: StagesRowRenderContext['crewByJobId']
   checklistMarksFor?: StagesRowRenderContext['checklistMarksFor']
+  openChecklistDoor?: StagesRowRenderContext['openChecklistDoor']
   stagesLaborBreakdownByJobId: StagesRowRenderContext['stagesLaborBreakdownByJobId']
   expandedJobThreadId: StagesRowRenderContext['expandedJobThreadId']
   toggleStagesJobThreadExpanded: StagesRowRenderContext['toggleStagesJobThreadExpanded']
@@ -183,6 +185,8 @@ export type BilledRowBillLine = { extras: React.ReactNode }
 export type StagesUnifiedRowContext = Omit<JobsStagesUnifiedTableProps, 'jobSendBackLabel' | 'invoiceBundleActionLabel' | 'invoiceStandaloneActionLabel' | 'flashInvoiceId' | 'showClickTooling'> &
   Required<Pick<JobsStagesUnifiedTableProps, 'jobSendBackLabel' | 'invoiceBundleActionLabel' | 'invoiceStandaloneActionLabel' | 'flashInvoiceId' | 'showClickTooling'>> & {
     openTestReportFor: (job: JobWithDetails) => void
+    /** The Job photos window on this job (punch list #244): the row's camera icon. */
+    openJobPhotos?: (job: JobWithDetails) => void
     stagesRowSharedCtx: StagesRowRenderContext
     renderStagesFieldAndBillingLines: (job: JobWithDetails, opts?: { datesBilledYmd?: string | null }) => ReactNode
     renderJobCustomerLine: (job: JobWithDetails) => ReactNode
@@ -230,6 +234,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     stagesManHoursLoading,
     crewByJobId,
     checklistMarksFor,
+    openChecklistDoor,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
@@ -277,6 +282,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     stagesManHoursLoading,
     crewByJobId,
     checklistMarksFor,
+    openChecklistDoor,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
@@ -398,8 +404,12 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     setManageJobPeople,
   }
 
+  // The Job photos window (punch list #244): a row's camera icon opens it on that job.
+  const [photosJob, setPhotosJob] = useState<JobWithDetails | null>(null)
+
   const rowCtx: StagesUnifiedRowContext = {
     ...props,
+    openJobPhotos: setPhotosJob,
     jobSendBackLabel,
     invoiceBundleActionLabel,
     invoiceStandaloneActionLabel,
@@ -477,6 +487,17 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
           )}
         </tbody>
       </table>
+      {photosJob ? (
+        <JobPhotosWindow
+          job={photosJob}
+          onClose={() => setPhotosJob(null)}
+          onOpenJob={() => {
+            const j = photosJob
+            setPhotosJob(null)
+            props.openEdit(j)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

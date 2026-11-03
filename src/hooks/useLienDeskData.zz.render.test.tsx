@@ -74,6 +74,47 @@ describe('useLienDeskData · ZZ test jobs', () => {
     expect(Object.keys(data.jobsById).sort()).toEqual(['A', 'Y', 'Z'])
   })
 
+  it('a job with a sent item and no month row reads its GC and customer from jobs_ledger (v2.6376, job 890)', async () => {
+    const items = TABLES.job_lien_desk_items!
+    const jobsLedger = TABLES.jobs_ledger!
+    TABLES.job_lien_desk_items = [...items, { id: 'iS', job_id: 'S', kind: 'notice_53_056', status: 'sent', sent_at: '2026-10-01T15:00:00Z', months: ['2026-07'], created_at: '2026-10-01', voided_at: null }]
+    TABLES.jobs_ledger = [...jobsLedger, { ...job('S', '628 Terrell Rd', 'Dudley Mason'), customer_id: 'c-mason' }]
+    try {
+      const data = await read(false)
+      const sent = data.queue.entries.find((e) => e.jobId === 'S')!
+      expect(sent.pile).toBe('sent')
+      expect(sent.months).toEqual([])
+      expect(sent.gcCustomerId).toBe('gc-1')
+      expect(sent.customerId).toBe('c-mason')
+      expect(data.gcsById['gc-1']?.name).toBe('Knight Builders')
+    } finally {
+      TABLES.job_lien_desk_items = items
+      TABLES.jobs_ledger = jobsLedger
+    }
+  })
+
+  it('on the open desk, a sent-only job’s money is what its sent bills still owe (v2.6380): the bills are read for just those jobs', async () => {
+    const items = TABLES.job_lien_desk_items!
+    const jobsLedger = TABLES.jobs_ledger!
+    TABLES.job_lien_desk_items = [...items, { id: 'iS', job_id: 'S', kind: 'notice_53_056', status: 'sent', sent_at: '2026-10-01T15:00:00Z', months: ['2026-07'], created_at: '2026-10-01', voided_at: null }]
+    TABLES.jobs_ledger = [...jobsLedger, { ...job('S', '628 Terrell Rd', 'Dudley Mason'), customer_id: 'c-mason', status: 'billed', revenue: 285 }]
+    TABLES.jobs_ledger_invoices = [{ id: 'inv-S', job_id: 'S', status: 'billed', amount: 285, sequence_order: 1, billed_at: '2026-07-15' }]
+    TABLES.jobs_ledger_payments = []
+    try {
+      const { result } = renderHook(() => useLienDeskData(true, '2026-10-09', { light: false, hideZzTestJobs: false }))
+      await waitFor(() => expect(result.current.data).not.toBeNull())
+      const sent = result.current.data!.queue.entries.find((e) => e.jobId === 'S')!
+      expect(sent.openBalance).toBe(285)
+      // A job the RPC lists keeps the RPC's figure.
+      expect(result.current.data!.queue.entries.find((e) => e.jobId === 'A')!.openBalance).toBe(500)
+    } finally {
+      TABLES.job_lien_desk_items = items
+      TABLES.jobs_ledger = jobsLedger
+      delete TABLES.jobs_ledger_invoices
+      delete TABLES.jobs_ledger_payments
+    }
+  })
+
   it('in full, reads the pieces an approved notice already went out as, by its desk item (v2.5532)', async () => {
     const items = TABLES.job_lien_desk_items!
     TABLES.job_lien_desk_items = [{ ...(items[0] as object), status: 'approved' }, items[1]!]

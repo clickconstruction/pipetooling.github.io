@@ -5,7 +5,7 @@ file: docs/DRIVE_INTAKE_SETUP.md
 type: Runbook / Setup
 purpose: One-time Google setup for the drive-intake edge function (estimator-twin pipeline Wave 4.4) — a SERVICE ACCOUNT, never a user password. Five minutes in console.cloud.google.com, two supabase secrets, one deploy.
 audience: Owner, Developers
-last_updated: 2026-11-01
+last_updated: 2026-11-02
 ---
 
 Why a service account: the function needs a robot identity that can write ONE shared
@@ -133,6 +133,48 @@ the owner made them Edit. That is why v2.6241 moved the filing to the Shared Dri
 nothing and can go back to View. When Drive refuses, the verb (`driveFilingRefusal`) names the reason, the service
 account, where it stopped and the grant that fixes it, keeps the staged copy so the same plan applies again, and tells
 the agent that a person can drop the file into the division folder and press Find the folder on the bid form.
+
+## The people's files (v2.6393)
+
+A person's evidence (People → HR, the person file, `HR_FILES.md` → Evidence) is filed by `hr-evidence-drive` under the
+**People folder** the office sets on Documents → Where files go (`drive_people_folder_id`), as *<People folder> › <Person's
+name> › <YYYY-MM-DD · title> › the files*. **It lives in a Shared Drive of its own** (the owner's call, 2026-11-02): the
+Jobs drive's members would read the evidence there while the app keeps it dev-only, so `set.people` refuses a folder whose
+Shared Drive is the jobs root's. One-time setup, by a person (the SA cannot make a Shared Drive): a licensed
+clickplumbing.com user makes Shared Drive **PipeTooling People**, adds the owner as Manager and the SA
+(`drive-intake@pipetooling-drive.iam.gserviceaccount.com`) as Content manager and nobody else, opens the drive and pastes
+its link on the People folder card (the drive's own id serves as the folder), presses Check, then Use this folder. The same
+SA, key and secrets; nothing new to set up on the functions.
+
+## Our own OCR (punch list #240, PR 3, v2.6336)
+
+The file index (`file_index`, Find a file's first answer) reads a Google Doc's export, a PDF's text layer and a text
+file's bytes by itself. A scanned PDF or a picture of a page has no text to read, so the index sends it to **Google
+Document AI's Document OCR processor** as the same service account, once one secret names the processor. Until then a
+scan sits in the index as `text_why = 'scan'` and Find a file falls back to Drive's own search for it, as before.
+
+One-time setup, in `console.cloud.google.com` on the `pipetooling-drive` project:
+
+1. **APIs & Services → Library** → *Cloud Document AI API* → **Enable**.
+2. **Document AI → Processors → Create processor** → *Document OCR* → region **us** → Create. Copy the processor's
+   name from its Overview: `projects/<number>/locations/us/processors/<id>`.
+3. **IAM & Admin → IAM** → Grant access → principal `drive-intake@pipetooling-drive.iam.gserviceaccount.com` → role
+   **Document AI API User** (`roles/documentai.apiUser`) → Save.
+4. The secret, no redeploy (it is read at call time):
+
+   ```bash
+   supabase secrets set GOOGLE_DOCAI_PROCESSOR="projects/<number>/locations/us/processors/<id>" --project-ref yewfzhbofbbyvkvtaatw
+   ```
+
+5. Prove it with one call as the dev: `POST /functions/v1/drive-link { "action": "ocr_probe" }` sends a one-pixel PNG
+   through the processor and answers the provider's own words (`answer.ok` with an empty text and one page when it is
+   right; `answer.error` with Google's reason when it is not).
+
+From then on the sweep reads five waiting scans every ten minutes, and every index pass (a press, the backfill, the sweep's own first step) reads at most five scans of its own, so the spend is paced at a few hundred pages an hour at most (the scans the backfill held catch up by
+themselves), `index_job` and the dev seat's backfill read a scan the first time they meet it, and every row keeps how
+many pages were read (`ocr_pages`). Fifteen pages per scan at most (the online limit); about $1.50 per 1,000 pages. A
+scan the provider refuses is tried again a day later, the reason on the row (`ocr_note`). Rotation: delete the
+processor, or unset the secret, and every scan stays a scan.
 
 ## Rotation / kill
 

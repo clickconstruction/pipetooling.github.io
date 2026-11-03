@@ -40,6 +40,15 @@ describe('superintendentLine: the verdict', () => {
     expect(l.days).toBe(0)
   })
 
+  it('reads a job past its budget by the hours it really used, never as on pace', () => {
+    // 80% done on a 47 h budget is 37.6 h earned against 289 h in: 251.4 h behind, about ten crew days of 24 h.
+    const l = superintendentLine({ ...base, pctDone: 80, hoursUsed: 289, hoursBudget: 47 })
+    expect(l.tone).toBe('behind')
+    expect(l.days).toBe(-10)
+    expect(l.headline).toBe('10 days behind.')
+    expect(Math.round(l.hoursPct)).toBe(615)
+  })
+
   it('says one day in the singular', () => {
     // 55% done on 40%: 30 h saved, 1.25 days → 1.
     expect(superintendentLine({ ...base, pctDone: 55, hoursUsed: 80 }).headline).toBe('1 day ahead at this pace.')
@@ -129,7 +138,7 @@ describe('superintendentLine: the words', () => {
 
   it('stacks the proof: certified, then the checklist, then the crew\'s own percent as provisional', () => {
     expect(superintendentLine({ ...base, certifiedPct: 40, checklist: { answered: 3, asked: 5 } }).proofWords).toBe(
-      'Certified: pay app at 40% · checklist 3 of 5 ready · your 50% reads provisional until the next pay app.',
+      "Certified: pay app at 40% · checklist 3 of 5 ready · the crew's 50% reads provisional until the next pay app.",
     )
     expect(superintendentLine({ ...base, pctDone: null }).proofWords).toBe('No certified pay app yet · no checklist on the stages yet · set the percent to read a pace.')
   })
