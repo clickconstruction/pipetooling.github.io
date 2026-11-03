@@ -22,7 +22,7 @@ A step in Flows can be set to **Offers**. Each morning at 9 AM the app prepares 
 
 The office can also hand a text to the morning. On the Tell the customer sheet, press **Send in the morning**. The text waits here until 9 AM on its day, then the app sends it. See [schedule a job and tell the customer](/help/schedule-a-job-and-tell-the-customer#send-it-in-the-morning-instead).
 
-A first visit moved to another day or window puts its Rescheduled text here too. Press it when the move is settled.
+A first visit moved to another day or window puts its Rescheduled text here too. Press it when the move is settled. Once the new day has passed, the text is held, and the app puts it away the next morning.
 
 ## Press one, or all that are ready
 
@@ -46,6 +46,8 @@ A text you prepared for a morning shows its day instead of a Send button. The ap
 - **Hold until…** picks a day. The step waits until then before the app prepares it again.
 - **Stop reminding on this job** turns the step off for this customer on this job.
 
+If the app says the step is not on the customer's flow, press **Not this one**. Someone took the step off the flow after the text was prepared.
+
 ## When a text is held
 
 A held row says why under the text and has no Send button.
@@ -54,6 +56,9 @@ A held row says why under the text and has no Send button.
 - The number sent STOP. Call instead.
 - The customer asked to hear from us by email. Email them, or call.
 - The customer answered the review already. Press **Not this one** to put it away.
+- A text for this step already went to the customer after this one was prepared. The row says the day. Press **Not this one**.
+- A newer text for the same step is on the list. Press **Not this one** on the older one.
+- The text names a visit on a day that has passed. Press **Not this one**. The app puts it away on its own the next morning.
 - The step's line still has a blank the app cannot fill. The app fills {amount} and {bill} from the job's newest open bill. The hold shows when the customer has no open bill on the job. It also shows when that bill has no pay page. Send it from the customer's thread, or change the step's line.
 - Quo turned the text away. The row holds Quo's words.
 

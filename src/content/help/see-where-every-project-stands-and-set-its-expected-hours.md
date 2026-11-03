@@ -2,14 +2,26 @@
 title: see where every project stands and set its expected hours
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent
-keywords: projects board, projects, expected hours, target, pace, ahead, behind, labor budget, strip, days, stages, crew day, superintendent, recent changes, undo, back to the budget
+keywords: projects board, projects, expected hours, target, pace, ahead, behind, labor budget, strip, days, stages, crew day, superintendent, recent changes, undo, back to the budget, job kind, service call, kind not set, missing from the board
 order: 31
 ---
 Projects is one page for every working project. Each project is a card. The strip on the card is the labor budget, filled by the real days the crew worked. One look says which projects are ahead and which are behind. The leader and the office set the expected hours under the strip. The superintendent reads the same number on the phone.
 
 ## Open the board
 
-Open **Jobs** and press {{button:blue|Projects}} beside {{button:green|Forecast}}. The page also opens at [/projects-board](/projects-board). On a job's Costs tab, the Where we are card has a door, **On the Projects board ›**. The door opens that project's card large. A job lands here when it is Working and has a stage In order. A Working job priced at $25,000 and up lands here too. Service calls stay out.
+Open **Jobs** and press {{button:blue|Projects}} beside {{button:green|Forecast}}. The page also opens at [/projects-board](/projects-board). On a job's Costs tab, the Where we are card has a door, **On the Projects board ›**. The door opens that project's card large.
+
+## Which jobs land here
+
+A Working job lands here by its kind. The chip beside the job's name shows the kind.
+
+- {{chip:blue|Project}} lands here at any price.
+- {{chip:green|Service call}} stays off, even when it is priced at $25,000 or more.
+- {{chip:yellow|Kind not set}} lands here only with a stage In order or a price of $25,000 and up.
+
+A job that only carries a GC project's bills stays off. Nobody clocks on it.
+
+A job is missing and it should be here? Open the job and press the **Edit** tab. Press {{button:blue|Project}} under **Kind**. The job is on the board the next time the board opens. Read [say whether a job is a service call or a project](/help/say-whether-a-job-is-a-service-call-or-a-project) for how the app reads a kind.
 
 ## Read a card
 
@@ -47,6 +59,12 @@ A project at or over its labor budget shows the slider pinned. The words say the
 
 Press the card's title, or any space around the controls, to open it large. The strip is taller and each stage is named under its piece. The slider is long. {{button:outline|−}} and {{button:outline|+}} move it one crew day. A box takes the hours typed. The full reading sits under it.
 
+## The leader's Dashboard
+
+The leader also sees Projects on the Dashboard, as one line under Money in. The line counts the working projects, how many are behind, how many are ahead, and names the worst one. Press the line and it opens to the same cards as the board. Press {{button:outline|Close ▴}} and it folds back to one line. The Dashboard remembers your choice.
+
 ## Who sees what
 
 The leader, the assistant and the controller set the expected hours. A superintendent sees the whole board and reads every number, and sets nothing. The point is that someone else moved the number.
+
+Everyone on the board reads the same hours and the same money percent. Only a dev, the leader and the controller see dollars on a day. Everyone else reads each person's hours and the report.

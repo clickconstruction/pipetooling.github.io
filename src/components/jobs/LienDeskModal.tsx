@@ -1822,6 +1822,7 @@ export default function LienDeskModal({
     county: property.county ?? '',
     monthLabels: (selected?.months ?? []).map((m) => workMonthShort(m.key)),
     pickedMonthsCount: monthsList.length,
+    monthsOnJob: selected?.months.length ?? 0,
     pendingSessions: wm?.pendingSessions ?? 0,
     datedFromCreation: selected?.datedFromCreation ?? false,
     billedOpen: selected ? openBalance : undefined,
@@ -2272,7 +2273,7 @@ export default function LienDeskModal({
             <>
               {gateByKey.months.tone !== 'ok' ? (
                 <div className="lienGateFact">
-                  <span>Tick at least one month below — the notice has to name the work it covers.</span>
+                  <span>{gateByKey.months.value === 'No month open' ? 'No month is open to notice — every window has closed. The notice that went out is in the grid below.' : 'Tick at least one month below — the notice has to name the work it covers.'}</span>
                   <span className="lienGateFactActions">
                     <button type="button" style={linkBtn} onClick={() => paneRef.current?.querySelector('[data-lien-desk-months]')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })}>
                       Months and deadlines ↓
@@ -3198,7 +3199,7 @@ export default function LienDeskModal({
             {lt?.letterTwo ? <span>Letter two: <strong style={{ color: 'var(--text-700)' }}>{lt.words}</strong></span> : null}
             {signoff ? <span data-lien-counsel-signoff style={signoff.state === 'signed_off' ? { color: 'var(--text-green-800)' } : signoff.state === 'declined' ? { color: 'var(--text-red-600)' } : undefined}>Counsel: <strong style={{ color: 'inherit' }}>{signoffLine || 'not asked'}</strong></span> : null}
             <span data-lien-owner-called>Owner called: <strong style={{ color: 'var(--text-700)' }}>{call ? ownerCallWords(call, formatYmdMonthDay, formatUsdNoCents) : 'not yet'}</strong>{call && affidavitPileFor(call) ? <span style={{ ...chip('var(--bg-green-tint)', 'var(--text-green-800)'), marginLeft: 6 }}>Pile {affidavitPileFor(call)}</span> : null}</span>
-            {courtesy && courtesy.state !== 'none' ? <span data-lien-courtesy-state={courtesy.state}>Courtesy notice: <strong style={{ color: courtesy.state === 'held' ? 'var(--text-red-600)' : 'var(--text-700)' }}>{courtesy.state === 'due' ? 'not yet' : courtesy.state === 'waiting' ? `from day ${COURTESY_FROM_DAY}` : courtesy.state === 'held' ? courtesy.reason : courtesy.words}</strong></span> : null}
+            {courtesy && courtesy.state !== 'none' ? <span data-lien-courtesy-state={courtesy.state}>Courtesy notice: <strong style={{ color: courtesy.state === 'held' ? 'var(--text-red-600)' : 'var(--text-700)' }}>{courtesy.state === 'due' ? (courtesy.lastSentAt ? courtesy.words : 'not yet') : courtesy.state === 'waiting' ? `from day ${COURTESY_FROM_DAY}` : courtesy.state === 'held' ? courtesy.reason : courtesy.words}</strong></span> : null}
           </div>
           {gcOkayOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>

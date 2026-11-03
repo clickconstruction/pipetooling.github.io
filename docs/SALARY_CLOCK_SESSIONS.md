@@ -80,7 +80,7 @@ off) from **People → Employment**; see `src/components/people/PeopleEmployment
 
 | Column | Meaning |
 |--------|---------|
-| `origin` | `user_punch` — hand clock-in/out. `salary_schedule` — created/updated only by sync (and split/replace RPCs for continuous parents). **RLS**: client INSERT must be `user_punch`. |
+| `origin` | `user_punch` — hand clock-in/out. `salary_schedule` — created/updated only by sync (and split/replace RPCs for continuous parents). `imported` — a day the app never recorded, written by a dev through `import_clock_sessions` (v2.6425, `docs/ACCESS_CONTROL.md`), unapproved until the normal door approves it. **RLS**: client INSERT must be `user_punch`. |
 | `salary_segment_index` | **`NULL`** — one **continuous** canonical row for the day. **`1` / `2`** — **split-template** canonical slots only. Splitting **that** **`NULL`**-index row in My Time can yield **additional** indexed **`salary_schedule`** rows (**`salary_segment_index`** **`1..N`**, same `origin`). Splitting **indexed slot 1 or 2** turns children into **`user_punch`** with **`NULL`** index (see [Split RPCs](#split--cluster-rpcs)). |
 
 Partial unique indexes enforce one continuous row per user/day and one row per (user, day, segment index) for split mode (`20270331140000`).

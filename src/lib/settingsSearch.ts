@@ -123,6 +123,8 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Search for jobs, bids, customers, and estimates', keywords: ['search', 'global search', 'search bar', 'find job', 'find bid', 'find customer', 'find estimate', 'magnifier', 'cmd k', 'ctrl k'], tabId: 'settings-guides', guideSlug: 'global-search' },
   // Release notes
   { label: 'Release notes', keywords: ['app updates', "what's new", 'changelog', 'version'], tabId: 'settings-release-notes' },
+  // How fast a change ships (v2.6399): the office's answer to "can I have X".
+  { label: 'How fast a change ships', keywords: ['ship pace', 'how long does a change take', 'pull request', 'merge', 'feature request', 'turnaround', 'github'], tabId: 'settings-ship-pace' },
 ]
 
 export type SettingsSearchHit = {

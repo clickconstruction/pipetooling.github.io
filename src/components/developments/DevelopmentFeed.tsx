@@ -5,42 +5,24 @@
  */
 import { useState, type CSSProperties } from 'react'
 import { filterChangeLines, searchWords, splitForHighlight, type ChangeLine } from '../../lib/developments/whatChanged'
-import { HISTORY_SOURCE } from '../../lib/developments/history'
+import { historyMark, type MarkTone } from '../../lib/developments/historyLegend'
 import { EmptyState } from '../EmptyState'
 import { ageWords, LinkButton, shortDay, timeOfDay } from './developmentPageBits'
 import { JobChip } from './JobChip'
 
+/** A line's badge: its kind's mark from the legend's one table (`historyLegend.ts`), toned by family. */
 function badge(line: ChangeLine): { glyph: string; bg: string; fg: string } {
-  // A history entry wears its source's glyph: amber for what happened, the note's grey for what a person wrote.
-  if (line.kind === 'entry') {
-    const src = HISTORY_SOURCE[line.source ?? 'note']
-    return line.source === 'note' || !line.source ? { glyph: src.glyph, bg: 'var(--bg-muted)', fg: 'var(--text-700)' } : { glyph: src.glyph, bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' }
-  }
-  switch (line.kind) {
-    case 'paid':
-      return { glyph: '$', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' }
-    case 'billed':
-      return { glyph: '➤', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' }
-    case 'won':
-      return { glyph: '✓', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' }
-    case 'lost':
-      return { glyph: '✕', bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' }
-    case 'sent':
-    case 'contact':
-      return { glyph: '➤', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' }
-    case 'plans':
-      return { glyph: '▤', bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' }
-    case 'stage':
-    case 'new_job':
-    case 'new_bid':
-      return { glyph: '◆', bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' }
-    case 'asked':
-      return { glyph: '?', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' }
-    case 'answered':
-      return { glyph: '↩', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' }
-    case 'note':
-      return { glyph: '✎', bg: 'var(--bg-muted)', fg: 'var(--text-muted)' }
-  }
+  const mark = historyMark(line.kind, line.source)
+  const t = MARK_TONE[mark.tone]
+  return { glyph: mark.glyph, bg: t.bg, fg: t.fg }
+}
+
+const MARK_TONE: Record<MarkTone, { bg: string; fg: string }> = {
+  grey: { bg: 'var(--bg-muted)', fg: 'var(--text-700)' },
+  blue: { bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' },
+  green: { bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' },
+  red: { bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' },
+  amber: { bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' },
 }
 
 const PAGE = 12
@@ -149,7 +131,8 @@ export function DevelopmentFeed({
             </span>
           )}
           {line.detail ? (
-            <span style={{ color: 'var(--text-muted)' }}>
+            // A folded run's details sit one a line (the Gun Dog spike, 2026-11-02); every other detail wraps as prose.
+            <span style={{ color: 'var(--text-muted)', whiteSpace: 'foldedCount' in line && line.foldedCount ? 'pre-line' : undefined }}>
               {' · '}
               {line.detail.length > FOLD_AT && !searching && onMore ? (
                 <>

@@ -47,13 +47,14 @@ const ZZ_BY_NAME = job('Z', 'ZZ TEST working', 'Ann Lee')
 const ZZ_BY_CUSTOMER = job('Y', 'Hill Street remodel', 'ZZ Test Customer')
 
 function Probe() {
-  const { jobs, runFetchJobs, zzTestJobCount, headerStats } = useJobsListCache()
+  const { jobs, runFetchJobs, zzTestJobCount, zzTestJobIds, headerStats } = useJobsListCache()
   const [returned, setReturned] = useState<string | null>(null)
   return (
     <div>
       <p data-testid="jobs">{jobs.map((j) => j.id).join(',')}</p>
       <p data-testid="returned">{returned ?? ''}</p>
       <p data-testid="zz-count">{zzTestJobCount}</p>
+      <p data-testid="zz-ids">{[...zzTestJobIds].sort().join(',')}</p>
       <p data-testid="stats-tag">{(headerStats as { tag?: string } | null)?.tag ?? ''}</p>
       <button
         type="button"
@@ -135,6 +136,7 @@ describe('JobsListCacheProvider · ZZ test jobs (punch list #61)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Load' }))
     await waitFor(() => expect(screen.getByTestId('returned').textContent).toBe('A'))
     expect(screen.getByTestId('zz-count').textContent).toBe('2')
+    expect(screen.getByTestId('zz-ids').textContent).toBe('Y,Z')
     await waitFor(() => expect(fetchStats).toHaveBeenCalledWith(null, undefined, { excludeZzTestJobs: true }))
     act(() => setDevShowsZzTestJobs(true))
     await waitFor(() => expect(screen.getByTestId('jobs').textContent).toBe('Z,A,Y'))

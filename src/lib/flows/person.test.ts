@@ -70,7 +70,7 @@ describe('personFlowFrom: one person for the panel, the card and the nudges', ()
 
   // v2.6232: a residential customer's steps read from their Pipeline rows, once the reader hands them in.
   it('reads a residential customer’s steps from their Pipeline rows, and their lanes empty without them', () => {
-    const dana = { id: 'c-dana', kind: 'residential' as const, off_since: null, off_why: null, off_by: null }
+    const dana = { id: 'c-dana', kind: 'customer' as const, off_since: null, off_why: null, off_by: null }
     const residential: ResidentialRows = {
       contact: dana,
       firstName: 'Dana',

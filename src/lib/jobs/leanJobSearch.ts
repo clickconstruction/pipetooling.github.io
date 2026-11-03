@@ -9,13 +9,12 @@
  * customer name — the last is a server-side bonus the client filter never
  * had) and, since v2.6354, the jobs of every development whose name matches:
  * one small read of `developments` first, then their ids ride the same `or`
- * as `development_id.in.(…)`. Before that a development's name found only
- * the rows the board had loaded, so a built-out development's Paid in Full
- * houses never came up (the owner, 2026-11-02). GC names still live on
- * another table and keep matching client-side over loaded rows.
+ * as `development_id.in.(…)`. Before that the name reached a job the board
+ * had not loaded only when one of those flat columns also held it. GC names
+ * still live on another table and keep matching client-side over loaded rows.
  */
 import { supabase } from '../supabase'
-import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { errorKindOf, formatErrorMessage, withSupabaseRetry, type DatabaseErrorKind } from '../../utils/errorHandling'
 
 export const LEAN_JOB_SEARCH_LIMIT = 200
 
@@ -80,7 +79,8 @@ export function buildLeanJobNumberOr(digits: string): string {
 
 export type LeanJobSearchResult =
   | { ok: true; ids: string[] }
-  | { ok: false; error: string }
+  /** `errorKind` tells a lost signal (Retry) from a refusal (its reason, no Retry). */
+  | { ok: false; error: string; errorKind: DatabaseErrorKind }
 
 async function runLeanSearch(orExpr: string, customerFilter: string | null): Promise<LeanJobSearchResult> {
   try {
@@ -89,7 +89,7 @@ async function runLeanSearch(orExpr: string, customerFilter: string | null): Pro
     const rows = (await withSupabaseRetry(async () => q, 'lean job search')) as Array<{ id: string }> | null
     return { ok: true, ids: (rows ?? []).map((r) => r.id) }
   } catch (e) {
-    return { ok: false, error: formatErrorMessage(e, 'Search failed') }
+    return { ok: false, error: formatErrorMessage(e, 'Search failed'), errorKind: errorKindOf(e) }
   }
 }
 
@@ -102,7 +102,7 @@ export async function fetchLeanJobSearchIds(
   try {
     developmentIds = await fetchDevelopmentIdsMatching(term)
   } catch (e) {
-    return { ok: false, error: formatErrorMessage(e, 'Search failed') }
+    return { ok: false, error: formatErrorMessage(e, 'Search failed'), errorKind: errorKindOf(e) }
   }
   return runLeanSearch(buildLeanJobSearchOr(term, developmentIds), customerFilter)
 }

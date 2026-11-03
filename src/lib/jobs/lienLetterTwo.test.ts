@@ -129,3 +129,14 @@ describe('letter two — day 0 from the later of the mailing and the delivery (t
     expect(letterTwoStatus({ items: [first], openBalance: 0, todayYmd: '2026-09-15', mailClocks: { first: delivered } }).state).toBe('paid')
   })
 })
+
+describe('the owner’s call rides on the status whatever the state (v2.6383)', () => {
+  it('a letter two that went out reads sent, and still carries the owner’s call for the courtesy to close on', () => {
+    const first = item({ id: 'a', status: 'sent', sent_at: '2026-09-01T15:00:00Z', created_at: '2026-08-30T10:00:00Z' })
+    const two = item({ id: 'b', status: 'sent', sent_at: '2026-09-14T15:00:00Z', created_at: '2026-09-12T10:00:00Z', fields: { letterTwo: { kind: 'unresponsive' } } })
+    const s = letterTwoStatus({ items: [first, two], openBalance: 9_800, todayYmd: TODAY, ownerCalledAt: '2026-09-16T12:00:00Z' })
+    expect(s.state).toBe('sent')
+    expect(s.ownerCalledAt).toBe('2026-09-16T12:00:00Z')
+    expect(letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: TODAY }).ownerCalledAt).toBeNull()
+  })
+})

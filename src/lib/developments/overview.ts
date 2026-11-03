@@ -353,3 +353,22 @@ export function pulseWords(args: { name: string; openQuestions: number; oldestAg
   if (args.newestPlansShort) parts.push(`new plans ${args.newestPlansShort}`)
   return parts
 }
+
+/**
+ * A robot estimator's shadow bid (the Gun Dog spike, 2026-11-02): a bid whose estimator is a digital twin.
+ * The table shows it with a *shadow* chip so the owner sees the robot at work; the head's people and the
+ * tiles' counts leave it out, since a shadow is not a bid the company is chasing.
+ */
+export function shadowBidIds(bids: readonly Pick<MemberBid, 'id' | 'estimator_id'>[], twinUserIds: ReadonlySet<string>): Set<string> {
+  const out = new Set<string>()
+  if (twinUserIds.size === 0) return out
+  for (const b of bids) if (b.estimator_id && twinUserIds.has(b.estimator_id)) out.add(b.id)
+  return out
+}
+
+/** The members with the shadow bids left out, for the counts; the same object back when there is none to drop. */
+export function withoutShadowBids(members: Members, twinUserIds: ReadonlySet<string>): Members {
+  const shadows = shadowBidIds(members.bids, twinUserIds)
+  if (shadows.size === 0) return members
+  return { bids: members.bids.filter((b) => !shadows.has(b.id)), jobs: members.jobs }
+}

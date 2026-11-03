@@ -20,6 +20,8 @@ const track: CSSProperties = { position: 'relative', height: 22, borderRadius: 6
 export type PaceStripStage = { name: string; /** This stage's share of the track, in hours. */ hours: number; /** The same share in labor dollars, when the lines carry one. */ laborUsd?: number; /** The crew's report on this stage, when it has one. */ pctDone: number | null }
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
+/** A touch screen has no hover: a tap belongs to the day under a stage's bar, and the legend offers no hover. */
+const canHover = () => typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(hover: hover)').matches
 const dateWords = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 
 /**
@@ -61,6 +63,10 @@ export function PaceStrip({ line, hoursBudget, targetHours, days = [], stages = 
   const chip = line.tone === 'early' ? null : line.money?.wrong ? 'budget?' : line.money?.leads && line.days <= 0 ? 'money ahead' : line.tone === 'even' ? 'on pace' : `${line.days > 0 ? '+' : ''}${line.days} d`
   const chipColor = behind ? 'var(--text-red-700)' : line.tone === 'ahead' ? 'var(--text-green-700)' : 'var(--text-700)'
   const budget = hoursBudget && hoursBudget > 0 ? hoursBudget : 0
+  // The work done sits on the plan, not on the track: 100% done is the expected hours, or the budget's edge when the
+  // track has run past it, so the gap between the mark and the fill is ahead or behind in hours on every job.
+  const plan = targetHours != null && targetHours > 0 ? targetHours : budget
+  const doneAt = budget > 0 ? Math.min(100, (done * plan) / budget) : done
   // The real days, laid end to end from the left; each one as wide as its hours.
   const segments: Array<{ ymd: string; hours: number; left: number; width: number }> = []
   let acc = 0
@@ -97,6 +103,8 @@ export function PaceStrip({ line, hoursBudget, targetHours, days = [], stages = 
     })
   }
   const [stageHover, setStageHover] = useState<{ index: number; x: number; y: number } | null>(null)
+  const hovers = canHover()
+  const dayHover = hovers ? onDayHover : undefined
   // A line's name can be a paragraph; the strip shows its first words.
   const shortName = (name: string) => (name.length > 36 ? `${name.slice(0, 34).trimEnd()}…` : name)
   const pieceTitle = (p: { name: string; hours: number; pctDone: number | null }) => `${shortName(p.name)} · ${Math.round(p.hours)} h of the budget${p.pctDone != null ? ` · ${Math.round(p.pctDone)}% done` : ''}`
@@ -119,9 +127,9 @@ export function PaceStrip({ line, hoursBudget, targetHours, days = [], stages = 
               aria-label={dayTitle(s)}
               title={dayTitle(s)}
               onClick={onDay ? () => onDay(s.ymd) : undefined}
-              onMouseEnter={onDayHover ? (e) => onDayHover(s.ymd, e.clientX, e.clientY) : undefined}
-              onMouseMove={onDayHover ? (e) => onDayHover(s.ymd, e.clientX, e.clientY) : undefined}
-              onMouseLeave={onDayHover ? () => onDayHover(null, 0, 0) : undefined}
+              onMouseEnter={dayHover ? (e) => dayHover(s.ymd, e.clientX, e.clientY) : undefined}
+              onMouseMove={dayHover ? (e) => dayHover(s.ymd, e.clientX, e.clientY) : undefined}
+              onMouseLeave={dayHover ? () => dayHover(null, 0, 0) : undefined}
               style={{ position: 'absolute', top: 0, bottom: 0, left: `${s.left}%`, width: `calc(${s.width}% - 1px)`, background: fill, opacity: 0.85, border: 'none', padding: 0, margin: 0, cursor: onDay ? 'pointer' : 'default', borderRadius: i === 0 ? '6px 0 0 6px' : 0 }}
             />
           ))
@@ -137,10 +145,10 @@ export function PaceStrip({ line, hoursBudget, targetHours, days = [], stages = 
             key={`div-${p.name}-${p.left}`}
             data-testid="pace-stage-end"
             aria-label={`End of ${shortName(p.name)}: ${Math.round(p.toHereHours)} h of the budget to here`}
-            onMouseEnter={(e) => setStageHover({ index: i, x: e.clientX, y: e.clientY })}
-            onMouseMove={(e) => setStageHover({ index: i, x: e.clientX, y: e.clientY })}
-            onMouseLeave={() => setStageHover(null)}
-            style={{ position: 'absolute', top: -4, bottom: -4, left: `calc(${p.left + p.width}% - 6px)`, width: 12, cursor: 'help', zIndex: 2 }}
+            onMouseEnter={hovers ? (e) => setStageHover({ index: i, x: e.clientX, y: e.clientY }) : undefined}
+            onMouseMove={hovers ? (e) => setStageHover({ index: i, x: e.clientX, y: e.clientY }) : undefined}
+            onMouseLeave={hovers ? () => setStageHover(null) : undefined}
+            style={{ position: 'absolute', top: -4, bottom: -4, left: `calc(${p.left + p.width}% - 6px)`, width: 12, cursor: hovers ? 'help' : undefined, pointerEvents: hovers ? undefined : 'none', zIndex: 2 }}
           >
             <div style={{ position: 'absolute', top: 2, bottom: 2, left: 5, width: 2, background: 'var(--surface)', boxShadow: '0 0 0 1px var(--text-muted)' }} />
           </div>
@@ -148,11 +156,11 @@ export function PaceStrip({ line, hoursBudget, targetHours, days = [], stages = 
         {moneyFill != null ? <div style={{ position: 'absolute', left: 0, bottom: 2, height: 3, width: `${moneyFill}%`, background: line.money?.leads ? '#b91c1c' : 'var(--text-muted)', borderRadius: 2, pointerEvents: 'none' }} /> : null}
         {targetPct != null ? <div title={`expected ${Math.round(targetHours!)} h`} style={{ position: 'absolute', top: -4, bottom: -4, left: `calc(${targetPct}% - 1px)`, width: 0, borderLeft: '2px dashed var(--text-strong)', pointerEvents: 'none' }} /> : null}
         {targetPct != null ? <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${targetPct}%`, right: 0, background: 'repeating-linear-gradient(135deg, transparent 0 4px, rgba(127,127,127,0.18) 4px 6px)', pointerEvents: 'none', borderRadius: '0 6px 6px 0' }} /> : null}
-        {line.tone !== 'early' ? <div style={{ position: 'absolute', top: -3, bottom: -3, left: `calc(${done}% - 2px)`, width: 4, background: '#2563eb', borderRadius: 2, pointerEvents: 'none' }} /> : null}
+        {line.tone !== 'early' ? <div data-testid="pace-done" style={{ position: 'absolute', top: -3, bottom: -3, left: `calc(${doneAt}% - 2px)`, width: 4, background: '#2563eb', borderRadius: 2, pointerEvents: 'none', zIndex: 3 }} /> : null}
         {chip ? (
-          <span style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: done > 80 ? 'auto' : `calc(${done}% + 8px)`, right: done > 80 ? `calc(${100 - done}% + 8px)` : 'auto', fontSize: compact ? '0.7rem' : '0.74rem', fontWeight: 800, color: chipColor, background: 'var(--surface)', borderRadius: 999, padding: '0 6px', whiteSpace: 'nowrap', lineHeight: '16px', pointerEvents: 'none' }}>{chip}</span>
+          <span style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: doneAt > 80 ? 'auto' : `calc(${doneAt}% + 8px)`, right: doneAt > 80 ? `calc(${100 - doneAt}% + 8px)` : 'auto', fontSize: compact ? '0.7rem' : '0.74rem', fontWeight: 800, color: chipColor, background: 'var(--surface)', borderRadius: 999, padding: '0 6px', whiteSpace: 'nowrap', lineHeight: '16px', pointerEvents: 'none', zIndex: 3 }}>{chip}</span>
         ) : null}
-        {daysLeftWords && usedPct < 85 && done < 60 ? <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: '0.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{daysLeftWords}</span> : null}
+        {daysLeftWords && usedPct < 85 && doneAt < 60 ? <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: '0.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{daysLeftWords}</span> : null}
       </div>
       {stageHover && pieces[stageHover.index] ? (
         <StageEndCard x={stageHover.x} y={stageHover.y} name={shortName(pieces[stageHover.index]!.name)} index={stageHover.index} count={pieces.length} stageHours={pieces[stageHover.index]!.hours} stageUsd={pieces[stageHover.index]!.laborUsd} toHereHours={pieces[stageHover.index]!.toHereHours} toHereUsd={pieces[stageHover.index]!.toHereUsd} days={days} />
@@ -169,8 +177,8 @@ export function PaceStrip({ line, hoursBudget, targetHours, days = [], stages = 
       {!compact ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)', gap: 6, flexWrap: 'wrap' }}>
           <span><i style={{ display: 'inline-block', width: 8, height: 8, background: '#2563eb', borderRadius: 2, marginRight: 4 }} />done {Math.round(done)}%</span>
-          <span><i style={{ display: 'inline-block', width: 8, height: 8, background: '#f59e0b', borderRadius: 2, marginRight: 4 }} />hours {Math.round(line.hoursPct)}%{drawn ? ` · ${segments.length} day${segments.length === 1 ? '' : 's'}, tap one` : line.daysUsed != null ? ` · ${Math.round(line.daysUsed)} d at ${Math.round(line.hoursPerDay)} h?` : ''}</span>
-          {pieces.length && !stageWords ? <span><i style={{ display: 'inline-block', width: 8, height: 8, border: '1px solid var(--text-muted)', borderRadius: 2, marginRight: 4, boxSizing: 'border-box' }} />{pieces.length} stages, hover one</span> : null}
+          <span><i style={{ display: 'inline-block', width: 8, height: 8, background: '#f59e0b', borderRadius: 2, marginRight: 4 }} />hours {Math.round(line.hoursPct)}%{drawn ? ` · ${segments.length} day${segments.length === 1 ? '' : 's'}, tap one` : line.daysUsed != null && line.daysUsed > 0 ? ` · ${Math.round(line.daysUsed)} d at ${Math.round(line.hoursPerDay)} h?` : ''}</span>
+          {pieces.length && !stageWords ? <span><i style={{ display: 'inline-block', width: 8, height: 8, border: '1px solid var(--text-muted)', borderRadius: 2, marginRight: 4, boxSizing: 'border-box' }} />{pieces.length} stages{hovers ? ', hover one' : ''}</span> : null}
           {moneyPct != null ? <span style={{ color: line.money?.leads ? 'var(--text-red-700)' : undefined }}><i style={{ display: 'inline-block', width: 8, height: 3, background: line.money?.leads ? '#b91c1c' : 'var(--text-muted)', marginRight: 4, verticalAlign: 'middle' }} />money {moneyPct}%</span> : null}
         </div>
       ) : null}

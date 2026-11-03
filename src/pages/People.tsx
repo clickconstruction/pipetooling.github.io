@@ -754,7 +754,9 @@ export default function People() {
         setActiveTab(target)
         return
       }
-      if (tab === 'writeups' && !canAccessContracts) {
+      // Writeups waits for `accessResolved` the same way (v2.6419): gated on the flag alone, a
+      // dev's cold `/people?tab=writeups` bounced to Users before the role had been read.
+      if (accessResolved && tab === 'writeups' && !canAccessContracts) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
           next.set('tab', 'users')

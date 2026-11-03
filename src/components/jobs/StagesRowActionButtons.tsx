@@ -5,8 +5,9 @@
  * still decides when it shows and what its click does, exactly as before.
  */
 import { Children, type ReactNode } from 'react'
-import { FileCheck2, FileSpreadsheet, Folder, PencilRuler } from 'lucide-react'
+import { Camera, FileCheck2, FileSpreadsheet, Folder, ListChecks, PencilRuler } from 'lucide-react'
 import type { JobPlansPress } from '../../lib/plans/jobPlanSetsIcon'
+import type { PipelineChecklistDoor } from '../../lib/jobs/pipelineChecklistDoor'
 import { stagesRowIconsPerRow } from '../../lib/jobs/stagesRowIconGrid'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 
@@ -148,6 +149,35 @@ export function StagesJobFolderButton({ folderUrl, onOpenTab }: { folderUrl: str
   )
 }
 
+/**
+ * The job's photos (punch list #244, PR 3, the owner's ask after v2.6301): opens the Job photos window, where the job's
+ * photos are browsed with their words and one is added with a description. ⌘-click (Ctrl on Windows) opens the job's
+ * photo folder in Drive, the Customer Pictures folder when the job has one, else the job's own folder. Amber like the
+ * folder icon while the job has a Drive folder, grey while it has none; the grey one still opens the window, since the
+ * first photo makes the folder.
+ */
+export function StagesPhotosButton({ picturesUrl, folderUrl, onOpen }: { picturesUrl?: string | null; folderUrl: string | null | undefined; onOpen: () => void }) {
+  const driveUrl = (picturesUrl ?? '').trim() || (folderUrl ?? '').trim() || null
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        if (driveUrl && (e.metaKey || e.ctrlKey)) {
+          openInExternalBrowser(driveUrl)
+          return
+        }
+        onOpen()
+      }}
+      title={driveUrl ? 'Photos — the job’s photos, and add one with a description; ⌘-click opens the photo folder in Drive' : 'Photos — the job’s photos, and add one with a description; the first photo makes the job’s Drive folder'}
+      aria-label="Open the job’s photos"
+      data-stages-photos={driveUrl ? 'folder' : 'no-folder'}
+      style={{ ...iconButtonStyle, color: driveUrl ? '#d97706' : 'var(--text-muted)' }}
+    >
+      <Camera size={16} aria-hidden />
+    </button>
+  )
+}
+
 /** AIA G702-G703 workbook generator. */
 export function StagesAiaG702Button({ onClick }: { onClick: () => void }) {
   return (
@@ -204,6 +234,37 @@ export function StagesPlansButton({ press, onPick }: { press: JobPlansPress; onP
       {press.kind === 'pick' ? (
         <span aria-hidden style={{ position: 'absolute', top: -2, right: -4, fontSize: '0.6rem', fontWeight: 700, lineHeight: 1, padding: '0 0.25rem', borderRadius: 999, background: '#2563eb', color: 'white' }}>
           {press.count}
+        </span>
+      ) : null}
+    </button>
+  )
+}
+
+/** The door's ink by tone: amber while a question is left, green once every list is filled, grey with no question yet. */
+const DOOR_INK: Record<PipelineChecklistDoor['tone'], string> = { amber: 'var(--text-amber-700)', green: 'var(--text-green-700)', muted: 'var(--text-muted)' }
+
+/**
+ * The job's stage checklists (punch list #246, PR 1): one icon with the job's standing across its stages, amber with
+ * what is left to answer beside it while any stage has a question left, green once every stage with a list is filled,
+ * grey while the stages take a checklist but have no question yet. Opens the sheet beside the row. The caller leaves
+ * it out on a job with no stage that takes a checklist (`door.kind === 'none'`), as it does the plans; drawn anyway it
+ * is nothing, so the cell grid never holds an empty square. `door` comes from `pipelineChecklistDoor`.
+ */
+export function StagesChecklistDoorButton({ door, onClick }: { door: PipelineChecklistDoor; onClick: () => void }) {
+  if (door.kind === 'none') return null
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={door.title}
+      aria-label={door.aria}
+      data-stages-checklist-door={door.kind}
+      style={{ ...iconButtonStyle, color: DOOR_INK[door.tone], position: 'relative' }}
+    >
+      <ListChecks size={16} aria-hidden />
+      {door.count ? (
+        <span aria-hidden data-stages-checklist-count style={{ position: 'absolute', top: -3, right: -7, fontSize: '0.55rem', fontWeight: 700, lineHeight: 1, padding: '0.12rem 0.25rem', borderRadius: 999, background: '#b45309', color: 'white', whiteSpace: 'nowrap' }}>
+          {door.count}
         </span>
       ) : null}
     </button>

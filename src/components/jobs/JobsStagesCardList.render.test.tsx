@@ -47,6 +47,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
     expect(screen.getByText('Activity and notes')).toBeTruthy()
     expect(screen.getByText('Test report')).toBeTruthy()
     expect(screen.getByText('Job folder')).toBeTruthy()
+    expect(screen.getByText('Photos')).toBeTruthy()
     expect(screen.queryByText('Hazmat fee')).toBeNull()
     expect(screen.queryByText('Send back')).toBeNull()
     fireEvent.click(screen.getByText('View job'))
@@ -64,6 +65,29 @@ describe('JobsStagesCardList more-actions sheet', () => {
     fireEvent.click(screen.getByText('Job folder'))
     expect(openEdit).toHaveBeenCalledWith(job, { initialTab: 'documents' })
     expect(screen.queryByText('Job folder')).toBeNull()
+  })
+
+  it('the sheet’s Checklists line carries the job’s standing and opens the row’s sheet; a job with no stage that takes a checklist has no line (#246)', async () => {
+    const openChecklistDoor = vi.fn()
+    const job = makeJob({ job_name: 'Card Stages', fixtures: [{ id: 'f3', name: 'Trim Set', count: 1, line_unit_price: 4100, sequence_order: 3 }] })
+    const notReady = { kind: 'trim_set', asked: 6, answered: 3, standing: 'not_ready', ready: false } as const
+    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job], openChecklistDoor, checklistMarksFor: () => new Map([['f3', notReady]]) })} />)
+    await settle()
+    fireEvent.click(screen.getByTitle('More actions'))
+    expect(screen.getByText('Checklists')).toBeTruthy()
+    expect(screen.getByText('3 of 6')).toBeTruthy()
+    fireEvent.click(screen.getByText('Checklists'))
+    expect(openChecklistDoor).toHaveBeenCalledWith(job)
+    expect(screen.queryByText('Checklists')).toBeNull()
+  })
+
+  it('the Checklists line is left off a service call and without the opener (#246)', async () => {
+    const service = makeJob({ job_name: 'Card Service', fixtures: [{ id: 's1', name: 'Water heater', count: 1, line_unit_price: 900, sequence_order: 1 }] })
+    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [service], openChecklistDoor: vi.fn() })} />)
+    await settle()
+    fireEvent.click(screen.getByTitle('More actions'))
+    expect(screen.getByText('Job folder')).toBeTruthy()
+    expect(screen.queryByText('Checklists')).toBeNull()
   })
 
   it('gates hazmat and send-back rows on their props', async () => {

@@ -12,10 +12,10 @@ summary: >
   with a number and a PDF in the job's Drive folder. The company's standard lists are made in the
   same place and promoted from a job, so Settings becomes a read-only mirror. The superintendent's
   line of #234 reads the same count as its proof.
-next: land PR 1b (#6798) once PR 1 is on main and 20261102050000 is pushed (rebase --onto, mark ready, arm, push 20261102084500 right after the merge); then PR 2, needs a signature.
+next: PR 2, needs a signature. Before the office types questions, the job form's billing save must stop deleting the stage lines (the last paragraph below).
 size: L as a train of six (M · M · M · M · S · S); four migrations; no edge function beyond the PDF renderer the hours statement already has
 blocker: none for PR 1b and PR 4. PR 2 takes "Not here signs" and PR 3 takes "files itself at the last answer" as the owner's defaults; he can change either before they build.
-ver: v2.6347 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
+ver: v2.6350 · 6347 · 6329 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
 opinion: now — the office has typed no questions yet because there was nowhere good to read the answers; this gives them the place, and the signature is what makes a checklist worth more than a report
 mockup: to-dos/stage-checklist-document/mockup-document-and-signature.html
 ---
@@ -274,6 +274,13 @@ stay out of the repo.
 5. **PR 5 · the line's proof** (S). The superintendent's line of #234 reads this count; lands
    with #234's PR 3 or after it.
 
+Then one small piece outside the train, **the gate on the kind** (`GLOSSARY.md` → *Job kind*,
+v2.6329). A service call has no Rough In, so the checklists and their records are for projects;
+nothing here reads the kind yet. The gate is one predicate on `jobKindOfRow`
+(`src/lib/jobs/jobKind.ts`), never the customer's Res/Comm. One stage line left at Any does not make
+a job a project: it reads *Kind not set* on a Click number and *Service call* on an HCP number, so
+decide what that job's checklist does before the gate lands.
+
 ## How to verify
 
 On the dev server as the dev, prod data, nothing written outside ZZ Test rows: on a ZZ Test job
@@ -319,10 +326,15 @@ where `stage_checklist_may_author` says yes. ▲ ▼ move the job's own checks, 
 for PR 4. A promote moves the job's answer to the company's row and leaves the plan sheet and the why
 behind. The owner can change any of them. Not merged yet: it lands after PR 1.
 
-A gap this build found and did not close, older than it: splitting or combining a job moves a stage line
-to another job (`jobs_ledger_fixtures.job_id`) and its checklist rows keep the old `job_id`. The answers
-have done this since #164, the job items since PR 1, the skips since PR 1b. The new job's sheet reads by
-`job_id`, so it loses them, and a combine deletes the source job, whose cascade takes them. This card last
-recorded no questions typed on prod, so little should be at stake yet; nobody has read prod for this note. The
-likely fix is an `AFTER UPDATE OF job_id` trigger on the stage lines that carries `job_id` to the three tables,
-before the office starts typing questions.
+A gap this build found, older than it: splitting or combining a job moved a stage line to another job
+(`jobs_ledger_fixtures.job_id`) and its checklist rows kept the old `job_id`. The answers had done this since
+#164, the job items since PR 1, the skips since PR 1b. The new job's sheet reads by `job_id`, so it lost them,
+and a combine deleted the source job, whose cascade took them. Closed by v2.6350 (migration `20261102143000`,
+`docs/recent-features/v2.6350.md`): a line that moves carries its rows by trigger, an answer's job is always its
+line's job, and a combine moves the report photos with the reports, since a question one of them answered lost it
+when the source went. Prod held no answer, question or report photo on 2026-11-02, so nothing was at stake yet.
+
+Still open, read from the code and not run: each save of the job form's billing slice deletes and re-inserts the
+job's lines with new ids (`writeBillingSlice`, `fixtureInsertRows`), and `ON DELETE CASCADE` on `fixture_id` would
+take every checklist row on the job with them. A stage's answers do not survive an edit to the job's Specific Work
+until that save keeps its line ids, so it needs its own PR before the office types questions.

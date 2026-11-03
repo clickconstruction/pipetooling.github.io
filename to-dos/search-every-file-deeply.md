@@ -2,7 +2,7 @@
 name: "Search every file deeply: our own index, OCR and meaning, backfilled once by an agent"
 number: 240
 group: ready
-status: designed 2026-11-02 in the session that shipped Find a file (v2.6305) · PR 1 shipped v2.6319 (#6773, the index, the sweep and Find a file reading it first) · the backfill runner shipped v2.6343 (`scripts/file-index-backfill.mjs`) · left: the backfill run (counts in Where it stands), PR 2 (a dev-mcp key), PRs 3 and 4 (the owner's two decisions)
+status: designed 2026-11-02 in the session that shipped Find a file (v2.6305) · PR 1 shipped v2.6319 (#6773, the index, the sweep and Find a file reading it first) · the backfill runner shipped v2.6343 and walked every job and bid the same day · the index check shipped v2.6364 and the fill it enabled gave every file the Shared Drive lists a row (4,209 rows, counts in Where it stands) · v2.6403 lets a deep file reach its home · left: the rehome pass and the one retry, PR 2 to PR 4, the reconcile step the owner chose for new files
 summary: >
   Find a file (Documents → Search, v2.6305) asks Drive's own full-text index and lands each hit on its job; PR #6752
   adds the line around the words. That finds a file by words Google has indexed, and nothing more. The owner wants
@@ -10,9 +10,9 @@ summary: >
   Postgres (one row per Drive file, full-text ranked), fed by the sweep as files land and filled once by a backfill,
   our own OCR for scanned paper, and embeddings so a search by meaning finds the letter that never used the word.
   The backfill is to be run one time by a Claude agent session after the features land, not by a cron.
-next: the backfill run — `node scripts/file-index-backfill.mjs --scope zz` on the ZZ test homes, then `--scope live`, `--scope bids`, `--scope paid`, counts into Where it stands; then the owner's choice of how new files are indexed (Where it stands) and PRs 2 to 4.
+next: once v2.6403 is deployed, `npx vite-node scripts/file-index-check.ts --rehome`; once PR 2's budgeted read is deployed and tested on the ZZ plan sets, the runner's one pass with `--retry` over the `reading`, `slow` and `big` rows and the bids' deeper folders; the reconcile step in another session (the owner has the prompt); then these counts again.
 size: L
-blocker: PRs 3 and 4 wait on two owner decisions (the OCR provider, the embeddings provider and its key); PR 2's agent door needs a fresh dev-mcp key, the old one was revoked 2026-10-26. PR 1 and the backfill runner need nothing.
+blocker: PRs 3 and 4 wait on two owner decisions (the OCR provider, the embeddings provider and its key). The one retry waits on PR 2's deploy. New files in a bid's folder outside the Shared Drive wait on decision 4. Nothing here waits on a dev-mcp key: the seat answers again since 2026-11-02.
 opinion: build — the owner asked for it twice and chose the shape; Drive's index is kept as the floor, so every PR here adds reach without taking anything away
 mockup: not required — the box is the shipped Find a file; the index changes what it finds and how fast, not the screen, and PR #6752 already draws the excerpt line the index will feed
 ---
@@ -250,28 +250,73 @@ PR 1 landed as v2.6319 (#6773, 2026-11-02): `file_index`, `search_file_index`, d
 `file-index-sweep` cron, Find a file reading the index first, and *Index this job's files* on the Documents tab. The
 backfill runner landed as v2.6343 (`scripts/file-index-backfill.mjs`, `docs/recent-features/v2.6343.md`): it walks every
 job's and bid's folders through `index_job` as the dev, the ZZ test homes first, then the live jobs, the bids and the paid
-jobs, resumes from a state file and keeps a local log; the counts below are its, never a file's name.
+jobs, resumes from a state file and keeps a local log; the counts below are prod's, never a file's name.
 
 ### The run (counts only)
 
-_Filled in as each scope finishes._
+Three passes from 2026-11-02 into the small hours of 11-03 UTC, all as the dev through `drive-link`, nothing written to Drive.
 
-### New files from here on: the owner's choice
+- **The walk** (`scripts/file-index-backfill.mjs`, 15:25Z to 16:50Z) took each job's and bid's folder in turn, three folders down:
+  the 10 ZZ test homes as the dry run, then 102 live jobs, 328 bids and 180 Paid in Full jobs.
+- **The fill** (`scripts/file-index-check.ts --fill`, 00:18Z to 01:53Z) took the 1,589 of the Shared Drive's 2,348 files the walk had
+  not reached, which the index check (v2.6364) found. Then `--rehome` (v2.6403) walked 601 rows up to the job or bid a walk had run
+  out of climb before reaching.
+- **The retry** (05:12Z to 05:50Z, after PR 2's budgeted read and v2.6408's 12 MB cap) took every bid and the 48 jobs holding a
+  cut-short or too-big row again, sixteen folders down this time. It met no refusal and stopped on no home.
 
-Three ways the card and the code allow, each with what it costs and what it misses:
+The check after all three: the Shared Drive's 2,348 files, 0 with no row.
 
-1. **The sweep PR 1 ships** (recommended, nothing new to build): every ten minutes `file-index-sweep` lists what changed in
-   the Shared Drive since its stamp and indexes forty files a run; it costs one Drive list and the reads, a file dropped
-   in by hand is found within minutes, a deleted file loses its row within days by the rechecks. It misses nothing inside
-   the Shared Drive and everything outside it (the estimators' bid folders in a My Drive, open decision 4). Its stamp
-   moves past files already current (`passCursor` in the kernel, found on the night of the backfill and fixed inside
-   PR 1), so a backfill run before the sweep catches up leaves nothing stuck.
-2. **Drive's change feed** (`changes.list` with a page token kept as the stamp): one call tells exactly what was added,
-   changed, moved or deleted since the last run, deletes included at once, inside the same sweep function and the same
-   cron; worth it when the drive grows past tens of thousands of files or the office wants a deleted file gone from the
-   search at once.
-3. **Index when the app files something itself** (Add a file, the photo sweep, sent copies, plan sets): instant for those
-   files, but it misses every file put in Drive by hand, which is the owner's case; an addition to 1 or 2, never alone.
+| The index | Rows |
+|---|---:|
+| Every file | 4,573 |
+| With text | 2,002 |
+| Scans and pictures, no text until PR 3's OCR | 1,587 |
+| PDFs too big to read today | 605 |
+| A kind the index does not read | 353 |
+| Reads cut short | 23 |
+| Reads that failed | 3 |
+
+- **With text**: 1,962 PDFs through their text layer (11,680 pages; 119 read only in part, as far as one request's budget went),
+  33 Google Docs, Sheets or Slides exported, 7 text files.
+- **Scans**: 1,375 pictures, 212 PDFs with no text layer.
+- **Too big**: 603 past 12 MB, the read's cap since v2.6408, and 2 under it; 117 are past 50 MB. Drive's own search still runs
+  behind ours in the box.
+- **Not read**: 137 Word and Excel files, 9 videos, 3 emails, 204 others. Word and Excel are the ones worth a later pass.
+- **Cut short**: 20 still stamped `reading`, 3 `slow`; a later `--retry` takes them once their last check is an hour old.
+- **Failed**: a broken PDF (*Invalid PDF structure*) and two Drive shortcuts named like PDFs, for which Drive serves no bytes.
+
+**What the rows sit on**: 3,077 on bids, 778 on jobs, 718 on neither. 285 bids and 109 jobs carry rows. Fewer jobs than it
+sounds, since 135 jobs share 55 folders and a shared folder's files are credited to one of them; count rows, not the runner's
+"files walked", which lists a shared folder once for each home. 2,225 of the bid rows sit in bid folders outside the Shared Drive.
+
+- *Click Customers*, a folder beside *Jobs* with 152 subfolders, most named for a customer, holds 716 of the rows on neither. They
+  are searchable, read *Not under a job*, and their path names the customer. Whether they should attach to something is the
+  owner's call.
+- **Not reached**: 15 jobs with only a pictures link, since `index_job` needs the folder link. Pictures read only by name until
+  OCR, so these wait.
+
+**Proved live**: Find a file on clicktooling.com answered a ZZ test phrase *from our index* (2026-11-02, the RPC in about 130 ms).
+An upload through the app had its row and its words within three seconds of landing, with nobody pressing anything. Words from
+a file eleven folders deep in a plan export find it on its bid.
+
+### New files from here on: the owner chose the sweep plus a reconcile step (2026-11-02)
+
+Not built as this is written; the owner has a prompt for another session. Until it lands, this is what catches what:
+
+- **What the sweep sees.** It lists by Drive's modified time. An upload through the app gets a fresh one (92 of 92 filed photos, within the
+  hour), and each of the 4 files changed since the sweep began had its row within nine minutes. A deleted file loses its row within about a
+  day by the rechecks.
+- **What it cannot see.** A file moved into the drive keeps its old modified time: 672 of the 775 job rows are dated before the drive
+  existed (2026-11-01). Forum reports say a file dragged in from a computer keeps its date too; nothing official says so and it is
+  untested here, so the reconcile step's last proof settles it. This card used to say a file dropped in by hand is found within minutes.
+  That holds only for a file with a fresh date.
+- **The reconcile step**: each run also compares the Shared Drive's listing with the rows and takes any file with no row, whatever its
+  date. About a dozen extra Drive lists a run at today's size, and `scripts/file-index-check.ts` already does the comparison by hand.
+- **Weighed and not chosen**: Drive's change feed (`changes.list` with a page token), which also shows a delete at once but is untested on
+  a file moved in; and indexing when the app files something itself, which misses every file put in by hand.
+- **Neither covers a bid's folder outside the Shared Drive**: 1,861 rows sit there. They are searchable, which Drive's own search in the
+  box never reached, but no listing sees a new file in those folders. Decision 4 below is the fix, and Drive keeps a file's id through
+  the move, so the rows hold.
 
 ## Decisions still open (the owner's)
 
@@ -282,7 +327,8 @@ Three ways the card and the code allow, each with what it costs and what it miss
    however keys are minted today; the old one is revoked).
 4. **The estimators' bid folders.** Every plumbing bid's folder sits in the owner's **My Drive**, in a folder of
    the estimators' own (40-plus bid folders for Aug–Oct 2026 alone, with HVAC and electrical siblings), outside the
-   Shared Drive. The search here is scoped to the Shared Drive, so those files are not searched, and the folder
+   Shared Drive. Drive's own search in the box is scoped to the Shared Drive and does not reach them; our index does,
+   from the walk (1,861 rows on 2026-11-02), but no listing sees a new file there, and the folder
    maker holds every bid that becomes a job until its folder is moved (job 523 on 2026-11-02). The fix is one Drive
    move of the whole folder into PipeTooling Jobs **after the estimators are made members of the Shared Drive**
    (else they lose edit access when ownership moves). Owner's call; not part of this card's code.

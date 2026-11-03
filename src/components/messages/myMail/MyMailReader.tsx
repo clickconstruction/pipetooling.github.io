@@ -22,6 +22,7 @@ import OfflineRetryPanel from '../../OfflineRetryPanel'
 import { PhoneSheet } from '../../PhoneSheet'
 import { Btn } from '../../gc/gcUi'
 import { chipStyle, mutedSmall } from './myMailStyles'
+import { MailPaperDoor } from '../../papers/MailPaperDoor'
 
 const W = MY_MAIL_READER_WORDS
 
@@ -235,6 +236,7 @@ export function MyMailReader({ io, row, address, phone, readKey, done, busy, pro
         </div>
       ) : null}
       <div style={{ padding: '0.8rem 1rem', overflowY: 'auto', display: 'grid', gap: '0.75rem', alignContent: 'start' }}>
+        {row.tagged && row.tagged.kind === 'pipeline' ? <MailPaperDoor jobId={row.tagged.id} jobLabel={row.tagged.num} subject={subject} senderAddress={row.who.address} at={row.at} messageId={lineId ?? row.tagged.messageId} mailFileCount={mail?.fileList.length ?? 0} /> : null}
         {failure ? <OfflineRetryPanel failure={failure} onRetry={() => setTick((t) => t + 1)} surface="my-email-reader" idempotent busy={reading} offlineMessage={W.offline} /> : null}
         {refusal && !failure ? (
           <p data-my-mail-refusal={refusal.error} style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>

@@ -2,7 +2,7 @@
 title: search jobs on the Pipeline board
 category: Office
 roles: dev, master_technician, assistant
-keywords: stages, search, find a job, development, paid in full, schedule notes, clock notes, session notes, schedule and time in search, tools menu
+keywords: stages, search, find a job, development, paid in full, hidden matches, no match anywhere, filters, no signal, retry, not searched, schedule notes, clock notes, session notes, schedule and time in search, tools menu
 order: 74
 ---
 The search box on Jobs → Pipeline filters every section of the board at once. Counts, totals and prints all follow what you type.
@@ -20,6 +20,29 @@ Out of the box, typing matches the job's own fields:
 :::example Jump straight to a job number
 The **#** chip inside the search bar is a faster path when you already know the number — type the digits and press Enter to jump straight to that job's row. On a keyboard, just press **n** anywhere on the board (while nothing else is focused) and the field opens ready to type.
 :::
+
+## When a filter hides a match
+
+The search works inside whatever your filters leave on the board. Filters are **Hide groups…** and the GC, development, Account Man, contract and job kind filters in the {{button:outline|⋯}} tools menu.
+
+When a filter hides a match, a line above the board says so. The line reads like *2 matches are hidden by your filters.*
+
+1. Press {{button:outline|Show them}}. The matches join the board. The line now reads *Showing 2 matches your filters hide.*
+2. Press {{button:outline|Hide them}} to put them back. Clearing the search does the same.
+
+Your filters stay as you set them. *No match anywhere* means nothing matched, even behind your filters.
+
+A dev's ZZ test jobs have a line of their own. Press {{button:outline|Open Hide groups}} on that line to reach their switch.
+
+## When the search cannot reach every job
+
+The search looks in two places. The first is the jobs already on the board. The second is the server, which holds every other job, Paid in Full included.
+
+If the server does not answer, a line above the board says so. The line reads *Only the jobs already on the board were searched.*
+
+Until the server answers, the **Paid in Full** header reads *not searched*. With no signal, press {{button:outline|Retry}}, or wait. The search runs again by itself when the signal is back. Any other reason shows in its own words, with no Retry.
+
+The **#** chip says the same in a short message. The chip keeps the number you typed, so you can press Enter again.
 
 ## Optional: also search schedule and clock notes
 

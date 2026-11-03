@@ -681,6 +681,10 @@ verify_jwt = false
 [functions.file-index-sweep]
 verify_jwt = false
 
+# How fast a change ships (v2.6399): the quarter-hour cron sends X-Cron-Secret and no JWT; a dev's Read GitHub now is checked in-function.
+[functions.ship-pace]
+verify_jwt = false
+
 # A job's Drive photos in the app (punch list #164, PR 5): the JWT is checked in-body, so the refusal has words.
 [functions.job-photos]
 verify_jwt = false
@@ -813,6 +817,11 @@ verify_jwt = false
 # plan-fetch: X-Twin-Token calls carry no JWT; auth is validated in-function
 # (per-twin credential or staff getUser) — same model as drive-intake.
 [functions.plan-fetch]
+verify_jwt = false
+
+# plan-set-files: one Drive subfolder per set of plans and the files in it (punch list #239, PR 5); the JWT is
+# checked in-function so a refusal has words, the set row read under the caller's RLS.
+[functions.plan-set-files]
 verify_jwt = false
 
 # Public supply house quote page (RFQ Phase 2) — the RFQ token IS the credential
@@ -1034,6 +1043,10 @@ verify_jwt = false
 
 # Messages, cut 10: the photo-save sweep. The cron (every 5 minutes) sends X-Cron-Secret, no JWT.
 [functions.photo-save]
+verify_jwt = false
+
+# The person file's evidence into Drive: a dev's session for one record, or the cron's X-Cron-Secret for the sweep; the function checks each itself.
+[functions.hr-evidence-drive]
 verify_jwt = false
 
 # Messages, cut 5: Quo posts its events signed with the webhook's whsec_ key (webhook-id, webhook-timestamp,

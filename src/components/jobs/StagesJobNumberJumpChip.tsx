@@ -30,9 +30,11 @@ export function StagesJobNumberJumpChip({
    * Attempt the jump; false = no match (the field flashes red and stays open).
    * May return a promise (v2.1808): the shell resolves it after the lazy Paid
    * in Full list merges, so a paid number lands instead of false-missing. The
-   * chip shows "checking Paid in Full…" while pending.
+   * chip shows "checking Paid in Full…" while pending. 'failed' = the lookup
+   * itself failed: the shell says why, and the field keeps the digits without
+   * claiming no match.
    */
-  onJump: (digits: string) => boolean | Promise<boolean>
+  onJump: (digits: string) => boolean | Promise<boolean | 'failed'>
   /** Fires when the field opens — the shell prefetches the paid list here. */
   onOpen?: () => void
 }) {
@@ -92,7 +94,8 @@ export function StagesJobNumberJumpChip({
     )
   }
 
-  function finishJump(jumped: boolean) {
+  function finishJump(jumped: boolean | 'failed') {
+    if (jumped === 'failed') return
     if (jumped) {
       setDigits('')
       setOpen(false)

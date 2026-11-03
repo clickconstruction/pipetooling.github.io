@@ -10,6 +10,7 @@
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { OFFER_HELD } from '../flows/nudgeDispatch'
 import { RUN_HOUR } from '../flows/nudgeRunLog'
+import { weekdayDate } from '../gc/words'
 import { jobRefOf } from '../messages/jobKeys'
 import { needsRatingLink } from '../ratings/ratingAsk'
 
@@ -27,6 +28,8 @@ export interface OfferRow {
   preparedBy: 'app' | 'office'
   /** An office-made offer: the morning it goes (YYYY-MM-DD). */
   sendOn: string | null
+  /** The day the words are about, a moved visit's new day (YYYY-MM-DD, v2.6387); null for a text about no day. */
+  aboutOn: string | null
   heldWhy: string | null
 }
 
@@ -86,8 +89,57 @@ export function withAnsweredHolds(offers: readonly OfferRow[], answered: Readonl
   })
 }
 
-/** The rows: the ready ones first, then the morning's, then the held, each set by name. */
-export function todaysSends(input: TodaysSendsInput): TodaysSend[] {
+/** A reminder that went on a step (`nudge_sent`), as the window reads it: whose, the step, the job and when. */
+export interface SentRow {
+  contactId: string
+  stepKey: string
+  jobKey: string | null
+  /** ISO timestamp. */
+  sentAt: string
+}
+
+/** Why a text waits when its step already got one after it was prepared (v2.6386): the day it went, and the door. */
+export function heldSentWords(sentAtIso: string): string {
+  return `A text for this step already went to them on ${weekdayDate(todayYmdInAppTz(new Date(sentAtIso)))}. Put this one away with Not this one.`
+}
+
+/** Why the older of two open texts on one step and job waits (v2.6386): a visit moved twice makes two. */
+export const HELD_NEWER = 'A newer text for this step is on this list. Put this one away with Not this one.'
+
+/**
+ * Already texted (v2.6386): the morning run keeps a step back when a reminder went inside its days (`sentLately`) and
+ * when a text for it already waits (`offeredAlready`), but an office-made offer — a moved visit's, Send in the morning's
+ * — took neither road, so it sat ready after the step's text went another way: the run's own text, Remind now from the
+ * thread's step card, or another offer on the same step pressed. The window holds such an offer with the day and the
+ * door, and holds the older of two open offers on one step and job (a visit moved twice). A text that went is the fact
+ * that matters, so this hold wins over the run's own.
+ */
+export function withSentHolds(offers: readonly OfferRow[], sent: readonly SentRow[]): OfferRow[] {
+  const sameStep = (a: Pick<OfferRow, 'contactId' | 'stepKey' | 'jobKey'>, b: Pick<OfferRow, 'contactId' | 'stepKey' | 'jobKey'>) => a.contactId === b.contactId && a.stepKey === b.stepKey && (a.jobKey ?? null) === (b.jobKey ?? null)
+  return offers.map((o) => {
+    const went = sent.filter((s) => sameStep(s, o) && s.sentAt > o.preparedAt).sort((a, b) => a.sentAt.localeCompare(b.sentAt))[0]
+    if (went) return { ...o, heldWhy: heldSentWords(went.sentAt) }
+    const newer = offers.some((x) => x.id !== o.id && sameStep(x, o) && (x.preparedAt > o.preparedAt || (x.preparedAt === o.preparedAt && x.id > o.id)))
+    return newer ? { ...o, heldWhy: HELD_NEWER } : o
+  })
+}
+
+/** Why a text about a day that has passed waits (v2.6387): the day, and the door. The run puts it away the next morning. */
+export function heldStaleWords(aboutOn: string): string {
+  return `This text names a visit on ${weekdayDate(aboutOn)}. That day has passed. Put this one away with Not this one.`
+}
+
+/** A text about a day before today is stale (v2.6387): the words would tell the customer about a visit behind them. */
+export function staleOn(o: Pick<OfferRow, 'aboutOn'>, todayYmd: string): boolean {
+  return Boolean(o.aboutOn && o.aboutOn < todayYmd)
+}
+
+/**
+ * The rows: the ready ones first, then the morning's, then the held, each set by name. A text about a day that has
+ * passed is held first of all (v2.6387), over the run's own hold: there is nothing to fix on it.
+ */
+export function todaysSends(input: TodaysSendsInput, now: Date = new Date()): TodaysSend[] {
+  const today = todayYmdInAppTz(now)
   const rows = input.offers.map(
     (o): TodaysSend => ({
       id: o.id,
@@ -98,12 +150,23 @@ export function todaysSends(input: TodaysSendsInput): TodaysSend[] {
       body: o.body,
       channelId: o.channelId,
       jobKey: o.jobKey,
-      held: o.heldWhy?.trim() || (o.channelId ? null : HELD_NO_NUMBER),
+      held: (staleOn(o, today) && o.aboutOn ? heldStaleWords(o.aboutOn) : null) || o.heldWhy?.trim() || (o.channelId ? null : HELD_NO_NUMBER),
       goesOn: o.sendOn,
     }),
   )
   const rank = (r: TodaysSend) => (r.held ? 2 : r.goesOn ? 1 : 0)
   return rows.sort((a, b) => rank(a) - rank(b) || a.who.localeCompare(b.who))
+}
+
+/**
+ * The words the office reads when a press is refused because the step is not on the person's flow (`stepUnknown`
+ * from `flow_step_check`, v2.6385): the step, the person and the door. Every other failure keeps its own words. Since
+ * the push of `20261102193000` a residential customer's step is found, so this is left for a step the office took off
+ * the flow after the text was prepared.
+ */
+export function offerRefusalWords(message: string, row: Pick<TodaysSend, 'step' | 'who'>): string {
+  if (!/stepUnknown/.test(message)) return message
+  return `The step ${row.step} is not on ${row.who}’s flow, so there is nothing to stop or hold. Put this text away with Not this one.`
 }
 
 /** The rows a press sends now: not held, and not handed to a morning. */

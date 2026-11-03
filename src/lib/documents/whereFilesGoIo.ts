@@ -47,6 +47,8 @@ export interface WhereFilesGoSet {
   root?: string
   /** The company papers folder's link or id (the Documents spike of 2026-11-01); refused as `company_unwritable`. */
   company?: string
+  /** The people's folder's link or id (a person's evidence lands under it); refused as `people_unwritable` or `people_in_jobs_drive`. */
+  people?: string
   job_pattern?: readonly JobFolderPiece[]
   bid_pattern?: readonly BidFolderPiece[]
   folders_made?: FoldersMade

@@ -1267,7 +1267,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                 <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                   Pick a <strong>Working</strong> job, select one or more <strong>Specific Work</strong> lines to move into a
                   new job, then enter the new job&apos;s HCP, name, and address. At least one line must remain on the
-                  original job.
+                  original job. A line&apos;s stage checklist goes with it: its answers, added checks and skips.
                 </p>
                 <p
                   style={{

@@ -322,6 +322,18 @@ export function retireContainer(id: string): void {
   }
 }
 
+/** The way back from `retireContainer` (owner's ask, 2026-11-03): clears the retire so the box is live again on both pages and its QR label resolves. Callers run `unretireVerdict` first. */
+export function unretireContainer(id: string): void {
+  for (const [jobId, c] of jobs) {
+    const box = c.containers.find((x) => x.id === id)
+    if (!box) continue
+    c.containers = c.containers.map((x) => (x.id === id ? { ...x, retiredAt: null } : x))
+    bump()
+    afterWrite(jobId, `Bringing back ${box.label}`, db.from('job_containers').update({ retired_at: null }).eq('id', id))
+    return
+  }
+}
+
 export type AddMovementInput = {
   jobId: string
   partId: string | null

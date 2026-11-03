@@ -38,14 +38,13 @@ describe('buildLeanJobNumberOr', () => {
 
 /**
  * The server-side search behind the Pipeline box (v2.1825) covered the five flat
- * `jobs_ledger` columns only, so a development's name found none of its jobs that
- * the board had not loaded yet — every Paid in Full house in a built-out
- * development (the owner, 2026-11-02). The search now reads the developments
- * whose name matches and asks for their jobs in the same `or`.
+ * `jobs_ledger` columns only, so a development's name reached a job the board had
+ * not loaded only when one of those columns also held it. The search now reads the
+ * developments whose name matches and asks for their jobs in the same `or`.
  */
 type Step = { method: string; args: unknown[] }
 const queries: Array<{ table: string; steps: Step[] }> = []
-let route: (table: string, steps: Step[]) => { data: unknown; error: null } = () => ({ data: [], error: null })
+let route: (table: string, steps: Step[]) => { data: unknown; error: unknown } = () => ({ data: [], error: null })
 vi.mock('../supabase', () => ({
   supabase: {
     from: (table: string) => {
@@ -122,6 +121,18 @@ describe('fetchLeanJobSearchIds by development name', () => {
     const jobsQ = queries.find((q) => q.table === 'jobs_ledger')!
     expect(String(stepArg(jobsQ.steps, 'or', 0))).not.toContain('development_id')
     expect(jobsQ.steps.some((s) => s.method === 'eq')).toBe(false)
+  })
+
+  it('a refusal comes back with its reason and its kind, so the board can say why and offer no Retry', async () => {
+    route = (table) =>
+      table === 'jobs_ledger'
+        ? { data: null, error: { message: 'permission denied for table jobs_ledger', code: '42501' } }
+        : { data: [], error: null }
+    const res = await fetchLeanJobSearchIds('Sagebrush', null)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.errorKind).toBe('server')
+    expect(res.error.length).toBeGreaterThan(0)
   })
 
   it('one letter asks the server nothing, as before', async () => {

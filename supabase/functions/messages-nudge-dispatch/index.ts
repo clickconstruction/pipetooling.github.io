@@ -49,9 +49,9 @@ import { loadWalkKit } from '../_shared/walkKit.ts'
 import { mintRatingLink, needsRatingLink, ratingAnswered } from '../_shared/ratingMint.ts'
 // The kernels straight from the copy, not its index, as quoLines.ts reads them.
 import { APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1 } from '../_shared/gcKernels/lib/appSettingsKeys.ts'
-import { FLOW_KINDS } from '../_shared/gcKernels/lib/flows/facts.ts'
+import { FLOW_KINDS, contactFlowKindOf } from '../_shared/gcKernels/lib/flows/facts.ts'
 import { notSentWords, planNudgeRun, type NudgeKept, type NudgeOffer } from '../_shared/gcKernels/lib/flows/nudgeDispatch.ts'
-import { APP_SENDS_SETTING_KEY, nudgeRunReads, type NudgeRunRows, type RunBillRows, type RunOfferRow } from '../_shared/gcKernels/lib/flows/nudgeRunInputs.ts'
+import { APP_SENDS_SETTING_KEY, nudgeRunReads, runContactsOf, type NudgeRunRows, type RunBillRows, type RunOfferRow } from '../_shared/gcKernels/lib/flows/nudgeRunInputs.ts'
 import { runHourNow, runSummary, type RunRefused } from '../_shared/gcKernels/lib/flows/nudgeRunLog.ts'
 import { NO_PIPELINE_ROWS, PIPELINE_SELECTS, type PipelineRows } from '../_shared/gcKernels/lib/flows/residentialRows.ts'
 import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
@@ -71,8 +71,13 @@ const json = (body: Record<string, unknown>, status = 200) =>
 const PAGE = 1000
 const CHUNK = 100
 
-/** The kinds the run reads: every flow's kind but the customer's, whose page it cannot read yet. */
-const RUN_KINDS = FLOW_KINDS.filter((k) => k !== 'customer')
+/**
+ * The contacts' kinds the run reads: every flow's kind that is a contact's kind. `residential` is not one (v2.6394): a
+ * homeowner's contact is kind `customer`, and the kernel's `runContactsOf` tells their flow from the card's
+ * `customer_type` once `flow_rows_for` has answered, holding the GC customers back (`customersHeld`), whose page the run
+ * cannot read yet.
+ */
+const RUN_KINDS = FLOW_KINDS.filter((k) => k !== 'residential')
 
 type Answer<T> = { data: T[] | null; error: { message: string } | null }
 
@@ -90,7 +95,7 @@ async function all<T>(read: (from: number, to: number) => PromiseLike<Answer<T>>
 const chunks = <T>(xs: readonly T[], n: number): T[][] => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n))
 
 /** An open `nudge_offers` row: a text waiting on Today's sends, or one the office handed to a morning. */
-type OfferRow = RunOfferRow & { id: string; body: string; channel_id: string | null; prepared_by: string; send_on: string | null; by_user_id: string | null }
+type OfferRow = RunOfferRow & { id: string; body: string; channel_id: string | null; prepared_by: string; send_on: string | null; about_on: string | null; by_user_id: string | null }
 
 /** The job an offer sits on, in the column `nudge_sent` and the thread keep it. */
 const jobAtOf = (o: OfferRow): JobAt | null =>
@@ -98,16 +103,14 @@ const jobAtOf = (o: OfferRow): JobAt | null =>
 
 /** The morning's rows, read as the service role. */
 async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld: number; offers: OfferRow[] }> {
-  const contacts = await all<NudgeRunRows['contacts'][number]>(
+  const everyone = await all<NudgeRunRows['contacts'][number]>(
     (a, b) => admin.from('contacts').select('id, kind, name, goes_by, snoozed_until, prefers, customer_id').in('kind', RUN_KINDS).order('id').range(a, b),
     'contacts',
   )
-  const { count: customersHeld, error: heldError } = await admin.from('contacts').select('id', { count: 'exact', head: true }).eq('kind', 'customer')
-  if (heldError) throw new Error(`contacts: ${heldError.message}`)
 
   const flowRows: Record<string, unknown> = {}
   const got = { holds: [] as any[], sent: [] as any[], notes: [] as any[], lines: [] as any[], owed: [] as any[], channels: [] as any[] }
-  for (const ids of chunks(contacts.map((c) => c.id), CHUNK)) {
+  for (const ids of chunks(everyone.map((c) => c.id), CHUNK)) {
     const { data, error } = await admin.rpc('flow_rows_for', { p_ids: ids })
     if (error) throw new Error(`flow_rows_for: ${error.message}`)
     Object.assign(flowRows, data ?? {})
@@ -127,13 +130,18 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
     got.channels.push(...channels)
   }
 
-  const pipeline = await readPipeline(admin, contacts.filter((c) => c.kind === 'residential'))
+  // The GC customers are held, by the card `flow_rows_for` carries (v2.6394); the homeowners among the customer contacts run.
+  const cards = flowRows as Readonly<Partial<Record<string, { card?: { customer_id?: string | null; customer_type?: string | null } }>>>
+  const { run: contacts, customersHeld } = runContactsOf(everyone, cards)
+  const cardOf = (id: string) => cards[id]?.card
+  const residential = contacts.filter((c) => contactFlowKindOf(c.kind, cardOf(c.id)?.customer_type) === 'residential')
+  const pipeline = await readPipeline(admin, residential)
 
   // The residential customers' bills (punch list #124, v2.6224): their Pipeline jobs, bills and payments, the columns the
   // reply box's paper read selects (`messages/papersIo.ts`), so the kernel fills {amount}, {bill} and {number} from the
   // job's newest open bill as the box does at a press. The customer id is the contact's, else the card's (`flow_rows_for` names it on the card for a customer and an architect only, v2.6232).
   const customerIds = [
-    ...new Set(contacts.flatMap((c) => (c.kind === 'residential' ? [c.customer_id ?? (flowRows[c.id] as { card?: { customer_id?: string | null } } | undefined)?.card?.customer_id ?? null] : [])).filter((id): id is string => Boolean(id))),
+    ...new Set(residential.map((c) => c.customer_id ?? cardOf(c.id)?.customer_id ?? null).filter((id): id is string => Boolean(id))),
   ]
   const bills: RunBillRows = { jobs: [], invoices: [], payments: [] }
   for (const ids of chunks(customerIds, CHUNK)) {
@@ -162,7 +170,7 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
       (a, b) =>
         admin
           .from('nudge_offers')
-          .select('id, contact_id, step_key, bid_id, project_id, jobs_ledger_id, body, channel_id, prepared_by, send_on, by_user_id')
+          .select('id, contact_id, step_key, bid_id, project_id, jobs_ledger_id, body, channel_id, prepared_by, send_on, about_on, by_user_id')
           .is('sent_at', null)
           .is('dismissed_at', null)
           .order('id')
@@ -183,7 +191,7 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
     pipeline,
     bills,
   }
-  return { rows, customersHeld: customersHeld ?? 0, offers }
+  return { rows, customersHeld, offers }
 }
 
 /**
@@ -261,11 +269,24 @@ serve(async (req) => {
     if (!dry && !runHourNow(now)) return json({ ok: true, ran: false, why: 'Not 9 AM Central. The other tick runs.' })
 
     const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
-    const [{ rows, customersHeld, offers }, kit] = await Promise.all([readRows(admin), loadWalkKit(admin)])
+    const [{ rows, customersHeld, offers: openOffers }, kit] = await Promise.all([readRows(admin), loadWalkKit(admin)])
     const walkKitContactId = kit?.contactId ?? null
+    const today = todayYmdInAppTz(now)
+    // A text about a day that has passed (v2.6387): a moved visit's Rescheduled text carries its new day in `about_on`.
+    // Once that day is behind us the words would tell the customer about a visit behind them, so the run puts the text
+    // away (`dismissed_why` stale) before planning, and the planner never counts it as a text that waits. Today's sends
+    // held it with why from the day after the visit until this run. A dry run only counts them.
+    const stale = openOffers.filter((o) => o.about_on !== null && o.about_on < today)
+    const staleIds = new Set(stale.map((o) => o.id))
+    const offers = openOffers.filter((o) => !staleIds.has(o.id))
+    rows.offers = offers
+    const staleProblems: string[] = []
+    if (!dry && stale.length) {
+      const { error } = await admin.from('nudge_offers').update({ dismissed_at: now.toISOString(), dismissed_why: 'stale' }).in('id', [...staleIds])
+      if (error) staleProblems.push(`nudge_offers stale: ${error.message}`)
+    }
     const reads = nudgeRunReads(rows, now, { origin, walkKitContactId })
     const run = planNudgeRun(reads.input)
-    const today = todayYmdInAppTz(now)
     /**
      * The column a person's job sits in (v2.6007): a residential customer's job is a Pipeline job (`jobs_ledger`), anyone
      * else's a GC project. The text's tie, its `nudge_sent` record, the thread's event line and an offer all file on it,
@@ -312,7 +333,7 @@ serve(async (req) => {
     const due = offers.filter((o) => o.prepared_by === 'office' && o.send_on !== null && o.send_on <= today && o.channel_id && o.contact_id !== walkKitContactId)
 
     if (dry) {
-      const summary = runSummary({ run, sent: run.texts.length + due.length, refused: [], unread: reads.unread.length, customersHeld, prepared: run.offers.length, morningSent: due.length, now, dry: true })
+      const summary = runSummary({ run, sent: run.texts.length + due.length, refused: [], unread: reads.unread.length, customersHeld, prepared: run.offers.length, morningSent: due.length, expired: stale.length, now, dry: true })
       console.log(`[messages-nudge-dispatch] dry run: ${summary.words.join(' ')}`)
       return json({
         ok: true,
@@ -321,6 +342,7 @@ serve(async (req) => {
         texts: run.texts.map((t) => ({ contactId: t.contactId, stepId: t.stepId, jobId: t.jobId, body: t.body })),
         offers: run.offers.map((o) => ({ contactId: o.contactId, stepId: o.stepId, jobId: o.jobId, body: o.body, held: o.held })),
         morning: due.map((o) => ({ id: o.id, contactId: o.contact_id, stepId: o.step_key, body: o.body })),
+        stale: stale.map((o) => ({ id: o.id, contactId: o.contact_id, stepId: o.step_key, aboutOn: o.about_on })),
         kept: run.notSent,
         unread: reads.unread,
       })
@@ -329,7 +351,7 @@ serve(async (req) => {
     const company = quoCompany()
     const boxes = await loadBoxes(admin)
     const refused: RunRefused[] = []
-    const problems: string[] = []
+    const problems: string[] = [...staleProblems]
     /** Reminders kept back once their box is known: a STOP to that box (R6 keeps a STOP per box). */
     const keptAtSend: NudgeKept[] = []
     let sent = 0
@@ -545,7 +567,7 @@ serve(async (req) => {
       }
     }
 
-    const summary = runSummary({ run: { ...run, notSent: [...run.notSent, ...keptAtSend] }, sent, refused, textsOff, unread: reads.unread.length, customersHeld, prepared, morningSent, now, dry: false })
+    const summary = runSummary({ run: { ...run, notSent: [...run.notSent, ...keptAtSend] }, sent, refused, textsOff, unread: reads.unread.length, customersHeld, prepared, morningSent, expired: stale.length, now, dry: false })
     const { error: lastError } = await admin
       .from('app_settings')
       .upsert({ key: APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1, value_text: JSON.stringify(summary) }, { onConflict: 'key' })
