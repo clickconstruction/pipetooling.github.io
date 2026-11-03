@@ -10,6 +10,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { MONEY_SORT_COLUMN, MONEY_SORT_LABELS, MONEY_SORT_MODES, sortMoneyRows, type MoneyRow, type MoneySection, type MoneySortMode, type SiteMoneyModel } from '../../lib/developments/siteMoney'
 import { capStyle, LinkButton, money, shortDay } from './developmentPageBits'
+import { JobChip } from './JobChip'
 
 // The Pipeline's own money colors (saturated status colors stay literal by the theme rule).
 const PAID = '#16a34a'
@@ -314,9 +315,9 @@ export function DevelopmentMoney({ model, phone, sort, onSort, isFolded, onToggl
               : rows.map((r) => (
                   <div key={r.key} className={`developmentMoneyCard${lit(r) ? ' isLit' : ''}`} data-testid="money-row">
                     <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
-                      <LinkButton onClick={() => openJob(r.jobId)} strong nowrap>
+                      <JobChip jobId={r.jobId} onOpen={() => openJob(r.jobId)} strong nowrap>
                         {r.number}
-                      </LinkButton>
+                      </JobChip>
                       <span style={{ flex: '1 1 auto', fontWeight: 600, color: 'var(--text-strong)' }}>{r.name || '—'}</span>
                       <strong style={{ whiteSpace: 'nowrap' }}>{money(r.left)} left</strong>
                     </div>
@@ -383,9 +384,9 @@ function SectionRows({ section, rows, folded, td, onToggle, openJob, onAskForDat
             <tr key={r.key} className={`developmentMoneyRow${lit(r) ? ' isLit' : ''}`} data-testid="money-row">
               <td style={td}>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                  <LinkButton onClick={() => openJob(r.jobId)} strong nowrap>
+                  <JobChip jobId={r.jobId} onOpen={() => openJob(r.jobId)} strong nowrap>
                     {r.number}
-                  </LinkButton>
+                  </JobChip>
                   <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{r.name || '—'}</span>
                 </div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{[r.crew, r.lastWorkYmd ? `last work ${shortDay(r.lastWorkYmd)}` : null].filter(Boolean).join(' · ') || (r.stageKey === 'waiting' ? 'not scheduled' : '')}</div>

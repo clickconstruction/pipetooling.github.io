@@ -10,21 +10,20 @@
  *   replaces the guess when it ships). Service calls stay out.
  * - Who sees it: the leader, the superintendents, the assistant and the controller. Who moves
  *   the expected hours: the leader and the office; a superintendent reads his own number.
- * - The track: the labor budget in hours from the Costs baseline (`resolveJobBudget`, bid →
- *   typed), else the lines' sum at the company split (`lineBudgets.ts`); the stages' shares cut
- *   it in order; the money is spend against the direct budget.
+ * - The track: the labor budget in hours from the Costs baseline (bid, then typed), else the
+ *   lines' sum at the company split (`lineBudgets.ts`); the stages' shares cut it in order; the
+ *   money is the read's blended percent of the money budget (`projectBoardRead.ts`).
  * - Worst first: money leading, then behind by days, then even, then ahead, then no reading yet.
  */
 import { isAssistantLike } from '../subcontractorLikeRole'
 import { applyRecognizedStages } from './stageRecognition'
 import { calcLineBudget, lineBudgetEntryOf, lineBudgetFor, sumLineBudgets, type LineBudgetColumns, type LineBudgetSettings } from './lineBudgets'
-import { resolveJobBudget, spendByComponent, type JobBudgetRowLike, type JobBudgetSource } from './jobBudget'
-import { JOB_BURN_DEFAULT_TARGET_MARGIN_PCT } from './jobBurn'
+import type { JobBudgetSource } from './jobBudget'
+import { laborEventsOf, teamHoursOf, type ProjectBoardJob } from './projectBoardRead'
 import { stageSharesOf, type StageShare } from './stageShares'
 import { laborDaysOf, superintendentLine, type SuperintendentLine, type SuperintendentLineInput } from './superintendentLine'
 import { jobStageChecklists, type JobStageRef, type StageChecklistAnswer, type StageChecklistQuestion } from './stageChecklist'
 import type { ExpectedHoursTarget } from './expectedHours'
-import type { JobChargeEvent } from '../jobChargesTimeline'
 
 /** A line item as the board reads it; the five budget columns ride along once #234's PR 1 is live (PR 5). */
 export type ProjectFixture = Partial<LineBudgetColumns> & {
@@ -91,9 +90,6 @@ export function projectLabel(row: Pick<ProjectRow, 'hcp_number' | 'click_number'
   return `${projectNumber(row)} · ${(row.job_name ?? '').trim() || 'Untitled job'}`
 }
 
-/** The job's cost events as the Costs tab loads them, or null while they load or after a failed read. */
-export type ProjectBurn = { chargeEvents: readonly JobChargeEvent[]; teamHours: number; revenue: number | null } | null
-
 export type ProjectStage = { name: string; hours: number; laborUsd: number; pctDone: number | null }
 
 export type ProjectPace = {
@@ -107,22 +103,16 @@ export type ProjectPace = {
   /** The stages in order as pieces of the track, each as its share of the base budget in hours and at the cost rate in dollars. */
   stages: ProjectStage[]
   shares: StageShare[]
-  priceUsd: number | null
-  budgetUsd: number | null
 }
 
 export function projectPace(args: {
-  row: ProjectRow
-  budgetRow: JobBudgetRowLike | null | undefined
-  burn: ProjectBurn
+  job: ProjectBoardJob
   target: ExpectedHoursTarget | null | undefined
   checklist: { answered: number; asked: number }
   settings: LineBudgetSettings
-  /** Job Summary's target margin, for the assumed money budget; null takes the Burn default. */
-  targetMarginPct: number | null
 }): ProjectPace {
-  const { row, settings } = args
-  const fixtures = stagedFixtures(row.fixtures ?? []).filter((f) => f.line_kind !== 'discount')
+  const { job, settings } = args
+  const fixtures = stagedFixtures(job.fixtures ?? []).filter((f) => f.line_kind !== 'discount')
   const lines = fixtures.map((f) => {
     const price = num(f.line_unit_price) * (num(f.count, 1) || 1)
     const entry = lineBudgetFor(lineBudgetEntryOf(f), f.name, settings)
@@ -132,13 +122,9 @@ export function projectPace(args: {
     lines.map((l) => ({ priceUsd: l.price, entry: l.entry, pctDone: l.f.progress_pct != null ? num(l.f.progress_pct) : null })),
     settings,
   )
-  const rowPrice = row.revenue != null && num(row.revenue) > 0 ? num(row.revenue) : null
-  const priceUsd = args.burn?.revenue ?? rowPrice ?? (sums.priceUsd > 0 ? sums.priceUsd : null)
-  const margin = args.targetMarginPct != null && args.targetMarginPct > 0 && args.targetMarginPct < 100 ? args.targetMarginPct : JOB_BURN_DEFAULT_TARGET_MARGIN_PCT
-  const resolved = resolveJobBudget({ row: args.budgetRow, priceUsd, targetMarginPct: margin })
-  const fromRow = resolved.components != null && resolved.components.laborHours > 0
-  const baseHours = fromRow ? resolved.components!.laborHours : sums.laborHours
-  const baseSource: JobBudgetSource = fromRow ? resolved.source : 'assumed'
+  const fromBaseline = (job.budgetKind === 'bid' || job.budgetKind === 'typed') && (job.budgetHours ?? 0) > 0
+  const baseHours = fromBaseline ? job.budgetHours! : sums.laborHours
+  const baseSource: JobBudgetSource = fromBaseline ? (job.budgetKind as JobBudgetSource) : 'assumed'
   const budgetEdge = Math.max(1, Math.round(baseHours))
   const shares = stageSharesOf(
     lines.map((l) => ({ id: l.f.id, name: l.f.name, stage_kind: l.f.stage_kind, line_kind: l.f.line_kind, progress_pct: l.f.progress_pct, sequence_order: l.f.sequence_order, laborHours: l.calc.laborHours, laborUsd: l.calc.laborUsd })),
@@ -147,22 +133,21 @@ export function projectPace(args: {
     const hours = (s.sharePct / 100) * budgetEdge
     return { name: s.name, hours, laborUsd: hours * settings.rateUsd, pctDone: s.pctDone }
   })
-  const spentUsd = args.burn ? spendByComponent(args.burn.chargeEvents).totalUsd : null
-  const budgetUsd = resolved.directUsd ?? (priceUsd != null ? priceUsd * (1 - margin / 100) : null)
   const t = args.target ?? null
   const input: SuperintendentLineInput = {
-    pctDone: row.pct_complete != null ? num(row.pct_complete) : null,
-    hoursUsed: args.burn ? args.burn.teamHours : null,
-    laborDays: args.burn ? laborDaysOf(args.burn.chargeEvents) : [],
+    pctDone: job.pct_complete != null ? num(job.pct_complete) : null,
+    hoursUsed: teamHoursOf(job),
+    laborDays: laborDaysOf(laborEventsOf(job)),
     hoursBudget: t ? t.hours : baseHours,
     budgetSource: t ? 'target' : baseSource,
     target: t ? { by: t.by, at: t.at, from: t.from, why: t.why } : null,
-    money: spentUsd != null && budgetUsd != null ? { spentUsd, budgetUsd } : null,
+    // The line reads only the ratio: the read's percent, over a budget of 100.
+    money: job.spentPct != null ? { spentUsd: job.spentPct, budgetUsd: 100 } : null,
     plannedFinishYmd: null,
     checklist: args.checklist,
     certifiedPct: null,
   }
-  return { input, line: superintendentLine(input), baseHours, baseSource, budgetEdge, stages, shares, priceUsd, budgetUsd }
+  return { input, line: superintendentLine(input), baseHours, baseSource, budgetEdge, stages, shares }
 }
 
 /** Worst first: money leading, then behind by days, then even, then ahead, then no reading yet. */
@@ -184,4 +169,28 @@ export function checklistCountOf(
     .filter((f) => f.stage_kind === 'order' || f.stage_kind === 'any')
     .map((f) => ({ fixtureId: f.id, name: f.name ?? '', sequenceOrder: num(f.sequence_order) }))
   return jobStageChecklists(refs, questions, answersByFixture).reduce((s, x) => ({ answered: s.answered + x.state.answered, asked: s.asked + x.state.asked }), { answered: 0, asked: 0 })
+}
+
+/** How the board's projects stand, counted for the Dashboard's one-line strip (punch list #242, PR 6). */
+export type PaceCounts = { total: number; behind: number; moneyLeading: number; even: number; ahead: number; early: number }
+
+export function paceCounts(lines: ReadonlyArray<SuperintendentLine>): PaceCounts {
+  const c: PaceCounts = { total: lines.length, behind: 0, moneyLeading: 0, even: 0, ahead: 0, early: 0 }
+  for (const l of lines) {
+    if (l.tone === 'behind') {
+      c.behind += 1
+      if (l.money?.leads) c.moneyLeading += 1
+    } else if (l.tone === 'even') c.even += 1
+    else if (l.tone === 'ahead') c.ahead += 1
+    else c.early += 1
+  }
+  return c
+}
+
+/** The worst project's short words for the strip: *money ahead* or *N d behind*; null when it is not behind. */
+export function worstWords(line: SuperintendentLine): string | null {
+  if (line.tone !== 'behind') return null
+  if (line.money?.wrong) return 'budget?'
+  if (line.money?.leads && line.days >= 0) return 'money ahead'
+  return `${-line.days} d behind`
 }

@@ -25,7 +25,8 @@ export function useSiteCosts(jobIds: ReadonlyArray<string>, enabled: boolean): S
         const [inv, supply, card, tally, other, sheets, settings] = await Promise.all([
           supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: ids }),
           supabase.from('supply_house_invoice_job_allocations').select('job_id, pct, supply_house_invoices(invoice_number, invoice_date, amount, is_paid, on_job_account, supply_houses(name))').in('job_id', ids).limit(2000),
-          supabase.from('mercury_transaction_job_allocations').select('job_id, id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, raw)').in('job_id', ids).order('created_at', { ascending: true }).limit(2000),
+          // No `raw` on the embed: the totals never read it (the card id it carries is the Job window's display), and on a large site the raw payloads were 1.5 MB of the page's read (the Gun Dog spike, 2026-11-02).
+          supabase.from('mercury_transaction_job_allocations').select('job_id, id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount)').in('job_id', ids).order('created_at', { ascending: true }).limit(2000),
           supabase.rpc('list_tally_parts_with_po'),
           supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', ids).limit(2000),
           supabase.from('people_labor_jobs').select('id, job_ledger_id, job_number, labor_rate, distance_miles').in('job_ledger_id', ids).limit(500),

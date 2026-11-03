@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, builder, estimator, no money, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
+keywords: development, site, subdivision, builder, estimator, no money, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in five looks.
@@ -37,6 +37,22 @@ A strip under the counts names five looks: History, Jobs & bids, Money, Plans an
 
 1. Press a look's name to jump to it.
 2. Press the chevron on a look's card to fold it. The page remembers your folds on this device.
+
+On a phone the strip is one row of five cells. Each cell shows the look's name over one number. The number is what waits on you, or the count. Money rounds to fit, so $186,116 reads as $186k. The look you are in is underlined.
+
+## See a job's details without opening it
+
+Every job on the page shows as a blue number, such as *JP1091*. The number opens the job when you press it.
+
+1. Rest your pointer on a blue job number.
+2. A card floats beside the pointer. The card shows the job's full name, its address and its details.
+3. Move the pointer away and the card goes.
+
+The details are the customer, the stage, the crew, the last work day and the money on the job. A job that came from a bid names the bid. An estimator sees no money on the card.
+
+On a phone, press and hold the number for half a second, then lift your finger. The card opens under the number. Tap anywhere else to close it. A plain tap still opens the job.
+
+The card also opens when you reach the number with the Tab key. Press Escape to close it.
 
 ## Follow the site in History
 
@@ -94,7 +110,7 @@ Money shows the site's progress as one bar, then every job by stage with what is
 
 ## Check the plans and the questions
 
-Plans lists each part of the site, such as the Lodge or the Bunker. Each row names the set that part builds from today. The row shows the date on the sheets, the day the set came, its memo and the jobs on it. Older sets fold under a count. Press the count to see them. The crew's as-builts read under their part.
+Plans lists each part of the site, such as the Lodge or the Bunker. Each row names the set that part builds from today. The row shows the date on the sheets, the day the set came, its memo and the jobs on it. Older sets fold under a count. Press the count to see them. The crew's as-builts read under their part. On a phone each part is a card with the same facts.
 
 Press {{button:outline|+ Part}} to name a part of the site. Press {{button:outline|+ New set}} on a part's row to add a set. Press {{button:blue|Add the set and build from it}} and every job on that part builds from it. Press {{button:outline|Build from this set}} on an older set to go back to it.
 
