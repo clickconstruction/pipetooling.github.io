@@ -89,6 +89,24 @@ Press {{button:blue|Save 1 adjustment}}. The button counts what you changed.
 
 Adjustments live on the job's charges. They never touch anyone's clock session or invoice. The log on the right lists every one with its reason. Press {{button:outline|Revert to the record}} to undo them all. The app asks first.
 
-## What comes next
+## Show the customer a statement of charges
 
-The Statement of charges arrives in a later release. It prints these same lines as a paper for the office and a copy for the customer.
+Open the job window and go to **Documents**. Under Hours statements sits **Statements of charges**. Press {{button:outline|Statement of charges…}}. The button counts the people who clocked here and the material lines.
+
+The window reads the job. From and To start at the job's first and last day. Change them to cut the period. The box under them names the job's rule. Change the rule in the Charges window, never here. The paper draws on the right as you work.
+
+:::steps
+
+Set From and To.
+
+Leave **Office copy** on to read cost, margin and the premium. Turn it off for the customer copy.
+
+Press {{button:blue|Save the statement}}. The paper gets a number like SC-629-0001.
+
+Press {{button:outline|Print}} to print it. Print saves it as printed.
+
+:::
+
+The office copy has a box marked office only. It carries the premium or shortfall and every adjustment with its reason. The customer copy carries charged amounts only. It says it is not an invoice.
+
+A saved statement keeps the paper as it read. Open it later and it prints the same, even after the rates change. Make a new one for today's rows.
