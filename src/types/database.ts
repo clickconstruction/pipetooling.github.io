@@ -9105,11 +9105,13 @@ export type Database = {
       dispatch_requests: {
         Row: {
           bid_id: string | null
+          checklist_question_id: string | null
           closed_at: string | null
           closed_by_user_id: string | null
           closed_note: string | null
           created_at: string
           development_id: string | null
+          fixture_id: string | null
           from_user_id: string
           id: string
           job_ledger_id: string | null
@@ -9129,11 +9131,13 @@ export type Database = {
         }
         Insert: {
           bid_id?: string | null
+          checklist_question_id?: string | null
           closed_at?: string | null
           closed_by_user_id?: string | null
           closed_note?: string | null
           created_at?: string
           development_id?: string | null
+          fixture_id?: string | null
           from_user_id: string
           id?: string
           job_ledger_id?: string | null
@@ -9153,11 +9157,13 @@ export type Database = {
         }
         Update: {
           bid_id?: string | null
+          checklist_question_id?: string | null
           closed_at?: string | null
           closed_by_user_id?: string | null
           closed_note?: string | null
           created_at?: string
           development_id?: string | null
+          fixture_id?: string | null
           from_user_id?: string
           id?: string
           job_ledger_id?: string | null
@@ -9184,6 +9190,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "dispatch_requests_checklist_question_id_fkey"
+            columns: ["checklist_question_id"]
+            isOneToOne: false
+            referencedRelation: "stage_checklist_templates"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "dispatch_requests_closed_by_user_id_fkey"
             columns: ["closed_by_user_id"]
             isOneToOne: false
@@ -9195,6 +9208,13 @@ export type Database = {
             columns: ["development_id"]
             isOneToOne: false
             referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_requests_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
             referencedColumns: ["id"]
           },
           {
@@ -10748,6 +10768,7 @@ export type Database = {
           modified_at: string | null
           name: string
           pages: number | null
+          pages_read: number | null
           path: string
           search: unknown
           text: string | null
@@ -10767,6 +10788,7 @@ export type Database = {
           modified_at?: string | null
           name: string
           pages?: number | null
+          pages_read?: number | null
           path?: string
           search?: unknown
           text?: string | null
@@ -10786,6 +10808,7 @@ export type Database = {
           modified_at?: string | null
           name?: string
           pages?: number | null
+          pages_read?: number | null
           path?: string
           search?: unknown
           text?: string | null
@@ -25403,6 +25426,7 @@ export type Database = {
       }
       nudge_offers: {
         Row: {
+          about_on: string | null
           bid_id: string | null
           body: string
           by_user_id: string | null
@@ -25425,6 +25449,7 @@ export type Database = {
           step_key: string
         }
         Insert: {
+          about_on?: string | null
           bid_id?: string | null
           body: string
           by_user_id?: string | null
@@ -25447,6 +25472,7 @@ export type Database = {
           step_key: string
         }
         Update: {
+          about_on?: string | null
           bid_id?: string | null
           body?: string
           by_user_id?: string | null
@@ -36785,6 +36811,7 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean; p_link?: Json }
         Returns: Json
       }
+      dev_file_index_status: { Args: never; Returns: Json }
       dev_health_connections: { Args: never; Returns: Json }
       dev_health_locks: { Args: never; Returns: Json }
       dev_health_sampler_gaps: { Args: { p_hours?: number }; Returns: Json }
@@ -40271,6 +40298,7 @@ export type Database = {
       }
       nudge_offer_make: {
         Args: {
+          p_about_on?: string
           p_body: string
           p_channel: string
           p_contact: string

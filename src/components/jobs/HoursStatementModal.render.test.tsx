@@ -3,15 +3,19 @@
  * Render smoke for the Hours statement window (punch list #212, PR 2): on a job the first person who clocked here is
  * picked with their span and the paper draws as a draft; the span line and the held line read; Save a draft writes the
  * row with the read as its snapshot and the paper then carries the record id; Print saves as printed and prints with
- * the id; an assistant's pay switch is fixed off and the read is asked without pay; Send for signature… and Sign here
- * now are held with their reason; from a person the job is picked instead.
+ * the id; an assistant's pay switch is fixed off and the read is asked without pay; from a person the job is picked
+ * instead. Since PR 3 (v2.6411): Send for signature… saves, draws the form and opens the channel sheet with the worker's
+ * contact; a channel prepares, mints the link, hands it on its way and moves the statement to sent; Sign here now does
+ * the in-person channel in one press; File a signed scan… files the paper path; a signed statement opens its PDF.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { HoursStatementJob, HoursStatementPerson, HoursStatementRead, HoursStatementReadArgs } from '../../lib/people/hoursStatementRead'
 import type { HoursStatementRecordRow, HoursStatementSave } from '../../lib/people/hoursStatementsIo'
-import { HOURS_STATEMENT_PAY_FIXED_OFF, HOURS_STATEMENT_SIGNING_HELD } from '../../lib/people/hoursStatementWindow'
+import { HOURS_STATEMENT_PAY_FIXED_OFF } from '../../lib/people/hoursStatementWindow'
+import { HOURS_STATEMENT_OPEN_WORDS, HOURS_STATEMENT_SENT_WORDS, HOURS_STATEMENT_SIGNED_WORDS } from '../../lib/people/hoursStatementSigning'
+import type { HoursStatementSigningIo, PreparedSigning, ScanFiling } from '../../lib/people/hoursStatementSigningIo'
 import { HoursStatementModal } from './HoursStatementModal'
 
 // Every name, job and number here is made up.
@@ -51,6 +55,11 @@ function readFor(args: HoursStatementReadArgs): HoursStatementRead {
     payName: 'Marcus Reyes',
     counts: { approved: 2, pending: 1, typedDays: 1, quickAddsLeftOff: 0 },
   }
+}
+/** The window's read as a saved row keeps it. */
+function snapshotFor(args: HoursStatementReadArgs) {
+  const r = readFor(args)
+  return { input: r.input, worker: r.worker, job: { number: '1042', name: 'Ridgeway Lofts', customer: 'Ridgeway Builders', site: '12 Elm St', isOfficeJob: false }, approvedBy: r.approvedBy, preparedBy: 'Dana Office', preparedOn: 'October 29, 2026', asOf: 'October 29, 2026 3:00 pm' }
 }
 const loadSpy = vi.fn((args: HoursStatementReadArgs) => Promise.resolve(readFor(args)))
 vi.mock('../../lib/people/hoursStatementRead', () => ({
@@ -101,6 +110,19 @@ const printSpy = vi.fn(async (build: () => Promise<string>) => {
 })
 vi.mock('../../lib/jobsDocuments/printWindow', () => ({ openHtmlWindowWhenReady: (build: () => Promise<string>) => printSpy(build) }))
 
+const prepareSpy = vi.fn((statementId: string, how: string): Promise<PreparedSigning> => Promise.resolve({ documentId: `doc-for-${statementId}-${how}`, documentStatus: 'unsent', recordId: 'HS-1042-0001', documentName: 'Hours statement HS-1042-0001', worker: { name: 'Marcus Reyes', email: 'marcus@example.com', phone: '(555) 555-0100' } }))
+const sendSpy = vi.fn((_documentId: string, _args: { channel: string; email: string | null }) => Promise.resolve({ acceptUrl: 'https://clicktooling.com/contract/accept?t=tok', emailed: true, emailError: null }))
+const markSentSpy = vi.fn((statementId: string) => Promise.resolve({ ...savedRow({ id: statementId, jobId: 'job-1', jobNumber: '1042', userId: 'u-marcus', personId: 'p-marcus', laborCompany: null, periodStart: '2026-06-01', periodEnd: '2026-06-13', withPay: true, kind: 'clock', statedDays: [], gap: null, snapshot: snapshotFor({ jobId: 'job-1', userId: 'u-marcus', periodStart: '2026-06-01', periodEnd: '2026-06-13', withPay: true }), state: 'sent', preparedBy: 'u-office' }), state: 'sent' as const }))
+const fileScanSpy = vi.fn((_filing: ScanFiling) => Promise.resolve({ documentId: 'doc-paper' }))
+const pdfSpy = vi.fn((documentId: string) => Promise.resolve(`https://files.example.com/${documentId}`))
+const signingIo: HoursStatementSigningIo = {
+  prepare: (id, how) => prepareSpy(id, how),
+  send: (id, args) => sendSpy(id, args),
+  markSent: (id) => markSentSpy(id),
+  fileScan: (f) => fileScanSpy(f),
+  openSignedPdf: (id) => pdfSpy(id),
+}
+
 const jobScope = { kind: 'job' as const, job: { id: 'job-1', number: '1042', name: 'Ridgeway Lofts', customer: 'Ridgeway Builders', site: '12 Elm St' } }
 const payroll = { role: 'dev', canAccessPay: true }
 const paper = () => screen.getByTestId('hours-statement-paper').getAttribute('srcdoc') ?? ''
@@ -111,6 +133,11 @@ describe('the Hours statement window (punch list #212, PR 2)', () => {
     loadSpy.mockClear()
     saveSpy.mockClear()
     printSpy.mockClear()
+    prepareSpy.mockClear()
+    sendSpy.mockClear()
+    markSentSpy.mockClear()
+    fileScanSpy.mockClear()
+    pdfSpy.mockClear()
     printedHtml = null
   })
 
@@ -178,15 +205,110 @@ describe('the Hours statement window (punch list #212, PR 2)', () => {
     expect(paper()).not.toContain('and paid')
   })
 
-  it('Send for signature… and Sign here now are drawn and held with their reason', async () => {
-    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={payroll} onClose={() => undefined} />)
+  it('Send for signature… saves the statement, draws its form and opens the channel sheet with the worker’s contact filled in', async () => {
+    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={payroll} onClose={() => undefined} signingIo={signingIo} />)
     await screen.findByTestId('hours-statement-paper')
-    const send = screen.getByRole('button', { name: 'Send for signature…' }) as HTMLButtonElement
-    const sign = screen.getByRole('button', { name: 'Sign here now' }) as HTMLButtonElement
-    expect(send.disabled).toBe(true)
-    expect(sign.disabled).toBe(true)
-    expect(send.title).toBe(HOURS_STATEMENT_SIGNING_HELD)
-    expect(screen.getByText(HOURS_STATEMENT_SIGNING_HELD)).toBeTruthy()
+    expect(screen.getByText(HOURS_STATEMENT_OPEN_WORDS)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Send for signature…' }))
+    await screen.findByTestId('hours-statement-send-sheet')
+    expect(saveSpy).toHaveBeenCalledWith(expect.objectContaining({ state: 'draft' }))
+    expect(prepareSpy).toHaveBeenCalledWith('hs-1', 'email')
+    expect((screen.getByLabelText('Worker’s email') as HTMLInputElement).value).toBe('marcus@example.com')
+    expect((screen.getByLabelText('Worker’s cell') as HTMLInputElement).value).toBe('(555) 555-0100')
+    expect(screen.getByRole('button', { name: 'Hand the phone to Marcus Reyes' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Copy the link' })).toBeTruthy()
+  })
+
+  it('Email the link prepares the form for that channel, mints the link by email, moves the statement to sent and closes the sheet', async () => {
+    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={payroll} onClose={() => undefined} signingIo={signingIo} />)
+    await screen.findByTestId('hours-statement-paper')
+    fireEvent.click(screen.getByRole('button', { name: 'Send for signature…' }))
+    await screen.findByTestId('hours-statement-send-sheet')
+    fireEvent.click(screen.getByRole('button', { name: 'Email the link' }))
+    await waitFor(() => expect(sendSpy).toHaveBeenCalledWith('doc-for-hs-1-email', { channel: 'email', email: 'marcus@example.com' }))
+    expect(prepareSpy).toHaveBeenLastCalledWith('hs-1', 'email')
+    await waitFor(() => expect(markSentSpy).toHaveBeenCalledWith('hs-1'))
+    await screen.findByText('Saved as HS-1042-0001 · Waiting for a signature')
+    expect(screen.queryByTestId('hours-statement-send-sheet')).toBeNull()
+    expect(screen.getAllByText(HOURS_STATEMENT_SENT_WORDS).length).toBeGreaterThan(0)
+    // A record now: Save is gone, the span is fixed, and it can still be sent again.
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
+    expect((screen.getByLabelText('From') as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Send for signature…' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('an email with no address is held with its reason; Copy the link puts the link on the clipboard', async () => {
+    prepareSpy.mockResolvedValueOnce({ documentId: 'doc-x', documentStatus: 'unsent', recordId: 'HS-1042-0001', documentName: 'Hours statement HS-1042-0001', worker: { name: 'Marcus Reyes', email: null, phone: null } })
+    const writeText = vi.fn(() => Promise.resolve())
+    Object.assign(navigator, { clipboard: { writeText } })
+    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={payroll} onClose={() => undefined} signingIo={signingIo} />)
+    await screen.findByTestId('hours-statement-paper')
+    fireEvent.click(screen.getByRole('button', { name: 'Send for signature…' }))
+    await screen.findByTestId('hours-statement-send-sheet')
+    const email = screen.getByRole('button', { name: 'Email the link' }) as HTMLButtonElement
+    expect(email.disabled).toBe(true)
+    expect(email.title).toBe('Add the worker’s email address first.')
+    expect((screen.getByRole('button', { name: 'Text the link' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the link' }))
+    await waitFor(() => expect(sendSpy).toHaveBeenCalledWith('doc-for-hs-1-link', { channel: 'link', email: '' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://clicktooling.com/contract/accept?t=tok'))
+    await waitFor(() => expect(markSentSpy).toHaveBeenCalledWith('hs-1'))
+  })
+
+  it('Sign here now saves, mints the link and opens the signing page on this device with the in-person flag', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => ({}) as Window)
+    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={payroll} onClose={() => undefined} signingIo={signingIo} />)
+    await screen.findByTestId('hours-statement-paper')
+    fireEvent.click(screen.getByRole('button', { name: 'Sign here now' }))
+    await waitFor(() => expect(prepareSpy).toHaveBeenCalledWith('hs-1', 'in_person'))
+    await waitFor(() => expect(sendSpy).toHaveBeenCalledWith('doc-for-hs-1-in_person', { channel: 'in_person', email: '' }))
+    await waitFor(() => expect(openSpy).toHaveBeenCalledWith('https://clicktooling.com/contract/accept?t=tok&inperson=1', '_blank', 'noopener'))
+    await screen.findByText('Saved as HS-1042-0001 · Waiting for a signature')
+    openSpy.mockRestore()
+  })
+
+  it('File a signed scan… takes the paper, who signed, the day and the days written in the block, and files it as signed', async () => {
+    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={payroll} onClose={() => undefined} signingIo={signingIo} />)
+    await screen.findByTestId('hours-statement-paper')
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2025-09-15' } })
+    await waitFor(() => expect(loadSpy).toHaveBeenLastCalledWith(expect.objectContaining({ periodStart: '2025-09-15' })))
+    await waitFor(() => expect(paper()).toContain('Days the company’s records do not show'))
+    fireEvent.click(screen.getByRole('button', { name: 'File a signed scan…' }))
+    await screen.findByTestId('hours-statement-scan-sheet')
+    const file = new File([new Uint8Array([137, 80, 78, 71])], 'signed.png', { type: 'image/png' })
+    fireEvent.change(screen.getByLabelText('The signed paper'), { target: { files: [file] } })
+    fireEvent.change(screen.getByLabelText('Signed on'), { target: { value: '2026-10-30' } })
+    fireEvent.change(screen.getByLabelText('Stated day 1'), { target: { value: '2025-09-16' } })
+    fireEvent.change(screen.getByLabelText('Stated hours 1'), { target: { value: '8' } })
+    fireEvent.change(screen.getByLabelText('Stated note 1'), { target: { value: 'Water lines' } })
+    const press = screen.getByRole('button', { name: 'File the signed scan' }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    expect(press.title).toBe('Confirm the days were typed exactly as the worker wrote them.')
+    fireEvent.click(screen.getByLabelText(/typed exactly as the worker wrote them/))
+    expect((screen.getByRole('button', { name: 'File the signed scan' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'File the signed scan' }))
+    await waitFor(() => expect(fileScanSpy).toHaveBeenCalledTimes(1))
+    const filing = fileScanSpy.mock.calls[0]![0]
+    expect(filing).toMatchObject({ statementId: 'hs-1', signedOnYmd: '2026-10-30', signerPrintedName: 'Marcus Reyes', statedDays: [{ day: '2025-09-16', hours: '8', note: 'Water lines' }] })
+    expect(filing.scan.mime).toBe('image/png')
+    expect(filing.scan.base64.length).toBeGreaterThan(0)
+    await screen.findByText('Saved as HS-1042-0001 · Signed')
+    expect(screen.queryByTestId('hours-statement-scan-sheet')).toBeNull()
+    expect(screen.getAllByText(HOURS_STATEMENT_SIGNED_WORDS).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: 'Send for signature…' })).toBeNull()
+  })
+
+  it('a signed statement opens its PDF through the gate and offers no signing', async () => {
+    const existing = { ...savedRow({ id: 'hs-7', jobId: 'job-1', jobNumber: '1042', userId: 'u-marcus', personId: 'p-marcus', laborCompany: null, periodStart: '2026-06-01', periodEnd: '2026-06-13', withPay: true, kind: 'clock', statedDays: [], gap: null, snapshot: snapshotFor({ jobId: 'job-1', userId: 'u-marcus', periodStart: '2026-06-01', periodEnd: '2026-06-13', withPay: true }), state: 'signed', preparedBy: 'u-office' }), contract_document_id: 'doc-7' }
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => ({}) as Window)
+    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={payroll} existing={existing} onClose={() => undefined} signingIo={signingIo} />)
+    await screen.findByTestId('hours-statement-paper')
+    expect(screen.queryByRole('button', { name: 'Sign here now' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Open the signed PDF' }))
+    await waitFor(() => expect(pdfSpy).toHaveBeenCalledWith('doc-7'))
+    await waitFor(() => expect(openSpy).toHaveBeenCalledWith('https://files.example.com/doc-7', '_blank', 'noopener'))
+    openSpy.mockRestore()
   })
 
   it('from a person, the job is picked instead, newest first, and the read names it', async () => {
@@ -202,7 +324,7 @@ describe('the Hours statement window (punch list #212, PR 2)', () => {
   })
 
   it('opened on a saved statement, its who and span fill in and Save keeps its record', async () => {
-    const existing = savedRow({ id: 'hs-9', jobId: 'job-1', jobNumber: '1042', userId: 'u-lena', personId: null, laborCompany: null, periodStart: '2026-06-08', periodEnd: '2026-06-09', withPay: true, kind: 'clock', statedDays: [], gap: null, snapshot: readFor({ jobId: 'job-1', userId: 'u-lena', periodStart: '2026-06-08', periodEnd: '2026-06-09', withPay: true }) as never, state: 'printed', preparedBy: 'u-office' })
+    const existing = savedRow({ id: 'hs-9', jobId: 'job-1', jobNumber: '1042', userId: 'u-lena', personId: null, laborCompany: null, periodStart: '2026-06-08', periodEnd: '2026-06-09', withPay: true, kind: 'clock', statedDays: [], gap: null, snapshot: snapshotFor({ jobId: 'job-1', userId: 'u-lena', periodStart: '2026-06-08', periodEnd: '2026-06-09', withPay: true }), state: 'printed', preparedBy: 'u-office' })
     renderWithProviders(<HoursStatementModal open scope={jobScope} maker={payroll} existing={existing} onClose={() => undefined} />)
     await screen.findByTestId('hours-statement-paper')
     expect((screen.getByLabelText('Who') as HTMLSelectElement).value).toBe('u-lena')

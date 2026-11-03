@@ -176,6 +176,31 @@ many pages were read (`ocr_pages`). Fifteen pages per scan at most (the online l
 scan the provider refuses is tried again a day later, the reason on the row (`ocr_note`). Rotation: delete the
 processor, or unset the secret, and every scan stays a scan.
 
+## Search by meaning (punch list #240, PR 4, v2.6338)
+
+Once one secret holds a Gemini API key, every file in the index gets a vector per chunk of its text
+(`file_index_chunks`, `gemini-embedding-001` at 768 dimensions) and Find a file fuses the words' rank with the nearest
+chunks, so a search finds the letter where the GC agreed to the extra rock when it never says "agreed". Until then
+the words alone answer, as before.
+
+1. A Gemini API key: **aistudio.google.com → Get API key → Create API key** in the `pipetooling-drive` project (or any
+   project of the Workspace; the key is the whole credential).
+2. The secret, no redeploy (it is read at call time):
+
+   ```bash
+   supabase secrets set GEMINI_API_KEY="<the key>" --project-ref yewfzhbofbbyvkvtaatw
+   ```
+
+3. Prove it with one call as the dev: `POST /functions/v1/drive-link { "action": "embed_probe" }` embeds one made-up
+   sentence and answers `answer.ok` with `dimensions: 768`, or `answer.error` with Google's reason.
+
+From then on every file the pass indexes is embedded as it lands, the sweep embeds ten more files every ten minutes
+(the files indexed before the key catch up by themselves), and a search embeds the query. Forty chunks of about 800
+tokens per file at most. A file the provider refuses is tried again a day later, the reason on the row (`embed_note`).
+`search_file_index_meaning`'s `max_distance` (0.45) is the tunable: read the first days' hits by meaning and move it to
+where the noise starts. Rotation: delete the key, or unset the secret, and the words alone answer again; the chunks
+stay until the next index of each file.
+
 ## Rotation / kill
 
 Delete the key in console (or `supabase secrets unset GOOGLE_SERVICE_ACCOUNT_JSON`);

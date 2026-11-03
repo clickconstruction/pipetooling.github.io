@@ -29,6 +29,8 @@ export interface OfferMake {
   channelId: string | null
   /** YYYY-MM-DD, the morning the run sends it; null waits for a press on Today's sends (a moved first visit, v2.5597). */
   sendOn: string | null
+  /** YYYY-MM-DD, the day the words are about (a moved visit's new day, v2.6387): past it the text is stale. Unset for a text about no day. */
+  aboutOn?: string | null
 }
 
 export interface OffersIo {
@@ -42,7 +44,7 @@ export interface OffersIo {
   make(input: OfferMake): Promise<string>
 }
 
-const OFFER_COLUMNS = 'id, contact_id, step_key, bid_id, project_id, jobs_ledger_id, body, channel_id, prepared_at, prepared_by, send_on, held_why'
+const OFFER_COLUMNS = 'id, contact_id, step_key, bid_id, project_id, jobs_ledger_id, body, channel_id, prepared_at, prepared_by, send_on, about_on, held_why'
 
 type OfferDbRow = {
   id: string
@@ -56,6 +58,7 @@ type OfferDbRow = {
   prepared_at: string
   prepared_by: string
   send_on: string | null
+  about_on: string | null
   held_why: string | null
 }
 
@@ -134,6 +137,7 @@ export function supabaseOffersIo(client: unknown = supabase, ratingLinks: Rating
         preparedAt: r.prepared_at,
         preparedBy: r.prepared_by === 'office' ? 'office' : 'app',
         sendOn: r.send_on,
+        aboutOn: r.about_on,
         heldWhy: r.held_why,
       }))
       const offers = withSentHolds(read, sent)
@@ -173,7 +177,7 @@ export function supabaseOffersIo(client: unknown = supabase, ratingLinks: Rating
       checkSupabaseError(result, 'put the text away')
     },
     async make(input) {
-      const result = await db.rpc('nudge_offer_make', { p_contact: input.contactId, p_step: input.stepKey, ...jobArgs(input.jobKey), p_body: input.body, p_channel: input.channelId, p_send_on: input.sendOn })
+      const result = await db.rpc('nudge_offer_make', { p_contact: input.contactId, p_step: input.stepKey, ...jobArgs(input.jobKey), p_body: input.body, p_channel: input.channelId, p_send_on: input.sendOn, p_about_on: input.aboutOn ?? null })
       checkSupabaseError(result, 'prepare the text for the morning')
       return String(result.data)
     },

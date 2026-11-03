@@ -74,6 +74,15 @@ Type the name of a page, a tab or a Settings card. The box lists it under your j
 Press {{chip:gray|⌘K}}, type *office hours* and press {{chip:gray|Enter}}. Settings opens on Phone and texts with the Office hours card in view. That was four presses and a scroll before.
 :::
 
+## When the box cannot reach the server
+
+Jobs, bids, estimates and customers come from the server. Pages, settings and guides live on your device, so they always answer. When a read fails, the box says which kinds were not searched and why. The kinds that did answer still show their rows.
+
+- *Jobs were not searched.* means the server did not answer for jobs. The line under it says why.
+- With no signal, press {{button:outline|Retry}}. The search also runs again by itself when the signal is back.
+- A refusal shows its reason and no Retry. Ask the office about your access.
+- *No matches* appears only when every kind answered and none had a match.
+
 ## If your box shows pages and guides only
 
 Estimators, primaries and superintendents get the same box without the jobs. Type the name of a page, a tab, a Settings card or a task. The box lists the pages, the cards and the guides your role can open. A number alone finds nothing here. Bids, jobs and customers keep their own search on their own pages.

@@ -9,6 +9,7 @@ import { fillFormPdf, type FormPdfLibLike } from '../_shared/fillFormPdf.ts'
 import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 import { clauseFreeze, clausePaperFor, type ClauseAdmin, type ClausePaperJson } from '../_shared/clausePaper.ts'
+import { statedByWords, statedDaysFromFormValues } from '../_shared/hoursStatementForm.ts'
 
 const SIGNATURE_BUCKET = 'contract-signer-signatures'
 // Contract Forms (v2.2797): the uploaded template lives here…
@@ -100,6 +101,8 @@ serve(async (req) => {
       /** Messages, cut 4c (v2.5294): a paper built from clauses, the revision the page showed and the language it was read in. */
       paperRevision?: unknown
       paperLang?: string
+      /** Signed on the office's device, handed over in person (`?inperson=1` on the page, punch list #212, v2.6411). */
+      inPerson?: unknown
     }
     const raw = body.token?.trim()
     const printedName = body.printedName?.trim() ?? ''
@@ -292,6 +295,7 @@ serve(async (req) => {
     const nowIso = new Date().toISOString()
     const todayYmd = todayYmdInAppTz()
 
+    const inPerson = body.inPerson === true
     const basePayload = hasSig
       ? {
           status: 'signed' as const,
@@ -358,13 +362,35 @@ serve(async (req) => {
       })
     }
 
-    // v2.3100: the consent words, verbatim, beside the signature (best-effort; the row stamp is the act).
+    // A signed hours statement (punch list #212, v2.6411): the copy belongs to an `hours_statements` row, which now
+    // reads signed and keeps the days the worker typed into the stated boxes as its own rows. Best-effort after the
+    // signature row commits; a failure is logged and the copy still stands signed.
+    let statementId: string | null = null
+    if (doc.form_template_id) {
+      try {
+        const { data: hs } = await admin.from('hours_statements').select('id, snapshot').eq('contract_document_id', doc.id).maybeSingle()
+        const row = hs as { id: string; snapshot: { input?: { periodStart?: string } } | null } | null
+        if (row) {
+          statementId = row.id
+          const values: FormValues = body.formValues && typeof body.formValues === 'object' && !Array.isArray(body.formValues) ? body.formValues : {}
+          const yearHint = Number(String(row.snapshot?.input?.periodStart ?? '').slice(0, 4)) || undefined
+          const stated = statedDaysFromFormValues(values, statedByWords(printedName, todayYmd), { yearHint })
+          const { error: hsErr } = await admin.from('hours_statements').update({ state: 'signed', stated_days: stated, updated_at: nowIso }).eq('id', row.id)
+          if (hsErr) console.error('hours statement signed update', row.id, hsErr)
+        }
+      } catch (e) {
+        console.error('hours statement lookup', e)
+      }
+    }
+
+    // v2.3100: the consent words, verbatim, beside the signature (best-effort; the row stamp is the act). A statement's
+    // consent is kept under the statement (`hours_statement`, the kind migration 20261030030000 added for it).
     await recordEsignConsent(admin, {
-      recordType: 'person_contract_document',
-      recordId: doc.id,
+      recordType: statementId ? 'hours_statement' : 'person_contract_document',
+      recordId: statementId ?? doc.id,
       consent: parseEsignConsent(body.esignConsent),
       printedName,
-      method: hasSig ? 'draw' : 'type',
+      method: inPerson ? 'in_person' : hasSig ? 'draw' : 'type',
       consentedAt: nowIso,
       ip: ipRaw,
       userAgent: ua,

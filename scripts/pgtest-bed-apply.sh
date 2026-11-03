@@ -8,9 +8,10 @@
 # own, and a file with no final semicolon or newline ends with the file. A file given twice in a row runs twice, in its
 # place. A failure stops the run, says "FAILED applying <file>" with the error and the file's own line, and never runs
 # the next file. A second run that fails says "re-applying". A file that ends inside a string fails as itself. A run cut
-# short, which exits 0, still fails. A \q ends only its own file, as each file's own psql did. It stops on its first
-# failed check and ends with "bed-apply bed ok". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds
-# workflow runs it from scripts/sql-beds.txt.
+# short, which exits 0, still fails. A \q ends only its own file, as each file's own psql did. pgtest_migrate, in a
+# container whose label says it was made from the leg's migrated copy of these files, applies nothing, and it refuses a
+# copy of other files (v2.6415). It stops on its first failed check and ends with "bed-apply bed ok". PGTEST_KEEP=1
+# leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt.
 # Never touches prod.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -28,7 +29,7 @@ pgtest_pull_supabase "$IMAGE"
 docker run -d --name "$NAME" -e POSTGRES_PASSWORD=pg "$IMAGE" >/dev/null
 # psql's errors go to this run's own file: a fixed /tmp name may belong to another user on a shared Mac.
 ERR="$(mktemp "${TMPDIR:-/tmp}/$NAME.XXXXXX")"
-trap '[ -n "${PGTEST_KEEP:-}" ] || docker rm -f "$NAME" >/dev/null 2>&1; rm -f "$ERR"' EXIT
+trap '[ -n "${PGTEST_KEEP:-}" ] || docker rm -f "$NAME" "$NAME-copy" >/dev/null 2>&1; rm -f "$ERR"' EXIT
 for _ in $(seq 1 90); do docker exec "$NAME" pg_isready -U postgres -h localhost >/dev/null 2>&1 && break; sleep 1; done
 sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
@@ -92,5 +93,16 @@ says "and gives what it heard" "no container here" "$out"
 
 pgtest_apply "$BED/35_quits_psql.sql" "$BED/36_runs_after_a_quit.sql"
 same "a \\q ends only its own file, and the next file runs" "$(ran)" "10 15 15 16 20 30 31 30 35 36"
+
+# A container labelled as the leg's migrated copy, created and never started: the label is all pgtest_migrate reads
+# before it decides. A copy of these files applies nothing, so its psql_as must never run.
+copy_labelled() { docker rm -f "$NAME-copy" >/dev/null 2>&1 || true; docker create --name "$NAME-copy" --label "pgtest.migrated=$1" "$IMAGE" >/dev/null; }
+migrate_in_copy() { NAME="$NAME-copy"; psql_as() { echo "psql_as ran"; return 1; }; pgtest_migrate; }
+copy_labelled "$(pgtest_migrated_mark)"
+same "a copy of these files applies nothing" "$( (migrate_in_copy) 2>&1)" "migrations: from the leg's migrated copy"
+copy_labelled "a-copy-of-other-files"
+out="$( (migrate_in_copy) 2>&1 && echo "it passed")" || true
+says "a copy of other files is refused" "FAILED: $NAME-copy was made from a migrated copy of other files" "$out"
+docker rm -f "$NAME-copy" >/dev/null
 
 echo "bed-apply bed ok"

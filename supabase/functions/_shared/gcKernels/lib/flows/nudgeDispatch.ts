@@ -207,6 +207,7 @@ const NUDGE_LINES: Readonly<Record<string, (link: string | null) => string>> = {
   certify: () => 'checking on the pay application we sent for your certificate.',
   // The residential steps that wait on the customer (punch list #140 PR 4): the thread's Nudge reads these too.
   approved: () => 'any word on the estimate? Happy to answer any questions.',
+  warranty_paper: () => 'the warranty we sent is waiting for your initials and signature. Tap the link we sent to sign it.',
   paid: () => 'checking on the bill. Need the pay page sent again?',
   // Customer reviews (v2.5943, punch list #185): the ask the morning after Paid. {job} and {rate} are filled on the way out:
   // the job by the run and the box, the link minted then (`_shared/ratingMint.ts` on the edge, `ratingLinkIo.ts` in the box).

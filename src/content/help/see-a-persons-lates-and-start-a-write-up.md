@@ -11,7 +11,7 @@ The Writeups view keeps a person's attendance beside their write-ups. It draws t
 
 1. Open **People**, then **Paperwork**, then **Writeups**.
 2. Type one person's name in **Subject**.
-3. Keep *Show attendance (derived)* on.
+3. Tick *Show attendance (derived)*. It is off when the page opens, so the list shows only write-ups and no-shows.
 
 The card appears above the list. It reads *Attendance, last 90 days*. Nothing on it is filed. The app works it out from the schedule and the clock.
 

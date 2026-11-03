@@ -35,12 +35,14 @@ export type FoundFile = {
   /** The line around the words, with the spans to bold (v2.6306), or null with `excerptWhy` saying why. */
   excerpt: Excerpt | null
   excerptWhy: ExcerptWhy | null
+  /** How the index found it (PR 4); absent on a hit from Drive, or from the index by the words alone before meaning is set up. */
+  by?: FoundBy
 }
 
 /** Who answered (punch list #240, PR 1): our own index first, Drive's own search as the floor when the index has nothing. */
 export type FindSource = 'index' | 'drive'
 
-export type FindAFileRead = { hits: FoundFile[]; more: boolean; noRoot: boolean; source: FindSource }
+export type FindAFileRead = { hits: FoundFile[]; more: boolean; noRoot: boolean; source: FindSource; /** The index answered by meaning as well as by the words (PR 4). */ meaning?: boolean }
 
 /**
  * Drive's search fills in behind the index, as the hint promises: the index's hits first, then Drive's hits the index
@@ -55,6 +57,9 @@ export function driveBehindIndex(index: FindAFileRead, drive: FindAFileRead): Fi
 
 /** How many hits the index answers; Drive's search answers its own 30. */
 export const FIND_MAX_HITS = 30
+
+/** How a hit was found once search by meaning is set up (punch list #240, PR 4): by the words, by meaning alone, or both. */
+export type FoundBy = 'words' | 'meaning' | 'both'
 
 /** Fewer letters than this searches nothing: Drive's index is by word. */
 export const FIND_MIN_CHARS = 2
@@ -126,6 +131,9 @@ export interface IndexHitRow {
   job_name: string | null
   bid_number: string | null
   project_name: string | null
+  /** The hybrid RPC's columns (PR 4): how it was found, and the nearest chunk's text for a hit found by meaning. */
+  by?: string | null
+  chunk_text?: string | null
 }
 
 function indexWhyOf(v: unknown): ExcerptWhy | null {
@@ -147,7 +155,10 @@ export function findAFileFromIndexRows(d: unknown): FindAFileRead {
         ? { kind: 'bid', id: r.bid_id, number: str(r.bid_number), name: str(r.project_name) }
         : null
     const headline = str(r.headline)
-    const excerpt = headline && /<mark>/.test(headline) ? headlineToExcerpt(headline) : null
+    const by = r.by === 'words' || r.by === 'meaning' || r.by === 'both' ? r.by : undefined
+    const chunk = str(r.chunk_text)
+    // A hit found by meaning alone has no words to mark: its line is the opening of the chunk that was nearest.
+    const excerpt = headline && /<mark>/.test(headline) ? headlineToExcerpt(headline) : by === 'meaning' && chunk ? meaningExcerpt(chunk) : null
     hits.push({
       id: r.drive_file_id,
       name: r.name,
@@ -159,9 +170,46 @@ export function findAFileFromIndexRows(d: unknown): FindAFileRead {
       path: str(r.path) ?? '',
       excerpt,
       excerptWhy: excerpt ? null : indexWhyOf(r.text_why),
+      ...(by ? { by } : {}),
     })
   }
   return { hits, more: false, noRoot: false, source: 'index' }
+}
+
+/** The opening of the nearest chunk, one line, no marks (PR 4). */
+export function meaningExcerpt(chunk: string): Excerpt {
+  const text = chunk.replace(/\s+/g, ' ').trim()
+  return { text: text.length > 160 ? `${text.slice(0, 160).replace(/\s+\S*$/, '')}…` : text, marks: [] }
+}
+
+/** The function's `search_index` answer (PR 4): the rows as the RPC gives them, and whether meaning answered too. */
+export function findAFileFromIndexAnswer(d: unknown): FindAFileRead {
+  const o = (d ?? {}) as Record<string, unknown>
+  const read = findAFileFromIndexRows(o.rows)
+  return o.meaning === true ? { ...read, meaning: true } : read
+}
+
+/**
+ * Whether the index's answer needs Drive's search behind it (PR 4): nothing found, or every hit found by meaning alone.
+ * A loose match by meaning must never hide the file whose name or words Drive's own index would have found.
+ */
+export function needsDriveBehind(read: Pick<FindAFileRead, 'hits'>): boolean {
+  return read.hits.length === 0 || read.hits.every((h) => h.by === 'meaning')
+}
+
+/** Drive's hits first (the words themselves), then the index's hits by meaning that Drive did not name; Drive's `more`. */
+export function driveBehindMeaning(index: FindAFileRead, drive: FindAFileRead): FindAFileRead {
+  if (drive.hits.length === 0) return index
+  const named = new Set(drive.hits.map((h) => h.id))
+  const behind = index.hits.filter((h) => !named.has(h.id))
+  return { ...drive, hits: [...drive.hits, ...behind], meaning: index.meaning === true || behind.length > 0 ? true : drive.meaning }
+}
+
+/** The quiet tag on a hit the index found by its meaning (PR 4). */
+export function foundByWords(by: FoundBy | undefined): string | null {
+  if (by === 'meaning') return 'by meaning'
+  if (by === 'both') return 'by the words and the meaning'
+  return null
 }
 
 /** The heading a group of hits sits under. */
@@ -226,10 +274,11 @@ export function sourceWords(source: FindSource): string {
 }
 
 /** The count line over the results, or null when there is nothing to count. */
-export function foundWords(read: Pick<FindAFileRead, 'hits' | 'more' | 'source'>, words: string): string | null {
+export function foundWords(read: Pick<FindAFileRead, 'hits' | 'more' | 'source' | 'meaning'>, words: string): string | null {
   const n = read.hits.length
   if (n === 0) return null
-  const files = n === 1 ? '1 file says' : `${n} files say`
+  const byMeaning = read.hits.some((h) => h.by === 'meaning')
+  const files = n === 1 ? (byMeaning ? '1 file is about' : '1 file says') : byMeaning ? `${n} files say or are about` : `${n} files say`
   const from = sourceWords(read.source)
   return read.more ? `${files} “${words}”, ${from}. Drive has more. Add a word to narrow it.` : `${files} “${words}”, ${from}.`
 }

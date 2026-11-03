@@ -56,7 +56,6 @@ else
   for _ in $(seq 1 90); do docker exec "$NAME" pg_isready -U postgres -h localhost >/dev/null 2>&1 && break; sleep 1; done
   sleep 5
   psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
-  psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
   apply() { cat "$1"; }
 fi
 
@@ -65,7 +64,7 @@ if [ -n "${PGTEST_PGBIN:-}" ]; then
     apply "$f" | psql_as postgres -f - >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
   done
 else
-  pgtest_apply supabase/migrations/*.sql
+  pgtest_migrate
 fi
 # A second run must change nothing: the functions, their comments and grants.
 apply "$WRITES" | psql_as postgres -f - >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }

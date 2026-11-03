@@ -38,7 +38,9 @@ Permit 2026-0412.pdf &nbsp; *the job's folder · Oct 14 · 2.1 MB*
 
 Our own index answers first. The index holds the words inside every file the app has read. A Google Doc, a PDF with real text and a text file are read. A scanned paper is read with OCR once the office has it set up. OCR is text recognition, the computer reading the words on a picture of a page. A very long PDF is read from its first page until its time runs out. A PDF over 12 MB is not read. Drive's own search runs behind the index and may still find those words. The count line says *from our index* when the index answered.
 
-Drive's own search runs behind our index every time. The index's hits show first, usually within a second. Drive's finds that the index did not name follow a moment later. When the index has nothing, Drive's finds are the whole list and the count line says *from Drive*. Drive reads the words inside PDFs and the scans it has read.
+Once the office sets up search by meaning, the index also finds a file by what it is about. A letter where the GC agreed to extra rock is found even when it never says *agreed*. Such a hit carries a small *by meaning* tag and shows the opening of the part that matched.
+
+Drive's own search runs behind our index every time. The index's hits show first, usually within a second. Drive's finds that the index did not name follow a moment later. When the index has nothing, Drive's finds are the whole list and the count line says *from Drive*. Drive reads the words inside PDFs and the scans it has read. When the index found files by meaning alone, Drive's finds come first.
 
 To put a job's files in the index, open the job window and press **Documents**. Under **In the folders**, press **Index this job's files**. The press reads the files in rounds and says how many are left. A file it could not read is listed with the reason. New files are read on their own every ten minutes after that.
 

@@ -77,7 +77,8 @@ export async function offerRescheduledVisit(moved: MovedVisit, io: TellCustomerI
       userId,
     })
     if (!body) return false
-    await supabaseOffersIo(client).make({ contactId: contact.contactId, stepKey: 'booked', jobKey: jobKey({ kind: 'pipeline', id: moved.jobId }), body, channelId: number.channelId, sendOn: null })
+    // The text is about the new day (v2.6387): past it the text is stale, held on Today's sends and put away by the run.
+    await supabaseOffersIo(client).make({ contactId: contact.contactId, stepKey: 'booked', jobKey: jobKey({ kind: 'pipeline', id: moved.jobId }), body, channelId: number.channelId, sendOn: null, aboutOn: moved.workDate })
     return true
   } catch (e) {
     console.warn('[tell the customer] the moved visit made no offer:', formatErrorMessage(e))
