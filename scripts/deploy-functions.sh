@@ -26,11 +26,17 @@ source .env.local
 set +a
 export SUPABASE_ACCESS_TOKEN="$SUPABASE_MGMT_TOKEN"
 
+# The CLI bundles with Docker by default, which pulls the edge-runtime image on
+# a cold machine and sat for sixteen minutes on one function (2026-11-03).
+# Bundling server-side through the API needs no daemon and no image: it is the
+# default here. DEPLOY_WITH_DOCKER=1 keeps the old path for a machine that wants it.
+bundle="--use-api"
+[ "${DEPLOY_WITH_DOCKER:-}" = "1" ] && bundle=""
 for fn in "$@"; do
   if [ ! -d "supabase/functions/$fn" ]; then
     echo "error: supabase/functions/$fn does not exist" >&2
     exit 1
   fi
-  supabase functions deploy "$fn" --no-verify-jwt --project-ref yewfzhbofbbyvkvtaatw
+  supabase functions deploy "$fn" --no-verify-jwt --project-ref yewfzhbofbbyvkvtaatw $bundle
 done
 npm run check:edge-drift || true
