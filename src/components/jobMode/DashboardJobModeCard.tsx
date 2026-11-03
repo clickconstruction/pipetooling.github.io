@@ -55,6 +55,7 @@ import {
 import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { JobModePressBar } from './JobModePressBar'
+import SuperintendentCard from './SuperintendentCard'
 import { useKeptRead } from '../../hooks/useKeptRead'
 import { PHONE_DAY_KEPT_LEAD, READING_AGAIN_WORDS } from '../../lib/keptRead'
 import { KeptReadStamp } from '../KeptReadStamp'
@@ -1302,14 +1303,18 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               }
             : null)
         return detailsTarget ? (
-          <JobModeDetailsSection
-            key={detailsTarget.id}
-            jobId={detailsTarget.id}
-            jobAddress={detailsTarget.jobAddress === '—' ? '' : detailsTarget.jobAddress}
-            hcpNumber={'hcpNumber' in detailsTarget ? detailsTarget.hcpNumber : undefined}
-            jobName={'jobName' in detailsTarget ? detailsTarget.jobName : undefined}
-            updatesRev={jobUpdatesRev}
-          />
+          <>
+            {/* The superintendent's line (punch list #242, PR 4): his project's pace from the same kernel as the office's Projects board. */}
+            {role === 'superintendent' ? <SuperintendentCard key={`line-${detailsTarget.id}`} jobId={detailsTarget.id} rev={jobUpdatesRev} onSetPct={setPctJob} /> : null}
+            <JobModeDetailsSection
+              key={detailsTarget.id}
+              jobId={detailsTarget.id}
+              jobAddress={detailsTarget.jobAddress === '—' ? '' : detailsTarget.jobAddress}
+              hcpNumber={'hcpNumber' in detailsTarget ? detailsTarget.hcpNumber : undefined}
+              jobName={'jobName' in detailsTarget ? detailsTarget.jobName : undefined}
+              updatesRev={jobUpdatesRev}
+            />
+          </>
         ) : null
       })()}
       {onMyWay ? (

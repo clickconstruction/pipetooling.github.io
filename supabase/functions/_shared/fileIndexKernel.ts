@@ -10,10 +10,48 @@ import type { Excerpt } from './excerpt.ts'
 
 /** The text kept on a row: plenty for ranking, and the generated tsvector reads the same cut. */
 export const INDEX_TEXT_MAX_CHARS = 200_000
-/** The caps on one file's read (v2.6306's, shared with the excerpt line): a PDF past them is `big`. */
-export const TEXT_PDF_MAX_BYTES = 8 * 1024 * 1024
-export const TEXT_PDF_MAX_PAGES = 40
+/**
+ * The caps on one PDF's read for the index. Over the bytes it is `big`: it is held whole in memory to parse, so this cap
+ * answers to the function's 256 MB and never to its CPU. The pages cap rarely bites, since the time budget or the text
+ * cap stops a long PDF first (v2.6332; 8 MB and 40 pages before, which held a quarter of the drive's files as `big`).
+ */
+export const TEXT_PDF_MAX_BYTES = 50 * 1024 * 1024
+export const TEXT_PDF_MAX_PAGES = 1000
 export const TEXT_PLAIN_MAX_BYTES = 2 * 1024 * 1024
+/**
+ * What parsing may spend, in milliseconds of the clock while nothing waits on the network (so never less than its CPU).
+ * The platform kills a request at about 2 s of CPU and takes every office request in that worker with it, so one file
+ * stops at the first and one request at the second, with room for the rest of the request's work.
+ */
+export const PDF_READ_BUDGET_MS = 800
+export const PASS_READ_BUDGET_MS = 1200
+/** The PDF bytes one request holds at most, past the first file: a second large set in one request is what memory cannot take. */
+export const PASS_READ_MAX_BYTES = 60 * 1024 * 1024
+/** What a PDF is expected to cost before it is read: the parse is about this much per megabyte, up to its budget. */
+const PDF_ESTIMATE_BASE_MS = 50
+const PDF_ESTIMATE_MS_PER_MB = 100
+
+/** The limits of one PDF read. `passBudgetMs` is what the whole request may have spent for this parse to start at all. */
+export interface PdfReadLimits {
+  maxBytes: number
+  maxPages: number
+  budgetMs: number
+  passBudgetMs: number
+}
+
+export const INDEX_PDF_LIMITS: PdfReadLimits = { maxBytes: TEXT_PDF_MAX_BYTES, maxPages: TEXT_PDF_MAX_PAGES, budgetMs: PDF_READ_BUDGET_MS, passBudgetMs: PASS_READ_BUDGET_MS }
+/** A search reads ten hits' excerpts at once, so it keeps v2.6306's small caps and a short budget for each. */
+export const EXCERPT_PDF_LIMITS: PdfReadLimits = { maxBytes: 8 * 1024 * 1024, maxPages: 40, budgetMs: 300, passBudgetMs: 1000 }
+
+/** What one request has spent parsing PDFs, shared by every read in it. */
+export interface PassSpend {
+  ms: number
+  bytes: number
+}
+
+export function newPassSpend(): PassSpend {
+  return { ms: 0, bytes: 0 }
+}
 /** Under this many characters, a PDF's text layer is nothing: the file is a scan. */
 export const PDF_SCAN_MAX_CHARS = 20
 /** How long a search's excerpt read may take; how long an index read may take (the platform's CPU limit is the real cap). */
@@ -23,6 +61,8 @@ export const INDEX_READ_MS = 20_000
 export const INDEX_BUDGET_MS = 25_000
 /** How many files one `index_job` request takes at most, and how many the sweep takes per run. */
 export const INDEX_JOB_MAX_FILES = 40
+/** With `retry`, a held row is taken again only when its last check is older than this: a run that holds a file again moves on instead of taking it first on every call. */
+export const RETRY_HOLD_MS = 60 * 60 * 1000
 export const SWEEP_MAX_FILES = 40
 /** How many rows the sweep asks Drive about per run, oldest check first, so a trashed file loses its row within days. */
 export const SWEEP_RECHECK_ROWS = 20
@@ -78,8 +118,58 @@ export function textKindOf(f: Pick<DriveFileMeta, 'name' | 'mimeType'>): TextKin
   return 'kind'
 }
 
-/** The read of one file's text, or why there is none. `pages` is a PDF's count. */
-export type FileTextRead = { text: string; source: TextSource; pages: number | null } | { why: Exclude<TextWhy, 'reading'> }
+/** The read of one file's text, or why there is none. `pages` is a PDF's count, and `pagesRead` how many of them the time allowed. */
+export type FileTextRead = { text: string; source: TextSource; pages: number | null; pagesRead?: number | null } | { why: Exclude<TextWhy, 'reading'> }
+
+/** What a read needs of pdf.js's document. */
+export interface PdfDoc {
+  numPages: number
+  getPage(n: number): Promise<{ getTextContent(): Promise<{ items: readonly unknown[] }>; cleanup?: () => unknown }>
+}
+
+/**
+ * A PDF's text one page at a time, in the shape unpdf's `extractText` merges it, until the time or the text cap is spent.
+ * The first page is always read, so a call makes progress. The clock is checked between pages and never inside one:
+ * cancelling pdf.js's text stream throws an uncaught rejection from its message handler, which would crash the worker, so
+ * a dense sheet's own cost is the overshoot. A page takes about 17 ms of CPU per megabyte of its drawing here, three
+ * times that on the platform, so the budget reads a dozen dense sheets, or hundreds of pages of a written spec. The
+ * clock starts here, with the document open: loading pdf.js costs a cold worker's first file its share of the request's
+ * budget (`PassSpend`), never that file's pages, or a three-page letter would stay read in part for good.
+ */
+export async function pdfPagesText(pdf: PdfDoc, limits: Pick<PdfReadLimits, 'maxPages' | 'budgetMs'>, now: () => number): Promise<{ text: string; pagesRead: number }> {
+  const startedAt = now()
+  const pages: string[] = []
+  let chars = 0
+  const last = Math.min(pdf.numPages, limits.maxPages)
+  for (let n = 1; n <= last; n++) {
+    if (n > 1 && (now() - startedAt >= limits.budgetMs || chars >= INDEX_TEXT_MAX_CHARS)) break
+    const page = await pdf.getPage(n)
+    const content = await page.getTextContent()
+    let text = ''
+    for (const item of content.items) {
+      const it = item as { str?: unknown; hasEOL?: unknown }
+      if (typeof it.str === 'string') text += it.str + (it.hasEOL ? '\n' : '')
+    }
+    pages.push(text)
+    chars += text.length
+    page.cleanup?.()
+  }
+  return { text: pages.join('\n').replace(/[^\S\n]+/g, ' ').replace(/ ?\n ?/g, '\n').replace(/\n{3,}/g, '\n\n'), pagesRead: pages.length }
+}
+
+/**
+ * Whether a pass that has spent this much may start this file. The first file always may, so a call makes progress. A
+ * PDF over the cap is `big` with no download and costs nothing; any other PDF needs its expected cost and its bytes to
+ * fit. Past the budget nothing starts, and the caller's next request reads the rest.
+ */
+export function passMayTake(f: Pick<DriveFileMeta, 'name' | 'mimeType' | 'size'>, spend: PassSpend): boolean {
+  if (textKindOf(f) !== 'pdf') return spend.ms < PASS_READ_BUDGET_MS
+  const bytes = f.size == null || f.size === '' ? 0 : Number(f.size) || 0
+  if (bytes > TEXT_PDF_MAX_BYTES) return true
+  if (spend.bytes > 0 && spend.bytes + bytes > PASS_READ_MAX_BYTES) return false
+  const estimate = Math.min(PDF_READ_BUDGET_MS, PDF_ESTIMATE_BASE_MS + (bytes / (1024 * 1024)) * PDF_ESTIMATE_MS_PER_MB)
+  return spend.ms + estimate <= PASS_READ_BUDGET_MS
+}
 
 /** The job or bid whose folder holds a file, as the box names it; `customerId` rides along for the row. */
 export type FileHome =
@@ -89,8 +179,8 @@ export type FileHome =
 /** A home keyed by one of its folders; `via` names the folder when it is not the home's own (Plans, Customer Pictures). */
 export type HomeAt = { home: FileHome; via: string | null }
 
-/** How many folders up a walk climbs before giving up on a home. */
-export const WALK_MAX = 8
+/** How many folders up a walk climbs before giving up on a home. A plan export sat nine down, past the old eight (v2.6403). */
+export const WALK_MAX = 16
 
 /**
  * Climbs a file's folders until one is a home or the jobs root, naming the folders between (top down). `metaOf` reads
@@ -152,6 +242,7 @@ export interface FileIndexRow {
   text_source: TextSource | null
   text_why: TextWhy | null
   pages: number | null
+  pages_read: number | null
   indexed_at: string
   checked_at: string
 }
@@ -180,6 +271,7 @@ export function indexRowOf(f: DriveFileMeta, walk: { home: FileHome | null; via:
     text_source: 'text' in read ? read.source : null,
     text_why: 'text' in read ? null : read.why,
     pages: 'text' in read ? read.pages : null,
+    pages_read: 'text' in read ? (read.pagesRead ?? read.pages) : null,
     indexed_at: stamp,
     checked_at: stamp,
   }
@@ -196,6 +288,14 @@ export interface KnownRow {
   modified_at: string | null
   text_why: TextWhy | null
   text_source: TextSource | null
+  checked_at: string | null
+}
+
+/** Whether a held row's last check is old enough for a retry to take it again (`RETRY_HOLD_MS`); a row with no stamp is due. */
+export function retryDue(checkedAt: string | null, now: Date): boolean {
+  if (!checkedAt) return true
+  const t = Date.parse(checkedAt)
+  return !Number.isFinite(t) || now.getTime() - t >= RETRY_HOLD_MS
 }
 
 /** Why a listed file is passed over. */
@@ -203,10 +303,12 @@ export type SkipWhy = 'current' | 'held'
 
 /**
  * Which listed files a pass indexes: one not in the table, or modified since its row; one whose row is held (`big`,
- * `kind`, `slow`, `error`, or `reading` from a stopped request) only with `retry`. A row with text and the same
- * modified time is current. A folder is never a file.
+ * `slow`, `error`, or `reading` from a stopped request) only with `retry`, and then only when its last check is an
+ * hour old (`retryDue`), so a run that holds a file again moves past it instead of taking it first on every call. A
+ * `scan` waits for the OCR pass and a `kind` is never read, so neither is retaken. A row with text and the same
+ * modified time is current. Folders and a file listed twice are passed over.
  */
-export function indexPlan(listed: readonly DriveFileMeta[], known: ReadonlyMap<string, KnownRow>, opts: { retry?: boolean } = {}): { toIndex: DriveFileMeta[]; skipped: { id: string; why: SkipWhy }[] } {
+export function indexPlan(listed: readonly DriveFileMeta[], known: ReadonlyMap<string, KnownRow>, opts: { retry?: boolean; now?: Date } = {}): { toIndex: DriveFileMeta[]; skipped: { id: string; why: SkipWhy }[] } {
   const toIndex: DriveFileMeta[] = []
   const skipped: { id: string; why: SkipWhy }[] = []
   const seen = new Set<string>()
@@ -223,11 +325,12 @@ export function indexPlan(listed: readonly DriveFileMeta[], known: ReadonlyMap<s
       toIndex.push(f)
       continue
     }
-    if (row.text_why && row.text_why !== 'scan' && row.text_why !== 'kind' && opts.retry) {
+    const held = Boolean(row.text_why && row.text_why !== 'scan' && row.text_why !== 'kind')
+    if (held && opts.retry && retryDue(row.checked_at, opts.now ?? new Date())) {
       toIndex.push(f)
       continue
     }
-    skipped.push({ id: f.id, why: row.text_why && row.text_why !== 'scan' && row.text_why !== 'kind' ? 'held' : 'current' })
+    skipped.push({ id: f.id, why: held ? 'held' : 'current' })
   }
   return { toIndex, skipped }
 }
@@ -349,9 +452,12 @@ function mergeMarks(text: string, marks: [number, number][]): [number, number][]
 /** The count line's words for an index pass, as the press and the dev seat read them. */
 export function indexPassWords(a: IndexPassAnswer): string {
   const files = a.indexed === 1 ? '1 file' : `${a.indexed} files`
+  // A held row is indexed too (its row says why it has no words), so the line says how many have their words.
+  const withWords = Math.max(0, a.indexed - a.held.length)
+  const words = a.held.length > 0 && withWords > 0 ? `, ${withWords} with their words` : ''
   const held = a.held.length === 0 ? '' : a.held.length === 1 ? ', 1 held' : `, ${a.held.length} held`
   const left = a.remaining > 0 ? `, ${a.remaining} to go` : ''
-  return `Indexed ${files}${held}${left}.`
+  return `Indexed ${files}${words}${held}${left}.`
 }
 
 /** Why a held file was held, in the office's words. */

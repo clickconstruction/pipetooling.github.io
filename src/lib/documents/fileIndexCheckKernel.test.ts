@@ -2,16 +2,21 @@ import { describe, expect, it } from 'vitest'
 import {
   addFillAnswer,
   addFillRefusal,
+  addRehomeAnswer,
+  addRehomeRefusal,
+  askAgainAfter,
   CHECK_SAMPLE_DEFAULT,
   CHECK_SAMPLE_MAX,
   checkSample,
   checkWantsAPass,
   checkWords,
   emptyFill,
+  emptyRehome,
   fillContinues,
   fillWords,
   FILL_ROUNDS_MAX,
   reconcile,
+  rehomeWords,
   type CheckFile,
   type CheckRow,
 } from '../../../supabase/functions/_shared/fileIndexCheckKernel'
@@ -89,6 +94,15 @@ describe('the words', () => {
 })
 
 describe('the fill', () => {
+  it('asks again after a lost signal, the rate limit or the platform’s failure, and never after the function’s refusal', () => {
+    expect(askAgainAfter(0)).toBe(true)
+    expect(askAgainAfter(429)).toBe(true)
+    expect(askAgainAfter(500)).toBe(true)
+    expect(askAgainAfter(546)).toBe(true)
+    expect(askAgainAfter(400)).toBe(false)
+    expect(askAgainAfter(403)).toBe(false)
+    expect(askAgainAfter(409)).toBe(false)
+  })
   it('goes round while a round gains and files remain, and stops at the most', () => {
     expect(fillContinues(100, 40, 1)).toBe(true)
     expect(fillContinues(100, 0, 1)).toBe(false)
@@ -107,5 +121,17 @@ describe('the fill', () => {
     expect(fillWords(t)).toBe('Asked about 5 files: 2 rows written; of them with no text 1 scan; refused 2 × HTTP 546.')
     expect(fillWords(t)).not.toContain('never-printed')
     expect(fillWords(emptyFill())).toBe('Asked about 0 files: 0 rows written.')
+  })
+})
+
+describe('a row’s home again', () => {
+  it('adds the calls up, reads a strange answer as nothing done, and names no file', () => {
+    let t = emptyRehome()
+    t = addRehomeAnswer(t, 40, { homed: 30, none: 9, unanswered: 1, failed: 0 })
+    t = addRehomeAnswer(t, 2, null)
+    t = addRehomeRefusal(t, 40, 'HTTP 546')
+    expect(t).toEqual({ asked: 82, homed: 30, none: 9, unanswered: 1, failed: 0, refused: { 'HTTP 546': 1 } })
+    expect(rehomeWords(t)).toBe('Walked 82 rows up: 30 on a job or bid, 9 still on nothing; Drive did not answer for 1; refused 1 × HTTP 546.')
+    expect(rehomeWords(emptyRehome())).toBe('Walked 0 rows up: 0 on a job or bid, 0 still on nothing.')
   })
 })

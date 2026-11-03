@@ -2,7 +2,7 @@
 title: set where a job's files go
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: where files go, drive, google drive, jobs root, job folder, folder name, pattern, drive folders, check a folder, documents, customer pictures, plans, team only, bid folder
+keywords: where files go, drive, google drive, jobs root, job folder, folder name, pattern, drive folders, check a folder, documents, customer pictures, plans, team only, bid folder, people folder, evidence, shared drive
 order: 46
 ---
 Every job's files live in one Drive folder under its customer's folder, under the jobs root. On the Documents page you set where that root is and how a job's folder is named.
@@ -11,13 +11,21 @@ Every job's files live in one Drive folder under its customer's folder, under th
 
 Open **Documents** and press **Where files go**. The tab is for the office. An estimator does not see it.
 
-Four cards sit left to right. The first is the jobs root. The second is the company folder. The third is how a job's folder is named. The fourth is what is inside. On a phone the cards stack.
+Five cards sit left to right. The first is the jobs root. The second is the company folder. The third is the People folder. The fourth is how a job's folder is named. The fifth is what is inside. On a phone the cards stack.
 
 ## Set the company folder
 
 The second card names the folder that holds the company's papers, the W-9, the insurance and the licenses. **Documents → Company** lists that folder and its Upload a file press fills it.
 
 Paste a Drive folder link into the card's field and press {{button:outline|Check}}. The app answers in the same words as the root card. If the app can write there, press {{button:blue|Use this folder for company papers}} and then {{button:blue|Use this folder}}. The files that exist stay where they are. Until a folder is set, the card says *No company folder yet*.
+
+## Set the People folder
+
+The third card names the folder where a person's evidence lands. A dev keeps evidence on a person's file under **People → HR**. Each piece gets a folder of its own under that person, named by the day and the title.
+
+Give this folder a Shared Drive of its own. Only that drive's members can read what lands there. A folder in the Jobs drive is refused, because everyone on that drive could read the evidence.
+
+Paste a Drive folder link into the card's field and press {{button:outline|Check}}. The app answers in the same words as the root card. If the app can write there, press {{button:blue|Use this folder for the people’s files}} and then {{button:blue|Use this folder}}. Until a folder is set, the card says *No People folder yet*, and evidence waits on the person's file until one is.
 
 ## Move the jobs root
 
