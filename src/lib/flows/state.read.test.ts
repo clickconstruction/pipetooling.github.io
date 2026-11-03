@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { FactStamp, FlowDef, FlowReading, FlowStamps } from './state'
+import type { FactId } from './facts'
+import type { FactStamp, FlowDef, FlowReading, FlowStamps, FlowStep } from './state'
 import { flowMoves, flowProgress, moveWords, moverOf, paperRead, perJobJobs, placesOf, readFlow, stepById, stepReading, whoMoves, wouldBeNow } from './state'
 import { FLOW_FIXTURE_NOW as NOW, FLOW_FIXTURE_PEOPLE, flowFixture } from './flowFixtures'
 import { SEED_FLOWS } from './seed'
@@ -200,7 +201,7 @@ describe('readFlow: the rules the prototype did not have', () => {
     expect([r.nowStepId, r.nowJobId]).toEqual(['ask', 'boerne'])
   })
 
-  it('a step with no facts yet holds nobody', () => {
+  it('a step with no facts yet holds nobody and is never next', () => {
     const empty: FlowDef = {
       ...SEED_FLOWS.trade,
       lanes: SEED_FLOWS.trade.lanes.map((l) => (l.lane === 'once' ? { ...l, steps: [l.steps[0]!, l.steps[1]!, { ...l.steps[1]!, id: 'safety', name: 'Safety orientation', facts: [] }, ...l.steps.slice(2)] } : l)),
@@ -208,6 +209,12 @@ describe('readFlow: the rules the prototype did not have', () => {
     const r = readFlow(empty, flowFixture('tom').stamps, NOW)
     expect(drawn(r)[0]).toBe('once: invited:done portal:done safety:later papers:now msa:next')
     expect(stepReading(r, 'papers', null)?.since).toBe('2026-09-28')
+    // After the step on now, the step the chain stops at next is next, not the empty one before it.
+    const after: FlowDef = {
+      ...SEED_FLOWS.trade,
+      lanes: SEED_FLOWS.trade.lanes.map((l) => (l.lane === 'once' ? { ...l, steps: [...l.steps.slice(0, 3), { ...l.steps[1]!, id: 'safety', name: 'Safety orientation', facts: [] }, ...l.steps.slice(3)] } : l)),
+    }
+    expect(drawn(readFlow(after, flowFixture('tom').stamps, NOW))[0]).toBe('once: invited:done portal:done papers:now safety:later msa:next')
   })
 
   it('the editor’s preview: who moves when Papers in asks for the W-9 alone', () => {
@@ -255,5 +262,63 @@ describe('readFlow: the rules the prototype did not have', () => {
       ['fairoaks', null, false, false],
       ['stoneoak', null, false, false],
     ])
+  })
+})
+
+/**
+ * A migration writes a flow's rows before the code that reads them is deployed. On 2026-11-03 the morning run read the
+ * residential flow's new Warranty step with a bundle that did not know `warranty_signed`, and failed for everyone. Code
+ * that meets a fact it does not know reads on without it.
+ */
+describe('readFlow: a fact this code does not know', () => {
+  const NEWER = 'a_newer_fact' as FactId
+  const everyStepGains = (flow: FlowDef): FlowDef => ({ ...flow, lanes: flow.lanes.map((l) => ({ ...l, steps: l.steps.map((s) => ({ ...s, facts: [...s.facts, NEWER] })) })) })
+  const newStep = (like: FlowStep, id: string, loop: boolean): FlowStep => ({
+    ...like,
+    id,
+    name: 'A newer step',
+    facts: [NEWER],
+    papers: [],
+    join: 'and',
+    loop: loop ? 'Each newer paper' : null,
+    loopEnds: loop ? 'rounds' : null,
+    fork: false,
+    aside: false,
+    skipOneJob: false,
+  })
+  const NEW_IDS = ['newer', 'newer_loop']
+  /** A newer step and a newer loop second on every lane, as a migration would add them. */
+  const withNewSteps = (flow: FlowDef): FlowDef => ({
+    ...flow,
+    lanes: flow.lanes.map((l) => {
+      const [first, ...rest] = l.steps
+      return first ? { ...l, steps: [first, newStep(first, 'newer', false), newStep(first, 'newer_loop', true), ...rest] } : l
+    }),
+  })
+  const withoutNewSteps = (r: FlowReading): FlowReading => ({ ...r, lanes: r.lanes.map((l) => ({ ...l, steps: l.steps.filter((s) => !NEW_IDS.includes(s.stepId)) })) })
+
+  it('reads a step that gained one by the facts it knows: every demo person reads as before', () => {
+    for (const p of FLOW_FIXTURE_PEOPLE) {
+      const flow = SEED_FLOWS[p.kind]
+      expect(readFlow(everyStepGains(flow), p.stamps, NOW), p.contactId).toEqual(readFlow(flow, p.stamps, NOW))
+    }
+  })
+
+  it('passes a step with none it knows: it reads later, holds nobody and is never next, and the rest reads as before', () => {
+    for (const p of FLOW_FIXTURE_PEOPLE) {
+      const flow = SEED_FLOWS[p.kind]
+      const r = readFlow(withNewSteps(flow), p.stamps, NOW)
+      const added = r.lanes.flatMap((l) => l.steps.filter((s) => NEW_IDS.includes(s.stepId)))
+      expect(added.length, p.contactId).toBeGreaterThan(0)
+      expect(new Set(added.map((s) => s.state)), p.contactId).toEqual(new Set(['later']))
+      expect(withoutNewSteps(r), p.contactId).toEqual(readFlow(flow, p.stamps, NOW))
+    }
+  })
+
+  it('keeps an aside it cannot read off, even with a round open: Priya’s change order', () => {
+    const flow: FlowDef = { ...SEED_FLOWS.customer, lanes: SEED_FLOWS.customer.lanes.map((l) => ({ ...l, steps: l.steps.map((s) => (s.id === 'co' ? { ...s, facts: [NEWER] } : s)) })) }
+    const r = readFlow(flow, flowFixture('priya').stamps, NOW)
+    expect(stepReading(r, 'co', 'helotes')).toMatchObject({ state: 'later', facts: [] })
+    expect([r.nowStepId, r.nowJobId]).toEqual(['start', 'helotes'])
   })
 })
