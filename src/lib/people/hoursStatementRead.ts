@@ -278,7 +278,8 @@ export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Pr
       const others = d.people.filter((p) => p.userId !== userId).map((p) => p.name)
       const note = `${others.length ? `with ${others.join(', ')}` : 'alone'} · ${d.shapeWords}${d.why ? ` · ${d.why}` : ''}`
       if (d.why) unpriced.add(d.why)
-      out.push({ day: d.workDate, hours: d.crewHours, note, inLabel: own.inLabel, outLabel: own.outLabel, pending: false, chargeRate: d.rate })
+      // The crew's hours, or the person's own when nobody out that day is charged, so an unpriced day still shows its hours.
+      out.push({ day: d.workDate, hours: d.crewHours > 0 ? d.crewHours : own.hours, note, inLabel: own.inLabel, outLabel: own.outLabel, pending: false, chargeRate: d.rate })
     }
     for (const r of rows) if (r.pending) out.push(r)
     chargedRows = out
