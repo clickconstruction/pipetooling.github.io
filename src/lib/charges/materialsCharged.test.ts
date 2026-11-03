@@ -22,7 +22,8 @@ describe('materials charged (punch list #254)', () => {
 
   it('with no markup set, charges every line at cost and says why', () => {
     const r = chargeMaterials([inv('1', 'Ferguson', 100)], null)
-    expect(r.lines[0]).toMatchObject({ charged: 100, markup: 0, passedThrough: true })
+    expect(r.lines[0]).toMatchObject({ charged: 100, markup: 0, passedThrough: false })
+    expect(r.totals.passedThrough).toBe(0)
     expect(r.why).toBe('No markup on materials is set, so every material line is at cost.')
     expect(chargeMaterials([], null).why).toBeNull()
   })

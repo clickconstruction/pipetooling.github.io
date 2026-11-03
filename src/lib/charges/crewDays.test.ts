@@ -54,6 +54,16 @@ describe('crew-days (punch list #254)', () => {
     expect(buildCrewDays(three, { ...OWNER, extraPerson: 60 }).days[0]).toMatchObject({ rate: 345, charged: 2760 })
   })
 
+  it("applies the office's adjustments: a day set to another shape prices there and says so, a day left off is dropped and counted", () => {
+    const days = [s('z', 'Zack', 'tech', '2026-04-25', 9.44), s('t', 'Trace', 'master', '2026-04-26', 8), s('t', 'Trace', 'master', '2026-04-27', 8)]
+    const r = buildCrewDays(days, OWNER, { kind: 'shape', shape: 'master_helper' }, { dayShape: new Map([['2026-04-25', 'tech_alone']]), dayOff: new Set(['2026-04-26']) })
+    expect(r.days.map((d) => [d.workDate, d.pricedShape, d.rate, d.charged, d.shapeWords, d.adjusted])).toEqual([
+      ['2026-04-25', 'tech_alone', 185, 1746.4, 'a tech alone · adjusted', true],
+      ['2026-04-27', 'master_helper', 285, 2280, 'master with a helper · the job’s rule', false],
+    ])
+    expect(r.totals).toMatchObject({ days: 2, charged: 4026.4, daysLeftOff: 1, daysAdjusted: 1 })
+  })
+
   it('rolls days into weeks for the paper, Monday first, with everyone out that week once', () => {
     const r = buildCrewDays([
       s('t', 'Trace', 'master', '2026-04-20', 9), s('z', 'Zack', 'tech', '2026-04-20', 9.93),

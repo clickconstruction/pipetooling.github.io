@@ -67,6 +67,28 @@ The crew's hours are the longest day of anyone in it. Two techs out eight hours 
 
 Under the rates, open **Markup on materials**. Type a percent over cost and press {{button:blue|Save the markup}}. The line under the field reads the number both ways. For example, 25% over cost is a 20% margin on the sale. Leave it blank and materials are charged at cost. The paper says so when they are.
 
+## See what a job is charged at
+
+Open **Jobs** and go to **Job Summary**. Two columns sit at the right of the table. **Charges** is the job's crew days at the rate card plus its materials at the markup. **Premium** is how far the contract price stands above the charges. A shortfall reads red. A chip over the table names the rate card and markup in force.
+
+## Adjust a job's charges
+
+Press a **Charges** cell and the Charges window opens. The job's rule and markup sit at the top. Change them and the job keeps the change. Four tiles follow. They show labor, materials, charges, and the stand against the revenue.
+
+Every crew day lists under its week. Each day has a tick and a chip. Untick a day to leave it off. Change the chip to set that day's crew. A reason box appears under it. Every material line has a tick and {{button:outline|Pass through}}. Pass through charges that line at cost.
+
+:::steps
+
+Change a day's chip or untick a line.
+
+Type the reason under it.
+
+Press {{button:blue|Save 1 adjustment}}. The button counts what you changed.
+
+:::
+
+Adjustments live on the job's charges. They never touch anyone's clock session or invoice. The log on the right lists every one with its reason. Press {{button:outline|Revert to the record}} to undo them all. The app asks first.
+
 ## What comes next
 
-These numbers feed the Statement of charges and the Job Summary's Charges column. Both arrive in later releases. Until then the cards and the desk field hold the facts, and nothing prints.
+The Statement of charges arrives in a later release. It prints these same lines as a paper for the office and a copy for the customer.

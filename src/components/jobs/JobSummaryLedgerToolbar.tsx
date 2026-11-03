@@ -125,6 +125,7 @@ export default function JobSummaryLedgerToolbar({
   setSearch,
   showMoney,
   canEditOverheadDials = false,
+  chargesChip = null,
 }: {
   view: View
   search: string
@@ -133,6 +134,8 @@ export default function JobSummaryLedgerToolbar({
   showMoney: boolean
   /** The overhead dials (v2.3259): devs turn the allocation constants and set the app default. */
   canEditOverheadDials?: boolean
+  /** Charges by crew (punch list #254, PR 3): the rate card and markup in force, named on one chip; null while unread. */
+  chargesChip?: string | null
 }) {
   const { prefs, setPrefs, totals, hygiene, ledgerLoading, ledgerError, reloadLedger, compare, rows, overhead } = view
   const [discountFoldOpen, setDiscountFoldOpen] = useState(false)
@@ -271,6 +274,11 @@ export default function JobSummaryLedgerToolbar({
       )}
       {prefs.view !== 'jobs' ? null : (
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        {showMoney && chargesChip ? (
+          <span style={chipMuted} data-testid="job-summary-charges-chip" title="What the Charges column prices at. Settings → Jobs & billing → Rates charged by crew and Markup on materials.">
+            {chargesChip}
+          </span>
+        ) : null}
         {showMoney && assumedOpen > 0 ? (
           <span style={chipMuted} title="Unfinished jobs burning against price × (1 − target) — no bid linked and nothing typed. Open a job's Costs tab to link its bid; the Budget chip's ≈ assumed lists them">
             ≈ {assumedOpen} open {assumedOpen === 1 ? 'job burns' : 'jobs burn'} against an assumption

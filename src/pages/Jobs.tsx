@@ -83,6 +83,13 @@ import { MercuryTransactionAllocationsModal } from '../components/MercuryTransac
 import { useJobsMercuryAllocations } from '../hooks/useJobsMercuryAllocations'
 import { useJobSummaryView } from '../hooks/useJobSummaryView'
 import { useJobsStagesMutations } from '../hooks/useJobsStagesMutations'
+import ChargesWindow from '../components/charges/ChargesWindow'
+import { ledgerChargesFor, rateCardChipWords, standingLookup } from '../lib/charges/ledgerCharges'
+import { loadChargeAdjustmentsForJobs, loadRateCard } from '../lib/charges/jobChargesRead'
+import { isEstimateCharge } from '../lib/charges/materialsCharged'
+import type { ChargeAdjustment } from '../lib/charges/adjustments'
+import type { RateCard } from '../lib/charges/rateCard'
+import { normalizePersonNameKey } from '../lib/personNameKey'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 /** A stable empty list for tabs that never render card charges (see `jobListForCardCharges`). */
@@ -389,6 +396,44 @@ export default function Jobs() {
     Record<string, string>
   >({})
   const [jobSummaryCostDrilldown, setJobSummaryCostDrilldown] = useState<{ title: string; body: ReactNode } | null>(null)
+  // Charges by crew (punch list #254, PR 3): the rate card, each job's open adjustments and each person's standing, read
+  // once for the Job Summary; a read that fails leaves the column unpriced and says so in the console, never breaks the tab.
+  const [chargesRateCard, setChargesRateCard] = useState<RateCard | null>(null)
+  const [chargeAdjustmentsByJobId, setChargeAdjustmentsByJobId] = useState<Map<string, ChargeAdjustment[]>>(() => new Map())
+  const [chargeStandingByUserId, setChargeStandingByUserId] = useState<Map<string, unknown>>(() => new Map())
+  const [chargesWindowJobId, setChargesWindowJobId] = useState<string | null>(null)
+  const chargesJobIdsKey = activeTab === 'job-summary' && jobSummaryLedgerJobs ? jobSummaryLedgerJobs.map((j) => j.id).join(',') : ''
+  const reloadChargeAdjustments = useCallback(async () => {
+    const ids = chargesJobIdsKey ? chargesJobIdsKey.split(',') : []
+    if (!ids.length) return
+    try {
+      setChargeAdjustmentsByJobId(await loadChargeAdjustmentsForJobs(ids))
+    } catch (e) {
+      console.warn('Job Summary: the charge adjustments could not be read', e)
+    }
+  }, [chargesJobIdsKey])
+  useEffect(() => {
+    if (activeTab !== 'job-summary') return
+    let on = true
+    void loadRateCard()
+      .then((card) => {
+        if (on) setChargesRateCard(card)
+      })
+      .catch((e: unknown) => console.warn('Job Summary: the rate card could not be read', e))
+    void supabase
+      .from('users')
+      .select('*')
+      .then(({ data }) => {
+        if (!on || !data) return
+        setChargeStandingByUserId(new Map((data as unknown as Array<{ id: string; charge_standing?: unknown }>).map((u) => [u.id, u.charge_standing])))
+      })
+    return () => {
+      on = false
+    }
+  }, [activeTab])
+  useEffect(() => {
+    void reloadChargeAdjustments()
+  }, [reloadChargeAdjustments])
   // Only Parts and Job Summary render card charges (v2.3569 — Pipeline load speed PR 1). On
   // every other tab the list is empty, so `useJobsMercuryAllocations` short-circuits instead of
   // pulling every allocation and its transactions (~80 requests) for a board that never reads
@@ -1481,6 +1526,9 @@ export default function Jobs() {
     for (const r of teamLaborData) {
       teamLaborCostByJobId.set(r.jobId, r.jobCost)
     }
+    const standingOf = chargesRateCard
+      ? standingLookup(users.map((u) => ({ id: u.id, name: u.name, charge_standing: chargeStandingByUserId.get(u.id) })), normalizePersonNameKey)
+      : null
     return sourceJobs
       .map((job) => {
         const subLaborCost = laborCostByJobId.get(job.id) ?? 0
@@ -1503,6 +1551,25 @@ export default function Jobs() {
         const teamLaborRow = teamLaborData.find((r) => r.jobId === job.id)
         const subLaborJobs = subLaborSheetsByJob.get(job.id) ?? []
         const tallyPartsForJob = tallyParts.filter((r) => r.job_id === job.id)
+        // Charges by crew (punch list #254, PR 3): priced from the row's own breakdown and sums once the rate card is read.
+        const charges =
+          chargesRateCard && standingOf
+            ? (() => {
+                const c = ledgerChargesFor({
+                  breakdown: teamLaborRow?.breakdown ?? [],
+                  standingOf,
+                  invoicesFromSupplyHouses,
+                  partsFromTally,
+                  // A cost batch's ESTIMATE rows are cost on the Parts column, never a charge.
+                  billedMaterialsSum: (job.materials ?? []).reduce((s, m) => (isEstimateCharge(m.description) ? s : s + Number(m.amount ?? 0)), 0),
+                  card: chargesRateCard,
+                  job: job as unknown as { charge_rule?: unknown; charge_shape?: unknown; hourly_charge_rate?: unknown; materials_markup_pct?: unknown },
+                  adjustments: chargeAdjustmentsByJobId.get(job.id) ?? [],
+                  contractUsd: totalBill,
+                })
+                return c.priced ? { chargesUsd: c.chargesUsd, premiumUsd: c.premium.signed, note: c.note } : { chargesUsd: null, premiumUsd: null, note: c.note }
+              })()
+            : null
         return {
           job,
           subLaborCost,
@@ -1519,6 +1586,7 @@ export default function Jobs() {
           teamLaborRow,
           subLaborJobs,
           tallyPartsForJob,
+          charges,
         }
       })
       .sort((a, b) => {
@@ -1543,6 +1611,10 @@ export default function Jobs() {
     mercuryInvoiceLinkedChargesByJobId,
     mercuryTagChargesByJobId,
     costLineTags,
+    chargesRateCard,
+    chargeAdjustmentsByJobId,
+    chargeStandingByUserId,
+    users,
   ])
 
   // Job Summary ledger view (v2.2692): prefs + the job day ledger + enriched rows;
@@ -2155,6 +2227,8 @@ export default function Jobs() {
           canAccessBankingForParts={canAccessBankingForParts}
           showTeamLaborAndProfit={authRole === 'dev' || authRole === 'master_technician' || authRole === 'controller'}
           canEditOverheadDials={authRole === 'dev'}
+          onOpenCharges={(jobId) => setChargesWindowJobId(jobId)}
+          chargesChip={chargesRateCard ? rateCardChipWords(chargesRateCard) : null}
           nicknameByDebitCard={nicknameByDebitCard}
           tallyPartsLoading={tallyPartsLoading}
           laborJobsLoading={laborJobsLoading}
@@ -2263,6 +2337,17 @@ export default function Jobs() {
           nicknameByAccount={partsAllocModalData.nicknameByAccount}
           recentPersonPicksStorageKey={authUser?.id ?? null}
           onSaved={onPartsAllocSaved}
+        />
+      ) : null}
+      {chargesWindowJobId && authUser ? (
+        <ChargesWindow
+          jobId={chargesWindowJobId}
+          viewer={{ userId: authUser.id, role: authRole, canAccessPay: authRole === 'dev' || authRole === 'master_technician' || authRole === 'controller' }}
+          onClose={() => setChargesWindowJobId(null)}
+          onChanged={() => {
+            void reloadChargeAdjustments()
+            void loadJobSummaryLedger()
+          }}
         />
       ) : null}
       {jobSummaryCostDrilldown ? (

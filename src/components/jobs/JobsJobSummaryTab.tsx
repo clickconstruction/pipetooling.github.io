@@ -403,6 +403,8 @@ export type JobSummaryRow = {
   teamLaborRow: TeamLaborRow | undefined
   subLaborJobs: LaborJob[]
   tallyPartsForJob: TallyPartRow[]
+  /** Charges by crew (punch list #254, PR 3); null until the rate card is read. */
+  charges?: { chargesUsd: number | null; premiumUsd: number | null; note: string | null } | null
 }
 
 export type JobsJobSummaryTabProps = {
@@ -456,6 +458,10 @@ export type JobsJobSummaryTabProps = {
   showTeamLaborAndProfit: boolean
   /** The overhead dials (v2.3259): devs only. */
   canEditOverheadDials?: boolean
+  /** Charges by crew (punch list #254, PR 3): a press on a Charges cell opens the Charges window on that job. */
+  onOpenCharges?: (jobId: string) => void
+  /** The toolbar chip naming the rate card and markup in force; null while they are not read. */
+  chargesChip?: string | null
   nicknameByDebitCard: Record<string, string>
   tallyPartsLoading: boolean
   laborJobsLoading: boolean
@@ -524,6 +530,8 @@ export default function JobsJobSummaryTab({
   canAccessBankingForParts,
   showTeamLaborAndProfit,
   canEditOverheadDials = false,
+  onOpenCharges,
+  chargesChip = null,
   nicknameByDebitCard,
   tallyPartsLoading,
   laborJobsLoading,
@@ -544,7 +552,7 @@ export default function JobsJobSummaryTab({
           {jobSummaryLedgerError && (
             <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{jobSummaryLedgerError}</p>
           )}
-          <JobSummaryLedgerToolbar view={view} search={jobSummarySearch} setSearch={setJobSummarySearch} showMoney={showTeamLaborAndProfit} canEditOverheadDials={canEditOverheadDials} />
+          <JobSummaryLedgerToolbar view={view} search={jobSummarySearch} setSearch={setJobSummarySearch} showMoney={showTeamLaborAndProfit} canEditOverheadDials={canEditOverheadDials} chargesChip={chargesChip} />
           {searching && ledgerReady ? (
             // v2.5745: the search wins — the line says what it matched and which chips or floor stepped aside.
             <p role="status" data-testid="job-summary-search-note" style={{ margin: '-0.25rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
@@ -729,6 +737,8 @@ export default function JobsJobSummaryTab({
                       view={view}
                       title="Percent complete — the badge under each % says who set it: fully collected (every invoice paid, covering the contract) · crew report (latest field report %) · set by office (the job's own % complete)"
                     />
+                    <JobSummarySortHeader label="Charges" sortKey="charges" view={view} title="Charges by crew (punch list #254): the job's approved crew-days at the rate card or the job's rule, plus its supply-house, tallied and typed materials at the markup, with the office's adjustments. A press on a cell opens the Charges window." />
+                    <JobSummarySortHeader label="Premium" sortKey="premium" view={view} title="The contract price against the charges: above is a premium, below a shortfall. Office words only; never on a customer paper." />
                   </tr>
                 </thead>
                 <tbody>
@@ -931,13 +941,41 @@ export default function JobsJobSummaryTab({
                                 </span>
                               ) : null}
                             </td>
+                            <td
+                              role={showTeamLaborAndProfit && onOpenCharges ? 'button' : undefined}
+                              tabIndex={showTeamLaborAndProfit && onOpenCharges ? 0 : undefined}
+                              className={showTeamLaborAndProfit && onOpenCharges ? jobSummaryBreakdownInteractiveClass(true) : undefined}
+                              data-testid="job-summary-charges-cell"
+                              title={!showTeamLaborAndProfit ? undefined : enriched.chargesUsd == null ? 'Not priced yet: the rate card is being read, or nothing on this job is charged.' : `${enriched.chargesNote ? `${enriched.chargesNote} ` : ''}Press to see every line and adjust.`}
+                              style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', cursor: showTeamLaborAndProfit && onOpenCharges ? 'pointer' : undefined }}
+                              onClick={(e) => {
+                                if (!showTeamLaborAndProfit || !onOpenCharges) return
+                                e.stopPropagation()
+                                onOpenCharges(job.id)
+                              }}
+                              onKeyDown={(e) => {
+                                if (!showTeamLaborAndProfit || !onOpenCharges) return
+                                jobSummaryDrilldownCellKeyboard(e, () => onOpenCharges(job.id))
+                              }}
+                            >
+                              {!showTeamLaborAndProfit || enriched.chargesUsd == null ? '—' : <SignedAmountSmallCents value={enriched.chargesUsd} />}
+                              {showTeamLaborAndProfit && enriched.chargesNote ? <span aria-hidden="true" style={{ marginLeft: 4, fontSize: '0.68rem', color: 'var(--text-amber-700)' }}>?</span> : null}
+                            </td>
+                            <td
+                              data-testid="job-summary-premium-cell"
+                              style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', color: showTeamLaborAndProfit && enriched.premiumUsd != null && enriched.premiumUsd < 0 ? 'var(--text-red-700)' : undefined }}
+                              title={showTeamLaborAndProfit && enriched.premiumUsd != null ? (enriched.premiumUsd < 0 ? 'A shortfall: the contract price sits below the charges.' : enriched.premiumUsd > 0 ? 'A premium: the contract price sits above the charges.' : 'The price and the charges are even.') : undefined}
+                            >
+                              {!showTeamLaborAndProfit || enriched.premiumUsd == null ? '—' : <SignedAmountSmallCents value={enriched.premiumUsd} />}
+                              {showTeamLaborAndProfit && enriched.premiumUsd != null && enriched.premiumUsd < 0 ? <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 600 }}>shortfall</span> : null}
+                            </td>
                           </tr>
                         )
                         if (!expanded) return [mainRow]
                         const overheadMethodLabel = JOB_OVERHEAD_METHODS.find((m) => m.key === view.prefs.method)?.label ?? 'Day-share'
                         const detailRow = (
                           <tr key={`${job.id}-summary-detail`}>
-                            <td colSpan={15} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
+                            <td colSpan={17} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
                               <div style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem' }}>
                                 <JobSummaryExpandedHeader
                                   job={job}
@@ -3224,6 +3262,12 @@ export default function JobsJobSummaryTab({
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>{view.totals.revenuePerHourUsd == null ? '—' : `$${Math.round(view.totals.revenuePerHourUsd)}`}</td>
                     <td style={{ padding: '0.6rem 0.75rem' }} />
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }} title={view.totals.chargedJobs ? `${view.totals.chargedJobs} of ${view.totals.jobs} jobs priced` : undefined}>
+                      {showTeamLaborAndProfit && view.totals.chargesUsd != null ? <SignedAmountSmallCents value={view.totals.chargesUsd} /> : '—'}
+                    </td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', color: showTeamLaborAndProfit && view.totals.premiumUsd != null && view.totals.premiumUsd < 0 ? 'var(--text-red-700)' : undefined }}>
+                      {showTeamLaborAndProfit && view.totals.premiumUsd != null ? <SignedAmountSmallCents value={view.totals.premiumUsd} /> : '—'}
+                    </td>
                   </tr>
                 </tfoot>
               </table>
