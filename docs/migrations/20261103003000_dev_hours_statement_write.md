@@ -1,0 +1,9 @@
+# 20261103003000_dev_hours_statement_write.sql (2026-11-03, v2.6414)
+
+Signed hours statement (punch list #212, PR 5): `dev_hours_statement_write(p, p_dry_run, p_file)`, the dev MCP's dry-run wrapper behind `plan_hours_statement` → `apply_hours_statement`, modeled on `dev_legal_statement_write`. Devs only (`is_dev()` inside, closed to anon). Three actions:
+
+- `make` writes the `hours_statements` row the Hours statement window saves — the job, the worker, the roster row, the period, `with_pay`, `kind`, the stated days, the gap and the `snapshot` the server read through the shared kernel — minting the record id as the window does (`HS-<job number>-<n>`, one past the job's highest) and naming the caller as the preparer whatever the payload says. The dry run names the job, the worker, the record id the row would take, the job's live statement count (a statement added since changes the plan hash) and the row as it would be written.
+- `mark_sent` is the server's own step once it has sent the signing link through `hours-statement-signing` and `send-contract-for-signature` as the dev: the row reads `sent`. An agent never calls it.
+- `file_on_matter` copies a signed statement's PDF onto a legal matter's Evidence tab: the row through the live `dev_legal_document_write` (the server stores the file first and names it in `p_file`), then `matter_document_id` on the statement — what the Legal desk's **Add to evidence** does (v2.6413). A statement not signed, with no signed copy, or on a matter already is refused in words.
+
+Apply from the main checkout after the PR merges (`supabase db push`), then `supabase functions deploy dev-mcp`. The function POSTs the RPC by its fixed name, so before the push `apply_hours_statement` answers *function does not exist* and nothing else changes; `src/types/database.ts` and the catalog follow with the next `gen-types:linked` run.
