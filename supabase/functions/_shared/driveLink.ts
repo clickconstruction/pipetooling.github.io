@@ -144,6 +144,8 @@ export type OfficeAsk =
   /** A row's home again (v2.6403): these files' rows walked up to their job or bid, nothing read out of the files. */
   | { action: 'index_home'; driveFileIds: string[] }
   | { action: 'index_job'; job: JobRef; retry: boolean }
+  /** The dev's one made-up call through the OCR provider (PR 3). */
+  | { action: 'ocr_probe' }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DRIVE_ID = /^[A-Za-z0-9_-]{10,200}$/
@@ -217,6 +219,8 @@ export function parseOfficeAsk(body: unknown): OfficeAsk | null {
       const job = jobOf(b.job)
       return job ? { action: 'index_job', job, retry: b.retry === true } : null
     }
+    case 'ocr_probe':
+      return { action: 'ocr_probe' }
     default:
       return null
   }

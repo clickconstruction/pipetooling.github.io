@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import type { OpenStageChecklistAsk } from '../components/stageChecklists/JobStageChecklistStrip'
 import DetailJobModal, {
   type DetailJobModalAssignedJobRow,
   type DetailJobScheduleContext,
@@ -32,6 +33,8 @@ export type OpenJobDetailOptions = {
   onClosed?: () => void
   /** Auto-open the Share-with-supply-house modal on top (v2.1610 — Dispatch inbox one-click). */
   openSupplyHouseShare?: boolean
+  /** Open a stage's checklist sheet on a check once the window loads (punch list #245: the Dispatch inbox's Open the check). */
+  openStageChecklist?: OpenStageChecklistAsk | null
 }
 
 export type JobDetailModalContextValue = {
@@ -71,6 +74,7 @@ type OpenState =
       explicitAssignedRows: DetailJobModalAssignedJobRow[] | null
       onEditJobSaved?: () => void
       openSupplyHouseShare?: boolean
+      openStageChecklist?: OpenStageChecklistAsk | null
       /** Set when the open came through `openEditJob` (form options ride along). */
       editOptions: JobWindowEditOpenOptions | null
     }
@@ -115,6 +119,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
       explicitAssignedRows,
       onEditJobSaved: options.onEditJobSaved,
       openSupplyHouseShare: options.openSupplyHouseShare,
+      openStageChecklist: options.openStageChecklist ?? null,
       editOptions: null,
     })
   }, [])
@@ -209,6 +214,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
             prefillRowLabel={openState.prefillRowLabel ?? null}
             prefillAddress={openState.prefillAddress ?? null}
             autoOpenSupplyHouseShare={openState.openSupplyHouseShare ?? false}
+            openStageChecklist={openState.openStageChecklist ?? null}
             initialJob={openState.editOptions?.initialJob ?? null}
             billingCustomerHighlightInitial={openState.editOptions?.billingCustomerHighlight ?? false}
             fixturesSectionHighlightInitial={openState.editOptions?.fixturesSectionHighlight ?? false}
@@ -231,6 +237,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
             prefillRowLabel={openState.prefillRowLabel ?? undefined}
             prefillAddress={openState.prefillAddress ?? undefined}
             autoOpenSupplyHouseShare={openState.openSupplyHouseShare ?? false}
+            openStageChecklist={openState.openStageChecklist ?? null}
             onEditJobSaved={() => {
               if (openState.kind !== 'open') return
               if (openState.onEditJobSaved) openState.onEditJobSaved()

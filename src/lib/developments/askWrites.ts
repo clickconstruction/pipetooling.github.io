@@ -8,7 +8,10 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { notifyDispatchRequestsChanged } from '../dispatchRequestHelpers'
 import type { AskLane, AskRow } from './ask'
 
-export async function sendAsk(lane: AskLane, row: AskRow): Promise<{ id: string; pushed: boolean; pushError: string | null }> {
+/** Any row a lane's table takes: the Development page's ask, or a structured flavour such as a stage check (punch list #245). */
+export type LaneRow = AskRow | (Record<string, unknown> & { from_user_id: string; title: string })
+
+export async function sendAsk(lane: AskLane, row: LaneRow): Promise<{ id: string; pushed: boolean; pushError: string | null }> {
   const table = lane === 'dispatch' ? 'dispatch_requests' : 'estimator_requests'
   const inserted = await withSupabaseRetry<{ id: string }>(async () => supabase.from(table).insert(row as never).select('id').single(), `insert ${table}`)
   const id = inserted?.id
