@@ -2,7 +2,7 @@
 name: "Charges by crew: a rate card by who was out, a markup on materials, the Statement of charges, and the Job Summary's Charges window"
 number: 254
 group: ready
-status: PR 1 v2.6441, PR 3 v2.6445 and PR 2 v2.6447 built 2026-11-03, queued behind one another; #251's PR 2 (v2.6446) between them · the rate card's missing rows are the owner's · PR 4 next
+status: all four PRs built 2026-11-03 (v2.6441, v2.6445, v2.6447, v2.6448) with #251's PR 2 (v2.6446) between them, queued behind one another · the rate card's missing rows are the owner's · the live pass follows the last merge
 mockup: the canvas and its critique — https://claude.ai/artifact/8zmhz5CJPUg8UUrrRZ3ecy (eight artboards, A to H); no static copy in the repo, because the papers on it are drawn from one person's reconstructed hours, which stay out of git
 summary: >
   Punch list #251 gave the company one rate for an hour. The owner's next asks, all on 2026-11-03: the rate is
@@ -154,4 +154,4 @@ early (the longest day stands in for it until the owner wants a finer cut).
 
 ## Where it stands
 
-Drawn 2026-11-03. Built the same day: PR 1 (v2.6441, the standings, the rate card, the markup), PR 3 (v2.6445, the Job Summary's columns and chip, the Charges window, `job_charge_adjustments`), #251's PR 2 (v2.6446, the charged hours paper on crew-days) and PR 2 (v2.6447, the Statement of charges: the window, the two prints, `job_charge_statements`, the Documents section). PR 4 (the Edit Job fold, the directory and glossary loose ends) is next. Each lands after the one before it merges, with its migration pushed right after.
+Drawn 2026-11-03. Built the same day: PR 1 (v2.6441, the standings, the rate card, the markup), PR 3 (v2.6445, the Job Summary's columns and chip, the Charges window, `job_charge_adjustments`), #251's PR 2 (v2.6446, the charged hours paper on crew-days) and PR 2 (v2.6447, the Statement of charges: the window, the two prints, `job_charge_statements`, the Documents section). PR 4 (v2.6448, the Edit Job row *Charging the customer*, the directory and the glossary) closes the train. Each lands after the one before it merges, with its migration pushed right after; the live pass at three widths follows the last.
