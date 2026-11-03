@@ -10761,12 +10761,18 @@ export type Database = {
           checked_at: string
           customer_id: string | null
           drive_file_id: string
+          embed_note: string | null
+          embed_tried_at: string | null
+          embedded_at: string | null
           folder_kind: string
           indexed_at: string
           jobs_ledger_id: string | null
           mime: string
           modified_at: string | null
           name: string
+          ocr_note: string | null
+          ocr_pages: number | null
+          ocr_tried_at: string | null
           pages: number | null
           pages_read: number | null
           path: string
@@ -10781,12 +10787,18 @@ export type Database = {
           checked_at?: string
           customer_id?: string | null
           drive_file_id: string
+          embed_note?: string | null
+          embed_tried_at?: string | null
+          embedded_at?: string | null
           folder_kind?: string
           indexed_at?: string
           jobs_ledger_id?: string | null
           mime: string
           modified_at?: string | null
           name: string
+          ocr_note?: string | null
+          ocr_pages?: number | null
+          ocr_tried_at?: string | null
           pages?: number | null
           pages_read?: number | null
           path?: string
@@ -10801,12 +10813,18 @@ export type Database = {
           checked_at?: string
           customer_id?: string | null
           drive_file_id?: string
+          embed_note?: string | null
+          embed_tried_at?: string | null
+          embedded_at?: string | null
           folder_kind?: string
           indexed_at?: string
           jobs_ledger_id?: string | null
           mime?: string
           modified_at?: string | null
           name?: string
+          ocr_note?: string | null
+          ocr_pages?: number | null
+          ocr_tried_at?: string | null
           pages?: number | null
           pages_read?: number | null
           path?: string
@@ -10836,6 +10854,38 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      file_index_chunks: {
+        Row: {
+          chunk_no: number
+          drive_file_id: string
+          embedded_at: string
+          embedding: string
+          text: string
+        }
+        Insert: {
+          chunk_no: number
+          drive_file_id: string
+          embedded_at?: string
+          embedding: string
+          text: string
+        }
+        Update: {
+          chunk_no?: number
+          drive_file_id?: string
+          embedded_at?: string
+          embedding?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_index_chunks_drive_file_id_fkey"
+            columns: ["drive_file_id"]
+            isOneToOne: false
+            referencedRelation: "file_index"
+            referencedColumns: ["drive_file_id"]
           },
         ]
       }
@@ -18444,8 +18494,8 @@ export type Database = {
           fields: Json
           first_viewed_at: string | null
           id: string
-          job_id: string
           initials: Json | null
+          job_id: string
           kind: string
           last_sent_at: string | null
           last_viewed_at: string | null
@@ -18505,8 +18555,8 @@ export type Database = {
           fields?: Json
           first_viewed_at?: string | null
           id?: string
-          job_id: string
           initials?: Json | null
+          job_id: string
           kind?: string
           last_sent_at?: string | null
           last_viewed_at?: string | null
@@ -18566,8 +18616,8 @@ export type Database = {
           fields?: Json
           first_viewed_at?: string | null
           id?: string
-          job_id?: string
           initials?: Json | null
+          job_id?: string
           kind?: string
           last_sent_at?: string | null
           last_viewed_at?: string | null
@@ -20782,6 +20832,7 @@ export type Database = {
           gc_shares_stage_dates: boolean
           google_drive_link: string | null
           hcp_number: string
+          hourly_charge_rate: number | null
           id: string
           job_address: string
           job_name: string
@@ -20855,6 +20906,7 @@ export type Database = {
           gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
+          hourly_charge_rate?: number | null
           id?: string
           job_address?: string
           job_name?: string
@@ -20928,6 +20980,7 @@ export type Database = {
           gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
+          hourly_charge_rate?: number | null
           id?: string
           job_address?: string
           job_name?: string
@@ -38313,6 +38366,7 @@ export type Database = {
       holds_vehicle: { Args: { p_vehicle_id: string }; Returns: boolean }
       hr_agent_write: { Args: { p: Json }; Returns: Json }
       humanize_job_status: { Args: { p: string }; Returns: string }
+      import_clock_sessions: { Args: { p_rows: Json }; Returns: Json }
       insert_accounting_label_suggestion_service: {
         Args: { p_rows: Json }
         Returns: number
@@ -41074,6 +41128,38 @@ export type Database = {
           bytes: number
           click_number: string
           customer_id: string
+          drive_file_id: string
+          folder_kind: string
+          hcp_number: string
+          headline: string
+          job_name: string
+          jobs_ledger_id: string
+          mime: string
+          modified_at: string
+          name: string
+          path: string
+          project_name: string
+          rank: number
+          text_source: string
+          text_why: string
+        }[]
+      }
+      search_file_index_meaning: {
+        Args: {
+          max_distance?: number
+          max_hits?: number
+          query_embedding: string
+          words: string
+        }
+        Returns: {
+          bid_id: string
+          bid_number: string
+          by: string
+          bytes: number
+          chunk_text: string
+          click_number: string
+          customer_id: string
+          distance: number
           drive_file_id: string
           folder_kind: string
           hcp_number: string
