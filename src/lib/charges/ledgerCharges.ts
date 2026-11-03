@@ -6,7 +6,7 @@
  * adjustments honored through the cost each kept when it was made. The Charges window prices the same rows line by
  * line; the two agree because they share the kernels and the adjustments.
  */
-import { buildCrewDays, jobChargeRuleFrom, type CrewSessionInput, type JobChargeRule } from './crewDays'
+import { buildCrewDays, jobChargeRuleFrom, unchargedWords, UNCHARGED_FIX_WORDS, type CrewSessionInput, type JobChargeRule } from './crewDays'
 import { chargedAtMarkup } from './materialsCharged'
 import { indexAdjustments, type ChargeAdjustment } from './adjustments'
 import { premiumOf, type Premium } from './premium'
@@ -40,8 +40,10 @@ export type LedgerCharges = {
   crewHours: number
   days: number
   unpricedDays: number
-  /** Why some of the row is not priced, each once; null when every day priced. */
+  /** Why some of the row is not priced, each once; null when every day priced. Names who counts as nobody first. */
   note: string | null
+  /** The first names of people out who count as nobody yet, most days first. */
+  uncharged: string[]
   rule: JobChargeRule
   markupPct: number | null
 }
@@ -82,7 +84,13 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
   materialsUsd = Math.max(0, materialsUsd)
   const chargesUsd = cents(days.totals.charged + materialsUsd)
   const whys = new Set<string>()
-  for (const d of days.days) if (d.why) whys.add(d.why)
+  const nobody = unchargedWords(days.totals.uncharged)
+  // A day with nobody charged is explained by naming who counts as nobody, with where to set it; the neutral line stays for the paper.
+  if (nobody) {
+    whys.add(nobody)
+    whys.add(UNCHARGED_FIX_WORDS)
+  }
+  for (const d of days.days) if (d.why && !(nobody && d.why === 'Nobody out that day is charged to a customer.')) whys.add(d.why)
   if (markupPct == null && materialCost > 0) whys.add('No markup on materials is set, so materials are at cost.')
   const priced = materialCost > 0 || (days.totals.days > 0 && days.totals.unpriced < days.totals.days)
   return {
@@ -95,6 +103,7 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
     days: days.totals.days,
     unpricedDays: days.totals.unpriced,
     note: whys.size ? Array.from(whys).join(' ') : null,
+    uncharged: days.totals.uncharged.map((u) => u.name),
     rule,
     markupPct,
   }

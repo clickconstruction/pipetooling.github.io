@@ -30,10 +30,9 @@ this charge rate. It also allows us to add a margin to our materials."* Then whe
 drawn on the canvas above. Then the words for the gap between the statement's total and the price: *premium* above,
 *shortfall* below, on the office copy only (*warranty* and *discount* were considered and dropped, because both mean
 something else in the app and would be read literally by a customer or an attorney). Then: *"Let's also think about if
-this should show up in the job summary tab of jobs."* Then the rate itself: *"Sometimes for jobs we'll send people who
-are not master plumbers with a helper out and we should not charge two eighty five … if Abraham and Paige go out
-together, together they are two eighty-five, on their own they are just one-eighty-five … if Michael goes out, he is
-only seventy-five dollars per hour."* For the Gun Dog development the master-with-a-helper way was used throughout,
+this should show up in the job summary tab of jobs."* Then the rate itself, in the owner's words paraphrased:
+a crew that is not a master plumber with a helper should not be charged $285; two techs out together are $285, each
+alone $185; a helper alone is $75. For the Gun Dog development the master-with-a-helper way was used throughout,
 whoever clocked. And last: *"a dedicated modal where when a user clicks on charges they can see a breakdown of
 everything and an easy way to adjust."*
 
@@ -69,7 +68,7 @@ everything and an easy way to adjust."*
   of the number (*25% over cost is a 20% margin on the sale*). Rentals and sub labor pass through at cost unless a line
   is set otherwise.
 - **A crew-day**: the people who clocked on a job on the same day. Its shape is the standings present; its rate is the
-  card's row; its hours are the longest day of anyone in it. Abraham and Paige out eight hours together is one line,
+  card's row; its hours are the longest day of anyone in it. Two techs out eight hours together is one line,
   8 crew-hours at $285, never sixteen person-hours. A crew of three or more is the two highest standings' row plus the
   per-person add-on.
 - **A job's rule** (Edit Job → *Charging the customer*): the crew on each day from the rate card (the default), or one

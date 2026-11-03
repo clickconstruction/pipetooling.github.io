@@ -946,7 +946,7 @@ export default function JobsJobSummaryTab({
                               tabIndex={showTeamLaborAndProfit && onOpenCharges ? 0 : undefined}
                               className={showTeamLaborAndProfit && onOpenCharges ? jobSummaryBreakdownInteractiveClass(true) : undefined}
                               data-testid="job-summary-charges-cell"
-                              title={!showTeamLaborAndProfit ? undefined : enriched.chargesUsd == null ? 'Not priced yet: the rate card is being read, or nothing on this job is charged.' : `${enriched.chargesNote ? `${enriched.chargesNote} ` : ''}Press to see every line and adjust.`}
+                              title={!showTeamLaborAndProfit ? undefined : enriched.chargesUsd == null ? (enriched.chargesNote ?? 'Not priced yet: the rate card is being read, or this job has no hours and no materials.') : `${enriched.chargesNote ? `${enriched.chargesNote} ` : ''}Press to see every line and adjust.`}
                               style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', cursor: showTeamLaborAndProfit && onOpenCharges ? 'pointer' : undefined }}
                               onClick={(e) => {
                                 if (!showTeamLaborAndProfit || !onOpenCharges) return

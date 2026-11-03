@@ -11,6 +11,7 @@ import { fileSentCopy } from '../../lib/sent/sentCopiesIo'
 import { saveChargeStatement, type ChargeStatementRow } from '../../lib/charges/chargeStatementsIo'
 import { jobChargeRuleWords } from '../../lib/charges/crewDays'
 import { Money } from './Money'
+import { UnchargedCallout } from './UnchargedCallout'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
@@ -219,6 +220,7 @@ export default function StatementOfChargesWindow({ job, existing, preparedBy, on
                 <p style={quiet}>
                   {charges.totals.days} crew-days in this span, {charges.totals.crewHours.toLocaleString('en-US', { maximumFractionDigits: 2 })} crew-hours from {charges.totals.personHours.toLocaleString('en-US', { maximumFractionDigits: 2 })} person-hours; {charges.materials.totals.lines} material {charges.materials.totals.lines === 1 ? 'line' : 'lines'}, cost <Money amount={charges.materials.totals.cost} />.
                 </p>
+                {frozen ? null : <UnchargedCallout people={charges.uncharged} unpricedDays={charges.totals.unpricedDays} onNavigate={onClose} margin="0.2rem 0" />}
                 {charges.notes.map((n) => (
                   <p key={n} style={{ ...quiet, color: 'var(--text-amber-800)', fontWeight: 600 }}>
                     {n}

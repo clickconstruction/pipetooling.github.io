@@ -5,8 +5,8 @@ import type { MaterialLineInput } from './materialsCharged'
 
 describe('premium and shortfall (punch list #254)', () => {
   it('reads the price against the charges: above is a premium, below a shortfall, the same even', () => {
-    expect(premiumOf(241431, 241024.73)).toMatchObject({ kind: 'premium', amount: 406.27, signed: 406.27, words: 'a $406.27 premium', sentence: 'The price stands $406.27 above the charges.' })
-    expect(premiumOf(241431, 241968.73)).toMatchObject({ kind: 'shortfall', amount: 537.73, signed: -537.73, words: 'a $537.73 shortfall', sentence: 'The price stands $537.73 below the charges.' })
+    expect(premiumOf(250000, 249593.73)).toMatchObject({ kind: 'premium', amount: 406.27, signed: 406.27, words: 'a $406.27 premium', sentence: 'The price stands $406.27 above the charges.' })
+    expect(premiumOf(250000, 250537.73)).toMatchObject({ kind: 'shortfall', amount: 537.73, signed: -537.73, words: 'a $537.73 shortfall', sentence: 'The price stands $537.73 below the charges.' })
     expect(premiumOf(100, 100)).toMatchObject({ kind: 'even', amount: 0, words: 'even' })
     expect(premiumOf(Number.NaN, 5)).toMatchObject({ kind: 'shortfall', amount: 5 })
   })
@@ -14,9 +14,9 @@ describe('premium and shortfall (punch list #254)', () => {
 
 describe('adjustments on a job’s charges', () => {
   const rows = [
-    { id: 'a1', job_id: 'j', kind: 'day_shape', target: '2026-04-25', shape: 'tech_alone', reason: 'Zack was alone on the Saturday', made_by_user: { name: 'Robert' }, created_at: '2026-11-03T08:00:00Z' },
+    { id: 'a1', job_id: 'j', kind: 'day_shape', target: '2026-04-25', shape: 'tech_alone', reason: 'Zed was alone on the Saturday', made_by_user: { name: 'Dana' }, created_at: '2026-11-03T08:00:00Z' },
     { id: 'a2', job_id: 'j', kind: 'day_shape', target: '2026-04-25', shape: 'helper_alone', reason: 'second thoughts', made_by_user: { name: 'Taunya' }, created_at: '2026-11-03T09:00:00Z' },
-    { id: 'a3', job_id: 'j', kind: 'line_pass_through', target: 'inv-1', shape: null, reason: 'a rental', made_by_name: 'Robert', created_at: '2026-11-03T08:30:00Z' },
+    { id: 'a3', job_id: 'j', kind: 'line_pass_through', target: 'inv-1', shape: null, reason: 'a rental', made_by_name: 'Dana', created_at: '2026-11-03T08:30:00Z' },
     { id: 'a4', job_id: 'j', kind: 'line_off', target: 'inv-2', reason: '', created_at: '2026-11-03T08:40:00Z' },
     { id: 'a5', job_id: 'j', kind: 'day_off', target: '2026-04-26', reason: 'not this job', created_at: '2026-11-03T08:50:00Z' },
     { id: 'bad', job_id: 'j', kind: 'day_shape', target: '2026-04-27', shape: 'nope', created_at: '' },
@@ -40,9 +40,9 @@ describe('adjustments on a job’s charges', () => {
     const lines = adjustMaterialLines(inputs, applied)
     expect(lines.map((l) => [l.id, Boolean(l.passThrough), Boolean(l.leftOff)])).toEqual([['inv-1', true, false], ['inv-2', false, true], ['inv-3', false, false]])
     const day = (d: string) => `Sat ${d.slice(5)}`
-    const label = (id: string) => ({ 'inv-1': 'Sunbelt · 180856872-0001', 'inv-2': 'NAPA' })[id] ?? id
-    expect(chargeAdjustmentWords(read[0]!, day, label)).toBe('Sat 04-25 · set to a tech alone · Zack was alone on the Saturday · Robert')
-    expect(chargeAdjustmentWords(read[2]!, day, label)).toBe('Sunbelt · 180856872-0001 · passed through at cost · a rental · Robert')
+    const label = (id: string) => ({ 'inv-1': 'A rental yard · 2002', 'inv-2': 'NAPA' })[id] ?? id
+    expect(chargeAdjustmentWords(read[0]!, day, label)).toBe('Sat 04-25 · set to a tech alone · Zed was alone on the Saturday · Dana')
+    expect(chargeAdjustmentWords(read[2]!, day, label)).toBe('A rental yard · 2002 · passed through at cost · a rental · Dana')
     expect(chargeAdjustmentWords(read[3]!, day, label)).toBe('NAPA · left off')
     expect(chargeAdjustmentWords(read[4]!, day, label)).toBe('Sat 04-26 · left off · not this job')
     expect(saveAdjustmentsLabel(1)).toBe('Save 1 adjustment')

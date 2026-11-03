@@ -19,6 +19,11 @@ export const CHARGE_STANDING_WORDS: Record<ChargeStanding, string> = {
   none: 'Not charged',
 }
 
+/** The toast when a standing is saved: `Toby is charged as a master.` · `Toby is not charged to a customer.` */
+export function chargeStandingSavedWords(name: string, standing: ChargeStanding): string {
+  return standing === 'none' ? `${name} is not charged to a customer.` : `${name} is charged as a ${CHARGE_STANDING_WORDS[standing].toLowerCase()}.`
+}
+
 /** What a standing means on the card, the words the People record shows under the field. */
 export const CHARGE_STANDING_HINTS: Record<ChargeStanding, string> = {
   master: 'A master plumber or electrician. Out with anyone, the day is a master with a helper.',

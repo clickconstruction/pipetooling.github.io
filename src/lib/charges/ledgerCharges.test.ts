@@ -5,22 +5,22 @@ import type { RateCard } from './rateCard'
 
 const OWNER: RateCard = { rates: { master_helper: 285, two_techs: 285, tech_alone: 185, helper_alone: 75 }, extraPerson: null, materialsMarkupPct: 25 }
 const key = (n: string) => n.trim().toLowerCase()
-const standingOf = standingLookup([{ id: 'u-t', name: 'Trace W', charge_standing: 'master' }, { id: 'u-z', name: 'Zack P', charge_standing: 'tech' }, { id: 'u-o', name: 'Office O', charge_standing: null }], key, new Map([['p-t', 'u-t']]))
+const standingOf = standingLookup([{ id: 'u-t', name: 'Toby W', charge_standing: 'master' }, { id: 'u-z', name: 'Zed P', charge_standing: 'tech' }, { id: 'u-o', name: 'Office O', charge_standing: null }], key, new Map([['p-t', 'u-t']]))
 
 describe("a Job Summary row's charges (punch list #254)", () => {
   const breakdown = [
-    { personName: 'Trace W', personId: 'p-t', byWorkDate: [{ workDate: '2026-04-24', hours: 8 }, { workDate: '2026-04-27', hours: 8 }] },
-    { personName: 'Zack P', personId: null, byWorkDate: [{ workDate: '2026-04-24', hours: 7.66 }, { workDate: '2026-04-25', hours: 9.44 }] },
+    { personName: 'Toby W', personId: 'p-t', byWorkDate: [{ workDate: '2026-04-24', hours: 8 }, { workDate: '2026-04-27', hours: 8 }] },
+    { personName: 'Zed P', personId: null, byWorkDate: [{ workDate: '2026-04-24', hours: 7.66 }, { workDate: '2026-04-25', hours: 9.44 }] },
     { personName: 'Office O', personId: null, byWorkDate: [{ workDate: '2026-04-24', hours: 8 }] },
   ]
 
   it("prices the row's crew-days from the breakdown and its materials from the sums, under the job's rule", () => {
-    const r = ledgerChargesFor({ breakdown, standingOf, invoicesFromSupplyHouses: 9806.98, partsFromTally: 0, billedMaterialsSum: 100, card: OWNER, job: { charge_rule: 'shape', charge_shape: 'master_helper' }, contractUsd: 241431 })
+    const r = ledgerChargesFor({ breakdown, standingOf, invoicesFromSupplyHouses: 4806.98, partsFromTally: 0, billedMaterialsSum: 100, card: OWNER, job: { charge_rule: 'shape', charge_shape: 'master_helper' }, contractUsd: 250000 })
     expect(r.days).toBe(3)
     expect(r.crewHours).toBe(25.44)
     expect(r.laborUsd).toBe(7250.4)
-    expect(r.materialsUsd).toBe(12383.73)
-    expect(r.chargesUsd).toBe(19634.13)
+    expect(r.materialsUsd).toBe(6133.73)
+    expect(r.chargesUsd).toBe(13384.13)
     expect(r.premium.kind).toBe('premium')
     expect(r.note).toBeNull()
     expect(r.rule).toEqual({ kind: 'shape', shape: 'master_helper' })
@@ -62,5 +62,24 @@ describe("a Job Summary row's charges (punch list #254)", () => {
     const none = ledgerChargesFor({ breakdown: [], standingOf, invoicesFromSupplyHouses: 100, partsFromTally: 0, billedMaterialsSum: 0, card: { ...OWNER, materialsMarkupPct: null }, job: {}, contractUsd: 0 })
     expect(none.materialsUsd).toBe(100)
     expect(none.note).toBe('No markup on materials is set, so materials are at cost.')
+  })
+})
+
+describe('a row whose crew counts as nobody (punch list #254, the live pass)', () => {
+  it("names who counts as nobody and where to set it, in place of the paper's neutral line", () => {
+    const nobody = standingLookup([{ id: 'u-t', name: 'Toby W', charge_standing: null }], (n: string) => n.trim().toLowerCase(), new Map())
+    const r = ledgerChargesFor({
+      breakdown: [{ personName: 'Toby W', personId: null, byWorkDate: [{ workDate: '2026-03-02', hours: 8 }, { workDate: '2026-03-03', hours: 8 }] }],
+      standingOf: nobody,
+      invoicesFromSupplyHouses: 0,
+      partsFromTally: 0,
+      billedMaterialsSum: 0,
+      card: { rates: { master_helper: 285 }, extraPerson: null, materialsMarkupPct: null },
+      job: { charge_rule: 'shape', charge_shape: 'master_helper' },
+      contractUsd: 250000,
+    })
+    expect(r.priced).toBe(false)
+    expect(r.uncharged).toEqual(['Toby'])
+    expect(r.note).toBe('Toby counts as nobody on the rate card yet. Set Charged as in Settings → Rates charged by crew → Who counts as what, or on each person’s desk.')
   })
 })
