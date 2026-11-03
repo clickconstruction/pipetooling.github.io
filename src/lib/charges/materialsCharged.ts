@@ -7,6 +7,11 @@
 
 export type MaterialLineKind = 'supply_invoice' | 'tally_part' | 'typed_charge'
 
+/** A typed charge a cost batch wrote as an estimate (its description says `ESTIMATE` first) is never a material line: no estimate enters a charge. */
+export function isEstimateCharge(description: string | null | undefined): boolean {
+  return /^\s*ESTIMATE\b/i.test(description ?? '')
+}
+
 export const MATERIAL_LINE_KIND_WORDS: Record<MaterialLineKind, string> = {
   supply_invoice: 'supply-house invoice',
   tally_part: 'tallied part',
@@ -79,8 +84,8 @@ export function chargeMaterials(lines: ReadonlyArray<MaterialLineInput>, markupP
       continue
     }
     const cost = cents(Math.max(0, l.cost))
-    const passedThrough = Boolean(l.passThrough) || pct == null
-    const charged = passedThrough ? cost : chargedAtMarkup(cost, pct)
+    const passedThrough = Boolean(l.passThrough)
+    const charged = passedThrough || pct == null ? cost : chargedAtMarkup(cost, pct)
     out.push({ ...l, cost, markup: cents(charged - cost), charged, passedThrough })
   }
   const totals: MaterialsChargedTotals = {

@@ -86,6 +86,7 @@ import { useJobsStagesMutations } from '../hooks/useJobsStagesMutations'
 import ChargesWindow from '../components/charges/ChargesWindow'
 import { ledgerChargesFor, rateCardChipWords, standingLookup } from '../lib/charges/ledgerCharges'
 import { loadChargeAdjustmentsForJobs, loadRateCard } from '../lib/charges/jobChargesRead'
+import { isEstimateCharge } from '../lib/charges/materialsCharged'
 import type { ChargeAdjustment } from '../lib/charges/adjustments'
 import type { RateCard } from '../lib/charges/rateCard'
 import { normalizePersonNameKey } from '../lib/personNameKey'
@@ -1559,7 +1560,8 @@ export default function Jobs() {
                   standingOf,
                   invoicesFromSupplyHouses,
                   partsFromTally,
-                  billedMaterialsSum,
+                  // A cost batch's ESTIMATE rows are cost on the Parts column, never a charge.
+                  billedMaterialsSum: (job.materials ?? []).reduce((s, m) => (isEstimateCharge(m.description) ? s : s + Number(m.amount ?? 0)), 0),
                   card: chargesRateCard,
                   job: job as unknown as { charge_rule?: unknown; charge_shape?: unknown; hourly_charge_rate?: unknown; materials_markup_pct?: unknown },
                   adjustments: chargeAdjustmentsByJobId.get(job.id) ?? [],

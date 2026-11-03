@@ -8,7 +8,7 @@
 import { supabase } from '../supabase'
 import type { CrewSessionInput, JobChargeRule } from './crewDays'
 import { jobChargeRuleFrom } from './crewDays'
-import type { MaterialLineInput } from './materialsCharged'
+import { isEstimateCharge, type MaterialLineInput } from './materialsCharged'
 import { chargeAdjustmentFromRow, type ChargeAdjustment, type ChargeAdjustmentKind } from './adjustments'
 import { parseChargeStanding, parseCrewShape, rateCardFromSettings, RATE_CARD_SETTING_KEYS, type CrewShape, type RateCard } from './rateCard'
 import type { JobChargesInput } from './jobCharges'
@@ -89,9 +89,24 @@ export async function loadTallyPartLines(jobId: string): Promise<MaterialLineInp
   }))
 }
 
+/** The job's typed material charges (the job form's Other job charges) as material lines; a cost batch's ESTIMATE rows are left out. */
+export async function loadTypedChargeLines(jobId: string): Promise<MaterialLineInput[]> {
+  const { data, error } = await supabase.from('jobs_ledger_materials').select('id, description, amount, charged_on, created_at').eq('job_id', jobId)
+  if (error) throw error
+  return ((data ?? []) as Array<{ id: string; description: string | null; amount: number | null; charged_on: string | null; created_at: string | null }>)
+    .filter((r) => !isEstimateCharge(r.description) && num(r.amount) > 0)
+    .map((r) => ({
+      id: `typed:${r.id}`,
+      kind: 'typed_charge' as const,
+      label: (r.description ?? '').trim() || 'Typed charge',
+      dateKey: r.charged_on ?? (r.created_at ? r.created_at.slice(0, 10) : null),
+      cost: Math.round(num(r.amount) * 100) / 100,
+    }))
+}
+
 export async function loadMaterialLines(jobId: string): Promise<MaterialLineInput[]> {
-  const [invoices, parts] = await Promise.all([loadSupplyHouseLines(jobId), loadTallyPartLines(jobId)])
-  return [...invoices, ...parts]
+  const [invoices, parts, typed] = await Promise.all([loadSupplyHouseLines(jobId), loadTallyPartLines(jobId), loadTypedChargeLines(jobId)])
+  return [...invoices, ...parts, ...typed]
 }
 
 export async function loadRateCard(): Promise<RateCard> {
