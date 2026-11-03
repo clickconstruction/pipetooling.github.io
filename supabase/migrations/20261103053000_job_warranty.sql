@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- The warranty in place of a contract (the owner's call of 2026-11-02; docs/migrations/20261102233000_job_warranty.md).
+-- The warranty in place of a contract (the owner's call of 2026-11-02; docs/migrations/20261103053000_job_warranty.md).
 --
 -- When the office is uncomfortable sending a residential customer a contract, it sends a warranty the homeowner initials
 -- and signs; it binds both sides because the customer certifies the work on it. The warranty is a kind of job agreement
