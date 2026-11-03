@@ -35,7 +35,18 @@ import { indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_OCR_ROWS, SWEEP_REC
  * Refusals: 401 without the secret, 405 for anything but POST, 503 without the Drive secret, 409 `{ noRoot }` when
  * the jobs root is not set anywhere (nothing to list). Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET,
  * GOOGLE_SERVICE_ACCOUNT_JSON (the same service account as drive-link). verify_jwt is off; the secret is the door.
+ *
+ * Last, after the stamp, the rechecks and the OCR scans, the reconcile step (v2.6417, `_shared/fileIndexReconcile.ts`): a file moved
+ * into the drive keeps its old modified time, so step 1 never lists it. When step 1 left no files behind, the whole
+ * drive is listed from the dawn (a dozen Drive lists at today's size), every row's id read, and the files with no row
+ * indexed newest first, up to `limit`, whatever their date; answered as `reconcile` (counts only; null when skipped).
+ * In its own catch, so a heavy PDF that stops the worker or a Drive error costs neither the stamp nor the rechecks,
+ * and its result never reaches the stamp, since those old dates would move it backwards. One log line a run, counts
+ * only, read through the management API's function logs (the cron gives up at five seconds and keeps no answer).
  */
+// The step's imports sit under the header so PR 3's lines above (#6894, the OCR step) merge untouched.
+import { reconcileStepWords, type ReconcileStep } from '../_shared/fileIndexCheckKernel.ts'
+import { reconcileSweep } from '../_shared/fileIndexReconcile.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -115,6 +126,15 @@ serve(async (req) => {
     const ocr = ctx.ocr && ocrN > 0 ? await ocrPass(ctx, ocrN, { startedMs: started }) : { tried: 0, read: 0, refused: [] as HeldFile[], gone: 0 }
     const embed = ctx.embed && embedN > 0 ? await embedPass(ctx, embedN, { startedMs: started }) : { tried: 0, embedded: 0, chunks: 0, refused: [] as { id: string; name: string; error: string }[] }
     const answer = { indexed: pass.indexed + re.changed, held: [...pass.held, ...re.held], remaining: pass.remaining }
+    let reconcile: ReconcileStep | null = null
+    if (left <= 0) {
+      try {
+        reconcile = await reconcileSweep(ctx, { max: limit })
+        console.log(reconcileStepWords(reconcile))
+      } catch (e) {
+        console.warn('file-index-sweep reconcile failed', e)
+      }
+    }
     return json({
       success: true,
       since,
@@ -126,6 +146,7 @@ serve(async (req) => {
       ocr: { set_up: Boolean(ctx.ocr), ...ocr },
       embed: { set_up: Boolean(ctx.embed), ...embed },
       stamp: next ?? stamp,
+      reconcile,
       ms: Date.now() - started,
       line: `${indexPassWords(answer)}${re.dropped ? ` Dropped ${re.dropped} gone.` : ''}${ocr.tried ? ` OCR read ${ocr.read} of ${ocr.tried} scans.` : ''}${embed.tried ? ` Embedded ${embed.embedded} of ${embed.tried} files.` : ''}`,
     })

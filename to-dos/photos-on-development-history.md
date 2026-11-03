@@ -1,8 +1,8 @@
 ---
 name: "Photos on a development: in the History by their own time, and a one-row gallery at the bottom"
 number: 247
-group: ready
-status: proposed 2026-11-02 from the owner's ask on a site's page · the design below is for the owner's look before PR 1
+group: close
+status: built 2026-11-02 · PR 1 v2.6371 and PR 3 v2.6375 merged, PR 2 v2.6373 (#6840) the last · left the live walk on ZZ Test rows
 summary: >
   The owner, 2026-11-02, reading a site's History: the photos the crews upload should show in it, in
   line, placed by their own metadata (the time, the job, who took them), and a development should end
@@ -12,12 +12,13 @@ summary: >
   as the site's sixth look, the History lines with thumbnails in them, and the time a picture was taken
   read from the file, so a photo uploaded the next morning sits on the day it was shot.
 next: >
-  A mock-up over made-up data (one History line with four thumbnails, one with a +N tile, and the gallery
-  row with its day ticks and the viewer open), then the owner's four calls below, then PR 1.
-size: M (PR 1 the gallery look) + S (PR 2 the History lines) + S (PR 3 the taken time)
-blocker: None. Every read it needs exists (`uploaded_photos`, the viewer, the thumbnail queue); PR 3 alone needs a migration.
-opinion: build PR 1 and PR 2 as drawn, PR 3 once the owner has seen a week of lines land on the upload day and felt the gap
-mockup: required before PR 1 — a new look on a page the owner reads daily; the strip's place and the batch rule are easier to settle on a picture
+  Once PR 2 is live, the walk in How to verify on ZZ Test rows (the owner's word first, since it writes
+  on prod), then delete this card.
+size: XS left (the walk); the train was M + S + S, with no migration
+blocker: The owner's word to write ZZ Test rows on prod for the walk.
+ver: v2.6371 · 6373 · 6375
+opinion: your call — the code is built; the walk writes ZZ Test rows on prod, so it waits on your word
+mockup: not required — drawn and shown to the owner before PR 1 on 2026-11-02; the built look on a development replaces it
 ---
 
 # Photos on a development: in the History by their own time, and a one-row gallery at the bottom (#247)
@@ -68,3 +69,30 @@ Nothing joins the two: a photo never reaches a site's History, and a site has no
 ## How to verify
 
 PR 1, as the dev on a ZZ Test development with two ZZ Test jobs carrying report photos: the strip reads *Photos N*, the row scrolls sideways with a day tick between two days, the job picker narrows to one job, a tile opens the viewer on that photo and Next walks the row; as the primary sample through View as, only their job's photos show. PR 2: the History reads one *Photos* line for four uploads within the hour on one job, with four thumbnails, and two lines for two people; the **Photos** chip narrows to them; the search finds a caption. Delete every ZZ Test row after. PR 3: upload a photo whose file date is yesterday; its line sits on yesterday.
+
+## Where it stands
+
+2026-11-02: the mock-up the card asked for (one History line with four thumbnails, one with a + N tile,
+the gallery row with its day ticks, the viewer open, all over made-up data) was rendered at 1280 and
+375 and shown with the four calls. No answer came in the session, so calls 1 to 3 stood at their
+recommended defaults. On call 4 the owner said *Start PR 3 now*.
+
+- **PR 1, the gallery look: v2.6371 (#6839), merged 2026-11-03.** As planned. The strip reads *Six
+  looks*; the page's seam was kept to a few lines because the Gun Dog design spike held the same file.
+- **PR 2, the History lines: v2.6373 (#6840).** As planned, and the History legend (v2.6361) gained the
+  photos mark. The last PR of the train; this amendment rides in it.
+- **PR 3, the taken time: v2.6375 (#6844), merged 2026-11-03.** The file's own `DateTimeOriginal` is
+  read before the shrink and written into each table's `taken_at` itself, with **no migration**,
+  against the plan above: every table already keeps the upload moment in `created_at`, and
+  `uploaded_photos` was being replaced the same day by #244's migration. The fragment
+  `docs/recent-features/v2.6375.md` has the why.
+
+Left:
+
+- The walk in *How to verify*, once PR 2 is live. It writes ZZ Test rows on prod, so it waits on the
+  owner's word. So far the look and one History line were seen as the dev on a live development
+  with a single box photo.
+- #244's Job photos window (#6831, open) still stamps the upload's time. One call to `readTakenAt` in
+  its capture gives it the camera's time like the other three; that is #244's ground.
+- The GPS idea in *The thinking* (a photo with no job placed on the nearest job of the site) is not
+  built; a card of its own if wanted.
