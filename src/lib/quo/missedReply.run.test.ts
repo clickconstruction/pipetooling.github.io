@@ -8,8 +8,12 @@
  *
  * The URL imports are stood in for, the database is a fake that applies the function's filters and keeps what the
  * webhook writes to `missed_call_replies`, and `fetch` is caught so nothing leaves: Quo's send answers an id.
+ *
+ * The clock is pinned to that Friday afternoon (`FRIDAY_AFTERNOON`), Date alone: the webhook picks the in-hours or the
+ * after-hours line from the time now, and the fixture's hours close at 23:59, so on the real clock the in-hours cases
+ * failed for the minute before midnight Central (the merge queue's build of #6857 ran them at 11:59:45 PM, 2026-11-03).
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QUO_API_VERSION } from './events'
 import { MISSED_REPLY_DEFAULTS } from './missedReply'
 
@@ -28,6 +32,8 @@ interface Fake {
 }
 
 const DANA = '+15125550187'
+/** Fri Oct 23 2026, 4:11:30 PM Central: when Quo posts each event, and the time the webhook reads as now. */
+const FRIDAY_AFTERNOON = '2026-10-23T21:11:30.000Z'
 const BOXES_ROW = JSON.stringify({ team: { address: 'team@clickplumbing.example', phone: '(512) 994-2774', numberId: 'PN-team' }, bids: {} })
 const settingRow = (on: boolean) => JSON.stringify({ ...MISSED_REPLY_DEFAULTS, on })
 
@@ -163,7 +169,7 @@ async function deliver(type: string, resource: Row, context: Row): Promise<{ sta
   const body = JSON.stringify({
     id: `EV-${deliveries}`,
     apiVersion: QUO_API_VERSION,
-    createdAt: '2026-10-23T21:11:30.000Z',
+    createdAt: FRIDAY_AFTERNOON,
     type,
     data: { resource, context: { orgId: 'OR-click', ...context }, links: { quo: null } },
   })
@@ -191,7 +197,12 @@ const linesWritten = () => box.fake.rpcs.filter((r) => r.name === 'quo_write_lin
 
 describe('quo-webhook texts back after a missed call (punch list #195)', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(FRIDAY_AFTERNOON))
     box.fake = freshFake()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('writes the missed call, claims it, texts Dana the in-hours line as the app, and marks the line auto', async () => {
