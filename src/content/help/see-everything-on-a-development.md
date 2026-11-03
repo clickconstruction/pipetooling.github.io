@@ -128,6 +128,18 @@ Press {{button:outline|Show the N here}} to draw them in the Jobs & bids table f
 
 Money shows the site's progress as one bar, then every job by stage with what is billed, paid and left. Press a column head to sort a section. Press the band's note about jobs with no percent to sort by percent and light them.
 
+## Read the scoreboard
+
+Press {{button:outline|Scoreboard}} at the top of Money. The column heads are the site's totals. Green heads are effort, red heads are what it cost, gold heads are the money.
+
+Every job is a row. A folded row shows Earned, Cost and Profit. Press the arrow before a job to open all nine figures. Press a column head to sort by it. Press it again to turn the order.
+
+Earned follows the percent done. A finished job earns its whole price. A working job earns its percent's share. A job with no percent on record earns half its price and wears ≈.
+
+Jobs with nothing on them yet fold under one line. Press {{button:outline|Show them}} to see them.
+
+A dev or a controller reads every column. A leader or an assistant reads hours, days and earned only. The page remembers the view you were in.
+
 ## Check the plans and the questions
 
 Plans lists each part of the site, such as the Lodge or the Bunker. Each row names the set that part builds from today. The row shows the date on the sheets, the day the set came, its memo and the jobs on it. Older sets fold under a count. Press the count to see them. The crew's as-builts read under their part. A **Papers** column counts the specs, schedules and lists kept with each part's sets. Press the count to read them. An amber chip counts the questions still waiting and the papers we are owed. On a phone each part is a card with the same facts. See [keep the papers with the plans](/help/keep-the-papers-with-the-plans).

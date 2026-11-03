@@ -26,7 +26,7 @@ export async function resolveRecordedHoursTable(supabase: SupabaseClient): Promi
 export function __resetRecordedHoursTableForTests(): void {
   recordedHoursTable = null
 }
-function hoursFrom(supabase: SupabaseClient, table: RecordedHoursTable) {
+export function hoursFrom(supabase: SupabaseClient, table: RecordedHoursTable) {
   // Both relations share the four columns the readers select; the view has
   // approved_hours / pending_hours on top (types regenerated after the
   // 20260909022534 push).
@@ -121,7 +121,7 @@ export async function fetchLaborPayConfigMap(
  * people_hours-vs-crew name divergence (partial rename cascade, name variant)
  * no longer zeroes an hourly person's hours in costing.
  */
-function buildHoursMap(rows: Array<{ person_name: string; person_id?: string | null; work_date: string; hours: number }>): Record<string, number> {
+export function buildHoursMap(rows: Array<{ person_name: string; person_id?: string | null; work_date: string; hours: number }>): Record<string, number> {
   const map: Record<string, number> = {}
   for (const h of rows) {
     map[`${h.person_name}:${h.work_date}`] = h.hours
@@ -130,7 +130,7 @@ function buildHoursMap(rows: Array<{ person_name: string; person_id?: string | n
   return map
 }
 
-function hoursForCrewRow(
+export function hoursForCrewRow(
   map: Record<string, number>,
   r: { person_name: string; person_id?: string | null; work_date: string },
 ): number {

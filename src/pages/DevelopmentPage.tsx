@@ -40,9 +40,13 @@ import { DevelopmentCounts, type CountTileSpec } from '../components/development
 import { buildAtAddressCard, buildCountCard, type CountCard, type CountDoor, type CountFootDoor, type CountKey, type CountPress } from '../lib/developments/countCards'
 import { DevelopmentNotInChips, type NotInChip } from '../components/developments/DevelopmentNotInChips'
 import { DevelopmentMoney } from '../components/developments/DevelopmentMoney'
+import { DevelopmentScoreboard } from '../components/developments/DevelopmentScoreboard'
+import { buildScoreboard, nextScoreboardSort, scoreboardColumnsFor, SCOREBOARD_DEFAULT_SORT, type ScoreboardSort } from '../lib/developments/scoreboard'
+import { useSiteLabor } from '../hooks/useSiteLabor'
+import { useSiteOverhead } from '../hooks/useSiteOverhead'
 import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, unbilledTileWords, type MoneySortMode } from '../lib/developments/siteMoney'
 import { countKeysFor, developmentDoorFor, jobDoorClosedWords, OFFICE_READS_MONEY, OFFICE_READS_MONEY_CHIP } from '../lib/developments/readDoor'
-import { isFolded, readFolds, readMoneySort, toggleFold, writeFolds, writeMoneySort } from '../lib/developments/devicePrefs'
+import { isFolded, readFolds, readMoneySort, readMoneyView, toggleFold, writeFolds, writeMoneySort, writeMoneyView, type MoneyView } from '../lib/developments/devicePrefs'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { foldSameDayRuns } from '../lib/developments/historyFolds'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
@@ -93,6 +97,13 @@ export default function DevelopmentPage() {
   const phone = useMatchMedia(DEVELOPMENT_PHONE_QUERY)
   // The Money look's order and folds, and which looks are folded, remembered on the device.
   const [moneySort, setMoneySort] = useState<MoneySortMode>(() => readMoneySort(developmentId))
+  // The Money look's view (v2.6407): where the money is, or the scoreboard; the device remembers it. The board's order is a look, forgotten on leaving.
+  const [moneyView, setMoneyView] = useState<MoneyView>(() => readMoneyView(developmentId))
+  const setMoneyViewMode = (view: MoneyView) => {
+    setMoneyView(view)
+    writeMoneyView(developmentId, view)
+  }
+  const [scoreSort, setScoreSort] = useState<ScoreboardSort>(SCOREBOARD_DEFAULT_SORT)
   const [moneyFolds, setMoneyFolds] = useState<ReadonlySet<string>>(() => readFolds(developmentId, 'money'))
   const [lookFolds, setLookFolds] = useState<ReadonlySet<string>>(() => readFolds(developmentId, 'looks'))
   const setMoneySortMode = (mode: MoneySortMode) => {
@@ -267,6 +278,10 @@ export default function DevelopmentPage() {
   // The jobs' costs for the Jobs & bids table (v2.6215): dev and controller read them, one batched read for the site.
   const shownJobIds = useMemo(() => (shown ? shown.jobs.map((j) => j.id) : []), [shown])
   const costsByJobId = useSiteCosts(shownJobIds, canSeeSiteCosts(role))
+  // The scoreboard's reads (v2.6407): the clock for the office door, the day ledger for the finance seats, both only while that view is open.
+  const scoreboardOpen = moneyShown && moneyView === 'scoreboard'
+  const laborRead = useSiteLabor(shownJobIds, scoreboardOpen)
+  const overheadRead = useSiteOverhead(shownJobIds, scoreboardOpen && canSeeSiteCosts(role))
   // The site's photos (punch list #247): the census and the row, read once for the strip's sixth look and the Photos card.
   const shownBidIds = useMemo(() => (shown ? shown.bids.map((b) => b.id) : []), [shown])
   const sitePhotos = useSitePhotos({ jobIds: shownJobIds, bidIds: shownBidIds, enabled: !!data })
@@ -838,6 +853,21 @@ export default function DevelopmentPage() {
   // The Money look: the site's band and the live jobs in stage sections, from the same rows.
   const siteMoney = buildSiteMoney({ members: counted, invoices: data.invoices, names: data.names, teamMembers: data.teamMembers, jobLabel, paySpeed: data.paySpeed, todayYmd: todayYmdInAppTz() })
   const moneyWords = moneyLookWords(siteMoney, money)
+  // The scoreboard (v2.6407): the same members the Money look reads, the nine measures, the site's totals as the column heads.
+  const scoreboard = buildScoreboard({ jobs: counted.jobs, invoices: data.invoices, jobLabel, labor: laborRead, costs: costsByJobId, overhead: overheadRead, sort: scoreSort })
+  // The head's bid count leaves a robot's shadow bid out, as the tiles do (v2.6378).
+  const scoreboardHead = {
+    name: dev.name,
+    line: `${data.customer?.name ? `${data.customer.name} · ` : ''}${counted.jobs.length} ${counted.jobs.length === 1 ? 'job' : 'jobs'}, ${scoreboard.rows.length} with money on ${scoreboard.rows.length === 1 ? 'it' : 'them'} · ${counted.bids.length} ${counted.bids.length === 1 ? 'bid' : 'bids'}`,
+    small:
+      [
+        siteMoney.band.left > 0 ? `${money(siteMoney.band.left)} left to collect` : null,
+        scoreboard.people > 0 ? `${scoreboard.people} ${scoreboard.people === 1 ? 'person' : 'people'} on it` : null,
+        canSeeSiteCosts(role) ? 'overhead from the day the pool began' : null,
+      ]
+        .filter(Boolean)
+        .join(' · ') || null,
+  }
   // The fifth tile earns its place (the Gun Dog spike, 2026-11-02): with no bill open it says what is not yet billed.
   const unbilled = moneyShown ? unbilledTileWords(siteMoney, counts.openOnBillsUsd, money) : null
 
@@ -1250,10 +1280,25 @@ export default function DevelopmentPage() {
             id={DEVELOPMENT_JUMP_ANCHOR.money}
             title="Money"
             fold={foldFor('money', moneyLine)}
-            meta={`where the site's money is · ${siteMoney.band.jobs} ${siteMoney.band.jobs === 1 ? 'job' : 'jobs'}`}
+            meta={moneyView === 'scoreboard' ? `what the site's jobs earned and cost · ${shown.jobs.length} ${shown.jobs.length === 1 ? 'job' : 'jobs'}` : `where the site's money is · ${siteMoney.band.jobs} ${siteMoney.band.jobs === 1 ? 'job' : 'jobs'}`}
             right={
               <>
-                {moneySort !== 'tightest' ? (
+                <span role="group" aria-label="Money views" style={{ display: 'inline-flex', gap: 2, padding: 2, border: '1px solid var(--border)', borderRadius: 9999, background: 'var(--bg-subtle)' }} data-testid="money-views">
+                  {(['money', 'scoreboard'] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setMoneyViewMode(v)}
+                      aria-pressed={moneyView === v}
+                      title={v === 'money' ? 'The band and the live jobs by stage: where the site’s money is' : 'The scoreboard: what each job earned and cost, with the site’s totals as the column heads'}
+                      data-testid={`money-view-${v}`}
+                      style={{ border: `1px solid ${moneyView === v ? 'var(--border-strong)' : 'transparent'}`, borderRadius: 9999, padding: '1px 10px', font: 'inherit', fontSize: '0.76rem', cursor: 'pointer', background: moneyView === v ? 'var(--surface)' : 'transparent', color: moneyView === v ? 'var(--text-strong)' : 'var(--text-700)', fontWeight: moneyView === v ? 700 : 500 }}
+                    >
+                      {v === 'money' ? 'Where the money is' : 'Scoreboard'}
+                    </button>
+                  ))}
+                </span>
+                {moneyView === 'money' && moneySort !== 'tightest' ? (
                   <button type="button" className="developmentSortedChip" onClick={() => setMoneySortMode('tightest')} title="Back to tightest first" data-testid="money-sorted-chip">
                     Sorted: {MONEY_SORT_LABELS[moneySort]} <span aria-hidden>×</span>
                   </button>
@@ -1264,7 +1309,11 @@ export default function DevelopmentPage() {
               </>
             }
           >
-            <DevelopmentMoney model={siteMoney} phone={phone} sort={moneySort} onSort={setMoneySortMode} isFolded={(k, d) => isFolded(moneyFolds, k, d)} onToggleFold={toggleMoneyFold} openJob={openJob} onAskForDate={(jobId) => openJob(jobId)} onLienDesk={() => navigate('/jobs?tab=stages&liendesk=1')} />
+            {moneyView === 'scoreboard' ? (
+              <DevelopmentScoreboard model={scoreboard} columns={scoreboardColumnsFor(canSeeSiteCosts(role))} phone={phone} onSort={(k) => setScoreSort((s) => nextScoreboardSort(s, k))} openJob={openJob} head={scoreboardHead} />
+            ) : (
+              <DevelopmentMoney model={siteMoney} phone={phone} sort={moneySort} onSort={setMoneySortMode} isFolded={(k, d) => isFolded(moneyFolds, k, d)} onToggleFold={toggleMoneyFold} openJob={openJob} onAskForDate={(jobId) => openJob(jobId)} onLienDesk={() => navigate('/jobs?tab=stages&liendesk=1')} />
+            )}
           </Card>
         ) : (
           // The overview door (PR 6): the look is one line, with nothing to open; the figures live on the office's pages.
