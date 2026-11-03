@@ -1032,8 +1032,6 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
               anchorRef={focusRow === 'lien-contract' ? focusRowAnchorRef : undefined}
             />
           ) : null}
-          {/* Charging the customer (v2.6448, punch list #254): the job's rule for its labor and its own markup, saved as you pick. */}
-          {jobId ? <JobFormChargingRow jobId={jobId} expanded={openRows.has('charging')} onToggle={() => toggleRow('charging')} /> : null}
           <JobFormOwnerLookupBox
             jobId={jobId}
             jobAddress={jobAddressTrimmed}
@@ -1238,7 +1236,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       </JobFormFactRow>
       <JobFormFactRow
         label="Bid"
-        last
+        last={!jobId}
         value={bidId ? formatJobFormBidLinkTitle(prefixMap, linkedBidSummary) : null}
         expanded={openRows.has('bid')}
         onToggle={() => toggleRow('bid')}
@@ -1252,6 +1250,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           showLabel={false}
         />
       </JobFormFactRow>
+      {/* Charging the customer (v2.6448, punch list #254): the job's rule for its labor and its own markup, saved as you pick — the foot of the list on an existing job. */}
+      {jobId ? <JobFormChargingRow jobId={jobId} expanded={openRows.has('charging')} onToggle={() => toggleRow('charging')} /> : null}
     </div>
   )
 }

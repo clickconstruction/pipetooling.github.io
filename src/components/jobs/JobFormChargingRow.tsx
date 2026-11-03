@@ -81,16 +81,16 @@ export function JobFormChargingRow({ jobId, expanded, onToggle }: { jobId: strin
         ) : !loaded || !card ? (
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading…</p>
         ) : (
-          <div style={{ display: 'grid', gap: '0.6rem' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.2rem', alignItems: 'flex-end' }}>
-              <label style={label}>
+          <div style={{ display: 'grid', gap: '0.6rem', minWidth: 0 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.2rem', alignItems: 'flex-end', minWidth: 0 }}>
+              <label style={{ ...label, flex: '1 1 16rem', minWidth: 0, maxWidth: 420 }}>
                 <span style={small}>Charge this job’s labor as</span>
                 <select
                   value={rule.kind === 'shape' ? `shape:${rule.shape}` : rule.kind}
                   disabled={busy}
                   aria-label="Charge this job’s labor as"
                   data-testid="charging-rule"
-                  style={{ ...field, maxWidth: 420 }}
+                  style={{ ...field, width: '100%', minWidth: 0 }}
                   onChange={(e) => {
                     const v = e.target.value
                     if (v === 'crew') void save({ kind: 'crew' }, loaded.markupPct)
