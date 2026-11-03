@@ -36882,6 +36882,11 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean; p_link?: Json }
         Returns: Json
       }
+      dev_clock_session_image: { Args: { p_session_id: string }; Returns: Json }
+      dev_clock_session_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dev_file_index_status: { Args: never; Returns: Json }
       dev_health_connections: { Args: never; Returns: Json }
       dev_health_locks: { Args: never; Returns: Json }
@@ -36964,6 +36969,10 @@ export type Database = {
       }
       dev_on_site_write: {
         Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
+      dev_person_evidence_write: {
+        Args: { p: Json; p_dry_run?: boolean; p_files?: Json }
         Returns: Json
       }
       dismiss_mercury_duplicate_pair: {
