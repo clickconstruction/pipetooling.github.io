@@ -31,8 +31,7 @@ for _ in $(seq 1 90); do docker exec "$NAME" pg_isready -U postgres -h localhost
 sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
-psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
-pgtest_apply supabase/migrations/*.sql
+pgtest_migrate
 # A second run of each #222 migration must change nothing.
 for f in supabase/migrations/*_legal_firm_shared_counties.sql supabase/migrations/*_legal_hand_off_counties.sql; do
   [ -e "$f" ] || continue

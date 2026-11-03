@@ -146,6 +146,10 @@ export type OfficeAsk =
   | { action: 'index_job'; job: JobRef; retry: boolean }
   /** The dev's one made-up call through the OCR provider (PR 3). */
   | { action: 'ocr_probe' }
+  /** Find a file's first answer (PR 4): our own index by the words and, once set up, by meaning; two letters or more. */
+  | { action: 'search_index'; words: string }
+  /** The dev's one made-up call through the embeddings provider (PR 4). */
+  | { action: 'embed_probe' }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DRIVE_ID = /^[A-Za-z0-9_-]{10,200}$/
@@ -221,6 +225,12 @@ export function parseOfficeAsk(body: unknown): OfficeAsk | null {
     }
     case 'ocr_probe':
       return { action: 'ocr_probe' }
+    case 'search_index': {
+      const words = str(b.words, 200)
+      return words && words.length >= 2 ? { action: 'search_index', words } : null
+    }
+    case 'embed_probe':
+      return { action: 'embed_probe' }
     default:
       return null
   }

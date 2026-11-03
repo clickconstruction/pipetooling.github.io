@@ -64,6 +64,8 @@ import { useOnSiteStoreVersion } from '../hooks/useOnSiteStore'
 import { readRecentDoorIds, recentDoorsFor, rememberDoor } from '../lib/search/recentDoors'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { canOpenPunchList } from '../lib/todos/punchListAccess'
+import { headerSearchFailedRead, headerSearchReadKinds, type HeaderSearchFailedRead, type HeaderSearchMode } from '../lib/search/headerSearchFailedReads'
+import { HeaderSearchFailedReads } from './search/HeaderSearchFailedReads'
 import type { BoardItem } from '../lib/todos/todoBoard'
 
 const HEADER_ROW_MIN_HEIGHT = 'calc(1rem + 1.25em)'
@@ -118,6 +120,15 @@ type HeaderGlobalSearchContextValue = {
   openDoor: (door: Door, there?: boolean) => void
   /** The phone's strip placement: no keys line, since there is no Tab to say. */
   isMobile: boolean
+  /**
+   * The server reads the last search could not make (v2.6434): each names its kind and carries its failure, so the
+   * box says what was not searched and why instead of *No matches*. Empty when every read answered.
+   */
+  failedReads: HeaderSearchFailedRead[]
+  /** Runs the last search again, every read of it: the panel's Retry, and its run by itself when the signal is back. */
+  retrySearch: () => void
+  /** A search is in flight, so the panel holds its Retry. */
+  searching: boolean
 }
 
 /** A group as the box draws it: the kinds' groups from `searchDoors`, or the Recent list when nothing is typed. */
@@ -169,6 +180,11 @@ export function HeaderGlobalSearchProvider({
   const [open, setOpen] = useState(false)
   const [query, setQueryState] = useState('')
   const [results, setResults] = useState<UnifiedSearchResult[]>([])
+  const [failedReads, setFailedReads] = useState<HeaderSearchFailedRead[]>([])
+  /** Bumped by Retry; the search effect reads it, so a bump runs the same words again. */
+  const [searchAttempt, setSearchAttempt] = useState(0)
+  const [searching, setSearching] = useState(false)
+  const retrySearch = useCallback(() => setSearchAttempt((n) => n + 1), [])
   const [jobEvidence, setJobEvidence] = useState<Map<string, JobSearchEvidence>>(() => new Map())
   const [bidEvidence, setBidEvidence] = useState<Map<string, BidSearchEvidence>>(() => new Map())
   const [activeResultIndex, setActiveResultIndex] = useState(-1)
@@ -329,6 +345,7 @@ export function HeaderGlobalSearchProvider({
     setActiveResultIndex(-1)
     if (q.trim().length < MIN_HEADER_SEARCH_CHARS) {
       setResults([])
+      setFailedReads([])
     }
   }, [])
 
@@ -337,6 +354,7 @@ export function HeaderGlobalSearchProvider({
     setOpen(true)
     setQueryState('')
     setResults([])
+    setFailedReads([])
     setActiveResultIndex(-1)
     queueMicrotask(() => inputRef.current?.focus())
   }, [])
@@ -345,6 +363,7 @@ export function HeaderGlobalSearchProvider({
     setOpen(false)
     setQueryState('')
     setResults([])
+    setFailedReads([])
     setOnlyGroup(null)
     queueMicrotask(() => {
       const ref = openedFromRef.current === 'strip' ? stripButtonRef : toolbarButtonRef
@@ -431,21 +450,38 @@ export function HeaderGlobalSearchProvider({
 
   useEffect(() => {
     if (!open) return
+    // An answer that lands after the words changed, or after Retry started a newer run, is dropped (v2.6434).
+    let cancelled = false
+    const clear = () => {
+      setResults([])
+      setFailedReads([])
+      setSearching(false)
+    }
     const t = setTimeout(() => {
       const q = query.trim()
       if (!q) {
-        setResults([])
+        clear()
         return
       }
       if (q.length < MIN_HEADER_SEARCH_CHARS) {
-        setResults([])
+        clear()
         return
       }
       // A prefix (`>`) narrows the box to the doors, and a doors-only box (PR 4) has no rows of its own: today's rows
       // stay out and nothing is asked of the server.
       if (doorsOnly || doorQuery(q).only != null) {
-        setResults([])
+        clear()
         return
+      }
+      const mode: HeaderSearchMode = fieldLookup ? 'field' : 'office'
+      setSearching(true)
+      // A run that threw outside the reads' own failure paths: every kind of this mode is unsearched, with that reason.
+      const failedWhole = (e: unknown) => {
+        if (cancelled) return
+        setResults([])
+        setFailedReads(headerSearchReadKinds(mode).map((kind) => headerSearchFailedRead(kind, e, mode)))
+        setActiveResultIndex(-1)
+        setSearching(false)
       }
       // Search is a lookup, not a total: a failed ZZ read degrades to names alone (a ZZ customer's job whose
       // own name is real can then show) rather than wiping every result.
@@ -457,11 +493,17 @@ export function HeaderGlobalSearchProvider({
       if (fieldLookup) {
         // Field lookup: jobs only. Bids, estimates and customers are office surfaces, and their reads start after this
         // return, so a field search never sends one.
-        void Promise.all([supabase.rpc('search_jobs_ledger', { search_text: q }), zzIdsPromise]).then(([jobsRes, zzIds]) => {
-          const jobs = shownJobs((jobsRes.data ?? []) as JobSearchResult[], zzIds)
-          setResults(jobs.map((j) => ({ source: 'job' as const, ...j })))
-          setActiveResultIndex(-1)
-        })
+        void Promise.all([supabase.rpc('search_jobs_ledger', { search_text: q }), zzIdsPromise])
+          .then(([jobsRes, zzIds]) => {
+            if (cancelled) return
+            const jobs = shownJobs((jobsRes.data ?? []) as JobSearchResult[], zzIds)
+            setResults(jobs.map((j) => ({ source: 'job' as const, ...j })))
+            // A read that failed is not a read that found nothing: the box says so (v2.6434).
+            setFailedReads(jobsRes.error ? [headerSearchFailedRead('jobs', jobsRes.error, mode)] : [])
+            setActiveResultIndex(-1)
+            setSearching(false)
+          })
+          .catch(failedWhole)
         return
       }
       const bidsParams = buildClockBidsSearchParams(q, {
@@ -470,8 +512,9 @@ export function HeaderGlobalSearchProvider({
         subcontractorServiceTypeIds,
       })
       // Client-side, RLS-scoped customer lookup. Name-only `ilike` (no `.or()`) + escapeLike so
-      // punctuation can't break the filter; failures degrade to [] so they never wipe other results.
-      const customersPromise: Promise<CustomerSearchResult[]> = Promise.resolve(
+      // punctuation can't break the filter; a failure keeps its error beside empty rows, so it never wipes the
+      // other results and the box can still say customers were not searched (v2.6434).
+      const customersPromise: Promise<{ data: CustomerSearchResult[]; error: unknown }> = Promise.resolve(
         supabase
           .from('customers')
           .select('id,name,address,customer_type')
@@ -479,8 +522,8 @@ export function HeaderGlobalSearchProvider({
           .order('name', { ascending: true })
           .limit(8),
       )
-        .then((r) => (r.data ?? []) as CustomerSearchResult[])
-        .catch((): CustomerSearchResult[] => [])
+        .then((r) => ({ data: (r.data ?? []) as CustomerSearchResult[], error: r.error as unknown }))
+        .catch((e: unknown) => ({ data: [] as CustomerSearchResult[], error: e }))
       void Promise.all([
         // The office's search finds a GC job's billing job too; the field lookup above never does.
         supabase.rpc('search_jobs_ledger', { search_text: q, include_billing_only: true }),
@@ -488,11 +531,19 @@ export function HeaderGlobalSearchProvider({
         supabase.rpc('search_estimates_for_nav', { search_text: q }),
         customersPromise,
         zzIdsPromise,
-      ]).then(([jobsRes, bidsRes, estRes, customersRead, zzIds]) => {
+      ])
+        .then(([jobsRes, bidsRes, estRes, customersRes, zzIds]) => {
+        if (cancelled) return
         const jobs = shownJobs((jobsRes.data ?? []) as JobSearchResult[], zzIds)
-        const customers = hideZz ? customersRead.filter((c) => !isZzTestName(c.name)) : customersRead
+        const customers = hideZz ? customersRes.data.filter((c) => !isZzTestName(c.name)) : customersRes.data
         const bids = (bidsRes.data ?? []) as BidSearchResult[]
         const estimates = (estRes.data ?? []) as EstimateNavSearchResult[]
+        // Each read that failed names its kind; the merged rows below are whatever did answer (v2.6434).
+        const failed: HeaderSearchFailedRead[] = []
+        if (jobsRes.error) failed.push(headerSearchFailedRead('jobs', jobsRes.error, mode))
+        if (bidsRes.error) failed.push(headerSearchFailedRead('bids', bidsRes.error, mode))
+        if (estRes.error) failed.push(headerSearchFailedRead('estimates', estRes.error, mode))
+        if (customersRes.error) failed.push(headerSearchFailedRead('customers', customersRes.error, mode))
         const merged: UnifiedSearchResult[] = [
           ...jobs.map((j) => ({ source: 'job' as const, ...j })),
           ...bids.map((b) => ({ source: 'bid' as const, ...b })),
@@ -513,11 +564,17 @@ export function HeaderGlobalSearchProvider({
           })),
         ]
         setResults(merged)
+        setFailedReads(failed)
         setActiveResultIndex(-1)
-      })
+        setSearching(false)
+        })
+        .catch(failedWhole)
     }, 300)
-    return () => clearTimeout(t)
-  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds, fieldLookup, doorsOnly, hideZz, authUserId])
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds, fieldLookup, doorsOnly, hideZz, authUserId, searchAttempt])
 
   /** Rich-row evidence for job and bid results. `enabled` is already the office gate
    * (dev/master/assistant-like), so job evidence always uses money mode here. */
@@ -586,8 +643,11 @@ export function HeaderGlobalSearchProvider({
         setOnlyGroup,
         openDoor,
         isMobile,
+        failedReads,
+        retrySearch,
+        searching,
       }) satisfies HeaderGlobalSearchContextValue,
-    [open, openSearch, closeSearch, query, setQuery, results, activeResultIndex, selectResult, fieldLookup, doorsOnly, navOverlayBackground, prefixMap, jobEvidence, bidEvidence, doorGroups, onlyGroup, openDoor, isMobile],
+    [open, openSearch, closeSearch, query, setQuery, results, activeResultIndex, selectResult, fieldLookup, doorsOnly, navOverlayBackground, prefixMap, jobEvidence, bidEvidence, doorGroups, onlyGroup, openDoor, isMobile, failedReads, retrySearch, searching],
   )
 
   return (
@@ -671,6 +731,9 @@ export function HeaderGlobalSearchNavLayer() {
   const doorRows = ctx.doorGroups.flatMap((g) => g.doors)
   const rowCount = ctx.results.length + doorRows.length
   const showResultsPanel = qTrim.length >= MIN_HEADER_SEARCH_CHARS || (qTrim === '' && doorRows.length > 0)
+  // A server read that failed is drawn under the rows, or in place of *No matches* when there is no row (v2.6434).
+  const failedReads = qTrim.length >= MIN_HEADER_SEARCH_CHARS ? ctx.failedReads : []
+  const searchMode: HeaderSearchMode = ctx.fieldLookup ? 'field' : 'office'
   /** The lit row: the one the arrows chose, else the first, so Enter alone opens the best match. */
   const active = ctx.activeResultIndex >= 0 ? ctx.activeResultIndex : rowCount > 0 ? 0 : -1
   const groupStarts: number[] = []
@@ -848,6 +911,11 @@ export function HeaderGlobalSearchNavLayer() {
               )
             })}
             <DoorGroupRows groups={ctx.doorGroups} firstIndex={ctx.results.length} active={active} onlyGroup={ctx.onlyGroup} setOnlyGroup={ctx.setOnlyGroup} openDoor={ctx.openDoor} />
+            {failedReads.length > 0 ? (
+              <li role="presentation" style={{ borderTop: '1px solid var(--border)' }}>
+                <HeaderSearchFailedReads failed={failedReads} mode={searchMode} onRetry={ctx.retrySearch} busy={ctx.searching} nothingShown={false} />
+              </li>
+            ) : null}
             {!ctx.isMobile ? (
               <li role="presentation" aria-hidden="true" style={{ padding: '0.35rem 0.6rem 0.2rem', fontSize: '0.72rem', color: 'var(--text-faint)', display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
                 {GO_ANYWHERE_WORDS.keys.map((k) => (
@@ -856,6 +924,10 @@ export function HeaderGlobalSearchNavLayer() {
               </li>
             ) : null}
           </ul>
+        ) : failedReads.length > 0 ? (
+          <div style={{ ...resultsPanelBaseStyle, overflowY: 'visible', maxHeight: 'none' }}>
+            <HeaderSearchFailedReads failed={failedReads} mode={searchMode} onRetry={ctx.retrySearch} busy={ctx.searching} nothingShown />
+          </div>
         ) : (
           <p
             style={{

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ExpectedPayModel, PaySpeedData } from '../jobs/billedExpectedPay'
 import type { MemberBid, MemberJob, Members } from './overview'
-import {
-  MONEY_SORT_COLUMN,
+import { MONEY_SORT_COLUMN,
   MONEY_SORT_IS_SETTING,
   MONEY_SORT_LABELS,
   MONEY_SORT_MODES,
@@ -11,8 +10,7 @@ import {
   sortMoneyRows,
   type MoneyDates,
   type MoneyRow,
-  type SiteMoneyInputs,
-} from './siteMoney'
+  type SiteMoneyInputs, unbilledTileWords, type SiteMoneyModel } from './siteMoney'
 
 const TODAY = '2026-10-29'
 
@@ -251,5 +249,30 @@ describe('the sort tables', () => {
     expect(MONEY_SORT_LABELS).toEqual({ tightest: 'tightest first', progress: '% complete', left: 'most left', number: 'job number' })
     expect(MONEY_SORT_COLUMN).toEqual({ tightest: 'dates', progress: 'progress', left: 'money', number: 'job' })
     expect(MONEY_SORT_MODES.filter((m) => MONEY_SORT_IS_SETTING.has(m))).toEqual(['tightest', 'number'])
+  })
+})
+
+describe('unbilledTileWords (the Gun Dog spike, 2026-11-02)', () => {
+  const money = (n: number) => `$${n.toLocaleString('en-US')}`
+  const model = (band: Partial<SiteMoneyModel['band']>, rows: Array<{ key: string; left: number }>): SiteMoneyModel =>
+    ({
+      band: { pct: null, pctMissing: 0, value: 0, paid: 0, billed: 0, doneNotBilled: 0, left: 0, jobs: 0, pastDue: 0, stages: [], bidUndecidedUsd: 0, bidUndecidedCount: 0, ...band },
+      sections: [
+        { key: 'working', rows: rows.filter((r) => r.key === 'working') },
+        { key: 'waiting', rows: rows.filter((r) => r.key === 'waiting') },
+        { key: 'paid', rows: rows.filter((r) => r.key === 'paid') },
+      ],
+    }) as unknown as SiteMoneyModel
+  it('with no bill open and money left, the tile reads Not yet billed with what is done and how many jobs hold it', () => {
+    const m = model({ left: 186116.84, doneNotBilled: 3200 }, [{ key: 'working', left: 16000 }, { key: 'working', left: 0 }, { key: 'waiting', left: 170116.84 }, { key: 'paid', left: 0 }])
+    expect(unbilledTileWords(m, 0, money)).toEqual({ cap: 'Not yet billed', value: '$186,116.84', sub: '$3,200 done, not billed · 2 jobs with money left' })
+  })
+  it('says only the jobs when nothing is done and not billed, one job in the singular', () => {
+    const m = model({ left: 990 }, [{ key: 'waiting', left: 990 }])
+    expect(unbilledTileWords(m, 0, money)?.sub).toBe('1 job with money left')
+  })
+  it('is null while a bill is open, and null with nothing left on the site', () => {
+    expect(unbilledTileWords(model({ left: 500 }, [{ key: 'waiting', left: 500 }]), 1200, money)).toBeNull()
+    expect(unbilledTileWords(model({ left: 0 }, []), 0, money)).toBeNull()
   })
 })

@@ -35,8 +35,7 @@ for _ in $(seq 1 90); do docker exec "$NAME" pg_isready -U postgres -h localhost
 sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
-psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
-pgtest_apply supabase/migrations/*.sql
+pgtest_migrate
 # A second run must change nothing: CREATE OR REPLACE of the one function.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/merge_customers/20_scenario.sql 2>&1 || true)"

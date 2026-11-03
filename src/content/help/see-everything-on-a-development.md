@@ -19,9 +19,21 @@ A Pipeline row has the same door. Press the development name under the job's cus
 
 The page opens with the site's name, its customer and its GC at the top. Under them you see who is on site and five counts.
 
+## Put the GC contact on the bids
+
+The GC contact line at the top names the contact from the site's bids. The office can set it here.
+
+1. Press **add one** at the end of the GC contact line, or **Change ›** beside a contact on record.
+2. Type the name, the phone and the email in the sheet.
+3. Press {{button:blue|Put it on 15 bids}}. The button counts the bids it writes.
+
+The contact goes onto every bid of the site with no contact. Change › writes onto the bids that carry the old one. The message after it offers {{button:outline|Put it back}}.
+
 ## Read the five counts
 
 The counts are Waiting, Bids, Jobs, Bid undecided and Open on bills. Each one is a rule over the site's records.
+
+With no bill open, the fifth count reads Not yet billed instead. It shows what is left to bill on the site. Its card lists the waiting jobs with money left, biggest first.
 
 Bid undecided counts the bids sent or still being worked. An archived bid sits apart and is not counted. The Bids count names how many are archived.
 
