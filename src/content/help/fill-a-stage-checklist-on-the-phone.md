@@ -2,7 +2,7 @@
 title: fill a stage checklist on the phone
 category: Field Work
 roles: helpers, subcontractor, master_technician, superintendent, primary
-keywords: stage checklist, checklist, rough in, top out, trim set, yes no not here, photo, not ready, pipeline, job mode, job window, crew, next, stamp, added for this job, skipped on this job, plan sheet
+keywords: stage checklist, checklist, rough in, top out, trim set, yes no not here, photo, not ready, pipeline, job mode, job window, crew, next, stamp, added for this job, skipped on this job, plan sheet, send to dispatch, with dispatch
 where: /dashboard
 order: 12
 ---
@@ -33,6 +33,10 @@ A check can name a plan sheet. The chip on its row reads like *📐 P-201 detail
 ## Questions skipped on this job
 
 A company question may not apply on your job. The office, the superintendent or the estimator can skip it with a reason. The question then sits under **Skipped on this job** with who skipped it, when and why. A skipped question needs no answer and does not hold the stage.
+
+## Send a check you cannot answer to Dispatch
+
+Sometimes you cannot answer a check. The part is missing. The check is wrong for this job. Press **Send to Dispatch** under the open question. A sheet opens on top with the job, the stage and the check already filled in. Pick why and send. The row then reads *With Dispatch* until Dispatch answers. The guide [send a check to Dispatch](/help/send-a-check-to-dispatch) has the steps.
 
 ## Take the photo a question asks for
 

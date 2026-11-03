@@ -114,6 +114,10 @@ const PAGES: SmokePage[] = [
   // Bids → Bid Costs: its four lens chips sat on one no-wrap row 418 px wide and pushed the
   // page to 434 px until v2.5979. The marker waits for clocked time, so the ledger has loaded.
   { path: '/bids?tab=bid-costs', marker: /[1-9]\d* bids? with time/ },
+  // The Bridge (dev only): its Dial held a fixed 240 px spark column that collapsed the slider and ran 49 px past a
+  // phone, and four panels sat on `minmax(380px, 1fr)` grids, until v2.6421. Its words show before its reads land
+  // (eight weeks of sessions, bank flows and invoices), so it settles.
+  { path: '/bridge', marker: /The Bridge/, settle: true },
 ]
 
 for (const { path, marker, within, settle } of PAGES) {

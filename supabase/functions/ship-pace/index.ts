@@ -1,6 +1,15 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { type PacePr, type PaceQueueRun, SHIP_PACE_KEY, SHIP_PACE_WINDOW_HOURS, shipPacePicture } from '../_shared/shipPace.ts'
+import {
+  type PaceOpenPr,
+  type PacePr,
+  type PaceQueueEntryInput,
+  type PaceQueueInput,
+  type PaceQueueRun,
+  SHIP_PACE_KEY,
+  SHIP_PACE_WINDOW_HOURS,
+  shipPacePicture,
+} from '../_shared/shipPace.ts'
 
 /**
  * ship-pace — How fast a change ships (v2.6399): the cron that reads the repository's pull requests and the merge
@@ -15,12 +24,15 @@ import { type PacePr, type PaceQueueRun, SHIP_PACE_KEY, SHIP_PACE_WINDOW_HOURS, 
  *     1. Lists every open pull request (created, draft) and the closed ones by last update, newest first, until a
  *        page falls before the window less an hour (a pull request merged or closed in the window was updated then).
  *     2. Lists the merge queue's builds (Actions runs of the `merge_group` event) created since the window's day,
- *        and asks GraphQL how many pull requests sit in the queue now. Either refused (the token lacks it) leaves
- *        those fields null; the pull requests are the picture, the queue is the colour.
+ *        and asks GraphQL for the queue itself (v2.6401): `mergeQueue(branch: "main")`'s entries in position order
+ *        (the pull request's number and title, when it entered, GitHub's estimate to merge) and every open pull
+ *        request's state (`isDraft`, `autoMergeRequest`, `mergeQueueEntry`, `statusCheckRollup`, `mergeable`),
+ *        100 a page. Either refused (the token lacks it) leaves those fields null; the pull requests are the
+ *        picture, the queue is the colour.
  *     3. Hands them to `_shared/shipPace.ts` and writes the picture: the 72-hour series by the app calendar's hour,
- *        the headline over the last 24 hours, today's counts and what is open now.
+ *        the headline over the last 24 hours, today's counts, what is open now and the queue's line.
  *
- *   → { success, asOf, prs, queueRuns, queueNow, last24h, today, now, ms }
+ *   → { success, asOf, prs, queueRuns, queueNow, queue, last24h, today, now, ms }
  *
  * Refusals: 401 without the secret or a dev's session, 405 for anything but POST, 503 `{ noToken }` while
  * `GITHUB_PACE_TOKEN` is unset (nothing written: the section's empty state names the door), 502 `{ github }` when
@@ -29,6 +41,13 @@ import { type PacePr, type PaceQueueRun, SHIP_PACE_KEY, SHIP_PACE_WINDOW_HOURS, 
  * CRON_SECRET, GITHUB_PACE_TOKEN (a fine-grained token on the repository: Pull requests read, Actions read,
  * Metadata read), optional GITHUB_PACE_REPO (`owner/name`, the app's own repository when unset). verify_jwt is off;
  * the secret or the in-function check is the door.
+ *
+ * The queue's scope: the owner's fine-grained token (Pull requests, Actions, Contents and Metadata, all Read-only)
+ * read `mergeQueue`'s count on 2026-11-02, so that set covers the queue; a classic token with `repo` reads it too.
+ * GitHub's permission reference names no permission for GraphQL's `mergeQueue`, and the one field report (cli/cli
+ * #8352) found a fine-grained token read the queue once **Contents: Read-only** was added, so when the card says
+ * the queue was not read, check that permission first; `pullRequests` with `autoMergeRequest` is **Pull requests:
+ * Read-only**.
  */
 
 const corsHeaders = {
@@ -114,22 +133,93 @@ async function queueRunsSince(token: string, repo: string, sinceMs: number): Pro
   }
 }
 
-/** How many pull requests sit in the merge queue now; null when GraphQL refuses or the repository has no queue. */
-async function queueNow(token: string, repo: string): Promise<number | null> {
+type GhQueueEntry = {
+  position: number
+  enqueuedAt: string
+  estimatedTimeToMerge: number | null
+  pullRequest: { number: number; title: string } | null
+}
+type GhOpenPr = {
+  number: number
+  title: string
+  isDraft: boolean
+  mergeable: string | null
+  autoMergeRequest: { enabledAt: string } | null
+  statusCheckRollup: { state: string } | null
+  mergeQueueEntry: { position: number } | null
+}
+type GhQueueAnswer = {
+  data?: {
+    repository?: {
+      mergeQueue?: { entries?: { totalCount: number; nodes: (GhQueueEntry | null)[] } } | null
+      pullRequests?: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: (GhOpenPr | null)[] }
+    } | null
+  } | null
+  errors?: { message: string }[]
+}
+
+/** The queue's line and the open pull requests' state, with the queue on the first page alone. */
+const QUEUE_QUERY = `query($owner: String!, $name: String!, $after: String, $withQueue: Boolean!) {
+  repository(owner: $owner, name: $name) {
+    mergeQueue(branch: "main") @include(if: $withQueue) {
+      entries(first: 100) { totalCount nodes { position enqueuedAt estimatedTimeToMerge pullRequest { number title } } }
+    }
+    pullRequests(states: OPEN, first: 100, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      nodes { number title isDraft mergeable autoMergeRequest { enabledAt } statusCheckRollup { state } mergeQueueEntry { position } }
+    }
+  }
+}`
+
+/**
+ * The merge queue's entries and every open pull request's state (v2.6401), over GraphQL, the open pull requests 100
+ * a page; null when GraphQL refuses, errs on the queue or the repository has no queue, so the picture's queue block
+ * and count read as not read.
+ */
+async function readQueue(token: string, repo: string): Promise<PaceQueueInput | null> {
   const [owner, name] = repo.split('/')
   try {
-    const res = await fetch(`${GITHUB}/graphql`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'pipetooling-ship-pace' },
-      body: JSON.stringify({
-        query: 'query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { mergeQueue(branch: "main") { entries(first: 1) { totalCount } } } }',
-        variables: { owner, name },
-      }),
-    })
-    if (!res.ok) return null
-    const body = (await res.json()) as { data?: { repository?: { mergeQueue?: { entries?: { totalCount?: number } } | null } } }
-    const count = body.data?.repository?.mergeQueue?.entries?.totalCount
-    return typeof count === 'number' ? count : null
+    const entries: PaceQueueEntryInput[] = []
+    const open: PaceOpenPr[] = []
+    let total: number | null = null
+    let after: string | null = null
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const res = await fetch(`${GITHUB}/graphql`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'pipetooling-ship-pace' },
+        body: JSON.stringify({ query: QUEUE_QUERY, variables: { owner, name, after, withQueue: page === 1 } }),
+      })
+      if (!res.ok) return null
+      const body = (await res.json()) as GhQueueAnswer
+      const repoData = body.data?.repository
+      if (!repoData?.pullRequests) return null
+      if (page === 1) {
+        const q = repoData.mergeQueue?.entries
+        if (!q) return null
+        total = q.totalCount
+        for (const e of q.nodes ?? []) {
+          if (!e?.pullRequest) continue
+          entries.push({ number: e.pullRequest.number, title: e.pullRequest.title, position: e.position, enqueuedAt: e.enqueuedAt, estimatedSeconds: e.estimatedTimeToMerge })
+        }
+      }
+      for (const p of repoData.pullRequests.nodes ?? []) {
+        // GitHub nulls a node when a field on it is refused; skip it, so one pull request never costs the whole line.
+        if (!p) continue
+        open.push({
+          number: p.number,
+          title: p.title,
+          draft: Boolean(p.isDraft),
+          armed: p.autoMergeRequest != null,
+          inQueue: p.mergeQueueEntry != null,
+          checks: p.statusCheckRollup?.state ?? null,
+          mergeable: p.mergeable ?? null,
+        })
+      }
+      const info = repoData.pullRequests.pageInfo
+      if (!info?.hasNextPage || !info.endCursor) break
+      after = info.endCursor
+    }
+    return total == null ? null : { total, entries, open }
   } catch {
     return null
   }
@@ -172,8 +262,8 @@ serve(async (req) => {
       if (e instanceof GitHubRefused) return json({ success: false, github: e.status, line: `GitHub refused the pull requests (${e.status}). ${e.words}` }, 502)
       throw e
     }
-    const [runs, queue] = await Promise.all([queueRunsSince(token, repo, sinceMs), queueNow(token, repo)])
-    const picture = shipPacePicture({ now, prs, queueRuns: runs, queueNow: queue })
+    const [runs, queue] = await Promise.all([queueRunsSince(token, repo, sinceMs), readQueue(token, repo)])
+    const picture = shipPacePicture({ now, prs, queueRuns: runs, queue })
 
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
     const { error } = await admin.from('app_settings').upsert({ key: SHIP_PACE_KEY, value_text: JSON.stringify(picture) }, { onConflict: 'key' })
@@ -185,7 +275,10 @@ serve(async (req) => {
       asOf: picture.asOf,
       prs: prs.length,
       queueRuns: runs?.length ?? null,
-      queueNow: queue,
+      queueNow: picture.now.queue,
+      queue: picture.queue
+        ? { inLine: picture.queue.entries.length, armedWaiting: picture.queue.armedWaiting, armedHeld: picture.queue.armedHeld, openUnarmed: picture.queue.openUnarmed, drafts: picture.queue.drafts }
+        : null,
       last24h: picture.last24h,
       today: picture.today,
       now: picture.now,

@@ -10,6 +10,8 @@ import { supabase } from '../supabase'
 import { errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../../utils/errorHandling'
 import { JOB_PHOTO_NOTES_BUCKET, jobPhotoCaption, jobPhotoNotePath, type JobPhotoAddWrite, type JobPhotoNoteRow } from './jobPhotoNotes'
 import { UPLOADED_PHOTOS_SELECT, type UploadedPhotoRow } from './uploadedPhotos'
+import { supabaseJobPhotosIo, type JobPhotosIo } from './jobPhotosIo'
+import { supabaseUploadedPhotosIo, type UploadedPhotosIo } from './uploadedPhotosIo'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -143,4 +145,18 @@ export async function loadJobUploadedPhotos(jobId: string, limit = 500): Promise
   const { data, error } = await db.from('uploaded_photos').select(UPLOADED_PHOTOS_SELECT).eq('job_id', jobId).order('taken_at', { ascending: false }).order('id', { ascending: false }).limit(limit)
   if (error) throw new Error(formatErrorMessage(error, 'The photos did not read.'))
   return (data ?? []) as UploadedPhotoRow[]
+}
+
+/** The reads and writes the Job photos window makes (PR 3); a test hands its own. */
+export interface JobPhotosWindowIo {
+  rows: (jobId: string) => Promise<UploadedPhotoRow[]>
+  drive: JobPhotosIo
+  photos: UploadedPhotosIo
+  shots: ShotIo
+  add: typeof addJobPhotoNotes
+  editWords: typeof editJobPhotoNoteWords
+}
+
+export function supabaseJobPhotosWindowIo(): JobPhotosWindowIo {
+  return { rows: loadJobUploadedPhotos, drive: supabaseJobPhotosIo(), photos: supabaseUploadedPhotosIo(), shots: jobPhotoNotesShotIo, add: addJobPhotoNotes, editWords: editJobPhotoNoteWords }
 }

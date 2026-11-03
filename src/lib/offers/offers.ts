@@ -28,6 +28,8 @@ export interface OfferRow {
   preparedBy: 'app' | 'office'
   /** An office-made offer: the morning it goes (YYYY-MM-DD). */
   sendOn: string | null
+  /** The day the words are about, a moved visit's new day (YYYY-MM-DD, v2.6387); null for a text about no day. */
+  aboutOn: string | null
   heldWhy: string | null
 }
 
@@ -122,8 +124,22 @@ export function withSentHolds(offers: readonly OfferRow[], sent: readonly SentRo
   })
 }
 
-/** The rows: the ready ones first, then the morning's, then the held, each set by name. */
-export function todaysSends(input: TodaysSendsInput): TodaysSend[] {
+/** Why a text about a day that has passed waits (v2.6387): the day, and the door. The run puts it away the next morning. */
+export function heldStaleWords(aboutOn: string): string {
+  return `This text names a visit on ${weekdayDate(aboutOn)}. That day has passed. Put this one away with Not this one.`
+}
+
+/** A text about a day before today is stale (v2.6387): the words would tell the customer about a visit behind them. */
+export function staleOn(o: Pick<OfferRow, 'aboutOn'>, todayYmd: string): boolean {
+  return Boolean(o.aboutOn && o.aboutOn < todayYmd)
+}
+
+/**
+ * The rows: the ready ones first, then the morning's, then the held, each set by name. A text about a day that has
+ * passed is held first of all (v2.6387), over the run's own hold: there is nothing to fix on it.
+ */
+export function todaysSends(input: TodaysSendsInput, now: Date = new Date()): TodaysSend[] {
+  const today = todayYmdInAppTz(now)
   const rows = input.offers.map(
     (o): TodaysSend => ({
       id: o.id,
@@ -134,7 +150,7 @@ export function todaysSends(input: TodaysSendsInput): TodaysSend[] {
       body: o.body,
       channelId: o.channelId,
       jobKey: o.jobKey,
-      held: o.heldWhy?.trim() || (o.channelId ? null : HELD_NO_NUMBER),
+      held: (staleOn(o, today) && o.aboutOn ? heldStaleWords(o.aboutOn) : null) || o.heldWhy?.trim() || (o.channelId ? null : HELD_NO_NUMBER),
       goesOn: o.sendOn,
     }),
   )
