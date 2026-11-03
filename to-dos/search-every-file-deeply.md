@@ -254,50 +254,50 @@ jobs, resumes from a state file and keeps a local log; the counts below are prod
 
 ### The run (counts only)
 
-Two passes on 2026-11-02, both as the dev through `drive-link`, nothing written to Drive. **The walk**
-(`scripts/file-index-backfill.mjs`, 15:25Z to 16:50Z, about 70 minutes of calls) took each job's and bid's folder in
-turn: the 10 ZZ test homes as the dry run, then 102 live jobs, 328 bids and 180 Paid in Full jobs. **The fill**
-(`scripts/file-index-check.ts --fill`, 00:18Z to 01:53Z the next UTC day) took what the index check (v2.6364) found the walk
-had not reached: 1,589 of the Shared Drive's 2,348 files, one file a call. The check, run again after it: 0 files with no row.
+Three passes from 2026-11-02 into the small hours of 11-03 UTC, all as the dev through `drive-link`, nothing written to Drive.
 
-| The index after both | Rows |
+- **The walk** (`scripts/file-index-backfill.mjs`, 15:25Z to 16:50Z) took each job's and bid's folder in turn, three folders down:
+  the 10 ZZ test homes as the dry run, then 102 live jobs, 328 bids and 180 Paid in Full jobs.
+- **The fill** (`scripts/file-index-check.ts --fill`, 00:18Z to 01:53Z) took the 1,589 of the Shared Drive's 2,348 files the walk had
+  not reached, which the index check (v2.6364) found. Then `--rehome` (v2.6403) walked 601 rows up to the job or bid a walk had run
+  out of climb before reaching.
+- **The retry** (05:12Z to 05:50Z, after PR 2's budgeted read and v2.6408's 12 MB cap) took every bid and the 48 jobs holding a
+  cut-short or too-big row again, sixteen folders down this time. It met no refusal and stopped on no home.
+
+The check after all three: the Shared Drive's 2,348 files, 0 with no row.
+
+| The index | Rows |
 |---|---:|
-| Every file | 4,209 |
-| With text | 1,506 |
-| Scans and pictures, no text until PR 3's OCR | 1,518 |
-| PDFs too big to read today | 765 |
+| Every file | 4,573 |
+| With text | 2,002 |
+| Scans and pictures, no text until PR 3's OCR | 1,587 |
+| PDFs too big to read today | 605 |
 | A kind the index does not read | 353 |
-| Reads cut short | 64 |
+| Reads cut short | 23 |
 | Reads that failed | 3 |
 
-- **With text**: 1,466 PDFs through their text layer (5,076 pages), 33 Google Docs, Sheets or Slides exported, 7 text files.
-- **Scans**: 1,331 pictures, 187 PDFs with no text layer.
-- **Too big**: 684 past 8 MB and 81 past 40 pages; 116 of them past 50 MB. PR 2's budgeted read takes their first pages.
+- **With text**: 1,962 PDFs through their text layer (11,680 pages; 119 read only in part, as far as one request's budget went),
+  33 Google Docs, Sheets or Slides exported, 7 text files.
+- **Scans**: 1,375 pictures, 212 PDFs with no text layer.
+- **Too big**: 603 past 12 MB, the read's cap since v2.6408, and 2 under it; 117 are past 50 MB. Drive's own search still runs
+  behind ours in the box.
 - **Not read**: 137 Word and Excel files, 9 videos, 3 emails, 204 others. Word and Excel are the ones worth a later pass.
-- **Cut short**, all PDFs: 61 still stamped `reading` from a worker stopped at the CPU limit, 3 `slow`. A `reading` stamp names the
-  file in hand when the limit hit, which need not be the heavy one.
+- **Cut short**: 20 still stamped `reading`, 3 `slow`; a later `--retry` takes them once their last check is an hour old.
 - **Failed**: a broken PDF (*Invalid PDF structure*) and two Drive shortcuts named like PDFs, for which Drive serves no bytes.
-  A retry will not change them.
 
-**What the rows sit on**: 2,115 on bids, 775 on jobs, 1,319 on neither. 95 jobs carry rows, fewer than it sounds, since 135 jobs
-share 55 folders and a shared folder's files are credited to one of them. Count rows, not the runner's "files walked", which
-lists a shared folder once for each home.
+**What the rows sit on**: 3,077 on bids, 778 on jobs, 718 on neither. 285 bids and 109 jobs carry rows. Fewer jobs than it
+sounds, since 135 jobs share 55 folders and a shared folder's files are credited to one of them; count rows, not the runner's
+"files walked", which lists a shared folder once for each home. 2,225 of the bid rows sit in bid folders outside the Shared Drive.
 
-**Why the walk reached a third of the drive.** It went home by home, three folders down.
-- *Click Customers*, a folder beside *Jobs* in the drive with 152 subfolders, most named for a customer, holds 716 files no job or bid links to.
-  They are searchable and read *Not under a job*, and their path names the customer. Whether they should attach to something
-  is the owner's call.
-- One plan export sits nine or more folders down: 598 rows ran out of a walk's climb and read *Not under a job*, though rows from
-  the same export within eight folders sit on its bid. v2.6403 climbs farther and `--rehome` walks them up.
-- Other files on a job or bid sat past the three folders; the fill reached those inside the Shared Drive.
+- *Click Customers*, a folder beside *Jobs* with 152 subfolders, most named for a customer, holds 716 of the rows on neither. They
+  are searchable, read *Not under a job*, and their path names the customer. Whether they should attach to something is the
+  owner's call.
+- **Not reached**: 15 jobs with only a pictures link, since `index_job` needs the folder link. Pictures read only by name until
+  OCR, so these wait.
 
-**Not reached yet**, and the check cannot see these, since they are outside the Shared Drive: the rest of two old bids where the
-worker hit the CPU limit three tries running (one holds 45 rows of its 227 files), and anything past three folders in a bid's
-folder out there. v2.6403 lists deeper, and the one retry takes both. Also 15 jobs with only a pictures link, since `index_job`
-needs the folder link; pictures read only by name until OCR, so these wait.
-
-**Proved live**: Find a file on clicktooling.com answered a ZZ test phrase *from our index* (2026-11-02, the RPC in about 130 ms). An
-upload through the app had its row and its words within three seconds of landing, with nobody pressing anything.
+**Proved live**: Find a file on clicktooling.com answered a ZZ test phrase *from our index* (2026-11-02, the RPC in about 130 ms).
+An upload through the app had its row and its words within three seconds of landing, with nobody pressing anything. Words from
+a file eleven folders deep in a plan export find it on its bid.
 
 ### New files from here on: the owner chose the sweep plus a reconcile step (2026-11-02)
 

@@ -1,8 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, googleAccessToken } from '../_shared/driveUpload.ts'
-import { filesChangedSince, indexContext, indexFiles, type IndexContext } from '../_shared/fileIndex.ts'
-import { type HeldFile, indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_RECHECK_ROWS, SWEEP_STAMP_KEY, sweepSince, sweepStamp } from '../_shared/fileIndexKernel.ts'
+import { filesChangedSince, indexContext, indexFiles, ocrPass, type IndexContext } from '../_shared/fileIndex.ts'
+import { indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_OCR_ROWS, SWEEP_RECHECK_ROWS, SWEEP_STAMP_KEY, sweepSince, sweepStamp, type HeldFile } from '../_shared/fileIndexKernel.ts'
 
 /**
  * file-index-sweep — Search every file deeply (punch list #240, PR 1, v2.6319): the cron that keeps our own text index
@@ -21,14 +21,19 @@ import { type HeldFile, indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_RECH
  *        listed file it handled (taken, or passed over as current), so the next run starts where this one stopped and a
  *        page of files the backfill already indexed never holds the stamp. A quiet drive costs one Drive list, the
  *        rechecks and no writes.
+ *     4. OCR (PR 3, v2.6336): once the secret GOOGLE_DOCAI_PROCESSOR names a Document AI OCR processor, `ocr` (5)
+ *        scans due for a read (never tried, or tried over a day ago; of a kind Document AI reads) go through it,
+ *        oldest try first, so the scans the backfill held catch up by themselves. Step 1 makes at most five OCR calls
+ *        of its own (OCR_PER_PASS_MAX, as every pass does), so a run spends at most ten, 1,440 a day.
  *
- *   → { success, since, listed, more, indexed, held: [{ id, name, why }], remaining, rechecked, dropped, stamp, line }
+ *   → { success, since, listed, more, indexed, held: [{ id, name, why }], remaining, rechecked, dropped, ocr: { set_up,
+ *     tried, read, refused, gone }, stamp, line }
  *
  * Refusals: 401 without the secret, 405 for anything but POST, 503 without the Drive secret, 409 `{ noRoot }` when
  * the jobs root is not set anywhere (nothing to list). Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET,
  * GOOGLE_SERVICE_ACCOUNT_JSON (the same service account as drive-link). verify_jwt is off; the secret is the door.
  *
- * Last, after the stamp and the rechecks, the reconcile step (v2.6417, `_shared/fileIndexReconcile.ts`): a file moved
+ * Last, after the stamp, the rechecks and the OCR scans, the reconcile step (v2.6417, `_shared/fileIndexReconcile.ts`): a file moved
  * into the drive keeps its old modified time, so step 1 never lists it. When step 1 left no files behind, the whole
  * drive is listed from the dawn (a dozen Drive lists at today's size), every row's id read, and the files with no row
  * indexed newest first, up to `limit`, whatever their date; answered as `reconcile` (counts only; null when skipped).
@@ -96,12 +101,13 @@ serve(async (req) => {
     const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
     if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 503)
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
-    const body = (await req.json().catch(() => ({}))) as { sweep?: { limit?: unknown; recheck?: unknown } }
+    const body = (await req.json().catch(() => ({}))) as { sweep?: { limit?: unknown; recheck?: unknown; ocr?: unknown } }
     const limit = Math.min(200, Math.max(1, Number(body.sweep?.limit) || SWEEP_MAX_FILES))
     const recheck = Math.min(100, Math.max(0, Number.isFinite(Number(body.sweep?.recheck)) && body.sweep?.recheck != null ? Number(body.sweep.recheck) : SWEEP_RECHECK_ROWS))
+    const ocrN = Math.min(50, Math.max(0, Number.isFinite(Number(body.sweep?.ocr)) && body.sweep?.ocr != null ? Number(body.sweep.ocr) : SWEEP_OCR_ROWS))
     const started = Date.now()
     const google = await googleAccessToken(saJson)
-    const ctx = await indexContext(admin, google)
+    const ctx = await indexContext(admin, google, saJson)
     if ('noRoot' in ctx) return json({ success: false, noRoot: true, line: 'The jobs root is not set yet, so there is nothing to index.' }, 409)
 
     const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', SWEEP_STAMP_KEY).maybeSingle()
@@ -113,6 +119,7 @@ serve(async (req) => {
     const next = sweepStamp(new Date(), pass.cursorModified, left)
     if (next) await admin.from('app_settings').upsert({ key: SWEEP_STAMP_KEY, value_text: next }, { onConflict: 'key' })
     const re = recheck > 0 ? await recheckRows(ctx, recheck) : { rechecked: 0, dropped: 0, changed: 0, held: [] as HeldFile[] }
+    const ocr = ctx.ocr && ocrN > 0 ? await ocrPass(ctx, ocrN, { startedMs: started }) : { tried: 0, read: 0, refused: [] as HeldFile[], gone: 0 }
     const answer = { indexed: pass.indexed + re.changed, held: [...pass.held, ...re.held], remaining: pass.remaining }
     let reconcile: ReconcileStep | null = null
     if (left <= 0) {
@@ -131,10 +138,11 @@ serve(async (req) => {
       ...answer,
       rechecked: re.rechecked,
       dropped: re.dropped,
+      ocr: { set_up: Boolean(ctx.ocr), ...ocr },
       stamp: next ?? stamp,
       reconcile,
       ms: Date.now() - started,
-      line: `${indexPassWords(answer)}${re.dropped ? ` Dropped ${re.dropped} gone.` : ''}`,
+      line: `${indexPassWords(answer)}${re.dropped ? ` Dropped ${re.dropped} gone.` : ''}${ocr.tried ? ` OCR read ${ocr.read} of ${ocr.tried} scans.` : ''}`,
     })
   } catch (e) {
     console.error('file-index-sweep failed', e)
