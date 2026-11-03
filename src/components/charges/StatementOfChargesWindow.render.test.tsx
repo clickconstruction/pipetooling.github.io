@@ -26,11 +26,14 @@ const printSpy = vi.fn((build: () => Promise<string>) => build().then(() => true
 vi.mock('../../lib/jobsDocuments/printWindow', () => ({ openHtmlWindowWhenReady: (build: () => Promise<string>) => printSpy(build) }))
 
 import StatementOfChargesWindow from './StatementOfChargesWindow'
+import type { JobChargesInput } from '../../lib/charges/jobCharges'
+import type { ChargeStatementSnapshot } from '../../lib/charges/statementOfCharges'
+import type { ChargeStatementRow } from '../../lib/charges/chargeStatementsIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
 // Every name, job and number here is made up.
 const CARD = { rates: { master_helper: 285, two_techs: 285, tech_alone: 185, helper_alone: 75 }, extraPerson: null, materialsMarkupPct: 25 }
-const INPUT = {
+const INPUT: JobChargesInput = {
   sessions: [
     { userId: 't', name: 'Tomas', standing: 'master', workDate: '2026-04-24', hours: 8, imported: true },
     { userId: 'z', name: 'Zed', standing: 'tech', workDate: '2026-04-24', hours: 7.66, imported: false },
@@ -96,8 +99,8 @@ describe('StatementOfChargesWindow', () => {
   })
 
   it('a saved statement opens frozen on its snapshot: the span and Save are off, Print still prints it', async () => {
-    const snapshot = { input: INPUT, period: { start: '2026-04-24', end: '2026-04-25' }, job: { number: '629', name: 'ROUGH IN', customer: 'A customer', site: '1 Field Rd' }, preparedBy: 'Dana Office', preparedOn: 'November 3, 2026', asOf: 'Nov 3, 10:00 AM', nameImportedDays: true }
-    const existing = { id: 'row-1', record_id: 'SC-629-0001', job_ledger_id: 'j1', period_start: '2026-04-24', period_end: '2026-04-25', snapshot, labor_usd: 4970, materials_usd: 1778.85, charges_usd: 6748.85, premium_usd: 3251.15, state: 'printed' as const, prepared_by: 'u-me', prepared_at: '2026-11-03T10:00:00Z', created_at: '2026-11-03T10:00:00Z', updated_at: '2026-11-03T10:00:00Z', prepared_by_user: { name: 'Dana Office' } }
+    const snapshot: ChargeStatementSnapshot = { input: INPUT, period: { start: '2026-04-24', end: '2026-04-25' }, job: { number: '629', name: 'ROUGH IN', customer: 'A customer', site: '1 Field Rd' }, preparedBy: 'Dana Office', preparedOn: 'November 3, 2026', asOf: 'Nov 3, 10:00 AM', nameImportedDays: true }
+    const existing: ChargeStatementRow = { id: 'row-1', record_id: 'SC-629-0001', job_ledger_id: 'j1', period_start: '2026-04-24', period_end: '2026-04-25', snapshot, labor_usd: 4970, materials_usd: 1778.85, charges_usd: 6748.85, premium_usd: 3251.15, state: 'printed' as const, prepared_by: 'u-me', prepared_at: '2026-11-03T10:00:00Z', created_at: '2026-11-03T10:00:00Z', updated_at: '2026-11-03T10:00:00Z', prepared_by_user: { name: 'Dana Office' } }
     renderWithProviders(<StatementOfChargesWindow job={job} existing={existing} preparedBy={preparedBy} onClose={() => {}} />)
     expect((screen.getByLabelText('From') as HTMLInputElement).disabled).toBe(true)
     expect((screen.getByTestId('soc-save') as HTMLButtonElement).disabled).toBe(true)

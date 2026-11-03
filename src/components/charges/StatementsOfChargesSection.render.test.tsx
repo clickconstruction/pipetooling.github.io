@@ -50,7 +50,7 @@ const row = (over: Partial<ChargeStatementRow>): ChargeStatementRow => ({
   job_ledger_id: 'j1',
   period_start: '2026-04-01',
   period_end: '2026-04-30',
-  snapshot: { input: { sessions: [], lines: [], card: { rates: {}, extraPerson: null, materialsMarkupPct: null }, rule: { kind: 'crew' }, markupPct: null, adjustments: [], revenue: null }, period: { start: '2026-04-01', end: '2026-04-30' }, job: { number: '629', name: 'ROUGH IN', customer: 'A customer', site: '1 Field Rd' }, preparedBy: 'Dana Office', preparedOn: 'November 3, 2026', asOf: 'Nov 3', nameImportedDays: true },
+  snapshot: { input: { sessions: [], lines: [], card: { rates: {}, extraPerson: null, materialsMarkupPct: null }, rule: { kind: 'crew' }, markupPct: null, adjustments: [], revenue: 0 }, period: { start: '2026-04-01', end: '2026-04-30' }, job: { number: '629', name: 'ROUGH IN', customer: 'A customer', site: '1 Field Rd' }, preparedBy: 'Dana Office', preparedOn: 'November 3, 2026', asOf: 'Nov 3', nameImportedDays: true },
   labor_usd: 4970,
   materials_usd: 1778.85,
   charges_usd: 6748.85,
