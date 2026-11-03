@@ -2,7 +2,7 @@
 name: "Search every file deeply: our own index, OCR and meaning, backfilled once by an agent"
 number: 240
 group: ready
-status: designed 2026-11-02 in the session that shipped Find a file (v2.6305) · PR 1 shipped v2.6319 (#6773, the index, the sweep and Find a file reading it first) · the backfill runner shipped v2.6343 and walked every job and bid the same day · the index check shipped v2.6364 and the fill it enabled gave every file the Shared Drive lists a row (4,209 rows, counts in Where it stands) · v2.6403 lets a deep file reach its home · left: the rehome pass and the one retry, PR 2 to PR 4, the reconcile step the owner chose for new files
+status: designed 2026-11-02 in the session that shipped Find a file (v2.6305) · PR 1 shipped v2.6319 (#6773, the index, the sweep and Find a file reading it first) · the backfill runner shipped v2.6343 and walked every job and bid the same day · the index check shipped v2.6364 and the fill it enabled gave every file the Shared Drive lists a row (4,209 rows, counts in Where it stands) · v2.6403 lets a deep file reach its home · v2.6417 makes the sweep reconcile, so a file moved in is indexed whatever date it carries · left: the rehome pass and the one retry, PR 3 and PR 4
 summary: >
   Find a file (Documents → Search, v2.6305) asks Drive's own full-text index and lands each hit on its job; PR #6752
   adds the line around the words. That finds a file by words Google has indexed, and nothing more. The owner wants
@@ -10,7 +10,7 @@ summary: >
   Postgres (one row per Drive file, full-text ranked), fed by the sweep as files land and filled once by a backfill,
   our own OCR for scanned paper, and embeddings so a search by meaning finds the letter that never used the word.
   The backfill is to be run one time by a Claude agent session after the features land, not by a cron.
-next: once v2.6403 is deployed, `npx vite-node scripts/file-index-check.ts --rehome`; once PR 2's budgeted read is deployed and tested on the ZZ plan sets, the runner's one pass with `--retry` over the `reading`, `slow` and `big` rows and the bids' deeper folders; the reconcile step in another session (the owner has the prompt); then these counts again.
+next: once v2.6403 is deployed, `npx vite-node scripts/file-index-check.ts --rehome`; once PR 2's budgeted read is deployed and tested on the ZZ plan sets, the runner's one pass with `--retry` over the `reading`, `slow` and `big` rows and the bids' deeper folders; then these counts again, and the owner's drag-in proof of the reconcile step (v2.6417).
 size: L
 blocker: PRs 3 and 4 wait on two owner decisions (the OCR provider, the embeddings provider and its key). The one retry waits on PR 2's deploy. New files in a bid's folder outside the Shared Drive wait on decision 4. Nothing here waits on a dev-mcp key: the seat answers again since 2026-11-02.
 opinion: build — the owner asked for it twice and chose the shape; Drive's index is kept as the floor, so every PR here adds reach without taking anything away
@@ -301,7 +301,7 @@ upload through the app had its row and its words within three seconds of landing
 
 ### New files from here on: the owner chose the sweep plus a reconcile step (2026-11-02)
 
-Not built as this is written; the owner has a prompt for another session. Until it lands, this is what catches what:
+**Built as v2.6417** (2026-11-02, `_shared/fileIndexReconcile.ts`, the sweep's last step; `docs/recent-features/v2.6417.md`). What catches what:
 
 - **What the sweep sees.** It lists by Drive's modified time. An upload through the app gets a fresh one (92 of 92 filed photos, within the
   hour), and each of the 4 files changed since the sweep began had its row within nine minutes. A deleted file loses its row within about a
@@ -310,8 +310,11 @@ Not built as this is written; the owner has a prompt for another session. Until 
   existed (2026-11-01). Forum reports say a file dragged in from a computer keeps its date too; nothing official says so and it is
   untested here, so the reconcile step's last proof settles it. This card used to say a file dropped in by hand is found within minutes.
   That holds only for a file with a fresh date.
-- **The reconcile step**: each run also compares the Shared Drive's listing with the rows and takes any file with no row, whatever its
-  date. About a dozen extra Drive lists a run at today's size, and `scripts/file-index-check.ts` already does the comparison by hand.
+- **The reconcile step** (v2.6417): each run, once its stamped pass left nothing behind, also lists the whole Shared Drive against every
+  row's id and takes the files with no row, newest first, forty a run, whatever their date, as the run's last step in its own catch, so
+  a heavy file there costs neither the stamp nor the rechecks, and its old dates never move the stamp. About a dozen extra Drive lists
+  a run at today's size; one log line a run, counts only, read through the management API's `function_logs`. The proof the owner
+  gives (a file dragged in from a computer under the ZZ Test job) settles whether a drag keeps its old date; the step takes it either way.
 - **Weighed and not chosen**: Drive's change feed (`changes.list` with a page token), which also shows a delete at once but is untested on
   a file moved in; and indexing when the app files something itself, which misses every file put in by hand.
 - **Neither covers a bid's folder outside the Shared Drive**: 1,861 rows sit there. They are searchable, which Drive's own search in the

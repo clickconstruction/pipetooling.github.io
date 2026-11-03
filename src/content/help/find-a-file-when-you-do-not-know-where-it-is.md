@@ -40,7 +40,7 @@ Our own index answers first. The index holds the words inside every file the app
 
 Drive's own search runs behind our index every time. The index's hits show first, usually within a second. Drive's finds that the index did not name follow a moment later. When the index has nothing, Drive's finds are the whole list and the count line says *from Drive*. Drive reads the words inside PDFs and the scans it has read.
 
-To put a job's files in the index, open the job window and press **Documents**. Under **In the folders**, press **Index this job's files**. The press reads the files in rounds and says how many are left. A file it could not read is listed with the reason. New files are read on their own every ten minutes after that.
+To put a job's files in the index, open the job window and press **Documents**. Under **In the folders**, press **Index this job's files**. The press reads the files in rounds and says how many are left. A file it could not read is listed with the reason. New files are read on their own every ten minutes after that. A file moved in from another folder is read too, whatever date it carries.
 
 ## When nothing comes back
 

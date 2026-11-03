@@ -15,7 +15,9 @@ import {
   fillContinues,
   fillWords,
   FILL_ROUNDS_MAX,
+  filesWithNoRow,
   reconcile,
+  reconcileStepWords,
   rehomeWords,
   type CheckFile,
   type CheckRow,
@@ -54,6 +56,36 @@ describe('reconcile', () => {
     expect(c.missing[0]!.modified! >= c.missing[1]!.modified!).toBe(true)
     expect(reconcile(files, rows, false, 5).missing).toHaveLength(5)
     expect(reconcile(files, rows, false, 0).missing).toHaveLength(0)
+  })
+})
+
+describe('files with no row', () => {
+  it('keeps the whole file it was given, newest first, a file listed twice once, and one with no date last', () => {
+    const listed = [
+      { id: 'old', name: 'old.pdf', mimeType: 'application/pdf', modifiedTime: '2025-03-01T00:00:00.000Z', parents: ['p1'], size: '10' },
+      { id: 'has-row', name: 'row.pdf', mimeType: 'application/pdf', modifiedTime: '2026-11-02T00:00:00.000Z', parents: ['p1'], size: '20' },
+      { id: 'new', name: 'new.pdf', mimeType: 'application/pdf', modifiedTime: '2026-11-01T00:00:00.000Z', parents: ['p2'], size: '30' },
+      { id: 'undated', name: 'undated.pdf', mimeType: 'application/pdf', modifiedTime: null, parents: ['p2'], size: '40' },
+      { id: 'new', name: 'new.pdf', mimeType: 'application/pdf', modifiedTime: '2026-11-01T00:00:00.000Z', parents: ['p2'], size: '30' },
+    ]
+    const out = filesWithNoRow(listed, new Set(['has-row']))
+    expect(out.map((f) => f.id)).toEqual(['new', 'old', 'undated'])
+    expect(out[0]).toEqual(listed[2])
+    expect(filesWithNoRow(listed, new Map([['has-row', 1]])).map((f) => f.id)).toEqual(['new', 'old', 'undated'])
+  })
+  it('is empty when every file has a row, and reconcile reads through it', () => {
+    expect(filesWithNoRow([file('a')], new Set(['a']))).toEqual([])
+    const files = [file('a'), file('b', '2026-11-02T09:00:00.000Z'), file('c', '2026-10-30T09:00:00.000Z')]
+    const c = reconcile(files, [row('a')], false)
+    expect(c.filesWithNoRow).toBe(filesWithNoRow(files, new Set(['a'])).length)
+    expect(c.missing.map((m) => m.id)).toEqual(['b', 'c'])
+  })
+})
+
+describe('the reconcile step’s words', () => {
+  it('say the counts only, mark a capped listing, and never name a file', () => {
+    expect(reconcileStepWords({ filesInDrive: 2348, capped: false, rows: 4209, noRow: 3, taken: 3, indexed: 3, held: 1, ms: 4312 })).toBe('file-index-sweep reconcile: 2,348 files in Drive, 4,209 rows, 3 with no row, 3 taken, 3 indexed, 1 held, 4,312 ms.')
+    expect(reconcileStepWords({ filesInDrive: 10000, capped: true, rows: 0, noRow: 10000, taken: 40, indexed: 39, held: 0, ms: 9 })).toBe('file-index-sweep reconcile: 10,000 files in Drive (capped), 0 rows, 10,000 with no row, 40 taken, 39 indexed, 0 held, 9 ms.')
   })
 })
 

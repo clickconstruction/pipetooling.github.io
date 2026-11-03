@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, googleAccessToken } from '../_shared/driveUpload.ts'
 import { filesChangedSince, indexContext, indexFiles, type IndexContext } from '../_shared/fileIndex.ts'
 import { type HeldFile, indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_RECHECK_ROWS, SWEEP_STAMP_KEY, sweepSince, sweepStamp } from '../_shared/fileIndexKernel.ts'
+import { reconcileStepWords, type ReconcileStep } from '../_shared/fileIndexCheckKernel.ts'
+import { reconcileSweep } from '../_shared/fileIndexReconcile.ts'
 
 /**
  * file-index-sweep — Search every file deeply (punch list #240, PR 1, v2.6319): the cron that keeps our own text index
@@ -27,6 +29,14 @@ import { type HeldFile, indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_RECH
  * Refusals: 401 without the secret, 405 for anything but POST, 503 without the Drive secret, 409 `{ noRoot }` when
  * the jobs root is not set anywhere (nothing to list). Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET,
  * GOOGLE_SERVICE_ACCOUNT_JSON (the same service account as drive-link). verify_jwt is off; the secret is the door.
+ *
+ * Last, after the stamp and the rechecks, the reconcile step (v2.6417, `_shared/fileIndexReconcile.ts`): a file moved
+ * into the drive keeps its old modified time, so step 1 never lists it. When step 1 left no files behind, the whole
+ * drive is listed from the dawn (a dozen Drive lists at today's size), every row's id read, and the files with no row
+ * indexed newest first, up to `limit`, whatever their date; answered as `reconcile` (counts only; null when skipped).
+ * In its own catch, so a heavy PDF that stops the worker or a Drive error costs neither the stamp nor the rechecks,
+ * and its result never reaches the stamp, since those old dates would move it backwards. One log line a run, counts
+ * only, read through the management API's function logs (the cron gives up at five seconds and keeps no answer).
  */
 
 const corsHeaders = {
@@ -103,6 +113,15 @@ serve(async (req) => {
     if (next) await admin.from('app_settings').upsert({ key: SWEEP_STAMP_KEY, value_text: next }, { onConflict: 'key' })
     const re = recheck > 0 ? await recheckRows(ctx, recheck) : { rechecked: 0, dropped: 0, changed: 0, held: [] as HeldFile[] }
     const answer = { indexed: pass.indexed + re.changed, held: [...pass.held, ...re.held], remaining: pass.remaining }
+    let reconcile: ReconcileStep | null = null
+    if (left <= 0) {
+      try {
+        reconcile = await reconcileSweep(ctx, { max: limit })
+        console.log(reconcileStepWords(reconcile))
+      } catch (e) {
+        console.warn('file-index-sweep reconcile failed', e)
+      }
+    }
     return json({
       success: true,
       since,
@@ -112,6 +131,7 @@ serve(async (req) => {
       rechecked: re.rechecked,
       dropped: re.dropped,
       stamp: next ?? stamp,
+      reconcile,
       ms: Date.now() - started,
       line: `${indexPassWords(answer)}${re.dropped ? ` Dropped ${re.dropped} gone.` : ''}`,
     })
