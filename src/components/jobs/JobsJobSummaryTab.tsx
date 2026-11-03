@@ -964,7 +964,7 @@ export default function JobsJobSummaryTab({
                             <td
                               data-testid="job-summary-premium-cell"
                               style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', color: showTeamLaborAndProfit && enriched.premiumUsd != null && enriched.premiumUsd < 0 ? 'var(--text-red-700)' : undefined }}
-                              title={showTeamLaborAndProfit && enriched.premiumUsd != null ? (enriched.premiumUsd < 0 ? 'A shortfall: the contract price sits below the charges.' : enriched.premiumUsd > 0 ? 'A premium: the contract price sits above the charges.' : 'The price and the charges are even.') : undefined}
+                              title={!showTeamLaborAndProfit ? undefined : enriched.premiumUsd != null ? (enriched.premiumUsd < 0 ? 'A shortfall: the contract price sits below the charges.' : enriched.premiumUsd > 0 ? 'A premium: the contract price sits above the charges.' : 'The price and the charges are even.') : enriched.chargesUsd != null ? 'The premium waits until every day on the job prices.' : undefined}
                             >
                               {!showTeamLaborAndProfit || enriched.premiumUsd == null ? '—' : <SignedAmountSmallCents value={enriched.premiumUsd} />}
                               {showTeamLaborAndProfit && enriched.premiumUsd != null && enriched.premiumUsd < 0 ? <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 600 }}>shortfall</span> : null}

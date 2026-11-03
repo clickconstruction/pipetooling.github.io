@@ -119,4 +119,12 @@ describe('who counts as nobody (punch list #254, the live pass)', () => {
     expect(unchargedWords([{ name: 'A' }, { name: 'B' }, { name: 'C' }, { name: 'D' }, { name: 'E' }])).toBe('A, B, C and 2 more count as nobody on the rate card yet.')
     expect(unchargedWords([])).toBeNull()
   })
+
+  it('words a span by what prices: none yet, some not yet, or all, never 0 crew-hours beside the person-hours', async () => {
+    const { crewSpanWords } = await import('./crewDays')
+    expect(crewSpanWords({ days: 40, unpricedDays: 40, crewHours: 0, personHours: 1312.5 })).toBe('40 crew-days in this span, none priced yet, from 1,312.5 person-hours')
+    expect(crewSpanWords({ days: 5, unpricedDays: 2, crewHours: 24, personHours: 40.5 })).toBe('5 crew-days in this span, 2 not priced yet, 24 crew-hours from 40.5 person-hours')
+    expect(crewSpanWords({ days: 1, unpricedDays: 0, crewHours: 8, personHours: 16 })).toBe('1 crew-day in this span, 8 crew-hours from 16 person-hours')
+    expect(crewSpanWords({ days: 0, unpricedDays: 0, crewHours: 0, personHours: 0 })).toBe('0 crew-days in this span')
+  })
 })

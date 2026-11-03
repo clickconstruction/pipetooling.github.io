@@ -11,7 +11,7 @@ import type { CrewSessionInput } from './crewDays'
 import type { MaterialLineInput } from './materialsCharged'
 import { jobChargeRuleWords } from './crewDays'
 import { crewRateWords, crewRateFor } from './rateCard'
-import { PREMIUM_CARRIES } from './premium'
+import { PREMIUM_CARRIES, premiumWaitsWords } from './premium'
 import { moneyWords } from './moneyParts'
 import { chargeAdjustmentWords } from './adjustments'
 import type { SentFiling } from '../sent/sentCopies'
@@ -183,10 +183,12 @@ export function buildChargeStatementHtml(ctx: ChargeStatementHtmlContext): strin
   const matEmpty = charges.materials.lines.length === 0 ? `<tr><td colspan="${office ? 4 : 2}"><i>No material line on this job in the period.</i></td></tr>` : ''
 
   const adjustments = (snapshot.input.adjustments ?? []).map((a) => chargeAdjustmentWords(a, (d) => shortDate(d), (id) => snapshot.input.lines.find((l) => l.id === id)?.label ?? id))
+  // The premium waits while any day prices at nothing (the live pass): the charges are short by those days.
+  const premiumWaits = charges.totals.unpricedDays > 0
   const officeBox = office
     ? `<div class="gap"><b>Office only · never on the customer copy</b>
     <div class="pay"><b>Price on the bills</b><div>${m(charges.premium.price)}</div>
-    <b>${charges.premium.kind === 'premium' ? 'Premium' : charges.premium.kind === 'shortfall' ? 'Shortfall' : 'Even'}</b><div>${charges.premium.kind === 'even' ? 'The price and the charges are even.' : `${m(charges.premium.amount)} · ${esc(charges.premium.sentence)}`}</div>
+    <b>${premiumWaits || charges.premium.kind === 'premium' ? 'Premium' : charges.premium.kind === 'shortfall' ? 'Shortfall' : 'Even'}</b><div>${premiumWaits ? esc(premiumWaitsWords(charges.totals.unpricedDays)) : charges.premium.kind === 'even' ? 'The price and the charges are even.' : `${m(charges.premium.amount)} · ${esc(charges.premium.sentence)}`}</div>
     <b>Materials</b><div>cost ${m(charges.materials.totals.cost)} · margin ${m(charges.materials.totals.markup)}${charges.materials.markupPct != null ? ` (${Math.round((charges.materials.markupPct / (100 + charges.materials.markupPct)) * 1000) / 10}% of the sale)` : ''}</div>
     <b>Labor behind it</b><div>${h2(charges.totals.personHours)} person-hours across ${charges.totals.days} crew-days; labor cost at wages is on each person’s hours statement</div>
     ${adjustments.length ? `<b>Adjustments</b><div>${adjustments.map(esc).join('<br>')}</div>` : '<b>Adjustments</b><div>none; every line is the record</div>'}</div>

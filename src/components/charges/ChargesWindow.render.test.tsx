@@ -125,6 +125,8 @@ describe('ChargesWindow', () => {
     await waitFor(() => expect(screen.getByTestId('uncharged-callout')).toBeTruthy())
     const callout = screen.getByTestId('uncharged-callout')
     expect(callout.textContent).toContain('Toby and Jordan count as nobody on the rate card yet. 2 days price at nothing until someone out counts as a master, a tech or a helper.')
+    // The premium waits: charges short by two whole days would show a premium that is not there.
+    expect(screen.getByTestId('tile-premium').textContent).toBe('Against the revenueNot yetThe premium waits until every day prices: 2 days price at nothing.')
     expect(screen.getByTestId('uncharged-who-counts').getAttribute('href')).toBe('/settings?tab=settings-jobs#who-counts-as-what')
     expect(screen.getByRole('link', { name: 'Toby’s desk · 2 days' }).getAttribute('href')).toBe('/people?tab=person&id=u%3Au-t')
     expect(screen.getByRole('link', { name: 'Jordan’s desk · 1 day' })).toBeTruthy()

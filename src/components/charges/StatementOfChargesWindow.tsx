@@ -9,7 +9,7 @@ import { loadJobCharges, type JobChargesReadResult } from '../../lib/charges/job
 import { buildChargeStatementHtml, chargeStatementWords, cutJobChargesToPeriod, jobChargesSpan, statementOfChargesFiling, type ChargeStatementSnapshot } from '../../lib/charges/statementOfCharges'
 import { fileSentCopy } from '../../lib/sent/sentCopiesIo'
 import { saveChargeStatement, type ChargeStatementRow } from '../../lib/charges/chargeStatementsIo'
-import { jobChargeRuleWords } from '../../lib/charges/crewDays'
+import { crewSpanWords, jobChargeRuleWords } from '../../lib/charges/crewDays'
 import { Money } from './Money'
 import { UnchargedCallout } from './UnchargedCallout'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -114,7 +114,8 @@ export default function StatementOfChargesWindow({ job, existing, preparedBy, on
       jobId: job.id,
       jobNumber: job.number,
       snapshot,
-      figures: { laborUsd: charges.totals.labor, materialsUsd: charges.totals.materials, chargesUsd: charges.totals.charges, premiumUsd: charges.premium.signed },
+      // The premium waits while any day prices at nothing: the charges are short by those days.
+      figures: { laborUsd: charges.totals.labor, materialsUsd: charges.totals.materials, chargesUsd: charges.totals.charges, premiumUsd: charges.totals.unpricedDays > 0 ? null : charges.premium.signed },
       state,
       preparedBy: preparedBy.userId,
     })
@@ -218,7 +219,7 @@ export default function StatementOfChargesWindow({ job, existing, preparedBy, on
             {charges ? (
               <div data-testid="soc-span" style={{ display: 'grid', gap: '0.2rem' }}>
                 <p style={quiet}>
-                  {charges.totals.days} crew-days in this span, {charges.totals.crewHours.toLocaleString('en-US', { maximumFractionDigits: 2 })} crew-hours from {charges.totals.personHours.toLocaleString('en-US', { maximumFractionDigits: 2 })} person-hours; {charges.materials.totals.lines} material {charges.materials.totals.lines === 1 ? 'line' : 'lines'}, cost <Money amount={charges.materials.totals.cost} />.
+                  {crewSpanWords(charges.totals)}; {charges.materials.totals.lines} material {charges.materials.totals.lines === 1 ? 'line' : 'lines'}, cost <Money amount={charges.materials.totals.cost} />.
                 </p>
                 {frozen ? null : <UnchargedCallout people={charges.uncharged} unpricedDays={charges.totals.unpricedDays} onNavigate={onClose} margin="0.2rem 0" />}
                 {charges.notes.map((n) => (
@@ -228,7 +229,7 @@ export default function StatementOfChargesWindow({ job, existing, preparedBy, on
                 ))}
                 <p style={quiet}>
                   Charged into this job <Money amount={charges.totals.charges} data-testid="soc-charged" style={{ color: 'var(--text-strong)', fontWeight: 700 }} />
-                  {officeCopy ? <> · {charges.premium.words}</> : null}
+                  {officeCopy ? <> · {charges.totals.unpricedDays > 0 ? 'the premium waits until every day prices' : charges.premium.words}</> : null}
                 </p>
               </div>
             ) : reading ? (

@@ -38,5 +38,13 @@ export function premiumOf(price: number, charges: number): Premium {
   return { kind, amount, signed, price: p, charges: c, words, sentence }
 }
 
+/**
+ * The premium waits while any day prices at nothing (punch list #254, the live pass): the charges are short by those
+ * days, so a premium read against them would be wrong, not rough. Office words, like the premium itself.
+ */
+export function premiumWaitsWords(unpricedDays: number): string {
+  return `The premium waits until every day prices: ${unpricedDays} ${unpricedDays === 1 ? 'day prices' : 'days price'} at nothing.`
+}
+
 /** What the gap carries, for the office copy's one sentence under it. */
 export const PREMIUM_CARRIES = 'A fixed price carries the risk of the work running long, the supervision, the equipment and the warranty.'

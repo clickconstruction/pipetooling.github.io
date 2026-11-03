@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ledgerChargesFor, standingLookup } from './ledgerCharges'
+import { ledgerChargesFor, ledgerSummaryCell, loginLookup, standingLookup } from './ledgerCharges'
 import { chargeAdjustmentFromRow } from './adjustments'
 import type { RateCard } from './rateCard'
 
@@ -81,5 +81,50 @@ describe('a row whose crew counts as nobody (punch list #254, the live pass)', (
     expect(r.priced).toBe(false)
     expect(r.uncharged).toEqual(['Toby'])
     expect(r.note).toBe('Toby counts as nobody on the rate card yet. Set Charged as in Settings → Rates charged by crew → Who counts as what, or on each person’s desk.')
+    // Nothing priced: both cells are a dash.
+    expect(ledgerSummaryCell(r)).toEqual({ chargesUsd: null, premiumUsd: null, note: r.note })
+  })
+
+  it('reaches a standing through the People record’s link when the two names differ, and names someone with no login apart', () => {
+    // The crew rows name people by their People record: "Zed W" is linked to the login "Zedd", and "Ana Q" has no login.
+    const users = [{ id: 'u-z', name: 'Zedd', charge_standing: 'tech' }]
+    const links = new Map([['p-z', 'u-z']])
+    const r = ledgerChargesFor({
+      breakdown: [
+        { personName: 'Zed W', personId: 'p-z', byWorkDate: [{ workDate: '2026-03-02', hours: 8 }] },
+        { personName: 'Ana Q', personId: 'p-a', byWorkDate: [{ workDate: '2026-03-03', hours: 6 }] },
+      ],
+      standingOf: standingLookup(users, key, links),
+      hasLogin: loginLookup(users, key, links),
+      invoicesFromSupplyHouses: 1000,
+      partsFromTally: 0,
+      billedMaterialsSum: 0,
+      card: OWNER,
+      job: {},
+      contractUsd: 5000,
+    })
+    // Zed W prices as a tech alone through the link; Ana Q's day prices at nothing and the premium waits for it.
+    expect(r.laborUsd).toBe(1480)
+    expect(r.unpricedDays).toBe(1)
+    expect(r.note).toBe('Ana has no login for a Charged as. Link the People record to a login on People.')
+    expect(ledgerSummaryCell(r)).toEqual({ chargesUsd: r.chargesUsd, premiumUsd: null, note: r.note })
+    expect(loginLookup(users, key, links)('Zed W', 'p-z')).toBe(true)
+    expect(loginLookup(users, key, links)('zedd', null)).toBe(true)
+    expect(loginLookup(users, key, links)('Ana Q', 'p-a')).toBe(false)
+  })
+
+  it('shows the premium once every day prices', () => {
+    const r = ledgerChargesFor({
+      breakdown: [{ personName: 'Toby W', personId: 'p-t', byWorkDate: [{ workDate: '2026-03-02', hours: 8 }] }],
+      standingOf,
+      invoicesFromSupplyHouses: 0,
+      partsFromTally: 0,
+      billedMaterialsSum: 0,
+      card: OWNER,
+      job: { charge_rule: 'shape', charge_shape: 'master_helper' },
+      contractUsd: 5000,
+    })
+    expect(r.unpricedDays).toBe(0)
+    expect(ledgerSummaryCell(r)).toEqual({ chargesUsd: 2280, premiumUsd: 2720, note: null })
   })
 })

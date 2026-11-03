@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { premiumOf } from './premium'
+import { premiumOf, premiumWaitsWords } from './premium'
 import { adjustMaterialLines, chargeAdjustmentFromRow, chargeAdjustmentWords, indexAdjustments, saveAdjustmentsLabel } from './adjustments'
 import type { MaterialLineInput } from './materialsCharged'
 
@@ -10,12 +10,17 @@ describe('premium and shortfall (punch list #254)', () => {
     expect(premiumOf(100, 100)).toMatchObject({ kind: 'even', amount: 0, words: 'even' })
     expect(premiumOf(Number.NaN, 5)).toMatchObject({ kind: 'shortfall', amount: 5 })
   })
+
+  it('waits while any day prices at nothing, since the charges are short by those days', () => {
+    expect(premiumWaitsWords(1)).toBe('The premium waits until every day prices: 1 day prices at nothing.')
+    expect(premiumWaitsWords(40)).toBe('The premium waits until every day prices: 40 days price at nothing.')
+  })
 })
 
 describe('adjustments on a job’s charges', () => {
   const rows = [
     { id: 'a1', job_id: 'j', kind: 'day_shape', target: '2026-04-25', shape: 'tech_alone', reason: 'Zed was alone on the Saturday', made_by_user: { name: 'Dana' }, created_at: '2026-11-03T08:00:00Z' },
-    { id: 'a2', job_id: 'j', kind: 'day_shape', target: '2026-04-25', shape: 'helper_alone', reason: 'second thoughts', made_by_user: { name: 'Taunya' }, created_at: '2026-11-03T09:00:00Z' },
+    { id: 'a2', job_id: 'j', kind: 'day_shape', target: '2026-04-25', shape: 'helper_alone', reason: 'second thoughts', made_by_user: { name: 'Casey' }, created_at: '2026-11-03T09:00:00Z' },
     { id: 'a3', job_id: 'j', kind: 'line_pass_through', target: 'inv-1', shape: null, reason: 'a rental', made_by_name: 'Dana', created_at: '2026-11-03T08:30:00Z' },
     { id: 'a4', job_id: 'j', kind: 'line_off', target: 'inv-2', reason: '', created_at: '2026-11-03T08:40:00Z' },
     { id: 'a5', job_id: 'j', kind: 'day_off', target: '2026-04-26', reason: 'not this job', created_at: '2026-11-03T08:50:00Z' },
@@ -27,7 +32,7 @@ describe('adjustments on a job’s charges', () => {
     const read = rows.map(chargeAdjustmentFromRow).filter((a): a is NonNullable<typeof a> => a != null)
     expect(read.map((a) => a.id)).toEqual(['a1', 'a2', 'a3', 'a4', 'a5'])
     const applied = indexAdjustments(read)
-    expect(applied.dayShape.get('2026-04-25')).toEqual({ shape: 'helper_alone', reason: 'second thoughts', madeByName: 'Taunya' })
+    expect(applied.dayShape.get('2026-04-25')).toEqual({ shape: 'helper_alone', reason: 'second thoughts', madeByName: 'Casey' })
     expect([...applied.dayOff]).toEqual(['2026-04-26'])
     expect([...applied.linePassThrough]).toEqual(['inv-1'])
     expect([...applied.lineOff]).toEqual(['inv-2'])

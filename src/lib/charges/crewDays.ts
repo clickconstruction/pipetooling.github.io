@@ -270,5 +270,19 @@ export function unchargedWords(people: ReadonlyArray<{ name: string }>): string 
   return `${list} ${names.length === 1 ? 'counts' : 'count'} as nobody on the rate card yet.`
 }
 
+/**
+ * What a span holds, for the Statement of charges window (punch list #254, the live pass): the crew-days, how many price
+ * at nothing yet, and the crew-hours from the person-hours. A day nobody out counts for has no crew-hours, so a span where
+ * no day prices says *none priced yet* in place of *0 crew-hours*, which read as a fault beside the person-hours.
+ */
+export function crewSpanWords(t: { days: number; unpricedDays: number; crewHours: number; personHours: number }): string {
+  const n = (x: number) => x.toLocaleString('en-US', { maximumFractionDigits: 2 })
+  const days = `${t.days} ${t.days === 1 ? 'crew-day' : 'crew-days'} in this span`
+  if (t.days === 0) return days
+  if (t.unpricedDays >= t.days) return `${days}, none priced yet, from ${n(t.personHours)} person-hours`
+  const unpriced = t.unpricedDays > 0 ? `, ${t.unpricedDays} not priced yet` : ''
+  return `${days}${unpriced}, ${n(t.crewHours)} crew-hours from ${n(t.personHours)} person-hours`
+}
+
 /** Where the office sets it, in words: one place for everyone, or each person's desk. */
 export const UNCHARGED_FIX_WORDS = 'Set Charged as in Settings → Rates charged by crew → Who counts as what, or on each person’s desk.'

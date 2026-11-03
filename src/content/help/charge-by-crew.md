@@ -35,7 +35,7 @@ Pick one and it saves at once. A person with nothing picked counts as not charge
 
 To set everyone at once, open **Settings**, then **Jobs & billing**, then **Rates charged by crew**. Under the rates, **Who counts as what** lists every person with the same four choices. A pick saves at once. People who left sit at the foot, because their past days still price by it.
 
-A day prices at nothing until someone out counts as a master, a tech or a helper. When that happens, the Charges window names who counts as nobody. It links to each desk and to the list.
+A day prices at nothing until someone out counts as a master, a tech or a helper. When that happens, the Charges window names who counts as nobody. It links to each desk and to the list. The Statement of charges window and the charged hours paper's window name them too.
 
 ## Set the rates
 
@@ -81,7 +81,7 @@ Open the job window and go to **Edit**. The last row reads **Charging the custom
 
 ## See what a job is charged at
 
-Open **Jobs** and go to **Job Summary**. Two columns sit at the right of the table. **Charges** is the job's crew days at the rate card plus its materials at the markup. **Premium** is how far the contract price stands above the charges. A shortfall reads red. A chip over the table names the rate card and markup in force.
+Open **Jobs** and go to **Job Summary**. Two columns sit at the right of the table. **Charges** is the job's crew days at the rate card plus its materials at the markup. **Premium** is how far the contract price stands above the charges. A shortfall reads red. The premium waits until every day on the job prices, so a dash can mean days still price at nothing. A chip over the table names the rate card and markup in force.
 
 ## Adjust a job's charges
 
