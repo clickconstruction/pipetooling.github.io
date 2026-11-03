@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import DevelopmentHouseIcon from '../components/icons/DevelopmentHouseIcon'
 import { DevelopmentFeed } from '../components/developments/DevelopmentFeed'
+import { HistoryLegendPress } from '../components/developments/HistoryLegendWindow'
 import { DevelopmentJumpStrip, DEVELOPMENT_JUMP_ANCHOR, DEVELOPMENT_PHONE_QUERY, type DevelopmentJumpKey, type DevelopmentLook } from '../components/developments/DevelopmentJumpStrip'
 import { DevelopmentPieces } from '../components/developments/DevelopmentPieces'
 import type { PairingProps } from '../components/developments/DevelopmentPairCells'
@@ -1008,6 +1009,8 @@ export default function DevelopmentPage() {
           }
           right={
             <>
+              {/* What the marks mean (the owner, 2026-11-02): the ? opens the legend of every glyph the lines wear. */}
+              <HistoryLegendPress />
               {/* The search (the owner, 2026-10-28): people, jobs or bids, across every line, new and old, the kept lines too. */}
               {feed.length > 0 ? (
                 <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
@@ -1068,11 +1071,11 @@ export default function DevelopmentPage() {
                       <strong style={{ color: 'var(--text-strong)', flex: 'none' }}>{n.label}</strong>
                       <span style={{ color: 'var(--text-faint)' }}>·</span>
                       {n.about.id && n.about.kind !== 'customer' ? (
-                        <LinkButton onClick={() => openAbout(n.about)} nowrap>
+                        <LinkButton onClick={() => openAbout(n.about)} nowrap={!phone}>
                           {n.about.label}
                         </LinkButton>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{n.about.label}</span>
+                        <span style={{ color: 'var(--text-muted)', whiteSpace: phone ? 'normal' : 'nowrap' }}>{n.about.label}</span>
                       )}
                       <span style={{ color: 'var(--text-muted)', minWidth: 0 }}>· {n.text}</span>
                     </div>

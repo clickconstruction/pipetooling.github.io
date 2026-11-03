@@ -499,3 +499,71 @@ describe('the last worked day of a job with no hours (v2.4472)', () => {
     expect([winter!.lastWorkedYmd, summer!.lastWorkedYmd, noon!.lastWorkedYmd]).toEqual(['2026-01-15', '2026-10-02', '2026-01-16'])
   })
 })
+
+describe('a billed job under 100 % earns by its % (v2.6388, J804)', () => {
+  // J804's shape, read from prod on 2026-11-02: $32,600 contract, status billed, two paid draws
+  // ($11,736 × 2) and two billed ($6,520 · $2,608) — billed to the contract, not paid in full, so the
+  // paid-invoices branch stays shut; the Oct 30 crew report says 40 %; 139.7 approved hours, all in
+  // the window; labor $3,122.12 · subs $5,600 · parts $11,235; no usable budget (assumed, target off).
+  const ledger804 = buildJobDayLedger({
+    startYmd: '2026-09-01',
+    endYmd: '2026-09-03',
+    officeJobLedgerId: 'office',
+    fieldDetailByDay: new Map([
+      ['2026-09-01', [line('2026-09-01', 'j804', 'Tristen', 60)]],
+      ['2026-09-02', [line('2026-09-02', 'j804', 'Tristen', 50)]],
+      ['2026-09-03', [line('2026-09-03', 'j804', 'Paige', 29.7)]],
+    ]),
+    poolUsdByDay: new Map([['2026-09-01', 0], ['2026-09-02', 0], ['2026-09-03', 0]]),
+    priorHoursByJob: new Map(),
+    pendingFieldSessions: 0,
+    pendingFieldHours: 0,
+    invoicedRevenueUsd: 0,
+    addDays: ymdAddDays,
+  })
+  const invoices = [
+    { status: 'paid', amount: 11_736 },
+    { status: 'paid', amount: 11_736 },
+    { status: 'billed', amount: 6_520 },
+    { status: 'billed', amount: 2_608 },
+  ]
+  const r804 = row('j804', '804', { totalBill: 32_600, teamLaborCost: 3_122.12, subLaborCost: 5_600, partsCost: 11_235, job: { status: 'billed', pct_complete: 40, invoices } })
+  const [j804] = enrichJobSummaryRows({ rows: [r804], reportPctByJobId: new Map([['j804', 40]]), ledger: ledger804, method: 'day' })
+
+  it('is not finished: billed to the contract but not paid in full, and the % column says 40', () => {
+    expect(j804!.pct).toBe(40)
+    expect(j804!.pctSource).toBe('crew-report')
+    expect(j804!.finished).toBe(false)
+    expect(j804!.flags).toContain('earned')
+  })
+  it('Revenue is contract × 40 % = $13,040 with every hour in the window — the status never made it the whole contract', () => {
+    expect(j804!.revenueUsd).toBeCloseTo(13_040, 6)
+    expect(j804!.earnedLifetimeUsd).toBeCloseTo(13_040, 6)
+    expect(j804!.earnedHours).toEqual({ inWindow: 139.7, lifetime: 139.7, expected: 139.7 / 0.4 })
+  })
+  it('so the row reads under water today, and the same 40 % feeds the Burn projection', () => {
+    expect(j804!.grossUsd).toBeCloseTo(-6_917.12, 6)
+    expect(j804!.marginPct).toBeCloseTo(-53.04, 1)
+    const b = j804!.burn!
+    expect(b.footing).toBe('assumed')
+    expect(b.budget?.usd).toBeCloseTo(21_190, 6) // $32,600 × (1 − 35 %)
+    expect(b.spentPct).toBeCloseTo(94.18, 1)
+    expect(b.status).toBe('hot')
+    expect(b.eacUsd).toBeCloseTo(49_892.8, 6)
+    expect(b.projectedMarginUsd).toBeCloseTo(-17_292.8, 6)
+    expect(b.projectedMarginPct).toBeCloseTo(-53.04, 1)
+  })
+  it('the totals strip reads the same earned figure and counts the row as earned', () => {
+    const t = summarizeJobSummaryRows([j804!])
+    expect(t.revenueUsd).toBeCloseTo(13_040, 6)
+    expect(t.earnedRows).toBe(1)
+    expect(t.grossUsd).toBeCloseTo(-6_917.12, 6)
+  })
+  it('the same job at 100 % by the crew reads the contract and is finished — the % decides, not the status', () => {
+    const [done] = enrichJobSummaryRows({ rows: [r804], reportPctByJobId: new Map([['j804', 100]]), ledger: ledger804, method: 'day' })
+    expect(done!.finished).toBe(true)
+    expect(done!.revenueUsd).toBe(32_600)
+    expect(done!.grossUsd).toBeCloseTo(12_642.88, 6)
+    expect(done!.burn?.status).toBe('done')
+  })
+})

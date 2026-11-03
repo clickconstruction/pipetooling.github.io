@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { OFFER_HELD } from '../flows/nudgeDispatch'
-import { HELD_NO_NUMBER, morningSendOn, rateJobsOf, readyRows, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, type OfferRow, type TodaysSendsInput } from './offers'
+import { HELD_NO_NUMBER, morningSendOn, offerRefusalWords, rateJobsOf, readyRows, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, type OfferRow, type TodaysSendsInput } from './offers'
 
 const offer = (over: Partial<OfferRow> = {}): OfferRow => ({
   id: 'o1',
@@ -85,6 +85,20 @@ describe('withAnsweredHolds: a review offer on a job answered already', () => {
     const rows = withAnsweredHolds([offer({ id: 'r1', stepKey: 'review', body: REVIEW, channelId: null, heldWhy: HELD_NO_NUMBER }), offer({ id: 'r2', stepKey: 'review', body: REVIEW.replace('{rate}', 'https://clicktooling.com/rate?t=ab12') })], new Set(['job-1312']))
     expect(rows.map((r) => r.heldWhy)).toEqual([OFFER_HELD.answered, null])
     expect(withAnsweredHolds([offer({ id: 'r1', stepKey: 'review', body: REVIEW })], new Set())).toEqual([offer({ id: 'r1', stepKey: 'review', body: REVIEW })])
+  })
+})
+
+// v2.6385: a press refused with the flow's `stepUnknown` code names the step, the person and the door.
+describe('offerRefusalWords: a press on a step the flow does not have', () => {
+  const row = { step: 'Booked', who: 'Dana Whitfield' }
+  it('turns the bare code into the step, the person and the door, in plain words', () => {
+    const words = offerRefusalWords('Failed to stop the reminders: stepUnknown', row)
+    expect(words).toBe('The step Booked is not on Dana Whitfield’s flow, so there is nothing to stop or hold. Put this text away with Not this one.')
+    expect(plainWordsFailures(words)).toEqual([])
+  })
+  it('leaves every other failure its own words', () => {
+    expect(offerRefusalWords('Failed to hold the reminder: dayPassed', row)).toBe('Failed to hold the reminder: dayPassed')
+    expect(offerRefusalWords('You appear to be offline.', row)).toBe('You appear to be offline.')
   })
 })
 

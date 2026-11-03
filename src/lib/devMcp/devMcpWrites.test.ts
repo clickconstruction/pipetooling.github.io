@@ -117,7 +117,7 @@ describe('devMcpWrites — the allowlist', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("if (isWriteVerb(verb) || verb === 'mint_twin_setup_code') return finish(refused(")
+    expect(SERVER).toContain("if (isWriteVerb(verb) || verb === 'mint_twin_setup_code' || verb === 'plan_index_backfill' || verb === 'apply_index_backfill') return finish(refused(")
     // restPost is reached only from the write branches: once to declare it, three calls in the generic branch, and
     // the plan set verbs' own dry run and stamp (v2.6185).
     expect(SERVER.match(/restPost\(/g)?.length).toBe(6)
@@ -233,12 +233,12 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(alreadyApplied('apply_matter_statement', { target: MATTER, at: null })).toContain('Said lane')
     expect(planMismatch('apply_matter_statement', 'a'.repeat(64), 'b'.repeat(64))).toContain('plan_matter_statement')
   })
-  it('the server declares both verbs in the write branch, with every older write verb\'s label there too, and reports the server version', () => {
+  it('the server declares both verbs in the write branch, with every older write verb\'s label there too, and reports 0.16.0 (the file index verbs bumped it to 0.15.0, Materials on site to 0.16.0)', () => {
     expect(SERVER).toContain("name: 'plan_matter_statement'")
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.15.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.16.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -300,7 +300,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.15.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.16.0'")
   })
 })
 
@@ -349,7 +349,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.15.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.16.0'")
     expect(SERVER).toContain('Writes are thirty-three verbs and nothing else')
   })
 })
@@ -523,7 +523,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     expect(h1).not.toBe(await planHash('plan_count', pOf(built), { ...reply, container_rows: 5 }))
     expect(planCommitment('plan_count', reply)).not.toHaveProperty('dry_run')
   })
-  it('the plan replies point at their apply verbs, a repeat apply says the rows are on the job, and the server declares the nine verbs and reports 0.15.0', () => {
+  it('the plan replies point at their apply verbs, a repeat apply says the rows are on the job, and the server declares the nine verbs and reports 0.16.0', () => {
     expect(String(planReply('plan_container', { after: { container: 'A2' } }, 'e'.repeat(64)).next)).toContain('apply_container')
     expect(String(planReply('plan_delivery', {}, 'e'.repeat(64)).next)).toContain('apply_delivery')
     expect(String(planReply('plan_movement', {}, 'e'.repeat(64)).next)).toContain('apply_movement')
@@ -534,7 +534,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.15.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.16.0'")
     expect(SERVER).toContain('Writes are thirty-three verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
@@ -678,7 +678,7 @@ describe('mint_twin_setup_code (v2.6187)', () => {
     expect(isWriteVerb('mint_twin_setup_code')).toBe(false)
     expect(SERVER).toContain("name: 'mint_twin_setup_code'")
     expect(SERVER).toContain("case 'mint_twin_setup_code': {")
-    expect(SERVER).toContain("if (isWriteVerb(verb) || verb === 'mint_twin_setup_code') return finish(refused(")
+    expect(SERVER).toContain("if (isWriteVerb(verb) || verb === 'mint_twin_setup_code' || verb === 'plan_index_backfill' || verb === 'apply_index_backfill') return finish(refused(")
     expect(SERVER).toContain("/functions/v1/twin-setup`")
     expect(SERVER).toContain("{ action: 'mint', label, ...(twinUserId ? { twin_user_id: twinUserId } : { kind: 'estimator' }) }")
     expect(SERVER).toContain('redeem: `python3 scripts/twin/redeem_setup_code.py ${reply.code}')
@@ -759,5 +759,24 @@ describe('the plan set goes into the Shared Drive (v2.6241)', () => {
     expect(SERVER).toContain('findOrCreateFolder(token, divisionFolder.id, folderName)')
     expect(SERVER).not.toContain('findOrCreateFolder(token, division.folderId')
     expect(SERVER).toContain('path: robotPlansPathWords(division.key, folderName)')
+  })
+})
+
+describe('the file index verbs (v2.6332, punch list #240 PR 2)', () => {
+  it('are declared as tools, handled in their own case, refused through view_as, and outside the RPC write grammar', () => {
+    for (const verb of ['read_file_index_status', 'plan_index_backfill', 'apply_index_backfill']) {
+      expect(SERVER).toContain(`name: '${verb}'`)
+      expect(SERVER).toContain(`case '${verb}':`)
+      expect(isWriteVerb(verb)).toBe(false)
+    }
+    // The apply writes file_index through the index pass as the service role and never POSTs an RPC: the hash is checked on
+    // every call and the one-apply-per-plan hook is not consulted, since an apply runs as often as files remain.
+    const start = SERVER.indexOf("case 'plan_index_backfill':")
+    const end = SERVER.indexOf("case 'plan_file_plans':")
+    const block = SERVER.slice(start, end)
+    expect(block).toContain('indexFiles(ctx, listed,')
+    expect(block).toContain('backfillCommitment(plan, jobs)')
+    expect(block).not.toContain('hooks.priorApply(')
+    expect(block).not.toContain('restPost(')
   })
 })

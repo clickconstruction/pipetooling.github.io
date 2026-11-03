@@ -2,7 +2,7 @@
  * Materials on site, the office's tab on the Jobs page (punch list #209): with no job picked, the
  * desk across jobs (containers, lines on site, missing this week with the money, counts due,
  * credits due); with a job (`?job=<id>`), its four sections: On site by container, Movements,
- * Missing, Counts, plus Print labels and Correct the count. Reads the same store the field tab
+ * Missing, Counts, plus Print labels, Print the manifest and Correct the count. Reads the same store the field tab
  * writes; the spike keeps it on this device until the tables land.
  */
 import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties } from 'react'
@@ -28,6 +28,7 @@ import { boxAddress, boxCode, boxUrl, labelRows } from '../../lib/materials/labe
 import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
+import ManifestPrintModal from '../materials/ManifestPrintModal'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
@@ -345,12 +346,16 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
   const [window, setWindow] = useState<7 | 30>(7)
   /** The labels window: every box, or one (`only`) from a panel's Label button or the phone's link (`?label=<id>`). */
   const [labelsOpen, setLabelsOpen] = useState<{ only: string | null } | null>(null)
+  /** Print the manifest (v2.6366): the window opens on every box, or on the one the phone's link names (`?manifest=`). */
+  const [manifestOpen, setManifestOpen] = useState<{ only: string | null } | null>(null)
   const [labelParams, setLabelParams] = useSearchParams()
   useEffect(() => {
     const id = labelParams.get('label')
-    if (!id) return
-    setLabelsOpen({ only: id })
-    setLabelParams((p) => { const n = new URLSearchParams(p); n.delete('label'); return n }, { replace: true })
+    const manifestId = labelParams.get('manifest')
+    if (!id && !manifestId) return
+    if (id) setLabelsOpen({ only: id })
+    if (manifestId) setManifestOpen({ only: manifestId })
+    setLabelParams((p) => { const n = new URLSearchParams(p); n.delete('label'); n.delete('manifest'); return n }, { replace: true })
   }, [labelParams, setLabelParams])
   const [adding, setAdding] = useState(false)
   const [newLabel, setNewLabel] = useState('')
@@ -406,6 +411,7 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', flex: '0 0 auto' }}>
               <button type="button" style={btn} onClick={() => setAdding((v) => !v)}>Add a container</button>
               <button type="button" style={{ ...btn, fontWeight: 500 }} disabled={boxCount === 0} onClick={() => setLabelsOpen({ only: null })}>Print labels</button>
+              <button type="button" style={{ ...btn, fontWeight: 500 }} disabled={boxCount === 0} title="One Letter page a box to laminate and hang on it: the two dates, what is in it, and lines for what is added by hand" onClick={() => setManifestOpen({ only: null })}>Print the manifest</button>
             </span>
           </div>
       {adding ? (
@@ -687,6 +693,7 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
         </div>
       ) : null}
       {labelsOpen ? <LabelsModal jobLabel={jobLabel(job, jobId)} containers={containers.filter((c) => c.kind !== 'unsorted')} lines={lines} places={places} only={labelsOpen.only} onClose={() => setLabelsOpen(null)} /> : null}
+      {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
   )
 }

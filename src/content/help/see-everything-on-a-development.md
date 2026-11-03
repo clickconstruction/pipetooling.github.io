@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, builder, estimator, no money, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
+keywords: development, site, subdivision, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in five looks.
@@ -38,6 +38,8 @@ A strip under the counts names five looks: History, Jobs & bids, Money, Plans an
 1. Press a look's name to jump to it.
 2. Press the chevron on a look's card to fold it. The page remembers your folds on this device.
 
+On a phone the strip is one row of five cells. Each cell shows the look's name over one number. The number is what waits on you, or the count. Money rounds to fit, so $186,116 reads as $186k. The look you are in is underlined.
+
 ## See a job's details without opening it
 
 Every job on the page shows as a blue number, such as *JP1091*. The number opens the job when you press it.
@@ -61,6 +63,8 @@ History is one dated list, newest first. It holds what the records did and what 
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.
 
 A long line shows its first words and a **more** press. Press it and the whole line opens in a window.
+
+Each line starts with a small mark. Press the round **?** beside the search box to read what every mark means. Grey is a note someone wrote. Blue is a move on a job or a bid. Green is money or a bid won. Red is a bid lost. Amber is something that went out or came in. The window groups the marks under the chips that narrow to them.
 
 ## Keep what happened
 
@@ -108,7 +112,7 @@ Money shows the site's progress as one bar, then every job by stage with what is
 
 ## Check the plans and the questions
 
-Plans lists each part of the site, such as the Lodge or the Bunker. Each row names the set that part builds from today. The row shows the date on the sheets, the day the set came, its memo and the jobs on it. Older sets fold under a count. Press the count to see them. The crew's as-builts read under their part.
+Plans lists each part of the site, such as the Lodge or the Bunker. Each row names the set that part builds from today. The row shows the date on the sheets, the day the set came, its memo and the jobs on it. Older sets fold under a count. Press the count to see them. The crew's as-builts read under their part. On a phone each part is a card with the same facts.
 
 Press {{button:outline|+ Part}} to name a part of the site. Press {{button:outline|+ New set}} on a part's row to add a set. Press {{button:blue|Add the set and build from it}} and every job on that part builds from it. Press {{button:outline|Build from this set}} on an older set to go back to it.
 

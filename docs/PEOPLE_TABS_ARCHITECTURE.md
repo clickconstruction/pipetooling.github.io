@@ -8,7 +8,7 @@ covers:
   - src/pages/People.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-17
+last_updated: 2026-11-02
 ---
 
 ## Overview
@@ -110,7 +110,7 @@ Render anchors are line ranges in `People.tsx` at a05cef4c4. Component line coun
 | `contracts` | 4126–4136 | [`PeopleContractsTab`](../src/components/people/PeopleContractsTab.tsx) (3,670) | extracted (PR #23); sub-map as above | 0, plus the archived-names effect 2327–2335 (shared with offsets) | `people`, `users`, `archived`, `canDeletePeopleContracts`, `currentUserId`, `isDev` | `ContractsTabHelpModal.render` only | Done here |
 | `licenses` | 4122–4124 | [`PeopleLicensesTab`](../src/components/people/PeopleLicensesTab.tsx) (532) | extracted (PR #21) | 0 | `people`, `users` | none | Done |
 | `writeups` | 4138–4146 | [`WriteupsContractsSubTab`](../src/components/writeups/WriteupsContractsSubTab.tsx) (745) | extracted, self-loading (`loadWriteupsData` in the component) | the `writeupUserSelectOptions` memo 3127–3134 | `users`, `userOptions`, `authUserId`, `isDev`, `myRole`; URL gate 905–913 | none | Done. The memo could move in. |
-| `hr` | 4150 | [`PeopleHrTab`](../src/components/people/PeopleHrTab.tsx) (739) | extracted from birth (v2.2221, dev-only; `docs/HR_FILES.md`) | 0 | none | `PeopleHrTab.render` | Done |
+| `hr` | 4150 | [`PeopleHrTab`](../src/components/people/PeopleHrTab.tsx) (the roster and the queue) → [`PersonFilePanel`](../src/components/people/personFile/PersonFilePanel.tsx) (the person file, v2.6392: Timeline · Evidence · Narrative over `lib/people/personTimeline.ts`, `personTimelineIo.ts`, `personEvidence.ts`, `personEvidenceIo.ts`) | extracted from birth (v2.2221, dev-only; `docs/HR_FILES.md`) | 0 | none | `PeopleHrTab.render` | Done |
 | `vehicles` | 4103–4105 | [`PeopleVehiclesTab`](../src/components/people/PeopleVehiclesTab.tsx) (2,946) | extracted (PR #19; rebuilt v2.1644 as the fleet board). **Own map: [`PEOPLE_VEHICLES_TAB_ARCHITECTURE.md`](./PEOPLE_VEHICLES_TAB_ARCHITECTURE.md)** | 0 | `users`; gate **`canAccessVehicles`** | `PeopleVehiclesTab.render` | Sub-decompose per its map |
 | `housing` | 4107–4109 | [`PeopleHousingTab`](../src/components/people/PeopleHousingTab.tsx) (414) | extracted (PR #20) | 0 | `users`; gate `canAccessPay` | none | Done |
 | `review` | 4153–4172 | [`PeopleReviewTab`](../src/components/people/PeopleReviewTab.tsx) (856 since v2.4914; the person panel is [`review/PeopleReviewPersonPanel.tsx`](../src/components/people/review/PeopleReviewPersonPanel.tsx), 1,219); sub-map [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | extracted | the Review↔Hours bridge: 1 `useState`, 6 refs, load effect 2315–2324 | 16 props (`payConfig`, `archived`, `payRoster`, `authUser`, `isDev`, `users`, `people`, bridge callbacks/refs/tick, `getDaysInRange`) | `derivePersonTeamSummary` + `review*` kernels | Done here |

@@ -9,9 +9,10 @@
  * Since v2.5663 (punch list #130) the report asks about every line at once —
  * `lineProgressReport.ts` holds that rule over the rows this file parses — and
  * the one-stage picker retired in v2.5666. What stays here is the row shape,
- * the RPC parse with the v2.3417 recognition, a stage's effective percent, the
- * Σ with one override (the line kernel's test keeps it honest) and the
- * picker's numbering. Pure.
+ * the RPC parse with the v2.3417 recognition, a stage's effective percent (what
+ * is on record; what a never-reported line counts as in the job's sum is the
+ * line kernel's `unreportedLineSeed`, v2.6391), the Σ with one override (the
+ * line kernel's test keeps it honest) and the picker's numbering. Pure.
  */
 
 import { recognizeStages } from '../jobs/stageRecognition'
@@ -67,7 +68,7 @@ export function stageProgressRowsFromRpc(
   return out.map((s) => (ids.has(s.fixtureId) ? { ...s, kind: 'order' as const } : s))
 }
 
-/** A stage's effective percent: paid draw = 100, else the crew's number, else 0. */
+/** A stage's percent on record: paid draw = 100, else the crew's number, else 0 (the line kernel seeds that 0 from the job's record in its sum). */
 export function stageEffectivePct(s: Pick<StageProgressRow, 'progressPct' | 'drawPaid'>): number {
   if (s.drawPaid) return 100
   return s.progressPct ?? 0

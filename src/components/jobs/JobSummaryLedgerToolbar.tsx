@@ -20,6 +20,7 @@ import {
   type JobSummarySortKey,
 } from '../../lib/jobs/jobSummaryLedgerView'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { jobSummaryJobsTileWords } from '../../lib/jobs/jobSummarySearchWins'
 import { SignedAmountSmallCents } from '../AmountSmallCents'
 import { JOB_SUMMARY_MONTHS_BOOK_OPTIONS } from '../../lib/jobs/jobSummaryMonths'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
@@ -228,7 +229,8 @@ export default function JobSummaryLedgerToolbar({
       ) : null}
       {prefs.view !== 'jobs' ? null : (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.5rem' }}>
-        <Tile k="Jobs" v={totals.jobs} s={`${JOB_SUMMARY_STATUS_OPTIONS.find((s) => s.key === prefs.status)?.label.toLowerCase() ?? ''} · ${JOB_SUMMARY_WINDOW_OPTIONS.find((w) => w.key === prefs.window)?.title.toLowerCase() ?? ''}`} d={dl(c?.jobs, (a) => String(Math.round(a)))} />
+        {/* v2.6388: the chips' names with nothing typed; "matching your search" once the search has made them step aside. */}
+        <Tile k="Jobs" v={totals.jobs} s={jobSummaryJobsTileWords({ prefs, search })} d={dl(c?.jobs, (a) => String(Math.round(a)))} />
         <Tile k="Revenue" v={<JobSummaryTileMoney value={totals.revenueUsd} />} s={totals.earnedRows > 0 ? `${totals.earnedRows} in-progress earned by hours worked` : 'contract on jobs_ledger'} d={dl(c?.revenueUsd, money)} />
         {showMoney ? (
           <>
