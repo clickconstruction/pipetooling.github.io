@@ -5,6 +5,7 @@
  * The SettingsGroup wrapper and the `myRole === 'dev'` gate stay in the parent. */
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import TripChargeAmountsSettingsBlock from './TripChargeAmountsSettingsBlock'
+import HourlyChargeRateSettingsBlock from './HourlyChargeRateSettingsBlock'
 import HideHcpFieldSettingsBlock from './HideHcpFieldSettingsBlock'
 import SubPortalPaySettingsBlock from './SubPortalPaySettingsBlock'
 import LegalFirmSettingsBlock from './LegalFirmSettingsBlock'
@@ -309,6 +310,7 @@ export default function SettingsJobsTab({
       </div>
 
       <TripChargeAmountsSettingsBlock />
+      <HourlyChargeRateSettingsBlock />
 
       <JobAddressCityListSettingsBlock />
       <TxCountyMapSettingsBlock />

@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import {
   driveBehindIndex,
+  driveBehindMeaning,
   emptyFindWords,
   excerptNote,
   excerptParts,
   FIND_MIN_CHARS,
   findAFileFromAnswer,
+  findAFileFromIndexAnswer,
   findAFileFromIndexRows,
+  foundByWords,
   type FoundFile,
   foundWords,
   groupByHome,
   hitMetaWords,
   homeWords,
+  meaningExcerpt,
+  needsDriveBehind,
   pathWords,
   sourceWords,
 } from './findAFile'
@@ -150,6 +155,51 @@ describe('findAFile (v2.6305)', () => {
     // A headline with no marks is no excerpt; a read the platform stopped reads as slow, which the box keeps quiet about.
     expect(read.hits[2]).toMatchObject({ home: null, excerpt: null, excerptWhy: 'slow' })
     expect(findAFileFromIndexRows(null)).toEqual({ hits: [], more: false, noRoot: false, source: 'index' })
+  })
+
+  it('reads a hit found by meaning (PR 4): the nearest chunk’s opening as its line, the tag, and the count line’s words', () => {
+    const read = findAFileFromIndexAnswer({
+      meaning: true,
+      rows: [
+        { drive_file_id: '1AbCdEfGhIjKlMnOpQrSt', name: 'GC letter.pdf', mime: 'application/pdf', by: 'meaning', headline: null, chunk_text: 'The general contractor accepts the added cost of the rock encountered in the trench ' + 'x'.repeat(200) },
+        { drive_file_id: '2BcDeFgHiJkLmNoPqRsTu', name: 'Rock clause.pdf', mime: 'application/pdf', by: 'both', headline: 'the <mark>rock</mark> clause', chunk_text: 'ignored when the words matched' },
+        { drive_file_id: '3CdEfGhIjKlMnOpQrStUv', name: 'Plain.pdf', mime: 'application/pdf', by: 'words', headline: 'a <mark>rock</mark>' },
+      ],
+    })
+    expect(read.meaning).toBe(true)
+    expect(read.hits[0]!.by).toBe('meaning')
+    expect(read.hits[0]!.excerpt!.marks).toEqual([])
+    expect(read.hits[0]!.excerpt!.text.endsWith('…')).toBe(true)
+    expect(read.hits[0]!.excerpt!.text.length).toBeLessThanOrEqual(161)
+    expect(read.hits[1]!.excerpt).toEqual({ text: 'the rock clause', marks: [[4, 8]] })
+    expect(read.hits[1]!.by).toBe('both')
+    expect(read.hits[2]!.by).toBe('words')
+    expect(foundByWords('meaning')).toBe('by meaning')
+    expect(foundByWords('both')).toBe('by the words and the meaning')
+    expect(foundByWords('words')).toBeNull()
+    expect(foundByWords(undefined)).toBeNull()
+    expect(foundWords(read, 'rock')).toBe('3 files say or are about “rock”, from our index.')
+    expect(foundWords({ hits: [read.hits[0]!], more: false, source: 'index' }, 'rock')).toBe('1 file is about “rock”, from our index.')
+    expect(meaningExcerpt('short')).toEqual({ text: 'short', marks: [] })
+    expect(findAFileFromIndexAnswer({ rows: [] })).toEqual({ hits: [], more: false, noRoot: false, source: 'index' })
+  })
+})
+
+describe('Drive behind hits by meaning alone (PR 4, hardened in review)', () => {
+  const hit = (id: string, by?: 'words' | 'meaning' | 'both') => ({ id, name: `${id}.pdf`, mime: 'application/pdf', bytes: 1, modified: null, url: `https://drive.google.com/file/d/${id}/view`, home: null, path: '', excerpt: null, excerptWhy: null, ...(by ? { by } : {}) })
+  it('asks Drive when the index found nothing or only meaning; not when any hit has the words', () => {
+    expect(needsDriveBehind({ hits: [] })).toBe(true)
+    expect(needsDriveBehind({ hits: [hit('a', 'meaning'), hit('b', 'meaning')] })).toBe(true)
+    expect(needsDriveBehind({ hits: [hit('a', 'meaning'), hit('b', 'both')] })).toBe(false)
+    expect(needsDriveBehind({ hits: [hit('a')] })).toBe(false)
+  })
+  it('puts Drive’s hits first, then the meaning hits Drive did not name, with Drive’s more; Drive empty leaves the index as it was', () => {
+    const index = { hits: [hit('m1', 'meaning'), hit('d2', 'meaning')], more: false, noRoot: false, source: 'index' as const, meaning: true }
+    const drive = { hits: [hit('d1'), hit('d2')], more: true, noRoot: false, source: 'drive' as const }
+    const merged = driveBehindMeaning(index, drive)
+    expect(merged.hits.map((h) => h.id)).toEqual(['d1', 'd2', 'm1'])
+    expect(merged).toMatchObject({ source: 'drive', more: true, meaning: true })
+    expect(driveBehindMeaning(index, { ...drive, hits: [], more: false })).toBe(index)
   })
 })
 

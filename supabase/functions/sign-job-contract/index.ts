@@ -19,12 +19,17 @@ import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import { buildJobContractPdf, contractBodyToPlainText, type PdfLibLike } from '../_shared/jobContractPdf.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { buildJobContractSignedCopyEmail } from '../_shared/jobContractEmail.ts'
+import { writeJobAgreementThreadLine } from '../_shared/jobContractThreadLine.ts'
 import {
+  agreementHeading,
+  agreementKindOf,
+  agreementNoun,
   amountCentsFromFields,
   appOrigin,
   clientIp,
-  contractHeading,
   corsHeaders,
+  initialLinesOf,
+  initialsForLines,
   decodeSignaturePng,
   escapeHtml,
   formatMoney,
@@ -50,6 +55,8 @@ type Body = {
   public_origin?: string
   /** v2.3100: the ESIGN / Texas UETA consent words the signer saw (stored on esign_consents). */
   esignConsent?: unknown
+  /** The warranty in place of a contract (2026-11-02): the initials typed on each of its lines, in the lines' order. */
+  initials?: unknown
 }
 
 serve(async (req) => {
@@ -68,7 +75,7 @@ serve(async (req) => {
     })
     const { data: row } = await admin
       .from('job_contracts')
-      .select('id, job_id, status, revision, public_token_expires_at, recipient_email, recipient_name, fields, created_by, voided_at, cc_emails, body_html, body_format, template_name, last_sent_at, signer_printed_name, signer_mode, signer_consented_at, signer_ip, signer_signature_storage_path, co_signer_name, co_signer_email, co_signed_at, co_signer_printed_name, co_signer_mode, co_signer_consented_at, co_signer_ip, co_signer_signature_storage_path')
+      .select('id, job_id, status, revision, public_token_expires_at, recipient_email, recipient_name, fields, created_by, voided_at, cc_emails, body_html, body_format, template_name, last_sent_at, signer_printed_name, signer_mode, signer_consented_at, signer_ip, signer_signature_storage_path, co_signer_name, co_signer_email, co_signed_at, co_signer_printed_name, co_signer_mode, co_signer_consented_at, co_signer_ip, co_signer_signature_storage_path, kind, initials')
       .eq('public_token', token)
       .maybeSingle()
     if (!row) return json({ error: 'Not found' }, 404)
@@ -101,7 +108,12 @@ serve(async (req) => {
       co_signer_consented_at: string | null
       co_signer_ip: string | null
       co_signer_signature_storage_path: string | null
+      kind: string | null
+      initials: unknown
     }
+    // The warranty in place of a contract (2026-11-02): the same signing, worded by kind, with its lines initialled first.
+    const kind = agreementKindOf(c.kind)
+    const words = agreementNoun(kind)
     if (c.voided_at || c.status === 'voided') return json({ error: 'This agreement was withdrawn.', code: 'voided' }, 410)
     if (c.status === 'signed') return json({ error: 'This agreement is already signed.', code: 'already_signed' }, 409)
     if (c.status !== 'sent') return json({ error: 'This agreement is not out for signature.', code: 'not_sent' }, 409)
@@ -122,6 +134,11 @@ serve(async (req) => {
     if (signer === 'co' && coDone) return json({ error: `${c.co_signer_printed_name} has already signed.`, code: 'frame_signed' }, 409)
     const complete = signer === 'primary' ? !coName || coDone : primaryDone
     const otherSigner = signer === 'primary' ? { name: coName, email: c.co_signer_email } : { name: (c.recipient_name ?? '').trim(), email: c.recipient_email }
+
+    // A warranty's lines: the first signer initials every one, two to four letters each; a contract takes none.
+    const initialLines = kind === 'warranty' ? initialLinesOf(c.fields) : []
+    const initialsRead = signer === 'primary' ? initialsForLines(initialLines, body.initials) : ({ ok: true, entries: [] } as const)
+    if (!initialsRead.ok) return json({ error: initialsRead.error, code: 'initials_missing' }, 400)
 
     const ip = clientIp(req)
     const ua = req.headers.get('user-agent')
@@ -144,7 +161,7 @@ serve(async (req) => {
 
     const frameCols =
       signer === 'primary'
-        ? { signer_printed_name: printedName, signer_mode: mode, signer_consented_at: nowIso, signer_ip: ip, signer_user_agent: ua, signer_signature_storage_path: sigPath }
+        ? { signer_printed_name: printedName, signer_mode: mode, signer_consented_at: nowIso, signer_ip: ip, signer_user_agent: ua, signer_signature_storage_path: sigPath, ...(initialLines.length ? { initials: initialsRead.entries } : {}) }
         : { co_signed_at: nowIso, co_signer_printed_name: printedName, co_signer_mode: mode, co_signer_consented_at: nowIso, co_signer_ip: ip, co_signer_user_agent: ua, co_signer_signature_storage_path: sigPath }
     const { data: updated, error: updErr } = await admin
       .from('job_contracts')
@@ -183,7 +200,7 @@ serve(async (req) => {
 
     // The signed PDF + emails — best effort, never fail the signature.
     let pdfBase64: string | null = null
-    let pdfFilename = 'Signed-agreement.pdf'
+    let pdfFilename = kind === 'warranty' ? 'Signed-warranty.pdf' : 'Signed-agreement.pdf'
     const { data: job } = await admin
       .from('jobs_ledger')
       .select('hcp_number, click_number, job_name, job_address, customer_name, master_user_id')
@@ -197,9 +214,11 @@ serve(async (req) => {
       customer_name?: string | null
       master_user_id?: string | null
     }
-    const heading = contractHeading({ job_address: j.job_address ?? null, job_name: j.job_name ?? null })
+    const heading = agreementHeading(kind, { job_address: j.job_address ?? null, job_name: j.job_name ?? null })
     const jobNo = jobNumberLabel({ hcp_number: j.hcp_number ?? null, click_number: j.click_number ?? null })
     const amount = amountCentsFromFields(c.fields)
+    // The initials as the row keeps them now: this request's on the first frame, else the row's.
+    const initialsKept = signer === 'primary' ? initialsRead.entries : Array.isArray(c.initials) ? (c.initials as { line?: unknown; initials?: unknown }[]).filter((e) => typeof e?.line === 'string' && typeof e?.initials === 'string').map((e) => ({ line: e.line as string, initials: e.initials as string })) : []
     const stampOf = (iso: string) => new Date(iso).toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
     const howOf = (m: string | null) => (m === 'draw' ? 'drawn' : m === 'in_person' ? 'in person' : 'typed')
     const fetchPng = async (path: string | null): Promise<Uint8Array | null> => {
@@ -301,8 +320,10 @@ serve(async (req) => {
         signature: primarySig,
         coSignerName: coName || null,
         coSignature: coSig ? { ...coSig, png: coPng } : null,
+        kind,
+        initialLines: initialLines.map((line) => ({ line, initials: initialsKept.find((e) => e.line === line)?.initials ?? null })),
       })
-      pdfFilename = `Signed-agreement-J${jobNo.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`
+      pdfFilename = `${kind === 'warranty' ? 'Signed-warranty' : 'Signed-agreement'}-J${jobNo.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`
       pdfBase64 = btoa(String.fromCharCode(...pdf))
       const pdfPath = `${c.id}/signed.pdf`
       const { error: pdfErr } = await admin.storage.from(JOB_CONTRACT_BUCKET).upload(pdfPath, pdf, { contentType: 'application/pdf', upsert: true })
@@ -331,6 +352,7 @@ serve(async (req) => {
             amountLabel: amount != null ? formatMoney(amount) : null,
             url,
             hasPdf: Boolean(pdfBase64),
+            kind,
           })
           await sendEmailViaResend(c.recipient_email, subject, text, html, resendKey, {
             ...(ccList.length > 0 ? { cc: ccList } : {}),
@@ -343,7 +365,7 @@ serve(async (req) => {
         const ids = [c.created_by, j.master_user_id].filter((x): x is string => !!x)
         if (ids.length > 0) {
           const { data: users } = await admin.from('users').select('email').in('id', [...new Set(ids)])
-          const subject = `✍ Contract signed — Job #${jobNo} · ${signedBy}`
+          const subject = `✍ ${words.Noun} signed — Job #${jobNo} · ${signedBy}`
           const text = `${signedBy} signed ${heading} (Job #${jobNo}${amountLine}).\n\nOpen the job in ClickTooling: ${appOrigin(body.public_origin)}/jobs?edit=${c.job_id}\n`
           const html = text.replace(/\n/g, '<br>')
           for (const u of (users ?? []) as { email: string | null }[]) {
@@ -354,6 +376,9 @@ serve(async (req) => {
     } catch (e) {
       console.error('sign-job-contract notify failed', e)
     }
+
+    // The thread's line (2026-11-02): they signed, on the customer's own thread, once per agreement.
+    await writeJobAgreementThreadLine(admin, { contractId: c.id, jobId: c.job_id, kind, event: 'signed', heading, signerName: signerNamesLine({ ...c, ...frameCols, signed_at: nowIso }) || printedName })
 
     return json({ ok: true, signed_at: nowIso, mode, complete: true, signer, waiting_on: null })
   } catch (e) {

@@ -9,6 +9,7 @@ import {
   excerptNote,
   excerptParts,
   findFailedWords,
+  foundByWords,
   foundWords,
   groupByHome,
   hitMetaWords,
@@ -133,6 +134,11 @@ export function FindAFile({ io = supabaseFindAFileIo, debounceMs = FIND_DEBOUNCE
                       {f.name}
                     </a>
                     {hitMetaWords(f) ? <span style={{ ...small, ...muted }}>{hitMetaWords(f)}</span> : null}
+                    {foundByWords(f.by) ? (
+                      <span data-found-by={f.by} style={{ ...small, ...muted, fontStyle: 'italic' }}>
+                        {foundByWords(f.by)}
+                      </span>
+                    ) : null}
                     {f.excerpt ? (
                       <span data-excerpt="" style={{ ...small, color: 'var(--text-700)' }}>
                         {excerptParts(f.excerpt).map((p, i) =>

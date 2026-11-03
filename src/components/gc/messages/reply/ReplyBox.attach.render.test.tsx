@@ -13,6 +13,11 @@ import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
 import { AttachPicker } from './AttachPicker'
 import { ReplyBox } from './ReplyBox'
+import type { PapersIo } from '../../../../lib/messages/papersIo'
+
+// The box reads no papers here: its bills and estimates are ReplyBox.papers.render.test.tsx's, and without a stub the
+// read goes through the real client (v2.6436).
+const noPapers: PapersIo = { load: () => Promise.resolve([]) }
 
 // Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
 vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
@@ -63,7 +68,7 @@ function box(attachIo: AttachIo = fakeAttach()) {
   renderWithProviders(
     <MessagesRereadContext.Provider value={vi.fn()}>
       <OpenThreadContext.Provider value={open}>
-        <ReplyBox contact={contact} io={io} attachIo={attachIo} />
+        <ReplyBox papersIo={noPapers} contact={contact} io={io} attachIo={attachIo} />
       </OpenThreadContext.Provider>
     </MessagesRereadContext.Provider>,
   )

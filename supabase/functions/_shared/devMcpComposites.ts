@@ -13,6 +13,8 @@ import { mercuryCardTotalFromLines, mercuryLinesFromRows, supplyInvoiceTotalFrom
 import { buildJobProfitSummary } from './jobProfitSummary.ts'
 import { DRIVE_SETTING_KEYS, jobSubLaborInputsFromRows, type SubLaborItemRow, type SubLaborSheetRow } from './jobSubLaborInputs.ts'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from './ledgerDisplayPrefixes.ts'
+import { STALE_COUNT_DAYS, containerLines, countDiffs, countIsDue, groupByPlace, lastCountedAt, linesOf, placeName, type Container, type Movement, type MovementReason, type Place } from './gcKernels/lib/materials/onSite.ts'
+import { retiredContainers, unretireVerdict } from './gcKernels/lib/materials/unretire.ts'
 
 export type RowsQuery = { select?: string; filters?: RowFilter[]; order?: RowOrder[]; limit?: number }
 export type Row = Record<string, unknown>
@@ -271,5 +273,139 @@ export async function getBid(reader: Reader, ref: string) {
     sends,
     submission_ledger: ledger,
     account_strip: strip,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// read_on_site — Materials on site (punch list #209, v2.6367): a job's cages and boxes as the phone's
+// On site tab and the office's Materials tab read them, through the screens' own kernel
+// (`lib/materials/onSite.ts`, bundled from the kernel copy): on hand is the sum of a line's rows, a
+// count resets it, a shortfall at the last count reads missing. The ledger is read whole, 200 rows a
+// page, up to the store's own cap, so an agent's number is the screen's number.
+// ---------------------------------------------------------------------------
+
+const ON_SITE_PAGE = 200
+/** The most ledger rows one read takes — the store's MOVEMENTS_LIMIT; a job past it says so. */
+export const ON_SITE_MOVEMENTS_MAX = 5000
+const ON_SITE_RECENT = 15
+const ON_SITE_MISSING_DAYS = 30
+const CONTAINER_SELECT = 'id,job_id,label,kind,where_note,place_id,lat,lng,retired_at,created_at'
+const MOVEMENT_SELECT = 'id,job_id,part_id,part_name,manufacturer,quantity,reason,from_container_id,to_container_id,note,source,item_id,by_user_id,by_name,at'
+
+const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0) || 0)
+const strOrNull = (v: unknown): string | null => (v == null ? null : String(v))
+/** The eight-character code a label's QR carries: the id's first eight hex characters in capitals (`labels.ts` boxCode). */
+export const onSiteBoxCode = (id: string): string => id.replace(/-/g, '').slice(0, 8).toUpperCase()
+
+const containerOf = (r: Row): Container => ({ id: str(r.id), jobId: str(r.job_id), label: str(r.label), kind: str(r.kind) as Container['kind'], where: str(r.where_note), locationId: strOrNull(r.place_id), lat: typeof r.lat === 'number' ? r.lat : null, lng: typeof r.lng === 'number' ? r.lng : null, retiredAt: strOrNull(r.retired_at), createdAt: str(r.created_at) })
+const placeOf = (r: Row): Place => ({ id: str(r.id), jobId: str(r.job_id), name: str(r.name), createdAt: str(r.created_at) })
+const movementOf = (r: Row): Movement => ({ id: str(r.id), jobId: str(r.job_id), partId: strOrNull(r.part_id), partName: str(r.part_name), manufacturer: strOrNull(r.manufacturer), quantity: num(r.quantity), reason: str(r.reason) as MovementReason, fromContainerId: strOrNull(r.from_container_id), toContainerId: strOrNull(r.to_container_id), note: str(r.note), byUserId: strOrNull(r.by_user_id), byName: str(r.by_name), at: str(r.at), source: strOrNull(r.source), itemId: strOrNull(r.item_id) })
+
+/** The whole ledger of a job, oldest first, a page at a time; stops at the cap and says so. */
+export async function readOnSiteMovements(reader: Reader, jobId: string): Promise<{ movements: Movement[]; capped: boolean }> {
+  const seen = new Set<string>()
+  const movements: Movement[] = []
+  let since: string | null = null
+  let capped = false
+  for (;;) {
+    const filters: RowFilter[] = [{ column: 'job_id', op: 'eq', value: jobId }]
+    if (since) filters.push({ column: 'at', op: 'gte', value: since })
+    const page = await reader.rows('job_material_movements', { select: MOVEMENT_SELECT, filters, order: [{ column: 'at' }, { column: 'id' }], limit: ON_SITE_PAGE })
+    let added = 0
+    for (const r of page) {
+      const id = str(r.id)
+      if (seen.has(id)) continue
+      seen.add(id)
+      movements.push(movementOf(r))
+      added += 1
+    }
+    if (page.length < ON_SITE_PAGE || added === 0) break
+    if (movements.length >= ON_SITE_MOVEMENTS_MAX) {
+      capped = true
+      break
+    }
+    since = str(page[page.length - 1]!.at)
+  }
+  return { movements, capped }
+}
+
+export async function getOnSite(reader: Reader, ref: string, now: Date) {
+  const resolved = await resolve(ref, () => findJob(reader, ref) as Promise<{ matches: Row[] }>, 'job')
+  if ('refused' in resolved) return resolved
+  const id = resolved.id
+  const byJob: RowFilter[] = [{ column: 'job_id', op: 'eq', value: id }]
+  const [jobRows, prefixes] = await Promise.all([part(() => reader.rows('jobs_ledger', { select: 'id,hcp_number,click_number,job_name,job_address,service_type_id', filters: [{ column: 'id', op: 'eq', value: id }], limit: 1 })), part(() => prefixMap(reader))])
+  if (failed(jobRows)) return { refused: `Could not read the job: ${jobRows.error}` }
+  const job = jobRows[0]
+  if (!job) return { refused: `No job ${id} — it does not exist, or RLS hides it from you.` }
+  const [containerRows, placeRows, ledger] = await Promise.all([
+    part(() => reader.rows('job_containers', { select: CONTAINER_SELECT, filters: byJob, order: [{ column: 'created_at' }], limit: ON_SITE_PAGE })),
+    part(() => reader.rows('job_places', { select: 'id,job_id,name,created_at', filters: byJob, order: [{ column: 'name' }], limit: ON_SITE_PAGE })),
+    part(() => readOnSiteMovements(reader, id)),
+  ])
+  if (failed(containerRows)) return { refused: `Could not read the job's containers: ${containerRows.error}` }
+  if (failed(ledger)) return { refused: `Could not read the job's ledger: ${ledger.error}` }
+  const containers = containerRows.map(containerOf)
+  const places = failed(placeRows) ? [] : placeRows.map(placeOf)
+  const { movements, capped } = ledger
+  const lines = containerLines(movements)
+  const live = containers.filter((c) => !c.retiredAt)
+  const labelOf = (containerId: string | null): string | null => (containerId ? containers.find((c) => c.id === containerId)?.label ?? null : null)
+  const partWords = (partName: string, manufacturer: string | null): string => (manufacturer ? `${partName} · ${manufacturer}` : partName)
+
+  const boxes = groupByPlace(containers, places).flatMap((g) =>
+    g.containers.map((c) => {
+      const last = lastCountedAt(movements, c.id)
+      return {
+        container: c.label,
+        kind: c.kind,
+        id: c.id,
+        code: onSiteBoxCode(c.id),
+        place: c.kind === 'unsorted' ? null : g.place?.name ?? placeName(places, c.locationId),
+        where: c.where || null,
+        pinned: c.lat != null && c.lng != null,
+        last_count: last ? { at: last.at, by: last.byName } : null,
+        count_due: c.kind === 'unsorted' ? false : countIsDue(last, now),
+        lines: linesOf(lines, c.id).map((l) => ({ part: partWords(l.partName, l.manufacturer), part_id: l.partId, on_hand: l.onHand, last_touched: l.lastTouchedAt ? { at: l.lastTouchedAt, by: l.lastTouchedBy } : null, last_count_diff: l.lastCountDiff, cannot_find_since_count: l.cannotFindSinceCount || undefined })),
+      }
+    }),
+  )
+  const sinceIso = new Date(now.getTime() - ON_SITE_MISSING_DAYS * 86_400_000).toISOString()
+  const missing = countDiffs(movements)
+    .filter((d) => d.diff < 0 && d.at >= sinceIso)
+    .map((d) => ({ container: labelOf(d.containerId), part: partWords(d.partName, d.manufacturer), expected: d.expected, counted: d.counted, missing: -d.diff, at: d.at, by: d.byName }))
+  const cannotFind = movements
+    .filter((m) => m.reason === 'cannot_find' && m.at >= sinceIso)
+    .map((m) => ({ container: labelOf(m.fromContainerId), part: partWords(m.partName, m.manufacturer), quantity: m.quantity, at: m.at, by: m.byName, note: m.note || undefined }))
+  const recent = [...movements]
+    .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
+    .slice(0, ON_SITE_RECENT)
+    .map((m) => ({ at: m.at, reason: m.reason, part: partWords(m.partName, m.manufacturer), quantity: m.quantity, from: labelOf(m.fromContainerId), to: labelOf(m.toContainerId), by: m.byName, note: m.note || undefined, source: m.source || undefined }))
+  // The office's Retired fold (v2.6406): each retired box with the screens' own verdict on bringing it back.
+  const retired = retiredContainers(containers).map((c) => {
+    const verdict = unretireVerdict(containers, c.id)
+    return { container: c.label, kind: c.kind, id: c.id, retired_at: c.retiredAt, bring_back: verdict.ok ? 'plan_container { action: bring_back }' : verdict.words }
+  })
+  const dueLabels = boxes.filter((b) => b.count_due).map((b) => b.container)
+  const unsorted = boxes.find((b) => b.kind === 'unsorted')
+  return {
+    job: { id, label: jobLabel(job, failed(prefixes) ? {} : prefixes), job_name: job.job_name, job_address: job.job_address },
+    summary: {
+      containers: live.filter((c) => c.kind !== 'unsorted').length,
+      retired: containers.length - live.length,
+      lines_on_site: lines.filter((l) => l.onHand > 0 && live.some((c) => c.id === l.containerId)).length,
+      waiting_in_unsorted: unsorted ? unsorted.lines.filter((l) => l.on_hand > 0).length : 0,
+      due_a_count: dueLabels,
+      count_due_after_days: STALE_COUNT_DAYS,
+      missing_last_30_days: missing.length + cannotFind.length,
+      ledger_rows: movements.length,
+      ledger_capped: capped ? `the first ${ON_SITE_MOVEMENTS_MAX} rows only — a job this size wants the summary RPC the card names` : undefined,
+    },
+    boxes,
+    retired,
+    missing: { counts_short: missing, cannot_find: cannotFind },
+    recent,
+    photos: 'read_rows on job_box_photos by job_id — the files live in the job\'s Drive folder, never here.',
+    writes: 'plan_container → apply_container (a cage or box: add, move, retire an empty one, bring a retired one back) · plan_delivery → apply_delivery (lines into Unsorted or a box) · plan_movement → apply_movement (moved, used, returned, taken, cannot_find, damaged, one line) · plan_count → apply_count (a box walked). Name a box by its stencil as listed here.',
   }
 }

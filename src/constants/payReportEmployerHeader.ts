@@ -1,4 +1,6 @@
-/** Employer block at top of printed/preview pay reports (People → Pay). */
-export const PAY_REPORT_EMPLOYER_NAME = 'CLICK PLUMBING AND ELECTRICAL'
-export const PAY_REPORT_EIN = '33-3002741'
-export const PAY_REPORT_ADDRESS = '5501 Balcones Dr A141 Austin, TX 78731'
+/**
+ * Employer block at top of printed/preview pay reports (People → Pay), and of a signed hours statement. The values live
+ * in `supabase/functions/_shared/payReportEmployerHeader.ts` since v2.6411, so the statement's PDF (drawn in a function)
+ * and its HTML print (drawn here) name one company block; this file re-exports them.
+ */
+export { PAY_REPORT_ADDRESS, PAY_REPORT_EIN, PAY_REPORT_EMPLOYER_NAME } from '../../supabase/functions/_shared/payReportEmployerHeader'

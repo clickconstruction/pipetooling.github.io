@@ -36,7 +36,7 @@ export type PaperworkLine = {
 export const PAPERWORK_EXPIRY_WARN_DAYS = 30
 
 /** Compliance types worth naming on the chip tooltip (v2.2857 "Add document"); agreement/other stay silent. */
-const PAPERWORK_TYPE_LABEL: Record<string, string> = { coi: 'COI', w9: 'W-9', license: 'License' }
+const PAPERWORK_TYPE_LABEL: Record<string, string> = { coi: 'COI', w9: 'W-9', license: 'License', hours_statement: 'Signed hours statement' }
 
 function daysBetween(fromYmd: string, toYmd: string): number {
   return Math.round((Date.parse(`${toYmd}T00:00:00Z`) - Date.parse(`${fromYmd}T00:00:00Z`)) / 86_400_000)

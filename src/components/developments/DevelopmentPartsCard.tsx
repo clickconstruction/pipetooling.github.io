@@ -161,8 +161,10 @@ export function DevelopmentPartsCard({
       )
     ) : null
 
+  // One column as wide as the box and never wider: an auto column grows to its widest child's min-content, and on a
+  // phone the all-good chip below is 356 px of nowrap words in a 329 px column, so every card ended 4 px past the screen (v2.6442).
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
+    <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'minmax(0, 1fr)' }}>
       {view.parts.length === 0 ? (
         <EmptyState
           compact
@@ -438,7 +440,12 @@ export function DevelopmentPartsCard({
             {chips.noPart} <span aria-hidden>{openChip === 'noPart' ? '▾' : '▸'}</span>
           </button>
         ) : null}
-        {chips.allGood ? <span className="developmentCountChip">{chips.allGood}</span> : null}
+        {chips.allGood ? (
+          // A sentence, not a count: wider than a phone's row (338 px of words in 329), so there it wraps inside the row, in a softer corner, instead of running past the screen (v2.6442).
+          <span className="developmentCountChip" style={phone ? { whiteSpace: 'normal', borderRadius: 12 } : undefined} data-testid="site-chip-all-good">
+            {chips.allGood}
+          </span>
+        ) : null}
         {canWrite && writes && view.parts.length > 0 && partName === null ? (
           <SmallButton onClick={() => setPartName('')} title="Name a new part of the site: a building, an area, the whole site">
             + Part

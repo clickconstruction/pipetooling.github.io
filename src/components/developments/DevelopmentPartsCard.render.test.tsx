@@ -274,4 +274,20 @@ describe('DevelopmentPartsCard', () => {
     fireEvent.click(screen.getByRole('button', { name: '+ Part' }))
     expect(screen.getByTestId('site-part-form')).toBeTruthy()
   })
+
+  it('is never wider than its box, and on a phone the all-good chip wraps instead of pushing the cards past the screen', () => {
+    // One part with a set and its one job on it: the all-good chip, a sentence 356 px wide in a 329 px phone column (v2.6442).
+    const allGood = buildSitePlansView({ parts: [parts[0]!], sets: [sets[2]!], jobs: [{ id: 'j1', label: 'JP991', plan_part_id: 'p1' }], bids: [] })
+    screenState.phone = true
+    renderWithProviders(<DevelopmentPartsCard view={allGood} names={{}} canWrite={false} openCarrier={() => {}} askAbout={() => {}} />)
+    const chip = screen.getByTestId('site-chip-all-good')
+    expect(chip.textContent).toBe('every job that builds from plans names a part with a set')
+    expect(chip.style.whiteSpace).toBe('normal')
+    expect(screen.getByTestId('site-plans-chips').parentElement!.style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+    cleanup()
+    screenState.phone = false
+    renderWithProviders(<DevelopmentPartsCard view={allGood} names={{}} canWrite={false} openCarrier={() => {}} askAbout={() => {}} />)
+    expect(screen.getByTestId('site-chip-all-good').style.whiteSpace).toBe('')
+    expect(screen.getByTestId('site-plans-chips').parentElement!.style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+  })
 })

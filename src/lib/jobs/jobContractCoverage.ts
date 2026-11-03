@@ -41,11 +41,19 @@ export type JobContractRowLike = {
   co_signer_printed_name?: string | null
   /** v2.5101: a second frame filed from the paper after the first signed through the link reads as paper. */
   co_signer_mode?: string | null
+  /** The kind of agreement (2026-11-02): our contract, or the warranty sent in place of one. A row from before the column is a contract. */
+  kind?: string | null
 }
+
+/** The kind a row is, for the chip's words; anything but `warranty` is a contract. */
+export type JobAgreementKindWord = 'contract' | 'warranty'
+export const agreementKindWord = (raw: string | null | undefined): JobAgreementKindWord => (raw === 'warranty' ? 'warranty' : 'contract')
+const Noun = (k: JobAgreementKindWord | undefined) => (k === 'warranty' ? 'Warranty' : 'Contract')
+const noun = (k: JobAgreementKindWord | undefined) => (k === 'warranty' ? 'warranty' : 'contract')
 
 /** The columns a batch read selects for the coverage kernel — one list, so no reader drops the second signer. */
 export const JOB_CONTRACT_COVERAGE_COLUMNS =
-  'id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url, recipient_name, signer_consented_at, co_signer_name, co_signed_at, co_signer_printed_name, co_signer_mode'
+  'id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url, recipient_name, signer_consented_at, co_signer_name, co_signed_at, co_signer_printed_name, co_signer_mode, kind'
 
 /** A customer-accepted estimates row — the rails every online signature already lands on. */
 export type SignedEstimateLike = {
@@ -70,7 +78,7 @@ export type JobForCoverage = {
 
 export type JobContractCoverage =
   | { kind: 'none' }
-  | { kind: 'draft'; contractId: string }
+  | { kind: 'draft'; contractId: string; agreement?: JobAgreementKindWord }
   /** The office said no agreement of ours is needed here (a builder's subcontract, a service call…). Not a gap. */
   | { kind: 'not_needed'; at: string; reason: string | null }
   | {
@@ -86,6 +94,8 @@ export type JobContractCoverage =
       framesDone?: number
       /** v2.4590: "Sam Owner signed · waiting on Alex Owner"; '' until someone has signed. */
       framesWaiting?: string
+      /** The kind of agreement out (2026-11-02): the chip says Warranty for one. */
+      agreement?: JobAgreementKindWord
     }
   | {
       kind: 'signed'
@@ -101,6 +111,8 @@ export type JobContractCoverage =
       estimateNumber: number | null
       /** The estimates row behind an estimate / bid-room signature (opens the acceptance record). */
       estimateId: string | null
+      /** The kind of agreement signed (2026-11-02), on a contract or paper source: the chip says Warranty for one. */
+      agreement?: JobAgreementKindWord
     }
 
 export type JobContractCoverageOptions = {
@@ -164,6 +176,7 @@ export function buildJobContractCoverage(
         contractId: signed.id,
         estimateNumber: null,
         estimateId: null,
+        agreement: agreementKindWord(signed.kind),
       })
       continue
     }
@@ -209,12 +222,13 @@ export function buildJobContractCoverage(
         frames: framesLabel(sent),
         framesDone: framesProgress(sent)?.done ?? 0,
         framesWaiting: framesWaitingLine(sent),
+        agreement: agreementKindWord(sent.kind),
       })
       continue
     }
     const draft = rows.find((c) => c.status === 'draft')
     if (draft) {
-      out.set(job.id, { kind: 'draft', contractId: draft.id })
+      out.set(job.id, { kind: 'draft', contractId: draft.id, agreement: agreementKindWord(draft.kind) })
       continue
     }
     out.set(job.id, { kind: 'none' })
@@ -260,10 +274,10 @@ export function daysSinceIso(iso: string | null | undefined, now: Date): number 
 /** The chip's one line — the shared vocabulary every surface renders. */
 export function jobContractChipLabel(cov: JobContractCoverage | null | undefined, now: Date = new Date()): string {
   if (!cov || cov.kind === 'none') return 'No contract'
-  if (cov.kind === 'draft') return 'Contract draft'
+  if (cov.kind === 'draft') return `${Noun(cov.agreement)} draft`
   if (cov.kind === 'not_needed') return 'No contract · not needed'
   if (cov.kind === 'sent') {
-    const parts = ['Contract sent']
+    const parts = [`${Noun(cov.agreement)} sent`]
     // v2.4590: once one of two has signed, the count says more than the opens (a signature was an open).
     if (cov.frames && (cov.framesDone ?? 0) > 0) parts.push(cov.frames)
     else if (cov.viewCount > 0) parts.push(`opened ${cov.viewCount}×`)
@@ -281,33 +295,33 @@ export function jobContractChipLabel(cov: JobContractCoverage | null | undefined
     case 'bid_room':
       return '✍ Signed · bid room'
     default:
-      return `✍ Signed${when ? ` ${when}` : ''}${who ? ` · ${who}` : ''}`
+      return `✍ ${cov.agreement === 'warranty' ? 'Warranty signed' : 'Signed'}${when ? ` ${when}` : ''}${who ? ` · ${who}` : ''}`
   }
 }
 
 /** Longer hover text for the chip. */
 export function jobContractChipTitle(cov: JobContractCoverage | null | undefined): string {
   if (!cov || cov.kind === 'none') return 'No signed agreement on file for this job'
-  if (cov.kind === 'draft') return 'A contract draft is saved but has not been sent'
+  if (cov.kind === 'draft') return `A ${noun(cov.agreement)} draft is saved but has not been sent`
   if (cov.kind === 'not_needed') {
     const when = shortDate(cov.at)
     return `The office marked this job as needing no agreement of ours${when ? ` on ${when}` : ''}${cov.reason ? ` — ${cov.reason}` : ''}`
   }
   if (cov.kind === 'sent') {
-    return `Contract rev ${cov.revision} sent${cov.recipientEmail ? ` to ${cov.recipientEmail}` : ''}${
+    return `${Noun(cov.agreement)} rev ${cov.revision} sent${cov.recipientEmail ? ` to ${cov.recipientEmail}` : ''}${
       cov.viewCount > 0 ? ` · opened ${cov.viewCount} time${cov.viewCount === 1 ? '' : 's'}` : ' · not opened yet'
     }${cov.framesWaiting ? ` · ${cov.framesWaiting}` : cov.frames ? ` · ${cov.frames}` : ''}`
   }
   const who = (cov.signerName ?? '').trim()
   switch (cov.source) {
     case 'paper':
-      return cov.documentUrl ? 'A signed contract was filed as a Google Doc link' : 'A signed paper contract was uploaded and recorded'
+      return cov.documentUrl ? `A signed ${noun(cov.agreement)} was filed as a Google Doc link` : `A signed paper ${noun(cov.agreement)} was uploaded and recorded`
     case 'estimate':
       return `The customer accepted estimate${cov.estimateNumber != null ? ` #${cov.estimateNumber}` : ''} online${who ? ` as ${who}` : ''} — that acceptance record is the agreement`
     case 'bid_room':
       return `The GC signed the proposal in the bid room${who ? ` as ${who}` : ''}`
     default:
-      return `Contract signed electronically${who ? ` by ${who}` : ''}`
+      return `${Noun(cov.agreement)} signed electronically${who ? ` by ${who}` : ''}${cov.agreement === 'warranty' ? ' — the warranty in place of a contract, each line initialled' : ''}`
   }
 }
 
