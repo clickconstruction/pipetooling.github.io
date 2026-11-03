@@ -131,7 +131,7 @@ Everything below is still in `People.tsx`. Money math with no test is marked **�
 |---|---|---|---|---|
 | Module helpers | `todayYyyyMmDdLocal` 180–182, `paidAtIsoFromYyyyMmDd` 184–186, z-layers `Z_PEOPLE_PAY_MODAL`/`_NESTED`/`Z_PEOPLE_OFFSET_FORM`/`Z_PEOPLE_DRAFT_PAYROLL_HOURS_BREAKDOWN` 189–194, Hours section ids/consts 197–233, `PEOPLE_HOURS_CLOCK_REALTIME_MAX_USER_IDS` 244 | n/a | n/a | untested |
 | Tab state + group memory | `activeTab` 330, `tabGroupMemory` 332 + effect 339–351 | `loading` 307 (flipped by `usePeopleRoster` via `rosterDepsRef`), `error` 308 | localStorage | `peopleTabGroups.test.ts` |
-| URL router | effect 841–922 (`team_costs`/`pay` → hours, `teams` → users, overhead/activity/writeups gates, pay-group bounce via `useRoleGate` 363 once `accessResolved`); `contracts_sub=writeups` redirect 924–933 | n/a | n/a | untested |
+| URL router | effect 841–922 (`team_costs`/`pay` → hours, `teams` → users, overhead/activity gates, the writeups gate and the pay-group bounce via `useRoleGate` 363 once `accessResolved`, the writeups one since v2.6419); `contracts_sub=writeups` redirect 924–933 | n/a | n/a | `People.writeupsColdLink.render.test.tsx` (the Writeups cold link) |
 | Access | `usePeopleAccess` 359, `canOpenHoursTab` 360, `canAccessOverheadTab` 692–693, `canDeletePeopleContracts` 694–695; `authUserRole` 675 (set by `usePeopleRoster`) | 1 `useState` | n/a | untested (`personDeskGates.test.ts` covers `canOpenPersonDesk`) |
 | Tab strip | `visiblePeopleTabs` 3138–3159, groups 3160–3164, `goToPeopleTab` 3165–3172, `if (loading)` 3174, render 3176–3222 | n/a | n/a | kernel only |
 
@@ -329,7 +329,7 @@ None remain in `People.tsx`. Keep them tab-local.
 
 The router behaves as follows:
 
-- It bounces overhead, activity and writeups to `users`.
+- It bounces overhead, activity and writeups to `users` — writeups only after `accessResolved` (v2.6419; gated on `canAccessContracts` alone, a dev's cold `?tab=writeups` bounced before the role had been read).
 - Pay-group deep links (`employment`/`pay_stubs`/`offsets` without `canAccessPay`, or `hours` without `canOpenHoursTab`) go through `useRoleGate.bounce`. It toasts once and lands somewhere useful (v2.2882), but only after `accessResolved`.
 - `scoreboard` and `hr` deliberately have **no URL gate**, because `isDev` resolves async and a gate would bounce cold dev links.
 
