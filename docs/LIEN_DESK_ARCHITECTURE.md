@@ -15,6 +15,8 @@ last_updated: 2026-11-02
 
 ## What this surface is
 
+> **v2.6376 (a sent notice keeps the job's GC, Taunya's report on job 890):** `buildLienDeskQueue` took every entry fact — `gcCustomerId`, `customerId`, `openBalance`, `hasOwner`, `propertyKind` — from the job's first `list_lien_notice_months` row, so a job the RPC no longer lists (every window closed more than a week ago, nothing billed, paid, or uncollectible) that stays on the desk through its sent item alone had no GC, and region E's gate 2 read *No GC on the job* with **Set the GC ›** while Edit Job showed one. The kernel now takes `jobs` (the `jobs_ledger` rows by id, `LienDeskQueueJob`) and falls back to the job row's `gc_customer_id` and `customer_id` when there is no month row; a month row still wins. `useLienDeskData` builds `jobsById` before the queue and passes it; `useGcOnNoticeData` passes its own. Left: on such an entry gate 4 still reads *No month picked* and gate 5 *Nothing billed*, and the list row's money is $0 — the months and the billed-open figure are the RPC's alone (the sweep's list, 2026-11-02).
+
 > **v2.6341 (a notice recorded after the fact starts its clocks on its mailing day, punch list #243 PR 2):** `markLienDeskItemSent(itemId, filingId, sentAt)` writes `sent_at` only when given one; `recordLienNoticeByHand` passes the typed day as noon in the app's calendar when it is before today (`lib/jobs/lienSentAt.ts`: `appTzNoonIso`, `sentAtForTypedDay`, `earliestSendDay`), `syncLienDeskAfterRecord` and the run pass the filing's earliest `sends[].sent_on` (an affidavit its `filed_at`), and a same-day record keeps the trigger's `now()`. Every reader of `sent_at` already goes through `calendarYmdInAppTzFromIso`, so letter two's clock, the courtesy's day 7, Do now and region F2's Sent footer read the typed day with no change of their own.
 
 > **v2.6340 (the courtesy window makes no contact until a text goes, punch list #243 PR 1):** `loadCourtesyRecipients` reads the GC's own contact through `findCustomerContactId` (`messagesIo.ts`, a select, never `contact_for_customer`), else `customers.contact_info`; `lib/jobs/lienCourtesyContact.ts` plans the text (`phoneChannelKey` mirrors `contact_channel_key`); `sendCourtesyNotice` takes `gcCustomerId` from the modal's window context and `textDoorFor` makes the contact only for a recipient whose text goes — a refusal or a numberless contact is the text's reason, and the email still goes.
@@ -246,7 +248,7 @@ What the run records also reaches Messages (v2.5404): [`messages/legalLines.ts`]
 
 | Kernel | Lines | Tests | Used here for |
 |---|---|---|---|
-| [`lienDesk.ts`](../src/lib/jobs/lienDesk.ts) | 545 | 21 | piles, policies, role helpers, `draftReadiness`, `submitOutcome`, `holdUntilFor`, `ruleWaitsOnFirstNotice` |
+| [`lienDesk.ts`](../src/lib/jobs/lienDesk.ts) | 545 | 21 | piles, policies, role helpers, `draftReadiness`, `submitOutcome`, `holdUntilFor`, `ruleWaitsOnFirstNotice`; since v2.6376 an entry with no month row reads its GC and customer from the job row (`jobs`) |
 | [`lienDeskIo.ts`](../src/lib/jobs/lienDeskIo.ts) | 305 | **0** (spied in smoke) | 16 of its 19 exports — all but `undoLienDeskApprovals` (the GC run's undo), `markLienDeskItemSent` and `syncLienDeskAfterRecord`; `skipLienDeskItem` left in v2.4743, `takeBackLienDeskItems` came in v2.4983 and `clearLienDeskItemPrinted` goes through it |
 | `lienDeskGcPicker.ts` | 99 | 8 | picker rows |
 | `lienNoticePreview.ts` | 315 | 13 | wording edits/diff, preview HTML + messages |

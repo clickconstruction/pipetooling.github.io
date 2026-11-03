@@ -106,6 +106,7 @@ Start at [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) �
 | [`CHECKLIST_TABS_ARCHITECTURE.md`](./CHECKLIST_TABS_ARCHITECTURE.md) | `src/pages/Checklist.tsx` + `ChecklistTechTreeTab` |
 | [`QUICKFILL_ARCHITECTURE.md`](./QUICKFILL_ARCHITECTURE.md) | `src/pages/Quickfill.tsx` (section framework) + `QuickfillScheduleSection` |
 | [`JOB_TALLY_ARCHITECTURE.md`](./JOB_TALLY_ARCHITECTURE.md) | `src/pages/JobTally.tsx` |
+| [`MATERIALS_ON_SITE_ARCHITECTURE.md`](./MATERIALS_ON_SITE_ARCHITECTURE.md) | Materials on site (punch list #209): the ledger of what is in a job's cages and boxes — `src/lib/materials/onSite*.ts`, the On site tab, Jobs → Materials, the five tables, the dev MCP's `read_on_site` and plan → apply verbs, the gaps |
 | [`SCHEDULE_DISPATCH_ARCHITECTURE.md`](./SCHEDULE_DISPATCH_ARCHITECTURE.md) | `ScheduleDispatchHub` + `ScheduleDispatchHubPage` |
 | [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) | `src/pages/Settings.tsx` + `SettingsDashboardTab` |
 | [`SUB_PORTAL_ARCHITECTURE.md`](./SUB_PORTAL_ARCHITECTURE.md) | `src/pages/SubPortal.tsx` (the public sub portal) |

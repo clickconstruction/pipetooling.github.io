@@ -10,6 +10,7 @@ import { addPhoto, newId, updatePhoto } from '../../lib/materials/onSiteStore'
 import { photoFileName, photoStatusWords, photoWords, type PhotoNote } from '../../lib/materials/photo'
 import { getPhotoBlob } from '../../lib/materials/photoBlobs'
 import { bytesWords, shrinkPhoto } from '../../lib/materials/photoShrink'
+import { readTakenAt } from '../../lib/photos/photoTakenAt'
 import { canSharePhoto, downloadFile, sharePhoto } from '../../lib/materials/photoShare'
 import { sendBoxPhoto } from '../../lib/materials/photoUpload'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -45,9 +46,10 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
     const f = e.target.files?.[0]
     e.target.value = ''
     if (!f) return
-    const at = new Date().toISOString()
     setBusy('Shrinking…')
     try {
+      // The photo's time is the file's own when the camera wrote one (punch list #247, PR 3), else now.
+      const at = await readTakenAt(f)
       const shot = await shrinkPhoto(f)
       const type = shot.shrunk ? 'image/jpeg' : f.type || 'image/jpeg'
       const fileName = photoFileName({ at, byName, containerLabel, after, mime: type })
