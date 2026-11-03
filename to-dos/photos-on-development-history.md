@@ -1,8 +1,8 @@
 ---
 name: "Photos on a development: in the History by their own time, and a one-row gallery at the bottom"
 number: 247
-group: close
-status: built 2026-11-02 · PR 1 v2.6371 and PR 3 v2.6375 merged, PR 2 v2.6373 (#6840) the last · left the live walk on ZZ Test rows
+group: gated
+status: built and live 2026-11-03 · walked on prod the same day, passed for the office · left the estimator's photos
 summary: >
   The owner, 2026-11-02, reading a site's History: the photos the crews upload should show in it, in
   line, placed by their own metadata (the time, the job, who took them), and a development should end
@@ -12,12 +12,12 @@ summary: >
   as the site's sixth look, the History lines with thumbnails in them, and the time a picture was taken
   read from the file, so a photo uploaded the next morning sits on the day it was shot.
 next: >
-  Once PR 2 is live, the walk in How to verify on ZZ Test rows (the owner's word first, since it writes
-  on prod), then delete this card.
-size: XS left (the walk); the train was M + S + S, with no migration
-blocker: The owner's word to write ZZ Test rows on prod for the walk.
+  The owner's call on what an estimator's Photos look shows (Where it stands, 2026-11-03, has the two
+  ways), then delete this card.
+size: XS (the words) or S (a read for the estimator), by the call; the train was M + S + S, with no migration
+blocker: The owner's call.
 ver: v2.6371 · 6373 · 6375
-opinion: your call — the code is built; the walk writes ZZ Test rows on prod, so it waits on your word
+opinion: your call — say so in words now; give estimators the crews' photos only if they should see them, which is an access question
 mockup: not required — drawn and shown to the owner before PR 1 on 2026-11-02; the built look on a development replaces it
 ---
 
@@ -68,7 +68,7 @@ Nothing joins the two: a photo never reaches a site's History, and a site has no
 
 ## How to verify
 
-PR 1, as the dev on a ZZ Test development with two ZZ Test jobs carrying report photos: the strip reads *Photos N*, the row scrolls sideways with a day tick between two days, the job picker narrows to one job, a tile opens the viewer on that photo and Next walks the row; as the primary sample through View as, only their job's photos show. PR 2: the History reads one *Photos* line for four uploads within the hour on one job, with four thumbnails, and two lines for two people; the **Photos** chip narrows to them; the search finds a caption. Delete every ZZ Test row after. PR 3: upload a photo whose file date is yesterday; its line sits on yesterday.
+PR 1, as the dev on a ZZ Test development with two ZZ Test jobs carrying report photos: the strip reads *Photos N*, the row scrolls sideways with a day tick between two days, the job picker narrows to one job, a tile opens the viewer on that photo and Next walks the row; as an estimator, the look shows only what the view lets an estimator read (a primary cannot open the page). PR 2: the History reads one *Photos* line for four uploads within the hour on one job, with four thumbnails, and two lines for two people; the **Photos** chip narrows to them; the search finds a caption. Delete every ZZ Test row after, the `file_index` rows before the jobs (a job's delete only blanks their link), and move the two ZZ job folders the photo sweep makes in Drive to the trash. PR 3: upload a photo whose file date is yesterday; its line sits on yesterday.
 
 ## Where it stands
 
@@ -96,3 +96,34 @@ Left:
   its capture gives it the camera's time like the other three; that is #244's ground.
 - The GPS idea in *The thinking* (a photo with no job placed on the nearest job of the site) is not
   built; a card of its own if wanted.
+
+2026-11-03, the live walk, as the dev on the local dev server built from `main` over prod data, with the
+owner's word given in the session:
+
+- **Passed** at 1280 and 375, on a ZZ Test development with two ZZ jobs and twelve made-up report photos over
+  three days. The strip read *Photos 12 · 12 this week*. The row drew twelve tiles newest first with the ticks
+  *Today*, *Yesterday* and *Nov 1*; the wheel scrolled it sideways, a job chip narrowed it to five, and a tile
+  opened the viewer with Next walking the row. History drew one *Photos* line with four thumbnails for one
+  person's hour, a separate line for the second person, and a six-photo line with three thumbnails and *+ 3*
+  that opened *4 of 6*. The **Photos** chip narrowed History to the four photo lines; *heater* found the batch
+  whose printed captions leave it out; nothing scrolled sideways at 375.
+- **The taken time passed.** A JPEG whose Exif said yesterday 4:42 PM, sent today through a Tally box, stored
+  `taken_at` 2026-11-02 22:42:10Z, sat on *Nov 2 · 4:42 PM* in History, and Drive named it *2026-11-02 … ZZ
+  box.jpg*.
+- **Not as this card said: an estimator sees no job photos.** `uploaded_photos` joins every job photo to
+  `jobs_ledger` under the reader's own rules, and an estimator has no `jobs_ledger` read, so the estimator's
+  look reads only the text and email pictures on the site's jobs and bids (checked as the estimator sample
+  through the dev seat). On a site full of crew photos it says *Nothing filed yet*. A primary cannot open the
+  page at all, so the primary check above never applied. The owner's call, two ways: (a) the words, where the
+  estimator's empty look says the crews' photos read to the office (XS); (b) the photos, a definer read for
+  the estimator's door as `list_development_overview` is for the jobs (S), if estimators should see the
+  crews' photos, which is an access question.
+- **For the next walker.** Within five minutes the photo sweep makes a Drive folder tree for each ZZ job under
+  *No customer yet* in PipeTooling Jobs, files the seeded photos there, and the file index reads them. This
+  walk deleted every row (the `file_index` rows first), both buckets' files and the two job folders, which went
+  to Drive's trash; three older ZZ folders under *No customer yet* came from other walks and were left alone.
+- PR 3's notes said every photo table keeps the upload moment in `created_at`. `job_box_photos` has no such
+  column, so a box photo now keeps the camera's time alone; the v2.6375 fragment and
+  `PROJECT_DOCUMENTATION.md` are corrected, and so are `ACCESS_CONTROL.md` and the guide on the estimator.
+- Still open beside the call: #244's Job photos window stamps the upload time and can call `readTakenAt`; the
+  GPS idea above.
