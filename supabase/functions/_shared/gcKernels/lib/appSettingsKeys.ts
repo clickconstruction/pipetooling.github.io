@@ -307,6 +307,22 @@ export const APP_SETTINGS_KEY_QUICK_ADD_ROLES_V1 = 'quick_add_roles_v1' as const
 /** Quick time add: the most minutes of quick adds one person may add in a day (`value_num`; the migration seeded 120). No `_v1` — `add_quick_time()` reads this exact key. */
 export const APP_SETTINGS_KEY_QUICK_ADD_DAILY_CEILING_MINUTES = 'quick_add_daily_ceiling_minutes' as const
 
+/**
+ * The rate the company charges for an hour of a worker's time (punch list #251, v2.6431): dollars an hour in
+ * `value_num`, seeded 285.00 by migration 20261103040000. The hours charged statement prices a worker's recorded hours
+ * at the job's own rate (`jobs_ledger.hourly_charge_rate`) when it has one, else at this. Dev writes (Settings → Jobs &
+ * dispatch). Never the wage the worker is paid.
+ */
+export const APP_SETTINGS_KEY_HOURLY_CHARGE_RATE_V1 = 'hourly_charge_rate_v1' as const
+
+export const DEFAULT_HOURLY_CHARGE_RATE = 285
+
+/** Parse the rate's `value_num`: a finite number over zero, to the cent; anything else is the default. */
+export function parseHourlyChargeRate(value: unknown): number {
+  const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : DEFAULT_HOURLY_CHARGE_RATE
+}
+
 export const APP_SETTINGS_KEY_ASSISTANT_HOURS_WINDOW_WEEKS = 'assistant_hours_window_weeks_v1' as const
 
 export const DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS = 3
