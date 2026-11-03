@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PlanPartRow, PlanSetRow } from './planSets'
-import { buildSitePlansView, jobNeedsNoPlans, olderSetsFor, sitePlansAskCount, sitePlansChipWords, sitePlansCountWords, sitePlansLeftOutWords, sitePlansNeedWords } from './sitePlans'
+import { buildSitePlansView, jobNeedsNoPlans, olderSetsFor, orderForPicking, sitePlansAskCount, sitePlansChipWords, sitePlansCountWords, sitePlansLeftOutWords, sitePlansNeedWords } from './sitePlans'
 
 function part(over: Partial<PlanPartRow> & { id: string; name: string }): PlanPartRow {
   return { development_id: 'd1', job_id: null, position: 0, current_set_id: null, current_set_by: null, current_set_at: null, created_by: null, created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z', ...over }
@@ -68,9 +68,9 @@ describe('buildSitePlansView', () => {
 
   it('leaves a billing-only job and a service call out of the count, each with its reason, and says so in one quiet line', () => {
     expect(v.jobsNeedingNoPlans).toEqual([
-      { kind: 'job', id: 'j6', label: 'JP543', why: 'billing_only' },
-      { kind: 'job', id: 'j7', label: 'JP933', why: 'service' },
-      { kind: 'job', id: 'j8', label: 'HCP 7', why: 'service' },
+      { kind: 'job', id: 'j6', label: 'JP543', name: null, why: 'billing_only' },
+      { kind: 'job', id: 'j7', label: 'JP933', name: null, why: 'service' },
+      { kind: 'job', id: 'j8', label: 'HCP 7', name: null, why: 'service' },
     ])
     expect(sitePlansLeftOutWords(v)).toBe('3 jobs need no plans: 1 bills only, 2 are service calls')
     expect(sitePlansLeftOutWords(buildSitePlansView({ parts: [bunker], sets, jobs: [jobs[6]!], bids: [] }))).toBe('1 job needs no plans: 1 is a service call')
@@ -105,5 +105,23 @@ describe('buildSitePlansView', () => {
     expect(sitePlansCountWords(empty)).toBe('no part yet')
     expect(sitePlansNeedWords(empty)).toBe('5 jobs follow no plans yet')
     expect(sitePlansChipWords(empty).allGood).toBeNull()
+  })
+})
+
+describe('orderForPicking', () => {
+  it('sorts the jobs on no part by name, the nameless last, ties by number', () => {
+    const rows = [
+      { kind: 'job' as const, id: 'a', label: 'JP957', name: null },
+      { kind: 'job' as const, id: 'b', label: 'JP955', name: 'Bunker BESS room HVAC' },
+      { kind: 'job' as const, id: 'c', label: 'JP765', name: 'ATV building fans' },
+      { kind: 'job' as const, id: 'd', label: 'JP956', name: 'ATV building gas line' },
+      { kind: 'job' as const, id: 'e', label: 'JP424', name: 'Diamondback' },
+      { kind: 'job' as const, id: 'f', label: 'JP423', name: 'Diamondback' },
+    ]
+    expect(orderForPicking(rows).map((r) => r.id)).toEqual(['c', 'd', 'b', 'f', 'e', 'a'])
+  })
+  it('carries the name onto the carriers', () => {
+    const v = buildSitePlansView({ parts: [], sets: [], jobs: [{ id: 'j', label: 'JP1', name: 'Gas line' }], bids: [] })
+    expect(v.jobsWithNoPart[0]?.name).toBe('Gas line')
   })
 })
