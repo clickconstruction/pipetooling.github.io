@@ -247,7 +247,7 @@ describe('the steps a line can belong to', () => {
     expect(STEPS.trade?.map((s) => s.id)).toEqual(['invited', 'portal', 'papers', 'msa', 'ask', 'compare', 'sow', 'draws', 'closeout'])
     // A customer's two flows, the residential one first.
     expect(STEPS.customer?.map((s) => s.id)).toEqual([
-      ...['booked', 'onway', 'arrived', 'found', 'estimate', 'approved', 'working', 'done', 'billed', 'paid', 'review'],
+      ...['booked', 'onway', 'arrived', 'found', 'estimate', 'approved', 'working', 'done', 'billed', 'paid', 'review', 'warranty_paper'],
       ...['agreement', 'asked', 'bid', 'yes', 'contract', 'start', 'onsite', 'payapp', 'close', 'warranty', 'co'],
     ])
     expect(STEPS.arch?.map((s) => s.name)).toEqual(['Plans in', 'Questions', 'Addenda', 'Submittals', 'Certify pay apps'])
@@ -299,7 +299,7 @@ describe('the steps of each flow, a customer’s two among them (R3)', () => {
 
   it('keeps a customer’s two flows apart, the residential one first, each under its name', () => {
     expect(BY_FLOW.customer?.map((f) => [f.flow, f.name, f.steps.length])).toEqual([
-      ['residential', 'Residential customer', 11],
+      ['residential', 'Residential customer', 12],
       ['customer', 'GC customer', 11],
     ])
     expect(BY_FLOW.trade?.map((f) => f.name)).toEqual(['Trade partner'])

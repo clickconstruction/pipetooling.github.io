@@ -38,10 +38,11 @@ describe('flows/seed', () => {
     expect(flat(SEED_FLOWS.customer).filter((s) => s.skipOneJob).map((s) => s.id)).toEqual(['agreement'])
   })
 
-  it('draws change orders apart, the only aside step', () => {
+  it('draws change orders and the residential warranty apart, the two aside steps', () => {
     const asides = Object.values(SEED_FLOWS).flatMap((f) => flat(f).filter((s) => s.aside).map((s) => `${f.kind}.${s.id}`))
-    expect(asides).toEqual(['customer.co'])
+    expect(asides).toEqual(['customer.co', 'residential.warranty_paper'])
     expect(laneOf(SEED_FLOWS.customer, 'co')).toBe('per_job')
+    expect(laneOf(SEED_FLOWS.residential, 'warranty_paper')).toBe('per_job')
   })
 
   it('gives every loop a way to end, and no step that runs once one', () => {

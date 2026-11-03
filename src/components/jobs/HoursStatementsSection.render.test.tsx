@@ -2,10 +2,11 @@
 /**
  * Render smoke for the Hours statements section (punch list #212, PR 2): the saved rows with their record id, state,
  * kind and who saved them; the press with its count; Print again from a row's snapshot; Open handing the window the
- * row; the empty section naming the press, or saying why there is no one to make a statement for; who sees it.
+ * row; the empty section naming the press, or saying why there is no one to make a statement for; who sees it. Since
+ * PR 3 (v2.6411) a signed row's Open the signed PDF through the gate.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { HoursStatementRecordRow, HoursStatementSnapshot } from '../../lib/people/hoursStatementsIo'
 import { HoursStatementsSection } from './HoursStatementsSection'
@@ -35,6 +36,8 @@ vi.mock('../../lib/people/hoursStatementPrint', () => ({
   buildHoursStatementPaper: (snap: HoursStatementSnapshot, id: string | null) => buildSpy(snap, id),
   printHoursStatementPaper: (build: () => Promise<string>) => printSpy(build),
 }))
+const pdfSpy = vi.fn((documentId: string) => Promise.resolve(`https://files.example.com/${documentId}`))
+const signingIo = { prepare: vi.fn(), send: vi.fn(), markSent: vi.fn(), fileScan: vi.fn(), openSignedPdf: (id: string) => pdfSpy(id) } as unknown as import('../../lib/people/hoursStatementSigningIo').HoursStatementSigningIo
 vi.mock('./HoursStatementModal', () => ({
   HoursStatementModal: ({ scope, maker, existing, onClose }: { scope: { kind: string }; maker: { role: string | null; canAccessPay: boolean }; existing: { record_id: string } | null; onClose: () => void }) => (
     <div data-testid="window-stub">
@@ -119,6 +122,19 @@ describe('the Hours statements section (punch list #212, PR 2)', () => {
     expect(screen.getByTestId('window-stub').textContent).toContain('window from job for dev pay true on HS-1042-0002')
     fireEvent.click(screen.getByRole('button', { name: 'close window' }))
     expect(screen.queryByTestId('window-stub')).toBeNull()
+  })
+
+  it('a signed row carries Open the signed PDF, which asks the gate for the link and opens it; other rows do not', async () => {
+    rows = [row({ id: 'hs-3', record_id: 'HS-1042-0003', state: 'signed', contract_document_id: 'doc-3' }), row({ id: 'hs-4', record_id: 'HS-1042-0004', state: 'sent', contract_document_id: 'doc-4' })]
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => ({}) as Window)
+    renderWithProviders(<HoursStatementsSection scope={jobScope} signingIo={signingIo} />)
+    const list = await screen.findAllByTestId('hours-statement-row')
+    expect(list[0]!.textContent).toContain('Signed')
+    expect(within(list[1]!).queryByRole('button', { name: /Open the signed PDF/ })).toBeNull()
+    fireEvent.click(within(list[0]!).getByRole('button', { name: 'Open the signed PDF HS-1042-0003' }))
+    await waitFor(() => expect(pdfSpy).toHaveBeenCalledWith('doc-3'))
+    await waitFor(() => expect(openSpy).toHaveBeenCalledWith('https://files.example.com/doc-3', '_blank', 'noopener'))
+    openSpy.mockRestore()
   })
 
   it('an empty section names the press, and the press opens the window on a new statement', async () => {

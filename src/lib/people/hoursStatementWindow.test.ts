@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { canMakeHoursStatement, hoursStatementPayAllowed } from './hoursStatementAccess'
+import { HOURS_STATEMENT_CHANNELS, HOURS_STATEMENT_OPEN_WORDS, HOURS_STATEMENT_SENT_WORDS, HOURS_STATEMENT_SIGNED_WORDS, hoursStatementChannelHint } from './hoursStatementSigning'
 import {
   HOURS_STATEMENT_PAY_FIXED_OFF,
-  HOURS_STATEMENT_SIGNING_HELD,
   hoursStatementEmptyWords,
   hoursStatementPressWords,
   hoursStatementRowWords,
@@ -36,7 +36,8 @@ describe('what the app has in the span (punch list #212, PR 2)', () => {
       hoursStatementSpanWords({ approved: 23, pending: 3, typedDays: 2, quickAddsLeftOff: 2 }),
       hoursStatementSpanWords({ approved: 0, pending: 1, typedDays: 0, quickAddsLeftOff: 0 }),
     ].flatMap((w) => [w.has, w.held ?? ''])
-    for (const line of [...lines, HOURS_STATEMENT_PAY_FIXED_OFF, HOURS_STATEMENT_SIGNING_HELD]) expect(plainWordsFailures(line)).toEqual([])
+    const signing = [HOURS_STATEMENT_OPEN_WORDS, HOURS_STATEMENT_SENT_WORDS, HOURS_STATEMENT_SIGNED_WORDS, ...HOURS_STATEMENT_CHANNELS.map((c) => hoursStatementChannelHint(c))]
+    for (const line of [...lines, HOURS_STATEMENT_PAY_FIXED_OFF, ...signing]) expect(plainWordsFailures(line)).toEqual([])
   })
 })
 

@@ -9,6 +9,11 @@
 # leg names it and carries on. A failed bed never stops the others. As each bed ends it prints its name, result and
 # seconds, with its whole log folded under that line and a failed bed's last lines in the open. The failures go to
 # $GITHUB_STEP_SUMMARY, and it exits 1 when any bed failed. Needs docker. Never touches prod.
+#
+# A bed that starts with pgtest_migrate begins from the leg's migrated copy (pgtest_make_copy, scripts/pgtest-pull.sh):
+# the leg applies the migrations once, in its first slot, and those beds wait for the copy while the others run. A copy
+# that fails leaves each of them to apply the migrations itself, so a broken migration still fails every bed by name.
+# PGTEST_LEG_COPY=0 turns the copy off (v2.6415).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -18,6 +23,9 @@ BED_SECONDS="${PGTEST_BED_SECONDS:-1200}"
 FIRST_PORT=25000
 TAIL_LINES=40
 SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
+LEG_COPY="${PGTEST_LEG_COPY:-1}"
+COPY_NAME="pgtest-leg-copy-$$"
+COPY_IMAGE="pgtest-leg-copy:$$"
 
 # A leg with nothing to run must not read as passed.
 [ "$#" -gt 0 ] || { echo "no beds given"; exit 2; }
@@ -28,7 +36,7 @@ dup="$(grep -h '^NAME=' scripts/pgtest-*.sh | sort | uniq -d)"
 [ -z "$dup" ] || { echo "beds share a container name: $dup"; exit 2; }
 
 LOGS="$(mktemp -d "${TMPDIR:-/tmp}/sql-beds.XXXXXX")"
-trap 'rm -rf "$LOGS"' EXIT
+trap 'rm -rf "$LOGS"; docker rm -f "$COPY_NAME" >/dev/null 2>&1 || true; docker rmi "$COPY_IMAGE" >/dev/null 2>&1 || true' EXIT
 
 any_bed_names() {
   local bed
@@ -40,12 +48,27 @@ any_bed_names() {
 if any_bed_names supabase/postgres:; then pgtest_pull_supabase "$PGTEST_SUPABASE_TAG" || true; fi
 if any_bed_names postgres:15; then pgtest_pull_postgres15 || true; fi
 
-# The .done file appears whole, by rename, so the loop below never reads half a result.
+# The beds that can start from the leg's copy run last, so the others start while it is made.
+uses_copy() { [ "$LEG_COPY" = 1 ] && grep -qE '^[[:space:]]*pgtest_migrate[[:space:]]*$' "scripts/pgtest-$1.sh"; }
+order=() copy_beds=0
+for bed in "${beds[@]}"; do if ! uses_copy "$bed"; then order+=("$bed"); fi; done
+for bed in "${beds[@]}"; do if uses_copy "$bed"; then order+=("$bed"); copy_beds=$((copy_beds + 1)); fi; done
+
+# The .done files appear whole, by rename, so the loop below never reads half a result.
 run_bed() {
-  local bed="$1" port="$2" began=$SECONDS rc=0
-  PGTEST_PORT="$port" timeout -k 30 "$BED_SECONDS" bash "scripts/pgtest-$bed.sh" </dev/null >"$LOGS/$bed.log" 2>&1 || rc=$?
+  local bed="$1" port="$2" image="$3" began=$SECONDS rc=0 envs
+  envs=(PGTEST_PORT="$port")
+  [ -z "$image" ] || envs+=(PGTEST_SUPABASE_IMAGE="$image")
+  env "${envs[@]}" timeout -k 30 "$BED_SECONDS" bash "scripts/pgtest-$bed.sh" </dev/null >"$LOGS/$bed.log" 2>&1 || rc=$?
   echo "$rc $((SECONDS - began))" >"$LOGS/$bed.tmp"
   mv "$LOGS/$bed.tmp" "$LOGS/$bed.done"
+}
+make_copy() {
+  local began=$SECONDS rc=0
+  timeout -k 30 "$BED_SECONDS" bash -euo pipefail -c '. scripts/pgtest-pull.sh; pgtest_make_copy "$@"' _ \
+    "$COPY_NAME" "${PGTEST_SUPABASE_IMAGE:-$PGTEST_SUPABASE_TAG}" "$COPY_IMAGE" </dev/null >"$LOGS/copy.log" 2>&1 || rc=$?
+  echo "$rc $((SECONDS - began))" >"$LOGS/copy.tmp"
+  mv "$LOGS/copy.tmp" "$LOGS/copy.done"
 }
 
 failed=0
@@ -69,12 +92,46 @@ report() {
   } >>"$LOGS/failures"
 }
 
-# Only this loop prints, so one bed's log never lands inside another's.
+# A failed copy is a warning, not a failure: its beds apply the migrations themselves and fail on their own.
+report_copy() {
+  local rc="$1" secs="$2" word=made
+  [ "$rc" = 0 ] || word="FAILED (exit $rc)"
+  [ "$rc" != 124 ] || word="FAILED (stopped at the limit)"
+  echo "::group::the leg's migrated copy: $word in $secs s, for $copy_beds beds"
+  cat "$LOGS/copy.log"
+  echo "::endgroup::"
+  echo "| the leg's migrated copy | $word | $secs |" >>"$LOGS/table"
+  copy_slot=0
+  if [ "$rc" = 0 ]; then copy=made; return 0; fi
+  copy=failed
+  echo "::warning title=No migrated copy::the leg's migrated copy: $word, so each of its $copy_beds beds applies the migrations itself"
+  echo "--- the last $TAIL_LINES lines of the copy's log ---"
+  tail -n "$TAIL_LINES" "$LOGS/copy.log"
+}
+
+copy=none copy_slot=0
+if [ "$copy_beds" -gt 0 ]; then
+  echo "start: the leg's migrated copy, for $copy_beds beds"
+  make_copy &
+  copy=making copy_slot=1
+fi
+
+# Only this loop prints, so one bed's log never lands inside another's. The copy takes a slot while it is made.
 started=0 reported=0
 while [ "$reported" -lt "${#beds[@]}" ]; do
-  while [ "$started" -lt "${#beds[@]}" ] && [ $((started - reported)) -lt "$AT_ONCE" ]; do
-    echo "start: ${beds[$started]} on port $((FIRST_PORT + started))"
-    run_bed "${beds[$started]}" $((FIRST_PORT + started)) &
+  if [ "$copy" = making ] && [ -f "$LOGS/copy.done" ]; then
+    read -r rc secs <"$LOGS/copy.done"
+    rm "$LOGS/copy.done"
+    report_copy "$rc" "$secs"
+  fi
+  while [ "$started" -lt "${#order[@]}" ] && [ $((started - reported + copy_slot)) -lt "$AT_ONCE" ]; do
+    bed="${order[$started]}" image="" from=""
+    if uses_copy "$bed"; then
+      [ "$copy" != making ] || break
+      [ "$copy" != made ] || { image="$COPY_IMAGE"; from=", from the leg's copy"; }
+    fi
+    echo "start: $bed on port $((FIRST_PORT + started))$from"
+    run_bed "$bed" $((FIRST_PORT + started)) "$image" &
     started=$((started + 1))
   done
   for bed in "${beds[@]}"; do

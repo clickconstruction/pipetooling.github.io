@@ -2,7 +2,7 @@
 name: "Signed hours statement: a worker's recorded hours on one job, as a paper they sign, for court"
 number: 212
 group: ready
-status: PR 1 built 2026-10-29, v2.6069, the kernel, the Letter print and the reads · PR 2 built 2026-10-29, v2.6097, the window, the hours_statements table and the Hours statements section on the job's Documents tab and the person's desk, the dev press retired · the print restyled as one full-width paper 2026-11-02, v2.6412 · PR 3, the signing, not started
+status: PR 1 built 2026-10-29, v2.6069, the kernel, the Letter print and the reads · PR 2 built 2026-10-29, v2.6097, the window, the hours_statements table and the Hours statements section on the job's Documents tab and the person's desk, the dev press retired · the print restyled as one full-width paper 2026-11-02, v2.6412 · PR 3 built 2026-11-02, v2.6411, the signing: the statement as its own Contract Form, Send for signature… with the four channels, Sign here now, File a signed scan…, the signed PDF on the job and the desk · PR 4, the matter, not started
 mockup: to-dos/signed-hours-statement/mockup.html
 summary: >
   A paper, made from the clock and the pay reports as they stand, that says what one worker did on one
@@ -12,10 +12,10 @@ summary: >
   ink-signing page the lien waivers use, and the Legal desk's Evidence tab; what is new is one builder,
   one window, one small table, and two verbs on the dev MCP so an agent can read and make one. The hard part is the span before the app: nothing in the app precedes
   2026-03-12, so for 2025 the paper can carry only what the worker states, marked as such.
-next: PR 3, the signing: the pdf-lib statement and its form schema, the person_contract_documents row, Send for signature… with the four channels and Hand the phone to <name>, the stated rows as form boxes, File a signed scan…; counsel's word on what a worker's stated days for 2025 are worth comes first.
+next: PR 4, the matter: Signed statements on the Legal desk's Evidence tab proof table with Ask… per worker, Add to evidence copying the signed PDF into legal_matter_documents (matter_document_id filled), the exhibit candidate and its lettering, the gap jobs read as gap jobs; counsel's word on what a worker's stated days for 2025 are worth is still owed (the stated block shipped in PR 3 marked as the worker's own statement).
 size: M as a train of five (S · M · M · S · S)
-blocker: counsel's word on the stated block's weight before PR 3.
-ver: v2.6069 · v2.6097 · v2.6412
+blocker: counsel's word on the stated block's weight, still owed after PR 3 shipped it as the worker's own statement (Diane's call of 2026-11-02 to build now).
+ver: v2.6069 · v2.6097 · v2.6412 · v2.6411
 opinion: build — the owner took all seven calls as recommended on 2026-10-29; the paper is honest about what the app does not have
 ---
 
@@ -353,7 +353,9 @@ jobs and amounts stay out of the repo and the mock-up.
 - Whether `send-contract-for-signature` can mint a link without an email was read, not run: the
   function takes `signer_email`; the link and in-person modes are a change to it.
 - Counsel has not been asked what a worker's after-the-fact statement for 2025 is worth beside the
-  pay records the company already has (bank and Cash App sends). Call 5 waits on that.
+  pay records the company already has (bank and Cash App sends). Call 5 waits on that. PR 3 shipped the stated
+  block anyway on Diane's call of 2026-11-02: the paper, the form's boxes and the row all mark those days as the
+  worker's own statement, never the company's record, so counsel's answer changes the words, not the shape.
 - In passing: `src/lib/jobs/lienNoticeDraft.ts` sets the affidavit's work span to one day
   (`workStart` and `workEnd` both the month's end), so ¶5 of the affidavit swears a single day, not
   the span. Not part of this card; a fix of its own.
@@ -371,12 +373,23 @@ merge), the record id's kernel `hoursStatementRecord.ts` beside the statement's,
 with its two switches, the span line, the held line and the paper as the preview, **Save a draft** and **Print** (which
 saves, stamps the id and files nothing), **Send for signature…** and **Sign here now** drawn and held, and the
 **Hours statements** section on the job's Documents tab and under the desk's Hours & approvals; the dev press is gone.
-PR 3 claims its version with `npm run claim` and starts from the plan above; counsel's question on the stated block
-must be answered before it ships.
 The print was restyled on 2026-11-02 as v2.6412 after the first real quarter printed as five pages with the table
 squeezed into the right half (one unclosed `<div>` in the facts block): the facts as one band across the width, the
 table full width with one line per day and *In – Out* as one cell, the rate stated once when it is the same all
 period, hours to two decimals, the week's subtotals under Hours and Amount, a long note on its own line under its
 day, Paid and the signatures as full-width bands, the column header on every page and no row split; a quarter is
-three pages. The mock-up it was built from is `mockup-print-v2.html` beside this card; PR 3's pdf-lib paper follows
-that layout.
+three pages. The mock-up it was built from is `mockup-print-v2.html` beside this card. PR 3's pdf-lib paper was drawn
+before the restyle landed and keeps the earlier table (In and Out as two columns, the rate on every row); bringing
+it to the full-width layout is a residual below.
+PR 3 shipped 2026-11-02 as v2.6411: the statement is its own Contract Form — `_shared/hoursStatementPdf.ts` draws the
+paper with pdf-lib and records the schema as it draws (the stated rows as boxes, three blank after the office's, the
+printed name, the signature, the date), `_shared/hoursStatementForm.ts` names the document, the keys, the seeds and the
+days read back; `hours-statement-signing` (`prepare`, `file_scan`) writes one `contract_form_templates` row and one
+`person_contract_documents` copy per statement (`doc_type` `hours_statement`, migration `20261102230000`) and ties the
+row to it; `send-contract-for-signature` gained `mode: 'link'`; `accept-contract` marks the statement signed with the
+typed days and keeps the consent as `hours_statement`; `open-contract-form-pdf` lets an assistant open an hours-only
+one. The window's **Send for signature…** opens the channel sheet (Email the link · Text the link · Copy the link ·
+Hand the phone to <name>), **Sign here now** is the last in one press, **File a signed scan…** the paper path, and a
+signed row carries **Open the signed PDF** on the list and the window. Counsel's word on the stated block is still owed;
+the block shipped marked as the worker's own statement. PR 4 claims its version with `npm run claim` and starts from
+the plan above: the Evidence tab's *Signed statements* with **Ask…** and **Add to evidence**, the exhibit candidate.

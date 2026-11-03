@@ -1,29 +1,31 @@
 /**
- * The io half of Find a file (v2.6305; the index first since punch list #240's PR 1, v2.6319): one call to the
- * `search_file_index` RPC as the signed-in person, whose rows the box shows when there are any, else one call to
- * `drive-link`'s `search`, Drive's own full-text index as the floor. The RPC refusing (the migration not pushed yet, a
- * role the table's policy does not take) costs the index, never the search: the box falls back to Drive and says so.
- * The function's own words come back as the error (`fnProblem`, as the job's other Drive calls read theirs). Drive is
- * asked at the same time and its finds follow the index's, so the box shows the index's hits without waiting for it
- * (v2.6369).
+ * The io half of Find a file (v2.6305; the index first since punch list #240's PR 1, v2.6319; by meaning too since PR 4,
+ * v2.6338): one call to `drive-link`'s `search_index` as the signed-in person, which answers the rows of our own index
+ * by the words, or by the words and the meaning fused once the embeddings key is set (the query is embedded there), and
+ * at the same time one call to `drive-link`'s `search`, Drive's own full-text index. The index's hits go to the box as
+ * soon as they come (v2.6369), and Drive's follow behind them (ahead of them when the index found hits by meaning alone,
+ * which must never hide a file Drive would find by its name) and are the floor when the index has nothing. The index
+ * refusing (the migration not pushed yet, the function not deployed yet) costs the index, never the search: the box
+ * falls back to Drive and says so. The function's own words come back as the error (`fnProblem`).
  */
 import { supabase } from '../supabase'
 import { fnProblem, type FnResult } from '../gc/gcIo'
-import { driveBehindIndex, FIND_MAX_HITS, FIND_WORDS, findAFileFromAnswer, findAFileFromIndexRows, type FindAFileRead } from './findAFile'
+import { driveBehindIndex, driveBehindMeaning, FIND_WORDS, findAFileFromAnswer, findAFileFromIndexAnswer, needsDriveBehind, type FindAFileRead } from './findAFile'
 
 export type FindAFileIo = {
   /** `onFirst` hears our index's hits the moment they come; the answer is the whole list once Drive has spoken. */
   search: (words: string, onFirst?: (read: FindAFileRead) => void) => Promise<FindAFileRead>
 }
 
-/** Our own index, or null when the RPC refused (logged, so a pushed migration is one `console` line away from proof). */
+/** Our own index through the function, or null when it refused (logged, so a deploy is one `console` line away from proof). */
 export async function searchIndex(words: string): Promise<FindAFileRead | null> {
-  const { data, error } = await supabase.rpc('search_file_index' as never, { words, max_hits: FIND_MAX_HITS } as never)
-  if (error) {
-    console.warn('search_file_index refused; falling back to Drive', error.message)
+  const r = (await supabase.functions.invoke('drive-link', { body: { action: 'search_index', words } })) as FnResult
+  const problem = await fnProblem(r, FIND_WORDS.failed)
+  if (problem) {
+    console.warn('search_index refused; falling back to Drive', problem)
     return null
   }
-  return findAFileFromIndexRows(data as unknown)
+  return findAFileFromIndexAnswer(r.data)
 }
 
 /** Drive's own search through `drive-link`, the floor. */
@@ -47,7 +49,12 @@ export async function searchJobFiles(words: string, onFirst?: (read: FindAFileRe
   const index = await searchIndex(words)
   if (index && index.hits.length > 0) onFirst?.(index)
   const drive = await asked
-  if (index && index.hits.length > 0) return drive.ok ? driveBehindIndex(index, drive.read) : index
+  if (index && index.hits.length > 0) {
+    if (!drive.ok) return index
+    // Hits by the words lead and Drive fills in behind; hits by meaning alone put Drive's own finds first, since a
+    // loose match by meaning must never hide the file Drive found by its name.
+    return needsDriveBehind(index) ? driveBehindMeaning(index, drive.read) : driveBehindIndex(index, drive.read)
+  }
   if (drive.ok) return drive.read
   if (index) return index
   throw drive.error

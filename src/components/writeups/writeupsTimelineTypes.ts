@@ -30,4 +30,5 @@ export type WriteupsTimelineRow =
   | { kind: 'ncns'; sortMs: number; ncns: NcnsListRow }
   | { kind: 'late'; sortMs: number; late: LateTimelineEntry }
 
-export const NCNS_TEMPLATE_SORT_KEY = 'No-call, no-show'
+/** The sort keys live with the list's kernel since v2.6433; re-exported so the rows' readers keep their import. */
+export { NCNS_TEMPLATE_SORT_KEY } from '../../lib/people/writeupsTimeline'
