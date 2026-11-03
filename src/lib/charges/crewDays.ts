@@ -48,6 +48,8 @@ export type CrewDay = {
   who: string
   /** The shape in words, with the job's rule named when it decided. */
   shapeWords: string
+  /** An adjustment set this day's shape. */
+  adjusted: boolean
 }
 
 export type CrewDaysTotals = {
@@ -58,9 +60,19 @@ export type CrewDaysTotals = {
   /** Days with no rate, by count; the paper names each. */
   unpriced: number
   importedDays: number
+  /** Days an adjustment left off the paper. */
+  daysLeftOff: number
+  /** Days an adjustment set to another shape. */
+  daysAdjusted: number
 }
 
 export type CrewDaysResult = { days: CrewDay[]; totals: CrewDaysTotals }
+
+/** The office's adjustments on days (punch list #254, PR 3): a shape set on a day, or a day left off. */
+export type CrewDayOverrides = {
+  dayShape?: ReadonlyMap<string, CrewShape>
+  dayOff?: ReadonlySet<string>
+}
 
 /** To the cent, a half-cent rounding up, whatever floating point made of the product. */
 const cents = (n: number): number => Math.round(Math.round(n * 1000) / 10) / 100
@@ -76,11 +88,20 @@ function uniqueNames(people: CrewDayPerson[]): string {
   return out.join(', ')
 }
 
-/** The sessions grouped into crew-days and priced; days sorted by date, people by hours then name. */
-export function buildCrewDays(sessions: ReadonlyArray<CrewSessionInput>, card: RateCard, rule: JobChargeRule = DEFAULT_JOB_CHARGE_RULE): CrewDaysResult {
+/** The sessions grouped into crew-days and priced; days sorted by date, people by hours then name. A day left off by an adjustment is dropped and counted. */
+export function buildCrewDays(sessions: ReadonlyArray<CrewSessionInput>, card: RateCard, rule: JobChargeRule = DEFAULT_JOB_CHARGE_RULE, overrides: CrewDayOverrides = {}): CrewDaysResult {
   const byDay = new Map<string, { people: Map<string, CrewDayPerson>; imported: boolean }>()
+  let daysLeftOff = 0
+  const seenOff = new Set<string>()
   for (const s of sessions) {
     if (!(s.hours > 0)) continue
+    if (overrides.dayOff?.has(s.workDate)) {
+      if (!seenOff.has(s.workDate)) {
+        seenOff.add(s.workDate)
+        daysLeftOff += 1
+      }
+      continue
+    }
     const day = byDay.get(s.workDate) ?? { people: new Map(), imported: false }
     const prior = day.people.get(s.userId)
     day.people.set(s.userId, { userId: s.userId, name: s.name, standing: s.standing, hours: cents((prior?.hours ?? 0) + s.hours) })
@@ -98,8 +119,15 @@ export function buildCrewDays(sessions: ReadonlyArray<CrewSessionInput>, card: R
     let rate: number | null = null
     let why: string | null = null
     let shapeWords = read.shape ? CREW_SHAPE_LOWER[read.shape] : 'nobody charged'
+    const setTo = overrides.dayShape?.get(workDate) ?? null
     if (read.shape == null) {
       why = 'Nobody out that day is charged to a customer.'
+    } else if (setTo) {
+      pricedShape = setTo
+      const price = crewRateFor(card, setTo, 0)
+      rate = price.rate
+      why = price.why
+      shapeWords = `${CREW_SHAPE_LOWER[setTo]} · adjusted`
     } else if (rule.kind === 'flat') {
       rate = rule.rate > 0 ? cents(rule.rate) : null
       why = rate == null ? 'The job’s flat rate is not set.' : null
@@ -131,6 +159,7 @@ export function buildCrewDays(sessions: ReadonlyArray<CrewSessionInput>, card: R
       imported: d.imported,
       who: uniqueNames(people),
       shapeWords,
+      adjusted: setTo != null && read.shape != null,
     })
   }
   const totals: CrewDaysTotals = {
@@ -140,6 +169,8 @@ export function buildCrewDays(sessions: ReadonlyArray<CrewSessionInput>, card: R
     charged: cents(days.reduce((a, d) => a + (d.charged ?? 0), 0)),
     unpriced: days.filter((d) => d.charged == null).length,
     importedDays: days.filter((d) => d.imported).length,
+    daysLeftOff,
+    daysAdjusted: days.filter((d) => d.adjusted).length,
   }
   return { days, totals }
 }
