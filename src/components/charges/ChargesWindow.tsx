@@ -204,7 +204,7 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
           <p style={{ ...quiet, padding: '1rem' }}>{reading ? 'Reading the job’s hours and materials…' : ''}</p>
         ) : (
           <>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '0.9rem', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', background: 'var(--surface-2, var(--surface))' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '0.9rem', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
               <label style={label}>
                 Charge this job’s labor as
                 <select
@@ -374,7 +374,7 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
                   <h3 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-strong)' }}>Adjustments on this job</h3>
                   {read.adjustments.length === 0 && pending.length === 0 ? <p style={quiet}>Nothing adjusted. Every line is the record. Change a day’s crew, untick a day or a line, or pass a line through, and it lands here.</p> : null}
                   {pending.map((p) => (
-                    <div key={p.key} style={{ padding: '0.35rem 0.5rem', borderLeft: '3px solid var(--text-amber-700, var(--border-strong))', background: 'var(--surface-2, var(--surface))', borderRadius: 4, fontSize: '0.8125rem' }}>
+                    <div key={p.key} style={{ padding: '0.35rem 0.5rem', borderLeft: '3px solid var(--text-amber-700, var(--border-strong))', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.8125rem' }}>
                       {chargeAdjustmentWords({ id: p.key, jobId, kind: p.kind, target: p.target, shape: p.shape, reason: p.reason, madeByName: null, madeAt: '' }, dayWords, lineLabel)}
                       <span style={{ ...quiet, display: 'block' }}>not saved yet{p.reason.trim() ? '' : ' · give it a reason'}</span>
                     </div>
@@ -444,7 +444,7 @@ function WeekRows({ weekStart, days, editable, pendingByKey, shapeValueFor, onSh
   const charged = days.reduce((a, d) => a + (d.charged ?? 0), 0)
   return (
     <>
-      <tr style={{ background: 'var(--surface-2, var(--surface))' }}>
+      <tr style={{ background: 'var(--bg-subtle)' }}>
         <td style={{ ...td, fontWeight: 700 }} colSpan={4}>
           {weekWords(weekStart)} · {days.length} {days.length === 1 ? 'day' : 'days'}
         </td>
@@ -460,7 +460,7 @@ function WeekRows({ weekStart, days, editable, pendingByKey, shapeValueFor, onSh
         const kept = !pendingByKey.has(offKey)
         const reasonKey = pendingByKey.has(shapeKey) ? shapeKey : pendingByKey.has(offKey) ? offKey : null
         return (
-          <tr key={d.workDate} style={{ opacity: kept ? 1 : 0.55, background: d.adjusted || pendingByKey.has(shapeKey) ? 'var(--surface-amber, transparent)' : undefined }} data-testid={`crew-day-${d.workDate}`}>
+          <tr key={d.workDate} style={{ opacity: kept ? 1 : 0.55, background: d.adjusted || pendingByKey.has(shapeKey) ? 'var(--bg-amber-tint)' : undefined }} data-testid={`crew-day-${d.workDate}`}>
             <td style={{ ...td, width: 28 }}>
               <input type="checkbox" checked={kept} disabled={!editable} aria-label={`Count ${dayWords(d.workDate)}`} onChange={(e) => onKeep(d, e.target.checked)} />
             </td>
