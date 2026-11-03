@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { lostBidNudgeFromCounts, type LostBidNudge } from '../lib/dashboardLostBidNudge'
-import { bidSentCounts, type BidSentCountsBid, type BidSentScope } from '../lib/bids/bidSentCounts'
+import { bidSentCounts, type BidSentCountsBid, type BidSentCountsPacket, type BidSentScope } from '../lib/bids/bidSentCounts'
+import { lossReasonPacketsFromVersions } from '../lib/bidLossCategories'
 
 /** The Dashboard card is company-wide by design — the label it wears (Tier-2 #20). */
 export const LOST_BID_NUDGE_SCOPE: BidSentScope = { kind: 'all' }
@@ -43,7 +44,29 @@ export function useLostBidNudge(enabled: boolean): { nudge: LostBidNudge | null;
         )
         if (cancelled) return
         const rows = (rawRows ?? []) as BidSentCountsBid[]
-        setNudge(lostBidNudgeFromCounts(bidSentCounts(rows, { scope: LOST_BID_NUDGE_SCOPE })))
+        // v2.6409: a bid lost GC by GC keeps each reason on that GC's versions and the roll-up leaves
+        // `bids.loss_category` NULL, so the card reads the lost versions too (BP391). A failed read
+        // here costs only that: the count falls back to the bids' own column.
+        let packetsByBid: Record<string, ReadonlyArray<BidSentCountsPacket>> = {}
+        try {
+          type LostVersionRow = { bid_id: string; customer_id: string | null; outcome: string | null; loss_category: string | null; outcome_note: string | null }
+          const rawVersions = await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('bid_versions')
+                .select('bid_id, customer_id, outcome, loss_category, outcome_note')
+                .eq('outcome', 'lost')
+                .limit(3000),
+            "quickfill lost bids: the GC cards' reasons",
+          )
+          const byBid = new Map<string, LostVersionRow[]>()
+          for (const v of (rawVersions ?? []) as LostVersionRow[]) byBid.set(v.bid_id, [...(byBid.get(v.bid_id) ?? []), v])
+          packetsByBid = Object.fromEntries([...byBid.entries()].map(([id, vs]) => [id, lossReasonPacketsFromVersions(vs)]))
+        } catch {
+          packetsByBid = {}
+        }
+        if (cancelled) return
+        setNudge(lostBidNudgeFromCounts(bidSentCounts(rows, { scope: LOST_BID_NUDGE_SCOPE, packetsByBid })))
       } catch {
         if (!cancelled) setNudge(null)
       } finally {

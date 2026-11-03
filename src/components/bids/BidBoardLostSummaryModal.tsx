@@ -6,7 +6,7 @@ import { formatCurrency } from '../../lib/format'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { buildHourlyWageLookupByNormalizedName } from '../../lib/bidBoardWeeklyEstimatorLaborCost'
 import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
-import { BID_LOSS_CATEGORIES, bidLossCategoryLabel, isBidLossCategoryKey, suggestLossCategoryFromNote, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import { BID_LOSS_CATEGORIES, bidLossCategoryLabel, isBidLossCategoryKey, lossReasonState, suggestLossCategoryFromNote, type BidLossCategoryKey, type LossReasonPacketLike } from '../../lib/bidLossCategories'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 import {
   aggregateLostBidLaborUsd,
@@ -55,6 +55,8 @@ export type BidBoardLostSummaryModalProps = {
   open: boolean
   onClose: () => void
   lostBids: BidWithBuilder[]
+  /** The bids' GC packets (`gcPacketsByBid`), so a GC-by-GC loss reads its cards' reasons (v2.6409). */
+  packetsByBid?: Record<string, ReadonlyArray<LossReasonPacketLike>>
   ledgerPrefixMap: LedgerPrefixMap
   showLaborColumn: boolean
   onOpenBid: (bid: BidWithBuilder) => void
@@ -123,6 +125,7 @@ export function BidBoardLostSummaryModal({
   open,
   onClose,
   lostBids,
+  packetsByBid,
   ledgerPrefixMap,
   showLaborColumn,
   onOpenBid,
@@ -467,7 +470,9 @@ export function BidBoardLostSummaryModal({
                 displayBids.map((bid) => {
                   const loss = ((bid as { loss_reason?: string | null }).loss_reason ?? '').trim()
                   const lossCategory = (bid as { loss_category?: string | null }).loss_category ?? null
-                  const missingLossReason = loss === '' && !isBidLossCategoryKey(lossCategory)
+                  // v2.6409: a reason on every lost GC card is the bid's reason — the row is not red for it.
+                  const reasonState = lossReasonState(bid as { loss_category?: string | null; loss_reason?: string | null }, packetsByBid?.[bid.id])
+                  const missingLossReason = !reasonState.categorized && !reasonState.hasNote
                   const tdRow: CSSProperties = {
                     ...td,
                     ...(missingLossReason ? { background: 'var(--bg-red-tint)' } : {}),
@@ -650,7 +655,18 @@ export function BidBoardLostSummaryModal({
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <span style={{ flex: '1 1 8rem', color: loss || lossCategory ? 'var(--text-700)' : 'var(--text-faint)' }}>
+                            <span style={{ flex: '1 1 8rem', color: loss || lossCategory || reasonState.lines.length > 0 ? 'var(--text-700)' : 'var(--text-faint)' }}>
+                              {reasonState.source === 'packets' || (reasonState.source === 'none' && reasonState.lines.length > 0)
+                                ? reasonState.lines.map((l) => (
+                                    <span key={l.gcName} style={{ display: 'block' }}>
+                                      <span style={{ fontWeight: 600 }}>{l.gcName}</span>{' '}
+                                      <span style={{ display: 'inline-block', padding: '0.1rem 0.45rem', borderRadius: 999, fontSize: '0.72rem', background: BID_LOSS_CATEGORIES.find((c) => c.key === l.category)?.chipBg, color: BID_LOSS_CATEGORIES.find((c) => c.key === l.category)?.chipFg }}>
+                                        {l.label}
+                                      </span>
+                                      {l.note ? <span style={{ color: 'var(--text-muted)' }}> {l.note}</span> : null}
+                                    </span>
+                                  ))
+                                : null}
                               {isBidLossCategoryKey(lossCategory) ? (
                                 <span
                                   style={{
