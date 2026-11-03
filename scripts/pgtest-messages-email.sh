@@ -43,19 +43,21 @@ sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
+files=()
 for f in supabase/migrations/*.sql; do
   # The lines from before two boxes, for R6's backfill.
   if [ "$f" = "$BOXES" ]; then
-    psql_as postgres -f - < supabase/tests/messages_email/25_two_boxes_before.sql >/dev/null 2>"$ERR" || { echo "FAILED seeding before $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+    files+=(supabase/tests/messages_email/25_two_boxes_before.sql)
   fi
-  psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  files+=("$f")
   # A second run must change nothing: the columns, the index, the constraints, the tables, the functions, the bucket,
   # the switch and the cron are there. It runs right after the first, as a retried push would: its grants start with a
   # REVOKE on its own tables, so a second run after a later cut's migration would take back what that cut granted.
   if [ "$f" = "$EMAIL" ] || [ "$f" = "$BOXES" ] || [ "$f" = "$MESSAGE_ID" ]; then
-    psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+    files+=("$f")
   fi
 done
+pgtest_apply "${files[@]}"
 out="$(psql_as postgres -f - < supabase/tests/messages_email/20_scenario.sql 2>&1 || true)"
 if ! grep -q "messages_email PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
