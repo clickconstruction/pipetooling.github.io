@@ -11,7 +11,7 @@ You do not need to assign a whole packet just to get one document signed. There 
 
 Best when you are thinking document-first. For example, "who still needs the Handbook?"
 
-1. On desktop, the **Agreements** panel lists every document beside the people list. Each card has a {{button:blue|Send to…}} button.
+1. On desktop, the **Agreements** panel lists the documents someone holds, beside the people list. Each card has a {{button:blue|Send to…}} button. The documents nobody holds yet sit behind one press, such as {{button:outline|Show 9 unassigned documents}}. Press it and their cards open under the others, each with its own {{button:blue|Send to…}}.
 2. Click it and pick the person. The list is split for you:
    - **Hasn't received it yet** lists people with no copy, or an unsent one waiting to go.
    - ***Already has it (resend)*** lists people with a {{chip:yellow|sent}} copy. Picking them resends a fresh link.

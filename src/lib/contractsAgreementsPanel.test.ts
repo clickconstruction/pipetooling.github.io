@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AGREEMENTS_NOTHING_LIVE_MAIN,
+  AGREEMENTS_NOTHING_LIVE_TAIL,
   agreementComplianceState,
+  agreementIsIdle,
   bestPersonDocRow,
   buildAgreementSummaries,
   formatAgreementShortDate,
+  idleAgreementsFoldLabel,
+  splitAgreementSummaries,
+  type AgreementSummary,
 } from './contractsAgreementsPanel'
+import { plainWordsFailures } from './plainWords'
 
 const doc = (over: Record<string, unknown> = {}) => ({
   person_name: 'Darren',
@@ -94,5 +101,66 @@ describe('formatAgreementShortDate', () => {
   it('returns null for empty or junk', () => {
     expect(formatAgreementShortDate(null)).toBeNull()
     expect(formatAgreementShortDate('junk')).toBeNull()
+  })
+})
+
+describe('splitAgreementSummaries', () => {
+  const summary = (documentName: string, assignedCount: number, signedCount: number): AgreementSummary => ({
+    documentName,
+    templateNames: [],
+    assignedCount,
+    signedCount,
+    rows: [],
+  })
+
+  it('keeps what is assigned or signed open and puts every Book entry nobody holds behind the fold, each in its own order', () => {
+    const summaries = [
+      summary('Conditional Waiver', 0, 0),
+      summary('Handbook', 16, 9),
+      summary('Service agreement', 0, 0),
+      summary('W-9', 1, 1),
+    ]
+    const split = splitAgreementSummaries(summaries)
+    expect(split.live.map((s) => s.documentName)).toEqual(['Handbook', 'W-9'])
+    expect(split.idle.map((s) => s.documentName)).toEqual(['Conditional Waiver', 'Service agreement'])
+  })
+
+  it('a Book entry is idle when nobody is assigned; a signed copy always counts as assigned', () => {
+    expect(agreementIsIdle(summary('x', 0, 0))).toBe(true)
+    expect(agreementIsIdle(summary('x', 1, 0))).toBe(false)
+    expect(agreementIsIdle(summary('x', 1, 1))).toBe(false)
+  })
+
+  it('lives through the real pivot: an ad-hoc signed copy with no template makes its document live', () => {
+    const summaries = buildAgreementSummaries({
+      templates: [{ id: 't-subs', name: 'Subcontractors' }],
+      templateDocuments: [
+        { template_id: 't-subs', document_name: 'Handbook' },
+        { template_id: 't-subs', document_name: 'Lien Waiver' },
+      ],
+      assignments: [{ person_name: 'Wendi', template_id: 't-subs' }],
+      personDocuments: [doc({ person_name: 'Paige', document_name: 'DWC-83', status: 'signed', signed_at: '2026-07-01' })],
+    })
+    const split = splitAgreementSummaries(summaries)
+    expect(split.live.map((s) => s.documentName).sort()).toEqual(['DWC-83', 'Handbook', 'Lien Waiver'])
+    expect(split.idle).toEqual([])
+  })
+
+  it('with nothing at all, both lists are empty', () => {
+    expect(splitAgreementSummaries([])).toEqual({ live: [], idle: [] })
+  })
+})
+
+describe('idleAgreementsFoldLabel', () => {
+  it('names the count through countedLabel, Show closed and Hide open, nothing at zero', () => {
+    expect(idleAgreementsFoldLabel(9, false)).toBe('Show 9 unassigned documents')
+    expect(idleAgreementsFoldLabel(9, true)).toBe('Hide 9 unassigned documents')
+    expect(idleAgreementsFoldLabel(1, false)).toBe('Show 1 unassigned document')
+    expect(idleAgreementsFoldLabel(0, false)).toBe('')
+  })
+
+  it('the empty state around it keeps to plain words', () => {
+    expect(plainWordsFailures(AGREEMENTS_NOTHING_LIVE_MAIN)).toEqual([])
+    expect(plainWordsFailures(`${AGREEMENTS_NOTHING_LIVE_MAIN} ${idleAgreementsFoldLabel(9, false)} ${AGREEMENTS_NOTHING_LIVE_TAIL}`)).toEqual([])
   })
 })
