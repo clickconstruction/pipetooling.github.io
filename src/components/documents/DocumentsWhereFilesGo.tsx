@@ -44,6 +44,7 @@ import {
   bidFolderFacts,
   checkPastedWords,
   companyCardWords,
+  peopleCardWords,
   EVERY_PASTED_OK_WORDS,
   exampleJob,
   FIXED_NAMES_WORDS,
@@ -320,6 +321,112 @@ function CompanyCard({ settings, save }: { settings: WhereFilesGo; save: Save })
             <div>
               <button type="button" style={btnPrimary} disabled={saving} onClick={() => void use()}>
                 {saving ? 'Saving…' : 'Use this folder for company papers'}
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </section>
+  )
+}
+
+// --- the People folder (the People → Paperwork spike, 2026-11-02) -----------------------------------------------------
+
+/** The people's folder: a person's evidence lands under it as People › the person › the day and the title. A Shared Drive of its own. */
+function PeopleCard({ settings, save }: { settings: WhereFilesGo; save: Save }) {
+  const words = peopleCardWords(settings.people, settings.root)
+  const [pasted, setPasted] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [checked, setChecked] = useState<{ link: string; check: FolderCheck } | null>(null)
+  const [checkProblem, setCheckProblem] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const confirmDialog = useConfirmDialog()
+  const check = async () => {
+    const link = pasted.trim()
+    if (!link || checking) return
+    setChecking(true)
+    setCheckProblem(null)
+    setChecked(null)
+    try {
+      setChecked({ link, check: await checkDriveFolder(link) })
+    } catch (e) {
+      setCheckProblem(formatErrorMessage(e, 'The folder was not checked.'))
+    } finally {
+      setChecking(false)
+    }
+  }
+  const checkedId = checked ? driveFolderIdFromLinkOrId(checked.link) : null
+  const isNew = Boolean(checked?.check.ok && checkedId && checkedId !== settings.people?.id)
+  const pastedInJobsDrive = Boolean(checked?.check.folder?.drive && settings.root?.folder?.drive && checked?.check.folder?.drive === settings.root.folder.drive)
+  const use = async () => {
+    if (!checked || saving) return
+    const name = checked.check.folder?.name || 'this folder'
+    const ok = await confirmDialog({
+      title: 'Use this folder for the people’s files',
+      message: `A person’s evidence will land under ${name}, in a folder per person. The files that exist stay where they are.`,
+      confirmLabel: 'Use this folder',
+    })
+    if (!ok) return
+    setSaving(true)
+    const saved = await save({ people: checked.link }, `The people’s files now live under ${name}.`)
+    setSaving(false)
+    if (saved) {
+      setChecked(null)
+      setPasted('')
+    }
+  }
+  return (
+    <section style={card} aria-label="The People folder" data-testid="wfg-people-card">
+      <h4 style={cardH}>The People folder</h4>
+      <p style={{ ...muted, margin: 0 }}>A person’s evidence lands under it: a folder per person, a folder per piece, named by the day and the title. Give it a Shared Drive of its own, so only that drive’s members read it.</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.95rem' }}>
+        <FolderGlyph />
+        <span style={{ minWidth: 0 }}>
+          <span data-testid="wfg-people-name">{words.name}</span>
+          {words.path ? <span style={{ ...muted, display: 'block', fontWeight: 500 }}>{words.path}</span> : null}
+        </span>
+      </div>
+      {words.owner ? <p style={{ ...muted, margin: 0 }}>{words.owner}</p> : null}
+      {words.from ? <p style={{ ...muted, margin: 0 }}>{words.from}</p> : null}
+      {words.warning ? <p style={warnLine} data-testid="wfg-people-warning">{words.warning}</p> : null}
+      {settings.people ? (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <CheckWords ok={settings.people.ok} words={settings.people.words} testId="wfg-people-check" />
+          <button type="button" style={btnQuiet} onClick={() => openInExternalBrowser(settings.people!.url)}>
+            Open in Drive
+          </button>
+        </div>
+      ) : null}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <input
+          aria-label="A Drive folder link for the people’s files"
+          placeholder={settings.people ? 'Paste a Drive folder link to move it' : 'Paste a Drive folder link'}
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void check()
+          }}
+          style={input}
+        />
+        <button type="button" style={btn} aria-label="Check the People folder link" disabled={checking || !pasted.trim()} onClick={() => void check()}>
+          {checking ? 'Checking…' : 'Check'}
+        </button>
+      </div>
+      {checkProblem ? <p style={warnLine}>{checkProblem}</p> : null}
+      {checked ? (
+        <>
+          <CheckWords ok={checked.check.ok} words={checked.check.words} testId="wfg-people-pasted-check" />
+          {checked.check.folder ? (
+            <p style={{ ...muted, margin: 0 }}>
+              {checked.check.folder.name}
+              {checked.check.folder.path.length > 0 ? ` · ${[...checked.check.folder.path, checked.check.folder.name].join(' › ')}` : ''}
+            </p>
+          ) : null}
+          {pastedInJobsDrive ? <p style={warnLine}>That folder sits in the Jobs Shared Drive. The save will refuse it. Make a Shared Drive for the people’s files and paste a folder from there.</p> : null}
+          {isNew && !pastedInJobsDrive ? (
+            <div>
+              <button type="button" style={btnPrimary} disabled={saving} onClick={() => void use()}>
+                {saving ? 'Saving…' : 'Use this folder for the people’s files'}
               </button>
             </div>
           ) : null}
@@ -825,6 +932,7 @@ export function DocumentsWhereFilesGo() {
         <div style={cards}>
           <RootCard settings={settings} save={save} />
           <CompanyCard settings={settings} save={save} />
+          <PeopleCard settings={settings} save={save} />
           <NameCard settings={settings} job={sample} bid={bid} save={save} />
           <TreeCard settings={settings} exampleName={sampleName} customerName={sample?.customer_name?.trim() || (sample ? NO_CUSTOMER_FOLDER_NAME : null)} save={save} />
         </div>

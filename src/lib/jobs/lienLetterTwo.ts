@@ -59,6 +59,8 @@ export type LetterTwoStatus = {
   /** The letter-two item on the job, live or sent, when there is one. */
   letterTwo: { itemId: string; kind: LetterTwoKind; status: string; sentAt: string | null } | null
   gcAuthorized: { at: string; name: string; note: string } | null
+  /** The owner's call on the first packet, ISO (v2.6383) — carried whatever the state, since a letter two that went out reads `sent` before `owner_called`, and the courtesy closes on the call either way. */
+  ownerCalledAt?: string | null
   /** One wording for the row chip and the footer. */
   words: string
 }
@@ -112,7 +114,7 @@ export function letterTwoStatus(input: { items: ReadonlyArray<LetterTwoItemLike>
   const clock = letterTwoClock(firstSentAt, input.mailClocks?.[first.item.id], fmt)
   const day = daysBetweenYmd(calendarYmdInAppTzFromIso(clock.at), input.todayYmd) ?? 0
   const tag = clockTag(clock)
-  const base = { day, clock, firstItemId: first.item.id, firstSentAt, gcAuthorized, letterTwo: two ? { itemId: two.item.id, kind: two.draft!.letterTwo!.kind, status: two.item.status, sentAt: two.item.sent_at } : null }
+  const base = { day, clock, firstItemId: first.item.id, firstSentAt, gcAuthorized, ownerCalledAt, letterTwo: two ? { itemId: two.item.id, kind: two.draft!.letterTwo!.kind, status: two.item.status, sentAt: two.item.sent_at } : null }
   if (two) {
     if (two.item.status === 'sent') return { ...base, state: 'sent', words: `letter two sent ${two.item.sent_at ? fmt(calendarYmdInAppTzFromIso(two.item.sent_at)) : ''} · ${letterTwoKindLabel(two.draft!.letterTwo!.kind)}` }
     return { ...base, state: 'in_flight', words: `letter two · ${letterTwoKindLabel(two.draft!.letterTwo!.kind)} · ${two.item.status === 'awaiting_approval' ? 'awaiting the leader' : two.item.status === 'approved' ? 'in the run' : two.item.status === 'held' ? 'held' : 'drafting'}` }

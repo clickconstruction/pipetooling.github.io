@@ -31,7 +31,7 @@ describe('JobDocumentsIndexFolder', () => {
     renderWithProviders(<JobDocumentsIndexFolder job={job} io={io} />)
     expect(screen.getByText(/reads the words inside the job’s files/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Index this job’s files' }))
-    await screen.findByText('Indexed 43 files, 2 held.')
+    await screen.findByText('Indexed 43 files, 41 with their words, 2 held.')
     expect(indexJob).toHaveBeenCalledTimes(2)
     expect(indexJob).toHaveBeenNthCalledWith(1, 'job-1', false)
     expect(screen.getByText('Permit scan.pdf: a scan with no text to read.')).toBeTruthy()
