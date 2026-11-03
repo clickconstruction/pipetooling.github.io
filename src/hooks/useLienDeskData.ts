@@ -245,13 +245,14 @@ export function useLienDeskData(
             policyNote: (c.lien_notice_policy_note ?? '').trim(),
           }
         }
-        const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd)
+        const jobsById: Record<string, LienDeskJob> = {}
+        for (const j of jobs) jobsById[j.id] = j
+        // The jobs ride along (v2.6376): an entry the RPC has no month row for reads its GC and customer from the job row.
+        const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd, jobsById)
         const gcNames: Record<string, string> = {}
         for (const g of Object.values(gcsById)) gcNames[g.id] = g.name
         const summaryWithBatches = summarizeLienDeskForNeedsYou(queue)
         summaryWithBatches.leader.batches = lienDeskBatches(queue, gcNames)
-        const jobsById: Record<string, LienDeskJob> = {}
-        for (const j of jobs) jobsById[j.id] = j
         // Letter two (v2.3760): the second owner letter's clock per job, from the notice items and the job's own balance.
         const letterTwoByJob = letterTwoByJobFrom(items, (id) => Math.max(0, Number(jobsById[id]?.revenue ?? 0) - Number(jobsById[id]?.payments_made ?? 0)), todayYmd, formatYmdMonthDay)
         summaryWithBatches.office.letterTwo = summarizeLetterTwo(letterTwoByJob)

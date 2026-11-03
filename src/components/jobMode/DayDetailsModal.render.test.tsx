@@ -39,6 +39,20 @@ describe('DayDetailsBody', () => {
   })
 })
 
+describe('DayDetailsBody for a viewer whose read carries no wages', () => {
+  it('reads each person\'s hours and the report, with no dollar and no subs or purchases', () => {
+    renderWithProviders(<DayDetailsBody ymd="2026-10-22" events={events} valueEvents={valueEvents} hoursOnly />)
+    const day = screen.getByTestId('day-details')
+    expect(screen.getByText('12 h')).toBeTruthy()
+    expect(day.textContent).toContain('Ana')
+    expect(day.textContent).toContain('8 h')
+    expect(day.textContent).toContain('40% done')
+    expect(day.textContent).not.toContain('$')
+    expect(day.textContent).not.toContain('Sub Co')
+    expect(day.textContent).not.toContain('Bought that day')
+  })
+})
+
 describe('DayHoverCard and DayDetailsModal', () => {
   it('pins the card near the pointer with the day and the job', () => {
     renderWithProviders(<DayHoverCard jobLabel="J1044 · Lodge" ymd="2026-10-22" x={100} y={80} events={events} valueEvents={valueEvents} />)
