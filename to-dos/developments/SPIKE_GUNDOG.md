@@ -129,6 +129,7 @@ clause; PR 1 armed, each next one retargets to `main` when the one under it merg
 | #6847 | v2.6378 | C the Archived fold and the live order, D History's folded runs, E the shadow chip |
 | #6848 | v2.6379 | F the Not yet billed tile and its card group, H the GC contact sheet |
 | #6849 | v2.6381 | G jobs onto a part in one press, each row with its name; these notes |
+| #6896 | v2.6416 | A fix to I, cut from main on 2026-11-03: Photos (v2.6371) joined as a sixth look after #6846 merged, and the phone's five-column grid dropped it to a second row; the row is now a flex row with a cell per look, and the strip names itself from its list |
 
 Left for later, not in the stack: a pay-speed read by one customer (`get_customer_pay_speed` returns every
 customer; an RPC is a migration) and a slimmer history-entries read (279 KB of mail bodies the page
