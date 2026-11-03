@@ -95,7 +95,7 @@ async function all<T>(read: (from: number, to: number) => PromiseLike<Answer<T>>
 const chunks = <T>(xs: readonly T[], n: number): T[][] => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n))
 
 /** An open `nudge_offers` row: a text waiting on Today's sends, or one the office handed to a morning. */
-type OfferRow = RunOfferRow & { id: string; body: string; channel_id: string | null; prepared_by: string; send_on: string | null; by_user_id: string | null }
+type OfferRow = RunOfferRow & { id: string; body: string; channel_id: string | null; prepared_by: string; send_on: string | null; about_on: string | null; by_user_id: string | null }
 
 /** The job an offer sits on, in the column `nudge_sent` and the thread keep it. */
 const jobAtOf = (o: OfferRow): JobAt | null =>
@@ -170,7 +170,7 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
       (a, b) =>
         admin
           .from('nudge_offers')
-          .select('id, contact_id, step_key, bid_id, project_id, jobs_ledger_id, body, channel_id, prepared_by, send_on, by_user_id')
+          .select('id, contact_id, step_key, bid_id, project_id, jobs_ledger_id, body, channel_id, prepared_by, send_on, about_on, by_user_id')
           .is('sent_at', null)
           .is('dismissed_at', null)
           .order('id')
@@ -269,11 +269,24 @@ serve(async (req) => {
     if (!dry && !runHourNow(now)) return json({ ok: true, ran: false, why: 'Not 9 AM Central. The other tick runs.' })
 
     const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
-    const [{ rows, customersHeld, offers }, kit] = await Promise.all([readRows(admin), loadWalkKit(admin)])
+    const [{ rows, customersHeld, offers: openOffers }, kit] = await Promise.all([readRows(admin), loadWalkKit(admin)])
     const walkKitContactId = kit?.contactId ?? null
+    const today = todayYmdInAppTz(now)
+    // A text about a day that has passed (v2.6387): a moved visit's Rescheduled text carries its new day in `about_on`.
+    // Once that day is behind us the words would tell the customer about a visit behind them, so the run puts the text
+    // away (`dismissed_why` stale) before planning, and the planner never counts it as a text that waits. Today's sends
+    // held it with why from the day after the visit until this run. A dry run only counts them.
+    const stale = openOffers.filter((o) => o.about_on !== null && o.about_on < today)
+    const staleIds = new Set(stale.map((o) => o.id))
+    const offers = openOffers.filter((o) => !staleIds.has(o.id))
+    rows.offers = offers
+    const staleProblems: string[] = []
+    if (!dry && stale.length) {
+      const { error } = await admin.from('nudge_offers').update({ dismissed_at: now.toISOString(), dismissed_why: 'stale' }).in('id', [...staleIds])
+      if (error) staleProblems.push(`nudge_offers stale: ${error.message}`)
+    }
     const reads = nudgeRunReads(rows, now, { origin, walkKitContactId })
     const run = planNudgeRun(reads.input)
-    const today = todayYmdInAppTz(now)
     /**
      * The column a person's job sits in (v2.6007): a residential customer's job is a Pipeline job (`jobs_ledger`), anyone
      * else's a GC project. The text's tie, its `nudge_sent` record, the thread's event line and an offer all file on it,
@@ -320,7 +333,7 @@ serve(async (req) => {
     const due = offers.filter((o) => o.prepared_by === 'office' && o.send_on !== null && o.send_on <= today && o.channel_id && o.contact_id !== walkKitContactId)
 
     if (dry) {
-      const summary = runSummary({ run, sent: run.texts.length + due.length, refused: [], unread: reads.unread.length, customersHeld, prepared: run.offers.length, morningSent: due.length, now, dry: true })
+      const summary = runSummary({ run, sent: run.texts.length + due.length, refused: [], unread: reads.unread.length, customersHeld, prepared: run.offers.length, morningSent: due.length, expired: stale.length, now, dry: true })
       console.log(`[messages-nudge-dispatch] dry run: ${summary.words.join(' ')}`)
       return json({
         ok: true,
@@ -329,6 +342,7 @@ serve(async (req) => {
         texts: run.texts.map((t) => ({ contactId: t.contactId, stepId: t.stepId, jobId: t.jobId, body: t.body })),
         offers: run.offers.map((o) => ({ contactId: o.contactId, stepId: o.stepId, jobId: o.jobId, body: o.body, held: o.held })),
         morning: due.map((o) => ({ id: o.id, contactId: o.contact_id, stepId: o.step_key, body: o.body })),
+        stale: stale.map((o) => ({ id: o.id, contactId: o.contact_id, stepId: o.step_key, aboutOn: o.about_on })),
         kept: run.notSent,
         unread: reads.unread,
       })
@@ -337,7 +351,7 @@ serve(async (req) => {
     const company = quoCompany()
     const boxes = await loadBoxes(admin)
     const refused: RunRefused[] = []
-    const problems: string[] = []
+    const problems: string[] = [...staleProblems]
     /** Reminders kept back once their box is known: a STOP to that box (R6 keeps a STOP per box). */
     const keptAtSend: NudgeKept[] = []
     let sent = 0
@@ -553,7 +567,7 @@ serve(async (req) => {
       }
     }
 
-    const summary = runSummary({ run: { ...run, notSent: [...run.notSent, ...keptAtSend] }, sent, refused, textsOff, unread: reads.unread.length, customersHeld, prepared, morningSent, now, dry: false })
+    const summary = runSummary({ run: { ...run, notSent: [...run.notSent, ...keptAtSend] }, sent, refused, textsOff, unread: reads.unread.length, customersHeld, prepared, morningSent, expired: stale.length, now, dry: false })
     const { error: lastError } = await admin
       .from('app_settings')
       .upsert({ key: APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1, value_text: JSON.stringify(summary) }, { onConflict: 'key' })

@@ -184,6 +184,7 @@ describe('the newest morning run', () => {
       unread: 0,
       prepared: 0,
       morningSent: 0,
+      expired: 0,
       words: summary.words,
     })
     const odd = lastRunFrom({ at, sent: -2, kept: { off: '3', stolen: 4, snoozed: 2.6 }, words: ['', 7, 'One.'], unread: Number.NaN })
