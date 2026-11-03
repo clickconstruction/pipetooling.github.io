@@ -45,9 +45,12 @@ CREATE FUNCTION jwb.steps() RETURNS text LANGUAGE sql AS $$
   SELECT count(*)::text FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = 'residential'
 $$;
 
--- The fixture: a homeowner, her water heater job and a second job.
-INSERT INTO public.customers (id, name, customer_type) VALUES
-  ('00000000-0000-0000-0000-0000000000d1', 'Dana Whitfield', 'residential');
+-- The fixture: the office's master (a customer's master must be a master technician or a dev), a homeowner, her water
+-- heater job and a second job.
+INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-0000000000e1', 'master@warranty.test');
+INSERT INTO public.users (id, email, name, role) VALUES ('00000000-0000-0000-0000-0000000000e1', 'master@warranty.test', 'Bed Master', 'master_technician');
+INSERT INTO public.customers (id, name, customer_type, master_user_id) VALUES
+  ('00000000-0000-0000-0000-0000000000d1', 'Dana Whitfield', 'residential', '00000000-0000-0000-0000-0000000000e1');
 INSERT INTO public.jobs_ledger (id, hcp_number, job_name, customer_name, customer_id, bill_to_party, revenue, payments_made, status) VALUES
   ('00000000-0000-0000-0000-0000000b0001', '1312', 'Water heater', 'Dana Whitfield', '00000000-0000-0000-0000-0000000000d1', 'customer', 1850, 0, 'waiting'),
   ('00000000-0000-0000-0000-0000000b0002', '1313', 'Hose bib', 'Dana Whitfield', '00000000-0000-0000-0000-0000000000d1', 'customer', 400, 0, 'waiting');
