@@ -2,7 +2,7 @@
 name: "A scoreboard for a development: its jobs, their money, and who put what in"
 number: 250
 group: ready
-status: design 2026-11-02 · draft 1 shown, the owner said *great potential, needs a refinement pass* · draft 2 the same day, read against the game's board (one header, one rule at four levels, the Cost column as the spine every member fills, a dark render) · the owner on draft 2: *right way*, and he took all seven defaults the same evening · PR 1 the board by job shipped as v2.6407 (#6886, merged 2026-11-03 after the Gun Dog stack and the photos PRs, main merged in five times) · PR 2 the rows under each job and the gold row v2.6457
+status: design 2026-11-02 · draft 1 shown, the owner said *great potential, needs a refinement pass* · draft 2 the same day, read against the game's board (one header, one rule at four levels, the Cost column as the spine every member fills, a dark render) · the owner on draft 2: *right way*, and he took all seven defaults the same evening · PR 1 the board by job shipped as v2.6407 (#6886, merged 2026-11-03 after the Gun Dog stack and the photos PRs, main merged in five times) · PR 2 the rows under each job and the gold row v2.6457 · PR 3 the *Right now* headline v2.6467
 summary: >
   The owner saw the game Squad's end-of-match scoreboard and asked for its shape on the Development
   page: one grid where the same columns mean the same thing at every level, a team banner with the
@@ -16,12 +16,12 @@ summary: >
   Draft 2 holds one rule at four levels: the site, a part, a job and a member each fold to three
   figures and open to nine and their children, and every member fills Cost, so a job is the sum of
   the rows under it.
-next: PR 3: the *Right now* headline under the flag block (`scoreboardHeadline()`: a job with no price that is costing, else the job that carried the site). Then PR 4, the cuts by part of the site and by person and the time window.
+next: PR 4, the cuts by part of the site and by person, and the time window.
 size: M (PR 1 the board by job) + M (PR 2 the people under each job, the gold row) + S (PR 3 the headline; the view chips and the lead's tier came with PR 1) + M (PR 4 the cuts and the window)
-blocker: None. PR 3 and PR 4 follow the train.
+blocker: None. PR 4 follows the train.
 opinion: build — the owner took the design and all seven defaults; every column already exists for one job in Job Summary, and the board turns the page's Money look into the site's P&L with the rows under each job summing to it; the one new weight is the day ledger read for Overhead, which opens lazily with the view
 mockup: to-dos/development-scoreboard/mockup.html
-ver: v2.6040 · v2.6215 base · v2.6407 · v2.6457
+ver: v2.6040 · v2.6215 base · v2.6407 · v2.6457 · v2.6467
 ---
 
 # A scoreboard for a development: its jobs, their money, and who put what in (#250)
