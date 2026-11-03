@@ -42,9 +42,6 @@ export function hoursStatementSpanWords(c: HoursStatementSpanCounts, opts: { isO
   return { has: parts.join(' '), held }
 }
 
-/** The pay switch's words when it is fixed off for an assistant. */
-export const HOURS_STATEMENT_PAY_FIXED_OFF = 'The pay stays off for an assistant. The paper carries hours alone.'
-
 /**
  * The press that opens the window, with its count (`CLAUDE.md` → Do what is ready): *Hours statement… · 3 people
  * clocked here* on a job, *Hours statement… · 4 jobs clocked* on a person's desk. At zero it reads the bare press and

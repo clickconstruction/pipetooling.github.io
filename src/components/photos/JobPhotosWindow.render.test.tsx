@@ -24,6 +24,13 @@ vi.mock('../../lib/photos/reportPhotosIo', () => ({
   loadReportPhotoSize: () => Promise.resolve('medium'),
   jobHasDriveFolder: () => Promise.resolve(true),
 }))
+const pressed: unknown[] = []
+vi.mock('../../lib/offline/pressThroughOutbox', () => ({
+  pressThroughOutbox: (args: unknown) => {
+    pressed.push(args)
+    return Promise.resolve({ kind: 'queued', press: { id: 'p1' } })
+  },
+}))
 vi.mock('../../lib/photos/shrink', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../lib/photos/shrink')>()
   return {
@@ -33,6 +40,8 @@ vi.mock('../../lib/photos/shrink', async (importOriginal) => {
 })
 
 import { JobPhotosWindow, type JobPhotosWindowIo } from './JobPhotosWindow'
+
+let noSignal = false
 
 const job = { id: 'job-1', hcp_number: '1077', job_name: 'Cedar Ridge Townhomes Phase 2', job_address: '2208 Live Oak Dr', google_drive_link: 'https://drive.google.com/drive/folders/1JobFolderIdAbCdEfGhIj', job_pictures_link: null }
 
@@ -64,6 +73,7 @@ function makeIo(over: Partial<JobPhotosWindowIo> & { rowsAnswer?: UploadedPhotoR
     photos: { list: () => Promise.resolve({ rows: [], more: false }), waiting: () => Promise.resolve(0), thumb: () => Promise.resolve(null), full: () => Promise.resolve(null) },
     shots: {
       send: (input) => {
+        if (noSignal) return Promise.reject(Object.assign(new Error('The phone has no signal.'), { name: 'PhotoSendError', kind: 'network' }))
         sent.push(input.id)
         return Promise.resolve({ storagePath: `job-1/${input.id}.jpg` })
       },
@@ -94,6 +104,8 @@ function pick(files: File[]) {
 
 describe('JobPhotosWindow', () => {
   beforeEach(() => {
+    noSignal = false
+    pressed.length = 0
     let urls = 0
     URL.createObjectURL = () => `blob:test-${++urls}`
     URL.revokeObjectURL = () => undefined
@@ -177,5 +189,22 @@ describe('JobPhotosWindow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save the words' }))
     await waitFor(() => expect(io.edited).toEqual([{ id: 'n1', description: 'Cracked flange, unit 204', stageName: 'Rough In' }]))
     expect(await screen.findByText('Cracked flange, unit 204')).toBeTruthy()
+  })
+
+  it('with no signal the shot is kept on the phone and the press goes through the outbox with its words (PR 5)', async () => {
+    noSignal = true
+    const io = makeIo()
+    renderWithProviders(<JobPhotosWindow job={job} onClose={() => {}} io={io} />)
+    await screen.findByRole('button', { name: 'Add a photo' })
+    pick([new File([new Uint8Array(100)], 'a.jpg', { type: 'image/jpeg' })])
+    expect(await screen.findByText('Kept on the phone. It goes when the signal is back.')).toBeTruthy()
+    fireEvent.change(document.querySelector<HTMLTextAreaElement>('textarea[data-shot-words]')!, { target: { value: 'Meter location' } })
+    const press = await screen.findByText('Add 1 photo to the job')
+    fireEvent.click(press)
+    expect(await screen.findByText('Kept on the phone. The photos go to the job when the signal is back.')).toBeTruthy()
+    expect(pressed).toHaveLength(1)
+    expect(pressed[0]).toMatchObject({ kind: 'job-photos', payload: { jobLedgerId: 'job-1', photos: [{ sent: false, description: 'Meter location', caption: 'Meter location' }] }, door: '/jobs?jobDetail=job-1' })
+    expect(io.added).toHaveLength(0)
+    expect(document.querySelectorAll('textarea[data-shot-words]')).toHaveLength(0)
   })
 })

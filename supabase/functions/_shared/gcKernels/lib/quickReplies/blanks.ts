@@ -13,7 +13,7 @@
 // ---------- the fill table ----------
 
 /** The blanks the app fills on the press. */
-export type BlankKey = 'first' | 'me' | 'address' | 'job' | 'minutes' | 'window' | 'back day' | 'back time' | 'day' | 'tech' | 'link' | 'amount' | 'bill' | 'number' | 'estimate' | 'rate' | 'portal'
+export type BlankKey = 'first' | 'me' | 'address' | 'job' | 'minutes' | 'window' | 'back day' | 'back time' | 'day' | 'tech' | 'link' | 'amount' | 'bill' | 'number' | 'estimate' | 'rate' | 'portal' | 'warranty'
 
 /**
  * Where the app reads a blank: the person written to, the signed-in user, the job, the drive to it, the schedule,
@@ -46,6 +46,8 @@ export const BLANKS: readonly Blank[] = [
   // Punch list #127: the bill's or estimate's number (a bill goes by its job's), and the estimate's own link.
   { key: 'number', words: "the bill's or estimate's number", from: 'money' },
   { key: 'estimate', words: "the estimate's link", from: 'money' },
+  // The warranty in place of a contract (2026-11-02): the Contract Desk's own link, off the row, no minting.
+  { key: 'warranty', words: "the warranty's signing link", from: 'money' },
   // Measuring follow-ups item 6 (v2.5877): a one-tap rating ask, minted for the message as {estimate}'s link is.
   { key: 'rate', words: 'a link to rate us', from: 'page' },
   // Customer reviews (v2.5943, punch list #185): their portal's short address, the one link that is theirs.

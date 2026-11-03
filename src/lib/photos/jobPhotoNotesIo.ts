@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
-import { errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../../utils/errorHandling'
+import { databaseErrorFromResult, errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../../utils/errorHandling'
 import { JOB_PHOTO_NOTES_BUCKET, jobPhotoCaption, jobPhotoNotePath, type JobPhotoAddWrite, type JobPhotoNoteRow } from './jobPhotoNotes'
 import { UPLOADED_PHOTOS_SELECT, type UploadedPhotoRow } from './uploadedPhotos'
 import { supabaseJobPhotosIo, type JobPhotosIo } from './jobPhotosIo'
@@ -106,6 +106,27 @@ export async function addJobPhotoNotes(writes: ReadonlyArray<JobPhotoAddWrite>):
     } else added += 1
   }
   return { added, failed, failedIds }
+}
+
+/**
+ * A kept press lands (punch list #244, PR 5): the same writes as the press makes online, on the rows not yet added,
+ * so a repeat changes nothing and counts once; the first refusal or lost signal throws as the app's `DatabaseError`,
+ * for the outbox to class. Answers how many rows took the words this time.
+ */
+export async function landJobPhotoNotes(writes: ReadonlyArray<JobPhotoAddWrite>): Promise<{ added: number }> {
+  let added = 0
+  const addedAt = new Date().toISOString()
+  for (const w of writes) {
+    const { data, error, status } = await db
+      .from('job_photo_notes')
+      .update({ description: w.description, fixture_id: w.fixtureId, stage_name: w.stageName ?? '', caption: w.caption, added_at: addedAt })
+      .eq('id', w.id)
+      .is('added_at', null)
+      .select('id')
+    if (error) throw databaseErrorFromResult(error, 'add photos', status)
+    added += ((data ?? []) as unknown[]).length
+  }
+  return { added }
 }
 
 /** The viewer's Edit the words: the description and the caption it names; the sweep renames the Drive file on its next pass. Throws with the reason. */

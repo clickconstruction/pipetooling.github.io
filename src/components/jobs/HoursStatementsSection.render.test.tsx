@@ -164,20 +164,25 @@ describe('the Hours statements section (punch list #212, PR 2)', () => {
     expect(screen.getByTestId('window-stub').textContent).toContain('window from person for dev pay false')
   })
 
-  it('a helper and a master without pay access see nothing; an assistant sees it with the pay off', async () => {
+  it('a helper, a pay-approved master and an assistant see nothing; the controller sees it with the Controllers and devs only tag', async () => {
     authRole = 'helpers'
     const first = renderWithProviders(<HoursStatementsSection scope={jobScope} />)
     expect(first.container.textContent).toBe('')
     first.unmount()
     authRole = 'master_technician'
-    payAccess = false
+    payAccess = true
     const second = renderWithProviders(<HoursStatementsSection scope={jobScope} />)
     expect(second.container.textContent).toBe('')
     second.unmount()
     authRole = 'assistant'
+    const third = renderWithProviders(<HoursStatementsSection scope={jobScope} />)
+    expect(third.container.textContent).toBe('')
+    third.unmount()
+    authRole = 'controller'
     renderWithProviders(<HoursStatementsSection scope={jobScope} />)
     await screen.findByText(/No hours statements are saved on this job yet\./)
+    expect(screen.getByText('Controllers and devs only')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button', { name: 'Hours statement… · 2 people clocked here' })[0]!)
-    expect(screen.getByTestId('window-stub').textContent).toContain('for assistant pay false')
+    expect(screen.getByTestId('window-stub').textContent).toContain('for controller pay true')
   })
 })

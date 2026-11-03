@@ -2,6 +2,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ShotIo } from '../lib/photos/jobPhotoNotesIo'
+import { createKeptPhotos } from '../lib/offline/keptPhotos'
 
 vi.mock('../lib/photos/reportPhotosIo', () => ({
   loadReportPhotoSize: () => Promise.resolve('medium'),
@@ -24,12 +25,18 @@ let urls = 0
 const sent: string[] = []
 const discarded: string[] = []
 let failNext = false
+let noSignalNext = false
+const bytes = createKeptPhotos({ open: async () => null })
 
 const io: ShotIo = {
   send: (input) => {
     if (failNext) {
       failNext = false
       return Promise.reject(new Error('The bucket refused it.'))
+    }
+    if (noSignalNext) {
+      noSignalNext = false
+      return Promise.reject(Object.assign(new Error('The phone has no signal.'), { name: 'PhotoSendError', kind: 'network' }))
     }
     sent.push(input.id)
     return Promise.resolve({ storagePath: `${input.jobId}/${input.id}.jpg` })
@@ -41,7 +48,7 @@ const io: ShotIo = {
 }
 
 function Host({ open = true, jobId = 'job-1', cameraFirst = false }: { open?: boolean; jobId?: string | null; cameraFirst?: boolean }) {
-  const host = useShotTiles({ open, jobId, authUserId: 'user-1', byName: 'Carla Nguyen', cameraFirst, io })
+  const host = useShotTiles({ open, jobId, authUserId: 'user-1', byName: 'Carla Nguyen', cameraFirst, io, kept: bytes })
   return (
     <div>
       <input {...host.inputProps} />
@@ -50,6 +57,8 @@ function Host({ open = true, jobId = 'job-1', cameraFirst = false }: { open?: bo
       </button>
       <output data-testid="count">{host.tiles.length}</output>
       <output data-testid="ready">{host.ready.length}</output>
+      <output data-testid="kept">{host.kept}</output>
+      <output data-testid="queued">{JSON.stringify(host.queuedPhotos().map((p) => ({ id: p.id.slice(0, 4), sent: p.sent, description: p.description })))}</output>
       <output data-testid="inflight">{String(host.inFlight)}</output>
       <output data-testid="multiple">{String(host.inputProps.multiple)}</output>
       <output data-testid="capture">{host.inputProps.capture ?? 'none'}</output>
@@ -95,6 +104,7 @@ describe('useShotTiles', () => {
     sent.length = 0
     discarded.length = 0
     failNext = false
+    noSignalNext = false
     URL.createObjectURL = () => `blob:test-${++urls}`
     URL.revokeObjectURL = () => undefined
   })
@@ -172,5 +182,25 @@ describe('useShotTiles', () => {
     await waitFor(() => expect(screen.getByTestId('tile-failed')).toBeTruthy())
     expect(screen.getByTestId('why').textContent).toBe('A photo goes on a job.')
     expect(sent).toHaveLength(0)
+  })
+
+  it('a send lost to the signal keeps the shot on the phone: ready, counted as kept, carried by the press, and let go on drop', async () => {
+    noSignalNext = true
+    render(<Host />)
+    pick([new File([new Uint8Array(100)], 'a.jpg', { type: 'image/jpeg' })])
+    await waitFor(() => expect(screen.getByTestId('tile-kept')).toBeTruthy())
+    expect(screen.getByTestId('ready').textContent).toBe('1')
+    expect(screen.getByTestId('kept').textContent).toBe('1')
+    fireEvent.click(screen.getByText('type'))
+    const queued = JSON.parse(screen.getByTestId('queued').textContent ?? '[]') as Array<{ sent: boolean; description: string; id: string }>
+    expect(queued).toHaveLength(1)
+    expect(queued[0]!.sent).toBe(false)
+    expect(queued[0]!.description).toMatch(/^words for /)
+    const liTile = screen.getByTestId('tile-kept')
+    const id = (liTile.querySelector('[data-testid="words"]')?.textContent ?? '').replace('words for ', '')
+    expect(id).toHaveLength(4)
+    fireEvent.click(screen.getByText('drop'))
+    expect(discarded).toHaveLength(0)
+    expect(screen.getByTestId('count').textContent).toBe('0')
   })
 })

@@ -221,7 +221,7 @@ async function readPipeline(admin: any, residential: readonly { id: string; cust
   const jobs = [...own, ...tied]
   const jobIds = jobs.map((j) => j.id)
   const on = <T>(table: string, select: string, column: string) => byChunks<T>(jobIds, (ids, a, b) => admin.from(table).select(select).in(column, ids).order('id').range(a, b), table)
-  const [blocks, clockSessions, reports, estimates, statusEvents, invoices, payments] = await Promise.all([
+  const [blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, agreements] = await Promise.all([
     on<PipelineRows['blocks'][number]>('job_schedule_blocks', PIPELINE_SELECTS.blocks, 'job_id'),
     on<PipelineRows['clockSessions'][number]>('clock_sessions', PIPELINE_SELECTS.clockSessions, 'job_ledger_id'),
     on<PipelineRows['reports'][number]>('reports', PIPELINE_SELECTS.reports, 'job_ledger_id'),
@@ -229,11 +229,13 @@ async function readPipeline(admin: any, residential: readonly { id: string; cust
     on<PipelineRows['statusEvents'][number]>('job_status_events', PIPELINE_SELECTS.statusEvents, 'job_id'),
     on<PipelineRows['invoices'][number]>('jobs_ledger_invoices', PIPELINE_SELECTS.invoices, 'job_id'),
     on<PipelineRows['payments'][number]>('jobs_ledger_payments', PIPELINE_SELECTS.payments, 'job_id'),
+    // The warranty in place of a contract (2026-11-02): the Warranty step's rounds, from the Contract Desk's rows.
+    on<NonNullable<PipelineRows['agreements']>[number]>('job_contracts', PIPELINE_SELECTS.agreements, 'job_id'),
   ])
   // The pace is a soft read: a refusal leaves a bill's due day unset rather than stopping the morning.
   if (speeds.error) console.warn(`[messages-nudge-dispatch] get_billed_customer_pay_speeds: ${speeds.error.message}`)
   if (promises.error) console.warn(`[messages-nudge-dispatch] list_job_promised_pay_dates: ${promises.error.message}`)
-  return { jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, texts, paySpeeds: speeds.error ? null : speeds.data, promisedPay: promises.error ? null : promises.data }
+  return { jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, agreements, texts, paySpeeds: speeds.error ? null : speeds.data, promisedPay: promises.error ? null : promises.data }
 }
 
 /** Who may ask for a dry run: the cron, or a signed-in dev on a real account. */
