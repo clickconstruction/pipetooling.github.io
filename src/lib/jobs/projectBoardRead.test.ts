@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -62,6 +62,13 @@ describe('parseProjectBoardRead', () => {
     expect(parseProjectBoardRead(null)).toEqual({ readsWages: false, jobs: [] })
     expect(parseProjectBoardRead({ reads_wages: true, jobs: 'nope' })).toEqual({ readsWages: true, jobs: [] })
   })
+  it('carries what the job\'s kind reads, and tells a blank kind from a read that never carried it', () => {
+    const facts = { id: 'a', kind: 'project', bid_id: 'b1', project_id: 'p1', first_work_date: '2026-10-20', billing_only: true }
+    expect(parseProjectBoardRead({ jobs: [facts] }).jobs[0]).toMatchObject(facts)
+    const blank = parseProjectBoardRead({ jobs: [{ id: 'a', kind: null, bid_id: null, project_id: null, first_work_date: null, billing_only: false }] }).jobs[0]!
+    expect(blank).toMatchObject({ kind: null, bid_id: null, project_id: null, first_work_date: null, billing_only: false })
+    expect(parseProjectBoardRead({ jobs: [{ id: 'a' }] }).jobs[0]!.kind).toBeUndefined()
+  })
 })
 
 describe('the read as the strip and the day card draw it', () => {
@@ -84,7 +91,20 @@ describe('the read as the strip and the day card draw it', () => {
 })
 
 describe('the function the read comes from', () => {
-  const sql = readFileSync(resolve(process.cwd(), 'supabase/migrations/20261102163008_project_board_read.sql'), 'utf8')
+  // The read prod answers with is the newest migration that replaces the function, so a later copy stays under these pins.
+  const dir = resolve(process.cwd(), 'supabase/migrations')
+  const read = (file: string) => readFileSync(resolve(dir, file), 'utf8')
+  const replaces = readdirSync(dir)
+    .filter((f) => f.includes('_project_board_'))
+    .filter((f) => read(f).includes('CREATE OR REPLACE FUNCTION public.list_project_board('))
+    .sort()
+  const sql = read(replaces[replaces.length - 1]!)
+  it('carries every fact the job\'s kind reads, for every role on the board', () => {
+    const returned = sql.slice(sql.indexOf("'reads_wages', public.has_payroll_access()"), sql.indexOf('INTO v_out'))
+    for (const fact of ['kind', 'hcp_number', 'click_number', 'bid_id', 'project_id', 'revenue', 'first_work_date', 'status', 'billing_only', 'fixtures']) {
+      expect(returned).toContain(`'${fact}', `)
+    }
+  })
   it('assumes the same margin as the Burn default, so the board and the Costs tab start from one figure', () => {
     expect(sql).toContain(`(1 - ${JOB_BURN_DEFAULT_TARGET_MARGIN_PCT} / 100.0)`)
   })
@@ -106,7 +126,7 @@ describe('the function the read comes from', () => {
     expect(labor.replace(/--.*$/gm, '')).not.toMatch(/usd|wage|rate\b/i)
   })
   it('holds the read to the board\'s roles, the same set the client gates on', () => {
-    expect(sql).toContain("u.role IN ('dev', 'master_technician', 'assistant', 'controller', 'superintendent')")
+    expect(read('20261102163008_project_board_read.sql')).toContain("u.role IN ('dev', 'master_technician', 'assistant', 'controller', 'superintendent')")
     expect(sql).toContain('IF NOT public.can_read_project_board() THEN')
     expect(sql).toContain('REVOKE ALL ON FUNCTION public.list_project_board(uuid[]) FROM PUBLIC, anon;')
   })

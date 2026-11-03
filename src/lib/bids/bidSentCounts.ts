@@ -22,9 +22,11 @@
  * Pure — no React, no Supabase.
  */
 
-import type { GcPacket } from './gcPackets'
 import { getSubmissionSectionKey } from './submissionSections'
-import { isBidLossCategoryKey } from '../bidLossCategories'
+import { lossReasonState, type LossReasonPacketLike } from '../bidLossCategories'
+
+/** A GC packet as the counts read it — `GcPacket` fits; the Dashboard's versions-only packets fit too. */
+export type BidSentCountsPacket = LossReasonPacketLike & { sentOn?: string | null }
 
 export type BidSentScope = { kind: 'trade'; tradeId: string; tradeName?: string | null } | { kind: 'all' }
 
@@ -52,7 +54,7 @@ export type BidSentCounts = {
   won: number
   started: number
   lost: number
-  /** Lost with no structured reason (`loss_category`) — the Why-we-lost queue / Dashboard card rule. */
+  /** Lost with no structured reason on the bid or on every lost GC card (`lossReasonState`, v2.6409) — the Why-we-lost queue / Dashboard card rule. */
   lostNeedingReason: number
   /** Bid value of `lostNeedingReason` bids. */
   lostNeedingReasonValue: number
@@ -78,7 +80,7 @@ export function bidsInScope<B extends BidSentCountsBid>(bids: ReadonlyArray<B>, 
 
 export function bidSentCounts(
   bids: ReadonlyArray<BidSentCountsBid>,
-  opts: { scope: BidSentScope; packetsByBid?: Record<string, ReadonlyArray<GcPacket>> },
+  opts: { scope: BidSentScope; packetsByBid?: Record<string, ReadonlyArray<BidSentCountsPacket>> },
 ): BidSentCounts {
   const kept = bidsInScope(bids, opts.scope)
   const out: BidSentCounts = {
@@ -104,7 +106,8 @@ export function bidSentCounts(
     else if (key === 'startedOrComplete') out.started += 1
     else if (key === 'lost') {
       out.lost += 1
-      if (!isBidLossCategoryKey(b.loss_category ?? null)) {
+      // v2.6409: a reason on every lost GC card counts as the bid's reason (BP391's GC-by-GC loss).
+      if (!lossReasonState(b, opts.packetsByBid?.[b.id]).categorized) {
         out.lostNeedingReason += 1
         out.lostNeedingReasonValue += num(b.bid_value)
       }

@@ -32,23 +32,41 @@ The bid keeps its own sets. See [keep more than one set of plans on a bid](/help
 2. Type the set's **Name**, such as *Addendum 2*. The app starts the name for you.
 3. Pick the **Kind** and who it is **From**.
 4. Pick the **Dated** day. Use the date printed on the sheets.
-5. Type a **Memo**. Say what changed in a line.
-6. Paste the set's Drive link under **Link**. You can leave it empty and add it later.
-7. Press {{button:blue|Add the set and build from it}}.
+5. Under **What changed**, say what moved from the old set. Name the sheets or areas that moved. Say what it means for our work.
+6. Type a **Memo**. Say who sent the set and where the file is.
+7. Paste the set's Drive link under **Link**. You can leave it empty and add it later.
+8. Press {{button:blue|Add the set and build from it}}.
+
+A set with no link gets its own folder under the job's **Plans** folder in Drive. The link fills in by itself.
+
+A job with no Drive folder yet says so, and the set reads *link still to come*. Press {{button:outline|Make its folder}} on the set once the job has its folder.
 
 The job now builds from the new set. The old one moves under **Older sets**. Press {{button:outline|Add it, keep Issued set current}} instead to add the set without switching.
 
-On a development, the switch writes one line in the site's **History** for every job on the part. The line reads *Plans · the Bunker now builds from Addendum 1, dated Oct 2, 2026 · replaces Issued set*. Nobody types it.
+On a development, the switch writes one line in the site's **History** for every job on the part. The line reads *Plans · the Bunker now builds from Addendum 1, dated Oct 2, 2026 · replaces Issued set · what changed: the riser moved to the north wall*. Nobody types it.
 
 To switch later, press {{button:outline|Build from this set}} on any older set.
+
+## Say what changed on an older set
+
+Each set shows its change line under its memo. The line names the set before it. An older set with no line shows {{button:outline|Write what changed}} to the office. Press it, write what moved from the set before, and press {{button:blue|Save what changed}}. The site's **Plans** look shows the same line between its sets.
 
 ## Save the crew's as-built
 
 1. Press {{button:outline|Add our as-built}}.
 2. Keep the name or change it.
 3. Type a **Memo** that says what the crew changed.
-4. Paste the Drive link to the marked sheets.
-5. Press {{button:blue|Add the as-built}}.
+4. Press {{button:outline|Photos or a PDF}}. Take a photo of the marked sheet on the phone, or pick a PDF.
+5. Press {{button:outline|Add more}} for the next photo. Each one adds to the list.
+6. Press {{button:blue|Add the as-built with 3 files}}. The press counts the files you picked.
+
+The as-built gets its own folder under the job's **Plans** folder in Drive. The photos land in it one by one, named by the job and the day. A file over 10 MB stays behind with its reason. The rest still go.
+
+A file that does not land stays on the screen with its reason. Press {{button:outline|File 1 file again}} to try it again. The file goes into the same as-built, so you never make a second one.
+
+Press {{button:outline|Add photos or a PDF}} on an as-built to add more files later.
+
+You can paste a Drive link under **Link** instead of picking files. An as-built with no link and no files still gets its folder.
 
 The as-built lands under **Our as-builts** with the day and who added it. The line says which set it marks up.
 

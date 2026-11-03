@@ -4,7 +4,7 @@
  * with no job each take a row of their own; the done ones (paid jobs, lost bids) fold. The Waiting
  * cell reads an open request first, then a billed job's payment, then a sent bid's answer. Pure.
  */
-import { bidStatusWord, bidUndecided, jobOpen, requestIsOpen, type MemberBid, type MemberJob, type MemberRequest, type Members } from './overview'
+import { bidStatusWord, bidUndecided, jobOpen, requestIsOpen, type MemberBid, type MemberJob, type MemberRequest, type Members, bidMoney } from './overview'
 import { planCellFor, type PlansView, type PlanSet } from './plans'
 
 export type PieceWaiting = {
@@ -24,9 +24,19 @@ export type PieceRow = {
   plans: { set: PlanSet | null; older: boolean }
   waiting: PieceWaiting | null
   done: boolean
+  /**
+   * A bid archived off the working board with no job and no answer out (the Gun Dog spike, 2026-11-02): it sits
+   * in its own fold between the live rows and the done ones, since nobody is chasing it and it is not decided.
+   */
+  archived: boolean
+  /** Where a live row sits (the owner, 2026-11-02): bids in play first, then each bid with the job it became, then the jobs with no bid. */
+  rank: PieceRank
   /** The newest stamp on the row, for the sort. */
   activityAt: string
 }
+
+/** 0 a bid in play with no job yet, 1 a bid paired with its job, 2 a job with no bid. */
+export type PieceRank = 0 | 1 | 2
 
 function daysSince(iso: string | null | undefined, nowMs: number): number {
   if (!iso) return 0
@@ -86,6 +96,8 @@ export function buildPieceRows(args: {
         plans: planCellFor(args.plans, 'bid', b.id),
         waiting: waitingFor(b, null),
         done: status === 'lost',
+        archived: status === 'archived',
+        rank: 0,
         activityAt: newest(b.updated_at, b.outcome_at, b.bid_date_sent, b.created_at),
       })
       continue
@@ -101,6 +113,8 @@ export function buildPieceRows(args: {
         plans: jobPlans.set ? jobPlans : planCellFor(args.plans, 'bid', b.id),
         waiting: waitingFor(b, j),
         done: !jobOpen(j),
+        archived: false,
+        rank: 1,
         activityAt: newest(j.updated_at, j.last_work_date, j.created_at, b.updated_at),
       })
     }
@@ -115,17 +129,35 @@ export function buildPieceRows(args: {
       plans: planCellFor(args.plans, 'job', j.id),
       waiting: waitingFor(null, j),
       done: !jobOpen(j),
+      archived: false,
+      rank: 2,
       activityAt: newest(j.updated_at, j.last_work_date, j.created_at),
     })
   }
-  // Waiting rows first (the oldest wait on top), then the rest by what moved last.
+  // Live rows, then the archived bids, then the done rows. Among the live: waiting rows first (the oldest wait on
+  // top), then by state (bids in play, paired bids, jobs with no bid), then by what moved last.
   rows.sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1
+    if (a.archived !== b.archived) return a.archived ? 1 : -1
     if (!!a.waiting !== !!b.waiting) return a.waiting ? -1 : 1
     if (a.waiting && b.waiting && a.waiting.ageDays !== b.waiting.ageDays) return b.waiting.ageDays - a.waiting.ageDays
+    if (a.rank !== b.rank) return a.rank - b.rank
     return b.activityAt.localeCompare(a.activityAt)
   })
   return rows
+}
+
+/** The rows that work or wait: not done, not archived. */
+export function liveRows(rows: readonly PieceRow[]): PieceRow[] {
+  return rows.filter((r) => !r.done && !r.archived)
+}
+
+/** The archived fold's words: *10 archived bids · $2,503.68 bid*; the sum only where a bid carries a price. */
+export function archivedFoldWords(rows: readonly PieceRow[], money?: (n: number) => string): string {
+  const archived = rows.filter((r) => r.archived)
+  if (archived.length === 0) return ''
+  const usd = archived.reduce((s, r) => s + (r.bid ? bidMoney(r.bid) ?? 0 : 0), 0)
+  return `${archived.length} archived ${archived.length === 1 ? 'bid' : 'bids'}${money && usd > 0 ? ` · ${money(usd)} bid` : ''}`
 }
 
 /** The done fold's words: *2 paid jobs and 1 lost bid*. */

@@ -7,15 +7,17 @@
  * as `drive-link`, `file-index-sweep` and `dev-mcp` do.
  */
 import type { Excerpt } from './excerpt.ts'
+import { ocrDue, ocrTakes } from './ocrKernel.ts'
 
 /** The text kept on a row: plenty for ranking, and the generated tsvector reads the same cut. */
 export const INDEX_TEXT_MAX_CHARS = 200_000
 /**
- * The caps on one PDF's read for the index. Over the bytes it is `big`: it is held whole in memory to parse, so this cap
- * answers to the function's 256 MB and never to its CPU. The pages cap rarely bites, since the time budget or the text
- * cap stops a long PDF first (v2.6332; 8 MB and 40 pages before, which held a quarter of the drive's files as `big`).
+ * The caps on one PDF's read for the index. Over the bytes it is `big`, with no download: the file is held whole in
+ * memory to parse, and the platform's 256 MB is the limit that bites. On prod a 25 MB plan set alone ended its worker
+ * with *Memory limit exceeded* while an 11 MB one read through (v2.6408; v2.6332 had raised the cap to 50 MB). The
+ * pages cap rarely bites, since the time budget or the text cap stops a long PDF first.
  */
-export const TEXT_PDF_MAX_BYTES = 50 * 1024 * 1024
+export const TEXT_PDF_MAX_BYTES = 12 * 1024 * 1024
 export const TEXT_PDF_MAX_PAGES = 1000
 export const TEXT_PLAIN_MAX_BYTES = 2 * 1024 * 1024
 /**
@@ -25,23 +27,24 @@ export const TEXT_PLAIN_MAX_BYTES = 2 * 1024 * 1024
  */
 export const PDF_READ_BUDGET_MS = 800
 export const PASS_READ_BUDGET_MS = 1200
-/** The PDF bytes one request holds at most, past the first file: a second large set in one request is what memory cannot take. */
-export const PASS_READ_MAX_BYTES = 60 * 1024 * 1024
+/** The PDF bytes one request holds at most, past the first file: memory is shared by every read in a worker, and the parse holds several times the file. */
+export const PASS_READ_MAX_BYTES = 16 * 1024 * 1024
 /** What a PDF is expected to cost before it is read: the parse is about this much per megabyte, up to its budget. */
 const PDF_ESTIMATE_BASE_MS = 50
 const PDF_ESTIMATE_MS_PER_MB = 100
 
-/** The limits of one PDF read. `passBudgetMs` is what the whole request may have spent for this parse to start at all. */
+/** The limits of one PDF read. `passBudgetMs` and `passMaxBytes` are what the whole request may have spent and held for this parse to start at all. */
 export interface PdfReadLimits {
   maxBytes: number
   maxPages: number
   budgetMs: number
   passBudgetMs: number
+  passMaxBytes: number
 }
 
-export const INDEX_PDF_LIMITS: PdfReadLimits = { maxBytes: TEXT_PDF_MAX_BYTES, maxPages: TEXT_PDF_MAX_PAGES, budgetMs: PDF_READ_BUDGET_MS, passBudgetMs: PASS_READ_BUDGET_MS }
-/** A search reads ten hits' excerpts at once, so it keeps v2.6306's small caps and a short budget for each. */
-export const EXCERPT_PDF_LIMITS: PdfReadLimits = { maxBytes: 8 * 1024 * 1024, maxPages: 40, budgetMs: 300, passBudgetMs: 1000 }
+export const INDEX_PDF_LIMITS: PdfReadLimits = { maxBytes: TEXT_PDF_MAX_BYTES, maxPages: TEXT_PDF_MAX_PAGES, budgetMs: PDF_READ_BUDGET_MS, passBudgetMs: PASS_READ_BUDGET_MS, passMaxBytes: PASS_READ_MAX_BYTES }
+/** A search reads ten hits' excerpts at once, so it keeps v2.6306's small caps, a short budget for each and the bytes the ten may hold together. */
+export const EXCERPT_PDF_LIMITS: PdfReadLimits = { maxBytes: 8 * 1024 * 1024, maxPages: 40, budgetMs: 300, passBudgetMs: 1000, passMaxBytes: 24 * 1024 * 1024 }
 
 /** What one request has spent parsing PDFs, shared by every read in it. */
 export interface PassSpend {
@@ -64,6 +67,8 @@ export const INDEX_JOB_MAX_FILES = 40
 /** With `retry`, a held row is taken again only when its last check is older than this: a run that holds a file again moves on instead of taking it first on every call. */
 export const RETRY_HOLD_MS = 60 * 60 * 1000
 export const SWEEP_MAX_FILES = 40
+/** How many scans the sweep sends to OCR per run once it is set up (the cost cap: 144 runs a day). */
+export const SWEEP_OCR_ROWS = 5
 /** How many rows the sweep asks Drive about per run, oldest check first, so a trashed file loses its row within days. */
 export const SWEEP_RECHECK_ROWS = 20
 /** The sweep lists files changed since its stamp less this, so a file that landed as the last run listed is not missed. */
@@ -101,6 +106,8 @@ export interface DriveFileMeta {
   modifiedTime?: string | null
   parents?: string[] | null
   webViewLink?: string | null
+  /** Drive's trashed flag, asked for so a single file's meta (`fileMeta`) tells a trashed file from a live one. */
+  trashed?: boolean | null
 }
 
 /** Where a row's text came from, and why a row has none. The words `file_index` keeps. */
@@ -245,7 +252,15 @@ export interface FileIndexRow {
   pages_read: number | null
   indexed_at: string
   checked_at: string
+  /** OCR (PR 3): when a scan was last sent, how many pages were read, the provider's reason when it refused. */
+  ocr_tried_at: string | null
+  ocr_pages: number | null
+  ocr_note: string | null
 }
+
+/** What one file's OCR try left behind, for the row: nothing tried, read (the text is the read's), or refused with the reason. */
+export type OcrTry = { tried: false } | { tried: true; note: string | null }
+export const NO_OCR_TRY: OcrTry = { tried: false }
 
 /** The row's home columns from a walk. */
 export function homeColumns(home: FileHome | null): Pick<FileIndexRow, 'jobs_ledger_id' | 'bid_id' | 'customer_id'> {
@@ -255,8 +270,9 @@ export function homeColumns(home: FileHome | null): Pick<FileIndexRow, 'jobs_led
 }
 
 /** The row for a file whose text was read, or whose read answered why not. `now` is the stamp. */
-export function indexRowOf(f: DriveFileMeta, walk: { home: FileHome | null; via: string | null; names: readonly string[]; path: string }, read: FileTextRead | { why: 'reading' }, now: Date): FileIndexRow {
+export function indexRowOf(f: DriveFileMeta, walk: { home: FileHome | null; via: string | null; names: readonly string[]; path: string }, read: FileTextRead | { why: 'reading' }, now: Date, ocr: OcrTry = NO_OCR_TRY): FileIndexRow {
   const stamp = now.toISOString()
+  const fromOcr = 'text' in read && read.source === 'ocr'
   const bytes = f.size == null || f.size === '' ? null : Number(f.size)
   return {
     drive_file_id: f.id,
@@ -274,6 +290,9 @@ export function indexRowOf(f: DriveFileMeta, walk: { home: FileHome | null; via:
     pages_read: 'text' in read ? (read.pagesRead ?? read.pages) : null,
     indexed_at: stamp,
     checked_at: stamp,
+    ocr_tried_at: ocr.tried ? stamp : null,
+    ocr_pages: fromOcr ? read.pages : null,
+    ocr_note: ocr.tried && !fromOcr ? (ocr.note ?? 'no reason given').slice(0, 1000) : null,
   }
 }
 
@@ -289,6 +308,8 @@ export interface KnownRow {
   text_why: TextWhy | null
   text_source: TextSource | null
   checked_at: string | null
+  /** When OCR last tried the row, read by the plan once OCR is set up. */
+  ocr_tried_at?: string | null
 }
 
 /** Whether a held row's last check is old enough for a retry to take it again (`RETRY_HOLD_MS`); a row with no stamp is due. */
@@ -304,13 +325,15 @@ export type SkipWhy = 'current' | 'held'
 /**
  * Which listed files a pass indexes: one not in the table, or modified since its row; one whose row is held (`big`,
  * `slow`, `error`, or `reading` from a stopped request) only with `retry`, and then only when its last check is an
- * hour old (`retryDue`), so a run that holds a file again moves past it instead of taking it first on every call. A
- * `scan` waits for the OCR pass and a `kind` is never read, so neither is retaken. A row with text and the same
- * modified time is current. Folders and a file listed twice are passed over.
+ * hour old (`retryDue`), so a run that holds a file again moves past it instead of taking it first on every call; a
+ * scan (`scan`) when OCR is set up (`ocr`), the kind is one Document AI reads and the row is due (never tried, or tried
+ * over a day ago), named in `forOcr` so the pass can cap its OCR calls; a `kind` is never
+ * read. A row with text and the same modified time is current. Folders and a file listed twice are passed over.
  */
-export function indexPlan(listed: readonly DriveFileMeta[], known: ReadonlyMap<string, KnownRow>, opts: { retry?: boolean; now?: Date } = {}): { toIndex: DriveFileMeta[]; skipped: { id: string; why: SkipWhy }[] } {
+export function indexPlan(listed: readonly DriveFileMeta[], known: ReadonlyMap<string, KnownRow>, opts: { retry?: boolean; ocr?: boolean; now?: Date } = {}): { toIndex: DriveFileMeta[]; skipped: { id: string; why: SkipWhy }[]; forOcr: Set<string> } {
   const toIndex: DriveFileMeta[] = []
   const skipped: { id: string; why: SkipWhy }[] = []
+  const forOcr = new Set<string>()
   const seen = new Set<string>()
   for (const f of listed) {
     if (f.mimeType === DRIVE_FOLDER_KIND || seen.has(f.id)) continue
@@ -330,9 +353,14 @@ export function indexPlan(listed: readonly DriveFileMeta[], known: ReadonlyMap<s
       toIndex.push(f)
       continue
     }
+    if (row.text_why === 'scan' && opts.ocr && ocrTakes(f) && ocrDue(row.ocr_tried_at ?? null, opts.now ?? new Date())) {
+      toIndex.push(f)
+      forOcr.add(f.id)
+      continue
+    }
     skipped.push({ id: f.id, why: held ? 'held' : 'current' })
   }
-  return { toIndex, skipped }
+  return { toIndex, skipped, forOcr }
 }
 
 /** A file a pass could not read, named with its reason for the report. */

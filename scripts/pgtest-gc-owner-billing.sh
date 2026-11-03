@@ -76,12 +76,14 @@ psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql 
 # columns and the index are there, and every function and the trigger are replaced as they were. It runs right
 # after the first, so a later migration's restatement is never undone, nor its dropped tables named again.
 TWICE=" $SEND $REMIND $INTEREST $ACCEPT $MONDAY $PORTAL $CONTROLLER $CHANGEREQ $CARD $SWITCH $READS $NOTICES $GCJOB $VIEW $DUE "
+files=()
 for f in supabase/migrations/*.sql; do
-  psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  files+=("$f")
   case "$TWICE" in *" $f "*)
-    psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; } ;;
+    files+=("$f") ;;
   esac
 done
+pgtest_apply "${files[@]}"
 out="$(psql_as postgres -f - < supabase/tests/gc_owner_billing/20_scenario.sql 2>&1 || true)"
 if ! grep -q "gc_owner_billing PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
