@@ -212,6 +212,7 @@ export const FIND_WORDS = {
   placeholder: 'rock clause, permit, change order…',
   label: 'Find a file by its words',
   searching: 'Searching…',
+  filling: 'Drive’s search is still looking…',
   openInDrive: 'Open in Drive',
   openJob: 'Open the job',
   tryAgain: 'Try again',

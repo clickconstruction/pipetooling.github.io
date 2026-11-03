@@ -8,6 +8,7 @@
 import { useEffect } from 'react'
 import type { ChangeLine } from '../../lib/developments/whatChanged'
 import { LinkButton, shortDay, SmallButton, timeOfDay } from './developmentPageBits'
+import { JobChip } from './JobChip'
 
 export function DevelopmentLineWindow({ line, onClose, openAbout }: { line: ChangeLine | null; onClose: () => void; openAbout: (about: ChangeLine['about']) => void }) {
   useEffect(() => {
@@ -35,7 +36,11 @@ export function DevelopmentLineWindow({ line, onClose, openAbout }: { line: Chan
           <div style={{ minWidth: 0 }}>
             <strong style={{ fontSize: '1rem' }}>{line.verb}</strong>
             <span style={{ color: 'var(--text-muted)' }}> · </span>
-            {door ? (
+            {door && line.about.kind === 'job' ? (
+              <JobChip jobId={line.about.id!} onOpen={() => openAbout(line.about)} strong>
+                {line.about.label}
+              </JobChip>
+            ) : door ? (
               <LinkButton onClick={() => openAbout(line.about)} strong>
                 {line.about.label}
               </LinkButton>

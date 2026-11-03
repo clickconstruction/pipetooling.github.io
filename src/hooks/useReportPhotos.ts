@@ -11,6 +11,7 @@ import { loadQuestionsForJob } from '../lib/jobs/stageChecklistIo'
 import { answerQuestionsWithReportPhotos } from '../lib/jobs/stageChecklistSheetIo'
 import type { StageChecklistQuestion } from '../lib/jobs/stageChecklist'
 import { edgeFor, shrinkReportPhoto, shrinkWords, withinCap, type ReportPhotoSize } from '../lib/photos/shrink'
+import { readTakenAt } from '../lib/photos/photoTakenAt'
 
 /**
  * A report form's photos (punch list #229, PR 1): the state the camera-first report built (punch list #189, PR 5b
@@ -194,14 +195,16 @@ export function useReportPhotos(input: UseReportPhotosInput): ReportPhotosHost {
    * Shrink on the device, keep the bytes, then send: the tile reads each step. A send lost to the signal leaves the
    * tile kept on the phone (PR 6), to go with the report; any other failure keeps the tile with Retry.
    */
-  async function shrinkAndSend(id: string, file: File, takenAt: string) {
+  async function shrinkAndSend(id: string, file: File, pickedAt: string) {
     let held = false
     try {
+      // The photo's time is the file's own when the camera wrote one (punch list #247, PR 3), else the moment it was picked.
+      const takenAt = await readTakenAt(file, Date.parse(pickedAt) || Date.now())
       const shot = await shrinkReportPhoto(file, photoSize)
       if (!withinCap(shot.blob.size)) throw new Error('The photo is over 2 MB even after the shrink.')
       const preview = shot.shrunk ? keepUrl(URL.createObjectURL(shot.blob)) : null
       setTiles((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, status: 'sending', bytes: shot.blob.size, width: shot.width, height: shot.height, shrunk: shot.shrunk, ...(preview ? { previewUrl: preview } : null) } : t)),
+        prev.map((t) => (t.id === id ? { ...t, status: 'sending', takenAt, bytes: shot.blob.size, width: shot.width, height: shot.height, shrunk: shot.shrunk, ...(preview ? { previewUrl: preview } : null) } : t)),
       )
       setLastShrink(shrinkWords({ before: file.size, after: shot.blob.size, longEdge: edgeFor(photoSize), shrunk: shot.shrunk }))
       if (!authUserId) throw new Error('Sign in again to send a photo.')

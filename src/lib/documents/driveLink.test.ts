@@ -129,6 +129,9 @@ describe('the office’s door', () => {
     expect(parseOfficeAsk({ action: 'list', job: { project_id: PROJECT } })).toEqual({ action: 'list', job: { project_id: PROJECT } })
     // v2.6305: Find a file's ask parses trimmed; one letter is refused.
     expect(parseOfficeAsk({ action: 'search', words: ' rock clause ' })).toEqual({ action: 'search', words: 'rock clause' })
+    expect(parseOfficeAsk({ action: 'index_check' })).toEqual({ action: 'index_check', max: null, sample: null })
+    expect(parseOfficeAsk({ action: 'index_check', max: 500.7, sample: 200 })).toEqual({ action: 'index_check', max: 500, sample: 200 })
+    expect(parseOfficeAsk({ action: 'index_check', max: 0, sample: 'many' })).toEqual({ action: 'index_check', max: null, sample: null })
     expect(parseOfficeAsk({ action: 'search', words: 'r' })).toBeNull()
     expect(parseOfficeAsk({ action: 'list', job: { project_id: PROJECT, bid_id: PROJECT } })).toBeNull()
     expect(parseOfficeAsk({ action: 'list', job: {} })).toBeNull()

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultCopySourceId, groupVersionsByGc, perGcSentSummary, rollUpOutcome } from './gcPackets'
+import { getSubmissionSectionKey } from './submissionSections'
 
 const v = (id: string, customer_id: string | null, sort_order: number, extra: Record<string, unknown> = {}) => ({ id, name: id, customer_id, sort_order, ...extra })
 
@@ -104,5 +105,54 @@ describe('groupVersionsByGc · a version made on the evening of the send keeps i
     expect(groupVersionsByGc([v('spc', null, 0, { created_at: '2026-08-01T01:00:00Z' })], opts('2026-07-31'))[0]!.sentOn).toBe('2026-07-31')
     expect(groupVersionsByGc([v('spc', null, 0, { created_at: '2026-12-02T00:30:00+00:00' })], opts('2026-12-01'))[0]!.sentOn).toBe('2026-12-01')
     expect(groupVersionsByGc([v('spc', null, 0, { created_at: '2026-08-01T12:00:00Z' })], opts('2026-07-31'))[0]!.sentOn).toBeNull()
+  })
+})
+
+describe('rollUpOutcome · a same-letter GC rides the bid (BP391, 2026-11-02)', () => {
+  // Grace marked every GC lost and the bid stayed in Not yet won or lost. The second GC on the
+  // bid's "Also sent to" list had no version of its own, so it came in as a shared-letter packet
+  // carrying the bid's sent date and no outcome of its own — and the all-lost rule never fired.
+  // A shared-letter GC's answer IS the bid's answer; it can never hold the roll-up.
+  const s = { sentOn: '2026-09-01', value: null, isAlternate: false }
+  const packets = groupVersionsByGc(
+    [
+      v('structura', null, 0, { outcome: 'lost', loss_category: 'gc_lost', created_at: '2026-08-27T20:25:19Z' }),
+      v('planhub', 'c-planhub', 1, { outcome: 'lost', loss_category: 'price', created_at: '2026-08-27T20:25:19Z' }),
+      v('workman-v', 'c-planhub', 2, { outcome: 'lost', loss_category: 'price', created_at: '2026-09-01T14:49:16Z' }),
+    ],
+    {
+      bidGcName: 'Structura, Inc. – San Antonio',
+      gcNames: { 'c-planhub': 'PlanHub - Subcontractor Prime Opportunity' },
+      latestSends: { structura: s, planhub: s, 'workman-v': s },
+      bidDateSent: '2026-09-01',
+      recipients: [
+        { customerId: 'c-planhub', name: 'PlanHub - Subcontractor Prime Opportunity' },
+        { customerId: 'c-workman', name: 'Workman Commercial' },
+      ],
+    },
+  )
+
+  it("the bid's shape: two real packets lost, one shared-letter GC with the bid's sent date and no outcome", () => {
+    expect(packets.map((p) => [p.name, p.outcome, p.sentOn, p.sharedLetter ?? false])).toEqual([
+      ['Structura, Inc. – San Antonio', 'lost', '2026-09-01', false],
+      ['PlanHub - Subcontractor Prime Opportunity', 'lost', '2026-09-01', false],
+      ['Workman Commercial', null, '2026-09-01', true],
+    ])
+  })
+
+  it('rolls up to Lost, and the pile rule files it under Lost — not Not yet won or lost', () => {
+    const roll = rollUpOutcome(packets)
+    expect(roll).toBe('lost')
+    expect(getSubmissionSectionKey({ outcome: roll, bid_date_sent: '2026-09-01' })).toBe('lost')
+  })
+
+  it("an unanswered shared-letter GC decides nothing; an answer set on one is the bid's answer (the writer's in-memory path)", () => {
+    expect(rollUpOutcome([{ outcome: null, sentOn: '2026-09-01', sharedLetter: true }])).toBeNull()
+    expect(rollUpOutcome([{ outcome: 'won', sentOn: '2026-09-01', sharedLetter: true }])).toBe('won')
+    expect(rollUpOutcome([{ outcome: 'lost', sentOn: '2026-09-01' }, { outcome: 'lost', sentOn: '2026-09-01', sharedLetter: true }])).toBe('lost')
+  })
+
+  it('a real GC still waiting holds the bid open, shared letter or not', () => {
+    expect(rollUpOutcome([{ outcome: 'lost', sentOn: '2026-09-01' }, { outcome: null, sentOn: '2026-09-01' }, { outcome: null, sentOn: '2026-09-01', sharedLetter: true }])).toBeNull()
   })
 })

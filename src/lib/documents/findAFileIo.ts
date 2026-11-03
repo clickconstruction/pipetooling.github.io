@@ -3,14 +3,17 @@
  * `search_file_index` RPC as the signed-in person, whose rows the box shows when there are any, else one call to
  * `drive-link`'s `search`, Drive's own full-text index as the floor. The RPC refusing (the migration not pushed yet, a
  * role the table's policy does not take) costs the index, never the search: the box falls back to Drive and says so.
- * The function's own words come back as the error (`fnProblem`, as the job's other Drive calls read theirs).
+ * The function's own words come back as the error (`fnProblem`, as the job's other Drive calls read theirs). Drive is
+ * asked at the same time and its finds follow the index's, so the box shows the index's hits without waiting for it
+ * (v2.6369).
  */
 import { supabase } from '../supabase'
 import { fnProblem, type FnResult } from '../gc/gcIo'
 import { driveBehindIndex, FIND_MAX_HITS, FIND_WORDS, findAFileFromAnswer, findAFileFromIndexRows, type FindAFileRead } from './findAFile'
 
 export type FindAFileIo = {
-  search: (words: string) => Promise<FindAFileRead>
+  /** `onFirst` hears our index's hits the moment they come; the answer is the whole list once Drive has spoken. */
+  search: (words: string, onFirst?: (read: FindAFileRead) => void) => Promise<FindAFileRead>
 }
 
 /** Our own index, or null when the RPC refused (logged, so a pushed migration is one `console` line away from proof). */
@@ -31,15 +34,19 @@ export async function searchDrive(words: string): Promise<FindAFileRead> {
   return findAFileFromAnswer(r.data)
 }
 
-/** Both at once: the index's hits lead and Drive's fill in behind; Drive refusing costs the floor alone while the index answered. */
-export async function searchJobFiles(words: string): Promise<FindAFileRead> {
-  const [index, drive] = await Promise.all([
-    searchIndex(words),
-    searchDrive(words).then(
-      (read) => ({ ok: true as const, read }),
-      (error: unknown) => ({ ok: false as const, error }),
-    ),
-  ])
+/**
+ * Both asked at once: the index answers in a tenth of a second and Drive in seconds, so the box hears the index's hits as
+ * soon as they come (`onFirst`) and the answer is them with Drive's behind. Drive refusing costs the floor alone while the
+ * index answered.
+ */
+export async function searchJobFiles(words: string, onFirst?: (read: FindAFileRead) => void): Promise<FindAFileRead> {
+  const asked = searchDrive(words).then(
+    (read) => ({ ok: true as const, read }),
+    (error: unknown) => ({ ok: false as const, error }),
+  )
+  const index = await searchIndex(words)
+  if (index && index.hits.length > 0) onFirst?.(index)
+  const drive = await asked
   if (index && index.hits.length > 0) return drive.ok ? driveBehindIndex(index, drive.read) : index
   if (drive.ok) return drive.read
   if (index) return index

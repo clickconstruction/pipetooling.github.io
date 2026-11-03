@@ -2,7 +2,7 @@
 name: "Materials on site: cages, boxes and counts"
 number: 209
 group: close
-status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · left: the end-to-end photo test on test job 972, then a week of use
+status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · v2.6366 the manifest print (2026-11-02) · left: the end-to-end photo test on test job 972, then a week of use
 mockup: to-dos/materials-on-site/mockup.html
 summary: >
   Big jobs leave fittings, pipe and fixtures on site in stencilled cages and boxes (A1, A2, B1 …).
@@ -17,7 +17,7 @@ summary: >
 next: Finish the end-to-end photo test on test job 972 (clear the hand-made pictures link or share it with the app's account, press Make the job's Drive folders on the Documents tab, and the waiting box photo files on the sweep's next run), then use it for a week; the leftovers under Where it stands are one small PR each, the parts-book price first.
 size: L, shipped as four PRs and four fixes; each leftover is S
 blocker: none. The owner's live test on test job 972.
-ver: v2.6039 · 6041 · 6043 · 6045 · 6049 · 6050 · 6054 · 6055
+ver: v2.6039 · 6041 · 6043 · 6045 · 6049 · 6050 · 6054 · 6055 · 6366
 opinion: your call — the code is done; the live test and the week of use are yours, and the parts-book price is the one leftover worth building before them
 ---
 
@@ -356,6 +356,8 @@ offered while any of the job's three links is missing, not only the job folder).
 the test: clear the hand-made pictures link or share it with the app's account, press Make the
 job's Drive folders, and the waiting box photo files on the sweep's next run. Then a week of use.
 
+**The manifest print** (v2.6366, 2026-11-02, the owner's ask that morning): **Print the manifest** beside Print labels prints one Letter page per container picked, to laminate and hang on the box — the stencil, the job and the site, the box's QR code, the day printed, the day something was last recorded in it, what is in it with each number, and ruled lines for what is added on site by hand; the phone's box links to it. A plain print like the label (no sent copy); the fragment lists the calls. The same PR found that the body scroll lock clips a print to its first sheet; the manifest lets it go under print, the labels window does not yet.
+
 **Left, each one small PR** (the fragments' own lists):
 
 - prices from the parts book for the missing money, with its checked date (call 5), instead of the
@@ -367,7 +369,9 @@ job's Drive folders, and the waiting box photo files on the sweep's next run. Th
 - a summary RPC for a job past 5,000 ledger rows; the Drive thumbnail on the office panel once the
   bucket copy is gone;
 - the real-phone checks: the camera scan of a printed label and the share sheet on iPhone and
-  Android.
+  Android;
+- the labels window's print past one sheet (the manifest's two print rules fit it as they are), and a
+  sent-copy record of the manifest if the week of use asks for it.
 
 **V2 and V3** stay as drawn, less the photo on a count, which shipped first. The jobs root and the
 name of a job's folder, which the live test raised, are #211 (`where-files-go/`).

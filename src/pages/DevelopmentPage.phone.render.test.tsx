@@ -8,7 +8,7 @@
  * fetch is mocked at its seam; the rows are made up.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import DevelopmentPage from './DevelopmentPage'
 import type { DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
 import type { MemberBid, MemberJob } from '../lib/developments/overview'
@@ -80,6 +80,7 @@ function data(): DevelopmentPageData {
     teamMembers: [],
     names: new Map([['u-est', 'Dana']]),
     paySpeed: null,
+    twinUserIds: new Set<string>(),
   }
 }
 
@@ -159,5 +160,40 @@ describe('DevelopmentPage at 1280 wide, the control', () => {
     expect(sources.style.display).toBe('inline-flex')
     expect(sources.style.flexWrap).toBe('wrap')
     expect(within(sources).getAllByRole('radio')).toHaveLength(6)
+  })
+
+  it('rest on a job’s blue number in Jobs & bids and its card floats up with the name, the address and the stage; leave and it goes', async () => {
+    windowWide(1280)
+    await drawPage('dev')
+    const chip = document.querySelector<HTMLButtonElement>('[data-job-chip="j1"]')
+    expect(chip).not.toBeNull()
+    fireEvent.pointerEnter(chip!, { clientX: 300, clientY: 400 })
+    const card = await screen.findByTestId('job-hover-card')
+    expect(within(card).getByTestId('job-hover-card-name').textContent).toBe('Lot 4')
+    expect(within(card).getByTestId('job-hover-card-address').textContent).toBe('1 Gun Dog Trl')
+    expect(within(card).getByTestId('job-hover-card-lines').textContent).toContain('Stage')
+    expect(within(card).getByTestId('job-hover-card-lines').textContent).toContain('Value$5,000')
+    fireEvent.pointerLeave(chip!)
+    expect(screen.queryByTestId('job-hover-card')).toBeNull()
+  })
+
+  it('a job at the address, not in the development: its row in the not-in-it card is a chip, whose card names no crew the page never read', async () => {
+    windowWide(1280)
+    authState.current = { role: 'dev' }
+    const d = data()
+    served.data = { ...d, atAddress: { bids: [], jobs: [job({ id: 'j2', hcp_number: '957', job_name: 'Lot 9', job_address: '9 Gun Dog Trl', development_id: null, bid_id: null, status: 'waiting' })] } }
+    renderWithProviders(<DevelopmentPage />)
+    await settle()
+    fireEvent.click(await screen.findByTestId('not-in-it-chip-jobs'))
+    const chip = await waitFor(() => {
+      const c = document.querySelector<HTMLButtonElement>('[data-job-chip="j2"]')
+      expect(c).not.toBeNull()
+      return c!
+    })
+    fireEvent.pointerEnter(chip, { clientX: 300, clientY: 400 })
+    const card = await screen.findByTestId('job-hover-card')
+    expect(within(card).getByTestId('job-hover-card-name').textContent).toBe('Lot 9')
+    expect(within(card).getByTestId('job-hover-card-address').textContent).toBe('9 Gun Dog Trl')
+    expect(within(card).getByTestId('job-hover-card-lines').textContent).not.toContain('Crew')
   })
 })

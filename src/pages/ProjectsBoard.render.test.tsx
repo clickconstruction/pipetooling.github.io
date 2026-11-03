@@ -16,36 +16,32 @@ let failure: unknown = null
 let role = 'dev'
 const history: unknown[] = []
 const undoLatest = vi.fn(() => Promise.resolve(true))
+let readsWages = true
+const rpcCalls: Array<{ name: string; ids: string[] | null }> = []
+const burnEnabled: boolean[] = []
 
-vi.mock('../lib/supabase', () => {
-  function builder(): Record<string, unknown> {
-    const b: Record<string, unknown> = {}
-    for (const m of ['select', 'eq', 'in', 'order', 'limit', 'range']) b[m] = () => b
-    b.then = (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
-      Promise.resolve(failure ? { data: null, error: failure } : { data: rows, error: null }).then(onFulfilled, onRejected)
-    return b
-  }
-  return { supabase: { from: () => builder() } }
-})
+vi.mock('../lib/supabase', () => ({
+  supabase: {
+    rpc: (name: string, args: { p_job_ids: string[] | null }) => {
+      rpcCalls.push({ name, ids: args.p_job_ids })
+      return Promise.resolve(failure ? { data: null, error: failure } : { data: { reads_wages: readsWages, jobs: rows }, error: null })
+    },
+  },
+}))
 vi.mock('../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
   const base = useAuthModuleMock({ role: 'dev', profileName: 'Robert' })
   return { ...base, useAuth: () => ({ ...(base.useAuth as () => Record<string, unknown>)(), role }) }
 })
 vi.mock('../hooks/useBidVsActualBurnInputs', () => ({
-  useBidVsActualBurnInputs: (_enabled: boolean, ids: readonly string[]) => ({
-    loading: false,
-    inputsByJob: new Map(
-      ids.map((id) => [
-        id,
-        id === 'late'
-          ? { chargeEvents: [{ source: 'team_labor', dateKey: '2026-10-20', amount: 9000, label: 'a', hours: 200 }], valueEvents: [], paymentEvents: [], revenue: 27000, fallbackPercent: null, teamHours: 200, cardChargesExcluded: false }
-          : { chargeEvents: [{ source: 'team_labor', dateKey: '2026-10-20', amount: 1080, label: 'a', hours: 24 }, { source: 'team_labor', dateKey: '2026-10-21', amount: 1080, label: 'b', hours: 24 }], valueEvents: [], paymentEvents: [], revenue: 27000, fallbackPercent: null, teamHours: 48, cardChargesExcluded: false },
-      ]),
-    ),
-  }),
+  useBidVsActualBurnInputs: (enabled: boolean, ids: readonly string[]) => {
+    burnEnabled.push(enabled)
+    return {
+      loading: false,
+      inputsByJob: new Map(enabled ? ids.map((id) => [id, { chargeEvents: [{ source: 'team_labor', dateKey: '2026-10-20', amount: 1080, label: 'a', who: 'Ana', hours: 24 }], valueEvents: [], paymentEvents: [], revenue: 27000, fallbackPercent: null, teamHours: 24, cardChargesExcluded: false }]) : []),
+    }
+  },
 }))
-vi.mock('../hooks/useJobBudgetRows', () => ({ useJobBudgetRows: () => new Map() }))
 vi.mock('../hooks/useStageChecklistStates', () => ({ useStageChecklistStates: () => ({ questions: [], answersByFixture: new Map(), loading: false, reload: () => {} }) }))
 vi.mock('../hooks/useExpectedHours', () => ({
   useExpectedHours: () => ({ byJob: new Map(), history, undo: history.length ? { kind: 'clear', jobId: 'late' } : null, loading: false, error: null, setTarget: vi.fn(), clearTarget: vi.fn(), undoLatest, reload: () => {} }),
@@ -56,14 +52,17 @@ const fixtures = [
   { id: 't', name: 'Top Out', stage_kind: 'order', line_kind: 'fixture', line_unit_price: 9000, count: 1, progress_pct: 50, sequence_order: 2 },
   { id: 's', name: 'Trim Set', stage_kind: 'order', line_kind: 'fixture', line_unit_price: 9000, count: 1, progress_pct: null, sequence_order: 3 },
 ]
-const job = (id: string, p: Record<string, unknown> = {}) => ({ id, hcp_number: id === 'late' ? '1050' : '1044', click_number: null, job_name: id === 'late' ? 'The Bunker' : 'The Lodge', job_address: '', status: 'working', pct_complete: 50, revenue: 27000, fixtures: fixtures.map((f) => ({ ...f, id: `${id}-${f.id}` })), ...p })
+const job = (id: string, p: Record<string, unknown> = {}) => ({ id, hcp_number: id === 'late' ? '1050' : '1044', click_number: null, job_name: id === 'late' ? 'The Bunker' : 'The Lodge', job_address: '', status: 'working', pct_complete: 50, revenue: 27000, budget_kind: null, budget_hours: null, spent_pct: null, values: [], labor: id === 'late' ? [{ ymd: '2026-10-20', who: 'Ana', hours: 200 }] : [{ ymd: '2026-10-20', who: 'Ana', hours: 24 }, { ymd: '2026-10-21', who: 'Ana', hours: 24 }], fixtures: fixtures.map((f) => ({ ...f, id: `${id}-${f.id}` })), ...p })
 
 describe('ProjectsBoard', () => {
   beforeEach(() => {
     failure = null
     role = 'dev'
+    readsWages = true
     history.length = 0
     undoLatest.mockClear()
+    rpcCalls.length = 0
+    burnEnabled.length = 0
   })
   afterEach(cleanup)
 
@@ -77,6 +76,31 @@ describe('ProjectsBoard', () => {
     expect(cards[0]!.dataset.tone).toBe('behind')
     expect(cards[1]!.dataset.tone).toBe('ahead')
     expect(screen.getByText('2 projects')).toBeTruthy()
+  })
+
+  it('stands every role on the one server read, and asks for dollars only for a viewer whose read carries them', async () => {
+    rows = [job('fine'), job('late')]
+    readsWages = false
+    role = 'superintendent'
+    renderWithProviders(<ProjectsBoard />)
+    await waitFor(() => expect(screen.getAllByTestId('project-card')).toHaveLength(2))
+    expect(rpcCalls[0]).toEqual({ name: 'list_project_board', ids: null })
+    // The superintendent reads the same tones the leader does, with no read of his own.
+    const cards = screen.getAllByTestId('project-card')
+    expect(cards[0]!.dataset.tone).toBe('behind')
+    expect(cards[1]!.dataset.tone).toBe('ahead')
+    expect(burnEnabled.every((e) => e === false)).toBe(true)
+    expect((screen.getByLabelText('Expected hours for J1050 · The Bunker') as HTMLInputElement).disabled).toBe(true)
+    expect(screen.queryByText('Job ›')).toBeNull()
+  })
+
+  it('asks a payroll viewer\'s own read for the dollars on a day', async () => {
+    rows = [job('fine')]
+    readsWages = true
+    renderWithProviders(<ProjectsBoard />)
+    await screen.findByTestId('project-card')
+    await waitFor(() => expect(burnEnabled[burnEnabled.length - 1]).toBe(true))
+    expect(screen.getByText('Job ›')).toBeTruthy()
   })
 
   it('says what fills the board when nothing is working as a project', async () => {
@@ -113,8 +137,9 @@ describe('ProjectsBoard', () => {
         <ProjectsBoard />
       </MemoryRouter>,
     )
-    const big = await screen.findByTestId('project-card-big')
-    expect(big.textContent).toContain('J1050 · The Bunker')
+    await screen.findByTestId('project-card-big')
+    // The window's title names the project; the card under it does not say it twice.
+    expect(screen.getByRole('dialog').textContent).toContain('J1050 · The Bunker')
     expect(screen.queryByTestId('focus-missing')).toBeNull()
     cleanup()
     render(

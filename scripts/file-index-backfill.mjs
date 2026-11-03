@@ -33,6 +33,7 @@ import {
   homesFor,
   homesLeft,
   parseArgs,
+  recordOutcome,
   refusalWords,
   retryable,
   roundWords,
@@ -183,15 +184,14 @@ async function main() {
       if (queue.length > 0) await sleep(args.pauseMs)
       outcomes.push(out)
       appendFileSync(logPath, JSON.stringify({ at: new Date().toISOString(), ...out }) + '\n')
-      const { heldFiles: _names, ...counts } = out
-      state.done[home.id] = counts
+      Object.assign(state, recordOutcome(state, out))
       writeFileSync(statePath, JSON.stringify(state, null, 1))
     }
   }
   await Promise.all(Array.from({ length: Math.min(args.workers, queue.length) }, worker))
 
   const run = totalsOf(outcomes)
-  const whole = totalsOf(Object.values(state.done))
+  const whole = totalsOf([...Object.values(state.done), ...Object.values(state.stopped ?? {})])
   console.log(`\nThis run: ${summaryWords(run)}`)
   console.log(`Scope so far: ${summaryWords(whole)}`)
   state.summary = { at: new Date().toISOString(), ...whole }
