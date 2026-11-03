@@ -9,7 +9,7 @@ describe('flows/facts', () => {
   it('lists each fact once, in a known group', () => {
     const ids = FLOW_FACTS.map((f) => f.id)
     expect(new Set(ids).size).toBe(ids.length)
-    expect(ids).toHaveLength(60)
+    expect(ids).toHaveLength(61)
     for (const f of FLOW_FACTS) expect(FACT_GROUPS).toContain(f.group)
   })
 
@@ -47,12 +47,12 @@ describe('flows/facts', () => {
     expect(factById('sub_done')?.reads).toContain('people_labor_jobs.done_at')
   })
 
-  it('lists the residential flow’s eleven facts once each, on the job or one bill, read from main’s columns', () => {
-    const ids = ['booked', 'on_way', 'arrived', 'found', 'estimate_sent', 'estimate_approved', 'working', 'done', 'billed', 'paid', 'review_asked']
+  it('lists the residential flow’s twelve facts once each, on the job, one bill or one warranty, read from main’s columns', () => {
+    const ids = ['booked', 'on_way', 'arrived', 'found', 'estimate_sent', 'estimate_approved', 'warranty_signed', 'working', 'done', 'billed', 'paid', 'review_asked']
     for (const id of ids) expect(FLOW_FACTS.filter((f) => f.id === id)).toHaveLength(1)
     // The sub's six come after them (R8 · 12), then the candidate flow's five and the sub Once lane's five (spike).
-    expect(FLOW_FACTS.slice(-27, -16).map((f) => f.id)).toEqual(ids)
-    expect(FLOW_FACTS.filter((f) => f.scope === 'round' && ids.includes(f.id)).map((f) => f.id)).toEqual(['billed', 'paid'])
+    expect(FLOW_FACTS.slice(-28, -16).map((f) => f.id)).toEqual(ids)
+    expect(FLOW_FACTS.filter((f) => f.scope === 'round' && ids.includes(f.id)).map((f) => f.id)).toEqual(['warranty_signed', 'billed', 'paid'])
     expect(factGroups().find((g) => g.group === 'On the job')?.facts.map((f) => f.id)).toEqual([
       'booked',
       'on_way',
@@ -69,6 +69,10 @@ describe('flows/facts', () => {
     expect(factById('booked')?.reads).toContain('job_schedule_blocks')
     expect(factById('arrived')?.reads).toContain('clock_sessions.clocked_in_at')
     expect(factById('estimate_approved')?.reads).toContain("'customer_accepted'")
+    // The warranty in place of a contract is the Contract Desk's row of kind warranty, a paper of ours, one round each.
+    expect(factById('warranty_signed')?.reads).toContain("job_contracts.signed_at where kind = 'warranty'")
+    expect(factById('warranty_signed')).toMatchObject({ group: 'Papers', paper: 'warranty', ours: true, scope: 'round' })
+    expect(factForPaper('warranty')?.id).toBe('warranty_signed')
     expect(factById('done')?.reads).toContain("'ready_to_bill'")
     expect(factById('billed')?.reads).toContain('billed_at, else sent_to_customer_at')
     // A sent text keeps no line of its own until R3 adds one, so the loader's word rules stand in.
@@ -135,7 +139,7 @@ describe('flows/facts', () => {
     // The residential flow's migration widened flows_kind_known to the six; seed.test.ts reads its steps.
     const all: FlowKind[] = ['customer', 'trade', 'arch', 'residential', 'sub', 'unknown', 'candidate']
     expect([...FLOW_KINDS].sort()).toEqual([...all].sort())
-    expect(flat(SEED_FLOWS.residential)).toHaveLength(11)
+    expect(flat(SEED_FLOWS.residential)).toHaveLength(12)
   })
 
   it('reads a residential flow’s person as a customer, and every other flow’s as its own kind', () => {

@@ -1305,7 +1305,7 @@ export default function Bridge() {
               door={litLink === 'collect' && fin.data ? { label: 'Break it down', onPress: () => setCollectOpen(true) } : undefined}
             />
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: '0.6rem' }}>
             {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} />}
             {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
           </div>
@@ -1392,12 +1392,12 @@ export default function Bridge() {
           {demandError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Market and Sales could not be read ({demandError}).</p>}
 
           {/* This week (v2.5221) beside Fix the reading (v2.5220): the moves and the gaps, each with its door */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
             <BridgeThisWeek moves={thisWeek} />
             <BridgeReadingGaps gaps={readingGaps} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
             <button type="button" onClick={() => setOpenCard((c) => (c === 'profit' ? null : 'profit'))} aria-expanded={openCard === 'profit'} data-testid="bridge-card-profit" style={{ ...panel, textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'profit' ? '2px solid #2563eb' : panel.border, padding: openCard === 'profit' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <div style={label}>Daily profit rate</div>
@@ -1584,7 +1584,7 @@ export default function Bridge() {
             {cashOpen && cashPanel && <BridgeBreakdownPanel title="Where the window's cash comes from, and where it goes" sub="today's bank, plus every receipt the forecast expects, less every bill it schedules, is where the line ends" bars={cashPanel.waterfall} sources={cashPanel.sources} closing={cashPanel.lowest} testId="bridge-cash-panel" />}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
             <div style={panel}>
               <div style={label}>Bills coming due · next 8 weeks</div>
               <div style={{ ...det, marginTop: '0.2rem' }}>payroll ≈ {money(data.payrollWeeklyEstUsd)}/week (8-week labor average{data.crew.pendingClosedHours > 0 ? ' — reads low while hours await approval' : ''}) · sub labor owed on a {SUB_LABOR_DEFAULT_DAYS}-day horizon · other spend ≈ {money(data.dailyDrainUsd)}/day (office parts, 90-day rate)</div>

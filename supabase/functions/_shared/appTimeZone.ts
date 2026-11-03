@@ -25,3 +25,25 @@ export function ymdAddDays(ymd: string, days: number): string {
   if (!m) return ''
   return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + days)).toISOString().slice(0, 10)
 }
+
+/**
+ * Calendar YYYY-MM-DD for an ISO instant in `APP_CALENDAR_TZ` (the Chicago wall date); '' when the instant is not one.
+ * Twin of `calendarYmdInAppTzFromIso` in `src/utils/dateUtils.ts` (the parity test holds them together), lifted with the
+ * person file's Timeline kernel (`personTimeline.ts`), which places every line on the day it is ABOUT.
+ */
+export function calendarYmdInAppTzFromIso(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d)
+  const g = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  const y = g('year')
+  const m = g('month')
+  const day = g('day')
+  if (!y || !m || !day) return ''
+  return `${y}-${m}-${day}`
+}

@@ -11,10 +11,12 @@
  * The page model is `lib/materials/containerManifest.ts`.
  */
 import { useMemo, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { boxAddress, boxUrl } from '../../lib/materials/labels'
 import { lastRecordedWords, manifestContainers, manifestDateWords, manifestPages, manifestPickWords, manifestPressWords, MANIFEST_ADDED_COLUMNS, MANIFEST_ADDED_HEADER, type ManifestPage } from '../../lib/materials/containerManifest'
 import type { Container, ContainerLine, Movement, Place } from '../../lib/materials/onSite'
+import { printRootCss } from '../../lib/printRoot'
 
 const BLUE = '#2563eb'
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
@@ -49,10 +51,10 @@ export default function ManifestPrintModal({ jobLabel, site, containers, lines, 
   const pages = useMemo(() => manifestPages({ containers, pick: [...picked], lines, movements, places, job: jobLabel, site, now: new Date() }), [containers, picked, lines, movements, places, jobLabel, site])
   const toggle = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
   const pressWords = manifestPressWords(pages.length)
-  return (
+  return createPortal(
     <div className="on-site-manifest" style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
-      {/* Printing draws the pages alone, one a sheet of Letter: the page behind and the window's chrome stay off the paper. The print root grows with its pages (no bottom edge) and the scroll lock's fixed body is let go, or Chrome prints the first sheet alone. */}
-      <style>{`@media screen and (max-width: 560px) { .on-site-manifest-head { grid-template-columns: auto 1fr !important; } .on-site-manifest-head > [data-testid="manifest-qr"] { grid-column: 1 / -1; justify-self: start; } .on-site-manifest-dates { grid-template-columns: 1fr !important; } } @media print { @page { size: letter; margin: 0.5in; } html, body { background: #fff !important; } html.scroll-locked body { position: static !important; overflow: visible !important; height: auto !important; top: auto !important; } body * { visibility: hidden !important; } .on-site-manifest, .on-site-manifest * { visibility: visible !important; } .on-site-manifest { position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: auto !important; height: auto !important; padding: 0 !important; background: #fff !important; display: block !important; } .on-site-manifest-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; border: none !important; } .on-site-manifest-chrome { display: none !important; } .on-site-manifest-pages { gap: 0 !important; } .on-site-manifest-page { break-after: page; page-break-after: always; border: none !important; border-radius: 0 !important; padding: 0 !important; min-height: 0 !important; } .on-site-manifest-page:last-child { break-after: auto; page-break-after: auto; } .on-site-manifest-added { break-inside: avoid; page-break-inside: avoid; } }`}</style>
+      {/* Printing draws the pages alone at full size, one a sheet of Letter. The window sits on <body> (a portal) and print takes everything else on <body> out of the layout (lib/printRoot.ts), so the page behind can neither show on the paper nor shrink it (v2.6432). */}
+      <style>{`@media screen and (max-width: 560px) { .on-site-manifest-head { grid-template-columns: auto 1fr !important; } .on-site-manifest-head > [data-testid="manifest-qr"] { grid-column: 1 / -1; justify-self: start; } .on-site-manifest-dates { grid-template-columns: 1fr !important; } } ${printRootCss('on-site-manifest')} @media print { .on-site-manifest-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; border: none !important; } .on-site-manifest-chrome { display: none !important; } .on-site-manifest-pages { display: block !important; } .on-site-manifest-page { break-after: page; page-break-after: always; border: none !important; border-radius: 0 !important; padding: 0 !important; min-height: 0 !important; } .on-site-manifest-page:last-child { break-after: auto; page-break-after: auto; } .on-site-manifest-added { break-inside: avoid; page-break-inside: avoid; } }`}</style>
       <div role="dialog" aria-modal="true" aria-label="Print the manifest" className="on-site-manifest-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(760px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
         <div className="on-site-manifest-chrome" style={{ display: 'grid', gap: '0.6rem', marginBottom: '0.9rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -87,7 +89,8 @@ export default function ManifestPrintModal({ jobLabel, site, containers, lines, 
           {pages.map((p) => <ManifestSheet key={p.containerId} page={p} />)}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
