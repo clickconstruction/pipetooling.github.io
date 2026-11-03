@@ -234,7 +234,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(alreadyApplied('apply_matter_statement', { target: MATTER, at: null })).toContain('Said lane')
     expect(planMismatch('apply_matter_statement', 'a'.repeat(64), 'b'.repeat(64))).toContain('plan_matter_statement')
   })
-  it('the server declares both verbs in the write branch, with every older write verb\'s label there too, and reports 0.17.0 (the clock session verbs bumped it from Materials on site's 0.16.0)', () => {
+  it('the server declares both verbs in the write branch, with every older write verb\'s label there too, and reports 0.17.0 (the clock session verbs bumped it from 0.16.0, the on-site verbs)', () => {
     expect(SERVER).toContain("name: 'plan_matter_statement'")
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
