@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS public.job_charge_adjustments (
   -- YYYY-MM-DD for a day; the material line's id (the invoice allocation, the tally part or the typed charge) for a line.
   target text NOT NULL,
   shape text CHECK (shape IS NULL OR shape IN ('master_helper', 'two_techs', 'master_alone', 'tech_alone', 'two_helpers', 'helper_alone')),
+  -- A line adjustment keeps the line's cost as it stood, so the ledger's Charges column honors it without reading the line.
+  amount numeric CHECK (amount IS NULL OR amount >= 0),
   reason text NOT NULL DEFAULT '',
   made_by uuid REFERENCES public.users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),

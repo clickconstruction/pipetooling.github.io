@@ -21,6 +21,8 @@ export type ChargeAdjustment = {
   target: string
   /** The shape a day is set to, for `day_shape`. */
   shape: CrewShape | null
+  /** A line adjustment's cost as it stood when made; null on a day adjustment. */
+  amount: number | null
   reason: string
   madeByName: string | null
   madeAt: string
@@ -38,12 +40,14 @@ export function chargeAdjustmentFromRow(raw: unknown): ChargeAdjustment | null {
   const shape = kind === 'day_shape' ? parseCrewShape(r.shape) : null
   if (kind === 'day_shape' && !shape) return null
   const madeBy = r.made_by_user as { name?: unknown } | null | undefined
+  const amountNum = typeof r.amount === 'number' ? r.amount : typeof r.amount === 'string' ? Number(r.amount) : NaN
   return {
     id,
     jobId,
     kind,
     target,
     shape,
+    amount: Number.isFinite(amountNum) && amountNum >= 0 ? amountNum : null,
     reason: typeof r.reason === 'string' ? r.reason : '',
     madeByName: madeBy && typeof madeBy.name === 'string' ? madeBy.name : typeof r.made_by_name === 'string' ? r.made_by_name : null,
     madeAt: typeof r.created_at === 'string' ? r.created_at : '',

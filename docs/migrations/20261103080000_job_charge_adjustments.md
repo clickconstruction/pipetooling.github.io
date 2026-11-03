@@ -2,7 +2,7 @@
 
 Adjustments on a job's charges (punch list #254, PR 3): the table behind the Charges window's changes on top of the record.
 
-- **`job_charge_adjustments`** — `job_id` → `jobs_ledger` (cascade), `kind` (day_shape · day_off · line_pass_through · line_off), `target` (a YYYY-MM-DD for a day, the material line's id for a line), `shape` (required for `day_shape`, one of the six crew shapes), `reason`, `made_by`, `created_at`, `reverted_at` / `reverted_by`. A partial index on `job_id` where not reverted.
+- **`job_charge_adjustments`** — `job_id` → `jobs_ledger` (cascade), `kind` (day_shape · day_off · line_pass_through · line_off), `target` (a YYYY-MM-DD for a day, the material line's id for a line), `shape` (required for `day_shape`, one of the six crew shapes), `amount` (a line adjustment's cost as it stood, so the ledger's Charges column honors it without reading the line), `reason`, `made_by`, `created_at`, `reverted_at` / `reverted_by`. A partial index on `job_id` where not reverted.
 - **RLS**: SELECT, INSERT (with `made_by = auth.uid()`) and UPDATE for `has_payroll_access()` — a dev, the controller, a pay-approved master, the roles that see a job's profit on the Job Summary. No DELETE: reverting stamps the row so the log keeps what was tried.
 - **Fences**: the three calls at the end, so a read-only account and a digital twin cannot write it.
 

@@ -101,7 +101,7 @@ export async function loadRateCard(): Promise<RateCard> {
 export async function loadChargeAdjustments(jobId: string): Promise<ChargeAdjustment[]> {
   const { data, error } = await supabase
     .from(ADJUSTMENTS)
-    .select('id, job_id, kind, target, shape, reason, created_at, reverted_at, made_by_user:users!job_charge_adjustments_made_by_fkey(name)')
+    .select('id, job_id, kind, target, shape, amount, reason, created_at, reverted_at, made_by_user:users!job_charge_adjustments_made_by_fkey(name)')
     .eq('job_id', jobId)
     .is('reverted_at', null)
     .order('created_at', { ascending: true })
@@ -134,13 +134,34 @@ export async function loadJobCharges(jobId: string): Promise<JobChargesReadResul
   }
 }
 
-export type NewChargeAdjustment = { kind: ChargeAdjustmentKind; target: string; shape: CrewShape | null; reason: string }
+export type NewChargeAdjustment = { kind: ChargeAdjustmentKind; target: string; shape: CrewShape | null; /** A line's cost as it stands, for a line adjustment. */ amount: number | null; reason: string }
 
 /** The window's Save: every adjustment in one insert, as the signed-in user. */
 export async function addChargeAdjustments(jobId: string, rows: ReadonlyArray<NewChargeAdjustment>, madeBy: string): Promise<void> {
   if (!rows.length) return
-  const { error } = await supabase.from(ADJUSTMENTS).insert(rows.map((r) => ({ job_id: jobId, kind: r.kind, target: r.target, shape: r.kind === 'day_shape' ? r.shape : null, reason: r.reason.trim(), made_by: madeBy })) as never)
+  const { error } = await supabase.from(ADJUSTMENTS).insert(rows.map((r) => ({ job_id: jobId, kind: r.kind, target: r.target, shape: r.kind === 'day_shape' ? r.shape : null, amount: r.kind === 'line_off' || r.kind === 'line_pass_through' ? r.amount : null, reason: r.reason.trim(), made_by: madeBy })) as never)
   if (error) throw error
+}
+
+/** Every open adjustment on a set of jobs in one read, by job, for the ledger's column. */
+export async function loadChargeAdjustmentsForJobs(jobIds: ReadonlyArray<string>): Promise<Map<string, ChargeAdjustment[]>> {
+  const out = new Map<string, ChargeAdjustment[]>()
+  if (!jobIds.length) return out
+  const { data, error } = await supabase
+    .from(ADJUSTMENTS)
+    .select('id, job_id, kind, target, shape, amount, reason, created_at, reverted_at')
+    .in('job_id', jobIds as string[])
+    .is('reverted_at', null)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  for (const raw of (data ?? []) as unknown[]) {
+    const a = chargeAdjustmentFromRow(raw)
+    if (!a) continue
+    const list = out.get(a.jobId) ?? []
+    list.push(a)
+    out.set(a.jobId, list)
+  }
+  return out
 }
 
 /** Revert to the record: every open adjustment on the job stamped, never deleted. */

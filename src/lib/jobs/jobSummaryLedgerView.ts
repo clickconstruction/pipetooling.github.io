@@ -63,6 +63,9 @@ export type JobSummarySortKey =
   | 'pct'
   /** Burn (v2.3191): projected true margin (direct margin until the ledger loads). */
   | 'projMargin'
+  /** Charges by crew (punch list #254, PR 3): what the job's labor and materials are charged at, and the price's stand against it. */
+  | 'charges'
+  | 'premium'
 export type JobSummarySortDir = 'asc' | 'desc'
 
 /** Cut by (v2.2820): group the Jobs table by one key, subtotal per group, ranked bars beside it. */
@@ -181,7 +184,7 @@ export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewM
 const STATUS_KEYS: readonly JobSummaryStatusFilter[] = ['finished', 'in_progress', 'all']
 const WINDOW_KEYS: readonly JobSummaryWindowKey[] = ['90d', '6mo', 'ytd', '12mo', 'all']
 const METHOD_KEYS: readonly JobOverheadMethod[] = ['day', 'A', 'B', 'C']
-const SORT_KEYS: readonly JobSummarySortKey[] = ['job', 'revenue', 'labor', 'subs', 'parts', 'gross', 'margin', 'hours', 'overhead', 'trueProfit', 'trueMargin', 'revPerHour', 'pct', 'projMargin']
+const SORT_KEYS: readonly JobSummarySortKey[] = ['job', 'revenue', 'labor', 'subs', 'parts', 'gross', 'margin', 'hours', 'overhead', 'trueProfit', 'trueMargin', 'revPerHour', 'pct', 'projMargin', 'charges', 'premium']
 
 export const JOB_SUMMARY_STATUS_OPTIONS: ReadonlyArray<{ key: JobSummaryStatusFilter; label: string; title: string }> = [
   { key: 'finished', label: 'Finished (100%)', title: 'Jobs whose % complete resolves to 100 — the work is done (latest report or the job’s own %) or the whole contract is billed and paid' },
@@ -343,6 +346,8 @@ export type JobSummaryLedgerRowInput = {
   teamLaborCost: number
   partsCost: number
   totalBill: number
+  /** Charges by crew (punch list #254, PR 3): the row's labor at the crew rates and materials at the markup, and the price's stand; null until the rate card is read. */
+  charges?: { chargesUsd: number | null; premiumUsd: number | null; note: string | null } | null
 }
 
 /** Dollars a discount row takes off (v2.3256): a `discount` row, or a legacy negative work row, by its signed count × price. */
@@ -406,6 +411,10 @@ export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummar
   budgetGlyph: string
   /** The Burn budget in dollars (the footing's, or price × (1 − target)); null without a price. */
   budgetUsd: number | null
+  /** Charges by crew (punch list #254, PR 3): the row's charges and the price's stand against them; null until priced. */
+  chargesUsd: number | null
+  premiumUsd: number | null
+  chargesNote: string | null
 }
 
 function jobLastWorkedYmd(job: JobSummaryLedgerRowInput['job'], ledger: JobDayLedger | null): string | null {
@@ -554,6 +563,9 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
       budgetFooting: burn.footing,
       budgetGlyph: JOB_BUDGET_GLYPH[burn.footing],
       budgetUsd: burn.budget?.usd ?? null,
+      chargesUsd: row.charges?.chargesUsd ?? null,
+      premiumUsd: row.charges?.premiumUsd ?? null,
+      chargesNote: row.charges?.note ?? null,
     }
   })
 }
@@ -624,6 +636,10 @@ function sortValue(row: JobSummaryEnrichedRow, key: JobSummarySortKey): number |
       return row.revenuePerHourUsd
     case 'pct':
       return row.pct
+    case 'charges':
+      return row.chargesUsd
+    case 'premium':
+      return row.premiumUsd
     default:
       return null
   }
@@ -743,6 +759,10 @@ export type JobSummaryTotals = {
   burningJobs: number
   /** Rows billed to the contract while under 100 % (v2.6389). */
   billedInFullJobs: number
+  /** Charges by crew (punch list #254, PR 3): the rows' charges and premium added; null until a row is priced. */
+  chargesUsd: number | null
+  premiumUsd: number | null
+  chargedJobs: number
 }
 
 export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]): JobSummaryTotals {
@@ -770,7 +790,15 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
   let projectedContractUsd = 0
   let burningJobs = 0
   let billedInFullJobs = 0
+  let chargesUsd = 0
+  let premiumUsd = 0
+  let chargedJobs = 0
   for (const r of rows) {
+    if (r.chargesUsd != null) {
+      chargesUsd += r.chargesUsd
+      premiumUsd += r.premiumUsd ?? 0
+      chargedJobs += 1
+    }
     if (r.burn && !r.finished && r.burn.projectedTrueMarginUsd != null) {
       projectedTrueMarginUsd += r.burn.projectedTrueMarginUsd
       projectedRows += 1
@@ -835,6 +863,9 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
     projectedContractUsd,
     burningJobs,
     billedInFullJobs,
+    chargesUsd: chargedJobs > 0 ? Math.round(chargesUsd * 100) / 100 : null,
+    premiumUsd: chargedJobs > 0 ? Math.round(premiumUsd * 100) / 100 : null,
+    chargedJobs,
   }
 }
 
