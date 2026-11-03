@@ -23,7 +23,8 @@ import { BoxPhotos, PhotoPress } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
 import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, nextLabel, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
-import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler, unretireContainer } from '../../lib/materials/onSiteStore'
+import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
 
 /** Leaflet and its CSS load only when a map opens, so the tally stays light. */
 const OnSiteMapLazy = lazy(() => import('../materials/OnSiteMap'))
@@ -87,7 +88,7 @@ type Sheet =
   | { kind: 'pick-box' }
 
 export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPickJob, byUserId, byName, searchParts, initialContainerId }: Props) {
-  const { showToast } = useToastContext()
+  const { showToast, showActionToast } = useToastContext()
   /** A 320 px phone: the four presses go two by two, as the mock-up drew them. */
   const narrow = useMatchMedia('(max-width: 359px)')
   const jobId = selectedJobId
@@ -476,7 +477,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           ) : (
             <>
               <p style={{ margin: 0, ...muted }}>The {sheet.container.kind === 'cage' ? 'cage' : 'box'} leaves this job. The next job gets its own {sheet.container.label}.</p>
-              <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => { retireContainer(sheet.container.id); setSheet(null); setView({ kind: 'containers' }); showToast(`${sheet.container.label} retired.`, 'success') }}>Retire {sheet.container.label}</button>
+              <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => { const box = sheet.container; retireContainer(box.id); setSheet(null); setView({ kind: 'containers' }); showActionToast(retiredWords(box), { label: undoRetireLabel, onClick: () => { const v = unretireVerdict(listContainers(jobId), box.id); if (!v.ok) { showToast(v.words, 'warning'); return } unretireContainer(box.id); showToast(broughtBackWords(box), 'success') } }, { durationMs: UNDO_RETIRE_MS }) }}>Retire {sheet.container.label}</button>
             </>
           )}
         </Sheet>

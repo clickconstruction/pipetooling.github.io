@@ -51,6 +51,109 @@ export function bidLossCategoryLabel(key: string | null | undefined): string | n
 }
 
 /**
+ * The shape of a GC packet the reason rule reads: `GcPacket` (gcPackets.ts) fits as it is; the
+ * Dashboard, which loads no packets, builds it from the lost versions alone
+ * (`lossReasonPacketsFromVersions`).
+ */
+export type LossReasonPacketLike = {
+  name: string
+  outcome: string | null
+  sharedLetter?: boolean
+  versions: ReadonlyArray<{ loss_category?: string | null; outcome_note?: string | null }>
+}
+
+export type LossReasonLine = { gcName: string; category: BidLossCategoryKey; label: string; note: string | null }
+
+export type LossReasonState = {
+  /** A structured reason exists: the bid's own category, or one on every GC packet marked lost. */
+  categorized: boolean
+  /** Where the reason comes from — `bid` reads as it always did; `packets` draws one line per GC. */
+  source: 'bid' | 'packets' | 'none'
+  /** The bid's own category and its label, when set. */
+  category: BidLossCategoryKey | null
+  label: string | null
+  /** The bid's own free-text note (`loss_reason`), trimmed; null when blank. */
+  note: string | null
+  /** Free text exists somewhere — the bid's note or a lost packet's note (the badge's note-OR-category rule). */
+  hasNote: boolean
+  /** One line per lost GC packet that carries a reason, in packet order. */
+  lines: LossReasonLine[]
+  /** Lost GC packets still without a reason, by name — what the strip's chips are owed for. */
+  missing: string[]
+}
+
+/**
+ * The one "needs a reason" rule (v2.6409), over the bid AND its GC packets. A bid lost GC by GC
+ * (per-GC Lost… on the Sent panel, the board pill, the Why-we-lost lens) keeps each reason on
+ * that GC's `bid_versions` rows and the roll-up writes `bids.outcome` alone, so the bid's own
+ * `loss_category` stays NULL — BP391 (2026-11-03) carried GC lost the project and Price too high
+ * on its two cards and still asked *Add why* on the Lost pile. Every reader of "is this loss
+ * explained" — the Lost strip, the Bid Tabs badge, `bidSentCounts.lostNeedingReason` (the
+ * Followup chip, the lens headline, the Dashboard card) and the Lost summary's red row — reads
+ * this. The bid's own category still wins when set; a shared-letter GC and a GC not marked lost
+ * never count; a note alone is a note, not a category.
+ */
+export function lossReasonState(
+  bid: { loss_category?: string | null; loss_reason?: string | null },
+  packets?: ReadonlyArray<LossReasonPacketLike>,
+): LossReasonState {
+  const category = isBidLossCategoryKey(bid.loss_category) ? bid.loss_category : null
+  const note = (bid.loss_reason ?? '').trim() || null
+  const lost = (packets ?? []).filter((p) => !p.sharedLetter && p.outcome === 'lost')
+  const lines: LossReasonLine[] = []
+  const missing: string[] = []
+  let packetNote = false
+  for (const p of lost) {
+    const key = p.versions.map((v) => v.loss_category).find((c) => isBidLossCategoryKey(c)) ?? null
+    const pNote = p.versions.map((v) => (v.outcome_note ?? '').trim()).find((n) => n) || null
+    if (pNote) packetNote = true
+    if (isBidLossCategoryKey(key)) lines.push({ gcName: p.name, category: key, label: bidLossCategoryLabel(key) ?? key, note: pNote })
+    else missing.push(p.name)
+  }
+  const source: LossReasonState['source'] = category ? 'bid' : lost.length > 0 && missing.length === 0 ? 'packets' : 'none'
+  return {
+    categorized: source !== 'none',
+    source,
+    category,
+    label: category ? bidLossCategoryLabel(category) : null,
+    note,
+    hasNote: !!note || packetNote,
+    lines,
+    missing,
+  }
+}
+
+/** The reason in one line — the Lost row's screen-reader words: the bid's own, the GCs', or "not recorded". */
+export function lossReasonWords(state: LossReasonState): string {
+  if (state.source === 'bid') return `${state.label}${state.note ? ` — ${state.note}` : ''}`
+  if (state.source === 'packets') return state.lines.map((l) => `${l.gcName}: ${l.label}`).join('; ')
+  return state.note ?? 'not recorded'
+}
+
+/**
+ * Packets for `lossReasonState` from `bid_versions` rows alone (the Dashboard's lost-bids card
+ * reads `bid_versions` where outcome = lost and nothing else): one packet per `customer_id`
+ * (null = the bid's own GC, keyed ''), named by that key, its outcome the first answered
+ * version's. Enough for the reason rule; not a `GcPacket`.
+ */
+export function lossReasonPacketsFromVersions(
+  versions: ReadonlyArray<{ customer_id: string | null; outcome: string | null; loss_category?: string | null; outcome_note?: string | null }>,
+): Array<LossReasonPacketLike & { sentOn: null }> {
+  const groups = new Map<string, { name: string; outcome: string | null; versions: Array<{ loss_category: string | null; outcome_note: string | null }>; sentOn: null }>()
+  for (const v of versions) {
+    const key = v.customer_id ?? ''
+    let g = groups.get(key)
+    if (!g) {
+      g = { name: key, outcome: null, versions: [], sentOn: null }
+      groups.set(key, g)
+    }
+    g.versions.push({ loss_category: v.loss_category ?? null, outcome_note: v.outcome_note ?? null })
+    if (g.outcome == null && v.outcome) g.outcome = v.outcome
+  }
+  return [...groups.values()]
+}
+
+/**
  * Synonym map for {@link suggestLossCategoryFromNote}. Phrases are matched
  * case-insensitively as substrings of the free-text note. Order within a
  * category doesn't matter; keep phrases specific enough not to cross-match.

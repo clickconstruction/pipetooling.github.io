@@ -94,5 +94,26 @@ SELECT rfl.same('the seed adds the residential flow''s eleven steps', public.flo
 SELECT rfl.same('a fresh Paid step', rfl.step('paid'), '9|building|them|paid||each bill|rounds|0|text|app|pay_by|14|-|Paid|Pagado');
 SELECT rfl.same('a second seed adds nothing', public.flows_seed()::text, '0');
 
+-- 6 · The kind rule (v2.6394): no contact is kind residential. A homeowner's contact is kind customer, as
+-- contact_find_or_make writes every customer's, and their flow is told from the customers row, which flow_rows_for
+-- carries on the card as customer_type (a commercial customer's reads commercial; a number nobody has named has none).
+INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-0000000007d1', 'dev@residential.test') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
+  ('00000000-0000-0000-0000-0000000007d1', 'dev@residential.test', 'Residential Dev', 'dev', false, false)
+  ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.customers (id, name, master_user_id, customer_type) VALUES
+  ('00000000-0000-0000-0000-0000000007c1', 'Residential Dana Whitfield', '00000000-0000-0000-0000-0000000007d1', 'residential'),
+  ('00000000-0000-0000-0000-0000000007c2', 'Residential Helotes Dental', '00000000-0000-0000-0000-0000000007d1', 'commercial');
+INSERT INTO public.contacts (id, kind, customer_id) VALUES
+  ('00000000-0000-0000-0000-000000007001', 'customer', '00000000-0000-0000-0000-0000000007c1'),
+  ('00000000-0000-0000-0000-000000007002', 'customer', '00000000-0000-0000-0000-0000000007c2');
+INSERT INTO public.contacts (id, kind) VALUES ('00000000-0000-0000-0000-000000007003', 'unknown');
+SELECT rfl.refused('a contact is never kind residential', $q$INSERT INTO public.contacts (kind, customer_id) VALUES ('residential', '00000000-0000-0000-0000-0000000007c1')$q$, 'contacts_kind_known');
+SELECT rfl.same('the card says what the customers row is, and the contact stays kind customer',
+  (SELECT string_agg(concat_ws('|', right(e.k, 4), e.r -> 'contact' ->> 'kind', coalesce(e.r -> 'card' ->> 'customer_type', '-')), ', ' ORDER BY e.k)
+   FROM jsonb_each(public.flow_rows_for(ARRAY['00000000-0000-0000-0000-000000007001', '00000000-0000-0000-0000-000000007002', '00000000-0000-0000-0000-000000007003']::uuid[])) AS e(k, r)),
+  '7001|customer|residential, 7002|customer|commercial, 7003|unknown|-');
+-- The SQL twin of the rule, flow_step_check's residential branch (v2.6385), is held by supabase/tests/messages_flows.
+
 DO $$ BEGIN RAISE NOTICE 'residential_flow PASSED'; END $$;
 ROLLBACK;

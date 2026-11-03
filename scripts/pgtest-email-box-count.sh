@@ -36,14 +36,16 @@ sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
+files=()
 for f in supabase/migrations/*.sql; do
-  psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  files+=("$f")
   # A second run must change nothing: the tables, the triggers, the function, the policies, the settings and the cron
   # are there. It runs right after the first, as a retried push would.
   if [ "$f" = "$COUNT" ]; then
-    psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+    files+=("$f")
   fi
 done
+pgtest_apply "${files[@]}"
 out="$(psql_as postgres -f - < supabase/tests/email_box_count/20_scenario.sql 2>&1 || true)"
 if ! grep -q "email_box_count PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

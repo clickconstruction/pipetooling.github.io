@@ -5,7 +5,8 @@
  *
  * 1. The phone strip's Needs me or Today hid every row the group holds: *Nothing in Working needs
  *    you. All ▸ shows the other 3.*
- * 2. The board's search hid them: *No jobs in Working match ‘Ridgeway’. Clear the search ▸*
+ * 2. The board's search hid them: *No jobs in Working match ‘Ridgeway’. Clear the search ▸* With a
+ *    board filter on too, the sentence ends *with your filters on*, since a match may sit behind it.
  * 3. A board filter hid them (Hide groups, a GC, development, Account Man or contract filter, or
  *    Working's schedule pill): *No jobs in Working match the filters.* The chips that set them sit
  *    above the board, each with its own ×, so there is no one press to name.
@@ -49,7 +50,8 @@ export function stagesGroupEmptyWords(ctx: StagesGroupEmptyContext | null | unde
   }
   const query = ctx?.search.trim() ?? ''
   if (query) {
-    const words = emptyWords({ kind: 'filter', noun: `jobs in ${group}`, query })
+    const plain = emptyWords({ kind: 'filter', noun: `jobs in ${group}`, query })
+    const words = ctx?.filtered ? { ...plain, main: plain.main.replace(/\.$/, ' with your filters on.') } : plain
     return ctx?.onClearSearch ? emptyWordsWithPress(words, { onPress: ctx.onClearSearch }) : { main: words.main }
   }
   if (ctx?.filtered) return { main: emptyWords({ kind: 'filter', noun: `jobs in ${group}`, query: '' }).main }

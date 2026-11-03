@@ -9,7 +9,7 @@
  * sets (`bids.plans_link`, `bid_plan_sets`) and are listed as pinned. Pure.
  */
 import { jobKindOfRow, type JobKindRowLike } from '../jobs/jobKind'
-import { buildJobPlansView, compareSets, type PlanPartRow, type PlanSetRow } from './planSets'
+import { buildJobPlansView, compareSets, isDrawingSet, type PlanPartRow, type PlanSetRow } from './planSets'
 
 /** A job or bid as the look names it; `name` is the job's name (its address when it has none), the words a person picks a part by. */
 export type SiteCarrier = { kind: 'job' | 'bid'; id: string; label: string; name?: string | null }
@@ -84,7 +84,7 @@ export function buildSitePlansView(args: {
     else jobsWithNoPart.push({ kind: 'job', id: j.id, label: j.label, name: j.name ?? null })
   }
   const partsWithNoSet = parts.filter((r) => !r.current)
-  const setCount = args.sets.filter((s) => partIds.has(s.part_id)).length
+  const setCount = args.sets.filter((s) => partIds.has(s.part_id) && isDrawingSet(s)).length
   const bidsPinned = args.bids
     .filter((b) => (b.plans_link ?? '').trim())
     .map((b) => ({ kind: 'bid' as const, id: b.id, label: b.label, link: (b.plans_link ?? '').trim() }))

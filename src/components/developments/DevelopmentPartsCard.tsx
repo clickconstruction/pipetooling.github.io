@@ -16,10 +16,12 @@ import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, newSetDraftProblem,
 import { olderSetsFor, orderForPicking, sitePlansAskCount, sitePlansChipWords, sitePlansLeftOutWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
 import { plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import { EmptyState } from '../EmptyState'
-import { setRowDayWords, setRowLineWords } from '../../lib/plans/planSets'
+import { partTimeline, setRowDayWords, setRowLineWords, timelineEntryFor } from '../../lib/plans/planSets'
+import { PlanSetChangesLine } from '../plans/PlanSetChangesLine'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
 import { countedLabel } from '../../lib/batchWords'
+import { buildPapersView, kindLabel, paperChipWords, paperLineWords, type Paper } from '../../lib/papers/papers'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { DEVELOPMENT_PHONE_QUERY } from './DevelopmentJumpStrip'
 
@@ -28,6 +30,8 @@ export type SitePlansWrites = {
   addSet: (partId: string, draft: NewSetDraft, makeCurrent: boolean, replacesSetId: string | null) => Promise<boolean>
   buildFrom: (partId: string, setId: string) => Promise<boolean>
   removeSet: (setId: string) => Promise<boolean>
+  /** What changed from the set before it, written on a set already on the part (v2.6356). */
+  writeChanges: (setId: string, changes: string) => Promise<boolean>
   /** Many jobs onto one part in one press (the Gun Dog spike, 2026-11-02); true when any took it. */
   putJobsOnPart: (partId: string, jobIds: string[]) => Promise<boolean>
 }
@@ -46,9 +50,12 @@ export function DevelopmentPartsCard({
   askOnRecord,
   openQuestions,
   writes,
+  papers,
 }: {
   /** Null while the parts read. */
   view: SitePlansView | null
+  /** The papers on the site's parts, with their asks resolved; undefined hides the column. */
+  papers?: ReadonlyArray<Paper>
   names: Record<string, string>
   canWrite: boolean
   openCarrier: (c: SiteCarrier) => void
@@ -64,6 +71,9 @@ export function DevelopmentPartsCard({
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  const [openPapers, setOpenPapers] = useState<Record<string, boolean>>({})
+  // The papers on the site's parts (the papers train): the column draws only when the page hands them in.
+  const hasPapers = papers !== undefined
   const phone = useMatchMedia(DEVELOPMENT_PHONE_QUERY)
   // The jobs ticked for a part and the part picked, under the *N jobs follow no plans yet* chip.
   const [picked, setPicked] = useState<Set<string>>(() => new Set())
@@ -82,6 +92,14 @@ export function DevelopmentPartsCard({
       setPartName(null)
       setPendingRemove(null)
     }
+  }
+  const saveChanges = async (setId: string, changes: string): Promise<boolean> => {
+    if (!writes || busy) return false
+    setBusy(true)
+    setProblem(null)
+    const ok = await writes.writeChanges(setId, changes)
+    setBusy(false)
+    return ok
   }
   const openSetForm = (row: SitePartRow) => {
     const kind = row.current ? 'addendum' : 'issued'
@@ -156,6 +174,7 @@ export function DevelopmentPartsCard({
           // Each part's pieces, drawn once: a table row on the desk, a card on a phone (the Gun Dog spike, 2026-11-02: the seven-column table ran 584 wide in a 375 screen).
           const partBlocks = view.parts.map((row) => {
             const older = olderSetsFor(row)
+            const timeline = partTimeline([...(row.current ? [row.current] : []), ...row.older])
             const setBy = row.part.current_set_by ? (names[row.part.current_set_by] ?? null) : null
             const replacedLine = [row.replaced ? `replaced ${row.replaced.name}${row.part.current_set_at ? ` on ${shortDayWords(row.part.current_set_at)}` : ''}` : '', setBy ? `set by ${setBy}` : ''].filter(Boolean).join(' · ')
             const building = (
@@ -175,6 +194,7 @@ export function DevelopmentPartsCard({
             const dated = row.current?.dated ? shortDay(row.current.dated) : <span style={{ color: 'var(--text-faint)' }}>—</span>
             const came = row.current ? shortDay(row.current.came_at) : <span style={{ color: 'var(--text-faint)' }}>—</span>
             const memo = row.current?.memo ? row.current.memo : <span style={{ color: 'var(--text-faint)' }}>—</span>
+            const changes = row.current ? <PlanSetChangesLine entry={timelineEntryFor(timeline, row.current)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ display: 'flex', marginTop: 2 }} /> : null
             const jobsCell = row.jobs.length ? carriers(row.jobs) : <span style={muted}>none yet</span>
             const olderPress = (
               <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
@@ -206,6 +226,7 @@ export function DevelopmentPartsCard({
                         <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
                           <span>{s.name}</span> <span style={muted}>{setRowLineWords(s)}</span>
                           {s.memo ? <div style={muted}>{s.memo}</div> : null}
+                          <PlanSetChangesLine entry={timelineEntryFor(timeline, s)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ display: 'flex' }} />
                         </div>
                         <span style={{ display: 'inline-flex', gap: 10, alignItems: 'baseline', marginLeft: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap' }} data-testid="site-older-presses">
                           {openLink(s)}
@@ -237,11 +258,53 @@ export function DevelopmentPartsCard({
                 </ul>
               </>
             ) : null
+            // The papers' two pieces (the papers train): the count that folds, with its chips, and the list it opens.
+            const paperView = hasPapers ? buildPapersView(papers ?? [], row.part.id) : null
+            const paperWords = paperView ? paperChipWords(paperView) : null
+            const papersCell = paperWords ? (
+              <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                {paperWords.papers ? (
+                  <button type="button" className={`developmentChipPress${openPapers[row.part.id] ? ' isOn' : ''}`} aria-expanded={!!openPapers[row.part.id]} onClick={() => setOpenPapers((o) => ({ ...o, [row.part.id]: !o[row.part.id] }))} data-testid={`site-papers-${row.part.id}`}>
+                    {paperWords.papers} <span aria-hidden>{openPapers[row.part.id] ? '▾' : '▸'}</span>
+                  </button>
+                ) : (
+                  <span style={muted}>—</span>
+                )}
+                {paperWords.asks ? <Chip label={paperWords.asks} color="#b45309" soft /> : null}
+                {paperWords.owed ? <Chip label={paperWords.owed} color="#b45309" soft /> : null}
+              </span>
+            ) : null
+            const papersList =
+              paperView && openPapers[row.part.id] ? (
+                <div style={{ minWidth: 0, overflowWrap: 'anywhere' }} data-testid={`site-papers-list-${row.part.id}`}>
+                  {paperView.bySet.map((g) => (
+                    <div key={g.setId || 'part'} style={{ marginBottom: 6 }}>
+                      <div style={{ ...muted, fontWeight: 600 }}>{g.setId ? `With ${[...row.older, ...(row.current ? [row.current] : [])].find((s) => s.id === g.setId)?.name ?? 'a set'}` : `On ${row.part.name}`}</div>
+                      {g.papers.map((p) => (
+                        <div key={p.id} style={{ fontSize: '0.82rem' }}>
+                          <Chip label={kindLabel(p.kind)} color="#64748b" soft /> {p.name} <span style={muted}>· {paperLineWords(p)}</span>
+                          {p.ask && !p.ask.answeredAt ? <Chip label="asks" color="#b45309" soft /> : null}
+                          {p.link ? (
+                            <LinkButton onClick={() => openInExternalBrowser(p.link)} nowrap>
+                              Open ↗
+                            </LinkButton>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  {paperView.owed.map((p) => (
+                    <div key={p.id} style={{ fontSize: '0.82rem', color: 'var(--text-amber-800)' }}>
+                      <Chip label="owed" color="#b45309" soft /> {p.name} <span style={muted}>· {paperLineWords(p)}</span> {p.ask ? <span style={muted}>· {p.ask.words}</span> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null
             const setFormNode =
               form && form.partId === row.part.id ? (
                 <PlanSetForm mode="set" draft={form.draft} onChange={(d) => setForm({ partId: row.part.id, draft: d })} existing={[...row.older, ...(row.current ? [row.current] : []), ...row.asBuilts]} current={row.current} busy={busy} problem={problem} onAdd={(mk) => addSet(row, form.draft, mk)} onCancel={() => setForm(null)} />
               ) : null
-            return { row, building, dated, came, memo, jobsCell, olderPress, olderList, asBuilts, setForm: setFormNode, hasMemo: !!row.current?.memo }
+            return { row, building, dated, came, memo, changes, jobsCell, olderPress, olderList, papersCell, papersList, asBuilts, setForm: setFormNode, hasMemo: !!row.current?.memo }
           })
           if (phone) {
             // The phone's shape: one card per part, the dates on one line, the memo as a paragraph, the older sets and + New set at the foot.
@@ -257,11 +320,18 @@ export function DevelopmentPartsCard({
                       </div>
                     ) : null}
                     {b.hasMemo ? <div style={{ ...muted, overflowWrap: 'anywhere' }}>{b.memo}</div> : null}
+                    {b.changes}
                     <div>
                       <span style={{ ...muted, fontWeight: 600 }}>Jobs</span> {b.jobsCell}
                     </div>
                     <div>{b.olderPress}</div>
                     {b.olderList}
+                    {b.papersCell ? (
+                      <div>
+                        <span style={{ ...muted, fontWeight: 600 }}>Papers</span> {b.papersCell}
+                      </div>
+                    ) : null}
+                    {b.papersList}
                     {b.asBuilts ? <div>{b.asBuilts}</div> : null}
                     {b.setForm}
                   </div>
@@ -269,6 +339,7 @@ export function DevelopmentPartsCard({
               </div>
             )
           }
+          const restSpan = hasPapers ? 7 : 6
           return (
             <table style={{ width: '100%', borderCollapse: 'collapse' }} data-testid="site-plans-table">
               <thead>
@@ -280,6 +351,7 @@ export function DevelopmentPartsCard({
                   <th style={th}>Memo</th>
                   <th style={th}>Jobs</th>
                   <th style={th}>Older sets</th>
+                  {hasPapers ? <th style={th}>Papers</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -290,14 +362,26 @@ export function DevelopmentPartsCard({
                       <td style={td}>{b.building}</td>
                       <td style={td}>{b.dated}</td>
                       <td style={td}>{b.came}</td>
-                      <td style={{ ...td, minWidth: 160 }}>{b.memo}</td>
+                      <td style={{ ...td, minWidth: 160 }}>
+                        {b.memo}
+                        {b.changes}
+                      </td>
                       <td style={td}>{b.jobsCell}</td>
                       <td style={td}>{b.olderPress}</td>
+                      {hasPapers ? <td style={td}>{b.papersCell}</td> : null}
                     </tr>
+                    {b.papersList ? (
+                      <tr>
+                        <td style={{ ...td, borderBottom: 'none' }} />
+                        <td style={td} colSpan={restSpan}>
+                          {b.papersList}
+                        </td>
+                      </tr>
+                    ) : null}
                     {b.olderList ? (
                       <tr>
                         <td style={{ ...td, borderBottom: 'none' }} />
-                        <td style={td} colSpan={6}>
+                        <td style={td} colSpan={restSpan}>
                           {b.olderList}
                         </td>
                       </tr>
@@ -305,7 +389,7 @@ export function DevelopmentPartsCard({
                     {b.asBuilts ? (
                       <tr>
                         <td style={{ ...td, borderBottom: 'none' }} />
-                        <td style={td} colSpan={6}>
+                        <td style={td} colSpan={restSpan}>
                           {b.asBuilts}
                         </td>
                       </tr>
@@ -313,7 +397,7 @@ export function DevelopmentPartsCard({
                     {b.setForm ? (
                       <tr>
                         <td style={{ ...td, borderBottom: 'none' }} />
-                        <td style={td} colSpan={6}>
+                        <td style={td} colSpan={restSpan}>
                           {b.setForm}
                         </td>
                       </tr>

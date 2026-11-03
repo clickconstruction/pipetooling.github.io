@@ -1,0 +1,1 @@
+INSERT INTO public.bed_apply_ran (file) VALUES ('36');

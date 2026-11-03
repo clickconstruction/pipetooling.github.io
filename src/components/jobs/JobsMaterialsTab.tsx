@@ -20,7 +20,9 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type Container, type ContainerLine } from '../../lib/materials/onSite'
-import { addContainer, addMovement, addPlace, jobIdsWithData, listContainers, listMovements, listPhotos, listPlaces, priceOf, rememberPrice, setOnSiteErrorHandler, unsortedContainer } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, jobIdsWithData, listContainers, listMovements, listPhotos, listPlaces, priceOf, rememberPrice, setOnSiteErrorHandler, unretireContainer, unsortedContainer } from '../../lib/materials/onSiteStore'
+import { broughtBackWords, unretireVerdict } from '../../lib/materials/unretire'
+import RetiredBoxesFold from '../materials/RetiredBoxesFold'
 import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEXT, type ParsedLine } from '../../lib/materials/manifest'
 import { jobMaterialsSummary, staleWords } from '../../lib/materials/onSiteSummary'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
@@ -480,6 +482,8 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
           </div>
         )
           )}
+          {/* The way back from a retire (v2.6406): the fold lists retired boxes with Bring back, or the reason a stencil is taken. */}
+          <RetiredBoxesFold containers={listContainers(jobId)} stamp={(iso) => <Stamp iso={iso} inline />} onBringBack={(c) => { const v = unretireVerdict(listContainers(jobId), c.id); if (!v.ok) { showToast(v.words, 'warning'); return } unretireContainer(c.id); showToast(broughtBackWords(c), 'success') }} />
         </div>
       ) : null}
 

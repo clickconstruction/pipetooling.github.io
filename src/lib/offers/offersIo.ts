@@ -19,7 +19,7 @@ import { jobKeyOfRow, jobRefOf } from '../messages/jobKeys'
 import { supabaseReplyIo } from '../messages/replyIo'
 import { answeredAlready, answeredJobs, needsRatingLink, RATE_BLANK } from '../ratings/ratingAsk'
 import { supabaseRatingLinkIo, type RatingLinkIo } from '../ratings/ratingLinkIo'
-import { rateJobsOf, withAnsweredHolds, type OfferRow, type TodaysSend, type TodaysSendsInput } from './offers'
+import { rateJobsOf, withAnsweredHolds, withSentHolds, type OfferRow, type SentRow, type TodaysSend, type TodaysSendsInput } from './offers'
 
 export interface OfferMake {
   contactId: string
@@ -101,12 +101,16 @@ export function supabaseOffersIo(client: unknown = supabase, ratingLinks: Rating
       const rows = (result.data ?? []) as OfferDbRow[]
       const contactIds = [...new Set(rows.map((o) => o.contact_id))]
       const channelIds = rows.flatMap((o) => (o.channel_id ? [o.channel_id] : []))
-      const [contacts, channels, steps] = await Promise.all([
+      // The reminders that went on the offers' people since the oldest was prepared (v2.6386), so a text whose step already
+      // went another way is held. A read that fails holds nothing.
+      const since = rows.map((r) => r.prepared_at).sort()[0] ?? null
+      const [contacts, channels, steps, sentRows] = await Promise.all([
         // The person's record beside the contact (v2.6385): a residential customer's own contact is kind `customer` with no
         // name of its own, so their flow and their name are read from the customers row.
         contactIds.length ? db.from('contacts').select('id, kind, name, goes_by, customers(name, customer_type)').in('id', contactIds) : Promise.resolve({ data: [], error: null }),
         channelIds.length ? db.from('contact_channels').select('id, value').in('id', channelIds) : Promise.resolve({ data: [], error: null }),
         db.from('flow_steps').select('step_key, name, flows!inner(kind)'),
+        contactIds.length && since ? db.from('nudge_sent').select('contact_id, step_key, bid_id, project_id, jobs_ledger_id, sent_at').in('contact_id', contactIds).gte('sent_at', since) : Promise.resolve({ data: [], error: null }),
       ])
       const kinds: Record<string, string> = {}
       const names: Record<string, string | null> = {}
@@ -117,7 +121,9 @@ export function supabaseOffersIo(client: unknown = supabase, ratingLinks: Rating
       }
       const numbers: Record<string, string> = {}
       for (const ch of (channels.data ?? []) as Array<{ id: string; value: string }>) numbers[ch.id] = ch.value
-      const offers: OfferRow[] = rows.map((r) => ({
+      type SentDbRow = { contact_id: string; step_key: string; bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null; sent_at: string }
+      const sent: SentRow[] = ((sentRows.data ?? []) as SentDbRow[]).map((r) => ({ contactId: r.contact_id, stepKey: r.step_key, jobKey: jobKeyOfRow(r), sentAt: r.sent_at }))
+      const read: OfferRow[] = rows.map((r) => ({
         id: r.id,
         contactId: r.contact_id,
         contactKind: kinds[r.contact_id] ?? null,
@@ -130,6 +136,7 @@ export function supabaseOffersIo(client: unknown = supabase, ratingLinks: Rating
         sendOn: r.send_on,
         heldWhy: r.held_why,
       }))
+      const offers = withSentHolds(read, sent)
       // A review offer on a job answered already is held (v2.6007). A read of the asks that fails holds nothing: the press
       // asks again before it mints.
       const rateJobs = rateJobsOf(offers)
