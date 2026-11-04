@@ -13,7 +13,7 @@ import { stampSentence } from '../../../lib/messages/stamps'
 import { foldedThreadRows } from '../../../lib/messages/appLines'
 import type { SentStampsIo } from '../../../lib/messages/sentStampsIo'
 import { courtOf, threadOf } from '../../../lib/messages/thread'
-import { isThreadFolded, isThreadShort, reachOpen, THREAD_SHORT_QUERY } from '../../../lib/messages/threadFold'
+import { isThreadBeside, isThreadFolded, isThreadShort, reachOpen, THREAD_SHORT_QUERY } from '../../../lib/messages/threadFold'
 import { noFlowWords } from '../../../lib/flows/facts'
 import { tieSheetRows } from '../../../lib/messages/tieSheet'
 import { formatErrorMessage } from '../../../utils/errorHandling'
@@ -82,6 +82,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const folded = isThreadFolded(columnWidth, phone)
   // A short window (v2.6474): the header keeps two rows, and the sort card and the reply box fold to one row each.
   const short = isThreadShort(useMatchMedia(THREAD_SHORT_QUERY), phone)
+  // Short and wide (v2.6478, the owner's B): what a cut draws above the lines takes a column at their right instead.
+  const beside = isThreadBeside(columnWidth, short)
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
   const [contactChosen, setContactChosen] = useState<boolean | null>(null)
@@ -182,9 +184,9 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const openThread = useMemo<OpenThread | null>(
     () =>
       contact && view
-        ? { contact, lines: allLines, jobFilter, rail: view.rails[contact.id] ?? [], tiles: view.tiles, userNames: view.userNames, nowIso, searchJobs, short }
+        ? { contact, lines: allLines, jobFilter, rail: view.rails[contact.id] ?? [], tiles: view.tiles, userNames: view.userNames, nowIso, searchJobs, short, beside }
         : null,
-    [contact, view, allLines, jobFilter, nowIso, searchJobs, short],
+    [contact, view, allLines, jobFilter, nowIso, searchJobs, short, beside],
   )
 
   // The stamps sentence, drawn on its own row, or on the status row's end in a short window (v2.6474).
@@ -502,65 +504,76 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
               </div>
               {/* On a phone the side (cut 4's flow) is a row over the lines, so the lines keep the whole width (cut 10). */}
               {phone && slots.side?.(contact)}
-              {/* What a cut draws above the lines (the sort card, Who has it) scrolls on its own when it is taller than the room
-                  (v2.5570): the lines keep a few rows and the box at the foot stays in the window. */}
-              {slots.aboveLines && (
-                <div data-thread-above style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
-                  {slots.aboveLines(contact, { openWho: () => setNaming(true), showContact: (id) => onShowContact?.(id), whoDrawn: setWhoOnCard })}
-                </div>
-              )}
-              <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-                <div data-thread-lines style={{ flex: 1, minHeight: short ? 'max(7rem, 33%)' : '7rem', overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
-                  {/* No line (punch list #184): a job on the rail with none tied offers the rail's own Show all. */}
-                  {rows.length === 0 &&
-                    (jobFilter ? (
-                      <EmptyState compact main="No line is tied to this job yet." next={{ label: 'Show all', onPress: () => setJobFilter(null) }} />
-                    ) : (
-                      <EmptyState compact main="No messages with them yet." />
-                    ))}
-                  {rows.map((r) =>
-                    r.kind === 'day' ? (
-                      <div key={`day:${r.ymd}`} data-thread-day={r.ymd} style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', margin: '0.25rem 0' }}>
-                        {r.label}
-                      </div>
-                    ) : r.kind === 'event' ? (
-                      <EventLine key={r.message.id} message={r.message} time={r.time} />
-                    ) : r.kind === 'fold' ? (
-                      <AppFoldLine key={r.id} row={r} onToggle={() => toggleFold(r.id)} />
-                    ) : (
-                      <ThreadLine
-                        key={`${r.message.id}:${r.message.contactId}`}
-                        message={r.message}
-                        tile={r.message.jobId ? view?.tiles[r.message.jobId] : undefined}
-                        job={r.job}
-                        showAll={showAll}
-                        marked={r.message.id === at}
-                        tying={tying}
-                        body={slots.lineBody?.(r.message, contact) ?? null}
-                        under={slots.underLine?.(r.message, contact)}
-                        smallPrint={smallPrint.get(r.message.id)}
-                        userNames={view?.userNames ?? {}}
-                        contact={contact ?? null}
-                        onOpen={() => setOpenMessageId(r.message.id)}
-                        onTie={() => {
-                          if (tying) void tie(r.message.id, tying)
-                          setTying(null)
-                        }}
-                        onJob={() =>
-                          r.message.jobId && view?.tiles[r.message.jobId]
-                            ? setJobFilter((f) => (f === r.message.jobId ? null : r.message.jobId))
-                            : phone
-                              ? setTieSheetFor(r.message.id)
-                              : setPicker({ kind: 'tie', messageId: r.message.id })
-                        }
-                        onHold={phone ? () => setTieSheetFor(r.message.id) : undefined}
-                      />
-                    ),
+              {/* The lines and the box, and beside them on a short, wide window (v2.6478) what a cut draws above the lines:
+                  the column keeps its place in the tree, so a draft in the box lives through a resize across the line. */}
+              <div data-thread-body={beside ? 'beside' : 'under'} style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+                <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                  {/* What a cut draws above the lines (the sort card, Who has it) scrolls on its own when it is taller than the room
+                      (v2.5570): the lines keep a few rows and the box at the foot stays in the window. */}
+                  {!beside && slots.aboveLines && (
+                    <div data-thread-above style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
+                      {slots.aboveLines(contact, { openWho: () => setNaming(true), showContact: (id) => onShowContact?.(id), whoDrawn: setWhoOnCard })}
+                    </div>
                   )}
+                  <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+                    <div data-thread-lines style={{ flex: 1, minHeight: short ? 'max(7rem, 33%)' : '7rem', overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
+                      {/* No line (punch list #184): a job on the rail with none tied offers the rail's own Show all. */}
+                      {rows.length === 0 &&
+                        (jobFilter ? (
+                          <EmptyState compact main="No line is tied to this job yet." next={{ label: 'Show all', onPress: () => setJobFilter(null) }} />
+                        ) : (
+                          <EmptyState compact main="No messages with them yet." />
+                        ))}
+                      {rows.map((r) =>
+                        r.kind === 'day' ? (
+                          <div key={`day:${r.ymd}`} data-thread-day={r.ymd} style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', margin: '0.25rem 0' }}>
+                            {r.label}
+                          </div>
+                        ) : r.kind === 'event' ? (
+                          <EventLine key={r.message.id} message={r.message} time={r.time} />
+                        ) : r.kind === 'fold' ? (
+                          <AppFoldLine key={r.id} row={r} onToggle={() => toggleFold(r.id)} />
+                        ) : (
+                          <ThreadLine
+                            key={`${r.message.id}:${r.message.contactId}`}
+                            message={r.message}
+                            tile={r.message.jobId ? view?.tiles[r.message.jobId] : undefined}
+                            job={r.job}
+                            showAll={showAll}
+                            marked={r.message.id === at}
+                            tying={tying}
+                            body={slots.lineBody?.(r.message, contact) ?? null}
+                            under={slots.underLine?.(r.message, contact)}
+                            smallPrint={smallPrint.get(r.message.id)}
+                            userNames={view?.userNames ?? {}}
+                            contact={contact ?? null}
+                            onOpen={() => setOpenMessageId(r.message.id)}
+                            onTie={() => {
+                              if (tying) void tie(r.message.id, tying)
+                              setTying(null)
+                            }}
+                            onJob={() =>
+                              r.message.jobId && view?.tiles[r.message.jobId]
+                                ? setJobFilter((f) => (f === r.message.jobId ? null : r.message.jobId))
+                                : phone
+                                  ? setTieSheetFor(r.message.id)
+                                  : setPicker({ kind: 'tie', messageId: r.message.id })
+                            }
+                            onHold={phone ? () => setTieSheetFor(r.message.id) : undefined}
+                          />
+                        ),
+                      )}
+                    </div>
+                  </DndContext>
+                  {slots.aboveBox?.(contact)}
+                  {slots.box?.(contact)}
                 </div>
-              </DndContext>
-              {slots.aboveBox?.(contact)}
-              {slots.box?.(contact)}
+                {beside && slots.aboveLines && (
+                  <aside aria-label="Sort" data-thread-beside className="thread-beside">
+                    {slots.aboveLines(contact, { openWho: () => setNaming(true), showContact: (id) => onShowContact?.(id), whoDrawn: setWhoOnCard })}
+                  </aside>
+                )}
+              </div>
             </>
           )}
         </div>

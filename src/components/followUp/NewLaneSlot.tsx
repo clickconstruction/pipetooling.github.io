@@ -58,8 +58,10 @@ export function NewLaneSlot({
   const [read, setRead] = useState<NewLaneCardRows | null>(null)
   const [known, setKnown] = useState<WhoKnown | null>(null)
   const [busy, setBusy] = useState(false)
-  // A short window folds the card to one row (v2.6476); the thread window says so through the open thread.
-  const short = useOpenThread()?.short ?? false
+  // A short window folds the card to one row (v2.6476), unless it sits whole beside the lines (v2.6478); the thread
+  // window says both through the open thread.
+  const openThread = useOpenThread()
+  const short = (openThread?.short ?? false) && !openThread?.beside
   const jobKeys = contact.jobIds.join(',')
 
   const load = useCallback(async () => {

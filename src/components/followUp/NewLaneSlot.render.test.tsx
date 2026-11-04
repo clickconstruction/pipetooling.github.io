@@ -544,6 +544,16 @@ describe('a short window folds the card to one row (v2.6476)', () => {
     await waitFor(() => expect(io.tie).toHaveBeenCalledWith('m-dana', 'pipeline:j1312'))
   })
 
+  it('draws the whole card when it sits beside the lines (v2.6478)', async () => {
+    render(
+      <OpenThreadContext.Provider value={{ ...short(DANA), beside: true }}>
+        <NewLaneSlot contact={DANA} acts={{ openWho: vi.fn(), showContact: vi.fn() }} io={fakeIo()} say={vi.fn()} reread={vi.fn()} me={{ id: 'u-robert', name: 'Robert' }} nowIso={NOW} />
+      </OpenThreadContext.Provider>,
+    )
+    const job = await screen.findByRole('region', { name: 'Sort: Which job?' })
+    expect(job.hasAttribute('data-new-lane-fold')).toBe(false)
+  })
+
   it('draws the whole card on a tall window', async () => {
     renderSlot(DANA)
     const job = await screen.findByRole('region', { name: 'Sort: Which job?' })

@@ -28,6 +28,17 @@ export function isThreadShort(shortScreen: boolean, phone: boolean): boolean {
 }
 
 /**
+ * The thread column's width from which a short window puts the sort card beside the lines (v2.6478, the owner's B):
+ * a laptop is wide and short, so the card takes a column at the right, whole, and the lines keep the full height.
+ */
+export const THREAD_BESIDE_PX = 900
+
+/** The sort card goes beside the lines: a short window whose thread column is 900 px or wider. Unmeasured reads narrow. */
+export function isThreadBeside(columnWidth: number | null, short: boolean): boolean {
+  return short && columnWidth !== null && columnWidth >= THREAD_BESIDE_PX
+}
+
+/**
  * Their numbers and addresses under the company: open at a desk (v1.166), folded away on a narrow header so the lines
  * get the room. A press on the arrow decides from then on, either way.
  */
