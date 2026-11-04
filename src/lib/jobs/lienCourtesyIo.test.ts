@@ -17,6 +17,10 @@ const db = vi.hoisted(() => ({
   contacts: {} as Record<string, { id: string; channels: { id: string; kind: 'phone' | 'email'; value: string; optedOutAt: string | null }[] }>,
   made: [] as string[],
   makeRefusal: null as string | null,
+  /** Whose number the owner's is (`contact_for_channel`): null when nobody's; a thrown message when the read fails. */
+  phoneHolderId: null as string | null,
+  phoneAsked: [] as string[],
+  phoneReadFails: null as string | null,
 }))
 
 vi.mock('../supabase', () => ({
@@ -65,6 +69,11 @@ vi.mock('../messages/messagesIo', () => ({
     db.made.push(customerId)
     return 'c-new'
   },
+  findContactIdForPhone: async (phone: string) => {
+    db.phoneAsked.push(phone)
+    if (db.phoneReadFails) throw new Error(db.phoneReadFails)
+    return db.phoneHolderId
+  },
 }))
 
 import { loadCourtesyRecipients, sendCourtesyNotice, type CourtesyRecipient } from './lienCourtesyIo'
@@ -85,7 +94,8 @@ const facts: CourtesyFacts = {
   phone: '(512) 555-0147',
 }
 
-const open = () => loadCourtesyRecipients({ gcCustomerId: 'cu-ridgeway', gcName: 'Ridgeway Builders', gcEmail: 'dortiz@ridgeway.example', ownerName: 'Cibolo Crossing Ltd', ownerEmail: '' })
+const open = (owner: { ownerEmail?: string; ownerPhone?: string } = {}) =>
+  loadCourtesyRecipients({ gcCustomerId: 'cu-ridgeway', gcName: 'Ridgeway Builders', gcEmail: 'dortiz@ridgeway.example', ownerName: 'Cibolo Crossing Ltd', ownerEmail: owner.ownerEmail ?? '', ownerPhone: owner.ownerPhone ?? '' })
 
 const gc = (over: Partial<CourtesyRecipient> = {}): CourtesyRecipient => ({
   who: 'original_contractor',
@@ -110,6 +120,45 @@ beforeEach(() => {
   db.contacts = {}
   db.made = []
   db.makeRefusal = null
+  db.phoneHolderId = null
+  db.phoneAsked = []
+  db.phoneReadFails = null
+})
+
+describe('the owner of record (v2.6497): the record’s email and phone, a text only on a thread that already holds the number', () => {
+  it('an email and a number on the record, nobody in Messages holding it: the email goes, the text does not and says why, nothing is asked past the finder', async () => {
+    const [, o] = await open({ ownerEmail: 'office@novy.example', ownerPhone: '(512) 555-0142' })
+    expect(db.phoneAsked).toEqual(['(512) 555-0142'])
+    expect(db.made).toEqual([])
+    expect(o).toMatchObject({ who: 'owner', email: { address: 'office@novy.example', goes: true }, text: { address: '(512) 555-0142', goes: false, reason: 'not in Messages, so the email goes alone' }, contactId: null, textChannelId: null })
+  })
+  it('no number on the record: the finder is not asked, and the plan says so', async () => {
+    const [, o] = await open({ ownerEmail: 'office@novy.example' })
+    expect(db.phoneAsked).toEqual([])
+    expect(o!.text).toEqual({ address: '', goes: false, reason: 'no number on the property record' })
+  })
+  it('a contact already holds the number: the text is planned on that channel, and the press texts it without making anything', async () => {
+    db.phoneHolderId = 'c-novy'
+    db.contacts['c-novy'] = { id: 'c-novy', channels: [{ id: 'p-novy', kind: 'phone', value: '512-555-0142', optedOutAt: null }] }
+    const [, o] = await open({ ownerPhone: '(512) 555-0142' })
+    expect(o).toMatchObject({ text: { address: '(512) 555-0142', goes: true }, contactId: 'c-novy', textChannelId: 'p-novy' })
+    const r = await send([gc({ text: { address: '', goes: false, reason: 'no number on the job' } }), o!])
+    expect(db.made).toEqual([])
+    const text = db.invokes.find((i) => i.name === 'quo-send')!
+    expect(text.body).toMatchObject({ contactId: 'c-novy', channelId: 'p-novy', tie: { jobId: 'j741', column: 'jobs_ledger_id' } })
+    expect(r.record?.to.map((t) => [t.who, t.channel, t.ok])).toEqual([['original_contractor', 'email', true], ['owner', 'text', true]])
+  })
+  it('the number sent STOP on its thread: held with the GC’s own words', async () => {
+    db.phoneHolderId = 'c-novy'
+    db.contacts['c-novy'] = { id: 'c-novy', channels: [{ id: 'p-novy', kind: 'phone', value: '(512) 555-0142', optedOutAt: '2026-10-01T00:00:00Z' }] }
+    const [, o] = await open({ ownerPhone: '(512) 555-0142' })
+    expect(o!.text).toEqual({ address: '(512) 555-0142', goes: false, reason: 'they sent STOP' })
+  })
+  it('the finder failing is the text’s reason, and the email still goes', async () => {
+    db.phoneReadFails = 'the spine is away'
+    const [, o] = await open({ ownerEmail: 'office@novy.example', ownerPhone: '(512) 555-0142' })
+    expect(o).toMatchObject({ email: { goes: true }, text: { address: '(512) 555-0142', goes: false, reason: 'their Messages contact could not be read: the spine is away' } })
+  })
 })
 
 describe('opening the window makes nothing', () => {

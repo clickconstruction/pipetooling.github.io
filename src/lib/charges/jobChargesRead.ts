@@ -3,15 +3,19 @@
  * standing, the job's material lines, the rate card, the job's rule and markup, its revenue and its adjustments —
  * handed to `buildJobCharges` — and the three writes the Charges window makes: adjustments added, adjustments
  * reverted, the job's rule and markup saved. Reads as the signed-in user under RLS; the adjustments table and the
- * job's new columns are read and written through casts until the generated types catch up.
+ * job's new columns are read and written through casts until the generated types catch up. The standings come
+ * through `charge_standings()` (v2.6490), the one read every charge reader shares, so a person who left prices the
+ * same for a dev, the controller and a pay-approved master.
  */
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import type { CrewSessionInput, JobChargeRule } from './crewDays'
 import { jobChargeRuleFrom } from './crewDays'
 import { isEstimateCharge, type MaterialLineInput } from './materialsCharged'
 import { chargeAdjustmentFromRow, type ChargeAdjustment, type ChargeAdjustmentKind } from './adjustments'
-import { parseChargeStanding, parseCrewShape, rateCardFromSettings, RATE_CARD_SETTING_KEYS, type CrewShape, type RateCard } from './rateCard'
+import { parseCrewShape, rateCardFromSettings, RATE_CARD_SETTING_KEYS, type CrewShape, type RateCard } from './rateCard'
+import { standingsById, type ChargeStandingRow } from './chargeStandings'
 import type { JobChargesInput } from './jobCharges'
 
 export type JobChargesReadResult = {
@@ -26,13 +30,26 @@ export type JobChargesReadResult = {
 }
 
 const ADJUSTMENTS = 'job_charge_adjustments' as never
+// The read is called by name until the generated types carry it.
+const db = supabase as unknown as SupabaseClient
 
 function num(v: unknown): number {
   const n = typeof v === 'number' ? v : Number(v)
   return Number.isFinite(n) ? n : 0
 }
 
-/** The job's approved sessions as crew-session inputs, each person's standing read from their user row. */
+/**
+ * Every login with its standing, people who left included, through `charge_standings()`: the same rows for every
+ * reader the gate admits (a dev, the controller, a pay-approved master). A caller outside the gate is refused with
+ * the reason, never answered with no rows.
+ */
+export async function loadChargeStandings(): Promise<ChargeStandingRow[]> {
+  const { data, error } = await db.rpc('charge_standings')
+  if (error) throw error
+  return ((data ?? []) as Array<{ id: string; name: string | null; charge_standing: unknown; archived_at: string | null }>).map((r) => ({ id: r.id, name: r.name ?? null, charge_standing: r.charge_standing, archived_at: r.archived_at ?? null }))
+}
+
+/** The job's approved sessions as crew-session inputs, each person's standing from the standings every reader shares. */
 export async function loadCrewSessions(jobId: string): Promise<CrewSessionInput[]> {
   const { data, error } = await supabase
     .from('clock_sessions')
@@ -42,14 +59,7 @@ export async function loadCrewSessions(jobId: string): Promise<CrewSessionInput[
     .not('clocked_out_at', 'is', null)
   if (error) throw error
   const rows = (data ?? []) as Array<{ user_id: string; work_date: string; clocked_in_at: string; clocked_out_at: string | null; origin: string | null; users: { name: string | null } | null }>
-  const ids = Array.from(new Set(rows.map((r) => r.user_id)))
-  const standings = new Map<string, ReturnType<typeof parseChargeStanding>>()
-  if (ids.length) {
-    // The two columns the lookup needs, never `*` (v2.6484); a read that fails throws, and the window names its reason.
-    const { data: users, error: uerr } = await supabase.from('users').select('id, charge_standing').in('id', ids)
-    if (uerr) throw uerr
-    for (const u of (users ?? []) as unknown as Array<{ id: string; charge_standing?: unknown }>) standings.set(u.id, parseChargeStanding(u.charge_standing))
-  }
+  const standings = rows.length ? standingsById(await loadChargeStandings()) : new Map()
   return rows.map((r) => ({
     userId: r.user_id,
     name: (r.users?.name ?? '').split(' ')[0] || 'someone',

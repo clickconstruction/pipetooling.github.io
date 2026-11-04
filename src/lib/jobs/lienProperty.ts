@@ -7,6 +7,11 @@ import type { Database } from '../../types/database'
  *   2. the linked `customer_addresses` row (county, legal description,
  *      kind/homestead, owner of record),
  *   3. nothing — legal identity is never guessed.
+ * The owner's email and phone (v2.6497, Taunya's report on job 663) ride the same rule: the
+ * source that names the owner gives them, and a blank there falls back to the property
+ * record's, since the override's email had one writer (the supply-house share window) and
+ * the record is where the office types the owner from now on. The courtesy notice reads
+ * them; the lien papers never do, so they are no lien gap.
  * Pure kernel; callers fetch the rows.
  */
 
@@ -17,6 +22,10 @@ export type LienPropertyOwner = {
   ownerName: string
   ownerCompany: string
   mailingAddress: string
+  /** The owner's email, '' when none is on file: the override's, else the property record's (v2.6497). The courtesy notice goes here. */
+  email: string
+  /** The owner's phone, '' when none is on file: the override's, else the property record's (v2.6497). */
+  phone: string
   /** Which record supplied the owner block. */
   source: 'job_override' | 'property_record' | 'none'
 }
@@ -37,9 +46,17 @@ export type JobPropertyOwnerLike = {
   mailing_address: string | null
   /** Present when the caller selected it — used for courtesy email sends. */
   owner_email?: string | null
+  /** Present once the caller reads it and the column exists (v2.6497, migration 20261104163131). */
+  owner_phone?: string | null
 } | null
 
-const NO_OWNER: LienPropertyOwner = { ownerMode: '', ownerName: '', ownerCompany: '', mailingAddress: '', source: 'none' }
+const NO_OWNER: LienPropertyOwner = { ownerMode: '', ownerName: '', ownerCompany: '', mailingAddress: '', email: '', phone: '', source: 'none' }
+
+/** The property record's owner email and phone, read softly: the columns land with migration 20261104163131 and the generated row type after it. */
+export function recordOwnerContact(row: CustomerAddressRow | null | undefined): { email: string; phone: string } {
+  const r = (row ?? null) as { owner_email?: string | null; owner_phone?: string | null } | null
+  return { email: (r?.owner_email ?? '').trim(), phone: (r?.owner_phone ?? '').trim() }
+}
 
 export function resolveLienProperty(
   addressRow: CustomerAddressRow | null,
@@ -48,6 +65,7 @@ export function resolveLienProperty(
   const overrideName = (jobOwnerOverride?.owner_name ?? '').trim()
   const overrideCompany = (jobOwnerOverride?.company_name ?? '').trim()
   const overrideMailing = (jobOwnerOverride?.mailing_address ?? '').trim()
+  const record = recordOwnerContact(addressRow)
   let owner: LienPropertyOwner = NO_OWNER
   if (overrideName || overrideCompany || overrideMailing) {
     owner = {
@@ -55,6 +73,8 @@ export function resolveLienProperty(
       ownerName: overrideName,
       ownerCompany: overrideCompany,
       mailingAddress: overrideMailing,
+      email: (jobOwnerOverride?.owner_email ?? '').trim() || record.email,
+      phone: (jobOwnerOverride?.owner_phone ?? '').trim() || record.phone,
       source: 'job_override',
     }
   } else if (addressRow) {
@@ -67,6 +87,8 @@ export function resolveLienProperty(
         ownerName: rowName,
         ownerCompany: rowCompany,
         mailingAddress: rowMailing,
+        email: record.email,
+        phone: record.phone,
         source: 'property_record',
       }
     }

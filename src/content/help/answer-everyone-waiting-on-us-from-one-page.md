@@ -2,7 +2,7 @@
 title: answer everyone waiting on us from one page
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, ratings, score, how did we do, numbers, answer all, one at a time, desk, no reply needed, skip for now, next, jump, bar, strip, lanes, scroll, table of contents, all kinds, picker, glass, 7 days, top, what each lane holds, band, slow, kept, who was waiting, reading again, could not read again
+keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, heard back, by phone, in person, no answer needed, accepted, declined, logged call, undo, estimates, ratings, score, how did we do, numbers, answer all, one at a time, desk, no reply needed, skip for now, next, jump, bar, strip, lanes, scroll, table of contents, all kinds, picker, glass, 7 days, top, what each lane holds, band, slow, kept, who was waiting, reading again, could not read again
 where: /messages
 order: 117
 ---
@@ -103,6 +103,8 @@ This pill shows a list of those people in place of the three lists. The person w
 ## See who went quiet on us
 
 **Waiting on them** sits between the lists and Went out. It holds every person whose newest line is ours, two days old or more. The one quiet longest is first. Each row shows **Their move** with the days, our last words and the day they went. Press {{button:outline|Nudge}} to open the thread with the reminder for their step already written. The send window is open too. Read it and press {{button:blue|Send as text}}. The words are the ones the morning run would send, so the team's quick reply for the step comes first. A person on no step gets a plain check in. Press the name to open the thread as it is. Press {{button:blue|Call}} to dial. A reply from them clears the row.
+
+Their answer on an estimate clears it too. When they accept or decline from the link we sent, the row goes. A call you logged with their words clears it as well. When they answered you another way, press {{button:outline|Heard back ▾}} on the row. Pick **By phone**, **By text from my phone**, **In person** or **No answer needed**. The row clears at once. A gray line lands on their thread in ten seconds. It says who heard back, how and on which day. Press **Undo** on the toast before then to bring the row back. Nothing is written when you undo.
 
 When our last text never reached their phone, the row turns red and says {{chip:red|⚠ not sent}}. They never read it, so a nudge would land on the same dead number. Press {{button:blue|Call them}} to dial. Press {{button:outline|Send it as an email}} to open the thread with the same reminder written as an email. The send window is open too.
 

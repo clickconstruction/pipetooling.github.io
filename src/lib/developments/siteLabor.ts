@@ -32,6 +32,11 @@ export type SiteLaborPerson = {
   days: number
   /** Days this person was the crew's lead on this job. */
   leadDays: number
+  /**
+   * The person's hours and labor dollars on this job by day (v2.6493, the Development page's Timeline), in
+   * date order; absent on the man-hours read, which has no days.
+   */
+  byWorkDate?: Array<{ ymd: string; hours: number; costUsd: number }>
 }
 
 export type SiteLaborJob = {
@@ -74,7 +79,7 @@ export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRow
   const hoursMap = buildHoursMap([...args.hoursRows])
   // A crew row holds a whole day's assignments, so the same row comes back for every job of the site it names: keep it once.
   const seen = new Set<string>()
-  type Acc = { hours: number; costUsd: number; days: Set<string>; leadDays: number; personId: string | null }
+  type Acc = { hours: number; costUsd: number; days: Set<string>; leadDays: number; personId: string | null; byDay: Map<string, { hours: number; costUsd: number }> }
   const byJob = new Map<string, Map<string, Acc>>()
   const jobDays = new Map<string, Set<string>>()
   const siteDays = new Set<string>()
@@ -99,12 +104,16 @@ export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRow
       }
       let acc = people.get(r.person_name)
       if (!acc) {
-        acc = { hours: 0, costUsd: 0, days: new Set(), leadDays: 0, personId: r.person_id ?? null }
+        acc = { hours: 0, costUsd: 0, days: new Set(), leadDays: 0, personId: r.person_id ?? null, byDay: new Map() }
         people.set(r.person_name, acc)
       }
       acc.hours += pctHrs
       acc.costUsd += pctHrs * rate
       acc.days.add(r.work_date)
+      const day = acc.byDay.get(r.work_date) ?? { hours: 0, costUsd: 0 }
+      day.hours += pctHrs
+      day.costUsd += pctHrs * rate
+      acc.byDay.set(r.work_date, day)
       if (lead) acc.leadDays += 1
       if (!acc.personId && r.person_id) acc.personId = r.person_id
       let jd = jobDays.get(a.job_id)
@@ -122,7 +131,16 @@ export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRow
     const people = byJob.get(jobId)
     if (!people) continue
     const rows: SiteLaborPerson[] = [...people.entries()]
-      .map(([personName, a]) => ({ personName, personId: a.personId, userId: (a.personId ? args.userIdByPersonId?.get(a.personId) : undefined) ?? null, hours: a.hours, costUsd: a.costUsd, days: a.days.size, leadDays: a.leadDays }))
+      .map(([personName, a]) => ({
+        personName,
+        personId: a.personId,
+        userId: (a.personId ? args.userIdByPersonId?.get(a.personId) : undefined) ?? null,
+        hours: a.hours,
+        costUsd: a.costUsd,
+        days: a.days.size,
+        leadDays: a.leadDays,
+        byWorkDate: [...a.byDay.entries()].sort(([x], [y]) => x.localeCompare(y)).map(([ymd, d]) => ({ ymd, hours: d.hours, costUsd: d.costUsd })),
+      }))
       .sort((x, y) => y.hours - x.hours || x.personName.localeCompare(y.personName))
     byJobId.set(jobId, {
       jobId,

@@ -2,11 +2,11 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
 import { type CustomerAddressRow } from '../lib/jobs/lienProperty'
 
-/** Slim customer_addresses row for the property-record picker (v2.2638). */
+/** Slim customer_addresses row for the property-record picker (v2.2638); since v2.6497 the owner's email and phone ride along once migration 20261104163131 lands (absent before it). */
 export type PropertyCandidateRow = Pick<
   CustomerAddressRow,
   'id' | 'customer_id' | 'address' | 'county' | 'legal_description' | 'owner_name' | 'owner_company' | 'owner_mailing_address' | 'owner_confirmed_at' | 'property_kind' | 'homestead'
->
+> & { owner_email?: string | null; owner_phone?: string | null }
 
 export type JobPropertyCandidates = {
   propertyCandidates: PropertyCandidateRow[]
@@ -40,9 +40,10 @@ export function useJobPropertyCandidates(params: {
     let cancelled = false
     void (async () => {
       try {
+        // The whole row (v2.6497): the owner's email and phone are read by name nowhere, so a column the push has not landed yet fails nothing.
         const { data, error } = await supabase
           .from('customer_addresses')
-          .select('id, customer_id, address, county, legal_description, owner_name, owner_company, owner_mailing_address, owner_confirmed_at, property_kind, homestead')
+          .select('*')
           .in('customer_id', ids)
           .order('sequence_order', { ascending: true })
         if (error || cancelled) return

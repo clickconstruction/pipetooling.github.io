@@ -204,7 +204,8 @@ export function buildLienDeskRun(
       })
     const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
     const name = (job?.job_name ?? '').trim()
-    const ownerEmail = (data.ownerByJob[e.jobId]?.owner_email ?? '').trim()
+    // The owner's email as the property resolves it (v2.6497): the override's, else the property record's.
+    const ownerEmail = property.owner.email
     const gcEmail = draft?.gcEmail || gc?.email || ''
     const phone = signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim()
     const release = draft?.releaseId ? (opts?.releases?.get(draft.releaseId) ?? null) : null
@@ -285,7 +286,8 @@ export function buildLienRetainageRun(
       })
     const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
     const name = (job?.job_name ?? '').trim()
-    const ownerEmail = (data.ownerByJob[e.jobId]?.owner_email ?? '').trim()
+    // The owner's email as the property resolves it (v2.6497): the override's, else the property record's.
+    const ownerEmail = property.owner.email
     const gcEmail = draft?.gcEmail || gc?.email || ''
     out.push({
       itemId: item.id,

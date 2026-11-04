@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { CALL_ASIDE, CALL_WORDS, callDayHolds, callDayWords, callLineBody, callLogProblem, dialHref } from './callLog'
+import { CALL_ASIDE, CALL_WORDS, callDayHolds, callDayWords, callLineBody, callLogProblem, dialHref, isLoggedCall } from './callLog'
 import { boxPlaceholder, canSend, countLine, goesOut, REPLY_KINDS, sentWords } from './compose'
 
 describe('the Call kind (punch list #140 PR 7)', () => {
@@ -20,9 +20,14 @@ describe('the Call kind (punch list #140 PR 7)', () => {
     expect(callLogProblem({ said: 'Thursday works' })).toBeNull()
   })
 
-  it('writes the line as the function does', () => {
+  it('writes the line as the function does, and knows it again from a call Quo recorded (v2.6500)', () => {
     expect(callLineBody('Priya', ' Thursday works ')).toBe('Called Priya. They said: Thursday works')
     expect(callLineBody('', 'no answer')).toBe('Called them. They said: no answer')
+    expect(isLoggedCall(callLineBody('Priya', 'Thursday works'))).toBe(true)
+    expect(isLoggedCall(callLineBody('Dr. Priya Raman', 'Thursday works'))).toBe(true)
+    expect(isLoggedCall('Outgoing call · 0:12')).toBe(false)
+    expect(isLoggedCall('Called and left a voicemail.')).toBe(false)
+    expect(isLoggedCall('')).toBe(false)
   })
 
   it('prints the day they gave as a date or as their words, and holds the row only on a date to come', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TEXTS_OFF } from '../quo/textsSwitch'
-import { courtesyGcChannels, phoneChannelKey, textChannelFor } from './lienCourtesyContact'
+import { courtesyGcChannels, courtesyOwnerChannels, OWNER_NOT_IN_MESSAGES, phoneChannelKey, textChannelFor } from './lienCourtesyContact'
 
 /** The GC's channels for the courtesy notice, read without making a contact (punch list #243, PR 1). */
 
@@ -57,5 +57,26 @@ describe('textChannelFor — the channel on the contact the press made', () => {
     expect(textChannelFor(channels, '(830) 555-0000')?.id).toBe('p0')
     expect(textChannelFor([ch('p1', 'phone', '512-555-0100', '2026-10-01T00:00:00Z')], '512-555-0100')).toBeNull()
     expect(textChannelFor([], '512-555-0100')).toBeNull()
+  })
+})
+
+describe('courtesyOwnerChannels — the owner of record’s number, texted only on a thread that already holds it (v2.6497)', () => {
+  const novy = { id: 'c-novy', channels: [ch('e1', 'email', 'office@novy.example'), ch('p1', 'phone', '(512) 555-0142'), ch('p2', 'phone', '512-555-0199')] }
+  it('nobody in Messages holds the number: the number shows, the hold says the email goes alone, and no contact is named to make', () => {
+    expect(courtesyOwnerChannels({ contact: null, phone: '(512) 555-0142', textsOn: true })).toEqual({ contactId: null, textChannelId: null, phone: '(512) 555-0142', textHold: OWNER_NOT_IN_MESSAGES })
+  })
+  it('a contact holds the number: the text goes on the channel that carries it, not the contact’s first number', () => {
+    expect(courtesyOwnerChannels({ contact: novy, phone: '512 555 0199', textsOn: true })).toEqual({ contactId: 'c-novy', textChannelId: 'p2', phone: '512 555 0199', textHold: '' })
+  })
+  it('the GC’s own holds apply: Send texts off, and a STOP on that number', () => {
+    expect(courtesyOwnerChannels({ contact: novy, phone: '(512) 555-0142', textsOn: false })).toMatchObject({ contactId: 'c-novy', textChannelId: null, textHold: TEXTS_OFF })
+    const stopped = { id: 'c-novy', channels: [ch('p1', 'phone', '(512) 555-0142', '2026-10-01T00:00:00Z')] }
+    expect(courtesyOwnerChannels({ contact: stopped, phone: '(512) 555-0142', textsOn: true })).toMatchObject({ contactId: 'c-novy', textChannelId: null, textHold: 'they sent STOP' })
+  })
+  it('no number, or one the spine would keep no channel for, plans no text and names no hold — the plan says no number on the property record', () => {
+    expect(courtesyOwnerChannels({ contact: null, phone: '', textsOn: true })).toEqual({ contactId: null, textChannelId: null, phone: '', textHold: '' })
+    expect(courtesyOwnerChannels({ contact: novy, phone: 'call the office', textsOn: true })).toEqual({ contactId: null, textChannelId: null, phone: '', textHold: '' })
+    // A contact found for the number that somehow does not carry it is no door either.
+    expect(courtesyOwnerChannels({ contact: { id: 'c-x', channels: [ch('p9', 'phone', '(210) 555-0000')] }, phone: '(512) 555-0142', textsOn: true })).toMatchObject({ contactId: null, textHold: OWNER_NOT_IN_MESSAGES })
   })
 })
