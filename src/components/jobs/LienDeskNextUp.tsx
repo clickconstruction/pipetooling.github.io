@@ -1,7 +1,9 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { groupLienNextUp, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { groupLienNextUp, isLienReminderRow, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { LIEN_REMINDER_STEPS, type LienReminderRow, type LienReminders } from '../../lib/jobs/lienReminders'
 import { countLienSteps, lienLaddersShown, lienStepCard, lienStepOfRow, type LienStepAt, type LienStepFacts, type LienStepLadder } from '../../lib/jobs/lienNextUpSteps'
+import { EmptyState } from '../EmptyState'
 import { LIEN_JOB_DOOR_TITLE } from './LienJobNumber'
 import { LienStepCardView, LienStepMark, LienStepRail, LienStepRow, useLienStepCard } from './LienDeskSteps'
 
@@ -14,6 +16,10 @@ import { LienStepCardView, LienStepMark, LienStepRail, LienStepRow, useLienStepC
  * Since v2.4631 the steps read too: a rail of four rungs per kind of paper above the rows
  * (`lienNextUpSteps.ts`), each with its count, a press narrowing the list to that rung; four
  * dots and a fraction on every row; and a card on the dots that writes the row's ladder out.
+ *
+ * Since punch list #262 a REMINDERS rail sits between the notices' and the affidavits', its four
+ * counts from `lienReminders.ts`; the courtesy and letter-two rows read under *Reminders*, and a
+ * rung pressed lists the sent notices that stand on it with no row here, each a door to its notice.
  *
  * A table on a computer; the same rows as cards on a phone.
  */
@@ -59,6 +65,8 @@ export default function LienDeskNextUp({
   printed,
   foldsOpen,
   waitingOn,
+  reminders,
+  onOpenReminder,
 }: {
   rows: ReadonlyArray<LienNextUpRow>
   loading: boolean
@@ -85,10 +93,14 @@ export default function LienDeskNextUp({
   foldsOpen?: boolean
   /** The leader the office's waiting rows wait on, by name, when they all wait on one (punch list #101 PR 3). */
   waitingOn?: string | null
+  /** The REMINDERS ladder (punch list #262): every sent notice's rung, the four counts and the ones before day 7. */
+  reminders?: LienReminders
+  /** A rung's row with no row on the list, pressed: the desk opens its notice. Without it the row opens the notice under Sent through `onAct`. */
+  onOpenReminder?: (row: LienReminderRow) => void
 }) {
   // The rung the list is narrowed to (v2.4631); session-only, cleared on a second press.
   const [on, setOn] = useState<LienStepAt | null>(null)
-  const counts = useMemo(() => countLienSteps(rows, ready ?? {}), [rows, ready])
+  const counts = useMemo(() => countLienSteps(rows, ready ?? {}, reminders?.counts), [rows, ready, reminders])
   const ladders = useMemo(() => lienLaddersShown(counts), [counts])
   const card = useLienStepCard(isMobile)
   // The row whose card is open, for the card's own button.
@@ -159,7 +171,7 @@ export default function LienDeskNextUp({
   const mark = (r: LienNextUpRow) => (
     <LienStepMark
       at={lienStepOfRow(r)}
-      ladder={r.kind}
+      ladder={lienStepOfRow(r)?.ladder ?? r.kind}
       card={lienStepCard(r, factsFor?.(r))}
       isMobile={isMobile}
       onShow={(el, c) => {
@@ -232,14 +244,40 @@ export default function LienDeskNextUp({
       {r.button ?? 'Open'}
     </button>
   )
+  // A REMINDERS rung pressed (punch list #262): the sent notices on it that have no row here, so every name behind the count can be seen.
+  const reminderStep = on?.ladder === 'reminder' ? on.step : null
+  const reminderRows = reminderStep && reminders ? reminders.rows.filter((r) => r.step === reminderStep && !rows.some((x) => x.jobId === r.jobId && isLienReminderRow(x))) : []
+  const reminderOnList = reminderStep ? rows.filter((r) => isLienReminderRow(r) && r.reminder?.step === reminderStep).length : 0
+  const reminderStub = (r: LienReminderRow): LienNextUpRow => ({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: 'sent' }, reminder: r })
   const openCard = card.open
   const cardButton = openCard ? openRow : null
   return (
     <div ref={card.hostRef} data-lien-next-up="list" style={{ position: 'relative', overflowY: 'auto', minHeight: 0, padding: isMobile ? '0.6rem 0.75rem 1rem' : '0.75rem 1.25rem 1.25rem' }}>
-      <LienStepRail counts={counts} ladders={ladders} on={on} isMobile={isMobile} onPick={setOn} onOpenRun={onOpenRun} viewerIsLeader={viewerIsLeader} printed={printed} />
+      <LienStepRail counts={counts} ladders={ladders} on={on} isMobile={isMobile} onPick={setOn} onOpenRun={onOpenRun} viewerIsLeader={viewerIsLeader} printed={printed} reminderWaiting={reminders?.waiting} />
+      {reminderStep ? (
+        <div data-testid="lien-reminder-step-list" data-step={reminderStep} style={{ margin: isMobile ? '-4px 0 14px' : '-6px 0 14px calc(84px + 10px)', borderLeft: '2px solid var(--text-violet-700)', padding: '4px 0 2px 12px', fontSize: '0.8125rem' }}>
+          <div style={{ fontSize: '0.66rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-violet-700)', fontWeight: 700, marginBottom: 2 }}>
+            {LIEN_REMINDER_STEPS[reminderStep - 1]} · {reminderRows.length}{reminderOnList ? ` here · ${reminderOnList} on the list below` : ''}
+          </div>
+          {reminderRows.length === 0 ? (
+            // A sub-list inside the window: `main` alone, its next step the rung above it (`check:empty-words`).
+            <EmptyState compact main={reminderOnList ? 'Every notice on this step is on the list below.' : 'Nothing waiting on this step.'} />
+          ) : (
+            reminderRows.map((r) => (
+              <div key={r.jobId} data-lien-reminder-row={r.jobId} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.2fr) minmax(0, 1.6fr) auto', gap: isMobile ? 2 : 12, alignItems: 'center', padding: '3px 0' }}>
+                {title(reminderStub(r), { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', minWidth: 0 })}
+                <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.words}>{r.words}</span>
+                <button type="button" onClick={() => (onOpenReminder ? onOpenReminder(r) : onAct(reminderStub(r)))} style={{ ...openBtn, ...(isMobile ? { width: '100%', padding: '9px 12px', fontSize: '0.9rem' } : { padding: '2px 10px', fontSize: '0.78rem' }) }} data-lien-reminder-open={r.jobId}>
+                  Open
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      ) : null}
       {groups.map((g) => (
         <section key={g.group} aria-label={g.label} data-lien-next-up-group={g.group} style={{ marginBottom: '1rem' }}>
-          <h3 style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
+          <h3 style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' ? 'var(--text-violet-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
             {g.label} · {g.rows.length}
           </h3>
           <div style={{ display: 'grid', gap: isMobile ? 8 : 0, border: isMobile ? 'none' : '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>
@@ -254,7 +292,7 @@ export default function LienDeskNextUp({
                   </div>
                   <div>{title(r, { fontWeight: 700, fontSize: '0.92rem', overflowWrap: 'anywhere', whiteSpace: 'normal' })}</div>
                   {/* The four dots are four named tiles on a phone (v2.4881): no hover there, so the names are the card. */}
-                  <LienStepRow at={lienStepOfRow(r)} ladder={r.kind} viewerIsLeader={Boolean(viewerIsLeader)} onPress={(el) => { setOpenRow(r); card.show(el, lienStepCard(r, factsFor?.(r))) }} />
+                  <LienStepRow at={lienStepOfRow(r)} ladder={lienStepOfRow(r)?.ladder ?? r.kind} viewerIsLeader={Boolean(viewerIsLeader)} onPress={(el) => { setOpenRow(r); card.show(el, lienStepCard(r, factsFor?.(r))) }} />
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{r.sub}</div>
                   {fold(r)}
                   {secondary(r)}

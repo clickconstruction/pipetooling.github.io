@@ -11,7 +11,7 @@ Supply houses send this letter before they lien, and it gets bills paid. Ours go
 
 ## When the desk offers it
 
-Open the Lien desk and go to **Do now**. A sent notice with nothing paid shows a row from day 7 after the packet. The row's button reads {{button:blue|Send a courtesy notice}}. The same button sits on the notice's footer under **Sent**.
+Open the Lien desk and go to **Do now**. A sent notice with nothing paid shows a row from day 7 after the packet. The row sits under the **Reminders** heading. The row's button reads {{button:blue|Send a courtesy notice}}. The same button sits on the notice's footer under **Sent**. The Reminders rail above the rows counts these notices on its first step, Reminder due. The rail's other steps count the reminders sent, the second letters and the notices closed.
 
 - Day 7 is counted the way letter two counts it. The desk uses the delivery day when the mail piece knows it.
 - Letter two keeps its own day. From day 10 the desk offers counsel's certified second letter beside the courtesy notice.

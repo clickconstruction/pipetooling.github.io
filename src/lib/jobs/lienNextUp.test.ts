@@ -3,6 +3,7 @@ import type { LienDeskEntry, LienDeskPile } from './lienDesk'
 import type { LienAffidavitEntry, LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainageEntry, LienRetainagePile } from './lienDeskRetainage'
 import type { LetterTwoStatus } from './lienLetterTwo'
+import type { CourtesyStatus } from './lienCourtesyNotice'
 import { buildLienNextUp, groupLienNextUp, lienNextUpCount, lienPrintedDaysWords, type LienNextUpInput } from './lienNextUp'
 
 const TODAY = '2026-10-05'
@@ -153,7 +154,8 @@ describe('buildLienNextUp — who may act, and the order', () => {
     })
     expect(rows.map((r) => `${r.group}:${r.jobId}`)).toEqual(['now:late', 'now:aff', 'now:soon', 'now:two', 'coming:ret', 'coming:later'])
     const groups = groupLienNextUp(rows)
-    expect(groups.map((g) => [g.label, g.rows.length])).toEqual([['Needs you now', 4], ['Coming up', 2]])
+    // The letter-two row keeps `now` for its day but reads under Reminders (punch list #262), so the red group holds dated work.
+    expect(groups.map((g) => [g.label, g.rows.length])).toEqual([['Needs you now', 3], ['Reminders', 1], ['Coming up', 2]])
     expect(groupLienNextUp([])).toEqual([])
   })
 })
@@ -304,5 +306,18 @@ describe('Signed with your code, as recorded (v2.5791)', () => {
     expect(groups[0]!.group).toBe('pen')
     expect(groups[0]!.label).toBe('Signed with your code, as recorded')
     expect(build({ role: 'assistant', notices: [notice('j1', 'ready', { item: code })] }).find((r) => r.jobId === 'j1')!.action).toBe('send')
+  })
+})
+
+describe('the REMINDERS ladder (punch list #262)', () => {
+  const courtesy = (over: Partial<CourtesyStatus> = {}): CourtesyStatus => ({ state: 'due', day: 21, words: 'day 21 · nothing since the packet', reason: '', lastSentAt: null, lienDay: '2026-11-16', records: [], ...over })
+  it('a courtesy row stands on step 1, a letter-two row after a courtesy went on step 2; with no courtesy status the rung is null and the row still reads under Reminders', () => {
+    const due = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue', 'day 21 · letter two overdue') }, courtesyByJob: { j1: courtesy() } })
+    expect([due.action, due.reminder?.step, due.reminder?.state]).toEqual(['courtesy', 1, 'due'])
+    const again = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue', 'day 21 · letter two overdue') }, courtesyByJob: { j1: courtesy({ lastSentAt: '2026-09-28T12:00:00Z', words: 'day 21 · courtesy sent Sep 28 by email · nothing since' }) } })
+    expect([again.action, again.reminder?.step, again.reminder?.state]).toEqual(['letter_two', 2, 'again'])
+    const bare = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('due') } })
+    expect(bare.reminder).toBeNull()
+    expect(groupLienNextUp([bare]).map((g) => g.group)).toEqual(['reminders'])
   })
 })

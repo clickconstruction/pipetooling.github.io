@@ -70,6 +70,7 @@ import LienCourtesyWindow from './LienCourtesyWindow'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { COURTESY_BUTTON, COURTESY_FROM_DAY, courtesyFooterSentence, courtesyOutcomeWords, type CourtesyFacts } from '../../lib/jobs/lienCourtesyNotice'
 import { courtesyByJobFrom } from '../../lib/jobs/lienCourtesyDesk'
+import { buildLienReminders, LIEN_REMINDERS_EMPTY } from '../../lib/jobs/lienReminders'
 import { loadCourtesyRecipients, sendCourtesyNotice, type CourtesyRecipient } from '../../lib/jobs/lienCourtesyIo'
 import { payLinkDisplay } from '../../lib/billing/payLink'
 import type { LienDeskItemRow } from '../../lib/jobs/lienDesk'
@@ -651,6 +652,8 @@ export default function LienDeskModal({
   // The courtesy notice per job with a sent notice (punch list #231): one kernel with the Accounts Receivable chips (`lienCourtesyDesk.ts`), so the row and the chip agree. No read of its own.
   const courtesyByJob = useMemo(() => (data ? courtesyByJobFrom({ todayYmd, letterTwoByJob: data.letterTwoByJob, items: data.items, entries: data.queue.entries, jobsById: data.jobsById, addressesById: data.addressesById, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob }) : {}), [data, todayYmd])
   // Do now (punch list #82; Next up until v2.4630): the queues this desk already holds, folded into one ordered list. No read of its own.
+  // The REMINDERS strip (punch list #262): every sent notice's rung from the two statuses above; the Do now rail draws its counts, a rung pressed lists its names. No read of its own.
+  const reminders = useMemo(() => (data ? buildLienReminders({ courtesyByJob, letterTwoByJob: data.letterTwoByJob, jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId) }) : LIEN_REMINDERS_EMPTY), [data, courtesyByJob])
   const nextUpRows = useMemo(() => {
     if (!data) return []
     const serveDue = Object.values(data.filingsByJob)
@@ -3505,7 +3508,7 @@ export default function LienDeskModal({
           {kind === 'next' ? (
             <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }}>
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsFound.length} isMobile={isMobile} />
-            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
