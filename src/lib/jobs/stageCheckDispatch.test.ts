@@ -7,7 +7,13 @@ import {
   STAGE_CHECK_WORDS_MAX,
   alreadyWithDispatchWords,
   contextMetaWords,
+  dispatchReplyWords,
+  isStageCheckRequest,
+  jobLineFromReference,
   openStageCheckFor,
+  replyPlaceholderWords,
+  stageCheckTitleParts,
+  stageCheckWindowContext,
   reasonTailFromTitle,
   stageCheckJobLabel,
   stageCheckPayloadFrom,
@@ -82,7 +88,7 @@ describe('the row', () => {
       development_id: null,
       reference_summary: 'JP1088 · ZZ TEST Riders Walk · 12925 FM 20, Kingsbury',
       pending_action: STAGE_CHECK_ACTION,
-      pending_payload: { stage_check: { fixture_id: 'f3', question_id: 'q1', reason: 'cant_do', stage_name: 'Trim Set' } },
+      pending_payload: { stage_check: { fixture_id: 'f3', question_id: 'q1', reason: 'cant_do', stage_name: 'Trim Set', words: 'The hub is not poured.' } },
       priority: 'high',
       fixture_id: 'f3',
       checklist_question_id: 'q1',
@@ -172,5 +178,93 @@ describe('stageCheckWaiting: the red line over a stage check that leads the inbo
     expect(stageCheckWaiting(undefined, ago(4), now).words).toBe('Waiting 4 min')
     expect(stageCheckWaiting('not_a_reason', ago(4), now).words).toBe('Waiting 4 min')
     expect(stageCheckWaiting('cant_do', null, now)).toEqual({ words: "Can't do it · waiting", red: false })
+  })
+})
+
+describe('the one predicate (PR 2b)', () => {
+  it('says what is a stage check off pending_action alone, so the inbox and the banner never disagree', () => {
+    expect(isStageCheckRequest({ pending_action: 'stage_check' })).toBe(true)
+    expect(isStageCheckRequest({ pending_action: 'link_job_pictures' })).toBe(false)
+    expect(isStageCheckRequest({ pending_action: null })).toBe(false)
+    expect(isStageCheckRequest({})).toBe(false)
+  })
+
+  it('reads the words off a payload that carries them, and leaves them off one that does not', () => {
+    expect(stageCheckPayloadFrom({ stage_check: { fixture_id: 'f3', question_id: 't3', reason: 'need_part', stage_name: 'Trim Set', words: 'caps' } })?.words).toBe('caps')
+    expect(stageCheckPayloadFrom({ stage_check: { fixture_id: 'f3', question_id: 't3', reason: 'need_part', stage_name: 'Trim Set' } })).toEqual({ fixture_id: 'f3', question_id: 't3', reason: 'need_part', stage_name: 'Trim Set' })
+  })
+})
+
+describe('the title read back (PR 2b)', () => {
+  const ref = 'JP1088 · ZZ TEST Riders Walk · 12925 FM 20, Kingsbury'
+
+  it('splits the reference line into the job and the address', () => {
+    expect(jobLineFromReference(ref)).toEqual({ jobLine: 'JP1088 · ZZ TEST Riders Walk', address: '12925 FM 20, Kingsbury' })
+    expect(jobLineFromReference('JP1088 · ZZ TEST Riders Walk')).toEqual({ jobLine: 'JP1088 · ZZ TEST Riders Walk', address: '' })
+    expect(jobLineFromReference('ZZ TEST Riders Walk · 12925 FM 20')).toEqual({ jobLine: 'ZZ TEST Riders Walk', address: '12925 FM 20' })
+    expect(jobLineFromReference(null)).toEqual({ jobLine: '', address: '' })
+  })
+
+  it('reads the stage, the check, the reason and the words back off a built title, the job cut by the reference', () => {
+    const title = stageCheckTitle({ stageName: 'Trim Set', question: 'Is the pan drain run to the hub?', reason: 'need_part', words: 'The caps: two of them · not on the truck.', job: JOB })
+    expect(stageCheckTitleParts(title, ref)).toEqual({ stageName: 'Trim Set', question: 'Is the pan drain run to the hub?', reasonTail: 'need a part', words: 'The caps: two of them · not on the truck.' })
+  })
+
+  it('reads a title with no words and no job, and gives null on a plain request', () => {
+    expect(stageCheckTitleParts("Rough In · “Did the water test hold?” · can't do it", null)).toEqual({ stageName: 'Rough In', question: 'Did the water test hold?', reasonTail: "can't do it", words: '' })
+    expect(stageCheckTitleParts('Pick up the permit at the county', ref)).toBeNull()
+  })
+})
+
+describe("Dispatch's reply under the row (PR 2b)", () => {
+  it('reads the newest note with the first name and the age', () => {
+    const now = Date.parse('2026-11-04T16:00:00Z')
+    expect(dispatchReplyWords({ body: ' Hub pours Thursday.\nPress Not here for now. ', by: 'Jo Office', at: '2026-11-04T15:48:00Z' }, now)).toBe('Dispatch: “Hub pours Thursday. Press Not here for now.” · Jo · 12 min ago')
+    expect(dispatchReplyWords({ body: 'On it.', by: null, at: '2026-11-04T15:59:50Z' }, now)).toBe('Dispatch: “On it.” · Dispatch · just now')
+  })
+
+  it('names the sender in the reply box', () => {
+    expect(replyPlaceholderWords('Luis Ortega')).toBe('Reply to Luis…')
+    expect(replyPlaceholderWords(null)).toBe('Reply to the crew…')
+  })
+})
+
+describe('the context window (PR 2b)', () => {
+  const row = {
+    title: 'Trim Set · “Is the pan drain run to the hub?” · need a part: The caps are not on the truck. · JP1088 ZZ TEST Riders Walk',
+    reference_summary: 'JP1088 · ZZ TEST Riders Walk · 12925 FM 20, Kingsbury',
+    pending_payload: { stage_check: { fixture_id: 'f3', question_id: 't3', reason: 'need_part', stage_name: 'Trim Set' } },
+  }
+
+  it('draws the card from the request alone when nothing was read live', () => {
+    expect(stageCheckWindowContext(row, null, '')).toEqual({
+      jobLine: 'JP1088 · ZZ TEST Riders Walk',
+      line2: '12925 FM 20, Kingsbury · Trim Set',
+      question: 'Is the pan drain run to the hub?',
+      meta: '',
+      note: '',
+      sheet: '',
+      reasonLabel: 'Need a part',
+      words: 'The caps are not on the truck.',
+    })
+  })
+
+  it('takes the live count, words, chips, pick and note when read, and the words off the payload when it carries them', () => {
+    const live = {
+      progressWords: '2 of 5 answered · 3 left',
+      question: { words: 'Is the pan drain run to the hub?', asksPhoto: true, fixtureId: null, sheet: 'P-201' },
+      answer: { pick: 'yes' as const, note: 'the hub', answeredBy: 'Luis Ortega', answeredAt: '2026-11-02T15:00:00Z' },
+    }
+    const ctx = stageCheckWindowContext({ ...row, pending_payload: { stage_check: { ...row.pending_payload.stage_check, words: '' } } }, live, 'Luis Ortega · Nov 2')
+    expect(ctx.line2).toBe('12925 FM 20, Kingsbury · Trim Set · 2 of 5 answered · 3 left')
+    expect(ctx.meta).toBe("asks for a photo · the company's question · Yes, Luis Ortega · Nov 2")
+    expect(ctx.note).toBe('the hub')
+    expect(ctx.sheet).toBe('P-201')
+    expect(ctx.words).toBe('')
+  })
+
+  it('falls back to the title whole on a request whose title is not one the sheet built', () => {
+    const ctx = stageCheckWindowContext({ title: 'A hand-typed title', reference_summary: null, pending_payload: null }, null, '')
+    expect(ctx).toMatchObject({ jobLine: 'This job', line2: 'Stage', question: 'A hand-typed title', reasonLabel: 'Something else', words: '' })
   })
 })

@@ -2,7 +2,7 @@
 name: "Send a stage check to Dispatch: the crew's reason rides with the job, the stage and the check, and Dispatch opens it with the context and acts on it in place"
 number: 245
 group: ready
-status: asked 2026-11-02 on the sheet's screenshot; thought through and mocked up the same day; PR 1 (the send and the inbox doors) built the same day as v2.6360, PR #6829, merged 2026-11-03 with its migration pushed, walked live the same day; PR 2 (the context window and the loop back) next; three calls carry recommendations as defaults
+status: asked 2026-11-02 on the sheet's screenshot; thought through and mocked up the same day; PR 1 (the send and the inbox doors) built the same day as v2.6360, PR #6829, merged 2026-11-03 with its migration pushed, walked live the same day; PR 2 built 2026-11-04 as a train of two, the self-close (PR #7010) and v2.6495 (the window and the loop back); PR 3 (the marks) next; three calls carry recommendations as defaults
 summary: >
   A crew member on a stage checklist hits a check they cannot answer: the part is missing, the
   check is wrong for this job, the office has to decide. Today the phone has no door from the row,
@@ -12,10 +12,10 @@ summary: >
   or change the check for that job. It rides the dispatch_requests rail the app already has, as a
   structured request, so the inbox, the push, the thread, the priority card and Questions on this
   job all carry it for free.
-next: PR 2, the context window and the loop back. PR 3, the marks, can follow it: #246's door is on main.
+next: PR 3, the marks: #246's door is on main. Then the live walk of PR 2 on the ZZ job once the owner says yes.
 size: M as a train of three (S · M · S); one migration (two columns on dispatch_requests); no edge function beyond the push that already sends
 blocker: none. Call 1 (the reason set) and call 2 (who may close) take the recommendations below as defaults.
-ver: v2.6360 · 6462 · 6466 · 6328 · 6347 · 6052 · 6214 · 3246 · 6087 · 6084
+ver: v2.6360 · 6462 · 6466 · 6495 · 6328 · 6347 · 6052 · 6214 · 3246 · 6087 · 6084
 opinion: now — the sheet's second pass made the row the place the crew stands; a dead end there sends them to a text message, and the context is lost the moment they type one
 mockup: to-dos/stage-check-to-dispatch/mockup.html
 ---
@@ -189,3 +189,19 @@ its own row instead: the tag, the title and both doors under a red *Can't do it 
 line, with **Lower priority** beside the thread. On the owner's call of 2026-11-03 it stays off the
 app-wide *Customer waiting* banner and **Needs you** too (v2.6466): those stay a customer's. PR 2 is
 next; PR 3 can follow it.
+
+2026-11-04: **PR 2 built as a train of two.** A review that morning found the inbox's `stageCheck` and the banner's
+`waitsOnTheBanner` were two predicates for one fact; v2.6495 gives both `isStageCheckRequest`. **PR 2a (PR #7010, the
+self-close)**: migration `20261104170000_stage_check_self_close.sql`, three `SECURITY DEFINER` triggers that close every open
+request on a stage and check when it is answered on the sheet, skipped on the job or taken off, in the settler's name
+with a note that says how (*Answered on the sheet by Luis Ortega · Yes*, *Skipped on this job by Sal Super: the reason*,
+*Taken off by Sal Super*, a company question *Taken off the company's list*, a promoted item *Added to the company's
+list*); the guard admits it; the SQL bed `test:pg:stage-check-self-close` ran on the local Postgres 15 over every
+migration (49 checks, four mutants caught). **v2.6495 (PR 2b)**: the context window on the inbox row's press
+(`StageCheckWindow.tsx`: the card live or from the title, the thread with the crew's words first, **Reply**, **Reply and
+close** for the dispatch group and a dev and never the sender, **Lower priority**, **Not now**, the two doors), the
+crew's words in the payload, the reply push (`notify-dispatch-request` mode `replied`: the function had no note push,
+confirmed before adding it), Dispatch's reply under the crew's row, the chip read again after a settle with the close
+push to the sender, the guide *answer a check the crew sent*. Call 3 stands. Not walked live yet: a send pushes the
+whole Dispatch group, so the walk waits for the owner's yes, after both PRs land and the migration is pushed and the
+function deployed. PR 3, the marks, is next.

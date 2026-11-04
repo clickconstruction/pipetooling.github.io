@@ -33,6 +33,14 @@ describe('requestClosureNotification', () => {
     expect(n.pushBody.startsWith('Reopened: ')).toBe(true)
   })
 
+  it('a reply puts the words first and names it a reply (punch list #245 PR 2b)', () => {
+    const n = requestClosureNotification({ ...request, title: 'Trim Set · “Is the pan drain run to the hub?” · need a part · JP1088 ZZ TEST' }, 'Hub pours Thursday. Press Not here for now.', 'replied')
+    expect(n.body).toEqual({ dispatch_request_id: 'req-1', mode: 'replied', note: 'Hub pours Thursday. Press Not here for now.' })
+    expect(n.pushTitle).toBe('Dispatch replied')
+    expect(n.pushBody).toBe('Hub pours Thursday. Press Not here for now. — Trim Set · “Is the pan drain run to the hub?” · need a part · JP1088 ZZ TEST')
+    expect(dispatchRequestClosedTarget('replied', true)).toBe('#replied?notified=1')
+  })
+
   it('a blank note becomes null and the push drops the dash', () => {
     const n = requestClosureNotification(request, '   ', 'closed')
     expect(n.body.note).toBeNull()

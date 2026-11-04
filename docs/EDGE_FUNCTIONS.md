@@ -3668,6 +3668,8 @@ Both send nothing, and answer `{ "success": true, "off": true, … }`, while the
 
 ### notify-dispatch-request
 
+> **v2.6495 — `mode: 'replied'`** (punch list #245 PR 2b): a note Dispatch writes on an open stage check pushes the **requester** *Dispatch replied* with the words first, `<note> — <title>` (220-char cap, mirrored by `composeDispatchClosurePush`), `template_type` `dispatch_request_replied`, `tag: dispatch-<id>-replied`, through their Push me hours like a close; `note` is required (400 without it); the caller is a dispatch group member or a dev. `useDispatchInbox.submitDispatchNote` sends it for a note on an open stage check alone; a note on any other open request pushes nobody, as before. **Redeploy** once merged.
+
 > **v2.6217 — through each person's hours** (punch list #141 PR 5): both modes' pushes go through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the dispatchers on are pushed through `_shared/webPushSend.ts`, a member outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, and a held requester has that row in place of the `push` row the answer always wrote. The answers gain `held`. **Redeploy** once merged.
 
 > **v2.5376 — `deno check` passes again**: `notifyRequester` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so its `notification_history` insert took `never` and the service-role client could not be handed in (2 errors). It takes `SupabaseClient` now. The outer `catch` read `error.message` off an `unknown` (1 error) and reads `(error as Error).message` now, as `invite-user` does: what the `try` can throw is an `Error`. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
@@ -3678,7 +3680,7 @@ Both send nothing, and answer `{ "success": true, "off": true, … }`, while the
 
 **Internal caller** (v2.3246): a request whose bearer **is the service-role key** is trusted as an internal caller. `submit-portal-request` uses it, since the customer has no session, and so does `submit-sub-portal` since v2.5042, for a sub's dispatch notes. Internal callers may only run the `created` fan-out (the row is read with the service role and the author check is skipped); `closed` / `reopened` stay user-only. **Redeploy required.**
 
-**Required Role**: `mode` omitted / `'created'`: authenticated user who is the request author (`from_user_id` on the row). `mode: 'closed' | 'reopened'`: a dispatch group member, a dev, or the row's `closed_by_user_id` (checked with the service role after the RLS-scoped row read).
+**Required Role**: `mode` omitted / `'created'`: authenticated user who is the request author (`from_user_id` on the row). `mode: 'closed' | 'reopened' | 'replied'`: a dispatch group member, a dev, or the row's `closed_by_user_id` (checked with the service role after the RLS-scoped row read); the sheet's settle push (v2.6495) rides on the closer's right, since the self-close trigger names the settler as the closer.
 
 **Required Secrets**:
 - `SUPABASE_URL`

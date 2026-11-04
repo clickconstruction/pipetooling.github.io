@@ -11,7 +11,7 @@
  *             call leads, "Sam called Jane Doe 2:14 pm", Open only.
  *   none    — nothing open and high: no banner, no item.
  */
-import { STAGE_CHECK_ACTION } from './jobs/stageCheckDispatch'
+import { isStageCheckRequest } from './jobs/stageCheckDispatch'
 import { parsePortalRequestPayload } from './portalRequestPayload'
 import { describeCalled, describeWait, firstName, portalKindLabel, type RequestInbox, type WaitDescription } from './requestPriority'
 
@@ -70,10 +70,11 @@ function ms(iso: string | null): number {
  * Whether an open high row belongs on the banner and in Needs You (v2.6466): a customer's, never a stage check a crew
  * sent with *Can't do it* (punch list #245). That check leads the Dispatch inbox under its own red line, and its push
  * already reached the group. Nobody calls it, so on the banner it would read *A customer*, never turn amber, and could
- * take the lead from a customer who can be called. The owner's call, 2026-11-03.
+ * take the lead from a customer who can be called. The owner's call, 2026-11-03. What a stage check is, the inbox and
+ * this read from the kernel's one predicate (PR 2b), never two copies of the fact.
  */
 export function waitsOnTheBanner(row: Pick<CustomerWaitingRow, 'pending_action'>): boolean {
-  return row.pending_action !== STAGE_CHECK_ACTION
+  return !isStageCheckRequest(row)
 }
 
 export function buildCustomerWaitingBanner(
