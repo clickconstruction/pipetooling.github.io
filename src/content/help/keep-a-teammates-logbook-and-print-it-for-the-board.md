@@ -50,11 +50,30 @@ A yellow card appears when a teammate works a trade they hold no license in.
 **1,462.4 hours of plumbing work count toward no license.**
 :::
 
-The board counts hours worked while the teammate is registered. Add the registration on the Licenses tab. The hours count from that day.
+The board counts hours worked while the teammate is registered. Press {{button:outline|Add a license}} to put in the registration. The hours count from that day.
 
 ## An expired registration
 
-A red line on a card means the Licenses tab shows the registration as expired. Check the board's own record first. Often the license was renewed and only the date on the Licenses tab is old. Fix the date there.
+A red line on a card means the license on file shows as expired. Check the board's own record first. Often the license was renewed and only the date on file is old. Fix it with **Edit** on the license, as the next section shows.
+
+## Edit or add a license
+
+Each license under **Licenses held** has an **Edit** button. Press {{button:outline|Add a license}} for a new one.
+
+1. Pick the **Trade** and the **Level**. For a notary, pick **Other** and type the name.
+2. Type the **Number** and set **Expires**.
+3. Check the line at the bottom. That line shows how the license will be saved.
+4. Press {{button:blue|Save the license}}, or {{button:blue|Add the license}} for a new one.
+
+The logbook reads the license again as soon as it is saved.
+
+:::example Checking the state's record
+**BLOEMER, PAIGE**, A/C Technician REG. Expires Dec 29, 2026. {{chip:green|Matches}}
+:::
+
+For an electrical or HVAC license, press {{button:outline|Check TDLR}}. The window shows the state's record for that number. When the state's date differs, press {{button:outline|Use this date}}. Then save.
+
+Plumbing licenses live with TSBPE. The window links to its search. That search asks you to prove you are not a robot, so a person looks it up.
 
 ## Print for the board
 
