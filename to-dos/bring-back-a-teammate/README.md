@@ -190,3 +190,7 @@ REST call to `users`, `customers` and an RPC is refused, a storage download is r
 gets nothing. The screen shows only the note, the countdown, the city and the call button; *Use my location* asks the
 browser only after the press, and the network panel shows no request carrying a position. When the countdown ends
 the screen reads *Today's the day*, and the office's Needs you item appears if it was switched on.
+
+## Found in review, 2026-11-04 (for PR 3's author)
+
+The trigger `people_stints_follow_dates` (`20261103203000_employment_stints.sql` ~62-64, 85-99) takes a return only when `NEW.end_date IS NULL`; two paths lose the earlier stint: a past stint recorded in one save with both dates (the Employment tab changing (2024-03-04 → 2026-11-03) to (2027-01-05 → 2027-06-30) overwrites the first stint), and both dates blanked (the early `RETURN NEW`) then a start set later (the closed stint is rewritten). Treat `OLD.end_date IS NOT NULL AND NEW.start_date IS DISTINCT FROM OLD.start_date AND NEW.start_date >= OLD.end_date` as a return whatever `NEW.end_date` is, and close the open stint when both dates are blanked; the bed covers neither case yet. Bring back must clear the end and set the start in ONE `UPDATE people`, or the old stint reopens and then moves. The salary clamp reads the current pair, so a returner's first-stint week regenerated after the return clamps to zero pay until PR 5 reads the stints.

@@ -377,3 +377,7 @@ job's Drive folders, and the waiting box photo files on the sweep's next run. Th
 
 **V2 and V3** stay as drawn, less the photo on a count, which shipped first. The jobs root and the
 name of a job's folder, which the live test raised, are #211 (`where-files-go/`).
+
+## Found in review, 2026-11-04
+
+The dev seat's delivery dry run (`dev_on_site_write`, the `delivery` branch of `20261103143000_on_site_small_fixes.sql` ~319) reads each line's `on_hand_before` from the ledger as it stands, so two lines naming the same part in one delivery both report the same `before` and the second's `on_hand_after` understates by the first's quantity; the writes are right, only the plan's words (which the plan hash commits to) are wrong. Accumulate per part key inside the loop before building `v_lines`. (The `read_on_site` paging that dropped rows after a 200-row same-timestamp group was fixed in v2.6488.)
