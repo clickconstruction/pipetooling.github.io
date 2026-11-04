@@ -46,6 +46,12 @@ export type SubsHqCommitmentInput = {
   sheetLabel?: string | null
   /** v2.2853: when the sub accepted the offer (YYYY-MM-DD) — counts as work. */
   acceptedAtYmd?: string | null
+  /**
+   * v2.6486: the order's `labor_job_id`. Settling a step work order mints a sheet for the released amount
+   * and writes it here while the order keeps its step, so that sheet is the order's own work and must not
+   * count as settled a second time once the office pays it.
+   */
+  laborJobId?: string | null
 }
 
 export type SubsHqDocInput = ComplianceDocInput & {
@@ -72,7 +78,10 @@ export type SubsHqRow = {
   badges: ComplianceBadge[]
   /** v2.2790: where they stand against the Book's General Conditions; 'none' when the Book has no such document. */
   generalConditions: GeneralConditionsStanding
-  /** Sheets paid in full plus settled step work orders (a sheet's own work order rides on its sheet, never counted twice). */
+  /**
+   * Sheets paid in full plus settled step work orders, each piece of work once: a sheet's own work order rides on
+   * its sheet (v2.6479), and the sheet a settled step order minted rides on its order (v2.6486).
+   */
   settledCount: number
   backchargeTotal: number
   /** v2.2853: newest attributed sheet job date / paid date / accepted work order (YYYY-MM-DD); null = never. */
@@ -168,6 +177,13 @@ export function buildSubsHqRows(input: {
     archivedByNormName.set(k, archivedByNormName.has(k) ? null : p) // null = ambiguous
   }
 
+  // v2.6486: a settled step work order (no sheet label) already counts as settled below; the sheet its
+  // settlement minted (its labor_job_id) is the same piece of work, so a payment on it adds nothing.
+  const sheetsOfSettledStepOrders = new Set<string>()
+  for (const c of input.commitments) {
+    if (c.status === 'settled' && !c.sheetLabel && c.laborJobId) sheetsOfSettledStepOrders.add(c.laborJobId)
+  }
+
   const unattributed: SubsHqResult['unattributed'] = []
   for (const sheet of input.sheets) {
     const balance = subLaborJobBalance(sheet)
@@ -179,7 +195,7 @@ export function buildSubsHqRows(input: {
         row.sheetCount += 1
         row.balanceDue += Math.max(0, balance.balance)
         row.backchargeTotal += balance.backcharges
-        if (balance.totalCost > 0 && balance.balance <= 0) row.settledCount += 1
+        if (balance.totalCost > 0 && balance.balance <= 0 && !sheetsOfSettledStepOrders.has(sheet.id)) row.settledCount += 1
         bumpLastWorked(row, sheet.jobDateYmd, sheet.paidAtYmd)
         continue
       }
