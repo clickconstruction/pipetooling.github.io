@@ -153,6 +153,18 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'How fast a change ships', keywords: ['ship pace', 'how long does a change take', 'pull request', 'merge', 'feature request', 'turnaround', 'github'], tabId: 'settings-ship-pace' },
 ]
 
+/**
+ * The trail at the end of a result row, after the title: where the pick lands. A door that is a card or a guide
+ * inside a tab reads *in <tab>*; a door that IS a whole tab (its title is the tab's own name, v2.6512: *How fast a
+ * change ships* read *How fast a change ships · in How fast a change ships →*) reads *a tab*, so the row never says
+ * the same thing twice. The arrow is the row's, drawn after these words.
+ */
+export function settingsSearchTrail(entry: Pick<SettingsSearchEntry, 'label' | 'tabId' | 'anchorId' | 'guideSlug'>, tabLabel: string | undefined): string {
+  const tab = tabLabel ?? entry.tabId
+  const isTheTab = !entry.anchorId && !entry.guideSlug && entry.label.trim().toLowerCase() === tab.trim().toLowerCase()
+  return isTheTab ? 'a tab' : `in ${tab}`
+}
+
 export type SettingsSearchHit = {
   entry: SettingsSearchEntry
   /** Match position in the label for bolding; -1 for keyword-only matches. */
