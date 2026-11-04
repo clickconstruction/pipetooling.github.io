@@ -62,7 +62,7 @@ our own numbers or addresses never becomes one: the readers place it only while 
 - `contact_channels` — a phone number or email that is theirs, with the opt-out (`opted_out_at`, and per box since R6,
   `opted_out_by_box`, because a carrier's STOP is per number pair).
 - `contact_jobs` — the association to a bid, a GC project or a Pipeline job (`jobs_ledger`), one default per contact.
-  A job combine (v2.6423) carries a source job's links once per contact (the default kept), its tagged mail threads, sends, calls, skips and holds to the target; the `messages` lines themselves are not moved, and the source's delete leaves their `jobs_ledger_id` null, so they read on the person, not the combined job (card #252).
+  A job combine (v2.6423) carries a source job's links once per contact (the default kept), its tagged mail threads, sends, calls, skips and holds to the target, and since v2.6492 the `messages` lines themselves with their `jobs_ledger_id`, so the combined job keeps the conversation (card #252).
   A line's job is its own column; the tie moves with `tie_message`. The jobs a person is on *by the facts* (an invite,
   a quote, a dispatch) sit beside the ones the office tied (`src/lib/messages/factJobs.ts`).
 - `messages` — one row per call, voicemail, missed call, text, email, team note, event or portal line: `contact_id`,
