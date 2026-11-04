@@ -55,8 +55,12 @@ export type JobCostBreakdown = {
   otherLines: number
 }
 
-/** What the page holds: reading, read (a row per job), or failed (a source would not read; the cells say so, never a false zero). */
-export type SiteCostsRead = { state: 'reading' } | { state: 'read'; byJobId: ReadonlyMap<string, JobCostRow> } | { state: 'failed' }
+/**
+ * What the page holds: reading, read (a row per job, and since v2.6493 the rows themselves, so the Money look's
+ * Timeline draws its events from the very rows the column totals), or failed (a source would not read; the cells
+ * say so, never a false zero, and since v2.6493 the reason rides along for a surface that names it).
+ */
+export type SiteCostsRead = { state: 'reading' } | { state: 'read'; byJobId: ReadonlyMap<string, JobCostRow>; rows?: SiteCostRows } | { state: 'failed'; reason?: string }
 
 export type SiteCostRows = {
   jobIds: readonly string[]
@@ -64,8 +68,10 @@ export type SiteCostRows = {
   cardAlloc: readonly (MercuryAllocationRow & { job_id: string })[]
   cardExclusions: CardChargeExclusions
   tally: readonly TallyPartRow[]
-  otherCharges: readonly { job_id: string; amount: number | string | null }[]
-  sheets: readonly (SubLaborSheetRow & { job_ledger_id: string | null; assigned_to_name?: string | null })[]
+  /** `created_at` and `description` (v2.6493): the Timeline dates and names an other charge; absent on an older caller. */
+  otherCharges: readonly { job_id: string; amount: number | string | null; created_at?: string | null; description?: string | null }[]
+  /** `job_date` and `created_at` (v2.6493): the Timeline dates a sheet by its job date, else the day it was made; absent on an older caller. */
+  sheets: readonly (SubLaborSheetRow & { job_ledger_id: string | null; assigned_to_name?: string | null; job_date?: string | null; created_at?: string | null })[]
   items: readonly SubLaborItemRow[]
   settings: readonly { key: string; value_num: number | null }[]
   /** The supply invoices' allocations with the house embedded (v2.6457); absent on an older caller, then no house rows. */

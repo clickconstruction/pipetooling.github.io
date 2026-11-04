@@ -13,6 +13,7 @@ import {
   fmtNum,
   type Goal,
   type LogWeek,
+  type NoRuleYet,
   type OpeningBalance,
   type ParsedLicense,
   type Progress,
@@ -30,6 +31,10 @@ type Props = {
   employer: string
   held: ParsedLicense[]
   goals: Goal[]
+  /** The licenses held with nothing above them in their trade. */
+  topOfLadder: ParsedLicense[]
+  /** The licenses held whose next rung has no rule seeded yet. */
+  noRuleYet: NoRuleYet[]
   progress: Progress[]
   supervisorFor: (trade: Trade, cls: Goal['requirement']['supervisorClass']) => Supervisor | null
   weeks: LogWeek[]
@@ -128,7 +133,18 @@ function Summary(p: Props) {
               </tr>
             )
           })}
-          {p.goals.length === 0 ? <tr><td style={td} colSpan={6}>The licenses held are the top rungs the logbook tracks.</td></tr> : null}
+          {p.goals.length === 0 ? (
+            <tr>
+              <td style={td} colSpan={6}>
+                {p.noRuleYet.length
+                  ? [
+                      ...p.noRuleYet.map((n) => `${n.holds.name} is held. The next license is ${n.next.name}, and its rule is not seeded yet.`),
+                      ...(p.topOfLadder.length ? [`${p.topOfLadder.map((l) => l.name).join(' and ')}: the top rung the logbook tracks.`] : []),
+                    ].join(' ')
+                  : 'The licenses held are the top rungs the logbook tracks.'}
+              </td>
+            </tr>
+          ) : null}
         </tbody>
       </table>
       {p.openings.length ? (

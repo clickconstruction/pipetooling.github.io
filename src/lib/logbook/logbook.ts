@@ -11,6 +11,7 @@
  */
 import type { LicenseHoursLogRow } from '../licenseHoursLog'
 import { companyWeekStartSundayContaining, ymdAddDays } from '../../utils/dateUtils'
+import { LICENSE_LEVELS } from './licenseText'
 
 export type Trade = 'plumbing' | 'electrical' | 'hvac'
 export const TRADES: readonly Trade[] = ['plumbing', 'electrical', 'hvac']
@@ -162,19 +163,38 @@ export type Goal = {
   holds: ParsedLicense
 }
 
-/** For each trade, the highest rung held and the next one a requirement names. */
-export function goalsFor(held: readonly ParsedLicense[]): { goals: Goal[]; topOfLadder: ParsedLicense[] } {
+/** A license held whose trade has a rung above it, but no requirement seeded from it yet. */
+export type NoRuleYet = {
+  holds: ParsedLicense
+  /** The rung above, as the Licenses tab names it: "Master Electrician". */
+  next: { level: LicenseClass; name: string }
+}
+
+/**
+ * For each trade, the highest rung held and the next one a requirement names. A rung is the top of
+ * its ladder only when the trade offers nothing above it; a rung with a level above it and no
+ * requirement seeded from it (a journeyman electrician, whose master rule is not in) is `noRuleYet`,
+ * never `topOfLadder`.
+ */
+export function goalsFor(held: readonly ParsedLicense[]): { goals: Goal[]; topOfLadder: ParsedLicense[]; noRuleYet: NoRuleYet[] } {
   const goals: Goal[] = []
   const topOfLadder: ParsedLicense[] = []
+  const noRuleYet: NoRuleYet[] = []
   for (const trade of TRADES) {
     const inTrade = held.filter((l) => l.trade === trade && l.cls)
     if (inTrade.length === 0) continue
     const top = inTrade.reduce((a, b) => (CLASS_RANK[b.cls!] > CLASS_RANK[a.cls!] ? b : a))
     const req = REQUIREMENTS.find((r) => r.trade === trade && r.from === top.cls)
-    if (req) goals.push({ requirement: req, holds: top })
+    if (req) {
+      goals.push({ requirement: req, holds: top })
+      continue
+    }
+    const above = LICENSE_LEVELS[trade].filter((l) => CLASS_RANK[l.level] > CLASS_RANK[top.cls!])
+    const next = above[0]
+    if (next) noRuleYet.push({ holds: top, next: { level: next.level, name: next.name } })
     else topOfLadder.push(top)
   }
-  return { goals, topOfLadder }
+  return { goals, topOfLadder, noRuleYet }
 }
 
 export type Progress = {

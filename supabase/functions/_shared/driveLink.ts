@@ -151,6 +151,15 @@ export type OfficeAsk =
   /** The dev's one made-up call through the embeddings provider (PR 4). */
   | { action: 'embed_probe' }
 
+/** The office actions that read Drive and change nothing: the ones a training account runs at `drive-link`'s gate. */
+const OFFICE_READS: ReadonlySet<string> = new Set<OfficeAsk['action']>(['list', 'open', 'search', 'search_index', 'list_company', 'ocr_probe', 'embed_probe'])
+/** A digital twin's refusal at the office's door, true to what it asked (v2.6488): a search is not a change. The door stays shut either way. */
+export function twinRefusalWords(action: unknown): string {
+  if (action === 'search' || action === 'search_index') return 'A digital twin cannot search Drive.'
+  if (typeof action === 'string' && OFFICE_READS.has(action)) return 'A digital twin cannot read Drive.'
+  return 'A digital twin cannot change Drive.'
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DRIVE_ID = /^[A-Za-z0-9_-]{10,200}$/
 /** How many rows one `index_home` call walks: folders are read once a call, so a batch costs little more than one. */

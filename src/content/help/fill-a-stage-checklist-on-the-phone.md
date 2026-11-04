@@ -36,7 +36,7 @@ A company question may not apply on your job. The office, the superintendent or 
 
 ## Send a check you cannot answer to Dispatch
 
-Sometimes you cannot answer a check. The part is missing. The check is wrong for this job. Press **Send to Dispatch** under the open question. A sheet opens on top with the job, the stage and the check already filled in. Pick why and send. The row then reads *With Dispatch* until Dispatch answers. The guide [send a check to Dispatch](/help/send-a-check-to-dispatch) has the steps.
+Sometimes you cannot answer a check. The part is missing. The check is wrong for this job. Press **Send to Dispatch** under the open question. A sheet opens on top with the job, the stage and the check already filled in. Pick why and send. The row then reads *With Dispatch* until Dispatch answers. Dispatch's reply sits under the row. The request closes itself once you answer the check. The guide [send a check to Dispatch](/help/send-a-check-to-dispatch) has the steps.
 
 ## Take the photo a question asks for
 

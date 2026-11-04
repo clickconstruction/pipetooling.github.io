@@ -53,8 +53,8 @@ export type DevelopmentPageData = {
   statusEvents: Array<{ id: string; job_id: string; changed_at: string; from_status: string | null; to_status: string; changed_by_user_id: string | null }>
   /** `sent_by_user_id` (v2.6457): who sent the bill, for the Scoreboard's office line; absent on an older read. */
   invoices: Array<{ id: string; job_id: string; amount: number; status: string; billed_at: string | null; sent_to_customer_at: string | null; created_at: string | null; sent_by_user_id?: string | null }>
-  /** `created_by` (v2.6457): who booked the payment, for the Scoreboard's office line; absent on an older read. */
-  payments: Array<{ id: string; job_id: string; amount: number; paid_on: string | null; created_at: string | null; created_by?: string | null }>
+  /** `created_by` (v2.6457): who booked the payment, for the Scoreboard's office line; `payment_type` and `note` (v2.6493): the Timeline's payment line; absent on an older read. */
+  payments: Array<{ id: string; job_id: string; amount: number; paid_on: string | null; created_at: string | null; created_by?: string | null; payment_type?: string | null; note?: string | null }>
   threadNotes: Array<{ id: string; job_id: string; created_at: string; author_user_id: string; body: string }>
   /** A bid's thread notes, keyed by the bid's id (`estimate_id`). */
   bidNotes: Array<{ id: string; estimate_id: string; created_at: string; author_user_id: string; body: string }>
@@ -258,7 +258,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     office && jobIds.length
       ? supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sent_to_customer_at, created_at, sent_by_user_id').in('job_id', jobIds).limit(500)
       : Promise.resolve({ data: [], error: null }),
-    office && jobIds.length ? supabase.from('jobs_ledger_payments').select('id, job_id, amount, paid_on, created_at, created_by').in('job_id', jobIds).limit(500) : Promise.resolve({ data: [], error: null }),
+    office && jobIds.length ? supabase.from('jobs_ledger_payments').select('id, job_id, amount, paid_on, created_at, created_by, payment_type, note').in('job_id', jobIds).limit(500) : Promise.resolve({ data: [], error: null }),
     office && jobIds.length
       ? supabase.from('jobs_ledger_thread_notes').select('id, job_id, created_at, author_user_id, body').in('job_id', jobIds).order('created_at', { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),

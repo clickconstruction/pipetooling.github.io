@@ -12,8 +12,10 @@ import type { JobScheduleBlockRow } from '../jobScheduleBlocks'
 import { scheduleBidAnchorId } from '../scheduleBlockTitle'
 import {
   formatScheduleDispatchHubBidTitle,
+  formatScheduleDispatchHubJobTitle,
   sortJobPickerRowsFinishedLast,
   type ScheduleDispatchHubBidRow,
+  type ScheduleDispatchHubJobRow,
   type ScheduleDispatchHubMergedRow,
 } from '../scheduleDispatchHub'
 import { denverCalendarDaysBetweenInstantAndNow, formatDenverCalendarDayShort } from '../../utils/dateUtils'
@@ -42,10 +44,36 @@ export function hubJobPickerSubline(
 }
 
 /**
+ * Does the search read somewhere on the job: either number (the HCP number
+ * from the import, or the Click number a job made in the app carries alone —
+ * v2.6496, a search for a Click-only job read "No jobs match."), the identity
+ * line, the name, the address or the customer. `q` is trimmed and lower-cased;
+ * an empty search matches every job.
+ */
+export function jobPickerSearchMatches(
+  r: Pick<ScheduleDispatchHubJobRow, 'hcp_number' | 'click_number' | 'job_name' | 'job_address' | 'customer_name'> & {
+    displayTitle?: string
+  },
+  q: string,
+): boolean {
+  if (!q) return true
+  const title = r.displayTitle ?? formatScheduleDispatchHubJobTitle(r.hcp_number, r.job_name, r.click_number)
+  return (
+    (r.hcp_number ?? '').toLowerCase().includes(q) ||
+    (r.click_number ?? '').toLowerCase().includes(q) ||
+    title.toLowerCase().includes(q) ||
+    (r.job_name ?? '').toLowerCase().includes(q) ||
+    (r.job_address ?? '').toLowerCase().includes(q) ||
+    (r.customer_name ?? '').toLowerCase().includes(q)
+  )
+}
+
+/**
  * The picker's job rows. With a number: the jobs that number finds (exact
  * match first, then the ones that start with it), in the list's own order.
- * Otherwise: the jobs whose number, name, identity line, address or customer
- * contains the search, newest first. Billed and paid jobs go last either way.
+ * Otherwise: the jobs whose number (HCP or Click), name, identity line,
+ * address or customer contains the search, newest first. Billed and paid jobs
+ * go last either way.
  */
 export function filterHubJobPickerRows(
   mergedRows: ScheduleDispatchHubMergedRow[],
@@ -55,18 +83,29 @@ export function filterHubJobPickerRows(
   const digits = numberQuery.replace(/\D/g, '')
   if (digits !== '') return sortJobPickerRowsFinishedLast(findJobsByNumber(mergedRows, digits))
   const q = search.trim().toLowerCase()
-  let list = mergedRows
-  if (q) {
-    list = list.filter(
-      (r) =>
-        (r.hcp_number ?? '').toLowerCase().includes(q) ||
-        (r.job_name ?? '').toLowerCase().includes(q) ||
-        r.displayTitle.toLowerCase().includes(q) ||
-        (r.job_address ?? '').toLowerCase().includes(q) ||
-        (r.customer_name ?? '').toLowerCase().includes(q),
-    )
-  }
+  const list = q ? mergedRows.filter((r) => jobPickerSearchMatches(r, q)) : mergedRows
   return sortJobPickerRowsFinishedLast([...list].sort(compareJobsByCreatedAtDesc))
+}
+
+/**
+ * The Quick Assign sheet's job rows (Dispatch mode's Assign work, the Add job
+ * to schedule the office opens on a phone). With a number: the jobs that
+ * number finds, exact match first. Otherwise the jobs the search matches,
+ * newest first. At most `limit` rows; billed and paid jobs go last either way.
+ */
+export function filterQuickAssignPickerJobs<T extends ScheduleDispatchHubJobRow>(
+  jobs: readonly T[],
+  search: string,
+  numberQuery: string,
+  limit = 60,
+): T[] {
+  const digits = numberQuery.replace(/\D/g, '')
+  const q = search.trim().toLowerCase()
+  const base =
+    digits !== ''
+      ? findJobsByNumber([...jobs], digits)
+      : jobs.filter((r) => jobPickerSearchMatches(r, q)).sort(compareJobsByCreatedAtDesc)
+  return sortJobPickerRowsFinishedLast(base.slice(0, limit))
 }
 
 export type HubBidPickerRow = {

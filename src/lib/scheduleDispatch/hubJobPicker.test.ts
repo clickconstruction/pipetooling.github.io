@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('../supabase', () => ({ supabase: {} }))
 
-import type { ScheduleDispatchHubBidRow, ScheduleDispatchHubMergedRow } from '../scheduleDispatchHub'
-import { buildHubBidPickerRows, filterHubJobPickerRows, hubJobPickerSubline } from './hubJobPicker'
+import type { ScheduleDispatchHubBidRow, ScheduleDispatchHubJobRow, ScheduleDispatchHubMergedRow } from '../scheduleDispatchHub'
+import { buildHubBidPickerRows, filterHubJobPickerRows, filterQuickAssignPickerJobs, hubJobPickerSubline } from './hubJobPicker'
 
 /** Noon in Chicago on Monday 2026-09-28. */
 const NOW = Date.parse('2026-09-28T17:00:00Z')
@@ -262,5 +262,74 @@ describe('buildHubBidPickerRows', () => {
     const bids = [bidRow('b1', { bid_number: null, project_name: null })]
     expect(buildHubBidPickerRows(bids, [], '', '3', NOW)).toEqual([])
     expect(buildHubBidPickerRows(bids, [], '', '', NOW)[0]?.displayTitle).toBe('Bid · Bid')
+  })
+})
+
+function ledgerRow(id: string, over: Partial<ScheduleDispatchHubJobRow> = {}): ScheduleDispatchHubJobRow {
+  return {
+    id,
+    hcp_number: over.hcp_number === undefined ? id : over.hcp_number,
+    job_name: `Job ${id}`,
+    project_id: null,
+    created_at: '2026-09-01T15:00:00Z',
+    status: 'working',
+    ...over,
+  }
+}
+
+describe('filterQuickAssignPickerJobs — the search box', () => {
+  const rows = [
+    ledgerRow('hcp', { hcp_number: '1008', job_name: 'Mike Holub', created_at: '2026-01-05T15:00:00Z' }),
+    ledgerRow('click', { hcp_number: null, click_number: '1007', job_name: 'ZZ Test sink', created_at: '2026-11-03T15:00:00Z' }),
+    ledgerRow('addr', { hcp_number: '412', job_name: 'Rough-in', job_address: '12 Elm St, Austin', created_at: '2026-06-01T15:00:00Z' }),
+    ledgerRow('cust', { hcp_number: '88', job_name: 'Repipe', customer_name: 'Hillside Builders', created_at: '2026-03-01T15:00:00Z' }),
+  ]
+
+  it('finds a job that carries only a Click number by that number (Taunya, 2026-11-04)', () => {
+    expect(ids(filterQuickAssignPickerJobs(rows, '1007', ''))).toEqual(['click'])
+  })
+
+  it('finds an HCP job by its number, and a job by its name, its address or its customer', () => {
+    expect(ids(filterQuickAssignPickerJobs(rows, '1008', ''))).toEqual(['hcp'])
+    expect(ids(filterQuickAssignPickerJobs(rows, 'rough', ''))).toEqual(['addr'])
+    expect(ids(filterQuickAssignPickerJobs(rows, 'elm st', ''))).toEqual(['addr'])
+    expect(ids(filterQuickAssignPickerJobs(rows, 'hillside', ''))).toEqual(['cust'])
+  })
+
+  it('finds a job by its identity line, whichever number it carries', () => {
+    expect(ids(filterQuickAssignPickerJobs(rows, 'J1007', ''))).toEqual(['click'])
+    expect(ids(filterQuickAssignPickerJobs(rows, 'j1008', ''))).toEqual(['hcp'])
+  })
+
+  it('lists every job newest first with no search, and shows nothing for a search nothing contains', () => {
+    expect(ids(filterQuickAssignPickerJobs(rows, '', ''))).toEqual(['click', 'addr', 'cust', 'hcp'])
+    expect(filterQuickAssignPickerJobs(rows, 'zzz', '')).toEqual([])
+  })
+
+  it('caps the list and keeps billed and paid jobs last', () => {
+    const many = [
+      ledgerRow('paid', { status: 'paid', created_at: '2026-09-30T15:00:00Z' }),
+      ledgerRow('a', { created_at: '2026-09-20T15:00:00Z' }),
+      ledgerRow('b', { created_at: '2026-09-10T15:00:00Z' }),
+      ledgerRow('c', { created_at: '2026-09-01T15:00:00Z' }),
+    ]
+    expect(ids(filterQuickAssignPickerJobs(many, '', '', 3))).toEqual(['a', 'b', 'paid'])
+  })
+})
+
+describe('filterQuickAssignPickerJobs — the number box', () => {
+  const rows = [
+    ledgerRow('prefix', { hcp_number: '10071', created_at: '2026-09-20T15:00:00Z' }),
+    ledgerRow('click', { hcp_number: null, click_number: '1007' }),
+    ledgerRow('hcp', { hcp_number: '1007' }),
+    ledgerRow('inside', { hcp_number: '21007' }),
+  ]
+
+  it('matches both kinds of number, exact first, then the numbers that start with it', () => {
+    expect(ids(filterQuickAssignPickerJobs(rows, '', '1007'))).toEqual(['click', 'hcp', 'prefix'])
+  })
+
+  it('wins over the search box whenever it holds a digit', () => {
+    expect(ids(filterQuickAssignPickerJobs(rows, 'no such job', '21007'))).toEqual(['inside'])
   })
 })

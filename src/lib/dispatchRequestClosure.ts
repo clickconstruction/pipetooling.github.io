@@ -11,7 +11,8 @@
 import { supabase } from './supabase'
 import { recordNavClick } from './navClickTelemetry'
 
-export type DispatchClosureMode = 'closed' | 'reopened'
+/** `replied` (v2.6495, punch list #245 PR 2b): Dispatch's note on an open stage check, pushed to the crew member who sent it. */
+export type DispatchClosureMode = 'closed' | 'reopened' | 'replied'
 
 /** The push body ceiling `notify-dispatch-request` already enforces. */
 export const DISPATCH_PUSH_BODY_MAX = 220
@@ -37,15 +38,19 @@ function truncate(s: string, max: number): string {
   return s.length <= max ? s : `${s.slice(0, Math.max(0, max - 1))}…`
 }
 
-/** Push wording shared (by convention) with the edge function's closed/reopened branch. */
+/** Push wording shared (by convention) with the edge function's closed/reopened/replied branch. */
 export function composeDispatchClosurePush(
   title: string,
   note: string | null,
   mode: DispatchClosureMode,
 ): { title: string; body: string } {
-  const head = mode === 'closed' ? 'Handled' : 'Reopened'
   const cleanTitle = truncate(title.trim() || 'your request', 160)
   const cleanNote = (note ?? '').trim()
+  // A reply is the words first: the crew reads the answer on the lock screen, the check after it.
+  if (mode === 'replied') {
+    return { title: 'Dispatch replied', body: truncate(cleanNote ? `${cleanNote} — ${cleanTitle}` : cleanTitle, DISPATCH_PUSH_BODY_MAX) }
+  }
+  const head = mode === 'closed' ? 'Handled' : 'Reopened'
   const body = truncate(cleanNote ? `${head}: ${cleanTitle} — ${cleanNote}` : `${head}: ${cleanTitle}`, DISPATCH_PUSH_BODY_MAX)
   return {
     title: mode === 'closed' ? 'Dispatch answered' : 'Dispatch reopened your request',
