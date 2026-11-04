@@ -2,7 +2,7 @@
 name: "A cost timeline for a development: the site's cost, cash and value over time, for devs and controllers"
 number: 257
 group: ready
-status: PR 1 the view, the cost and cash lines, the job chips, the job-naming tooltip and the batched reads built 2026-11-04 as v2.6493 on claude/site-cost-timeline-e043ae, walked live on the real site as the dev at three widths · PR 2 and PR 3 next
+status: PR 1 the view, the cost and cash lines, the job chips, the job-naming tooltip and the batched reads built 2026-11-04 as v2.6493 on claude/site-cost-timeline-e043ae, walked live on the real site as the dev at three widths · PR 2 the amber overhead band built the same day as v2.6498 · PR 3 next
 summary: >
   The owner saw the Job Summary's Charges & Value chart, the step chart of one job's cost to date and
   cash position with an icon on every charge, and asked for the same chart over a whole development,

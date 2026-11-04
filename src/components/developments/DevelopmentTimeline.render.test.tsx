@@ -36,7 +36,7 @@ const jobs: SiteTimelineJob[] = [
 
 describe('DevelopmentTimeline', () => {
   it('draws the chips in order with All jobs pressed, counts the jobs left out, and the chart’s key', () => {
-    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null }} phone={false} />)
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null }} phone={false} />)
     const group = screen.getByRole('group', { name: 'Jobs on the chart' })
     expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['All jobs', 'JP612', 'JP583'])
     expect(screen.getByTestId('timeline-chip-all').getAttribute('aria-pressed')).toBe('true')
@@ -48,7 +48,7 @@ describe('DevelopmentTimeline', () => {
   })
 
   it('a chip narrows the chart to that job and the scope line says so; All jobs brings the site back', () => {
-    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null }} phone={false} />)
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null }} phone={false} />)
     fireEvent.click(screen.getByTestId('timeline-chip-j2'))
     expect(screen.getByTestId('timeline-chip-j2').getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('timeline-chip-all').getAttribute('aria-pressed')).toBe('false')
@@ -62,12 +62,22 @@ describe('DevelopmentTimeline', () => {
   })
 
   it('the chips wrap and the chart fills the width on a phone', () => {
-    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: false, teamLaborNote: 'The clock’s rows did not read, so team labor is not on the chart.' }} phone />)
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: false, teamLaborNote: 'The clock’s rows did not read, so team labor is not on the chart.', overheadNote: 'The overhead ledger is still reading. The amber band lands with it.', overheadSinceLabel: null }} phone />)
     const group = screen.getByTestId('timeline-jobs') as HTMLElement
     expect(group.style.flexWrap).toBe('wrap')
     expect((screen.getByTestId('development-timeline') as HTMLElement).style.minWidth).toBe('0')
     expect(screen.getByTestId('timeline-scope').textContent).toContain('The clock’s rows did not read')
     expect(screen.getByTestId('timeline-scope').textContent).toContain('Fuel could not be told from the other card charges.')
+    expect(screen.getByTestId('timeline-scope').textContent).toContain('The overhead ledger is still reading.')
+    expect(screen.getByText(/cost to date/).textContent).not.toContain('Amber')
+  })
+
+  it('the amber band draws once a job carries overhead days, and the key says where office cost begins (v2.6498)', () => {
+    const withOverhead = jobs.map((j) => (j.jobId === 'j1' ? { ...j, overheadDays: [{ dateKey: '2026-03-02', amount: 120.5 }, { dateKey: '2026-03-15', amount: 80 }] } : j))
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs: withOverhead, fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: 'Feb 19, 2026' }} phone={false} />)
+    const key = screen.getByText(/cost to date/).textContent ?? ''
+    expect(key).toContain('Amber')
+    expect(key).toContain('since Feb 19, 2026, where office cost begins')
   })
 
   it('reading, failed and nothing dated', () => {
@@ -77,7 +87,7 @@ describe('DevelopmentTimeline', () => {
     renderWithProviders(<DevelopmentTimeline read={{ state: 'failed', reason: 'the bank’s rows are closed to you' }} phone={false} />)
     expect(screen.getByTestId('timeline-failed').textContent).toBe('The timeline did not read: the bank’s rows are closed to you')
     cleanup()
-    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs: [job('j3', 'JP953')], fuelKnown: true, teamLaborNote: null }} phone={false} />)
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs: [job('j3', 'JP953')], fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null }} phone={false} />)
     expect(screen.getByText('Nothing dated on this site yet.')).toBeTruthy()
   })
 })
