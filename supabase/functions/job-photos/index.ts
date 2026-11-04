@@ -23,7 +23,8 @@ import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
  *   POST { action: 'list', job_id }            → { folder: { kind: 'pictures' | 'photos' | 'none', url: string | null },
  *                                                  photos: [{ id, name, mime, bytes, modified, from }], capped, waiting }
  *                                                  newest first, pictures only, up to 500; `waiting` counts the job's
- *                                                  checklist and box photos still in a bucket on their way to the folder
+ *                                                  checklist, box, Job photos window and report photos still in a
+ *                                                  bucket on their way to the folder
  *   POST { action: 'thumb', job_id, file_id }   → the file's thumbnail bytes (Drive's, fetched with our token), image/*
  *   POST { action: 'full', job_id, file_id }    → the file's bytes, streamed, up to 25 MB
  *   POST { action: 'files', job_id }           → { job: { folderId, url, hold }, sections: [{ key, name, folderId, url,
@@ -116,13 +117,19 @@ async function picturesIn(token: string, folderId: string, from: 'pictures' | 'p
   return false
 }
 
-/** How many of the job's photos are still in a bucket on their way to the folder: the checklist's and the boxes'. */
+/**
+ * How many of the job's photos are still in a bucket on their way to the folder: the checklist's, the boxes', the Job
+ * photos window's and the reports' (v2.6489 added the last two). One head count a table, each the photo-save cron's
+ * own clause: a job photo counts once Add pressed (`added_at`), a report's once the report saved (`report_id`).
+ */
 async function waitingCount(admin: SupabaseClient, jobId: string): Promise<number> {
-  const [a, b] = await Promise.all([
+  const [a, b, c, d] = await Promise.all([
     admin.from('stage_checklist_answers').select('id', { count: 'exact', head: true }).eq('job_id', jobId).is('photo_filed_at', null).not('photo_storage_path', 'is', null),
     admin.from('job_box_photos').select('id', { count: 'exact', head: true }).eq('job_id', jobId).is('filed_at', null).not('storage_path', 'is', null),
+    admin.from('job_photo_notes').select('id', { count: 'exact', head: true }).eq('job_id', jobId).is('filed_at', null).not('storage_path', 'is', null).not('added_at', 'is', null),
+    admin.from('report_photos').select('id', { count: 'exact', head: true }).eq('job_id', jobId).is('filed_at', null).not('storage_path', 'is', null).not('report_id', 'is', null),
   ])
-  return (a.count ?? 0) + (b.count ?? 0)
+  return (a.count ?? 0) + (b.count ?? 0) + (c.count ?? 0) + (d.count ?? 0)
 }
 
 // ---- the folder listing (v2.6299): what is in the five folders, read live, with what the app filed itself named ----

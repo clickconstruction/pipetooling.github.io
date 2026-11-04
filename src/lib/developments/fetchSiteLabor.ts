@@ -7,29 +7,36 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchLaborPayConfigMap, hoursFrom, resolveRecordedHoursTable } from '../../utils/teamLabor'
-import { fetchAllRowsChunkedIn } from '../supabasePaging'
+import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { allocateSiteLabor, siteLaborFromManHours, type SiteCrewRow, type SiteHoursRow, type SiteLabor } from './siteLabor'
 
 const CREW_READS_AT_ONCE = 6
+
+type PagedResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>
 
 export async function fetchSiteLabor(supabase: SupabaseClient, jobIds: ReadonlyArray<string>): Promise<SiteLabor> {
   const ids = [...new Set(jobIds)]
   const crewRows: SiteCrewRow[] = []
   for (let i = 0; i < ids.length; i += CREW_READS_AT_ONCE) {
     const group = ids.slice(i, i + CREW_READS_AT_ONCE)
+    // Paged (v2.6489): PostgREST cuts an unpaged answer at 1,000 rows with no error, and a job past 1,000 person-days
+    // lost the rest of its hours. The table keys on (work_date, person_name), so that order holds the pages still.
     const results = await Promise.all(
       group.map((id) =>
-        supabase
-          .from('people_crew_jobs')
-          .select('work_date, person_name, person_id, job_assignments, crew_lead_person_name')
-          .contains('job_assignments', JSON.stringify([{ job_id: id }]))
-          .limit(5000),
+        fetchAllRows<SiteCrewRow>(
+          (from, to) =>
+            supabase
+              .from('people_crew_jobs')
+              .select('work_date, person_name, person_id, job_assignments, crew_lead_person_name')
+              .contains('job_assignments', JSON.stringify([{ job_id: id }]))
+              .order('work_date')
+              .order('person_name')
+              .range(from, to) as unknown as PagedResult<SiteCrewRow>,
+          'site labor crew days',
+        ),
       ),
     )
-    for (const r of results) {
-      if (r.error) throw r.error
-      crewRows.push(...((r.data ?? []) as unknown as SiteCrewRow[]))
-    }
+    for (const rows of results) crewRows.push(...rows)
   }
   // No crew row at all: either the site has no hours, or the clock's rows are closed to this reader (a master without
   // payroll approval). The man-hours read the Pipeline uses is open to the office and allocates the same way; it has no days.
@@ -41,7 +48,16 @@ export async function fetchSiteLabor(supabase: SupabaseClient, jobIds: ReadonlyA
   const [hoursRows, config, userIdByPersonId] = await Promise.all([
     fetchAllRowsChunkedIn<SiteHoursRow, string>(
       dates,
-      (chunk, from, to) => hoursFrom(supabase, table).select('person_name, person_id, work_date, hours').in('person_name', persons).in('work_date', chunk).range(from, to) as unknown as PromiseLike<{ data: SiteHoursRow[] | null; error: { message: string } | null }>,
+      // One row per person and day on both relations (`people_hours` is unique on the pair; the recorded view groups
+      // by it), so this order is total and no row slips between pages (v2.6489; the paging contract wants an order).
+      (chunk, from, to) =>
+        hoursFrom(supabase, table)
+          .select('person_name, person_id, work_date, hours')
+          .in('person_name', persons)
+          .in('work_date', chunk)
+          .order('work_date')
+          .order('person_name')
+          .range(from, to) as unknown as PagedResult<SiteHoursRow>,
       'site labor hours',
       { chunkSize: 120, parallel: 3 },
     ),
@@ -71,10 +87,15 @@ async function readUserIdsOfPeople(supabase: SupabaseClient, personIds: string[]
 
 /** The site's hours from `get_man_hours_by_job` (a definer read for dev, master, assistant and controller), filtered to the site on the server; null when it gives nothing. */
 async function readManHours(supabase: SupabaseClient, jobIds: string[]): Promise<SiteLabor | null> {
+  type ManHoursRow = { job_id: string; person_name: string; man_hours: number | string }
   try {
-    const r = await supabase.rpc('get_man_hours_by_job').in('job_id', jobIds).limit(5000)
-    if (r.error || !r.data || (r.data as unknown[]).length === 0) return null
-    return siteLaborFromManHours(jobIds, r.data as Array<{ job_id: string; person_name: string; man_hours: number | string }>)
+    // Paged (v2.6489): the RPC answers one row per job and person, so that order holds the pages still.
+    const rows = await fetchAllRows<ManHoursRow>(
+      (from, to) => supabase.rpc('get_man_hours_by_job').in('job_id', jobIds).order('job_id').order('person_name').range(from, to) as unknown as PagedResult<ManHoursRow>,
+      'site labor man-hours',
+    )
+    if (rows.length === 0) return null
+    return siteLaborFromManHours(jobIds, rows)
   } catch {
     return null
   }
