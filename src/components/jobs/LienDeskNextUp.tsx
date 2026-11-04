@@ -3,6 +3,7 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { groupLienNextUp, isLienReminderRow, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { LIEN_REMINDER_STEPS, type LienReminderRow, type LienReminders } from '../../lib/jobs/lienReminders'
 import { countLienSteps, lienLaddersShown, lienStepCard, lienStepOfRow, type LienStepAt, type LienStepFacts, type LienStepLadder } from '../../lib/jobs/lienNextUpSteps'
+import { EmptyState } from '../EmptyState'
 import { LIEN_JOB_DOOR_TITLE } from './LienJobNumber'
 import { LienStepCardView, LienStepMark, LienStepRail, LienStepRow, useLienStepCard } from './LienDeskSteps'
 
@@ -259,7 +260,8 @@ export default function LienDeskNextUp({
             {LIEN_REMINDER_STEPS[reminderStep - 1]} · {reminderRows.length}{reminderOnList ? ` here · ${reminderOnList} on the list below` : ''}
           </div>
           {reminderRows.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)' }}>{reminderOnList ? 'Every notice on this step is on the list below.' : 'Nothing waiting on this step.'}</div>
+            // A sub-list inside the window: `main` alone, its next step the rung above it (`check:empty-words`).
+            <EmptyState compact main={reminderOnList ? 'Every notice on this step is on the list below.' : 'Nothing waiting on this step.'} />
           ) : (
             reminderRows.map((r) => (
               <div key={r.jobId} data-lien-reminder-row={r.jobId} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.2fr) minmax(0, 1.6fr) auto', gap: isMobile ? 2 : 12, alignItems: 'center', padding: '3px 0' }}>
