@@ -18,21 +18,26 @@ import { fileTextWithin } from './fileText.ts'
 import { folderHomes, folderMetaReader, type HomeAt } from './fileHomes.ts'
 import { WALK_MAX } from './fileIndexKernel.ts'
 import { ocrSetup, ocrText, type OcrSetup } from './ocr.ts'
-import { OCR_KIND_NOTE, OCR_MAX_BYTES, OCR_MIMES, OCR_PER_PASS_MAX, ocrMimeOf, ocrTakes } from './ocrKernel.ts'
+import { OCR_KIND_NOTE, OCR_MAX_BYTES, OCR_PER_PASS_MAX, ocrMimeOf, ocrQueueFilter, ocrTakes } from './ocrKernel.ts'
 import { embeddingsSetup, embedTexts, type EmbeddingsSetup } from './embeddings.ts'
-import { EMBED_CPU_MS_PER_CHUNK, chunkText, chunksCut, chunksCutNote, embedDue } from './embeddingsKernel.ts'
+import { EMBED_CPU_MS_PER_CHUNK, chunkText, chunksCut, chunksCutNote, embedDue, textHasChunks } from './embeddingsKernel.ts'
 import {
   DRIVE_FOLDER_KIND,
   INDEX_BUDGET_MS,
   INDEX_READ_MS,
   PASS_READ_BUDGET_MS,
+  RETAKE_WHYS,
+  RETRY_HOLD_MS,
   budgetAllows,
   indexPlan,
   indexRowOf,
   newPassSpend,
+  ocrRefusedColumns,
   passCursor,
   passMayTake,
+  readColumns,
   readingRowOf,
+  sameInstant,
   settledWhy,
   walkUp,
   type DriveFileMeta,
@@ -222,28 +227,61 @@ export async function indexOneFile(ctx: IndexContext, f: DriveFileMeta, opts: { 
   const row = indexRowOf(f, walk, read, new Date(), ocr)
   const { error } = await ctx.admin.from('file_index').upsert(row, { onConflict: 'drive_file_id' })
   if (error) return { ok: false, error: error.message }
-  if (row.text && ctx.embed) await embedRow(ctx, row.drive_file_id, row.text)
-  // A row that lost its text (a revised file read as slow, big, error or scan) loses its chunks too, whether or not
-  // meaning is set up: stale chunks would find it by wording it no longer has and show that wording as its line.
-  else if (!row.text) await ctx.admin.from('file_index_chunks').delete().eq('drive_file_id', row.drive_file_id)
+  await settleChunks(ctx, row.drive_file_id, row.text, row.indexed_at)
   return { ok: true, held: 'why' in read ? { id: f.id, name: f.name, why: read.why } : null, ocrCalled }
 }
 
 /**
+ * After a row's text is written: embedded when meaning is set up and the text has words. A row that lost its words (a
+ * revised file read as slow, big, error or scan, or one emptied to whitespace, v2.6491) loses its chunks too, whether
+ * or not meaning is set up: stale chunks would find it by wording it no longer has and show that wording as its line.
+ */
+async function settleChunks(ctx: IndexContext, driveFileId: string, text: string | null, indexedAt: string): Promise<void> {
+  if (text && ctx.embed) await embedRow(ctx, driveFileId, text, indexedAt)
+  else if (!textHasChunks(text)) await ctx.admin.from('file_index_chunks').delete().eq('drive_file_id', driveFileId)
+}
+
+/** The note a row keeps when its embedding was passed over because the row was indexed again meanwhile. */
+export const EMBED_STALE_NOTE = 'The file was indexed again while its chunks were made; the next pass takes its new text.'
+
+/**
  * A row's text into chunks with vectors (PR 4): the old chunks go, the new ones land, the row keeps `embedded_at`; a
  * refusal keeps `embed_tried_at` and the provider's reason, and the row is due again a day later. Never throws.
+ *
+ * `indexedAt` is the stamp of the row whose text this is, and every stamp here lands only while the row still carries
+ * it (v2.6491): the provider takes up to twenty seconds, and a press that indexes the file meanwhile writes new text
+ * and new chunks. Before the fence, the old text's chunks landed over the new ones and the stamp called the row
+ * current for good. Now a stamp that finds the row gone on is not written; the chunks this call put in go (by this
+ * call's own stamp, so a newer pass's chunks stay), and the row is left due, so the sweep embeds the text it holds now.
  */
-export async function embedRow(ctx: IndexContext, driveFileId: string, text: string): Promise<{ ok: true; chunks: number } | { ok: false; error: string }> {
+export async function embedRow(ctx: IndexContext, driveFileId: string, text: string, indexedAt: string): Promise<{ ok: true; chunks: number } | { ok: false; error: string }> {
   if (!ctx.embed) return { ok: false, error: 'Search by meaning is not set up.' }
   const now = new Date().toISOString()
+  const stamp = async (patch: Record<string, unknown>): Promise<{ landed: boolean; error: string | null }> => {
+    const r = await ctx.admin.from('file_index').update(patch).eq('drive_file_id', driveFileId).eq('indexed_at', indexedAt).select('drive_file_id')
+    return { landed: !r.error && ((r.data ?? []) as unknown[]).length > 0, error: r.error?.message ?? null }
+  }
+  const stale = async (): Promise<{ ok: false; error: string }> => {
+    await ctx.admin.from('file_index_chunks').delete().eq('drive_file_id', driveFileId).eq('embedded_at', now)
+    await ctx.admin.from('file_index').update({ embedded_at: null }).eq('drive_file_id', driveFileId)
+    return { ok: false, error: EMBED_STALE_NOTE }
+  }
   const chunks = chunkText(text)
   if (chunks.length === 0) {
-    await ctx.admin.from('file_index').update({ embedded_at: now, embed_tried_at: now, embed_note: null }).eq('drive_file_id', driveFileId)
+    // A text with no words keeps no chunks: the old ones would find it by wording it no longer has.
+    const gone = await ctx.admin.from('file_index_chunks').delete().eq('drive_file_id', driveFileId)
+    if (gone.error) {
+      await stamp({ embed_tried_at: now, embed_note: gone.error.message.slice(0, 1000) })
+      return { ok: false, error: gone.error.message }
+    }
+    const s = await stamp({ embedded_at: now, embed_tried_at: now, embed_note: null })
+    if (s.error) return { ok: false, error: s.error }
+    if (!s.landed) return stale()
     return { ok: true, chunks: 0 }
   }
   const answer = await embedTexts(ctx.embed, chunks.map((c) => c.text), 'RETRIEVAL_DOCUMENT')
   if (!answer.ok) {
-    await ctx.admin.from('file_index').update({ embed_tried_at: now, embed_note: answer.error.slice(0, 1000) }).eq('drive_file_id', driveFileId)
+    await stamp({ embed_tried_at: now, embed_note: answer.error.slice(0, 1000) })
     return answer
   }
   const rows = chunks.map((c, i) => ({ drive_file_id: driveFileId, chunk_no: c.chunk_no, text: c.text, embedding: answer.vectors[i], embedded_at: now }))
@@ -251,34 +289,52 @@ export async function embedRow(ctx: IndexContext, driveFileId: string, text: str
   ctx.spend.ms += chunks.length * EMBED_CPU_MS_PER_CHUNK
   const gone = await ctx.admin.from('file_index_chunks').delete().eq('drive_file_id', driveFileId)
   if (gone.error) {
-    await ctx.admin.from('file_index').update({ embed_tried_at: now, embed_note: gone.error.message.slice(0, 1000) }).eq('drive_file_id', driveFileId)
+    await stamp({ embed_tried_at: now, embed_note: gone.error.message.slice(0, 1000) })
     return { ok: false, error: gone.error.message }
   }
   const put = await ctx.admin.from('file_index_chunks').insert(rows)
   if (put.error) {
-    await ctx.admin.from('file_index').update({ embed_tried_at: now, embed_note: put.error.message.slice(0, 1000) }).eq('drive_file_id', driveFileId)
+    await stamp({ embed_tried_at: now, embed_note: put.error.message.slice(0, 1000) })
     return { ok: false, error: put.error.message }
   }
-  await ctx.admin.from('file_index').update({ embedded_at: now, embed_tried_at: now, embed_note: chunksCut(text, chunks) ? chunksCutNote(chunks.length) : null }).eq('drive_file_id', driveFileId)
+  const s = await stamp({ embedded_at: now, embed_tried_at: now, embed_note: chunksCut(text, chunks) ? chunksCutNote(chunks.length) : null })
+  if (s.error) return { ok: false, error: s.error }
+  if (!s.landed) return stale()
   return { ok: true, chunks: rows.length }
 }
 
+/** A row of the embedding pass's queue, as `file_index_embed_due` answers it. */
+interface EmbedQueueRow {
+  drive_file_id: string
+  name: string
+  text: string
+  indexed_at: string
+  embedded_at: string | null
+  embed_tried_at: string | null
+}
+
 /**
- * The embedding pass (PR 4): rows with text and no `embedded_at` (never embedded, or indexed again since: every index
- * write clears the stamp), due now, inside the budget. No Drive read: the text is on the row. PostgREST cannot compare
- * two columns, so the cleared stamp is the whole test.
+ * The embedding pass (PR 4): rows with text whose chunks are missing or older than the text (`embedded_at` null, or
+ * before `indexed_at`), due now, inside the budget. No Drive read: the text is on the row. The queue is the RPC
+ * `file_index_embed_due` (migration 20261104160000, v2.6491), the one place the catch-up rule the partial index holds
+ * can be asked, since PostgREST cannot compare two columns; a queue the database refuses is logged and the pass does
+ * nothing this run.
  */
 export async function embedPass(ctx: IndexContext, n: number, opts: { startedMs?: number; budgetMs?: number } = {}): Promise<{ tried: number; embedded: number; chunks: number; refused: { id: string; name: string; error: string }[] }> {
   const out = { tried: 0, embedded: 0, chunks: 0, refused: [] as { id: string; name: string; error: string }[] }
   if (!ctx.embed || n <= 0) return out
   const now = new Date()
-  const { data } = await ctx.admin.from('file_index').select('drive_file_id, name, text, indexed_at, embedded_at, embed_tried_at').not('text', 'is', null).is('embedded_at', null).order('embed_tried_at', { ascending: true, nullsFirst: true }).limit(n * 3)
+  const { data, error } = await ctx.admin.rpc('file_index_embed_due', { max_rows: n * 3 })
+  if (error) {
+    console.warn('file index embed queue failed', error.message)
+    return out
+  }
   const started = opts.startedMs ?? Date.now()
-  for (const r of (data ?? []) as { drive_file_id: string; name: string; text: string; indexed_at: string; embedded_at: string | null; embed_tried_at: string | null }[]) {
+  for (const r of (data ?? []) as EmbedQueueRow[]) {
     if (out.tried >= n || !budgetAllows(started, Date.now(), opts.budgetMs ?? INDEX_BUDGET_MS) || ctx.spend.ms >= PASS_READ_BUDGET_MS) break
     if (!embedDue(r, now)) continue
     out.tried += 1
-    const e = await embedRow(ctx, r.drive_file_id, r.text)
+    const e = await embedRow(ctx, r.drive_file_id, r.text, r.indexed_at)
     if (e.ok) {
       out.embedded += 1
       out.chunks += e.chunks
@@ -336,23 +392,66 @@ export async function heldRowsFor(admin: SupabaseClient, ids: readonly string[])
   return out
 }
 
-/** The scans due for OCR, of a kind Document AI reads, oldest try first: never tried, or tried over a day ago. Empty when OCR is not set up. */
-export async function ocrPending(ctx: IndexContext, n: number, now: Date = new Date()): Promise<string[]> {
-  if (!ctx.ocr || n <= 0) return []
-  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
-  const { data } = await ctx.admin.from('file_index').select('drive_file_id').eq('text_why', 'scan').in('mime', [...OCR_MIMES]).lte('bytes', OCR_MAX_BYTES).or(`ocr_tried_at.is.null,ocr_tried_at.lt.${cutoff}`).order('ocr_tried_at', { ascending: true, nullsFirst: true }).limit(n)
-  return ((data ?? []) as { drive_file_id: string }[]).map((r) => r.drive_file_id)
+/** A row of the OCR pass's queue: the scan, its file's time (a changed file is read whole) and its index stamp (the fence its patch carries). */
+export interface OcrQueueRow {
+  drive_file_id: string
+  name: string
+  modified_at: string | null
+  indexed_at: string
 }
 
-/** The OCR pass (PR 3): the scans due, each read again from Drive and through the processor, inside the budget. */
+/**
+ * The scans due for OCR, oldest try first: never tried, or tried over a day ago; of a kind Document AI reads by the
+ * row's mime or its name (`ocrQueueFilter`, the plan's own rule, v2.6491: a scanned PDF Drive lists as
+ * `application/octet-stream` was never queued before), within the inline cap. Empty when OCR is not set up.
+ */
+export async function ocrPending(ctx: IndexContext, n: number, now: Date = new Date()): Promise<OcrQueueRow[]> {
+  if (!ctx.ocr || n <= 0) return []
+  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+  const { data } = await ctx.admin.from('file_index').select('drive_file_id, name, modified_at, indexed_at').eq('text_why', 'scan').or(ocrQueueFilter()).lte('bytes', OCR_MAX_BYTES).or(`ocr_tried_at.is.null,ocr_tried_at.lt.${cutoff}`).order('ocr_tried_at', { ascending: true, nullsFirst: true }).limit(n)
+  return (data ?? []) as OcrQueueRow[]
+}
+
+/**
+ * A scan the table already holds, through OCR alone (v2.6491): one download, the bytes to the processor, the row
+ * patched with the text (`readColumns`, as the index writes it, the index stamp moved so the embedding pass takes it)
+ * or the refusal (`ocrRefusedColumns`). Never the `reading` stamp that wiped the text and the try, the parse that
+ * spent the sweep's clock and could leave the row `slow` with no way back, or the second download — the whole index
+ * the pass ran before. The patch lands only while the row is the one the queue read (`indexed_at`); a row a press
+ * indexed again meanwhile is that pass's, and this one's answer is `stale`.
+ */
+async function ocrKnownScan(ctx: IndexContext, f: DriveFileMeta, row: Pick<OcrQueueRow, 'drive_file_id' | 'indexed_at'>): Promise<{ ok: true; held: HeldFile | null; ocrCalled: boolean; stale: boolean } | { ok: false; error: string }> {
+  const now = new Date()
+  const mime = ocrMimeOf(f)
+  if (!mime) {
+    // A kind Document AI does not read (the queue's filter keeps these out; a renamed file is the exception): stamped with the reason, and never due again.
+    const { error } = await ctx.admin.from('file_index').update(ocrRefusedColumns(OCR_KIND_NOTE, now)).eq('drive_file_id', f.id)
+    if (error) return { ok: false, error: error.message }
+    return { ok: true, held: { id: f.id, name: f.name, why: 'scan' }, ocrCalled: false, stale: false }
+  }
+  const r = await ocrScan(ctx, f, mime)
+  const read = r.read ? readColumns(r.read, now, { tried: true, note: null }) : null
+  const put = await ctx.admin.from('file_index').update(read ?? ocrRefusedColumns(r.note, now)).eq('drive_file_id', f.id).eq('indexed_at', row.indexed_at).select('drive_file_id')
+  if (put.error) return { ok: false, error: put.error.message }
+  if (((put.data ?? []) as unknown[]).length === 0) return { ok: true, held: null, ocrCalled: ocrTakes(f), stale: true }
+  if (read) await settleChunks(ctx, f.id, read.text, read.indexed_at)
+  return { ok: true, held: read ? null : { id: f.id, name: f.name, why: 'scan' }, ocrCalled: ocrTakes(f), stale: false }
+}
+
+/**
+ * The OCR pass (PR 3): the scans due, each through the processor inside the budget. A scan whose file is as its row
+ * says goes straight to OCR (`ocrKnownScan`, one download); one whose file changed since is read whole, as any changed
+ * file is, since the parse decides whether it is still a scan.
+ */
 export async function ocrPass(ctx: IndexContext, n: number, opts: { startedMs?: number; budgetMs?: number } = {}): Promise<{ tried: number; read: number; refused: HeldFile[]; gone: number }> {
-  const ids = await ocrPending(ctx, n)
+  const rows = await ocrPending(ctx, n)
   const started = opts.startedMs ?? Date.now()
   let tried = 0
   let read = 0
   let gone = 0
   const refused: HeldFile[] = []
-  for (const id of ids) {
+  for (const row of rows) {
+    const id = row.drive_file_id
     if (!budgetAllows(started, Date.now(), opts.budgetMs ?? INDEX_BUDGET_MS) || ctx.spend.ms >= PASS_READ_BUDGET_MS) break
     const meta = await fileMeta(ctx.google, id)
     if (!meta || meta.trashed) {
@@ -362,12 +461,45 @@ export async function ocrPass(ctx: IndexContext, n: number, opts: { startedMs?: 
       await ctx.admin.from('file_index').update({ ocr_tried_at: new Date().toISOString(), ocr_note: meta ? 'Trashed in Drive.' : 'Drive did not answer for the file.' }).eq('drive_file_id', id)
       continue
     }
-    if (!passMayTake(meta, ctx.spend)) break
+    const changed = !sameInstant(meta.modifiedTime, row.modified_at)
+    if (changed && !passMayTake(meta, ctx.spend)) break
     tried += 1
-    const r = await indexOneFile(ctx, meta, { ocr: true })
+    const r = changed ? await indexOneFile(ctx, meta, { ocr: true }) : await ocrKnownScan(ctx, meta, row)
+    if (r.ok && 'stale' in r && r.stale) continue
     if (r.ok && !r.held) read += 1
     else if (r.ok && r.held) refused.push(r.held)
     else refused.push({ id, name: meta.name, why: 'error' })
   }
   return { tried, read, refused, gone }
+}
+
+/**
+ * The retake (v2.6491): rows held `slow` (the read ran out of time) or `reading` (a request the platform stopped) an
+ * hour or more ago (`RETRY_HOLD_MS`, as a press's retry waits), oldest check first, taken again through the one pass
+ * with `retry`. The sweep's own pass never retried a held row, so a scan the OCR catch-up once read as `slow` on a
+ * spent clock sat held for good. A row slow again waits another hour; a file Drive no longer answers for, or trashed,
+ * is checked now so it leaves the head until the recheck drops its row.
+ */
+export async function retakePass(ctx: IndexContext, n: number, opts: { startedMs?: number; budgetMs?: number } = {}): Promise<{ tried: number; read: number; held: HeldFile[] }> {
+  const out = { tried: 0, read: 0, held: [] as HeldFile[] }
+  if (n <= 0) return out
+  const cutoff = new Date(Date.now() - RETRY_HOLD_MS).toISOString()
+  const { data } = await ctx.admin.from('file_index').select('drive_file_id').in('text_why', [...RETAKE_WHYS]).lt('checked_at', cutoff).order('checked_at', { ascending: true }).limit(n)
+  const started = opts.startedMs ?? Date.now()
+  for (const { drive_file_id: id } of (data ?? []) as { drive_file_id: string }[]) {
+    if (!budgetAllows(started, Date.now(), opts.budgetMs ?? INDEX_BUDGET_MS) || ctx.spend.ms >= PASS_READ_BUDGET_MS) break
+    const meta = await fileMeta(ctx.google, id)
+    if (!meta || meta.trashed) {
+      await ctx.admin.from('file_index').update({ checked_at: new Date().toISOString() }).eq('drive_file_id', id)
+      continue
+    }
+    if (!passMayTake(meta, ctx.spend)) break
+    const pass = await indexFiles(ctx, [meta], { retry: true, max: 1, startedMs: started, budgetMs: opts.budgetMs })
+    if (pass.remaining > 0) break
+    if (pass.planned === 0) continue
+    out.tried += 1
+    if (pass.held.length === 0) out.read += 1
+    else out.held.push(...pass.held)
+  }
+  return out
 }

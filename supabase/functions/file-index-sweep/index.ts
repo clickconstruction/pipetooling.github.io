@@ -1,9 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, googleAccessToken } from '../_shared/driveUpload.ts'
-import { embedPass, filesChangedSince, indexContext, indexFiles, ocrPass, type IndexContext } from '../_shared/fileIndex.ts'
+import { embedPass, filesChangedSince, indexContext, indexFiles, ocrPass, retakePass, type IndexContext } from '../_shared/fileIndex.ts'
 import { SWEEP_EMBED_ROWS } from '../_shared/embeddingsKernel.ts'
-import { indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_OCR_ROWS, SWEEP_RECHECK_ROWS, SWEEP_STAMP_KEY, sweepSince, sweepStamp, type HeldFile } from '../_shared/fileIndexKernel.ts'
+import { indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_OCR_ROWS, SWEEP_RECHECK_ROWS, SWEEP_RETAKE_ROWS, SWEEP_STAMP_KEY, sweepSince, sweepStamp, type HeldFile } from '../_shared/fileIndexKernel.ts'
 
 /**
  * file-index-sweep — Search every file deeply (punch list #240, PR 1, v2.6319): the cron that keeps our own text index
@@ -23,15 +23,22 @@ import { indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_OCR_ROWS, SWEEP_REC
  *        page of files the backfill already indexed never holds the stamp. A quiet drive costs one Drive list, the
  *        rechecks and no writes.
  *     4. OCR (PR 3, v2.6336): once the secret GOOGLE_DOCAI_PROCESSOR names a Document AI OCR processor, `ocr` (5)
- *        scans due for a read (never tried, or tried over a day ago; of a kind Document AI reads) go through it,
- *        oldest try first, so the scans the backfill held catch up by themselves. Step 1 makes at most five OCR calls
- *        of its own (OCR_PER_PASS_MAX, as every pass does), so steps 1 and 4 spend at most ten a run; the
- *        reconcile step (v2.6417) is a pass of its own and may spend five more, and each rechecked file that changed one.
- *     5. Meaning (PR 4, v2.6338): once the secret GEMINI_API_KEY is set, `embed` (10) rows with text whose chunks are
- *        missing or older than the text get their vectors, so every file indexed before the key catches up.
+ *        scans due for a read (never tried, or tried over a day ago; of a kind Document AI reads by the row's mime or
+ *        its name, v2.6491) go through it, oldest try first, so the scans the backfill held catch up by themselves. A
+ *        scan whose file is as its row says costs one download, its bytes straight to the processor (v2.6491); one
+ *        whose file changed is read whole. Step 1 makes at most five OCR calls of its own (OCR_PER_PASS_MAX, as every
+ *        pass does), so steps 1 and 4 spend at most ten a run; the reconcile step (v2.6417) is a pass of its own and
+ *        may spend five more, and each rechecked or retaken file that changed, or is a scan, one.
+ *     5. Retake (v2.6491): `retake` (5) rows held `slow` or `reading` whose last check is an hour old are taken again
+ *        through the one pass with retry, oldest first, so a read that ran out of time on a spent clock is not held
+ *        for good.
+ *     6. Meaning (PR 4, v2.6338): once the secret GEMINI_API_KEY is set, `embed` (10) rows with text whose chunks are
+ *        missing or older than the text (the RPC file_index_embed_due, v2.6491) get their vectors, so every file
+ *        indexed before the key catches up, and one indexed again while its chunks were made is embedded again.
  *
  *   → { success, since, listed, more, indexed, held: [{ id, name, why }], remaining, rechecked, dropped, ocr: { set_up,
- *     tried, read, refused, gone }, embed: { set_up, tried, embedded, chunks, refused }, stamp, line }
+ *     tried, read, refused, gone }, retake: { tried, read, held }, embed: { set_up, tried, embedded, chunks, refused },
+ *     stamp, line }
  *
  * Refusals: 401 without the secret, 405 for anything but POST, 503 without the Drive secret, 409 `{ noRoot }` when
  * the jobs root is not set anywhere (nothing to list). Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET,
@@ -105,10 +112,11 @@ serve(async (req) => {
     const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
     if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 503)
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
-    const body = (await req.json().catch(() => ({}))) as { sweep?: { limit?: unknown; recheck?: unknown; ocr?: unknown; embed?: unknown } }
+    const body = (await req.json().catch(() => ({}))) as { sweep?: { limit?: unknown; recheck?: unknown; ocr?: unknown; retake?: unknown; embed?: unknown } }
     const limit = Math.min(200, Math.max(1, Number(body.sweep?.limit) || SWEEP_MAX_FILES))
     const recheck = Math.min(100, Math.max(0, Number.isFinite(Number(body.sweep?.recheck)) && body.sweep?.recheck != null ? Number(body.sweep.recheck) : SWEEP_RECHECK_ROWS))
     const ocrN = Math.min(50, Math.max(0, Number.isFinite(Number(body.sweep?.ocr)) && body.sweep?.ocr != null ? Number(body.sweep.ocr) : SWEEP_OCR_ROWS))
+    const retakeN = Math.min(50, Math.max(0, Number.isFinite(Number(body.sweep?.retake)) && body.sweep?.retake != null ? Number(body.sweep.retake) : SWEEP_RETAKE_ROWS))
     const embedN = Math.min(100, Math.max(0, Number.isFinite(Number(body.sweep?.embed)) && body.sweep?.embed != null ? Number(body.sweep.embed) : SWEEP_EMBED_ROWS))
     const started = Date.now()
     const google = await googleAccessToken(saJson)
@@ -125,6 +133,7 @@ serve(async (req) => {
     if (next) await admin.from('app_settings').upsert({ key: SWEEP_STAMP_KEY, value_text: next }, { onConflict: 'key' })
     const re = recheck > 0 ? await recheckRows(ctx, recheck) : { rechecked: 0, dropped: 0, changed: 0, held: [] as HeldFile[] }
     const ocr = ctx.ocr && ocrN > 0 ? await ocrPass(ctx, ocrN, { startedMs: started }) : { tried: 0, read: 0, refused: [] as HeldFile[], gone: 0 }
+    const retake = retakeN > 0 ? await retakePass(ctx, retakeN, { startedMs: started }) : { tried: 0, read: 0, held: [] as HeldFile[] }
     const embed = ctx.embed && embedN > 0 ? await embedPass(ctx, embedN, { startedMs: started }) : { tried: 0, embedded: 0, chunks: 0, refused: [] as { id: string; name: string; error: string }[] }
     const answer = { indexed: pass.indexed + re.changed, held: [...pass.held, ...re.held], remaining: pass.remaining }
     let reconcile: ReconcileStep | null = null
@@ -145,11 +154,12 @@ serve(async (req) => {
       rechecked: re.rechecked,
       dropped: re.dropped,
       ocr: { set_up: Boolean(ctx.ocr), ...ocr },
+      retake,
       embed: { set_up: Boolean(ctx.embed), ...embed },
       stamp: next ?? stamp,
       reconcile,
       ms: Date.now() - started,
-      line: `${indexPassWords(answer)}${re.dropped ? ` Dropped ${re.dropped} gone.` : ''}${ocr.tried ? ` OCR read ${ocr.read} of ${ocr.tried} scans.` : ''}${embed.tried ? ` Embedded ${embed.embedded} of ${embed.tried} files.` : ''}`,
+      line: `${indexPassWords(answer)}${re.dropped ? ` Dropped ${re.dropped} gone.` : ''}${ocr.tried ? ` OCR read ${ocr.read} of ${ocr.tried} scans.` : ''}${retake.tried ? ` Retook ${retake.read} of ${retake.tried} held files.` : ''}${embed.tried ? ` Embedded ${embed.embedded} of ${embed.tried} files.` : ''}`,
     })
   } catch (e) {
     console.error('file-index-sweep failed', e)

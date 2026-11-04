@@ -58,6 +58,11 @@ export function chunkText(text: string, opts: { size?: number; overlap?: number;
   return out
 }
 
+/** Whether a text has words to chunk at all: the rule `chunkText` cuts by, so a row whose text is whitespace keeps no chunks (v2.6491). */
+export function textHasChunks(text: string | null | undefined): boolean {
+  return Boolean(text && text.replace(/\s+/g, ' ').trim())
+}
+
 /** Whether the chunks stop short of the text (the cap): the row keeps a note, so a search knows the back half is unread. */
 export function chunksCut(text: string, chunks: readonly { text: string }[]): boolean {
   const clean = text.replace(/\s+/g, ' ').trim()

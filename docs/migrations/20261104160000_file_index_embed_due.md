@@ -1,0 +1,9 @@
+# 20261104160000_file_index_embed_due.sql (2026-11-04, v2.6491)
+
+Search every file deeply (punch list #240): the embedding pass's queue as the partial index holds it.
+
+- **`public.file_index_embed_due(max_rows integer DEFAULT 30)`** — SECURITY INVOKER, STABLE, `search_path = public`: the rows of `file_index` with text whose chunks are missing or older than the text (`embedded_at IS NULL OR embedded_at < indexed_at`, the predicate of `file_index_embed_due_idx` from [`20261102051500`](./20261102051500_file_index_meaning.md), so the index serves it), ordered `embed_tried_at NULLS FIRST` (never tried first, then the oldest try), at most `max_rows` (clamped to 1–300); each row carries `drive_file_id`, `name`, `text`, `indexed_at`, `embedded_at`, `embed_tried_at`. Execute for `service_role` alone; revoked from `PUBLIC`, `anon` and `authenticated`, since the rows carry every file's text.
+
+**Why**: PostgREST cannot compare two columns, so `embedPass` (`_shared/fileIndex.ts`) asked for `embedded_at IS NULL` alone. Every index write clears the stamp, so that was the whole rule until a stamp written after a re-index — the 2026-11-04 review's first defect — called a row current with the old text's chunks; v2.6491 fences the stamp on `indexed_at` and reads the queue through this function, so a row whose stamp is older than its index is taken whichever way it got there.
+
+**Apply order**: push before `file-index-sweep`, `drive-link` and `dev-mcp` are redeployed with v2.6491 (the sweep's embedding step calls the function; the other two run the shared pass whose `embedRow` changed). Deployed ahead of the push, the sweep's embedding step logs the refusal and embeds nothing that run; nothing else is affected. Then `npm run gen-types:linked` and `node scripts/build-dev-mcp-catalog.mjs` as the types PR, so the dev seat's catalog names the function.
