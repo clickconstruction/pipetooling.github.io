@@ -1,8 +1,8 @@
 ---
 name: "Bring back a teammate who left: one press for the login and the roster row, a new stint, the stale rows"
 number: 256
-group: gated
-status: card and mock-up 2026-11-03 · nothing built · tenure (from the day back), roadmap (90 days) and wage (required) answered · one call open
+group: ready
+status: card and mock-up 2026-11-03 · nothing built · all four calls answered the same day (tenure from the day back, roadmap 90 days, wage required, training mode off)
 summary: >
   A tech finished their last day on 2026-11-03 and plans to come back in three years. End employment
   closes them out well, but the way back is a dev's undo, not a return. Restore brings back the login
@@ -13,9 +13,9 @@ summary: >
   archived desk: a back-on date, both halves restored together, a new stint kept beside the old one,
   and the rows three years made stale (sign-in, wage, leader, licenses, paperwork). Hire finds the
   archived match and offers it.
-next: the owner's last open call (training mode on by default); then PR 1, the kernel.
+next: PR 1, the kernel `src/lib/people/bringBack.ts`.
 size: M as a train of five (S · M · M · S · S)
-blocker: The owner's last open call below.
+blocker: None.
 opinion: build draft 1 as drawn after the second pass. Keep the account; never re-hire a returner as a new person, since the hours log, the logbook, the HR file and every job's history hang off the old account.
 mockup: to-dos/bring-back-a-teammate/mockup.html
 ---
@@ -71,7 +71,7 @@ licenses, the HR file, paperwork. That is why a returner must come back on the s
    - Vehicle and housing, optional, as today.
 6. **Old roadmap tasks** come back only when the box is ticked. Off by default after 90 days away (call 2). `restore-user`
    takes a flag that discards the parked rows before the flip, so the trigger has nothing to give back.
-7. **Start in training mode**, ticked by default, as Hire offers it.
+7. **Start in training mode**, as Hire offers it, unticked by default (call 4).
 8. **Hire finds them.** A name or email that matches an archived person stops the form: *"… left on Nov 3, 2026.
    Their hours, logbook and HR file are on that account."* with Bring back and *This is someone else*.
 
@@ -84,7 +84,7 @@ licenses, the HR file, paperwork. That is why a returner must come back on the s
    days it starts unticked. The office can tick or untick it either way.
 3. **Wage.** Answered 2026-11-03: yes, required. The wage row must be pressed, Keep or Change, before Bring back
    finishes. It has no Leave open.
-4. **Training mode on by default** for a returner, as for a new hire?
+4. **Training mode.** Answered 2026-11-03: off by default. A returner knows the app; the box is there to tick.
 
 ## Alternatives weighed
 
