@@ -62,6 +62,21 @@ function box(contactId = 'c-greg', more: { jobFilter?: string | null; io?: Reply
 }
 
 describe('ReplyBox: the reply box at the foot of a thread (Messages, cut 3)', () => {
+  it('a press in an email’s words wakes a folded box on the kind it asked for (v2.6513, startKind)', () => {
+    const open = { ...thread('c-greg', null), foldBox: true }
+    renderWithProviders(
+      <MessagesRereadContext.Provider value={vi.fn()}>
+        <OpenThreadContext.Provider value={open}>
+          <ReplyBox papersIo={noPapers} contact={open.contact} io={fakeIo()} loadBoxes={NO_BOXES} startKind="email" />
+        </OpenThreadContext.Provider>
+      </MessagesRereadContext.Provider>,
+    )
+    const el = document.querySelector('[data-reply-box]') as HTMLElement
+    expect(el.getAttribute('data-reply-fold')).toBeNull()
+    expect(within(el).getByRole('radio', { name: 'Email' }).getAttribute('aria-checked')).toBe('true')
+    expect(within(el).getByRole('button', { name: 'Send email…' })).toBeTruthy()
+  })
+
   it('starts as a text for a number that can take one, ringed, with the company’s from line floating in the empty box', () => {
     const { el } = box()
     const kinds = within(el).getByRole('radiogroup', { name: 'Reply as' })

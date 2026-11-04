@@ -39,6 +39,12 @@ describe('opening a thread on /gc (the URL holds it)', () => {
     expect(threadFromSearch(new URLSearchParams('thread=c-greg'))).toEqual({ contactId: 'c-greg', at: null })
     expect(threadFromSearch(new URLSearchParams('view=money'))).toBeNull()
     expect(threadFromSearch(new URLSearchParams('thread=%20'))).toBeNull()
+    // v2.6513: the kind a press asked the box to wake on; a word it does not know is none.
+    expect(threadFromSearch(new URLSearchParams('thread=c-greg&reply=email'))).toEqual({ contactId: 'c-greg', at: null, reply: 'email' })
+    expect(threadFromSearch(new URLSearchParams('thread=c-greg&reply=note'))).toEqual({ contactId: 'c-greg', at: null })
+    expect(withThread(new URLSearchParams('thread=c-old&reply=email'), 'c-greg', null, null, 'text').toString()).toBe('thread=c-greg&reply=text')
+    expect(withThread(new URLSearchParams('thread=c-old&reply=email'), 'c-greg').toString()).toBe('thread=c-greg')
+    expect(withoutThread(new URLSearchParams('view=followUp&thread=c-greg&reply=email')).toString()).toBe('view=followUp')
   })
 
   it('opens and closes a thread and keeps the view and every other param', () => {

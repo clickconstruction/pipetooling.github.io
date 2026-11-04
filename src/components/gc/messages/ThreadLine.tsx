@@ -259,11 +259,23 @@ export function ThreadLine({
   )
 }
 
-/** An event, gray and small, with its time: "Rosa marked the bid lost · 5:05 PM". */
-export function EventLine({ message, time }: { message: ThreadMessage; time: string }) {
+/**
+ * An event, gray and small, with its time: "Rosa marked the bid lost · 5:05 PM". Since v2.6513 a door when the window
+ * gives one: the line a press in an email's words left, *… opened a thread for glenn@… ›*, opens that thread.
+ */
+export function EventLine({ message, time, door }: { message: ThreadMessage; time: string; door?: { label: string; onPress: () => void } | null }) {
   return (
     <div data-thread-event={message.id} style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-      {message.body} · {time}
+      {message.body}
+      {door && (
+        <>
+          {' '}
+          <button type="button" onClick={door.onPress} data-thread-event-door style={{ border: 'none', background: 'transparent', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-blue-700)', cursor: 'pointer' }}>
+            {door.label}
+          </button>
+        </>
+      )}{' '}
+      · {time}
     </div>
   )
 }

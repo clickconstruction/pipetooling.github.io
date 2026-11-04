@@ -425,7 +425,7 @@ export default function Messages() {
             writes={host.writes}
             onOpenJob={host.openJob}
             onOpenRecord={host.openRecord}
-            onShowContact={(id) => thread.openThread(id)}
+            onShowContact={(id, more) => thread.openThread(id, null, more)}
           />
         </MessagesRereadContext.Provider>
       )}

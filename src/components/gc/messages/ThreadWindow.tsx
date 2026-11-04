@@ -23,6 +23,9 @@ import { Chip, type Tone } from '../gcUi'
 import { JobPickerWindow } from './JobPickerWindow'
 import { JobsRail } from './JobsRail'
 import { MessageWindow } from './MessageWindow'
+import { contactForPressValue, contactPressOf, PRESS_WORDS_UI } from '../../../lib/messages/bodyContacts'
+import { useContactPointActs } from './useContactPointActs'
+import type { OpenThreadMore } from './useThreadWindow'
 import type { MessagesWrites } from './messagesWrites'
 import { OpenThreadContext, type OpenThread } from './openThread'
 import { AppFoldLine, EventLine, ThreadLine } from './ThreadLine'
@@ -47,8 +50,8 @@ export interface ThreadWindowProps {
   onOpenJob?: (jobKey: string) => void
   /** Open their record, from ⋯: the company window, or the customer. */
   onOpenRecord?: (c: Contact) => void
-  /** Who is this? joined the number to a person who already had a thread: show theirs. */
-  onShowContact?: (contactId: string) => void
+  /** Who is this? joined the number to a person who already had a thread: show theirs. Since v2.6513 a press on a number or an address in a message's words too, with the box woken on the kind. */
+  onShowContact?: (contactId: string, more?: OpenThreadMore) => void
   /** The sent copies' small print (R8 · 1): `sent_copy_stamps`'s read unless a smoke hands it a fake. */
   stampsIo?: SentStampsIo
 }
@@ -186,6 +189,15 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const court = contact ? courtOf(allLines, contact.id, nowIso, { optedOut: isOptedOut(contact), ...(slots.court?.(contact) ?? {}) }) : null
   const stamps = contact ? stampSentence(contact, allLines, contact.id, nowIso) : null
   const openMessage = openMessageId ? allLines.find((m) => m.id === openMessageId) : undefined
+  // v2.6513: a press on a number or an address in the open message's words, and the line it leaves on this thread.
+  const contactActs = useContactPointActs({ contact: contact ?? null, message: openMessage ?? null, onClose: () => setOpenMessageId(null), onShowContact })
+  /** The door an event line keeps (v2.6513): the thread a press in an email's words opened, when someone still holds that number or address. */
+  const pressDoor = (body: string) => {
+    const press = contactPressOf(body)
+    if (press?.press !== 'thread' || !view || !onShowContact) return null
+    const id = contactForPressValue(view.contacts, press.value)
+    return id ? { label: PRESS_WORDS_UI.openIt, onPress: () => onShowContact(id) } : null
+  }
   // The open thread for a slot's component (cut 3's reply box): given around everything the panel draws.
   const searchJobs = writes.searchJobs
   const openThread = useMemo<OpenThread | null>(
@@ -537,7 +549,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                             {r.label}
                           </div>
                         ) : r.kind === 'event' ? (
-                          <EventLine key={r.message.id} message={r.message} time={r.time} />
+                          <EventLine key={r.message.id} message={r.message} time={r.time} door={pressDoor(r.message.body)} />
                         ) : r.kind === 'fold' ? (
                           <AppFoldLine key={r.id} row={r} onToggle={() => toggleFold(r.id)} />
                         ) : (
@@ -597,6 +609,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
             contact={contact}
             tile={openMessage.jobId ? view?.tiles[openMessage.jobId] : undefined}
             first={slots.messageWindowFirst}
+            contactActs={contactActs}
             onChangeJob={isSentLine(openMessage) ? undefined : () => setPicker({ kind: 'tie', messageId: openMessage.id })}
             onClose={() => setOpenMessageId(null)}
           />

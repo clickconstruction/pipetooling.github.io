@@ -1,0 +1,5 @@
+# 20261104214829_contact_make_for_channel.sql (2026-11-04, v2.6513)
+
+`contact_make_for_channel(p_kind, p_value)`: a SECURITY DEFINER function for the office team (`follow_up_press`) that answers the contact whose number or email address this is (`contact_for_channel`), or makes one when nobody holds it — an `unknown` contact named by the value with its one channel, as the edge's `email_place_address` and `quo_place_number` make one for a sender nobody knows. A signed-in client has no INSERT on `contacts` or `contact_channels` (20261012010000), so the Email and Text presses on a contact point in a message's words (v2.6513, `bodyContacts.ts`) call this and then `name_contact` to put the new person at the same customer or trade partner. The function is called by a press only, never by a read. It takes an advisory lock on the kind and the key, so two presses at once make one contact.
+
+Ships with v2.6513 (PR #7046). **Push right after the merge**: the client calls the function on the press, and `check:calls-ahead` holds the deploy until it exists.

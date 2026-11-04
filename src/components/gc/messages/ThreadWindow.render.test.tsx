@@ -45,6 +45,20 @@ function open(contactId: string, more: { w?: MessagesWrites; slots?: ThreadSlots
 }
 
 describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
+  it('an event line a press in an email’s words left keeps a door to the thread it opened (v2.6513)', () => {
+    const base = spineMessagesView()
+    const press = { ...base.messages.find((m) => m.id === 'm-greg-email-in')!, id: 'm-greg-press', channel: 'event' as const, direction: 'team' as const, who: 'Grace', subject: null, body: "Grace opened a thread for dana@hillside.example from Greg's email of Oct 1.", files: [] }
+    const gone = { ...press, id: 'm-greg-press-gone', body: "Grace opened a thread for nobody@hillside.example from Greg's email of Oct 1." }
+    const onShowContact = vi.fn()
+    renderWithProviders(<ThreadWindow contactId="c-greg" onClose={vi.fn()} view={{ ...base, messages: [...base.messages, press, gone] }} nowIso={DEMO_NOW} writes={writes()} onShowContact={onShowContact} />)
+    const line = document.querySelector('[data-thread-event="m-greg-press"]') as HTMLElement
+    expect(line.textContent).toContain("Grace opened a thread for dana@hillside.example from Greg's email of Oct 1.")
+    fireEvent.click(within(line).getByRole('button', { name: 'open it ›' }))
+    expect(onShowContact).toHaveBeenCalledWith('c-dana')
+    // Nobody holds the other address now: the line keeps no door.
+    expect((document.querySelector('[data-thread-event="m-greg-press-gone"]') as HTMLElement).querySelector('[data-thread-event-door]')).toBeNull()
+  })
+
   it('waits for the read, then says when the person is not in Messages', () => {
     const { rerender } = renderWithProviders(<ThreadWindow contactId="c-greg" onClose={vi.fn()} view={null} nowIso={DEMO_NOW} writes={writes()} />)
     expect(screen.getByText('Loading the thread…')).toBeTruthy()

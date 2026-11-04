@@ -144,6 +144,7 @@ export function ReplyBox({
   billLink = null,
   startWords = null,
   nudge = null,
+  startKind = null,
   stageStepIds = [],
   openStrip = false,
   kinds,
@@ -171,6 +172,11 @@ export function ReplyBox({
    * a text, or an email when the text cannot go (no number, STOP, or Send texts off). Words already typed stay.
    */
   nudge?: NudgeKind | null
+  /**
+   * v2.6513: the kind a press on a number or an address in an email's words asked for (`?reply=`, `NudgedReplyBox`):
+   * the box moves to it and wakes, once per ask. A kind the box does not offer leaves it where it was.
+   */
+  startKind?: Extract<ReplyKind, 'text' | 'email'> | null
   /** A job's box (v2.5629): the steps the job's stage speaks to; their lines lead the strip, the app's own words standing in for a step with no team line. */
   stageStepIds?: readonly string[]
   /** A job's box opens the strip on its own, unless the person folded it by hand. */
@@ -205,6 +211,12 @@ export function ReplyBox({
   const [woke, setWoke] = useState(false)
   // A press anywhere else in the thread folds it too, on any window, with the words kept (v2.6504); a send clears it.
   const [pressedOut, setPressedOut] = useState(false)
+  // v2.6513: a press on a number or an address in an email's words asks for the box on that kind, woken.
+  useEffect(() => {
+    if (!startKind) return
+    setKind(startKind)
+    setWoke(true)
+  }, [startKind])
   // Punch list #126: where the caret is, so a `/` word at it opens the list; the lines are read the first time it does.
   const [caret, setCaret] = useState(0)
   const slashTyped = slashWordAt(body, caret)

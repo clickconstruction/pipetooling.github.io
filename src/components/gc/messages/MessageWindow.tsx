@@ -10,7 +10,7 @@ import { callLength, channelWord, fullWhen, type ThreadMessage } from '../../../
 import { PhoneSheet } from '../../PhoneSheet'
 import { Btn } from '../gcUi'
 import { MessageFiles } from './LineFiles'
-import { MessageBody } from './MessageBody'
+import { MessageBodyContacts, type ContactPointActs } from './MessageBodyContacts'
 import { bodyHtml } from '../../../lib/messages/bodyLinks'
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch] ?? ch)
@@ -22,8 +22,10 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&
  * tools: a later cut's first slot (cut 2's
  * highlight, which reads Remove or Highlight by the selection), Copy, Print or save as PDF, and Share. It is drawn
  * inside the thread window's panel, so a press on its backdrop never reaches the thread's. A sheet from the bottom on a
- * phone (`PhoneSheet`, cut 10). Its words go through `MessageBody` (v2.6508): a web address is one press with a link
- * mark, the sender's `*bold*` reads bold, and the print page draws the same through `bodyHtml`.
+ * phone (`PhoneSheet`, cut 10). Its words go through `MessageBodyContacts` over `bodyLinks.ts`'s pieces: a web address is one
+ * press with a link mark and the sender's `*bold*` reads bold (v2.6508), and a phone number, an email address and a
+ * street address are presses, Call ▾, Text, Email and Open the map, each leaving a line on the thread through the
+ * window's `contactActs` (v2.6513); the print page draws the words through `bodyHtml`.
  */
 export function MessageWindow({
   message,
@@ -32,6 +34,7 @@ export function MessageWindow({
   first,
   onChangeJob,
   onClose,
+  contactActs = null,
 }: {
   message: ThreadMessage
   contact: Contact
@@ -41,6 +44,8 @@ export function MessageWindow({
   /** Tie the line to another job, or untie it. Absent for a sent copy, which keeps its own. */
   onChangeJob?: () => void
   onClose: () => void
+  /** What a press on a number or an address in the words does (v2.6513, `useContactPointActs`); none in a window with no thread. */
+  contactActs?: ContactPointActs | null
 }) {
   const { showToast } = useToastContext()
   const fullRef = useRef<HTMLDivElement | null>(null)
@@ -133,7 +138,7 @@ export function MessageWindow({
           </Btn>
         </div>
         <div ref={fullRef} data-message-full style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', lineHeight: 1.5 }}>
-          <MessageBody body={message.body} />
+          <MessageBodyContacts body={message.body} acts={contactActs} />
         </div>
       </div>
     </PhoneSheet>
