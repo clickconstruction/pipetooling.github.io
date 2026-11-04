@@ -72,6 +72,7 @@ export type SubsHqRow = {
   badges: ComplianceBadge[]
   /** v2.2790: where they stand against the Book's General Conditions; 'none' when the Book has no such document. */
   generalConditions: GeneralConditionsStanding
+  /** Sheets paid in full plus settled step work orders (a sheet's own work order rides on its sheet, never counted twice). */
   settledCount: number
   backchargeTotal: number
   /** v2.2853: newest attributed sheet job date / paid date / accepted work order (YYYY-MM-DD); null = never. */
@@ -178,6 +179,7 @@ export function buildSubsHqRows(input: {
         row.sheetCount += 1
         row.balanceDue += Math.max(0, balance.balance)
         row.backchargeTotal += balance.backcharges
+        if (balance.totalCost > 0 && balance.balance <= 0) row.settledCount += 1
         bumpLastWorked(row, sheet.jobDateYmd, sheet.paidAtYmd)
         continue
       }
@@ -215,7 +217,7 @@ export function buildSubsHqRows(input: {
     if (OPEN_COMMITMENT_STATUSES.has(c.status)) {
       row.openCommitments.push({ stepName: c.stepName, projectName: c.projectName, sheetLabel: c.sheetLabel ?? null, amount: c.amount, status: c.status })
       row.committedTotal += c.amount
-    } else if (c.status === 'settled') {
+    } else if (c.status === 'settled' && !c.sheetLabel) {
       row.settledCount += 1
     }
   }
@@ -304,4 +306,13 @@ export function groupUnattributedSheets(entries: UnattributedSheet[]): Unattribu
         .map((s) => s.id),
     }))
     .sort((a, b) => b.totalBalance - a.totalBalance || a.label.localeCompare(b.label))
+}
+
+/** A sheet's raw assigned name read as people: "Malachi | Abraham" → "Malachi, Abraham". */
+export function assignedNamesLabel(raw: string): string {
+  return raw
+    .split('|')
+    .map((n) => n.trim())
+    .filter(Boolean)
+    .join(', ')
 }

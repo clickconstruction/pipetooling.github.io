@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { buildSubsHqRows, groupUnattributedSheets, type SubsHqResult, type UnattributedGroup } from '../../lib/people/subsHqRows'
+import { assignedNamesLabel, buildSubsHqRows, groupUnattributedSheets, type SubsHqResult, type UnattributedGroup } from '../../lib/people/subsHqRows'
 import { suggestSubSheetAssignee } from '../../lib/people/subSheetNameSuggestion'
 import type { ComplianceBadge } from '../../lib/people/subCompliance'
 import { parseSubWorkOrderSnapshot } from '../../lib/subWorkOrders/subWorkOrder'
@@ -371,6 +371,89 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
     </p>
   )
 
+  /** One sub's documents, drawn in a row under theirs (it used to open below the whole table, out of sight on a long roster). */
+  const renderDocsPanel = (personId: string) => (
+        <div style={{ margin: '0.75rem 0', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.5rem' }}>
+            <h4 style={{ margin: 0, fontSize: '0.8125rem' }}>
+              Documents — {result.rows.find((r) => r.personId === personId)?.name}
+            </h4>
+            {canAddDocument && addingDocForPersonId !== personId ? (
+              <button
+                type="button"
+                onClick={() => setAddingDocForPersonId(personId)}
+                title="File a COI, W-9, license, or a paper-signed agreement — typed from the start so the badge flips"
+                style={{ padding: '0.15rem 0.55rem', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', fontFamily: 'inherit' }}
+              >
+                + Add document
+              </button>
+            ) : null}
+          </div>
+          {canAddDocument && addingDocForPersonId === personId ? (
+            <div style={{ marginBottom: '0.5rem' }}>
+              <SubDocumentAddForm
+                personId={personId}
+                personName={result.rows.find((r) => r.personId === personId)?.name ?? ''}
+                onCancel={() => setAddingDocForPersonId(null)}
+                onSaved={async () => {
+                  setAddingDocForPersonId(null)
+                  await load()
+                }}
+              />
+            </div>
+          ) : null}
+          {(docsByPerson[personId] ?? []).length === 0 ? (
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {canAddDocument
+                ? 'No documents yet — file a COI or W-9 with + Add document, or send a contract from the Contracts tab.'
+                : 'No documents yet — a contracts role can file a COI or W-9 here, or send a contract from the Contracts tab.'}
+            </p>
+          ) : (
+            (docsByPerson[personId] ?? []).map((d) => (
+              <div key={d.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', padding: '0.3rem 0', borderBottom: '1px dashed var(--border)', fontSize: '0.8125rem' }}>
+                <span style={{ minWidth: '10rem' }}>{d.document_name}</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({d.status})</span>
+                {(() => {
+                  const hint = suggestedRetype(d)
+                  return hint ? (
+                    <button
+                      type="button"
+                      disabled={savingDocId === d.id}
+                      onClick={() => void updateDoc(d.id, { doc_type: hint })}
+                      title={`Typed as the Agreement (the default for anything minted on Contracts), but the name reads like a ${SUB_DOCUMENT_TYPE_LABEL[hint]}. Click to retype it.`}
+                      style={{ ...BADGE_STYLE.expiring, border: 'none', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', fontFamily: 'inherit' }}
+                    >
+                      Looks like a {SUB_DOCUMENT_TYPE_LABEL[hint]} — set type
+                    </button>
+                  ) : null
+                })()}
+                <select
+                  value={d.doc_type}
+                  disabled={savingDocId === d.id}
+                  onChange={(e) => void updateDoc(d.id, { doc_type: e.target.value })}
+                  style={{ padding: '0.15rem 0.3rem', borderRadius: 5, border: '1px solid var(--border)', fontSize: '0.78rem' }}
+                >
+                  {DOC_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  expires
+                  <FinishedDateInput
+                    aria-label={`${d.document_name} expires`}
+                    value={d.expires_at ?? ''}
+                    onCommit={(day) => void updateDoc(d.id, { expires_at: day })}
+                    style={{ padding: '0.15rem 0.3rem', borderRadius: 5, border: '1px solid var(--border)', fontSize: '0.78rem' }}
+                  />
+                </label>
+              </div>
+            ))
+          )}
+        </div>
+  )
+
   return (
     <div>
       {actionableGroups.length > 0 && (
@@ -387,7 +470,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
             ⚠ {actionableSheetCount} sub {actionableSheetCount === 1 ? "sheet isn't" : "sheets aren't"} linked to anyone on the roster
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', margin: '0.15rem 0 0.5rem' }}>
-            Their balances are missing from every sub's Owed column until they're fixed.
+            Their open balances are missing from every sub's Balance due column until each sheet is linked.
           </div>
           {visibleGroups.map((g) => {
             const suggestion = suggestionByGroup.get(g.key)
@@ -426,12 +509,12 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                 {g.sheetCount > 1 && (
                   <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>· {g.sheetCount} sheets</span>
                 )}
-                <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                <span style={{ color: 'var(--text-muted)' }} title={g.rawAssignedTo ? `Written on the sheet as "${g.rawAssignedTo}"` : undefined}>
                   Assigned to:{' '}
                   {g.rawAssignedTo ? (
-                    <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-strong)' }}>"{g.rawAssignedTo}"</span>
+                    <span style={{ color: 'var(--text-strong)' }}>{assignedNamesLabel(g.rawAssignedTo)}</span>
                   ) : (
-                    '— (blank)'
+                    'nobody (blank)'
                   )}
                 </span>
                 <span
@@ -706,7 +789,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                         type="button"
                         onClick={() => personDesk.open({ personId: row.personId, displayName: row.name })}
                         title={`Open ${row.name}'s desk`}
-                        style={{ fontWeight: 650, border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
+                        style={{ fontWeight: 650, border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontFamily: 'inherit', fontSize: 'inherit', textAlign: 'left', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
                       >
                         {row.name}
                       </button>
@@ -787,7 +870,15 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                 </td>
               </tr>
               )
-              return sectionRow ? [sectionRow, tr] : [tr]
+              const docsRow =
+                expandedPersonId === row.personId ? (
+                  <tr key={`${row.personId}-docs`}>
+                    <td colSpan={6} style={{ padding: '0 0.6rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
+                      {renderDocsPanel(row.personId)}
+                    </td>
+                  </tr>
+                ) : null
+              return [sectionRow, tr, docsRow].filter((r): r is JSX.Element => r != null)
             })}
             {benchFilter === 'bench' && benchRows.bench.length === 0 ? (
               <tr>
@@ -800,87 +891,6 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
         </table>
       </div>
 
-      {expandedPersonId && (
-        <div style={{ margin: '0.75rem 0', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.5rem' }}>
-            <h4 style={{ margin: 0, fontSize: '0.8125rem' }}>
-              Documents — {result.rows.find((r) => r.personId === expandedPersonId)?.name}
-            </h4>
-            {canAddDocument && addingDocForPersonId !== expandedPersonId ? (
-              <button
-                type="button"
-                onClick={() => setAddingDocForPersonId(expandedPersonId)}
-                title="File a COI, W-9, license, or a paper-signed agreement — typed from the start so the badge flips"
-                style={{ padding: '0.15rem 0.55rem', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', fontFamily: 'inherit' }}
-              >
-                + Add document
-              </button>
-            ) : null}
-          </div>
-          {canAddDocument && addingDocForPersonId === expandedPersonId ? (
-            <div style={{ marginBottom: '0.5rem' }}>
-              <SubDocumentAddForm
-                personId={expandedPersonId}
-                personName={result.rows.find((r) => r.personId === expandedPersonId)?.name ?? ''}
-                onCancel={() => setAddingDocForPersonId(null)}
-                onSaved={async () => {
-                  setAddingDocForPersonId(null)
-                  await load()
-                }}
-              />
-            </div>
-          ) : null}
-          {(docsByPerson[expandedPersonId] ?? []).length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              {canAddDocument
-                ? 'No documents yet — file a COI or W-9 with + Add document, or send a contract from the Contracts tab.'
-                : 'No documents yet — a contracts role can file a COI or W-9 here, or send a contract from the Contracts tab.'}
-            </p>
-          ) : (
-            (docsByPerson[expandedPersonId] ?? []).map((d) => (
-              <div key={d.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', padding: '0.3rem 0', borderBottom: '1px dashed var(--border)', fontSize: '0.8125rem' }}>
-                <span style={{ minWidth: '10rem' }}>{d.document_name}</span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({d.status})</span>
-                {(() => {
-                  const hint = suggestedRetype(d)
-                  return hint ? (
-                    <button
-                      type="button"
-                      disabled={savingDocId === d.id}
-                      onClick={() => void updateDoc(d.id, { doc_type: hint })}
-                      title={`Typed as the Agreement (the default for anything minted on Contracts), but the name reads like a ${SUB_DOCUMENT_TYPE_LABEL[hint]}. Click to retype it.`}
-                      style={{ ...BADGE_STYLE.expiring, border: 'none', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', fontFamily: 'inherit' }}
-                    >
-                      Looks like a {SUB_DOCUMENT_TYPE_LABEL[hint]} — set type
-                    </button>
-                  ) : null
-                })()}
-                <select
-                  value={d.doc_type}
-                  disabled={savingDocId === d.id}
-                  onChange={(e) => void updateDoc(d.id, { doc_type: e.target.value })}
-                  style={{ padding: '0.15rem 0.3rem', borderRadius: 5, border: '1px solid var(--border)', fontSize: '0.78rem' }}
-                >
-                  {DOC_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  expires
-                  <FinishedDateInput
-                    aria-label={`${d.document_name} expires`}
-                    value={d.expires_at ?? ''}
-                    onCommit={(day) => void updateDoc(d.id, { expires_at: day })}
-                    style={{ padding: '0.15rem 0.3rem', borderRadius: 5, border: '1px solid var(--border)', fontSize: '0.78rem' }}
-                  />
-                </label>
-              </div>
-            ))
-          )}
-        </div>
-      )}
 
     </div>
   )
