@@ -156,6 +156,10 @@ Rest the pointer on a step to read its lines. Each line names the job and the ki
 
 Press a job's chip above the chart to narrow the chart to that job. Press more chips to add jobs. Press {{button:outline|All jobs}} to see the whole site again. A job with no dated charge or payment is not a chip. One line counts how many were left out.
 
+Tick {{button:outline|Value created (right axis)}} to see the blue line. The blue line is each job's percent done times its price, added up over the site. The line steps on every field report and every hand set percent. A job with no dated percent adds its current percent at the end of the line.
+
+Press {{button:outline|Print or save as PDF}} under the chart. The chart opens in a print window. From there you print it or save it as a PDF.
+
 The reads start when you open the view. On a big site the icons mark the biggest days only. The page remembers the view you were in.
 
 ## Check the plans and the questions

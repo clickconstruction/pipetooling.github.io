@@ -1,8 +1,8 @@
 ---
 name: "A cost timeline for a development: the site's cost, cash and value over time, for devs and controllers"
 number: 257
-group: ready
-status: PR 1 the view, the cost and cash lines, the job chips, the job-naming tooltip and the batched reads built 2026-11-04 as v2.6493 on claude/site-cost-timeline-e043ae, walked live on the real site as the dev at three widths · PR 2 the amber overhead band built the same day as v2.6498 · PR 3 next
+group: close
+status: built 2026-11-04 · PR 1 the view, the cost and cash lines, the job chips, the job-naming tooltip and the batched reads v2.6493 on claude/site-cost-timeline-e043ae, walked live on the real site as the dev at three widths · PR 2 the amber overhead band v2.6498 · PR 3 value created and Print v2.6499 · left: the owner's two calls below
 summary: >
   The owner saw the Job Summary's Charges & Value chart, the step chart of one job's cost to date and
   cash position with an icon on every charge, and asked for the same chart over a whole development,
@@ -13,7 +13,7 @@ summary: >
   more jobs. The kernel is the Job Summary's own, with a job id on its events, so the red line ends at
   the sum of the jobs' Job Summary costs by construction; the reads are the site's batched reads,
   never one round per job.
-next: PR 1, then PR 2 the amber overhead band, then PR 3 value created and Print.
+next: the owner's two calls, the jobs with no dated event and the phone's view switch; then delete this card.
 size: M (PR 1 the view, the two lines, the chips, the reads) + S (PR 2 the overhead band) + M (PR 3 value created, Print / Save as PDF)
 blocker: None.
 mockup: not required — the chart is the Job Summary's Charges & Value chart at the site's scale, nothing new in shape; the owner approved the written draft in chat on 2026-11-03 and asked for it in its own session

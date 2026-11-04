@@ -14,8 +14,9 @@ export function isThreadFolded(columnWidth: number | null, phone: boolean): bool
 
 /**
  * A short window (v2.6474): a laptop's screen gives the thread about 700 px of height, and the header, the sort card and
- * the reply box took all but a hundred of it. Under this height the window folds by height as it folds by width: the
- * header keeps two rows, and the parts a slot draws read `short` from the open thread to fold themselves to one row.
+ * the reply box took all but a hundred of it. Under this height the window takes its whole height, and the parts a slot
+ * draws read `short` from the open thread to fold themselves to one row. The header folded here too until v2.6505,
+ * which made it the same compact shape at every height (`threadHeader.ts`).
  */
 export const THREAD_SHORT_PX = 820
 
@@ -46,12 +47,4 @@ export function isThreadBeside(columnWidth: number | null, phone: boolean): bool
  */
 export function threadFolds(f: { short: boolean; phone: boolean; beside: boolean }): { card: boolean; box: boolean } {
   return { card: !f.beside, box: f.short || f.phone }
-}
-
-/**
- * Their numbers and addresses under the company: open at a desk (v1.166), folded away on a narrow header so the lines
- * get the room. A press on the arrow decides from then on, either way.
- */
-export function reachOpen(chosen: boolean | null, folded: boolean): boolean {
-  return chosen ?? !folded
 }

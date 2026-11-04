@@ -428,6 +428,7 @@ export function JobChargesTimelineChartView({
   overheadSinceLabel = null,
   valueHiddenNote,
   compact = false,
+  valueWords = '(report % × job total, right axis)',
 }: {
   data: JobChargesTimelineData
   revenue: number | null
@@ -439,6 +440,8 @@ export function JobChargesTimelineChartView({
   valueHiddenNote?: string | null
   /** A shorter plot for a phone's width (v2.6493). */
   compact?: boolean
+  /** The key's words after *Blue = value created* (v2.6499): a site's chart sums every job's. */
+  valueWords?: string
   /** When the overhead window's floor cut off part of the job's history (v2.3289): the first day charged, e.g. "Feb 19, 2026". */
   overheadSinceLabel?: string | null
   /** See `Props.teamLaborIncluded`; defaults to the owner's full-cost reading. */
@@ -595,8 +598,7 @@ export function JobChargesTimelineChartView({
         {valueShown && (
           <>
             {' · '}
-            <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created
-            (report % × job total, right axis)
+            <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created {valueWords}
           </>
         )}
       </p>

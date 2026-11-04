@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-02
+last_updated: 2026-11-04
 ---
 
 ## Overview
@@ -191,7 +191,7 @@ Module scope holds no functions. Every kernel the shell calls is already in `lib
 |---|---|---|
 | [`lib/jobs/jobFormAutosaveSlices.ts`](../src/lib/jobs/jobFormAutosaveSlices.ts) | slice JSON, `buildEditJobIdentityUpdatePayload`, `fixtureInsertRows` / `materialInsertRows` / `paymentInsertRows`, `diffTeamMemberIds`, `identitySliceReadyToSave`, `shouldDemotePaidJobToBilled` | yes |
 | [`lib/jobs/jobFormFooter.ts`](../src/lib/jobs/jobFormFooter.ts) | the footer's rules: `jobFormAutosaveAggregate` (worst-first across the slices), `jobFormAutosaveStatusWords` / `…Color`, `jobFormFooterShowsDelete` (not `primary`; the Job window's Edit region only) | yes |
-| `paymentRowsDiff.ts`, `jobFormCloseFlush.ts` (reached via `useJobFormAutosaveSlice.flushForClose`, not imported by the shell), `jobFormUndo.ts`, `newJobDraftDirty.ts`, `jobFormRows.ts` | payment diff (B5), close flush, undo, discard + import gates, row hydration | yes |
+| `paymentRowsDiff.ts`, `fixtureRowsDiff.ts`, `jobFormCloseFlush.ts` (reached via `useJobFormAutosaveSlice.flushForClose`, not imported by the shell), `jobFormUndo.ts`, `newJobDraftDirty.ts`, `jobFormRows.ts` | payment diff (B5), line-item diff (v2.6420), close flush, undo, discard + import gates, row hydration | yes |
 | `jobFormBreakOff.ts`, `jobSegmentsCoverage.ts`, `segmentGenerator.ts`, `ensureRtbRemainderResult.ts`, `editJobBillingBar.ts`, `editJobInvoiceSendBack.ts`, `splitByPayer.ts`, `stagePlanForm.ts` | money: remaining, coverage, segment net, payer carves, bar, stage plan | yes |
 | `discountLine.ts` (re-export of `supabase/functions/_shared/discountLine.ts`), `discountActivity.ts`, `jobFormFixtureHydrate.ts`, `jobFormReorder.ts` | discount rows, standing offer, discount event diff | yes |
 | `jobFormPaymentPredicates.ts` | Stripe/Mercury lock + `stripeHoldsPaymentReason` / `unlinkedPaymentToastText` | yes |
@@ -259,7 +259,7 @@ Edit mode has **no Save button** (v2.1080): four `useJobFormAutosaveSlice` insta
 
 - **`JobFormStagesGroup`** (4036–4043): the stage-plan read-out; eye toggles call `updateFixtureRow(id, { shared_with_gc })`; "see as customer" opens the shell-owned `JobFormStagesDrawer` (5308–5322, portal link via `useGcPortalLinks`, sample URL when none); `onGoToBill` → `onRequestRegion('bill')`.
 - **`JobStatusStepper`** (4048–4063): quick stage moves + Collections flag; writes itself, calls `onSaved`.
-- **`JobFormEditFactRows`** (4064–4153, 1,214 lines, render-tested): label · value · pencil rows for people, Account Man, customer, GC (`pickGcCustomerId`), who pays (`billToParty`), copy other party, property record (`propertyCandidates`, `customerAddressId`, `onPropertyAdded`, `onOwnerConfirmed`, `onPropertyKindSaved`; owner lookup box v2.3452), links (project, plans, bid, development), and the lien contract row (`contractJob`). The shell passes ~75 props; all state stays shell-side because the identity slice, undo and `applyEditJob` read it. `onCustomerPatched` → `patchCustomerRow` mirrors the GC billing email the row wrote straight to `customers`.
+- **`JobFormEditFactRows`** (4064–4153, 1,214 lines, render-tested): label · value · pencil rows for people, Account Man, customer, GC (`pickGcCustomerId`), who pays (`billToParty`), copy other party, property record (`propertyCandidates`, `customerAddressId`, `onPropertyAdded`, `onOwnerConfirmed`, `onPropertyKindSaved`; owner lookup box v2.3452), links (project, plans, bid, development), the lien contract row (`contractJob`: `JobContractStrip` inline, whose Contract window and Add the contract sheet draw inside the row with no portal; since v2.6464 `ResponsiveModalShell`'s and `AddJobContractSheet`'s overlays set `whiteSpace: 'normal'`, so they wrap against the row's `nowrap`), and last, on an existing job, **Charging the customer** (v2.6448, punch list #254, [`JobFormChargingRow.tsx`](../src/components/jobs/JobFormChargingRow.tsx)): the job's rule for its labor and its own markup, saved straight to the job as you pick through `saveJobChargeRule`, never through the autosave slice, the same columns the Charges window writes. The shell passes ~75 props; all state stays shell-side because the identity slice, undo and `applyEditJob` read it. `onCustomerPatched` → `patchCustomerRow` mirrors the GC billing email the row wrote straight to `customers`.
 
 ### 4–6. New-mode people, customer, links — extracted
 

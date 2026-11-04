@@ -22,23 +22,32 @@ export const OCR_READ_MS = 20_000
 export const OCR_PER_PASS_MAX = 5
 /** The fields the answer carries: the text and the page numbers alone, never each page's image or its layout. */
 export const OCR_FIELD_MASK = 'text,pages.pageNumber'
-/** The `mime` values a row may hold that Document AI reads, for the sweep's queue; a kind outside it is never due. */
+/** The `mime` values a row may hold that Document AI reads; a kind outside it, and outside `OCR_EXTENSION_MIMES` by name, is never due. */
 export const OCR_MIMES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/tiff', 'image/gif', 'image/bmp', 'image/webp'] as const
+/**
+ * The name's extensions Document AI reads, each to the kind the bytes are sent as: Drive lists a scan dropped in from a
+ * phone or a fax line as `application/octet-stream`, and the name is all that says what it is. The plan (`ocrMimeOf`)
+ * and the sweep's queue (`ocrQueueFilter`) read this one list, so a scan the plan would send is one the queue finds.
+ */
+export const OCR_EXTENSION_MIMES: Readonly<Record<string, string>> = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', tif: 'image/tiff', tiff: 'image/tiff', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp' }
 /** The note a scan of a kind Document AI does not read keeps, so its row says why it stays a scan. */
 export const OCR_KIND_NOTE = 'A kind Document AI does not read (HEIC, HEIF, SVG, …); the scan stays a scan.'
 
-/** The kinds Document AI reads: a PDF and the common pictures. Null for a kind it refuses (HEIC among them). */
+/** The kinds Document AI reads: a PDF and the common pictures, by the mime Drive gives, else by the name's extension. Null for a kind it refuses (HEIC among them). */
 export function ocrMimeOf(f: { name: string; mimeType: string }): string | null {
   const mime = f.mimeType.toLowerCase()
-  const name = f.name.toLowerCase()
-  if (mime === 'application/pdf' || name.endsWith('.pdf')) return 'application/pdf'
-  if (mime === 'image/jpeg' || mime === 'image/jpg' || /\.jpe?g$/.test(name)) return 'image/jpeg'
-  if (mime === 'image/png' || name.endsWith('.png')) return 'image/png'
-  if (mime === 'image/tiff' || /\.tiff?$/.test(name)) return 'image/tiff'
-  if (mime === 'image/gif' || name.endsWith('.gif')) return 'image/gif'
-  if (mime === 'image/bmp' || name.endsWith('.bmp')) return 'image/bmp'
-  if (mime === 'image/webp' || name.endsWith('.webp')) return 'image/webp'
-  return null
+  if ((OCR_MIMES as readonly string[]).includes(mime)) return mime === 'image/jpg' ? 'image/jpeg' : mime
+  const ext = /\.([a-z0-9]+)$/.exec(f.name.toLowerCase())?.[1]
+  return ext ? OCR_EXTENSION_MIMES[ext] ?? null : null
+}
+
+/**
+ * The queue's test of a row's kind, as PostgREST's `or` takes it: the mime one Document AI reads, or the name ending in
+ * an extension it reads (v2.6491). The same rule as `ocrMimeOf`, on the row's columns, so a scanned PDF Drive lists as
+ * `application/octet-stream` is queued by its name instead of waiting for the file to change.
+ */
+export function ocrQueueFilter(): string {
+  return [`mime.in.(${OCR_MIMES.join(',')})`, ...Object.keys(OCR_EXTENSION_MIMES).map((ext) => `name.ilike.*.${ext}`)].join(',')
 }
 
 /** Whether Document AI can take this file at all: a kind it reads, within the inline cap. One it cannot take is stamped once with the reason and is never due again. */

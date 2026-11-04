@@ -15,6 +15,12 @@ afterEach(cleanup)
 
 const ME: Teammate = { id: 'u-robert', name: 'Robert', role: 'estimator' }
 const ROSA: Teammate = { id: 'u-rosa', name: 'Rosa', role: 'assistant' }
+/** The real team's shape (v2.6506): an owner, a dev, a controller and a second estimator beside Rosa. */
+const MALACHI: Teammate = { id: 'u-malachi', name: 'Malachi', role: 'master_technician' }
+const WILLIAM: Teammate = { id: 'u-william', name: 'William', role: 'dev' }
+const CAL: Teammate = { id: 'u-cal', name: 'Cal', role: 'controller' }
+const WENDI: Teammate = { id: 'u-wendi', name: 'Wendi', role: 'estimator' }
+const WIDE_TEAM = [ME, WILLIAM, ROSA, MALACHI, WENDI, CAL]
 
 const greg = (patch: Partial<FollowUpContact> = {}): FollowUpContact => ({
   id: 'greg',
@@ -136,5 +142,93 @@ describe('WhoHasItPill: who is off (v2.6060, punch list #141 PR 4)', () => {
     cleanup()
     renderPill(greg({ has: 'Rosa', hasUserId: 'u-rosa' }), { nowIso: LATE_WED })
     expect(screen.getByRole('button', { name: 'Rosa has this' })).toBeTruthy()
+  })
+})
+
+/** A phone's width: `useNarrowViewport640` reads matchMedia, which jsdom lacks, so a wide screen is the default. */
+function phoneWidth(): () => void {
+  const was = window.matchMedia
+  window.matchMedia = ((q: string) => ({ matches: q.includes('640'), media: q, addEventListener: () => {}, removeEventListener: () => {}, onchange: null, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+  return () => {
+    window.matchMedia = was
+  }
+}
+
+/** A row's name line: the span after the hidden avatar, its first line. */
+const rowName = (row: HTMLElement) => row.querySelector('[aria-hidden]')?.nextElementSibling?.firstElementChild?.textContent ?? ''
+
+describe('WhoHasItPill: the menu finds a person and leads with the office (v2.6506)', () => {
+  it('focuses the search box on open, lists the office and estimators first, then the owner and devs, each by name', () => {
+    renderPill(greg(), { team: WIDE_TEAM })
+    fireEvent.click(screen.getByRole('button', { name: 'Nobody has it · Take it' }))
+    const box = screen.getByRole('textbox', { name: 'Find a teammate' }) as HTMLInputElement
+    expect(document.activeElement).toBe(box)
+    expect(box.placeholder).toBe('Type a name')
+    expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Office and estimators', 'Owner and devs'])
+    expect(screen.getAllByRole('menuitemradio').map(rowName)).toEqual(["I'll take it", 'Cal', 'Rosa', 'Wendi', 'Malachi', 'William'])
+    expect(screen.getByRole('menuitemradio', { name: /^Cal/ }).textContent).toContain('controller · holds 0 waiting')
+  })
+
+  it('typing narrows the list by name, lights the run, and Enter hands it to the lit person', () => {
+    const onHand = renderPill(greg(), { team: WIDE_TEAM })
+    fireEvent.click(screen.getByRole('button', { name: 'Nobody has it · Take it' }))
+    const box = screen.getByRole('textbox', { name: 'Find a teammate' })
+    fireEvent.change(box, { target: { value: 'ro' } })
+    expect(screen.getAllByRole('menuitemradio').map((r) => r.textContent)).toHaveLength(1)
+    const rosa = screen.getByRole('menuitemradio', { name: /^Rosa/ })
+    expect(rosa.querySelector('mark')?.textContent).toBe('Ro')
+    expect(rosa.hasAttribute('data-lit')).toBe(true)
+    expect(screen.queryByRole('menuitemradio', { name: /^I'll take it/ })).toBeNull()
+    fireEvent.keyDown(box, { key: 'Enter' })
+    expect(onHand).toHaveBeenCalledWith('u-rosa')
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('with nothing typed Enter takes it, and the arrows walk the rows before Enter', () => {
+    const onHand = renderPill(greg(), { team: WIDE_TEAM })
+    fireEvent.click(screen.getByRole('button', { name: 'Nobody has it · Take it' }))
+    const box = screen.getByRole('textbox', { name: 'Find a teammate' })
+    expect(screen.getByRole('menuitemradio', { name: /^I'll take it/ }).hasAttribute('data-lit')).toBe(true)
+    fireEvent.keyDown(box, { key: 'ArrowDown' })
+    fireEvent.keyDown(box, { key: 'ArrowDown' })
+    expect(screen.getByRole('menuitemradio', { name: /^Rosa/ }).hasAttribute('data-lit')).toBe(true)
+    fireEvent.keyDown(box, { key: 'ArrowUp' })
+    fireEvent.keyDown(box, { key: 'ArrowUp' })
+    fireEvent.keyDown(box, { key: 'ArrowUp' })
+    expect(screen.getByRole('menuitemradio', { name: /^William/ }).hasAttribute('data-lit')).toBe(true)
+    fireEvent.keyDown(box, { key: 'Enter' })
+    expect(onHand).toHaveBeenCalledWith('u-william')
+    cleanup()
+    const onTake = renderPill(greg(), { team: WIDE_TEAM })
+    fireEvent.click(screen.getByRole('button', { name: 'Nobody has it · Take it' }))
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Find a teammate' }), { key: 'Enter' })
+    expect(onTake).toHaveBeenCalledWith('u-robert')
+  })
+
+  it('Escape closes the menu, and a run that lands on nobody says so with Clear the search', () => {
+    const onHand = renderPill(greg(), { team: WIDE_TEAM })
+    fireEvent.click(screen.getByRole('button', { name: 'Nobody has it · Take it' }))
+    const box = screen.getByRole('textbox', { name: 'Find a teammate' })
+    fireEvent.change(box, { target: { value: 'zed' } })
+    expect(screen.queryAllByRole('menuitemradio')).toHaveLength(0)
+    expect(screen.getByText('No teammates match ‘zed’.')).toBeTruthy()
+    fireEvent.keyDown(box, { key: 'Enter' })
+    expect(onHand).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(screen.getAllByRole('menuitemradio')).toHaveLength(6)
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Find a teammate' }), { key: 'Escape' })
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('on a phone the box is there but not focused, so the keyboard does not jump', () => {
+    const restore = phoneWidth()
+    try {
+      renderPill(greg(), { team: WIDE_TEAM })
+      fireEvent.click(screen.getByRole('button', { name: 'Nobody has it · Take it' }))
+      const box = screen.getByRole('textbox', { name: 'Find a teammate' })
+      expect(document.activeElement).not.toBe(box)
+    } finally {
+      restore()
+    }
   })
 })

@@ -13,7 +13,8 @@ import { stampSentence } from '../../../lib/messages/stamps'
 import { foldedThreadRows } from '../../../lib/messages/appLines'
 import type { SentStampsIo } from '../../../lib/messages/sentStampsIo'
 import { courtOf, threadOf } from '../../../lib/messages/thread'
-import { isThreadBeside, isThreadFolded, isThreadShort, reachOpen, threadFolds, THREAD_SHORT_QUERY } from '../../../lib/messages/threadFold'
+import { isThreadBeside, isThreadFolded, isThreadShort, threadFolds, THREAD_SHORT_QUERY } from '../../../lib/messages/threadFold'
+import { threadHeaderPlan } from '../../../lib/messages/threadHeader'
 import { noFlowWords } from '../../../lib/flows/facts'
 import { tieSheetRows } from '../../../lib/messages/tieSheet'
 import { formatErrorMessage } from '../../../utils/errorHandling'
@@ -61,11 +62,12 @@ const ONE_LINE = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'no
 
 /**
  * Messages, cut 1's screens: a person's thread, as a window over any view of GC projects (`?thread=<id>&at=<id>`),
- * and a full-screen sheet on a phone. The header in four calm rows (v1.166): the name with ☎ ⋯, what they are to us
- * and their company with the chevron over their numbers and addresses (for a number nobody has named, that fact —
- * `unnamedWords` — and the *Who is this?* button under it asks the question once, v2.5541), one status row that leads
- * with whose move it is, then the stamps sentence; the jobs rail last. Then the lines, a divider at each day, and the slots later cuts
- * fill (`ThreadSlots`). The message window, Who is this? and the job picker are drawn inside the panel.
+ * and a full-screen sheet on a phone. The header in three rows across the width (v2.6505, `threadHeaderPlan`; v1.166's
+ * four rows before it): the name with ☎ ⋯, and under it what they are to us and their company with their first address
+ * and number on the line and the arrow over the rest (for a number nobody has named, that fact — `unnamedWords` — and
+ * *Who is this?* beside it, v2.5541); one status row that leads with whose move it is, the stamps sentence at its end;
+ * the jobs rail last. Then the lines, a divider at each day, and the slots later cuts fill (`ThreadSlots`). The message
+ * window, Who is this? and the job picker are drawn inside the panel.
  *
  * Folded (cut 10, `threadFold.ts`): on a phone, or when the thread's column is 640 px or narrower. The chevron and the
  * face are one press back to everyone in place of ×, the name and the company take one line each, the corner keeps the
@@ -80,7 +82,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const phone = useMatchMedia('(max-width: 760px)')
   const [columnRef, columnWidth] = useMeasuredWidth<HTMLDivElement>()
   const folded = isThreadFolded(columnWidth, phone)
-  // A short window (v2.6474): the header keeps two rows, and the sort card and the reply box fold to one row each.
+  // A short window (v2.6474): the window takes its whole height and the reply box folds to one row. The header is the
+  // same at every height since v2.6505 (`threadHeader.ts`).
   const short = isThreadShort(useMatchMedia(THREAD_SHORT_QUERY), phone)
   // Wide (v2.6478, the owner's B; any height since v2.6482): what a cut draws above the lines takes a column at their
   // right instead. Over the lines the sort card folds to one row; the box folds on a short window or a phone.
@@ -88,8 +91,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const folds = threadFolds({ short, phone, beside })
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
+  /** The arrow on the company line: pressed open, pressed shut, or never pressed. */
   const [contactChosen, setContactChosen] = useState<boolean | null>(null)
-  const contactOpen = reachOpen(contactChosen, folded || short)
   const [showAll, setShowAll] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [jobFilter, setJobFilter] = useState<string | null>(null)
@@ -177,6 +180,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const menuRows = contact ? [...ownRows, ...(slots.menuRows?.(contact, lines) ?? [])] : []
   const phones = contact?.channels.filter((ch) => ch.kind === 'phone') ?? []
   const emails = contact?.channels.filter((ch) => ch.kind === 'email') ?? []
+  /** Their numbers and addresses as the header draws them: every other kind is read past. */
+  const reach = contact?.channels.filter((ch) => ch.kind === 'phone' || ch.kind === 'email') ?? []
   // Whose move it is: the lines, and what cut 2 knows (what we owe, a written promise's day; punch list #140 PR 7).
   const court = contact ? courtOf(allLines, contact.id, nowIso, { optedOut: isOptedOut(contact), ...(slots.court?.(contact) ?? {}) }) : null
   const stamps = contact ? stampSentence(contact, allLines, contact.id, nowIso) : null
@@ -191,7 +196,29 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
     [contact, view, allLines, jobFilter, nowIso, searchJobs, short, beside, folds.card, folds.box],
   )
 
-  // The stamps sentence, drawn on its own row, or on the status row's end in a short window (v2.6474).
+  // The compact header (v2.6505, `threadHeader.ts`): three rows across the width at every height, the first address and
+  // number on the company line and the rest behind its arrow; a narrow column stacks the same facts.
+  const header = threadHeaderPlan({ folded, channels: reach, reachChosen: contactChosen, unknown: contact?.kind === 'unknown', stamps: stamps !== null && stamps.sentences.length > 0 })
+  const onLine = header.onLine.map((i) => reach[i]).filter((ch): ch is (typeof reach)[number] => ch !== undefined)
+  const behind = reach.filter((_, i) => !header.onLine.includes(i))
+  /** One of their numbers or addresses, as a press: a call, or a mail. */
+  const reachPress = (ch: (typeof reach)[number]) =>
+    ch.kind === 'phone' && contact ? (
+      <CallButton site="thread"
+        key={ch.id}
+        number={ch.value}
+        name={contact.name}
+        box={boxForReply(lastWroteTo(allLines), contact)}
+        words={() => `${ch.value}${ch.optedOutAt ? ' (sent STOP)' : ''}`}
+        title={(plain) => `${plain} ${ch.value}`}
+        style={{ color: 'var(--text-blue-700)' }}
+      />
+    ) : (
+      <a key={ch.id} href={`mailto:${ch.value}`} style={{ color: 'var(--text-blue-700)' }}>
+        {ch.value}
+      </a>
+    )
+  // The stamps sentence: one line on the status row at a desk, its own row on a narrow column.
   const stampsLine = stamps ? (
     <>
       {stamps.sentences.map((s, i) => (
@@ -215,7 +242,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
       onRemove={(key) => void removeJob(key)}
       onAdd={() => setPicker({ kind: 'add' })}
       onHold={(key) => setTying(key)}
-      strip={folded || short}
+      strip={header.jobsStrip}
     />
   ) : null
 
@@ -265,7 +292,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
             </div>
           ) : (
             <>
-              <div data-thread-header={folded ? 'folded' : 'wide'} data-thread-short={short ? '' : undefined} style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: folded ? '0.5rem 0.75rem' : '0.6rem 0.9rem', display: 'grid', gap: folded ? '0.35rem' : '0.45rem' }}>
+              <div data-thread-header={folded ? 'folded' : 'wide'} data-thread-header-rows={header.rows.join(' ')} style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: folded ? '0.5rem 0.75rem' : '0.55rem 0.9rem', display: 'grid', gap: folded ? '0.35rem' : '0.4rem' }}>
                 <div style={{ display: 'flex', gap: folded ? '0.45rem' : '0.6rem', alignItems: 'center', minWidth: 0 }}>
                   {folded ? (
                     <button
@@ -294,17 +321,18 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                       {initials(contact)}
                     </span>
                   )}
-                  <div style={{ minWidth: 0, ...(folded ? { flex: 1 } : null) }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <h2 style={{ margin: 0, fontSize: '1.05rem', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: folded ? 'nowrap' : 'wrap', minWidth: 0 }}>
                       {folded ? <span style={ONE_LINE}>{contact.name}</span> : contact.name}
                       {isOptedOut(contact) && <Chip tone="red">opted out</Chip>}
                     </h2>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-600)', display: 'flex', gap: '0.3rem', alignItems: 'center', minWidth: 0 }}>
+                    {/* The company line (v2.6505): their first address and number ride it at a desk, with the arrow over the rest. */}
+                    <div data-thread-company-line style={{ fontSize: '0.8rem', color: 'var(--text-600)', display: 'flex', gap: '0.3rem', alignItems: 'center', minWidth: 0, flexWrap: folded ? 'nowrap' : 'wrap' }}>
                       {contact.kind === 'unknown' ? (
                         <>
                           <span style={folded ? ONE_LINE : undefined}>{unnamedWords({ phones: phones.length, emails: emails.length })}</span>
-                          {/* A short window asks *Who is this?* on the line it answers (v2.6474), not on a row of its own. */}
-                          {short && !whoOnCard && (
+                          {/* *Who is this?* on the line it answers (v2.6474), not on a row of its own. */}
+                          {!whoOnCard && (
                             <>
                               <span aria-hidden="true">·</span>
                               <button type="button" data-thread-who="inline" onClick={() => setNaming(true)} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--text-blue-700)', fontWeight: 600, cursor: 'pointer', font: 'inherit', flex: 'none' }}>
@@ -318,20 +346,25 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                           <strong>{capital(kindWord(contact.kind))}:</strong> {contact.company || contact.name}
                         </span>
                       )}
-                      {(phones.length > 0 || emails.length > 0) && contact.kind !== 'unknown' && (
+                      {onLine.map((ch) => (
+                        <span key={ch.id} data-thread-reach-line style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', ...ONE_LINE }}>
+                          <span aria-hidden="true">·</span>
+                          {reachPress(ch)}
+                        </span>
+                      ))}
+                      {header.behind > 0 && (
                         <button
                           type="button"
-                          aria-expanded={contactOpen}
-                          aria-label={contactOpen ? 'Hide their numbers and addresses' : 'Show their numbers and addresses'}
-                          onClick={() => setContactChosen(!contactOpen)}
+                          aria-expanded={header.reachOpen}
+                          aria-label={header.reachOpen ? 'Hide their numbers and addresses' : 'Show their numbers and addresses'}
+                          onClick={() => setContactChosen(!header.reachOpen)}
                           style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 0.2rem', flex: 'none' }}
                         >
-                          {contactOpen ? '▾' : '›'}
+                          {header.reachOpen ? '▾' : '›'}
                         </button>
                       )}
                     </div>
                   </div>
-                  {!folded && <span style={{ flex: 1 }} />}
                   {folded && slots.headerRight?.(contact, { folded })}
                   {/* ☎, ⋯ and the who-has-it pill wear `.thread-head-control` (v2.5542): no border, one 28px height, a quiet hover. */}
                   <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', position: 'relative', flex: 'none' }}>
@@ -414,7 +447,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                       <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
                         ×
                       </button>
-                      {/* The side's fold, under the × (spike): › shows a folded side, ‹ folds it back. */}
+                      {/* The side's fold, under the × (spike): it points the way the side moves (v2.6505): › hides a side that is
+                          beside, off to the right; ‹ brings a folded one back from there. The rail's own ‹ opens its panel. */}
                       {!phone && slots.side && (
                         <button
                           type="button"
@@ -424,48 +458,21 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                           title={sideShown ? 'Hide their flow' : 'Show their flow'}
                           style={{ border: 'none', background: 'transparent', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-blue-700)', padding: '0 0.4rem 0.1rem', fontWeight: 600 }}
                         >
-                          {sideShown ? '‹' : '›'}
+                          {sideShown ? '›' : '‹'}
                         </button>
                       )}
                     </div>
                   )}
                 </div>
-                {contact.kind === 'unknown' ? (
-                  whoOnCard || short ? null : (
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => setNaming(true)}
-                        style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: 6, padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}
-                      >
-                        Who is this?
-                      </button>
-                    </div>
-                  )
-                ) : (
-                  contactOpen &&
-                  (phones.length > 0 || emails.length > 0) && (
-                    <div data-thread-reach style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.8rem' }}>
-                      {phones.map((ch) => (
-                        <CallButton site="thread"
-                          key={ch.id}
-                          number={ch.value}
-                          name={contact.name}
-                          box={boxForReply(lastWroteTo(allLines), contact)}
-                          words={() => `${ch.value}${ch.optedOutAt ? ' (sent STOP)' : ''}`}
-                          title={(plain) => `${plain} ${ch.value}`}
-                          style={{ color: 'var(--text-blue-700)' }}
-                        />
-                      ))}
-                      {emails.map((ch) => (
-                        <a key={ch.id} href={`mailto:${ch.value}`} style={{ color: 'var(--text-blue-700)' }}>
-                          {ch.value}
-                        </a>
-                      ))}
-                    </div>
-                  )
+                {/* The rest of their numbers and addresses, behind the arrow (v2.6505); every one on a narrow column. */}
+                {header.reachOpen && (
+                  <div data-thread-reach style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+                    {behind.map(reachPress)}
+                  </div>
                 )}
-                {/* A short window (v2.6474): the status, the stamps sentence and the jobs share one row; the sentence gives way first. */}
+                {/* The status row (v2.6505): whose move it is, the chips, and at a desk the sentence on one line. The sentence
+                    takes its own line under the chips once they leave it less than 14rem, cut with an ellipsis, the whole in
+                    its title. A narrow column scrolls the chips sideways and gives the sentence a row of its own. */}
                 <div
                   data-thread-status
                   style={{
@@ -473,28 +480,25 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                     gap: '0.4rem',
                     alignItems: 'center',
                     fontSize: '0.8rem',
-                    ...(short
-                      ? { flexWrap: 'nowrap', whiteSpace: 'nowrap', minWidth: 0 }
-                      : folded
-                        ? { flexWrap: 'nowrap', whiteSpace: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', maskImage: ROW_FADE, WebkitMaskImage: ROW_FADE }
-                        : { flexWrap: 'wrap' }),
+                    ...(folded
+                      ? { flexWrap: 'nowrap', whiteSpace: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', maskImage: ROW_FADE, WebkitMaskImage: ROW_FADE }
+                      : { flexWrap: 'wrap', minWidth: 0 }),
                   }}
                 >
                   {court && <Chip tone={COURT_TONE[court.side]}>{court.word}</Chip>}
                   {slots.statusRow?.(contact)}
-                  {short && stampsLine && (
-                    <span data-thread-stamps title={stampsWords} style={{ ...ONE_LINE, flex: '1 1 8rem', color: 'var(--text-600)' }}>
+                  {header.stampsOneLine && stampsLine && (
+                    <span data-thread-stamps title={stampsWords} style={{ ...ONE_LINE, flex: '1 1 14rem', color: 'var(--text-600)' }}>
                       {stampsLine}
                     </span>
                   )}
-                  {short && <span style={{ flex: '0 1 auto', minWidth: 0, maxWidth: '45%', overflow: 'hidden' }}>{jobsRail}</span>}
                 </div>
-                {!short && stampsLine && (
+                {header.rows.includes('stamps') && stampsLine && (
                   <div data-thread-stamps style={{ fontSize: '0.8rem', color: 'var(--text-600)' }}>
                     {stampsLine}
                   </div>
                 )}
-                {!short && jobsRail}
+                {jobsRail}
                 {tying && (
                   <div role="status" style={{ fontSize: '0.8rem', background: 'var(--bg-blue-tint)', borderRadius: 6, padding: '0.3rem 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     Press a line to tie it to {view?.tiles[tying]?.num ?? 'the job'}.

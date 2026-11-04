@@ -9,6 +9,8 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
 import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
+import { quoteToShow } from '../../lib/bids/lockedQuote'
+import { pricingLockState, readRevisedBids } from '../../lib/bids/pricingLock'
 import { bidDisplayName, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { BidPickerStandardList } from './BidPickerStandardList'
@@ -1302,7 +1304,11 @@ export function BidsCoverLetterTab({
             alternate: (o: SamePageOption, _a: SamePageSection, j: number) => block?.items[o.n - 1]?.alternates[j]?.label ?? `Alternate ${j + 1}`,
           }
         }
-        const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : letterOptions ? samePagePlan!.headlineRevenue : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
+        const liveHeadlineAmount = letterOptions ? samePagePlan!.headlineRevenue : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
+        // v2.6510: a locked bid's letter says what went out (`lockedQuote.ts`); Revise…, a custom amount or an options letter reads the live figure.
+        const sentQuote = quoteToShow({ lockState: pricingLockState({ bidDateSent: bid.bid_date_sent, bidId: bid.id, revised: readRevisedBids(typeof window === 'undefined' ? null : window.sessionStorage) }), bidValue: bid.bid_value, live: null })
+        const letterSaysSent = !useCustomAmount && !letterOptions && sentQuote?.source === 'sent'
+        const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : letterSaysSent ? sentQuote!.amount : liveHeadlineAmount
         // v2.4199: the best effort is the WHOLE — the headline (base) plus every offered alternate's
         // add-on — because the robot priced the alternate's rows too and is scored against it.
         const bestEffortAmount = headlineAmount + (addAltSplit ? offeredAdd.reduce((sum, g) => sum + g.revenueSum, 0) : 0)
@@ -1431,6 +1437,7 @@ export function BidsCoverLetterTab({
         // are untouched — this is what the letter says, and what Mark sent stamps as the bid's value.
         const alternateLeadsLetter = samePagePlan != null && samePagePlan.alternateLeads && !(newLetterTotal > 0)
         const displayHeadlineAmount = alternateLeadsLetter ? samePagePlan!.headlineRevenue : headlineAmount
+        const liveDisplayAmount = alternateLeadsLetter ? samePagePlan!.headlineRevenue : liveHeadlineAmount
         const displayHeadlineNumber = `$${formatCurrency(displayHeadlineAmount)}`
         const now = new Date()
         const yy = now.getFullYear() % 100
@@ -2051,7 +2058,7 @@ export function BidsCoverLetterTab({
                       </div>
                       {/* Frozen bid prices, PR 2: the letter recomputes from the price copy; the quote is what went out. */}
                       {(() => {
-                        const cmp = compareSentVsToday({ bidDateSent: bid.bid_date_sent, bidValue: bid.bid_value, today: displayHeadlineAmount })
+                        const cmp = compareSentVsToday({ bidDateSent: bid.bid_date_sent, bidValue: bid.bid_value, today: liveDisplayAmount })
                         if (!cmp) return null
                         const differs = cmp.kind === 'differs'
                         return (
@@ -2059,7 +2066,7 @@ export function BidsCoverLetterTab({
                             data-testid="cover-letter-sent-vs-today"
                             style={{ marginTop: '0.35rem', fontSize: '0.74rem', fontVariantNumeric: 'tabular-nums', color: differs ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: differs ? 600 : 400 }}
                           >
-                            {sentVsTodayText(cmp, { where: 'letter', currentYear: new Date().getFullYear() })}
+                            {sentVsTodayText(cmp, { where: letterSaysSent ? 'grid' : 'letter', currentYear: new Date().getFullYear() })}
                           </div>
                         )
                       })()}

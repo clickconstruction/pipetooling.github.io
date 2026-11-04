@@ -111,7 +111,7 @@ describe('the thread header folds for a narrow column (cut 10)', () => {
     expect(within(win).getByRole('button', { name: 'Back to everyone' })).toBeTruthy()
   })
 
-  it('stays wide above 640 px: ×, the slot after ⋯ in its wide form, the numbers open, the jobs wrapping under their label', () => {
+  it('stays wide above 640 px: ×, the slot after ⋯ in its wide form, the address and the number on the company line (v2.6505), the jobs wrapping under their label', () => {
     measured.width = 900
     const { win, looks, header } = open()
     expect(header.getAttribute('data-thread-header')).toBe('wide')
@@ -119,7 +119,9 @@ describe('the thread header folds for a narrow column (cut 10)', () => {
     expect(within(win).queryByRole('button', { name: 'Back to everyone' })).toBeNull()
     expect(looks[looks.length - 1]).toEqual({ folded: false })
     expect(header.querySelector('[data-test-who-has-it]')?.textContent).toBe('Rosa has it')
-    expect(win.querySelector('[data-thread-reach]')).not.toBeNull()
+    expect(win.querySelector('[data-thread-reach]')).toBeNull()
+    expect(within(header.querySelector('[data-thread-company-line]') as HTMLElement).getByRole('link', { name: 'greg@hillside.example' })).toBeTruthy()
+    expect(within(header).queryByRole('button', { name: /their numbers and addresses/ })).toBeNull()
     const rail = win.querySelector('[data-jobs-rail]') as HTMLElement
     expect([rail.getAttribute('data-jobs-rail'), rail.style.flexWrap]).toEqual(['', 'wrap'])
     expect(rail.textContent).toContain('Their jobs')

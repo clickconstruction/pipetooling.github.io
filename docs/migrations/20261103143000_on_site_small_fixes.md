@@ -11,3 +11,5 @@ Proven on a throwaway Postgres 15: the earlier migration and this one applied tw
 ## Order
 
 Merge, then `supabase db push`. No function to deploy: dev-mcp passes the wrapper's reply through, and `call_read` reaches the defaults as soon as PostgREST reloads its schema. A plan made before the push and applied after it refuses once, since the job's label is in the plan, so plan again.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day, `dev-mcp` among them; types regenerated from prod in #6961, and again in #6962.

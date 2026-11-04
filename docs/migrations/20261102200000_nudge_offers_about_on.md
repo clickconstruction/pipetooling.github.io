@@ -19,3 +19,5 @@ sends (a missing column reads as *not there yet*, so the window shows nothing un
 still counts). `npm run check:calls-ahead` labels the PR *push right after the merge*. Redeploy `messages-nudge-dispatch`
 after the push (it selects `about_on` and puts stale offers away). The generated `src/types/database.ts` and the dev-mcp
 catalog are regenerated after the push, as always.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day, `messages-nudge-dispatch` among them; types regenerated from prod in #6857 (v2.6387) with the PR itself.
