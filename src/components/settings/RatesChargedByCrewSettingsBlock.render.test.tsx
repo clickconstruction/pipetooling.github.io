@@ -84,7 +84,6 @@ describe('RatesChargedByCrewSettingsBlock', () => {
       { key: 'charge_rate_helper_alone_v1', value_num: 75 },
     ]
     renderWithProviders(<RatesChargedByCrewSettingsBlock />)
-    fireEvent.click(screen.getByTestId('rates-by-crew-toggle'))
     await waitFor(() => expect(input('hourly_charge_rate_v1').value).toBe('285.00'))
     expect(input('charge_rate_two_techs_v1').value).toBe('285.00')
     expect(input('charge_rate_tech_alone_v1').value).toBe('185.00')
@@ -100,7 +99,6 @@ describe('RatesChargedByCrewSettingsBlock', () => {
     state.rows = [{ key: 'hourly_charge_rate_v1', value_num: 285 }]
     state.upserts = []
     renderWithProviders(<RatesChargedByCrewSettingsBlock />)
-    fireEvent.click(screen.getByTestId('rates-by-crew-toggle'))
     await waitFor(() => expect(input('hourly_charge_rate_v1').value).toBe('285.00'))
     expect(save().disabled).toBe(true)
     expect(screen.getByTestId('rates-by-crew-nothing').textContent).toBe('Every rate is saved as shown.')
@@ -127,7 +125,6 @@ describe('RatesChargedByCrewSettingsBlock', () => {
   it('Who counts as what lists the active people with their standing and saves a pick at once', async () => {
     state.rows = []
     renderWithProviders(<RatesChargedByCrewSettingsBlock />)
-    fireEvent.click(screen.getByTestId('rates-by-crew-toggle'))
     await waitFor(() => expect(screen.getAllByTestId('who-counts-row')).toHaveLength(4))
     expect(screen.getByTestId('who-counts-count').textContent).toBe('2 of 3 people count as a master, a tech or a helper.')
     const list = screen.getByTestId('who-counts-as-what')
@@ -147,14 +144,12 @@ describe('RatesChargedByCrewSettingsBlock', () => {
     state.rows = []
     state.failUserWrite = 'permission denied for table users'
     const first = renderWithProviders(<RatesChargedByCrewSettingsBlock />)
-    fireEvent.click(screen.getByTestId('rates-by-crew-toggle'))
     await waitFor(() => expect(screen.getAllByTestId('who-counts-row')).toHaveLength(4))
     fireEvent.change(screen.getByLabelText('Blake is charged as'), { target: { value: 'tech' } })
     await waitFor(() => expect((screen.getByLabelText('Blake is charged as') as HTMLSelectElement).value).toBe('none'))
     first.unmount()
     auth.role = 'controller'
     renderWithProviders(<RatesChargedByCrewSettingsBlock />)
-    fireEvent.click(screen.getByTestId('rates-by-crew-toggle'))
     await waitFor(() => expect(screen.getAllByTestId('who-counts-row')).toHaveLength(4))
     expect(screen.queryByLabelText('Blake is charged as')).toBeNull()
     expect(within(screen.getByTestId('who-counts-as-what')).getByText(/A dev sets these\./)).toBeTruthy()

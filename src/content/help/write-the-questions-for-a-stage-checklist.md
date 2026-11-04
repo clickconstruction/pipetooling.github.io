@@ -9,7 +9,7 @@ A stage checklist is a short list of questions the crew answers on the phone whe
 
 ## Where the questions live
 
-Open **Settings** and press **Jobs & billing**. Scroll to the card named **Stage checklists**. The card lists Rough In, Top Out and Trim Set. Each list starts empty. The stage checklists start the day you type the questions.
+Open **Settings** and press **Jobs & billing**. Under the heading **The job’s record**, press **Stage checklists**. The card opens. The card lists Rough In, Top Out and Trim Set. Each list starts empty. The stage checklists start the day you type the questions.
 
 ## Add a question
 

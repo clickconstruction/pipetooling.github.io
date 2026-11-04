@@ -17,6 +17,14 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('', '#settings-phone-texts-reminders')).toEqual({ tabId: 'settings-phone-texts', anchorId: 'settings-phone-texts-reminders' })
   })
 
+  it('lands every Jobs & billing card and heading on the tab, and a child anchor opens its card (punch list #261)', () => {
+    expect(resolveSettingsDeepLink('?tab=settings-jobs', '#settings-jobs-rates')).toEqual({ tabId: 'settings-jobs', anchorId: 'settings-jobs-rates' })
+    expect(resolveSettingsDeepLink('', '#settings-jobs-stage-checklists')).toEqual({ tabId: 'settings-jobs', anchorId: 'settings-jobs-stage-checklists' })
+    expect(resolveSettingsDeepLink('', '#settings-jobs-group-liens')).toEqual({ tabId: 'settings-jobs', anchorId: 'settings-jobs-group-liens' })
+    expect(resolveSettingsDeepLink('?tab=settings-jobs', '#who-counts-as-what')).toEqual({ tabId: 'settings-jobs', anchorId: 'who-counts-as-what' })
+    expect(resolveSettingsDeepLink('', '#who-counts-as-what')).toEqual({ tabId: 'settings-jobs', anchorId: 'who-counts-as-what' })
+  })
+
   it('lands the Dev MCP keys anchor on Your account', () => {
     expect(resolveSettingsDeepLink('', '#settings-dev-mcp-keys')).toEqual({ tabId: 'settings-account', anchorId: 'settings-dev-mcp-keys' })
   })

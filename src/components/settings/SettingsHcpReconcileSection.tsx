@@ -144,7 +144,6 @@ const applyButtonStyle: React.CSSProperties = {
 
 export default function SettingsHcpReconcileSection() {
   const { showToast } = useToastContext()
-  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const slicesRef = useRef<AppSlices | null>(null)
 
@@ -389,21 +388,8 @@ export default function SettingsHcpReconcileSection() {
   }
 
   return (
-    <div style={{ marginTop: '1.25rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.9rem 1rem' }}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', width: '100%', border: 'none', background: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }}
-      >
-        <span aria-hidden style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{open ? '▼' : '▶'}</span>
-        <h3 style={{ margin: 0, fontSize: '0.95rem' }}>HCP reconcile</h3>
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          import billing history from HouseCall Pro exports — previews everything before writing
-        </span>
-      </button>
-
-      {open && (
+    <div style={{ padding: '0.9rem 1rem' }}>
+      {(
         <div style={{ marginTop: '0.75rem', display: 'grid', gap: '1rem' }}>
           {busy && (
             <p role="status" aria-busy style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{busy}</p>

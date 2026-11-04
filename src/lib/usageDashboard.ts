@@ -53,6 +53,8 @@ const CONTROL_LABELS: Record<string, string> = {
   'gear-menu': 'gear menu',
   'mobile-menu': 'mobile menu',
   'icon-cluster': 'header icons',
+  // Jobs & billing's fold headers (punch list #261): one press per card, `#<slug>`.
+  'settings-jobs': 'Jobs & billing card',
   'needs-you': 'Needs You',
   banner: 'banners',
   pin: 'pins',

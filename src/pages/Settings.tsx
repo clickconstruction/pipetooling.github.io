@@ -20,7 +20,19 @@ import SettingsRecentPushNotifications from '../components/settings/SettingsRece
 import SettingsRecentEmailsSent from '../components/settings/SettingsRecentEmailsSent'
 import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
 import SettingsDataTab from '../components/settings/SettingsDataTab'
-import SettingsJobsTab from '../components/settings/SettingsJobsTab'
+import { settingsJobsDevCards } from '../components/settings/SettingsJobsTab'
+import { SettingsJobsBillingGroups, type JobsBillingCardElements } from '../components/settings/SettingsJobsBillingGroups'
+import HideHcpFieldSettingsBlock from '../components/settings/HideHcpFieldSettingsBlock'
+import SubPortalPaySettingsBlock from '../components/settings/SubPortalPaySettingsBlock'
+import LegalFirmSettingsBlock from '../components/settings/LegalFirmSettingsBlock'
+import OfficeCountySettingsBlock from '../components/settings/OfficeCountySettingsBlock'
+import UncollectibleListSettingsBlock from '../components/settings/UncollectibleListSettingsBlock'
+import TripChargeAmountsSettingsBlock from '../components/settings/TripChargeAmountsSettingsBlock'
+import RatesChargedByCrewSettingsBlock from '../components/settings/RatesChargedByCrewSettingsBlock'
+import MaterialsMarkupSettingsBlock from '../components/settings/MaterialsMarkupSettingsBlock'
+import JobAddressCityListSettingsBlock from '../components/settings/JobAddressCityListSettingsBlock'
+import TxCountyMapSettingsBlock from '../components/settings/TxCountyMapSettingsBlock'
+import DevelopmentsSettingsBlock from '../components/settings/DevelopmentsSettingsBlock'
 import { GuideBrowser } from '../components/GuideBrowser'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -92,7 +104,6 @@ import TestReportSettingsBlock from '../components/settings/TestReportSettingsBl
 import StageChecklistSettingsCard from '../components/settings/StageChecklistSettingsCard'
 import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfirmSettingsBlock'
 import GcBillDayCutoffSettingsBlock from '../components/settings/GcBillDayCutoffSettingsBlock'
-import { canSeeGcMoney } from '../lib/gc/access'
 import GcCardBillSettingsBlock from '../components/settings/GcCardBillSettingsBlock'
 import GcOfficeNoticesSettingsBlock from '../components/settings/GcOfficeNoticesSettingsBlock'
 import GcCustomerDueNoticesSettingsBlock from '../components/settings/GcCustomerDueNoticesSettingsBlock'
@@ -376,8 +387,6 @@ export default function Settings() {
 
   // Jobs & dispatch admin engine — extracted to useSettingsJobsAdmin (v2.856)
   const {
-    jobOwnerOverridesSectionOpen,
-    setJobOwnerOverridesSectionOpen,
     companyOwnerUserId,
     setCompanyOwnerUserId,
     jobOwnerOverridesSaving,
@@ -391,8 +400,6 @@ export default function Settings() {
     reassignTargetUserId,
     setReassignTargetUserId,
     reassignSubmitting,
-    defaultLaborRateSectionOpen,
-    setDefaultLaborRateSectionOpen,
     defaultLaborRate,
     setDefaultLaborRate,
     defaultLaborRateSaving,
@@ -1028,6 +1035,65 @@ export default function Settings() {
   const appliedDeepLinkRef = useRef<string | null>(null)
   /** `?focus=issuer.companyName` (v2.3697): the Lien desk's door to the claimant's name and address. */
   const settingsFocus = settingsFocusParam(location.search)
+  // Jobs & billing's cards (punch list #261): one element per card, placed under its heading by the kernel's order
+  // and gate (`lib/settings/jobsBillingGroups.ts`); the dev-only cards are built for a dev alone, as the page's own
+  // gates had it. The company owner account and the labor rate keep their state in this page (`useSettingsJobsAdmin`).
+  const jobsDevCards = settingsJobsDevCards({
+    saveJobOwnerOverrides,
+    users,
+    companyOwnerUserId,
+    setCompanyOwnerUserId,
+    jobOwnerOverridesSaving,
+    jobCountByUserId,
+    reassignTargetByUserId,
+    setReassignTargetByUserId,
+    reassignSubmitting,
+    setReassignSourceUserId,
+    setReassignTargetUserId,
+    setReassignConfirmOpen,
+    reassignConfirmOpen,
+    reassignSourceUserId,
+    reassignTargetUserId,
+    confirmReassignJobs,
+    saveDefaultLaborRate,
+    defaultLaborRate,
+    setDefaultLaborRate,
+    defaultLaborRateSaving,
+  })
+  const issuerFocus = settingsFocus?.startsWith('issuer.') ? settingsFocus.slice('issuer.'.length) : null
+  const jobsBillingCards: JobsBillingCardElements = {
+    ...(myRole === 'dev'
+      ? {
+          ...jobsDevCards.cards,
+          rates: <RatesChargedByCrewSettingsBlock />,
+          markup: <MaterialsMarkupSettingsBlock />,
+          'trip-charges': <TripChargeAmountsSettingsBlock />,
+          'sub-pay': <SubPortalPaySettingsBlock />,
+          developments: <DevelopmentsSettingsBlock />,
+          'city-lines': <JobAddressCityListSettingsBlock />,
+          'county-suggestions': <TxCountyMapSettingsBlock />,
+          'invoice-issuer': <PhysicalInvoiceIssuerDevSettingsBlock focusField={issuerFocus} />,
+          'invoice-footer': <PhysicalInvoiceFooterDevSettingsBlock />,
+          'stripe-footer': <StripeInvoiceFooterDevSettingsBlock />,
+          'bill-memo': <BillCustomerMemoDevSettingsBlock />,
+          'legal-firm': <LegalFirmSettingsBlock />,
+          'office-county': <OfficeCountySettingsBlock />,
+          uncollectible: <UncollectibleListSettingsBlock />,
+          docsmit: <DocsmitDevSettingsBlock />,
+          'hide-hcp': <HideHcpFieldSettingsBlock />,
+          'hcp-reconcile': <SettingsHcpReconcileSection />,
+        }
+      : {}),
+    'job-book': <JobBookSettingsSection onDbError={(msg) => setError(msg)} />,
+    photos: <ReportPhotoSizeSettingsBlock canSet={myRole === 'dev' || myRole === 'master_technician'} />,
+    'test-reports': <TestReportSettingsBlock />,
+    'stage-checklists': <StageChecklistSettingsCard />,
+    'owner-of-record': <OwnerAutoConfirmSettingsBlock />,
+    'gc-card': <GcCardBillSettingsBlock />,
+    'gc-office-notices': <GcOfficeNoticesSettingsBlock />,
+    'gc-customer-notice': <GcCustomerDueNoticesSettingsBlock />,
+    'gc-cutoff': <GcBillDayCutoffSettingsBlock />,
+  }
   useEffect(() => {
     const key = `${location.search}|${location.hash}`
     if (appliedDeepLinkRef.current === key) return
@@ -1592,66 +1658,12 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-jobs" hidden={activeSettingsTab !== 'settings-jobs'} title={settingsGroupTitle('settings-jobs', 'Jobs & billing')} description={settingsGroupHint('settings-jobs')}>
-      {myRole === 'dev' && (
-        <SettingsJobsTab
-          jobOwnerOverridesSectionOpen={jobOwnerOverridesSectionOpen}
-          setJobOwnerOverridesSectionOpen={setJobOwnerOverridesSectionOpen}
-          saveJobOwnerOverrides={saveJobOwnerOverrides}
-          users={users}
-          companyOwnerUserId={companyOwnerUserId}
-          setCompanyOwnerUserId={setCompanyOwnerUserId}
-          jobOwnerOverridesSaving={jobOwnerOverridesSaving}
-          jobCountByUserId={jobCountByUserId}
-          reassignTargetByUserId={reassignTargetByUserId}
-          setReassignTargetByUserId={setReassignTargetByUserId}
-          reassignSubmitting={reassignSubmitting}
-          setReassignSourceUserId={setReassignSourceUserId}
-          setReassignTargetUserId={setReassignTargetUserId}
-          setReassignConfirmOpen={setReassignConfirmOpen}
-          reassignConfirmOpen={reassignConfirmOpen}
-          reassignSourceUserId={reassignSourceUserId}
-          reassignTargetUserId={reassignTargetUserId}
-          confirmReassignJobs={confirmReassignJobs}
-          defaultLaborRateSectionOpen={defaultLaborRateSectionOpen}
-          setDefaultLaborRateSectionOpen={setDefaultLaborRateSectionOpen}
-          saveDefaultLaborRate={saveDefaultLaborRate}
-          defaultLaborRate={defaultLaborRate}
-          setDefaultLaborRate={setDefaultLaborRate}
-          defaultLaborRateSaving={defaultLaborRateSaving}
-        />
-      )}
-      {/* v2.2088 (reorg mockup A): job numbering + billing identity live with
-          the page they affect — moved from Dashboard & alerts / Templates.
-          Job Book keeps its pre-reorg reach (dev + master + assistant-like). */}
-      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
-        <JobBookSettingsSection onDbError={(msg) => setError(msg)} />
-      )}
-      {/* Photos (punch list #189, PR 5b): the long edge a report photo is shrunk to on the phone; a master or a dev picks it. */}
-      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
-        <ReportPhotoSizeSettingsBlock canSet={myRole === 'dev' || myRole === 'master_technician'} />
-      )}
-      {/* Test reports (v2.3298): the certifier and the paper's text — the office set that files them. */}
-      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && <TestReportSettingsBlock />}
-      {/* Stage checklists (punch list #164, PR 2): the office's questions for Rough In, Top Out and Trim Set, the crew answers on the phone. */}
-      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && <StageChecklistSettingsCard />}
-      {/* Owner of record (v2.3450): the nightly save-from-the-roll switch, off on day one — master + dev. */}
-      {(myRole === 'dev' || myRole === 'master_technician') && <OwnerAutoConfirmSettingsBlock />}
-      {/* GC mode (O8c): Pay by card's switch for GC customers, off on day one — the owner and dev. */}
-      {(myRole === 'dev' || myRole === 'master_technician') && <GcCardBillSettingsBlock />}
-      {(myRole === 'dev' || myRole === 'master_technician') && <GcOfficeNoticesSettingsBlock />}
-      {(myRole === 'dev' || myRole === 'master_technician') && <GcCustomerDueNoticesSettingsBlock />}
-      {/* GC mode, Bill day (Messages cut 9): the trades' cut-off, for the money team as its policy is. */}
-      {canSeeGcMoney(myRole) && <GcBillDayCutoffSettingsBlock />}
-      {myRole === 'dev' && (
-        <>
-          <StripeInvoiceFooterDevSettingsBlock />
-          <PhysicalInvoiceIssuerDevSettingsBlock focusField={settingsFocus?.startsWith('issuer.') ? settingsFocus.slice('issuer.'.length) : null} />
-          <PhysicalInvoiceFooterDevSettingsBlock />
-          <BillCustomerMemoDevSettingsBlock />
-          <DocsmitDevSettingsBlock />
-        </>
-      )}
-      {myRole === 'dev' && <SettingsHcpReconcileSection />}
+      {/* Punch list #261: six headings by the question a person brings, every card under its anchor, the forms folded
+          and the switches open, a strip of the headings pinned while the page scrolls. The kernel gates each card by
+          role, so a card built above for a role that is not shown it is never mounted. `?focus=issuer.…` opens the
+          company block whatever its fold (the Lien desk's and the waiver window's door, v2.3697). */}
+      <SettingsJobsBillingGroups role={myRole} cards={jobsBillingCards} forceOpen={{ 'invoice-issuer': issuerFocus != null }} />
+      {myRole === 'dev' ? jobsDevCards.modal : null}
       </SettingsGroup>
 
       {activeSettingsTab === 'settings-catalogs' && myRole === 'dev' && (

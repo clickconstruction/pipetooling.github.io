@@ -13,12 +13,10 @@ import {
 export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = null }: { /** A field to open on and ring for a moment (v2.3697): 'companyName' | 'addressText' — the Lien desk's door; 'signerName' — the lien waiver guide's (v2.4290). */ focusField?: string | null } = {}) {
   const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
-  const [open, setOpen] = useState(Boolean(focusField))
   const [ring, setRing] = useState<string | null>(focusField)
   const ringRef = useRef<HTMLElement | null>(null)
   useEffect(() => {
     if (!focusField) return
-    setOpen(true)
     setRing(focusField)
     // The tab this block sits in shows only once Settings' groups load: scroll when the field is actually on screen, and ring from then.
     let calm: number | null = null
@@ -41,7 +39,6 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = nul
   }, [])
 
   useEffect(() => {
-    if (!open) return
     let cancelled = false
     void (async () => {
       await fetchPhysicalInvoiceIssuerFromAppSettings({ authRole })
@@ -51,7 +48,7 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = nul
     return () => {
       cancelled = true
     }
-  }, [open, authRole, reload])
+  }, [authRole, reload])
 
   const inputStyle = {
     width: '100%',
@@ -63,29 +60,8 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = nul
   }
 
   return (
-    <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8 }}>
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.35rem',
-          margin: 0,
-          padding: '1rem',
-          width: '100%',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '1rem',
-          fontWeight: 600,
-          textAlign: 'left',
-        }}
-      >
-        <span style={{ fontSize: '0.75rem' }}>{open ? '▼' : '\u25b6'}</span>
-        Physical invoice — company on PDF (customer-facing)
-      </button>
-      {open ? (
+    <div>
+      {(
         <div style={{ padding: '0 1rem 1rem' }}>
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             Shown on detailed physical invoices (header, address block, page 2 tagline / license). Applies{' '}
@@ -189,7 +165,7 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = nul
             Save
           </button>
         </div>
-      ) : null}
+      )}
     </div>
   )
 }

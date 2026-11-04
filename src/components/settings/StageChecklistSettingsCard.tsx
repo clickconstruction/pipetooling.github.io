@@ -33,7 +33,7 @@ import { clauseButtonStyle, clauseInputStyle, clausePrimaryStyle } from '../cont
 
 const DEFAULT_IO = supabaseStageChecklistEditorIo()
 
-const cardStyle: CSSProperties = { marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', display: 'grid', gap: '0.75rem', background: 'var(--surface)' }
+const cardStyle: CSSProperties = { padding: '1rem', display: 'grid', gap: '0.75rem' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }
 const kindBox: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.5rem', margin: 0 }
 const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: '0.4rem 0.5rem', alignItems: 'center' }
@@ -105,10 +105,7 @@ export function StageChecklistSettingsCard({ io = DEFAULT_IO }: { io?: StageChec
   }
 
   return (
-    <section aria-labelledby="stage-checklists-title" data-settings-stage-checklists style={cardStyle}>
-      <h3 id="stage-checklists-title" style={{ margin: 0, fontSize: '1rem' }}>
-        {EDITOR_TITLE}
-      </h3>
+    <section aria-label={EDITOR_TITLE} data-settings-stage-checklists style={cardStyle}>
       <p style={{ margin: 0, fontSize: '0.9rem' }}>{EDITOR_INTRO}</p>
       <p style={muted}>{EDITOR_RULE}</p>
       {drafts ? (

@@ -25,6 +25,8 @@
  * groups before applying it.
  */
 
+import { JOBS_BILLING_CHILD_ANCHORS, JOBS_BILLING_TAB, jobsBillingAnchorToTab } from './settings/jobsBillingGroups'
+
 /** Section anchor id → the settings tab/group that renders it. */
 export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-time-off': 'settings-account',
@@ -36,8 +38,8 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-recently-deleted': 'settings-data',
   'settings-page-pins': 'settings-dashboard',
   'settings-claim-code': 'settings-advanced-tools',
-  // The Legal desk's firm window opens the firm's block here (v2.4711).
-  'settings-legal-firm': 'settings-jobs',
+  // Jobs & billing (punch list #261): every card and heading, from the kernel; the Legal desk's firm window has opened `settings-legal-firm` since v2.4711.
+  ...jobsBillingAnchorToTab(),
   // The editors Settings → Contracts & terms opens.
   'settings-estimate-public-terms': 'settings-catalogs',
   'settings-estimate-cx-defaults': 'settings-catalogs',
@@ -91,7 +93,11 @@ export function resolveSettingsDeepLink(search: string, hash: string): SettingsD
   let tabId: string | null = tabParam.startsWith('settings-') ? tabParam : null
   let anchorId: string | null = null
 
-  if (rawHash.startsWith('settings-')) {
+  if (rawHash && JOBS_BILLING_CHILD_ANCHORS[rawHash]) {
+    // An anchor inside a Jobs & billing card (`#who-counts-as-what`): the card opens for it and the page lands on it.
+    anchorId = rawHash
+    if (!tabId) tabId = JOBS_BILLING_TAB
+  } else if (rawHash.startsWith('settings-')) {
     const owningTab = SETTINGS_HASH_ANCHOR_TO_TAB[rawHash] ?? (CONTRACT_CARD_ANCHOR.test(rawHash) ? CONTRACTS_TAB : CLAUSE_PAPER_ANCHOR.test(rawHash) ? CLAUSES_TAB : undefined)
     if (owningTab) {
       anchorId = rawHash

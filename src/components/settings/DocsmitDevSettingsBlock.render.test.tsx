@@ -41,7 +41,6 @@ function openBlock() {
   state.invokes = []
   state.upserts = []
   renderWithProviders(<DocsmitDevSettingsBlock />)
-  fireEvent.click(screen.getByTestId('docsmit-dev-toggle'))
 }
 
 describe('DocsmitDevSettingsBlock', () => {

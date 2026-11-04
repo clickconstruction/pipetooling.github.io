@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -15,7 +15,6 @@ import { moneyWords } from '../../lib/charges/moneyParts'
  */
 export default function MaterialsMarkupSettingsBlock() {
   const { showToast } = useToastContext()
-  const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -65,25 +64,13 @@ export default function MaterialsMarkupSettingsBlock() {
   const dead = saving || !dirty
   const readsBothWays = value.trim() !== '' && Number.isFinite(pct) && pct >= 0
 
+  useEffect(() => {
+    void loadFromServer()
+  }, [loadFromServer])
+
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }} data-testid="materials-markup-block">
-      <button
-        type="button"
-        aria-expanded={open}
-        data-testid="materials-markup-toggle"
-        onClick={() => {
-          setOpen((prev) => {
-            const next = !prev
-            if (next) void loadFromServer()
-            return next
-          })
-        }}
-        style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0, padding: '1rem', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 600, textAlign: 'left', color: 'var(--text-strong)' }}
-      >
-        <span style={{ fontSize: '0.75rem' }}>{open ? '▼' : '▶'}</span>
-        Markup on materials
-      </button>
-      {open && (
+    <div data-testid="materials-markup-block">
+      {(
         <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
           <p style={{ margin: '0.75rem 0', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.45 }}>
             The company’s markup over cost on materials charged to a customer: supply-house invoices shared to the job, parts bought on a card and tallied

@@ -38,7 +38,6 @@ const buttonStyle = { padding: '0.45rem 0.8rem', fontSize: '0.875rem', border: '
 export default function DocsmitDevSettingsBlock() {
   const { role } = useAuth()
   const { showToast } = useToastContext()
-  const [open, setOpen] = useState(false)
   const [status, setStatus] = useState<DocsmitSecretStatus | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
   const [email, setEmail] = useState('')
@@ -72,10 +71,9 @@ export default function DocsmitDevSettingsBlock() {
   }, [])
 
   useEffect(() => {
-    if (!open) return
     void readStatus()
     void readSwitches()
-  }, [open, readStatus, readSwitches])
+  }, [readStatus, readSwitches])
 
   if (role !== 'dev') return null
 
@@ -147,12 +145,8 @@ export default function DocsmitDevSettingsBlock() {
   const set = <K extends keyof DocsmitSettings>(k: K, v: DocsmitSettings[K]) => setSettings((s) => (s ? { ...s, [k]: v } : s))
 
   return (
-    <div data-testid="docsmit-dev-block" style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8 }}>
-      <button type="button" onClick={() => setOpen((p) => !p)} data-testid="docsmit-dev-toggle" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0, padding: '1rem', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 600, textAlign: 'left', color: 'var(--text)' }}>
-        <span style={{ fontSize: '0.75rem' }}>{open ? '▼' : '▶'}</span>
-        Docsmit · certified mail from the app
-      </button>
-      {open ? (
+    <div data-testid="docsmit-dev-block">
+      {(
         <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)', background: 'var(--bg-page)' }}>
           <p style={{ margin: '0.75rem 0', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
             The Lien desk mails notices certified through Docsmit. The secrets live in Vault and never come back here; the password goes in as its hash only. Start on Tracksmit, the sandbox, and read the first run on paper.
@@ -240,7 +234,7 @@ export default function DocsmitDevSettingsBlock() {
             </>
           ) : null}
         </div>
-      ) : null}
+      )}
     </div>
   )
 }

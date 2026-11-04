@@ -3,6 +3,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import UncollectibleListSettingsBlock from './UncollectibleListSettingsBlock'
+import { SettingsFoldCard } from './SettingsFoldCard'
+import { jobsBillingCardBySlug } from '../../lib/settings/jobsBillingGroups'
+
+/** The card as Jobs & billing draws it since punch list #261: in its fold, closed until its header is pressed. */
+const folded = () => (
+  <SettingsFoldCard card={jobsBillingCardBySlug('uncollectible')}>
+    <UncollectibleListSettingsBlock />
+  </SettingsFoldCard>
+)
 
 const given = vi.hoisted(() => ({ rows: null as Array<Record<string, unknown>> | null }))
 
@@ -25,7 +34,7 @@ afterEach(() => {
 
 describe('UncollectibleListSettingsBlock (punch list #94, v2.4795)', () => {
   it('folds closed, opens on its heading and reads the empty case', async () => {
-    renderWithProviders(<UncollectibleListSettingsBlock />)
+    renderWithProviders(folded())
     const head = screen.getByRole('button', { name: /Uncollectible: the accountant's list/ })
     expect(head.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(head)
@@ -47,7 +56,7 @@ describe('UncollectibleListSettingsBlock (punch list #94, v2.4795)', () => {
         customer: { name: 'Bryan Herber' },
       },
     ]
-    const { container } = renderWithProviders(<UncollectibleListSettingsBlock />)
+    const { container } = renderWithProviders(folded())
     fireEvent.click(screen.getByRole('button', { name: /Uncollectible: the accountant's list/ }))
     await settle()
     expect(screen.getByText('He does not have the money and owes us for advances.')).toBeTruthy()

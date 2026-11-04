@@ -9,6 +9,15 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import SettingsHcpReconcileSection from './SettingsHcpReconcileSection'
+import { SettingsFoldCard } from './SettingsFoldCard'
+import { jobsBillingCardBySlug } from '../../lib/settings/jobsBillingGroups'
+
+/** The section as Jobs & billing draws it since punch list #261: in its fold, closed until its header is pressed. */
+const folded = () => (
+  <SettingsFoldCard card={jobsBillingCardBySlug('hcp-reconcile')}>
+    <SettingsHcpReconcileSection />
+  </SettingsFoldCard>
+)
 
 // One job with one unlinked payment and no invoice: the invoices export plans one invoice to create.
 const TABLES: Record<string, unknown[]> = {
@@ -46,7 +55,7 @@ vi.mock('../../lib/supabase', () => {
 
 describe('SettingsHcpReconcileSection render smoke', () => {
   it('renders collapsed, expands to the two lanes with file pickers', () => {
-    renderWithProviders(<SettingsHcpReconcileSection />)
+    renderWithProviders(folded())
     const toggle = screen.getByRole('button', { name: /HCP reconcile/ })
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(screen.queryByText(/Choose invoices export/)).toBeNull()
@@ -64,7 +73,7 @@ describe('SettingsHcpReconcileSection render smoke', () => {
   })
 
   it('Apply says its count, and a refused row stays listed with the reason', async () => {
-    const { container } = renderWithProviders(<SettingsHcpReconcileSection />)
+    const { container } = renderWithProviders(folded())
     fireEvent.click(screen.getByRole('button', { name: /HCP reconcile/ }))
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
     const csv = 'Invoice #,Invoice status,Latest send date,Job #\nA1,Paid,2026-08-01T12:00:00Z,1001\n'

@@ -232,15 +232,14 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
   const dirtyCounties = changes.length > 0
 
   return (
-    <div id={inWindow ? undefined : 'settings-legal-firm'} data-legal-firm-block={inWindow ? 'window' : 'settings'} style={inWindow ? undefined : { marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
+    <div data-legal-firm-block={inWindow ? 'window' : 'settings'} style={inWindow ? undefined : { padding: '1rem' }}>
       {inWindow ? (
         <div>
           <h4 style={{ margin: 0, fontSize: '0.95rem' }}>Who we release accounts to</h4>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>This firm’s name and handling person print on every release and on the firm’s portal. Its counties are colored under Firms… and read above.</span>
         </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem' }}>⚖ Collections law firms</h3>
+        <div>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Who the Legal desk releases accounts to, by county. Each firm keeps its own fee model behind “Click keeps”. A county nobody covers stays gray, and the desk says so on the account.</span>
         </div>
       )}

@@ -4979,16 +4979,24 @@ tr.gcNoticeBandRow[data-flash='yes'] > td:first-child {
 .messagesJumpStrip {
   margin-bottom: 0;
 }
-.messagesJumpStrip.isLine .stagesStageSegs {
+/* Settings → Jobs & billing's strip of headings (punch list #261) takes the same shape, on a phone the same line. */
+.settingsJumpStrip {
+  margin-bottom: 0.5rem;
+}
+.messagesJumpStrip.isLine .stagesStageSegs,
+.settingsJumpStrip.isLine .stagesStageSegs {
   flex-wrap: wrap;
   gap: 0 0.15rem;
   padding: 0.1rem 0.25rem;
 }
 .messagesJumpStrip.isLine .stagesStageArrow,
-.messagesJumpStrip.isLine .stagesStageSegDot {
+.messagesJumpStrip.isLine .stagesStageSegDot,
+.settingsJumpStrip.isLine .stagesStageArrow,
+.settingsJumpStrip .stagesStageSegDot {
   display: none;
 }
-.messagesJumpStrip.isLine .stagesStageSeg {
+.messagesJumpStrip.isLine .stagesStageSeg,
+.settingsJumpStrip.isLine .stagesStageSeg {
   flex: 0 1 auto;
   flex-direction: row;
   gap: 0.3rem;
@@ -4996,10 +5004,13 @@ tr.gcNoticeBandRow[data-flash='yes'] > td:first-child {
   border-bottom-width: 2px;
 }
 .messagesJumpStrip.isLine .stagesStageSegName,
-.messagesJumpStrip.isLine .stagesStageSegMeta {
+.messagesJumpStrip.isLine .stagesStageSegMeta,
+.settingsJumpStrip.isLine .stagesStageSegName,
+.settingsJumpStrip.isLine .stagesStageSegMeta {
   font-size: 0.8rem;
 }
-.messagesJumpStrip.isLine .stagesStageSegMeta {
+.messagesJumpStrip.isLine .stagesStageSegMeta,
+.settingsJumpStrip.isLine .stagesStageSegMeta {
   font-weight: 700;
   color: var(--text-strong);
 }

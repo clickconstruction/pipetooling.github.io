@@ -14,6 +14,7 @@
  * `searchSettings` only returns entries whose tab the viewer can see.
  */
 
+import { announceSettingsTarget } from './settingsTarget'
 import { HELP_GUIDE_URL_PARAM } from './helpGuideUrlParam'
 
 export type SettingsSearchEntry = {
@@ -84,13 +85,34 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Recently deleted', keywords: ['trash', 'restore', 'undelete', 'deleted records'], tabId: 'settings-data', anchorId: 'settings-recently-deleted' },
   { label: 'Bulk-deletion alert', keywords: ['mass delete', 'deletion warning'], tabId: 'settings-data' },
   { label: 'Link jobs to their bids', keywords: ['backfill', 'bid link', 'matches by value', 'job budget', 'burn'], tabId: 'settings-data', anchorId: 'settings-bid-job-backfill' },
-  // Jobs & dispatch (dev)
-  { label: 'Trip charge amounts', keywords: ['trip fee', 'travel charge'], tabId: 'settings-jobs' },
-  { label: 'Rates charged by crew', keywords: ['charge rate', 'hourly rate', 'crew rate', 'master with a helper', 'rate card', '285', 'who counts as what', 'charged as', 'charge standing'], tabId: 'settings-jobs' },
-  { label: 'Markup on materials', keywords: ['markup', 'margin', 'materials', 'over cost'], tabId: 'settings-jobs' },
-  { label: 'Re-assign jobs', keywords: ['transfer jobs', 'move jobs to another user'], tabId: 'settings-jobs' },
-  { label: 'Dispatch groups', keywords: ['dispatch', 'crews'], tabId: 'settings-jobs' },
-  { label: 'Job book', keywords: ['job numbering', 'job book settings'], tabId: 'settings-jobs' },
+  // Jobs & billing (punch list #261): one entry per heading and one per card, each landing on its anchor; a card's opens it.
+  { label: 'Billing and money', keywords: ['money settings', 'what an hour costs', 'pay rhythm', 'billing settings'], tabId: 'settings-jobs', anchorId: 'settings-jobs-group-money' },
+  { label: 'The job’s record', keywords: ['job record', 'stages photos test papers', 'job settings'], tabId: 'settings-jobs', anchorId: 'settings-jobs-group-record' },
+  { label: 'What a bill says', keywords: ['bill words', 'invoice words', 'footers and memo'], tabId: 'settings-jobs', anchorId: 'settings-jobs-group-bill' },
+  { label: 'Liens, collections and papers', keywords: ['lien settings', 'collections settings', 'papers'], tabId: 'settings-jobs', anchorId: 'settings-jobs-group-liens' },
+  { label: 'Notices the app sends', keywords: ['notices', 'gc notices', 'automatic emails'], tabId: 'settings-jobs', anchorId: 'settings-jobs-group-notices' },
+  { label: 'Repairs and old records', keywords: ['repairs', 'old records', 'housecall pro leftovers'], tabId: 'settings-jobs', anchorId: 'settings-jobs-group-repairs' },
+  { label: 'Trip charge amounts', keywords: ['trip fee', 'travel charge', 'turnaway'], tabId: 'settings-jobs', anchorId: 'settings-jobs-trip-charges' },
+  { label: 'Rates charged by crew', keywords: ['charge rate', 'hourly rate', 'crew rate', 'master with a helper', 'rate card', '285', 'who counts as what', 'charged as', 'charge standing'], tabId: 'settings-jobs', anchorId: 'settings-jobs-rates' },
+  { label: 'Markup on materials', keywords: ['markup', 'margin', 'materials', 'over cost'], tabId: 'settings-jobs', anchorId: 'settings-jobs-markup' },
+  { label: 'Default labor rate', keywords: ['labor rate', 'new labor job', 'dollars an hour'], tabId: 'settings-jobs', anchorId: 'settings-jobs-labor-rate' },
+  { label: 'Re-assign jobs', keywords: ['transfer jobs', 'move jobs to another user', 'company owner account'], tabId: 'settings-jobs', anchorId: 'settings-jobs-company-owner' },
+  { label: 'Job book', keywords: ['job numbering', 'job book settings', 'collect payment line items'], tabId: 'settings-jobs', anchorId: 'settings-jobs-job-book' },
+  { label: 'GC pay by card', keywords: ['pay by card', 'card bill', 'gc card'], tabId: 'settings-jobs', anchorId: 'settings-jobs-gc-card' },
+  { label: 'Trades cut-off before bill day', keywords: ['cut-off', 'cutoff', 'bill day', 'days before bill day'], tabId: 'settings-jobs', anchorId: 'settings-jobs-gc-cutoff' },
+  { label: 'Sub portal pay schedule', keywords: ['pay run day', 'pay-run', 'how pay works', 'sub portal'], tabId: 'settings-jobs', anchorId: 'settings-jobs-sub-pay' },
+  { label: 'Stage checklists', keywords: ['checklist questions', 'rough in', 'top out', 'trim set', 'stage questions'], tabId: 'settings-jobs', anchorId: 'settings-jobs-stage-checklists' },
+  { label: 'Photos', keywords: ['photo size', 'report photo', 'shrink'], tabId: 'settings-jobs', anchorId: 'settings-jobs-photos' },
+  { label: 'Test reports', keywords: ['certifier', 'hydrostatic', 'pinpoint', 'gas test', 'test report words'], tabId: 'settings-jobs', anchorId: 'settings-jobs-test-reports' },
+  { label: 'Manage developments', keywords: ['developments', 'default gc', 'archive development'], tabId: 'settings-jobs', anchorId: 'settings-jobs-developments' },
+  { label: 'Job address city line breaks', keywords: ['city names', 'address parser', 'localities'], tabId: 'settings-jobs', anchorId: 'settings-jobs-city-lines' },
+  { label: 'Property county suggestions', keywords: ['county suggestions', 'city county pairs'], tabId: 'settings-jobs', anchorId: 'settings-jobs-county-suggestions' },
+  { label: 'Owner of record from the roll', keywords: ['owner of record', 'appraisal roll', 'save owners'], tabId: 'settings-jobs', anchorId: 'settings-jobs-owner-of-record' },
+  { label: 'Office county for sworn statements', keywords: ['office county', 'venue', 'sworn statement county', 'notary'], tabId: 'settings-jobs', anchorId: 'settings-jobs-office-county' },
+  { label: 'Uncollectible list', keywords: ['uncollectible', 'given up on', 'accountant', 'write off'], tabId: 'settings-jobs', anchorId: 'settings-jobs-uncollectible' },
+  { label: 'GC office notices', keywords: ['office notices', 'project manager notice', 'architect reminder'], tabId: 'settings-jobs', anchorId: 'settings-jobs-gc-office-notices' },
+  { label: 'GC customer notice before a bill is due', keywords: ['customer notice', 'due notice', '3 days before'], tabId: 'settings-jobs', anchorId: 'settings-jobs-gc-customer-notice' },
+  { label: 'Hide the HCP field', keywords: ['hcp field', 'hcp number', 'housecall pro field'], tabId: 'settings-jobs', anchorId: 'settings-jobs-hide-hcp' },
   // Catalogs & trades (dev + estimator)
   { label: 'Service types', keywords: ['trades', 'plumbing types'], tabId: 'settings-catalogs' },
   { label: 'Material part types', keywords: ['parts', 'materials catalog'], tabId: 'settings-catalogs' },
@@ -107,9 +129,11 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   // Company
   { label: 'Office address', keywords: ['company address', 'shop address'], tabId: 'settings-company' },
   { label: 'Map default view', keywords: ['map center', 'map zoom'], tabId: 'settings-company' },
-  // Jobs & billing (moved from Templates in v2.2088)
-  { label: 'Invoice footers & issuer', keywords: ['stripe footer', 'paper invoice', 'invoice identity', 'billing footer'], tabId: 'settings-jobs' },
-  { label: 'Bill-Customer memo', keywords: ['invoice memo', 'billing note'], tabId: 'settings-jobs' },
+  // Jobs & billing (moved from Templates in v2.2088; anchored since punch list #261)
+  { label: 'Invoice footers & issuer', keywords: ['stripe footer', 'paper invoice', 'invoice identity', 'billing footer', 'signs for the company'], tabId: 'settings-jobs', anchorId: 'settings-jobs-invoice-issuer' },
+  { label: 'Physical invoice footer presets', keywords: ['paper footer', 'physical footer'], tabId: 'settings-jobs', anchorId: 'settings-jobs-invoice-footer' },
+  { label: 'Stripe invoice footer presets', keywords: ['stripe footer presets', 'plumbing footer', 'electrical footer'], tabId: 'settings-jobs', anchorId: 'settings-jobs-stripe-footer' },
+  { label: 'Bill-Customer memo', keywords: ['invoice memo', 'billing note'], tabId: 'settings-jobs', anchorId: 'settings-jobs-bill-memo' },
   // Bids (moved from Templates in v2.2088)
   { label: 'Bid cover letter defaults', keywords: ['cover letter', 'bid letter'], tabId: 'settings-catalogs', anchorId: 'settings-bid-cover-letter-defaults' },
   // The two estimate editors on Bids & materials, which Contracts & terms opens by anchor (punch list #181: every anchor the deep links know has a door).
@@ -192,6 +216,7 @@ const SETTINGS_ANCHOR_USER_EVENTS = ['wheel', 'touchstart', 'pointerdown', 'keyd
  * `holdMs`. Returns a stop function.
  */
 export function pollScrollToSettingsAnchor(anchorId: string, opts: { findMs?: number; holdMs?: number } = {}): () => void {
+  announceSettingsTarget(anchorId)
   const findDeadline = Date.now() + (opts.findMs ?? 5000)
   let holdUntil = 0
   let aligned: number | null = null

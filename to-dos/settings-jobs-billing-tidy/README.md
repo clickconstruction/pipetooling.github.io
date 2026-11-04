@@ -2,7 +2,7 @@
 name: "Settings → Jobs & billing: the 28 cards under six headings, the rare ones folded, a jump strip"
 number: 261
 group: ready
-status: proposed 2026-11-04 from Grace's look at Settings → Jobs & billing · PR 1 building on the recommended defaults
+status: proposed 2026-11-04 from Grace's look at Settings → Jobs & billing · PR 1 (v2.6516) built on the recommended defaults
 summary: >
   Jobs & billing draws 28 cards for a dev in one long column, in the order they were added over a
   year: a switch about HCP numbers first, the law firms' map third, the rate card eleventh, the
@@ -216,4 +216,4 @@ answered.
 
 ## Where it stands
 
-Proposed 2026-11-04. PR 1 is building on the recommended defaults; the calls wait on the owner.
+Proposed 2026-11-04. PR 1 (v2.6516) built the recommended defaults the same day: the six headings, the fold wrapper on every form, the anchors and doors, the strip, the counted fold presses. The calls wait on the owner; PR 2 and PR 3 wait on calls 2 and 4.
