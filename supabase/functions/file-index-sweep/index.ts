@@ -25,7 +25,8 @@ import { indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_OCR_ROWS, SWEEP_REC
  *     4. OCR (PR 3, v2.6336): once the secret GOOGLE_DOCAI_PROCESSOR names a Document AI OCR processor, `ocr` (5)
  *        scans due for a read (never tried, or tried over a day ago; of a kind Document AI reads) go through it,
  *        oldest try first, so the scans the backfill held catch up by themselves. Step 1 makes at most five OCR calls
- *        of its own (OCR_PER_PASS_MAX, as every pass does), so a run spends at most ten, 1,440 a day.
+ *        of its own (OCR_PER_PASS_MAX, as every pass does), so steps 1 and 4 spend at most ten a run; the
+ *        reconcile step (v2.6417) is a pass of its own and may spend five more, and each rechecked file that changed one.
  *     5. Meaning (PR 4, v2.6338): once the secret GEMINI_API_KEY is set, `embed` (10) rows with text whose chunks are
  *        missing or older than the text get their vectors, so every file indexed before the key catches up.
  *

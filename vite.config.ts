@@ -271,7 +271,7 @@ export default defineConfig({
       // the custom sw.ts (nothing called skipWaiting), leaving clients stale forever.
       registerType: 'prompt',
       injectManifest: {
-        // Workbox default is 2 MiB; the main chunk is ~4.9 MiB (every public page is eager in App.tsx).
+        // Workbox default is 2 MiB; the main chunk is ~7.4 MiB on 2026-11-03 (every public page is eager in App.tsx).
         // A file over this cap fails the deploy build. The main chunk reached 6 MiB on 2026-10-20 by plain
         // growth (6,277 → 6,284 kB across v2.5332's merge, the same 259 chunks before and after), so the cap
         // is 7 MiB: ~0.7 MiB for growth, and it still trips on a regression like v2.4655's, which put every
