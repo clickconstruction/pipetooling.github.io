@@ -62,13 +62,12 @@ BEGIN
   PERFORM t_as(NULL);
   RAISE NOTICE 'ok B6: users_guard_privileged_columns refuses a signed-in write to login_attached_at';
 
-  -- F. The one FK to auth.users that names a receiver refuses the worker (PR 5 re-points it).
-  BEGIN
-    INSERT INTO public.notification_history (recipient_user_id, body) VALUES (v_worker, 'your hours were approved');
-    RAISE EXCEPTION 'FAILED: F — should have hit notification_history_recipient_user_id_fkey';
-  EXCEPTION WHEN foreign_key_violation THEN
-    RAISE NOTICE 'ok F: notification_history.recipient_user_id → auth.users refuses a no-login recipient (%)', SQLSTATE;
-  END;
+  -- F. The one FK to auth.users that named a receiver (notification_history.recipient_user_id) refused a no-login worker
+  -- with 23503 until PR 5 (20261104220000) pointed it at public.users; the runner applies that file too, so the notice lands.
+  INSERT INTO public.notification_history (recipient_user_id, body) VALUES (v_worker, 'your hours were approved');
+  SELECT count(*) INTO v_n FROM public.notification_history WHERE recipient_user_id = v_worker; PERFORM t_assert(v_n = 1, 'F landed');
+  DELETE FROM public.notification_history WHERE recipient_user_id = v_worker;
+  RAISE NOTICE 'ok F: notification_history.recipient_user_id points at public.users, so a notice to the no-login worker lands (it was refused with 23503 before PR 5)';
 
   -- C. Attach a login: the auth row created on the worker's id (POST /admin/users with id, GoTrue ≥ v2.155.0).
   v_id := auth.t_gotrue_admin_create(v_worker, 'rio@example.test', 'pw-rio-1', '{"name":"Rio Vance","invited_role":"helpers"}');

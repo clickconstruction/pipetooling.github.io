@@ -52,7 +52,7 @@ serve(async (req) => {
     if (!serviceRoleKey) return json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured.' }, 500)
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
 
-    const { data: target, error: targetError } = await admin.from('users').select('id, email').eq('id', user_id).maybeSingle()
+    const { data: target, error: targetError } = await admin.from('users').select('id, email, login_attached_at').eq('id', user_id).maybeSingle()
     if (targetError) return json({ error: targetError.message }, 500)
     if (!target) return json({ error: 'No account with that id' }, 404)
 
@@ -65,13 +65,17 @@ serve(async (req) => {
     if (clash && clash.length > 0) return json({ error: `${clash[0].name ?? 'Another account'} already signs in with ${check.email}.` }, 409)
 
     const previous = target.email
-    const { error: loginError } = await admin.auth.admin.updateUserById(user_id, { email: check.email, email_confirm: true })
-    if (loginError) return json({ error: `The login did not change: ${loginError.message}` }, 400)
+    // v2.6519 (punch list #260): a row with no login behind it has only the app's copy to change.
+    const hasLogin = (target as { login_attached_at?: string | null }).login_attached_at != null
+    if (hasLogin) {
+      const { error: loginError } = await admin.auth.admin.updateUserById(user_id, { email: check.email, email_confirm: true })
+      if (loginError) return json({ error: `The login did not change: ${loginError.message}` }, 400)
+    }
 
     const { error: rowError } = await admin.from('users').update({ email: check.email }).eq('id', user_id)
     if (rowError) {
       // Put the login back so the app and the login keep agreeing.
-      if (previous) await admin.auth.admin.updateUserById(user_id, { email: previous, email_confirm: true })
+      if (previous && hasLogin) await admin.auth.admin.updateUserById(user_id, { email: previous, email_confirm: true })
       return json({ error: `Nothing changed: ${rowError.message}` }, 500)
     }
 

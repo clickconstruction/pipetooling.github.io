@@ -198,7 +198,8 @@ describe('PersonDeskAccessSection — a person with no login (punch list #260, v
     expect(screen.queryByText('Training mode')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Set password…' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Send sign-in email' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Change…' })).toBeNull()
+    // v2.6519: the address can change on the person alone, so Change… stays.
+    expect(screen.getByRole('button', { name: 'Change…' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Merge a duplicate…' })).toBeTruthy()
   })
 

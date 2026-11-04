@@ -98,7 +98,7 @@ export function UsersTabRow({
   const menuRef = useRef<HTMLDivElement>(null)
   const isAccount = item.source === 'user'
   /** Punch list #260 (v2.6514): a users row is a login only once a sign-in is attached. A row with `login_attached_at` null is a person with no login. */
-  const hasLogin = isAccount && item.login_attached_at != null
+  const hasLogin = isAccount && item.login_attached_at !== null
 
   useEffect(() => {
     if (!menuOpen) return

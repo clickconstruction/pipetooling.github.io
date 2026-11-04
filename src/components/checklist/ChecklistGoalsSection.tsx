@@ -110,7 +110,7 @@ export function ChecklistGoalsSection({
           .from('checklist_tech_tree_group_tasks')
           .select('id, group_id, title, sort_index, completed_at, pinned_at, checklist_tech_tree_task_assignees(user_id)')
           .in('group_id', grps.map((g) => g.id)),
-        activeUsersQuery<{ id: string; name: string; email: string }>('id, name, email', { includeDev: true, orderByName: false }),
+        activeUsersQuery<{ id: string; name: string; email: string }>('id, name, email', { includeDev: true, orderByName: false, withLogin: true }),
       ])
       if (cancelled) return
       const taskIds = (tsks ?? []).map((t) => t.id)

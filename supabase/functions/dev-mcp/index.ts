@@ -1586,12 +1586,13 @@ async function resolveViewAsTarget(admin: Admin, args: Record<string, unknown>):
   if (!!role === !!user) return { error: 'view_as needs exactly one of `role` (its sample account) or `user` (a user id).' }
   if (role && !/^[a-z_]+$/.test(role)) return { error: `"${role}" is not a role name.` }
   if (user && !/^[0-9a-f-]{36}$/i.test(user)) return { error: '`user` must be a user id — find_person resolves a name.' }
-  const query = admin.from('users').select('id, email, name, role, archived_at, is_sample')
+  const query = admin.from('users').select('id, email, name, role, archived_at, is_sample, login_attached_at')
   const { data, error } = role ? await query.eq('role', role).eq('is_sample', true).is('archived_at', null).limit(1).maybeSingle() : await query.eq('id', user).maybeSingle()
   if (error) return { error: `Could not look up the target: ${error.message}` }
-  const u = data as { id: string; email: string; name: string | null; role: string; archived_at: string | null } | null
+  const u = data as { id: string; email: string; name: string | null; role: string; archived_at: string | null; login_attached_at?: string | null } | null
   if (!u) return { error: role ? `No sample account for role "${role}" — create it on Settings → People & teams → Active accounts (View as).` : `No user ${user}.` }
   if (u.archived_at) return { error: 'That account is archived.' }
+  if (u.login_attached_at === null || !u.email) return { error: 'That person has no login to view the app as; a dev attaches one from their desk (punch list #260).' }
   if (u.role === 'dev') return { error: 'A dev account is never a view_as target (the same rule as Imitate).' }
   return { userId: u.id, email: u.email, name: u.name, role: u.role }
 }

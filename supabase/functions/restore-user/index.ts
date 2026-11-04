@@ -158,9 +158,14 @@ serve(async (req) => {
     }
 
     // GoTrue's admin update lifts a ban with `ban_duration: 'none'`; it silently drops a `banned_until`.
-    const { error: unbanError } = await adminClient.auth.admin.updateUserById(user_id, {
-      ban_duration: 'none',
-    })
+    // v2.6519 (punch list #260): a row with no login behind it has no auth account to unban.
+    const { data: restoredRow } = await adminClient.from('users').select('login_attached_at').eq('id', user_id).maybeSingle()
+    const hasLogin = (restoredRow as { login_attached_at: string | null } | null)?.login_attached_at != null
+    const { error: unbanError } = hasLogin
+      ? await adminClient.auth.admin.updateUserById(user_id, {
+          ban_duration: 'none',
+        })
+      : { error: null }
 
     if (unbanError) {
       console.error('Auth unban failed after public.users updated:', unbanError)

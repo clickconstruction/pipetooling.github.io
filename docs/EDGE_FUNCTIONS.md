@@ -568,6 +568,8 @@ interface SendSignInEmailRequest {
 
 ### merge-users
 
+> **v2.6519 (punch list #260)**: the absorbed row is banned only when a login stands behind it (`users.login_attached_at`); a person with no login merges with nothing to ban.
+
 > **v2.5397 — the absorbed login's ban lands, and `deno check` passes again**: the ban sent `banned_until`, which GoTrue's admin update drops without an error (see `archive-user`), so the call answered 200 and the absorbed login stayed open (TS2353). It sends `ban_duration: '876000h'` (100 years) now. **Redeploy** once merged, after `restore-user`: the ban works from then on.
 
 **Purpose**: Merge one user account into another (dev-only). Calls the `merge_user_accounts` RPC (migration `20260712190000` + `191500` fix) to reassign every reference from the absorbed account to the survivor — explicit handling for unique/membership tables, org pair tables, labels, roster link, `estimates.accept_notify_user_ids`, plus a dynamic FK sweep and a zero-leftovers coverage assert — then bans the absorbed login via the service role. Rules (validated in the RPC): both accounts same role; absorbed must be **archived or never signed in**; when one account is live it must be the survivor. Absorbed account keeps its email (tombstone) and stays restorable-in-name only — merges cannot be undone.
@@ -612,6 +614,8 @@ interface MergeUsersRequest {
 **Setup**: `supabase secrets set GSA_API_KEY=…` (free key from api.data.gov); until set, the lookup reports `unconfigured` and manual entry still works.
 
 ### archive-user
+
+> **v2.6519 (punch list #260)**: the body takes `user_id` beside `email` / `name` — the one sure handle for a person with no login, who may have no address; the desk's Archive and the End employment flow send it. The ban runs only when a login stands behind the row.
 
 > **v2.5397 — the ban lands, and `deno check` passes again**: the ban sent `banned_until`, which GoTrue's admin update does not take. `PUT /admin/users/{id}` reads the body into `AdminUserParams`, which has `ban_duration` and no `banned_until`, with a plain `json.Unmarshal` that drops unknown keys, so the call answered 200 and banned nobody (TS2353, confirmed by a read-only check on production). It sends `ban_duration: '876000h'` (100 years) now, and GoTrue writes `auth.users.banned_until` from it. The service-role client goes to `forwardCtSeatState` as that helper's own narrow type (TS2589, TS2345), and the outer `catch` reads `(error as Error).message` (TS18046). **Redeploy** once merged, after `restore-user`: the ban works from then on.
 
@@ -676,6 +680,8 @@ const response = await supabase.functions.invoke('archive-user', {
 ---
 
 ### restore-user
+
+> **v2.6519 (punch list #260)**: the unban runs only when a login stands behind the row (`users.login_attached_at`); restoring a person with no login touches `public.users` alone.
 
 > **v2.6481 — `restore_roadmap`** (punch list #256, Bring back): `restore_roadmap: false` deletes the user's rows in `checklist_tech_tree_task_assignees_parked` before clearing `archived_at`, so the restore trigger (`roadmap_assignees_follow_user_archive`) gives none of their old open roadmap tasks back; they stay in the Plan view's **Needs a person** lane. The answer carries `roadmap_tasks_discarded`. Absent or `true` is today's behaviour, so the Restore presses are unchanged. Bring back (PR 3) sends `false` when its box is unticked, which it is by default after 90 days away. **Redeploy** once merged (`supabase functions deploy restore-user`).
 
@@ -927,6 +933,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 ---
 
 ### dev-mcp
+
+> **v2.6519 (punch list #260)**: `view_as` refuses a target with no login (`users.login_attached_at` null) or no address with its reason — there is no account to mint a session for; a dev attaches one from the desk.
 
 > **v2.6468 (server 0.23.0) — `get_job` by the one card rule**: `money.parts.card_charges` and the profit count by `jobCardChargesCountedFromLines`, the Job window's rule (an Internal Transfer is not a job cost; a charge also on a supply-house invoice is counted there), over the window's own lookups read through the composite's `Reader`: `mercury_transaction_drag_sort_assignments` → `mercury_drag_sort_labels.default_key` and `mercury_transaction_supply_house_invoice_links`, in `in` reads of 100 transaction ids, each paged (`everyIn`). `money.card_rule` holds the attached total, what each kind left out (lines, cost) and the counted total; a lookup that fails takes nothing out and says so in `card_rule.note`. The door's RPC reads take result filters (`buildRpcQuery(args, limit, { filters, argNames })`, passed by `readerAs`): a filter on a secret column is refused as `read_rows`' is (one `appendFilters` for both), and so is one named like an argument (`rpcArgNames`), which PostgREST would bind as that argument. `get_job` reads `get_man_hours_by_job` with `job_id eq` the job. `call_read` is unchanged. Tests: `devMcpComposites.test.ts` (on the shared `catalogReader`, which checks a result filter against the catalog's answer columns and applies it) and `devMcpDoor.test.ts`; the version pins move to 0.23.0.
 
@@ -1592,6 +1600,8 @@ The payment itself comes through `stripe-webhook` as on any Stripe bill (`metada
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE`, `APP_ORIGIN` (the footer's portal link; clicktooling.com when unset), `GC_CARD_BILL_STRIPE_MODE` (unset is test). The switch is no longer a secret: it is the `app_settings` row above. Logs one line per bill turned (`gc_card_bill_on_card`) and per bill taken back (`gc_card_bill_undone`).
 
 ### gc-money-monday-email
+
+> **v2.6519 (punch list #260)**: `loadUser` answers null for a row with no address, so a person with no login is never a recipient.
 
 **Purpose**: The Monday money email (v2.5024, Owner Billing O7b of `to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md` on branch `spike/gc-mode`): the money team's `gc_money_monday` Report Subscriptions stream ([REPORT_SUBSCRIPTIONS.md](./REPORT_SUBSCRIPTIONS.md)). A member of the money team asks for it on Money in GC projects, for themselves or a teammate, on the weekdays and at the time they pick. The email says who owes us on the GC jobs that are ours, as Money's *Who owes us* reads it, and what went last week, with **Open Money** (`/gc?view=money`). No six weeks line yet (the lead's call 2).
 
@@ -3598,6 +3608,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 ### messages-notify
 
+> **v2.6519 (punch list #260)**: the approver read skips a users row with no address (`.not('email', 'is', null)` beside `REAL_ACCOUNT`), so a person with no login is never a recipient.
+
 > **v2.6269 — the courtesy notice as a legal line** (punch list #231): [`_shared/messagesReplyPush.ts`](../supabase/functions/_shared/messagesReplyPush.ts) reads the notice desk items' `job_id, kind, status` too and adds the owner's courtesy sends (`legalSendsFromCourtesy`, the regenerated edge copy of [`legalRoute.ts`](../src/lib/messages/legalRoute.ts)), so a reply after the reminder routes to the office as one after the notice does. **Redeploy required** for every function that bundles the copy (`messages-notify`, `messages-reply-push`).
 
 > **v2.6228 — a hand-off pings the person it went to**: a fourth body, `{ "handed": { "contact_id": "<contacts.id>" } }`, as the user, right after `hand_to` (`followUpIo.handTo`). The function refuses unless the thread's `has_how` is `handed` to someone other than the caller within the last 15 minutes (`handedFresh`) and the caller wrote an event line on it in that time (the hand's own); it builds the words itself ([`src/lib/messages/handedPush.ts`](../src/lib/messages/handedPush.ts), mirrored: *Rosa handed you Dale Ferris*, the newest line in, the thread at it), keeps the person's push hours (`pushDecision` over `pushHoursFor`, a held row with no push), sends through the same `pushToPerson` as a reply's push and records one `notification_history` row as `message_handed`. Answers `{ pushed, held, devices }`. **Redeploy required.**
@@ -4189,6 +4201,8 @@ const response = await supabase.functions.invoke('set-user-password', {
 ---
 
 ### change-user-email
+
+> **v2.6519 (punch list #260)**: for a row with no login (`users.login_attached_at` null) the function changes the app's copy and the roster row alone, since there is no auth address to move; the put-back on a failed row write is skipped the same way.
 
 **Purpose** (v2.4344, *Account on the desk* PR C): change the email someone **signs in with**. It moves the login (`auth.users.email`, confirmed so no confirmation email goes out) and the app's copy (`public.users.email`) together, then the account's own roster row (`people` where `account_user_id` is them) only where it still held the old address. Before it, the Active Accounts window's Edit wrote `public.users.email` alone, so the app showed one address while the person signed in with another. If the app's copy cannot be written, the login is put back. The CountTooling seat is joined by uuid, not email, so it needs nothing.
 
@@ -4823,6 +4837,8 @@ interface SendPhysicalInvoiceEmailBody {
 **Deploy**: `supabase functions deploy payment-forecast-email-dispatch --no-verify-jwt`. Requires migration `20260824133529` (table + payload RPC + pg_cron).
 
 ### money-waiting-email-dispatch
+
+> **v2.6519 (punch list #260)**: `loadUser` answers null for a row with no address, so a person with no login is never a recipient.
 
 > **v2.4460 — a bill's wait counts from its own day**: [`_shared/moneyWaitingCore.ts`](../supabase/functions/_shared/moneyWaitingCore.ts) takes each bill's day from `paymentForecastCore`'s `billedReferenceYmd`, which now reads `billed_at` in `APP_CALENDAR_TZ`. A bill marked billed after 7 pm Central no longer waits a day short. Redeploy after merge.
 

@@ -151,7 +151,7 @@ export function DashboardMyInboxCard({
   // Load users for Forward modal (Outstanding Forward). Tier-2 #19: active people only.
   useEffect(() => {
     if (!authUserId) return
-    activeUsersQuery('id, name, email', { includeDev: true }).then(({ data }) => {
+    activeUsersQuery('id, name, email', { includeDev: true, withLogin: true }).then(({ data }) => {
       setSendTaskUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
     })
   }, [authUserId])

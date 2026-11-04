@@ -248,7 +248,7 @@ export function useSettingsTemplatesEngine({
       setTestError('Target user not found')
       return
     }
-    const to = targetUser.email.trim()
+    const to = (targetUser.email ?? '').trim()
     if (!to) {
       setTestError('Selected user has no email')
       return
@@ -342,7 +342,7 @@ export function useSettingsTemplatesEngine({
       setWorkflowFnTestError('Target user not found')
       return
     }
-    const to = targetUser.email.trim()
+    const to = (targetUser.email ?? '').trim()
     if (!to) {
       setWorkflowFnTestError('Selected user has no email')
       return

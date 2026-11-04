@@ -14,6 +14,11 @@ export type ActiveUsersQueryOptions = Pick<ActiveRosterOptions, 'includeDev'> & 
   roles?: readonly string[]
   /** Order by name (default true). */
   orderByName?: boolean
+  /**
+   * Punch list #260 (v2.6519): only people who can sign in (`login_attached_at` set). For the pickers that hand someone an
+   * app task, a pin or an imitation — dead for a worker with no login. Rosters, crews and pay lists leave it off.
+   */
+  withLogin?: boolean
 }
 
 /** Default row shape for the common `'id, name, email, role'`-style pickers; pass your own `T` for wider selects. */
@@ -33,9 +38,11 @@ export function activeUsersQuery<T extends object = ActiveUserRow>(
   columns: string,
   opts: ActiveUsersQueryOptions = {},
 ): PromiseLike<SupabaseClientResult<T[]>> {
+  // `withLogin` reads the column and drops the rows here, so the query's shape (and every picker's test mock) stays as it was.
+  const selected = opts.withLogin && !/\blogin_attached_at\b/.test(columns) ? `${columns}, login_attached_at` : columns
   let q = supabase
     .from('users')
-    .select(columns)
+    .select(selected)
     .is('archived_at', null)
     .eq('is_digital_twin', false)
     .eq('is_sample', false) // v2.3606: the View-as sample accounts hide like twins
@@ -47,7 +54,21 @@ export function activeUsersQuery<T extends object = ActiveUserRow>(
     q = q.neq('role', 'dev' as UserRoleEnum)
   }
   if (opts.orderByName !== false) q = q.order('name')
-  return q as unknown as PromiseLike<SupabaseClientResult<T[]>>
+  const built = q as unknown as PromiseLike<SupabaseClientResult<T[]>>
+  if (!opts.withLogin) return built
+  return {
+    then<R1 = SupabaseClientResult<T[]>, R2 = never>(
+      onOk?: ((value: SupabaseClientResult<T[]>) => R1 | PromiseLike<R1>) | null,
+      onErr?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
+    ): PromiseLike<R1 | R2> {
+      return built.then((r) => {
+        const rows = (r.data ?? null) as Array<T & { login_attached_at?: string | null }> | null
+        // A row the read did not stamp (a mock, an older reader) keeps the older meaning: a login.
+        const kept = rows ? rows.filter((u) => u.login_attached_at !== null) : rows
+        return onOk ? onOk({ ...r, data: kept as T[] | null } as SupabaseClientResult<T[]>) : ((r as unknown) as R1)
+      }, onErr)
+    },
+  }
 }
 
 /** `activeUsersQuery` awaited: `{ data: T[], error }`, never a null data. */

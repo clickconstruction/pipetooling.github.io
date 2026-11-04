@@ -7,6 +7,8 @@
 export type RailPersonInput = {
   /** users.id when there is an account, else null. */
   userId: string | null
+  /** Punch list #260 (v2.6519): whether a sign-in stands behind the users row; left out = yes (the older meaning). */
+  hasLogin?: boolean
   /** people.id when there is a roster row, else null. */
   personId: string | null
   name: string

@@ -489,7 +489,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
   useEffect(() => {
     if (isDev) {
       // Tier-2 #19 (J30-2): person pickers = active people (no twins); dev rows stay.
-      activeUsersQuery('id, name, email', { includeDev: true })
+      activeUsersQuery('id, name, email', { includeDev: true, withLogin: true })
         .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
@@ -1159,7 +1159,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
   useEffect(() => {
     if (canViewOthers) {
       // Tier-2 #19 (J30-2): person pickers = active people (no twins); dev rows stay.
-      activeUsersQuery('id, name, email', { includeDev: true })
+      activeUsersQuery('id, name, email', { includeDev: true, withLogin: true })
         .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
@@ -2087,7 +2087,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
   useEffect(() => {
     if (isDev) {
       // Tier-2 #19 (J30-2): person pickers = active people (no twins); dev rows stay.
-      activeUsersQuery('id, name, email', { includeDev: true })
+      activeUsersQuery('id, name, email', { includeDev: true, withLogin: true })
         .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
@@ -3163,7 +3163,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
   }, [])
 
   async function loadUsers() {
-    const { data } = await activeUsersQuery('id, name, email', { includeDev: true })
+    const { data } = await activeUsersQuery('id, name, email', { includeDev: true, withLogin: true })
     setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
   }
 

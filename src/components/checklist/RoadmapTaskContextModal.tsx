@@ -85,7 +85,7 @@ export default function RoadmapTaskContextModal({
           .select('id, group_id, title, sort_index, completed_at, pinned_at, checklist_tech_tree_task_assignees(user_id)')
           .in('group_id', groupIds),
         // Tier-2 #19: assignee picker = active people (no twins); dev rows stay.
-        activeUsersQuery('id, name, email', { includeDev: true }),
+        activeUsersQuery('id, name, email', { includeDev: true, withLogin: true }),
       ])
       const rows = (tasks ?? []).map((t) => ({
         id: t.id,
