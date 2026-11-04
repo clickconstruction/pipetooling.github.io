@@ -1586,6 +1586,8 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "split_own_clock_session_segments": [{"args":{"p_segments":"Json","p_session_id":"string"},"returns":"{ error_message: string inserted_ids: string[] }[]"}],
   "split_pay_payment": [{"args":{"p_parts":"Json","p_payment_id":"string"},"returns":"Json"}],
   "staff_can_view_user_for_tally_followup": [{"args":{"p_target":"string","p_viewer":"string"},"returns":"boolean"}],
+  "stage_check_close_settled": [{"args":{"p_closed_by":"string","p_fixture_id":"string","p_note":"string","p_question_id":"string"},"returns":"number"}],
+  "stage_check_settler_name": [{"args":{"p_name":"string","p_user":"string"},"returns":"string"}],
   "stage_checklist_may_author": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
   "stamp_bid_priced_margin": [{"args":{"p_bid_id":"string","p_bid_version_id":"string","p_cost_usd":"number","p_rate_set":"boolean","p_revenue_usd":"number","p_uncosted_usd":"number"},"returns":"Json"}],
   "start_bid_from_message": [{"args":{"p_customer_id":"string","p_due_date?":"string","p_due_time?":"string","p_links?":"Json","p_message_id":"string","p_project_name":"string"},"returns":"Json"}],
