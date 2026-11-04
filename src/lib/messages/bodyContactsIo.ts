@@ -4,11 +4,13 @@
  *
  * - `whoseChannel`: whose number or address it is, as the spine answers (`contact_for_channel`, a read: a window that
  *   only looks makes nothing).
- * - `makeThread`: a thread for a person nobody has yet, made by the press and never by a read: the contact as the
- *   edge makes one for a sender nobody knows (kind `unknown`, named by the address or the number, the one channel),
- *   then named through `name_contact` as a new person at the same customer or trade partner the email's thread is on,
- *   the address or the number as their name until someone gives a better one. A thread on a lead, a supply house, a
- *   candidate, a teammate or an unnamed sender gets no record: the new thread's sort card asks *Who is this?*.
+ * - `makeThread`: a thread for a person nobody has yet, made by the press and never by a read: `contact_make_for_channel`
+ *   (migration `20261104214829`, the office team's own placer, since a signed-in client has no INSERT on `contacts`)
+ *   answers whose it is or makes the contact as the edge makes one for a sender nobody knows (kind `unknown`, named by
+ *   the address or the number, the one channel); the client then names it through `name_contact` as a new person at
+ *   the same customer or trade partner the email's thread is on, the address or the number as their name until someone
+ *   gives a better one. A thread on a lead, a supply house, a candidate, a teammate or an unnamed sender gets no
+ *   record: the new thread's sort card asks *Who is this?*.
  * - `writeLine`: the gray line on the thread the press was made in, through `follow_up_event`, the thread menu's
  *   writer for the customer's say (v2.5597), as Heard back writes its line (v2.6500).
  *
@@ -44,11 +46,10 @@ export function supabaseBodyContactsIo(client: unknown = supabase): BodyContacts
       return typeof id === 'string' && id ? id : null
     },
     async makeThread(kind, value, at) {
-      const made = await db.from('contacts').insert({ kind: 'unknown', name: value }).select('id').single()
+      const made = await rpc('contact_make_for_channel' as never, { p_kind: kind, p_value: value } as never)
       checkSupabaseError(made, 'make their thread')
-      const id = (made.data as { id: string }).id
-      const channel = await db.from('contact_channels').insert({ contact_id: id, kind, value })
-      checkSupabaseError(channel, 'keep their number or address')
+      const id = made.data as unknown
+      if (typeof id !== 'string' || !id) throw new Error('Their thread could not be made.')
       if (at.customerId) {
         return nameContact(id, { record: { table: 'customers', id: at.customerId }, kind: 'customer', name: value })
       }
