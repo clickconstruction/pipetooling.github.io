@@ -87,7 +87,7 @@ On a phone or in a narrow window, the top of the thread folds to fit.
 - The chips sit in one row. The sentence sits under them on a row of its own.
 - The person's jobs sit in one row under the sentence.
 - Swipe a row sideways to see the rest of it.
-- The reply box folds to one row. Press into it to write.
+- The reply box folds to one row. Press into it to write. Press anywhere else to fold it again, with your words kept.
 - A message, the job picker and the menu under {{button:outline|⋯}} open from the bottom of the screen.
 - Press outside one to close it. Press **Cancel** to close the menu.
 
@@ -97,7 +97,7 @@ On a laptop, the window is short. The thread folds so the messages get the room.
 
 - The top keeps the same three rows as on a tall window.
 - **Who is this?** sits on the line under their name when nobody has named them.
-- The reply box folds to one row. Press into it to write.
+- The reply box folds to one row. Press into it to write. Press anywhere else to fold it again, with your words kept.
 - The window takes the whole height under the app's bar.
 
 ## Open one message

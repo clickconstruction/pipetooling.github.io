@@ -1,6 +1,7 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useToastContext } from '../../../../contexts/ToastContext'
 import { useOptionalAuth } from '../../../../hooks/useAuth'
+import { useCloseOnOutsideClick } from '../../../../hooks/useCloseOnOutsideClick'
 import { openFlowStep, useFlowNow } from '../../../../hooks/useFlowNow'
 import { SEED_FLOWS } from '../../../../lib/flows/seed'
 import { NOTE_BACK_PRESS, NOTE_BACK_TIP, noteBackToast } from '../../../../lib/followUp/queue'
@@ -202,6 +203,8 @@ export function ReplyBox({
   const [body, setBody] = useState('')
   // A short window or a phone folds the thread's box to one row (v2.6477, v2.6482) until a press into it; a send folds it back.
   const [woke, setWoke] = useState(false)
+  // A press anywhere else in the thread folds it too, on any window, with the words kept (v2.6504); a send clears it.
+  const [pressedOut, setPressedOut] = useState(false)
   // Punch list #126: where the caret is, so a `/` word at it opens the list; the lines are read the first time it does.
   const [caret, setCaret] = useState(0)
   const slashTyped = slashWordAt(body, caret)
@@ -277,7 +280,20 @@ export function ReplyBox({
   // #207 PR 1: an email's pre-typed opening alone is an empty box, for the strip, the from line, the count and Send.
   const blank = !body.trim() || (shown === 'email' && onlyOpening(body, first))
   const count = goesOut(shown) ? countLine(shown, blank ? '' : body) : null
-  const folded = replyBoxFolded({ foldBox: open?.foldBox ?? false, inJob: Boolean(job), woke, blank, files: files.length, opensWithWords: Boolean(nudge) || Boolean(startWords) || settling.active, textWaits, blocked: Boolean(blocked) })
+  const foldFacts = { foldBox: open?.foldBox ?? false, foldedByPress: pressedOut, inJob: Boolean(job), woke, blank, files: files.length, opensWithWords: Boolean(nudge) || Boolean(startWords) || settling.active, textWaits, blocked: Boolean(blocked) }
+  const folded = replyBoxFolded(foldFacts)
+  // v2.6504: a click outside the box, anywhere in the thread, folds it (the words stay in its one-line field). Every
+  // control of the box's own — the strip, the slash list, Tie to's picker, Attach's sheet, the send window, the quick
+  // replies finder and editor — draws inside this element, so a press on one is never read as outside and never pulls
+  // the control out from under the press (v2.6477's reason for not folding on a blur). Listens only at the thread
+  // window's foot, and only while a press would fold it: a job's box, the Answer all desk's and a box holding files,
+  // a held text or words it opened with are left alone.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const foldOnPressOut = useCallback(() => {
+    setPressedOut(true)
+    setWoke(false)
+  }, [])
+  useCloseOnOutsideClick(rootRef, Boolean(open) && !folded && replyBoxFolded({ ...foldFacts, foldedByPress: true, woke: false }), foldOnPressOut, { escape: false, capture: true })
   const sendLabel = settling.active ? OWED_DONE_SEND : (REPLY_KINDS.find((k) => k.kind === shown)?.send ?? 'Send')
   const orange = Boolean(job) && contact.kind === 'customer' && goesOut(shown)
 
@@ -288,6 +304,7 @@ export function ReplyBox({
     setFiles([])
     setMade(null)
     setWoke(false)
+    setPressedOut(false)
     showToast([sentWords(sentKind, company), more].filter(Boolean).join(' '), 'success')
     reread()
   }
@@ -606,6 +623,7 @@ export function ReplyBox({
 
   return (
     <div
+      ref={rootRef}
       data-reply-box
       data-reply-fold={folded ? 'folded' : undefined}
       style={{
@@ -735,10 +753,14 @@ export function ReplyBox({
               setBody(e.target.value)
               caretAt(e.target.value, e.target.selectionStart ?? e.target.value.length)
               if (settleProblem) setSettleProblem(null)
+              // Typing into a folded box that kept the focus (a press that kept it) opens it as a press would.
+              setWoke(true)
             }}
             onSelect={(e) => caretAt(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)}
             onKeyDown={slashKeys}
             onFocus={() => setWoke(true)}
+            // A press into a folded box that still holds the focus fires no focus event, so the click wakes it too.
+            onClick={() => setWoke(true)}
             placeholder={settling.active ? OWED_DONE_PLACEHOLDER : goesOut(shown) ? `${boxPlaceholder(shown, contact.name)} ${SLASH_HINT}` : boxPlaceholder(shown, contact.name)}
             disabled={Boolean(blocked) || busy}
             rows={folded ? 1 : 3}
