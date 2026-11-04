@@ -35,6 +35,8 @@ export type PhoneDockMoreSheetProps = {
   onReset: () => void
   modes: PhoneDockModeRow[]
   onSignOut: () => void | Promise<void>
+  /** The office showed this person their logbook (v2.6502): My logbook joins Settings, as in the gear menu this sheet replaces. */
+  ownLogbookShown?: boolean
 }
 
 const SUGGESTION_DAYS = 90
@@ -88,7 +90,7 @@ const rowBtn: CSSProperties = {
  * the parent's `swapIndex` (the hold) wins when both are set.
  */
 export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
-  const { open, swapIndex, onClose, role, userId, slots, customized, onSwap, onReset, modes, onSignOut } = props
+  const { open, swapIndex, onClose, role, userId, slots, customized, onSwap, onReset, modes, onSignOut, ownLogbookShown = false } = props
   const navigate = useNavigate()
   const [rows, setRows] = useState<ActivityMinutesRow[] | null>(null)
   /** The slot a tap on *The dock* row chose to change; cleared whenever the sheet closes. */
@@ -359,6 +361,11 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
 
             <div style={sectionLabel}>Settings</div>
             <div>
+              {ownLogbookShown ? (
+                <button type="button" onClick={() => go('/my-logbook')} style={rowBtn} data-testid="more-my-logbook">
+                  <span>My logbook</span>
+                </button>
+              ) : null}
               <button type="button" onClick={() => go('/help')} style={rowBtn}>
                 <span>Help</span>
               </button>
