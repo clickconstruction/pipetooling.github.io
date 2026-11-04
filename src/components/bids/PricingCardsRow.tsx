@@ -48,6 +48,8 @@ export type PricingCardsRowProps = {
   /** The version on screen: only its own prices offer ☆ make base and offer as alternate (v2.4377). */
   selectedBidVersionId: string | null
   customerFacingPricingId: string | null
+  /** "as sent" while the lock holds the sent figure on the ★ card (v2.6510, `lockedQuote.ts`). */
+  sentTag?: string | null
   revenueOf: (id: string) => number | null
   totalCost: number
   baseMaterials: number
@@ -89,7 +91,7 @@ export type PricingCardsRowProps = {
 
 export function PricingCardsRow(props: PricingCardsRowProps) {
   const {
-    mode, scenarios, altVersions, selectedPricingVersionId, selectedBidVersionId, customerFacingPricingId, revenueOf, totalCost, baseMaterials, altVersionData, marginColor, copySource,
+    mode, scenarios, altVersions, selectedPricingVersionId, selectedBidVersionId, customerFacingPricingId, sentTag = null, revenueOf, totalCost, baseMaterials, altVersionData, marginColor, copySource,
     cloning, copyingPrices, doorOpen, doorGcLabel, onOpenDoor, onCloseDoor, onAnotherPrice, onOwnTakeoff, onAdopt,
     ownTakeoff, creatingOwnTakeoff, ownTakeoffGcLabel, onOwnTakeoffName, onCancelOwnTakeoff, onCreateOwnTakeoff,
     onView, onEdit, onMakeBase, onSetOffered, onCopyPrices, onOpenAlternate, onOpenAlternateTakeoff,
@@ -346,7 +348,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
         >
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>One GC · one price</span>
           {isCustomerFacing ? (
-            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-green-600)' }}>★ base · the GC sees this</span>
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-green-600)' }}>★ base · the GC sees this{sentTag ? ` · ${sentTag}` : ''}</span>
           ) : null}
           <b style={{ fontSize: '0.85rem' }}>{v.name}</b>
           {unpriced ? (
@@ -462,7 +464,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
                 if (isCustomerFacing) {
                   return (
                     <div style={{ ...footBase, background: 'var(--bg-green-100)', color: 'var(--text-emerald-800)', fontWeight: 700 }}>
-                      ★ The price on their letter
+                      ★ The price on their letter{sentTag ? ` · ${sentTag}` : ''}
                     </div>
                   )
                 }
