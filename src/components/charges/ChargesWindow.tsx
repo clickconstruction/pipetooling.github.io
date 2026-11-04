@@ -302,7 +302,7 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
                 )}
               </div>
             </div>
-            <UnchargedCallout people={charges.uncharged} unpricedDays={charges.totals.unpricedDays} onNavigate={onClose} />
+            <UnchargedCallout people={charges.uncharged} unchargedDays={charges.totals.unchargedDays} role={viewer.role} onNavigate={onClose} />
             {officeNotes(charges.notes, charges.uncharged).length ? (
               <ul style={{ margin: '0 1rem 0.5rem', paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="charges-notes">
                 {officeNotes(charges.notes, charges.uncharged).map((n) => (

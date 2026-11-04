@@ -171,7 +171,7 @@ export function StatementsOfChargesSection({ job, zIndex = 1030, onOverlayOpenCh
       <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>What this job’s labor and materials are charged at: every crew-day from the rate card or as the job says, every material line at the markup over cost. Nothing on it is typed in.</p>
       {error ? <p style={{ margin: 0, color: 'var(--text-red-600)', fontSize: '0.875rem' }}>{error}</p> : null}
       {list}
-      {open && user ? <StatementOfChargesWindow job={windowJob} existing={opening} preparedBy={{ userId: user.id, name: (profileName ?? '').trim() || 'the office' }} onClose={closeWindow} zIndex={zIndex} /> : null}
+      {open && user ? <StatementOfChargesWindow job={windowJob} existing={opening} preparedBy={{ userId: user.id, name: (profileName ?? '').trim() || 'the office' }} onClose={closeWindow} zIndex={zIndex} viewerRole={role} /> : null}
     </section>
   )
 }

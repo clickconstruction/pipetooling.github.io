@@ -81,7 +81,7 @@ const btnDead: CSSProperties = { ...btn, background: DEAD_PRESS_FILL, color: DEA
 type Sheet = 'send' | 'scan' | null
 
 export function HoursStatementModal({ open, onClose, scope, maker, existing = null, initialUserId = null, zIndex = 1030, onSaved, signingIo = supabaseHoursStatementSigningIo }: HoursStatementModalProps) {
-  const { user, profileName } = useAuth()
+  const { user, profileName, role } = useAuth()
   const { showToast } = useToastContext()
   const promptDialog = usePromptDialog()
   const narrow = useMatchMedia('(max-width: 860px)')
@@ -527,7 +527,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
                 ) : null}
               </span>
             </label>
-            {charged && read?.read.charge?.uncharged.length ? <UnchargedCallout people={read.read.charge.uncharged} unpricedDays={read.read.charge.unchargedDays} onNavigate={onClose} margin="0" /> : null}
+            {charged && read?.read.charge?.uncharged.length ? <UnchargedCallout people={read.read.charge.uncharged} unchargedDays={read.read.charge.unchargedDays} role={role} onNavigate={onClose} margin="0" /> : null}
             <label style={{ ...toggle, cursor: payAllowed && !charged ? 'pointer' : 'not-allowed' }}>
               <input type="checkbox" checked={!charged && withPay && payAllowed} disabled={!payAllowed || !rowOpen || charged} onChange={(e) => setWithPay(e.target.checked)} style={{ marginTop: 3 }} />
               <span>

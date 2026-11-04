@@ -120,6 +120,21 @@ describe('who counts as nobody (punch list #254, the live pass)', () => {
     expect(unchargedWords([])).toBeNull()
   })
 
+  it('counts apart the days a standing would fix from the days unpriced for another reason (v2.6484)', () => {
+    // One day everyone is Not charged; three days a master alone on a card with no master_alone rate. All four price at
+    // nothing, but a standing fixes one of them alone, so the callout's count is 1 while the premium waits on all 4.
+    const r = buildCrewDays(
+      [s('o', 'Office', 'none', '2026-02-02', 8), s('t', 'Toby', 'master', '2026-02-03', 8), s('t', 'Toby', 'master', '2026-02-04', 8), s('t', 'Toby', 'master', '2026-02-05', 8)],
+      OWNER,
+    )
+    expect(r.totals.unpriced).toBe(4)
+    expect(r.totals.unchargedDays).toBe(1)
+    expect(r.totals.uncharged).toEqual([{ userId: 'o', name: 'Office', days: 1 }])
+    // A flat rate not set is unpriced too, and still not a standing's fault.
+    const flat = buildCrewDays([s('t', 'Toby', 'master', '2026-02-03', 8)], OWNER, { kind: 'flat', rate: 0 })
+    expect(flat.totals).toMatchObject({ unpriced: 1, unchargedDays: 0 })
+  })
+
   it("drops the paper's neutral line from a window's notes while the callout names who counts as nobody", async () => {
     const { officeNotes } = await import('./crewDays')
     const notes = ['Nobody out that day is charged to a customer.', 'No markup on materials is set, so every material line is at cost.']

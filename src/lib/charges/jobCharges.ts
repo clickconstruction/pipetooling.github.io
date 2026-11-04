@@ -29,7 +29,10 @@ export type JobChargesTotals = {
   crewHours: number
   personHours: number
   days: number
+  /** Days priced at nothing for any reason; the premium waits on these. */
   unpricedDays: number
+  /** Of those, the days nobody out counted for; a standing fixes these alone, so the callout counts these (v2.6484). */
+  unchargedDays: number
 }
 
 export type JobCharges = {
@@ -58,6 +61,7 @@ function totalsOf(days: ReturnType<typeof buildCrewDays>, materials: ReturnType<
     personHours: days.totals.personHours,
     days: days.totals.days,
     unpricedDays: days.totals.unpriced,
+    unchargedDays: days.totals.unchargedDays,
   }
 }
 

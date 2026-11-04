@@ -57,8 +57,13 @@ export type CrewDaysTotals = {
   crewHours: number
   personHours: number
   charged: number
-  /** Days with no rate, by count; the paper names each. */
+  /** Days with no rate, by count, whatever the reason; the paper names each, and the premium waits on any of them. */
   unpriced: number
+  /**
+   * Of those, the days that priced at nothing because nobody out counted as anything (v2.6484): a standing fixes these
+   * alone, so the callout counts these, never a missing rate-card row or a flat rate not set.
+   */
+  unchargedDays: number
   importedDays: number
   /** Days an adjustment left off the paper. */
   daysLeftOff: number
@@ -184,6 +189,7 @@ export function buildCrewDays(sessions: ReadonlyArray<CrewSessionInput>, card: R
     personHours: cents(days.reduce((a, d) => a + d.personHours, 0)),
     charged: cents(days.reduce((a, d) => a + (d.charged ?? 0), 0)),
     unpriced: days.filter((d) => d.charged == null).length,
+    unchargedDays: days.filter((d) => d.shape == null).length,
     importedDays: days.filter((d) => d.imported).length,
     daysLeftOff,
     daysAdjusted: days.filter((d) => d.adjusted).length,
