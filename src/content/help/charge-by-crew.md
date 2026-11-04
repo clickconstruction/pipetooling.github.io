@@ -5,11 +5,11 @@ roles: dev, master_technician, assistant, controller
 keywords: charge rate, rate card, crew, master with a helper, two techs, helper alone, markup, materials, margin, charged as, standing, 285
 order: 101
 ---
-The company charges the customer for a crew's hour, not for each person. What a day costs depends on who was out. A master with a helper is one rate. Two techs together are one rate. A tech alone is another. A helper alone is another. The rate card in Settings holds those numbers. Each person's desk says what they count as.
+The company charges the customer for a crew's hour, not for each person. What a day costs depends on who was out. A master with a helper is one rate. Two techs together are one rate. A tech alone is another. A helper alone is another. The rate card in Settings holds those numbers. A dev sets what each person counts as.
 
 ## Say what each person counts as
 
-Open the person's desk under **People** and find **Access**. The row **Charged as** has four choices.
+A dev opens the person's desk under **People** and finds **Access**. The row **Charged as** has four choices. Everyone else reads the row and asks a dev to change it.
 
 :::cards
 
@@ -31,11 +31,11 @@ Never charged to a customer. Office work, estimating, or a sub on their own shee
 
 :::
 
-Pick one and it saves at once. A person with nothing picked counts as not charged. The app never prices them by accident.
+The dev picks one and it saves at once. A person with nothing picked counts as not charged. The app never prices them by accident.
 
-To set everyone at once, open **Settings**, then **Jobs & billing**, then **Rates charged by crew**. Under the rates, **Who counts as what** lists every person with the same four choices. A pick saves at once. People who left sit at the foot, because their past days still price by it.
+To set everyone at once, a dev opens **Settings**, then **Jobs & billing**, then **Rates charged by crew**. Under the rates, **Who counts as what** lists every person with the same four choices. The dev's pick saves at once. People who left sit at the foot, because their past days still price by it.
 
-A day prices at nothing until someone out counts as a master, a tech or a helper. When that happens, the Charges window names who counts as nobody. It links to each desk and to the list. The Statement of charges window and the charged hours paper's window name them too.
+A day prices at nothing until someone out counts as a master, a tech or a helper. When that happens, the Charges window names who counts as nobody. It counts only the days a standing would fix. A dev sees a link to each desk and to the list. Anyone else sees the names and asks a dev. The Statement of charges window and the charged hours paper's window name them too.
 
 ## Set the rates
 

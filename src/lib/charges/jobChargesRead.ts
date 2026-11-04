@@ -45,7 +45,8 @@ export async function loadCrewSessions(jobId: string): Promise<CrewSessionInput[
   const ids = Array.from(new Set(rows.map((r) => r.user_id)))
   const standings = new Map<string, ReturnType<typeof parseChargeStanding>>()
   if (ids.length) {
-    const { data: users, error: uerr } = await supabase.from('users').select('*').in('id', ids)
+    // The two columns the lookup needs, never `*` (v2.6484); a read that fails throws, and the window names its reason.
+    const { data: users, error: uerr } = await supabase.from('users').select('id, charge_standing').in('id', ids)
     if (uerr) throw uerr
     for (const u of (users ?? []) as unknown as Array<{ id: string; charge_standing?: unknown }>) standings.set(u.id, parseChargeStanding(u.charge_standing))
   }

@@ -16,12 +16,27 @@ describe("a job's charges, whole (punch list #254)", () => {
 
   it("prices the record under the job's rule and reads the stand against the price", () => {
     const r = buildJobCharges({ sessions, lines, card: OWNER, rule: { kind: 'shape', shape: 'master_helper' }, revenue: 10000 })
-    expect(r.totals).toEqual({ labor: 4970.4, materials: 4024.69, charges: 8995.09, crewHours: 17.44, personHours: 25.1, days: 2, unpricedDays: 0 })
+    expect(r.totals).toEqual({ labor: 4970.4, materials: 4024.69, charges: 8995.09, crewHours: 17.44, personHours: 25.1, days: 2, unpricedDays: 0, unchargedDays: 0 })
     expect(r.premium).toMatchObject({ kind: 'premium', amount: 1004.91 })
     expect(r.record.totals).toEqual(r.totals)
     expect(r.weeks).toHaveLength(1)
     expect(r.adjustmentsCount).toBe(0)
     expect(r.notes).toEqual([])
+  })
+
+  it('carries the days a standing would fix apart from every unpriced day, so the callout and the premium count their own (v2.6484)', () => {
+    // One day everyone is Not charged, three days a master alone with no master_alone rate on the card.
+    const r = buildJobCharges({
+      sessions: [s('o', 'Office', 'none', '2026-02-02', 8), s('t', 'Toby', 'master', '2026-02-03', 8), s('t', 'Toby', 'master', '2026-02-04', 8), s('t', 'Toby', 'master', '2026-02-05', 8)],
+      lines: [],
+      card: OWNER,
+      revenue: 5000,
+    })
+    expect(r.totals.unpricedDays).toBe(4)
+    expect(r.totals.unchargedDays).toBe(1)
+    expect(r.record.totals.unchargedDays).toBe(1)
+    expect(r.uncharged).toEqual([{ userId: 'o', name: 'Office', days: 1 }])
+    expect(r.notes).toEqual(['Nobody out that day is charged to a customer.', 'The rate card has no rate for master alone.'])
   })
 
   it('lays the adjustments on top and keeps the record beside them', () => {
