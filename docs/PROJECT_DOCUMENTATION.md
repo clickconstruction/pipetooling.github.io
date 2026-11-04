@@ -485,8 +485,8 @@ WHERE proname IN (
 #### `public.users`
 - **Purpose**: User accounts with roles
 - **Key Fields**:
-  - `id` (uuid, PK) - Matches `auth.users.id`
-  - `email` (text)
+  - `id` (uuid, PK) - the person's id everywhere; since v2.6511 it need not have an `auth.users` row behind it (`users_id_fkey` dropped). `login_attached_at` (timestamptz, nullable) says whether a sign-in is attached — NULL is a worker with no login; set by the auth triggers and the service role only
+  - `email` (text, nullable since v2.6511 — a worker with no login has none; `users_login_has_email` requires one when a login is attached; unique where present)
   - `name` (text, nullable)
   - `role` (enum `user_role`, 9 active values: `'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent' | 'helpers' | 'controller'`; legacy `'owner'`/`'master'` values remain in the enum but are unused — see `20250101000000_baseline.sql` and `20260714210000_add_user_role_controller.sql`)
   - `last_sign_in_at` (timestamptz, nullable)
@@ -931,7 +931,11 @@ WHERE proname IN (
 #### `public.handle_new_user()`
 - **Trigger**: Fires on `auth.users` INSERT
 - **Purpose**: Creates corresponding `public.users` record
-- **Logic**: Checks `raw_user_meta_data.invited_role` (any of the 8 modern roles) to set initial role, defaults to `'helpers'`; `ON CONFLICT (id) DO NOTHING` so edge-function upserts can race it safely (migration `20260702160000_modernize_handle_new_user.sql`)
+- **Logic**: Checks `raw_user_meta_data.invited_role` (any of the 9 modern roles) to set initial role, defaults to `'helpers'`; since v2.6511 `ON CONFLICT (id) DO UPDATE` stamps `login_attached_at` and takes the login's address when the auth user was created with an existing row's id (the attach step of punch list #260), so a worker with no login becomes a login without moving anything (migrations `20260702160000_modernize_handle_new_user.sql`, `20261104190000_users_login_attached_at.sql`)
+
+#### `public.detach_login_on_auth_user_delete()`
+- **Trigger**: `on_auth_user_deleted` — fires on `auth.users` DELETE (v2.6511)
+- **Purpose**: Sets `public.users.login_attached_at` to NULL; the users row and every row pointing at it stay. Before this the cascade through `users_id_fkey` deleted the row and, through `clock_sessions_user_id_fkey`, the person's days
 
 #### `public.sync_last_sign_in_at()`
 - **Trigger**: `on_auth_user_signed_in` — fires on `auth.users` UPDATE OF `last_sign_in_at`
