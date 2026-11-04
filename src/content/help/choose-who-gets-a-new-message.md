@@ -22,7 +22,7 @@ The rule works on each new text, call or email that reaches the app.
 
 An empty seat works the same way. Its messages go to nobody, and whoever answers first takes them.
 
-The person who gets it shows on the row's pill in [Follow up](/gc?view=followUp). Anyone can take it or hand it to someone else.
+The person who gets it shows on the row's pill in [Follow up](/gc?view=followUp). Anyone can take it or hand it to someone else. [Hand a conversation to someone](/help/answer-everyone-waiting-on-us-from-one-page#hand-a-conversation-to-someone) shows the list.
 
 ## See the seats
 

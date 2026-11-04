@@ -2,7 +2,7 @@
 title: answer everyone waiting on us from one page
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, heard back, by phone, in person, no answer needed, accepted, declined, logged call, undo, estimates, ratings, score, how did we do, numbers, answer all, one at a time, desk, no reply needed, skip for now, next, jump, bar, strip, lanes, scroll, table of contents, all kinds, picker, glass, 7 days, top, what each lane holds, band, slow, kept, who was waiting, reading again, could not read again
+keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, heard back, by phone, in person, no answer needed, accepted, declined, logged call, undo, estimates, ratings, score, how did we do, numbers, answer all, one at a time, desk, no reply needed, skip for now, next, jump, bar, strip, lanes, scroll, table of contents, all kinds, picker, glass, 7 days, top, what each lane holds, band, slow, kept, who was waiting, reading again, could not read again, hand it to, take it, who has it, type a name, assistants first, estimators first
 where: /messages
 order: 117
 ---
@@ -123,6 +123,16 @@ On a phone, three empty lists fold to one line that shows each count at zero. Th
 Press a row to open the person's thread over the page. The thread works as [Find every message with a person in one place](/help/find-every-message-with-a-person-in-one-place) shows.
 
 Press Escape or {{button:outline|×}} to close the thread. The pill you picked stays.
+
+## Hand a conversation to someone
+
+Every row has a pill that says who has the person. It reads {{button:outline|Nobody has it · Take it}} until someone takes it. The same pill sits at the top of the thread.
+
+Press the pill to open the list. A search box sits at the top, and the cursor is already in it on a computer. Type a name to find a person. The letters you typed light up on the name. Press **Enter** to hand it to the lit person. Press **↓** or **↑** to move the light. Press **Escape** to close the list.
+
+The list puts the office and the estimators first, then the owner and the devs. Each group is in name order. Each row says what the person does and how many people they hold waiting. **I'll take it** is the first row while the box is empty, so Enter alone takes it. Sample accounts and the robots are never on the list.
+
+On a phone the box is there too. Tap it to type.
 
 ## When the app is slow
 
