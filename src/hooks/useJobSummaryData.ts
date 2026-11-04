@@ -11,6 +11,7 @@ import {
 import { jobSummaryUnderFloorMatches } from '../lib/jobs/jobSummarySearchWins'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { fetchMercuryJobAllocationsWithAttributionForJob } from '../lib/fetchMercuryJobAllocationsWithAttributionForJob'
+import { jobSummaryMercuryRowsFromAllocations } from '../lib/jobs/jobSummaryMercuryRows'
 import type { JobSummaryClockSessionRow, JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow, JobSummaryReportRow } from '../types/jobSummary'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
@@ -215,26 +216,10 @@ export function useJobSummaryData({
     if (!force && jobSummaryMercuryAllocationsLoadedRef.current.has(jobId)) return
     if (force) jobSummaryMercuryAllocationsLoadedRef.current.delete(jobId)
     try {
-      const rows = await fetchMercuryJobAllocationsWithAttributionForJob(jobId, 'job summary mercury')
-      const mapped: JobSummaryMercuryAllocationRow[] = rows.map((r) => ({
-        id: r.id,
-        mercury_transaction_id: r.mercury_transaction_id,
-        amount: r.amount,
-        note: r.note,
-        attributionDisplayName: r.attributionDisplayName,
-        linkedToSupplyInvoice: r.linkedToSupplyInvoice,
-        isFuel: r.isFuel,
-        mercury_transactions: r.mercury_transactions
-          ? {
-              posted_at: r.mercury_transactions.posted_at,
-              counterparty_name: r.mercury_transactions.counterparty_name,
-              amount: r.mercury_transactions.amount,
-              note: r.mercury_transactions.note,
-              external_memo: r.mercury_transactions.external_memo,
-              raw: r.mercury_transactions.raw,
-            }
-          : null,
-      }))
+      // The print maps the lines it reads itself the same way (`loadJobSummaryPrintMercuryRows`).
+      const mapped = jobSummaryMercuryRowsFromAllocations(
+        await fetchMercuryJobAllocationsWithAttributionForJob(jobId, 'job summary mercury'),
+      )
       setJobSummaryMercuryAllocationsByJobId((prev) => {
         const next = new Map(prev)
         next.set(jobId, mapped)

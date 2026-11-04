@@ -68,7 +68,7 @@ This file issues no queries. The props it calls or reads resolve to:
 |---|---|---|
 | `loadJobSummaryInvoiceLinesForJob` | `useJobSummaryData` | RPC `get_invoice_allocation_lines_for_jobs` |
 | `loadJobSummaryMercuryAllocationsForJob` | `useJobSummaryData` → `fetchMercuryJobAllocationsWithAttributionForJob` (paged; Internal-Transfers rows dropped and invoice-linked rows flagged by `cardChargeAllocationFilter`) | `mercury_transaction_job_allocations` + `mercury_transactions` (+ supply-invoice links) |
-| `printJobSummaryCostBreakdown` | Jobs.tsx thunk (569–703) → `buildJobSummaryCostBreakdownHtml` | RPC `get_invoice_allocation_lines_for_jobs` (cold-cache fallback), `mercury_transaction_job_allocations`, `people`, `users` |
+| `printJobSummaryCostBreakdown` | Jobs.tsx thunk (569–703) → `buildJobSummaryCostBreakdownHtml` | RPC `get_invoice_allocation_lines_for_jobs` (cold-cache fallback); card lines through `loadJobSummaryPrintMercuryRows` → `fetchMercuryJobAllocationsWithAttributionForJob` (cold-cache fallback, the row's own loader since v2.6470) |
 | `handleJobSummaryMercuryReassignFromDrilldown` | `useJobsMercuryAllocations` | mercury allocation modal flow (`mercury_transaction_job_allocations` etc.) |
 | (data) `jobSummaryClockSessionsByJobId`, `jobSummaryReportsByJobId`, `jobSummaryReportPctByJobId`, `jobSummaryReportDateByJobId`, ledger jobs | `useJobSummaryData` | `clock_sessions`, `reports`, RPC `list_latest_report_completion_pct`, ledger via `fetchJobsLedgerWithDetailsForStages` |
 | (data) `view` | `useJobSummaryView` | job day ledger (`loadJobDayLedger`), `app_settings.overhead_allocation_v1`, `ui_nav_clicks` telemetry |
