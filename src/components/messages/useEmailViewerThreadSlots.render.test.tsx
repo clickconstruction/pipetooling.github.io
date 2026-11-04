@@ -50,7 +50,7 @@ const GLENN: Contact = {
   goesBy: null,
   company: 'Maxx Builders',
   record: { table: 'customers', id: 'cust-maxx' },
-  channels: [{ id: 'ch-1', kind: 'email', value: 'glenn@maxxbuilders.com' }],
+  channels: [{ id: 'ch-1', kind: 'email', value: 'glenn@maxxbuilders.com', optedOutAt: null }],
   jobIds: ['bid:b-oak'],
   defaultJobId: null,
   customerId: 'cust-maxx',

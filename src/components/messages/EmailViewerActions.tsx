@@ -52,7 +52,7 @@ export function EmailViewerActions({ message, invitation, presses, io, me, say, 
   const found = useRef<readonly JobTile[]>([])
 
   const bidRef = jobRefOf(message.jobId)
-  const theirs = useMemo(() => (thread ? thread.rail.map((k) => thread.tiles[k]).filter((t): t is JobTile => Boolean(t) && t.kind === 'bid') : []), [thread])
+  const theirs = useMemo(() => (thread ? thread.rail.map((k) => thread.tiles[k]).filter((t): t is JobTile => t !== undefined && t.kind === 'bid') : []), [thread])
 
   const run = async <T,>(press: () => Promise<T>, failed: string, after: (out: T) => void) => {
     setBusy(true)
