@@ -42,8 +42,10 @@ import { DevelopmentNotInChips, type NotInChip } from '../components/development
 import { DevelopmentMoney } from '../components/developments/DevelopmentMoney'
 import { DevelopmentScoreboard } from '../components/developments/DevelopmentScoreboard'
 import { DevelopmentTimeline, type SiteTimelineViewRead } from '../components/developments/DevelopmentTimeline'
-import { assembleSiteTimelineJobs } from '../lib/developments/siteTimeline'
+import { assembleSiteTimelineJobs, overheadSinceWords } from '../lib/developments/siteTimeline'
+import { OVERHEAD_POOL_FIRST_YMD } from '../lib/jobs/overheadAllocation'
 import { useSiteTimeline } from '../hooks/useSiteTimeline'
+import { useSiteValueEvents } from '../hooks/useSiteValueEvents'
 import { ymdFromDateOnlyOrIso } from '../lib/jobChargesTimeline'
 import { buildScoreboard, nextScoreboardSort, scoreboardColumnsFor, scoreboardMembers, SCOREBOARD_DEFAULT_SORT, type ScoreboardSort } from '../lib/developments/scoreboard'
 import { useSiteCardHolders } from '../hooks/useSiteCardHolders'
@@ -289,12 +291,14 @@ export default function DevelopmentPage() {
   const scoreboardOpen = moneyShown && moneyViewShown === 'scoreboard'
   const timelineOpen = moneyShown && moneyViewShown === 'timeline'
   const laborRead = useSiteLabor(shownJobIds, scoreboardOpen || timelineOpen)
-  const overheadRead = useSiteOverhead(shownJobIds, scoreboardOpen && canSeeSiteCosts(role))
+  const overheadRead = useSiteOverhead(shownJobIds, (scoreboardOpen || timelineOpen) && canSeeSiteCosts(role))
   // Who holds the card each counted charge went on (v2.6457): the card id alone out of each bank record, while the board is open.
   const cardTxIds = useMemo(() => (costsByJobId?.state === 'read' ? [...costsByJobId.byJobId.values()].flatMap((r) => r.breakdown.cardLines.map((l) => l.txId).filter((id): id is string => !!id)) : []), [costsByJobId])
   const cardHoldersRead = useSiteCardHolders(cardTxIds, scoreboardOpen && canSeeSiteCosts(role))
   // The Timeline's own read (v2.6493): the fuel split of the site's card charges, once the cost rows are in and only while the view is open.
   const timelineRead = useSiteTimeline(costsByJobId, timelineOpen)
+  // The value line's percent events (v2.6499): the reports and the hand-set percents, one chunked read each, only while the view is open.
+  const valueRead = useSiteValueEvents(shownJobIds, timelineOpen)
   // The Timeline's jobs: the cost rows the Costs column totals, the clock's days and the page's payments, in the Money look's order; nothing until the reads are in. A clock that would not read leaves team labor off and the chart says so.
   const timelineJobs = useMemo(() => {
     if (!timelineOpen || !counted || !data || costsByJobId?.state !== 'read' || !costsByJobId.rows || !laborRead || laborRead.state === 'reading' || timelineRead.state !== 'read') return null
@@ -309,8 +313,14 @@ export default function DevelopmentPage() {
       payments: data.payments,
       fuelTxIds: timelineRead.fuelTxIds,
       toYmd: (raw) => ymdFromDateOnlyOrIso(raw, calendarYmdInAppTzFromIso),
+      // The amber band (v2.6498): the day ledger lands after the lines, and the chart redraws with it.
+      overhead: overheadRead.state === 'read' ? overheadRead.byJobId : null,
+      // The value line (v2.6499): each job's percent events, its price and its own percent for the fallback, the site's bills for the paid rule.
+      values: valueRead.state === 'read' ? valueRead.byJobId : null,
+      jobRows: counted.jobs,
+      invoices: data.invoices,
     })
-  }, [timelineOpen, counted, data, costsByJobId, laborRead, timelineRead, jobLabel, labelOfJobId, moneySort])
+  }, [timelineOpen, counted, data, costsByJobId, laborRead, timelineRead, overheadRead, valueRead, jobLabel, labelOfJobId, moneySort])
   const timelineView: SiteTimelineViewRead =
     costsByJobId?.state === 'failed'
       ? { state: 'failed', reason: costsByJobId.reason ?? 'the site’s costs did not read' }
@@ -320,6 +330,12 @@ export default function DevelopmentPage() {
             jobs: timelineJobs,
             fuelKnown: timelineRead.state === 'read' && timelineRead.fuelKnown,
             teamLaborNote: laborRead?.state === 'failed' ? 'The clock’s rows did not read, so team labor is not on the chart.' : laborRead?.state === 'read' && !laborRead.labor.daysKnown ? 'Team labor is not dated for this reader, so it is not on the chart.' : null,
+            overheadNote: overheadRead.state === 'reading' ? 'The overhead ledger is still reading. The amber band lands with it.' : overheadRead.state === 'failed' ? 'The overhead ledger did not read, so the amber band is not on the chart.' : null,
+            overheadSinceLabel: overheadRead.state === 'read' ? overheadSinceWords(OVERHEAD_POOL_FIRST_YMD) : null,
+            valueNote: valueRead.state === 'reading' ? 'The reports are still reading. The value line comes with them.' : valueRead.state === 'failed' ? `The reports did not read, so value created is not on the chart: ${valueRead.reason}` : null,
+            siteName: data?.development.name ?? '',
+            customerName: data?.customer?.name ?? null,
+            printedBy: profileName ?? null,
           }
         : { state: 'reading' }
   // The site's photos (punch list #247): the census and the row, read once for the strip's sixth look and the Photos card.

@@ -75,9 +75,10 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     // v2.5542: the call link and ⋯ wear the header's control class (no border, one height) in place of their own borders.
     expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).className).toBe('thread-head-control')
     expect(within(win).getByRole('button', { name: 'More' }).className).toBe('thread-head-control')
-    const reach = win.querySelector('[data-thread-reach]') as HTMLElement
-    expect(within(reach).getByRole('link', { name: 'greg@hillside.example' }).getAttribute('href')).toBe('mailto:greg@hillside.example')
-    fireEvent.click(within(win).getByRole('button', { name: 'Hide their numbers and addresses' }))
+    // v2.6505: the first address and number ride the company line; nothing waits behind an arrow for Greg.
+    const line = win.querySelector('[data-thread-company-line]') as HTMLElement
+    expect(within(line).getByRole('link', { name: 'greg@hillside.example' }).getAttribute('href')).toBe('mailto:greg@hillside.example')
+    expect(within(win).queryByRole('button', { name: /their numbers and addresses/ })).toBeNull()
     expect(win.querySelector('[data-thread-reach]')).toBeNull()
     expect(win.querySelector('[data-thread-status]')!.textContent).not.toBe('')
     expect(win.querySelector('[data-thread-stamps]')!.textContent).not.toBe('')

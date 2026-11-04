@@ -18,6 +18,7 @@ import {
   indexRowOf,
   type KnownRow,
   newPassSpend,
+  ocrRefusedColumns,
   PASS_READ_BUDGET_MS,
   PASS_READ_MAX_BYTES,
   passCursor,
@@ -25,9 +26,12 @@ import {
   PDF_READ_BUDGET_MS,
   type PdfDoc,
   pdfPagesText,
+  readColumns,
   readingRowOf,
+  RETAKE_WHYS,
   RETRY_HOLD_MS,
   retryDue,
+  SWEEP_RETAKE_ROWS,
   sameInstant,
   settledWhy,
   SWEEP_CURSOR_MARK,
@@ -205,6 +209,20 @@ describe('the OCR columns on a row (PR 3)', () => {
     const refused = indexRowOf(file({ name: 'Permit scan.pdf' }), walk, { why: 'scan' }, NOW, { tried: true, note: 'Document AI answered PERMISSION_DENIED: the API is not enabled.' })
     expect(refused).toMatchObject({ text: null, text_source: null, text_why: 'scan', ocr_tried_at: NOW.toISOString(), ocr_pages: null, ocr_note: 'Document AI answered PERMISSION_DENIED: the API is not enabled.' })
     expect(indexRowOf(file(), walk, { why: 'scan' }, NOW)).toMatchObject({ ocr_tried_at: null, ocr_pages: null, ocr_note: null })
+  })
+
+  it('the OCR pass patches a known scan with the read’s columns alone, or the refusal’s try and reason (v2.6491)', () => {
+    const read = readColumns({ text: 'PERMIT 2026-0412', source: 'ocr', pages: 2 }, NOW, { tried: true, note: null })
+    // The same columns the whole row carries for the same read, and none of the file's own: the row keeps its home, name and time.
+    const whole = indexRowOf(file({ name: 'Permit scan.pdf' }), walk, { text: 'PERMIT 2026-0412', source: 'ocr', pages: 2 }, NOW, { tried: true, note: null })
+    for (const [k, v] of Object.entries(read)) expect(whole[k as keyof typeof whole]).toEqual(v)
+    expect(Object.keys(read).sort()).toEqual(['checked_at', 'embed_note', 'embed_tried_at', 'embedded_at', 'indexed_at', 'ocr_note', 'ocr_pages', 'ocr_tried_at', 'pages', 'pages_read', 'text', 'text_source', 'text_why'])
+    expect(read).toMatchObject({ text: 'PERMIT 2026-0412', text_source: 'ocr', text_why: null, pages: 2, pages_read: 2, indexed_at: NOW.toISOString(), ocr_pages: 2, ocr_note: null, embedded_at: null, embed_tried_at: null, embed_note: null })
+    // A refusal moves neither the text nor the index stamp: the row stays a scan, checked now, due again a day later.
+    expect(ocrRefusedColumns('Document AI answered PERMISSION_DENIED: the API is not enabled.', NOW)).toEqual({ ocr_tried_at: NOW.toISOString(), ocr_note: 'Document AI answered PERMISSION_DENIED: the API is not enabled.', checked_at: NOW.toISOString() })
+    expect(ocrRefusedColumns(null, NOW).ocr_note).toBe('no reason given')
+    expect(RETAKE_WHYS).toEqual(['slow', 'reading'])
+    expect(SWEEP_RETAKE_ROWS).toBe(5)
   })
 })
 

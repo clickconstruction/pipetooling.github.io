@@ -728,6 +728,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "can_write_bid_custom_costs": [{"args":{},"returns":"boolean"}],
   "can_write_job_budget": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
   "can_write_payment_promises": [{"args":{},"returns":"boolean"}],
+  "charge_standings": [{"args":{},"returns":"{ archived_at: string charge_standing: string id: string name: string }[]"}],
   "check_lien_sign_code": [{"args":{"p_code":"string","p_signer_id":"string"},"returns":"Json"}],
   "check_out_project": [{"args":{"p_project_id":"string"},"returns":"Json"}],
   "checklist_instance_parent_item_created_by_auth_user": [{"args":{"p_instance_id":"string"},"returns":"boolean"}],

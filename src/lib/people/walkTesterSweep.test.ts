@@ -99,6 +99,8 @@ describe('the walk tester hides wherever a sample does', () => {
       'src/lib/emailIn/countCardIo.ts',
       'src/lib/followUp/followUpThreadIo.ts',
       'src/lib/followUp/newLaneCardIo.ts',
+      // The Messages page's team and GC projects' pickers (v2.6506): the hand-to menu lists nobody who is a sample, a twin or the tester.
+      'src/lib/gc/gcIo.ts',
       'src/lib/hiring/columnShares.ts',
       'src/lib/legal/legalOfficeContactsIo.ts',
       // The lens's invented people carry the flag; nothing there filters a roster, so the rules above pass.

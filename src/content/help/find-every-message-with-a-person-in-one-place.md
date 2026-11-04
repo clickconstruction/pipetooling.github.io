@@ -32,13 +32,13 @@ The person with the newest message is on top. People with no message yet come la
 
 Press a person's row. The person's thread opens as a window over the page. On a phone it fills the screen.
 
-The top of the window shows who they are and where things stand.
+The top of the window shows who they are and where things stand in three rows.
 
-- The person's name comes first. Press {{button:outline|☎}} to call them from your device.
-- Under the name is what they are to us and their company. Press the arrow beside it to show or hide their numbers and addresses.
-- A chip says whose move it is.
-- A sentence says when they last wrote and when we last answered.
-- The person's jobs come last.
+- The first row has the person's name. Press {{button:outline|☎}} to call them from your device.
+- Under the name is what they are to us and their company. Their first email and number sit on the same line.
+- An arrow after them shows when they have more numbers or addresses. Press it to show or hide the rest.
+- The second row has a chip for whose move it is. Beside the chip, a sentence says when they last wrote and when we last answered.
+- The third row has the person's jobs.
 
 Each message shows how it came, who sent it and its job. A long message shows four lines. Press {{button:outline|⋯}} and then **Show all text** to read every message in full.
 
@@ -84,7 +84,8 @@ On a phone or in a narrow window, the top of the thread folds to fit.
 
 - Press {{button:outline|‹}} beside their face to go back to everyone.
 - Press the arrow beside their company to show their numbers and addresses.
-- The chips sit in one row, and the person's jobs sit in one row under them.
+- The chips sit in one row. The sentence sits under them on a row of its own.
+- The person's jobs sit in one row under the sentence.
 - Swipe a row sideways to see the rest of it.
 - The reply box folds to one row. Press into it to write.
 - A message, the job picker and the menu under {{button:outline|⋯}} open from the bottom of the screen.
@@ -94,10 +95,9 @@ On a phone or in a narrow window, the top of the thread folds to fit.
 
 On a laptop, the window is short. The thread folds so the messages get the room.
 
-- The top keeps two rows. The first has their name, and **Who is this?** when nobody has named them.
-- The chip, the sentence and their jobs share the second row.
+- The top keeps the same three rows as on a tall window.
+- **Who is this?** sits on the line under their name when nobody has named them.
 - The reply box folds to one row. Press into it to write.
-- Press the arrow beside their company to show their numbers and addresses.
 - The window takes the whole height under the app's bar.
 
 ## Open one message

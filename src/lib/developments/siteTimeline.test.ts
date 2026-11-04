@@ -14,13 +14,19 @@ import {
   assembleSiteTimelineJobs,
   buildSiteTimeline,
   foldSiteChargeEvents,
+  overheadDaysFromLines,
+  overheadSinceWords,
   siteChargeEventsFromCostRows,
   siteFuelTxIds,
   siteJobHasDatedEvent,
   sitePaymentEvents,
   siteTeamLaborEvents,
+  siteTimelineEndWords,
   siteTimelineLeftOutWords,
+  siteTimelinePrintHtml,
   siteTimelineScopeWords,
+  siteTimelineValueWords,
+  siteValueEventsFromRows,
   tagJob,
   thinChargeIcons,
   type SiteTimelineJob,
@@ -274,6 +280,119 @@ describe('buildSiteTimeline', () => {
     const paid = model.data.chartRows.find((r) => r.dateKey === '2026-03-10')!
     expect(paid.paymentEvents[0]!.label).toBe('JP612 · Payment — check')
     expect(paid.hasPaymentMarker).toBe(true)
+  })
+})
+
+describe('the overhead band (v2.6498)', () => {
+  const lines = (ymds: Array<[string, number]>) => ymds.map(([ymd, shareUsd]) => ({ ymd, jobHours: 8, fieldHours: 16, poolUsd: shareUsd * 2, shareUsd, activityUsd: shareUsd, carryUsd: 0 }))
+
+  it('overheadDaysFromLines keeps the day, the share and its split; the since words name the day the pool began', () => {
+    expect(overheadDaysFromLines(lines([['2026-03-02', 120.5]]))).toEqual([{ dateKey: '2026-03-02', amount: 120.5, activityUsd: 120.5, carryUsd: 0 }])
+    expect(overheadDaysFromLines(undefined)).toEqual([])
+    expect(overheadSinceWords('2026-02-19')).toBe('Feb 19, 2026')
+    expect(overheadSinceWords('whenever')).toBe('whenever')
+  })
+
+  it('each job carries its own lines, and the site’s band is the sum of the jobs’ days, two jobs on one day summed', () => {
+    const overhead = new Map([
+      ['j1', { lines: lines([['2026-03-02', 100], ['2026-03-09', 50]]) }],
+      ['j2', { lines: lines([['2026-03-09', 25]]) }],
+    ])
+    const jobs = assembleSiteTimelineJobs({ jobIds: ['j1', 'j2', 'j3', 'j4'], order: ['j2', 'j1'], jobLabel: label, costs: ROWS, labor: LABOR, payments: PAYMENTS, fuelTxIds: new Set(), toYmd, overhead })
+    expect(jobs.find((j) => j.jobId === 'j1')!.overheadDays).toHaveLength(2)
+    expect(jobs.find((j) => j.jobId === 'j3')!.overheadDays).toEqual([])
+    const model = buildSiteTimeline({ jobs, selected: new Set() })
+    expect(model.data.overheadSeriesAvailable).toBe(true)
+    expect(model.data.endOverhead).toBe(175)
+    expect(model.data.endTrueCost).toBe(Math.round((model.data.endExpense + 175) * 100) / 100)
+    const march9 = model.data.chartRows.find((r) => r.dateKey === '2026-03-09')!
+    expect(march9.overheadToDate).toBe(175)
+    expect(march9.overheadBand).toEqual([march9.expense, march9.trueCost])
+    // The parity holds with the band: the site's overhead is the sum of the jobs' own.
+    const own = jobs.filter(siteJobHasDatedEvent).map((j) => buildJobChargesTimelineChartData(j.charges, [], null, j.payments, null, j.overheadDays).endOverhead)
+    expect(model.data.endOverhead).toBe(own.reduce((s, n) => s + n, 0))
+    // A selection narrows the band to the job's own days.
+    expect(buildSiteTimeline({ jobs, selected: new Set(['j2']) }).data.endOverhead).toBe(25)
+    // Without the ledger, no band.
+    const without = assembleSiteTimelineJobs({ jobIds: ['j1'], order: [], jobLabel: label, costs: ROWS, labor: LABOR, payments: [], fuelTxIds: new Set(), toYmd, overhead: null })
+    expect(buildSiteTimeline({ jobs: without, selected: new Set() }).data.overheadSeriesAvailable).toBe(false)
+  })
+})
+
+describe('the value line (v2.6499)', () => {
+  const reports = [
+    { id: 'r1', job_ledger_id: 'j1', created_at: '2026-03-03T12:00:00Z', field_values: { 'How complete is the job?': '40' }, users: { name: 'Dana' } },
+    { id: 'r2', job_ledger_id: 'j1', created_at: '2026-03-20T12:00:00Z', field_values: { 'How complete is the job?': '80' }, users: [{ name: 'Luis' }] },
+    { id: 'r3', job_ledger_id: 'j2', created_at: '2026-03-10T12:00:00Z', field_values: {}, users: null },
+    { id: 'r4', job_ledger_id: null, created_at: '2026-03-10T12:00:00Z', field_values: { 'How complete is the job?': '10' }, users: null },
+  ]
+  const pctEvents = [{ id: 'e1', job_id: 'j1', pct: 50, changed_at: '2026-03-20T15:00:00Z', users: { name: 'Robert' } }]
+
+  it('siteValueEventsFromRows builds each job’s reports and hand-set percents, tagged with the job', () => {
+    const byJob = siteValueEventsFromRows(reports, pctEvents, toYmd)
+    expect(byJob.get('j1')).toEqual([
+      { dateKey: '2026-03-03', percent: 40, label: 'Report by Dana', jobId: 'j1' },
+      { dateKey: '2026-03-20', percent: 80, label: 'Report by Luis', jobId: 'j1' },
+      { dateKey: '2026-03-20', percent: 50, label: 'Set on the job by Robert', kind: 'manual', jobId: 'j1' },
+    ])
+    expect(byJob.get('j2')).toEqual([{ dateKey: '2026-03-10', percent: null, label: 'Report by someone', jobId: 'j2' }])
+    expect(byJob.size).toBe(2)
+  })
+
+  it('the site’s value is every job’s newest percent times its price, summed; a hand-set beats a report on its day; a job with no dated percent adds its current one at the end', () => {
+    // A later report with no percent on j2 makes the last bucket, so the hand-set day and the fallback day are two days.
+    const values = siteValueEventsFromRows([...reports, { id: 'r5', job_ledger_id: 'j2', created_at: '2026-03-28T12:00:00Z', field_values: {}, users: null }], pctEvents, toYmd)
+    // The end-point fallback is the Scoreboard's percent: j4 is paid, so 100 whatever its bills say; j2 carries its own 25.
+    const jobRows = [
+      { id: 'j1', status: 'working', revenue: 10000, pct_complete: null },
+      { id: 'j2', status: 'working', revenue: 4000, pct_complete: 25 },
+      { id: 'j3', status: 'working', revenue: null, pct_complete: 50 },
+      { id: 'j4', status: 'paid', revenue: 2000, pct_complete: null },
+    ]
+    const invoices: Array<{ job_id: string; status: string; amount: number }> = []
+    const jobs = assembleSiteTimelineJobs({ jobIds: ['j1', 'j2', 'j3', 'j4'], order: [], jobLabel: label, costs: ROWS, labor: LABOR, payments: PAYMENTS, fuelTxIds: new Set(), toYmd, values, jobRows, invoices })
+    expect(jobs.find((j) => j.jobId === 'j1')).toMatchObject({ revenue: 10000, fallbackPercent: null })
+    expect(jobs.find((j) => j.jobId === 'j2')).toMatchObject({ revenue: 4000, fallbackPercent: 25 })
+    expect(jobs.find((j) => j.jobId === 'j4')).toMatchObject({ revenue: 2000, fallbackPercent: 100 })
+    const model = buildSiteTimeline({ jobs, selected: new Set() })
+    expect(model.data.valueSeriesAvailable).toBe(true)
+    expect(model.data.valueFromFallbackPercent).toBe(false)
+    const at = (k: string) => model.data.chartRows.find((r) => r.dateKey === k)!
+    expect(at('2026-03-02').value).toBeNull()
+    expect(at('2026-03-03').value).toBe(4000)
+    expect(at('2026-03-03').hasReportMarker).toBe(true)
+    expect(at('2026-03-03').valueEvents[0]!.label).toBe('JP612 · Report by Dana')
+    expect(at('2026-03-10').value).toBe(4000)
+    // On 03-20 the hand-set 50% beats the report's 80%.
+    expect(at('2026-03-20').value).toBe(5000)
+    // The last bucket adds the jobs on the chart with no dated percent: j2 at its 25% of 4,000; j3 has no price, and j4, with no dated event at all, is not on the chart.
+    const last = model.data.chartRows[model.data.chartRows.length - 1]!
+    expect(last.dateKey).toBe('2026-03-28')
+    expect(last.value).toBe(5000 + 1000)
+    expect(model.valueFallbackJobs).toBe(1)
+    // j3 (no price, no event) and j4 (no dated event) are left out.
+    expect(model.leftOut).toBe(2)
+    expect(siteTimelineValueWords(model.valueFallbackJobs)).toBe('1 job with no dated percent adds its current percent at the end of the value line.')
+    expect(siteTimelineValueWords(2)).toBe('2 jobs with no dated percent add their current percent at the end of the value line.')
+    expect(siteTimelineValueWords(0)).toBeNull()
+    // Narrowed to a job with no percent and no price: no value line.
+    const none = buildSiteTimeline({ jobs: jobs.filter((j) => j.jobId === 'j2').map((j) => ({ ...j, revenue: null })), selected: new Set() })
+    expect(none.data.valueSeriesAvailable).toBe(false)
+  })
+
+  it('the ends in words and the print page', () => {
+    const jobs = jobsOf()
+    const model = buildSiteTimeline({ jobs, selected: new Set() })
+    const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    expect(siteTimelineEndWords(model.data, money)).toEqual(['Cost to date $3,042.50', 'Cash position +$2,207.50'])
+    const html = siteTimelinePrintHtml({ siteName: 'Harlow <Ranch>', customerName: 'Ridgeway Builders', scopeLine: 'All 2 jobs on one chart.', endWords: ['Cost to date $3,067.50'], keyLines: ['Red = cost to date'], svg: '<svg viewBox="0 0 10 10"><text stroke="var(--surface)" fill="var(--text-700)">x</text></svg>', printedAt: 'Nov 4, 2026, 10:00 AM', printedBy: 'Dana' })
+    expect(html.startsWith('<!doctype html>')).toBe(true)
+    expect(html).toContain('<h1>Harlow &lt;Ranch&gt; · cost timeline</h1>')
+    expect(html).toContain('Ridgeway Builders · All 2 jobs on one chart.')
+    expect(html).toContain('stroke="#ffffff" fill="#374151"')
+    expect(html).not.toContain('var(--')
+    expect(html).toContain('Printed Nov 4, 2026, 10:00 AM by Dana')
+    expect(html).toContain('size: landscape')
   })
 })
 

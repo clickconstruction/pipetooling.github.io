@@ -717,3 +717,34 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* The tagline (v2.6503): two beats under the pipe title, the truth soft and the promise strong. */
+.auth-public-landing .auth-public-landing__tagline {
+  margin: 0.75rem 0 0;
+  text-align: center;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.5rem;
+  line-height: 1.35;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.auth-public-landing .auth-public-landing__tagline-one {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.auth-public-landing .auth-public-landing__tagline-two {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Phones: a beat a line, so the card stays on the first screen */
+@media (max-width: 480px) {
+  .auth-public-landing .auth-public-landing__tagline {
+    font-size: 1.15rem;
+  }
+  .auth-public-landing .auth-public-landing__tagline-one {
+    display: block;
+  }
+}

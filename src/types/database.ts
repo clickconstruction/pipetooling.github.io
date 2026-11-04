@@ -36644,6 +36644,15 @@ export type Database = {
       can_write_bid_custom_costs: { Args: never; Returns: boolean }
       can_write_job_budget: { Args: { p_job_id: string }; Returns: boolean }
       can_write_payment_promises: { Args: never; Returns: boolean }
+      charge_standings: {
+        Args: never
+        Returns: {
+          archived_at: string
+          charge_standing: string
+          id: string
+          name: string
+        }[]
+      }
       check_lien_sign_code: {
         Args: { p_code: string; p_signer_id: string }
         Returns: Json

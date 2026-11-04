@@ -20,6 +20,13 @@ describe('isPathAllowedForRole', () => {
     }
   })
 
+  it('allows /my-logbook for every role (v2.6502: the guard bounced a helper the office had shown their logbook)', () => {
+    for (const role of ROLES) {
+      expect(isPathAllowedForRole(role, '/my-logbook', false), role).toBe(true)
+      expect(isPathAllowedForRole(role, '/my-logbook', true), `${role} (prospects)`).toBe(true)
+    }
+  })
+
   it('allows /settings and /dashboard for every role', () => {
     for (const role of ROLES) {
       expect(isPathAllowedForRole(role, '/settings', false), `role ${role}`).toBe(true)

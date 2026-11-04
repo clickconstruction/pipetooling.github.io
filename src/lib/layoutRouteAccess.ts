@@ -16,11 +16,13 @@ export const BANKING_ONLY_PATHS = ['/banking'] as const
 
 // '/training' (v2.5592): a course page is every signed-in role's; the policy in Settings → Training says who must
 // take it, and the Dashboard card's Start sent a helper here, where the guard bounced them home.
-export const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/calendar', '/checklist', '/settings', '/tally', '/help', '/training', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers'] as const
+// '/my-logbook' (v2.6502) is in every list: any teammate may be shown their logbook, and my_logbook() answers only then.
+export const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/my-logbook', '/calendar', '/checklist', '/settings', '/tally', '/help', '/training', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers'] as const
 
 export const PRIMARY_PATHS = [
   '/dashboard',
   '/my-statement',
+  '/my-logbook',
   '/materials',
   '/estimates',
   '/documents',
@@ -45,6 +47,7 @@ export const PRIMARY_PATHS = [
 
 export const SUPERINTENDENT_PATHS = [
   '/dashboard',
+  '/my-logbook',
   '/projects',
   // The Projects board (punch list #242): his projects' pace and the expected hours the office set.
   '/projects-board',
@@ -70,6 +73,7 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
   return [
     '/dashboard',
     '/my-statement',
+    '/my-logbook',
     '/map',
     '/materials',
     '/estimates',

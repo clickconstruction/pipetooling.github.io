@@ -1,8 +1,8 @@
 import type { FlowPanelModel, PanelBox } from '../../lib/flows/panel'
 
 /**
- * The flow folded to its rail (the prototype's `railHtml`): each lane's name, a mark per step, and how far along. A
- * mark opens the step's card as the panel's box does; ‹ opens the panel. On a phone the rail is a row over the
+ * The flow folded to its rail (the prototype's `railHtml`): each lane's name, a mark per step (a skipped step's dash
+ * drawn as a rule, centered, v2.6505), and how far along. A mark opens the step's card as the panel's box does; ‹ opens the panel. On a phone the rail is a row over the
  * thread's lines (`row`, cut 10, the prototype's 760 px rule), so the lines keep the whole width; › opens the panel.
  */
 
@@ -52,12 +52,18 @@ export function FlowRail({ model, onStep, onOpen, row = false }: { model: FlowPa
                 background: MARK_BG[b.state],
                 fontSize: '0.7rem',
                 lineHeight: 1,
+                // The glyph centered both ways (v2.6505): the button's own padding and line box had the dash high and left.
+                padding: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 cursor: 'pointer',
                 color: 'var(--text-600)',
                 flex: 'none',
               }}
             >
-              {b.symbol}
+              {/* A skipped step's dash is a drawn rule, since the dash character sits above the round's middle in the face. */}
+              {b.symbol === '–' ? <span aria-hidden="true" data-flow-mark-dash style={{ display: 'block', width: 8, height: 2, borderRadius: 1, background: 'currentColor' }} /> : b.symbol}
             </button>
           ))}
         </div>

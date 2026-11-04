@@ -14,7 +14,9 @@ import { laborJobSubCost } from '../../../supabase/functions/_shared/subLaborCos
 import {
   buildJobChargeEvents,
   buildJobChargesTimelineChartData,
+  buildJobManualPercentEvents,
   buildJobPaymentEvents,
+  buildJobValueEvents,
   type JobChargeEvent,
   type JobChargeSource,
   type JobChargesTimelineChartRow,
@@ -25,6 +27,8 @@ import {
 } from '../jobChargesTimeline'
 import { buildCategoryTagLookups, categoryTagForCharge, pickFuelTag, type CategoryTagMemberRow, type CategoryTagRow } from '../banking/categoryTags'
 import { cardEventRowsFromSnapshotLines } from '../jobs/jobCardChargeEvents'
+import { scoreboardPct } from './scoreboard'
+import type { JobOverheadDayLine } from '../jobs/jobDayLedger'
 import type { SiteCostRows } from './siteCosts'
 import type { SiteLabor } from './siteLabor'
 
@@ -147,6 +151,87 @@ export function siteFuelTxIds(args: { cardAlloc: SiteCostRows['cardAlloc']; tags
   return out
 }
 
+export type SiteReportRow = { id: string; job_ledger_id: string | null; created_at: string | null; field_values: Record<string, unknown> | null; users: { name: string | null } | { name: string | null }[] | null }
+export type SitePctEventRow = { id: string; job_id: string; pct: number | null; changed_at: string | null; users: { name: string | null } | { name: string | null }[] | null }
+
+const nameOf = (u: { name: string | null } | { name: string | null }[] | null): string | null => (Array.isArray(u) ? u[0]?.name ?? null : u?.name ?? null)
+
+/**
+ * The percent events per job (v2.6499): the field reports and the office's hand-set percents, built as the
+ * Job window builds them, each tagged with its job. A report's completion percent comes from its fields.
+ */
+export function siteValueEventsFromRows(reports: readonly SiteReportRow[], pctEvents: readonly SitePctEventRow[], toYmd: ToYmd): Map<string, JobValueEvent[]> {
+  const out = new Map<string, JobValueEvent[]>()
+  const push = (jobId: string | null, events: JobValueEvent[]) => {
+    if (!jobId || events.length === 0) return
+    const list = out.get(jobId)
+    const tagged = tagJob(jobId, events)
+    if (list) list.push(...tagged)
+    else out.set(jobId, tagged)
+  }
+  const reportsByJob = new Map<string, SiteReportRow[]>()
+  for (const r of reports) {
+    if (!r.job_ledger_id) continue
+    const list = reportsByJob.get(r.job_ledger_id)
+    if (list) list.push(r)
+    else reportsByJob.set(r.job_ledger_id, [r])
+  }
+  for (const [jobId, rows] of reportsByJob) push(jobId, buildJobValueEvents(rows.map((r) => ({ dateKey: toYmd(r.created_at), createdByName: nameOf(r.users), fieldValues: r.field_values }))))
+  const pctByJob = new Map<string, SitePctEventRow[]>()
+  for (const e of pctEvents) {
+    const list = pctByJob.get(e.job_id)
+    if (list) list.push(e)
+    else pctByJob.set(e.job_id, [e])
+  }
+  for (const [jobId, rows] of pctByJob) push(jobId, buildJobManualPercentEvents(rows.map((e) => ({ dateKey: toYmd(e.changed_at), pct: e.pct, changedByName: nameOf(e.users) }))))
+  return out
+}
+
+/**
+ * The site's value line (v2.6499): at each bucket, every job's newest percent so far times its price, summed.
+ * On one day a hand-set beats a report, as `newestPercentEvent` rules. A job with no dated percent but a
+ * current one (paid bills, the job's own percent) adds it at the last bucket, as the Job Summary kernel does
+ * for one job; a job with no price adds nothing. Writes `value` onto the rows; says whether any value stands.
+ */
+export function siteValueSeries(rows: JobChargesTimelineChartRow[], jobs: readonly Pick<SiteTimelineJob, 'jobId' | 'revenue' | 'fallbackPercent'>[]): { available: boolean; fallbackJobs: number } {
+  const revenueOf = new Map(jobs.map((j) => [j.jobId, j.revenue != null && Number.isFinite(j.revenue) && j.revenue > 0 ? j.revenue : null]))
+  const pctByJob = new Map<string, number>()
+  let any = false
+  const total = () => round2([...pctByJob.entries()].reduce((s, [jobId, pct]) => s + (pct / 100) * (revenueOf.get(jobId) ?? 0), 0))
+  for (const row of rows) {
+    const dayBest = new Map<string, JobValueEvent>()
+    for (const v of row.valueEvents) {
+      if (v.percent == null || !v.jobId) continue
+      const cur = dayBest.get(v.jobId)
+      if (!cur || (v.kind === 'manual' && cur.kind !== 'manual')) dayBest.set(v.jobId, v)
+    }
+    for (const [jobId, v] of dayBest) {
+      if (!revenueOf.get(jobId)) continue
+      pctByJob.set(jobId, v.percent as number)
+      any = true
+    }
+    row.value = any ? total() : null
+  }
+  let fallbackJobs = 0
+  const last = rows[rows.length - 1]
+  if (last) {
+    let add = 0
+    for (const j of jobs) {
+      if (pctByJob.has(j.jobId)) continue
+      const rev = revenueOf.get(j.jobId)
+      const p = j.fallbackPercent
+      if (!rev || p == null || !Number.isFinite(p) || p < 0 || p > 100) continue
+      add += (p / 100) * rev
+      fallbackJobs += 1
+    }
+    if (fallbackJobs > 0) {
+      last.value = round2((last.value ?? 0) + add)
+      any = true
+    }
+  }
+  return { available: any, fallbackJobs }
+}
+
 /** The words for a day's folded line of one source: *3 card charges*, *team labor, Luis and Mateo, 16h*. */
 export function foldedSourceWords(source: JobChargeSource, events: readonly JobChargeEvent[]): string {
   const n = events.length
@@ -235,6 +320,8 @@ export type SiteTimelineModel = {
   leftOut: number
   /** True when the icons were kept to the biggest days. */
   iconsThinned: boolean
+  /** Jobs with no dated percent whose current percent adds to the value line's last point (v2.6499). */
+  valueFallbackJobs: number
 }
 
 /**
@@ -251,11 +338,17 @@ export function buildSiteTimeline(args: { jobs: readonly SiteTimelineJob[]; sele
     (id) => labelOf.get(id) ?? id,
   )
   const payments = drawnJobs.flatMap((j) => j.payments.map((p) => ({ ...p, label: `${j.label} · ${p.label}` })))
+  const values = drawnJobs.flatMap((j) => j.values.map((v) => ({ ...v, label: `${j.label} · ${v.label}` })))
   const overhead = drawnJobs.flatMap((j) => j.overheadDays)
-  const data = buildJobChargesTimelineChartData(charges, [], null, payments, null, overhead)
+  // The kernel buckets the percent events (the 🚩 markers, the tooltip's lines) with no price of its own; the site's value is summed over the jobs after.
+  const data = buildJobChargesTimelineChartData(charges, values, null, payments, null, overhead)
+  const value = siteValueSeries(data.chartRows, drawnJobs)
+  data.valueSeriesAvailable = value.available
+  data.valueFromFallbackPercent = false
   const iconsThinned = thinChargeIcons(data.chartRows, args.iconDays ?? SITE_TIMELINE_ICON_DAYS)
   return {
     data,
+    valueFallbackJobs: value.fallbackJobs,
     chips: dated.map((j) => ({ jobId: j.jobId, label: j.label, endExpense: round2(j.charges.reduce((s, e) => s + e.amount, 0)) })),
     drawn: new Set(drawnJobs.map((j) => j.jobId)),
     leftOut: args.jobs.length - dated.length,
@@ -263,9 +356,22 @@ export function buildSiteTimeline(args: { jobs: readonly SiteTimelineJob[]; sele
   }
 }
 
+/** A job's overhead day lines as the chart's band takes them (v2.6498): the share by day, with its split. */
+export function overheadDaysFromLines(lines: readonly JobOverheadDayLine[] | undefined): JobOverheadDayInput[] {
+  return (lines ?? []).map((l) => ({ dateKey: l.ymd, amount: l.shareUsd, activityUsd: l.activityUsd, carryUsd: l.carryUsd }))
+}
+
+/** The day the office pool began, as the chart's key says it: *Feb 19, 2026*. */
+export function overheadSinceWords(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
+  if (!m) return ymd
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 /**
  * The site's jobs as the chart takes them: the Money look's order first, any job it does not list after,
- * each with its cost events from the cost rows and the clock, and its payments.
+ * each with its cost events from the cost rows and the clock, its payments and, when the day ledger is
+ * in (v2.6498), its overhead day lines.
  */
 export function assembleSiteTimelineJobs(args: {
   jobIds: readonly string[]
@@ -276,8 +382,16 @@ export function assembleSiteTimelineJobs(args: {
   payments: ReadonlyArray<SitePaymentRow>
   fuelTxIds: ReadonlySet<string>
   toYmd: ToYmd
+  /** Each job's overhead day share with its lines (v2.6498); null while the ledger is out or when it failed, and the band stays off. */
+  overhead?: ReadonlyMap<string, { lines?: readonly JobOverheadDayLine[] }> | null
+  /** Each job's percent events (v2.6499); null while the reports are out or when they failed, and the value line stays off. */
+  values?: ReadonlyMap<string, readonly JobValueEvent[]> | null
+  /** The jobs' prices, stages and own percents, and the site's bills, for the value line's price and its end-point fallback (v2.6499): the Scoreboard's percent rule, a paid job at 100, else the Job Summary chain. */
+  jobRows?: ReadonlyArray<{ id: string; status: string | null; revenue: number | null; pct_complete?: number | null }>
+  invoices?: ReadonlyArray<{ job_id: string; status: string; amount: number }>
 }): SiteTimelineJob[] {
   const ids = new Set(args.jobIds)
+  const rowOf = new Map((args.jobRows ?? []).map((j) => [j.id, j]))
   const ordered = [...args.order.filter((id) => ids.has(id)), ...args.jobIds.filter((id) => !args.order.includes(id))]
   const costEvents = siteChargeEventsFromCostRows(args.costs, { fuelTxIds: args.fuelTxIds, toYmd: args.toYmd })
   const laborEvents = args.labor ? siteTeamLaborEvents(args.labor) : new Map<string, JobChargeEvent[]>()
@@ -287,11 +401,58 @@ export function assembleSiteTimelineJobs(args: {
     label: args.jobLabel(jobId),
     charges: [...(laborEvents.get(jobId) ?? []), ...(costEvents.get(jobId) ?? [])],
     payments: payments.get(jobId) ?? [],
-    values: [],
-    revenue: null,
-    fallbackPercent: null,
-    overheadDays: [],
+    values: [...(args.values?.get(jobId) ?? [])],
+    revenue: rowOf.get(jobId)?.revenue != null ? Number(rowOf.get(jobId)!.revenue) : null,
+    fallbackPercent: args.values && rowOf.has(jobId) ? scoreboardPct({ status: rowOf.get(jobId)!.status, pct_complete: rowOf.get(jobId)!.pct_complete ?? null, revenue: rowOf.get(jobId)!.revenue }, (args.invoices ?? []).filter((i) => i.job_id === jobId)).pct : null,
+    overheadDays: overheadDaysFromLines(args.overhead?.get(jobId)?.lines),
   }))
+}
+
+/** The line under the chips about the value line (v2.6499): how many jobs add their current percent at its end. */
+export function siteTimelineValueWords(fallbackJobs: number): string | null {
+  if (fallbackJobs <= 0) return null
+  return fallbackJobs === 1 ? '1 job with no dated percent adds its current percent at the end of the value line.' : `${fallbackJobs} jobs with no dated percent add their current percent at the end of the value line.`
+}
+
+/** The chart's ends in words, for the print (v2.6499). */
+export function siteTimelineEndWords(data: Pick<JobChargesTimelineData, 'endExpense' | 'endProfit' | 'endTrueCost' | 'overheadSeriesAvailable' | 'valueSeriesAvailable' | 'chartRows'>, money: (n: number) => string): string[] {
+  const out = [`Cost to date ${money(data.endExpense)}`]
+  if (data.overheadSeriesAvailable) out.push(`True cost ${money(data.endTrueCost)}`)
+  out.push(`Cash position ${data.endProfit < 0 ? '−' : '+'}${money(Math.abs(data.endProfit))}`)
+  const last = data.chartRows[data.chartRows.length - 1]
+  if (data.valueSeriesAvailable && last?.value != null) out.push(`Value created ${money(last.value)}`)
+  return out
+}
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/**
+ * The print page (v2.6499): the chart as the screen drew it (its SVG, the theme's surface made white), under the
+ * site's name, the scope line and the ends, with the key and the printed stamp. A printed page has no theme, so
+ * its colours are literal, as on the other print documents. Pure; `openHtmlPrintWindow` opens it.
+ */
+export function siteTimelinePrintHtml(input: { siteName: string; customerName: string | null; scopeLine: string; endWords: readonly string[]; keyLines: readonly string[]; svg: string; printedAt: string; printedBy: string | null }): string {
+  const svg = input.svg.replace(/var\(--surface\)/g, '#ffffff').replace(/var\(--[a-z0-9-]+\)/g, '#374151')
+  const stamp = `Printed ${input.printedAt}${input.printedBy ? ` by ${input.printedBy}` : ''}`
+  return `<!doctype html>
+<html lang="en" data-theme="light"><head><meta charset="utf-8"><title>${esc(input.siteName)} · cost timeline</title>
+<style>
+@page { size: landscape; margin: 12mm; }
+body { font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; color: #111827; margin: 0; padding: 16px; background: #ffffff; }
+h1 { font-size: 18px; margin: 0 0 2px; }
+.line { font-size: 12px; color: #4b5563; margin: 0 0 4px; }
+.ends { font-size: 13px; font-weight: 600; margin: 4px 0 10px; }
+.chart svg { width: 100%; height: auto; }
+.key { font-size: 11px; color: #374151; text-align: center; margin: 6px 0 0; }
+.stamp { font-size: 10px; color: #6b7280; margin-top: 10px; }
+</style></head><body>
+<h1>${esc(input.siteName)} · cost timeline</h1>
+<p class="line">${input.customerName ? `${esc(input.customerName)} · ` : ''}${esc(input.scopeLine)}</p>
+<p class="ends">${input.endWords.map(esc).join(' · ')}</p>
+<div class="chart">${svg}</div>
+${input.keyLines.map((l) => `<p class="key">${esc(l)}</p>`).join('\n')}
+<p class="stamp">${esc(stamp)}</p>
+</body></html>`
 }
 
 /** The line under the chips: how many jobs are left out, and why. */

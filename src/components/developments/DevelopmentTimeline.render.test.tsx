@@ -14,6 +14,14 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// The print window (v2.6499): captured, never opened.
+const printed = vi.hoisted(() => ({ html: [] as string[], open: true }))
+vi.mock('../../lib/jobsDocuments/printWindow', () => ({
+  openHtmlPrintWindow: (html: string) => {
+    printed.html.push(html)
+    return printed.open
+  },
+}))
 
 beforeAll(installDomShims)
 afterEach(cleanup)
@@ -36,7 +44,7 @@ const jobs: SiteTimelineJob[] = [
 
 describe('DevelopmentTimeline', () => {
   it('draws the chips in order with All jobs pressed, counts the jobs left out, and the chart’s key', () => {
-    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null }} phone={false} />)
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null, valueNote: null, siteName: 'Harlow Ranch', customerName: null, printedBy: null }} phone={false} />)
     const group = screen.getByRole('group', { name: 'Jobs on the chart' })
     expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['All jobs', 'JP612', 'JP583'])
     expect(screen.getByTestId('timeline-chip-all').getAttribute('aria-pressed')).toBe('true')
@@ -48,7 +56,7 @@ describe('DevelopmentTimeline', () => {
   })
 
   it('a chip narrows the chart to that job and the scope line says so; All jobs brings the site back', () => {
-    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null }} phone={false} />)
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null, valueNote: null, siteName: 'Harlow Ranch', customerName: null, printedBy: null }} phone={false} />)
     fireEvent.click(screen.getByTestId('timeline-chip-j2'))
     expect(screen.getByTestId('timeline-chip-j2').getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('timeline-chip-all').getAttribute('aria-pressed')).toBe('false')
@@ -62,12 +70,62 @@ describe('DevelopmentTimeline', () => {
   })
 
   it('the chips wrap and the chart fills the width on a phone', () => {
-    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: false, teamLaborNote: 'The clock’s rows did not read, so team labor is not on the chart.' }} phone />)
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: false, teamLaborNote: 'The clock’s rows did not read, so team labor is not on the chart.', overheadNote: 'The overhead ledger is still reading. The amber band lands with it.', overheadSinceLabel: null, valueNote: 'The reports are still reading. The value line comes with them.', siteName: 'Harlow Ranch', customerName: null, printedBy: null }} phone />)
     const group = screen.getByTestId('timeline-jobs') as HTMLElement
     expect(group.style.flexWrap).toBe('wrap')
     expect((screen.getByTestId('development-timeline') as HTMLElement).style.minWidth).toBe('0')
     expect(screen.getByTestId('timeline-scope').textContent).toContain('The clock’s rows did not read')
     expect(screen.getByTestId('timeline-scope').textContent).toContain('Fuel could not be told from the other card charges.')
+    expect(screen.getByTestId('timeline-scope').textContent).toContain('The overhead ledger is still reading.')
+    expect(screen.getByText(/cost to date/).textContent).not.toContain('Amber')
+  })
+
+  it('the amber band draws once a job carries overhead days, and the key says where office cost begins (v2.6498)', () => {
+    const withOverhead = jobs.map((j) => (j.jobId === 'j1' ? { ...j, overheadDays: [{ dateKey: '2026-03-02', amount: 120.5 }, { dateKey: '2026-03-15', amount: 80 }] } : j))
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs: withOverhead, fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: 'Feb 19, 2026', valueNote: null, siteName: 'Harlow Ranch', customerName: 'Ridgeway Builders', printedBy: 'Dana' }} phone={false} />)
+    const key = screen.getByText(/cost to date/).textContent ?? ''
+    expect(key).toContain('Amber')
+    expect(key).toContain('since Feb 19, 2026, where office cost begins')
+  })
+
+  it('the value line waits behind its toggle once a job has a price and a percent, and the scope line counts the jobs that add their current percent (v2.6499)', () => {
+    const withValue = jobs.map((j) => (j.jobId === 'j1' ? { ...j, revenue: 10000, values: [{ dateKey: '2026-03-05', percent: 40, label: 'Report by Dana', jobId: 'j1' }] } : j.jobId === 'j2' ? { ...j, revenue: 4000, fallbackPercent: 25 } : j))
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs: withValue, fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null, valueNote: null, siteName: 'Harlow Ranch', customerName: null, printedBy: null }} phone={false} />)
+    const toggle = screen.getByLabelText('Value created (right axis)') as HTMLInputElement
+    expect(toggle.checked).toBe(false)
+    expect(screen.getByTestId('timeline-scope').textContent).toContain('1 job with no dated percent adds its current percent at the end of the value line.')
+    fireEvent.click(toggle)
+    expect(screen.getByText(/cost to date/).textContent).toContain('Blue = value created (each job’s % done × its price, summed, right axis)')
+  })
+
+  it('without a priced job with a percent the key says why the value line is hidden, in the site’s words', () => {
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null, valueNote: 'The reports are still reading. The value line comes with them.', siteName: 'Harlow Ranch', customerName: null, printedBy: null }} phone={false} />)
+    expect(screen.queryByLabelText('Value created (right axis)')).toBeNull()
+    expect(document.body.textContent).toContain('Value line hidden: no job on the chart has both a price and a percent')
+    expect(screen.getByTestId('timeline-scope').textContent).toContain('The reports are still reading.')
+  })
+
+  it('Print or save as PDF opens the print page with the site’s name, the scope line and the chart; a blocked window says so (v2.6499)', () => {
+    printed.html.length = 0
+    printed.open = true
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null, valueNote: null, siteName: 'Harlow Ranch', customerName: 'Ridgeway Builders', printedBy: 'Dana' }} phone={false} />)
+    // jsdom draws no plot (no box for the responsive container), so a stand-in surface takes the chart’s place.
+    const host = screen.getByTestId('development-timeline')
+    const surface = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    surface.setAttribute('class', 'recharts-surface')
+    surface.setAttribute('width', '800')
+    surface.setAttribute('height', '320')
+    host.querySelector('.recharts-responsive-container')?.appendChild(surface)
+    fireEvent.click(screen.getByRole('button', { name: 'Print or save as PDF' }))
+    expect(printed.html).toHaveLength(1)
+    expect(printed.html[0]).toContain('<h1>Harlow Ranch · cost timeline</h1>')
+    expect(printed.html[0]).toContain('Ridgeway Builders · All 2 jobs on one chart.')
+    expect(printed.html[0]).toContain('viewBox="0 0 800 320"')
+    expect(printed.html[0]).toContain('by Dana')
+    expect(screen.queryByTestId('timeline-print-note')).toBeNull()
+    printed.open = false
+    fireEvent.click(screen.getByRole('button', { name: 'Print or save as PDF' }))
+    expect(screen.getByTestId('timeline-print-note').textContent).toContain('The print window was blocked.')
   })
 
   it('reading, failed and nothing dated', () => {
@@ -77,7 +135,7 @@ describe('DevelopmentTimeline', () => {
     renderWithProviders(<DevelopmentTimeline read={{ state: 'failed', reason: 'the bank’s rows are closed to you' }} phone={false} />)
     expect(screen.getByTestId('timeline-failed').textContent).toBe('The timeline did not read: the bank’s rows are closed to you')
     cleanup()
-    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs: [job('j3', 'JP953')], fuelKnown: true, teamLaborNote: null }} phone={false} />)
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs: [job('j3', 'JP953')], fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null, valueNote: null, siteName: 'Harlow Ranch', customerName: null, printedBy: null }} phone={false} />)
     expect(screen.getByText('Nothing dated on this site yet.')).toBeTruthy()
   })
 })

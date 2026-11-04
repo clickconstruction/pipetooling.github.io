@@ -345,3 +345,19 @@ describe('PricingCardsRow — the door and the own-takeoff window', () => {
     expect((screen.getByRole('button', { name: 'Creating…' }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
+
+describe('PricingCardsRow — the sent figure rides the ★ card (v2.6510)', () => {
+  it('the tray footer and the solo band say as sent while the lock holds', () => {
+    const { unmount } = render(<PricingCardsRow {...props({ sentTag: 'as sent' })} />)
+    expect(cardOf('Base').textContent).toContain('★ The price on their letter · as sent')
+    expect(cardOf('Alternate 1').textContent).not.toContain('as sent')
+    unmount()
+    render(<PricingCardsRow {...props({ mode: 'solo', scenarios: [BASE], sentTag: 'as sent' })} />)
+    expect(screen.getByText('★ base · the GC sees this · as sent')).toBeTruthy()
+  })
+  it('with no tag the words are as before', () => {
+    render(<PricingCardsRow {...props()} />)
+    expect(cardOf('Base').textContent).toContain('★ The price on their letter')
+    expect(cardOf('Base').textContent).not.toContain('· as sent')
+  })
+})
