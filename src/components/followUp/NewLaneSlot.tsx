@@ -22,6 +22,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { AboveLinesActs } from '../gc/messages/threadSlots'
 import { Btn } from '../gc/gcUi'
 import { NewLaneCard } from './NewLaneCard'
+import { useOpenThread } from '../gc/messages/openThread'
 
 /** What the undo strip says once the sender is back in New. */
 export const NOTICE_UNDONE = 'The sender is back in New. Their next mail lands again.'
@@ -57,6 +58,8 @@ export function NewLaneSlot({
   const [read, setRead] = useState<NewLaneCardRows | null>(null)
   const [known, setKnown] = useState<WhoKnown | null>(null)
   const [busy, setBusy] = useState(false)
+  // A short window folds the card to one row (v2.6476); the thread window says so through the open thread.
+  const short = useOpenThread()?.short ?? false
   const jobKeys = contact.jobIds.join(',')
 
   const load = useCallback(async () => {
@@ -194,6 +197,7 @@ export function NewLaneSlot({
       onNotForUs={(reason) => void run(() => io.answerInvitation(row.messageId, 'not_for_us', reason), INVITATION_WORDS.notForUs)}
       onKeep={() => void run(() => io.answerInvitation(row.messageId, 'kept', null), INVITATION_WORDS.kept)}
       busy={busy}
+      foldable={short}
       onName={(g: WhoGuess) =>
         void run<unknown>(
           () =>
