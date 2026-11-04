@@ -106,12 +106,13 @@ export function contactPieces(pieces: readonly WordsPiece[]): BodyContactPiece[]
   // The lines as the body has them, for each line's marker and whether it holds a press.
   const lines: string[] = ['']
   for (const p of pieces) {
+    const last = lines.length - 1
     if (p.kind === 'link') {
-      lines[lines.length - 1] += p.href
+      lines[last] = (lines[last] ?? '') + p.href
       continue
     }
     const parts = p.text.split('\n')
-    lines[lines.length - 1] += parts[0]
+    lines[last] = (lines[last] ?? '') + (parts[0] ?? '')
     for (const part of parts.slice(1)) lines.push(part)
   }
   const markers = lines.map(markerOf)
