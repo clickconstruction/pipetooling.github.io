@@ -36299,6 +36299,17 @@ export type Database = {
         Args: { p_ended_at?: string; p_minutes: number; p_note: string }
         Returns: Json
       }
+      add_worker: {
+        Args: {
+          p_email?: string
+          p_kind: string
+          p_name: string
+          p_notes?: string
+          p_phone?: string
+          p_start_date?: string
+        }
+        Returns: Json
+      }
       adopt_bid_as_version: {
         Args: {
           p_name: string
@@ -36472,11 +36483,16 @@ export type Database = {
         Args: { p_mercury_debit_card_id: string }
         Returns: number
       }
+      backfill_users_for_people: { Args: never; Returns: Json }
       bid_change_action: { Args: never; Returns: string }
       bid_changes_app_actions: { Args: never; Returns: string[] }
       bid_changes_bid_columns: { Args: never; Returns: string[] }
       bid_changes_tables: { Args: never; Returns: string[] }
       bid_estimate_breakdown: { Args: { p_bid_id: string }; Returns: Json }
+      bid_log_message_in: {
+        Args: { p_bid_id: string; p_message_id: string; p_words: string }
+        Returns: string
+      }
       bid_mark_request_take_back: {
         Args: { p_request_id: string }
         Returns: number
