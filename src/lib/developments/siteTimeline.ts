@@ -25,6 +25,7 @@ import {
 } from '../jobChargesTimeline'
 import { buildCategoryTagLookups, categoryTagForCharge, pickFuelTag, type CategoryTagMemberRow, type CategoryTagRow } from '../banking/categoryTags'
 import { cardEventRowsFromSnapshotLines } from '../jobs/jobCardChargeEvents'
+import type { JobOverheadDayLine } from '../jobs/jobDayLedger'
 import type { SiteCostRows } from './siteCosts'
 import type { SiteLabor } from './siteLabor'
 
@@ -263,9 +264,22 @@ export function buildSiteTimeline(args: { jobs: readonly SiteTimelineJob[]; sele
   }
 }
 
+/** A job's overhead day lines as the chart's band takes them (v2.6498): the share by day, with its split. */
+export function overheadDaysFromLines(lines: readonly JobOverheadDayLine[] | undefined): JobOverheadDayInput[] {
+  return (lines ?? []).map((l) => ({ dateKey: l.ymd, amount: l.shareUsd, activityUsd: l.activityUsd, carryUsd: l.carryUsd }))
+}
+
+/** The day the office pool began, as the chart's key says it: *Feb 19, 2026*. */
+export function overheadSinceWords(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
+  if (!m) return ymd
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 /**
  * The site's jobs as the chart takes them: the Money look's order first, any job it does not list after,
- * each with its cost events from the cost rows and the clock, and its payments.
+ * each with its cost events from the cost rows and the clock, its payments and, when the day ledger is
+ * in (v2.6498), its overhead day lines.
  */
 export function assembleSiteTimelineJobs(args: {
   jobIds: readonly string[]
@@ -276,6 +290,8 @@ export function assembleSiteTimelineJobs(args: {
   payments: ReadonlyArray<SitePaymentRow>
   fuelTxIds: ReadonlySet<string>
   toYmd: ToYmd
+  /** Each job's overhead day share with its lines (v2.6498); null while the ledger is out or when it failed, and the band stays off. */
+  overhead?: ReadonlyMap<string, { lines?: readonly JobOverheadDayLine[] }> | null
 }): SiteTimelineJob[] {
   const ids = new Set(args.jobIds)
   const ordered = [...args.order.filter((id) => ids.has(id)), ...args.jobIds.filter((id) => !args.order.includes(id))]
@@ -290,7 +306,7 @@ export function assembleSiteTimelineJobs(args: {
     values: [],
     revenue: null,
     fallbackPercent: null,
-    overheadDays: [],
+    overheadDays: overheadDaysFromLines(args.overhead?.get(jobId)?.lines),
   }))
 }
 

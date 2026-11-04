@@ -21,6 +21,10 @@ export type SiteTimelineViewRead =
       fuelKnown: boolean
       /** When the clock's rows did not read, or gave no days to this reader: team labor is then not on the chart, and the line says so. */
       teamLaborNote: string | null
+      /** While the day ledger is still out, or when it failed (v2.6498): the band is then not on the chart yet, and the line says so. */
+      overheadNote: string | null
+      /** The day the office pool began, for the key, once the ledger is in. */
+      overheadSinceLabel: string | null
     }
 
 const chipStyle = (on: boolean): CSSProperties => ({
@@ -94,10 +98,11 @@ export function DevelopmentTimeline({ read, phone }: { read: SiteTimelineViewRea
         {allOn ? `All ${model.chips.length} ${jobsWord} on one chart.` : `${siteTimelineScopeWords(model)} on the chart. Press All jobs for the whole site.`}
         {leftOut ? ` ${leftOut}` : ''}
         {read.teamLaborNote ? ` ${read.teamLaborNote}` : ''}
+        {read.overheadNote ? ` ${read.overheadNote}` : ''}
         {!read.fuelKnown ? ' Fuel could not be told from the other card charges.' : ''}
         {model.iconsThinned ? ' The icons mark the biggest days. Rest the pointer on any step for its lines.' : ''}
       </p>
-      <JobChargesTimelineChartView data={model.data} revenue={null} cardChargesExcluded={false} teamLaborIncluded valueHiddenNote={null} compact={phone} />
+      <JobChargesTimelineChartView data={model.data} revenue={null} cardChargesExcluded={false} teamLaborIncluded valueHiddenNote={null} compact={phone} overheadSinceLabel={read.overheadSinceLabel} />
     </div>
   )
 }
