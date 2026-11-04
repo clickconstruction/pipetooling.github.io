@@ -50,7 +50,7 @@ const writes = (): MessagesWrites => ({
 /** A box slot that says what the open thread told it. */
 function ShortSays() {
   const open = useOpenThread()
-  return <div data-test-short={open?.short ? 'short' : 'tall'} data-test-beside={open?.beside ? 'beside' : 'under'} />
+  return <div data-test-short={open?.short ? 'short' : 'tall'} data-test-beside={open?.beside ? 'beside' : 'under'} data-test-folds={`${open?.foldCard ? 'card' : ''}|${open?.foldBox ? 'box' : ''}`} />
 }
 
 function open(contactId: string) {
@@ -114,7 +114,7 @@ describe('the thread folds by height on a short window (v2.6474)', () => {
   })
 })
 
-describe('a short, wide window puts the sort card beside the lines (v2.6478)', () => {
+describe('a wide thread puts the sort card beside the lines (v2.6478, any height since v2.6482)', () => {
   it('draws what a cut puts above the lines in a column at their right, and says so to the slots', () => {
     screenIs({ short: true })
     measured.width = 976
@@ -127,16 +127,26 @@ describe('a short, wide window puts the sort card beside the lines (v2.6478)', (
     expect(win.querySelector('[data-test-short]')?.getAttribute('data-test-beside')).toBe('beside')
   })
 
-  it('keeps the card above the lines under 900 px of column, and on a tall window', () => {
+  it('keeps the card above the lines, folded, under 900 px of column and on a phone', () => {
     screenIs({ short: true })
     measured.width = 880
     const narrow = open('c-greg')
     expect(narrow.win.querySelector('[data-thread-beside]')).toBeNull()
     expect(narrow.win.querySelector('[data-thread-above] [data-test-card]')).toBeTruthy()
+    expect(narrow.win.querySelector('[data-test-short]')?.getAttribute('data-test-folds')).toBe('card|box')
     cleanup()
-    screenIs({})
+    screenIs({ phone: true })
+    measured.width = 375
+    const phone = open('c-greg')
+    expect(phone.win.querySelector('[data-thread-body]')?.getAttribute('data-thread-body')).toBe('under')
+    expect(phone.win.querySelector('[data-test-short]')?.getAttribute('data-test-folds')).toBe('card|box')
+  })
+
+  it('goes beside on a tall, wide window too (v2.6482), the box whole there', () => {
     measured.width = 1100
     const tall = open('c-greg')
-    expect(tall.win.querySelector('[data-thread-body]')?.getAttribute('data-thread-body')).toBe('under')
+    expect(tall.win.querySelector('[data-thread-body]')?.getAttribute('data-thread-body')).toBe('beside')
+    expect(tall.win.querySelector('[data-test-short]')?.getAttribute('data-test-folds')).toBe('|')
+    expect((tall.win.querySelector('[data-thread-lines]') as HTMLElement).style.minHeight).toBe('max(7rem, 33%)')
   })
 })

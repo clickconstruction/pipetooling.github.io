@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { replyBoxFolded, type ReplyFoldFacts } from './replyFold'
 
-const quiet: ReplyFoldFacts = { short: true, inJob: false, woke: false, blank: true, files: 0, opensWithWords: false, textWaits: false }
+const quiet: ReplyFoldFacts = { foldBox: true, inJob: false, woke: false, blank: true, files: 0, opensWithWords: false, textWaits: false }
 
 describe('the reply box folds to one row on a short window (v2.6477)', () => {
   it('folds while the window is short and nothing waits in the box', () => {
@@ -9,7 +9,7 @@ describe('the reply box folds to one row on a short window (v2.6477)', () => {
   })
 
   it('stays whole on a tall window and in a job’s card', () => {
-    expect(replyBoxFolded({ ...quiet, short: false })).toBe(false)
+    expect(replyBoxFolded({ ...quiet, foldBox: false })).toBe(false)
     expect(replyBoxFolded({ ...quiet, inJob: true })).toBe(false)
   })
 

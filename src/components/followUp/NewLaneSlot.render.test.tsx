@@ -491,7 +491,7 @@ describe('Bid it? (punch list #223 PR 3, v2.6222)', () => {
   })
 })
 
-describe('a short window folds the card to one row (v2.6476)', () => {
+describe('over the lines the card folds to one row (v2.6476, every screen since v2.6482)', () => {
   const INVITE = { kind: 'invitation', project: 'Oak Hill Clinic, Boerne', due: { date: '2026-11-12', time: '14:00' }, portal: null, cue: 'invitation to bid' }
   const SENDER = person('invite', 'unknown', 'Dale Ferris', { channels: [{ id: 'ch-invite', kind: 'email', value: 'dale@ridgeway.example', optedOutAt: null }] })
   const ROWS_INVITE: Record<string, NewLaneCardRows> = {
@@ -504,7 +504,7 @@ describe('a short window folds the card to one row (v2.6476)', () => {
       team: [ROBERT, ROSA],
     },
   }
-  const short = (contact: Contact): OpenThread => ({ contact, lines: [], jobFilter: null, rail: [], tiles: {}, userNames: {}, nowIso: NOW, searchJobs: async () => [], short: true })
+  const short = (contact: Contact): OpenThread => ({ contact, lines: [], jobFilter: null, rail: [], tiles: {}, userNames: {}, nowIso: NOW, searchJobs: async () => [], short: true, foldCard: true })
   const renderShort = (contact: Contact, io: NewLaneCardIo) => {
     const acts = { openWho: vi.fn(), showContact: vi.fn() }
     render(
@@ -546,7 +546,7 @@ describe('a short window folds the card to one row (v2.6476)', () => {
 
   it('draws the whole card when it sits beside the lines (v2.6478)', async () => {
     render(
-      <OpenThreadContext.Provider value={{ ...short(DANA), beside: true }}>
+      <OpenThreadContext.Provider value={{ ...short(DANA), beside: true, foldCard: false }}>
         <NewLaneSlot contact={DANA} acts={{ openWho: vi.fn(), showContact: vi.fn() }} io={fakeIo()} say={vi.fn()} reread={vi.fn()} me={{ id: 'u-robert', name: 'Robert' }} nowIso={NOW} />
       </OpenThreadContext.Provider>,
     )

@@ -13,7 +13,7 @@ import { stampSentence } from '../../../lib/messages/stamps'
 import { foldedThreadRows } from '../../../lib/messages/appLines'
 import type { SentStampsIo } from '../../../lib/messages/sentStampsIo'
 import { courtOf, threadOf } from '../../../lib/messages/thread'
-import { isThreadBeside, isThreadFolded, isThreadShort, reachOpen, THREAD_SHORT_QUERY } from '../../../lib/messages/threadFold'
+import { isThreadBeside, isThreadFolded, isThreadShort, reachOpen, threadFolds, THREAD_SHORT_QUERY } from '../../../lib/messages/threadFold'
 import { noFlowWords } from '../../../lib/flows/facts'
 import { tieSheetRows } from '../../../lib/messages/tieSheet'
 import { formatErrorMessage } from '../../../utils/errorHandling'
@@ -82,8 +82,10 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const folded = isThreadFolded(columnWidth, phone)
   // A short window (v2.6474): the header keeps two rows, and the sort card and the reply box fold to one row each.
   const short = isThreadShort(useMatchMedia(THREAD_SHORT_QUERY), phone)
-  // Short and wide (v2.6478, the owner's B): what a cut draws above the lines takes a column at their right instead.
-  const beside = isThreadBeside(columnWidth, short)
+  // Wide (v2.6478, the owner's B; any height since v2.6482): what a cut draws above the lines takes a column at their
+  // right instead. Over the lines the sort card folds to one row; the box folds on a short window or a phone.
+  const beside = isThreadBeside(columnWidth, phone)
+  const folds = threadFolds({ short, phone, beside })
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
   const [contactChosen, setContactChosen] = useState<boolean | null>(null)
@@ -184,9 +186,9 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const openThread = useMemo<OpenThread | null>(
     () =>
       contact && view
-        ? { contact, lines: allLines, jobFilter, rail: view.rails[contact.id] ?? [], tiles: view.tiles, userNames: view.userNames, nowIso, searchJobs, short, beside }
+        ? { contact, lines: allLines, jobFilter, rail: view.rails[contact.id] ?? [], tiles: view.tiles, userNames: view.userNames, nowIso, searchJobs, short, beside, foldCard: folds.card, foldBox: folds.box }
         : null,
-    [contact, view, allLines, jobFilter, nowIso, searchJobs, short, beside],
+    [contact, view, allLines, jobFilter, nowIso, searchJobs, short, beside, folds.card, folds.box],
   )
 
   // The stamps sentence, drawn on its own row, or on the status row's end in a short window (v2.6474).
@@ -516,7 +518,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                     </div>
                   )}
                   <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-                    <div data-thread-lines style={{ flex: 1, minHeight: short ? 'max(7rem, 33%)' : '7rem', overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
+                    {/* One column no wider than the window (v2.6482): an address or a link that cannot break widened it past a phone's edge. */}
+                  <div data-thread-lines style={{ flex: 1, minHeight: 'max(7rem, 33%)', overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.5rem', alignContent: 'start' }}>
                       {/* No line (punch list #184): a job on the rail with none tied offers the rail's own Show all. */}
                       {rows.length === 0 &&
                         (jobFilter ? (

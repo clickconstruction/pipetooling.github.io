@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isThreadBeside, isThreadFolded, isThreadShort, reachOpen, THREAD_BESIDE_PX, THREAD_FOLD_PX, THREAD_SHORT_PX, THREAD_SHORT_QUERY } from './threadFold'
+import { isThreadBeside, isThreadFolded, isThreadShort, reachOpen, threadFolds, THREAD_BESIDE_PX, THREAD_FOLD_PX, THREAD_SHORT_PX, THREAD_SHORT_QUERY } from './threadFold'
 
 describe('the thread header folds for a narrow column (Messages cut 10)', () => {
   it('folds at 640 px of column or less, and always on a phone', () => {
@@ -34,13 +34,22 @@ describe('the thread folds by height on a short window (v2.6474)', () => {
   })
 })
 
-describe('a short, wide window puts the sort card beside the lines (v2.6478)', () => {
-  it('from 900 px of thread column on a short window', () => {
+describe('a wide thread puts the sort card beside the lines (v2.6478, any height since v2.6482)', () => {
+  it('from 900 px of thread column, at a desk', () => {
     expect(THREAD_BESIDE_PX).toBe(900)
-    expect(isThreadBeside(900, true)).toBe(true)
-    expect(isThreadBeside(976, true)).toBe(true)
-    expect(isThreadBeside(899, true)).toBe(false)
-    expect(isThreadBeside(1100, false)).toBe(false)
-    expect(isThreadBeside(null, true)).toBe(false)
+    expect(isThreadBeside(900, false)).toBe(true)
+    expect(isThreadBeside(1100, false)).toBe(true)
+    expect(isThreadBeside(899, false)).toBe(false)
+    expect(isThreadBeside(1100, true)).toBe(false)
+    expect(isThreadBeside(null, false)).toBe(false)
+  })
+})
+
+describe('what folds to one row (v2.6482)', () => {
+  it('the card wherever it sits over the lines; the box on a short window or a phone', () => {
+    expect(threadFolds({ short: false, phone: false, beside: true })).toEqual({ card: false, box: false })
+    expect(threadFolds({ short: false, phone: false, beside: false })).toEqual({ card: true, box: false })
+    expect(threadFolds({ short: true, phone: false, beside: true })).toEqual({ card: false, box: true })
+    expect(threadFolds({ short: false, phone: true, beside: false })).toEqual({ card: true, box: true })
   })
 })

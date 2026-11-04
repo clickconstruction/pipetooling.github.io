@@ -29,7 +29,7 @@ Press the person's row in **New**, or the blue question before their name. The a
 {{chip:blue|Who is 512-555-0142?}} {{button:outline|A new lead on Prospects}} {{button:outline|One of our own team}} {{button:outline|Someone else}}
 :::
 
-On a laptop, the card folds to one row. The row holds its heading and the press the card picked, such as {{button:blue|Start a bid on Ridgeway Builders}}. Press {{button:outline|Other ways ▾}} to open the whole card. Press **Fold** to take it back to one row. On a wide laptop, the card sits whole at the right of the messages.
+On a wide window, the card sits whole at the right of the messages. On a narrow window or a phone, it folds to one row. The row holds its heading and the press the card picked, such as {{button:blue|Start a bid on Ridgeway Builders}}. Press {{button:outline|Other ways ▾}} to open the whole card. Press **Fold** to take it back to one row.
 
 ## Bid it?
 

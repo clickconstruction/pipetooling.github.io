@@ -5,8 +5,8 @@
  */
 
 export interface ReplyFoldFacts {
-  /** The open thread says the window is short (`OpenThread.short`). */
-  short: boolean
+  /** The open thread folds its box: a short window or a phone (`OpenThread.foldBox`, v2.6482). */
+  foldBox: boolean
   /** The box is a job's, which its card holds: never folded. */
   inJob: boolean
   /** Someone pressed into the box, or picked a kind, since it last sent. */
@@ -21,7 +21,7 @@ export interface ReplyFoldFacts {
   textWaits: boolean
 }
 
-/** The box folds while the window is short and nothing waits in it to be sent. */
+/** The box folds while the thread asks it to and nothing waits in it to be sent. */
 export function replyBoxFolded(f: ReplyFoldFacts): boolean {
-  return f.short && !f.inJob && !f.woke && f.blank && f.files === 0 && !f.opensWithWords && !f.textWaits
+  return f.foldBox && !f.inJob && !f.woke && f.blank && f.files === 0 && !f.opensWithWords && !f.textWaits
 }

@@ -25,10 +25,14 @@ export interface OpenThread {
   nowIso: string
   /** The jobs a name or a number may be, for a job that is not on the rail yet. */
   searchJobs: (words: string) => Promise<JobTile[]>
-  /** The window is short (v2.6474, `isThreadShort`): the sort card and the reply box fold to one row. Unset reads tall. */
+  /** The window is short (v2.6474, `isThreadShort`). Unset reads tall. */
   short?: boolean
-  /** A short window wide enough for the sort card to sit whole beside the lines (v2.6478, `isThreadBeside`): it does not fold. */
+  /** The thread is wide enough for the sort card to sit whole beside the lines (v2.6478, `isThreadBeside`). */
   beside?: boolean
+  /** The sort card folds to one row: it sits over the lines (v2.6482, `threadFolds`). Unset: whole, as outside a window. */
+  foldCard?: boolean
+  /** The reply box folds to one row: a short window or a phone (v2.6482, `threadFolds`). Unset: whole. */
+  foldBox?: boolean
 }
 
 export const OpenThreadContext = createContext<OpenThread | null>(null)
