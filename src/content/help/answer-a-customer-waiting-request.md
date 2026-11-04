@@ -14,7 +14,7 @@ A GC is a general contractor. The request sits at the top of the list with a red
 - **Request a visit** and a GC's **Need other dates?** go to the **Dispatch inbox**. That inbox shows in Dispatch Mode → Inbox, the Dashboard's Teams Inbox, Quickfill, and Checklist → Review.
 - **Ask us to bid** goes to the **Estimator inbox** when the estimating group has anyone in it. Otherwise it goes to Dispatch so it is never lost.
 
-The Inbox badge on the Dispatch Mode footer breathes while a customer is waiting.
+The Inbox badge on the Dispatch Mode footer breathes while a customer is waiting. It breathes for a crew's stage check too. Its label counts the customers and the crews apart.
 
 :::example What the row looks like
 {{chip:red|Customer waiting · 14 min}} {{chip:gray|Portal · visit}}

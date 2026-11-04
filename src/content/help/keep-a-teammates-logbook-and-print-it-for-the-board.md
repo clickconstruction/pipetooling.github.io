@@ -75,6 +75,24 @@ For an electrical or HVAC license, press {{button:outline|Check TDLR}}. The wind
 
 Plumbing licenses live with TSBPE. The window links to its search. That search asks you to prove you are not a robot, so a person looks it up.
 
+## Show a teammate their logbook
+
+The office can let a teammate see their own logbook. A strip under the logbook's name says whether they can.
+
+:::example The strip
+Jordan cannot see this logbook. Show it, and Jordan finds My logbook in the app's menu. {{button:outline|Show Jordan this logbook}}
+:::
+
+1. Check the licenses first. A stale date shows the teammate a wrong count.
+2. Press {{button:outline|Show Jordan this logbook}}.
+3. The strip turns green. It names the day and who pressed.
+
+The teammate now finds **My logbook** in the gear menu. They see their own hours and licenses and can print the summary sheet. They cannot edit a license or see anyone else's logbook.
+
+Press {{button:outline|Stop showing}} to take it back. On the Licenses tab, a row says **Jordan sees it** beside **Open logbook**.
+
+The guide [see my own logbook](/help/see-my-own-logbook) shows the teammate's side.
+
 ## Print for the board
 
 Two buttons sit at the top of the logbook.

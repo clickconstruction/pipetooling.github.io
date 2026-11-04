@@ -149,6 +149,41 @@ describe('buildSubsHqRows', () => {
     expect(behar.balanceDue).toBe(500)
   })
 
+  it('v2.6486: a settled step work order and the paid sheet its settlement minted count once, not twice', () => {
+    const fixed = (amount: number) => [{ fixture: 'Rough In — Dudley Mason', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: amount }]
+    const result = buildSubsHqRows({
+      people: [BEHAR],
+      users: [],
+      sheets: [sheet({ id: 'minted', items: fixed(3000), payments: [{ id: 'a', amount: 3000, memo: null, created_at: '2026-07-01' }] })],
+      assignees: [{ labor_job_id: 'minted', person_id: 'p-behar' }],
+      // settle_step_commitment keeps step_id on the order (so the tab passes no sheetLabel) and writes the sheet it minted to labor_job_id.
+      commitments: [{ person_id: 'p-behar', amount: 3000, status: 'settled', stepName: 'Rough In', projectName: 'Dudley Mason', laborJobId: 'minted' }],
+      docs: [],
+      todayYmd: TODAY,
+    })
+    const behar = result.rows[0]!
+    expect(behar.sheetCount).toBe(1)
+    expect(behar.settledCount).toBe(1)
+    expect(behar.balanceDue).toBe(0)
+  })
+
+  it('v2.6486: a settled step work order whose minted sheet is still unpaid counts once, on the order, and the sheet still owes', () => {
+    const fixed = (amount: number) => [{ fixture: 'Rough In — Dudley Mason', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: amount }]
+    const result = buildSubsHqRows({
+      people: [BEHAR],
+      users: [],
+      sheets: [sheet({ id: 'minted', items: fixed(3000), payments: [] })],
+      assignees: [{ labor_job_id: 'minted', person_id: 'p-behar' }],
+      commitments: [{ person_id: 'p-behar', amount: 3000, status: 'settled', stepName: 'Rough In', projectName: 'Dudley Mason', laborJobId: 'minted' }],
+      docs: [],
+      todayYmd: TODAY,
+    })
+    const behar = result.rows[0]!
+    expect(behar.sheetCount).toBe(1)
+    expect(behar.settledCount).toBe(1)
+    expect(behar.balanceDue).toBe(3000)
+  })
+
   it('splits commitments into open (with total) and settled count; docs resolve id-first then name', () => {
     const result = buildSubsHqRows({
       people: [BEHAR],

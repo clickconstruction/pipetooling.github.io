@@ -51,6 +51,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 **People / hours / money**
 - Who worked, approve hours, clock cards → `/people`
 - A teammate's licenses, the hours toward the next one in each trade, and the record to print for the board → `/logbook/:userId` (from **Open logbook** on a Licenses tab row or **Logbook** on the desk; guide `keep-a-teammates-logbook-and-print-it-for-the-board`)
+- Your own logbook, once the office showed it to you → `/my-logbook` (**My logbook** in the gear menu, v2.6483; the office's **Show … this logbook** on the logbook; guide `see-my-own-logbook`)
 - Company transactions, payroll marks, spending → `/tally`
 - Bank ledger, card sorting, accounting review → `/banking`
 - Customers and builders (GCs), their profile and history → `/customers`, `/customers/:id`; on a phone the dock's Customers slot and Job Mode's Customers tab → `/dispatch-mode/customers`, `/job-mode/customers`, where a tap opens the customer's summary sheet with every property and its note, **Edit customer** and **Open record** (v2.5831; guide `dispatch-mode`); the profile's band opens the customer's Drive folder (**📁 Drive folder ↗**, v2.6288; guide `see-a-customers-full-history-and-lifetime-value`)
@@ -320,6 +321,10 @@ Roles: dev, master, assistant (no wages), controller (wages too), estimator (lim
 ### /logbook/:userId — A teammate's logbook
 The licenses a teammate holds, one card a trade toward the next license (hours for plumbing and electrical, months for HVAC), the hours that count toward no license, the log week by week, and Print (summary sheet, full log). An hour counts toward the trade of its job; office and estimating time count toward nothing.
 Roles: dev, pay-approved master, assistant, controller (the Licenses tab's audience).
+
+### /my-logbook — Your own logbook
+The same page for the teammate it belongs to, once the office pressed **Show … this logbook** (v2.6483): the next license in each trade, the licenses held, the log, both prints; no Edit or Add a license. Read through `my_logbook()`, which answers only for the person signed in. Until shown, it says the office opens it.
+Roles: any signed-in teammate the office has shown it to.
 
 ### /customers — Customers · /customers/:id — Customer Hub
 All customers/builders, each row's second line where the money stands and how fast they pay (*pays in ~30d*, office roles, v2.5767); the Hub is one customer's money strip, jobs, bids, contacts.

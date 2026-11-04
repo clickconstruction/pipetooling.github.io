@@ -144,6 +144,7 @@ const tabBtnBase: CSSProperties = {
 export function DispatchModeFooter({
   inboxBadgeCount = 0,
   inboxWaitingCount = 0,
+  inboxCrewWaitingCount = 0,
   variant = 'dispatch',
   showPoTab = false,
   slots = null,
@@ -152,6 +153,8 @@ export function DispatchModeFooter({
   inboxBadgeCount?: number
   /** Customers waiting (open high-priority requests, v2.3247): the badge pulses and says so. */
   inboxWaitingCount?: number
+  /** The waiting rows that are a crew's stage check (v2.6462): the words count them apart (v2.6487); the pulse is the same. */
+  inboxCrewWaitingCount?: number
   variant?: ModeFooterVariant
   /** Gear-menu opt-in: adds the PO tab (dispatch variant only). */
   showPoTab?: boolean
@@ -213,7 +216,7 @@ export function DispatchModeFooter({
                 to={page.to}
                 icon={<PhoneDockGlyph icon={page.icon} />}
                 isActive={activeSlot === key}
-                badge={key === 'inbox' ? { count: inboxBadgeCount, waiting: inboxWaitingCount } : null}
+                badge={key === 'inbox' ? { count: inboxBadgeCount, waiting: inboxWaitingCount, crew: inboxCrewWaitingCount } : null}
                 onLongPress={() => roleDock.onOpenMore(index)}
                 onGo={() => {
                   recordNavClick(authUser?.id, role, 'bottom-tab', page.to)
@@ -227,7 +230,7 @@ export function DispatchModeFooter({
             to="#more"
             icon={<PhoneDockGlyph icon="more" />}
             isActive={false}
-            badge={roleDock.slots.includes('inbox') ? null : { count: inboxBadgeCount, waiting: inboxWaitingCount }}
+            badge={roleDock.slots.includes('inbox') ? null : { count: inboxBadgeCount, waiting: inboxWaitingCount, crew: inboxCrewWaitingCount }}
             onGo={() => {
               recordNavClick(authUser?.id, role, 'bottom-tab', '#more')
               roleDock.onOpenMore(null)
@@ -256,8 +259,8 @@ export function DispatchModeFooter({
                 {tab.icon}
                 {tab.key === 'inbox' && inboxBadgeCount > 0 ? (
                   <span
-                    aria-label={dispatchBadgeAriaLabel(inboxBadgeCount, inboxWaitingCount)}
-                    title={dispatchBadgeAriaLabel(inboxBadgeCount, inboxWaitingCount)}
+                    aria-label={dispatchBadgeAriaLabel(inboxBadgeCount, inboxWaitingCount, inboxCrewWaitingCount)}
+                    title={dispatchBadgeAriaLabel(inboxBadgeCount, inboxWaitingCount, inboxCrewWaitingCount)}
                     data-waiting={inboxWaitingCount > 0 ? 'true' : undefined}
                     style={{
                       position: 'absolute',
@@ -292,12 +295,12 @@ export function DispatchModeFooter({
   )
 }
 
-function DockBadge({ count, waiting }: { count: number; waiting: number }) {
+function DockBadge({ count, waiting, crew }: { count: number; waiting: number; crew: number }) {
   if (count <= 0) return null
   return (
     <span
-      aria-label={dispatchBadgeAriaLabel(count, waiting)}
-      title={dispatchBadgeAriaLabel(count, waiting)}
+      aria-label={dispatchBadgeAriaLabel(count, waiting, crew)}
+      title={dispatchBadgeAriaLabel(count, waiting, crew)}
       data-waiting={waiting > 0 ? 'true' : undefined}
       style={{
         position: 'absolute',
@@ -340,7 +343,7 @@ function DockSlotButton({
   to: string
   isActive: boolean
   icon: ReactNode
-  badge: { count: number; waiting: number } | null
+  badge: { count: number; waiting: number; crew: number } | null
   onGo: () => void
   onLongPress?: () => void
 }) {
@@ -365,7 +368,7 @@ function DockSlotButton({
     >
       <span style={{ position: 'relative', display: 'inline-flex' }}>
         {icon}
-        {badge ? <DockBadge count={badge.count} waiting={badge.waiting} /> : null}
+        {badge ? <DockBadge count={badge.count} waiting={badge.waiting} crew={badge.crew} /> : null}
       </span>
       {label}
     </button>
@@ -417,6 +420,7 @@ export function DispatchModeFooterLive({
     <DispatchModeFooter
       inboxBadgeCount={counts.open}
       inboxWaitingCount={counts.high}
+      inboxCrewWaitingCount={counts.crew}
       showPoTab={showPoTab}
       slots={slots}
       onOpenMore={onOpenMore}

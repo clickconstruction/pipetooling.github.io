@@ -12,7 +12,7 @@ summary: >
   against target for a lead), how far it moved this week, and the customer's words by name the day
   they land. Compared to themselves, never to each other. A sheet after the last clock-out of the
   week says the same thing once more, and a Monday email follows later.
-next: the logbook's next PR, a tech's own logbook (a self-only read of their hours, a migration); then the Google review tools and job targets; the Your week card after them.
+next: the logbook shown to its teammate (one PR, planned below, mock-up `own-logbook.html`); then the Google review tools and job targets; the Your week card after them.
 size: L as a train of seven (S · M · M · S · M · S · M); the raise ladder is its own card once the levels are written
 blocker: None. The raise ladder (call 5) waits on the owner's levels.
 opinion: build draft 2 as drawn. Start with the card and the customer's words, which read data the app already has; the callback count waits for the office's confirm press, never an inferred pair.
@@ -127,6 +127,26 @@ Written after looking at the first render of draft 2 (`mockup.html`; the box at 
 | 5 | The Rework view's *It was a callback* / *Not a callback* press, credit to every tech clocked on the first job, the rolling count on the card | M |
 | 6 | The lead's crew hours against target | S |
 | 7 | The sheet after the week's last clock-out, then the Monday email registered in What the team sees | M |
+
+## The logbook, shown to its teammate (next PR)
+
+The owner, 2026-11-04: *"Some employees have a log of the work that they've done. I would like to offer a button to
+expose that log."* Mock-up: `own-logbook.html`. The office turns it on one teammate at a time, from the logbook.
+
+- **The office's press.** A strip under the logbook's header says who can see the page. *Show Dario this logbook*
+  turns it on; the strip then names the day and who pressed, and the button reads *Stop showing*. The Licenses tab
+  row says *Dario sees it* beside Open logbook.
+- **The teammate's door.** A *My logbook* row in the app's menu, only once shown, opens `/my-logbook`: the same page
+  written to them (*Your logbook*), with the goal cards, the licenses they hold, the log and Print summary sheet. No
+  Edit, no Add a license, nobody else's hours.
+- **Data.** Migration: `logbook_shares` (one row a teammate shown: who pressed, when; the Licenses audience writes,
+  the teammate reads their own row) and `my_logbook()`, a SECURITY DEFINER read on `auth.uid()` that answers only
+  with a share row: their approved hours, their licenses, and the current teammates' supervising licenses for the
+  signer line. The office's `list_user_license_hours_log` and `person_licenses` stay closed to teammates.
+- **Kernel** `src/lib/logbook/logbookShare.ts`: the strip's words and the parse of `my_logbook()`'s answer, with
+  tests. A SQL bed proves the gate: unshown answers nothing, shown answers only the caller's own hours.
+- **Ship.** Guide section in `keep-a-teammates-logbook-and-print-it-for-the-board` and a teammate's guide; release
+  note; the migration pushed right after the merge (the client calls a name only it creates).
 
 ## How to verify
 

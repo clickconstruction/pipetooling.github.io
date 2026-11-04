@@ -27,7 +27,8 @@ import { indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_OCR_ROWS, SWEEP_REC
  *        its name, v2.6491) go through it, oldest try first, so the scans the backfill held catch up by themselves. A
  *        scan whose file is as its row says costs one download, its bytes straight to the processor (v2.6491); one
  *        whose file changed is read whole. Step 1 makes at most five OCR calls of its own (OCR_PER_PASS_MAX, as every
- *        pass does), so a run spends at most ten, 1,440 a day.
+ *        pass does), so steps 1 and 4 spend at most ten a run; the reconcile step (v2.6417) is a pass of its own and
+ *        may spend five more, and each rechecked or retaken file that changed, or is a scan, one.
  *     5. Retake (v2.6491): `retake` (5) rows held `slow` or `reading` whose last check is an hour old are taken again
  *        through the one pass with retry, oldest first, so a read that ran out of time on a spent clock is not held
  *        for good.
