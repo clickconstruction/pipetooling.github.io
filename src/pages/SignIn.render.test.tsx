@@ -310,3 +310,18 @@ describe('SignIn Tooling family strip (v2.3622)', () => {
     )
   })
 })
+
+describe('SignIn tagline (v2.6503)', () => {
+  it('draws the two beats under the title, inside the header and above the trade tiles', async () => {
+    renderSignIn()
+    await settle()
+    const line = document.querySelector('.auth-public-landing__tagline')
+    expect(line).not.toBeNull()
+    expect(line?.textContent).toBe('Changes are constant. ClickTooling keeps you paid.')
+    expect(line?.closest('.letter-header')).not.toBeNull()
+    const header = line?.closest('.letter-header')
+    const tiles = screen.getByRole('list', { name: 'Service highlights' })
+    expect(header?.compareDocumentPosition(tiles) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(line?.querySelector('.auth-public-landing__tagline-two')?.textContent).toBe('ClickTooling keeps you paid.')
+  })
+})
