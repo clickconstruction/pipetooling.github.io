@@ -253,6 +253,11 @@ export function PersonDeskFieldSection({ userId, payName, displayName, viewer, c
                   Hours log
                 </button>
               ) : null}
+              {userId ? (
+                <a href={`/logbook/${userId}`} style={{ ...BTN_QUIET, textDecoration: 'none' }} data-testid="person-desk-open-logbook">
+                  Logbook
+                </a>
+              ) : null}
               <a href="/people?tab=licenses" style={{ ...BTN, textDecoration: 'none' }}>
                 Licenses
               </a>
