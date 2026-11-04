@@ -88,6 +88,10 @@ licenses, the HR file, paperwork. That is why a returner must come back on the s
      (`src/lib/jobTravelEstimate.ts`) and never saves or sends the location.
    - **Call or text the office**, the office line.
    - **Tell me when the countdown ends**, off by default: a Needs you item on the day with Bring back… on it.
+   - **A live preview beside the switches** (the owner, 2026-11-03: *"I would like to see a preview of what they
+     see"*). The window's right side is their screen, drawn by the same component the sealed sign-in draws, and it
+     changes as the office types. A *Today · On the day* switch shows the screen the countdown ends on. On a phone
+     the preview drops under the switches with a *Preview* link at the top.
    - Nothing else: no menu, no jobs, no pay. Bring back takes the note down.
    - **Reached by signing in** (call 5). They sign in as always and the note is the only page the app draws. The
      account stays archived, so every list, picker, payroll run, push and email keeps skipping them exactly as
@@ -154,7 +158,8 @@ The box at the foot of `mockup.html` says what the render showed and what change
 link, the old leader is offered only while active, Change is the wage's main press, Hire matches the email as well
 as the name, and the away line on the desk stays.
 
-The box at the foot of `away-note.html` does the same for the Away note: the note sits above the countdown, no
+The box at the foot of `away-note.html` does the same for the Away note: the live preview beside the switches
+(draft 2, the owner's ask) with its *On the day* view and its empty state, the note above the countdown, no
 seconds, the location prompt only after the press, *The team* as the signature, the day-of alert off by default,
 equal columns in the A and B comparison, and the same words from *Email me my note* for every address.
 
@@ -169,7 +174,7 @@ equal columns in the A and B comparison, and the same words from *Email me my no
 | 5 | Tenure readers: the HR tab, the Employment tab and `list_team_member_start_dates` count from the current stint's start (call 1); the desk lists the earlier stints | S |
 | 6 | Kernel `src/lib/people/awayNote.ts` + tests: the countdown parts and bar, the day-of words, the miles and drive words from two points, the sign-in's resting words | S |
 | 7 | The seal, nothing visible: `caller_is_archived()`, the pre-request gate, `apply_archived_read_blocks()` on every table, the `storage.objects` policy, `refuseArchivedCaller` + its CI check, the `CLAUDE.md` rule, the seal probe in CI. Push and confirm the probe on prod's shape before PR 8 | L |
-| 8 | Migration: `away_notes` (person, words, countdown date, show city, show call, alert on the day) + `my_away_note()`; `archive-user` skips the ban when a note is on and `restore-user` takes the note down; the app's away gate (a signed-in archived account draws only the Away page); the Leave a note window on the desk and in End employment; guide + release note | M |
+| 8 | Migration: `away_notes` (person, words, countdown date, show city, show call, alert on the day) + `my_away_note()`; `archive-user` skips the ban when a note is on and `restore-user` takes the note down; the app's away gate (a signed-in archived account draws only the Away page); the Leave a note window on the desk and in End employment, its preview rendering the one `AwayScreen` component the sealed sign-in renders; guide + release note | M |
 | 9 | The Needs you item on the countdown's day, with Bring back… | S |
 
 ## How to verify
