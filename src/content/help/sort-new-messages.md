@@ -2,7 +2,7 @@
 title: sort new messages before anyone answers them
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: laptop, short screen, fold, other ways, messages, follow up, new, sort, set aside, put back, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid, bid it, start a bid, not for us, addendum, solicitation, rfp, itb, due date, notice, newsletter, not a person, unsubscribe, leave out
+keywords: band, left edge, dispatch, estimating, desk, bell, pencil, laptop, short screen, fold, other ways, messages, follow up, new, sort, set aside, put back, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid, bid it, start a bid, not for us, addendum, solicitation, rfp, itb, due date, notice, newsletter, not a person, unsubscribe, leave out
 where: /messages
 order: 119
 ---
@@ -20,6 +20,22 @@ New messages that need sorting wait at the top of Follow up. Sort each one so th
 A person in **New** is not in **Needs a reply** too. Once sorted, they move to **Needs a reply** until someone answers.
 
 The count on **Messages** in the header is everyone waiting on us. A person in **New** counts there once.
+
+## The band on the left
+
+A row can carry a narrow band on its left edge. The band says which desk finishes the work. Steel blue with the bell means Dispatch. Violet with the pencil and ruler means Estimating. The two presses in the header wear the same colors and icons.
+
+- An invitation to bid gets the Estimating band.
+- A trade partner or an architect gets the Estimating band.
+- A customer with a job on the Pipeline gets the Dispatch band.
+- A customer whose only job is a bid gets the Estimating band.
+- A customer with no job yet goes by the box. An email to bids@ gets Estimating. A text on the team number gets Dispatch.
+
+:::example Two rows with their bands
+{{chip:purple|Bid it?}} Dale Ferris, with the violet Estimating band on the left &nbsp; {{chip:blue|Who has it?}} Priya Raman, with the steel-blue Dispatch band on the left
+:::
+
+A row with no band is one the app cannot place yet. **Who is this?** has none until the sender is named. Hover the band to read why it is there. It reads *Estimating · An invitation to bid.* The band is not a press. It changes nothing about who has the row.
 
 ## Sort one
 
