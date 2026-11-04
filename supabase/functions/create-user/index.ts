@@ -31,6 +31,13 @@ interface CreateUserRequest {
   start_date?: string
   /** v2.3701: no roster row for this account (digital twins; samples are skipped by their flag anyway). */
   skip_roster_row?: boolean
+  /**
+   * v2.6518 Attach a login (punch list #260): the id of a users row with no login behind it (`login_attached_at` NULL).
+   * The auth account is created ON that id, so nothing that points at the person moves; the row's role and name stand
+   * and `role` / `name` in the body are ignored; `email` defaults to the row's own; `password` may be left out (an
+   * unguessable one is set and the caller sends the sign-in email). Dev only.
+   */
+  user_id?: string
 }
 
 /** A password nobody is told: the helper signs in by emailed link (send-sign-in-email) or resets it. */
@@ -140,18 +147,51 @@ serve(async (req) => {
       )
     }
 
-    // On the Try-out door the card decides who is made; the body only says which column's trades.
-    const email = trialCard ? trialCard.email : body.email
-    const password = trialCard ? unguessablePassword() : body.password
-    const role = trialCard ? 'helpers' : body.role
-    const name = trialCard ? trialCard.name : body.name
+    // v2.6518 Attach a login: `user_id` names a users row with no login behind it. Read as the caller (a dev reads every
+    // users row); the row decides the role and the name.
+    const attachUserId = typeof body.user_id === 'string' && body.user_id.trim() ? body.user_id.trim() : null
+    let attachRow: { id: string; name: string | null; role: string; email: string | null } | null = null
+    if (attachUserId) {
+      if (trialCard) {
+        return new Response(JSON.stringify({ error: 'user_id and trial_prospect_id do not go together' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(attachUserId)) {
+        return new Response(JSON.stringify({ error: 'user_id must be a uuid' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      const { data: row, error: rowError } = await supabase
+        .from('users')
+        .select('id, name, role, email, login_attached_at, is_sample, is_digital_twin, archived_at')
+        .eq('id', attachUserId)
+        .maybeSingle()
+      const r = row as { id: string; name: string | null; role: string; email: string | null; login_attached_at: string | null; is_sample: boolean | null; is_digital_twin: boolean | null; archived_at: string | null } | null
+      if (rowError || !r) {
+        return new Response(JSON.stringify({ error: rowError ? `Could not read the person: ${rowError.message}` : 'No person with that id' }), { status: rowError ? 500 : 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      if (r.login_attached_at) {
+        return new Response(JSON.stringify({ error: `${r.name ?? 'This person'} already has a login.` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      if (r.is_sample || r.is_digital_twin) {
+        return new Response(JSON.stringify({ error: 'A sample or a twin gets its login from its own door.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      if (r.archived_at) {
+        return new Response(JSON.stringify({ error: `${r.name ?? 'This person'} is archived. Restore them first.` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      attachRow = { id: r.id, name: r.name, role: r.role, email: r.email }
+    }
+
+    // On the Try-out door the card decides who is made; the body only says which column's trades. On the attach door the
+    // row decides the role and the name, and a left-out password is an unguessable one (the caller sends the sign-in email).
+    const email = trialCard ? trialCard.email : attachRow ? (typeof body.email === 'string' && body.email.trim() ? body.email : (attachRow.email ?? '')) : body.email
+    const password = trialCard || (attachRow && !body.password) ? unguessablePassword() : body.password
+    const role = trialCard ? 'helpers' : attachRow ? attachRow.role : body.role
+    const name = trialCard ? trialCard.name : attachRow ? attachRow.name ?? undefined : body.name
     const service_type_ids = body.service_type_ids
     const read_only = trialCard ? undefined : body.read_only
     const is_sample = trialCard ? undefined : body.is_sample
 
     if (!email || !password || !role) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: email, password, and role' }),
+        JSON.stringify({ error: attachRow ? 'An email is required to attach a login.' : 'Missing required fields: email, password, and role' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -226,7 +266,7 @@ serve(async (req) => {
       )
     }
 
-    if (existingUser) {
+    if (existingUser && existingUser.id !== attachUserId) {
       return new Response(
         JSON.stringify({ error: 'User with this email already exists' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -252,17 +292,21 @@ serve(async (req) => {
       },
     })
 
-    // Create user in auth.users (requires service role)
+    // Create user in auth.users (requires service role). On the attach door the account is created ON the person's id
+    // (GoTrue's admin create has taken `id` since v2.155.0), and handle_new_user's ON CONFLICT stamps the row.
     const { data: newAuthUser, error: createAuthError } = await adminClient.auth.admin.createUser({
+      ...(attachUserId ? { id: attachUserId } : {}),
       email: email.trim().toLowerCase(),
       password: password,
       email_confirm: true, // Auto-confirm email for manually created users
     })
 
     if (createAuthError || !newAuthUser.user) {
+      const msg = createAuthError?.message || 'Unknown error'
+      const taken = attachUserId && /database error/i.test(msg)
       return new Response(
-        JSON.stringify({ error: `Failed to create user in auth: ${createAuthError?.message || 'Unknown error'}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: taken ? 'A login already stands behind that id.' : `Failed to create user in auth: ${msg}` }),
+        { status: taken ? 409 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -289,11 +333,19 @@ serve(async (req) => {
     if (role === 'superintendent' && superintendentServiceTypeIds !== null) {
       userRecord.superintendent_service_type_ids = superintendentServiceTypeIds
     }
-    const { error: createUserError } = await adminClient
-      .from('users')
-      .upsert(userRecord, {
-        onConflict: 'id',
-      })
+    // On the attach door the row stands as it was (name, role, standing, flags); handle_new_user stamped
+    // login_attached_at and the address. Belt and braces: stamp them here too if the trigger did not.
+    const { error: createUserError } = attachUserId
+      ? await (async () => {
+          const { data: after } = await adminClient.from('users').select('login_attached_at').eq('id', attachUserId).maybeSingle()
+          if ((after as { login_attached_at: string | null } | null)?.login_attached_at) return { error: null }
+          return await adminClient.from('users').update({ login_attached_at: new Date().toISOString(), email: email.trim().toLowerCase() }).eq('id', attachUserId)
+        })()
+      : await adminClient
+          .from('users')
+          .upsert(userRecord, {
+            onConflict: 'id',
+          })
 
     if (createUserError) {
       // If public.users creation fails, try to clean up auth user
@@ -349,6 +401,7 @@ serve(async (req) => {
       name: name?.trim() || null,
       read_only: startInTraining,
       is_sample: isSample,
+      attached: Boolean(attachUserId),
     }
     if (trialCard) userResponse.trial_prospect_id = trialCard.id
     if (role === 'estimator' && estimatorServiceTypeIds !== null) {

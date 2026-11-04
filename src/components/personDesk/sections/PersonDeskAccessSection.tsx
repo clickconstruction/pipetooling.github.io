@@ -22,6 +22,7 @@ import {
   tradesMeaningForRole,
 } from '../../../lib/people/accountWrites'
 import type { PersonDeskUserRow } from '../../../hooks/usePersonDesk'
+import { attachEmailProblem, attachLogin } from '../../../lib/people/attachLogin'
 import { MergeDuplicateDialog } from './MergeDuplicateDialog'
 import { useHiringColumnShares } from '../../../hooks/useHiringColumnShares'
 import { sharedColumnsLine } from '../../../lib/hiring/columnShares'
@@ -100,6 +101,9 @@ export function PersonDeskAccessSection({
   }, [standingUserId])
   const [emailOpen, setEmailOpen] = useState(false)
   const [mergeOpen, setMergeOpen] = useState(false)
+  // Attach a login (punch list #260, v2.6518): null = the form is closed.
+  const [attachDraft, setAttachDraft] = useState<string | null>(null)
+  const [attachError, setAttachError] = useState<string | null>(null)
   // PR D2: the Hiring columns shared with them, the line the Active Accounts window's Edit showed (dev reads).
   const { shares: hiringShares, roles: hiringColumns } = useHiringColumnShares(viewer.isDev)
 
@@ -113,6 +117,8 @@ export function PersonDeskAccessSection({
   const u = user
 
   const editable = canEditAccount(viewer)
+  /** Punch list #260: a users row with no sign-in behind it. Their hours, pay, portal and paperwork work without one; the rows that need a login wait until one is attached. */
+  const noLogin = u.login_attached_at === null
   const isSelf = viewerUserId === u.id
   const displayName = u.name ?? u.email ?? 'them'
   const tradesColumn = tradesColumnForRole(u.role)
@@ -299,20 +305,72 @@ export function PersonDeskAccessSection({
         )}
       </DeskRow>
 
+      {noLogin ? (
+        <DeskRow
+          label="Login"
+          actions={
+            editable && attachDraft == null && !u.archived_at ? (
+              <button type="button" style={deskBtn(BTN_BLUE, busy != null)} disabled={busy != null} onClick={() => { setAttachError(null); setAttachDraft(u.email ?? '') }} data-testid="attach-login-open">
+                Attach a login…
+              </button>
+            ) : editable ? null : (
+              devLock
+            )
+          }
+        >
+          <span data-testid="no-login-words">No login attached. Their hours, pay, portal and paperwork work without one.</span>
+          {attachDraft != null ? (
+            <form
+              noValidate
+              style={{ flexBasis: '100%', display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center', marginTop: '0.3rem' }}
+              onSubmit={(e: FormEvent) => {
+                e.preventDefault()
+                const problem = attachEmailProblem(attachDraft)
+                if (problem) {
+                  setAttachError(problem)
+                  return
+                }
+                const email = attachDraft.trim().toLowerCase()
+                void run(
+                  'attach',
+                  async () => {
+                    await attachLogin(supabase, { userId: u.id, email, redirectTo: new URL('dashboard', window.location.href).href })
+                    setAttachDraft(null)
+                  },
+                  `Login attached. Sign-in email sent to ${email}.`,
+                )
+              }}
+            >
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: '1 1 14rem' }}>
+                <span style={{ fontSize: '0.8125rem' }}>Email</span>
+                <input type="email" value={attachDraft} onChange={(e) => setAttachDraft(e.target.value)} aria-label="Login email" autoFocus style={{ flex: 1, fontSize: '0.8125rem', padding: '0.2rem 0.4rem' }} />
+              </label>
+              <button type="submit" style={deskBtn(BTN_BLUE, busy != null)} disabled={busy != null}>
+                {busy === 'attach' ? 'Attaching…' : 'Attach and send the sign-in email'}
+              </button>
+              <button type="button" style={deskBtn(BTN_QUIET, busy != null)} disabled={busy != null} onClick={() => setAttachDraft(null)}>
+                Cancel
+              </button>
+              {attachError ? <span style={{ ...HINT, color: 'var(--text-red-600)' }}>{attachError}</span> : <span style={HINT}>The login lands on this same person: their hours, Charged as and pay stay where they are. They choose a password from the email.</span>}
+            </form>
+          ) : null}
+        </DeskRow>
+      ) : null}
+
       <DeskRow
         label="Email"
         actions={
-          editable ? (
+          editable && !noLogin ? (
             <button type="button" style={deskBtn(BTN, busy != null)} disabled={busy != null} onClick={() => setEmailOpen(true)}>
               Change…
             </button>
-          ) : (
+          ) : editable ? null : (
             devLock
           )
         }
       >
         <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{u.email ?? 'no email'}</span>
-        {u.email ? <span style={HINT}>They sign in with this address.</span> : null}
+        {u.email ? <span style={HINT}>{noLogin ? 'The address a login attaches to.' : 'They sign in with this address.'}</span> : null}
       </DeskRow>
 
       <DeskRow label="Charged as" actions={!editable ? devLock : null}>
@@ -443,13 +501,16 @@ export function PersonDeskAccessSection({
         </DeskRow>
       ) : null}
 
+      {noLogin ? null : (
       <DeskRow label="Training mode" actions={canSetTrainingMode(viewer) && !isSelf ? null : <LockTag title={isSelf ? 'You cannot flag your own account.' : undefined} />}>
         <label style={{ ...CHECK, cursor: canSetTrainingMode(viewer) && !isSelf ? 'pointer' : 'default' }}>
           <input type="checkbox" checked={Boolean(u.read_only)} disabled={!canSetTrainingMode(viewer) || isSelf || busy != null} onChange={(e) => void setTraining(e.target.checked)} />
           Read-only{u.read_only ? '. Every write is blocked for them.' : ''}
         </label>
       </DeskRow>
+      )}
 
+      {noLogin ? null : (
       <DeskRow
         label="Sign-in"
         actions={
@@ -469,8 +530,9 @@ export function PersonDeskAccessSection({
       >
         <span>{describeLastSeen(u.last_sign_in_at, Date.now())}</span>
       </DeskRow>
+      )}
 
-      {showCountTooling ? (
+      {showCountTooling && !noLogin ? (
         <DeskRow
           label="CountTooling"
           actions={
@@ -506,7 +568,7 @@ export function PersonDeskAccessSection({
                 Merge a duplicate…
               </button>
             ) : null}
-            {canArchiveAccount(viewer) && !isSelf ? (
+            {canArchiveAccount(viewer) && !isSelf && !noLogin ? (
               u.archived_at ? (
                 <button type="button" style={deskBtn(BTN, busy != null)} disabled={busy != null} onClick={() => void restore()}>
                   {busy === 'restore' ? 'Restoring…' : 'Restore'}

@@ -2,7 +2,7 @@
 title: invite someone to sign in
 category: Getting Started
 roles: dev
-keywords: invite, invite via email, new user, new hire, add user, manually add user, set a password, create login, role, choose a role, training mode, read only, accounts
+keywords: invite, invite via email, new user, new hire, add user, manually add user, set a password, create login, role, choose a role, training mode, read only, accounts, attach a login, no login
 order: 41
 ---
 You invite a new hire by email and they choose their own password. Or you set a password now and hand it over.
@@ -30,6 +30,18 @@ Use this when someone will not click an email link. On the same form, pick **Set
 ## Training mode from the first minute
 
 Ticking ***Start in training mode (read-only)*** flags the account before they ever sign in. They see everything their role can see. Every save is blocked. Clocking in and out still works, so their hours reach payroll. Switch it off from their row on People → Users → Account when they are ready. The person's desk has the same switch on its *Training mode* row. See *put someone in read-only training mode*.
+
+## Attach a login to someone already on the roster
+
+A person added without an email has no login. The person's row on People → Users says {{chip:gray|no login}}. The person still holds hours, pay, paperwork and a portal.
+
+1. Open their desk. The ⋯ menu on their row has **Attach a login**, or scroll to *Access & account*.
+2. On the **Login** row press {{button:blue|Attach a login…}}.
+3. Type their email and press {{button:blue|Attach and send the sign-in email}}.
+
+The login lands on the same person. The person's hours, Charged as and pay stay where they are. The email carries a link that signs them in, and they choose a password from it.
+
+Only a dev can attach a login. An invite to that address from the Hire form is refused, and the refusal points you here. Nobody is made twice.
 
 ## Changing a role later
 

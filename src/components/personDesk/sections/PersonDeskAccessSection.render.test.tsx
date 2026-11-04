@@ -181,3 +181,52 @@ describe('PersonDeskAccessSection', () => {
     expect(screen.getByRole('button', { name: 'Archive…' })).toBeTruthy()
   })
 })
+
+describe('PersonDeskAccessSection — a person with no login (punch list #260, v2.6518)', () => {
+  const RIO: PersonDeskUserRow = { ...KAI, id: 'u-rio', name: 'Rio Vance', email: null, login_attached_at: null }
+  const KAI_LOGIN: PersonDeskUserRow = { ...KAI, login_attached_at: '2026-10-01T12:00:00Z' }
+
+  beforeEach(() => {
+    calls.length = 0
+    invoke.mockClear()
+  })
+
+  it('a dev sees the Login row with Attach a login, and not the rows that need a login', () => {
+    renderSection(RIO, DEV)
+    expect(screen.getByTestId('no-login-words')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Attach a login…' })).toBeTruthy()
+    expect(screen.queryByText('Training mode')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Set password…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Send sign-in email' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Change…' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Merge a duplicate…' })).toBeTruthy()
+  })
+
+  it('a login row reads as before', () => {
+    renderSection(KAI_LOGIN, DEV)
+    expect(screen.queryByTestId('no-login-words')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Set password…' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Change…' })).toBeTruthy()
+  })
+
+  it('a leader reads the Login row with a lock and no press', () => {
+    renderSection(RIO, LEADER)
+    expect(screen.getByTestId('no-login-words')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Attach a login…' })).toBeNull()
+  })
+
+  it('Attach checks the address, then calls create-user with the id and sends the sign-in email', async () => {
+    const { onChanged } = renderSection(RIO, DEV)
+    fireEvent.click(screen.getByRole('button', { name: 'Attach a login…' }))
+    const box = screen.getByLabelText('Login email')
+    fireEvent.change(box, { target: { value: 'not an email' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Attach and send the sign-in email' }))
+    expect(await screen.findByText('That email does not look right.')).toBeTruthy()
+    expect(invoke).not.toHaveBeenCalled()
+    fireEvent.change(box, { target: { value: ' Rio@Example.test ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Attach and send the sign-in email' }))
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalled())
+    expect(invoke).toHaveBeenNthCalledWith(1, 'create-user', { body: { user_id: 'u-rio', email: 'rio@example.test' } })
+    expect(invoke).toHaveBeenNthCalledWith(2, 'send-sign-in-email', { body: { email: 'rio@example.test', redirectTo: expect.stringContaining('/dashboard') } })
+  })
+})

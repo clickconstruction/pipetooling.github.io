@@ -2,7 +2,7 @@
 name: Every worker is a user from day one; a login is attached later
 number: 260
 group: ready
-status: the owner chose this model 2026-11-04 (#7020 closed unmerged) · PR 1 shipped v2.6511 (PR #7034, pushed) · PR 2 v2.6514 (add_worker, PR #7039) · PR 3 built v2.6517 (the backfill, branch claude/backfill-people-users) · PRs 4–5 next
+status: the owner chose this model 2026-11-04 (#7020 closed unmerged) · PR 1 shipped v2.6511 (#7034, pushed) · PR 2 shipped v2.6514 (#7039, pushed) · PR 3 v2.6517 (#7041) · PR 4 built v2.6518 (Attach a login, branch claude/attach-login) · PR 5 next
 summary: >
   A row in public.users today is a login (users.id → auth.users). A worker with no login is a People record
   with no account, so they can hold no clock session and no Charged as, and a job they worked prices short.
@@ -10,10 +10,10 @@ summary: >
   day one, their days are ordinary clock sessions, and a login attaches to the same id later. It can: the
   auth server takes a chosen id on create, the one foreign key in the way is users_id_fkey, and the bed
   walked the whole life — no login, days imported, login attached, login taken away — with nothing moving.
-next: PR 3's merge and push (read the NOTICE for who was skipped); then PR 4 (Attach a login on the desk, create-user's user_id).
+next: PR 3's push (read the NOTICE for who was skipped); PR 4's merge, the two function deploys and the ZZ Test live walk; then PR 5 (the sweep).
 size: S (PR 1 migration) · S (PR 2 Add a person) · S (PR 3 backfill) · M (PR 4 Attach a login) · S (PR 5 the sweep) · S (close #7020)
 blocker: None — the owner chose the model on 2026-11-04.
-ver: v2.6425 · 6441 · 6490 · 3698 · 3701 · 4346 · 6511 · 6514 · 6517
+ver: v2.6425 · 6441 · 6490 · 3698 · 3701 · 4346 · 6511 · 6514 · 6517 · 6518
 opinion: build — it is the smaller change (one dropped key, one column, two triggers) and it retires the "no login" branch everywhere instead of adding a second table beside the clock; the only cost is a client sweep whose items are mostly filters.
 mockup: not required — a schema and flow change; no screen changes shape (Who counts as what already lists users rows; the person desk's Access section gains one press, Attach a login)
 ---
@@ -153,7 +153,7 @@ Open question with a default, not a blocker: a no-login worker's imported days r
 1. **PR 1 — the migration** (S) — **built, v2.6511**: `20261104190000_users_login_attached_at.sql` — scenario B's DDL, the two triggers, `login_attached_at` on the guard's list, `roster_people.has_login` re-pointed, the bed `supabase/tests/users_without_login/` (`scripts/pgtest-users-without-login.sh`, in `scripts/sql-beds.txt`); `invite-user`'s replace-a-pending-invite path deletes the pending users row itself, since the cascade no longer does. Nothing user-visible yet. Push after the merge, then the types PR and `supabase functions deploy invite-user`.
 2. **PR 2 — Add a person makes a user** (S) — **built, v2.6514**: `add_worker(name, kind, email, phone, notes, start_date)` (`20261104200000_add_worker.sql`, SECURITY DEFINER, `is_office_staff()`) inserts the users row (role from kind, `login_attached_at` NULL) and the People record linked to it in one transaction; the seven writers in *What was true* and Hire's roster step call it through `src/lib/people/addWorker.ts`; a salaried hire no longer needs a login; the Users tab's chip and Imitate read `login_attached_at`. The `people.account_user_id IS NULL` branches start going quiet.
 3. **PR 3 — the backfill** (S) — **built, v2.6517** (`20261104210000_people_without_users_backfill.sql`, `backfill_users_for_people()`, bed X1–X8): a migration that gives the 21 unlinked People records their users rows (role from kind, the address where no login holds it, `archived_at` carried; a record whose name another users row carries is skipped and named, since the pay tables key on the name). `people.account_user_id` stays nullable: its key is `ON DELETE SET NULL` and `combinePeople` nulls a source's account, so NOT NULL would refuse both; `roster_people` keeps `'external'` as the guard that shows a straggler. The desk's Merge a duplicate finds no roster-only subs after this and PR 5 re-points it at no-login users through `merge_user_accounts`. Push after the merge.
-4. **PR 4 — Attach a login** (M): `create-user` takes `user_id` and passes it as `id`; the desk's Access section offers *Attach a login* (email, then the sign-in mail through `send-sign-in-email`); the invite flow on People → Users offers the same for a row with no login; Who counts as what and the roster show a *no login* chip. Deploy `create-user` after the merge. **Live walk on a `ZZ Test` person**: attach, sign in by the link, reset the password, take the login away, attach again — the user id and the test clock session never change. The fallback if GoTrue refuses the id on prod: create then merge (v2.4346).
+4. **PR 4 — Attach a login** (M) — **built, v2.6518**: `create-user` takes `user_id` and passes it as `id`; the desk's Access section offers *Attach a login* (email, then the sign-in mail through `send-sign-in-email`); the invite flow on People → Users offers the same for a row with no login; Who counts as what and the roster show a *no login* chip. Deploy `create-user` after the merge. **Live walk on a `ZZ Test` person**: attach, sign in by the link, reset the password, take the login away, attach again — the user id and the test clock session never change. The fallback if GoTrue refuses the id on prod: create then merge (v2.4346).
 5. **PR 5 — the sweep** (S): the items in Evidence 3 marked *small change* and *filter*; `notification_history.recipient_user_id` re-pointed to `public.users`; the fan-outs skip a recipient with no login; the import of the owner's drafted days runs through `import_clock_sessions` once their people have ids (a dev's run, nothing of it in the repo).
 6. **Close #7020** unmerged, with a line in its PR naming this card; its bed scenarios' refusals already live in the clock bed (v2.6425).
 

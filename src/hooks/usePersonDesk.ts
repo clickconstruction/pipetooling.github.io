@@ -14,6 +14,8 @@ export type PersonDeskUserRow = PersonKeyUserRow & {
   team_prospects_access: boolean | null
   estimator_prospects_access: boolean | null
   counttooling_user_id: string | null
+  /** Punch list #260 (v2.6518): when a sign-in was attached; null is a person with no login (left out of a read = a login, the older meaning). */
+  login_attached_at?: string | null
 }
 
 export type PersonDeskData = {
@@ -26,7 +28,7 @@ export type PersonDeskData = {
 }
 
 const USER_SELECT =
-  'id, name, email, role, archived_at, read_only, last_sign_in_at, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids, needs_supervision, team_prospects_access, estimator_prospects_access, counttooling_user_id'
+  'id, name, email, role, archived_at, read_only, last_sign_in_at, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids, needs_supervision, team_prospects_access, estimator_prospects_access, counttooling_user_id, login_attached_at'
 const PERSON_SELECT = 'id, name, email, kind, archived_at, account_user_id'
 
 /**
