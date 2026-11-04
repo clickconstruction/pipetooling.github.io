@@ -7965,9 +7965,11 @@ export type Database = {
           owner_company: string
           owner_confirmed_at: string | null
           owner_confirmed_by: string | null
+          owner_email: string
           owner_mailing_address: string
           owner_mode: string
           owner_name: string
+          owner_phone: string
           parcel_id: string
           parcel_looked_up_at: string | null
           parcel_source: string
@@ -7994,9 +7996,11 @@ export type Database = {
           owner_company?: string
           owner_confirmed_at?: string | null
           owner_confirmed_by?: string | null
+          owner_email?: string
           owner_mailing_address?: string
           owner_mode?: string
           owner_name?: string
+          owner_phone?: string
           parcel_id?: string
           parcel_looked_up_at?: string | null
           parcel_source?: string
@@ -8023,9 +8027,11 @@ export type Database = {
           owner_company?: string
           owner_confirmed_at?: string | null
           owner_confirmed_by?: string | null
+          owner_email?: string
           owner_mailing_address?: string
           owner_mode?: string
           owner_name?: string
+          owner_phone?: string
           parcel_id?: string
           parcel_looked_up_at?: string | null
           parcel_source?: string
@@ -20293,6 +20299,7 @@ export type Database = {
           owner_email: string
           owner_mode: string
           owner_name: string
+          owner_phone: string
           updated_at: string
           updated_by: string | null
         }
@@ -20303,6 +20310,7 @@ export type Database = {
           owner_email?: string
           owner_mode?: string
           owner_name?: string
+          owner_phone?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -20313,6 +20321,7 @@ export type Database = {
           owner_email?: string
           owner_mode?: string
           owner_name?: string
+          owner_phone?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -34877,7 +34886,7 @@ export type Database = {
           counttooling_user_id: string | null
           created_at: string | null
           dispatch_mode_enabled: boolean | null
-          email: string
+          email: string | null
           estimator_prospects_access: boolean
           estimator_service_type_ids: string[] | null
           helpers_service_type_ids: string[] | null
@@ -34886,6 +34895,7 @@ export type Database = {
           is_sample: boolean
           is_walk_tester: boolean
           last_sign_in_at: string | null
+          login_attached_at: string | null
           my_mail_hidden_labels: string[]
           my_mail_on: boolean
           name: string
@@ -34912,7 +34922,7 @@ export type Database = {
           counttooling_user_id?: string | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
-          email: string
+          email?: string | null
           estimator_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
           helpers_service_type_ids?: string[] | null
@@ -34921,6 +34931,7 @@ export type Database = {
           is_sample?: boolean
           is_walk_tester?: boolean
           last_sign_in_at?: string | null
+          login_attached_at?: string | null
           my_mail_hidden_labels?: string[]
           my_mail_on?: boolean
           name: string
@@ -34947,7 +34958,7 @@ export type Database = {
           counttooling_user_id?: string | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
-          email?: string
+          email?: string | null
           estimator_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
           helpers_service_type_ids?: string[] | null
@@ -34956,6 +34967,7 @@ export type Database = {
           is_sample?: boolean
           is_walk_tester?: boolean
           last_sign_in_at?: string | null
+          login_attached_at?: string | null
           my_mail_hidden_labels?: string[]
           my_mail_on?: boolean
           name?: string
@@ -37352,6 +37364,17 @@ export type Database = {
       extend_estimate_good_through: {
         Args: { p_estimate_id: string; p_valid_until: string }
         Returns: Json
+      }
+      file_index_embed_due: {
+        Args: { max_rows?: number }
+        Returns: {
+          drive_file_id: string
+          embed_tried_at: string
+          embedded_at: string
+          indexed_at: string
+          name: string
+          text: string
+        }[]
       }
       file_person_report: {
         Args: { p_content?: string; p_report_id: string; p_source?: string }
