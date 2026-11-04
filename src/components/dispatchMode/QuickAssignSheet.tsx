@@ -11,9 +11,9 @@ import {
   fetchUsersTabRosterForScheduleDispatchHub,
   fetchUserNamesForIds,
   formatScheduleDispatchHubJobTitle,
-  sortJobPickerRowsFinishedLast,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
+import { filterQuickAssignPickerJobs } from '../../lib/scheduleDispatch/hubJobPicker'
 import {
   fetchJobSearchEvidence,
   jobSearchEvidenceModeForRole,
@@ -29,8 +29,6 @@ import {
   swimLaneAccentColor,
 } from '../../lib/dispatchSwimLaneSections'
 import { quickAssignDisabledReason } from '../../lib/dispatchQuickAssignDisabledReason'
-import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
-import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
 import {
   dispatchModeTwoWeekGrid,
   fetchDispatchModeDayBlocks,
@@ -441,33 +439,20 @@ export default function QuickAssignSheet({
     onClose()
   }, [job, effectiveWindow, selected, authUser?.id, linked, selectedYmd, instructions, showToast, onScheduled, onClose])
 
-  /** Standard job-picker rows (hub parity): status chip + finished-last demotion + evidence rail. */
-  const pickerRows: ScheduleDispatchAssignJobPickerRow[] = useMemo(() => {
-    const digits = jobNumberQuery.replace(/\D/g, '')
-    const q = jobSearch.trim().toLowerCase()
-    // "#" mode is exclusive and keeps the matcher's exact-then-prefix tier order.
-    const base =
-      digits !== ''
-        ? findJobsByNumber(jobRows, digits)
-        : jobRows
-            .filter(
-              (r) =>
-                !q ||
-                (r.hcp_number ?? '').toLowerCase().includes(q) ||
-                (r.job_name ?? '').toLowerCase().includes(q) ||
-                (r.job_address ?? '').toLowerCase().includes(q) ||
-                (r.customer_name ?? '').toLowerCase().includes(q),
-            )
-            .sort(compareJobsByCreatedAtDesc)
-    return sortJobPickerRowsFinishedLast(base.slice(0, 60)).map((r) => ({
-      id: r.id,
-      displayTitle: formatScheduleDispatchHubJobTitle(r.hcp_number, r.job_name, r.click_number),
-      serviceTypeName: r.service_type?.name ?? null,
-      subline: pickerSubline(r),
-      status: r.status ?? null,
-      evidence: pickerEvidence.get(r.id) ?? null,
-    }))
-  }, [jobRows, jobSearch, jobNumberQuery, pickerEvidence])
+  /** Standard job-picker rows (hub parity): status chip + finished-last demotion + evidence rail.
+   * The kernel's search matches the Click number too (v2.6496): a job made in the app has no HCP number. */
+  const pickerRows: ScheduleDispatchAssignJobPickerRow[] = useMemo(
+    () =>
+      filterQuickAssignPickerJobs(jobRows, jobSearch, jobNumberQuery).map((r) => ({
+        id: r.id,
+        displayTitle: formatScheduleDispatchHubJobTitle(r.hcp_number, r.job_name, r.click_number),
+        serviceTypeName: r.service_type?.name ?? null,
+        subline: pickerSubline(r),
+        status: r.status ?? null,
+        evidence: pickerEvidence.get(r.id) ?? null,
+      })),
+    [jobRows, jobSearch, jobNumberQuery, pickerEvidence],
+  )
 
   /** Enrich visible picker rows with money-rail evidence — short lists only, debounced, accumulating, failure-silent (hub pattern). */
   useEffect(() => {
