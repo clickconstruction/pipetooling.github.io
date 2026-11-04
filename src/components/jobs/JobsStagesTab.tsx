@@ -786,6 +786,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [stagesServerSearchFailure, setStagesServerSearchFailure] = useState<StagesSearchLookupFailure | null>(null)
   const [stagesServerSearchAttempt, setStagesServerSearchAttempt] = useState(0)
   const retryStagesServerSearch = useCallback(() => setStagesServerSearchAttempt((n) => n + 1), [])
+  /** The term the server lookup last ran for: a new term starts without the old one's failure line (v2.6487). */
+  const stagesServerSearchTermRef = useRef<string | null>(null)
   useEffect(() => {
     if (stagesSearchQuery.trim() === '') setStagesSearchShowsHeldBack(false)
   }, [stagesSearchQuery])
@@ -1971,6 +1973,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    */
   useEffect(() => {
     if (!active) {
+      stagesServerSearchTermRef.current = null
       setStagesServerSearchIds(new Set())
       setStagesServerSearchBusy(false)
       setStagesServerSearchFailure(null)
@@ -1978,10 +1981,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
     const q = stagesSearchQuery.trim()
     if (q.length < 2) {
+      stagesServerSearchTermRef.current = null
       setStagesServerSearchIds(new Set())
       setStagesServerSearchBusy(false)
       setStagesServerSearchFailure(null)
       return
+    }
+    // A new term starts clean (v2.6487): the last term's line came off only when its answer came, so after "smith"
+    // failed, "smithson" kept *Only the jobs already on the board were searched* and the Paid in Full header's *not
+    // searched* through the debounce and the whole request. Retry runs the same term, so its line stays until the answer.
+    if (stagesServerSearchTermRef.current !== q) {
+      stagesServerSearchTermRef.current = q
+      setStagesServerSearchFailure(null)
     }
     let cancelled = false
     const t = window.setTimeout(() => {

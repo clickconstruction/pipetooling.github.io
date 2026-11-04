@@ -535,6 +535,17 @@ describe('over the lines the card folds to one row (v2.6476, every screen since 
     expect(screen.getByRole('region', { name: 'Sort: Bid it?' }).getAttribute('data-new-lane-fold')).toBe('folded')
   })
 
+  it('Fold on Which of ours? leaves the roster too and takes the card back to one row (v2.6487)', async () => {
+    renderShort(KEVIN, fakeIo({ loadKnown: vi.fn(async () => ({ customers: [], roster: [{ id: 'p-will', name: 'Will Park', kind: 'helper', phone: null }] })) }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Other ways ▾' }))
+    fireEvent.click(await screen.findByRole('button', { name: /One of our own team/ }))
+    const ours = screen.getByRole('region', { name: 'Sort: Which of ours?' })
+    expect(ours.getAttribute('data-new-lane-team')).toBe('open')
+    fireEvent.click(within(ours).getByRole('button', { name: 'Fold ▴' }))
+    expect(screen.queryByRole('region', { name: 'Sort: Which of ours?' })).toBeNull()
+    expect(screen.getByRole('region', { name: 'Sort: Who is this?' }).getAttribute('data-new-lane-fold')).toBe('folded')
+  })
+
   it('Which job? keeps the line on its default in one press', async () => {
     const io = fakeIo()
     renderShort(DANA, io)
