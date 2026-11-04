@@ -13,7 +13,7 @@ import { stampSentence } from '../../../lib/messages/stamps'
 import { foldedThreadRows } from '../../../lib/messages/appLines'
 import type { SentStampsIo } from '../../../lib/messages/sentStampsIo'
 import { courtOf, threadOf } from '../../../lib/messages/thread'
-import { isThreadFolded, reachOpen } from '../../../lib/messages/threadFold'
+import { isThreadFolded, isThreadShort, reachOpen, THREAD_SHORT_QUERY } from '../../../lib/messages/threadFold'
 import { noFlowWords } from '../../../lib/flows/facts'
 import { tieSheetRows } from '../../../lib/messages/tieSheet'
 import { formatErrorMessage } from '../../../utils/errorHandling'
@@ -80,10 +80,12 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const phone = useMatchMedia('(max-width: 760px)')
   const [columnRef, columnWidth] = useMeasuredWidth<HTMLDivElement>()
   const folded = isThreadFolded(columnWidth, phone)
+  // A short window (v2.6474): the header keeps two rows, and the sort card and the reply box fold to one row each.
+  const short = isThreadShort(useMatchMedia(THREAD_SHORT_QUERY), phone)
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
   const [contactChosen, setContactChosen] = useState<boolean | null>(null)
-  const contactOpen = reachOpen(contactChosen, folded)
+  const contactOpen = reachOpen(contactChosen, folded || short)
   const [showAll, setShowAll] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [jobFilter, setJobFilter] = useState<string | null>(null)
@@ -180,10 +182,38 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const openThread = useMemo<OpenThread | null>(
     () =>
       contact && view
-        ? { contact, lines: allLines, jobFilter, rail: view.rails[contact.id] ?? [], tiles: view.tiles, userNames: view.userNames, nowIso, searchJobs }
+        ? { contact, lines: allLines, jobFilter, rail: view.rails[contact.id] ?? [], tiles: view.tiles, userNames: view.userNames, nowIso, searchJobs, short }
         : null,
-    [contact, view, allLines, jobFilter, nowIso, searchJobs],
+    [contact, view, allLines, jobFilter, nowIso, searchJobs, short],
   )
+
+  // The stamps sentence, drawn on its own row, or on the status row's end in a short window (v2.6474).
+  const stampsLine = stamps ? (
+    <>
+      {stamps.sentences.map((s, i) => (
+        <Fragment key={i}>
+          {i > 0 && ' '}
+          {s.map((p, j) => (p.strong ? <strong key={j}>{p.text}</strong> : <Fragment key={j}>{p.text}</Fragment>))}
+        </Fragment>
+      ))}
+    </>
+  ) : null
+  const stampsWords = stamps ? stamps.sentences.map((s) => s.map((p) => p.text).join('')).join(' ') : undefined
+  const jobsRail = contact ? (
+    <JobsRail
+      contact={contact}
+      keys={rail}
+      tiles={view?.tiles ?? {}}
+      filter={jobFilter}
+      onFilter={setJobFilter}
+      onStar={(key) => void run(writes.setDefaultJob(contact.id, key), 'The star did not move.')}
+      onOpenJob={onOpenJob}
+      onRemove={(key) => void removeJob(key)}
+      onAdd={() => setPicker({ kind: 'add' })}
+      onHold={(key) => setTying(key)}
+      strip={folded || short}
+    />
+  ) : null
 
   return (
     <div
@@ -211,7 +241,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
           color: 'var(--text-base)',
           borderRadius: phone ? 0 : 10,
           width: phone ? '100%' : 'min(1100px, 100%)',
-          height: phone ? '100%' : 'min(92vh, 100%)',
+          // A short window takes the whole height under the app's bar (v2.6474): 92vh left 8% of a laptop's screen unused.
+          height: phone || short ? '100%' : 'min(92vh, 100%)',
           display: 'flex',
           overflow: 'hidden',
           border: phone ? 'none' : '1px solid var(--border-strong)',
@@ -230,7 +261,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
             </div>
           ) : (
             <>
-              <div data-thread-header={folded ? 'folded' : 'wide'} style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: folded ? '0.5rem 0.75rem' : '0.6rem 0.9rem', display: 'grid', gap: folded ? '0.35rem' : '0.45rem' }}>
+              <div data-thread-header={folded ? 'folded' : 'wide'} data-thread-short={short ? '' : undefined} style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: folded ? '0.5rem 0.75rem' : '0.6rem 0.9rem', display: 'grid', gap: folded ? '0.35rem' : '0.45rem' }}>
                 <div style={{ display: 'flex', gap: folded ? '0.45rem' : '0.6rem', alignItems: 'center', minWidth: 0 }}>
                   {folded ? (
                     <button
@@ -266,7 +297,18 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                     </h2>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-600)', display: 'flex', gap: '0.3rem', alignItems: 'center', minWidth: 0 }}>
                       {contact.kind === 'unknown' ? (
-                        <span style={folded ? ONE_LINE : undefined}>{unnamedWords({ phones: phones.length, emails: emails.length })}</span>
+                        <>
+                          <span style={folded ? ONE_LINE : undefined}>{unnamedWords({ phones: phones.length, emails: emails.length })}</span>
+                          {/* A short window asks *Who is this?* on the line it answers (v2.6474), not on a row of its own. */}
+                          {short && !whoOnCard && (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <button type="button" data-thread-who="inline" onClick={() => setNaming(true)} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--text-blue-700)', fontWeight: 600, cursor: 'pointer', font: 'inherit', flex: 'none' }}>
+                                Who is this?
+                              </button>
+                            </>
+                          )}
+                        </>
                       ) : (
                         <span style={folded ? ONE_LINE : undefined}>
                           <strong>{capital(kindWord(contact.kind))}:</strong> {contact.company || contact.name}
@@ -385,7 +427,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   )}
                 </div>
                 {contact.kind === 'unknown' ? (
-                  whoOnCard ? null : (
+                  whoOnCard || short ? null : (
                     <div>
                       <button
                         type="button"
@@ -419,6 +461,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                     </div>
                   )
                 )}
+                {/* A short window (v2.6474): the status, the stamps sentence and the jobs share one row; the sentence gives way first. */}
                 <div
                   data-thread-status
                   style={{
@@ -426,37 +469,28 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                     gap: '0.4rem',
                     alignItems: 'center',
                     fontSize: '0.8rem',
-                    ...(folded
-                      ? { flexWrap: 'nowrap', whiteSpace: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', maskImage: ROW_FADE, WebkitMaskImage: ROW_FADE }
-                      : { flexWrap: 'wrap' }),
+                    ...(short
+                      ? { flexWrap: 'nowrap', whiteSpace: 'nowrap', minWidth: 0 }
+                      : folded
+                        ? { flexWrap: 'nowrap', whiteSpace: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', maskImage: ROW_FADE, WebkitMaskImage: ROW_FADE }
+                        : { flexWrap: 'wrap' }),
                   }}
                 >
                   {court && <Chip tone={COURT_TONE[court.side]}>{court.word}</Chip>}
                   {slots.statusRow?.(contact)}
+                  {short && stampsLine && (
+                    <span data-thread-stamps title={stampsWords} style={{ ...ONE_LINE, flex: '1 1 8rem', color: 'var(--text-600)' }}>
+                      {stampsLine}
+                    </span>
+                  )}
+                  {short && <span style={{ flex: '0 1 auto', minWidth: 0, maxWidth: '45%', overflow: 'hidden' }}>{jobsRail}</span>}
                 </div>
-                {stamps && (
+                {!short && stampsLine && (
                   <div data-thread-stamps style={{ fontSize: '0.8rem', color: 'var(--text-600)' }}>
-                    {stamps.sentences.map((s, i) => (
-                      <Fragment key={i}>
-                        {i > 0 && ' '}
-                        {s.map((p, j) => (p.strong ? <strong key={j}>{p.text}</strong> : <Fragment key={j}>{p.text}</Fragment>))}
-                      </Fragment>
-                    ))}
+                    {stampsLine}
                   </div>
                 )}
-                <JobsRail
-                  contact={contact}
-                  keys={rail}
-                  tiles={view?.tiles ?? {}}
-                  filter={jobFilter}
-                  onFilter={setJobFilter}
-                  onStar={(key) => void run(writes.setDefaultJob(contact.id, key), 'The star did not move.')}
-                  onOpenJob={onOpenJob}
-                  onRemove={(key) => void removeJob(key)}
-                  onAdd={() => setPicker({ kind: 'add' })}
-                  onHold={(key) => setTying(key)}
-                  strip={folded}
-                />
+                {!short && jobsRail}
                 {tying && (
                   <div role="status" style={{ fontSize: '0.8rem', background: 'var(--bg-blue-tint)', borderRadius: 6, padding: '0.3rem 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     Press a line to tie it to {view?.tiles[tying]?.num ?? 'the job'}.
@@ -476,7 +510,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                 </div>
               )}
               <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-                <div data-thread-lines style={{ flex: 1, minHeight: '7rem', overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
+                <div data-thread-lines style={{ flex: 1, minHeight: short ? 'max(7rem, 33%)' : '7rem', overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
                   {/* No line (punch list #184): a job on the rail with none tied offers the rail's own Show all. */}
                   {rows.length === 0 &&
                     (jobFilter ? (

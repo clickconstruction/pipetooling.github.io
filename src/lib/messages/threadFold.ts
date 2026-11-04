@@ -13,6 +13,21 @@ export function isThreadFolded(columnWidth: number | null, phone: boolean): bool
 }
 
 /**
+ * A short window (v2.6474): a laptop's screen gives the thread about 700 px of height, and the header, the sort card and
+ * the reply box took all but a hundred of it. Under this height the window folds by height as it folds by width: the
+ * header keeps two rows, and the parts a slot draws read `short` from the open thread to fold themselves to one row.
+ */
+export const THREAD_SHORT_PX = 820
+
+/** The media query for a window shorter than `THREAD_SHORT_PX`. */
+export const THREAD_SHORT_QUERY = `(max-height: ${THREAD_SHORT_PX - 0.02}px)`
+
+/** The window folds by height: shorter than 820 px, and never on a phone, whose sheet keeps its own fold (cut 10). */
+export function isThreadShort(shortScreen: boolean, phone: boolean): boolean {
+  return shortScreen && !phone
+}
+
+/**
  * Their numbers and addresses under the company: open at a desk (v1.166), folded away on a narrow header so the lines
  * get the room. A press on the arrow decides from then on, either way.
  */
