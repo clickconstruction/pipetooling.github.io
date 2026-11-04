@@ -100,6 +100,29 @@
   .second h3 { margin: 0 0 6px; font-size: 16px; }
   .second ul { margin: 6px 0 0; padding-left: 20px; color: var(--ink-2); }
   .second li { margin: 5px 0; }
+  /* draft 2: the editor with its live preview */
+  .ed2 { max-width: 920px; }
+  .panes { display: grid; grid-template-columns: minmax(0, 1fr) 375px; }
+  .pv { background: #eef0f3; border-left: 1px solid var(--line-2); padding: 12px 16px 14px; }
+  .pvhead { flex-wrap: wrap; display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .pvt { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .seg button { white-space: nowrap; font: inherit; font-size: 12px; font-weight: 700; border: 0; background: transparent; padding: 4px 10px; color: var(--ink-2); cursor: pointer; }
+  .seg button.on { background: var(--ink); color: #fff; }
+  .pvphone { margin: 0 auto; }
+  .pvfoot { font-size: 11.5px; color: var(--muted); text-align: center; margin-top: 8px; }
+  textarea.ta { width: 100%; font: inherit; resize: vertical; display: block; }
+  label.opt { cursor: pointer; }
+  .swi { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .swi:checked + .sw { background: var(--green); }
+  .swi:checked + .sw::after { left: 16px; }
+  .swi:focus-visible + .sw { outline: 2px solid var(--blue); outline-offset: 2px; }
+  input.inp { font: inherit; }
+  [hidden] { display: none !important; }
+  @media (max-width: 860px) {
+    .panes { grid-template-columns: minmax(0, 1fr); }
+    .pv { border-left: 0; border-top: 1px solid var(--line-2); }
+  }
 </style>
 </head>
 <body>
@@ -111,32 +134,59 @@
   <p>Corinne Vela leaves on Nov 3, 2026 and plans to come back on Nov 5, 2029. Instead of a dead sign-in, they find one screen the office leaves for them. It holds a note the office writes, a countdown to the day back, and how far they are from the shop. The office writes it person by person.</p>
 </header>
 
-<h2><span class="num">1</span> The office writes the note <span class="tag pick">draft 1</span></h2>
-<p class="lede">On the archived person's desk, <b>Leave a note…</b> opens this window. End employment offers it too, as one more row before the finish button.</p>
-<div class="row">
-  <div>
-    <div class="cap">Leave a note for Corinne Vela</div>
-    <div class="fit">
-      <div class="ed">
-        <div class="mh">Leave a note for Corinne Vela <span class="x">×</span></div>
-        <div class="mb">
-          <div class="lab">The note</div>
-          <div class="ta">Corinne, thank you for two and a half great years. Your spot on Luis's crew is waiting. Go get that license done and come home to us.</div>
-          <div class="help">Only Corinne sees this. Change it any time.</div>
+<h2><span class="num">1</span> The office writes the note and sees what they will see <span class="tag pick">draft 2</span></h2>
+<p class="lede">On the archived person's desk, <b>Leave a note…</b> opens this window. End employment offers it too, as one more row before the finish button. The right side is Corinne's screen, drawn by the same component they will get, and it changes as you type. Try it: edit the note, flip a switch, change the date.</p>
+<div class="fit" style="border-top:1px solid var(--line);border-radius:8px">
+  <div class="ed ed2">
+    <div class="mh">Leave a note for Corinne Vela <span class="x">×</span></div>
+    <div class="panes">
+      <div class="mb">
+        <label class="lab" for="noteText">The note</label>
+        <textarea id="noteText" class="ta" rows="5">Corinne, thank you for two and a half great years. Your spot on Luis's crew is waiting. Go get that license done and come home to us.</textarea>
+        <div class="help">Only Corinne sees this. Change it any time.</div>
 
-          <div class="opt"><span class="sw on"></span><div><b>Count down to the day back</b><span class="d">Days, hours and minutes, with a bar for how far along they are.</span><br><span class="inp">Nov 5, 2029</span></div></div>
-          <div class="opt"><span class="sw on"></span><div><b>Show where we are</b><span class="d">Austin, Texas, from Settings → Office address. They can press a button to see how far away they are.</span></div></div>
-          <div class="opt"><span class="sw on"></span><div><b>Call or text button</b><span class="d">The office line, (512) 555-0142.</span></div></div>
-          <div class="opt"><span class="sw"></span><div><b>Tell me when the countdown ends</b><span class="d">A Needs you item on the day, with Bring back… on it.</span></div></div>
-        </div>
-        <div class="mf">
-          <span class="will">Saves the note. Corinne sees it the next time they open the app.</span>
-          <button class="btn blue">Save note</button>
-        </div>
+        <label class="opt"><input type="checkbox" class="swi" id="optCount" checked><span class="sw"></span><div><b>Count down to the day back</b><span class="d">Days, hours and minutes, with a bar for how far along they are.</span><br><input type="date" class="inp" id="countDate" value="2029-11-05"></div></label>
+        <label class="opt"><input type="checkbox" class="swi" id="optWhere" checked><span class="sw"></span><div><b>Show where we are</b><span class="d">Austin, Texas, from Settings → Office address. They can press a button to see how far away they are.</span></div></label>
+        <label class="opt"><input type="checkbox" class="swi" id="optCall" checked><span class="sw"></span><div><b>Call or text button</b><span class="d">The office line, (512) 555-0142.</span></div></label>
+        <label class="opt"><input type="checkbox" class="swi" id="optAlert"><span class="sw"></span><div><b>Tell me when the countdown ends</b><span class="d">A Needs you item on the day, with Bring back… on it. Only the office sees this, so the preview does not change.</span></div></label>
       </div>
+      <div class="pv">
+        <div class="pvhead">
+          <span class="pvt">What Corinne sees</span>
+          <span class="seg" role="group" aria-label="Preview day"><button type="button" id="pvToday" class="on">Today</button><button type="button" id="pvDay">On the day</button></span>
+        </div>
+        <div class="phone pvphone" aria-live="polite">
+          <div class="bar">ClickTooling <span class="out">Sign out</span></div>
+          <div class="in">
+            <div id="pvHello" class="hello">See you soon, Corinne.</div>
+            <div id="pvDone" class="done" hidden><div class="t">Today's the day.</div><div id="pvDoneSub" style="margin-top:4px;color:var(--ink-2)">Call the office and we'll open the app back up for you.</div></div>
+            <div id="pvLetter" class="letter"><span id="pvText"></span><div class="from">The team · updated today</div></div>
+            <div id="pvCount" class="count">
+              <div class="k">Until you're back</div>
+              <div class="big"><div><b id="pvD">0</b><span>days</span></div><div><b id="pvH">0</b><span>hours</span></div><div><b id="pvM">0</b><span>min</span></div></div>
+              <div class="bar2"><i id="pvBar"></i></div>
+              <div class="until" id="pvUntil"></div>
+            </div>
+            <div id="pvWhere" class="where">
+              <div class="city">We're in Austin, Texas</div>
+              <div class="d">Want to see how far away that is?</div>
+              <div style="margin-top:10px"><button type="button" class="btn blue wide" tabindex="-1">Use my location</button></div>
+              <div class="priv">Your location stays on this phone. We never see it.</div>
+            </div>
+            <button type="button" id="pvCall" class="btn green wide" tabindex="-1">Call the office</button>
+            <div id="pvEmpty" class="letter" hidden style="color:var(--muted)">Write a note, or turn something on, and it shows here.</div>
+          </div>
+        </div>
+        <div class="pvfoot">The buttons in the preview do nothing. Corinne's do.</div>
+      </div>
+    </div>
+    <div class="mf">
+      <span class="will">Saves the note. Corinne sees exactly the right side the next time they open the app.</span>
+      <button class="btn blue">Save note</button>
     </div>
   </div>
 </div>
+<p class="note"><b>On a phone</b> the preview drops under the switches, with a <b>Preview</b> link at the top of the window that jumps to it.</p>
 
 <h2><span class="num">2</span> What Corinne sees <span class="tag pick">draft 1</span></h2>
 <p class="lede">One screen and nothing else. No menu, no jobs, no pay. Only Sign out.</p>
@@ -153,7 +203,7 @@
             <div class="k">Until you're back</div>
             <div class="big"><div><b>1,068</b><span>days</span></div><div><b>14</b><span>hours</span></div><div><b>32</b><span>min</span></div></div>
             <div class="bar2"><i></i></div>
-            <div class="until">Back on Thursday, Nov 5, 2029</div>
+            <div class="until">Back on Monday, Nov 5, 2029</div>
           </div>
           <div class="where">
             <div class="city">We're in Austin, Texas</div>
@@ -248,6 +298,9 @@
 <div class="second">
   <h3>Is this the best we can do? The second pass</h3>
   <ul>
+    <li><b>The editor had no way to see the result</b> (the owner, draft 1). Draft 2 puts Corinne's screen beside the switches, drawn by the same component they get, so what the office sees is what Corinne sees. A <b>Today · On the day</b> switch shows the screen the countdown ends on, which nobody would otherwise see for three years.</li>
+    <li><b>An empty note showed an empty screen.</b> With every switch off and no words, the preview says what fills it, and Save note stays live, since an empty note is still a valid choice: the sign-in lands on the greeting alone.</li>
+    <li><b>At phone width the day switch wrapped to two lines.</b> Its words now stay on one line and the heading moves above it when there is no room.</li>
     <li><b>The countdown was the biggest thing on the screen.</b> Three years in days reads as more than a thousand, a number that hardly moves. A thin bar under it says how far along they are, and the note stays above it, so the first thing they read is the team's words.</li>
     <li><b>The location press asks before it asks.</b> The browser's own permission prompt only shows after they press Use my location, never on open. The miles are worked out on the phone from the office's map pin and never saved.</li>
     <li><b>Seconds were cut.</b> A ticking seconds digit on a three-year wait looks like a timer for a bomb. Days, hours and minutes.</li>
@@ -260,5 +313,44 @@
 </div>
 
 </div>
+<script>
+  // A fixed "now" so the mock-up reads the same for everyone: Dec 2, 2026, 9:28 am, a month after Corinne left.
+  const NOW = new Date(2026, 11, 2, 9, 28);
+  const LEFT = new Date(2026, 10, 3);
+  const $ = (id) => document.getElementById(id);
+  let onTheDay = false;
+  function parseYmd(v) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+  function draw() {
+    const text = $('noteText').value.trim();
+    const count = $('optCount').checked, where = $('optWhere').checked, call = $('optCall').checked;
+    const back = parseYmd($('countDate').value);
+    $('pvText').textContent = text;
+    $('pvLetter').hidden = onTheDay || !text;
+    $('pvHello').hidden = onTheDay;
+    $('pvDone').hidden = !onTheDay;
+    $('pvDoneSub').textContent = call ? "Call the office and we'll open the app back up for you." : "We'll open the app back up for you.";
+    $('pvCount').hidden = onTheDay || !count || !back;
+    if (count && back) {
+      const ms = Math.max(0, back - NOW);
+      const mins = Math.floor(ms / 60000);
+      $('pvD').textContent = Math.floor(mins / 1440).toLocaleString('en-US');
+      $('pvH').textContent = Math.floor((mins % 1440) / 60);
+      $('pvM').textContent = mins % 60;
+      const pct = back > LEFT ? Math.min(100, Math.max(0, (NOW - LEFT) / (back - LEFT) * 100)) : 100;
+      $('pvBar').style.width = Math.max(1, pct).toFixed(1) + '%';
+      $('pvUntil').textContent = 'Back on ' + back.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    $('pvWhere').hidden = onTheDay || !where;
+    $('pvCall').hidden = !call;
+    $('pvEmpty').hidden = onTheDay || !!(text || (count && back) || where || call);
+    $('pvToday').classList.toggle('on', !onTheDay);
+    $('pvDay').classList.toggle('on', onTheDay);
+  }
+  ['noteText', 'optCount', 'optWhere', 'optCall', 'countDate'].forEach((id) => $(id).addEventListener('input', draw));
+  ['optCount', 'optWhere', 'optCall'].forEach((id) => $(id).addEventListener('change', draw));
+  $('pvToday').addEventListener('click', () => { onTheDay = false; draw(); });
+  $('pvDay').addEventListener('click', () => { onTheDay = true; draw(); });
+  draw();
+</script>
 </body>
 </html>
