@@ -9,6 +9,7 @@ import type { JobTile } from '../../../lib/messages/jobTiles'
 import { isSentLine } from '../../../lib/messages/sentLines'
 import { callLength, channelWord, clockTime, deliveryMark, isLong, type ThreadMessage } from '../../../lib/messages/thread'
 import { FiledLines, LineFileChips } from './LineFiles'
+import { MessageBody } from './MessageBody'
 import type { Contact } from '../../../lib/contacts/kernel'
 
 /**
@@ -18,7 +19,8 @@ import type { Contact } from '../../../lib/contacts/kernel'
  * job's number alone (v1.158). An email's files (cut 6) show as chips under the words, with the time below them. A press
  * anywhere but a button opens the message window. On a phone a press and hold opens *Tie this message to* (cut 10,
  * `onHold`): the line darkens once the hold is long enough, and the sheet opens as the finger lifts, so it never opens
- * under the finger; a finger that moves is a scroll.
+ * under the finger; a finger that moves is a scroll. The words go through `MessageBody` (v2.6508): a web address in
+ * them is one press that opens it, which the line's own press lets through as it does a button's.
  */
 export function ThreadLine({
   message,
@@ -207,12 +209,12 @@ export function ThreadLine({
               ...(folded ? { display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : {}),
             }}
           >
-            {message.body}
+            <MessageBody body={message.body} />
           </div>
         ) : (
           // The time keeps a slot at the end of the last line; when the words reach it, the slot wraps and the time drops.
           <div style={{ position: 'relative', fontSize: '0.875rem', marginTop: '0.15rem', whiteSpace: 'pre-wrap' }}>
-            {message.body}
+            <MessageBody body={message.body} />
             <span aria-hidden="true" style={{ display: 'inline-block', width: mark ? '11rem' : '4.6rem' }} />
             <span style={{ position: 'absolute', right: 0, bottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
               {markNode}

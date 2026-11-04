@@ -2,7 +2,7 @@
 title: find every message with a person in one place
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: start a bid, put it on a bid, open the bid, bid history, invitation in a thread, gc mode, messages, laptop, short screen, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans, cut it off, opens, our link, header, lead, book a visit, start an estimate, show everyone
+keywords: start a bid, put it on a bid, open the bid, bid history, invitation in a thread, gc mode, messages, laptop, short screen, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans, cut it off, opens, our link, header, lead, book a visit, start an estimate, show everyone, link, web address, bold, rich text
 where: /messages
 order: 116
 ---
@@ -133,12 +133,26 @@ Press {{button:outline|Open the bid}} on an email that is on a bid already. The 
 
 Press Escape to go back to the thread.
 
+## Open a link in an email's words
+
+A web address in the words is blue with a small link mark beside it. Press it once. The address opens in a new tab.
+
+Some mail programs write the address twice, once in angle brackets. The app shows it once.
+
+Words the sender made bold read bold. The stars around them are gone.
+
+The same address may also sit under **Attachments** as a chip. That chip is our filed copy of the link. Press whichever is nearer.
+
+The link works in the thread too, under the message's line. Press the words beside it to open the message.
+
+An email reads as plain words, not as the sender's own layout. The app does not keep that layout yet.
+
 ## Open a file that came with an email
 
-An email's files show as chips under its words. A PDF has a red badge and a picture a green one. A link has an arrow.
+An email's files show as chips under its words. A PDF has a red badge and a picture a green one. A link has the small blue link mark. Rest on the mark and it says it is a link, not a file.
 
 1. Press a file's chip. The message opens.
-2. Under **Attachments**, press {{button:outline|Open}} beside the file.
+2. Under **Attachments**, press {{button:outline|Open}} right after the file's name.
 
 The file opens in a new tab. Open shows our copy, kept when the email came. A link opens at its own address.
 

@@ -39,6 +39,34 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     expect(win.querySelector('[data-message-full]')!.textContent).toBe(m.body)
   })
 
+  it('draws a web address in the words as one press with a link mark, the doubled form once, and the sender’s bold as bold (v2.6508)', () => {
+    const plans = 'https://maxxbuilders.box.example/s/vzgc9sp8fwsrcni1c7d8j0qh3995pqi3'
+    const m = { ...line('m-greg-email-in'), body: `Wendi,\n\nWe at *Maxx Builders* invite you to bid.\n\n*Link to Plans*:\n**${plans}\n<${plans}>*\nDeadline: *Monday, November 02, 2026, 3:00 PM*` }
+    renderWithProviders(<MessageWindow message={m} contact={greg} tile={undefined} onClose={vi.fn()} />)
+    const full = screen.getByRole('dialog', { name: 'Email: Hillside sitework, Boerne, rev 1' }).querySelector('[data-message-full]') as HTMLElement
+    const a = within(full).getByRole('link', { name: plans })
+    expect(a.getAttribute('href')).toBe(plans)
+    expect(a.getAttribute('target')).toBe('_blank')
+    expect(a.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(a.querySelector('svg')).toBeTruthy()
+    expect(full.querySelectorAll('a[data-body-link]').length).toBe(1)
+    expect([...full.querySelectorAll('strong')].map((b) => b.textContent)).toEqual(['Maxx Builders', 'Link to Plans', plans, 'Monday, November 02, 2026, 3:00 PM'])
+    expect(full.textContent).not.toContain('*')
+    expect(full.textContent).not.toContain('<')
+    // The print page draws the same: the address a link, the bold in <b>, no star.
+    fireEvent.click(screen.getByRole('button', { name: 'Print or save as PDF' }))
+    const html = vi.mocked(openHtmlPrintWindow).mock.calls[0]![0] as string
+    expect(html).toContain(`<a href="${plans}" target="_blank" rel="noopener noreferrer">${plans}</a>`)
+    expect(html).toContain('<b>Maxx Builders</b>')
+    expect(html.split(plans).length - 1).toBe(2)
+    expect(html).not.toContain('*')
+    // Copy still carries the words as they came, stars and all.
+    const write = vi.fn(() => Promise.resolve())
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: write }, configurable: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+    expect(write).toHaveBeenCalledWith(m.body)
+  })
+
   it('lists an email’s Attachments: where each is, and Open where it can be opened (cut 6)', () => {
     renderWithProviders(<MessageWindow message={line('m-greg-email-in')} contact={greg} tile={undefined} onClose={vi.fn()} />)
     const files = screen.getByRole('dialog', { name: 'Email: Hillside sitework, Boerne, rev 1' }).querySelector('[data-message-files]') as HTMLElement
@@ -46,11 +74,24 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     expect([...files.querySelectorAll('[data-message-file]')].map((r) => r.textContent)).toEqual([
       'PDFHillside-Boerne-sitework-rev1.pdf · 1.3 MB · our copy kept on arrivalOpenSave to Drive',
       'IMGsite-photo-pad.jpg · 2.8 MB · our copy kept on arrivalOpenSave to Drive',
-      '↗Addendum 2 drawings · a link, not a fileOpen',
+      'Addendum 2 drawings · a link, not a fileOpen',
       'FHillside-Boerne-full-set.zip · 31 MB · too big to keep, it stays in Gmail',
     ])
     expect(within(files).getByRole('link', { name: 'Open Hillside-Boerne-sitework-rev1.pdf' }).getAttribute('href')).toBe('/files/messages/f-greg-sitework')
     expect(within(files).getByRole('link', { name: 'Open Addendum 2 drawings' }).getAttribute('href')).toBe('https://drive.example/addendum-2')
+    // v2.6508: a link's mark is the chain link the words use, with its meaning in its title, and every row's Open sits
+    // right after its words (the words take only their width), not pinned to the window's far edge.
+    const linkRow = files.querySelector('[data-message-file="f-greg-addendum"]') as HTMLElement
+    const mark = linkRow.querySelector('[data-file-badge="link"]') as HTMLElement
+    expect(mark.getAttribute('title')).toBe('A link, not a file. Open goes to its address.')
+    expect(mark.querySelector('svg')).toBeTruthy()
+    expect(files.querySelector('[data-file-badge="pdf"]')!.textContent).toBe('PDF')
+    for (const row of files.querySelectorAll<HTMLElement>('[data-message-file]')) {
+      const words = row.querySelector<HTMLElement>('[data-message-file-words]')!
+      expect(words.style.flexGrow).toBe('0')
+      const open = row.querySelector('a[aria-label^="Open"]')
+      if (open) expect(words.nextElementSibling).toBe(open)
+    }
     cleanup()
     renderWithProviders(<MessageWindow message={line('m-greg-text-in')} contact={greg} tile={undefined} onClose={vi.fn()} />)
     expect(screen.getByRole('dialog', { name: 'Text' }).querySelector('[data-message-files]')).toBeNull()
@@ -131,8 +172,8 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     renderWithProviders(<LineFileChips files={files} onOpen={vi.fn()} />)
     expect([...document.querySelectorAll('[data-line-files] button')].map((b) => b.textContent)).toEqual([
       'PDFAddendum 2.pdf · sent as the file',
-      '↗Boerne Retail Shell plans, rev 2 · sent as our link to their portal',
-      '↗Bid tab, Sitework.pdf · sent as our link to the file',
+      'Boerne Retail Shell plans, rev 2 · sent as our link to their portal',
+      'Bid tab, Sitework.pdf · sent as our link to the file',
     ])
     cleanup()
 
@@ -155,8 +196,8 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     const rows = [...section.querySelectorAll('[data-message-file]')] as HTMLElement[]
     expect(rows.map((r) => r.textContent)).toEqual([
       'PDFAddendum 2.pdf · 412 KB · sent as the file · kept with the copyOpen',
-      '↗Boerne Retail Shell plans, rev 2 · sent as our link to their portal · they opened their portal twice since, last Mon Oct 12 at 2:10 PMOpen',
-      '↗Bid tab, Sitework.pdf · sent as our link to the file · opened twice, last 2:10 PMOpens: today 2:10 PM · Fri Oct 9, 4:42 PMOpenCut it off',
+      'Boerne Retail Shell plans, rev 2 · sent as our link to their portal · they opened their portal twice since, last Mon Oct 12 at 2:10 PMOpen',
+      'Bid tab, Sitework.pdf · sent as our link to the file · opened twice, last 2:10 PMOpens: today 2:10 PM · Fri Oct 9, 4:42 PMOpenCut it off',
     ])
     // A sent file has no Save to Drive; our own link opens through the office's page, never the public one.
     expect(within(section).queryByRole('button', { name: 'Save to Drive' })).toBeNull()

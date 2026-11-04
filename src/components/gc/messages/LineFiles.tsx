@@ -9,25 +9,39 @@ import { formatErrorMessage } from '../../../utils/errorHandling'
 import { Btn } from '../gcUi'
 import { SaveToDrive, type SaveToDriveIo } from './SaveToDrive'
 import { PhotoSaveTick } from './PhotoSaveTick'
+import { LinkMark } from './LinkMark'
 
 /**
  * Messages, cut 6's screens (email in): the files and links on a line, as the mock-up `email-in-mockups.html` draws them
  * (screens 1 to 3, on branch spike/gc-mode). The chips under a line's words, the line a filed paper leaves, and the
  * message window's Attachments with Open. A picture shows its badge, not a thumbnail: a thumbnail would fetch the whole
- * picture for each chip.
+ * picture for each chip. Since v2.6508 (Grace, on Glenn Geling's invitation to bid) a link's mark is the same chain
+ * link the words draw beside a web address (`LinkMark`), with its meaning in its title, in place of a blue ↗ square
+ * nobody could read, and a row's presses sit right after its words instead of pinned to the window's far edge, wrapping
+ * under the words on a phone.
  */
 
-const BADGE: Record<FileIcon, { word: string; background: string }> = {
+const BADGE: Record<Exclude<FileIcon, 'link'>, { word: string; background: string }> = {
   pdf: { word: 'PDF', background: '#c0392b' },
   image: { word: 'IMG', background: '#2a8f5a' },
-  link: { word: '↗', background: '#1f5fbf' },
   file: { word: 'F', background: 'var(--text-slate-500)' },
 }
 
+/** What a link's mark says on hover, since the mark alone said nothing (Grace, 2026-11-04). */
+export const LINK_MARK_TITLE = 'A link, not a file. Open goes to its address.'
+
 export function FileBadge({ icon }: { icon: FileIcon }) {
+  if (icon === 'link') {
+    return (
+      <span data-file-badge="link" aria-hidden="true" title={LINK_MARK_TITLE} style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-link)', flex: 'none' }}>
+        <LinkMark size={17} />
+      </span>
+    )
+  }
   const badge = BADGE[icon]
   return (
     <span
+      data-file-badge={icon}
       aria-hidden="true"
       style={{ width: 22, height: 22, borderRadius: 5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white', background: badge.background, flex: 'none' }}
     >
@@ -212,7 +226,9 @@ export function MessageFiles({
         return (
           <div key={f.id} data-message-file={f.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.4rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem', flexWrap: 'wrap' }}>
             <FileBadge icon={f.icon} />
-            <span style={{ flex: 1, minWidth: 180, overflowWrap: 'anywhere' }}>
+            {/* The words take only their width, so Open and the other presses follow them on the left and wrap under
+                them on a phone, never off the window's edge (v2.6508). */}
+            <span data-message-file-words style={{ flex: '0 1 auto', minWidth: 0, overflowWrap: 'anywhere' }}>
               {f.name} <span style={{ color: 'var(--text-muted)' }}>· {note}</span>
               {opens && (
                 <span data-link-opens style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
