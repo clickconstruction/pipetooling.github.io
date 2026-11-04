@@ -34,6 +34,12 @@ export type LedgerChargesInput = {
   adjustments?: ReadonlyArray<ChargeAdjustment>
   /** The contract price: `jobs_ledger.revenue`. */
   contractUsd: number
+  /**
+   * Why the standings could not be read, when they could not (v2.6484): every day is then unknown rather than nobody's,
+   * so nothing on the row prices and the note carries the read's reason in place of the nobody line. Null or left out when
+   * the read answered.
+   */
+  standingsUnread?: string | null
 }
 
 export type LedgerCharges = {
@@ -45,8 +51,11 @@ export type LedgerCharges = {
   premium: Premium
   crewHours: number
   days: number
+  /** Days priced at nothing for any reason; the premium waits on these. */
   unpricedDays: number
-  /** Why some of the row is not priced, each once; null when every day priced. Names who counts as nobody first. */
+  /** Of those, the days nobody out counted for; a standing fixes these alone. */
+  unchargedDays: number
+  /** Why some of the row is not priced, each once; null when every day priced. Names who counts as nobody first, or the read that failed. */
   note: string | null
   /** The first names of people out who count as nobody yet, most days first. */
   uncharged: string[]
@@ -93,6 +102,25 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
   }
   materialsUsd = Math.max(0, materialsUsd)
   const chargesUsd = cents(days.totals.charged + materialsUsd)
+  // The standings could not be read (v2.6484): every day is unknown, not nobody's, so the row stays a dash with the
+  // read's reason, and the nobody note never names anyone for a read that failed.
+  if (input.standingsUnread) {
+    return {
+      priced: false,
+      laborUsd: 0,
+      materialsUsd,
+      chargesUsd: materialsUsd,
+      premium: premiumOf(input.contractUsd, materialsUsd),
+      crewHours: 0,
+      days: days.totals.days,
+      unpricedDays: days.totals.days,
+      unchargedDays: 0,
+      note: standingsUnreadWords(input.standingsUnread),
+      uncharged: [],
+      rule,
+      markupPct,
+    }
+  }
   const whys = new Set<string>()
   const withLogin = days.totals.uncharged.filter((u) => !loginless.has(u.userId))
   const nobody = unchargedWords(withLogin)
@@ -116,6 +144,7 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
     crewHours: days.totals.crewHours,
     days: days.totals.days,
     unpricedDays: days.totals.unpriced,
+    unchargedDays: days.totals.unchargedDays,
     note: whys.size ? Array.from(whys).join(' ') : null,
     uncharged: days.totals.uncharged.map((u) => u.name),
     rule,
@@ -141,6 +170,14 @@ export function loginlessWords(people: ReadonlyArray<{ name: string }>): string 
   if (names.length === 0) return null
   const list = names.length === 1 ? names[0] : names.length <= 3 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`
   return `${list} ${names.length === 1 ? 'has' : 'have'} no login for a Charged as. Link ${names.length === 1 ? 'the People record' : 'each People record'} to a login on People.`
+}
+
+/**
+ * The cell's title when the standings could not be read (v2.6484): the read's reason, through `formatErrorMessage` at
+ * the read, never the nobody note, since nobody is known to count as nothing.
+ */
+export function standingsUnreadWords(reason: string): string {
+  return `Who counts as what could not be read, so nothing is priced yet: ${reason}`
 }
 
 /**

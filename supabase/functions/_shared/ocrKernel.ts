@@ -96,3 +96,21 @@ export function ocrDue(ocrTriedAt: string | null | undefined, now: Date, retryMs
 export function ocrStateWords(processorSet: boolean): string {
   return processorSet ? 'OCR is set up: Document AI reads scans into the index.' : `OCR is not set up: set the secret ${OCR_PROCESSOR_SECRET} to the Document OCR processor (docs/DRIVE_INTAKE_SETUP.md → Our own OCR) and every scan is read from then on.`
 }
+
+/**
+ * A value minted once and shared by every caller — the pass's cloud-platform token in `ocr.ts` — except that a mint
+ * that fails is forgotten, so the next caller mints again (v2.6488: before, one refused exchange was the cached
+ * answer for every scan the pass reached, each stamped for a day).
+ */
+export function mintOnce<T>(mint: () => Promise<T>): () => Promise<T> {
+  let minted: Promise<T> | null = null
+  return () => {
+    if (minted) return minted
+    const p = mint()
+    minted = p
+    p.catch(() => {
+      if (minted === p) minted = null
+    })
+    return p
+  }
+}

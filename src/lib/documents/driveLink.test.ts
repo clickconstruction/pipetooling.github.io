@@ -18,6 +18,7 @@ import {
   streamUrl,
   streamsInline,
   tokenFromLink,
+  twinRefusalWords,
   type LinkRow,
 } from '../../../supabase/functions/_shared/driveLink'
 
@@ -228,5 +229,12 @@ describe('parseOfficeAsk — the index (punch list #240, PR 1)', () => {
     expect(parseOfficeAsk({ action: 'embed_probe' })).toEqual({ action: 'embed_probe' })
     expect(parseOfficeAsk({ action: 'search_index', words: 'rock clause' })).toEqual({ action: 'search_index', words: 'rock clause' })
     expect(parseOfficeAsk({ action: 'search_index', words: 'r' })).toBeNull()
+  })
+
+  it('refuses a digital twin in words true to the ask: a search is not a change (v2.6488)', () => {
+    expect(twinRefusalWords('search')).toBe('A digital twin cannot search Drive.')
+    expect(twinRefusalWords('search_index')).toBe('A digital twin cannot search Drive.')
+    for (const read of ['list', 'open', 'list_company', 'ocr_probe', 'embed_probe']) expect(twinRefusalWords(read)).toBe('A digital twin cannot read Drive.')
+    for (const write of ['put', 'link', 'save', 'put_company', 'index', 'index_check', 'index_home', 'index_job', undefined, 42]) expect(twinRefusalWords(write)).toBe('A digital twin cannot change Drive.')
   })
 })

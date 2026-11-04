@@ -85,6 +85,31 @@ describe('a row whose crew counts as nobody (punch list #254, the live pass)', (
     expect(ledgerSummaryCell(r)).toEqual({ chargesUsd: null, premiumUsd: null, note: r.note })
   })
 
+  it('a standings read that fails leaves the cells unpriced with its reason, never the nobody note (v2.6484)', () => {
+    // The page's list is empty after a failed read, so every lookup answers none; the reason says the read failed.
+    const unread = standingLookup([], key, new Map())
+    const r = ledgerChargesFor({
+      breakdown: [{ personName: 'Toby W', personId: null, byWorkDate: [{ workDate: '2026-03-02', hours: 8 }, { workDate: '2026-03-03', hours: 8 }] }],
+      standingOf: unread,
+      invoicesFromSupplyHouses: 0,
+      partsFromTally: 0,
+      billedMaterialsSum: 0,
+      card: OWNER,
+      job: { charge_rule: 'shape', charge_shape: 'master_helper' },
+      contractUsd: 250000,
+      standingsUnread: 'permission denied for table users',
+    })
+    expect(r.priced).toBe(false)
+    expect(r.uncharged).toEqual([])
+    expect(r.unchargedDays).toBe(0)
+    expect(r.unpricedDays).toBe(2)
+    expect(r.note).toBe('Who counts as what could not be read, so nothing is priced yet: permission denied for table users')
+    expect(r.note).not.toContain('counts as nobody')
+    expect(ledgerSummaryCell(r)).toEqual({ chargesUsd: null, premiumUsd: null, note: r.note })
+    // The same row with the read answered names who counts as nobody, as before.
+    expect(ledgerChargesFor({ breakdown: [{ personName: 'Toby W', personId: null, byWorkDate: [{ workDate: '2026-03-02', hours: 8 }] }], standingOf: unread, invoicesFromSupplyHouses: 0, partsFromTally: 0, billedMaterialsSum: 0, card: OWNER, job: {}, contractUsd: 0, standingsUnread: null }).note).toContain('counts as nobody')
+  })
+
   it('reaches a standing through the People record’s link when the two names differ, names people as their login, and someone with no login apart', () => {
     // The crew rows name people by their People record: "Zed W" is linked to the login "Zedd", "Bo R" to the login
     // "Bobby" (who left, with no standing yet), and "Ana Q" has no login.

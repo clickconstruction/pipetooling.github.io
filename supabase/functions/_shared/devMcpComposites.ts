@@ -53,7 +53,9 @@ const likeTerm = (text: string): string => `*${text.trim().replace(/[*,()]/g, ' 
 /**
  * Every row of a read the door cuts at 200 (v2.6463): a page at a time in `key` order, each page after the last
  * page's key, so no row repeats and none is skipped. `key` must be unique among the rows the filters keep, and in
- * the select. Stops at `max` rows and says so (`capped`), so a total never undercounts in silence.
+ * the select. Stops at `max` rows and says so (`capped`) only when a row follows them — one look past a full last
+ * page (v2.6488), so a read of exactly `max` rows is whole — so a total never undercounts in silence and a whole
+ * read is never called short.
  */
 export async function readAllRows(
   reader: Reader,
@@ -69,10 +71,13 @@ export async function readAllRows(
     const page = await reader.rows(table, { select: query.select, filters, order: [{ column: key }], limit: ROWS_PAGE })
     rows.push(...page)
     if (page.length < ROWS_PAGE) return { rows, capped: false }
-    if (rows.length >= max) return { rows, capped: true }
     const last = page[page.length - 1]![key]
     if (last == null || last === '') throw new Error(`${table} cannot page: its select has no ${key}`)
     after = String(last)
+    if (rows.length >= max) {
+      const next = await reader.rows(table, { select: query.select, filters: [...query.filters, { column: key, op: 'gt', value: after }], order: [{ column: key }], limit: 1 })
+      return { rows, capped: next.length > 0 }
+    }
   }
 }
 
@@ -392,7 +397,6 @@ export async function getBid(reader: Reader, ref: string) {
 // page, up to the store's own cap, so an agent's number is the screen's number.
 // ---------------------------------------------------------------------------
 
-const ON_SITE_PAGE = 200
 /** The most ledger rows one read takes — the store's MOVEMENTS_LIMIT; a job past it says so. */
 export const ON_SITE_MOVEMENTS_MAX = 5000
 const ON_SITE_RECENT = 15
@@ -409,32 +413,14 @@ const containerOf = (r: Row): Container => ({ id: str(r.id), jobId: str(r.job_id
 const placeOf = (r: Row): Place => ({ id: str(r.id), jobId: str(r.job_id), name: str(r.name), createdAt: str(r.created_at) })
 const movementOf = (r: Row): Movement => ({ id: str(r.id), jobId: str(r.job_id), partId: strOrNull(r.part_id), partName: str(r.part_name), manufacturer: strOrNull(r.manufacturer), quantity: num(r.quantity), reason: str(r.reason) as MovementReason, fromContainerId: strOrNull(r.from_container_id), toContainerId: strOrNull(r.to_container_id), note: str(r.note), byUserId: strOrNull(r.by_user_id), byName: str(r.by_name), at: str(r.at), source: strOrNull(r.source), itemId: strOrNull(r.item_id) })
 
-/** The whole ledger of a job, oldest first, a page at a time; stops at the cap and says so. */
+/**
+ * The whole ledger of a job, a page at a time by `id` (v2.6488; by `at` before, which lost every row after a stamp that
+ * 200 rows shared — a 200-line delivery lands at one `now()` — since each page from that stamp answered the same
+ * rows); the kernel's `byTime` puts them in order. Stops at the cap and says so.
+ */
 export async function readOnSiteMovements(reader: Reader, jobId: string): Promise<{ movements: Movement[]; capped: boolean }> {
-  const seen = new Set<string>()
-  const movements: Movement[] = []
-  let since: string | null = null
-  let capped = false
-  for (;;) {
-    const filters: RowFilter[] = [{ column: 'job_id', op: 'eq', value: jobId }]
-    if (since) filters.push({ column: 'at', op: 'gte', value: since })
-    const page = await reader.rows('job_material_movements', { select: MOVEMENT_SELECT, filters, order: [{ column: 'at' }, { column: 'id' }], limit: ON_SITE_PAGE })
-    let added = 0
-    for (const r of page) {
-      const id = str(r.id)
-      if (seen.has(id)) continue
-      seen.add(id)
-      movements.push(movementOf(r))
-      added += 1
-    }
-    if (page.length < ON_SITE_PAGE || added === 0) break
-    if (movements.length >= ON_SITE_MOVEMENTS_MAX) {
-      capped = true
-      break
-    }
-    since = str(page[page.length - 1]!.at)
-  }
-  return { movements, capped }
+  const { rows, capped } = await readAllRows(reader, 'job_material_movements', { select: MOVEMENT_SELECT, filters: [{ column: 'job_id', op: 'eq', value: jobId }] }, 'id', ON_SITE_MOVEMENTS_MAX)
+  return { movements: rows.map(movementOf), capped }
 }
 
 export async function getOnSite(reader: Reader, ref: string, now: Date) {
@@ -446,15 +432,16 @@ export async function getOnSite(reader: Reader, ref: string, now: Date) {
   if (failed(jobRows)) return { refused: `Could not read the job: ${jobRows.error}` }
   const job = jobRows[0]
   if (!job) return { refused: `No job ${id} — it does not exist, or RLS hides it from you.` }
+  // The boxes and the places page by id too (v2.6488; one read of 200 before): the kernel sorts them as the screens do.
   const [containerRows, placeRows, ledger] = await Promise.all([
-    part(() => reader.rows('job_containers', { select: CONTAINER_SELECT, filters: byJob, order: [{ column: 'created_at' }], limit: ON_SITE_PAGE })),
-    part(() => reader.rows('job_places', { select: 'id,job_id,name,created_at', filters: byJob, order: [{ column: 'name' }], limit: ON_SITE_PAGE })),
+    part(() => readAllRows(reader, 'job_containers', { select: CONTAINER_SELECT, filters: byJob })),
+    part(() => readAllRows(reader, 'job_places', { select: 'id,job_id,name,created_at', filters: byJob })),
     part(() => readOnSiteMovements(reader, id)),
   ])
   if (failed(containerRows)) return { refused: `Could not read the job's containers: ${containerRows.error}` }
   if (failed(ledger)) return { refused: `Could not read the job's ledger: ${ledger.error}` }
-  const containers = containerRows.map(containerOf)
-  const places = failed(placeRows) ? [] : placeRows.map(placeOf)
+  const containers = containerRows.rows.map(containerOf)
+  const places = failed(placeRows) ? [] : placeRows.rows.map(placeOf)
   const { movements, capped } = ledger
   const lines = containerLines(movements)
   const live = containers.filter((c) => !c.retiredAt)

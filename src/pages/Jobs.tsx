@@ -20,7 +20,7 @@ import { usePartsLedgerData } from '../hooks/usePartsLedgerData'
 import type { TallyPartRow } from '../types/tallyPart'
 import { useToastContext } from '../contexts/ToastContext'
 import { useRoleGate } from '../hooks/useRoleGate'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
 import { printAndFile } from '../lib/sent/sentCopiesIo'
 import { buildJobSubSheetHtml } from '../lib/jobsDocuments/subLaborSheet'
@@ -403,6 +403,9 @@ export default function Jobs() {
   // Every login with its standing, people who left included (the live pass): the page's own user list holds the active
   // ones only, and a person who left still has days on a job that price by their standing.
   const [chargeUsers, setChargeUsers] = useState<Array<{ id: string; name: string | null; charge_standing?: unknown }>>([])
+  // Why the standings (or the People links) could not be read, when they could not (v2.6484): the two cells stay a dash
+  // with this reason in their title, never priced at nothing with everyone named as nobody.
+  const [chargeStandingsError, setChargeStandingsError] = useState<string | null>(null)
   // The People records linked to a login (the live pass): the team labor names a person by their People record, so a
   // standing set on the login reaches them through the link, not only when the two names happen to match.
   const [chargePersonLogins, setChargePersonLogins] = useState<Map<string, string>>(() => new Map())
@@ -425,20 +428,34 @@ export default function Jobs() {
         if (on) setChargesRateCard(card)
       })
       .catch((e: unknown) => console.warn('Job Summary: the rate card could not be read', e))
+    // The columns the lookups need, never `*` (v2.6484). A read that fails keeps the standings unread: every row's two
+    // cells stay a dash with the reason, since an empty list would price every day at nothing and name everyone as nobody.
+    setChargeStandingsError(null)
     void supabase
       .from('users')
-      .select('*')
-      .then(({ data }) => {
-        if (!on || !data) return
-        setChargeUsers((data as unknown as Array<{ id: string; name: string | null; charge_standing?: unknown }>).map((u) => ({ id: u.id, name: u.name ?? null, charge_standing: u.charge_standing })))
+      .select('id, name, charge_standing, archived_at')
+      .then(({ data, error }) => {
+        if (!on) return
+        if (error) {
+          console.warn('Job Summary: the standings could not be read', error)
+          setChargeStandingsError(formatErrorMessage(error))
+          return
+        }
+        setChargeUsers(((data ?? []) as unknown as Array<{ id: string; name: string | null; charge_standing?: unknown }>).map((u) => ({ id: u.id, name: u.name ?? null, charge_standing: u.charge_standing })))
       })
     void supabase
       .from('people')
       .select('id, account_user_id')
       .not('account_user_id', 'is', null)
-      .then(({ data }) => {
-        if (!on || !data) return
-        setChargePersonLogins(new Map((data as unknown as Array<{ id: string; account_user_id: string }>).map((p) => [p.id, p.account_user_id])))
+      .then(({ data, error }) => {
+        if (!on) return
+        if (error) {
+          // Without the links a person whose login is spelled another way counts as nobody, so the standings are unread too.
+          console.warn('Job Summary: the People links could not be read', error)
+          setChargeStandingsError(formatErrorMessage(error))
+          return
+        }
+        setChargePersonLogins(new Map(((data ?? []) as unknown as Array<{ id: string; account_user_id: string }>).map((p) => [p.id, p.account_user_id])))
       })
     return () => {
       on = false
@@ -1499,6 +1516,7 @@ export default function Jobs() {
                   job: job as unknown as { charge_rule?: unknown; charge_shape?: unknown; hourly_charge_rate?: unknown; materials_markup_pct?: unknown },
                   adjustments: chargeAdjustmentsByJobId.get(job.id) ?? [],
                   contractUsd: totalBill,
+                  standingsUnread: chargeStandingsError,
                 })
                 return ledgerSummaryCell(c)
               })()
@@ -1547,6 +1565,7 @@ export default function Jobs() {
     chargesRateCard,
     chargeAdjustmentsByJobId,
     chargeUsers,
+    chargeStandingsError,
     chargePersonLogins,
     users,
   ])

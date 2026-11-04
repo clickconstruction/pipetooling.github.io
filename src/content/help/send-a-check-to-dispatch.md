@@ -2,7 +2,7 @@
 title: send a check to Dispatch
 category: Field Work
 roles: helpers, subcontractor, master_technician, superintendent, primary
-keywords: stage checklist, send to dispatch, with dispatch, can't do it, need a part, need a decision, not on this job, dispatch inbox, crew, check, question, office
+keywords: stage checklist, send to dispatch, with dispatch, can't do it, need a part, need a decision, not on this job, dispatch inbox, crew, check, question, office, reply, closes itself
 where: /dashboard
 order: 13
 ---
@@ -54,6 +54,20 @@ The row now wears a chip like *With Dispatch · 2 min · need a part*. The chip 
 
 One check goes to Dispatch once. If someone already sent it, the row wears the chip and the press is gone. The sheet says *Already with Dispatch* if two phones send at the same moment.
 
+## Read the reply
+
+When Dispatch replies, your phone gets a push. The reply also sits under the row on the sheet.
+
+:::example Under the row
+{{chip:yellow|With Dispatch · 14 min · need a part}}
+
+*Dispatch: "Hub pours Thursday. Press Not here for now." · Jo · 2 min ago*
+:::
+
+The request closes itself once the check is settled. Pick **Yes**, **No** or **Not here** and the chip goes. A skip on this job or a take off closes it too. The closed request says how. For example *Answered on the sheet by Luis Ortega · Yes*. Nobody has to close it by hand.
+
 ## What Dispatch does
 
 Dispatch reads the check in their inbox with a *Stage check* tag. A **Can't do it** check sits at the top. A red line over it says how long it has waited. Dispatch presses **Open the job** to see the job. Dispatch presses **Open the check** to open the same sheet with your row open. There Dispatch answers it, adds a note, skips it on this job or takes it off. The guide [fill a stage checklist on the phone](/help/fill-a-stage-checklist-on-the-phone) has the sheet's steps.
+
+Dispatch presses the row to open a window. The window shows the same card you saw and your words. There Dispatch presses **Reply**, or **Reply and close** to end the request with their words. **Lower priority** takes a **Can't do it** check off the top of their list. **Not now** closes the window and leaves the check as it was. The guide [answer a check the crew sent](/help/answer-a-check-the-crew-sent) has their side.

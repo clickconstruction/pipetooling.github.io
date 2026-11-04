@@ -2,15 +2,16 @@
 name: "Combine: every row that goes with the source job, sorted"
 number: 252
 group: gated
-status: PR 1 built 2026-11-02 (v2.6423, the move, merge and let-go rows that are not money or legal); PR 2 built 2026-11-03 (v2.6458, the money and legal rows, on the owner's word); v2.6460 names a set-aside Lien desk draft on the target's activity; left are the six soft job pointers under *Also noted*
+status: PR 1 built 2026-11-02 (v2.6423, the move, merge and let-go rows that are not money or legal); PR 2 built 2026-11-03 (v2.6458, the money and legal rows, on the owner's word); v2.6460 names a set-aside Lien desk draft on the target's activity; PR 3 built 2026-11-04 (v2.6492, the fourteen ON DELETE SET NULL job links, the six soft pointers and #254's two Charges tables); left: the push, then a live ZZ combine
 mockup: not required — a database rule and a guide section, no screen changes
 summary: >
   A job combine moved a named list of tables and deleted the source row, and ON DELETE CASCADE took every other row
   that named the job: 52 tables on prod's catalog on 2026-11-02, 31 of them with rows, job_activity_events about
   13,700. The guide said everything real moves. This card sorts every one of them into move, merge or let go with its
   reason. v2.6423 did the rows that are not money or legal; v2.6458 did the money and legal rows on the owner's word
-  (bills and payments keep the billing guard). Six tables that name a job with no foreign key are left.
-next: A third small migration for the six tables under *Also noted* that name a job in a plain uuid column: a rule and a bed row each (the AR cases and the rating move; the notices, offers and schedule events are history that moves too, or is let go with a reason), then retire the card.
+  (bills and payments keep the billing guard). v2.6492 moved the fourteen ON DELETE SET NULL job links the key-based read
+  had missed, the six plain-uuid pointers and the two Charges tables made after the read.
+next: After the push, a ZZ combine on the dev server that carries a text, a mail piece and a sub sheet to the target; then retire the card (the whole sort lives in docs/recent-features/v2.6492.md).
 size: S
 blocker: none
 opinion: build — the rules are the ones the tables' own keys ask for; a live Lien desk item on both jobs stays *the source's comes over voided* (the owner, 2026-11-03, over a hold that would have had no door), named on the target's activity since v2.6460
@@ -36,7 +37,9 @@ CASCADE` in `supabase/migrations/` (71 foreign keys on 2026-11-02, 90 tables nam
 types once the `SET NULL` ones are counted), less the tables the RPC already moved. The RPC's body is in
 `supabase/migrations/20261103054522_combine_moves_every_row.sql`; before it 20261102143000 (v2.6350), 20261031020000
 (v2.6226), 20260929123000 (v2.4139). Read the catalog again before PR 2: `SELECT conrelid::regclass FROM pg_constraint
-WHERE confrelid = 'public.jobs_ledger'::regclass AND confdeltype = 'c'`.
+WHERE confrelid = 'public.jobs_ledger'::regclass AND confdeltype = 'c'`. That read missed the `ON DELETE SET NULL` keys
+(`confdeltype = 'n'`), which no cascade reaches and which leave the row standing with no job; PR 3 read them from prod's
+catalog on 2026-11-04, with every uuid column named like a job that has no key at all.
 
 ## Move (a plain change of job) — shipped in v2.6423
 
@@ -110,6 +113,40 @@ line per table, and the bed holds a row each. Bills and payments keep the guard.
 | `job_contracts` | Agreements went, with their signed PDFs and the customer's links. One live (draft or sent) per job. | Move; both jobs with an open agreement: `agreement_collision`, *Both jobs hold an open agreement. Void one of them, then combine.* |
 | `job_pay_applications` | AIA applications went. One live number per job. | Move, the saved stamp kept (`job_pay_applications_stamp` restated with a gate for a job-only change); both jobs with live applications: `pay_application_collision`, *Both jobs hold pay applications. Delete one job's applications, then combine.* |
 
+## The job links the delete set to null, and the soft pointers — shipped in v2.6492 (PR 3)
+
+The docs pass of 2026-11-04 (#6998) found the sort above had come from `ON DELETE CASCADE` keys alone: fourteen
+`ON DELETE SET NULL` links to `jobs_ledger` and the six plain-uuid pointers once listed under *Also noted* kept the
+source's id after a combine, so the row stood with no job on it. A text or an email fell to the person while the guide
+said everything real moves; a sub sheet read unlinked; a certified envelope lost its job.
+`20261104130000_combine_moves_soft_job_links.sql` moves each in the same subtransaction, before the delete. A plain
+move each: none has a key that asks for a merge. Already moved before this PR: `estimates` (one per job),
+`clock_sessions`, `dispatch_requests`, `estimator_requests`, the `salary_work_schedule_*` pair and `plan_sets`.
+
+| Table | Rule | Why |
+|---|---|---|
+| `messages.jobs_ledger_id` | Move | Every text, call, email, team note and event tied to the source. A line's job is its own column (`messages_one_job`); the contact links (`contact_jobs`) already merged. |
+| `nudge_offers.jobs_ledger_id` | Move | A prepared text about the job (Today's sends), open or sent; no key. |
+| `mail_pieces.job_id` | Move | The certified envelopes sent for the job and their USPS trail. `mail_pieces_touch` stamps `updated_at` only. |
+| `people_labor_jobs.job_ledger_id` | Move | The sub sheet is on the target, and its `job_number` text, which every rollup still matches by, is re-read from the target (`left(hcp or click number, 10)`); the source's number stands on the target as a prior number. A write setting both at once is one `people_labor_jobs_link_job_ledger` leaves alone; a target with no number keeps the text. |
+| `development_history_entries.job_id` | Move | A kept History line about the job. |
+| `file_index.jobs_ledger_id` | Move | The index rows whose home was the job; the sweep keeps them current. |
+| `bid_submittals.job_ledger_id` | Move | The submittal package made for the job; its key is the bid and the revision. |
+| `lien_owner_record_requests.seed_job_id`, `.job_ids` | Move | The job the window opened on, and the source rewritten in place among the jobs the packet covered, once. The stamp trigger then reads the person combining. |
+| `person_offsets.job_id` | Move | A partner's profit-share posting names the job the share came from. |
+| `partnerships.farm_job_ledger_id` | Move | One farm job per partnership. |
+| `mercury_transaction_ar_income_labels.job_id` | Move | Why a deposit's Income label was set. Its payment is the billing guard's; under `p_allow_billed` the payment goes with the source while the label keeps naming the job that stands. |
+| `team_prospect_trial_verdicts.job_ledger_id` | Move | A try-out verdict's day job; its key is the prospect, the leader and the day. |
+| `gc_projects.billing_job_id` | Move | A GC project's billing job, under `gc.combine_write` (the owner-terms guard refuses a person outside the money team). |
+| `gc_trade_packages.job_ledger_id` | Move | The job a trade our own crew runs on, under the existing `gc.crew_job_write` flag. |
+| `gc_project_money.general_conditions_job_id` | Move | The general conditions job; its policy is RLS, which the definer's write passes. |
+| `ar_stripe_cases.job_id`, `ar_unbanked_check_cases.job_id` | Move | A dispute or a returned check on the job's payment; the payment itself is the billing guard's. |
+| `customer_ratings.job_id` | Move | The job the rating ask was about. |
+| `job_watcher_notices.job_id` | Move | The watcher emails that went out; the hour's fold then reads the source's too, which is right, since the watcher heard. |
+| `schedule_block_events.job_id` | Move | The schedule's change log; readers join by job. |
+| `job_charge_adjustments.job_id`, `job_charge_statements.job_ledger_id` | Move | Punch list #254's tables, made 2026-11-03 after the card's catalog read, on the cascade. A statement of charges is a numbered paper (`SC-<job number>-<n>`) like an hours statement; an adjustment is the office's word on a day or a line. Two day adjustments for one day after a combine read as the Charges window reads two on one job today, a question for #254 if it comes up; both tables were empty on prod on 2026-11-04. |
+| `job_status_events.source_job_id`, `*.migrated_from_job_id` (four bid tables) | Let go | By design: each names the job a move came from, and the move to a bid deletes its job, so a combine never meets a live one. |
+
 ## Also noted
 
 Foreign keys `ON DELETE SET NULL` were not sorted: `messages.jobs_ledger_id`, `mail_pieces.job_id`, `people_labor_jobs.job_ledger_id`, `development_history_entries.job_id`, `file_index.jobs_ledger_id`, `bid_submittals.job_ledger_id`, `lien_owner_record_requests.seed_job_id` and others lose their job on a combine (found in the docs pass after #6888; the Messages lines first, since the guide says everything real moves).
@@ -117,11 +154,13 @@ Foreign keys `ON DELETE SET NULL` were not sorted: `messages.jobs_ledger_id`, `m
 - A split leaves a work order on the old job while its stage window moves with the line (`step_commitments.stage_window_id` then points across jobs). The split moved no work orders before either; a question for the Work Orders tab, not this card.
 - `job_photo_notes.fixture_id` names a line but the split does not carry the photo with the line; #244 shipped the same day and may want to.
 - Deleting a job outright, or moving its costs to a bid (`migrate_job_ledger_costs_to_bid_and_delete`), still takes every row here; the bid has nowhere for most of them.
-- Six tables name a job in a plain uuid column with no foreign key, so no cascade reaches them and this PR's list (read by foreign key) left them out: `ar_stripe_cases.job_id`, `ar_unbanked_check_cases.job_id`, `customer_ratings.job_id`, `job_watcher_notices.job_id`, `nudge_offers.jobs_ledger_id`, `schedule_block_events.job_id`. After a combine each keeps the source's id, which no job answers to. The AR cases and the rating look like moves; the notices, the offers and the schedule events are history that a reader joins by job. A follow-up gives each its rule and a bed row.
+- A new table that names a job joins the rules above through the bed: the catalog read under *How the list was read* finds a cascade key, `confdeltype = 'n'` a SET NULL one, and a plain uuid column named like a job is found only by looking. The two Charges tables (#254) were made the day after PR 1's read and went on the cascade until v2.6492.
 
 ## How to verify
 
 The bed `scripts/pgtest-combine-rows.sh` (`supabase/tests/combine_rows/20_scenario.sql`) runs in CI on a PR that
 touches a migration and plays every rule above on made-up jobs; read the `ok:` lines. Live, on the dev server as the
-dev: two ZZ Test jobs with a place, a container, a watcher and a plan set each, Pipeline → Combine / Separate… →
-Combine, then the target's Job window shows the source's history, materials on site and plans. Delete the ZZ rows after.
+dev: two ZZ Test jobs with a place, a container, a watcher and a plan set each, a text on a ZZ contact tied to the
+source, a sub sheet on it and a mail piece (or a Lien desk send), Pipeline → Combine / Separate… → Combine, then the
+target's Job window shows the source's history, materials on site and plans, its Messages thread shows the text on the
+target, and Subs → Work lists the sheet under the target's number. Delete the ZZ rows after.

@@ -17,6 +17,7 @@ import {
   type DispatchBadgeCounts,
 } from '../lib/dispatchInboxBadge'
 import { notifyDispatchRequestClosure } from '../lib/dispatchRequestClosure'
+import { isStageCheckRequest } from '../lib/jobs/stageCheckDispatch'
 import { sortDispatchInboxRows } from '../lib/dispatchInboxAging'
 import {
   jobIdsForRequestSweep,
@@ -474,10 +475,23 @@ export function useDispatchInbox() {
         }
       }
 
+      // A note on an open stage check is Dispatch's reply to the crew (punch list #245 PR 2b): the sender hears it as a
+      // push and reads it under the row on the sheet. A note on any other open request stays the office's own.
+      const replied = !wasClosed && !!row && isStageCheckRequest(row)
+      if (replied && row) {
+        void notifyDispatchRequestClosure({
+          request: { id: row.id, from_user_id: row.from_user_id, title: row.title },
+          note: body,
+          mode: 'replied',
+          userId: authUser.id,
+          role,
+        })
+      }
+
       setDispatchNoteDraft('')
       await loadDispatchNotesForRequest(requestId)
       loadDispatchRequests()
-      showToast(wasClosed ? 'Note added and task reopened.' : 'Note added.', 'success')
+      showToast(wasClosed ? 'Note added and task reopened.' : replied ? 'Reply sent. The crew reads it under the row.' : 'Note added.', 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Failed to add note'), 'error')
     } finally {

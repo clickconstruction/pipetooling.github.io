@@ -4,7 +4,8 @@
  * open row, the sheet on top with the context card, the chip required and the words required only under Something else,
  * the row the send writes, the *With Dispatch* chip on the row after, a check already with Dispatch wearing the chip and
  * no press, the database's refusal read as already sent, and the strip opening a stage's sheet on a check when the inbox
- * asks. Made-up questions and a made-up job.
+ * asks. PR 2b: Dispatch's newest reply under the crew's row, and a pick on a row with Dispatch reading the request again
+ * and pushing the sender once it closed itself. Made-up questions and a made-up job.
  */
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -32,7 +33,7 @@ const Q: StageChecklistQuestion[] = [
   { id: 't2', kind: 'trim_set', order: 2, words: 'Are the cleanouts capped?', asksPhoto: true },
   { id: 't3', kind: 'trim_set', order: 3, words: 'Is the pan drain run to the hub?', asksPhoto: false },
 ]
-const SENT_T3: OpenStageCheck = { id: 'r-old', fixtureId: 'f3', questionId: 't3', title: 'Trim Set · “Is the pan drain run to the hub?” · need a part: caps · JP1088 ZZ TEST', createdAt: new Date(Date.now() - 12 * 60_000).toISOString(), priority: 'normal' }
+const SENT_T3: OpenStageCheck = { id: 'r-old', fixtureId: 'f3', questionId: 't3', title: 'Trim Set · “Is the pan drain run to the hub?” · need a part: caps · JP1088 ZZ TEST', createdAt: new Date(Date.now() - 12 * 60_000).toISOString(), priority: 'normal', fromUserId: 'u-other', reply: null }
 
 function fakeDispatch(over: Partial<StageCheckDispatchIo> = {}, open: OpenStageCheck[] = []): StageCheckDispatchIo {
   return {
@@ -117,7 +118,7 @@ describe('Send to Dispatch on the open row', () => {
       development_id: null,
       reference_summary: 'JP1088 · ZZ TEST Riders Walk · 12925 FM 20, Kingsbury',
       pending_action: 'stage_check',
-      pending_payload: { stage_check: { fixture_id: 'f3', question_id: 't1', reason: 'need_part', stage_name: 'Trim Set' } },
+      pending_payload: { stage_check: { fixture_id: 'f3', question_id: 't1', reason: 'need_part', stage_name: 'Trim Set', words: 'The caps are not on the truck.' } },
       priority: 'normal',
       fixture_id: 'f3',
       checklist_question_id: 't1',
@@ -155,6 +156,34 @@ describe('Send to Dispatch on the open row', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send to Dispatch' }))
     expect(await screen.findByText('The check was not sent. Already with Dispatch. Dispatch has it.')).toBeTruthy()
     expect(sendSheet()).toBeTruthy()
+  })
+
+  it("draws Dispatch's reply under the crew's row, on the statement and on the open row", async () => {
+    const replied: OpenStageCheck = { ...SENT_T3, reply: { body: 'Hub pours Thursday. Press Not here for now.', by: 'Jo Office', at: new Date(Date.now() - 2 * 60_000).toISOString() } }
+    renderWithProviders(<JobStageChecklistStrip jobId={JOB} io={fakeIo(fakeDispatch({}, [replied]))} />)
+    await openSheet()
+    const statement = await screen.findByRole('button', { name: 'Is the pan drain run to the hub?: not answered yet. Open to answer.' })
+    expect(within(statement).getByText('Dispatch: “Hub pours Thursday. Press Not here for now.” · Jo · 2 min ago')).toBeTruthy()
+    fireEvent.click(statement)
+    expect(openRow().querySelector('[data-checklist-dispatch-reply="t3"]')?.textContent).toBe('Dispatch: “Hub pours Thursday. Press Not here for now.” · Jo · 2 min ago')
+  })
+
+  it('reads the request again after a pick and pushes the sender once it closed itself, never when the sender settled it', async () => {
+    const open = vi.fn(async () => [SENT_T3])
+    const settled = vi.fn(async () => undefined)
+    const io = fakeIo(fakeDispatch({ open, settled }, []))
+    const answer: JobAnswer = { id: 'a3', fixtureId: 'f3', questionId: 't3', pick: 'not_here', note: '', photo: null, answeredBy: 'Luis Ortega', answeredAt: '2026-11-04T16:00:00Z', storagePath: null, reportPhotoId: null }
+    io.pick = vi.fn(async () => answer)
+    renderWithProviders(<JobStageChecklistStrip jobId={JOB} io={io} />)
+    await openSheet()
+    fireEvent.click(await screen.findByRole('button', { name: 'Is the pan drain run to the hub?: not answered yet. Open to answer.' }))
+    expect(within(openRow()).getByText('With Dispatch · 12 min · need a part')).toBeTruthy()
+    // The request is gone from the next read: the chip goes, and the sender is pushed since someone else settled it.
+    open.mockResolvedValueOnce([])
+    fireEvent.click(within(openRow()).getByRole('button', { name: 'Not here' }))
+    await waitFor(() => expect(settled).toHaveBeenCalledTimes(1))
+    expect(settled).toHaveBeenCalledWith(SENT_T3, expect.objectContaining({ userId: 'u-luis' }))
+    await waitFor(() => expect(document.querySelector('[data-checklist-with-dispatch="t3"]')).toBeNull())
   })
 
   it('draws no press when the io has no dispatch side', async () => {

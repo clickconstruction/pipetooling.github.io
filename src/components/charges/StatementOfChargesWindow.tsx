@@ -30,6 +30,8 @@ type Props = {
   onClose: () => void
   onSaved?: (row: ChargeStatementRow) => void
   zIndex?: number
+  /** The viewer's role (v2.6484): a dev gets the callout's doors to the desks and the list; anyone else the words to ask one. */
+  viewerRole?: string | null
 }
 
 const field: CSSProperties = { padding: '0.35rem 0.5rem', fontSize: '0.875rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit', width: '100%', boxSizing: 'border-box' }
@@ -45,7 +47,7 @@ function longDate(ymd: string): string {
   return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 }
 
-export default function StatementOfChargesWindow({ job, existing, preparedBy, onClose, onSaved, zIndex = 1030 }: Props) {
+export default function StatementOfChargesWindow({ job, existing, preparedBy, onClose, onSaved, zIndex = 1030, viewerRole = null }: Props) {
   const { showToast } = useToastContext()
   const narrow = useMatchMedia('(max-width: 860px)')
   const titleId = useId()
@@ -221,7 +223,7 @@ export default function StatementOfChargesWindow({ job, existing, preparedBy, on
                 <p style={quiet}>
                   {crewSpanWords(charges.totals)}; {charges.materials.totals.lines} material {charges.materials.totals.lines === 1 ? 'line' : 'lines'}, cost <Money amount={charges.materials.totals.cost} />.
                 </p>
-                {frozen ? null : <UnchargedCallout people={charges.uncharged} unpricedDays={charges.totals.unpricedDays} onNavigate={onClose} margin="0.2rem 0" />}
+                {frozen ? null : <UnchargedCallout people={charges.uncharged} unchargedDays={charges.totals.unchargedDays} role={viewerRole} onNavigate={onClose} margin="0.2rem 0" />}
                 {(frozen ? charges.notes : officeNotes(charges.notes, charges.uncharged)).map((n) => (
                   <p key={n} style={{ ...quiet, color: 'var(--text-amber-800)', fontWeight: 600 }}>
                     {n}
