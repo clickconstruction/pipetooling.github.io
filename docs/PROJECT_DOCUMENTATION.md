@@ -937,6 +937,10 @@ WHERE proname IN (
 - **Trigger**: `on_auth_user_deleted` — fires on `auth.users` DELETE (v2.6511)
 - **Purpose**: Sets `public.users.login_attached_at` to NULL; the users row and every row pointing at it stay. Before this the cascade through `users_id_fkey` deleted the row and, through `clock_sessions_user_id_fkey`, the person's days
 
+#### `public.add_worker(p_name, p_kind, p_email, p_phone, p_notes, p_start_date)`
+- **Purpose**: Adds a person as a users row with no login (`login_attached_at` NULL, role from the kind) and the People record linked to it, in one transaction, for the office roles (`is_office_staff()`); answers `{ user_id, person_id }` (v2.6514, punch list #260, migration `20261104200000_add_worker.sql`). Every "add a person" in the app calls it (People → Users → Add to roster, Hire with no email, the Hiring board, the workflow step form, the sub-sheet form, the work-order assembler, Banking's pickers)
+- **Refuses**: nobody signed in or a role outside the office (`42501`); a blank name or a kind outside the roster kinds, `dev` included (`22023`); an address another users row holds (`23505`, naming who holds it)
+
 #### `public.sync_last_sign_in_at()`
 - **Trigger**: `on_auth_user_signed_in` — fires on `auth.users` UPDATE OF `last_sign_in_at`
 - **Purpose**: Copies `auth.users.last_sign_in_at` (ground truth for every login mechanism: password, magic link, invite acceptance, imitate) into `public.users.last_sign_in_at`, which the Settings "Last login" column displays (migration `20260703160000_sync_last_sign_in_from_auth.sql`)

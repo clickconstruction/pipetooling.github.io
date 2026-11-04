@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fileSentCopy } from '../../lib/sent/sentCopiesIo'
 import { supabase } from '../../lib/supabase'
+import { addWorker } from '../../lib/people/addWorker'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -423,17 +424,17 @@ export function WorkOrderAssemblerModal({
     const name = addSub.name.trim()
     if (!name || !authUserId) return
     setSaving(true)
-    const { data, error } = await supabase
-      .from('people')
-      .insert({ master_user_id: authUserId, kind: 'sub', name, email: addSub.email.trim() || null, phone: addSub.phone.trim() || null })
-      .select('id, name, email, notes')
-      .single()
-    setSaving(false)
-    if (error) {
-      showToast(`Could not add the sub: ${formatErrorMessage(error)}`, 'error')
+    // Punch list #260 (v2.6514): the sub is a users row with no login and the People record linked to it (`add_worker`).
+    let r: Roster
+    try {
+      const added = await addWorker(supabase, { name, kind: 'sub', email: addSub.email, phone: addSub.phone })
+      r = { id: added.personId, name, email: addSub.email.trim() || null, notes: null, end_date: null }
+    } catch (e) {
+      setSaving(false)
+      showToast(`Could not add the sub: ${formatErrorMessage(e)}`, 'error')
       return
     }
-    const r = data as Roster
+    setSaving(false)
     setRoster((prev) => [...prev, r].sort((a, b) => a.name.localeCompare(b.name)))
     setPersonId(r.id)
     setAddSubOpen(false)

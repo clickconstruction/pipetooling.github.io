@@ -18,6 +18,8 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
+import { addWorker } from '../../lib/people/addWorker'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { analyzeCandidates } from '../../lib/prospects/candidateHygiene'
@@ -1280,19 +1282,15 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
     if (!hireTarget || busy) return
     setBusy(true)
     setModalError(null)
-    const { error } = await supabase.from('people').insert({
-      master_user_id: authUserId,
-      kind: hireKind,
-      name: hireTarget.name,
-      phone: hireTarget.phone_number,
-      email: hireTarget.email,
-      notes: 'Hired from Team Prospects',
-    })
-    setBusy(false)
-    if (error) {
-      setModalError(error.message)
+    // Punch list #260 (v2.6514): the hire is a users row with no login and the People record linked to it (`add_worker`).
+    try {
+      await addWorker(supabase, { name: hireTarget.name, kind: hireKind, phone: hireTarget.phone_number, email: hireTarget.email, notes: 'Hired from Team Prospects' })
+    } catch (e) {
+      setBusy(false)
+      setModalError(formatErrorMessage(e, 'The hire was not added to the roster.'))
       return
     }
+    setBusy(false)
     showToast(`${hireTarget.name} added to the roster — see People → Users`, 'success')
     setHireTarget(null)
   }

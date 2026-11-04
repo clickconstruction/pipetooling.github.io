@@ -18,6 +18,7 @@ import type { PersonKind } from '../../hooks/usePeopleRoster'
 import { KIND_LABELS, KIND_TO_USER_ROLE } from '../../components/people/peopleUsersTabShared'
 import { syncSalaryClockSessionsForUserDay, denverWorkDateToday } from '../salaryScheduleSync'
 import { materializePacketForPerson, type PacketPersonDoc, type PacketTemplateDoc } from './materializePacket'
+import { addWorker } from './addWorker'
 import { passwordProblem } from './accountWrites'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -72,14 +73,13 @@ export function hirePlan(input: HireInput, caps: HireCaps): { steps: HireStep[];
   if (paid && caps.canAccessPay && (input.hourlyWage == null || !(input.hourlyWage > 0))) {
     problems.push(input.isSalary ? 'A salaried hire needs the hourly rate the flat 8-hour day is priced at.' : 'An hourly wage is required — a pay row with no wage cannot be paid.')
   }
-  if (input.isSalary && !input.invite) problems.push('A salaried hire needs a login: the workday template belongs to the account.')
   if (input.isSalary && !/^\d{2}:\d{2}$/.test(input.workdayStart)) problems.push('Pick the workday start time.')
 
   const steps: HireStep[] = []
   const kindLabel = KIND_LABELS[input.kind]
   if (input.invite && input.signInBy === 'password') steps.push({ id: 'account', label: 'Login', detail: `${email || 'their email'} as ${kindLabel}, with the password you set — the login and the roster row, linked` })
   else if (input.invite) steps.push({ id: 'account', label: 'Invite', detail: `${email || 'their email'} as ${kindLabel} — the login and the roster row, linked` })
-  else steps.push({ id: 'roster', label: 'Roster row', detail: `${name || 'the person'} as ${kindLabel}, starting ${input.startDate}` })
+  else steps.push({ id: 'roster', label: 'Person', detail: `${name || 'the person'} as ${kindLabel}, starting ${input.startDate} — on the roster with no login; a login can be attached later` })
   if (paid && caps.canAccessPay) {
     steps.push({
       id: 'pay',
@@ -87,7 +87,7 @@ export function hirePlan(input: HireInput, caps: HireCaps): { steps: HireStep[];
       detail: input.isSalary ? `Salaried at $${(input.hourlyWage ?? 0).toFixed(2)}/h (the flat 8-hour day)` : `$${(input.hourlyWage ?? 0).toFixed(2)}/h`,
     })
   }
-  if (input.isSalary && input.invite) steps.push({ id: 'workday', label: 'Workday', detail: `8 hours from ${input.workdayStart}, weekdays — sessions appear on the clock strip by themselves` })
+  if (input.isSalary) steps.push({ id: 'workday', label: 'Workday', detail: `8 hours from ${input.workdayStart}, weekdays — sessions appear on the clock strip by themselves` })
   if (input.packetTemplateId && caps.canAccessContracts) steps.push({ id: 'packet', label: 'Paperwork', detail: 'The packet is assigned; send each document from Contracts' })
   return { steps, problems }
 }
@@ -155,7 +155,18 @@ export async function createHireLogin(
   }
 }
 
-/** The roster row on its own (no login), or the one a pre-v2.3701 invite did not make. */
+/**
+ * A hire with no email (punch list #260, v2.6514): the users row with no login and the People record linked to it, in
+ * one transaction (`add_worker`), so the hire holds clock sessions, a Charged as and a workday template from day one.
+ */
+export async function addHireWithoutLogin(
+  supabase: Client,
+  args: { kind: PersonKind; name: string; email: string | null; startDate: string | null },
+): Promise<{ userId: string; personId: string }> {
+  return addWorker(supabase, { name: args.name, kind: args.kind, email: args.email, startDate: args.startDate })
+}
+
+/** The roster row a pre-v2.3701 invite did not make, linked to its login. */
 export async function createRosterRow(
   supabase: Client,
   args: { masterUserId: string; kind: PersonKind; name: string; email: string | null; accountUserId: string | null; startDate: string | null },

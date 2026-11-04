@@ -14,6 +14,8 @@ import { subPaymentMoveRefusal, subPaymentTraceLines } from '../../lib/jobs/subP
 import { isOnBench } from '../../lib/people/subBench'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { supabase } from '../../lib/supabase'
+import { addWorker } from '../../lib/people/addWorker'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -305,20 +307,11 @@ function JobsSubLaborFormModalInner(
       setSavingAddSubcontractor(false)
       return
     }
-    const { error: err } = await supabase
-      .from('people')
-      .insert({
-        master_user_id: authUserId,
-        kind: 'sub',
-        name: trimmedName,
-        email: newSubcontractor.email.trim() || null,
-        phone: newSubcontractor.phone.trim() || null,
-        notes: newSubcontractor.notes.trim() || null,
-      })
-      .select('name')
-      .single()
-    if (err) {
-      setAddSubcontractorError(err.message)
+    // Punch list #260 (v2.6514): the sub is a users row with no login and the People record linked to it (`add_worker`).
+    try {
+      await addWorker(supabase, { name: trimmedName, kind: 'sub', email: newSubcontractor.email, phone: newSubcontractor.phone, notes: newSubcontractor.notes })
+    } catch (e) {
+      setAddSubcontractorError(formatErrorMessage(e, 'The subcontractor was not added.'))
       setSavingAddSubcontractor(false)
       return
     }

@@ -86,7 +86,8 @@ CREATE TABLE public.people (
   kind text NOT NULL, name text NOT NULL, email text, phone text, notes text,
   created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now(), archived_at timestamptz,
   account_user_id uuid REFERENCES public.users(id) ON DELETE SET NULL,
-  start_date date, end_date date
+  start_date date, end_date date,
+  CONSTRAINT people_kind_check CHECK (kind = ANY (ARRAY['assistant','master_technician','sub','dev','estimator','primary','superintendent','helper','controller']))
 );
 CREATE TABLE public.jobs_ledger (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), billing_only boolean NOT NULL DEFAULT false);
 CREATE TABLE public.clock_sessions (
@@ -123,6 +124,12 @@ CREATE VIEW public.roster_people AS
 
 CREATE OR REPLACE FUNCTION public.is_dev() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
   SELECT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev') $$;
+CREATE OR REPLACE FUNCTION public.is_master_or_dev() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev','master_technician')) $$;
+CREATE OR REPLACE FUNCTION public.is_assistant() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('assistant','controller')) $$;
+CREATE OR REPLACE FUNCTION public.is_office_staff() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT public.is_master_or_dev() OR public.is_assistant() $$;
 CREATE POLICY "Devs can read all clock sessions" ON public.clock_sessions FOR SELECT USING (public.is_dev());
 GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;

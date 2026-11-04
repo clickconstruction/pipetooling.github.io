@@ -24,6 +24,8 @@ export type UsersTabRowItem = {
   /** Account rows only (v2.3702, the Account lens): training mode and the last sign-in. */
   read_only?: boolean | null
   last_sign_in_at?: string | null
+  /** Account rows only (punch list #260, v2.6514): when a sign-in was attached; null is a person with no login. */
+  login_attached_at?: string | null
 }
 
 export type UsersTabRowMenuAction = { key: string; label: string; onClick: () => void; disabled?: boolean; title?: string; danger?: boolean }
@@ -95,6 +97,8 @@ export function UsersTabRow({
   const [needsOpen, setNeedsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const isAccount = item.source === 'user'
+  /** Punch list #260 (v2.6514): a users row is a login only once a sign-in is attached. A row with `login_attached_at` null is a person with no login. */
+  const hasLogin = isAccount && item.login_attached_at != null
 
   useEffect(() => {
     if (!menuOpen) return
@@ -113,7 +117,7 @@ export function UsersTabRow({
   }, [menuOpen])
 
   const dotColor = rail.attention === 'red' ? '#dc2626' : rail.attention === 'amber' ? '#f59e0b' : '#22c55e'
-  const imitate = isDev && isAccount && item.email
+  const imitate = isDev && hasLogin && item.email
 
   async function runImitate(redirect: string) {
     setLoggingInAsId(item.id)
@@ -169,7 +173,7 @@ export function UsersTabRow({
         ) : null}
         <span aria-hidden title={rail.reasons.join(' · ') || 'Nothing needs you'} style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
         <PersonNameDoor name={item.name} userId={isAccount ? item.id : null} personId={isAccount ? rail.personId : item.id} style={{ fontWeight: 600, color: 'var(--text-link)' }} />
-        {isAccount ? <Chip tone="gray">login</Chip> : <Chip tone="ghost" title="A roster row with no app account — their portal, paperwork and pay work without one">no login</Chip>}
+        {hasLogin ? <Chip tone="gray">login</Chip> : <Chip tone="ghost" title="A person with no sign-in — their hours, pay, portal and paperwork work without one; a login can be attached later">no login</Chip>}
         {/* A lens with columns (Account, Pay) says supervision in its own column or not at all. */}
         {isAccount && !cells && hasSupervisionSwitch(item.role) ? (
           item.needs_supervision === false ? (

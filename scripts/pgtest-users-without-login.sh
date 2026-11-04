@@ -20,7 +20,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55449}"
 NAME="pgtest-users-without-login"
 BED="supabase/tests/users_without_login"
-MIGRATIONS=(supabase/migrations/20261103030000_imported_clock_sessions.sql supabase/migrations/20261104190000_users_login_attached_at.sql)
+MIGRATIONS=(supabase/migrations/20261103030000_imported_clock_sessions.sql supabase/migrations/20261104190000_users_login_attached_at.sql supabase/migrations/20261104200000_add_worker.sql)
 TMP="$(mktemp -d)"
 
 command -v psql >/dev/null || { echo "psql not on PATH"; exit 2; }
@@ -49,7 +49,9 @@ echo "$out" | grep -E "PASSED|ERROR|FAILED|CONTEXT|WARNING|ok " || true
 for m in "${MIGRATIONS[@]}"; do "${PSQL[@]}" -f "$m" 2>&1 | grep -v "does not exist, skipping" || true; done
 # A second run must change nothing.
 "${PSQL[@]}" -f supabase/migrations/20261104190000_users_login_attached_at.sql 2>&1 | grep -v "does not exist, skipping\|already exists, skipping" || true
-out="$("${PSQL[@]}" -f "$BED/20_scenarios.sql" 2>&1)" || fail=1
-echo "$out" | grep -E "PASSED|ERROR|FAILED|CONTEXT|WARNING|ok " || true
+for s in "$BED"/[2-9]*_*.sql; do
+  out="$("${PSQL[@]}" -f "$s" 2>&1)" || fail=1
+  echo "$out" | grep -E "PASSED|ERROR|FAILED|CONTEXT|WARNING|ok " || true
+done
 [ "$fail" = 0 ] || { echo "users_without_login bed FAILED"; exit 1; }
 echo "bed ok"

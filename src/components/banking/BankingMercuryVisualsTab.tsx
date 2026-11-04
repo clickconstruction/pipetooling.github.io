@@ -4,6 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { bankingPersonKindTag, buildBankingAttributionOptions } from '../../lib/bankingAttributionOptions'
 import { BankingMercuryTxDetailModal, type TxDetailChange } from './BankingMercuryTxDetailModal'
 import { supabase } from '../../lib/supabase'
+import { addWorker } from '../../lib/people/addWorker'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { fetchAllRows } from '../../lib/supabasePaging'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -665,12 +666,9 @@ export function BankingMercuryVisualsTab() {
       const trimmed = name.trim()
       if (trimmed === '' || !user?.id) return null
       try {
-        const rows = await withSupabaseRetry(
-          async () => supabase.from('people').insert({ master_user_id: user.id, kind: 'sub', name: trimmed }).select('id, name').limit(1),
-          'visuals create person from picker',
-        )
-        const row = ((rows ?? []) as { id: string; name: string }[])[0]
-        if (!row) return null
+        // Punch list #260 (v2.6514): a users row with no login and the People record linked to it (`add_worker`).
+        const added = await addWorker(supabase, { name: trimmed, kind: 'sub' })
+        const row = { id: added.personId, name: trimmed }
         showToast(`Added ${row.name} to People (sub).`, 'success')
         return { value: `p:${row.id}`, label: `${row.name} · ${bankingPersonKindTag('sub')}` }
       } catch (e) {

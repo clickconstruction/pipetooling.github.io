@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { addWorker } from '../../lib/people/addWorker'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
 import type { Database } from '../../types/database'
 import { WORKFLOW_ASSIGNABLE_USER_ROLES, buildWorkflowUserRoster } from '../../lib/workflow/stepAssignment'
@@ -212,22 +214,14 @@ export function StepFormModal({
     }
 
     const offRosterKind: 'sub' | 'helper' = viewerRole === 'helpers' ? 'helper' : 'sub'
-    // Create new person (default to helper/sub for helpers/subcontractor field users)
-    const { data: created, error: err } = await supabase
-      .from('people')
-      .insert({
-        master_user_id: authUser.id,
-        kind: offRosterKind,
-        name: trimmedName,
-        email: newPerson.email.trim() || null,
-        phone: newPerson.phone.trim() || null,
-        notes: newPerson.notes.trim() || null,
-      })
-      .select('id, name')
-      .single()
-
-    if (err) {
-      setAddPersonError(err.message)
+    // Create new person (default to helper/sub for helpers/subcontractor field users). Punch list #260 (v2.6514): a users
+    // row with no login and the People record linked to it, in one transaction (`add_worker`).
+    let created: { id: string } | null = null
+    try {
+      const added = await addWorker(supabase, { name: trimmedName, kind: offRosterKind, email: newPerson.email, phone: newPerson.phone, notes: newPerson.notes })
+      created = { id: added.personId }
+    } catch (e) {
+      setAddPersonError(formatErrorMessage(e, 'The person was not added.'))
       setSavingPerson(false)
       return
     }
@@ -238,7 +232,7 @@ export function StepFormModal({
     // Set the assigned name to the new person
     setAssignedToName(trimmedName)
     setAssignedSearch(trimmedName)
-    setAssignedPersonId((created as { id: string } | null)?.id ?? null)
+    setAssignedPersonId(created?.id ?? null)
 
     // Close modal and reset form
     setShowAddPerson(false)

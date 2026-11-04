@@ -6,6 +6,7 @@ import { KINDS, KIND_LABELS } from './peopleUsersTabShared'
 import { denverWorkDateToday } from '../../lib/salaryScheduleSync'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
+  addHireWithoutLogin,
   assignPacketToPerson,
   createRosterRow,
   findNameCollision,
@@ -115,8 +116,9 @@ export function HirePersonModal({
         return { userId: r.userId, personId }
       }
       case 'roster': {
-        const personId = await createRosterRow(supabase, { masterUserId: authUserId, kind: input.kind, name, email: input.email || null, accountUserId: null, startDate: input.startDate })
-        return { ...ctx, personId }
+        // Punch list #260 (v2.6514): the person is a users row with no login and the People record linked to it.
+        const added = await addHireWithoutLogin(supabase, { kind: input.kind, name, email: input.email || null, startDate: input.startDate })
+        return { userId: added.userId, personId: added.personId }
       }
       case 'pay':
         await upsertPayConfigRow(supabase, { payName: name, personId: ctx.personId, hourlyWage: input.hourlyWage, officeWage: null, isSalary: input.isSalary, recordHoursButSalary: false })
