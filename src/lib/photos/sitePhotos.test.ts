@@ -14,6 +14,8 @@ import {
   photosLookWords,
   rowsByPerson,
   siteFilter,
+  siteSourceChips,
+  CREWS_PHOTOS_FOR_THE_OFFICE,
   sitePhotosEmptyWords,
   sitePhotosNarrowed,
   tileWords,
@@ -202,5 +204,30 @@ describe('narrowing and the empty words', () => {
     expect(rowsByPerson(rows, 'Malachi Reed').map((r) => r.id)).toEqual(['a', 'c'])
     expect(rowsByPerson(rows, null)).toHaveLength(3)
     expect(personChipWords('Malachi Reed')).toBe('Only Malachi’s photos')
+  })
+})
+
+describe('an estimator, on the overview door', () => {
+  const week = weekFromIso(Date.parse('2026-11-03T18:00:00Z'))
+  const some = censusOf([{ id: 'a', job_id: null, bid_id: B1, taken_at: '2026-11-02T13:42:00Z' }, { id: 'b', job_id: J1, bid_id: null, taken_at: '2026-10-20T13:42:00Z' }], week)
+  it('the card says the crews’ photos are for the office, with the count of what the estimator does see', () => {
+    expect(photosCardMeta(null, 'overview')).toBe(CREWS_PHOTOS_FOR_THE_OFFICE)
+    expect(photosCardMeta(censusOf([], week), 'overview')).toBe('the crews’ photos are for the office')
+    expect(photosCardMeta(some, 'overview')).toBe('2 sent by text or email · the crews’ photos are for the office')
+    expect(photosCardMeta(some)).toBe('2 on this site · 1 this week · newest first')
+  })
+  it('the strip reads the office’s with none to show, and counts the pictures when there are some', () => {
+    expect(photosLookWords(censusOf([], week), 'overview')).toEqual({ n: 0, count: 'the office reads them', need: null })
+    expect(photosLookWords(censusOf([], week))).toEqual({ n: 0, count: 'none yet', need: null })
+    expect(photosLookWords(some, 'overview')).toEqual({ n: 2, count: '2 · 1 this week', need: null })
+    expect(photosLookWords(null, 'overview')).toEqual({ n: 0, count: '…', need: null })
+  })
+  it('the empty words name what fills the row and where the crews’ photos are, with no door to the jobs', () => {
+    expect(sitePhotosEmptyWords(false, 'Gun Dog Trail', 'overview')).toEqual({ main: 'No picture sent by text or email on Gun Dog Trail yet.', tail: 'The crews’ photos on the jobs are for the office.' })
+    expect(sitePhotosEmptyWords(true, 'Gun Dog Trail', 'overview')).toEqual({ main: 'No picture matches.', tail: 'Pick another job.' })
+  })
+  it('no source chips for an estimator, whose only source is a text or an email; the office keeps the Photos tab’s', () => {
+    expect(siteSourceChips('estimator', 'overview')).toEqual([])
+    expect(siteSourceChips('assistant').map((c) => c.key)).toEqual(['all', 'report', 'box', 'checklist', 'job', 'message'])
   })
 })

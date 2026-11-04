@@ -107,6 +107,8 @@ describe('DevelopmentPage: the two doors', () => {
     expect(screen.queryByText('Bid, undecided')).toBeNull()
     expect(screen.getByTestId('money-office-line').textContent).toBe('The office reads the money on this site.')
     expect(screen.getByText('the office reads it')).toBeTruthy()
+    // The Photos look (punch list #247): the view hands an estimator only the pictures sent by text or email, and the card says where the crews' photos are.
+    expect(screen.getByText('the crews’ photos are for the office')).toBeTruthy()
     expect(screen.queryByText('GC Review · this development ›')).toBeNull()
     expect(screen.queryByText('Pair bids with jobs')).toBeNull()
     expect(screen.queryByText('Pipeline')).toBeNull()
