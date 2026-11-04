@@ -10,6 +10,7 @@ import { customerJourneys } from '../customerJourneys'
 import { CUSTOMER_SURFACES } from '../customerSurfaceRegistry'
 import { getZonedSettingsGroups } from '../settingsGroups'
 import { SETTINGS_HASH_ANCHOR_TO_TAB } from '../settingsDeepLink'
+import { jobsBillingAnchorToTab } from '../settings/jobsBillingGroups'
 import { DEFAULT_TERMS_AND_WARRANTY } from '../bidDocuments/coverLetter'
 import { DEFAULT_JOB_CONTRACT_TERMS_PLAIN } from '../jobs/jobContractDocument'
 import {
@@ -83,9 +84,11 @@ describe('the catalog agrees with the app', () => {
   it('the anchors it lands on are on the page', () => {
     const catalogs = readRepoFile('src/components/settings/SettingsCatalogsProspectsTab.tsx') ?? ''
     const coverLetter = readRepoFile('src/components/settings/BidCoverLetterDefaultsSettingsBlock.tsx') ?? ''
+    // Jobs & billing's cards carry their anchor from the kernel (punch list #261); the groups render smoke holds that each is on the page.
+    const jobsBilling = new Set(Object.keys(jobsBillingAnchorToTab()))
     for (const e of CUSTOMER_CONTRACT_CATALOG) {
       if (e.edit.kind !== 'settings' || e.edit.anchorId === e.edit.tabId) continue
-      expect(`${catalogs}\n${coverLetter}`.includes(`id="${e.edit.anchorId}"`), `${e.id} → #${e.edit.anchorId}`).toBe(true)
+      expect(jobsBilling.has(e.edit.anchorId) || `${catalogs}\n${coverLetter}`.includes(`id="${e.edit.anchorId}"`), `${e.id} → #${e.edit.anchorId}`).toBe(true)
     }
   })
 

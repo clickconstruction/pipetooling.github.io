@@ -35,7 +35,6 @@ describe('MaterialsMarkupSettingsBlock', () => {
   it('reads the percent and says what it means both ways', async () => {
     state.row = { key: 'materials_markup_pct_v1', value_num: 25 }
     renderWithProviders(<MaterialsMarkupSettingsBlock />)
-    fireEvent.click(screen.getByTestId('materials-markup-toggle'))
     await waitFor(() => expect((screen.getByTestId('materials-markup-input') as HTMLInputElement).value).toBe('25'))
     expect(screen.getByTestId('materials-markup-reads').textContent).toBe('25% over cost is a 20% margin on the sale. $1,000.00 of materials is charged at $1,250.00.')
     // Unchanged, the press is dead and says so; the same percent typed again changes nothing.
@@ -49,7 +48,6 @@ describe('MaterialsMarkupSettingsBlock', () => {
     state.row = null
     state.upserts = []
     renderWithProviders(<MaterialsMarkupSettingsBlock />)
-    fireEvent.click(screen.getByTestId('materials-markup-toggle'))
     await waitFor(() => expect(screen.getByTestId('materials-markup-reads').textContent).toBe('No markup is set. Materials on a charges paper are at cost until one is.'))
     fireEvent.change(screen.getByTestId('materials-markup-input'), { target: { value: '30' } })
     expect(screen.getByTestId('materials-markup-reads').textContent).toBe('30% over cost is a 23.1% margin on the sale. $1,000.00 of materials is charged at $1,300.00.')

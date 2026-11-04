@@ -17,11 +17,10 @@ const db = supabase as unknown as SupabaseClient
  * Uncollectible (a bill paid later leaves the list: the debt was recovered). CSV for the books.
  */
 export default function UncollectibleListSettingsBlock() {
-  const [open, setOpen] = useState(false)
   const [report, setReport] = useState<UncollectibleReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-    if (!open || report) return
+    if (report) return
     void (async () => {
       const { data, error: err } = await db
         .from('jobs_ledger')
@@ -48,24 +47,14 @@ export default function UncollectibleListSettingsBlock() {
       })
       setReport(buildUncollectibleReport(rows))
     })()
-  }, [open, report])
+  }, [report])
   const download = () => {
     if (!report) return
     saveBlobAs(new Blob([uncollectibleReportCsv(report)], { type: 'text/csv;charset=utf-8' }), `uncollectible-${todayYmdInAppTz()}.csv`)
   }
   return (
-    <div data-testid="uncollectible-list-block" style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.75rem 1rem', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }}
-      >
-        <span aria-hidden>{open ? '▼' : '▶'}</span>
-        <span style={{ fontWeight: 600 }}>Uncollectible: the accountant's list</span>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>the bills the office gave up on, by year, with a CSV for the books</span>
-      </button>
-      {open ? (
+    <div data-testid="uncollectible-list-block">
+      {(
         <div style={{ padding: '0 1rem 1rem' }}>
           {error ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>Could not read the list: {error}</p> : null}
           {!report && !error ? <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Reading…</p> : null}
@@ -112,7 +101,7 @@ export default function UncollectibleListSettingsBlock() {
             </>
           ) : null}
         </div>
-      ) : null}
+      )}
     </div>
   )
 }

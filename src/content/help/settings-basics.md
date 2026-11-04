@@ -2,7 +2,7 @@
 title: set up my profile and notifications
 category: Getting Started
 roles: all
-keywords: profile, name, phone, push notifications, pinned pages, tabs, my way, ask me first
+keywords: profile, name, phone, push notifications, pinned pages, tabs, my way, ask me first, jobs and billing, headings, jump strip
 order: 2
 ---
 Settings is where you manage your own profile and notifications. On a desktop, its pages sit in a list down the left side.
@@ -16,6 +16,20 @@ Devs also see **Dev doors** in the System group. The card there is called **Only
 Here's the whole flow in 20 seconds. The recording shows the gear menu → Settings, then the sections this guide walks through:
 
 {{gif:settings-basics.gif|Gear menu → Settings → Your account (profile, push notifications) → Your dashboard (report notifications)}}
+
+## Jobs & billing
+
+Office roles see **Jobs & billing** in the Company group. The tab holds the company's money and paper settings. The cards sit under six headings. Each heading names the question it answers. **Billing and money** holds what an hour, a part and a trip cost the customer. **The job's record** holds the stage checklists, photos and test reports. **What a bill says** holds the words that print on a bill. **Liens, collections and papers** holds the owners of record and the law firms. **Notices the app sends** holds the GC notices. **Repairs and old records** holds one-time fixes. You see only the headings your role has cards under.
+
+:::example Jobs & billing, as a master
+{{chip:blue|Money 3}} {{chip:gray|The job’s record 3}} {{chip:gray|Liens and papers 1}} {{chip:gray|Notices 2}}
+
+**Billing and money**
+▶ **Job Book** the Collect Payment line items
+▼ **GC jobs · pay by card** the Pay by card switch on certified bills
+:::
+
+A strip of the headings stays at the top while you scroll. Press a heading on the strip to jump to it. A card that is a form is folded to its name and one line. Press the name to open it. A card that is a switch stays open, so you read On or Off at a glance. A link to a card opens the card for you. Pick **Stage checklists** in the search box, and the tab opens with that card open.
 
 ## Your profile
 

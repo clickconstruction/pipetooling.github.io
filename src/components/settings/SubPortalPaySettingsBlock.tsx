@@ -72,8 +72,7 @@ export default function SubPortalPaySettingsBlock() {
   }
 
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
-      <div style={{ fontWeight: 600, fontSize: '1rem' }}>Sub portal · pay schedule</div>
+    <div style={{ padding: '1rem' }}>
       <p style={{ margin: '2px 0 0.8rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
         Shown on every sub&#8217;s Work &amp; Pay portal. The pay-run day drives &#8220;queued for the {day ? day[0]!.toUpperCase() + day.slice(1) : 'Friday'} pay run&#8221;;
         the explainer is the &#8220;How pay works here&#8221; band.

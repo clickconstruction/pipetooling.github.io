@@ -34,7 +34,6 @@ function ratesDirty(values: Record<string, string>, saved: Record<string, string
  */
 export default function RatesChargedByCrewSettingsBlock() {
   const { showToast } = useToastContext()
-  const [open, setOpen] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
@@ -85,8 +84,6 @@ export default function RatesChargedByCrewSettingsBlock() {
   // A link to #who-counts-as-what (the Charges window's callout) opens the card on the list.
   useEffect(() => {
     if (typeof window === 'undefined' || window.location.hash !== '#who-counts-as-what') return
-    setOpen(true)
-    void loadFromServer()
     const t = window.setTimeout(() => document.getElementById('who-counts-as-what')?.scrollIntoView({ block: 'start' }), 400)
     return () => window.clearTimeout(t)
   }, [loadFromServer])
@@ -94,25 +91,13 @@ export default function RatesChargedByCrewSettingsBlock() {
   const dirty = ratesDirty(values, saved)
   const dead = saving || !dirty
 
+  useEffect(() => {
+    void loadFromServer()
+  }, [loadFromServer])
+
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }} data-testid="rates-by-crew-block">
-      <button
-        type="button"
-        aria-expanded={open}
-        data-testid="rates-by-crew-toggle"
-        onClick={() => {
-          setOpen((prev) => {
-            const next = !prev
-            if (next) void loadFromServer()
-            return next
-          })
-        }}
-        style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0, padding: '1rem', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 600, textAlign: 'left', color: 'var(--text-strong)' }}
-      >
-        <span style={{ fontSize: '0.75rem' }}>{open ? '▼' : '▶'}</span>
-        Rates charged by crew
-      </button>
-      {open && (
+    <div data-testid="rates-by-crew-block">
+      {(
         <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
           <p style={{ margin: '0.75rem 0', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.45 }}>
             What the customer is charged for one hour of a crew’s time, by who was out that day. A person’s standing, set in Who counts as what below or on their desk, says whether

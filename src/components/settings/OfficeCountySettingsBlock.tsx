@@ -45,8 +45,7 @@ export default function OfficeCountySettingsBlock() {
   }
 
   return (
-    <form data-office-county-settings onSubmit={(e) => void save(e)} style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', display: 'grid', gap: 8 }}>
-      <span style={{ display: 'block', fontWeight: 600, fontSize: '1rem' }}>The office’s county for sworn statements</span>
+    <form data-office-county-settings onSubmit={(e) => void save(e)} style={{ padding: '1rem', display: 'grid', gap: 8 }}>
       <span style={{ display: 'block', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
         The Legal desk’s Swear a statement window starts its venue line on this county. It is where the notary watches the signing, not where the job is. The window still offers the property’s county and a blank for the notary.
       </span>

@@ -17,7 +17,6 @@ import {
 export default function PhysicalInvoiceFooterDevSettingsBlock() {
   const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
-  const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [standardText, setStandardText] = useState(() => getPhysicalInvoiceFooterSettingsDraft().standardBody)
   const [alternateText, setAlternateText] = useState(() => getPhysicalInvoiceFooterSettingsDraft().alternateBody)
@@ -55,7 +54,6 @@ export default function PhysicalInvoiceFooterDevSettingsBlock() {
   }, [])
 
   useEffect(() => {
-    if (!open) return
     let cancelled = false
     void (async () => {
       await fetchPhysicalInvoiceFooterPresetsFromAppSettings({ authRole })
@@ -65,7 +63,7 @@ export default function PhysicalInvoiceFooterDevSettingsBlock() {
     return () => {
       cancelled = true
     }
-  }, [open, authRole, reloadFromStorage])
+  }, [authRole, reloadFromStorage])
 
   const inputStyle = {
     width: '100%',
@@ -77,29 +75,8 @@ export default function PhysicalInvoiceFooterDevSettingsBlock() {
   }
 
   return (
-    <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8 }}>
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.35rem',
-          margin: 0,
-          padding: '1rem',
-          width: '100%',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '1rem',
-          fontWeight: 600,
-          textAlign: 'left',
-        }}
-      >
-        <span style={{ fontSize: '0.75rem' }}>{open ? '▼' : '\u25b6'}</span>
-        Physical invoice footer presets
-      </button>
-      {open ? (
+    <div>
+      {(
         <div
           style={{
             padding: '0 1rem 1rem 1rem',
@@ -396,7 +373,7 @@ export default function PhysicalInvoiceFooterDevSettingsBlock() {
             </button>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   )
 }

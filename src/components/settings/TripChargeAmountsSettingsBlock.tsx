@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -15,7 +15,6 @@ const FIELDS = [
 /** Self-contained (loads/saves its own app_settings rows) like MapDefaultViewSettingsBlock. */
 export default function TripChargeAmountsSettingsBlock() {
   const { showToast } = useToastContext()
-  const [open, setOpen] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -62,37 +61,13 @@ export default function TripChargeAmountsSettingsBlock() {
     }
   }
 
+  useEffect(() => {
+    void loadFromServer()
+  }, [loadFromServer])
+
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => {
-          setOpen((prev) => {
-            const next = !prev
-            if (next) void loadFromServer()
-            return next
-          })
-        }}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.35rem',
-          margin: 0,
-          padding: '1rem',
-          width: '100%',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '1rem',
-          fontWeight: 600,
-          textAlign: 'left',
-        }}
-      >
-        <span style={{ fontSize: '0.75rem' }}>{open ? '▼' : '▶'}</span>
-        Turnaway Trip Charges (dev)
-      </button>
-      {open && (
+    <div>
+      {(
         <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
           <p style={{ marginBottom: '1rem', marginTop: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Default amounts pre-filled in the Dispatch inbox “Create trip charge” modal when a tech

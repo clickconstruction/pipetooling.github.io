@@ -43,12 +43,10 @@ const EMAIL: FieldDef[] = [
 
 export default function TestReportSettingsBlock() {
   const { showToast } = useToastContext()
-  const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [draft, setDraft] = useState<TestReportSettings>(() => cachedTestReportSettings())
 
   useEffect(() => {
-    if (!open) return
     let cancelled = false
     void (async () => {
       const s = await fetchTestReportSettings()
@@ -57,7 +55,7 @@ export default function TestReportSettingsBlock() {
     return () => {
       cancelled = true
     }
-  }, [open])
+  }, [])
 
   const inputStyle = {
     width: '100%',
@@ -98,17 +96,8 @@ export default function TestReportSettingsBlock() {
   )
 
   return (
-    <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8 }}>
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
-        style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0, padding: '1rem', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)', textAlign: 'left' }}
-      >
-        <span aria-hidden style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}>▸</span>
-        Test reports — who certifies, and the words on the paper
-      </button>
-      {open ? (
+    <div>
+      {(
         <div style={{ padding: '0 1rem 1rem' }}>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 0 }}>
             Hydrostatic, pinpoint and gas test reports print this certifier and these sentences. A blank field uses the shown default. Sent reports keep the certifier they were sent with.
@@ -144,7 +133,7 @@ export default function TestReportSettingsBlock() {
             </button>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   )
 }
