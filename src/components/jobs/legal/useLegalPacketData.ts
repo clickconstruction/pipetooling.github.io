@@ -233,7 +233,7 @@ export function useLegalPacketData(
         })
       }, [])
       // v2.6413 (punch list #212 PR 4): the signed hours statements on the jobs, and the app's first clock day for the gap jobs.
-      // The statements' policy is the payroll roles' and an assistant's (hours only); anyone else reads none, and the tab says so by showing none.
+      // The statements' policy is a dev's and the controller's (v2.6450); anyone else reads none, and the tab says so by showing none.
       const [hoursStatements, firstRecordedDay] = await Promise.all([
         src<LegalHoursStatementLike[]>('signed hours statements', async () => {
           const rows = (await withSupabaseRetry<HoursStatementRow[]>(

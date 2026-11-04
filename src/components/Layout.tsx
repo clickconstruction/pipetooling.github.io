@@ -98,6 +98,8 @@ import { PhoneDockMoreSheet, type PhoneDockModeRow } from './dispatchMode/PhoneD
 import { PHONE_DOCK_CHANGED_EVENT, readPhoneDockSlotsRaw, resolveDockSlots, swapDockSlot, writePhoneDockSlots } from '../lib/phoneDock'
 import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
 import { useIsPartner } from '../hooks/useIsPartner'
+import { useOwnLogbookShown } from '../hooks/useOwnLogbookShown'
+import { BookOpen } from 'lucide-react'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 import { canOpenMessages } from '../lib/gc/access'
 import { MessagesBadge } from './MessagesBadge'
@@ -141,6 +143,7 @@ export default function Layout() {
   const outboxReplay = useOutboxReplay(authUser?.id)
   // Partner nav (v2.2165): the Statement link shows only for accounts with a live partnership.
   const partnerNav = useIsPartner(role, authUser?.id)
+  const ownLogbookShown = useOwnLogbookShown(authUser?.id)
   const { theme, override: themeOverride, setOverride: setThemeOverride } = useTheme()
   useAppActivityHeartbeat(authUser?.id, appActivityPageKey(location.pathname, location.search))
   // T5-08 (X16): alert dismissals follow the person — mirror saves to the server, seed this device at sign-in.
@@ -1828,6 +1831,29 @@ export default function Layout() {
                 >
                   {calendarNavIcon}
                   Calendar
+                </NavLink>
+                )}
+                {!farmModeActive && ownLogbookShown && (
+                <NavLink
+                  to="/my-logbook"
+                  onClick={() => setGearOpen(false)}
+                  style={({ isActive }) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.5rem 1rem',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    borderBottom: '1px solid var(--chrome-border)',
+                    boxSizing: 'border-box',
+                    ...(isActive && { fontWeight: 600 }),
+                  })}
+                  title="My logbook"
+                  aria-label="My logbook"
+                  data-testid="nav-my-logbook"
+                >
+                  <BookOpen size={20} strokeWidth={2.25} aria-hidden />
+                  My logbook
                 </NavLink>
                 )}
                 {!farmModeActive && (

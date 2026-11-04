@@ -3,7 +3,9 @@
  * are working toward in each trade, and the week-by-week record of approved hours a licensing board
  * asks for, with Print for the summary sheet and the full log.
  *
- * Opens for the people who can see People → Licenses (the RPC enforces the same gate). Licenses are
+ * Opens for the people who can see People → Licenses (the RPC enforces the same gate), and, as `own`, at
+ * /my-logbook for a teammate the office has shown it to (v2.6483: `logbook_shares`, read through `my_logbook()`,
+ * without the office's Edit and Add a license). Licenses are
  * read from the Licenses tab's own words and parsed (`lib/logbook/logbook.ts`); the signer for a trade
  * is a current teammate holding that trade's supervising license, unexpired. Time on the company's
  * office job reads as office time, whatever trade its service type names.
@@ -36,6 +38,7 @@ import {
 } from '../lib/logbook/logbook'
 import LogbookPrint, { type PrintFace } from '../components/logbook/LogbookPrint'
 import LicenseEditWindow, { type LicenseEditTarget } from '../components/logbook/LicenseEditWindow'
+import { parseMyLogbook, shareStripWords, type LogbookShare } from '../lib/logbook/logbookShare'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 
 const TRADE_COLOR: Record<Trade, string> = { plumbing: '#2563eb', electrical: '#d97706', hvac: '#0d9488' }
@@ -56,12 +59,15 @@ function monthName(ym: string): string {
 
 type LicenseRow = { id: string; person_name: string; license_type: string; date_of_expiry: string | null; note: string | null }
 type NamedRow = { name: string | null; archived_at: string | null }
+type ShareRow = { user_id: string; shown_by: string | null; shown_at: string }
 
-export default function Logbook() {
-  const { userId } = useParams<{ userId: string }>()
-  const { user } = useAuth()
+/** `own`: the signed-in teammate's own logbook at /my-logbook, once the office showed it. */
+export default function Logbook({ own = false }: { own?: boolean } = {}) {
+  const { userId: routeUserId } = useParams<{ userId: string }>()
+  const { user, profileName } = useAuth()
   const access = usePeopleAccess(user?.id)
-  const allowed = access.canAccessLicenses
+  const userId = own ? user?.id : routeUserId
+  const allowed = own ? Boolean(user?.id) : access.canAccessLicenses
 
   const [person, setPerson] = useState<{ id: string; name: string } | null>(null)
   const [licenses, setLicenses] = useState<LicenseRow[]>([])
@@ -74,6 +80,11 @@ export default function Logbook() {
   const [editing, setEditing] = useState<LicenseEditTarget | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [saved, setSaved] = useState<string | null>(null)
+  const [notShown, setNotShown] = useState(false)
+  const [share, setShare] = useState<LogbookShare | null>(null)
+  const [shownByName, setShownByName] = useState<string | null>(null)
+  const [shareBusy, setShareBusy] = useState(false)
+  const [shareError, setShareError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!userId || !allowed) return
@@ -82,14 +93,32 @@ export default function Logbook() {
     setError(null)
     ;(async () => {
       try {
-        const [u, l, users, people, r, office] = await Promise.all([
+        if (own) {
+          const { data, error: rpcError } = await supabase.rpc('my_logbook' as never)
+          if (rpcError) throw rpcError
+          if (cancelled) return
+          const mine = parseMyLogbook(data)
+          setNotShown(!mine)
+          if (!mine) return
+          setPerson({ id: userId, name: mine.name })
+          setLicenses([
+            ...mine.licenses.map((l) => ({ id: l.id, person_name: mine.name, license_type: l.license_type, date_of_expiry: l.date_of_expiry, note: null })),
+            ...mine.signers.map((s, i) => ({ id: `signer-${i}`, person_name: s.person_name, license_type: s.license_type, date_of_expiry: s.date_of_expiry, note: null })),
+          ])
+          setGone(new Set())
+          setRows(withOfficeJob(mine.hours, mine.officeJobId))
+          return
+        }
+        const [u, l, users, people, r, office, shared] = await Promise.all([
           supabase.from('users').select('id,name').eq('id', userId).maybeSingle(),
           supabase.from('person_licenses').select('id,person_name,license_type,date_of_expiry,note'),
           supabase.from('users').select('name,archived_at'),
           supabase.from('people').select('name,archived_at'),
           supabase.rpc('list_user_license_hours_log', { p_user_id: userId }),
           supabase.from('app_settings').select('value_text').eq('key', 'overhead_office_job_ledger_id_v1').maybeSingle(),
+          supabase.from('logbook_shares' as never).select('user_id,shown_by,shown_at').eq('user_id', userId).maybeSingle(),
         ])
+        // The share read is the strip's alone: a failure there names its reason on the strip, never blanks the logbook.
         for (const res of [u, l, users, people, r]) if (res.error) throw res.error
         if (cancelled) return
         // A name whose account or roster row is archived has left: they sign for nobody.
@@ -101,6 +130,13 @@ export default function Logbook() {
         setLicenses((l.data ?? []) as LicenseRow[])
         setGone(left)
         setRows(withOfficeJob((r.data ?? []) as LicenseHoursLogRow[], office.data?.value_text?.trim() || null))
+        setShareError(shared.error ? formatErrorMessage(shared.error) : null)
+        const sr = shared.error ? null : (shared.data as ShareRow | null)
+        setShare(sr ? { userId: sr.user_id, shownBy: sr.shown_by, shownAt: sr.shown_at } : null)
+        if (sr?.shown_by) {
+          const by = await supabase.from('users').select('name').eq('id', sr.shown_by).maybeSingle()
+          if (!cancelled) setShownByName(by.data?.name ?? null)
+        } else setShownByName(null)
       } catch (e) {
         if (!cancelled) setError(formatErrorMessage(e))
       } finally {
@@ -110,11 +146,42 @@ export default function Logbook() {
     return () => {
       cancelled = true
     }
-  }, [userId, allowed, reloadKey])
+  }, [userId, allowed, reloadKey, own])
+
+  async function toggleShare() {
+    if (!userId || shareBusy) return
+    setShareBusy(true)
+    setShareError(null)
+    try {
+      if (share) {
+        const { error: e } = await supabase.from('logbook_shares' as never).delete().eq('user_id', userId)
+        if (e) throw e
+        setShare(null)
+        setShownByName(null)
+      } else {
+        const { data, error: e } = await supabase
+          .from('logbook_shares' as never)
+          .insert({ user_id: userId } as never)
+          .select('user_id,shown_by,shown_at')
+          .single()
+        if (e) throw e
+        const sr = data as ShareRow
+        setShare({ userId: sr.user_id, shownBy: sr.shown_by, shownAt: sr.shown_at })
+        setShownByName(user?.id && sr.shown_by === user.id ? profileName : null)
+      }
+    } catch (e) {
+      setShareError(formatErrorMessage(e))
+    } finally {
+      setShareBusy(false)
+    }
+  }
 
   const today = todayYmdInAppTz()
   const name = person?.name ?? ''
   const firstName = name.split(' ')[0] || 'This teammate'
+  const strip = shareStripWords(firstName, share, shownByName)
+  // Where the page tells the reader to change a license: the office presses Edit; a teammate asks the office.
+  const fixLicense = own ? 'Ask the office to put it in' : 'Press Add a license to put in'
   const heldRows = useMemo(() => licenses.filter((l) => l.person_name === name), [licenses, name])
   const held: ParsedLicense[] = useMemo(() => heldRows.map((l) => parseLicenseType(l.license_type, l.date_of_expiry)), [heldRows])
   const signers = useMemo(
@@ -135,10 +202,20 @@ export default function Logbook() {
   const notCountedTotal = totals.notCounted.estimating + totals.notCounted.office + totals.notCounted.no_trade
   const shownWeeks = showAllWeeks ? weeks : weeks.slice(0, 6)
 
-  if (access.accessResolved && !allowed) {
+  if (!own && access.accessResolved && !allowed) {
     return (
       <div className="pageWrap" style={{ padding: '1rem' }}>
         <div style={card}>The logbook opens for the people who can see People, Licenses. Ask a dev or an assistant to open it for you.</div>
+      </div>
+    )
+  }
+
+  if (own && notShown && !loading) {
+    return (
+      <div className="pageWrap" style={{ padding: '1rem' }}>
+        <div style={card} data-testid="logbook-not-shown">
+          Your logbook opens here once the office shows it to you. Ask the office to press Show on your logbook.
+        </div>
       </div>
     )
   }
@@ -148,22 +225,47 @@ export default function Logbook() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
           <div style={eyebrow}>
-            <Link to="/people?tab=licenses" style={{ color: 'inherit' }}>People · Licenses</Link>
+            {own ? 'My logbook' : <Link to="/people?tab=licenses" style={{ color: 'inherit' }}>People · Licenses</Link>}
           </div>
-          <h1 style={{ margin: '0.15rem 0 0', fontSize: '1.6rem' }}>{name ? `${firstName}’s logbook` : 'Logbook'}</h1>
+          <h1 style={{ margin: '0.15rem 0 0', fontSize: '1.6rem' }}>{own ? 'Your logbook' : name ? `${firstName}’s logbook` : 'Logbook'}</h1>
           <p style={{ margin: '0.25rem 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
             {loading
               ? 'Reading the clock…'
               : totals.firstYmd
                 ? `${fmtNum(totals.all)} approved hours on the clock, ${shortDate(totals.firstYmd)} to ${shortDate(totals.lastYmd!)}. Each hour counts toward the trade of its job.`
-                : 'The clock holds nothing approved for this teammate yet. Approved hours land here week by week.'}
+                : own
+                  ? 'The clock holds nothing approved for you yet. Approved hours land here week by week.'
+                  : 'The clock holds nothing approved for this teammate yet. Approved hours land here week by week.'}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" style={btn} onClick={() => setPrintFace('summary')} disabled={loading}>Print summary sheet</button>
           <button type="button" style={btnBlue} onClick={() => setPrintFace('full')} disabled={loading}>Print full log</button>
         </div>
       </header>
+
+      {!own && name && !loading ? (
+        <div
+          style={{
+            ...card,
+            padding: '0.6rem 0.9rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 10,
+            flexWrap: 'wrap',
+            fontSize: '0.9rem',
+            ...(strip.shown ? { background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)', color: 'var(--text-green-800)' } : {}),
+          }}
+          data-testid="logbook-share-strip"
+        >
+          <span style={{ minWidth: 0 }}>{strip.text}</span>
+          <button type="button" style={btn} onClick={() => void toggleShare()} disabled={shareBusy} data-testid="logbook-share-toggle">
+            {shareBusy ? (strip.shown ? 'Stopping…' : 'Showing…') : strip.button}
+          </button>
+          {shareError ? <span style={{ flexBasis: '100%', color: 'var(--text-red-700)' }}>{shareError}</span> : null}
+        </div>
+      ) : null}
 
       {error ? <div style={{ ...card, borderColor: 'var(--border-red)', color: 'var(--text-red-700)' }}>{error}</div> : null}
 
@@ -171,14 +273,18 @@ export default function Logbook() {
         <section style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))' }}>
           {goals.map((g, i) => {
             const pr = progress[i]
-            return pr ? <GoalCard key={g.requirement.toName} goal={g} progress={pr} supervisor={supervisorFor(g.requirement.trade, g.requirement.supervisorClass)} today={today} /> : null
+            return pr ? <GoalCard key={g.requirement.toName} goal={g} progress={pr} supervisor={supervisorFor(g.requirement.trade, g.requirement.supervisorClass)} today={today} own={own} /> : null
           })}
         </section>
       ) : !loading ? (
         <div style={{ ...card, color: 'var(--text-muted)' }}>
-          {held.some((l) => l.trade)
-            ? `${firstName} is at the top rung the logbook tracks in every trade they hold.`
-            : `The Licenses tab holds no trade license for ${firstName} yet. Press Add a license to put in their apprentice registration, and the hours start counting toward the next license.`}
+          {own
+            ? held.some((l) => l.trade)
+              ? 'You are at the top rung the logbook tracks in every trade you hold.'
+              : 'The office has no trade license on file for you yet. Ask the office to put in your apprentice registration, and the hours start counting toward the next license.'
+            : held.some((l) => l.trade)
+              ? `${firstName} is at the top rung the logbook tracks in every trade they hold.`
+              : `The Licenses tab holds no trade license for ${firstName} yet. Press Add a license to put in their apprentice registration, and the hours start counting toward the next license.`}
         </div>
       ) : null}
 
@@ -189,7 +295,7 @@ export default function Logbook() {
                 {fmtNum(totals.byTrade[t])} hours of {TRADE_LABEL[t].toLowerCase()} work count toward no license.
               </div>
               <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
-                The Licenses tab holds no {TRADE_LABEL[t].toLowerCase()} license for {firstName}. The board counts hours worked while registered. Press Add a license to put in the registration, and the hours count from that day.
+                {own ? `The office has no ${TRADE_LABEL[t].toLowerCase()} license on file for you.` : `The Licenses tab holds no ${TRADE_LABEL[t].toLowerCase()} license for ${firstName}.`} The board counts hours worked while registered. {fixLicense} the registration, and the hours count from that day.
               </div>
             </div>
           ))
@@ -198,7 +304,7 @@ export default function Logbook() {
       <section style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Licenses held</h2>
-          {name ? (
+          {name && !own ? (
             <button type="button" style={btn} onClick={() => setEditing({ id: null, raw: '', expiryYmd: null, note: null })} data-testid="logbook-add-license">
               Add a license
             </button>
@@ -227,7 +333,7 @@ export default function Logbook() {
                   {l.expiryYmd ? `${shortDate(l.expiryYmd)}, ${l.expiryYmd.slice(0, 4)}` : '—'}
                 </td>
                 <td style={{ padding: '6px', textAlign: 'right' }}>
-                  <button
+                  {own ? null : <button
                     type="button"
                     style={{ ...btn, padding: '0.25rem 0.7rem', fontSize: '0.8rem' }}
                     onClick={() => {
@@ -236,14 +342,14 @@ export default function Logbook() {
                     }}
                   >
                     Edit
-                  </button>
+                  </button>}
                 </td>
               </tr>
             ))}
             {held.length === 0 && !loading ? (
               <tr>
                 <td colSpan={5} style={{ padding: '6px', color: 'var(--text-muted)' }}>
-                  The Licenses tab holds nothing under this name. Press Add a license.
+                  {own ? 'The office has no license on file under your name. Ask the office to add yours.' : 'The Licenses tab holds nothing under this name. Press Add a license.'}
                 </td>
               </tr>
             ) : null}
@@ -343,7 +449,7 @@ function TradeChip({ trade }: { trade: Trade }) {
   return <span style={{ display: 'inline-block', fontSize: '0.72rem', fontWeight: 700, padding: '1px 8px', borderRadius: 999, color: '#fff', background: TRADE_COLOR[trade] }}>{TRADE_LABEL[trade]}</span>
 }
 
-function GoalCard({ goal, progress: p, supervisor, today }: { goal: Goal; progress: Progress; supervisor: Supervisor | null; today: string }) {
+function GoalCard({ goal, progress: p, supervisor, today, own }: { goal: Goal; progress: Progress; supervisor: Supervisor | null; today: string; own: boolean }) {
   const r = goal.requirement
   const color = TRADE_COLOR[r.trade]
   return (
@@ -355,7 +461,7 @@ function GoalCard({ goal, progress: p, supervisor, today }: { goal: Goal; progre
       <div style={{ marginTop: 4, fontSize: '0.9rem', fontWeight: 600 }}>Working toward {r.toName.toLowerCase()}</div>
       {goal.holds.expiryYmd && goal.holds.expiryYmd < today ? (
         <div style={{ marginTop: 6, padding: '6px 8px', borderRadius: 6, background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', fontSize: '0.8rem' }}>
-          The Licenses tab says this {goal.holds.name.toLowerCase()} registration expired {shortDate(goal.holds.expiryYmd)}, {goal.holds.expiryYmd.slice(0, 4)}. The board counts hours worked while it is current. Renew it, or press Edit on the license to put in the new date.
+          The Licenses tab says this {goal.holds.name.toLowerCase()} registration expired {shortDate(goal.holds.expiryYmd)}, {goal.holds.expiryYmd.slice(0, 4)}. The board counts hours worked while it is current. Renew it, {own ? 'then give the office the new date.' : 'or press Edit on the license to put in the new date.'}
         </div>
       ) : null}
       <div style={{ fontSize: '2rem', fontWeight: 800, lineHeight: 1.1, marginTop: 4 }}>
@@ -392,7 +498,7 @@ function GoalCard({ goal, progress: p, supervisor, today }: { goal: Goal; progre
             {supervisor.number ? ` #${supervisor.number}` : ''}
           </>
         ) : (
-          <span style={{ color: 'var(--text-amber-800)' }}>The Licenses tab holds no current license for a teammate who can sign {TRADE_LABEL[r.trade] === 'HVAC' ? 'HVAC' : TRADE_LABEL[r.trade].toLowerCase()} hours. Add the license of the teammate who supervises.</span>
+          <span style={{ color: 'var(--text-amber-800)' }}>The Licenses tab holds no current license for a teammate who can sign {TRADE_LABEL[r.trade] === 'HVAC' ? 'HVAC' : TRADE_LABEL[r.trade].toLowerCase()} hours. {own ? 'Ask the office to add the license of the teammate who supervises you.' : 'Add the license of the teammate who supervises.'}</span>
         )}
         <br />
         Proof: the {r.board} {r.proofForm}.

@@ -277,7 +277,7 @@ export function ReplyBox({
   // #207 PR 1: an email's pre-typed opening alone is an empty box, for the strip, the from line, the count and Send.
   const blank = !body.trim() || (shown === 'email' && onlyOpening(body, first))
   const count = goesOut(shown) ? countLine(shown, blank ? '' : body) : null
-  const folded = replyBoxFolded({ foldBox: open?.foldBox ?? false, inJob: Boolean(job), woke, blank, files: files.length, opensWithWords: Boolean(nudge) || Boolean(startWords) || settling.active, textWaits })
+  const folded = replyBoxFolded({ foldBox: open?.foldBox ?? false, inJob: Boolean(job), woke, blank, files: files.length, opensWithWords: Boolean(nudge) || Boolean(startWords) || settling.active, textWaits, blocked: Boolean(blocked) })
   const sendLabel = settling.active ? OWED_DONE_SEND : (REPLY_KINDS.find((k) => k.kind === shown)?.send ?? 'Send')
   const orange = Boolean(job) && contact.kind === 'customer' && goesOut(shown)
 

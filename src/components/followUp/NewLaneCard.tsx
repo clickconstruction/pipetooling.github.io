@@ -417,7 +417,16 @@ export function NewLaneCard({ row, channels, guesses, roster = [], jobs = [], pe
           </button>
         )}
         {foldable && (
-          <Btn kind="quiet" onClick={() => setOpened(false)} disabled={busy} title="Folds the card back to one row, so the messages get the room.">
+          <Btn
+            kind="quiet"
+            // Fold takes the card back to one row from any view, the roster too (v2.6487): *Which of ours?* held the card whole until Back.
+            onClick={() => {
+              setOpened(false)
+              setTeamOpen(false)
+            }}
+            disabled={busy}
+            title="Folds the card back to one row, so the messages get the room."
+          >
             {`${FOLD_SHUT} ▴`}
           </Btn>
         )}
