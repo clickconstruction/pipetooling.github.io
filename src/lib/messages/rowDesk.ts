@@ -52,7 +52,7 @@ export function deskRead(row: DeskFacts): { desk: Desk; why: string } | null {
     case 'customer':
     case 'lead':
     case 'sub':
-      return byJobs(row)
+      return byJobs(row, row.kind)
   }
 }
 
@@ -69,13 +69,13 @@ const ON_THE_LINE: Readonly<Record<'customer' | 'lead' | 'sub', string>> = {
   sub: 'A sub on the team line. Dispatch schedules them.',
 }
 
-function byJobs(row: DeskFacts & { kind: 'customer' | 'lead' | 'sub' }): { desk: Desk; why: string } | null {
+function byJobs(row: DeskFacts, kind: 'customer' | 'lead' | 'sub'): { desk: Desk; why: string } | null {
   const kinds = new Set(row.jobIds.map((key) => jobRefOf(key)?.kind).filter(Boolean))
   if (kinds.has('pipeline')) return { desk: 'dispatch', why: 'Their job is on the Pipeline.' }
   if (kinds.has('bid')) return { desk: 'estimating', why: 'Their job is a bid.' }
   if (kinds.has('project')) return null
   if (row.mailbox === 'bids') return { desk: 'estimating', why: 'They wrote to bids@.' }
-  return { desk: 'dispatch', why: ON_THE_LINE[row.kind] }
+  return { desk: 'dispatch', why: ON_THE_LINE[kind] }
 }
 
 /** The band's hover: the desk's word, then why: "Estimating · An invitation to bid." */
