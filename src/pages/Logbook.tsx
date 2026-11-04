@@ -35,6 +35,7 @@ import {
   type Trade,
 } from '../lib/logbook/logbook'
 import LogbookPrint, { type PrintFace } from '../components/logbook/LogbookPrint'
+import LicenseEditWindow, { type LicenseEditTarget } from '../components/logbook/LicenseEditWindow'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 
 const TRADE_COLOR: Record<Trade, string> = { plumbing: '#2563eb', electrical: '#d97706', hvac: '#0d9488' }
@@ -53,7 +54,7 @@ function monthName(ym: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 }
 
-type LicenseRow = { person_name: string; license_type: string; date_of_expiry: string | null }
+type LicenseRow = { id: string; person_name: string; license_type: string; date_of_expiry: string | null; note: string | null }
 type NamedRow = { name: string | null; archived_at: string | null }
 
 export default function Logbook() {
@@ -70,6 +71,9 @@ export default function Logbook() {
   const [loading, setLoading] = useState(true)
   const [showAllWeeks, setShowAllWeeks] = useState(false)
   const [printFace, setPrintFace] = useState<PrintFace | null>(null)
+  const [editing, setEditing] = useState<LicenseEditTarget | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [saved, setSaved] = useState<string | null>(null)
 
   useEffect(() => {
     if (!userId || !allowed) return
@@ -80,7 +84,7 @@ export default function Logbook() {
       try {
         const [u, l, users, people, r, office] = await Promise.all([
           supabase.from('users').select('id,name').eq('id', userId).maybeSingle(),
-          supabase.from('person_licenses').select('person_name,license_type,date_of_expiry'),
+          supabase.from('person_licenses').select('id,person_name,license_type,date_of_expiry,note'),
           supabase.from('users').select('name,archived_at'),
           supabase.from('people').select('name,archived_at'),
           supabase.rpc('list_user_license_hours_log', { p_user_id: userId }),
@@ -106,15 +110,13 @@ export default function Logbook() {
     return () => {
       cancelled = true
     }
-  }, [userId, allowed])
+  }, [userId, allowed, reloadKey])
 
   const today = todayYmdInAppTz()
   const name = person?.name ?? ''
   const firstName = name.split(' ')[0] || 'This teammate'
-  const held: ParsedLicense[] = useMemo(
-    () => licenses.filter((l) => l.person_name === name).map((l) => parseLicenseType(l.license_type, l.date_of_expiry)),
-    [licenses, name],
-  )
+  const heldRows = useMemo(() => licenses.filter((l) => l.person_name === name), [licenses, name])
+  const held: ParsedLicense[] = useMemo(() => heldRows.map((l) => parseLicenseType(l.license_type, l.date_of_expiry)), [heldRows])
   const signers = useMemo(
     () =>
       licenses
@@ -176,7 +178,7 @@ export default function Logbook() {
         <div style={{ ...card, color: 'var(--text-muted)' }}>
           {held.some((l) => l.trade)
             ? `${firstName} is at the top rung the logbook tracks in every trade they hold.`
-            : `The Licenses tab holds no trade license for ${firstName} yet. Add their apprentice registration there and the hours start counting toward the next license.`}
+            : `The Licenses tab holds no trade license for ${firstName} yet. Press Add a license to put in their apprentice registration, and the hours start counting toward the next license.`}
         </div>
       ) : null}
 
@@ -187,7 +189,7 @@ export default function Logbook() {
                 {fmtNum(totals.byTrade[t])} hours of {TRADE_LABEL[t].toLowerCase()} work count toward no license.
               </div>
               <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
-                The Licenses tab holds no {TRADE_LABEL[t].toLowerCase()} license for {firstName}. The board counts hours worked while registered. Add the registration on the Licenses tab and the hours count from that day.
+                The Licenses tab holds no {TRADE_LABEL[t].toLowerCase()} license for {firstName}. The board counts hours worked while registered. Press Add a license to put in the registration, and the hours count from that day.
               </div>
             </div>
           ))
@@ -196,7 +198,11 @@ export default function Logbook() {
       <section style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Licenses held</h2>
-          <Link to="/people?tab=licenses" style={{ fontSize: '0.85rem' }}>Edit on the Licenses tab</Link>
+          {name ? (
+            <button type="button" style={btn} onClick={() => setEditing({ id: null, raw: '', expiryYmd: null, note: null })} data-testid="logbook-add-license">
+              Add a license
+            </button>
+          ) : null}
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, fontSize: '0.9rem' }}>
           <thead>
@@ -205,11 +211,12 @@ export default function Logbook() {
               <th style={{ padding: '4px 6px' }}>Number</th>
               <th style={{ padding: '4px 6px' }}>Trade</th>
               <th style={{ padding: '4px 6px' }}>Expires</th>
+              <th style={{ padding: '4px 6px' }} />
             </tr>
           </thead>
           <tbody>
-            {held.map((l) => (
-              <tr key={l.raw} style={{ borderTop: '1px solid var(--border)' }}>
+            {held.map((l, i) => (
+              <tr key={heldRows[i]?.id ?? l.raw} style={{ borderTop: '1px solid var(--border)' }}>
                 <td style={{ padding: '6px', fontWeight: 600 }}>
                   {l.name}
                   {topOfLadder.includes(l) ? <span style={{ marginLeft: 6, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>top rung</span> : null}
@@ -219,12 +226,24 @@ export default function Logbook() {
                 <td style={{ padding: '6px', color: l.expiryYmd && l.expiryYmd < today ? 'var(--text-red-700)' : undefined }}>
                   {l.expiryYmd ? `${shortDate(l.expiryYmd)}, ${l.expiryYmd.slice(0, 4)}` : '—'}
                 </td>
+                <td style={{ padding: '6px', textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    style={{ ...btn, padding: '0.25rem 0.7rem', fontSize: '0.8rem' }}
+                    onClick={() => {
+                      const row = heldRows[i]
+                      if (row) setEditing({ id: row.id, raw: row.license_type, expiryYmd: row.date_of_expiry, note: row.note })
+                    }}
+                  >
+                    Edit
+                  </button>
+                </td>
               </tr>
             ))}
             {held.length === 0 && !loading ? (
               <tr>
-                <td colSpan={4} style={{ padding: '6px', color: 'var(--text-muted)' }}>
-                  The Licenses tab holds nothing under this name. Add a license there.
+                <td colSpan={5} style={{ padding: '6px', color: 'var(--text-muted)' }}>
+                  The Licenses tab holds nothing under this name. Press Add a license.
                 </td>
               </tr>
             ) : null}
@@ -285,6 +304,21 @@ export default function Logbook() {
         </p>
       </section>
 
+      {saved ? <div style={{ ...card, borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' }}>{saved}</div> : null}
+
+      {editing ? (
+        <LicenseEditWindow
+          personName={name}
+          target={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(warning) => {
+            setEditing(null)
+            setSaved(warning)
+            setReloadKey((k) => k + 1)
+          }}
+        />
+      ) : null}
+
       {printFace ? (
         <LogbookPrint
           face={printFace}
@@ -321,7 +355,7 @@ function GoalCard({ goal, progress: p, supervisor, today }: { goal: Goal; progre
       <div style={{ marginTop: 4, fontSize: '0.9rem', fontWeight: 600 }}>Working toward {r.toName.toLowerCase()}</div>
       {goal.holds.expiryYmd && goal.holds.expiryYmd < today ? (
         <div style={{ marginTop: 6, padding: '6px 8px', borderRadius: 6, background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', fontSize: '0.8rem' }}>
-          The Licenses tab says this {goal.holds.name.toLowerCase()} registration expired {shortDate(goal.holds.expiryYmd)}, {goal.holds.expiryYmd.slice(0, 4)}. The board counts hours worked while it is current. Renew it, or put the new date on the Licenses tab.
+          The Licenses tab says this {goal.holds.name.toLowerCase()} registration expired {shortDate(goal.holds.expiryYmd)}, {goal.holds.expiryYmd.slice(0, 4)}. The board counts hours worked while it is current. Renew it, or press Edit on the license to put in the new date.
         </div>
       ) : null}
       <div style={{ fontSize: '2rem', fontWeight: 800, lineHeight: 1.1, marginTop: 4 }}>
