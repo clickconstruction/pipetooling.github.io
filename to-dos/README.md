@@ -114,6 +114,50 @@ shared file would rebuild the parallel-session conflict that the release-notes a
 The open to-dos, grouped and ordered by readiness, are the board itself: Settings → *Punch list* (the chip under the rail's search)
 (`/punch-list`). On GitHub, this folder's listing is the index.
 
+Closed 2026-11-04 on the look-only sweep, on the owner's word *Retire all 21*: the twenty-one cards below had every PR they name merged and every version they cite on `main`, and their last step was the owner's look or use, which by his rule of 2026-10-06 does not hold a card open. Each line says what the card built and anything it left.
+
+Closed 2026-11-04 (file deleted; it had no mock-up of its own): `hours-charged-statement` (#251) — the Signed hours statement's second basis: one worker's hours on one job priced at the rate the customer is charged, for everyone who may print the paper. Shipped as v2.6431 (the rate's homes and the kernel's charged basis) and v2.6446 (the window's Charged choice, the paper's Charged band and crew days). A per-development roll-up, if wanted, is #254's Job Summary group row.
+
+Closed 2026-11-04 (folder deleted; it had no mock-up of its own, and the spike's code stays on `origin/spike/projects-board-242`): `projects-board` (#242) — every working project as one card at `/projects-board`, the expected hours as a slider inside the labor budget, the days and the stages on the pace strip, and the superintendent's line on his phone. Shipped as v2.6320, v2.6321, v2.6330, v2.6335, v2.6337 and v2.6352, the gate reading #238's job kind since v2.6402. The bonus and what counts as certified stay on #234.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `legal-portal-notifications-show` (#233) — the firm portal's Notifications tab shows each person what they will get: a typed title, a sample inbox with one email open, and the digest by matter. Shipped as v2.6278, v2.6280, v2.6281 and v2.6283, the push and the portal deploy done.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `legal-desk-affidavits` (#220) — a sworn statement or an unsworn declaration drafted, printed, sworn and filed from the Legal desk in place of nine hand steps. Shipped as v2.6208 to v2.6213, the live walk's fixes v2.6238 and v2.6243, and the dev seat's statement verbs v2.6244.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `legal-desk-header-parties` (#219) — the account head names who the contract is with, who owns the building and the venue, with the map one press away and the same strip on the firm's portal. Shipped as v2.6172, v2.6174, v2.6175 and v2.6184.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `legal-desk-settlement-floor` (#218) — the floor's gate retired for the attorney's read, with the paths drawn under the money bars, the owner's pick C with A folded in. Shipped as v2.6170, v2.6173, v2.6176 and v2.6177.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `legal-desk-show-not-tell` (#214) — the lien calendar, the money bars, Evidence by whose paper and the Timeline strip in place of four sections of prose. Shipped as v2.6104 to v2.6108.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `tally-choose-job-recent-search` (#216) — the Tally's Choose job sheet searches with the typed run lit where it lands and leads with the jobs the viewer was on. Shipped as v2.6114.
+
+Closed 2026-11-04 (file deleted; it had no mock-up of its own): `estimate-extend-pdf-options` (#206) — a sent estimate's date extends on the same link, it downloads as a PDF, and the office page shows every option, built on the nine recommended calls. Shipped as v2.5988, v2.5992, v2.5993 and v2.5997, with the Pipeline's good-through chip v2.6037. A call the owner changes is one small PR.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `machine-drafts` (#186) — the machine drafts and a person presses: a voice note to a field report and a thread summary on the job window. Shipped as v2.5895, v2.5912, v2.5916, v2.5973, v2.5991 and v2.5996. The third place, the missed-call reply, was #195's.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `consistency-sweeps` (#184) — the four conventions swept across the older screens: a batch button says its count, a waiting list runs oldest first, an empty state names the next press and an error names its reason. Shipped in twelve versions, v2.5898 to v2.5986.
+
+Closed 2026-11-04 (file deleted; it had no mock-up of its own): `collect-desk-weakest-link` (#177) — the Bridge's Collect card opens a modal that names the few payers holding the billed pile, with one move each. Shipped as v2.5848, v2.5853 to v2.5858 and v2.5873, the expected-pay model reading the same pace rule since v2.6034.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `money-in-this-week` (#191) — the bar under the Dashboard's Financials cards for what came in this week, what is still expected and what last week still owes. Shipped as v2.5926, v2.5937 and v2.5955.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `quickfill-texts-station` (#157) — Quickfill's Texts station reads Messages instead of asking for a note. Shipped as v2.5816 and v2.5823.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `quickfill-mark-history` (#156) — a station's Mark history reads as a trend with its boxes band and doors. Shipped as v2.5817, v2.5819, v2.5826 and v2.5829.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `account-nicknames-modal` (#155) — the Account nicknames window shows each Mercury account's own name, numbers and newest lines. Shipped as v2.5806. Its last step was naming the two accounts still unnamed on 2026-10-23; the window shows any account still unnamed.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `quickfill-percent-slider` (#154) — the Percent complete card's stage bar is the slider for the percent done. Shipped as v2.5805.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `messages-header` (#151) — a tighter top on Messages, with a jump strip like the Pipeline's and each lane's heading as a band with its count. Shipped as v2.5799, v2.5801 and v2.5802.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `job-window-leave-report` (#135) — the ＋ Report chip after the job window's Reports pill. Shipped as v2.5688.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `pricing-strip-cents` (#134) — the Pricing tab's scoreboard strip carries its cents, Wendi's ask. Shipped as v2.5678.
+
+Closed 2026-11-04 (folder deleted; the mock-up lives in git history at the deleting commit): `training-visuals` (#116) — thirty-five line drawings beside the sentences they explain in the OSHA 30 refresher, Grace's pick. Shipped as v2.5598 to v2.5609. One idea stayed open and goes with the card: a drawing inside a quiz question.
+
 Closed 2026-11-03 (file deleted; its mock-up was shown in the session and never filed): `photos-on-development-history` (#247) — the owner's ask of 2026-11-02, reading a site's History: the crews' photos in it by their own time, and a one-row gallery at the bottom of the Development page. Shipped as v2.6371 (the Photos look), v2.6373 (the History's photo lines), v2.6375 (the camera's own time from the file) and v2.6469 (an estimator's look says the crews' photos are for the office, the owner's call after the live walk of 2026-11-03 found the view hands an estimator only text and email pictures). Not built: placing a photo with no job on the site's nearest job by its GPS, and giving estimators the crews' photos, which is an access question for a card of its own.
 
 Closed 2026-11-03 (folder deleted; the mock-up lives in git history at the deleting commit): `job-photos` (#244) — the owner's ask of 2026-11-02, a photos icon beside the Pipeline row's Job folder icon opening one window where anyone adds a photo to a job with a few words that find it later, and where the office and the field browse the job's photos. Built 2026-11-02 and 03 as a train of five with one migration: v2.6359 the ground (`job_photo_notes`, its bucket, the view's fifth source, the shot-tile hook), v2.6363 `photo-save` filing a job photo into Drive, v2.6365 the window and the Pipeline camera, v2.6368 the Job Mode card's Photos line, the job window's Documents door and the thread line, v2.6370 a photo kept on the phone with no signal. The live walks found three things, fixed as v2.6439 (the viewer's one Open the job), v2.6449 (the window loads on its press) and v2.6451 (a phone card's ⋯ Photos line), and v2.6453 folded the report forms' photo hook onto the window's engine, so every photo form takes its shots one way and a job photo keeps the camera's time. Walked live on the ZZ Test jobs at phone, tablet and desktop sizes, no signal included; retired after the owner's look at the walks' screenshots.
