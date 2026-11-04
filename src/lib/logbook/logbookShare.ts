@@ -6,15 +6,18 @@
  * Pure: the strip's words on the office's logbook, and the parse of `my_logbook()`'s answer.
  */
 import type { LicenseHoursLogRow } from '../licenseHoursLog'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type LogbookShare = { userId: string; shownBy: string | null; shownAt: string }
 
 export type ShareStrip = { shown: boolean; text: string; button: string }
 
+/** The instant's day on the company calendar, as "Nov 4". */
 function shortDay(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' })
+  const ymd = calendarYmdInAppTzFromIso(iso)
+  if (!ymd) return ''
+  const [y = 1970, m = 1, d = 1] = ymd.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 /** The strip under the logbook's header: who can see the page, and the press that changes it. */
