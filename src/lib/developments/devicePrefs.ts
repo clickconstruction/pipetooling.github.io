@@ -80,14 +80,15 @@ export function writeMoneySort(developmentId: string, mode: MoneySortMode): void
   }
 }
 
-/** The Money look's view (v2.6407): where the money is, or the scoreboard; the device remembers the one you were in. */
-export type MoneyView = 'money' | 'scoreboard'
+/** The Money look's view (v2.6407): where the money is, the scoreboard or, since v2.6493, the timeline; the device remembers the one you were in. */
+export type MoneyView = 'money' | 'scoreboard' | 'timeline'
 
 const viewKey = (developmentId: string) => `pt.development.${developmentId}.money.view`
 
 export function readMoneyView(developmentId: string): MoneyView {
   try {
-    return window.localStorage.getItem(viewKey(developmentId)) === 'scoreboard' ? 'scoreboard' : 'money'
+    const raw = window.localStorage.getItem(viewKey(developmentId))
+    return raw === 'scoreboard' || raw === 'timeline' ? raw : 'money'
   } catch {
     return 'money'
   }

@@ -426,10 +426,19 @@ export function JobChargesTimelineChartView({
   cardChargesExcluded,
   teamLaborIncluded = true,
   overheadSinceLabel = null,
+  valueHiddenNote,
+  compact = false,
 }: {
   data: JobChargesTimelineData
   revenue: number | null
   cardChargesExcluded: boolean
+  /**
+   * What the key says when the value line is hidden (v2.6493): omitted, the job's own reason (no total, no report);
+   * null, nothing, for a chart that has no value line to hide, the Development page's Timeline before its value series.
+   */
+  valueHiddenNote?: string | null
+  /** A shorter plot for a phone's width (v2.6493). */
+  compact?: boolean
   /** When the overhead window's floor cut off part of the job's history (v2.3289): the first day charged, e.g. "Feb 19, 2026". */
   overheadSinceLabel?: string | null
   /** See `Props.teamLaborIncluded`; defaults to the owner's full-cost reading. */
@@ -471,8 +480,8 @@ export function JobChargesTimelineChartView({
           </label>
         </div>
       )}
-      <div style={{ width: '100%', minWidth: 0, height: 320 }}>
-        <ResponsiveContainer width="100%" height={320}>
+      <div style={{ width: '100%', minWidth: 0, height: compact ? 260 : 320 }}>
+        <ResponsiveContainer width="100%" height={compact ? 260 : 320}>
           {/* ComposedChart (v2.3271): the overhead band is an Area under two Lines. */}
           <ComposedChart data={data.chartRows} margin={{ top: 36, right: 8, left: 8, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -599,9 +608,13 @@ export function JobChargesTimelineChartView({
             .join(' · ')}
           {data.hasUnknownDateBucket && ' · “No date” bucket holds items without a date'}
           {!data.valueSeriesAvailable &&
-            (revenue == null || revenue === 0
-              ? ' · Value line hidden: job total not set'
-              : ' · Value line hidden: no report or % set on the job')}
+            (valueHiddenNote === undefined
+              ? revenue == null || revenue === 0
+                ? ' · Value line hidden: job total not set'
+                : ' · Value line hidden: no report or % set on the job'
+              : valueHiddenNote
+                ? ` · ${valueHiddenNote}`
+                : '')}
           {data.valueFromFallbackPercent &&
             ' · Value point uses the job’s current % (no dated field report)'}
           {cardChargesExcluded && ' · Card charges not included (no Banking access)'}
