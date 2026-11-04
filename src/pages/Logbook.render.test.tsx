@@ -3,9 +3,9 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const state = vi.hoisted(() => ({ canAccessLicenses: true, tables: {} as Record<string, unknown>, rpc: [] as unknown[] }))
+const state = vi.hoisted(() => ({ canAccessLicenses: true, tables: {} as Record<string, unknown>, rpc: [] as unknown, writes: [] as string[] }))
 
-vi.mock('../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'viewer' } }) }))
+vi.mock('../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'viewer' }, profileName: 'Lou Lead' }) }))
 vi.mock('../hooks/usePeopleAccess', () => ({ usePeopleAccess: () => ({ canAccessLicenses: state.canAccessLicenses, accessResolved: true }) }))
 vi.mock('../lib/supabase', () => {
   function builder(table: string) {
@@ -14,6 +14,17 @@ vi.mock('../lib/supabase', () => {
     for (const m of ['select', 'eq', 'order']) b[m] = () => b
     b.maybeSingle = () => {
       single.value = true
+      return b
+    }
+    b.single = b.maybeSingle
+    b.insert = (row: { user_id: string }) => {
+      state.writes.push(`insert ${table} ${row.user_id}`)
+      state.tables[table] = [{ user_id: row.user_id, shown_by: 'viewer', shown_at: '2026-11-04T15:00:00Z' }]
+      return b
+    }
+    b.delete = () => {
+      state.writes.push(`delete ${table}`)
+      state.tables[table] = null
       return b
     }
     b.then = (ok: (v: unknown) => unknown) => {
@@ -36,11 +47,12 @@ function hours(work_date: string, hrs: number, service_type_name: string, job: s
   return { session_id: work_date + job, work_date, clocked_in_at: '', clocked_out_at: '', hours: hrs, job_ledger_id: job, job_number: '1184', job_name: 'Whitfield water heater', job_address: '1208 Mesquite Ln', service_type_name, bid_id: null, notes: '' }
 }
 
-function mount() {
+function mount(path = '/logbook/u1') {
   return render(
-    <MemoryRouter initialEntries={['/logbook/u1']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/logbook/:userId" element={<Logbook />} />
+        <Route path="/my-logbook" element={<Logbook own />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -57,7 +69,9 @@ beforeEach(() => {
       { person_name: 'Gone Master', license_type: 'Master Plumber #1', date_of_expiry: '2099-05-31' },
     ],
     app_settings: null,
+    logbook_shares: null,
   }
+  state.writes = []
   state.rpc = [hours('2026-10-27', 40, 'Plumbing'), hours('2026-10-28', 6, 'Electrical', 'j2'), hours('2026-10-29', 2, 'Plumbing', null)]
 })
 
@@ -84,5 +98,44 @@ describe('Logbook page', () => {
     state.canAccessLicenses = false
     mount()
     expect(screen.getByText(/The logbook opens for the people who can see People, Licenses/)).toBeTruthy()
+  })
+
+  it('shows the logbook to its teammate with one press, and stops it', async () => {
+    mount()
+    expect((await screen.findByTestId('logbook-share-strip')).textContent).toContain('Jordan cannot see this logbook.')
+    fireEvent.click(screen.getByRole('button', { name: 'Show Jordan this logbook' }))
+    expect((await screen.findByRole('button', { name: 'Stop showing' })).textContent).toBe('Stop showing')
+    expect(screen.getByTestId('logbook-share-strip').textContent).toContain('Jordan sees this logbook in the app’s menu. Shown Nov 4 by Lou Lead.')
+    fireEvent.click(screen.getByRole('button', { name: 'Stop showing' }))
+    expect(await screen.findByRole('button', { name: 'Show Jordan this logbook' })).toBeTruthy()
+    expect(state.writes).toEqual(['insert logbook_shares u1', 'delete logbook_shares'])
+  })
+})
+
+describe('My logbook (own)', () => {
+  it('reads the teammate their own logbook, without the office’s controls', async () => {
+    state.canAccessLicenses = false
+    state.rpc = {
+      name: 'Jordan Price',
+      hours: [hours('2026-10-27', 40, 'Plumbing')],
+      licenses: [{ id: 'l1', license_type: 'Plumber Apprentice #191717', date_of_expiry: '2099-08-31' }],
+      signers: [{ person_name: 'Ana Ruiz', license_type: 'Master Plumber #41130', date_of_expiry: '2099-05-31' }],
+      office_job_id: null,
+    }
+    mount('/my-logbook')
+    expect(await screen.findByText('Your logbook')).toBeTruthy()
+    expect(screen.getByText('Working toward journeyman plumber')).toBeTruthy()
+    expect(screen.getByText('Ana Ruiz')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Print summary sheet' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Add a license' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+    expect(screen.queryByTestId('logbook-share-strip')).toBeNull()
+    expect(screen.queryByText(/People · Licenses/)).toBeNull()
+  })
+
+  it('says how it opens when the office has not shown it', async () => {
+    state.rpc = null
+    mount('/my-logbook')
+    expect((await screen.findByTestId('logbook-not-shown')).textContent).toContain('Your logbook opens here once the office shows it to you.')
   })
 })

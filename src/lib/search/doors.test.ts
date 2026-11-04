@@ -170,9 +170,9 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
   })
 
   it('every signed-in route has a door, except the ones with a param or no role gate', () => {
-    // `/` is the Layout's own index; `/my-statement` opens for a partner by a per-person flag the viewer does not carry;
-    // a route with a `:param` is a record's page, which today's rows find.
-    const skipped = new Set(['/', '/my-statement'])
+    // `/` is the Layout's own index; `/my-statement` (a partner) and `/my-logbook` (a teammate the office showed it to)
+    // open by a per-person flag the viewer does not carry; a route with a `:param` is a record's page, which today's rows find.
+    const skipped = new Set(['/', '/my-statement', '/my-logbook'])
     const missing = signedInRoutes(appSource)
       .filter((r) => !r.includes(':') && !skipped.has(r))
       .filter((r) => !doors.some((d) => doorPath(d.to) === r))

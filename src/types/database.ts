@@ -9885,6 +9885,41 @@ export type Database = {
         }
         Relationships: []
       }
+      employment_stints: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          person_id: string
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          person_id: string
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          person_id?: string
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employment_stints_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       esign_consents: {
         Row: {
           audience: string
@@ -37119,6 +37154,10 @@ export type Database = {
       }
       dev_person_evidence_write: {
         Args: { p: Json; p_dry_run?: boolean; p_files?: Json }
+        Returns: Json
+      }
+      dev_person_license_write: {
+        Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
       dismiss_mercury_duplicate_pair: {

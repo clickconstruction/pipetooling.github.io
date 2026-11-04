@@ -383,6 +383,7 @@ function AppContent() {
           <Route path="partnerships" element={<ErrorBoundary><Partnerships /></ErrorBoundary>} />
           <Route path="my-statement" element={<ErrorBoundary><PartnerStatement /></ErrorBoundary>} />
           <Route path="logbook/:userId" element={<ErrorBoundary><Logbook /></ErrorBoundary>} />
+          <Route path="my-logbook" element={<ErrorBoundary><Logbook own /></ErrorBoundary>} />
           <Route path="people" element={<People />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="map" element={<Map />} />

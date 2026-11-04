@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Show a teammate their logbook</title>
+<style>
+  /* Punch list #255, the logbook's next PR: a teammate sees their own logbook once the office presses Show. Light only, like every to-do mock-up. Made-up people: Dario Pruitt (plumbing apprentice), Hal Moreno (master plumber, signs). Every count and date is made up. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --green-line: #86efac; --amber: #92400e; --amber-tint: #fef3c7; --red-ink: #991b1b; --page: #f3f4f6; --surface: #fff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cbd5e1; --line-2: #e5e7eb; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--green-tint); color: var(--green-ink); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; background: var(--line-2); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; }
+  .btn { font: inherit; font-weight: 700; font-size: 12.5px; border-radius: 8px; padding: 6px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; cursor: pointer; }
+  .btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.green { background: var(--green); border-color: var(--green); color: #fff; }
+  .page { width: 100%; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; padding: 14px; display: grid; gap: 12px; }
+  .ph { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+  .ph h3 { margin: 2px 0 0; font-size: 21px; }
+  .ph .sub { font-size: 12.5px; color: var(--muted); }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .strip { border: 1px solid var(--green-line); background: var(--green-tint); color: var(--green-ink); border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+  .strip.off { border-color: var(--line); background: #f9fafb; color: var(--ink-2); }
+  .goal { border: 1px solid var(--line-2); border-top: 4px solid var(--blue); border-radius: 8px; padding: 10px 12px; }
+  .goal .big { font-size: 26px; font-weight: 800; line-height: 1.1; }
+  .goal .big span { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .bar { height: 10px; border-radius: 999px; background: #e5e7eb; overflow: hidden; margin-top: 6px; }
+  .bar i { display: block; height: 100%; width: 28%; background: var(--blue); }
+  .small { font-size: 12px; color: var(--muted); }
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; color: #fff; background: var(--blue); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  td, th { padding: 5px 6px; text-align: left; border-top: 1px solid var(--line-2); }
+  th { color: var(--muted); font-size: 11px; border-top: 0; }
+  .wk { border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; font-size: 12.5px; }
+  .wk .h { background: #f9fafb; padding: 5px 9px; display: flex; justify-content: space-between; }
+  .wk .l { padding: 5px 9px; border-top: 1px solid var(--line-2); display: flex; justify-content: space-between; gap: 8px; }
+  .phone { width: 343px; max-width: 100%; background: #f8fafc; border: 1px solid #aab2bd; border-radius: 22px; overflow: hidden; font-size: 14px; }
+  .phone .topbar { background: var(--surface); border-bottom: 1px solid var(--line-2); padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
+  .phone .in { padding: 12px; display: grid; gap: 10px; }
+  .menu { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; }
+  .menu div { padding: 10px 14px; border-top: 1px solid var(--line-2); display: flex; gap: 8px; align-items: center; }
+  .menu div:first-child { border-top: 0; }
+  .menu .hot { background: var(--blue-tint); font-weight: 700; }
+  .never { border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface); }
+  .never li { margin: 3px 0; }
+  .alts { display: grid; gap: 10px; }
+  .alt { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .alt b { display: block; }
+  .second { margin-top: 44px; border: 2px solid var(--ink); border-radius: 10px; background: var(--surface); padding: 14px 16px; }
+  .second h2 { margin-top: 0; }
+  .demo { margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #255 · the logbook, next PR · mock-up 2026-11-04</p>
+  <h1>Show a teammate their own logbook</h1>
+  <p>The owner: “Some employees have a log of the work that they’ve done. I would like to offer a button to expose that log.” Today the logbook opens only for the office, the people who can see People, Licenses. This adds one button on the logbook, <b>Show Dario this logbook</b>. Once pressed, Dario finds <b>My logbook</b> in the app’s menu and reads the same page, without the office’s controls. The office turns it on one teammate at a time, and can stop it.</p>
+</header>
+
+<h2><span class="num">1</span> The office presses Show <span class="tag">picked</span></h2>
+<p class="lede">On the logbook, beside Print. Press it to flip between before and after.</p>
+<div class="row">
+  <div>
+    <div class="cap" id="capA">Before · the office’s logbook for Dario</div>
+    <div class="fit">
+      <div class="page">
+        <div class="ph">
+          <div><div class="eyebrow">People · Licenses</div><h3>Dario’s logbook</h3><div class="sub">1,382 approved hours on the clock, Mar 3 to Nov 1.</div></div>
+          <div class="btns"><button class="btn">Print summary sheet</button><button class="btn blue">Print full log</button></div>
+        </div>
+        <div class="strip off" id="strip">
+          <span id="stripWords">Dario cannot see this logbook. Show it, and Dario finds My logbook in the app’s menu.</span>
+          <button class="btn" id="toggle" onclick="flip()">Show Dario this logbook</button>
+        </div>
+        <div class="goal"><div class="eyebrow">Plumbing · from Plumber apprentice #191774</div><div class="big">1,382 <span>of 8,000 hours</span></div><div class="bar"><i></i></div><div class="small">Next mark 1,500 h. 118 hours away. Signs: Hal Moreno, Master plumber.</div></div>
+      </div>
+    </div>
+    <p class="note">The strip sits under the header, where the office reads it every time. Before, it says what Show does. After, it names the day and who pressed, and the button turns to <b>Stop showing</b>. Stop takes the menu row away on Dario’s next load.</p>
+  </div>
+  <div>
+    <div class="cap">The Licenses tab row, after</div>
+    <div class="fit">
+      <div class="page">
+        <table>
+          <tr><th>Person</th><th>Licenses</th><th></th></tr>
+          <tr><td><b>Dario Pruitt</b></td><td>Plumber apprentice</td><td><span style="color:var(--blue);font-weight:600">Open logbook</span> <span class="small">· Dario sees it</span></td></tr>
+          <tr><td><b>Hal Moreno</b></td><td>Master plumber</td><td><span style="color:var(--blue);font-weight:600">Open logbook</span></td></tr>
+        </table>
+      </div>
+    </div>
+    <p class="note">A quiet “Dario sees it” beside Open logbook, so the office can tell who has it without opening each one.</p>
+  </div>
+</div>
+
+<h2><span class="num">2</span> What Dario sees</h2>
+<p class="lede">The menu gains one row. The page is the same logbook, written to Dario: “Your logbook”, the goal card, the licenses Dario holds, the log week by week, and Print summary sheet for the board. No Edit, no Add a license. Nothing about anyone else’s hours.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Dario’s phone · the ☰ menu</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="topbar"><span>☰ Menu</span><span class="small">Dario</span></div>
+        <div class="in">
+          <div class="menu">
+            <div>🏠 Dashboard</div>
+            <div>📅 My schedule</div>
+            <div class="hot">📖 My logbook</div>
+            <div>❓ Help</div>
+          </div>
+          <div class="small">The row shows only after the office pressed Show. Everyone else sees the menu as it is today.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap green">Dario’s phone · My logbook</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="topbar"><span>My logbook</span><span class="small">Print</span></div>
+        <div class="in">
+          <div><div style="font-size:20px;font-weight:800">Your logbook</div><div class="small">1,382 approved hours on the clock, Mar 3 to Nov 1. Each hour counts toward the trade of its job.</div></div>
+          <div class="goal"><div class="eyebrow">Plumbing · Plumber apprentice #191774</div><div style="font-weight:600">Working toward journeyman plumber</div><div class="big">1,382 <span>of 8,000 hours</span></div><div class="bar"><i></i></div><div class="small">Next mark 1,500 h. 118 hours away.<br>Signs: Hal Moreno, Master plumber.<br>Proof: the TSBPE Employer Certification Form.</div></div>
+          <div class="wk"><div class="h"><b>Week of Oct 26 to Nov 1</b><span>Plumbing 41 h</span></div><div class="l"><span>J1182 · Oak Hollow remodel</span><span><span class="chip">Plumbing</span> <b>33 h</b></span></div><div class="l"><span>J1190 · Lakeline service</span><span><span class="chip">Plumbing</span> <b>8 h</b></span></div></div>
+          <div class="small">Something looks wrong? Ask the office. They fix the hours and the licenses, and the logbook follows.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="never" style="margin-top:14px">
+  <b>What Dario never gets</b>
+  <ul>
+    <li>Anyone else’s logbook. The read answers for the person signed in, and only when the office pressed Show for them.</li>
+    <li>Edit or Add a license. Licenses stay the office’s to change.</li>
+    <li>Pay. The logbook never held wages, and still doesn’t.</li>
+  </ul>
+</div>
+
+<h2><span class="num">3</span> Is this the best we can do?</h2>
+<div class="alts">
+  <div class="alt"><b>B · Every teammate with hours sees it, no button.</b>Lost because the ask was a button and “some employees”. And a stale license date reads as a wrong count. The office checks the licenses first, then presses Show.</div>
+  <div class="alt"><b>C · A card on Dario’s dashboard instead of a menu row.</b>Later, not now. The Your week card (#255, later in the train) is that card, with this week’s hours. A menu row is the door that lasts until then.</div>
+  <div class="alt"><b>D · Print it and hand it over.</b>The office can already do that. It goes stale the next week. Dario should watch the number move, which is the point of #255.</div>
+  <div class="alt"><b>E · Show the whole office at once.</b>Left out. One press per teammate keeps the office looking at each logbook before it is shown. A Show to everyone press can come later if the office asks.</div>
+</div>
+
+<div class="second" id="second">
+  <h2>Second pass, after the render</h2>
+  <p class="note" id="secondWords">Checked in the browser at 614 px, no sideways scroll. The strip reads before and after, and one press flips it to <b>Stop showing</b> with the day and who pressed. The phone frames fit at 343 px. What the pass kept and changed:</p>
+  <ul class="note">
+    <li><b>Kept the strip, not a lone button.</b> A button alone says nothing about the state. The strip says who can see the page, every time the office opens it.</li>
+    <li><b>Print stays on Dario’s page.</b> The summary sheet is the paper Dario takes to the board with the signed form. It is the one control from the office’s page worth keeping.</li>
+    <li><b>The menu row, not the dashboard, for now.</b> The Your week card later in #255 brings the number to the dashboard. Two homes now would be one too many.</li>
+    <li><b>The read is new and narrow.</b> Dario reads the page through one read that answers only for the person signed in, and only after Show. The office’s read and the licenses table stay closed to teammates.</li>
+    <li><b>Left for later:</b> Show to everyone at once, and a note on Dario’s Dashboard the first time the logbook is shown.</li>
+  </ul>
+</div>
+</div>
+<script>
+  let on = false
+  function flip() {
+    on = !on
+    document.getElementById('strip').className = on ? 'strip' : 'strip off'
+    document.getElementById('stripWords').textContent = on
+      ? 'Dario sees this logbook in the app’s menu. Shown Nov 4 by Lou Lead.'
+      : 'Dario cannot see this logbook. Show it, and Dario finds My logbook in the app’s menu.'
+    document.getElementById('toggle').textContent = on ? 'Stop showing' : 'Show Dario this logbook'
+    document.getElementById('toggle').className = on ? 'btn' : 'btn'
+    document.getElementById('capA').textContent = on ? 'After · Show pressed' : 'Before · the office’s logbook for Dario'
+  }
+</script>
+</body>
+</html>
