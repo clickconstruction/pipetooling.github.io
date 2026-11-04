@@ -19,6 +19,7 @@ import { encodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts'
 import { agreementHeading, agreementKindOf, agreementNoun, amountCentsFromFields, appOrigin, corsHeaders, initialLinesOf, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, JOB_CONTRACT_LINK_DAYS, JOB_CONTRACT_REMINDER_DAYS, jobNumberLabel, json, randomUrlToken, signedRecordId, signingUrl } from '../_shared/jobContract.ts'
 import { buildJobContractPaperEmail } from '../_shared/jobContractEmail.ts'
 import { filedOnPaper, signerNamesLine } from '../_shared/jobContractSigners.ts'
+import { writeJobAgreementThreadLine } from '../_shared/jobContractThreadLine.ts'
 
 type Body = {
   contract_id?: string
@@ -35,7 +36,8 @@ type Body = {
    * customer to sign by hand. Needs `contract_id` (a live draft or sent row) and a valid
    * recipient; the email goes first, then the row is stamped `sent` / `sent_channel =
    * 'pdf_email'` with the durable signing link minted as the second door (the email offers
-   * it, and the reminder lane needs it). Logs a `sent` event with `channel: 'pdf_email'`.
+   * it, and the reminder lane needs it). Logs a `sent` event with `channel: 'pdf_email'` and writes the
+   * customer's thread line (v2.6489), as the link send does.
    */
   mode?: 'email' | 'pdf_url' | 'draft_pdf' | 'send_to_sign'
   recipient_email?: string
@@ -253,6 +255,9 @@ serve(async (req) => {
         metadata: { channel: 'pdf_email', to: recipientEmail, revision: c.revision, filename: draftFilename },
         actor_user_id: user.id,
       })
+      // The thread's line (v2.6489): the paper went, on the customer's own thread, keyed on this send, as the link
+      // send writes it (send-job-contract). After the email, so the line never says the paper went when it did not.
+      await writeJobAgreementThreadLine(admin, { contractId: c.id, jobId: jobRow.id, kind: draftKind, event: 'sent', heading: agreementHeading(draftKind, jobRow), signerName: null, sentAtIso: nowIsoPaper })
       if (stampErr || !stamped?.length) {
         console.error(stampErr)
         return json({ ok: true, emailed: true, warning: 'The email went, but the agreement could not be marked sent — reload and check it.' })
