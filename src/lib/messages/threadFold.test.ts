@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isThreadFolded, reachOpen, THREAD_FOLD_PX } from './threadFold'
+import { isThreadFolded, isThreadShort, reachOpen, THREAD_FOLD_PX, THREAD_SHORT_PX, THREAD_SHORT_QUERY } from './threadFold'
 
 describe('the thread header folds for a narrow column (Messages cut 10)', () => {
   it('folds at 640 px of column or less, and always on a phone', () => {
@@ -21,5 +21,15 @@ describe('the thread header folds for a narrow column (Messages cut 10)', () => 
     expect(reachOpen(null, true)).toBe(false)
     expect(reachOpen(true, true)).toBe(true)
     expect(reachOpen(false, false)).toBe(false)
+  })
+})
+
+describe('the thread folds by height on a short window (v2.6474)', () => {
+  it('folds under 820 px of window height, at a desk only', () => {
+    expect(THREAD_SHORT_PX).toBe(820)
+    expect(THREAD_SHORT_QUERY).toBe('(max-height: 819.98px)')
+    expect(isThreadShort(true, false)).toBe(true)
+    expect(isThreadShort(false, false)).toBe(false)
+    expect(isThreadShort(true, true)).toBe(false)
   })
 })

@@ -55,7 +55,8 @@ export function JobsRail({
         gap: '0.4rem',
         alignItems: 'center',
         flexWrap: strip ? 'nowrap' : 'wrap',
-        ...(strip ? { overflowX: 'auto', whiteSpace: 'nowrap', scrollbarWidth: 'none', paddingBottom: 2, maskImage: STRIP_FADE, WebkitMaskImage: STRIP_FADE } : null),
+        // Room for the fade at the strip's end (v2.6474), so a last tile that fits is not faded as if more came after it.
+        ...(strip ? { overflowX: 'auto', whiteSpace: 'nowrap', scrollbarWidth: 'none', paddingBottom: 2, paddingRight: 22, maskImage: STRIP_FADE, WebkitMaskImage: STRIP_FADE } : null),
       }}
     >
       {!strip && (
