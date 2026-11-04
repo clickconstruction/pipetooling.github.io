@@ -112,6 +112,18 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
   const [costLineDate, setCostLineDate] = useState(() => todayYmdInAppTz())
   const [expandedCostLinesLicenseId, setExpandedCostLinesLicenseId] = useState<string | null>(null)
   const [hoursLogPersonName, setHoursLogPersonName] = useState<string | null>(null)
+  // Teammates the office has shown their own logbook (v2.6483); a failed read just leaves the note off.
+  const [logbookShown, setLogbookShown] = useState<Set<string>>(() => new Set())
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { data, error } = await supabase.from('logbook_shares' as never).select('user_id')
+      if (!cancelled && !error) setLogbookShown(new Set(((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function loadLicenses() {
     setLicensesLoading(true)
@@ -366,9 +378,16 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                   {(() => {
                                     const logbookUserId = users.find((u) => u.name === personName)?.id
                                     return logbookUserId ? (
-                                      <Link to={`/logbook/${logbookUserId}`} onClick={(e) => e.stopPropagation()} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', whiteSpace: 'nowrap', fontWeight: 600 }}>
-                                        Open logbook
-                                      </Link>
+                                      <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                                        <Link to={`/logbook/${logbookUserId}`} onClick={(e) => e.stopPropagation()} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                                          Open logbook
+                                        </Link>
+                                        {logbookShown.has(logbookUserId) ? (
+                                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="licenses-logbook-shown">
+                                            {personName.split(' ')[0]} sees it
+                                          </span>
+                                        ) : null}
+                                      </span>
                                     ) : null
                                   })()}
                                   <button
