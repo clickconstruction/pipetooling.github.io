@@ -183,6 +183,14 @@ export function installDomShims() {
       dispatchEvent: () => false,
     })) as typeof window.matchMedia
   }
+  // recharts' ResponsiveContainer watches its box (v2.6493); jsdom has no observer, and a smoke only needs the chart to mount.
+  if (typeof window !== 'undefined' && !(window as { ResizeObserver?: unknown }).ResizeObserver) {
+    ;(window as unknown as { ResizeObserver: unknown }).ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

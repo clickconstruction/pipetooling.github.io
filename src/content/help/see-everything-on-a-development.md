@@ -126,7 +126,7 @@ Press {{button:outline|Show the N here}} to draw them in the Jobs & bids table f
 
 ## Read the money
 
-Money shows the site's progress as one bar, then every job by stage with what is billed, paid and left. Press a column head to sort a section. Press the band's note about jobs with no percent to sort by percent and light them.
+Money shows the site's progress as one bar, then every job by stage with what is billed, paid and left. Press a column head to sort a section. Press the band's note about jobs with no percent to sort by percent and light them. Two more views sit at the top of Money, the Scoreboard and the Timeline.
 
 ## Read the scoreboard
 
@@ -145,6 +145,18 @@ Open a job to see who put something into it. Each person shows hours, days and l
 Each row fills Cost, and a thin bar shows its share. The rows add up to the job. The Office row says who sent the bills and booked the payments. Your own rows are gold and say You.
 
 A dev or a controller reads every column and every row. A leader or an assistant reads hours, days and earned only. Their Right now line speaks in hours and earned dollars. Under an open job they see the people alone. The page remembers the view you were in.
+
+## Read the timeline
+
+Press {{button:outline|Timeline}} at the top of Money. Only a dev or a controller sees this view. The chart is the Job Summary's cost chart drawn over the whole site.
+
+The red line is the cost to date. Every job's charges sit on it in date order. Each step wears the icon of its source. The green line is the cash position. The green line rises only when a payment comes in.
+
+Rest the pointer on a step to read its lines. Each line names the job and the kind of charge for that day. Three card charges on one job read as one line.
+
+Press a job's chip above the chart to narrow the chart to that job. Press more chips to add jobs. Press {{button:outline|All jobs}} to see the whole site again. A job with no dated charge or payment is not a chip. One line counts how many were left out.
+
+The reads start when you open the view. On a big site the icons mark the biggest days only. The page remembers the view you were in.
 
 ## Check the plans and the questions
 
