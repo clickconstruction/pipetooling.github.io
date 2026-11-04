@@ -25,6 +25,8 @@ vi.mock('../../estimates/useEstimateDoorThreadSlots', () => ({ useEstimateDoorTh
 vi.mock('../../messages/useLeadDoorThreadSlots', () => ({ useLeadDoorThreadSlots: () => ({}) }))
 // #223 PR 3's Start a bid navigates to the Bid Board (useNavigate), and this hook runs outside a Router here: its own smoke covers it.
 vi.mock('../../followUp/useNewLaneThreadSlots', () => ({ useNewLaneThreadSlots: () => ({}) }))
+// v2.6509: the email viewer's row (Start a bid, Put it on a bid…, Open the bid) is its own smoke, `useEmailViewerThreadSlots.render.test.tsx`.
+vi.mock('../../messages/useEmailViewerThreadSlots', () => ({ useEmailViewerThreadSlots: () => ({}) }))
 
 const at = (url: string) =>
   function Wrapper({ children }: { children: ReactNode }) {

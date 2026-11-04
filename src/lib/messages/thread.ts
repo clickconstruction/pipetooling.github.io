@@ -60,6 +60,11 @@ export interface ThreadMessage {
    * a line is nobody's move: `lastOut` and the court skip it, and Follow up's row says the app texted back.
    */
   auto?: boolean
+  /**
+   * What the reader read from an invitation to bid (`messages.invitation`, v2.6222), as the row keeps it: the email
+   * viewer's row reads it through `invitationOf` (v2.6509). Null on every other line, unset on a read that leaves it out.
+   */
+  invitation?: unknown
 }
 
 export type QuoDeliveryWord = 'delivered' | 'undelivered' | 'failed'

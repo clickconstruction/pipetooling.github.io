@@ -44,6 +44,8 @@ export type MessageRow = Pick<
   delivery?: string | null
   /** The app's own line (v2.6012, the text back after a missed call). Optional until the types regenerate; absent reads false. */
   auto?: boolean | null
+  /** What the reader read from an invitation to bid (v2.6222), for the email viewer's row (v2.6509). Optional: a read may leave it out. */
+  invitation?: unknown
 }
 
 export interface MessageLoadContext {
@@ -89,6 +91,7 @@ export function threadMessageFromRow(row: MessageRow, ctx: MessageLoadContext = 
     mailbox: row.mailbox && MAILBOXES.has(row.mailbox) ? (row.mailbox as ThreadMessage['mailbox']) : null,
     delivery: deliveryOf(row.delivery),
     auto: row.auto === true,
+    invitation: row.invitation ?? null,
   }
 }
 

@@ -2,7 +2,7 @@
 title: find every message with a person in one place
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, laptop, short screen, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans, cut it off, opens, our link, header, lead, book a visit, start an estimate, show everyone
+keywords: start a bid, put it on a bid, open the bid, bid history, invitation in a thread, gc mode, messages, laptop, short screen, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans, cut it off, opens, our link, header, lead, book a visit, start an estimate, show everyone
 where: /messages
 order: 116
 ---
@@ -106,7 +106,30 @@ On a laptop, the window is short. The thread folds so the messages get the room.
 2. Read who sent it, when it came and the job it is tied to.
 3. Press {{button:outline|Copy}}, {{button:outline|Print or save as PDF}} or {{button:outline|Share…}}.
 
-On a customer's message, the office also sees {{button:outline|Start a change order}}. [Start a change order from a customer's message](/help/start-a-change-order-from-a-customers-message) shows how.
+The row above the words reads the message. The office sees one or two more presses there.
+
+- An email on no job offers {{button:outline|Start a bid}} and {{button:outline|Put it on a bid…}}. An invitation to bid offers the same two. [Put an email on a bid](#put-an-email-on-a-bid) shows both.
+- An email already on a bid offers {{button:outline|Open the bid}}.
+- A customer's message tied to a job offers {{button:outline|Start a change order}}. [Start a change order from a customer's message](/help/start-a-change-order-from-a-customers-message) shows how.
+
+## Put an email on a bid
+
+An invitation to bid can reach you in a thread, not only in New. Or you may have made the bid already from a phone call or a bid platform. The email viewer offers two presses for that.
+
+:::example The row on an invitation
+{{button:outline|Start a bid}} {{button:outline|Put it on a bid…}} {{button:outline|Copy}} {{button:outline|Print or save as PDF}} {{button:outline|Share…}}
+:::
+
+Press {{button:outline|Start a bid}} to make a new bid from the email. A panel opens under the row.
+
+1. Check the **Bid** box. It starts with what the email said.
+2. Press {{button:blue|Start a bid on}} the sender's customer. Is the sender new? Type the company under **A new customer** and press {{button:blue|Make the customer and start the bid}}.
+
+The bid takes the plans link and the due day from the email. The email lands on the bid. The Bid Board opens on it.
+
+Press {{button:outline|Put it on a bid…}} when the bid exists already. A picker lists the sender's bids first. Type a name or a number to find another open bid. Press the bid. The email lands on it. The bid's history gains one line. It reads *Invitation to bid came in by email from Glenn Geling, Oct 22.* So the bid says it reached you by email too.
+
+Press {{button:outline|Open the bid}} on an email that is on a bid already. The Bid Board opens on it.
 
 Press Escape to go back to the thread.
 
