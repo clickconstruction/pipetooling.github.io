@@ -58,10 +58,9 @@ export function NewLaneSlot({
   const [read, setRead] = useState<NewLaneCardRows | null>(null)
   const [known, setKnown] = useState<WhoKnown | null>(null)
   const [busy, setBusy] = useState(false)
-  // A short window folds the card to one row (v2.6476), unless it sits whole beside the lines (v2.6478); the thread
-  // window says both through the open thread.
-  const openThread = useOpenThread()
-  const short = (openThread?.short ?? false) && !openThread?.beside
+  // Over a thread's lines the card folds to one row (v2.6476, every screen since v2.6482); beside them (v2.6478) it is
+  // whole. The thread window says which through the open thread; Sort all and the Answer all desk give no fold.
+  const foldCard = useOpenThread()?.foldCard ?? false
   const jobKeys = contact.jobIds.join(',')
 
   const load = useCallback(async () => {
@@ -199,7 +198,7 @@ export function NewLaneSlot({
       onNotForUs={(reason) => void run(() => io.answerInvitation(row.messageId, 'not_for_us', reason), INVITATION_WORDS.notForUs)}
       onKeep={() => void run(() => io.answerInvitation(row.messageId, 'kept', null), INVITATION_WORDS.kept)}
       busy={busy}
-      foldable={short}
+      foldable={foldCard}
       onName={(g: WhoGuess) =>
         void run<unknown>(
           () =>

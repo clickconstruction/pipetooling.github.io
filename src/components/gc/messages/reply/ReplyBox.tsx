@@ -200,7 +200,7 @@ export function ReplyBox({
   // The quick replies editor is open; its add row starts with these words when there are any (the prototype's editQuick).
   const [adding, setAdding] = useState<string | null>(null)
   const [body, setBody] = useState('')
-  // A short window folds the thread's box to one row (v2.6477) until a press into it; a send folds it back.
+  // A short window or a phone folds the thread's box to one row (v2.6477, v2.6482) until a press into it; a send folds it back.
   const [woke, setWoke] = useState(false)
   // Punch list #126: where the caret is, so a `/` word at it opens the list; the lines are read the first time it does.
   const [caret, setCaret] = useState(0)
@@ -277,7 +277,7 @@ export function ReplyBox({
   // #207 PR 1: an email's pre-typed opening alone is an empty box, for the strip, the from line, the count and Send.
   const blank = !body.trim() || (shown === 'email' && onlyOpening(body, first))
   const count = goesOut(shown) ? countLine(shown, blank ? '' : body) : null
-  const folded = replyBoxFolded({ short: open?.short ?? false, inJob: Boolean(job), woke, blank, files: files.length, opensWithWords: Boolean(nudge) || Boolean(startWords) || settling.active, textWaits })
+  const folded = replyBoxFolded({ foldBox: open?.foldBox ?? false, inJob: Boolean(job), woke, blank, files: files.length, opensWithWords: Boolean(nudge) || Boolean(startWords) || settling.active, textWaits })
   const sendLabel = settling.active ? OWED_DONE_SEND : (REPLY_KINDS.find((k) => k.kind === shown)?.send ?? 'Send')
   const orange = Boolean(job) && contact.kind === 'customer' && goesOut(shown)
 
@@ -613,7 +613,8 @@ export function ReplyBox({
         ...(job ? null : { background: 'var(--surface)', borderTop: '1px solid var(--border)', boxShadow: '0 -6px 14px -10px rgba(15, 23, 42, 0.3)', padding: '0.6rem 0.9rem 0.75rem' }),
         // Folded (v2.6477): the kinds and a one-line box side by side, the rest waiting until a press into it.
         display: folded ? 'flex' : 'grid',
-        ...(folded ? { alignItems: 'center' } : null),
+        // On a phone the one-line box takes its own line under the kinds (v2.6482).
+        ...(folded ? { alignItems: 'center', flexWrap: 'wrap' } : null),
         gap: folded ? '0.6rem' : '0.4rem',
         position: 'relative',
       }}
@@ -722,7 +723,7 @@ export function ReplyBox({
       )}
 
       {!textWaits && (
-        <div style={{ position: 'relative', ...(folded ? { flex: 1, minWidth: 0 } : null) }}>
+        <div style={{ position: 'relative', ...(folded ? { flex: '1 1 14rem', minWidth: 0 } : null) }}>
           <textarea
             ref={boxRef}
             aria-label={shown === 'note' ? 'A note for the team' : shown === 'call' ? CALL_WORDS.said : `Write to ${contact.name}`}

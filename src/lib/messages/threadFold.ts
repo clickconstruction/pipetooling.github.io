@@ -28,14 +28,24 @@ export function isThreadShort(shortScreen: boolean, phone: boolean): boolean {
 }
 
 /**
- * The thread column's width from which a short window puts the sort card beside the lines (v2.6478, the owner's B):
- * a laptop is wide and short, so the card takes a column at the right, whole, and the lines keep the full height.
+ * The thread column's width from which the sort card sits beside the lines (v2.6478, the owner's B): the card takes a
+ * column at the right, whole, and the lines keep the full height. Since v2.6482 at any height, since a tall window with
+ * the card over the lines squeezed them to their floor just the same (1440×900 and 1920×1080, live).
  */
 export const THREAD_BESIDE_PX = 900
 
-/** The sort card goes beside the lines: a short window whose thread column is 900 px or wider. Unmeasured reads narrow. */
-export function isThreadBeside(columnWidth: number | null, short: boolean): boolean {
-  return short && columnWidth !== null && columnWidth >= THREAD_BESIDE_PX
+/** The sort card goes beside the lines: a thread column of 900 px or wider, at a desk. Unmeasured reads narrow. */
+export function isThreadBeside(columnWidth: number | null, phone: boolean): boolean {
+  return !phone && columnWidth !== null && columnWidth >= THREAD_BESIDE_PX
+}
+
+/**
+ * What folds to one row (v2.6482): the sort card wherever it sits over the lines, since there it takes the room the
+ * lines need on any screen; the reply box on a short window and on a phone, where its four rows are a third of the
+ * screen. A tall desk keeps the whole box.
+ */
+export function threadFolds(f: { short: boolean; phone: boolean; beside: boolean }): { card: boolean; box: boolean } {
+  return { card: !f.beside, box: f.short || f.phone }
 }
 
 /**

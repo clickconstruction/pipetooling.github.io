@@ -53,7 +53,7 @@ const NO_BOXES = () => Promise.resolve(null)
 function box(contactId = 'c-greg', more: { jobFilter?: string | null; io?: ReplyIo; provider?: boolean; boxes?: () => Promise<BoxSettings | null>; short?: boolean } = {}) {
   const io = more.io ?? fakeIo()
   const reread = vi.fn()
-  const open = { ...thread(contactId, more.jobFilter ?? null), ...(more.short ? { short: true } : null) }
+  const open = { ...thread(contactId, more.jobFilter ?? null), ...(more.short ? { foldBox: true } : null) }
   const wrap = (child: ReactNode) =>
     more.provider === false ? child : <OpenThreadContext.Provider value={open}>{child}</OpenThreadContext.Provider>
   renderWithProviders(<MessagesRereadContext.Provider value={reread}>{wrap(<ReplyBox papersIo={noPapers} contact={open.contact} io={io} loadBoxes={more.boxes ?? NO_BOXES} />)}</MessagesRereadContext.Provider>)

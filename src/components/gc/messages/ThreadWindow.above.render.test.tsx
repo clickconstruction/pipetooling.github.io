@@ -46,7 +46,7 @@ describe('what sits above the lines (v2.5570)', () => {
     expect(above.style.minHeight).toBe('0')
     expect(above.style.flex).toBe('0 1 auto')
     expect(above.nextElementSibling).toBe(lines)
-    expect(lines.style.minHeight).toBe('7rem')
+    expect(lines.style.minHeight).toBe('max(7rem, 33%)') // a third of the window on every screen (v2.6482)
     expect(win.querySelector('[data-test-box]')).toBeTruthy()
     expect(lines.compareDocumentPosition(win.querySelector('[data-test-box]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })

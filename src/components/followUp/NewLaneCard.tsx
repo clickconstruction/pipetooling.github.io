@@ -376,9 +376,10 @@ export function NewLaneCard({ row, channels, guesses, roster = [], jobs = [], pe
         aria-label={`Sort: ${head}`}
         data-new-lane-card={row.sort}
         data-new-lane-fold="folded"
-        style={{ margin: '0.5rem 0.9rem 0', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-blue-tint)', padding: '0.4rem 0.6rem 0.4rem 0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+        style={{ margin: '0.5rem 0.9rem 0', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-blue-tint)', padding: '0.4rem 0.6rem 0.4rem 0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.5rem', alignItems: 'center' }}
       >
-        <h3 title={title} style={{ margin: 0, fontSize: '0.9rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {/* On a phone the head takes its own line over the presses (v2.6482); at a desk they share one. */}
+        <h3 title={title} style={{ margin: 0, fontSize: '0.9rem', flex: '1 1 14rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {title}
         </h3>
         {lead && (

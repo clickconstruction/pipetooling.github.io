@@ -44,6 +44,8 @@ Each message shows how it came, who sent it and its job. A long message shows fo
 
 Press Escape or {{button:outline|×}} to close the thread.
 
+A person waiting in **New** has a sort card. On a wide window it sits whole at the right of the messages. On a narrow one it folds to one row with the press it picked. Press **Other ways** to open it.
+
 ## A lead's two doors
 
 A lead is a person who wrote to us and has no record yet. Their thread offers {{button:blue|Book a visit}} and {{button:outline|Start an estimate}}. Book a visit makes them a customer and opens Add Job with their name and number filled in. Start an estimate makes them a customer and opens a new estimate for them. Their thread comes along either way.
@@ -84,6 +86,7 @@ On a phone or in a narrow window, the top of the thread folds to fit.
 - Press the arrow beside their company to show their numbers and addresses.
 - The chips sit in one row, and the person's jobs sit in one row under them.
 - Swipe a row sideways to see the rest of it.
+- The reply box folds to one row. Press into it to write.
 - A message, the job picker and the menu under {{button:outline|⋯}} open from the bottom of the screen.
 - Press outside one to close it. Press **Cancel** to close the menu.
 
@@ -93,8 +96,6 @@ On a laptop, the window is short. The thread folds so the messages get the room.
 
 - The top keeps two rows. The first has their name, and **Who is this?** when nobody has named them.
 - The chip, the sentence and their jobs share the second row.
-- The sort card folds to one row with the press it picked. Press **Other ways** to open it.
-- On a wide laptop, the sort card sits whole at the right of the messages instead.
 - The reply box folds to one row. Press into it to write.
 - Press the arrow beside their company to show their numbers and addresses.
 - The window takes the whole height under the app's bar.
