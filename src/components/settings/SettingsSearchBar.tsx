@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { searchSettings, type SettingsSearchEntry } from '../../lib/settingsSearch'
+import { searchSettings, settingsSearchTrail, type SettingsSearchEntry } from '../../lib/settingsSearch'
 
 /**
  * Settings search bar (v2.2084, mockup A): a type-ahead above the tab bar.
@@ -8,6 +8,14 @@ import { searchSettings, type SettingsSearchEntry } from '../../lib/settingsSear
  * label text is bolded, keyword-only matches show the word that hit. Keyboard:
  * ↑/↓ move, Enter jumps, Esc clears. Picking a result clears the box and hands
  * the entry to the parent (tab switch + anchor scroll).
+ *
+ * A row wraps (v2.6512): the title grows and wraps as a sentence, the trail
+ * (`settingsSearchTrail`: *in <tab> →*, or *a tab →* when the door is the tab)
+ * sits at the row's right end while it fits beside the title and drops to its
+ * own line under it when it does not, and a keyword hit's word is the last
+ * line. Before, the title was a shrinking flex child beside a nowrap trail, so
+ * a long title on a narrow pane broke one word a line with the trail drawn over
+ * its first word.
  */
 export default function SettingsSearchBar({
   groups,
@@ -127,9 +135,10 @@ export default function SettingsSearchBar({
                   onMouseEnter={() => setActiveIndex(i)}
                   style={{
                     display: 'flex',
+                    flexWrap: 'wrap',
                     alignItems: 'baseline',
-                    justifyContent: 'space-between',
-                    gap: '0.75rem',
+                    columnGap: '0.75rem',
+                    rowGap: '0.1rem',
                     padding: '0.6rem 0.75rem',
                     fontSize: '0.9075rem',
                     cursor: 'pointer',
@@ -137,7 +146,8 @@ export default function SettingsSearchBar({
                     borderTop: i > 0 ? '1px solid var(--border)' : 'none',
                   }}
                 >
-                  <span style={{ minWidth: 0, color: 'var(--text-strong)' }}>
+                  {/* The title grows to the room it needs and wraps as a sentence; `minWidth: 0` lets a long one shrink under the row's width instead of overflowing. No `width`: a fixed column is what broke a title one word a line. */}
+                  <span data-settings-search-title style={{ flex: '1 1 auto', minWidth: 0, overflowWrap: 'anywhere', color: 'var(--text-strong)' }}>
                     {h.matchStart >= 0 ? (
                       <>
                         {label.slice(0, h.matchStart)}
@@ -145,15 +155,16 @@ export default function SettingsSearchBar({
                         {label.slice(h.matchStart + h.matchLen)}
                       </>
                     ) : (
-                      <>
-                        {label}{' '}
-                        <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>({h.matchedKeyword})</span>
-                      </>
+                      label
                     )}
                   </span>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    in {tabLabelById.get(h.entry.tabId) ?? h.entry.tabId} →
+                  {/* Never shrinks and never breaks, so it either fits after the title or wraps whole to its own line under it. */}
+                  <span data-settings-search-trail style={{ flex: '0 0 auto', fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    {settingsSearchTrail(h.entry, tabLabelById.get(h.entry.tabId))} →
                   </span>
+                  {h.matchedKeyword != null && (
+                    <span data-settings-search-keyword style={{ flexBasis: '100%', color: 'var(--text-faint)', fontSize: '0.8125rem' }}>({h.matchedKeyword})</span>
+                  )}
                 </div>
               )
             })

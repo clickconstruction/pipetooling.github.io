@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SETTINGS_SEARCH_INDEX, searchSettings, type SettingsSearchEntry, settingsSearchGuideQuery } from './settingsSearch'
+import { SETTINGS_SEARCH_INDEX, searchSettings, type SettingsSearchEntry, settingsSearchGuideQuery, settingsSearchTrail } from './settingsSearch'
 
 const ALL_TABS = [...new Set(SETTINGS_SEARCH_INDEX.map((e) => e.tabId))]
 
@@ -72,5 +72,25 @@ describe('the finder finds itself (v2.2902, J28-F4)', () => {
     expect(params.get('g')).toBe('global-search')
     expect(params.get('x')).toBe('1')
     expect(settingsSearchGuideQuery('', { label: 'Plain', tabId: 'settings-account' })).toBeNull()
+  })
+})
+
+describe('settingsSearchTrail — where the pick lands, never the title twice (v2.6512)', () => {
+  it('a card inside a tab reads "in <tab>"', () => {
+    expect(settingsSearchTrail({ label: 'Merge users', tabId: 'settings-people' }, 'People & teams')).toBe('in People & teams')
+    expect(settingsSearchTrail({ label: 'Page pins', tabId: 'settings-dashboard', anchorId: 'settings-page-pins' }, 'Your dashboard')).toBe('in Your dashboard')
+  })
+
+  it('a door that is the whole tab reads "a tab"', () => {
+    expect(settingsSearchTrail({ label: 'How fast a change ships', tabId: 'settings-ship-pace' }, 'How fast a change ships')).toBe('a tab')
+    expect(settingsSearchTrail({ label: 'Training', tabId: 'settings-training' }, 'Training')).toBe('a tab')
+  })
+
+  it('a guide or an anchor named like its tab still says where it is', () => {
+    expect(settingsSearchTrail({ label: 'Guides', tabId: 'settings-guides', guideSlug: 'global-search' }, 'Guides')).toBe('in Guides')
+  })
+
+  it('falls back to the tab id when the viewer has no label for it', () => {
+    expect(settingsSearchTrail({ label: 'Claim code', tabId: 'settings-advanced-tools' }, undefined)).toBe('in settings-advanced-tools')
   })
 })

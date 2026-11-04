@@ -104,3 +104,60 @@ test('Catalogs engines load type lists per service type (v2.855 extraction)', as
   await expect(main).toContainText('Takeoff, Labor, and Price Book Names')
   expect(pageErrors).toEqual([])
 })
+
+/**
+ * The finder's rows read at phone width (v2.6512): on a narrow pane a long-titled door ("How fast a change ships")
+ * broke one word a line with its trail drawn over the first word. The title now takes the room it needs and wraps as
+ * a sentence, the trail sits after it when it fits and drops whole to its own line when it does not, and the matched
+ * keyword stays last. Measured, not read: the title's line count from its client rects, and the trail's box against
+ * the title's. READ-ONLY: typing in the search box only.
+ */
+test('the finder\'s rows read at phone width: no one-word lines, the trail never over the title', async ({ page }) => {
+  await page.goto('/settings')
+  const box = page.getByRole('combobox', { name: 'Search settings' })
+  await expect(box).toBeVisible()
+  for (const width of [375, 520, 1280]) {
+    await page.setViewportSize({ width, height: 812 })
+    for (const query of ['merge', 'e']) {
+      await box.fill('')
+      await box.fill(query)
+      await expect(page.getByRole('option').first()).toBeVisible()
+      const rows = await page.getByRole('option').evaluateAll((els) =>
+        els.map((el) => {
+          const title = el.querySelector('[data-settings-search-title]') as HTMLElement
+          const trail = el.querySelector('[data-settings-search-trail]') as HTMLElement
+          const keyword = el.querySelector('[data-settings-search-keyword]') as HTMLElement | null
+          const range = document.createRange()
+          range.selectNodeContents(title)
+          const lines = new Set(Array.from(range.getClientRects()).map((r) => Math.round(r.top))).size
+          const t = title.getBoundingClientRect()
+          const r = trail.getBoundingClientRect()
+          const row = el.getBoundingClientRect()
+          const overlaps = t.right > r.left + 0.5 && t.left < r.right - 0.5 && t.bottom > r.top + 0.5 && t.top < r.bottom - 0.5
+          return {
+            title: title.textContent ?? '',
+            trail: trail.textContent ?? '',
+            words: (title.textContent ?? '').trim().split(/\s+/).length,
+            lines,
+            overlaps,
+            trailInside: r.right <= row.right + 0.5 && r.left >= row.left - 0.5,
+            keywordLast: keyword == null || keyword.getBoundingClientRect().top >= Math.max(t.bottom, r.bottom) - 1,
+          }
+        }),
+      )
+      expect(rows.length).toBeGreaterThan(0)
+      for (const row of rows) {
+        const where = `${width}px "${query}" → ${row.title} · ${row.trail}`
+        expect(row.overlaps, `${where}: the trail is drawn over the title`).toBe(false)
+        expect(row.trailInside, `${where}: the trail runs past the row`).toBe(true)
+        expect(row.keywordLast, `${where}: the keyword is not the last line`).toBe(true)
+        // A sentence, never a stack: a title of n words takes fewer than n lines (one word is one line).
+        if (row.words > 1) expect(row.lines, `${where}: ${row.lines} lines for ${row.words} words`).toBeLessThan(row.words)
+        if (row.title === 'How fast a change ships') {
+          expect(row.lines, `${where}: the long title wraps`).toBe(1)
+          expect(row.trail, where).toBe('a tab →')
+        }
+      }
+    }
+  }
+})
