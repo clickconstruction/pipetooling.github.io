@@ -57,7 +57,8 @@ describe('the side of a thread (cut 10)', () => {
   it('sits beside the thread at a desk', () => {
     const { win, side } = open()
     expect(side()).toHaveLength(1)
-    const column = win.querySelector('[data-thread-lines]')?.parentElement as HTMLElement
+    // The lines sit in the body (v2.6478), whose column is the side's neighbour.
+    const column = win.querySelector('[data-thread-body]')?.parentElement as HTMLElement
     expect(side()[0]?.previousElementSibling).toBe(column)
   })
 
@@ -67,6 +68,7 @@ describe('the side of a thread (cut 10)', () => {
     expect(side()).toHaveLength(1)
     const row = side()[0] as HTMLElement
     expect(row.previousElementSibling).toBe(win.querySelector('[data-thread-header]'))
-    expect(row.nextElementSibling).toBe(win.querySelector('[data-thread-lines]'))
+    expect(row.nextElementSibling).toBe(win.querySelector('[data-thread-body]'))
+    expect(win.querySelector('[data-thread-body] [data-thread-lines]')).toBeTruthy()
   })
 })

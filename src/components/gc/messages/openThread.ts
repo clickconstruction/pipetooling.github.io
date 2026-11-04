@@ -27,6 +27,8 @@ export interface OpenThread {
   searchJobs: (words: string) => Promise<JobTile[]>
   /** The window is short (v2.6474, `isThreadShort`): the sort card and the reply box fold to one row. Unset reads tall. */
   short?: boolean
+  /** A short window wide enough for the sort card to sit whole beside the lines (v2.6478, `isThreadBeside`): it does not fold. */
+  beside?: boolean
 }
 
 export const OpenThreadContext = createContext<OpenThread | null>(null)

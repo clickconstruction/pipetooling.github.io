@@ -7,6 +7,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+
+const measured = vi.hoisted(() => ({ width: null as number | null }))
+vi.mock('../../../hooks/useMeasuredWidth', () => ({ useMeasuredWidth: () => [{ current: null }, measured.width] }))
+
 import { ThreadWindow } from './ThreadWindow'
 import type { MessagesWrites } from './messagesWrites'
 import { useOpenThread } from './openThread'
@@ -46,20 +50,24 @@ const writes = (): MessagesWrites => ({
 /** A box slot that says what the open thread told it. */
 function ShortSays() {
   const open = useOpenThread()
-  return <div data-test-short={open?.short ? 'short' : 'tall'} />
+  return <div data-test-short={open?.short ? 'short' : 'tall'} data-test-beside={open?.beside ? 'beside' : 'under'} />
 }
 
 function open(contactId: string) {
   const slots: ThreadSlots = {
     statusRow: () => <span>portal · 3 d ago</span>,
     box: () => <ShortSays />,
+    aboveLines: () => <section data-test-card>Bid it?</section>,
   }
   renderWithProviders(<ThreadWindow contactId={contactId} onClose={vi.fn()} slots={slots} view={spineMessagesView()} nowIso={DEMO_NOW} writes={writes()} />)
   const win = screen.getByRole('dialog', { name: /: messages$/ })
   return { win, header: win.querySelector('[data-thread-header]') as HTMLElement }
 }
 
-beforeEach(() => screenIs({}))
+beforeEach(() => {
+  measured.width = null
+  screenIs({})
+})
 afterEach(() => {
   cleanup()
   window.matchMedia = realMatchMedia
@@ -103,5 +111,32 @@ describe('the thread folds by height on a short window (v2.6474)', () => {
     screenIs({ phone: true, short: true })
     const phone = open('c-greg')
     expect(phone.header.hasAttribute('data-thread-short')).toBe(false)
+  })
+})
+
+describe('a short, wide window puts the sort card beside the lines (v2.6478)', () => {
+  it('draws what a cut puts above the lines in a column at their right, and says so to the slots', () => {
+    screenIs({ short: true })
+    measured.width = 976
+    const { win } = open('c-greg')
+    expect(win.querySelector('[data-thread-body]')?.getAttribute('data-thread-body')).toBe('beside')
+    expect(win.querySelector('[data-thread-above]')).toBeNull()
+    const beside = win.querySelector('[data-thread-beside]') as HTMLElement
+    expect(beside.className).toBe('thread-beside')
+    expect(beside.querySelector('[data-test-card]')).toBeTruthy()
+    expect(win.querySelector('[data-test-short]')?.getAttribute('data-test-beside')).toBe('beside')
+  })
+
+  it('keeps the card above the lines under 900 px of column, and on a tall window', () => {
+    screenIs({ short: true })
+    measured.width = 880
+    const narrow = open('c-greg')
+    expect(narrow.win.querySelector('[data-thread-beside]')).toBeNull()
+    expect(narrow.win.querySelector('[data-thread-above] [data-test-card]')).toBeTruthy()
+    cleanup()
+    screenIs({})
+    measured.width = 1100
+    const tall = open('c-greg')
+    expect(tall.win.querySelector('[data-thread-body]')?.getAttribute('data-thread-body')).toBe('under')
   })
 })

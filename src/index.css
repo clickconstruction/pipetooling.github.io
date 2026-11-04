@@ -5910,6 +5910,20 @@ tr[data-stages-row-stamped] {
   text-decoration: none;
 }
 
+/* The column beside a thread's lines on a short, wide window (v2.6478): the sort card whole at the right. It takes no
+   room when the cuts draw nothing there, which an inline style cannot say. */
+.thread-beside {
+  flex: 0 0 min(360px, 38%);
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
+.thread-beside:empty {
+  display: none;
+}
+
 /* Training (punch list #111, v2.5575): on a touch screen every press, lesson row and answer row is at least 44 px
    tall; the desk keeps its size. One rule here instead of a media query the inline styles cannot carry. */
 @media (pointer: coarse) {
