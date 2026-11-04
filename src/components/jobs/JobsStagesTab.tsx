@@ -39,6 +39,7 @@ import { useBilledMoneyData } from '../../hooks/useBilledMoneyData'
 import { useDemandOutJobIds, useHazmatAndReleaseJobIds, useJobContractCoverage } from '../../hooks/useStagesRowFlags'
 import { useStagesDeepLinkParams, useStagesRtbFocus, type StagesDeepLinkDoors } from '../../hooks/useStagesDeepLinkParams'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
+import { spikeBillsByJob } from '../../lib/jobs/spike/lienBillsSpike'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import { deriveStagesBillingActivityDetail } from '../../lib/stagesJobReferenceDates'
@@ -1171,6 +1172,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
     return out
   }, [jobs, billedLienClocks, lienRunwayFor, cacheMergedScopes])
+  // SPIKE (to-dos/lien-deadlines-bills-spike): the sent bills behind every billed job, from the rows already here, for the Deadlines board's bill sub-groups.
+  const lienSpikeBills = useMemo(() => (cacheMergedScopes.has(scopeForStagesSection('billed')) ? spikeBillsByJob(jobs) : null), [jobs, cacheMergedScopes])
   const billedBillLineRenderer = useCallback(
     (row: StageRow): BilledRowBillLine | null => {
       // v2.4168: no words under the bar on a Billed row — the dates block under
@@ -4694,6 +4697,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         // A plain open lands on Next up (punch list #82); a door that names a job or a pile keeps landing on Notices.
         initialKind={lienDesk?.kind ?? (lienDesk?.jobId || lienDesk?.pile ? 'notice' : 'next')}
         calendarRows={lienCalendarRows}
+        spikeBills={lienSpikeBills}
         onCalendarChanged={(what) => {
           // The pen (v2.4153): a promise re-reads the pay dates; a kind re-reads the clocks; the desk's own queue follows either.
           if (what === 'promise') {

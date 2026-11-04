@@ -99,6 +99,7 @@ import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import LienDeskNextUp from './LienDeskNextUp'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
+import type { SpikeBill } from '../../lib/jobs/spike/lienBillsSpike'
 import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit } from '../../lib/jobs/lienCallerMatch'
 import LienCallScriptModal from './LienCallScriptModal'
 import { genericCallFacts } from '../../lib/jobs/lienCallScript'
@@ -205,6 +206,8 @@ export type LienDeskModalProps = {
   initialKind?: 'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'
   /** The Calendar kind (v2.4101, punch list #55): every billed / collections job with its runway — the Pipeline hands them in; null while it reads its billed jobs and their clocks. */
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
+  /** SPIKE (to-dos/lien-deadlines-bills-spike): the sent bills behind each billed job, for the Deadlines board's bill sub-groups. */
+  spikeBills?: ReadonlyMap<string, ReadonlyArray<SpikeBill>> | null
   /** A Calendar row opens the job's Lien window. */
   onOpenCalendarJob?: (jobId: string) => void
   /** The Deadlines grid's last-day label (v2.4735): the Lien window with the last day's line already editing. */
@@ -325,6 +328,7 @@ export default function LienDeskModal({
   legalSignoff,
   initialKind,
   calendarRows,
+  spikeBills,
   onOpenCalendarJob,
   onOpenJob,
   onOpenOwnerRecords,
@@ -3510,6 +3514,7 @@ export default function LienDeskModal({
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
               rows={calendarRows ?? null}
+              spikeBills={spikeBills ?? null}
               supplierMarks={supplierMarks}
               todayYmd={todayYmd}
               isMobile={isMobile}

@@ -18,7 +18,7 @@ import {
   type LienCalendarMark,
 } from '../../lib/jobs/lienCalendar'
 import { LienJobNumber } from './LienJobNumber'
-import { buildLienCalendarBoard, lienGroupRows, lienNextDateCounts, lienPhoneLine, type LienCalendarBoard, type LienCalendarBucket, type LienCalendarBucketKey, type LienNextDateCount } from '../../lib/jobs/lienCalendarBuckets'
+import { buildLienCalendarBoard, lienGroupRows, lienNextDateCounts, lienPhoneLine, type LienCalendarBoard, type LienCalendarBucket, type LienCalendarBucketKey, type LienCalendarRow, type LienNextDateCount } from '../../lib/jobs/lienCalendarBuckets'
 import type { LienRunwayTone } from '../../lib/jobs/lienPayRunway'
 import { formatMoneyShortK } from '../../lib/formatMoneyShortK'
 import { payDateShortcuts } from '../../lib/jobs/gcWordPromise'
@@ -35,6 +35,8 @@ import type { LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { LienMarkHoverCard, type LienMarkCardView } from './LienMarkHoverCard'
 import { EmptyState } from '../EmptyState'
 import { LIEN_CALENDAR_EMPTY, lienCalendarSearchEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
+import { readSpikeBillShape, spikePropertyGroups, SPIKE_BILLS_STORAGE_KEY, type SpikeBill, type SpikeBillShape } from '../../lib/jobs/spike/lienBillsSpike'
+import { SpikeBillMarksLayer, SpikeBillsPhoneList, SpikeBillsTable, SpikeBillsToggle, SpikeJobBillsLine, SpikePropertyHeader } from './spike/LienDeskBillsSpike'
 import { NO_DOORS, clusterByPct, lienGroupFlagCards, lienGroupWordCard, lienMarkCard, lienMarkClusters, type LienMarkCard, type LienMarkCardDoor, type LienMarkDoors } from '../../lib/jobs/lienMarkCards'
 
 /**
@@ -96,6 +98,8 @@ export type LienDeskCalendarTabProps = {
   onChanged?: (what: 'promise' | 'kind' | 'last_work') => void
   /** Jobs where a supply house is still owed (v2.4404): the row shows a storefront and the money. */
   supplierMarks?: ReadonlyMap<string, LienSupplierMark>
+  /** SPIKE (to-dos/lien-deadlines-bills-spike): the sent bills behind each billed job; drawn only while the dev toggle picks a shape. */
+  spikeBills?: ReadonlyMap<string, ReadonlyArray<SpikeBill>> | null
 }
 
 /** A GC can sit in two buckets, so a group's pen names its bucket too (`scope`). */
@@ -650,7 +654,7 @@ function PropertyLabel({ label, phone }: { label: string; phone?: boolean }) {
   )
 }
 
-function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere, onLastWork, onRecord, onKinds }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; onRecord?: (jobIds: string[]) => void; onKinds?: () => void; /** The number's own door: the Job window. */ onOpenJob?: () => void; onLastWork?: () => void; onPen?: (pct: number) => void; mark?: LienSupplierMark; /** An overdue job listed with its property: greyed. */ closedHere?: boolean }) {
+function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere, onLastWork, onRecord, onKinds, spikeShape = 'off', spikeBills }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; onRecord?: (jobIds: string[]) => void; onKinds?: () => void; /** The number's own door: the Job window. */ onOpenJob?: () => void; onLastWork?: () => void; onPen?: (pct: number) => void; mark?: LienSupplierMark; /** An overdue job listed with its property: greyed. */ closedHere?: boolean; /** SPIKE: shape B draws the job's bills on its own row. */ spikeShape?: SpikeBillShape; spikeBills?: ReadonlyArray<SpikeBill> }) {
   // Under a GC row its one dot speaks for every job; a job draws the dashed dot only on its own.
   const marks = axis ? lienCalendarMarks(j, axis, { payMissingDot: g.kind !== 'gc' }) : []
   const word = rowWord(j, g)
@@ -675,7 +679,14 @@ function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere,
           {j.address ? ` · ${j.address}` : ''}
         </span>
       </div>
-      {axis ? <Track marks={marks} j={j} todayYmd={axis.todayYmd} onOpen={onOpen} onPen={onPen} onLastWork={onLastWork} onRecord={onRecord} onKinds={onKinds} /> : <div />}
+      {axis ? (
+        <div style={{ position: 'relative' }}>
+          <Track marks={marks} j={j} todayYmd={axis.todayYmd} onOpen={onOpen} onPen={onPen} onLastWork={onLastWork} onRecord={onRecord} onKinds={onKinds} />
+          {spikeShape === 'B' ? <SpikeBillMarksLayer job={j} bills={spikeBills} axis={axis} onOpen={onOpen} /> : null}
+        </div>
+      ) : (
+        <div />
+      )}
       <div style={{ padding: '0 14px', textAlign: 'right' }} data-testid="lien-cal-row-money">
         <div style={{ fontSize: '0.8125rem', fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: dead ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</div>
         {word ? (
@@ -683,6 +694,7 @@ function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere,
             {word.text}
           </div>
         ) : null}
+        {spikeShape === 'B' ? <SpikeJobBillsLine bills={spikeBills} /> : null}
       </div>
     </div>
   )
@@ -915,7 +927,7 @@ function KeyStrip({ openGlyph, onToggle, doors, onDoor }: { openGlyph: LienCalen
 }
 
 /** Phone: the buckets as sections of two-line sentences — no axis. */
-function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpenJobWindow, query, onClearQuery, marks }: { shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onRecord?: (jobIds: string[]) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; onOpenJobWindow?: (id: string) => void; query: string; onClearQuery: () => void; marks?: ReadonlyMap<string, LienSupplierMark> }) {
+function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpenJobWindow, query, onClearQuery, marks, spikeShape = 'off', spikeBills }: { shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onRecord?: (jobIds: string[]) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; onOpenJobWindow?: (id: string) => void; query: string; onClearQuery: () => void; marks?: ReadonlyMap<string, LienSupplierMark>; spikeShape?: SpikeBillShape; spikeBills?: ReadonlyMap<string, ReadonlyArray<SpikeBill>> | null }) {
   return (
     <div data-testid="lien-cal-phone">
       {shown.map((b) => {
@@ -933,7 +945,16 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpe
                         <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: TONE[g.tone], whiteSpace: 'nowrap' }}>{g.word}</span>
                       </div>
                     ) : null}
-                    {lienGroupRows(g).map((row) => {
+                    {(spikeShape !== 'off' && spikeBills && g.kind === 'gc'
+                      ? spikePropertyGroups(lienGroupRows(g), spikeBills).flatMap((p): Array<LienCalendarRow | { kind: 'spike_head'; key: string; p: typeof p } | { kind: 'spike_bills'; key: string; p: typeof p }> => {
+                          const pKey = `${b.key}/${g.key}/${p.key}`
+                          const open = !folded.has(pKey)
+                          return [{ kind: 'spike_head', key: pKey, p }, ...(open ? p.rows.map((r): LienCalendarRow => ({ kind: 'job', key: r.job.jobId, job: r.job, closed: r.closed })) : []), ...(open && spikeShape === 'A' ? [{ kind: 'spike_bills' as const, key: `${pKey}/bills`, p }] : [])]
+                        })
+                      : lienGroupRows(g)
+                    ).map((row) => {
+                      if (row.kind === 'spike_head') return <SpikePropertyHeader key={row.key} g={row.p} open={!folded.has(row.key)} onToggle={() => onFold(row.key)} phone />
+                      if (row.kind === 'spike_bills') return <SpikeBillsPhoneList key={row.key} g={row.p} onOpenJob={onOpenJob} />
                       if (row.kind === 'label') return <PropertyLabel key={row.key} label={row.label} phone />
                       const j = row.job
                       return (
@@ -950,6 +971,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpe
                           <span title={j.runway.lines.join(' · ')} style={{ color: TONE[j.runway.tone], fontWeight: 600, minWidth: 0 }}>{lienPhoneLine(j)}</span>
                           <LienSupplierMarkLine mark={marks?.get(j.jobId)} short />
                         </span>
+                        {spikeShape === 'B' && spikeBills && g.kind === 'gc' ? <SpikeJobBillsLine bills={spikeBills.get(j.jobId)} /> : null}
                       </div>
                       )
                     })}
@@ -964,7 +986,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpe
   )
 }
 
-export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJobWindow, onOpenLastWork, isMobile = false, canWrite = false, onDraft, onRecord, onOpenEditJob, onChanged, supplierMarks }: LienDeskCalendarTabProps) {
+export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJobWindow, onOpenLastWork, isMobile = false, canWrite = false, onDraft, onRecord, onOpenEditJob, onChanged, supplierMarks, spikeBills }: LienDeskCalendarTabProps) {
   const [query, setQuery] = useState('')
   const [pen, setPen] = useState<PenTarget | null>(null)
   const [kindsOpen, setKindsOpen] = useState(false)
@@ -975,6 +997,17 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
   const [searchOpen, setSearchOpen] = useState(false)
   // Houses owed (v2.4407): a lens, not a bucket. It keeps the months and shows only the jobs that still owe a supply house.
   const [housesOnly, setHousesOnly] = useState(false)
+  // SPIKE (to-dos/lien-deadlines-bills-spike): off · A · B, DEV only, remembered in localStorage.
+  const [spikeShape, setSpikeShapeState] = useState<SpikeBillShape>(() => (import.meta.env.DEV ? readSpikeBillShape(typeof localStorage === 'undefined' ? null : localStorage) : 'off'))
+  const setSpikeShape = (shape: SpikeBillShape) => {
+    setSpikeShapeState(shape)
+    try {
+      localStorage.setItem(SPIKE_BILLS_STORAGE_KEY, shape)
+    } catch {
+      /* a private window: the pick lasts the session */
+    }
+  }
+  const spikeOn = spikeShape !== 'off' && spikeBills != null
   const houseRows = useMemo(() => (rows && supplierMarks ? rows.filter((r) => r.runway.state !== 'none' && supplierMarks.has(r.jobId)) : []), [rows, supplierMarks])
   const lensOn = housesOnly && houseRows.length > 0
   const board = useMemo(() => buildLienCalendarBoard(lensOn ? houseRows : (rows ?? []), query, todayYmd), [rows, houseRows, lensOn, query, todayYmd])
@@ -1054,6 +1087,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
           {isMobile ? housesLens : null}
           <Pills board={board} pick={pick} onPick={choose} phone={isMobile} />
           <KindsChip n={board.kindsUnset} open={kindsOpen} onToggle={penOn ? () => setKindsOpen((o) => !o) : undefined} />
+          {import.meta.env.DEV && spikeBills != null ? <SpikeBillsToggle shape={spikeShape} onPick={setSpikeShape} /> : null}
         </div>
       ) : null}
       {rows && isMobile && (searchOpen || query) ? (
@@ -1080,7 +1114,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
           board.count === 0 ? (
             <EmptyState compact {...searchEmpty} />
           ) : (
-            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onRecord={onRecord} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} query={query} onClearQuery={clearQuery} marks={supplierMarks} />
+            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onRecord={onRecord} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} query={query} onClearQuery={clearQuery} marks={supplierMarks} spikeShape={spikeOn ? spikeShape : 'off'} spikeBills={spikeBills} />
           )
         ) : null}
         {rows && !isMobile && axis && (board.count > 0 || query.trim()) ? (
@@ -1120,24 +1154,41 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
                                   </div>
                                 ) : null}
                                 {groupOpen
-                                  ? lienGroupRows(g).map((row, index) => {
-                                      if (row.kind === 'label') return <PropertyLabel key={row.key} label={row.label} />
-                                      const j = row.job
-                                      return (
-                                      <div key={j.jobId} style={{ position: 'relative' }}>
-                                        <JobRow j={j} g={g} index={index} closedHere={row.closed} axis={axis} onRecord={onRecord} onOpen={() => onOpenJob(j.jobId)} onOpenJob={onOpenJobWindow ? () => onOpenJobWindow(j.jobId) : undefined} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} onLastWork={onOpenLastWork ? () => onOpenLastWork(j.jobId) : undefined} onKinds={penOn ? () => setKindsOpen(true) : undefined} />
-                                        {pen && pen.kind === 'job' && pen.job.jobId === j.jobId ? (
-                                          <div style={{ ...GRID, position: 'absolute', left: 0, right: 0, top: 0, pointerEvents: 'none' }}>
-                                            <div />
-                                            <div style={{ position: 'relative', pointerEvents: 'auto' }}>
-                                              <TheySaidPopover target={pen} todayYmd={todayYmd} onCancel={() => setPen(null)} onSaved={saved} />
+                                  ? (() => {
+                                      const jobRow = (j: LienCalendarJob, index: number, closed: boolean) => (
+                                        <div key={j.jobId} style={{ position: 'relative' }}>
+                                          <JobRow j={j} g={g} index={index} closedHere={closed} axis={axis} onRecord={onRecord} onOpen={() => onOpenJob(j.jobId)} onOpenJob={onOpenJobWindow ? () => onOpenJobWindow(j.jobId) : undefined} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} onLastWork={onOpenLastWork ? () => onOpenLastWork(j.jobId) : undefined} onKinds={penOn ? () => setKindsOpen(true) : undefined} spikeShape={spikeOn ? spikeShape : 'off'} spikeBills={spikeOn ? spikeBills?.get(j.jobId) : undefined} />
+                                          {pen && pen.kind === 'job' && pen.job.jobId === j.jobId ? (
+                                            <div style={{ ...GRID, position: 'absolute', left: 0, right: 0, top: 0, pointerEvents: 'none' }}>
+                                              <div />
+                                              <div style={{ position: 'relative', pointerEvents: 'auto' }}>
+                                                <TheySaidPopover target={pen} todayYmd={todayYmd} onCancel={() => setPen(null)} onSaved={saved} />
+                                              </div>
+                                              <div />
                                             </div>
-                                            <div />
-                                          </div>
-                                        ) : null}
-                                      </div>
+                                          ) : null}
+                                        </div>
                                       )
-                                    })
+                                      // SPIKE: under a GC, one sub-group per customer-and-property; shape A adds the bills table under each.
+                                      if (spikeOn && g.kind === 'gc') {
+                                        return spikePropertyGroups(lienGroupRows(g), spikeBills).map((p) => {
+                                          const pKey = `${scope}/${p.key}`
+                                          const pOpen = !folded.has(pKey)
+                                          const bKey = `${pKey}/bills`
+                                          return (
+                                            <div key={p.key}>
+                                              <SpikePropertyHeader g={p} open={pOpen} onToggle={() => fold(pKey)} />
+                                              {pOpen ? p.rows.map((r, index) => jobRow(r.job, index, r.closed)) : null}
+                                              {pOpen && spikeShape === 'A' ? <SpikeBillsTable g={p} axis={axis} open={!folded.has(bKey)} onToggle={() => fold(bKey)} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} /> : null}
+                                            </div>
+                                          )
+                                        })
+                                      }
+                                      return lienGroupRows(g).map((row, index) => {
+                                        if (row.kind === 'label') return <PropertyLabel key={row.key} label={row.label} />
+                                        return jobRow(row.job, index, row.closed)
+                                      })
+                                    })()
                                   : null}
                               </div>
                             )
