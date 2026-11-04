@@ -4,6 +4,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import PersonLicenseHoursLogModal from './PersonLicenseHoursLogModal'
+import { Link } from 'react-router-dom'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { LICENSES_EXPIRED_EMPTY, LICENSES_EXPIRING_EMPTY, personLicensesEmptyWords } from '../../lib/people/peopleEmptyWords'
@@ -362,6 +363,14 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                   >
                                     Hours log
                                   </button>
+                                  {(() => {
+                                    const logbookUserId = users.find((u) => u.name === personName)?.id
+                                    return logbookUserId ? (
+                                      <Link to={`/logbook/${logbookUserId}`} onClick={(e) => e.stopPropagation()} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                                        Open logbook
+                                      </Link>
+                                    ) : null
+                                  })()}
                                   <button
                                     type="button"
                                     onClick={(e) => {

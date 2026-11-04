@@ -1,0 +1,128 @@
+/**
+ * A license's words, written one way (punch list #255): the Licenses tab holds each license as free
+ * text, and the logbook reads it with `parseLicenseType`. The edit window picks a trade and a level and
+ * this writes the text, so what is saved always reads back as the same trade, level and number.
+ *
+ * Also the state's own record for a TDLR license (electrical and HVAC): TDLR publishes every license
+ * as open data, so a number can be checked from the page. TSBPE (plumbing) has no open list and its
+ * search asks for a robot check, so plumbing gets a link instead.
+ *
+ * Pure.
+ */
+
+export type LicenseTrade = 'plumbing' | 'electrical' | 'hvac' | 'other'
+export type LicenseLevel = 'apprentice' | 'tradesman' | 'registered_tech' | 'certified_tech' | 'journeyman' | 'master' | 'contractor'
+
+/** The levels each trade offers, lowest first, with the words the Licenses tab writes for each. */
+export const LICENSE_LEVELS: Record<Exclude<LicenseTrade, 'other'>, ReadonlyArray<{ level: LicenseLevel; name: string }>> = {
+  plumbing: [
+    { level: 'apprentice', name: 'Plumber Apprentice' },
+    { level: 'tradesman', name: 'Tradesman Plumber-Limited' },
+    { level: 'journeyman', name: 'Journeyman Plumber' },
+    { level: 'master', name: 'Master Plumber' },
+  ],
+  electrical: [
+    { level: 'apprentice', name: 'Apprentice Electrician' },
+    { level: 'journeyman', name: 'Journeyman Electrician' },
+    { level: 'master', name: 'Master Electrician' },
+    { level: 'contractor', name: 'Electrical Contractor' },
+  ],
+  hvac: [
+    { level: 'registered_tech', name: 'AC Tech' },
+    { level: 'certified_tech', name: 'AC Certified Tech' },
+    { level: 'contractor', name: 'AC Contractor' },
+  ],
+}
+
+/** The name the Licenses tab shows for a trade and level, or null when the pair does not exist. */
+export function licenseName(trade: Exclude<LicenseTrade, 'other'>, level: LicenseLevel): string | null {
+  return LICENSE_LEVELS[trade].find((l) => l.level === level)?.name ?? null
+}
+
+/** The number as written: trimmed, a leading # dropped. */
+export function cleanLicenseNumber(raw: string): string {
+  return raw.trim().replace(/^#\s*/, '').trim()
+}
+
+/**
+ * The license_type text to save. A trade license reads "Plumber Apprentice #191717"; an other license
+ * (a notary) keeps the name typed. Null when a trade license has no level or the number is empty.
+ */
+export function licenseTypeText(input: { trade: LicenseTrade; level?: LicenseLevel | null; otherName?: string; number: string }): string | null {
+  const number = cleanLicenseNumber(input.number)
+  if (!number) return null
+  if (input.trade === 'other') {
+    const name = (input.otherName ?? '').trim()
+    return name ? `${name} #${number}` : null
+  }
+  if (!input.level) return null
+  const name = licenseName(input.trade, input.level)
+  return name ? `${name} #${number}` : null
+}
+
+// ─── TDLR open data ────────────────────────────────────────────────────────────────────────────
+
+/** TDLR's open list of every license it issues (data.texas.gov, Socrata). Answers any origin. */
+export const TDLR_LICENSES_URL = 'https://data.texas.gov/resource/7358-krk7.json'
+/** The TSBPE search, for a plumbing license (no open list; the search asks for a robot check). */
+export const TSBPE_SEARCH_URL = 'https://vo.licensing.hpc.texas.gov/datamart/searchByLicNumber.do'
+
+export type TdlrRow = {
+  license_type?: string
+  license_subtype?: string
+  license_number?: string
+  owner_name?: string
+  business_name?: string
+  license_expiration_date_mmddccyy?: string
+}
+
+/** TDLR's numbers are bare digits: "TACLA39079E" (how the AC contractor number is printed) is 39079. */
+export function tdlrNumberFor(raw: string): string | null {
+  const n = cleanLicenseNumber(raw)
+  const m = /^(?:TAC[LA]A)?0*(\d+)[A-Z]?$/i.exec(n)
+  return m?.[1] ?? null
+}
+
+/** The query to ask TDLR for one number. */
+export function tdlrQueryUrl(number: string): string {
+  return `${TDLR_LICENSES_URL}?license_number=${encodeURIComponent(number)}`
+}
+
+/** TDLR's license_type for a trade and level, as the open list writes it. */
+const TDLR_TYPE: Partial<Record<string, RegExp>> = {
+  'electrical:apprentice': /^apprentice electrician$/i,
+  'electrical:journeyman': /^journeyman electrician$/i,
+  'electrical:master': /^master electrician$/i,
+  'electrical:contractor': /^electrical contractor$/i,
+  'hvac:registered_tech': /^a\/c technician$/i,
+  'hvac:certified_tech': /^a\/c technician$/i,
+  'hvac:contractor': /^a\/c contractor$/i,
+}
+
+export function tradeCheckedByTdlr(trade: LicenseTrade): boolean {
+  return trade === 'electrical' || trade === 'hvac'
+}
+
+export type TdlrAnswer =
+  | { kind: 'found'; holder: string; expiryYmd: string | null; type: string }
+  | { kind: 'none'; reason: string }
+
+/** "06/13/2027" → "2027-06-13". */
+export function ymdFromMmDdYyyy(s: string | undefined): string | null {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((s ?? '').trim())
+  return m ? `${m[3]}-${m[1]}-${m[2]}` : null
+}
+
+/** One number can belong to several licenses of different types; pick the one of this trade and level. */
+export function tdlrAnswer(rows: readonly TdlrRow[], trade: LicenseTrade, level: LicenseLevel | null): TdlrAnswer {
+  const pattern = level ? TDLR_TYPE[`${trade}:${level}`] : undefined
+  if (!pattern) return { kind: 'none', reason: 'TDLR does not issue this kind of license.' }
+  const hit = rows.find((r) => pattern.test((r.license_type ?? '').trim()))
+  if (!hit) return { kind: 'none', reason: 'TDLR has no license of this kind under that number.' }
+  return {
+    kind: 'found',
+    holder: (hit.owner_name ?? hit.business_name ?? '').trim(),
+    expiryYmd: ymdFromMmDdYyyy(hit.license_expiration_date_mmddccyy),
+    type: [hit.license_type, hit.license_subtype].filter(Boolean).join(' '),
+  }
+}

@@ -50,6 +50,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 
 **People / hours / money**
 - Who worked, approve hours, clock cards → `/people`
+- A teammate's licenses, the hours toward the next one in each trade, and the record to print for the board → `/logbook/:userId` (from **Open logbook** on a Licenses tab row or **Logbook** on the desk; guide `keep-a-teammates-logbook-and-print-it-for-the-board`)
 - Company transactions, payroll marks, spending → `/tally`
 - Bank ledger, card sorting, accounting review → `/banking`
 - Customers and builders (GCs), their profile and history → `/customers`, `/customers/:id`; on a phone the dock's Customers slot and Job Mode's Customers tab → `/dispatch-mode/customers`, `/job-mode/customers`, where a tap opens the customer's summary sheet with every property and its note, **Edit customer** and **Open record** (v2.5831; guide `dispatch-mode`); the profile's band opens the customer's Drive folder (**📁 Drive folder ↗**, v2.6288; guide `see-a-customers-full-history-and-lifetime-value`)
@@ -315,6 +316,10 @@ Roles: dev, master, assistant, controller, superintendent (limited).
 ### /people — People
 Roster with Contact / Account / Pay lenses (`?tab=users&lens=`), + Hire, the Person desk (`?tab=person&id=`), who is spending what on the company cards (`?tab=spending`, office roles; help: `see-who-is-spending-what-on-the-company-cards`), clock cards, hours approval (People→Hours grid); Write-ups (`?tab=writeups`) with, for one person in Subject, the attendance card — ninety days of dots, each late sized by its minutes, a press on a day opening its receipt, *Start a tardiness write-up →* when three recent lates are unexcused (v2.6140, guide `see-a-persons-lates-and-start-a-write-up`).
 Roles: dev, master, assistant (no wages), controller (wages too), estimator (limited).
+
+### /logbook/:userId — A teammate's logbook
+The licenses a teammate holds, one card a trade toward the next license (hours for plumbing and electrical, months for HVAC), the hours that count toward no license, the log week by week, and Print (summary sheet, full log). An hour counts toward the trade of its job; office and estimating time count toward nothing.
+Roles: dev, pay-approved master, assistant, controller (the Licenses tab's audience).
 
 ### /customers — Customers · /customers/:id — Customer Hub
 All customers/builders, each row's second line where the money stands and how fast they pay (*pays in ~30d*, office roles, v2.5767); the Hub is one customer's money strip, jobs, bids, contacts.

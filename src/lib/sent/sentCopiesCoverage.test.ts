@@ -33,6 +33,7 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'lib/sent/sentCopiesIo.ts': 'printAndFile itself: the print that files',
   'lib/jobs/lienNoticePreview.ts': 'the Print button inside a preview page; the send is filed where the notice is sent',
   'components/UserReviewModal.tsx': 'our own review of a teammate',
+  'components/logbook/LogbookPrint.tsx': 'one teammate’s licensing record (punch list #255, v2.6472), attached behind the board’s own form: it holds one person’s hours, so it stays out of the list the whole office reads, like a review of a teammate',
   'components/bids/BidSubmissionFollowupTab.tsx': 'a follow-up sheet for our own account managers',
   'components/bids/BidsTakeoffTab.tsx': 'our own takeoff sheets; the schedule that goes to the GC is filed from the cover letter tab',
   'components/partnerships/PartnershipAgreementsTab.tsx': 'a partnership notice: kept on the partnership itself (notice_html), never in a list the whole office reads',
