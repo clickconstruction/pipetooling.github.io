@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
  * The thread folds by height on a short window (v2.6474, `isThreadShort`): a laptop's window under 820 px tall. The
- * header keeps two rows: *Who is this?* rides the line it answers, and the status, the stamps sentence and the jobs
- * share one row. Their numbers wait under the arrow, the lines keep a third of the window, and the open thread says
- * `short` to the slots. A phone keeps its own fold. Greg Paulk and the unnamed number from the spine's demo rows.
+ * window takes its whole height, the lines keep a third of it, and the open thread says `short` to the slots. The
+ * header is the same compact shape at every height since v2.6505 (`ThreadWindow.header.render.test.tsx`), so a short
+ * window draws no header of its own. A phone keeps its own fold. Greg Paulk and the unnamed number from the spine's demo rows.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
@@ -74,43 +74,41 @@ afterEach(() => {
 })
 
 describe('the thread folds by height on a short window (v2.6474)', () => {
-  it('puts the status, the stamps and the jobs on one row, and folds the numbers under the arrow', () => {
+  it('takes the whole height, keeps the lines a third of it, and says short to the slots, with the header as on a tall window', () => {
     screenIs({ short: true })
     const { win, header } = open('c-greg')
-    expect(header.hasAttribute('data-thread-short')).toBe(true)
-    const status = win.querySelector('[data-thread-status]') as HTMLElement
-    expect(status.style.flexWrap).toBe('nowrap')
-    expect(status.textContent).toContain('portal · 3 d ago')
-    expect(status.querySelector('[data-thread-stamps]')).toBeTruthy()
-    expect(status.querySelector('[data-jobs-rail="strip"]')).toBeTruthy()
-    expect(win.querySelectorAll('[data-thread-stamps]')).toHaveLength(1)
-    expect(win.querySelector('[data-thread-reach]')).toBeNull()
-    fireEvent.click(within(win).getByRole('button', { name: 'Show their numbers and addresses' }))
-    expect(win.querySelector('[data-thread-reach]')).toBeTruthy()
+    expect(win.style.height).toBe('100%')
     expect((win.querySelector('[data-thread-lines]') as HTMLElement).style.minHeight).toBe('max(7rem, 33%)')
     expect(win.querySelector('[data-test-short]')?.getAttribute('data-test-short')).toBe('short')
+    expect(header.getAttribute('data-thread-header-rows')).toBe('who status jobs')
+    expect(win.querySelector('[data-thread-status] [data-thread-stamps]')).toBeTruthy()
+    expect(win.querySelectorAll('[data-thread-stamps]')).toHaveLength(1)
+    expect(win.querySelector('[data-jobs-rail]')?.getAttribute('data-jobs-rail')).toBe('')
   })
 
-  it('asks Who is this? on the line it answers, not on a row of its own', () => {
-    screenIs({ short: true })
-    const { win, header } = open('c-unknown')
-    const asks = within(header).getAllByRole('button', { name: 'Who is this?' })
-    expect(asks).toHaveLength(1)
-    expect(asks[0]!.getAttribute('data-thread-who')).toBe('inline')
-    fireEvent.click(asks[0]!)
-    expect(screen.getByRole('dialog', { name: /^Who is this\?/ })).toBeTruthy()
-    expect(win).toBeTruthy()
+  it('asks Who is this? on the line it answers, not on a row of its own, at any height', () => {
+    for (const short of [true, false]) {
+      screenIs({ short })
+      const { win, header } = open('c-unknown')
+      const asks = within(header).getAllByRole('button', { name: 'Who is this?' })
+      expect(asks).toHaveLength(1)
+      expect(asks[0]!.getAttribute('data-thread-who')).toBe('inline')
+      fireEvent.click(asks[0]!)
+      expect(screen.getByRole('dialog', { name: /^Who is this\?/ })).toBeTruthy()
+      expect(win).toBeTruthy()
+      cleanup()
+    }
   })
 
-  it('stays as it was on a tall window and on a phone', () => {
+  it('keeps the window at 92vh on a tall window and reads a phone as its own fold', () => {
     const tall = open('c-greg')
-    expect(tall.header.hasAttribute('data-thread-short')).toBe(false)
-    expect(tall.win.querySelector('[data-thread-status] [data-thread-stamps]')).toBeNull()
+    expect(tall.win.style.height).toBe('min(92vh, 100%)')
     expect(tall.win.querySelector('[data-test-short]')?.getAttribute('data-test-short')).toBe('tall')
     cleanup()
     screenIs({ phone: true, short: true })
     const phone = open('c-greg')
-    expect(phone.header.hasAttribute('data-thread-short')).toBe(false)
+    expect(phone.header.getAttribute('data-thread-header')).toBe('folded')
+    expect(phone.win.querySelector('[data-test-short]')?.getAttribute('data-test-short')).toBe('tall')
   })
 })
 
