@@ -18,6 +18,8 @@ export type AuthPublicLandingLayoutProps = {
    * page's own content — an estimate — is on the first screen. Desktop is unchanged.
    */
   compact?: boolean
+  /** A line drawn under the title, over the photo: the sign-in page's tagline (v2.6503). */
+  heroTagline?: ReactNode
 }
 
 export default function AuthPublicLandingLayout({
@@ -25,6 +27,7 @@ export default function AuthPublicLandingLayout({
   titleLinkText = DEFAULT_TITLE_LINK_TEXT,
   titleLinkAriaLabel = DEFAULT_TITLE_ARIA_LABEL,
   compact = false,
+  heroTagline,
 }: AuthPublicLandingLayoutProps) {
   return (
     // Public/customer-facing landing (estimate + contract accept, sign-in):
@@ -51,6 +54,7 @@ export default function AuthPublicLandingLayout({
               )}
             </a>
           </h1>
+          {heroTagline}
         </div>
         <div className="letter-content">
           <ul className="auth-service-icons" aria-label="Service highlights">

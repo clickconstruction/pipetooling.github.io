@@ -21,7 +21,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "npm:@supabase/supabase-js@2": ["node_modules/@supabase/supabase-js"]
+      "npm:@supabase/supabase-js@2": ["node_modules/@supabase/supabase-js"],
+      "https://esm.sh/@supabase/supabase-js@2": ["node_modules/@supabase/supabase-js"]
     }
   },
   "include": ["src"]

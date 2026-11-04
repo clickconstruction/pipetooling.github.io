@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CHUNKS_PER_FILE_MAX, chunksCut, chunksCutNote, chunkText, EMBED_DIM, EMBED_KEY_HEADER, EMBED_KEY_SECRET, EMBED_MODEL, EMBED_READ_MS, embedDue, embedEndpoint, embedReadAnswer, embedRequestBody, embedStateWords } from '../../../supabase/functions/_shared/embeddingsKernel'
+import { CHUNKS_PER_FILE_MAX, chunksCut, chunksCutNote, chunkText, EMBED_DIM, EMBED_KEY_HEADER, EMBED_KEY_SECRET, EMBED_MODEL, EMBED_READ_MS, embedDue, embedEndpoint, embedReadAnswer, embedRequestBody, embedStateWords, textHasChunks } from '../../../supabase/functions/_shared/embeddingsKernel'
 
 /** Search by meaning (punch list #240, PR 4): the chunks, the request, the answer and the refusal, when a file is tried again. */
 describe('embeddingsKernel', () => {
@@ -14,6 +14,10 @@ describe('embeddingsKernel', () => {
     expect(words.indexOf(chunks[1]!.text)).toBeLessThan(chunks[0]!.text.length)
     expect(chunks.map((c) => c.chunk_no)).toEqual(chunks.map((_, i) => i))
     expect(chunkText('   \n ')).toEqual([])
+    // The same rule names a text with no chunks, so a row emptied to whitespace keeps none (v2.6491).
+    expect(textHasChunks('   \n ')).toBe(false)
+    expect(textHasChunks(null)).toBe(false)
+    expect(textHasChunks(' rock ')).toBe(true)
     expect(chunkText('one short line')).toEqual([{ chunk_no: 0, text: 'one short line' }])
     expect(chunkText('x'.repeat(CHUNKS_PER_FILE_MAX * 4000), { size: 1000, overlap: 0 })).toHaveLength(CHUNKS_PER_FILE_MAX)
   })

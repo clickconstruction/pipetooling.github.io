@@ -177,7 +177,12 @@ export interface GcTeamMember {
 const TEAM_ROLES: Database['public']['Tables']['users']['Row']['role'][] = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'superintendent']
 
 export async function loadGcTeam(): Promise<GcTeamMember[]> {
-  const rows = taken(await supabase.from('users').select('id, name, role').in('role', TEAM_ROLES).order('name'), 'load our team')
+  // Nobody hands a customer to a sample or a robot (v2.6506): the View-as samples, the digital twins and the walk
+  // kit's tester hide here as they do in every picker (`activeUsersQuery`'s predicates).
+  const rows = taken(
+    await supabase.from('users').select('id, name, role').in('role', TEAM_ROLES).eq('is_digital_twin', false).eq('is_sample', false).eq('is_walk_tester', false).order('name'),
+    'load our team',
+  )
   return rows.map((r) => ({ id: r.id, name: r.name ?? '', role: r.role ?? '' })).filter((r) => r.name !== '')
 }
 

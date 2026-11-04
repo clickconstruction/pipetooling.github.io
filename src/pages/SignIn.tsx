@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import PasswordInput from '../components/PasswordInput'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import ToolingFamilyStrip from '../components/ToolingFamilyStrip'
+import { LandingTagline } from '../components/LandingTagline'
 import {
   MAGIC_LINK_RESEND_COOLDOWN_S,
   friendlyOtpError,
@@ -178,6 +179,7 @@ export default function SignIn() {
     <AuthPublicLandingLayout
       titleLinkText="ClickPlumbing.com"
       titleLinkAriaLabel="ClickPlumbing.com — visit Click Plumbing (opens in new tab)"
+      heroTagline={<LandingTagline />}
     >
       <div className="auth-public-landing__signin-stack">
         <div className="auth-public-landing__signin-box">

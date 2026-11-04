@@ -69,6 +69,10 @@ export const RETRY_HOLD_MS = 60 * 60 * 1000
 export const SWEEP_MAX_FILES = 40
 /** How many scans the sweep sends to OCR per run once it is set up (the cost cap: 144 runs a day). */
 export const SWEEP_OCR_ROWS = 5
+/** How many held rows the sweep takes again per run (v2.6491): rows `slow` or `reading` whose last check is an hour old (`RETRY_HOLD_MS`), oldest first. */
+export const SWEEP_RETAKE_ROWS = 5
+/** The holds a retake takes: a read that ran out of time, or a request the platform stopped mid-read. A `big`, `error` or `kind` hold waits for a press with retry, as before. */
+export const RETAKE_WHYS: readonly TextWhy[] = ['slow', 'reading']
 /** How many rows the sweep asks Drive about per run, oldest check first, so a trashed file loses its row within days. */
 export const SWEEP_RECHECK_ROWS = 20
 /** The sweep lists files changed since its stamp less this, so a file that landed as the last run listed is not missed. */
@@ -273,20 +277,19 @@ export function homeColumns(home: FileHome | null): Pick<FileIndexRow, 'jobs_led
   return { jobs_ledger_id: null, bid_id: home.id, customer_id: home.customerId }
 }
 
-/** The row for a file whose text was read, or whose read answered why not. `now` is the stamp. */
-export function indexRowOf(f: DriveFileMeta, walk: { home: FileHome | null; via: string | null; names: readonly string[]; path: string }, read: FileTextRead | { why: 'reading' }, now: Date, ocr: OcrTry = NO_OCR_TRY): FileIndexRow {
+/** The columns a read writes on a row, as `readColumns` gives them. */
+export type ReadColumns = Pick<FileIndexRow, 'text' | 'text_source' | 'text_why' | 'pages' | 'pages_read' | 'indexed_at' | 'checked_at' | 'ocr_tried_at' | 'ocr_pages' | 'ocr_note' | 'embedded_at' | 'embed_tried_at' | 'embed_note'>
+
+/**
+ * The columns one read writes: the text and its source, or why there is none; the pages; the index and check stamps;
+ * the OCR try; and the chunks' stamps cleared, since every write of the text leaves the row due for the embedding pass.
+ * `indexRowOf` writes them under the file's own columns; the OCR pass writes them alone on a row it already holds
+ * (v2.6491), so a scan read by OCR gets the same columns whichever pass read it.
+ */
+export function readColumns(read: FileTextRead | { why: 'reading' }, now: Date, ocr: OcrTry = NO_OCR_TRY): ReadColumns {
   const stamp = now.toISOString()
   const fromOcr = 'text' in read && read.source === 'ocr'
-  const bytes = f.size == null || f.size === '' ? null : Number(f.size)
   return {
-    drive_file_id: f.id,
-    ...homeColumns(walk.home),
-    folder_kind: folderKindOf(walk.home, walk.via, walk.names),
-    path: walk.path.slice(0, 2000),
-    name: (f.name || 'Untitled').slice(0, 1000),
-    mime: (f.mimeType || 'application/octet-stream').slice(0, 200),
-    bytes: bytes != null && Number.isFinite(bytes) ? bytes : null,
-    modified_at: f.modifiedTime ?? null,
     text: 'text' in read ? cutText(read.text.replace(/\u0000/g, ''), INDEX_TEXT_MAX_CHARS) : null,
     text_source: 'text' in read ? read.source : null,
     text_why: 'text' in read ? null : read.why,
@@ -300,6 +303,28 @@ export function indexRowOf(f: DriveFileMeta, walk: { home: FileHome | null; via:
     embedded_at: null,
     embed_tried_at: null,
     embed_note: null,
+  }
+}
+
+/** The columns an OCR refusal writes on a scan the table already holds (v2.6491): the try and its reason, checked now. The text columns and the index stamp stay, since nothing about the text changed; the row stays a scan, due again a day later. */
+export function ocrRefusedColumns(note: string | null, now: Date): Pick<FileIndexRow, 'ocr_tried_at' | 'ocr_note' | 'checked_at'> {
+  const stamp = now.toISOString()
+  return { ocr_tried_at: stamp, ocr_note: (note ?? 'no reason given').slice(0, 1000), checked_at: stamp }
+}
+
+/** The row for a file whose text was read, or whose read answered why not. `now` is the stamp. */
+export function indexRowOf(f: DriveFileMeta, walk: { home: FileHome | null; via: string | null; names: readonly string[]; path: string }, read: FileTextRead | { why: 'reading' }, now: Date, ocr: OcrTry = NO_OCR_TRY): FileIndexRow {
+  const bytes = f.size == null || f.size === '' ? null : Number(f.size)
+  return {
+    drive_file_id: f.id,
+    ...homeColumns(walk.home),
+    folder_kind: folderKindOf(walk.home, walk.via, walk.names),
+    path: walk.path.slice(0, 2000),
+    name: (f.name || 'Untitled').slice(0, 1000),
+    mime: (f.mimeType || 'application/octet-stream').slice(0, 200),
+    bytes: bytes != null && Number.isFinite(bytes) ? bytes : null,
+    modified_at: f.modifiedTime ?? null,
+    ...readColumns(read, now, ocr),
   }
 }
 

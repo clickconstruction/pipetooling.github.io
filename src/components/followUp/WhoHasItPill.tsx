@@ -10,8 +10,15 @@
  *
  * On a kept row (punch list #183 PR 5, `held`) the pill is inert under `keptPress` with the hover *reading again…*:
  * Take it and a hand-off act on who has it now, which the device's kept read cannot say.
+ *
+ * The menu (v2.6506, Grace's ask): a search box on top, focused on open unless the screen is a phone's (the keyboard
+ * would jump), typing narrowing the list by name with the run lit; the team in three groups under thin headings,
+ * the office and the estimators first, then the owner and the devs, then anyone else, each by name
+ * (`messages/handToOrder.ts`); ↓ and ↑ walk the rows, Enter hands it to the lit one, Escape closes. With nothing
+ * typed the first row is *I'll take it*, so Enter alone takes it. The samples, the twins and the walk tester are
+ * not on the team the reads hand in (`loadGcTeam`, `followUpThreadIo.loadTeam`).
  */
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { FollowUpContact } from '../../lib/followUp/followUpRows'
 import { hasPillWords, hasSinceWords, holdCount, takeItWords, whoPickerHead, type QueueContact } from '../../lib/followUp/queue'
 import { READING_AGAIN_WORDS } from '../../lib/keptRead'
@@ -20,6 +27,11 @@ import { whenWords } from '../../lib/messages/thread'
 import type { PushHoursByUser } from '../../lib/messages/pushHours'
 import { offPillTip, offPillWords, threadOff } from '../../lib/messages/whoIsOff'
 import type { Teammate } from '../../lib/followUp/team'
+import { filterHandTo, nextLit, orderHandTo } from '../../lib/messages/handToOrder'
+import { splitTextForQueryHighlight } from '../../lib/assignJobPickerHighlight'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { EmptyState } from '../EmptyState'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 
 export type { Teammate }
 
@@ -50,6 +62,8 @@ const initials = (name: string) =>
     .join('')
     .slice(0, 2)
 
+const MENU_WIDTH = 280
+
 const ROLE_WORDS: Readonly<Record<string, string>> = {
   dev: 'dev',
   master_technician: 'owner',
@@ -62,6 +76,15 @@ const ROLE_WORDS: Readonly<Record<string, string>> = {
 export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, onHand, busy, held, bare, pushHours }: WhoHasItPillProps) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const phone = useNarrowViewport640()
+  const menuId = useId()
+  // The search (v2.6506): the typed run and the lit row, both fresh on every open.
+  const [query, setQuery] = useState('')
+  const [lit, setLit] = useState(0)
+  // The menu hangs from the pill's right edge, as a desktop row draws the pill at the right; on a phone the pill
+  // wraps to the row's left and a right-hung menu runs off the screen, so it hangs from the left when the right would not fit.
+  const [fromLeft, setFromLeft] = useState(false)
   useEffect(() => {
     if (!open) return
     const away = (e: MouseEvent) => {
@@ -70,6 +93,15 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
     document.addEventListener('mousedown', away)
     return () => document.removeEventListener('mousedown', away)
   }, [open])
+  useEffect(() => {
+    if (!open) return
+    setQuery('')
+    setLit(0)
+    const at = box.current?.getBoundingClientRect()
+    setFromLeft(Boolean(at && at.right - MENU_WIDTH < 8))
+    // On a phone the keyboard would jump up over the list, so the box waits for a tap.
+    if (!phone) input.current?.focus()
+  }, [open, phone])
 
   const mine = contact.hasUserId === me.id
   const since = contact.hasSince ? hasSinceWords(whenWords(contact.hasSince, nowIso), exactStamp(contact.hasSince)) : ''
@@ -89,6 +121,34 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
     setOpen(false)
     if (userId !== contact.hasUserId) onHand(userId)
   }
+  const typed = query.trim() !== ''
+  const groups = useMemo(() => filterHandTo(orderHandTo(team.filter((t) => t.id !== me.id)), query), [team, me.id, query])
+  // The rows the keys walk, in the order the menu draws them: *I'll take it* and *Nobody* only while nothing is typed.
+  const rows = useMemo<Array<{ key: string; userId: string | null }>>(
+    () => [
+      ...(!mine && !typed ? [{ key: 'take', userId: me.id }] : []),
+      ...groups.flatMap((g) => g.people.map((t) => ({ key: t.id, userId: t.id }))),
+      ...(contact.has && !typed ? [{ key: 'nobody', userId: null }] : []),
+    ],
+    [mine, typed, me.id, groups, contact.has],
+  )
+  const rowIndex = (key: string) => rows.findIndex((r) => r.key === key)
+  const rowId = (key: string) => `${menuId}-${key}`
+  const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      setLit((i) => nextLit(i, rows.length, e.key === 'ArrowDown' ? 1 : -1))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const row = rows[lit]
+      if (row) pick(row.userId)
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      setOpen(false)
+    }
+  }
+  const litRow = rows[lit]
   const sinceShort = contact.hasSince ? exactStamp(contact.hasSince) : null
   const className = [bare ? 'thread-head-control' : '', held ? 'keptPress' : ''].filter(Boolean).join(' ') || undefined
 
@@ -144,10 +204,10 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
           aria-label={`Who has ${contact.name}`}
           style={{
             position: 'absolute',
-            right: 0,
+            ...(fromLeft ? { left: 0 } : { right: 0 }),
             top: 'calc(100% + 4px)',
             zIndex: 20,
-            width: 280,
+            width: MENU_WIDTH,
             maxWidth: '85vw',
             display: 'grid',
             gap: 2,
@@ -156,41 +216,103 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
             border: '1px solid var(--border-strong)',
             borderRadius: 8,
             boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+            maxHeight: '70vh',
+            overflowY: 'auto',
           }}
         >
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.2rem 0.3rem' }}>
             {whoPickerHead(me.name, contact.name, contact.has ? (mine ? me.name : contact.has) : null, sinceShort)}
           </span>
-          {!mine && <PickerRow name="I'll take it" words={takeItWords(contact.has)} avatar={initials(me.name)} onPick={() => pick(me.id)} />}
-          {team
-            .filter((t) => t.id !== me.id)
-            .map((t) => {
-              const holds = holdCount(everyone, t.name, todayYmd)
-              return (
-                <PickerRow
-                  key={t.id}
-                  name={t.name}
-                  on={contact.hasUserId === t.id}
-                  words={`${ROLE_WORDS[t.role] ?? t.role} · holds ${holds} waiting`}
-                  avatar={initials(t.name)}
-                  onPick={() => pick(t.id)}
-                />
-              )
-            })}
-          {contact.has && <PickerRow name="Nobody" words="Put it back for whoever answers first." avatar="?" onPick={() => pick(null)} />}
+          <input
+            ref={input}
+            type="text"
+            inputMode="search"
+            enterKeyHint="go"
+            autoComplete="off"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setLit(0)
+            }}
+            onKeyDown={onKey}
+            placeholder="Type a name"
+            aria-label="Find a teammate"
+            aria-activedescendant={litRow ? rowId(litRow.key) : undefined}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '0.4rem 0.6rem',
+              margin: '0 0 0.2rem',
+              fontSize: '0.85rem',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 6,
+              background: 'var(--bg-subtle)',
+              color: 'var(--text-strong)',
+            }}
+          />
+          {!mine && !typed && (
+            <PickerRow id={rowId('take')} name="I'll take it" words={takeItWords(contact.has)} avatar={initials(me.name)} lit={lit === rowIndex('take')} onLight={() => setLit(rowIndex('take'))} onPick={() => pick(me.id)} />
+          )}
+          {groups.map((g, gi) => (
+            <span key={g.key} role="group" aria-label={g.heading} style={{ display: 'grid', gap: 2 }}>
+              <span
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  color: 'var(--text-muted)',
+                  padding: '0.35rem 0.3rem 0.1rem',
+                  marginTop: gi === 0 && (mine || typed) ? 0 : '0.2rem',
+                  borderTop: gi === 0 && (mine || typed) ? 'none' : '1px solid var(--border)',
+                }}
+              >
+                {g.heading}
+              </span>
+              {g.people.map((t) => {
+                const holds = holdCount(everyone, t.name, todayYmd)
+                return (
+                  <PickerRow
+                    key={t.id}
+                    id={rowId(t.id)}
+                    name={t.name}
+                    query={query}
+                    on={contact.hasUserId === t.id}
+                    words={`${ROLE_WORDS[t.role] ?? t.role} · holds ${holds} waiting`}
+                    avatar={initials(t.name)}
+                    lit={lit === rowIndex(t.id)}
+                    onLight={() => setLit(rowIndex(t.id))}
+                    onPick={() => pick(t.id)}
+                  />
+                )
+              })}
+            </span>
+          ))}
+          {typed && groups.length === 0 && <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'teammates', query }), { onPress: () => setQuery('') })} />}
+          {contact.has && !typed && <PickerRow id={rowId('nobody')} name="Nobody" words="Put it back for whoever answers first." avatar="?" lit={lit === rowIndex('nobody')} onLight={() => setLit(rowIndex('nobody'))} onPick={() => pick(null)} />}
         </span>
       )}
     </span>
   )
 }
 
-function PickerRow({ name, words, avatar, on, onPick }: { name: string; words: string; avatar: string; on?: boolean; onPick: () => void }) {
+/** The Jobs page's amber mark on the typed run; `display: inline` said outright and the rest bare text, so the row's name reads whole to a screen reader (and to the smoke). */
+const LIT_RUN = { display: 'inline', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 2, padding: 0, fontWeight: 700 } as const
+
+function PickerRow({ id, name, query = '', words, avatar, on, lit, onLight, onPick }: { id: string; name: string; query?: string; words: string; avatar: string; on?: boolean; lit: boolean; onLight: () => void; onPick: () => void }) {
+  const self = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (lit) self.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [lit])
   return (
     <button
+      ref={self}
+      id={id}
       type="button"
       role="menuitemradio"
       aria-checked={Boolean(on)}
+      data-lit={lit ? '' : undefined}
       onClick={onPick}
+      onMouseEnter={onLight}
       style={{
         display: 'grid',
         gridTemplateColumns: '24px 1fr',
@@ -200,7 +322,7 @@ function PickerRow({ name, words, avatar, on, onPick }: { name: string; words: s
         padding: '0.35rem 0.4rem',
         border: 'none',
         borderRadius: 6,
-        background: on ? 'var(--bg-blue-tint)' : 'transparent',
+        background: on ? 'var(--bg-blue-tint)' : lit ? 'var(--bg-muted)' : 'transparent',
         color: 'var(--text-base)',
         cursor: 'pointer',
       }}
@@ -210,7 +332,7 @@ function PickerRow({ name, words, avatar, on, onPick }: { name: string; words: s
       </span>
       <span style={{ display: 'grid' }}>
         <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-          {name}
+          {splitTextForQueryHighlight(name, query).map((seg, i) => (seg.match ? <mark key={i} style={LIT_RUN}>{seg.text}</mark> : <Fragment key={i}>{seg.text}</Fragment>))}
           {on ? ' · has it now' : ''}
         </span>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{words}</span>
