@@ -293,14 +293,15 @@ export function buildStartEmploymentChecklist(f: StartEmploymentFacts): Lifecycl
 }
 
 /** Apply per-row resolutions (done after an action, or left open with a reason) on top of freshly built items. */
-export function applyChecklistResolutions(
-  items: LifecycleItem[],
+export function applyChecklistResolutions<T extends Pick<LifecycleItem, 'id' | 'state' | 'leaveReason'> & { action: unknown }>(
+  items: T[],
   resolutions: Record<string, { state: 'done' | 'left_open'; reason?: string }>,
-): LifecycleItem[] {
+): T[] {
   return items.map((it) => {
     const r = resolutions[it.id]
     if (!r || it.state !== 'open') return it
-    return { ...it, state: r.state, leaveReason: r.reason, action: r.state === 'done' ? null : it.action }
+    // A row's action is always nullable (LifecycleItem and BringBackItem alike), so null is a valid T['action'].
+    return { ...it, state: r.state, leaveReason: r.reason, action: r.state === 'done' ? null : it.action } as T
   })
 }
 
@@ -326,7 +327,7 @@ export function finalPayReportPeriod(lastPayReportEnd: string | null, endDateYmd
   return { periodStart: e.toISOString().slice(0, 10), periodEnd: endDateYmd }
 }
 
-export function checklistSummary(items: LifecycleItem[]): { open: number; done: number; leftOpen: number; skipped: number; canFinish: boolean } {
+export function checklistSummary(items: ReadonlyArray<Pick<LifecycleItem, 'state'>>): { open: number; done: number; leftOpen: number; skipped: number; canFinish: boolean } {
   let open = 0
   let done = 0
   let leftOpen = 0

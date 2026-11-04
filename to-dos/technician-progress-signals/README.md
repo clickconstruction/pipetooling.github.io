@@ -1,8 +1,8 @@
 ---
 name: "Your week: one progress signal a tech can watch move, every week"
 number: 255
-group: gated
-status: card and mock-up 2026-11-03 · awaiting the owner's yes on draft 2 and his answers to the six calls · nothing built
+group: ready
+status: card and mock-up 2026-11-03 · the owner answered the calls the same day and named three builds first (the teammate's logbook, the Google review tools, job targets) · the logbook v2.6472 (a spike against live data, then built) · Your week card not started
 summary: >
   The app records nearly everything that shows a tech is getting better: the clock, the jobs, the
   customer's stars and words, the crew's ratings, the callbacks Job Summary already finds. Every one
@@ -12,9 +12,9 @@ summary: >
   against target for a lead), how far it moved this week, and the customer's words by name the day
   they land. Compared to themselves, never to each other. A sheet after the last clock-out of the
   week says the same thing once more, and a Monday email follows later.
-next: the owner's look at the mock-up and his answers to the six calls; then PR 1 from the train below.
+next: the logbook's next PR, a tech's own logbook (a self-only read of their hours, a migration); then the Google review tools and job targets; the Your week card after them.
 size: L as a train of seven (S · M · M · S · M · S · M); the raise ladder is its own card once the levels are written
-blocker: the owner's six calls. PR 1 and PR 2 need only call 1 (low stars) and call 6 (who picks the signal).
+blocker: None. The raise ladder (call 5) waits on the owner's levels.
 opinion: build draft 2 as drawn. Start with the card and the customer's words, which read data the app already has; the callback count waits for the office's confirm press, never an inferred pair.
 mockup: to-dos/technician-progress-signals/mockup.html
 ---
@@ -82,16 +82,14 @@ deals `TrialVerdictPrompt` and `CrewReviewDeck`). Nothing in the app texts staff
 
 ## The calls
 
-1. **Low stars.** Do 1–3 star answers reach the tech, or stay with the office for the lead to talk through?
-   Recommended: 4 and 5 go to the tech; the rest stay on Needs you.
-2. **The crew-rating trend.** Ever shown to the rated person? Recommended: not in this train. If yes later, direction
-   only, 3+ raters, and only ratings given after the crew is told.
-3. **A callback's confirm.** Office presses *It was a callback* before it counts (recommended), or every inferred pair
-   counts unless someone presses *Not a callback*?
-4. **License targets.** Which classes and hour counts, per trade, and who types the opening balance for hours before
-   the clock.
-5. **The raise ladder.** What earns each step. A card of its own once written; `trade_levels` could seed the rungs.
-6. **Who picks each person's signal.** Recommended: the office on the People desk, with a role default.
+1. **Low stars.** Answered 2026-11-03: five stars is the goal, and Google reviews are the basis, since they are how
+   customers find us. The customer's words signal reads Google reviews, which needs the review tools refined first.
+2. **The crew-rating trend.** Answered 2026-11-03: yes, techs see their own crew rating.
+3. **A callback's confirm.** Answered 2026-11-03: yes, a callback counts only after the office presses *It was a callback*.
+4. **License targets.** Answered 2026-11-03: every license counts for each trade. An hour counts toward the license of
+   its job's trade (v2.6472).
+5. **The raise ladder.** Open: the owner is not sure yet. A card of its own once written; `trade_levels` could seed the rungs.
+6. **Who picks each person's signal.** Answered 2026-11-03: the office picks.
 
 ## Alternatives weighed
 
