@@ -81,7 +81,7 @@ export function adjustMaterialLines<T extends MaterialLineInput>(lines: Readonly
   return lines.map((l) => ({ ...l, passThrough: l.passThrough || applied.linePassThrough.has(l.id), leftOff: l.leftOff || applied.lineOff.has(l.id) }))
 }
 
-/** One line of the adjustments log, and the office copy: `Sat Apr 25 · set to a tech alone · Zack was alone · Robert`. */
+/** One line of the adjustments log, and the office copy: `Sat Apr 25 · set to a tech alone · Zed was alone · Dana`. */
 export function chargeAdjustmentWords(a: ChargeAdjustment, dayWords: (ymd: string) => string, lineLabel: (id: string) => string): string {
   const what =
     a.kind === 'day_shape' && a.shape

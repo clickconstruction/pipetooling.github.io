@@ -6,7 +6,7 @@
  * with each person's standing, and get back the days, the weeks and the totals the paper, the window and the ledger
  * draw.
  */
-import { CREW_SHAPE_LOWER, crewRateFor, crewShapeOf, type ChargeStanding, type CrewShape, type RateCard } from './rateCard'
+import { CREW_SHAPE_LOWER, crewRateFor, crewShapeOf, NOBODY_CHARGED_WHY, type ChargeStanding, type CrewShape, type RateCard } from './rateCard'
 
 export type CrewSessionInput = {
   userId: string
@@ -44,7 +44,7 @@ export type CrewDay = {
   why: string | null
   /** Any person's row on this day came from the pay records. */
   imported: boolean
-  /** Who was out, in words: `Trace, Joseph`. */
+  /** Who was out, in words: `Toby, Jordan`. */
   who: string
   /** The shape in words, with the job's rule named when it decided. */
   shapeWords: string
@@ -64,7 +64,13 @@ export type CrewDaysTotals = {
   daysLeftOff: number
   /** Days an adjustment set to another shape. */
   daysAdjusted: number
+  /** People out on days that priced at nothing because nobody out counted as anything, most such days first: the office's
+   *  screens name them with the press that fixes it; a customer's paper never does. */
+  uncharged: CrewUncharged[]
 }
+
+/** A person out on the job who counts as nobody on the rate card yet, and on how many of its days. */
+export type CrewUncharged = { userId: string; name: string; days: number }
 
 export type CrewDaysResult = { days: CrewDay[]; totals: CrewDaysTotals }
 
@@ -121,7 +127,7 @@ export function buildCrewDays(sessions: ReadonlyArray<CrewSessionInput>, card: R
     let shapeWords = read.shape ? CREW_SHAPE_LOWER[read.shape] : 'nobody charged'
     const setTo = overrides.dayShape?.get(workDate) ?? null
     if (read.shape == null) {
-      why = 'Nobody out that day is charged to a customer.'
+      why = NOBODY_CHARGED_WHY
     } else if (setTo) {
       pricedShape = setTo
       const price = crewRateFor(card, setTo, 0)
@@ -162,6 +168,16 @@ export function buildCrewDays(sessions: ReadonlyArray<CrewSessionInput>, card: R
       adjusted: setTo != null && read.shape != null,
     })
   }
+  const unchargedBy = new Map<string, CrewUncharged>()
+  for (const d of days) {
+    if (d.shape != null) continue
+    for (const p of d.people) {
+      if (p.standing !== 'none') continue
+      const u = unchargedBy.get(p.userId) ?? { userId: p.userId, name: p.name, days: 0 }
+      u.days += 1
+      unchargedBy.set(p.userId, u)
+    }
+  }
   const totals: CrewDaysTotals = {
     days: days.length,
     crewHours: cents(days.reduce((a, d) => a + d.crewHours, 0)),
@@ -171,6 +187,7 @@ export function buildCrewDays(sessions: ReadonlyArray<CrewSessionInput>, card: R
     importedDays: days.filter((d) => d.imported).length,
     daysLeftOff,
     daysAdjusted: days.filter((d) => d.adjusted).length,
+    uncharged: Array.from(unchargedBy.values()).sort((a, b) => b.days - a.days || a.name.localeCompare(b.name)),
   }
   return { days, totals }
 }
@@ -240,3 +257,40 @@ export function jobChargeRuleWords(rule: JobChargeRule): string {
   if (rule.kind === 'flat') return `a flat $${rule.rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} an hour`
   return 'the crew on each day'
 }
+
+/**
+ * The office's line for people who count as nobody (punch list #254, the live pass): `Toby counts as nobody on the rate card
+ * yet.` · `Toby and Jordan count as …` · `Toby, Jordan, Zed and 2 more count as …`. Null when everyone out counts as
+ * something. For the window, the ledger and the hours window; a customer's paper keeps its neutral reason.
+ */
+export function unchargedWords(people: ReadonlyArray<{ name: string }>): string | null {
+  const names = Array.from(new Set(people.map((p) => p.name)))
+  if (names.length === 0) return null
+  const list = names.length === 1 ? names[0] : names.length <= 3 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`
+  return `${list} ${names.length === 1 ? 'counts' : 'count'} as nobody on the rate card yet.`
+}
+
+/**
+ * What a span holds, for the Statement of charges window (punch list #254, the live pass): the crew-days, how many price
+ * at nothing yet, and the crew-hours from the person-hours. A day nobody out counts for has no crew-hours, so a span where
+ * no day prices says *none priced yet* in place of *0 crew-hours*, which read as a fault beside the person-hours.
+ */
+export function crewSpanWords(t: { days: number; unpricedDays: number; crewHours: number; personHours: number }): string {
+  const n = (x: number) => x.toLocaleString('en-US', { maximumFractionDigits: 2 })
+  const days = `${t.days} ${t.days === 1 ? 'crew-day' : 'crew-days'} in this span`
+  if (t.days === 0) return days
+  if (t.unpricedDays >= t.days) return `${days}, none priced yet, from ${n(t.personHours)} person-hours`
+  const unpriced = t.unpricedDays > 0 ? `, ${t.unpricedDays} not priced yet` : ''
+  return `${days}${unpriced}, ${n(t.crewHours)} crew-hours from ${n(t.personHours)} person-hours`
+}
+
+/**
+ * A window's notes for the office: the paper's neutral line drops out while the callout names who counts as nobody, so
+ * the same fact is not said twice (the live pass).
+ */
+export function officeNotes(notes: readonly string[], uncharged: ReadonlyArray<unknown>): string[] {
+  return uncharged.length ? notes.filter((n) => n !== NOBODY_CHARGED_WHY) : [...notes]
+}
+
+/** Where the office sets it, in words: one place for everyone, or each person's desk. */
+export const UNCHARGED_FIX_WORDS = 'Set Charged as in Settings → Rates charged by crew → Who counts as what, or on each person’s desk.'

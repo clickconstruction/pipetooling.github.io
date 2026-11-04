@@ -6,10 +6,12 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { buildJobCharges, type JobCharges } from '../../lib/charges/jobCharges'
 import { addChargeAdjustments, loadJobCharges, revertChargeAdjustments, saveJobChargeRule, type JobChargesReadResult, type NewChargeAdjustment } from '../../lib/charges/jobChargesRead'
 import { chargeAdjustmentWords, saveAdjustmentsLabel, type ChargeAdjustment } from '../../lib/charges/adjustments'
-import { jobChargeRuleWords, type CrewDay, type JobChargeRule } from '../../lib/charges/crewDays'
+import { jobChargeRuleWords, officeNotes, type CrewDay, type JobChargeRule } from '../../lib/charges/crewDays'
 import { CREW_SHAPES, CREW_SHAPE_LOWER, CREW_SHAPE_WORDS, crewRateWords, crewRateFor, type CrewShape } from '../../lib/charges/rateCard'
 import { marginOfMarkup } from '../../lib/charges/materialsCharged'
 import { Money } from './Money'
+import { premiumWaitsWords } from '../../lib/charges/premium'
+import { UnchargedCallout } from './UnchargedCallout'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
@@ -287,13 +289,23 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
               <Tile label="Charges" amount={charges.totals.charges} record={charges.record.totals.charges} sub="labor and materials" accent testId="tile-charges" />
               <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.75rem', display: 'grid', gap: 2 }} data-testid="tile-premium">
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Against the revenue</span>
-                <span style={{ fontSize: '1.125rem', fontWeight: 700, color: charges.premium.kind === 'shortfall' ? 'var(--text-red-600)' : 'var(--text-strong)' }}>{charges.premium.kind === 'even' ? 'even' : <><Money amount={charges.premium.amount} /> {charges.premium.kind}</>}</span>
-                <span style={quiet}>{charges.adjustmentsCount ? `the record reads ${charges.record.premium.words}` : charges.premium.sentence}</span>
+                {charges.totals.unpricedDays > 0 ? (
+                  <>
+                    <span style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-muted)' }}>Not yet</span>
+                    <span style={quiet}>{premiumWaitsWords(charges.totals.unpricedDays)}</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: '1.125rem', fontWeight: 700, color: charges.premium.kind === 'shortfall' ? 'var(--text-red-600)' : 'var(--text-strong)' }}>{charges.premium.kind === 'even' ? 'even' : <><Money amount={charges.premium.amount} /> {charges.premium.kind}</>}</span>
+                    <span style={quiet}>{charges.adjustmentsCount ? `the record reads ${charges.record.premium.words}` : charges.premium.sentence}</span>
+                  </>
+                )}
               </div>
             </div>
-            {charges.notes.length ? (
+            <UnchargedCallout people={charges.uncharged} unpricedDays={charges.totals.unpricedDays} onNavigate={onClose} />
+            {officeNotes(charges.notes, charges.uncharged).length ? (
               <ul style={{ margin: '0 1rem 0.5rem', paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="charges-notes">
-                {charges.notes.map((n) => (
+                {officeNotes(charges.notes, charges.uncharged).map((n) => (
                   <li key={n}>{n}</li>
                 ))}
               </ul>

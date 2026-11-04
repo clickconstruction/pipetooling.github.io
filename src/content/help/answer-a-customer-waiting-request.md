@@ -53,6 +53,8 @@ The row drops to its normal place in the list, oldest first. The banner ends for
 
 Any open request can become a customer waiting. Expand it and tap **Raise priority** next to *Activity / notes*. A tech's own "gas smell at J790" gets the same red rail, top slot and banner. It asks for an optional reason and writes *Priority raised — …* into the thread.
 
+A stage check is the one exception. A crew sends it from a stage checklist with [send a check to Dispatch](/help/send-a-check-to-dispatch). The check keeps its own row at the top, under a red line. The check stays off the banner and out of **Needs you**.
+
 ## Close it
 
 **✓ Close** opens the thread. Add a note and **Add & Close** as usual. Closing ends the banner too. Who may call, lower, raise or close is the same set. On the Dispatch inbox it is Dispatch group members and devs. On the Estimator inbox it is estimating group members and devs.

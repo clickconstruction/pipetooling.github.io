@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { MATERIALS_MARKUP_PCT_KEY } from '../../lib/charges/rateCard'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { chargedAtMarkup, marginOfMarkup } from '../../lib/charges/materialsCharged'
 import { moneyWords } from '../../lib/charges/moneyParts'
 
@@ -18,6 +19,7 @@ export default function MaterialsMarkupSettingsBlock() {
   const [value, setValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState('')
 
   const loadFromServer = useCallback(async () => {
     setLoading(true)
@@ -25,7 +27,9 @@ export default function MaterialsMarkupSettingsBlock() {
       const { data, error } = await supabase.from('app_settings').select('key, value_num').eq('key', MATERIALS_MARKUP_PCT_KEY).maybeSingle()
       if (error) throw error
       const n = data?.value_num
-      setValue(n != null && Number(n) >= 0 ? String(Number(n)) : '')
+      const read = n != null && Number(n) >= 0 ? String(Number(n)) : ''
+      setValue(read)
+      setSaved(read)
     } catch (e) {
       showToast(formatErrorMessage(e, 'The markup could not be read.'), 'error')
     } finally {
@@ -42,6 +46,7 @@ export default function MaterialsMarkupSettingsBlock() {
       const valueNum = raw !== '' && Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null
       const { error } = await supabase.from('app_settings').upsert({ key: MATERIALS_MARKUP_PCT_KEY, value_num: valueNum }, { onConflict: 'key' })
       if (error) throw error
+      setSaved(valueNum == null ? '' : String(valueNum))
       showToast(valueNum == null ? 'The markup is cleared. Materials are charged at cost.' : 'The markup is saved.', 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'The markup could not be saved.'), 'error')
@@ -51,6 +56,13 @@ export default function MaterialsMarkupSettingsBlock() {
   }
 
   const pct = Number(value.trim())
+  // Unchanged means the same percent (or both blank), so the press is dead until there is something to save.
+  const markupKey = (s: string): string => {
+    const n = Number(s.trim())
+    return s.trim() !== '' && Number.isFinite(n) && n >= 0 ? String(Math.round(n * 100) / 100) : ''
+  }
+  const dirty = markupKey(value) !== markupKey(saved)
+  const dead = saving || !dirty
   const readsBothWays = value.trim() !== '' && Number.isFinite(pct) && pct >= 0
 
   return (
@@ -99,12 +111,17 @@ export default function MaterialsMarkupSettingsBlock() {
                 </label>
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={dead}
                   data-testid="materials-markup-save"
-                  style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                  style={{ padding: '0.5rem 1rem', background: dead ? DEAD_PRESS_FILL : '#2563eb', color: dead ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: dead ? 'default' : 'pointer', fontWeight: 500 }}
                 >
                   {saving ? 'Saving…' : 'Save the markup'}
                 </button>
+                {!dirty && !saving ? (
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', alignSelf: 'center' }} data-testid="materials-markup-nothing">
+                    The markup is saved as shown.
+                  </span>
+                ) : null}
               </div>
               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', padding: '0.6rem 0.75rem', borderRadius: 6, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }} data-testid="materials-markup-reads">
                 {readsBothWays

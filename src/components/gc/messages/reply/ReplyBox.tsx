@@ -60,6 +60,7 @@ import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { Btn } from '../../gcUi'
 import { JobPickerWindow } from '../JobPickerWindow'
 import { useOpenThread } from '../openThread'
+import { replyBoxFolded } from '../../../../lib/messages/replyFold'
 import { useMessagesReread } from '../useMessagesReread'
 import { AttachPicker } from './AttachPicker'
 import { FindReplyWindow } from './FindReplyWindow'
@@ -199,6 +200,8 @@ export function ReplyBox({
   // The quick replies editor is open; its add row starts with these words when there are any (the prototype's editQuick).
   const [adding, setAdding] = useState<string | null>(null)
   const [body, setBody] = useState('')
+  // A short window folds the thread's box to one row (v2.6477) until a press into it; a send folds it back.
+  const [woke, setWoke] = useState(false)
   // Punch list #126: where the caret is, so a `/` word at it opens the list; the lines are read the first time it does.
   const [caret, setCaret] = useState(0)
   const slashTyped = slashWordAt(body, caret)
@@ -274,6 +277,7 @@ export function ReplyBox({
   // #207 PR 1: an email's pre-typed opening alone is an empty box, for the strip, the from line, the count and Send.
   const blank = !body.trim() || (shown === 'email' && onlyOpening(body, first))
   const count = goesOut(shown) ? countLine(shown, blank ? '' : body) : null
+  const folded = replyBoxFolded({ short: open?.short ?? false, inJob: Boolean(job), woke, blank, files: files.length, opensWithWords: Boolean(nudge) || Boolean(startWords) || settling.active, textWaits })
   const sendLabel = settling.active ? OWED_DONE_SEND : (REPLY_KINDS.find((k) => k.kind === shown)?.send ?? 'Send')
   const orange = Boolean(job) && contact.kind === 'customer' && goesOut(shown)
 
@@ -283,6 +287,7 @@ export function ReplyBox({
     setTie(undefined)
     setFiles([])
     setMade(null)
+    setWoke(false)
     showToast([sentWords(sentKind, company), more].filter(Boolean).join(' '), 'success')
     reread()
   }
@@ -602,11 +607,14 @@ export function ReplyBox({
   return (
     <div
       data-reply-box
+      data-reply-fold={folded ? 'folded' : undefined}
       style={{
         // In a job's window the panel's card holds it, so it takes no foot of its own.
         ...(job ? null : { background: 'var(--surface)', borderTop: '1px solid var(--border)', boxShadow: '0 -6px 14px -10px rgba(15, 23, 42, 0.3)', padding: '0.6rem 0.9rem 0.75rem' }),
-        display: 'grid',
-        gap: '0.4rem',
+        // Folded (v2.6477): the kinds and a one-line box side by side, the rest waiting until a press into it.
+        display: folded ? 'flex' : 'grid',
+        ...(folded ? { alignItems: 'center' } : null),
+        gap: folded ? '0.6rem' : '0.4rem',
         position: 'relative',
       }}
     >
@@ -619,7 +627,11 @@ export function ReplyBox({
               role="radio"
               aria-checked={shown === k.kind}
               aria-disabled={settling.active || undefined}
-              onClick={() => !settling.active && setKind(k.kind)}
+              onClick={() => {
+                if (settling.active) return
+                setKind(k.kind)
+                setWoke(true)
+              }}
               style={{ ...KIND_LOOK[k.kind], borderWidth: 1, borderStyle: 'solid', borderRadius: 6, padding: '0.2rem 0.7rem', fontSize: '0.82rem', cursor: settling.active ? 'not-allowed' : 'pointer', ...(shown === k.kind ? RING : null) }}
             >
               {k.label}
@@ -637,7 +649,7 @@ export function ReplyBox({
         </p>
       )}
 
-      {goesOut(shown) && !textWaits && (
+      {!folded && goesOut(shown) && !textWaits && (
         <QuickRepliesStrip
           kind={contact.kind}
           lines={stripLines}
@@ -710,7 +722,7 @@ export function ReplyBox({
       )}
 
       {!textWaits && (
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', ...(folded ? { flex: 1, minWidth: 0 } : null) }}>
           <textarea
             ref={boxRef}
             aria-label={shown === 'note' ? 'A note for the team' : shown === 'call' ? CALL_WORDS.said : `Write to ${contact.name}`}
@@ -725,15 +737,16 @@ export function ReplyBox({
             }}
             onSelect={(e) => caretAt(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)}
             onKeyDown={slashKeys}
+            onFocus={() => setWoke(true)}
             placeholder={settling.active ? OWED_DONE_PLACEHOLDER : goesOut(shown) ? `${boxPlaceholder(shown, contact.name)} ${SLASH_HINT}` : boxPlaceholder(shown, contact.name)}
             disabled={Boolean(blocked) || busy}
-            rows={3}
+            rows={folded ? 1 : 3}
             data-reply-look={orange ? 'customer' : shown}
             style={{
               ...(orange ? CUSTOMER_LOOK : KIND_LOOK[shown]),
               width: '100%',
-              minHeight: 64,
-              resize: 'vertical',
+              minHeight: folded ? 0 : 64,
+              resize: folded ? 'none' : 'vertical',
               display: 'block',
               borderWidth: 1, borderStyle: 'solid',
               ...(orange ? CUSTOMER_BAR : null),
@@ -744,7 +757,7 @@ export function ReplyBox({
               boxSizing: 'border-box',
             }}
           />
-          {goesOut(shown) && blank && (
+          {!folded && goesOut(shown) && blank && (
             <span
               data-reply-from
               aria-hidden="true"
@@ -835,7 +848,7 @@ export function ReplyBox({
         </div>
       )}
 
-      {!textWaits && count && count.parts.length > 0 && (
+      {!folded && !textWaits && count && count.parts.length > 0 && (
         <div data-reply-count style={{ fontSize: '0.75rem', color: count.long ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
           {count.parts.join(' · ')}
         </div>
@@ -867,7 +880,7 @@ export function ReplyBox({
         </div>
       )}
 
-      {!textWaits && (
+      {!folded && !textWaits && (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {job ? (
             <span style={{ fontSize: '0.8rem', color: 'var(--text-600)' }}>

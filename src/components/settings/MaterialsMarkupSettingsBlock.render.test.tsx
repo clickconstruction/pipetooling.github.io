@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
- * Render smokes for Settings → Jobs & dispatch → Markup on materials (punch list #254, PR 1): the percent reads from
- * its app_settings row, the line under the field reads it both ways, and Save writes one row, null when cleared.
+ * Render smokes for Settings → Jobs & billing → Markup on materials (punch list #254, PR 1): the percent reads from
+ * its app_settings row, the line under the field reads it both ways, Save is dead, saying the markup is saved as shown, until
+ * the percent changes, and Save writes one row, null when cleared.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -37,6 +38,11 @@ describe('MaterialsMarkupSettingsBlock', () => {
     fireEvent.click(screen.getByTestId('materials-markup-toggle'))
     await waitFor(() => expect((screen.getByTestId('materials-markup-input') as HTMLInputElement).value).toBe('25'))
     expect(screen.getByTestId('materials-markup-reads').textContent).toBe('25% over cost is a 20% margin on the sale. $1,000.00 of materials is charged at $1,250.00.')
+    // Unchanged, the press is dead and says so; the same percent typed again changes nothing.
+    expect((screen.getByTestId('materials-markup-save') as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByTestId('materials-markup-nothing').textContent).toBe('The markup is saved as shown.')
+    fireEvent.change(screen.getByTestId('materials-markup-input'), { target: { value: '25.00' } })
+    expect((screen.getByTestId('materials-markup-save') as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('with no row, says materials are at cost; Save writes the typed percent, and a cleared field writes null', async () => {

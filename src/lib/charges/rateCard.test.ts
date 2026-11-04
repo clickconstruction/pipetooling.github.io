@@ -40,7 +40,7 @@ describe('the rate card by crew (punch list #254)', () => {
     expect(crewShapeOf(['master', 'tech', 'helper'])).toMatchObject({ shape: 'master_helper', extra: 1, counted: ['master', 'tech', 'helper'] })
   })
 
-  it("prices the owner's examples: Abraham and Paige together $285, each alone $185, Michael alone $75", () => {
+  it("prices the owner's examples: two techs together $285, each alone $185, a helper alone $75", () => {
     expect(crewRateFor(OWNER, crewShapeOf(['tech', 'tech']).shape, 0)).toEqual({ rate: 285, why: null })
     expect(crewRateFor(OWNER, crewShapeOf(['tech']).shape, 0)).toEqual({ rate: 185, why: null })
     expect(crewRateFor(OWNER, crewShapeOf(['helper']).shape, 0)).toEqual({ rate: 75, why: null })

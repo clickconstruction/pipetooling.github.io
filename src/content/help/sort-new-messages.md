@@ -2,7 +2,7 @@
 title: sort new messages before anyone answers them
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, new, sort, set aside, put back, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid, bid it, start a bid, not for us, addendum, solicitation, rfp, itb, due date, notice, newsletter, not a person, unsubscribe, leave out
+keywords: laptop, short screen, fold, other ways, messages, follow up, new, sort, set aside, put back, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid, bid it, start a bid, not for us, addendum, solicitation, rfp, itb, due date, notice, newsletter, not a person, unsubscribe, leave out
 where: /messages
 order: 119
 ---
@@ -28,6 +28,8 @@ Press the person's row in **New**, or the blue question before their name. The a
 :::example The sort card for a number nobody has named
 {{chip:blue|Who is 512-555-0142?}} {{button:outline|A new lead on Prospects}} {{button:outline|One of our own team}} {{button:outline|Someone else}}
 :::
+
+On a laptop, the card folds to one row. The row holds its heading and the press the card picked, such as {{button:blue|Start a bid on Ridgeway Builders}}. Press {{button:outline|Other ways ▾}} to open the whole card. Press **Fold** to take it back to one row. On a wide laptop, the card sits whole at the right of the messages.
 
 ## Bid it?
 

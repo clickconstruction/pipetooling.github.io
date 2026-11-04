@@ -84,3 +84,4 @@ legal-firm-coverage
 job-warranty
 combine-rows
 dev-clock-session-write
+employment-stints

@@ -24,6 +24,7 @@ import {
   type ReactNode,
 } from 'react'
 import { supabase } from '../../lib/supabase'
+import { fetchAllRows } from '../../lib/supabasePaging'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import {
@@ -278,14 +279,25 @@ export function ProjectsJobHistoryDayModal({
         // Costs — parallelize Mercury allocations, supply allocations, and pay config so
         // none of them block the others. Each individual failure marks `costsFetchFailed`
         // so the UI can flag partial totals without aborting the entire modal.
+        // The card lines are paged (v2.6465): an unpaged read stops at PostgREST's 1,000 rows with no error.
+        // `computeDayMercuryLines` sorts the day's lines itself, so the id order only keeps the pages steady.
+        const mercuryLabel = 'projects day modal mercury allocations'
         const [mercuryRes, supplyRes, payRes] = await Promise.allSettled([
-          withSupabaseRetry(
-            async () =>
-              supabase
-                .from('mercury_transaction_job_allocations')
-                .select('amount, note, mercury_transactions(posted_at, counterparty_name)')
-                .eq('job_id', jobId),
-            'projects day modal mercury allocations',
+          fetchAllRows(
+            async (from, to) => ({
+              data: await withSupabaseRetry(
+                async () =>
+                  supabase
+                    .from('mercury_transaction_job_allocations')
+                    .select('amount, note, mercury_transactions(posted_at, counterparty_name)')
+                    .eq('job_id', jobId)
+                    .order('id')
+                    .range(from, to),
+                mercuryLabel,
+              ),
+              error: null,
+            }),
+            mercuryLabel,
           ),
           withSupabaseRetry(
             async () =>

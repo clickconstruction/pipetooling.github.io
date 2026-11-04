@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { renderWithProviders } from '../../../../test/renderSmokeMocks'
 import { DEMO_NOW } from '../../../../lib/messages/messagesDemo'
@@ -50,10 +50,10 @@ function thread(contactId: string, jobFilter: string | null = null): OpenThread 
 // No boxes in Settings, as it ships: the from line keeps today's words.
 const NO_BOXES = () => Promise.resolve(null)
 
-function box(contactId = 'c-greg', more: { jobFilter?: string | null; io?: ReplyIo; provider?: boolean; boxes?: () => Promise<BoxSettings | null> } = {}) {
+function box(contactId = 'c-greg', more: { jobFilter?: string | null; io?: ReplyIo; provider?: boolean; boxes?: () => Promise<BoxSettings | null>; short?: boolean } = {}) {
   const io = more.io ?? fakeIo()
   const reread = vi.fn()
-  const open = thread(contactId, more.jobFilter ?? null)
+  const open = { ...thread(contactId, more.jobFilter ?? null), ...(more.short ? { short: true } : null) }
   const wrap = (child: ReactNode) =>
     more.provider === false ? child : <OpenThreadContext.Provider value={open}>{child}</OpenThreadContext.Provider>
   renderWithProviders(<MessagesRereadContext.Provider value={reread}>{wrap(<ReplyBox papersIo={noPapers} contact={open.contact} io={io} loadBoxes={more.boxes ?? NO_BOXES} />)}</MessagesRereadContext.Provider>)
@@ -190,5 +190,37 @@ describe('ReplyBox: the reply box at the foot of a thread (Messages, cut 3)', ()
     expect(win.textContent).toContain('From: Click Construction')
     expect(win.textContent).toContain('Their answer comes to bids@clickconstruction.example.')
     expect(win.querySelector('[data-send-own-mailbox]')?.textContent).toContain('Copy bids@clickconstruction.example, and this thread gets it too.')
+  })
+})
+
+describe('ReplyBox on a short window (v2.6477)', () => {
+  it('folds to the kinds and a one-line box, with no strip, from line or send row', () => {
+    const { el } = box('c-greg', { short: true })
+    expect(el.getAttribute('data-reply-fold')).toBe('folded')
+    expect(within(el).getByRole('radiogroup', { name: 'Reply as' })).toBeTruthy()
+    expect((within(el).getByRole('textbox', { name: 'Write to Greg Paulk' }) as HTMLTextAreaElement).rows).toBe(1)
+    expect(el.querySelector('[data-reply-from]')).toBeNull()
+    expect(el.querySelector('[data-reply-tie]')).toBeNull()
+    expect(within(el).queryByRole('button', { name: 'Send text…' })).toBeNull()
+  })
+
+  it('opens whole on a press into the box, and folds back once the note has gone', async () => {
+    const { el, io } = box('c-greg', { short: true })
+    fireEvent.focus(within(el).getByRole('textbox', { name: 'Write to Greg Paulk' }))
+    expect(el.hasAttribute('data-reply-fold')).toBe(false)
+    expect(within(el).getByRole('button', { name: 'Send text…' })).toBeTruthy()
+    fireEvent.click(within(el).getByRole('radio', { name: 'Note' }))
+    fireEvent.change(within(el).getByRole('textbox', { name: 'A note for the team' }), { target: { value: 'Greg says the pad is ready.' } })
+    fireEvent.click(within(el).getByRole('button', { name: 'Add the note' }))
+    await waitFor(() => expect(io.addNote).toHaveBeenCalled())
+    await waitFor(() => expect(el.getAttribute('data-reply-fold')).toBe('folded'))
+  })
+
+  it('picking a kind opens it too, and a tall window never folds', () => {
+    const short = box('c-greg', { short: true })
+    fireEvent.click(within(short.el).getByRole('radio', { name: 'Note' }))
+    expect(short.el.hasAttribute('data-reply-fold')).toBe(false)
+    cleanup()
+    expect(box('c-greg').el.hasAttribute('data-reply-fold')).toBe(false)
   })
 })

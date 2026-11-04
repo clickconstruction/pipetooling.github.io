@@ -53,7 +53,7 @@ function readFor(args: HoursStatementReadArgs): HoursStatementRead {
     personId: 'p-marcus',
     payName: 'Marcus Reyes',
     counts: { approved: 2, pending: 1, typedDays: 1, quickAddsLeftOff: 0 },
-    charge: args.basis === 'charged' ? { rate: 285, words: 'master with a helper throughout · $285.00 the crew’s hour', unpriced: [], crewDays: 2 } : null,
+    charge: args.basis === 'charged' ? (chargedNobody.on ? { rate: 285, words: 'the crew on each day · $285.00 the crew’s hour', unpriced: ['Nobody out that day is charged to a customer.'], crewDays: 2, uncharged: [{ userId: 'u-marcus', name: 'Marcus', days: 2 }], unchargedDays: 2 } : { rate: 285, words: 'master with a helper throughout · $285.00 the crew’s hour', unpriced: [], crewDays: 2, uncharged: [], unchargedDays: 0 }) : null,
   }
 }
 /** The window's read as a saved row keeps it. */
@@ -61,6 +61,8 @@ function snapshotFor(args: HoursStatementReadArgs) {
   const r = readFor(args)
   return { input: r.input, worker: r.worker, job: { number: '1042', name: 'Ridgeway Lofts', customer: 'Ridgeway Builders', site: '12 Elm St', isOfficeJob: false }, approvedBy: r.approvedBy, preparedBy: 'Dana Office', preparedOn: 'October 29, 2026', asOf: 'October 29, 2026 3:00 pm' }
 }
+/** The charged read when nobody out counts as anything yet (the live pass). */
+const chargedNobody = { on: false }
 const loadSpy = vi.fn((args: HoursStatementReadArgs) => Promise.resolve(readFor(args)))
 vi.mock('../../lib/people/hoursStatementRead', () => ({
   listHoursStatementPeople: () => Promise.resolve(people),
@@ -356,5 +358,20 @@ describe('the charged paper (punch list #251, PR 2)', () => {
     expect(screen.getByTestId('hours-statement-charge-words').textContent).toContain('Change the job’s rule or the rate card in the Job Summary’s Charges window.')
     expect((screen.getByLabelText(/Show the rate, the amount and what was paid/) as HTMLInputElement).disabled).toBe(true)
     expect(screen.getByText('Off while the paper is charged to the customer.')).toBeTruthy()
+  })
+
+  it('when nobody out counts as anything, names who counts as nobody with the doors to fix it, in place of the paper’s neutral line', async () => {
+    chargedNobody.on = true
+    const onClose = vi.fn()
+    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={payroll} onClose={onClose} />)
+    await screen.findByTestId('hours-statement-paper')
+    fireEvent.click(screen.getByTestId('hours-statement-charged'))
+    const callout = await screen.findByTestId('uncharged-callout')
+    expect(callout.textContent).toContain('Marcus counts as nobody on the rate card yet. 2 days price at nothing until someone out counts as a master, a tech or a helper.')
+    const words = screen.getByTestId('hours-statement-charge-words').textContent ?? ''
+    expect(words).toBe('the crew on each day · $285.00 the crew’s hour')
+    fireEvent.click(screen.getByRole('link', { name: 'Marcus’s desk · 2 days' }))
+    expect(onClose).toHaveBeenCalled()
+    chargedNobody.on = false
   })
 })

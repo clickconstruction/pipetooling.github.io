@@ -93,6 +93,7 @@ describe('the walk tester hides wherever a sample does', () => {
       'src/components/people/PeopleUsersTab.tsx',
       'src/components/personDesk/sections/MergeDuplicateDialog.tsx',
       'src/components/prospects/TeamProspectsTab.tsx',
+      'src/components/settings/WhoCountsAsWhatList.tsx',
       'src/hooks/usePeopleRoster.ts',
       'src/lib/bridge/weeklySend.ts',
       'src/lib/emailIn/countCardIo.ts',

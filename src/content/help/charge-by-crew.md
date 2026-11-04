@@ -33,6 +33,10 @@ Never charged to a customer. Office work, estimating, or a sub on their own shee
 
 Pick one and it saves at once. A person with nothing picked counts as not charged. The app never prices them by accident.
 
+To set everyone at once, open **Settings**, then **Jobs & billing**, then **Rates charged by crew**. Under the rates, **Who counts as what** lists every person with the same four choices. A pick saves at once. People who left sit at the foot, because their past days still price by it.
+
+A day prices at nothing until someone out counts as a master, a tech or a helper. When that happens, the Charges window names who counts as nobody. It links to each desk and to the list. The Statement of charges window and the charged hours paper's window name them too.
+
 ## Set the rates
 
 Open **Settings** and go to **Jobs & billing**. Open **Rates charged by crew**. The table has one row for each crew.
@@ -67,9 +71,17 @@ The crew's hours are the longest day of anyone in it. Two techs out eight hours 
 
 Under the rates, open **Markup on materials**. Type a percent over cost and press {{button:blue|Save the markup}}. The line under the field reads the number both ways. For example, 25% over cost is a 20% margin on the sale. Leave it blank and materials are charged at cost. The paper says so when they are.
 
+## Give one job its own rule
+
+Open the job window and go to **Edit**. The last row reads **Charging the customer**. Press it to open the row.
+
+**Charge this job's labor as** lists the choices. The first is the crew on each day, from the rate card. Each shape follows with its rate. The last is a flat rate for every hour. Pick the flat rate and the dollars box wakes.
+
+**Markup on materials** takes a percent for this job alone. Leave it blank and the company's markup stands. The row saves as you pick. The Charges window writes the same facts, so a change there shows here.
+
 ## See what a job is charged at
 
-Open **Jobs** and go to **Job Summary**. Two columns sit at the right of the table. **Charges** is the job's crew days at the rate card plus its materials at the markup. **Premium** is how far the contract price stands above the charges. A shortfall reads red. A chip over the table names the rate card and markup in force.
+Open **Jobs** and go to **Job Summary**. Two columns sit at the right of the table. **Charges** is the job's crew days at the rate card plus its materials at the markup. **Premium** is how far the contract price stands above the charges. A shortfall reads red. The premium waits until every day on the job prices, so a dash can mean days still price at nothing. The total leaves out a job whose premium waits. A chip over the table names the rate card and markup in force.
 
 ## Adjust a job's charges
 

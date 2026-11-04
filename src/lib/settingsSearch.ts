@@ -86,7 +86,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Link jobs to their bids', keywords: ['backfill', 'bid link', 'matches by value', 'job budget', 'burn'], tabId: 'settings-data', anchorId: 'settings-bid-job-backfill' },
   // Jobs & dispatch (dev)
   { label: 'Trip charge amounts', keywords: ['trip fee', 'travel charge'], tabId: 'settings-jobs' },
-  { label: 'Rates charged by crew', keywords: ['charge rate', 'hourly rate', 'crew rate', 'master with a helper', 'rate card', '285'], tabId: 'settings-jobs' },
+  { label: 'Rates charged by crew', keywords: ['charge rate', 'hourly rate', 'crew rate', 'master with a helper', 'rate card', '285', 'who counts as what', 'charged as', 'charge standing'], tabId: 'settings-jobs' },
   { label: 'Markup on materials', keywords: ['markup', 'margin', 'materials', 'over cost'], tabId: 'settings-jobs' },
   { label: 'Re-assign jobs', keywords: ['transfer jobs', 'move jobs to another user'], tabId: 'settings-jobs' },
   { label: 'Dispatch groups', keywords: ['dispatch', 'crews'], tabId: 'settings-jobs' },

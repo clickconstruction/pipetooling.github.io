@@ -15,6 +15,7 @@ import { useState, type ReactNode } from 'react'
 import type { ChannelKind } from '../../lib/contacts/kernel'
 import { bidHead, companyFromDomain, NOTICE_BLOCK, senderFacts, START_BID_WORDS, teamGuess, whoHead, type BidCustomerChoice, type BidPick, type HasChoice, type JobChoice, type NewLaneRow, type RosterChoice, type WhoGuess } from '../../lib/followUp/newLane'
 import { guessWait } from '../../lib/followUp/newLaneRows'
+import { FOLD_OPEN, FOLD_SHUT, foldedLead } from '../../lib/followUp/newLaneFold'
 import { TRADE_TEMPLATES } from '../../lib/gc/plans'
 import { Btn, input } from '../gc/gcUi'
 import { EmptyState } from '../EmptyState'
@@ -48,6 +49,8 @@ export interface NewLaneCardProps {
   onStartBid?: (pick: BidPick) => void
   onNotForUs?: (reason: string) => void
   onKeep?: () => void
+  /** A short window (v2.6476): the card starts as one row, its head and the press it picked, until *Other ways* opens it. */
+  foldable?: boolean
 }
 
 const OPTION = {
@@ -270,13 +273,15 @@ function BidBody({
   )
 }
 
-export function NewLaneCard({ row, channels, guesses, roster = [], jobs = [], people = [], busy = false, bidChoices = null, ownCustomer = false, onName, onSomeoneElse, onTie, onHand, onStartBid, onNotForUs, onKeep }: NewLaneCardProps) {
+export function NewLaneCard({ row, channels, guesses, roster = [], jobs = [], people = [], busy = false, bidChoices = null, ownCustomer = false, onName, onSomeoneElse, onTie, onHand, onStartBid, onNotForUs, onKeep, foldable = false }: NewLaneCardProps) {
   // The default starts picked. The caller keys the card by its line, so a new line starts from its own default.
   const [picked, setPicked] = useState<string | null>(() => jobs.find((j) => j.isDefault)?.id ?? jobs[0]?.id ?? null)
   const pickedJob = jobs.find((j) => j.id === picked) ?? null
   // *One of our own team* pressed: the card shows the roster until a pick or Back.
   const [teamOpen, setTeamOpen] = useState(false)
   const [teamWords, setTeamWords] = useState('')
+  // Opened by *Other ways* on a short window (v2.6476): it stays open for the card's life, so a press inside never folds it.
+  const [opened, setOpened] = useState(false)
 
   // The region keeps the sort's head (*Sort: Who is this?*); the title asks about the sender by name and address or number.
   let head = row.head
@@ -357,10 +362,42 @@ export function NewLaneCard({ row, channels, guesses, roster = [], jobs = [], pe
       )
   }
 
+  // A short window (v2.6476): one row, the head cut to a line, the press the card picked, and *Other ways* to open it.
+  if (foldable && !opened && !teamOpen) {
+    const lead = foldedLead(row, { bidChoices, pickedJob })
+    const pressLead = () => {
+      if (!lead) return
+      if (lead.kind === 'bid') onStartBid?.({ projectName: lead.projectName, choice: lead.choice })
+      else if (lead.kind === 'job') onTie(lead.jobId)
+      else onSomeoneElse()
+    }
+    return (
+      <section
+        aria-label={`Sort: ${head}`}
+        data-new-lane-card={row.sort}
+        data-new-lane-fold="folded"
+        style={{ margin: '0.5rem 0.9rem 0', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-blue-tint)', padding: '0.4rem 0.6rem 0.4rem 0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+      >
+        <h3 title={title} style={{ margin: 0, fontSize: '0.9rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {title}
+        </h3>
+        {lead && (
+          <Btn kind="primary" onClick={pressLead} disabled={busy}>
+            {lead.label}
+          </Btn>
+        )}
+        <Btn onClick={() => setOpened(true)} title="Shows the whole card here, with every way to sort it.">
+          {`${lead ? FOLD_OPEN.withLead : FOLD_OPEN.alone} ▾`}
+        </Btn>
+      </section>
+    )
+  }
+
   return (
     <section
       aria-label={`Sort: ${head}`}
       data-new-lane-card={row.sort}
+      data-new-lane-fold={foldable ? 'open' : undefined}
       data-new-lane-team={row.sort === 'who' && teamOpen ? 'open' : undefined}
       style={{ margin: '0.5rem 0.9rem 0', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-blue-tint)', padding: '0.6rem 0.75rem', display: 'grid', gap: '0.45rem' }}
     >
@@ -377,6 +414,11 @@ export function NewLaneCard({ row, channels, guesses, roster = [], jobs = [], pe
           >
             Who is this?
           </button>
+        )}
+        {foldable && (
+          <Btn kind="quiet" onClick={() => setOpened(false)} disabled={busy} title="Folds the card back to one row, so the messages get the room.">
+            {`${FOLD_SHUT} ▴`}
+          </Btn>
         )}
       </div>
       <div style={{ fontSize: '0.85rem', color: 'var(--text-600)' }}>{why}</div>

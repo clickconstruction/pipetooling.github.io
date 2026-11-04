@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { JobFormLienContractRow } from './JobFormLienContractRow'
+import { JobFormChargingRow } from './JobFormChargingRow'
 import { isJobFormFactRow, type JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { scrollWhenVisible } from '../../lib/scrollWhenVisible'
 import type { Dispatch, MutableRefObject, ReactNode, SetStateAction } from 'react'
@@ -68,6 +69,7 @@ type RowKey =
   | 'email'
   | 'property-record'
   | 'lien-contract'
+  | 'charging'
   | 'gc'
   | 'dateMet'
   | 'folders'
@@ -1234,7 +1236,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       </JobFormFactRow>
       <JobFormFactRow
         label="Bid"
-        last
+        last={!jobId}
         value={bidId ? formatJobFormBidLinkTitle(prefixMap, linkedBidSummary) : null}
         expanded={openRows.has('bid')}
         onToggle={() => toggleRow('bid')}
@@ -1248,6 +1250,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           showLabel={false}
         />
       </JobFormFactRow>
+      {/* Charging the customer (v2.6448, punch list #254): the job's rule for its labor and its own markup, saved as you pick — the foot of the list on an existing job. */}
+      {jobId ? <JobFormChargingRow jobId={jobId} expanded={openRows.has('charging')} onToggle={() => toggleRow('charging')} /> : null}
     </div>
   )
 }

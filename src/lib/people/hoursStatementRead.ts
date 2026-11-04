@@ -15,7 +15,7 @@ import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../overheadOffice
 import { formatDenverTimeOnly } from '../../utils/dateUtils'
 import { stubNetPay } from '../payStubDeductions'
 import { hoursStatementRoundHours, hoursStatementStanding, hoursStatementWeekLabel, type HoursStatementInput, type HoursStatementPayGroup, type HoursStatementRow } from './hoursStatement'
-import { buildCrewDays, jobChargeRuleFrom, jobChargeRuleWords } from '../charges/crewDays'
+import { buildCrewDays, jobChargeRuleFrom, jobChargeRuleWords, type CrewUncharged } from '../charges/crewDays'
 import { loadChargeAdjustments, loadCrewSessions, loadRateCard } from '../charges/jobChargesRead'
 import { indexAdjustments } from '../charges/adjustments'
 import { crewRateWords, parseCrewShape } from '../charges/rateCard'
@@ -125,6 +125,12 @@ export type HoursStatementChargeFacts = {
   /** Days in the span the person was part of that could not be priced, with the reason once each. */
   unpriced: string[]
   crewDays: number
+  /**
+   * Who counts as nobody on this person's days that priced at nothing because nobody out counted (the live pass), most
+   * such days first, and how many such days. The office window names them; the paper keeps its neutral reason.
+   */
+  uncharged: CrewUncharged[]
+  unchargedDays: number
 }
 
 /** What the read found in the span, for the window's line: see `hoursStatementSpanWords`. */
@@ -270,11 +276,22 @@ export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Pr
     const mine = new Map(rows.filter((r) => !r.pending).map((r) => [r.day, r] as const))
     const out: HoursStatementRow[] = []
     const unpriced = new Set<string>()
+    const unchargedBy = new Map<string, CrewUncharged>()
+    let unchargedDays = 0
     let crewDays = 0
     for (const d of days.days) {
       const own = mine.get(d.workDate)
       if (!own || !d.people.some((p) => p.userId === userId)) continue
       crewDays += 1
+      if (d.shape == null) {
+        unchargedDays += 1
+        for (const p of d.people) {
+          if (p.standing !== 'none') continue
+          const u = unchargedBy.get(p.userId) ?? { userId: p.userId, name: p.name, days: 0 }
+          u.days += 1
+          unchargedBy.set(p.userId, u)
+        }
+      }
       const others = d.people.filter((p) => p.userId !== userId).map((p) => p.name)
       const note = `${others.length ? `with ${others.join(', ')}` : 'alone'} · ${d.shapeWords}${d.why ? ` · ${d.why}` : ''}`
       if (d.why) unpriced.add(d.why)
@@ -289,6 +306,8 @@ export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Pr
       words: `${jobChargeRuleWords(rule)}${headline != null ? ` · ${crewRateWords({ rate: headline, why: null })}` : ''}`,
       unpriced: Array.from(unpriced),
       crewDays,
+      uncharged: Array.from(unchargedBy.values()).sort((a, b) => b.days - a.days || a.name.localeCompare(b.name)),
+      unchargedDays,
     }
   }
   const input: HoursStatementInput = {

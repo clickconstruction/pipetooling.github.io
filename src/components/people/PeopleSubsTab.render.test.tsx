@@ -59,13 +59,13 @@ describe('PeopleSubsTab unattributed panel', () => {
 
     // Header + subline (2 sheets total, deduped into one group row).
     expect(await screen.findByText(/aren't linked to anyone on the roster/)).toBeTruthy()
-    expect(screen.getByText(/missing from every sub's Owed column/)).toBeTruthy()
+    expect(screen.getByText(/missing from every sub's Balance due column/)).toBeTruthy()
 
-    // Group row: job chip, dedupe count, raw name in quotes, reason badge, summed balance.
+    // Group row: job chip, dedupe count, assigned name as plain words, reason badge, summed balance.
     expect(screen.getByText('#892')).toBeTruthy()
     expect(screen.getByText('582 Curvatura')).toBeTruthy()
     expect(screen.getByText(/· 2 sheets/)).toBeTruthy()
-    expect(screen.getByText('"J Ramos"')).toBeTruthy()
+    expect(screen.getByText('J Ramos')).toBeTruthy()
     expect(screen.getByText('No roster match')).toBeTruthy()
     expect(screen.getByText('$2,480 open')).toBeTruthy()
 
@@ -77,6 +77,14 @@ describe('PeopleSubsTab unattributed panel', () => {
 
     // The old bottom text blob is gone.
     expect(screen.queryByText(/fix names or assignments/)).toBeNull()
+  })
+
+  it("opens a sub's documents in a row under theirs, not below the whole table", async () => {
+    renderWithProviders(<PeopleSubsTab />)
+    fireEvent.click(await screen.findByRole('button', { name: /Documents \(0\)/ }))
+    const heading = screen.getByText(/Documents — Jesse Ramos/)
+    expect(heading.closest('table')).toBeTruthy()
+    expect(heading.closest('tr')?.previousElementSibling?.textContent).toContain('Jesse Ramos')
   })
 })
 

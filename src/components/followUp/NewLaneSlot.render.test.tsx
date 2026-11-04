@@ -13,6 +13,7 @@ import type { FollowUpMessageRow } from '../../lib/followUp/followUpRows'
 import type { NewLaneCardIo, NewLaneCardRows } from '../../lib/followUp/newLaneCardIo'
 import type { JobTile } from '../../lib/messages/jobTiles'
 import { NewLaneSlot } from './NewLaneSlot'
+import { OpenThreadContext, type OpenThread } from '../gc/messages/openThread'
 
 afterEach(cleanup)
 
@@ -487,5 +488,75 @@ describe('Bid it? (punch list #223 PR 3, v2.6222)', () => {
     fireEvent.click(bid.getByRole('button', { name: /Start a bid on Ridgeway Builders/ }))
     await waitFor(() => expect(io.startBid).toHaveBeenCalledWith('m-ridgeway', expect.objectContaining({ customerId: 'c-ridgeway' })))
     expect(io.name).not.toHaveBeenCalled()
+  })
+})
+
+describe('a short window folds the card to one row (v2.6476)', () => {
+  const INVITE = { kind: 'invitation', project: 'Oak Hill Clinic, Boerne', due: { date: '2026-11-12', time: '14:00' }, portal: null, cue: 'invitation to bid' }
+  const SENDER = person('invite', 'unknown', 'Dale Ferris', { channels: [{ id: 'ch-invite', kind: 'email', value: 'dale@ridgeway.example', optedOutAt: null }] })
+  const ROWS_INVITE: Record<string, NewLaneCardRows> = {
+    invite: {
+      contact: { state: 'waiting', snoozed_until: null, has_user_id: 'u-robert' },
+      lines: [line('m-invite', 'invite', 'in', { at: '2026-10-22T16:02:00Z', channel: 'email', subject: 'Invitation to Bid: Oak Hill Clinic, Boerne', body: 'Bids are due Thursday.', mailbox: 'bids', invitation: INVITE })],
+      tiles: {},
+      active: new Set(),
+      seats: { customer: 'u-rosa', trade: 'u-robert', arch: null },
+      team: [ROBERT, ROSA],
+    },
+  }
+  const short = (contact: Contact): OpenThread => ({ contact, lines: [], jobFilter: null, rail: [], tiles: {}, userNames: {}, nowIso: NOW, searchJobs: async () => [], short: true })
+  const renderShort = (contact: Contact, io: NewLaneCardIo) => {
+    const acts = { openWho: vi.fn(), showContact: vi.fn() }
+    render(
+      <OpenThreadContext.Provider value={short(contact)}>
+        <NewLaneSlot contact={contact} acts={acts} io={io} say={vi.fn()} reread={vi.fn()} me={{ id: 'u-robert', name: 'Robert' }} nowIso={NOW} openBid={vi.fn()} />
+      </OpenThreadContext.Provider>,
+    )
+    return { acts }
+  }
+
+  it('Bid it?: the head on one line and the press it picked, which starts the bid as the whole card would', async () => {
+    const io = fakeIo({ loadKnown: vi.fn(async () => ({ customers: [{ id: 'c-ridgeway', name: 'Ridgeway Builders', emails: ['dale@ridgeway.example'] }] })) }, ROWS_INVITE)
+    renderShort(SENDER, io)
+    const bid = await screen.findByRole('region', { name: 'Sort: Bid it?' })
+    expect(bid.getAttribute('data-new-lane-fold')).toBe('folded')
+    expect(within(bid).queryByLabelText(/^Bid/)).toBeNull()
+    fireEvent.click(await within(bid).findByRole('button', { name: 'Start a bid on Ridgeway Builders' }))
+    await waitFor(() => expect(io.startBid).toHaveBeenCalledWith('m-invite', expect.objectContaining({ customerId: 'c-ridgeway', projectName: 'Oak Hill Clinic, Boerne' })))
+  })
+
+  it('Other ways opens the whole card in place, and Fold takes it back to one row', async () => {
+    renderShort(SENDER, fakeIo({ loadKnown: vi.fn(async () => ({ customers: [{ id: 'c-ridgeway', name: 'Ridgeway Builders', emails: ['dale@ridgeway.example'] }] })) }, ROWS_INVITE))
+    fireEvent.click(await screen.findByRole('button', { name: 'Other ways ▾' }))
+    const bid = screen.getByRole('region', { name: 'Sort: Bid it?' })
+    expect(bid.getAttribute('data-new-lane-fold')).toBe('open')
+    expect((within(bid).getByLabelText(/^Bid/) as HTMLInputElement).value).toBe('Oak Hill Clinic, Boerne')
+    fireEvent.click(within(bid).getByRole('button', { name: 'Fold ▴' }))
+    expect(screen.getByRole('region', { name: 'Sort: Bid it?' }).getAttribute('data-new-lane-fold')).toBe('folded')
+  })
+
+  it('Which job? keeps the line on its default in one press', async () => {
+    const io = fakeIo()
+    renderShort(DANA, io)
+    const job = await screen.findByRole('region', { name: 'Sort: Which job?' })
+    expect(job.getAttribute('data-new-lane-fold')).toBe('folded')
+    fireEvent.click(within(job).getByRole('button', { name: 'Keep it on J1312' }))
+    await waitFor(() => expect(io.tie).toHaveBeenCalledWith('m-dana', 'pipeline:j1312'))
+  })
+
+  it('draws the whole card when it sits beside the lines (v2.6478)', async () => {
+    render(
+      <OpenThreadContext.Provider value={{ ...short(DANA), beside: true }}>
+        <NewLaneSlot contact={DANA} acts={{ openWho: vi.fn(), showContact: vi.fn() }} io={fakeIo()} say={vi.fn()} reread={vi.fn()} me={{ id: 'u-robert', name: 'Robert' }} nowIso={NOW} />
+      </OpenThreadContext.Provider>,
+    )
+    const job = await screen.findByRole('region', { name: 'Sort: Which job?' })
+    expect(job.hasAttribute('data-new-lane-fold')).toBe(false)
+  })
+
+  it('draws the whole card on a tall window', async () => {
+    renderSlot(DANA)
+    const job = await screen.findByRole('region', { name: 'Sort: Which job?' })
+    expect(job.hasAttribute('data-new-lane-fold')).toBe(false)
   })
 })

@@ -68,12 +68,21 @@ function pgArrayLiteral(items: unknown[]): string {
 
 export type BuiltQuery = { ok: true; query: string } | { ok: false; error: string }
 
+/** Every argument an RPC takes, from its catalog signatures (`p_label?` is the optional `p_label`). */
+export function rpcArgNames(signatures: readonly { args: Record<string, string> }[]): Set<string> {
+  return new Set(signatures.flatMap((s) => Object.keys(s.args).map((a) => a.replace(/\?$/, ''))))
+}
+
 /**
  * RPC args → the query string of `GET /rest/v1/rpc/<name>`. Scalars pass as text, arrays
  * as a Postgres array literal, objects as JSON (Postgres casts text to json/jsonb). A
  * null or undefined arg is omitted — GET cannot carry one, and the SQL default applies.
+ *
+ * `result` (v2.6468) filters what a set-returning RPC answers, on the server, as read_rows' filters narrow a table:
+ * PostgREST reads a GET param that is not one of the function's arguments as a filter on its result. A filter named
+ * like an argument (`argNames`, the catalog's) is refused, since PostgREST would bind it as that argument.
  */
-export function buildRpcQuery(args: Record<string, unknown>, limit?: number): BuiltQuery {
+export function buildRpcQuery(args: Record<string, unknown>, limit?: number, result?: { filters: readonly RowFilter[]; argNames: ReadonlySet<string> }): BuiltQuery {
   const params = new URLSearchParams()
   for (const [name, value] of Object.entries(args)) {
     if (!isSafeIdent(name)) return { ok: false, error: `arg "${name}" is not a valid argument name` }
@@ -81,6 +90,14 @@ export function buildRpcQuery(args: Record<string, unknown>, limit?: number): Bu
     if (Array.isArray(value)) params.set(name, pgArrayLiteral(value))
     else if (typeof value === 'object') params.set(name, JSON.stringify(value))
     else params.set(name, String(value))
+  }
+  if (result) {
+    const error = appendFilters(params, result.filters, (column) => {
+      if (!isSafeIdent(column)) return `filter column "${String(column)}" is not a column name`
+      if (result.argNames.has(column) || Object.keys(args).includes(column)) return `filter column "${column}" is named like an argument of this RPC, which PostgREST would read as that argument — pass it in args`
+      return null
+    })
+    if (error) return { ok: false, error }
   }
   if (limit != null) params.set('limit', String(clampLimit(limit)))
   return capped(params.toString())
@@ -105,6 +122,28 @@ function filterValue(op: FilterOp, value: unknown): string | null {
 }
 
 /**
+ * Each filter → a `column=op.value` param, or the words of the first refusal. `refuseColumn` says why a column may
+ * not be named here (null when it may); a secret column is refused whatever it says, since a redacted column must not
+ * become an oracle.
+ */
+function appendFilters(params: URLSearchParams, filters: unknown, refuseColumn: (column: unknown) => string | null): string | null {
+  const list = filters == null ? [] : filters
+  if (!Array.isArray(list)) return 'filters must be an array of { column, op, value }'
+  for (const raw of list) {
+    const f = raw as Partial<RowFilter>
+    const refusal = refuseColumn(f.column)
+    if (refusal) return refusal
+    const column = f.column as string
+    if (isSecretKey(column)) return `"${column}" is a secret column — it is redacted from replies and cannot be filtered on`
+    if (!FILTER_OPS.includes(f.op as FilterOp)) return `filter op "${String(f.op)}" is not one of ${FILTER_OPS.join(', ')}`
+    const v = filterValue(f.op as FilterOp, f.value)
+    if (v == null) return `filter on "${column}": "${f.op}" cannot take that value (is → null/true/false; in → a non-empty array; the rest → a scalar)`
+    params.append(column, `${f.op}.${v}`)
+  }
+  return null
+}
+
+/**
  * A table read → the query string of `GET /rest/v1/<table>`. `columns` is the table's
  * catalog entry: every filter and order column must be one of them, and a filter on a
  * secret column is refused (a redacted column must not become an oracle).
@@ -124,17 +163,8 @@ export function buildRowsQuery(
   }
   params.set('select', select.replace(/\s+/g, ''))
 
-  const filters = input.filters == null ? [] : input.filters
-  if (!Array.isArray(filters)) return { ok: false, error: 'filters must be an array of { column, op, value }' }
-  for (const raw of filters) {
-    const f = raw as Partial<RowFilter>
-    if (!isSafeIdent(f.column) || !columns.has(f.column)) return { ok: false, error: `filter column "${String(f.column)}" is not a column of this table` }
-    if (isSecretKey(f.column)) return { ok: false, error: `"${f.column}" is a secret column — it is redacted from replies and cannot be filtered on` }
-    if (!FILTER_OPS.includes(f.op as FilterOp)) return { ok: false, error: `filter op "${String(f.op)}" is not one of ${FILTER_OPS.join(', ')}` }
-    const v = filterValue(f.op as FilterOp, f.value)
-    if (v == null) return { ok: false, error: `filter on "${f.column}": "${f.op}" cannot take that value (is → null/true/false; in → a non-empty array; the rest → a scalar)` }
-    params.append(f.column, `${f.op}.${v}`)
-  }
+  const filterError = appendFilters(params, input.filters, (column) => (isSafeIdent(column) && columns.has(column) ? null : `filter column "${String(column)}" is not a column of this table`))
+  if (filterError) return { ok: false, error: filterError }
 
   const order = input.order == null ? [] : input.order
   if (!Array.isArray(order)) return { ok: false, error: 'order must be an array of { column, ascending? }' }

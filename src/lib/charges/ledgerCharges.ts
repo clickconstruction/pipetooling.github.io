@@ -6,11 +6,11 @@
  * adjustments honored through the cost each kept when it was made. The Charges window prices the same rows line by
  * line; the two agree because they share the kernels and the adjustments.
  */
-import { buildCrewDays, jobChargeRuleFrom, type CrewSessionInput, type JobChargeRule } from './crewDays'
+import { buildCrewDays, jobChargeRuleFrom, unchargedWords, UNCHARGED_FIX_WORDS, type CrewSessionInput, type JobChargeRule } from './crewDays'
 import { chargedAtMarkup } from './materialsCharged'
 import { indexAdjustments, type ChargeAdjustment } from './adjustments'
 import { premiumOf, type Premium } from './premium'
-import { CREW_SHAPES, parseChargeStanding, parseCrewShape, type ChargeStanding, type RateCard } from './rateCard'
+import { CREW_SHAPES, NOBODY_CHARGED_WHY, parseChargeStanding, parseCrewShape, type ChargeStanding, type RateCard } from './rateCard'
 import { moneyWords } from './moneyParts'
 
 export type LedgerChargesInput = {
@@ -18,6 +18,12 @@ export type LedgerChargesInput = {
   breakdown: ReadonlyArray<{ personName: string; personId?: string | null; byWorkDate: ReadonlyArray<{ workDate: string; hours: number }> }>
   /** A person's standing by the key the breakdown names them with (the name key, or the person id). */
   standingOf: (personName: string, personId: string | null | undefined) => ChargeStanding
+  /**
+   * The login a person on the breakdown reaches, the one place a Charged as is set (the live pass): through the People
+   * record's link, else by the name. Someone with none is named apart, since Who counts as what lists logins; someone with
+   * one is named as the login is, so the note reads the name the list shows. Left out, everyone is taken to have one.
+   */
+  loginOf?: (personName: string, personId: string | null | undefined) => { id: string; name: string | null } | null
   /** The row's material sums: supply-house invoice shares, tallied parts, typed material charges. */
   invoicesFromSupplyHouses: number
   partsFromTally: number
@@ -40,8 +46,10 @@ export type LedgerCharges = {
   crewHours: number
   days: number
   unpricedDays: number
-  /** Why some of the row is not priced, each once; null when every day priced. */
+  /** Why some of the row is not priced, each once; null when every day priced. Names who counts as nobody first. */
   note: string | null
+  /** The first names of people out who count as nobody yet, most days first. */
+  uncharged: string[]
   rule: JobChargeRule
   markupPct: number | null
 }
@@ -60,12 +68,16 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
   const markupPct = jobMarkup ?? input.card.materialsMarkupPct
   const applied = indexAdjustments(input.adjustments ?? [])
   const sessions: CrewSessionInput[] = []
+  const loginless = new Set<string>()
   for (const p of input.breakdown) {
     const key = p.personId || p.personName
     const standing = input.standingOf(p.personName, p.personId)
+    const login = input.loginOf ? input.loginOf(p.personName, p.personId) : undefined
+    if (login === null) loginless.add(key)
+    const shown = login?.name?.trim() || p.personName
     for (const d of p.byWorkDate) {
       if (!(d.hours > 0)) continue
-      sessions.push({ userId: key, name: p.personName.split(' ')[0] || p.personName, standing, workDate: d.workDate, hours: d.hours })
+      sessions.push({ userId: key, name: shown.split(' ')[0] || shown, standing, workDate: d.workDate, hours: d.hours })
     }
   }
   const dayShape = new Map(Array.from(applied.dayShape.entries()).map(([day, o]) => [day, o.shape] as const))
@@ -82,7 +94,17 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
   materialsUsd = Math.max(0, materialsUsd)
   const chargesUsd = cents(days.totals.charged + materialsUsd)
   const whys = new Set<string>()
-  for (const d of days.days) if (d.why) whys.add(d.why)
+  const withLogin = days.totals.uncharged.filter((u) => !loginless.has(u.userId))
+  const nobody = unchargedWords(withLogin)
+  // A day with nobody charged is explained by naming who counts as nobody, with where to set it; the neutral line stays for the paper.
+  if (nobody) {
+    whys.add(nobody)
+    whys.add(UNCHARGED_FIX_WORDS)
+  }
+  // Someone with no login cannot be set in Who counts as what, so they are named with the link they need instead.
+  const noLogin = loginlessWords(days.totals.uncharged.filter((u) => loginless.has(u.userId)))
+  if (noLogin) whys.add(noLogin)
+  for (const d of days.days) if (d.why && !((nobody || noLogin) && d.why === NOBODY_CHARGED_WHY)) whys.add(d.why)
   if (markupPct == null && materialCost > 0) whys.add('No markup on materials is set, so materials are at cost.')
   const priced = materialCost > 0 || (days.totals.days > 0 && days.totals.unpriced < days.totals.days)
   return {
@@ -95,6 +117,7 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
     days: days.totals.days,
     unpricedDays: days.totals.unpriced,
     note: whys.size ? Array.from(whys).join(' ') : null,
+    uncharged: days.totals.uncharged.map((u) => u.name),
     rule,
     markupPct,
   }
@@ -107,6 +130,38 @@ export function rateCardChipWords(card: RateCard): string {
   const rows = `${set} of ${CREW_SHAPES.length + 1} rows set`
   const materials = card.materialsMarkupPct != null ? `materials ${card.materialsMarkupPct}% over cost` : 'materials at cost, no markup set'
   return `${lead} · ${rows} · ${materials}`
+}
+
+/**
+ * People on the crew rows with no login, named for the office (the live pass): `Ana has no login for a Charged as.` with
+ * the link they need. Null when there is nobody to name.
+ */
+export function loginlessWords(people: ReadonlyArray<{ name: string }>): string | null {
+  const names = Array.from(new Set(people.map((p) => p.name)))
+  if (names.length === 0) return null
+  const list = names.length === 1 ? names[0] : names.length <= 3 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`
+  return `${list} ${names.length === 1 ? 'has' : 'have'} no login for a Charged as. Link ${names.length === 1 ? 'the People record' : 'each People record'} to a login on People.`
+}
+
+/**
+ * A row's two Job Summary cells: the charges, and the premium against the price. The premium waits while any day
+ * prices at nothing (the live pass), since charges short by whole days would show a premium that is not there.
+ */
+export function ledgerSummaryCell(c: Pick<LedgerCharges, 'priced' | 'chargesUsd' | 'premium' | 'unpricedDays' | 'note'>): { chargesUsd: number | null; premiumUsd: number | null; note: string | null } {
+  if (!c.priced) return { chargesUsd: null, premiumUsd: null, note: c.note }
+  return { chargesUsd: c.chargesUsd, premiumUsd: c.unpricedDays > 0 ? null : c.premium.signed, note: c.note }
+}
+
+/** The login a breakdown person reaches: by the People record's link, else by the name key; null when none. */
+export function loginLookup(users: ReadonlyArray<{ id: string; name: string | null }>, nameKey: (name: string) => string, personIdToUserId?: ReadonlyMap<string, string>): NonNullable<LedgerChargesInput['loginOf']> {
+  const byId = new Map(users.map((u) => [u.id, u] as const))
+  const byName = new Map<string, { id: string; name: string | null }>()
+  for (const u of users) if (u.name) byName.set(nameKey(u.name), u)
+  return (personName, personId) => {
+    const userId = personId ? personIdToUserId?.get(personId) : undefined
+    const u = (userId ? byId.get(userId) : undefined) ?? byName.get(nameKey(personName))
+    return u ? { id: u.id, name: u.name } : null
+  }
 }
 
 /** A standing lookup from the users rows the page already holds, by the name key the breakdown uses and by user id. */

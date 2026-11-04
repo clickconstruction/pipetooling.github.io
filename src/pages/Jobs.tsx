@@ -65,6 +65,7 @@ import { readStagesSectionOpenPrefs, scopesForOpenStagesSections } from '../lib/
 import { parseStagesMoneyMoveKey } from '../lib/jobs/stagesMoneyMoveLink'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
+import { fetchAllRows } from '../lib/supabasePaging'
 import { useJobSummaryData } from '../hooks/useJobSummaryData'
 import { showJobCostBreakdownTeamLabor } from '../lib/jobDetailModalRole'
 import { buildPipelineBurnAlert, projectJobSummaryBurn } from '../lib/jobs/jobSummaryBurn'
@@ -84,7 +85,7 @@ import { useJobsMercuryAllocations } from '../hooks/useJobsMercuryAllocations'
 import { useJobSummaryView } from '../hooks/useJobSummaryView'
 import { useJobsStagesMutations } from '../hooks/useJobsStagesMutations'
 import ChargesWindow from '../components/charges/ChargesWindow'
-import { ledgerChargesFor, rateCardChipWords, standingLookup } from '../lib/charges/ledgerCharges'
+import { ledgerChargesFor, ledgerSummaryCell, loginLookup, rateCardChipWords, standingLookup } from '../lib/charges/ledgerCharges'
 import { loadChargeAdjustmentsForJobs, loadRateCard } from '../lib/charges/jobChargesRead'
 import { isEstimateCharge } from '../lib/charges/materialsCharged'
 import type { ChargeAdjustment } from '../lib/charges/adjustments'
@@ -400,7 +401,12 @@ export default function Jobs() {
   // once for the Job Summary; a read that fails leaves the column unpriced and says so in the console, never breaks the tab.
   const [chargesRateCard, setChargesRateCard] = useState<RateCard | null>(null)
   const [chargeAdjustmentsByJobId, setChargeAdjustmentsByJobId] = useState<Map<string, ChargeAdjustment[]>>(() => new Map())
-  const [chargeStandingByUserId, setChargeStandingByUserId] = useState<Map<string, unknown>>(() => new Map())
+  // Every login with its standing, people who left included (the live pass): the page's own user list holds the active
+  // ones only, and a person who left still has days on a job that price by their standing.
+  const [chargeUsers, setChargeUsers] = useState<Array<{ id: string; name: string | null; charge_standing?: unknown }>>([])
+  // The People records linked to a login (the live pass): the team labor names a person by their People record, so a
+  // standing set on the login reaches them through the link, not only when the two names happen to match.
+  const [chargePersonLogins, setChargePersonLogins] = useState<Map<string, string>>(() => new Map())
   const [chargesWindowJobId, setChargesWindowJobId] = useState<string | null>(null)
   const chargesJobIdsKey = activeTab === 'job-summary' && jobSummaryLedgerJobs ? jobSummaryLedgerJobs.map((j) => j.id).join(',') : ''
   const reloadChargeAdjustments = useCallback(async () => {
@@ -425,7 +431,15 @@ export default function Jobs() {
       .select('*')
       .then(({ data }) => {
         if (!on || !data) return
-        setChargeStandingByUserId(new Map((data as unknown as Array<{ id: string; charge_standing?: unknown }>).map((u) => [u.id, u.charge_standing])))
+        setChargeUsers((data as unknown as Array<{ id: string; name: string | null; charge_standing?: unknown }>).map((u) => ({ id: u.id, name: u.name ?? null, charge_standing: u.charge_standing })))
+      })
+    void supabase
+      .from('people')
+      .select('id, account_user_id')
+      .not('account_user_id', 'is', null)
+      .then(({ data }) => {
+        if (!on || !data) return
+        setChargePersonLogins(new Map((data as unknown as Array<{ id: string; account_user_id: string }>).map((p) => [p.id, p.account_user_id])))
       })
     return () => {
       on = false
@@ -663,18 +677,28 @@ export default function Jobs() {
       mRows = jobSummaryMercuryAllocationsByJobId.get(jobId) ?? []
     } else {
       try {
-        const data = await withSupabaseRetry(
-          async () =>
-            await supabase
-              .from('mercury_transaction_job_allocations')
-              .select(
-                'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, raw)',
-              )
-              .eq('job_id', jobId)
-              .order('created_at', { ascending: true }),
-          'job summary print mercury allocations',
+        // Paged (v2.6465): an unpaged read stops at PostgREST's 1,000 rows with no error.
+        const label = 'job summary print mercury allocations'
+        const data = await fetchAllRows(
+          async (from, to) => ({
+            data: await withSupabaseRetry(
+              async () =>
+                await supabase
+                  .from('mercury_transaction_job_allocations')
+                  .select(
+                    'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, raw)',
+                  )
+                  .eq('job_id', jobId)
+                  .order('created_at', { ascending: true })
+                  .order('id')
+                  .range(from, to),
+              label,
+            ),
+            error: null,
+          }),
+          label,
         )
-        const rawRows = (data ?? []) as Array<
+        const rawRows = data as Array<
           Omit<JobSummaryMercuryAllocationRow, 'attributionDisplayName'> & { mercury_transaction_id: string }
         >
         const attrByTxId = new Map<string, { person_id: string | null; user_id: string | null }>()
@@ -1527,8 +1551,9 @@ export default function Jobs() {
       teamLaborCostByJobId.set(r.jobId, r.jobCost)
     }
     const standingOf = chargesRateCard
-      ? standingLookup(users.map((u) => ({ id: u.id, name: u.name, charge_standing: chargeStandingByUserId.get(u.id) })), normalizePersonNameKey)
+      ? standingLookup(chargeUsers, normalizePersonNameKey, chargePersonLogins)
       : null
+    const loginOf = loginLookup(chargeUsers, normalizePersonNameKey, chargePersonLogins)
     return sourceJobs
       .map((job) => {
         const subLaborCost = laborCostByJobId.get(job.id) ?? 0
@@ -1558,6 +1583,7 @@ export default function Jobs() {
                 const c = ledgerChargesFor({
                   breakdown: teamLaborRow?.breakdown ?? [],
                   standingOf,
+                  loginOf,
                   invoicesFromSupplyHouses,
                   partsFromTally,
                   // A cost batch's ESTIMATE rows are cost on the Parts column, never a charge.
@@ -1567,7 +1593,7 @@ export default function Jobs() {
                   adjustments: chargeAdjustmentsByJobId.get(job.id) ?? [],
                   contractUsd: totalBill,
                 })
-                return c.priced ? { chargesUsd: c.chargesUsd, premiumUsd: c.premium.signed, note: c.note } : { chargesUsd: null, premiumUsd: null, note: c.note }
+                return ledgerSummaryCell(c)
               })()
             : null
         return {
@@ -1613,7 +1639,8 @@ export default function Jobs() {
     costLineTags,
     chargesRateCard,
     chargeAdjustmentsByJobId,
-    chargeStandingByUserId,
+    chargeUsers,
+    chargePersonLogins,
     users,
   ])
 

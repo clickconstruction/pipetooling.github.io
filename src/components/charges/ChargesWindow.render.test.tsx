@@ -36,18 +36,18 @@ const CARD = { rates: { master_helper: 285, two_techs: 285, tech_alone: 185, hel
 const READ = {
   input: {
     sessions: [
-      { userId: 't', name: 'Trace', standing: 'master', workDate: '2026-04-24', hours: 8 },
-      { userId: 'z', name: 'Zack', standing: 'tech', workDate: '2026-04-24', hours: 7.66 },
-      { userId: 'z', name: 'Zack', standing: 'tech', workDate: '2026-04-25', hours: 9.44 },
+      { userId: 't', name: 'Toby', standing: 'master', workDate: '2026-04-24', hours: 8 },
+      { userId: 'z', name: 'Zed', standing: 'tech', workDate: '2026-04-24', hours: 7.66 },
+      { userId: 'z', name: 'Zed', standing: 'tech', workDate: '2026-04-25', hours: 9.44 },
     ],
-    lines: [{ id: 'inv:1', kind: 'supply_invoice', label: 'Sunbelt Rentals · invoice 180856872-0001', dateKey: '2026-04-01', cost: 1423.08 }],
+    lines: [{ id: 'inv:1', kind: 'supply_invoice', label: 'A rental yard · invoice 2002', dateKey: '2026-04-01', cost: 1323.08 }],
     card: CARD,
     rule: { kind: 'shape', shape: 'master_helper' },
     markupPct: null,
     adjustments: [],
     revenue: 10000,
   },
-  job: { id: 'j1', number: '629', name: 'ROUGH IN', customerName: 'DSI', revenue: 10000 },
+  job: { id: 'j1', number: '1042', name: 'ROUGH IN', customerName: 'A customer', revenue: 10000 },
   rule: { kind: 'shape', shape: 'master_helper' },
   jobMarkupPct: null,
   adjustments: [],
@@ -62,10 +62,10 @@ describe('ChargesWindow', () => {
     renderWithProviders(<ChargesWindow jobId="j1" viewer={viewer} onClose={() => {}} />)
     await waitFor(() => expect(screen.getByTestId('charges-days')).toBeTruthy())
     expect(screen.getByTestId('tile-labor').textContent).toContain('$4,970')
-    expect(screen.getByTestId('tile-materials').textContent).toContain('$1,778')
-    expect(screen.getByTestId('tile-charges').textContent).toContain('$6,749')
+    expect(screen.getByTestId('tile-materials').textContent).toContain('$1,653')
+    expect(screen.getByTestId('tile-charges').textContent).toContain('$6,624')
     expect(screen.getByTestId('tile-premium').textContent).toContain('premium')
-    expect(screen.getByTestId('crew-day-2026-04-24').textContent).toContain('Trace 8 · Zack 7.66')
+    expect(screen.getByTestId('crew-day-2026-04-24').textContent).toContain('Toby 8 · Zed 7.66')
     expect(screen.getByTestId('charges-save').textContent).toBe('Save 0 adjustments')
     expect((screen.getByTestId('charges-save') as HTMLButtonElement).disabled).toBe(true)
   })
@@ -78,9 +78,9 @@ describe('ChargesWindow', () => {
     fireEvent.change(screen.getByLabelText('The crew on Sat, Apr 25'), { target: { value: 'tech_alone' } })
     expect(screen.getByTestId('charges-save').textContent).toBe('Save 1 adjustment')
     expect((screen.getByTestId('charges-save') as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText('Reason for Sat, Apr 25'), { target: { value: 'Zack was alone' } })
+    fireEvent.change(screen.getByLabelText('Reason for Sat, Apr 25'), { target: { value: 'Zed was alone' } })
     fireEvent.click(screen.getByRole('button', { name: 'Pass through' }))
-    fireEvent.change(screen.getByLabelText('Reason for Sunbelt Rentals · invoice 180856872-0001'), { target: { value: 'a rental' } })
+    fireEvent.change(screen.getByLabelText('Reason for A rental yard · invoice 2002'), { target: { value: 'a rental' } })
     expect(screen.getByTestId('charges-save').textContent).toBe('Save 2 adjustments')
     expect(screen.getByTestId('tile-labor').textContent).toContain('the record')
     fireEvent.click(screen.getByTestId('charges-save'))
@@ -89,8 +89,8 @@ describe('ChargesWindow', () => {
     expect(call.jobId).toBe('j1')
     expect(call.madeBy).toBe('u-me')
     expect(call.rows).toEqual([
-      { key: 'day_shape:2026-04-25', kind: 'day_shape', target: '2026-04-25', shape: 'tech_alone', amount: null, reason: 'Zack was alone' },
-      { key: 'line_pass_through:inv:1', kind: 'line_pass_through', target: 'inv:1', shape: null, amount: 1423.08, reason: 'a rental' },
+      { key: 'day_shape:2026-04-25', kind: 'day_shape', target: '2026-04-25', shape: 'tech_alone', amount: null, reason: 'Zed was alone' },
+      { key: 'line_pass_through:inv:1', kind: 'line_pass_through', target: 'inv:1', shape: null, amount: 1323.08, reason: 'a rental' },
     ])
   })
 
@@ -105,5 +105,33 @@ describe('ChargesWindow', () => {
     await waitFor(() => expect(screen.getAllByTestId('charges-days').length).toBeGreaterThan(0))
     expect(screen.getByText('Read only: a dev, the controller or a pay-approved master adjusts charges.')).toBeTruthy()
     expect((screen.getByLabelText('The crew on Fri, Apr 24') as HTMLSelectElement).disabled).toBe(true)
+  })
+
+  it('when nobody out counts as anything, names them with a door to each desk and to Who counts as what', async () => {
+    const closed: string[] = []
+    state.fail = null
+    state.read = {
+      ...READ,
+      input: {
+        ...READ.input,
+        sessions: [
+          { userId: 'u-t', name: 'Toby', standing: 'none', workDate: '2026-03-02', hours: 8 },
+          { userId: 'u-t', name: 'Toby', standing: 'none', workDate: '2026-03-03', hours: 8 },
+          { userId: 'u-j', name: 'Jordan', standing: 'none', workDate: '2026-03-03', hours: 8 },
+        ],
+      },
+    }
+    renderWithProviders(<ChargesWindow jobId="j1" viewer={viewer} onClose={() => closed.push('closed')} />)
+    await waitFor(() => expect(screen.getByTestId('uncharged-callout')).toBeTruthy())
+    const callout = screen.getByTestId('uncharged-callout')
+    expect(callout.textContent).toContain('Toby and Jordan count as nobody on the rate card yet. 2 days price at nothing until someone out counts as a master, a tech or a helper.')
+    // The premium waits: charges short by two whole days would show a premium that is not there.
+    expect(screen.getByTestId('tile-premium').textContent).toBe('Against the revenueNot yetThe premium waits until every day prices: 2 days price at nothing.')
+    expect(screen.getByTestId('uncharged-who-counts').getAttribute('href')).toBe('/settings?tab=settings-jobs#who-counts-as-what')
+    expect(screen.getByRole('link', { name: 'Toby’s desk · 2 days' }).getAttribute('href')).toBe('/people?tab=person&id=u%3Au-t')
+    expect(screen.getByRole('link', { name: 'Jordan’s desk · 1 day' })).toBeTruthy()
+    fireEvent.click(screen.getByTestId('uncharged-who-counts'))
+    expect(closed).toEqual(['closed'])
+    state.read = READ
   })
 })

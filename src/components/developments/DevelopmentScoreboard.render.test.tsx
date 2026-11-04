@@ -249,3 +249,55 @@ describe('DevelopmentScoreboard · the middle widths (v2.6457)', () => {
     expect(cost!.getAttribute('title')).toBeNull()
   })
 })
+
+describe('DevelopmentScoreboard · the Right now headline (v2.6467, punch list #250 PR 3)', () => {
+  const draw = (over: { phone?: boolean; seesCosts?: boolean; costsIn?: SiteCostsRead } = {}) => {
+    const openJob = vi.fn()
+    const model = buildScoreboard({ jobs, invoices: [], jobLabel: label, labor, costs: over.costsIn ?? costs, overhead, sort: SCOREBOARD_DEFAULT_SORT })
+    renderWithProviders(<DevelopmentScoreboard model={model} columns={scoreboardColumnsFor(over.seesCosts ?? true)} phone={over.phone ?? false} onSort={vi.fn()} openJob={openJob} head={head} />)
+    return { openJob }
+  }
+  // A ticket with no price that is costing: the headline's first case.
+  const withTicket: SiteCostsRead =
+    costs.state === 'read'
+      ? { state: 'read', byJobId: new Map([...costs.byJobId, ['j3', { jobId: 'j3', subLabor: 0, parts: { supplyInvoices: 0, cardCharges: 2400, tallyParts: 0, otherCharges: 0 }, total: 2400, breakdown: { subs: [], suppliers: [], cardLines: [], tallyLines: 0, otherLines: 0 } }]]) }
+      : costs
+
+  it('under Right now in the flag block, the job that carried the site; its number opens the job', () => {
+    const { openJob } = draw()
+    const h = within(screen.getByTestId('scoreboard-table').querySelector('thead') as HTMLElement).getByTestId('scoreboard-headline')
+    expect(h.textContent).toMatch(/^Right nowJP612 carried the site: \$[\d,]+ profit, \d+% of what it earned\.$/)
+    fireEvent.click(within(h).getByText('JP612'))
+    expect(openJob).toHaveBeenCalledWith('j1')
+  })
+
+  it('a ticket with no price that is costing comes first', () => {
+    draw({ costsIn: withTicket })
+    expect(screen.getByTestId('scoreboard-headline').textContent).toBe('Right nowJP953 has no price yet: $2,400 spent.')
+  })
+
+  it('the leader’s board speaks in earned dollars, never a cost', () => {
+    draw({ seesCosts: false, costsIn: withTicket })
+    const text = screen.getByTestId('scoreboard-headline').textContent ?? ''
+    expect(text).toMatch(/carried the site: \$[\d,]+ earned, \d+% of the site\.$/)
+    expect(text).not.toContain('2,400')
+    expect(text).not.toContain('profit')
+  })
+
+  it('on a phone the banner carries it under the line', () => {
+    draw({ phone: true, costsIn: withTicket })
+    expect(within(screen.getByTestId('scoreboard-phone')).getByTestId('scoreboard-headline').textContent).toContain('JP953 has no price yet')
+  })
+
+  it('at the middle widths it takes the board’s width in a row of its own', () => {
+    narrowState.on = true
+    draw({ costsIn: withTicket })
+    expect(screen.getByTestId('scoreboard-headline-row').textContent).toContain('JP953 has no price yet')
+    expect(screen.getByTestId('scoreboard-table').querySelector('thead [data-testid="scoreboard-headline"]')).toBeNull()
+  })
+
+  it('nothing while a read is out', () => {
+    draw({ costsIn: { state: 'reading' } })
+    expect(screen.queryByTestId('scoreboard-headline')).toBeNull()
+  })
+})

@@ -13,6 +13,32 @@ export function isThreadFolded(columnWidth: number | null, phone: boolean): bool
 }
 
 /**
+ * A short window (v2.6474): a laptop's screen gives the thread about 700 px of height, and the header, the sort card and
+ * the reply box took all but a hundred of it. Under this height the window folds by height as it folds by width: the
+ * header keeps two rows, and the parts a slot draws read `short` from the open thread to fold themselves to one row.
+ */
+export const THREAD_SHORT_PX = 820
+
+/** The media query for a window shorter than `THREAD_SHORT_PX`. */
+export const THREAD_SHORT_QUERY = `(max-height: ${THREAD_SHORT_PX - 0.02}px)`
+
+/** The window folds by height: shorter than 820 px, and never on a phone, whose sheet keeps its own fold (cut 10). */
+export function isThreadShort(shortScreen: boolean, phone: boolean): boolean {
+  return shortScreen && !phone
+}
+
+/**
+ * The thread column's width from which a short window puts the sort card beside the lines (v2.6478, the owner's B):
+ * a laptop is wide and short, so the card takes a column at the right, whole, and the lines keep the full height.
+ */
+export const THREAD_BESIDE_PX = 900
+
+/** The sort card goes beside the lines: a short window whose thread column is 900 px or wider. Unmeasured reads narrow. */
+export function isThreadBeside(columnWidth: number | null, short: boolean): boolean {
+  return short && columnWidth !== null && columnWidth >= THREAD_BESIDE_PX
+}
+
+/**
  * Their numbers and addresses under the company: open at a desk (v1.166), folded away on a narrow header so the lines
  * get the room. A press on the arrow decides from then on, either way.
  */

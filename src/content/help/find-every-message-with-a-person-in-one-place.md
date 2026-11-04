@@ -2,7 +2,7 @@
 title: find every message with a person in one place
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans, cut it off, opens, our link, header, lead, book a visit, start an estimate, show everyone
+keywords: gc mode, messages, laptop, short screen, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans, cut it off, opens, our link, header, lead, book a visit, start an estimate, show everyone
 where: /messages
 order: 116
 ---
@@ -86,6 +86,18 @@ On a phone or in a narrow window, the top of the thread folds to fit.
 - Swipe a row sideways to see the rest of it.
 - A message, the job picker and the menu under {{button:outline|⋯}} open from the bottom of the screen.
 - Press outside one to close it. Press **Cancel** to close the menu.
+
+## Read a thread on a short screen
+
+On a laptop, the window is short. The thread folds so the messages get the room.
+
+- The top keeps two rows. The first has their name, and **Who is this?** when nobody has named them.
+- The chip, the sentence and their jobs share the second row.
+- The sort card folds to one row with the press it picked. Press **Other ways** to open it.
+- On a wide laptop, the sort card sits whole at the right of the messages instead.
+- The reply box folds to one row. Press into it to write.
+- Press the arrow beside their company to show their numbers and addresses.
+- The window takes the whole height under the app's bar.
 
 ## Open one message
 

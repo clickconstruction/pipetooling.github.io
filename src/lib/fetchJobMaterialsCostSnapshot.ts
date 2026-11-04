@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { fetchAllRows } from './supabasePaging'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { EMPTY_CARD_CHARGE_EXCLUSIONS, type CardChargeExclusions } from './jobs/cardChargeAllocationFilter'
 import { loadCardChargeExclusions } from './jobs/loadCardChargeExclusions'
@@ -82,17 +83,28 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
   // The bank's category per transaction — the cost-line classifier's fallback when nobody has labelled it.
   const categoryByTxId = new Map<string, unknown>()
   try {
-    const raw = await withSupabaseRetry(
-      async () =>
-        supabase
-          .from('mercury_transaction_job_allocations')
-          .select('id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, raw, mercury_category)')
-          .eq('job_id', jobId)
-          .order('created_at', { ascending: true }),
-      'job materials cost snapshot mercury allocations',
+    // Paged (v2.6465): PostgREST cuts an unpaged answer at 1,000 rows with no error, and a busy job's
+    // card lines near that. The id after created_at keeps the pages from shuffling.
+    const label = 'job materials cost snapshot mercury allocations'
+    const raw = await fetchAllRows(
+      async (from, to) => ({
+        data: await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('mercury_transaction_job_allocations')
+              .select('id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, raw, mercury_category)')
+              .eq('job_id', jobId)
+              .order('created_at', { ascending: true })
+              .order('id')
+              .range(from, to),
+          label,
+        ),
+        error: null,
+      }),
+      label,
     )
     mercuryLines = mercuryLinesFromRows(raw)
-    for (const row of (raw ?? []) as Array<{ mercury_transaction_id?: string | null; mercury_transactions?: unknown }>) {
+    for (const row of raw as Array<{ mercury_transaction_id?: string | null; mercury_transactions?: unknown }>) {
       const tx = Array.isArray(row.mercury_transactions) ? row.mercury_transactions[0] : row.mercury_transactions
       const category = (tx as { mercury_category?: unknown } | null | undefined)?.mercury_category
       if (row.mercury_transaction_id && category != null) categoryByTxId.set(row.mercury_transaction_id, category)

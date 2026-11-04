@@ -38,5 +38,23 @@ export function premiumOf(price: number, charges: number): Premium {
   return { kind, amount, signed, price: p, charges: c, words, sentence }
 }
 
+/**
+ * The premium waits while any day prices at nothing (punch list #254, the live pass): the charges are short by those
+ * days, so a premium read against them would be wrong, not rough. Office words, like the premium itself.
+ */
+export function premiumWaitsWords(unpricedDays: number): string {
+  return `The premium waits until every day prices: ${unpricedDays} ${unpricedDays === 1 ? 'day prices' : 'days price'} at nothing.`
+}
+
+/**
+ * The title on a premium total that leaves jobs out because their premium waits (the live pass, v2.6471): a waiting
+ * premium is unknown, so adding it as zero would read as even. Null when every priced job has its premium.
+ */
+export function premiumTotalWaitsWords(waitingJobs: number, counted: boolean): string | null {
+  if (!(waitingJobs > 0)) return null
+  const jobs = `${waitingJobs} ${waitingJobs === 1 ? 'job' : 'jobs'}`
+  return counted ? `Leaves out ${jobs} whose premium waits until every day prices.` : `The premium waits until every day prices on ${jobs}.`
+}
+
 /** What the gap carries, for the office copy's one sentence under it. */
 export const PREMIUM_CARRIES = 'A fixed price carries the risk of the work running long, the supervision, the equipment and the warranty.'

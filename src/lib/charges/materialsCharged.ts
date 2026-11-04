@@ -21,7 +21,7 @@ export const MATERIAL_LINE_KIND_WORDS: Record<MaterialLineKind, string> = {
 export type MaterialLineInput = {
   id: string
   kind: MaterialLineKind
-  /** `Ferguson · invoice 3344372`, `3/4" copper elbow × 12`, the charge's description. */
+  /** `A supply house · invoice 1001`, `3/4" copper elbow × 12`, the charge's description. */
   label: string
   /** YYYY-MM-DD, or null when the row has no date. */
   dateKey: string | null

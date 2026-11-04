@@ -1,77 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { CATALOG_RPCS, CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
-import { buildRowsQuery, buildRpcQuery } from '../../../supabase/functions/_shared/devMcpDoor'
 import { ALL_ROWS_MAX, findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, jobNumberOf, onSiteBoxCode, readAllRows, readOnSiteMovements, type Reader, type Row, type RowsQuery } from '../../../supabase/functions/_shared/devMcpComposites'
 import { boxCode } from '../materials/labels'
 import { containerLines, type Movement } from '../materials/onSite'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { catalogReader, noErrors } from './catalogReader'
+import { jobCardChargesCountedFromLines, mercuryLinesFromRows } from '../../../supabase/functions/_shared/jobMaterialsCostLines'
+import { buildJobProfitSummary } from '../../../supabase/functions/_shared/jobProfitSummary'
+import { jobSubLaborInputsFromRows } from '../../../supabase/functions/_shared/jobSubLaborInputs'
+import { overheadPartsAccountingBucketFromDefaultKey } from '../overheadPartsAccountingBuckets'
 
 const JOB = '0e4dcd2b-a524-4056-b93c-16713041a6e7'
 const CUSTOMER = '11111111-2222-4333-8444-555555555555'
 const BID = '99999999-2222-4333-8444-555555555555'
-
-/** Top-level plain columns of a PostgREST select (embeds and aliases are skipped — the API checks those). */
-function plainColumns(select: string): string[] {
-  const out: string[] = []
-  let depth = 0
-  let token = ''
-  for (const ch of `${select},`) {
-    if (ch === '(') depth++
-    if (ch === ')') depth--
-    if (ch === ',' && depth === 0) {
-      const t = token.trim()
-      if (t && t !== '*' && !/[(:!]/.test(t)) out.push(t)
-      token = ''
-    } else token += ch
-  }
-  return out
-}
-
-/**
- * A reader that refuses what the real door would refuse: an RPC or table that is not in the
- * generated catalog, an argument the RPC does not take, a filter / order / plain select column
- * the table does not have. Whatever the composites ask for here, dev-mcp will accept live.
- */
-function catalogReader(data: { rpc?: Record<string, unknown>; rows?: Record<string, Row[]> }): Reader & { asked: string[] } {
-  const asked: string[] = []
-  return {
-    asked,
-    rpc: async (name, args = {}, limit) => {
-      asked.push(`rpc:${name}`)
-      const sigs = CATALOG_RPCS[name]
-      if (!sigs) throw new Error(`rpc ${name} is not in the catalog`)
-      const known = new Set(sigs.flatMap((s) => Object.keys(s.args).map((a) => a.replace(/\?$/, ''))))
-      for (const a of Object.keys(args)) if (!known.has(a)) throw new Error(`rpc ${name} has no argument ${a}`)
-      const built = buildRpcQuery(args, limit)
-      if (!built.ok) throw new Error(built.error)
-      return data.rpc?.[name] ?? []
-    },
-    rows: async (table: string, query: RowsQuery) => {
-      asked.push(`rows:${table}`)
-      const entry = CATALOG_TABLES[table]
-      if (!entry) throw new Error(`table ${table} is not in the catalog`)
-      const columns = new Set(Object.keys(entry.columns))
-      const built = buildRowsQuery(query, columns)
-      if (!built.ok) throw new Error(`${table}: ${built.error}`)
-      for (const c of plainColumns(query.select ?? '*')) if (!columns.has(c)) throw new Error(`${table} has no column ${c} (select)`)
-      return data.rows?.[table] ?? []
-    },
-  }
-}
-
-const noErrors = (value: unknown): string[] => {
-  const found: string[] = []
-  const walk = (v: unknown, path: string) => {
-    if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${path}[${i}]`))
-    else if (v && typeof v === 'object') {
-      const o = v as Record<string, unknown>
-      if (typeof o.error === 'string' && Object.keys(o).length === 1) found.push(`${path}: ${o.error}`)
-      for (const [k, x] of Object.entries(o)) walk(x, `${path}.${k}`)
-    }
-  }
-  walk(value, '$')
-  return found
-}
 
 describe('dev-mcp composites', () => {
   it('reads a job number the way the app does', () => {
@@ -225,6 +165,94 @@ describe('the reads a big job outgrows (v2.6463)', () => {
     expect(money).not.toHaveProperty('stopped_reads')
     // the sheet items go in reads of a hundred sheets, each one paged
     expect(reader.reads.people_labor_job_items).toBe(2 + 1)
+  })
+})
+
+describe('get_job counts the card charges as the Job window does (v2.6468)', () => {
+  const tx = (i: number) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`
+  const IT_LABEL = 'aaaaaaaa-0000-4000-8000-000000000001'
+  const FUEL_LABEL = 'aaaaaaaa-0000-4000-8000-000000000002'
+  const line = (i: number, amount: number) => ({ id: `c${pad(i)}`, job_id: JOB, amount, note: null, mercury_transaction_id: tx(i), mercury_transactions: { posted_at: '2026-09-02', counterparty_name: 'HD', amount } })
+  // A purchase that counts, an Internal Transfer, a charge also on a supply-house invoice, a fuel charge that counts, a refund that nets.
+  const card = [line(1, -100), line(2, -40), line(3, -25), line(4, -10), line(5, 15)]
+  const tables = {
+    jobs_ledger: [{ id: JOB, click_number: '1032', revenue: 1000, materials: [{ description: 'permit', amount: '50' }], invoices: [], payments: [], team: [] }],
+    service_types: [],
+    mercury_transaction_job_allocations: card,
+    mercury_transaction_drag_sort_assignments: [{ mercury_transaction_id: tx(2), label_id: IT_LABEL }, { mercury_transaction_id: tx(4), label_id: FUEL_LABEL }, { mercury_transaction_id: tx(9), label_id: IT_LABEL }],
+    mercury_drag_sort_labels: [{ id: IT_LABEL, default_key: 'internal_transfers' }, { id: FUEL_LABEL, default_key: 'fuel_gas' }],
+    mercury_transaction_supply_house_invoice_links: [{ id: 'l1', mercury_transaction_id: tx(3) }, { id: 'l2', mercury_transaction_id: tx(9) }],
+    supply_house_invoice_job_allocations: [],
+    people_labor_jobs: [],
+    app_settings: [],
+  }
+  const rpc = { get_invoice_amounts_for_jobs: [{ job_id: JOB, invoice_amount: '200' }] }
+  type CardRule = { attached: number; internal_transfer: { lines: number; cost: number }; invoice_linked: { lines: number; cost: number }; counted: number; note?: string }
+  type Money = { parts: Record<string, number>; profit: ReturnType<typeof buildJobProfitSummary>; card_rule: CardRule }
+
+  it('leaves out an Internal Transfer and counts a charge also on an invoice once, so its profit is the window’s', async () => {
+    const reader = pagingReader(tables, catalogReader({ rpc }))
+    const out = (await getJob(reader, JOB, '2026-09-20')) as Record<string, unknown>
+    expect(noErrors(out)).toEqual([])
+    const money = out.money as Money
+    expect(money.card_rule).toMatchObject({ attached: 160, internal_transfer: { lines: 1, cost: 40 }, invoice_linked: { lines: 1, cost: 25 }, counted: 95 })
+    expect(money.card_rule.note).toBeUndefined()
+    expect(money.parts.card_charges).toBe(95)
+    // The window: the snapshot's lines and the exclusions `loadCardChargeExclusions` builds, through the same kernels.
+    const exclusions = { bucketByTxId: new Map([[tx(2), overheadPartsAccountingBucketFromDefaultKey('internal_transfers')], [tx(4), overheadPartsAccountingBucketFromDefaultKey('fuel_gas')]]), invoiceLinkedTxIds: new Set([tx(3)]) }
+    const windowCard = jobCardChargesCountedFromLines(mercuryLinesFromRows(card), exclusions)
+    const labor = jobSubLaborInputsFromRows([], [], [])
+    const windowProfit = buildJobProfitSummary({ revenue: 1000, supplyInvoiceTotal: 200, cardChargesTotal: windowCard, tallyPartsTotal: 0, otherChargesTotal: 50, ...labor })
+    expect(money.parts.card_charges).toBe(windowCard)
+    expect(money.profit).toEqual(windowProfit)
+    expect(money.profit.partsCost).toBe(200 + 95 + 50)
+  })
+
+  it('reads the lookups in reads of a hundred transactions, each paged, and every URL fits the door', async () => {
+    // 250 transactions: three reads of each lookup. An invoice link in the first and the last, an Internal Transfer in the middle one.
+    const many = Array.from({ length: 250 }, (_, i) => line(i + 1, -2))
+    const labelled = many.map((l) => ({ mercury_transaction_id: l.mercury_transaction_id, label_id: l.mercury_transaction_id === tx(150) ? IT_LABEL : FUEL_LABEL }))
+    const links = [{ id: 'l1', mercury_transaction_id: tx(3) }, { id: 'l9', mercury_transaction_id: tx(250) }]
+    const reader = pagingReader({ ...tables, mercury_transaction_job_allocations: many, mercury_transaction_drag_sort_assignments: labelled, mercury_transaction_supply_house_invoice_links: links }, catalogReader({ rpc }))
+    const out = (await getJob(reader, JOB, '2026-09-20')) as Record<string, unknown>
+    expect(noErrors(out)).toEqual([])
+    expect((out.money as Money).card_rule).toMatchObject({ attached: 500, internal_transfer: { lines: 1, cost: 2 }, invoice_linked: { lines: 2, cost: 4 }, counted: 494 })
+    expect(reader.reads.mercury_transaction_drag_sort_assignments).toBe(3)
+    expect(reader.reads.mercury_transaction_supply_house_invoice_links).toBe(3)
+    expect(reader.reads.mercury_drag_sort_labels).toBe(1)
+  })
+
+  it('a lookup that cannot be read counts what it would have left out, as the window does, and says so', async () => {
+    const reader = pagingReader(tables, catalogReader({ rpc }))
+    const rows = reader.rows
+    reader.rows = async (table, q) => {
+      if (table === 'mercury_transaction_supply_house_invoice_links') throw new Error('permission denied')
+      return rows(table, q)
+    }
+    const out = (await getJob(reader, JOB, '2026-09-20')) as Record<string, unknown>
+    const money = out.money as Money
+    expect(money.card_rule).toMatchObject({ internal_transfer: { lines: 1, cost: 40 }, invoice_linked: { lines: 0, cost: 0 }, counted: 120 })
+    expect(money.card_rule.note).toContain('supply-house invoice links could not be read (permission denied)')
+    expect(money.parts.card_charges).toBe(120)
+  })
+
+  it('asks get_man_hours_by_job for the one job, on the server', async () => {
+    const reader = catalogReader({ rows: { jobs_ledger: tables.jobs_ledger }, rpc: { get_man_hours_by_job: [{ job_id: JOB, man_hours: 6, person_name: 'Al' }, { job_id: 'other', man_hours: 1, person_name: 'Bo' }] } })
+    const rpcRead = reader.rpc
+    const asked: unknown[] = []
+    reader.rpc = async (name, args, limit, filters) => {
+      if (name === 'get_man_hours_by_job') asked.push(filters)
+      return rpcRead(name, args, limit, filters)
+    }
+    const out = (await getJob(reader, JOB, '2026-09-20')) as Record<string, unknown>
+    expect(asked).toEqual([[{ column: 'job_id', op: 'eq', value: JOB }]])
+    expect(out.hours).toEqual([{ job_id: JOB, man_hours: 6, person_name: 'Al' }])
+  })
+
+  it('the fake door refuses a result filter on a column the RPC does not answer with, or on an argument', async () => {
+    const reader = catalogReader({})
+    await expect(reader.rpc('get_man_hours_by_job', {}, undefined, [{ column: 'job_name', op: 'eq', value: 'x' }])).rejects.toThrow('no column job_name')
+    await expect(reader.rpc('list_job_stage_progress', { p_job_id: JOB }, undefined, [{ column: 'p_job_id', op: 'eq', value: JOB }])).rejects.toThrow('named like an argument')
   })
 })
 
