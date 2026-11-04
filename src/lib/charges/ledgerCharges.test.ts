@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ledgerChargesFor, ledgerSummaryCell, loginLookup, standingLookup } from './ledgerCharges'
+import { ledgerChargesFor, ledgerSummaryCell, loginLookup, loginlessWords, payRecordBreakdown, standingLookup } from './ledgerCharges'
 import { buildJobCharges } from './jobCharges'
 import { liveOverArchived, standingsById, type ChargeStandingRow } from './chargeStandings'
 import { chargeAdjustmentFromRow } from './adjustments'
@@ -135,11 +135,44 @@ describe('a row whose crew counts as nobody (punch list #254, the live pass)', (
     // Zed W prices as a tech alone through the link; Bo R and Ana Q's days price at nothing and the premium waits for them.
     expect(r.laborUsd).toBe(1480)
     expect(r.unpricedDays).toBe(2)
-    expect(r.note).toBe('Bobby counts as nobody on the rate card yet. Set Charged as in Settings → Rates charged by crew → Who counts as what, or on each person’s desk. Ana has no login for a Charged as. Link the People record to a login on People.')
+    expect(r.note).toBe('Bobby counts as nobody on the rate card yet. Set Charged as in Settings → Rates charged by crew → Who counts as what, or on each person’s desk. Ana has no login. Set their Charged as on the People record, or in Who counts as what.')
     expect(ledgerSummaryCell(r)).toEqual({ chargesUsd: r.chargesUsd, premiumUsd: null, note: r.note })
     expect(loginLookup(users, key, links)('Zed W', 'p-z')).toEqual({ id: 'u-z', name: 'Zedd' })
     expect(loginLookup(users, key, links)('zedd', null)).toEqual({ id: 'u-z', name: 'Zedd' })
     expect(loginLookup(users, key, links)('Ana Q', 'p-a')).toBeNull()
+  })
+
+  it('prices a person with no login by the standing on their People record, and their pay-record days beside the clock’s people (v2.6501)', () => {
+    // Hal has no login and counts as a helper on his People record; Zedd's login counts as a tech, and his People record
+    // p-z is linked to it. Hal's days come from the pay records; one of them is a day Zedd clocked.
+    const rows = [
+      { id: 'u-z', person_id: null, name: 'Zedd', charge_standing: 'tech', archived_at: null },
+      { id: null, person_id: 'p-hal', name: 'Hal Byrd', charge_standing: 'helper', archived_at: null },
+      { id: null, person_id: 'p-ivy', name: 'Ivy Cole', charge_standing: null, archived_at: null },
+    ]
+    const links = new Map([['p-z', 'u-z']])
+    const breakdown = [
+      { personName: 'Zed W', personId: 'p-z', byWorkDate: [{ workDate: '2026-03-02', hours: 8 }] },
+      ...payRecordBreakdown([
+        { personId: 'p-hal', personName: 'Hal Byrd', workDate: '2026-03-02', hours: 8 },
+        { personId: 'p-hal', personName: 'Hal Byrd', workDate: '2026-03-03', hours: 6 },
+        { personId: 'p-ivy', personName: 'Ivy Cole', workDate: '2026-03-04', hours: 5 },
+        { personId: 'p-ivy', personName: 'Ivy Cole', workDate: '2026-03-05', hours: 0 },
+      ]),
+    ]
+    expect(breakdown[1]).toEqual({ personName: 'Hal Byrd', personId: 'p-hal', imported: true, byWorkDate: [{ workDate: '2026-03-02', hours: 8 }, { workDate: '2026-03-03', hours: 6 }] })
+    const r = ledgerChargesFor({ breakdown, standingOf: standingLookup(rows, key, links), loginOf: loginLookup(rows, key, links), invoicesFromSupplyHouses: 0, partsFromTally: 0, billedMaterialsSum: 0, card: OWNER, job: {}, contractUsd: 10000 })
+    // Mar 2: Zedd and Hal are two techs (a tech with a helper) for 8 crew-hours; Mar 3: Hal alone, a helper alone; Mar 4: Ivy, nobody.
+    expect(r.days).toBe(3)
+    expect(r.laborUsd).toBe(8 * 285 + 6 * 75)
+    expect(r.unpricedDays).toBe(1)
+    expect(r.unchargedDays).toBe(1)
+    expect(r.note).toBe('Ivy has no login. Set their Charged as on the People record, or in Who counts as what.')
+    // A standing on an unlinked record never reaches a login of the same name, and a linked record never reads its own row.
+    expect(standingLookup([...rows, { id: null, person_id: 'p-z', name: 'Zedd', charge_standing: 'master', archived_at: null }], key, links)('Zed W', 'p-z')).toBe('tech')
+    expect(standingLookup(rows, key, links)('Hal Byrd', 'p-hal')).toBe('helper')
+    expect(loginLookup(rows, key, links)('Hal Byrd', 'p-hal')).toBeNull()
+    expect(loginlessWords([{ name: 'Ana' }, { name: 'Bo' }])).toBe('Ana and Bo have no login. Set each one’s Charged as on the People record, or in Who counts as what.')
   })
 
   it('shows the premium once every day prices', () => {

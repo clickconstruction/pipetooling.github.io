@@ -12,17 +12,22 @@ import { indexAdjustments, type ChargeAdjustment } from './adjustments'
 import { premiumOf, type Premium } from './premium'
 import { CREW_SHAPES, NOBODY_CHARGED_WHY, parseChargeStanding, parseCrewShape, type ChargeStanding, type RateCard } from './rateCard'
 import { moneyWords } from './moneyParts'
-import { liveOverArchived, type ChargeStandingRow } from './chargeStandings'
+import { liveOverArchived, loginRows, standingsByPersonId, type ChargeStandingRow } from './chargeStandings'
 
 export type LedgerChargesInput = {
-  /** The row's team labor breakdown: one entry per person with their hours by work date. */
-  breakdown: ReadonlyArray<{ personName: string; personId?: string | null; byWorkDate: ReadonlyArray<{ workDate: string; hours: number }> }>
+  /**
+   * The row's team labor breakdown: one entry per person with their hours by work date. Since v2.6501 the job's approved
+   * pay-record days ride in the same list, one entry a person with `imported: true` and the People record's id, so a
+   * person with no login prices beside the clock's people and a linked one's days land on the same crew-day.
+   */
+  breakdown: ReadonlyArray<{ personName: string; personId?: string | null; imported?: boolean; byWorkDate: ReadonlyArray<{ workDate: string; hours: number }> }>
   /** A person's standing by the key the breakdown names them with (the name key, or the person id). */
   standingOf: (personName: string, personId: string | null | undefined) => ChargeStanding
   /**
-   * The login a person on the breakdown reaches, the one place a Charged as is set (the live pass): through the People
-   * record's link, else by the name. Someone with none is named apart, since Who counts as what lists logins; someone with
-   * one is named as the login is, so the note reads the name the list shows. Left out, everyone is taken to have one.
+   * The login a person on the breakdown reaches (the live pass): through the People record's link, else by the name.
+   * Someone with none and no standing of their own is named apart, with the People record as the place to set it
+   * (v2.6501); someone with one is named as the login is, so the note reads the name the list shows. Left out, everyone
+   * is taken to have one.
    */
   loginOf?: (personName: string, personId: string | null | undefined) => { id: string; name: string | null } | null
   /** The row's material sums: supply-house invoice shares, tallied parts, typed material charges. */
@@ -87,7 +92,7 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
     const shown = login?.name?.trim() || p.personName
     for (const d of p.byWorkDate) {
       if (!(d.hours > 0)) continue
-      sessions.push({ userId: key, name: shown.split(' ')[0] || shown, standing, workDate: d.workDate, hours: d.hours })
+      sessions.push({ userId: key, name: shown.split(' ')[0] || shown, standing, workDate: d.workDate, hours: d.hours, imported: p.imported === true })
     }
   }
   const dayShape = new Map(Array.from(applied.dayShape.entries()).map(([day, o]) => [day, o.shape] as const))
@@ -153,6 +158,22 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
   }
 }
 
+/**
+ * The job's approved pay-record days as breakdown entries (v2.6501): one a person, `imported`, keyed by the People
+ * record's id, so a linked person's days join their clock days on the crew-day and an unlinked person's price by the
+ * standing on their record.
+ */
+export function payRecordBreakdown(rows: ReadonlyArray<{ personId: string; personName: string; workDate: string; hours: number }>): Array<{ personName: string; personId: string; imported: true; byWorkDate: Array<{ workDate: string; hours: number }> }> {
+  const byPerson = new Map<string, { personName: string; personId: string; imported: true; byWorkDate: Array<{ workDate: string; hours: number }> }>()
+  for (const r of rows) {
+    if (!(r.hours > 0)) continue
+    const e = byPerson.get(r.personId) ?? { personName: r.personName, personId: r.personId, imported: true as const, byWorkDate: [] }
+    e.byWorkDate.push({ workDate: r.workDate, hours: r.hours })
+    byPerson.set(r.personId, e)
+  }
+  return Array.from(byPerson.values())
+}
+
 /** The toolbar chip: `Charged at $285.00 the crew’s hour (master with a helper) · 4 of 7 rows set · materials 25% over cost`. */
 export function rateCardChipWords(card: RateCard): string {
   const set = CREW_SHAPES.filter((s) => card.rates[s] != null).length + (card.extraPerson != null ? 1 : 0)
@@ -163,14 +184,15 @@ export function rateCardChipWords(card: RateCard): string {
 }
 
 /**
- * People on the crew rows with no login, named for the office (the live pass): `Ana has no login for a Charged as.` with
- * the link they need. Null when there is nobody to name.
+ * People on the crew rows with no login who count as nobody yet, named for the office (the live pass; the words since
+ * v2.6501): `Ana has no login. Set their Charged as on the People record, or in Who counts as what.` A People record
+ * with no login holds its own Charged as, so the fix is a pick, not a link. Null when there is nobody to name.
  */
 export function loginlessWords(people: ReadonlyArray<{ name: string }>): string | null {
   const names = Array.from(new Set(people.map((p) => p.name)))
   if (names.length === 0) return null
   const list = names.length === 1 ? names[0] : names.length <= 3 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`
-  return `${list} ${names.length === 1 ? 'has' : 'have'} no login for a Charged as. Link ${names.length === 1 ? 'the People record' : 'each People record'} to a login on People.`
+  return `${list} ${names.length === 1 ? 'has' : 'have'} no login. Set ${names.length === 1 ? 'their Charged as on the People record' : 'each one’s Charged as on the People record'}, or in Who counts as what.`
 }
 
 /**
@@ -194,7 +216,9 @@ export function ledgerSummaryCell(c: Pick<LedgerCharges, 'priced' | 'chargesUsd'
  * The login a breakdown person reaches: by the People record's link, else by the name key; null when none. By name, a
  * login still here wins over one that left with the same name (v2.6490), since `charge_standings()` answers both.
  */
-export function loginLookup(users: ReadonlyArray<Pick<ChargeStandingRow, 'id' | 'name' | 'archived_at'>>, nameKey: (name: string) => string, personIdToUserId?: ReadonlyMap<string, string>): NonNullable<LedgerChargesInput['loginOf']> {
+export function loginLookup(rows: ReadonlyArray<Pick<ChargeStandingRow, 'id' | 'name' | 'archived_at'>>, nameKey: (name: string) => string, personIdToUserId?: ReadonlyMap<string, string>): NonNullable<LedgerChargesInput['loginOf']> {
+  // The login rows alone: a People record with no login (v2.6501) is not a login anyone reaches.
+  const users = loginRows(rows)
   const byId = new Map(users.map((u) => [u.id, u] as const))
   const byName = liveOverArchived(users, (u) => (u.name ? nameKey(u.name) : null))
   return (personName, personId) => {
@@ -205,18 +229,22 @@ export function loginLookup(users: ReadonlyArray<Pick<ChargeStandingRow, 'id' | 
 }
 
 /**
- * A standing lookup from the rows `charge_standings()` answers, by the name key the breakdown uses and by user id. By
- * name, a login still here wins over one that left with the same name (v2.6490); by id every row answers, so a person
- * who left prices by the standing set on their login.
+ * A standing lookup from the rows `charge_standings()` answers, by the name key the breakdown uses, by user id and, for
+ * a People record with no login, by its own id (v2.6501). A linked record reads its login's standing; an unlinked one
+ * with a row of its own reads that, never a login's by name. By name, a login still here wins over one that left with
+ * the same name (v2.6490); by id every row answers, so a person who left prices by the standing set on their login.
  */
-export function standingLookup(users: ReadonlyArray<ChargeStandingRow>, nameKey: (name: string) => string, personIdToUserId?: ReadonlyMap<string, string>): LedgerChargesInput['standingOf'] {
+export function standingLookup(rows: ReadonlyArray<ChargeStandingRow>, nameKey: (name: string) => string, personIdToUserId?: ReadonlyMap<string, string>): LedgerChargesInput['standingOf'] {
+  const users = loginRows(rows)
   const byId = new Map<string, ChargeStanding>()
   for (const u of users) byId.set(u.id, parseChargeStanding(u.charge_standing))
+  const byPersonId = standingsByPersonId(rows)
   const byName = new Map<string, ChargeStanding>()
   for (const [k, u] of liveOverArchived(users, (u) => (u.name ? nameKey(u.name) : null))) byName.set(k, parseChargeStanding(u.charge_standing))
   return (personName, personId) => {
     const userId = personId ? personIdToUserId?.get(personId) : undefined
     if (userId && byId.has(userId)) return byId.get(userId)!
+    if (personId && !userId && byPersonId.has(personId)) return byPersonId.get(personId)!
     return byName.get(nameKey(personName)) ?? 'none'
   }
 }

@@ -11,6 +11,15 @@ CREATE TABLE public.users (
   name text,
   role text NOT NULL,
   is_sample boolean NOT NULL DEFAULT false,
+  archived_at timestamptz,
+  charge_standing text
+);
+-- The People roster (v2.6501): a record with no login holds its own pay-record days and standing.
+CREATE TABLE public.people (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  kind text NOT NULL DEFAULT 'helper',
+  account_user_id uuid REFERENCES public.users(id) ON DELETE SET NULL,
   archived_at timestamptz
 );
 CREATE TABLE public.app_settings (
@@ -63,6 +72,7 @@ CREATE OR REPLACE FUNCTION public.sync_crew_jobs_from_clock(p_name text, p_date 
 CREATE OR REPLACE FUNCTION public.sync_crew_bids_from_clock(p_name text, p_date date) RETURNS void LANGUAGE sql AS $$ SELECT $$;
 CREATE OR REPLACE FUNCTION public.apply_read_only_write_blocks() RETURNS void LANGUAGE sql AS $$ SELECT $$;
 CREATE OR REPLACE FUNCTION public.apply_read_only_stmt_blocks() RETURNS void LANGUAGE sql AS $$ SELECT $$;
+CREATE OR REPLACE FUNCTION public.apply_digital_twin_write_blocks() RETURNS integer LANGUAGE sql AS $$ SELECT 0 $$;
 
 -- Test helpers.
 CREATE OR REPLACE FUNCTION public.t_assert(p_ok boolean, p_msg text) RETURNS void LANGUAGE plpgsql AS $$

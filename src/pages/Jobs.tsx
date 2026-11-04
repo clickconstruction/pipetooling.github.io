@@ -84,8 +84,8 @@ import { useJobsMercuryAllocations } from '../hooks/useJobsMercuryAllocations'
 import { useJobSummaryView } from '../hooks/useJobSummaryView'
 import { useJobsStagesMutations } from '../hooks/useJobsStagesMutations'
 import ChargesWindow from '../components/charges/ChargesWindow'
-import { ledgerChargesFor, ledgerSummaryCell, loginLookup, rateCardChipWords, standingLookup } from '../lib/charges/ledgerCharges'
-import { loadChargeAdjustmentsForJobs, loadChargeStandings, loadRateCard } from '../lib/charges/jobChargesRead'
+import { ledgerChargesFor, ledgerSummaryCell, loginLookup, payRecordBreakdown, rateCardChipWords, standingLookup } from '../lib/charges/ledgerCharges'
+import { loadChargeAdjustmentsForJobs, loadChargeStandings, loadPayRecordDaysForJobs, loadRateCard, type PayRecordDayRow } from '../lib/charges/jobChargesRead'
 import type { ChargeStandingRow } from '../lib/charges/chargeStandings'
 import { isEstimateCharge } from '../lib/charges/materialsCharged'
 import type { ChargeAdjustment } from '../lib/charges/adjustments'
@@ -412,6 +412,10 @@ export default function Jobs() {
   // The People records linked to a login (the live pass): the team labor names a person by their People record, so a
   // standing set on the login reaches them through the link, not only when the two names happen to match.
   const [chargePersonLogins, setChargePersonLogins] = useState<Map<string, string>>(() => new Map())
+  // The jobs' approved pay-record days (v2.6501): a person with no login prices from these beside the clock's people.
+  // A read that fails leaves the column unpriced with its reason, since a row short by those days would price low in silence.
+  const [chargePayRecordDaysByJobId, setChargePayRecordDaysByJobId] = useState<Map<string, PayRecordDayRow[]>>(() => new Map())
+  const [chargePayRecordDaysError, setChargePayRecordDaysError] = useState<string | null>(null)
   const [chargesWindowJobId, setChargesWindowJobId] = useState<string | null>(null)
   const chargesJobIdsKey = activeTab === 'job-summary' && jobSummaryLedgerJobs ? jobSummaryLedgerJobs.map((j) => j.id).join(',') : ''
   const reloadChargeAdjustments = useCallback(async () => {
@@ -421,6 +425,13 @@ export default function Jobs() {
       setChargeAdjustmentsByJobId(await loadChargeAdjustmentsForJobs(ids))
     } catch (e) {
       console.warn('Job Summary: the charge adjustments could not be read', e)
+    }
+    try {
+      setChargePayRecordDaysByJobId(await loadPayRecordDaysForJobs(ids))
+      setChargePayRecordDaysError(null)
+    } catch (e) {
+      console.warn('Job Summary: the pay-record days could not be read', e)
+      setChargePayRecordDaysError(formatErrorMessage(e, 'The pay-record days could not be read.'))
     }
   }, [chargesJobIdsKey])
   useEffect(() => {
@@ -1480,6 +1491,8 @@ export default function Jobs() {
       ? standingLookup(chargeUsers, normalizePersonNameKey, chargePersonLogins)
       : null
     const loginOf = chargeUsers ? loginLookup(chargeUsers, normalizePersonNameKey, chargePersonLogins) : undefined
+    // The standings or the pay-record days could not be read (v2.6490, v2.6501): the column stays unpriced with the reason.
+    const chargesReadError = chargeStandingsError ?? chargePayRecordDaysError
     return sourceJobs
       .map((job) => {
         const subLaborCost = laborCostByJobId.get(job.id) ?? 0
@@ -1507,7 +1520,8 @@ export default function Jobs() {
           chargesRateCard && standingOf
             ? (() => {
                 const c = ledgerChargesFor({
-                  breakdown: teamLaborRow?.breakdown ?? [],
+                  // The clock's people, then the approved pay-record days (v2.6501), one entry a person.
+                  breakdown: [...(teamLaborRow?.breakdown ?? []), ...payRecordBreakdown(chargePayRecordDaysByJobId.get(job.id) ?? [])],
                   standingOf,
                   loginOf,
                   invoicesFromSupplyHouses,
@@ -1518,7 +1532,7 @@ export default function Jobs() {
                   job: job as unknown as { charge_rule?: unknown; charge_shape?: unknown; hourly_charge_rate?: unknown; materials_markup_pct?: unknown },
                   adjustments: chargeAdjustmentsByJobId.get(job.id) ?? [],
                   contractUsd: totalBill,
-                  standingsUnread: chargeStandingsError,
+                  standingsUnread: chargesReadError,
                 })
                 return ledgerSummaryCell(c)
               })()
@@ -1568,6 +1582,8 @@ export default function Jobs() {
     chargeAdjustmentsByJobId,
     chargeUsers,
     chargeStandingsError,
+    chargePayRecordDaysByJobId,
+    chargePayRecordDaysError,
     chargePersonLogins,
     users,
   ])

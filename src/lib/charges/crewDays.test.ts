@@ -48,6 +48,16 @@ describe('crew-days (punch list #254)', () => {
     expect(flat.days[0]).toMatchObject({ rate: 300, charged: 2400, shapeWords: 'master alone · the job’s flat rate' })
   })
 
+  it('prices a day mixing a login and a person with no login (v2.6501) as one crew, the pay-record row marked imported', () => {
+    const r = buildCrewDays([s('u-t', 'Toby', 'master', '2026-06-01', 8), s('person:p-h', 'Hal', 'helper', '2026-06-01', 7, true), s('person:p-h', 'Hal', 'helper', '2026-06-02', 6, true)], OWNER)
+    expect(r.days[0]).toMatchObject({ shape: 'master_helper', crewHours: 8, personHours: 15, charged: 2280, imported: true, who: 'Toby, Hal' })
+    expect(r.days[1]).toMatchObject({ shape: 'helper_alone', crewHours: 6, charged: 450, imported: true, who: 'Hal' })
+    expect(r.totals).toMatchObject({ days: 2, importedDays: 2, unpriced: 0 })
+    // With no standing on the record, the person is named by their crew key, so the office's screens can reach the record.
+    const none = buildCrewDays([s('person:p-h', 'Hal', 'none', '2026-06-02', 6, true)], OWNER)
+    expect(none.totals.uncharged).toEqual([{ userId: 'person:p-h', name: 'Hal', days: 1 }])
+  })
+
   it('names a crew of three with no extra-person rate, and prices it once the card has one', () => {
     const three = [s('t', 'Toby', 'master', '2026-05-12', 8), s('j', 'Jordan', 'helper', '2026-05-12', 8), s('z', 'Zed', 'tech', '2026-05-12', 8)]
     expect(buildCrewDays(three, OWNER).days[0]).toMatchObject({ extra: 1, charged: null, shapeWords: 'master with a helper and 1 more' })

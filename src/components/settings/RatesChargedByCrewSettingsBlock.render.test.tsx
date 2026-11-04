@@ -10,13 +10,17 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 type UserRow = { id: string; name: string; role: string; charge_standing: string | null; is_sample?: boolean; is_digital_twin?: boolean; is_walk_tester?: boolean; archived_at?: string | null }
+type RecordRow = { id: string; name: string; kind: string; charge_standing: string | null; archived_at?: string | null }
 const state: {
   rows: Array<{ key: string; value_num: number | null }>
   upserts: Array<{ key: string; value_num: number | null }>
   users: UserRow[]
+  /** The People records with no login (v2.6501). */
+  records: RecordRow[]
   userWrites: Array<{ id: string; patch: Record<string, unknown> }>
+  recordWrites: Array<{ id: string; patch: Record<string, unknown> }>
   failUserWrite: string | null
-} = { rows: [], upserts: [], users: [], userWrites: [], failUserWrite: null }
+} = { rows: [], upserts: [], users: [], records: [], userWrites: [], recordWrites: [], failUserWrite: null }
 
 vi.mock('../../lib/supabase', () => ({
   supabase: {
@@ -28,6 +32,16 @@ vi.mock('../../lib/supabase', () => ({
               eq: (_col: string, id: string) => {
                 if (state.failUserWrite) return Promise.resolve({ error: { message: state.failUserWrite } })
                 state.userWrites.push({ id, patch })
+                return Promise.resolve({ error: null })
+              },
+            }),
+          }
+        : table === 'people'
+        ? {
+            select: () => ({ is: () => ({ order: () => Promise.resolve({ data: state.records, error: null }) }) }),
+            update: (patch: Record<string, unknown>) => ({
+              eq: (_col: string, id: string) => {
+                state.recordWrites.push({ id, patch })
                 return Promise.resolve({ error: null })
               },
             }),
@@ -67,11 +81,18 @@ const PEOPLE: UserRow[] = [
   { id: 'w1', name: 'Walk tester', role: 'assistant', charge_standing: null, is_walk_tester: true },
   { id: 'a1', name: 'Gone', role: 'helpers', charge_standing: null, archived_at: '2026-01-01T00:00:00Z' },
 ]
+const RECORDS: RecordRow[] = [
+  { id: 'p1', name: 'Dale', kind: 'helper', charge_standing: null },
+  { id: 'p2', name: 'Left Hand', kind: 'sub', charge_standing: 'tech', archived_at: '2026-02-01T00:00:00Z' },
+  { id: 'p3', name: 'Left Blank', kind: 'sub', charge_standing: null, archived_at: '2026-02-01T00:00:00Z' },
+]
 
 describe('RatesChargedByCrewSettingsBlock', () => {
   beforeEach(() => {
     state.users = PEOPLE
+    state.records = RECORDS
     state.userWrites = []
+    state.recordWrites = []
     state.failUserWrite = null
     auth.role = 'dev'
   })
@@ -128,7 +149,7 @@ describe('RatesChargedByCrewSettingsBlock', () => {
     state.rows = []
     renderWithProviders(<RatesChargedByCrewSettingsBlock />)
     fireEvent.click(screen.getByTestId('rates-by-crew-toggle'))
-    await waitFor(() => expect(screen.getAllByTestId('who-counts-row')).toHaveLength(4))
+    await waitFor(() => expect(screen.getAllByTestId('who-counts-row')).toHaveLength(6))
     expect(screen.getByTestId('who-counts-count').textContent).toBe('2 of 3 people count as a master, a tech or a helper.')
     const list = screen.getByTestId('who-counts-as-what')
     expect(within(list).queryByText('Sample helper')).toBeNull()
@@ -141,6 +162,17 @@ describe('RatesChargedByCrewSettingsBlock', () => {
     fireEvent.change(blake, { target: { value: 'helper' } })
     await waitFor(() => expect(state.userWrites).toEqual([{ id: 'u2', patch: { charge_standing: 'helper' } }]))
     expect(screen.getByTestId('who-counts-count').textContent).toBe('3 of 3 people count as a master, a tech or a helper.')
+    // A People record with no login (v2.6501) sits in its own group; the pick saves to the record, never to a login. One
+    // who left with a standing is still listed (their past days price by it); one who left with none is not.
+    const noLogin = screen.getByTestId('who-counts-no-login')
+    expect(within(noLogin).getByText('People with no login · their days come from the pay records')).toBeTruthy()
+    expect(within(noLogin).getByText('Dale')).toBeTruthy()
+    expect(within(noLogin).getByText('Left Hand')).toBeTruthy()
+    expect(within(noLogin).queryByText('Left Blank')).toBeNull()
+    expect(within(screen.getByTestId('who-counts-archived')).queryByText('Left Hand')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Dale is charged as'), { target: { value: 'helper' } })
+    await waitFor(() => expect(state.recordWrites).toEqual([{ id: 'p1', patch: { charge_standing: 'helper' } }]))
+    expect(state.userWrites).toHaveLength(1)
   })
 
   it('a refused pick goes back and names the reason; anyone but a dev reads the list', async () => {
@@ -148,15 +180,16 @@ describe('RatesChargedByCrewSettingsBlock', () => {
     state.failUserWrite = 'permission denied for table users'
     const first = renderWithProviders(<RatesChargedByCrewSettingsBlock />)
     fireEvent.click(screen.getByTestId('rates-by-crew-toggle'))
-    await waitFor(() => expect(screen.getAllByTestId('who-counts-row')).toHaveLength(4))
+    await waitFor(() => expect(screen.getAllByTestId('who-counts-row')).toHaveLength(6))
     fireEvent.change(screen.getByLabelText('Blake is charged as'), { target: { value: 'tech' } })
     await waitFor(() => expect((screen.getByLabelText('Blake is charged as') as HTMLSelectElement).value).toBe('none'))
     first.unmount()
     auth.role = 'controller'
     renderWithProviders(<RatesChargedByCrewSettingsBlock />)
     fireEvent.click(screen.getByTestId('rates-by-crew-toggle'))
-    await waitFor(() => expect(screen.getAllByTestId('who-counts-row')).toHaveLength(4))
+    await waitFor(() => expect(screen.getAllByTestId('who-counts-row')).toHaveLength(6))
     expect(screen.queryByLabelText('Blake is charged as')).toBeNull()
+    expect(screen.queryByLabelText('Dale is charged as')).toBeNull()
     expect(within(screen.getByTestId('who-counts-as-what')).getByText(/A dev sets these\./)).toBeTruthy()
   })
 })

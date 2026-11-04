@@ -30,6 +30,17 @@ describe('UnchargedCallout', () => {
     expect(screen.queryAllByRole('link')).toEqual([])
   })
 
+  it('a person with no login (v2.6501) gets the door to their People record for a dev, and is marked for anyone else', () => {
+    const mixed = [...people, { userId: 'person:p-h', name: 'Hal', days: 3 }]
+    const first = renderWithProviders(<UnchargedCallout people={mixed} unchargedDays={3} role="dev" />)
+    expect(screen.getByRole('link', { name: 'Hal’s People record (no login) · 3 days' }).getAttribute('href')).toBe('/people?tab=person&id=p%3Ap-h')
+    expect(screen.getByRole('link', { name: 'Toby’s desk · 2 days' })).toBeTruthy()
+    first.unmount()
+    renderWithProviders(<UnchargedCallout people={mixed} unchargedDays={3} role="controller" />)
+    expect(screen.getByTestId('uncharged-ask-dev').textContent).toContain('Hal · 3 days (no login)')
+    expect(screen.queryAllByRole('link')).toEqual([])
+  })
+
   it('for a dev, keeps the door to Who counts as what and to each desk', () => {
     renderWithProviders(<UnchargedCallout people={people} unchargedDays={2} role="dev" />)
     expect(screen.getByTestId('uncharged-who-counts').getAttribute('href')).toBe('/settings?tab=settings-jobs#who-counts-as-what')

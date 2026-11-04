@@ -11,6 +11,7 @@ import { PersonDeskAccessSection } from './PersonDeskAccessSection'
 import { renderWithProviders, settle } from '../../../test/renderSmokeMocks'
 import type { PersonDeskUserRow } from '../../../hooks/usePersonDesk'
 import type { PersonDeskViewer } from '../../../lib/people/personDeskGates'
+import type { PersonKeyPersonRow } from '../../../lib/people/personKey'
 
 const calls: Array<{ table: string; op: string; args: unknown[] }> = []
 const invoke = vi.fn(async () => ({ data: {}, error: null }))
@@ -167,6 +168,27 @@ describe('PersonDeskAccessSection', () => {
     expect(screen.getByRole('button', { name: 'Make a seat' })).toBeTruthy()
     // An estimator has no supervision switch.
     expect(screen.queryByLabelText('Can run a job on their own')).toBeNull()
+  })
+
+  it('a person with no login gets a Charged as on their People record (v2.6501), for a dev alone', async () => {
+    const hal: PersonKeyPersonRow = { id: 'p-hal', name: 'Hal Byrd', email: null, kind: 'helper', archived_at: null, account_user_id: null }
+    const onChanged = vi.fn()
+    const first = renderWithProviders(<PersonDeskAccessSection user={null} person={hal} viewer={DEV} viewerUserId="u-me" serviceTypeNames={TRADES} onChanged={onChanged} />)
+    expect(screen.getByText(/No login account/)).toBeTruthy()
+    await settle()
+    const select = screen.getByTestId('charge-standing-select') as HTMLSelectElement
+    expect(select.value).toBe('none')
+    expect(screen.getByText(/their days come from the pay records and price by this/)).toBeTruthy()
+    fireEvent.change(select, { target: { value: 'helper' } })
+    await settle()
+    const write = calls.find((c) => c.table === 'people' && c.op === 'update')
+    expect(write?.args[0]).toEqual({ charge_standing: 'helper' })
+    expect(calls.some((c) => c.table === 'users' && c.op === 'update')).toBe(false)
+    expect(onChanged).toHaveBeenCalled()
+    first.unmount()
+    renderWithProviders(<PersonDeskAccessSection user={null} person={hal} viewer={LEADER} viewerUserId="u-me" serviceTypeNames={TRADES} onChanged={vi.fn()} />)
+    expect(screen.queryByTestId('charge-standing-select')).toBeNull()
+    expect(screen.getByText('dev only')).toBeTruthy()
   })
 
   it('a leader sees the values with a tag, and flips only what the database lets them', () => {

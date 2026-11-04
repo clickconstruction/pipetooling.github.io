@@ -22,6 +22,7 @@ import {
   tradesMeaningForRole,
 } from '../../../lib/people/accountWrites'
 import type { PersonDeskUserRow } from '../../../hooks/usePersonDesk'
+import type { PersonKeyPersonRow } from '../../../lib/people/personKey'
 import { MergeDuplicateDialog } from './MergeDuplicateDialog'
 import { useHiringColumnShares } from '../../../hooks/useHiringColumnShares'
 import { sharedColumnsLine } from '../../../lib/hiring/columnShares'
@@ -57,6 +58,7 @@ async function fnErrorMessage(e: unknown): Promise<string> {
  */
 export function PersonDeskAccessSection({
   user,
+  person = null,
   viewer,
   viewerUserId,
   serviceTypeNames,
@@ -64,6 +66,8 @@ export function PersonDeskAccessSection({
   onOpenFlow,
 }: {
   user: PersonDeskUserRow | null
+  /** The People record, for the Charged as of someone with no login (v2.6501): their days come from the pay records. */
+  person?: PersonKeyPersonRow | null
   viewer: PersonDeskViewer
   viewerUserId: string | null
   serviceTypeNames: Map<string, string>
@@ -98,15 +102,73 @@ export function PersonDeskAccessSection({
       on = false
     }
   }, [standingUserId])
+  // A People record with no login holds its own Charged as (v2.6501), read from the record as the login's is from users.
+  const [recordStanding, setRecordStanding] = useState<ChargeStanding | null>(null)
+  const recordId = !user && person ? person.id : null
+  useEffect(() => {
+    if (!recordId) return
+    let on = true
+    void supabase
+      .from('people')
+      .select('*')
+      .eq('id', recordId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (on) setRecordStanding(parseChargeStanding((data as unknown as { charge_standing?: unknown } | null)?.charge_standing))
+      })
+    return () => {
+      on = false
+    }
+  }, [recordId])
   const [emailOpen, setEmailOpen] = useState(false)
   const [mergeOpen, setMergeOpen] = useState(false)
   // PR D2: the Hiring columns shared with them, the line the Active Accounts window's Edit showed (dev reads).
   const { shares: hiringShares, roles: hiringColumns } = useHiringColumnShares(viewer.isDev)
 
   if (!user) {
+    const recordEditable = canEditAccount(viewer) && person != null
+    const recordName = person?.name?.trim() || 'them'
+    const setRecordStandingTo = async (next: ChargeStanding) => {
+      if (!person || !recordEditable) return
+      setBusy('standing')
+      try {
+        const { error } = await supabase.from('people').update({ charge_standing: next } as never).eq('id', person.id)
+        if (error) throw new Error(error.message)
+        setRecordStanding(next)
+        showToast(chargeStandingSavedWords(recordName, next).replace(/\.$/, ''), 'success')
+        onChanged()
+      } catch (e) {
+        showToast(await fnErrorMessage(e), 'error')
+      } finally {
+        setBusy(null)
+      }
+    }
     return (
       <DeskSection id="access" title="Access & account">
         <DeskEmpty>No login account. The header's "No login" note says how they get one.</DeskEmpty>
+        {person ? (
+          <DeskRow label="Charged as" actions={!recordEditable ? <LockTag /> : null}>
+            {recordEditable ? (
+              <select
+                value={recordStanding ?? 'none'}
+                disabled={busy != null || recordStanding == null}
+                onChange={(e) => void setRecordStandingTo(parseChargeStanding(e.target.value))}
+                style={{ fontSize: '0.8125rem', padding: '0.1rem 0.3rem' }}
+                aria-label="Charged as"
+                data-testid="charge-standing-select"
+              >
+                {CHARGE_STANDINGS.map((s) => (
+                  <option key={s} value={s}>
+                    {CHARGE_STANDING_WORDS[s]}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span>{CHARGE_STANDING_WORDS[recordStanding ?? 'none']}</span>
+            )}
+            <span style={HINT}>{CHARGE_STANDING_HINTS[recordStanding ?? 'none']} They have no login, so their days come from the pay records and price by this.</span>
+          </DeskRow>
+        ) : null}
       </DeskSection>
     )
   }

@@ -15,7 +15,7 @@ import { jobChargeRuleFrom } from './crewDays'
 import { isEstimateCharge, type MaterialLineInput } from './materialsCharged'
 import { chargeAdjustmentFromRow, type ChargeAdjustment, type ChargeAdjustmentKind } from './adjustments'
 import { parseCrewShape, rateCardFromSettings, RATE_CARD_SETTING_KEYS, type CrewShape, type RateCard } from './rateCard'
-import { standingsById, type ChargeStandingRow } from './chargeStandings'
+import { crewKeyForPerson, standingLookupForPeople, standingsById, type ChargeStandingRow } from './chargeStandings'
 import type { JobChargesInput } from './jobCharges'
 
 export type JobChargesReadResult = {
@@ -30,6 +30,7 @@ export type JobChargesReadResult = {
 }
 
 const ADJUSTMENTS = 'job_charge_adjustments' as never
+const PAY_RECORD_DAYS = 'people_pay_record_days' as never
 // The read is called by name until the generated types carry it.
 const db = supabase as unknown as SupabaseClient
 
@@ -39,28 +40,81 @@ function num(v: unknown): number {
 }
 
 /**
- * Every login with its standing, people who left included, through `charge_standings()`: the same rows for every
- * reader the gate admits (a dev, the controller, a pay-approved master). A caller outside the gate is refused with
- * the reason, never answered with no rows.
+ * Every login with its standing, people who left included, and every People record with no login with its own
+ * (v2.6501), through `charge_standings()`: the same rows for every reader the gate admits (a dev, the controller, a
+ * pay-approved master). A caller outside the gate is refused with the reason, never answered with no rows.
  */
 export async function loadChargeStandings(): Promise<ChargeStandingRow[]> {
   const { data, error } = await db.rpc('charge_standings')
   if (error) throw error
-  return ((data ?? []) as Array<{ id: string; name: string | null; charge_standing: unknown; archived_at: string | null }>).map((r) => ({ id: r.id, name: r.name ?? null, charge_standing: r.charge_standing, archived_at: r.archived_at ?? null }))
+  return ((data ?? []) as Array<{ id: string | null; person_id?: string | null; name: string | null; charge_standing: unknown; archived_at: string | null }>).map((r) => ({ id: r.id ?? null, person_id: r.person_id ?? null, name: r.name ?? null, charge_standing: r.charge_standing, archived_at: r.archived_at ?? null }))
 }
 
-/** The job's approved sessions as crew-session inputs, each person's standing from the standings every reader shares. */
-export async function loadCrewSessions(jobId: string): Promise<CrewSessionInput[]> {
+/** One approved pay-record day (v2.6501): a People record's hours on a job on a day, imported by a dev. */
+export type PayRecordDayRow = { personId: string; personName: string; accountUserId: string | null; jobId: string; workDate: string; hours: number }
+
+function payRecordDayRows(data: unknown): PayRecordDayRow[] {
+  return ((data ?? []) as Array<{ person_id: string; job_ledger_id: string; work_date: string; hours: unknown; people: { name: string | null; account_user_id: string | null } | null }>).map((r) => ({
+    personId: r.person_id,
+    personName: (r.people?.name ?? '').trim() || 'someone',
+    accountUserId: r.people?.account_user_id ?? null,
+    jobId: r.job_ledger_id,
+    workDate: r.work_date,
+    hours: num(r.hours),
+  }))
+}
+
+/** The job's approved pay-record days, each with the People record it belongs to. */
+export async function loadPayRecordDays(jobId: string): Promise<PayRecordDayRow[]> {
   const { data, error } = await supabase
-    .from('clock_sessions')
-    .select('user_id, work_date, clocked_in_at, clocked_out_at, origin, users!clock_sessions_user_id_fkey(name)')
+    .from(PAY_RECORD_DAYS)
+    .select('person_id, job_ledger_id, work_date, hours, people(name, account_user_id)')
     .eq('job_ledger_id', jobId)
     .not('approved_at', 'is', null)
-    .not('clocked_out_at', 'is', null)
+  if (error) throw error
+  return payRecordDayRows(data)
+}
+
+/** Every approved pay-record day on a set of jobs in one read, by job, for the Job Summary's column. */
+export async function loadPayRecordDaysForJobs(jobIds: ReadonlyArray<string>): Promise<Map<string, PayRecordDayRow[]>> {
+  const out = new Map<string, PayRecordDayRow[]>()
+  if (!jobIds.length) return out
+  const { data, error } = await supabase
+    .from(PAY_RECORD_DAYS)
+    .select('person_id, job_ledger_id, work_date, hours, people(name, account_user_id)')
+    .in('job_ledger_id', jobIds as string[])
+    .not('approved_at', 'is', null)
+  if (error) throw error
+  for (const r of payRecordDayRows(data)) {
+    const list = out.get(r.jobId) ?? []
+    list.push(r)
+    out.set(r.jobId, list)
+  }
+  return out
+}
+
+/**
+ * The job's approved sessions as crew-session inputs, each person's standing from the standings every reader shares,
+ * and since v2.6501 its approved pay-record days beside them: a person with no login keyed `person:<people.id>` with
+ * the standing on their People record, a linked one keyed by their login with its standing, every such row
+ * `imported`, so the window, the paper and the statement draw it as from the pay records.
+ */
+export async function loadCrewSessions(jobId: string): Promise<CrewSessionInput[]> {
+  const [{ data, error }, days] = await Promise.all([
+    supabase
+      .from('clock_sessions')
+      .select('user_id, work_date, clocked_in_at, clocked_out_at, origin, users!clock_sessions_user_id_fkey(name)')
+      .eq('job_ledger_id', jobId)
+      .not('approved_at', 'is', null)
+      .not('clocked_out_at', 'is', null),
+    loadPayRecordDays(jobId),
+  ])
   if (error) throw error
   const rows = (data ?? []) as Array<{ user_id: string; work_date: string; clocked_in_at: string; clocked_out_at: string | null; origin: string | null; users: { name: string | null } | null }>
-  const standings = rows.length ? standingsById(await loadChargeStandings()) : new Map()
-  return rows.map((r) => ({
+  const standingRows = rows.length || days.length ? await loadChargeStandings() : []
+  const standings = standingsById(standingRows)
+  const standingOfPerson = standingLookupForPeople(standingRows)
+  const clocked: CrewSessionInput[] = rows.map((r) => ({
     userId: r.user_id,
     name: (r.users?.name ?? '').split(' ')[0] || 'someone',
     standing: standings.get(r.user_id) ?? 'none',
@@ -68,6 +122,15 @@ export async function loadCrewSessions(jobId: string): Promise<CrewSessionInput[
     hours: r.clocked_out_at ? Math.max(0, (new Date(r.clocked_out_at).getTime() - new Date(r.clocked_in_at).getTime()) / 3.6e6) : 0,
     imported: r.origin === 'imported',
   }))
+  const fromRecords: CrewSessionInput[] = days.map((d) => ({
+    userId: crewKeyForPerson({ id: d.personId, account_user_id: d.accountUserId }),
+    name: d.personName.split(' ')[0] || 'someone',
+    standing: standingOfPerson({ id: d.personId, account_user_id: d.accountUserId }),
+    workDate: d.workDate,
+    hours: d.hours,
+    imported: true,
+  }))
+  return [...clocked, ...fromRecords]
 }
 
 /** The job's supply-house invoice shares as material lines; tallied parts and typed charges join them in `loadMaterialLines`. */

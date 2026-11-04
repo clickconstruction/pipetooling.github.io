@@ -2,7 +2,7 @@
 title: set what a crew's hour is charged
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: charge rate, rate card, crew, master with a helper, two techs, helper alone, markup, materials, margin, charged as, standing, 285
+keywords: charge rate, rate card, crew, master with a helper, two techs, helper alone, markup, materials, margin, charged as, standing, 285, no login, pay records
 order: 101
 ---
 The company charges the customer for a crew's hour, not for each person. What a day costs depends on who was out. A master with a helper is one rate. Two techs together are one rate. A tech alone is another. A helper alone is another. The rate card in Settings holds those numbers. A dev sets what each person counts as.
@@ -36,6 +36,22 @@ The dev picks one and it saves at once. A person with nothing picked counts as n
 To set everyone at once, a dev opens **Settings**, then **Jobs & billing**, then **Rates charged by crew**. Under the rates, **Who counts as what** lists every person with the same four choices. The dev's pick saves at once. People who left sit at the foot, because their past days still price by it.
 
 A day prices at nothing until someone out counts as a master, a tech or a helper. When that happens, the Charges window names who counts as nobody. It counts only the days a standing would fix. A dev sees a link to each desk and to the list. Anyone else sees the names and asks a dev. The Statement of charges window and the charged hours paper's window name them too.
+
+## Count a person who has no login
+
+Some people worked a job and never had a login. Those people were paid from the bank, not through the app. The app can still count their days and price them.
+
+A dev puts their days in from the pay records. Each day names the job, the date, the hours, and where the day came from. The office approves the days, the same people who approve hours. The pay never reads these days. The person is paid from the bank, as before.
+
+The person's Charged as lives on their People record. Under **Who counts as what**, the group **People with no login** lists each such person with the same four choices. A dev picks one and it saves at once. The person's desk shows the same row under **Access**.
+
+:::example A day with a login and a person who has none
+
+Toby clocked 8 hours on Monday. Hal has no login and the pay records say 8 hours that day. Toby counts as a master and Hal as a helper. Monday is one line of 8 crew hours at the master with a helper rate.
+
+:::
+
+The Charges window marks such a day **from the pay records**. The Statement of charges can say how many days came from the pay records. The charged hours paper reads the same days. When the person counts as nobody yet, the window names them and links to their People record.
 
 ## Set the rates
 
