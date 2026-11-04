@@ -93,6 +93,7 @@ On a laptop, the window is short. The thread folds so the messages get the room.
 
 - The top keeps two rows. The first has their name, and **Who is this?** when nobody has named them.
 - The chip, the sentence and their jobs share the second row.
+- The sort card folds to one row with the press it picked. Press **Other ways** to open it.
 - Press the arrow beside their company to show their numbers and addresses.
 - The window takes the whole height under the app's bar.
 
