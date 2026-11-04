@@ -2614,7 +2614,7 @@ export default function GcProjects() {
             writes={messagesWrites}
             onOpenJob={openMessagesJob}
             onOpenRecord={openMessagesRecord}
-            onShowContact={(id) => thread.openThread(id)}
+            onShowContact={(id, more) => thread.openThread(id, null, more)}
           />
         </MessagesRereadContext.Provider>
       )}

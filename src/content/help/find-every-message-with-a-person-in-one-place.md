@@ -2,7 +2,7 @@
 title: find every message with a person in one place
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: start a bid, put it on a bid, open the bid, bid history, invitation in a thread, gc mode, messages, laptop, short screen, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans, cut it off, opens, our link, header, lead, book a visit, start an estimate, show everyone, link, web address, bold, rich text
+keywords: start a bid, put it on a bid, open the bid, bid history, invitation in a thread, gc mode, messages, laptop, short screen, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans, cut it off, opens, our link, header, lead, book a visit, start an estimate, show everyone, link, web address, bold, rich text, signature, phone number, call from an email, open the map, street address
 where: /messages
 order: 116
 ---
@@ -146,6 +146,31 @@ The same address may also sit under **Attachments** as a chip. That chip is our 
 The link works in the thread too, under the message's line. Press the words beside it to open the message.
 
 An email reads as plain words, not as the sender's own layout. The app does not keep that layout yet.
+
+## Call or write to a number in an email's words
+
+Most emails end with a signature. The signature holds the sender's phone number, their address and their office's street address. In the message, each of those is a press.
+
+- A phone number has {{button:outline|Call}} after it. Call works as it does everywhere in the app. On a phone with a Quo seat, pick Call in Quo or Call from my phone.
+- A number that can take a text has {{button:outline|Text}} after it too.
+- An email address has {{button:outline|Email}} after it.
+- A street address has {{button:outline|Open the map}} after it. The address opens in Google Maps in a new tab.
+
+Press {{button:outline|Text}} or {{button:outline|Email}} and the reply box opens on that kind. When the number or the address is this person's, it opens in this thread. When it is someone else's, it opens in their thread. The app makes a thread for them when nobody has one yet.
+
+Every press leaves a gray line on this thread. The line says who pressed what and where it went.
+
+:::example The lines a press leaves
+Grace pressed Call on (832) 871-4166 ext. 121 from Glenn's email of Oct 22. · 2:14 PM
+
+Grace opened a thread for amy@maxxbuilders.com from Glenn's email of Oct 22. open it › · 2:15 PM
+:::
+
+The line lands ten seconds after the press. Press {{button:outline|Undo}} on the toast within those ten seconds and nothing is written. Press **open it ›** on a line to go to the thread it opened.
+
+A call made in Quo still writes its own call line, as always. The pressed line says what you meant to do. The call line says what happened.
+
+A tracking link in the signature stays a plain link. The app never reads it as a number or an address.
 
 ## Open a file that came with an email
 

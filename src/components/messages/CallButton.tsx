@@ -36,15 +36,18 @@ export interface CallButtonProps {
   title?: string | ((plain: string) => string)
   /** Above the window the button sits in, when it sits in one (the customer door is 1100). */
   zIndex?: number
+  /** Hears the press that dials, with the way it went (v2.6513): the email viewer writes its line on the thread from it. */
+  onPress?: (through: CallThrough) => void
 }
 
-export function CallButton({ number, name, verb = 'Call', words, glyph, box = 'team', style, className, testId, ariaLabel, title, zIndex = 1300, site }: CallButtonProps) {
+export function CallButton({ number, name, verb = 'Call', words, glyph, box = 'team', style, className, testId, ariaLabel, title, zIndex = 1300, site, onPress }: CallButtonProps) {
   const { seat, phone, kept, fromFor, keep } = useCallThrough()
-  /** v2.5904: one `call_pressed` row per dial, on the press that dials (the kept way, or a way picked on the sheet). */
-  const noteCall = () => {
-    if (site) recordCallPressed(site)
-  }
   const plan = planCall({ number, from: fromFor(box), seat, phone, kept, verb })
+  /** v2.5904: one `call_pressed` row per dial, on the press that dials (the kept way, or a way picked on the sheet). */
+  const noteCall = (through: CallThrough) => {
+    if (site) recordCallPressed(site)
+    onPress?.(through)
+  }
   const [open, setOpen] = useState(false)
   const inner = (
     <>
@@ -58,7 +61,7 @@ export function CallButton({ number, name, verb = 'Call', words, glyph, box = 't
   const label = typeof ariaLabel === 'function' ? ariaLabel(plan.words) : ariaLabel
   const tip = typeof title === 'function' ? title(plan.words) : title
   const main = plan.href ? (
-    <a href={plan.href} style={mainStyle} className={className} data-testid={testId} data-call-through={plan.through} aria-label={label} title={tip} onClick={noteCall}>
+    <a href={plan.href} style={mainStyle} className={className} data-testid={testId} data-call-through={plan.through} aria-label={label} title={tip} onClick={() => noteCall(plan.through)}>
       {inner}
     </a>
   ) : (
@@ -94,7 +97,7 @@ export function CallButton({ number, name, verb = 'Call', words, glyph, box = 't
           zIndex={zIndex}
           onPick={(way) => {
             keep(way.through)
-            noteCall()
+            noteCall(way.through)
             setOpen(false)
           }}
           onClose={() => setOpen(false)}

@@ -240,6 +240,41 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     expect(await screen.findByText('Copied, to paste where you share it.')).toBeTruthy()
   })
 
+  it('draws the signature’s number, address and street address as presses, the tracking links as links (v2.6513)', () => {
+    const m: ThreadMessage = {
+      ...line('m-greg-email-in'),
+      body: `Thank you.\nGlenn Geling\n[image: phone] (832) 871-4166 ext. 121\n[image: email] glenn@maxxbuilders.com <https://server.utags.co/gLCOFBOU>\n[image: company-address] 4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477\n[image: instagram] <https://server.utags.co/yhmOAqla>`,
+      files: [],
+    }
+    const acts = { onCall: vi.fn(), onReply: vi.fn(), onMap: vi.fn() }
+    renderWithProviders(<MessageWindow message={m} contact={greg} tile={undefined} onClose={vi.fn()} contactActs={acts} />)
+    const full = screen.getByRole('dialog', { name: 'Email: Hillside sitework, Boerne, rev 1' }).querySelector('[data-message-full]') as HTMLElement
+    expect([...full.querySelectorAll('[data-contact-point]')].map((el) => el.getAttribute('data-contact-point'))).toEqual(['phone', 'email', 'address'])
+    expect(full.textContent).not.toContain('[image: phone]')
+    expect(full.textContent).toContain('(832) 871-4166 ext. 121')
+    // Call dials the number alone, the extension kept as words; no Text on a number with an extension.
+    const call = within(full).getByTestId('body-call') as HTMLAnchorElement
+    expect(call.getAttribute('href')).toBe('tel:+18328714166')
+    expect(within(full).queryByTestId('body-text')).toBeNull()
+    fireEvent.click(call)
+    expect(acts.onCall).toHaveBeenCalledWith(expect.objectContaining({ kind: 'phone', number: '(832) 871-4166', ext: '121' }), 'phone')
+    fireEvent.click(within(full).getByTestId('body-email'))
+    expect(acts.onReply).toHaveBeenCalledWith(expect.objectContaining({ kind: 'email', address: 'glenn@maxxbuilders.com' }), 'email')
+    const map = within(full).getByTestId('body-map') as HTMLAnchorElement
+    expect(map.getAttribute('href')).toBe('https://www.google.com/maps/search/?api=1&query=4150%20Bluebonnet%20Dr.%20Suite%20102%20Stafford%2C%20TX%2C%2077477')
+    expect(map.getAttribute('target')).toBe('_blank')
+    fireEvent.click(map)
+    expect(acts.onMap).toHaveBeenCalledWith(expect.objectContaining({ kind: 'address' }))
+    // The tracking links stay plain links, never contact points.
+    expect([...full.querySelectorAll('[data-body-link]')].map((a) => a.getAttribute('href'))).toEqual(['https://server.utags.co/gLCOFBOU', 'https://server.utags.co/yhmOAqla'])
+    cleanup()
+    // With no thread around it, Text and Email are not offered; Call and the map still work on their own.
+    renderWithProviders(<MessageWindow message={m} contact={greg} tile={undefined} onClose={vi.fn()} />)
+    expect(screen.queryByTestId('body-email')).toBeNull()
+    expect(screen.getByTestId('body-call')).toBeTruthy()
+    expect(screen.getByTestId('body-map')).toBeTruthy()
+  })
+
   it('closes on ×, on its backdrop and on Escape, never on a press inside', () => {
     const onClose = vi.fn()
     renderWithProviders(<MessageWindow message={line('m-greg-text-in')} contact={greg} tile={undefined} onClose={onClose} />)
