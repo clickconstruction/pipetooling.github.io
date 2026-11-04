@@ -23,7 +23,7 @@
   .lede { margin: 0 0 12px; color: var(--text-700); max-width: 110ch; }
   .pair { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
   .col { display: grid; gap: 6px; min-width: 0; flex: 1 1 560px; max-width: 620px; }
-  .col.phone { flex: 0 0 375px; max-width: 375px; }
+  .col.phone { flex: 0 1 375px; max-width: min(375px, 100%); }
   .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
   .cap .pick { color: #15803d; }
   .note { font-size: 13px; color: var(--text-600); margin: 6px 0 0; max-width: 110ch; }
@@ -78,6 +78,16 @@
   .themes { display: flex; flex-wrap: wrap; gap: 18px; }
   .themes > div { flex: 1 1 420px; max-width: 620px; display: grid; gap: 6px; }
   .themes .frame { max-height: 560px; }
+  /* a narrow frame, whatever column it sits in, folds like the phone: the strip one wrapping line, a fold's line under its name */
+  .frame { container-type: inline-size; }
+  @container (max-width: 480px) {
+    .strip { flex-wrap: wrap; gap: 0 .15rem; padding: .1rem .25rem; }
+    .seg { flex: 0 1 auto; flex-direction: row; gap: .3rem; padding: .2rem .35rem; border-bottom-width: 2px; }
+    .seg .n, .seg .m { font-size: .78rem; }
+    .arrow { display: none; }
+    .card .head { flex-wrap: wrap; }
+    .card .head span.line { flex-basis: 100%; padding-left: 1.1rem; }
+  }
 </style>
 </head>
 <body>
