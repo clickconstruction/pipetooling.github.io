@@ -194,11 +194,11 @@
   </div>
 </div>
 
-<h2><span class="num">3</span> How they reach it: two ways <span class="tag ask">your call</span></h2>
-<p class="lede">The screen is the same either way. What differs is whether their sign-in stays live for three years.</p>
+<h2><span class="num">3</span> How they reach it: they sign in <span class="tag pick">your call: A</span></h2>
+<p class="lede">The screen is the same either way. You picked A: "When she signs in on the app, it's the only page she can see." B stays here as the fallback.</p>
 <div class="row">
   <div>
-    <div class="cap amber">A · Their login, sealed (what you asked for)</div>
+    <div class="cap green">A · Their login, sealed (picked)</div>
     <div class="fit">
       <div class="signin">
         <div class="logo">ClickTooling</div>
@@ -210,7 +210,7 @@
     </div>
   </div>
   <div>
-    <div class="cap amber">B · A private link, with the sign-in pointing to it</div>
+    <div class="cap">B · A private link, with the sign-in pointing to it (fallback)</div>
     <div class="fit">
       <div class="signin">
         <div class="logo">ClickTooling</div>
@@ -227,7 +227,7 @@
   <tr><th></th><th>A · Login, sealed</th><th>B · Private link</th></tr>
   <tr><td>What they do</td><td>Sign in as always</td><td>Open a bookmarked link, or press Email me my note at sign-in</td></tr>
   <tr><td>What could leak</td><td>Anything one missed fence lets through: pay, customers, the HR file. The sign-in reaches the database, realtime, file storage and the edge functions, and each needs its own lock.</td><td>Only the note. The link reads one row and nothing else.</td></tr>
-  <tr><td>Build</td><td>A new fence on every table, like training mode's but for reads. Every new table forever must call it. Plus the three other doors.</td><td>One table, one public page like the customer portal, one email.</td></tr>
+  <tr><td>Build</td><td>Four locks: one gate before every database request, a read fence on every table (realtime obeys it), a file-storage policy, and a guard in edge functions that use the service role. A probe proves them before anyone is sealed.</td><td>One table, one public page like the customer portal, one email.</td></tr>
   <tr><td>Bring back</td><td>Lift the seal</td><td>Restore the login as today. The link stops showing the note.</td></tr>
 </table>
 </div>
@@ -255,7 +255,7 @@
     <li><b>The end-of-countdown alert is off by default.</b> A return date three years out is a hope, not a promise. The office turns it on when they mean it.</li>
     <li><b>The comparison squeezed B.</b> The first render gave column A most of the table and wrapped B one word a line. The two options now get equal columns.</li>
     <li><b>Email me my note says the same thing for every address.</b> <i>If the team left you a note, it is on its way.</i> Otherwise anyone could type an email and learn who has left.</li>
-    <li><b>I would pick B.</b> The screen they see is the same. A live login for three years has four doors into company data, and one missed lock shows a former employee pay and customer records. B has nothing to lock.</li>
+    <li><b>I would have picked B; you picked A.</b> The screen they see is the same. A live login for three years has four doors into company data, so A ships with a lock on each and a probe that tries every table, view, RPC and file as a sealed account before anyone is sealed. B stays the fallback if the probe cannot pass.</li>
   </ul>
 </div>
 

@@ -2,7 +2,7 @@
 name: "Bring back a teammate who left: one press for the login and the roster row, a new stint, the stale rows"
 number: 256
 group: ready
-status: card and mock-ups 2026-11-03 · nothing built · Bring back's four calls answered the same day (tenure from the day back, roadmap 90 days, wage required, training mode off) · the Away note asked the same day, call 5 (how they reach it) open
+status: card and mock-ups 2026-11-03 · nothing built · Bring back's four calls answered the same day (tenure from the day back, roadmap 90 days, wage required, training mode off) · the Away note asked the same day, call 5 answered: they sign in and it is the only page they see
 summary: >
   A tech finished their last day on 2026-11-03 and plans to come back in three years. End employment
   closes them out well, but the way back is a dev's undo, not a return. Restore brings back the login
@@ -14,10 +14,10 @@ summary: >
   and the rows three years made stale (sign-in, wage, leader, licenses, paperwork). Hire finds the
   archived match and offers it. While they are away, an Away note the office writes person by person
   (a note, a countdown to the day back, how far they are from the shop) is the one screen they find.
-next: PR 1, the kernel `src/lib/people/bringBack.ts`. The Away note's PRs wait on call 5.
-size: L as a train of eight (S · M · M · S · S, then the Away note S · M · S)
-blocker: None for Bring back. The Away note waits on call 5.
-opinion: build draft 1 as drawn after the second pass, and the Away note reached by a private link (call 5, B). Keep the account; never re-hire a returner as a new person, since the hours log, the logbook, the HR file and every job's history hang off the old account.
+next: PR 1, the kernel `src/lib/people/bringBack.ts`. For the Away note, the seal (PR 7) ships and its probe passes before PR 8 lets any archived account sign in.
+size: L as a train of nine (S · M · M · S · S, then the Away note S · L · M · S)
+blocker: None.
+opinion: build draft 1 as drawn after the second pass, and the Away note behind a sealed login (call 5): the seal first, proven by its probe, then the note. Keep the account; never re-hire a returner as a new person, since the hours log, the logbook, the HR file and every job's history hang off the old account.
 mockup: to-dos/bring-back-a-teammate/mockup.html and to-dos/bring-back-a-teammate/away-note.html
 ---
 
@@ -89,6 +89,25 @@ licenses, the HR file, paperwork. That is why a returner must come back on the s
    - **Call or text the office**, the office line.
    - **Tell me when the countdown ends**, off by default: a Needs you item on the day with Bring back… on it.
    - Nothing else: no menu, no jobs, no pay. Bring back takes the note down.
+   - **Reached by signing in** (call 5). They sign in as always and the note is the only page the app draws. The
+     account stays archived, so every list, picker, payroll run, push and email keeps skipping them exactly as
+     today; only the auth ban is skipped while a note is on. *Sealed* means: archived and able to sign in.
+   - **The seal, in four locks**, because the app hiding screens locks nothing. A signed-in person holds a token
+     that reaches the database, realtime, file storage and the edge functions directly.
+     1. **One gate before every database request.** A PostgREST pre-request function (`pgrst.db_pre_request`) refuses
+        every request from an archived caller except `rpc/my_away_note`. It covers tables, views (most run as
+        their owner and skip row rules), every RPC including the security-definer ones, GraphQL, and edge functions
+        that query as the caller. It is one lookup by primary key, the same shape as `is_read_only()`, but it runs on
+        every request for everyone, so its cost is measured on the local bed before it ships.
+     2. **A read fence on every table**, restrictive like training mode's (`apply_read_only_*`) but on reads:
+        `apply_archived_read_blocks()`. It is what realtime obeys, and a second lock behind the gate. It becomes the
+        fourth call every `CREATE TABLE` migration ends with (`CLAUDE.md` and its CI check updated).
+     3. **File storage**: a restrictive policy on `storage.objects` from the same function.
+     4. **Edge functions that switch to the service role** call `_shared/refuseArchivedCaller.ts` first; a CI check,
+        like `check:edge-bundles`, fails a function that reads the caller and skips it.
+   - **Proof before use.** A seal probe on the local full-schema bed signs in as an archived account and tries every
+     table, view, RPC and bucket; only `my_away_note` answers. It runs in CI. Since archived accounts are banned
+     today, the seal changes nothing for anyone until the first note is turned on.
 9. **Hire finds them.** A name or email that matches an archived person stops the form: *"… left on Nov 3, 2026.
    Their hours, logbook and HR file are on that account."* with Bring back and *This is someone else*.
 
@@ -102,14 +121,15 @@ licenses, the HR file, paperwork. That is why a returner must come back on the s
 3. **Wage.** Answered 2026-11-03: yes, required. The wage row must be pressed, Keep or Change, before Bring back
    finishes. It has no Leave open.
 4. **Training mode.** Answered 2026-11-03: off by default. A returner knows the app; the box is there to tick.
-5. **How an away person reaches the note.** Open. **A**, their login sealed: they sign in as always and land on the
+5. **How an away person reaches the note.** Answered 2026-11-03: *"When she signs in on the app, it's the only page
+   she can see."* That is A, with the four locks in decision 8. The choice as it was put: **A**, their login sealed: they sign in as always and land on the
    note, but the sign-in stays live for three years and reaches the database, realtime, file storage and the edge
    functions. Each needs its own lock, and every new table forever needs a fourth fence beside the three in
    `CLAUDE.md`, this one on reads. One missed lock shows a former employee pay, customers or the HR file.
    **B**, a private link: the account is archived and banned as today, and the note lives at a tokened public page
    like the customer portal (`/p/:slug`). The sign-in page, on a banned account, says *This account is resting* and
    offers *Email me my note*, which sends the link to the address on file and says the same words for every
-   address. Draft 1 picks B: the screen they see is the same, and there is nothing to lock.
+   address. Draft 1 had picked B: the screen they see is the same, and there is nothing to lock.
 
 ## Alternatives weighed
 
@@ -119,7 +139,8 @@ licenses, the HR file, paperwork. That is why a returner must come back on the s
   date range, and an HR question about the first stint needs real dates. The bench keeps its notes.
 - **Keep the login unarchived in training mode while they are away.** Lost: three years in every picker and roster,
   and training mode blocks writes only, so every read stays open.
-- **The Away note on a live, sealed login (call 5, A).** Weighed against B above; the owner's call.
+- **A private link instead of the sign-in (call 5, B).** Lost to the owner's call: they want the app itself to be
+  where the note lives. B stays the fallback if the seal probe cannot be made to pass.
 - **Their live location, sent to the office.** Lost: the question is how far they are, which the phone can answer
   alone. Nobody at the office needs to know where a former employee is.
 - **Two equal cards, *Back after time away* and *Ended by mistake*, at the top.** Lost in the second pass: the
@@ -147,8 +168,9 @@ equal columns in the A and B comparison, and the same words from *Email me my no
 | 4 | Hire stops on an archived match and opens Bring back | S |
 | 5 | Tenure readers: the HR tab, the Employment tab and `list_team_member_start_dates` count from the current stint's start (call 1); the desk lists the earlier stints | S |
 | 6 | Kernel `src/lib/people/awayNote.ts` + tests: the countdown parts and bar, the day-of words, the miles and drive words from two points, the sign-in's resting words | S |
-| 7 | Migration: `away_notes` (person, words, countdown date, show city, show call, alert on the day, a link token); the Leave a note window on the desk and in End employment; the public page and the sign-in's Email me my note per call 5; guide + release note | M |
-| 8 | The Needs you item on the countdown's day, with Bring back… | S |
+| 7 | The seal, nothing visible: `caller_is_archived()`, the pre-request gate, `apply_archived_read_blocks()` on every table, the `storage.objects` policy, `refuseArchivedCaller` + its CI check, the `CLAUDE.md` rule, the seal probe in CI. Push and confirm the probe on prod's shape before PR 8 | L |
+| 8 | Migration: `away_notes` (person, words, countdown date, show city, show call, alert on the day) + `my_away_note()`; `archive-user` skips the ban when a note is on and `restore-user` takes the note down; the app's away gate (a signed-in archived account draws only the Away page); the Leave a note window on the desk and in End employment; guide + release note | M |
+| 9 | The Needs you item on the countdown's day, with Bring back… | S |
 
 ## How to verify
 
@@ -157,7 +179,9 @@ assigned. Bring them back with a date a few days out: the login and the roster r
 is clear, the desk lists two stints, the HR file has both lines, and the roadmap task stays in Needs a person
 unless the box was ticked. Then press + Hire with the same name and with the old email; each stops on the match.
 
-For the Away note: leave one for the archived ZZ Test tech with a countdown a few minutes out. Open it the way call 5
-picked. The screen shows only the note, the countdown, the city and the call button; *Use my location* asks the
+For the Away note: leave one for the archived ZZ Test tech with a countdown a few minutes out and sign in as them.
+The app draws only the Away page, and typing any other path lands back on it. With that session's token, a direct
+REST call to `users`, `customers` and an RPC is refused, a storage download is refused, and a realtime subscription
+gets nothing. The screen shows only the note, the countdown, the city and the call button; *Use my location* asks the
 browser only after the press, and the network panel shows no request carrying a position. When the countdown ends
 the screen reads *Today's the day*, and the office's Needs you item appears if it was switched on.
