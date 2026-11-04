@@ -162,12 +162,19 @@ serve(async (req) => {
     // anyone else is a real duplicate.
     const { data: existingUser, error: checkError } = await adminClient
       .from('users')
-      .select('id, email')
+      .select('id, email, name, login_attached_at')
       .eq('email', normalizedEmail)
       .maybeSingle()
 
     if (checkError) {
       return jsonResponse({ error: `Error checking for existing user: ${checkError.message}` }, 500)
+    }
+
+    if (existingUser && (existingUser as { login_attached_at?: string | null }).login_attached_at == null) {
+      // v2.6518 (punch list #260): a person on the roster with no login behind their row. The invite would mint a second
+      // id; the login belongs on theirs — Attach a login on their desk makes it there and sends the sign-in email.
+      const who = ((existingUser as { name?: string | null }).name ?? '').trim() || 'This person'
+      return jsonResponse({ error: `${who} is on the roster with no login. Attach a login from their desk instead, so their hours and pay stay on the same person.` }, 400)
     }
 
     if (existingUser) {

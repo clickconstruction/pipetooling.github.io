@@ -14,7 +14,7 @@ import { CHARGE_STANDINGS, CHARGE_STANDING_HINTS, CHARGE_STANDING_WORDS, chargeS
  * the list. Samples, digital twins and walk testers are left out.
  */
 
-type Person = { id: string; name: string; role: string | null; standing: ChargeStanding; archived: boolean }
+type Person = { id: string; name: string; role: string | null; standing: ChargeStanding; archived: boolean; hasLogin: boolean }
 
 const ROLE_WORDS: Record<string, string> = {
   dev: 'Dev',
@@ -48,11 +48,11 @@ export function WhoCountsAsWhatList() {
     try {
       const { data, error: readError } = await supabase.from('users').select('*').order('name')
       if (readError) throw readError
-      const rows = (data ?? []) as unknown as Array<{ id: string; name: string | null; role: string | null; charge_standing?: unknown; is_sample?: boolean | null; is_digital_twin?: boolean | null; is_walk_tester?: boolean | null; archived_at?: string | null }>
+      const rows = (data ?? []) as unknown as Array<{ id: string; name: string | null; role: string | null; charge_standing?: unknown; is_sample?: boolean | null; is_digital_twin?: boolean | null; is_walk_tester?: boolean | null; archived_at?: string | null; login_attached_at?: string | null }>
       setPeople(
         rows
           .filter((u) => !u.is_sample && !u.is_digital_twin && !u.is_walk_tester && (u.name ?? '').trim() !== '')
-          .map((u) => ({ id: u.id, name: (u.name ?? '').trim(), role: u.role, standing: parseChargeStanding(u.charge_standing), archived: Boolean(u.archived_at) })),
+          .map((u) => ({ id: u.id, name: (u.name ?? '').trim(), role: u.role, standing: parseChargeStanding(u.charge_standing), archived: Boolean(u.archived_at), hasLogin: u.login_attached_at != null })),
       )
     } catch (e) {
       setError(formatErrorMessage(e, 'The people could not be read.'))
@@ -83,7 +83,10 @@ export function WhoCountsAsWhatList() {
     <tr key={p.id} data-testid="who-counts-row">
       <td style={cell}>
         {p.name}
-        <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{ROLE_WORDS[p.role ?? ''] ?? p.role ?? ''}</span>
+        <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+          {ROLE_WORDS[p.role ?? ''] ?? p.role ?? ''}
+          {p.hasLogin ? null : <span title="A person with no sign-in; their days still price by this" style={{ marginLeft: '0.4rem' }}>· no login</span>}
+        </span>
       </td>
       <td style={{ ...cell, textAlign: 'right' }}>
         {editable ? (

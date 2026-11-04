@@ -328,6 +328,15 @@ export function PeopleUsersTab({
           onClick: () => setNeedsSupervision(item.id, !needs),
         })
       }
+      // Punch list #260 (v2.6518): a person with no sign-in behind their row gets one from their desk, on the same id.
+      if (isDev && item.login_attached_at == null && personDesk?.canOpen) {
+        out.push({
+          key: 'attach',
+          label: 'Attach a login',
+          title: 'Give them a sign-in on this same person: their hours, Charged as and pay stay where they are',
+          onClick: () => personDesk.open({ userId: item.id, displayName: item.name, section: 'access' }),
+        })
+      }
       return out
     }
     const person = item as Person
