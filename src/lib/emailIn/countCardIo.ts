@@ -72,7 +72,7 @@ export function supabaseEmailCountIo(client: SupabaseClient<Database> = supabase
       ])
       checkSupabaseError(rows, 'read the boxes the app counts')
       checkSupabaseError(users, 'read the office team')
-      return { ...settings, rows: rows.data ?? [], people: users.data.map((u) => ({ id: u.id, name: (u.name ?? '').trim() || u.email, email: u.email })) }
+      return { ...settings, rows: rows.data ?? [], people: users.data.map((u) => ({ id: u.id, name: (u.name ?? '').trim() || u.email || '', email: u.email })) }
     },
     setOn: (on) => writeSetting(client, APP_SETTINGS_KEY_EMAIL_COUNT_ON_V1, on ? 'true' : 'false', 'turn counting mail on or off', COUNT_NOT_SAVED),
     setLead: (userId) => writeSetting(client, APP_SETTINGS_KEY_EMAIL_COUNT_LEAD_V1, userId ?? '', 'name who sees everyone’s rows', COUNT_NOT_SAVED),

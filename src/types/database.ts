@@ -34886,7 +34886,7 @@ export type Database = {
           counttooling_user_id: string | null
           created_at: string | null
           dispatch_mode_enabled: boolean | null
-          email: string
+          email: string | null
           estimator_prospects_access: boolean
           estimator_service_type_ids: string[] | null
           helpers_service_type_ids: string[] | null
@@ -34895,6 +34895,7 @@ export type Database = {
           is_sample: boolean
           is_walk_tester: boolean
           last_sign_in_at: string | null
+          login_attached_at: string | null
           my_mail_hidden_labels: string[]
           my_mail_on: boolean
           name: string
@@ -34921,7 +34922,7 @@ export type Database = {
           counttooling_user_id?: string | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
-          email: string
+          email?: string | null
           estimator_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
           helpers_service_type_ids?: string[] | null
@@ -34930,6 +34931,7 @@ export type Database = {
           is_sample?: boolean
           is_walk_tester?: boolean
           last_sign_in_at?: string | null
+          login_attached_at?: string | null
           my_mail_hidden_labels?: string[]
           my_mail_on?: boolean
           name: string
@@ -34956,7 +34958,7 @@ export type Database = {
           counttooling_user_id?: string | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
-          email?: string
+          email?: string | null
           estimator_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
           helpers_service_type_ids?: string[] | null
@@ -34965,6 +34967,7 @@ export type Database = {
           is_sample?: boolean
           is_walk_tester?: boolean
           last_sign_in_at?: string | null
+          login_attached_at?: string | null
           my_mail_hidden_labels?: string[]
           my_mail_on?: boolean
           name?: string
