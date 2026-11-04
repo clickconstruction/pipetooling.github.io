@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseLicenseType } from './logbook'
-import { LICENSE_LEVELS, cleanLicenseNumber, licenseTypeText, tdlrAnswer, tdlrNumberFor, ymdFromMmDdYyyy } from './licenseText'
+import { LICENSE_LEVELS, TDLR_TIMEOUT_MS, TDLR_TIMEOUT_REASON, cleanLicenseNumber, isTimeoutError, licenseTypeText, tdlrAnswer, tdlrNumberFor, ymdFromMmDdYyyy } from './licenseText'
 
 describe('licenseTypeText', () => {
   it('writes every trade and level so the logbook reads it back the same', () => {
@@ -31,6 +31,25 @@ describe('TDLR', () => {
     expect(tdlrNumberFor('TACLA39079E')).toBe('39079')
     expect(tdlrNumberFor('#049889')).toBe('49889')
     expect(tdlrNumberFor('ABC')).toBeNull()
+  })
+  it('reads a Class B contractor number too, and refuses a prefix TDLR never prints', () => {
+    expect(tdlrNumberFor('TACLB12345C')).toBe('12345')
+    expect(tdlrNumberFor('taclb0012345')).toBe('12345')
+    expect(tdlrNumberFor('TACAA12345')).toBeNull()
+  })
+  it('reads the technician level off TDLR’s subtype: REG is the registered tech, CER the certified', () => {
+    const reg = [{ license_type: 'A/C Technician', license_subtype: 'REG', license_number: '158729', owner_name: 'BLOEMER, PAIGE', license_expiration_date_mmddccyy: '12/29/2026' }]
+    const cer = [{ license_type: 'A/C Technician', license_subtype: 'CER', license_number: '158730', owner_name: 'CARR, DANA', license_expiration_date_mmddccyy: '01/15/2027' }]
+    expect(tdlrAnswer(reg, 'hvac', 'registered_tech')).toEqual({ kind: 'found', holder: 'BLOEMER, PAIGE', expiryYmd: '2026-12-29', type: 'A/C Technician REG' })
+    expect(tdlrAnswer(reg, 'hvac', 'certified_tech')).toEqual({ kind: 'none', reason: 'TDLR lists that number as A/C Technician REG, a different level.' })
+    expect(tdlrAnswer(cer, 'hvac', 'certified_tech')).toMatchObject({ kind: 'found', holder: 'CARR, DANA', type: 'A/C Technician CER' })
+    expect(tdlrAnswer(cer, 'hvac', 'registered_tech').kind).toBe('none')
+  })
+  it('names the AbortSignal timeout and nothing else', () => {
+    expect(isTimeoutError({ name: 'TimeoutError' })).toBe(true)
+    expect(isTimeoutError(new Error('Load failed'))).toBe(false)
+    expect(isTimeoutError(null)).toBe(false)
+    expect(TDLR_TIMEOUT_REASON).toContain(`${TDLR_TIMEOUT_MS / 1000} seconds`)
   })
   it('picks the license of this trade and level when one number holds several', () => {
     const rows = [

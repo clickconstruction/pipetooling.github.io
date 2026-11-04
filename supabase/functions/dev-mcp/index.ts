@@ -11,7 +11,7 @@ import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, driveFilingRefusal, is
 import { EVIDENCE_FILE_MAX_BYTES, evidenceMime, evidenceStoragePath } from '../_shared/personEvidence.ts'
 import { getHoursStatement, hoursStatementClockLabel, prepareHoursStatementWrite, sendHoursStatementAsDev, type HoursStatementPrepared } from '../_shared/devMcpHoursStatement.ts'
 import { hoursStatementLongDate } from '../_shared/hoursStatement.ts'
-import { cleanLicenseNumber, tdlrAnswer, tdlrNumberFor, tdlrQueryUrl, tradeCheckedByTdlr, type LicenseLevel, type LicenseTrade, type TdlrRow } from '../_shared/gcKernels/lib/logbook/licenseText.ts'
+import { TDLR_TIMEOUT_MS, TDLR_TIMEOUT_REASON, cleanLicenseNumber, isTimeoutError, tdlrAnswer, tdlrNumberFor, tdlrQueryUrl, tradeCheckedByTdlr, type LicenseLevel, type LicenseTrade, type TdlrRow } from '../_shared/gcKernels/lib/logbook/licenseText.ts'
 import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planLinkKey, planPartApply, planPartDryRun, readPlanPartWorld, type FiledPlansJob, type FiledPlansPart, type PartReads, type PartWrites, type PlanPartPayload } from '../_shared/devMcpPlanSets.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
@@ -72,7 +72,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.24.0'
+const SERVER_VERSION = '0.24.1'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -953,7 +953,14 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (!tradeCheckedByTdlr(trade)) return refused('check_license reads TDLR, which issues electrical and HVAC licenses: trade is electrical or hvac.', { target: number || null })
       const bare = tdlrNumberFor(number)
       if (!bare) return refused(`check_license needs the license number as printed ('783430', 'TACLA39079E'); "${number}" has no number TDLR lists.`, { target: number || null })
-      const res = await fetch(tdlrQueryUrl(bare))
+      // v2.6485: a Socrata stall ends after TDLR_TIMEOUT_MS with the wait named, never a call that hangs.
+      let res: Response
+      try {
+        res = await fetch(tdlrQueryUrl(bare), { signal: AbortSignal.timeout(TDLR_TIMEOUT_MS) })
+      } catch (e) {
+        if (isTimeoutError(e)) return refused(TDLR_TIMEOUT_REASON, { target: bare })
+        throw e
+      }
       if (!res.ok) return refused(`TDLR's open list answered ${res.status}. Try again in a minute.`, { target: bare })
       const rows = (await res.json()) as TdlrRow[]
       return ok({ source: tdlrQueryUrl(bare), number: bare, answer: tdlrAnswer(rows, trade, level), every_license_under_this_number: rows.map((r) => ({ type: [r.license_type, r.license_subtype].filter(Boolean).join(' '), holder: r.owner_name ?? r.business_name ?? null, expires: r.license_expiration_date_mmddccyy ?? null })) }, { target: bare })

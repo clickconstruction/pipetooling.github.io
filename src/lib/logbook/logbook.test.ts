@@ -41,9 +41,22 @@ describe('goalsFor', () => {
   })
   it('climbs from the highest rung held, and names a top rung with no requirement', () => {
     const held = ['Journeyman Plumber #1', 'Master Plumber #2'].map((t) => parseLicenseType(t))
-    const { goals, topOfLadder } = goalsFor(held)
+    const { goals, topOfLadder, noRuleYet } = goalsFor(held)
     expect(goals).toEqual([])
     expect(topOfLadder[0]?.cls).toBe('master')
+    expect(noRuleYet).toEqual([])
+  })
+  it('calls a journeyman electrician the rung under master, not the top, when master has no rule seeded', () => {
+    const held = [parseLicenseType('Journeyman Electrician #4')]
+    const { goals, topOfLadder, noRuleYet } = goalsFor(held)
+    expect(goals).toEqual([])
+    expect(topOfLadder).toEqual([])
+    expect(noRuleYet).toEqual([{ holds: held[0], next: { level: 'master', name: 'Master Electrician' } }])
+  })
+  it('names the top rung only when the trade has no higher level', () => {
+    const { topOfLadder, noRuleYet } = goalsFor(['AC Contractor TACLA39079E', 'Electrical Contractor #5'].map((t) => parseLicenseType(t)))
+    expect(topOfLadder.map((l) => l.cls)).toEqual(['contractor', 'contractor'])
+    expect(noRuleYet).toEqual([])
   })
 })
 

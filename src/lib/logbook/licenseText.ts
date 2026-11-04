@@ -76,10 +76,13 @@ export type TdlrRow = {
   license_expiration_date_mmddccyy?: string
 }
 
-/** TDLR's numbers are bare digits: "TACLA39079E" (how the AC contractor number is printed) is 39079. */
+/**
+ * TDLR's numbers are bare digits: "TACLA39079E" (how a Class A AC contractor number is printed) is
+ * 39079, and a Class B contractor's "TACLB12345C" is 12345. TDLR prints no other prefix.
+ */
 export function tdlrNumberFor(raw: string): string | null {
   const n = cleanLicenseNumber(raw)
-  const m = /^(?:TAC[LA]A)?0*(\d+)[A-Z]?$/i.exec(n)
+  const m = /^(?:TACL[AB])?0*(\d+)[A-Z]?$/i.exec(n)
   return m?.[1] ?? null
 }
 
@@ -88,15 +91,29 @@ export function tdlrQueryUrl(number: string): string {
   return `${TDLR_LICENSES_URL}?license_number=${encodeURIComponent(number)}`
 }
 
-/** TDLR's license_type for a trade and level, as the open list writes it. */
-const TDLR_TYPE: Partial<Record<string, RegExp>> = {
-  'electrical:apprentice': /^apprentice electrician$/i,
-  'electrical:journeyman': /^journeyman electrician$/i,
-  'electrical:master': /^master electrician$/i,
-  'electrical:contractor': /^electrical contractor$/i,
-  'hvac:registered_tech': /^a\/c technician$/i,
-  'hvac:certified_tech': /^a\/c technician$/i,
-  'hvac:contractor': /^a\/c contractor$/i,
+/** How long a TDLR read waits before it gives up, so a Socrata stall never leaves Checking… lit. */
+export const TDLR_TIMEOUT_MS = 10_000
+/** The reason a read that hit that wait reports, the wait named. */
+export const TDLR_TIMEOUT_REASON = `TDLR did not answer within ${TDLR_TIMEOUT_MS / 1000} seconds. Try again in a minute.`
+
+/** True for the error `AbortSignal.timeout` throws (a DOMException named TimeoutError, in a browser and in Deno). */
+export function isTimeoutError(e: unknown): boolean {
+  return typeof e === 'object' && e !== null && (e as { name?: unknown }).name === 'TimeoutError'
+}
+
+/**
+ * TDLR's license_type for a trade and level, as the open list writes it. The two technician levels
+ * share one type and differ only in license_subtype (REG registered, CER certified); a contractor's
+ * subtype carries its class (A or B) and its endorsement, which the level never asks about.
+ */
+const TDLR_TYPE: Partial<Record<string, { type: RegExp; subtype?: RegExp }>> = {
+  'electrical:apprentice': { type: /^apprentice electrician$/i },
+  'electrical:journeyman': { type: /^journeyman electrician$/i },
+  'electrical:master': { type: /^master electrician$/i },
+  'electrical:contractor': { type: /^electrical contractor$/i },
+  'hvac:registered_tech': { type: /^a\/c technician$/i, subtype: /^REG$/i },
+  'hvac:certified_tech': { type: /^a\/c technician$/i, subtype: /^CER$/i },
+  'hvac:contractor': { type: /^a\/c contractor$/i },
 }
 
 export function tradeCheckedByTdlr(trade: LicenseTrade): boolean {
@@ -113,16 +130,29 @@ export function ymdFromMmDdYyyy(s: string | undefined): string | null {
   return m ? `${m[3]}-${m[1]}-${m[2]}` : null
 }
 
-/** One number can belong to several licenses of different types; pick the one of this trade and level. */
+/** "A/C Technician REG": the type and the subtype as TDLR prints them, for the answer and for a reason. */
+function tdlrTypeWords(r: TdlrRow): string {
+  return [r.license_type, r.license_subtype].filter(Boolean).join(' ')
+}
+
+/**
+ * One number can belong to several licenses of different types; pick the one of this trade and level.
+ * When the number holds this type at another level (a registered tech checked as certified), the
+ * reason names the level TDLR lists.
+ */
 export function tdlrAnswer(rows: readonly TdlrRow[], trade: LicenseTrade, level: LicenseLevel | null): TdlrAnswer {
   const pattern = level ? TDLR_TYPE[`${trade}:${level}`] : undefined
   if (!pattern) return { kind: 'none', reason: 'TDLR does not issue this kind of license.' }
-  const hit = rows.find((r) => pattern.test((r.license_type ?? '').trim()))
-  if (!hit) return { kind: 'none', reason: 'TDLR has no license of this kind under that number.' }
+  const ofType = rows.filter((r) => pattern.type.test((r.license_type ?? '').trim()))
+  const hit = ofType.find((r) => !pattern.subtype || pattern.subtype.test((r.license_subtype ?? '').trim()))
+  if (!hit) {
+    const other = ofType[0]
+    return { kind: 'none', reason: other ? `TDLR lists that number as ${tdlrTypeWords(other)}, a different level.` : 'TDLR has no license of this kind under that number.' }
+  }
   return {
     kind: 'found',
     holder: (hit.owner_name ?? hit.business_name ?? '').trim(),
     expiryYmd: ymdFromMmDdYyyy(hit.license_expiration_date_mmddccyy),
-    type: [hit.license_type, hit.license_subtype].filter(Boolean).join(' '),
+    type: tdlrTypeWords(hit),
   }
 }
