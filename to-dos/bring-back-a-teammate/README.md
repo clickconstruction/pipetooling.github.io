@@ -2,7 +2,7 @@
 name: "Bring back a teammate who left: one press for the login and the roster row, a new stint, the stale rows"
 number: 256
 group: gated
-status: card and mock-up 2026-11-03 · nothing built · tenure (from the day back) and roadmap (90 days) answered · two calls open
+status: card and mock-up 2026-11-03 · nothing built · tenure (from the day back), roadmap (90 days) and wage (required) answered · one call open
 summary: >
   A tech finished their last day on 2026-11-03 and plans to come back in three years. End employment
   closes them out well, but the way back is a dev's undo, not a return. Restore brings back the login
@@ -13,9 +13,9 @@ summary: >
   archived desk: a back-on date, both halves restored together, a new stint kept beside the old one,
   and the rows three years made stale (sign-in, wage, leader, licenses, paperwork). Hire finds the
   archived match and offers it.
-next: the owner's two open calls (wage confirm, training mode); then PR 1, the kernel.
+next: the owner's last open call (training mode on by default); then PR 1, the kernel.
 size: M as a train of five (S · M · M · S · S)
-blocker: The owner's two open calls below.
+blocker: The owner's last open call below.
 opinion: build draft 1 as drawn after the second pass. Keep the account; never re-hire a returner as a new person, since the hours log, the logbook, the HR file and every job's history hang off the old account.
 mockup: to-dos/bring-back-a-teammate/mockup.html
 ---
@@ -64,7 +64,7 @@ licenses, the HR file, paperwork. That is why a returner must come back on the s
    row that has dates.
 5. **The rows three years made stale**, built by a returner variant of the Start employment checklist:
    - **Sign-in email**, with Change… and Send sign-in email (dev only, as today). Cannot be left open.
-   - **Wage**, with the date it was set. Keep or Change; Change is the main press. Cannot be left open.
+   - **Wage**, with the date it was set. Keep or Change; Change is the main press. Cannot be left open (call 3).
    - **Leader**, offering the old leader by name only while that leader is active. Cannot be left open.
    - **Licenses**, red when one expired while they were away. Can be left open with a reason.
    - **Paperwork**: signed in the old stint does not count; assign the packet again. Can be left open.
@@ -82,7 +82,8 @@ licenses, the HR file, paperwork. That is why a returner must come back on the s
    stint's start.
 2. **Old roadmap tasks.** Answered 2026-11-03: yes, 90 days. Away 90 days or less, the box starts ticked; past 90
    days it starts unticked. The office can tick or untick it either way.
-3. **Wage.** Must the wage row be pressed (Keep or Change) before Bring back finishes? Draft 1 says yes.
+3. **Wage.** Answered 2026-11-03: yes, required. The wage row must be pressed, Keep or Change, before Bring back
+   finishes. It has no Leave open.
 4. **Training mode on by default** for a returner, as for a new hire?
 
 ## Alternatives weighed
