@@ -1,4 +1,5 @@
-// notify-dispatch-request: the dispatch group's push when a request is filed, the requester's when it is answered.
+// notify-dispatch-request: the dispatch group's push when a request is filed, the requester's when it is answered,
+// reopened, or replied to on a stage check (punch list #245 PR 2b, v2.6495).
 // A person's hours (punch list #141 PR 5, v2.6217): every push goes through _shared/pushHoursSend.ts, which pushes
 // the people on and holds a person outside their Push me hours, writing the row as `held` and sending nothing; the
 // dispatchers on still hear, and the requester sees the answer on Job Mode's strip.
@@ -26,8 +27,12 @@ const MAX_PUSH_BODY_LEN = 220
  *   the Job Mode "My requests" strip / Settings push log still show the
  *   answer. Caller must be a dispatch group member, a dev, or the row's
  *   `closed_by_user_id`.
+ * - 'replied' (v2.6495, punch list #245 PR 2b) — Dispatch wrote a note on an
+ *   open stage check: push the REQUESTER with the note, words first, and write
+ *   their `notification_history` row. `note` is required. Caller must be a
+ *   dispatch group member or a dev.
  */
-type NotifyMode = 'created' | 'closed' | 'reopened'
+type NotifyMode = 'created' | 'closed' | 'reopened' | 'replied'
 
 interface Body {
   dispatch_request_id?: string
@@ -60,11 +65,18 @@ function truncateTitle(title: string, maxLen: number): string {
   return `${title.slice(0, Math.max(0, maxLen - 1))}…`
 }
 
+type AnswerMode = 'closed' | 'reopened' | 'replied'
+
 /** Mirrors `composeDispatchClosurePush` in src/lib/dispatchRequestClosure.ts — keep the wording in step. */
-function composeClosurePush(title: string, note: string | null, mode: 'closed' | 'reopened'): { title: string; body: string } {
-  const head = mode === 'closed' ? 'Handled' : 'Reopened'
+function composeClosurePush(title: string, note: string | null, mode: AnswerMode): { title: string; body: string } {
   const cleanTitle = truncateTitle(title.trim() || 'your request', 160)
   const cleanNote = (note ?? '').trim()
+  // A reply is the words first: the crew reads the answer on the lock screen, the check after it.
+  if (mode === 'replied') {
+    const raw = cleanNote ? `${cleanNote} — ${cleanTitle}` : cleanTitle
+    return { title: 'Dispatch replied', body: raw.length > MAX_PUSH_BODY_LEN ? `${raw.slice(0, MAX_PUSH_BODY_LEN - 1)}…` : raw }
+  }
+  const head = mode === 'closed' ? 'Handled' : 'Reopened'
   const raw = cleanNote ? `${head}: ${cleanTitle} — ${cleanNote}` : `${head}: ${cleanTitle}`
   return {
     title: mode === 'closed' ? 'Dispatch answered' : 'Dispatch reopened your request',
@@ -81,7 +93,7 @@ function json(status: number, payload: unknown): Response {
 
 
 /**
- * closed/reopened: one recipient — the requester. Pushes to each of their
+ * closed/reopened/replied: one recipient — the requester. Pushes to each of their
  * subscriptions (if any) and ALWAYS writes their `notification_history` row,
  * so the answer is on record even for people who never enabled push. Skips
  * entirely when the closer is the requester (nobody needs a push about their
@@ -90,7 +102,7 @@ function json(status: number, payload: unknown): Response {
 async function notifyRequester(
   adminClient: SupabaseClient,
   row: DispatchRow,
-  mode: 'closed' | 'reopened',
+  mode: AnswerMode,
   bodyNote: string | null,
   callerId: string,
 ): Promise<Response> {
@@ -109,7 +121,7 @@ async function notifyRequester(
   const noteSource = (bodyNote ?? '').trim() || (mode === 'closed' ? (row.closed_note ?? '').trim() : '')
   const note = noteSource ? (noteSource.length > CLOSURE_NOTE_MAX ? `${noteSource.slice(0, CLOSURE_NOTE_MAX - 1)}…` : noteSource) : null
   const push = composeClosurePush(row.title, note, mode)
-  const templateType = mode === 'closed' ? 'dispatch_request_closed' : 'dispatch_request_reopened'
+  const templateType = mode === 'closed' ? 'dispatch_request_closed' : mode === 'reopened' ? 'dispatch_request_reopened' : 'dispatch_request_replied'
 
   // Through the requester's hours (#141 PR 5): off, the helper writes their row as held and sends nothing.
   const result = await sendPushHonouringHours(
@@ -203,9 +215,12 @@ serve(async (req) => {
     if (!dispatch_request_id || typeof dispatch_request_id !== 'string') {
       return json(400, { error: 'Missing dispatch_request_id' })
     }
-    const mode: NotifyMode = rawMode === 'closed' || rawMode === 'reopened' ? rawMode : 'created'
+    const mode: NotifyMode = rawMode === 'closed' || rawMode === 'reopened' || rawMode === 'replied' ? rawMode : 'created'
     if (serviceCaller && mode !== 'created') {
       return json(403, { error: 'Internal callers may only announce a new request' })
+    }
+    if (mode === 'replied' && !(rawNote ?? '').trim()) {
+      return json(400, { error: 'A reply needs words' })
     }
 
     // RLS scopes this read: the author, devs, and dispatch group members can see the row.
@@ -242,7 +257,7 @@ serve(async (req) => {
         allowed = (me as { role?: string | null } | null)?.role === 'dev'
       }
       if (!allowed) {
-        return json(403, { error: 'Only Dispatch can notify a requester about a close or reopen' })
+        return json(403, { error: 'Only Dispatch can notify a requester about a close, a reopen or a reply' })
       }
       return await notifyRequester(adminClient, dispatchRow, mode, rawNote ?? null, user.id)
     }

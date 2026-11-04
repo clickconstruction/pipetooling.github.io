@@ -14,8 +14,9 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useAuth } from '../hooks/useAuth'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
-import { STAGE_CHECK_ACTION, STAGE_CHECK_WORDS, stageCheckPayloadFrom } from '../lib/jobs/stageCheckDispatch'
+import { STAGE_CHECK_WORDS, isStageCheckRequest, stageCheckPayloadFrom } from '../lib/jobs/stageCheckDispatch'
 import { StageCheckWaitingLine } from './stageChecklists/StageCheckWaitingLine'
+import { StageCheckWindow, type StageCheckWindowIo } from './stageChecklists/StageCheckWindow'
 import { OPEN_JOB_FROM_BID_ACTION } from '../lib/bids/wonDispatchHandoff'
 import { canCreateJobFromBid } from '../lib/bids/wonMomentActions'
 import { jobDraftFromPayload, jobDraftWords } from '../lib/bids/jobDraft'
@@ -134,6 +135,8 @@ type DispatchInboxSectionProps = {
   onLogCall?: (requestId: string, phoneDisplay: string) => void
   /** Row whose priority change is in flight. */
   prioritySavingId?: string | null
+  /** The context window's live reads (punch list #245 PR 2b); the sheet's own io when absent, a fake under test. */
+  stageCheckWindowIo?: StageCheckWindowIo
 }
 
 export function DispatchInboxSection({
@@ -164,6 +167,7 @@ export function DispatchInboxSection({
   onSetPriority,
   onLogCall,
   prioritySavingId = null,
+  stageCheckWindowIo,
 }: DispatchInboxSectionProps) {
   // v2.3143: the "open the job" to-do's one button runs the app-level New Job door itself.
   const jobFormModal = useJobFormModal()
@@ -173,6 +177,50 @@ export function DispatchInboxSection({
   const { user: authUser, role } = useAuth()
   // Customer Waiting (v2.3247): which row the lower/raise sheet is open for.
   const [prioritySheet, setPrioritySheet] = useState<{ requestId: string; direction: 'lower' | 'raise'; label: string } | null>(null)
+  // A stage check's context window (punch list #245 PR 2b): the open row it is drawn for. Its thread is the row's
+  // expanded thread, so the notes load through the same path and the inline block stays folded under it.
+  const [stageCheckWindowId, setStageCheckWindowId] = useState<string | null>(null)
+  const closeStageCheckWindow = (requestId: string) => {
+    setStageCheckWindowId(null)
+    if (expandedRequestId === requestId) onToggleExpandRequest(requestId)
+  }
+  const windowRow = stageCheckWindowId ? (requests.find((r) => r.id === stageCheckWindowId) ?? null) : null
+  const windowPayload = windowRow ? stageCheckPayloadFrom(windowRow.pending_payload) : null
+  const stageCheckWindowEl = windowRow ? (
+    <StageCheckWindow
+      row={windowRow}
+      notes={notesByRequestId[windowRow.id] ?? []}
+      notesLoading={notesLoadingRequestId === windowRow.id}
+      viewerId={authUser?.id ?? null}
+      canAct={canAddNotes}
+      draft={noteDraft}
+      onDraftChange={onNoteDraftChange}
+      saving={noteSubmitRequestId === windowRow.id}
+      onReply={() => onSubmitNote(windowRow.id)}
+      onReplyAndClose={() => onSubmitNoteAndClose(windowRow.id)}
+      onOpenJob={
+        jobDetailModal && windowRow.job_ledger_id
+          ? () => {
+              const jobId = windowRow.job_ledger_id as string
+              closeStageCheckWindow(windowRow.id)
+              jobDetailModal.openJobDetail({ jobId })
+            }
+          : null
+      }
+      onOpenCheck={
+        jobDetailModal && windowRow.job_ledger_id && windowPayload
+          ? () => {
+              const jobId = windowRow.job_ledger_id as string
+              closeStageCheckWindow(windowRow.id)
+              jobDetailModal.openJobDetail({ jobId, openStageChecklist: { fixtureId: windowPayload.fixture_id, questionId: windowPayload.question_id } })
+            }
+          : null
+      }
+      onLower={onSetPriority ? () => setPrioritySheet({ requestId: windowRow.id, direction: 'lower', label: windowRow.title.slice(0, 80) }) : null}
+      onClose={() => closeStageCheckWindow(windowRow.id)}
+      io={stageCheckWindowIo}
+    />
+  ) : null
   // Job accounts at the counter (v2.3424): the Mark opened / Not needed sheet for an open_job_account errand.
   const [jobAccountSheet, setJobAccountSheet] = useState<{
     requestId: string
@@ -250,6 +298,14 @@ export function DispatchInboxSection({
                 // DISPATCH_REQUEST_AGE — 46 days no longer looks like 4. Opening an
                 // aging row records `aging_item_opened` so the backlog stays measurable.
                 const openAge = isClosed ? null : describeAge(req.created_at, undefined, DISPATCH_REQUEST_AGE)
+                // A check the crew could not answer (punch list #245): the one predicate the tag, the doors, the window
+                // and the Customer waiting banner's exclusion all read. The stage and the check ride in the payload,
+                // which the inbox has read since v2.1615, so the row's doors need no new column.
+                const isStageCheck = isStageCheckRequest(req)
+                const stageCheck = isStageCheck ? stageCheckPayloadFrom(req.pending_payload) : null
+                // An open stage check opens its context window on the row press (PR 2b); its thread loads as the
+                // expanded thread does, and the inline block stays folded while the window has it.
+                const windowed = isStageCheck && !isClosed
                 const toggleThread = () => {
                   if (!expanded && openAge && shouldRecordAgingOpen(openAge.state)) {
                     recordNavClick(
@@ -258,6 +314,11 @@ export function DispatchInboxSection({
                       AGING_ITEM_OPENED_CONTROL,
                       agingItemOpenedTarget('dispatch-request', openAge.days, openAge.state),
                     )
+                  }
+                  if (windowed) {
+                    if (!expanded) onToggleExpandRequest(req.id)
+                    setStageCheckWindowId(req.id)
+                    return
                   }
                   onToggleExpandRequest(req.id)
                 }
@@ -354,10 +415,7 @@ export function DispatchInboxSection({
                     Open the job
                   </button>
                 ) : null
-                // A check the crew could not answer (punch list #245): the tag, Open the job and Open the check. The
-                // stage and the check ride in the payload, which the inbox has read since v2.1615, so the row's doors
-                // need no new column; the two id columns are the sheet's and PR 2's.
-                const stageCheck = req.pending_action === STAGE_CHECK_ACTION ? stageCheckPayloadFrom(req.pending_payload) : null
+                // The row's two doors, Open the job and Open the check, on an open stage check whose payload names the check.
                 const stageCheckJobId = stageCheck && !isClosed && jobDetailModal ? req.job_ledger_id : null
                 const stageCheckBtnStyle = {
                   padding: '0.35rem 0.75rem',
@@ -700,7 +758,7 @@ export function DispatchInboxSection({
                       >
                         {/* The Customer waiting card reads a portal customer's name, number and Call; a stage check that
                             leads the inbox keeps its own row under a red reason-and-wait line instead (v2.6462). */}
-                        {waiting && !stageCheck ? (
+                        {waiting && !isStageCheck ? (
                           <CustomerWaitingRequestCard
                             row={req}
                             narrow={narrow}
@@ -712,8 +770,8 @@ export function DispatchInboxSection({
                           />
                         ) : (
                           <div style={{ fontWeight: 500 }}>
-                            {waiting && stageCheck ? <StageCheckWaitingLine requestId={req.id} reason={stageCheck.reason} createdAt={req.created_at} /> : null}
-                            {stageCheck ? (
+                            {waiting && isStageCheck ? <StageCheckWaitingLine requestId={req.id} reason={stageCheck?.reason} createdAt={req.created_at} /> : null}
+                            {isStageCheck ? (
                               <span
                                 data-dispatch-stage-check-tag={req.id}
                                 style={{ display: 'inline-block', marginRight: 6, padding: '0.05rem 0.5rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', verticalAlign: 'middle' }}
@@ -822,7 +880,7 @@ export function DispatchInboxSection({
                         {openFieldEstimateBtn}
                       </div>
                     </div>
-                    {expanded && (
+                    {expanded && !windowed && (
                       <div
                         style={{
                           marginTop: '0.75rem',
@@ -842,17 +900,6 @@ export function DispatchInboxSection({
                               style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid var(--border-red)', background: 'var(--surface)', color: 'var(--text-red-700)', cursor: 'pointer' }}
                             >
                               Raise priority
-                            </button>
-                          ) : null}
-                          {!isClosed && waiting && stageCheck && onSetPriority ? (
-                            <button
-                              type="button"
-                              data-dispatch-stage-check-lower={req.id}
-                              onClick={() => setPrioritySheet({ requestId: req.id, direction: 'lower', label: req.title.slice(0, 80) })}
-                              title="Take it off the top of the list without closing it. Asks why."
-                              style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
-                            >
-                              {STAGE_CHECK_WORDS.lower}
                             </button>
                           ) : null}
                         </div>
@@ -1104,6 +1151,7 @@ export function DispatchInboxSection({
               })}
             </ul>
           )}
+          {stageCheckWindowEl}
           {prioritySheetEl}
           {jobAccountSheetEl}
         </div>

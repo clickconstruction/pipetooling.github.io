@@ -12,7 +12,9 @@
  * names a plan sheet wears a chip that opens the job's Plans folder. A check the crew cannot answer goes to Dispatch
  * from the open row (punch list #245, PR 1): the quiet press **Send to Dispatch** opens `StageCheckDispatchSheet` on
  * top, and the row wears *With Dispatch · 12 min · need a part* while the request is open; the inbox opens this sheet
- * with that row open through `initialOpenQuestionId`. Every press writes at once, so a sheet closed
+ * with that row open through `initialOpenQuestionId`. Dispatch's newest reply sits under the chip (PR 2b), and a pick,
+ * a skip or a take off on that row reads the request again, since it closes itself, and pushes the sender the closing
+ * note when someone else settled it. Every press writes at once, so a sheet closed
  * early keeps what was answered. The photo is shrunk on the phone, named for the stage and
  * the question (`checklistPhotoName`), put in the bucket and filed in the customer's Drive folder by the photo-save
  * sweep. The foot carries the rule: the stage reads not ready on the Pipeline until every question is answered. The
@@ -75,7 +77,7 @@ import {
   withOrder,
 } from '../../lib/jobs/stageChecklistItems'
 import type { AnswerWho, JobAnswer, StageChecklistSheetIo } from '../../lib/jobs/stageChecklistSheetIo'
-import { STAGE_CHECK_WORDS, openStageCheckFor, withDispatchWords, type OpenStageCheck } from '../../lib/jobs/stageCheckDispatch'
+import { STAGE_CHECK_WORDS, dispatchReplyWords, openStageCheckFor, withDispatchWords, type OpenStageCheck } from '../../lib/jobs/stageCheckDispatch'
 import { StageCheckDispatchSheet } from './StageCheckDispatchSheet'
 import { CHECKLIST_PHOTO_WORDS } from '../../lib/photos/reportPhotoChecklist'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -154,6 +156,8 @@ const askBox: CSSProperties = { display: 'grid', gap: '0.4rem', background: 'var
 const headPress: CSSProperties = { ...quiet, minHeight: 44 }
 const arrow: CSSProperties = { ...quiet, minWidth: 44, minHeight: 44, fontSize: '0.9rem', padding: 0, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }
 const withDispatchTag: CSSProperties = { display: 'inline-block', padding: '0.05rem 0.5rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }
+// Dispatch's reply under the crew's row (#245 PR 2b), until the row is answered.
+const dispatchReply: CSSProperties = { display: 'block', marginTop: '0.2rem', fontSize: '0.8125rem', color: 'var(--text-700)', fontStyle: 'italic' }
 const skippedRow: CSSProperties = { display: 'grid', gridTemplateColumns: '1.4rem minmax(0, 1fr) auto', gap: '0.15rem 0.5rem', alignItems: 'start', padding: '0.55rem 0', borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }
 
 export function StageChecklistSheet({ jobId, stage, questions, answers: given, who, role = null, canAuthor = false, plansUrl = null, io, onAnswer, onQuestionAdded, onQuestionRetired, onQuestionsChanged, initialOpenQuestionId = null, onClose, frame = 'sheet' }: StageChecklistSheetProps) {
@@ -198,6 +202,22 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
     onAnswer(a)
   }
   const key = (q: StageChecklistQuestion) => ({ jobId, fixtureId: stage.fixtureId, questionId: q.id })
+  // A settle on a check that is with Dispatch (#245 PR 2b): the request closes itself (migration 20261104170000), so
+  // the chip is read again, and when the row's request is gone the sender hears the closing note, unless they settled
+  // it themselves. Best-effort: a read that fails leaves the chip as it was.
+  const settleWithDispatch = async (q: StageChecklistQuestion) => {
+    if (!dispatchIo) return
+    const sent = openStageCheckFor(withDispatch, stage.fixtureId, q.id)
+    if (!sent) return
+    let after: OpenStageCheck[]
+    try {
+      after = await dispatchIo.open(jobId)
+    } catch {
+      return
+    }
+    setWithDispatch(after)
+    if (!after.some((r) => r.id === sent.id)) void dispatchIo.settled?.(sent, who)
+  }
 
   const pick = async (q: StageChecklistQuestion, p: StageChecklistPick) => {
     setBusy(q.id)
@@ -207,6 +227,7 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
       await note(q)
       // The list moves on by itself once the row is answered; a row still owing its photo stays open as Next.
       setReopened(null)
+      void settleWithDispatch(q)
     } catch (e) {
       showToast(`The answer was not saved. ${formatErrorMessage(e)}`, 'error')
     } finally {
@@ -234,6 +255,7 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
       await io.retireItem(q.id, who)
       setTakingOff(null)
       onQuestionRetired?.(q.id)
+      void settleWithDispatch(q)
       const after = stageChecklistState({ stageName: stage.name, fixtureId: stage.fixtureId, questions: questions.filter((x) => x.id !== q.id), answers })
       showToast(takenOffWords(stage.name, after), 'success')
     } catch (e) {
@@ -254,6 +276,7 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
       onQuestionsChanged?.([next])
       setSkipping(null)
       setSkipWhy('')
+      void settleWithDispatch(q)
       if (reopened === q.id) setReopened(null)
       const after = stageChecklistState({ stageName: stage.name, fixtureId: stage.fixtureId, questions: questions.map((x) => (x.id === q.id ? next : x)), answers })
       showToast(skippedToastWords(stage.name, after), 'success')
@@ -377,6 +400,11 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
                   <span style={withDispatchTag} data-checklist-with-dispatch={q.id}>
                     {withDispatchWords(sent, Date.now())}
                   </span>
+                  {sent.reply ? (
+                    <span style={dispatchReply} data-checklist-dispatch-reply={q.id}>
+                      {dispatchReplyWords(sent.reply, Date.now())}
+                    </span>
+                  ) : null}
                 </span>
               ) : null}
             </span>
@@ -523,6 +551,11 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
                 )
               ) : null}
             </div>
+            {sent?.reply ? (
+              <p style={{ ...dispatchReply, margin: 0 }} data-checklist-dispatch-reply={q.id}>
+                {dispatchReplyWords(sent.reply, Date.now())}
+              </p>
+            ) : null}
             {/* The presses say what a row with no pick waits on; a row that owes its photo says so. */}
             {waitsOn === 'photo' ? <p style={waits}>{waitsOnWords(waitsOn)}</p> : null}
             {reopened === q.id ? (

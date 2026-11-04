@@ -7,13 +7,25 @@
  * part: the caps are not on the truck · JP1088 ZZ TEST Riders Walk*. The crew's words also go as the first note on the
  * thread (PR 2 draws the thread; PR 1 writes the title). One open request per check per stage; a second send while one is
  * open reads *Already with Dispatch*. *Can't do it* marks the request high, since a stopped crew is what *Customer waiting*
- * was built for. Pure; the io is `stageCheckDispatchIo.ts`.
+ * was built for. PR 2b (v2.6495) adds the loop back: `isStageCheckRequest`, the one predicate the inbox's tag, doors and
+ * window and the Customer waiting banner's exclusion all read; the crew's words in the payload and `stageCheckTitleParts`
+ * for the rows sent before; the context window's lines (`stageCheckWindowContext`); and Dispatch's reply drawn under
+ * the crew's row (`dispatchReplyWords`). Pure; the io is `stageCheckDispatchIo.ts`.
  */
-import { describeWait, type RequestPriority } from '../requestPriority'
+import { describeWait, firstName, type RequestPriority } from '../requestPriority'
 import { PICK_WORDS, type StageChecklistAnswer, type StageChecklistQuestion } from './stageChecklist'
 
 /** The `pending_action` of a check sent from the sheet. */
 export const STAGE_CHECK_ACTION = 'stage_check'
+
+/**
+ * The one predicate for "this request is a stage check" (PR 2b): the inbox's tag, its two doors and the context window,
+ * and the Customer waiting banner's exclusion (`waitsOnTheBanner`), all read it. The flavour is the row's `pending_action`;
+ * the payload says which stage and check, and a row whose payload is missing is still a stage check with no doors.
+ */
+export function isStageCheckRequest(row: { pending_action?: string | null }): boolean {
+  return row.pending_action === STAGE_CHECK_ACTION
+}
 
 /** `dispatch_requests.title` is checked at 2000 characters. */
 export const STAGE_CHECK_TITLE_MAX = 2000
@@ -144,12 +156,18 @@ export type StageCheckRow = {
   checklist_question_id: string
 }
 
-/** What rides in `pending_payload.stage_check`: the stage, the check and the reason, so the inbox row's doors need no new column. */
+/**
+ * What rides in `pending_payload.stage_check`: the stage, the check and the reason, so the inbox row's doors need no new
+ * column, and since PR 2b the crew's words, so the context window reads them whole; a row sent before carries them in
+ * the title alone (`stageCheckTitleParts`).
+ */
 export interface StageCheckPayload {
   fixture_id: string
   question_id: string
   reason: StageCheckReason
   stage_name: string
+  /** The crew's words as typed, '' when they typed none; absent on a row sent before PR 2b. */
+  words?: string
 }
 
 /** The payload off an inbox row, or null on any other request. */
@@ -157,9 +175,15 @@ export function stageCheckPayloadFrom(payload: unknown): StageCheckPayload | nul
   if (!payload || typeof payload !== 'object') return null
   const sc = (payload as { stage_check?: unknown }).stage_check
   if (!sc || typeof sc !== 'object') return null
-  const { fixture_id, question_id, reason, stage_name } = sc as Record<string, unknown>
+  const { fixture_id, question_id, reason, stage_name, words } = sc as Record<string, unknown>
   if (typeof fixture_id !== 'string' || typeof question_id !== 'string' || !fixture_id || !question_id) return null
-  return { fixture_id, question_id, reason: isStageCheckReason(reason) ? reason : 'other', stage_name: typeof stage_name === 'string' ? stage_name : '' }
+  return {
+    fixture_id,
+    question_id,
+    reason: isStageCheckReason(reason) ? reason : 'other',
+    stage_name: typeof stage_name === 'string' ? stage_name : '',
+    ...(typeof words === 'string' ? { words } : {}),
+  }
 }
 
 export interface StageCheckDraft {
@@ -182,7 +206,7 @@ export function stageCheckRow(draft: StageCheckDraft): StageCheckRow {
     development_id: null,
     reference_summary: stageCheckReferenceSummary(draft.job) || null,
     pending_action: STAGE_CHECK_ACTION,
-    pending_payload: { stage_check: { fixture_id: draft.fixtureId, question_id: draft.question.id, reason: draft.reason, stage_name: draft.stageName.trim() } },
+    pending_payload: { stage_check: { fixture_id: draft.fixtureId, question_id: draft.question.id, reason: draft.reason, stage_name: draft.stageName.trim(), words: draft.words.trim() } },
     priority: stageCheckPriority(draft.reason),
     fixture_id: draft.fixtureId,
     checklist_question_id: draft.question.id,
@@ -190,6 +214,14 @@ export function stageCheckRow(draft: StageCheckDraft): StageCheckRow {
 }
 
 // ── What is with Dispatch ────────────────────────────────────────────────────
+
+/** Dispatch's newest note on a request, as the sheet draws it under the crew's row (PR 2b). */
+export interface StageCheckReply {
+  body: string
+  /** The author's name as the thread stamps it. */
+  by: string | null
+  at: string
+}
 
 /** An open stage-check request as the sheet reads it back. */
 export interface OpenStageCheck {
@@ -199,6 +231,10 @@ export interface OpenStageCheck {
   title: string
   createdAt: string
   priority: RequestPriority | string | null
+  /** Who sent it, so a settle by someone else pushes them (PR 2b); absent on a row the read did not carry. */
+  fromUserId?: string | null
+  /** Dispatch's newest note, or null while the thread is bare. */
+  reply?: StageCheckReply | null
 }
 
 /** The open request on this stage's check, or null. */
@@ -230,6 +266,110 @@ export function withDispatchAgeWords(createdAtIso: string, nowMs: number): strin
 export function withDispatchWords(request: Pick<OpenStageCheck, 'title' | 'createdAt'>, nowMs: number): string {
   const tail = reasonTailFromTitle(request.title)
   return ['With Dispatch', withDispatchAgeWords(request.createdAt, nowMs), tail].filter(Boolean).join(' · ')
+}
+
+/**
+ * Dispatch's reply under the crew's row (PR 2b): *Dispatch: “Hub pours Thursday. Press Not here for now.” · Jo · 2 min
+ * ago*. The newest note on the thread, whoever in Dispatch wrote it; the first name keeps the line short on a phone.
+ */
+export function dispatchReplyWords(reply: StageCheckReply, nowMs: number): string {
+  const age = withDispatchAgeWords(reply.at, nowMs)
+  const who = firstName(reply.by) ?? 'Dispatch'
+  return `Dispatch: “${reply.body.replace(/\s+/g, ' ').trim()}” · ${who} · ${age === 'now' ? 'just now' : `${age} ago`}`
+}
+
+// ── The title read back ──────────────────────────────────────────────────────
+
+/** The pieces of a built title, read back for a row sent before the payload carried the words (PR 2b). */
+export interface StageCheckTitleParts {
+  stageName: string
+  question: string
+  /** The reason's tail as built, '' when the title is not one the sheet built. */
+  reasonTail: string
+  words: string
+}
+
+/** The job's label and address off the inbox's reference line, *JP1088 · ZZ TEST Riders Walk · 12925 FM 20, Kingsbury*. */
+export function jobLineFromReference(reference: string | null | undefined): { jobLine: string; address: string } {
+  const pieces = (reference ?? '').split(' · ').map((p) => p.trim()).filter(Boolean)
+  if (pieces.length === 0) return { jobLine: '', address: '' }
+  const numbered = /^JP\S+$/i.test(pieces[0]!)
+  if (pieces.length >= 3) return { jobLine: pieces.slice(0, 2).join(' · '), address: pieces.slice(2).join(' · ') }
+  if (pieces.length === 2) return numbered ? { jobLine: pieces.join(' · '), address: '' } : { jobLine: pieces[0]!, address: pieces[1]! }
+  return { jobLine: pieces[0]!, address: '' }
+}
+
+/**
+ * *Trim Set · “Is the pan drain run to the hub?” · need a part: the caps are not on the truck · JP1088 ZZ TEST Riders
+ * Walk* back into its pieces. The job's tail is cut by the reference line's label when the title ends with it; the
+ * reason is the longest known tail the rest starts with; the words follow its colon. Null when the title is not one the
+ * sheet built.
+ */
+export function stageCheckTitleParts(title: string, reference: string | null | undefined): StageCheckTitleParts | null {
+  const openQuote = title.indexOf(' · “')
+  const closeQuote = title.indexOf('” · ', openQuote + 1)
+  if (openQuote <= 0 || closeQuote < 0) return null
+  const stageName = title.slice(0, openQuote).trim()
+  const question = title.slice(openQuote + 4, closeQuote).trim()
+  let rest = title.slice(closeQuote + 4)
+  const jobLabel = jobLineFromReference(reference).jobLine.replace(' · ', ' ')
+  if (jobLabel && rest.endsWith(` · ${jobLabel}`)) rest = rest.slice(0, -(jobLabel.length + 3))
+  const tail = [...STAGE_CHECK_REASONS].map((r) => r.tail).sort((a, b) => b.length - a.length).find((t) => rest === t || rest.startsWith(`${t}: `)) ?? ''
+  const words = tail && rest.length > tail.length ? rest.slice(tail.length + 2).trim() : ''
+  return { stageName, question, reasonTail: tail, words }
+}
+
+// ── The context window ───────────────────────────────────────────────────────
+
+/** What the window knows live, when the viewer may read the sheet's tables; any piece may be missing. */
+export interface StageCheckLiveContext {
+  /** The stage's count, *2 of 5 answered · 3 left*. */
+  progressWords?: string | null
+  question?: Pick<StageChecklistQuestion, 'words' | 'asksPhoto' | 'fixtureId' | 'addedBy' | 'sheet'> | null
+  answer?: Pick<StageChecklistAnswer, 'pick' | 'note' | 'answeredBy' | 'answeredAt'> | null
+}
+
+/** The context card on the window, line by line, from the request itself and what the live read added. */
+export interface StageCheckWindowContext {
+  /** *JP1088 · ZZ TEST Riders Walk*, or *This job*. */
+  jobLine: string
+  /** *12925 FM 20, Kingsbury · Trim Set · 2 of 5 answered · 3 left*. */
+  line2: string
+  /** The check's words, live when read, else as the title carried them. */
+  question: string
+  /** *asks for a photo · the company's question · not answered yet*, '' with no live read. */
+  meta: string
+  /** The crew's note on the row, live. */
+  note: string
+  /** The plan sheet the check names, live. */
+  sheet: string
+  /** The reason chip's label, *Need a part*. */
+  reasonLabel: string
+  /** The crew's words as sent, '' when they typed none. */
+  words: string
+}
+
+export function stageCheckWindowContext(
+  row: { title: string; reference_summary: string | null; pending_payload?: unknown },
+  live: StageCheckLiveContext | null,
+  stamp: string,
+): StageCheckWindowContext {
+  const payload = stageCheckPayloadFrom(row.pending_payload)
+  const parts = stageCheckTitleParts(row.title, row.reference_summary)
+  const { jobLine, address } = jobLineFromReference(row.reference_summary)
+  const stageName = payload?.stage_name || parts?.stageName || 'Stage'
+  const reason = payload ? stageCheckReason(payload.reason) : STAGE_CHECK_REASONS.find((r) => r.tail === parts?.reasonTail)
+  const q = live?.question ?? null
+  return {
+    jobLine: jobLine || 'This job',
+    line2: [address, stageName, live?.progressWords ?? ''].filter(Boolean).join(' · '),
+    question: q?.words?.trim() || parts?.question || row.title,
+    meta: q ? contextMetaWords(q, live?.answer ?? null, stamp) : '',
+    note: live?.answer?.note?.trim() ?? '',
+    sheet: q?.sheet?.trim() ?? '',
+    reasonLabel: reason?.label ?? 'Something else',
+    words: payload?.words !== undefined ? payload.words.trim() : (parts?.words ?? ''),
+  }
 }
 
 /**
@@ -267,7 +407,22 @@ export const STAGE_CHECK_WORDS = {
   openCheck: 'Open the check',
   /** Beside Raise priority in the thread, on a stage check that leads the inbox (v2.6462). */
   lower: 'Lower priority',
+  /** The context window (PR 2b): its title, the thread's first line, the acts and the foot. */
+  windowTitle: 'Stage check',
+  sentFromSheet: 'sent from the sheet',
+  reply: 'Reply',
+  replyAndClose: 'Reply and close',
+  windowFoot: 'Closes itself when the check is answered, skipped or taken off.',
+  senderCannotClose: 'You sent this check. Answer it on the sheet and it closes itself.',
+  replyWaits: 'Type the reply first.',
+  closedHead: 'Closed',
 } as const
+
+/** The reply box's placeholder: *Reply to Luis…*. */
+export function replyPlaceholderWords(senderName: string | null | undefined): string {
+  const who = firstName(senderName)
+  return who ? `Reply to ${who}…` : 'Reply to the crew…'
+}
 
 /** The toast after a send. */
 export function stageCheckSentWords(reason: StageCheckReason): string {
