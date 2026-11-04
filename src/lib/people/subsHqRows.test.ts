@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSubsHqRows, groupUnattributedSheets } from './subsHqRows'
+import { assignedNamesLabel, buildSubsHqRows, groupUnattributedSheets } from './subsHqRows'
 import type { SubsHqPersonInput, SubsHqSheetInput, UnattributedSheet } from './subsHqRows'
 
 const TODAY = '2026-08-01'
@@ -127,6 +127,28 @@ describe('buildSubsHqRows', () => {
     expect(byId.get('multi')).toMatchObject({ reason: 'shared', archivedPersonName: null })
   })
 
+  it('counts a sheet paid in full as settled; an empty sheet or one with money open is not, and a sheet work order is not counted twice', () => {
+    const fixed = (amount: number) => [{ fixture: 'Rough In', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: amount }]
+    const result = buildSubsHqRows({
+      people: [BEHAR],
+      users: [],
+      sheets: [
+        sheet({ id: 'paid', items: fixed(1000), payments: [{ id: 'a', amount: 1000, memo: null, created_at: '2026-07-01' }] }),
+        sheet({ id: 'paid-with-backcharge', items: fixed(500), payments: [{ id: 'b', amount: 450, memo: null, created_at: '2026-07-01' }, { id: 'c', amount: -50, memo: null, created_at: '2026-07-02' }] }),
+        sheet({ id: 'open', items: fixed(800), payments: [{ id: 'd', amount: 300, memo: null, created_at: '2026-07-01' }] }),
+        sheet({ id: 'empty' }),
+      ],
+      assignees: ['paid', 'paid-with-backcharge', 'open', 'empty'].map((labor_job_id) => ({ labor_job_id, person_id: 'p-behar' })),
+      commitments: [{ person_id: 'p-behar', amount: 1000, status: 'settled', stepName: null, projectName: null, sheetLabel: 'paid' }],
+      docs: [],
+      todayYmd: TODAY,
+    })
+    const behar = result.rows[0]!
+    expect(behar.sheetCount).toBe(4)
+    expect(behar.settledCount).toBe(2)
+    expect(behar.balanceDue).toBe(500)
+  })
+
   it('splits commitments into open (with total) and settled count; docs resolve id-first then name', () => {
     const result = buildSubsHqRows({
       people: [BEHAR],
@@ -233,5 +255,13 @@ describe('groupUnattributedSheets', () => {
     expect(groupUnattributedSheets([])).toEqual([])
     const groups = groupUnattributedSheets([entry({ sheetId: 'z', label: 'zero', balance: 0 })])
     expect(groups[0]?.totalBalance).toBe(0)
+  })
+})
+
+describe('assignedNamesLabel', () => {
+  it('reads a piped multi-sub name as a list of people', () => {
+    expect(assignedNamesLabel('Malachi | Abraham | Kyle | Austin Cutting & Coring LLC')).toBe('Malachi, Abraham, Kyle, Austin Cutting & Coring LLC')
+    expect(assignedNamesLabel('Trace')).toBe('Trace')
+    expect(assignedNamesLabel(' | Kyle |')).toBe('Kyle')
   })
 })
