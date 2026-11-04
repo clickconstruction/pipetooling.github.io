@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OCR_KIND_NOTE, OCR_MAX_BYTES, OCR_MAX_PAGES, OCR_MIMES, OCR_PER_PASS_MAX, OCR_PROCESSOR_SECRET, OCR_READ_MS, ocrDue, ocrEndpoint, ocrMimeOf, ocrReadAnswer, ocrRequestBody, ocrStateWords, ocrTakes } from '../../../supabase/functions/_shared/ocrKernel'
+import { OCR_KIND_NOTE, OCR_MAX_BYTES, OCR_MAX_PAGES, OCR_MIMES, OCR_PER_PASS_MAX, OCR_PROCESSOR_SECRET, OCR_READ_MS, mintOnce, ocrDue, ocrEndpoint, ocrMimeOf, ocrReadAnswer, ocrRequestBody, ocrStateWords, ocrTakes } from '../../../supabase/functions/_shared/ocrKernel'
 
 /** Our own OCR for scans (punch list #240, PR 3): which files go, where, what the request carries, how the answer and the refusal read, when a scan is tried again. */
 describe('ocrKernel', () => {
@@ -53,5 +53,22 @@ describe('ocrKernel', () => {
     expect(ocrDue('not a time', now)).toBe(true)
     expect(ocrStateWords(false)).toContain(OCR_PROCESSOR_SECRET)
     expect(ocrStateWords(true)).toContain('set up')
+  })
+
+  it('mints the pass\'s token once, and again after a refusal, so one 503 from Google does not refuse every scan the pass reaches (v2.6488)', async () => {
+    let calls = 0
+    const token = mintOnce(() => {
+      calls += 1
+      return calls === 1 ? Promise.reject(new Error('Google token exchange failed (503): unavailable')) : Promise.resolve(`token-${calls}`)
+    })
+    await expect(token()).rejects.toThrow('503')
+    await expect(token()).resolves.toBe('token-2')
+    await expect(token()).resolves.toBe('token-2')
+    expect(calls).toBe(2)
+    // Two scans asking at once share the one mint in flight.
+    let minted = 0
+    const shared = mintOnce(() => Promise.resolve(`t${++minted}`))
+    expect(await Promise.all([shared(), shared()])).toEqual(['t1', 't1'])
+    expect(minted).toBe(1)
   })
 })

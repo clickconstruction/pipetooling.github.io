@@ -35,6 +35,7 @@ import {
   type JobRef,
   type LinkRow,
   type PutWhere,
+  twinRefusalWords,
 } from '../_shared/driveLink.ts'
 
 /**
@@ -299,9 +300,10 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   if (!u?.user) return json({ error: 'Sign in first.' }, 401)
   const { data: who } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
   if (!who || !OFFICE_ROLES.includes(String(who.role))) return json({ error: 'Office only.' }, 403)
-  if (who.is_digital_twin) return json({ error: 'A digital twin cannot change Drive.' }, 403)
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
+  // A twin is refused whatever it asks, in words true to the ask (v2.6488): a search is not a change.
+  if (who.is_digital_twin) return json({ error: twinRefusalWords(body?.action) }, 403)
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)
   // Training mode reads everything and writes nothing: a list and an open are reads.
