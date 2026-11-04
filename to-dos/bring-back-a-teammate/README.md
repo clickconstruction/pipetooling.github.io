@@ -2,7 +2,7 @@
 name: "Bring back a teammate who left: one press for the login and the roster row, a new stint, the stale rows"
 number: 256
 group: ready
-status: card and mock-ups 2026-11-03 · nothing built · Bring back's four calls answered the same day (tenure from the day back, roadmap 90 days, wage required, training mode off) · the Away note asked the same day, call 5 answered: they sign in and it is the only page they see
+status: claude/bring-back-kernel · PR 1, the kernel, v2.6480 · every call answered 2026-11-03 (tenure from the day back, roadmap 90 days, wage required, training mode off, the Away note behind a sealed login)
 summary: >
   A tech finished their last day on 2026-11-03 and plans to come back in three years. End employment
   closes them out well, but the way back is a dev's undo, not a return. Restore brings back the login
@@ -14,7 +14,7 @@ summary: >
   and the rows three years made stale (sign-in, wage, leader, licenses, paperwork). Hire finds the
   archived match and offers it. While they are away, an Away note the office writes person by person
   (a note, a countdown to the day back, how far they are from the shop) is the one screen they find.
-next: PR 1, the kernel `src/lib/people/bringBack.ts`. For the Away note, the seal (PR 7) ships and its probe passes before PR 8 lets any archived account sign in.
+next: PR 2, the `employment_stints` migration with End employment closing the open stint and `restore-user` taking `restore_roadmap`. For the Away note, the seal (PR 7) ships and its probe passes before PR 8 lets any archived account sign in.
 size: L as a train of nine (S · M · M · S · S, then the Away note S · L · M · S)
 blocker: None.
 opinion: build draft 1 as drawn after the second pass, and the Away note behind a sealed login (call 5): the seal first, proven by its probe, then the note. Keep the account; never re-hire a returner as a new person, since the hours log, the logbook, the HR file and every job's history hang off the old account.
