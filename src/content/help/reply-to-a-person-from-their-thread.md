@@ -2,7 +2,7 @@
 title: reply to a person from their thread
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, call, log a call, phone call, they said, the day they gave, send, send window, subject, tie to, job, opt-out, stop, company number, signature, plain email, greeting, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
+keywords: gc mode, messages, laptop, short screen, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, call, log a call, phone call, they said, the day they gave, send, send window, subject, tie to, job, opt-out, stop, company number, signature, plain email, greeting, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
 where: /messages
 order: 117
 ---
@@ -13,6 +13,8 @@ The reply box sits at the foot of every thread in Messages. Write a text, an ema
 1. Go to [GC projects](/gc) and press {{button:outline|Messages}}.
 2. Press a person's row. Their thread opens as a window.
 3. The reply box is at the bottom of the window.
+
+On a laptop, the box folds to one row until you need it. Press into it to open it whole. It folds back after the message goes.
 
 To find a person first, see [find every message with a person in one place](/help/find-every-message-with-a-person-in-one-place).
 
