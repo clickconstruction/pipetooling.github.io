@@ -3,7 +3,8 @@
 -- combines and a split on made-up jobs: the
 -- first combine onto a target with none of the one-per-job rows (they move), a split that moves a line and its window,
 -- a combine refused three times in turn (a work order, an open agreement, a pay application on both jobs; nothing
--- moves), and a second combine onto a target that holds every merge case, the money and legal rows among them. Each
+-- moves), and a second combine onto a target that holds every merge case, the money and legal rows among them, and
+-- (*_combine_moves_soft_job_links) a row of every job link the delete would have set to null and every soft pointer. Each
 -- assertion writes down a miss and goes on; the last statement raises with the whole list, so one run says
 -- everything. Ends with "combine_rows PASSED". Fixtures are written as postgres; the combines and the split run as
 -- the dev; everything rolls back. See scripts/pgtest-combine-rows.sh. Never against prod.
@@ -258,6 +259,50 @@ INSERT INTO public.jobs_ledger_thread_notes (job_id, author_user_id, body) VALUE
   ('00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252a01', 'Bed note two'),
   ('00000000-0000-0000-0000-000000252b01', '00000000-0000-0000-0000-000000252a01', 'Target note');
 
+-- The job links the source's delete would have set to null, and the soft pointers no key reaches (PR 3). Parents
+-- first: a bid, a development, a try-out candidate, a GC project with a trade our crew runs and its money row, a
+-- bank deposit. Then one row of every kind on the source.
+INSERT INTO public.bids (id, created_by, service_type_id, project_name, bid_value) VALUES
+  ('00000000-0000-0000-0000-0000002523a1', '00000000-0000-0000-0000-000000252a01', '00000000-0000-0000-0000-000000252f09', 'Combine bed bid', 1000);
+INSERT INTO public.developments (id, name, master_user_id) VALUES ('00000000-0000-0000-0000-0000002523a2', 'Combine bed development', '00000000-0000-0000-0000-000000252a02');
+INSERT INTO public.team_prospects (id, master_user_id, created_by, name) VALUES ('00000000-0000-0000-0000-0000002523a3', '00000000-0000-0000-0000-000000252a02', '00000000-0000-0000-0000-000000252a01', 'Cal Candidate');
+INSERT INTO public.projects (id, name, customer_id) VALUES ('00000000-0000-0000-0000-0000002523a4', 'Combine bed GC project', '00000000-0000-0000-0000-000000252c01');
+INSERT INTO public.gc_projects (project_id, stage, billing_job_id) VALUES ('00000000-0000-0000-0000-0000002523a4', 'buyout', '00000000-0000-0000-0000-000000252b03');
+-- The crew-job guard reads the dev's sign-in from the sections above, so the seed opens the flag as the press does.
+SELECT set_config('gc.crew_job_write', 'on', true);
+INSERT INTO public.gc_trade_packages (id, project_id, trade, ours, job_ledger_id) VALUES ('00000000-0000-0000-0000-0000002523a5', '00000000-0000-0000-0000-0000002523a4', 'Plumbing', true, '00000000-0000-0000-0000-000000252b03');
+SELECT set_config('gc.crew_job_write', '', true);
+INSERT INTO public.gc_project_money (project_id, general_conditions_job_id) VALUES ('00000000-0000-0000-0000-0000002523a4', '00000000-0000-0000-0000-000000252b03');
+INSERT INTO public.mercury_transactions (id, mercury_account_id, mercury_id, amount, created_at, status, kind) VALUES ('00000000-0000-0000-0000-0000002523a6', '00000000-0000-0000-0000-0000002523a7', '00000000-0000-0000-0000-0000002523a8', 500, now(), 'sent', 'checkDeposit');
+-- Messages: a text from Kay and a team note tied to the source, and a prepared text about it.
+INSERT INTO public.messages (id, contact_id, jobs_ledger_id, channel, direction, body) VALUES
+  ('00000000-0000-0000-0000-0000002523b1', '00000000-0000-0000-0000-000000252c11', '00000000-0000-0000-0000-000000252b03', 'text', 'in', 'Bed text on the source'),
+  ('00000000-0000-0000-0000-0000002523b2', '00000000-0000-0000-0000-000000252c11', '00000000-0000-0000-0000-000000252b03', 'note', 'team', 'Bed note on the source');
+INSERT INTO public.nudge_offers (id, contact_id, step_key, jobs_ledger_id, body) VALUES ('00000000-0000-0000-0000-0000002523b3', '00000000-0000-0000-0000-000000252c11', 'n3', '00000000-0000-0000-0000-000000252b03', 'Bed offer');
+-- A certified envelope, a sub sheet (its number text filled from the source by the link trigger), a History line, an
+-- indexed file, a submittal package, an owner's records request that covered the source and the split job.
+INSERT INTO public.mail_pieces (id, kind, job_id, recipient) VALUES ('00000000-0000-0000-0000-0000002523b4', 'lien_notice_53_056', '00000000-0000-0000-0000-000000252b03', 'owner');
+INSERT INTO public.people_labor_jobs (id, master_user_id, assigned_to_name, job_ledger_id) VALUES ('00000000-0000-0000-0000-0000002523b5', '00000000-0000-0000-0000-000000252a02', 'Pat Sub', '00000000-0000-0000-0000-000000252b03');
+INSERT INTO public.development_history_entries (id, development_id, job_id, happened_at, source, body) VALUES ('00000000-0000-0000-0000-0000002523b6', '00000000-0000-0000-0000-0000002523a2', '00000000-0000-0000-0000-000000252b03', now(), 'note', 'Bed history line');
+INSERT INTO public.file_index (drive_file_id, jobs_ledger_id, name, mime) VALUES ('combinebedfile0001', '00000000-0000-0000-0000-000000252b03', 'Bed.pdf', 'application/pdf');
+INSERT INTO public.bid_submittals (id, bid_id, job_ledger_id, rev_number) VALUES ('00000000-0000-0000-0000-0000002523b7', '00000000-0000-0000-0000-0000002523a1', '00000000-0000-0000-0000-000000252b03', 1);
+INSERT INTO public.lien_owner_record_requests (id, seed_job_id, job_ids) VALUES ('00000000-0000-0000-0000-0000002523b8', '00000000-0000-0000-0000-000000252b03', ARRAY['00000000-0000-0000-0000-000000252b03'::uuid, :'job_b'::uuid]);
+-- A partner's profit share from the job and the partnership whose farm job it is; a deposit's Income label; a
+-- try-out verdict on the job.
+INSERT INTO public.person_offsets (id, person_name, type, amount, occurred_date, job_id) VALUES ('00000000-0000-0000-0000-0000002523b9', 'Pat Sub', 'profit_share', 100, '2026-10-01', '00000000-0000-0000-0000-000000252b03');
+INSERT INTO public.partnerships (id, person_id, farm_job_ledger_id) VALUES ('00000000-0000-0000-0000-0000002523ba', '00000000-0000-0000-0000-000000252e01', '00000000-0000-0000-0000-000000252b03');
+INSERT INTO public.mercury_transaction_ar_income_labels (mercury_transaction_id, job_id) VALUES ('00000000-0000-0000-0000-0000002523a6', '00000000-0000-0000-0000-000000252b03');
+INSERT INTO public.team_prospect_trial_verdicts (id, prospect_id, leader_user_id, job_ledger_id, work_date, verdict) VALUES ('00000000-0000-0000-0000-0000002523bb', '00000000-0000-0000-0000-0000002523a3', '00000000-0000-0000-0000-000000252a02', '00000000-0000-0000-0000-000000252b03', '2026-10-01', 'yes');
+-- The pointers with no key: two AR cases, a rating ask, a watcher email, a schedule change; and the Charges window's
+-- adjustment and statement.
+INSERT INTO public.ar_stripe_cases (id, kind, stripe_object_id, amount, job_id) VALUES ('00000000-0000-0000-0000-0000002523bc', 'dispute', 'dp_combine_bed_1', 50, '00000000-0000-0000-0000-000000252b03');
+INSERT INTO public.ar_unbanked_check_cases (id, payment_id, amount, job_id) VALUES ('00000000-0000-0000-0000-0000002523bd', '00000000-0000-0000-0000-0000002523be', 75, '00000000-0000-0000-0000-000000252b03');
+INSERT INTO public.customer_ratings (id, contact_id, job_id) VALUES ('00000000-0000-0000-0000-0000002523bf', '00000000-0000-0000-0000-000000252c11', '00000000-0000-0000-0000-000000252b03');
+INSERT INTO public.job_watcher_notices (id, job_id, user_id, kind) VALUES ('00000000-0000-0000-0000-0000002523c0', '00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252a03', 'progress');
+INSERT INTO public.schedule_block_events (block_id, job_id, change) VALUES ('00000000-0000-0000-0000-0000002523c1', '00000000-0000-0000-0000-000000252b03', 'added');
+INSERT INTO public.job_charge_adjustments (id, job_id, kind, target, made_by) VALUES ('00000000-0000-0000-0000-0000002523c2', '00000000-0000-0000-0000-000000252b03', 'day_off', '2026-10-01', '00000000-0000-0000-0000-000000252a01');
+INSERT INTO public.job_charge_statements (id, record_id, job_ledger_id, period_start, period_end) VALUES ('00000000-0000-0000-0000-0000002523c3', 'SC-9103-1', '00000000-0000-0000-0000-000000252b03', '2026-10-01', '2026-10-07');
+
 -- 3a. Both jobs hold a live work order for Pat: the combine holds, says so, and moves nothing.
 SELECT cr.as_user('00000000-0000-0000-0000-000000252a01');
 SET LOCAL ROLE authenticated;
@@ -268,6 +313,7 @@ SELECT cr.same('and names the sub', :'refused'::jsonb ->> 'error', 'Both jobs ho
 SELECT cr.same('the held combine moved nothing: the source stands', (SELECT count(*)::text FROM public.jobs_ledger WHERE id = '00000000-0000-0000-0000-000000252b03'), '1');
 SELECT cr.same('the held combine moved nothing: the incident is on the source', (SELECT job_id::text FROM public.job_hazmat_incidents WHERE id = '00000000-0000-0000-0000-000000252e48'), '00000000-0000-0000-0000-000000252b03');
 SELECT cr.same('the held combine moved nothing: the source''s Unsorted stands', (SELECT count(*)::text FROM public.job_containers WHERE id = 'c252e071-0000-0000-0000-000000252e71'), '1');
+SELECT cr.same('the held combine moved nothing: the text is on the source', (SELECT jobs_ledger_id::text FROM public.messages WHERE id = '00000000-0000-0000-0000-0000002523b1'), '00000000-0000-0000-0000-000000252b03');
 UPDATE public.step_commitments SET status = 'cancelled' WHERE id = '00000000-0000-0000-0000-000000252f42';
 
 -- 3b. Both jobs hold an open agreement: the combine holds, says what to do, and moves nothing.
@@ -415,6 +461,36 @@ SELECT cr.same('the target''s voided draft stands', (SELECT job_id::text || ' ' 
 SELECT cr.same('the source''s pay application moved', (SELECT job_id::text FROM public.job_pay_applications WHERE id = '00000000-0000-0000-0000-000000252111'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('and keeps who saved it and when', (SELECT updated_by::text || ' ' || updated_at::text FROM public.job_pay_applications WHERE id = '00000000-0000-0000-0000-000000252111'), '00000000-0000-0000-0000-000000252a03 2026-10-05 10:00:00+00');
 SELECT cr.same('the target''s deleted application stays on the target', (SELECT job_id::text || ' ' || (deleted_at IS NOT NULL)::text FROM public.job_pay_applications WHERE id = '00000000-0000-0000-0000-000000252112'), '00000000-0000-0000-0000-000000252b01 true');
+
+-- The job links the delete would have set to null, and the soft pointers: each reads on the target.
+SELECT cr.same('a text moved', (SELECT jobs_ledger_id::text FROM public.messages WHERE id = '00000000-0000-0000-0000-0000002523b1'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a team note moved', (SELECT jobs_ledger_id::text FROM public.messages WHERE id = '00000000-0000-0000-0000-0000002523b2'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('and still sits on its contact', (SELECT contact_id::text FROM public.messages WHERE id = '00000000-0000-0000-0000-0000002523b1'), '00000000-0000-0000-0000-000000252c11');
+SELECT cr.same('a prepared text moved', (SELECT jobs_ledger_id::text FROM public.nudge_offers WHERE id = '00000000-0000-0000-0000-0000002523b3'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a mail piece moved', (SELECT job_id::text FROM public.mail_pieces WHERE id = '00000000-0000-0000-0000-0000002523b4'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a sub sheet moved', (SELECT job_ledger_id::text FROM public.people_labor_jobs WHERE id = '00000000-0000-0000-0000-0000002523b5'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('and its number text reads the target''s', (SELECT job_number FROM public.people_labor_jobs WHERE id = '00000000-0000-0000-0000-0000002523b5'), '9101');
+SELECT cr.same('a History line moved', (SELECT job_id::text FROM public.development_history_entries WHERE id = '00000000-0000-0000-0000-0000002523b6'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('an indexed file moved', (SELECT jobs_ledger_id::text FROM public.file_index WHERE drive_file_id = 'combinebedfile0001'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a submittal package moved', (SELECT job_ledger_id::text FROM public.bid_submittals WHERE id = '00000000-0000-0000-0000-0000002523b7'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('an owner''s records request names the target as its seed job', (SELECT seed_job_id::text FROM public.lien_owner_record_requests WHERE id = '00000000-0000-0000-0000-0000002523b8'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('and among the jobs it covered, in its place', (SELECT array_to_string(job_ids, ' ') FROM public.lien_owner_record_requests WHERE id = '00000000-0000-0000-0000-0000002523b8'), '00000000-0000-0000-0000-000000252b01 ' || :'job_b');
+SELECT cr.same('a profit-share posting moved', (SELECT job_id::text FROM public.person_offsets WHERE id = '00000000-0000-0000-0000-0000002523b9'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a partnership''s farm job moved', (SELECT farm_job_ledger_id::text FROM public.partnerships WHERE id = '00000000-0000-0000-0000-0000002523ba'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a deposit''s Income label moved', (SELECT job_id::text FROM public.mercury_transaction_ar_income_labels WHERE mercury_transaction_id = '00000000-0000-0000-0000-0000002523a6'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a try-out verdict moved', (SELECT job_ledger_id::text FROM public.team_prospect_trial_verdicts WHERE id = '00000000-0000-0000-0000-0000002523bb'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a GC project''s billing job moved under the guard', (SELECT billing_job_id::text FROM public.gc_projects WHERE project_id = '00000000-0000-0000-0000-0000002523a4'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('our crew''s trade job moved under the guard', (SELECT job_ledger_id::text FROM public.gc_trade_packages WHERE id = '00000000-0000-0000-0000-0000002523a5'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('the general conditions job moved', (SELECT general_conditions_job_id::text FROM public.gc_project_money WHERE project_id = '00000000-0000-0000-0000-0000002523a4'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a Stripe case moved', (SELECT job_id::text FROM public.ar_stripe_cases WHERE id = '00000000-0000-0000-0000-0000002523bc'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a returned-check case moved', (SELECT job_id::text FROM public.ar_unbanked_check_cases WHERE id = '00000000-0000-0000-0000-0000002523bd'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a rating ask moved', (SELECT job_id::text FROM public.customer_ratings WHERE id = '00000000-0000-0000-0000-0000002523bf'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a watcher email moved', (SELECT job_id::text FROM public.job_watcher_notices WHERE id = '00000000-0000-0000-0000-0000002523c0'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a schedule change moved', (SELECT job_id::text FROM public.schedule_block_events WHERE block_id = '00000000-0000-0000-0000-0000002523c1'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a charge adjustment moved', (SELECT job_id::text FROM public.job_charge_adjustments WHERE id = '00000000-0000-0000-0000-0000002523c2'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a statement of charges moved', (SELECT job_ledger_id::text FROM public.job_charge_statements WHERE id = '00000000-0000-0000-0000-0000002523c3'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('and keeps its number', (SELECT record_id FROM public.job_charge_statements WHERE id = '00000000-0000-0000-0000-0000002523c3'), 'SC-9103-1');
+SELECT cr.same('the guards'' flags are off again', coalesce(current_setting('gc.combine_write', true), '') || coalesce(current_setting('gc.crew_job_write', true), ''), '');
 
 -- Let go on purpose.
 SELECT cr.same('the drive-time cache between the two is gone', (SELECT count(*)::text FROM public.job_travel_times WHERE from_job_id IN ('00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252b01') OR to_job_id IN ('00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252b01')), '0');

@@ -2,7 +2,7 @@
 title: combine two duplicate jobs into one
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: combine, duplicate, jobs, merge, separate, migrate, delete, two cards, same address, status, percent, activity note, stays behind, work order, materials on site, plans, promise, lien, agreement, pay application, legal matter
+keywords: combine, duplicate, jobs, merge, separate, migrate, delete, two cards, same address, status, percent, activity note, stays behind, work order, materials on site, plans, promise, lien, agreement, pay application, legal matter, texts, messages, sub sheet, certified mail, statement of charges
 order: 73
 ---
 Sometimes the same work ends up as two job cards. Each card collects its own costs, hours and activity, so the money and the story split in half.
@@ -17,7 +17,7 @@ It may be a second Job # for the same address. Or it may be a job re-entered und
 4. Check the status line under the Summary. The source's progress may differ from the target's. Say the source was marked {{chip:green|Ready to bill}} at 100% while the target is still {{chip:blue|Working}}. Then an amber warning spells it out **before** you confirm.
 5. Press {{button:red|Confirm migrate and delete source}}.
 
-Everything real moves to the target: costs, labor, schedule, reports, stage checklists, notes, and the job total. The source's job history, photos, materials on site, test reports, share links, hours statements and plan sets move too. So do its Messages links, its Drive links, its work orders and its supply-house accounts. Its payment promises, lien paper, agreements and pay applications move too. A stage's checklist keeps every answer, added check and skip. A stage's window goes with its line. The source card is then deleted.
+Everything real moves to the target: costs, labor, schedule, reports, stage checklists, notes, and the job total. The source's job history, photos, materials on site, test reports, share links, hours statements and plan sets move too. So do its Messages links, its Drive links, its work orders and its supply-house accounts. Its texts, calls, emails and team notes move too, and stay on their contacts. So do its sub labor sheets, the certified letters sent for it and its statements of charges. A moved sub sheet shows the target's job number. Its payment promises, lien paper, agreements and pay applications move too. A stage's checklist keeps every answer, added check and skip. A stage's window goes with its line. The source card is then deleted.
 
 The source's HCP number and C# are not lost. They stay on the target as prior numbers. The job window and the Pipeline row read them as *also JP550*. Search the Pipeline by an old number and the combined job comes up.
 
@@ -45,7 +45,7 @@ Say both cards hold a live work order for Rivera Mechanical. The combine holds a
 
 Payment promises and chase calls go to the target. So does the trace of a payment moved off or onto the source. The promised pay date marked last stands. A claim correction on both jobs keeps the target's.
 
-Lien notices, affidavits, lien releases and demand letters move too. They are the record of what went out. Lien desk items, agreements and pay applications move as well. A legal matter that named the source now names the target once.
+Lien notices, affidavits, lien releases and demand letters move too. They are the record of what went out. Lien desk items, agreements and pay applications move as well. A legal matter that named the source now names the target once. An owner's records request names the target too. A dispute or a returned check on the source's payment goes with it.
 
 :::example Both jobs hold a live Lien desk item of the same kind
 Say both cards hold a drafted lien notice. The target's draft stands. The source's draft is set aside, and the Lien desk no longer lists it. The target's **Job activity** gets a line that names the draft and its months. No month goes missing, because the desk works out what is due from the job's bills. A dev can bring the draft back if you need it.
