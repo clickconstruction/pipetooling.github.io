@@ -343,6 +343,12 @@ export const ENTRIES = {
       'MyMailTagRecord',
     ],
   },
+  // Punch list #255: a license's words written one way and the state's TDLR record, read by dev-mcp's plan_license
+  // and check_license so a license the robot writes reads back in the logbook as the one the window writes.
+  'lib/logbook/licenseText.ts': {
+    values: ['LICENSE_LEVELS', 'licenseTypeText', 'cleanLicenseNumber', 'tdlrNumberFor', 'tdlrQueryUrl', 'tdlrAnswer', 'tradeCheckedByTdlr'],
+    types: ['LicenseTrade', 'LicenseLevel', 'TdlrRow', 'TdlrAnswer'],
+  },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */
