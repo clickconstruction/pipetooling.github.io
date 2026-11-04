@@ -150,7 +150,7 @@ A dev or a controller reads every column and every row. A leader or an assistant
 
 Press {{button:outline|Timeline}} at the top of Money. Only a dev or a controller sees this view. The chart is the Job Summary's cost chart drawn over the whole site.
 
-The red line is the cost to date. Every job's charges sit on it in date order. Each step wears the icon of its source. The green line is the cash position. The green line rises only when a payment comes in.
+The red line is the cost to date. Every job's charges sit on it in date order. Each step wears the icon of its source. The green line is the cash position. The green line rises only when a payment comes in. The amber band is the office overhead landed on the site so far. The band sits on top of the cost, so the true cost reads at its top edge. The band starts on the day the office pool began.
 
 Rest the pointer on a step to read its lines. Each line names the job and the kind of charge for that day. Three card charges on one job read as one line.
 

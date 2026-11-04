@@ -14,6 +14,8 @@ import {
   assembleSiteTimelineJobs,
   buildSiteTimeline,
   foldSiteChargeEvents,
+  overheadDaysFromLines,
+  overheadSinceWords,
   siteChargeEventsFromCostRows,
   siteFuelTxIds,
   siteJobHasDatedEvent,
@@ -274,6 +276,42 @@ describe('buildSiteTimeline', () => {
     const paid = model.data.chartRows.find((r) => r.dateKey === '2026-03-10')!
     expect(paid.paymentEvents[0]!.label).toBe('JP612 · Payment — check')
     expect(paid.hasPaymentMarker).toBe(true)
+  })
+})
+
+describe('the overhead band (v2.6498)', () => {
+  const lines = (ymds: Array<[string, number]>) => ymds.map(([ymd, shareUsd]) => ({ ymd, jobHours: 8, fieldHours: 16, poolUsd: shareUsd * 2, shareUsd, activityUsd: shareUsd, carryUsd: 0 }))
+
+  it('overheadDaysFromLines keeps the day, the share and its split; the since words name the day the pool began', () => {
+    expect(overheadDaysFromLines(lines([['2026-03-02', 120.5]]))).toEqual([{ dateKey: '2026-03-02', amount: 120.5, activityUsd: 120.5, carryUsd: 0 }])
+    expect(overheadDaysFromLines(undefined)).toEqual([])
+    expect(overheadSinceWords('2026-02-19')).toBe('Feb 19, 2026')
+    expect(overheadSinceWords('whenever')).toBe('whenever')
+  })
+
+  it('each job carries its own lines, and the site’s band is the sum of the jobs’ days, two jobs on one day summed', () => {
+    const overhead = new Map([
+      ['j1', { lines: lines([['2026-03-02', 100], ['2026-03-09', 50]]) }],
+      ['j2', { lines: lines([['2026-03-09', 25]]) }],
+    ])
+    const jobs = assembleSiteTimelineJobs({ jobIds: ['j1', 'j2', 'j3', 'j4'], order: ['j2', 'j1'], jobLabel: label, costs: ROWS, labor: LABOR, payments: PAYMENTS, fuelTxIds: new Set(), toYmd, overhead })
+    expect(jobs.find((j) => j.jobId === 'j1')!.overheadDays).toHaveLength(2)
+    expect(jobs.find((j) => j.jobId === 'j3')!.overheadDays).toEqual([])
+    const model = buildSiteTimeline({ jobs, selected: new Set() })
+    expect(model.data.overheadSeriesAvailable).toBe(true)
+    expect(model.data.endOverhead).toBe(175)
+    expect(model.data.endTrueCost).toBe(Math.round((model.data.endExpense + 175) * 100) / 100)
+    const march9 = model.data.chartRows.find((r) => r.dateKey === '2026-03-09')!
+    expect(march9.overheadToDate).toBe(175)
+    expect(march9.overheadBand).toEqual([march9.expense, march9.trueCost])
+    // The parity holds with the band: the site's overhead is the sum of the jobs' own.
+    const own = jobs.filter(siteJobHasDatedEvent).map((j) => buildJobChargesTimelineChartData(j.charges, [], null, j.payments, null, j.overheadDays).endOverhead)
+    expect(model.data.endOverhead).toBe(own.reduce((s, n) => s + n, 0))
+    // A selection narrows the band to the job's own days.
+    expect(buildSiteTimeline({ jobs, selected: new Set(['j2']) }).data.endOverhead).toBe(25)
+    // Without the ledger, no band.
+    const without = assembleSiteTimelineJobs({ jobIds: ['j1'], order: [], jobLabel: label, costs: ROWS, labor: LABOR, payments: [], fuelTxIds: new Set(), toYmd, overhead: null })
+    expect(buildSiteTimeline({ jobs: without, selected: new Set() }).data.overheadSeriesAvailable).toBe(false)
   })
 })
 

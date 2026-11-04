@@ -11,6 +11,7 @@
  */
 import { jobSummaryPaidInvoiceOpts, resolveJobSummaryPercentCompleteWithSource, type JobSummaryPercentSource } from '../jobSummaryPercentComplete'
 import { jobEarned } from '../jobs/jobEarned'
+import type { JobOverheadDayLine } from '../jobs/jobDayLedger'
 import { normalizeJobsLedgerStatus, type JobsLedgerPipelineStatus } from '../jobsLedgerStatusPipeline'
 import type { MemberJob } from './overview'
 import type { SiteCostsRead } from './siteCosts'
@@ -67,7 +68,8 @@ export type ScoreboardReadState = 'off' | 'reading' | 'read' | 'failed'
 /** The three reads behind the cells: the clock, the costs, the day ledger. */
 export type ScoreboardReads = { labor: ScoreboardReadState; costs: ScoreboardReadState; overhead: ScoreboardReadState }
 
-export type SiteOverheadRead = { state: 'off' } | { state: 'reading' } | { state: 'read'; byJobId: ReadonlyMap<string, { usd: number; days: number }> } | { state: 'failed' }
+/** `lines` (v2.6498): the day lines behind the share, for the Money look's Timeline's amber band; absent on an older read. */
+export type SiteOverheadRead = { state: 'off' } | { state: 'reading' } | { state: 'read'; byJobId: ReadonlyMap<string, { usd: number; days: number; lines?: readonly JobOverheadDayLine[] }> } | { state: 'failed' }
 
 /** Which read a column's figure comes from; Earned comes with the page, Cost and Profit from all three. */
 export const SCOREBOARD_COLUMN_READ: Record<ScoreboardColumnKey, keyof ScoreboardReads | 'page' | 'all'> = {
