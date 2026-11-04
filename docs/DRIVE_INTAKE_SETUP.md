@@ -172,7 +172,9 @@ One-time setup, in `console.cloud.google.com` on the `pipetooling-drive` project
 
 From then on the sweep reads five waiting scans every ten minutes, and every index pass (a press, the backfill, the sweep's own first step) reads at most five scans of its own, so the spend is paced at a few hundred pages an hour at most (the scans the backfill held catch up by
 themselves), `index_job` and the dev seat's backfill read a scan the first time they meet it, and every row keeps how
-many pages were read (`ocr_pages`). Fifteen pages per scan at most (the online limit); about $1.50 per 1,000 pages. A
+many pages were read (`ocr_pages`). A scan the sweep takes costs one download: its bytes go straight to the processor
+and the row keeps the text, and a scan Drive lists as `application/octet-stream` is queued by its name (v2.6491).
+Fifteen pages per scan at most (the online limit); about $1.50 per 1,000 pages. A
 scan the provider refuses is tried again a day later, the reason on the row (`ocr_note`). Rotation: delete the
 processor, or unset the secret, and every scan stays a scan.
 
@@ -195,11 +197,13 @@ the words alone answer, as before.
    sentence and answers `answer.ok` with `dimensions: 768`, or `answer.error` with Google's reason.
 
 From then on every file the pass indexes is embedded as it lands, the sweep embeds ten more files every ten minutes
-(the files indexed before the key catch up by themselves), and a search embeds the query. Forty chunks of about 800
+(the files indexed before the key, and any file whose chunks are older than its text, catch up by themselves; a file
+indexed again while its chunks were being made is embedded again from its new text, v2.6491), and a search embeds the
+query. Forty chunks of about 800
 tokens per file at most. A file the provider refuses is tried again a day later, the reason on the row (`embed_note`).
 `search_file_index_meaning`'s `max_distance` (0.45) is the tunable: read the first days' hits by meaning and move it to
-where the noise starts. Rotation: delete the key, or unset the secret, and the words alone answer again; the chunks
-stay until the next index of each file.
+where the noise starts. Rotation: delete the key, or unset the secret, and the words alone answer again; a file's
+chunks stay until the key returns and the sweep embeds it afresh, unless an index empties its text, which drops them.
 
 ## Rotation / kill
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OCR_KIND_NOTE, OCR_MAX_BYTES, OCR_MAX_PAGES, OCR_MIMES, OCR_PER_PASS_MAX, OCR_PROCESSOR_SECRET, OCR_READ_MS, ocrDue, ocrEndpoint, ocrMimeOf, ocrReadAnswer, ocrRequestBody, ocrStateWords, ocrTakes } from '../../../supabase/functions/_shared/ocrKernel'
+import { OCR_EXTENSION_MIMES, OCR_KIND_NOTE, OCR_MAX_BYTES, OCR_MAX_PAGES, OCR_MIMES, OCR_PER_PASS_MAX, OCR_PROCESSOR_SECRET, OCR_READ_MS, ocrDue, ocrEndpoint, ocrMimeOf, ocrQueueFilter, ocrReadAnswer, ocrRequestBody, ocrStateWords, ocrTakes } from '../../../supabase/functions/_shared/ocrKernel'
 
 /** Our own OCR for scans (punch list #240, PR 3): which files go, where, what the request carries, how the answer and the refusal read, when a scan is tried again. */
 describe('ocrKernel', () => {
@@ -11,6 +11,20 @@ describe('ocrKernel', () => {
     expect(ocrMimeOf({ name: 'fax.tif', mimeType: 'image/tiff' })).toBe('image/tiff')
     expect(ocrMimeOf({ name: 'IMG_0412.HEIC', mimeType: 'image/heic' })).toBeNull()
     expect(ocrMimeOf({ name: 'plans.dwg', mimeType: 'application/acad' })).toBeNull()
+    // The mime Drive gives wins when it is one Document AI reads; the name decides only when it is not.
+    expect(ocrMimeOf({ name: 'fax.jpg', mimeType: 'image/jpg' })).toBe('image/jpeg')
+    expect(ocrMimeOf({ name: 'page.pdf', mimeType: 'image/png' })).toBe('image/png')
+    expect(ocrMimeOf({ name: 'no extension', mimeType: 'application/octet-stream' })).toBeNull()
+  })
+
+  it('the queue asks for a scan by the same rule the plan sends one: the mime, or the name’s extension (v2.6491)', () => {
+    const filter = ocrQueueFilter()
+    expect(filter.startsWith(`mime.in.(${OCR_MIMES.join(',')}),`)).toBe(true)
+    for (const ext of Object.keys(OCR_EXTENSION_MIMES)) expect(filter).toContain(`name.ilike.*.${ext}`)
+    // Every extension the queue names is one the plan reads to the same kind, so a scan the queue finds is one OCR takes.
+    for (const [ext, mime] of Object.entries(OCR_EXTENSION_MIMES)) expect(ocrMimeOf({ name: `scan.${ext.toUpperCase()}`, mimeType: 'application/octet-stream' })).toBe(mime)
+    expect(OCR_EXTENSION_MIMES.heic).toBeUndefined()
+    expect(filter).not.toContain('heic')
   })
 
   it('takes a kind it reads within the inline cap; a phone’s HEIC or a scan past the cap it never takes', () => {
