@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { LIEN_STEP_LADDERS, lienRunRungWords, lienStepTiles, type LienStepAt, type LienStepCard, type LienStepCounts, type LienStepLadder, type LienStepN } from '../../lib/jobs/lienNextUpSteps'
+import { lienReminderRungWords } from '../../lib/jobs/lienReminders'
 
 /**
  * The Do now list's steps, drawn (v2.4631): the rail of four rungs per kind of paper above the
@@ -10,6 +11,8 @@ import { LIEN_STEP_LADDERS, lienRunRungWords, lienStepTiles, type LienStepAt, ty
 
 const LADDER_TONE: Record<LienStepLadder, { fg: string; tint: string }> = {
   notice: { fg: 'var(--text-blue-700)', tint: 'var(--bg-blue-tint)' },
+  // Between the notices' blue and the affidavits' red (punch list #262).
+  reminder: { fg: 'var(--text-violet-700)', tint: 'var(--bg-violet-tint)' },
   affidavit: { fg: 'var(--text-red-700)', tint: 'var(--bg-red-tint)' },
   retainage: { fg: 'var(--text-amber-800)', tint: 'var(--bg-amber-tint)' },
 }
@@ -25,6 +28,7 @@ export function LienStepRail({
   onOpenRun,
   viewerIsLeader,
   printed,
+  reminderWaiting,
 }: {
   counts: LienStepCounts
   ladders: ReadonlyArray<LienStepLadder>
@@ -38,6 +42,8 @@ export function LienStepRail({
   viewerIsLeader?: boolean
   /** Of the run rung's count, how many printed and wait on their tracking numbers (punch list #101). */
   printed?: Partial<Record<LienStepLadder, number>>
+  /** Sent notices before day 7 (punch list #262): on the REMINDERS ladder's first rung but not in its count. */
+  reminderWaiting?: number
 }) {
   return (
     <div data-testid="lien-step-rails" style={{ display: 'grid', gap: 8, marginBottom: '0.9rem' }}>
@@ -47,7 +53,7 @@ export function LienStepRail({
         return (
           <div key={key} data-testid={`lien-step-rail-${key}`} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '84px 1fr', gap: isMobile ? 4 : 10, alignItems: 'center' }}>
             <span style={railHead}>{ladder.label}</span>
-            <div role="group" aria-label={`The ${key === 'affidavit' ? 'affidavit' : 'notice'}'s four steps`} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', border: '1px solid var(--border-strong)', borderRadius: 9, overflow: 'hidden' }}>
+            <div role="group" aria-label={`The ${key === 'affidavit' ? 'affidavit' : key === 'reminder' ? 'reminder' : 'notice'}'s four steps`} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', border: '1px solid var(--border-strong)', borderRadius: 9, overflow: 'hidden' }}>
               {ladder.steps.map((label, i) => {
                 const step = (i + 1) as LienStepN
                 const n = counts[key][i] ?? 0
@@ -93,6 +99,7 @@ export function LienStepRail({
                     <span style={{ marginLeft: 'auto', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums', color: empty ? 'var(--text-muted)' : 'var(--text-strong)', opacity: empty ? 0.6 : 1, flex: 'none' }} data-testid={`lien-step-count-${key}-${step}`}>
                       {n}
                       {isRun && n > 0 ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{lienRunRungWords(n, printed?.[key] ?? 0)}</span> : null}
+                      {key === 'reminder' ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{lienReminderRungWords(step, reminderWaiting ?? 0)}</span> : null}
                     </span>
                   </button>
                 )
@@ -270,13 +277,13 @@ export function LienStepRow({ at, ladder, viewerIsLeader, onPress }: { at: LienS
   ))
   if (onPress) {
     return (
-      <button type="button" className="lienStepRow" data-testid="lien-step-row" aria-label={`Step ${at!.step} of 4: where this stands`} onClick={(e) => { e.stopPropagation(); onPress(e.currentTarget) }} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', width: '100%' }}>
+      <button type="button" className="lienStepRow" data-testid="lien-step-row" data-ladder={ladder} aria-label={`Step ${at!.step} of 4: where this stands`} onClick={(e) => { e.stopPropagation(); onPress(e.currentTarget) }} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', width: '100%' }}>
         {inner}
       </button>
     )
   }
   return (
-    <div className="lienStepRow" data-testid="lien-step-row" aria-label={`Step ${at!.step} of 4`}>
+    <div className="lienStepRow" data-testid="lien-step-row" data-ladder={ladder} aria-label={`Step ${at!.step} of 4`}>
       {inner}
     </div>
   )

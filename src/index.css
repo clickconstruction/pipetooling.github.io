@@ -4292,6 +4292,8 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienStepTile { display: grid; justify-items: center; gap: 1px; padding: 5px 2px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.72rem; line-height: 1.2; color: var(--text-muted); min-width: 0; }
 .lienStepTile[data-state='done'] { background: var(--bg-green-tint); border-color: transparent; color: var(--text-green-800); }
 .lienStepTile[data-state='now'] { background: #2563eb; border-color: transparent; color: #fff; }
+/* The REMINDERS ladder's lit tile (punch list #262): violet-700's light value under white words, as the blue above. */
+.lienStepRow[data-ladder='reminder'] .lienStepTile[data-state='now'] { background: #6d28d9; }
 .lienStepTileMark { font-size: 0.68rem; font-weight: 700; text-transform: lowercase; }
 .lienStepTileName { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 /* The leader's one-screen approve on a phone (v2.4881): with Details folded, the pane shows only what is marked to keep. */

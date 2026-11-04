@@ -13,6 +13,7 @@ import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { letterTwoIsDue, type LetterTwoStatus } from './lienLetterTwo'
 import { COURTESY_BUTTON, courtesyIsDue, type CourtesyStatus } from './lienCourtesyNotice'
+import { lienReminderAt, type LienReminderAt } from './lienReminders'
 import { lienOfferChipWords, lienOfferFromItem } from './lienPayOffer'
 import { lienChipSigned, lienFieldsHash, lienPenAwaitsConfirm, signatureColumnsOf } from './lienNoticeSignature'
 import { formatYmdMonthDay } from './billedExpectedPay'
@@ -54,8 +55,8 @@ export type LienNextUpTarget =
   | { open: 'run'; gcId: string | null; takeBack?: boolean }
   | { open: 'lien_window'; jobId: string; tab: 'affidavit' }
 
-/** `now` / `coming` by the day; the list draws `sign` (v2.5087, his signature on an approved notice) and `mine` (only the viewer can press it) first and `waiting` (on the leader) last — punch list #101 PR 3. */
-export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'now' | 'coming' | 'waiting'
+/** `now` / `coming` by the day; the list draws `sign` (v2.5087, his signature on an approved notice) and `mine` (only the viewer can press it) first and `waiting` (on the leader) last — punch list #101 PR 3. `reminders` (punch list #262) holds the sent notices' courtesy and letter-two rows between `now` and `coming`. */
+export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'now' | 'reminders' | 'coming' | 'waiting'
 
 export type LienNextUpRow = {
   key: string
@@ -80,6 +81,8 @@ export type LienNextUpRow = {
   secondary?: { words: string; target: LienNextUpTarget } | null
   /** The jobs a run row stands for, in deadline order (punch list #101), for its fold and the find. */
   jobs?: ReadonlyArray<{ jobId: string; title: string; dueOn: string | null }>
+  /** A courtesy or letter-two row's rung on the REMINDERS ladder (punch list #262), read from the two statuses; null when the desk did not build the courtesy status. */
+  reminder?: LienReminderAt | null
 }
 
 /** A row inside this many days, or past its day, is *Needs you now*. */
@@ -230,13 +233,15 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         const courtesy = input.courtesyByJob?.[e.jobId]
         const courtesyDue = Boolean(courtesy && courtesyIsDue(courtesy))
         const twoDue = Boolean(two && letterTwoIsDue(two))
+        // The rung on the REMINDERS ladder (punch list #262): the row's dots and the strip's narrowing read it; it changes no rule of when a row appears.
+        const reminder = lienReminderAt(courtesy, two)
         // The courtesy notice (punch list #231) is the light step, so it leads while none has gone, even past day 10; once one went, letter two leads from day 10 with the courtesy's state in its words.
         if (courtesyDue && (!twoDue || !courtesy!.lastSentAt)) {
-          push({ ...base, key: `courtesy:${e.jobId}`, sub: courtesy!.words, dueOn: null, daysLeft: null, severity: two?.state === 'overdue' ? 'red' : 'amber', action: 'courtesy', button: office ? BUTTON.courtesy : null, target: pane('sent') })
+          push({ ...base, key: `courtesy:${e.jobId}`, sub: courtesy!.words, dueOn: null, daysLeft: null, severity: two?.state === 'overdue' ? 'red' : 'amber', action: 'courtesy', button: office ? BUTTON.courtesy : null, target: pane('sent'), reminder })
           break
         }
         if (!two || !twoDue) break
-        push({ ...base, key: `letter-two:${e.jobId}`, sub: `${two.words || 'Letter two is due'}${courtesy?.lastSentAt ? ` · ${courtesy.words}` : ''}`, dueOn: null, daysLeft: null, severity: two.state === 'overdue' ? 'red' : 'amber', action: 'letter_two', button: office ? BUTTON.letter_two : null, target: pane('sent') })
+        push({ ...base, key: `letter-two:${e.jobId}`, sub: `${two.words || 'Letter two is due'}${courtesy?.lastSentAt ? ` · ${courtesy.words}` : ''}`, dueOn: null, daysLeft: null, severity: two.state === 'overdue' ? 'red' : 'amber', action: 'letter_two', button: office ? BUTTON.letter_two : null, target: pane('sent'), reminder })
         break
       }
       case 'missed':
@@ -384,10 +389,17 @@ function approvalGroup(r: LienNextUpRow): 'sign' | 'pen' | 'mine' | 'waiting' | 
   return r.button ? 'mine' : 'waiting'
 }
 
+/** A sent notice's follow-up row (punch list #262): the courtesy press or letter two's, with no day of its own. */
+export function isLienReminderRow(r: Pick<LienNextUpRow, 'action'>): boolean {
+  return r.action === 'courtesy' || r.action === 'letter_two'
+}
+
 /**
  * The groups, in order, each with its rows — what the view draws. The leader's approvals lead as
- * *Only you can approve*; the rest run by day (*Needs you now*, *Coming up*); the approvals the
- * office waits on close the list as *Waiting on <leader>* (`waitingOn`, else *the leader*).
+ * *Only you can approve*; the rest run by day (*Needs you now*, *Coming up*), with the sent
+ * notices' reminders between them as *Reminders* (punch list #262) so the red group holds dated
+ * work; the approvals the office waits on close the list as *Waiting on <leader>* (`waitingOn`,
+ * else *the leader*).
  */
 export function groupLienNextUp(rows: ReadonlyArray<LienNextUpRow>, opts: { waitingOn?: string | null } = {}): Array<{ group: LienNextUpGroup; label: string; rows: LienNextUpRow[] }> {
   const sign = rows.filter((r) => approvalGroup(r) === 'sign')
@@ -395,13 +407,15 @@ export function groupLienNextUp(rows: ReadonlyArray<LienNextUpRow>, opts: { wait
   const mine = rows.filter((r) => approvalGroup(r) === 'mine')
   const waiting = rows.filter((r) => approvalGroup(r) === 'waiting')
   const rest = rows.filter((r) => approvalGroup(r) == null)
-  const now = rest.filter((r) => r.group === 'now')
-  const coming = rest.filter((r) => r.group === 'coming')
+  const reminders = rest.filter(isLienReminderRow)
+  const now = rest.filter((r) => r.group === 'now' && !isLienReminderRow(r))
+  const coming = rest.filter((r) => r.group === 'coming' && !isLienReminderRow(r))
   return [
     ...(sign.length ? [{ group: 'sign' as const, label: 'Only you can sign', rows: sign }] : []),
     ...(pen.length ? [{ group: 'pen' as const, label: pen.every((r) => r.sub.startsWith('Signed with your code')) ? 'Signed with your code, as recorded' : pen.some((r) => r.sub.startsWith('Signed with your code')) ? 'Signed by pen or code, as recorded' : 'Signed by pen, as recorded', rows: pen }] : []),
     ...(mine.length ? [{ group: 'mine' as const, label: 'Only you can approve', rows: mine }] : []),
     ...(now.length ? [{ group: 'now' as const, label: 'Needs you now', rows: now }] : []),
+    ...(reminders.length ? [{ group: 'reminders' as const, label: 'Reminders', rows: reminders }] : []),
     ...(coming.length ? [{ group: 'coming' as const, label: 'Coming up', rows: coming }] : []),
     ...(waiting.length ? [{ group: 'waiting' as const, label: `Waiting on ${opts.waitingOn?.trim() || 'the leader'}`, rows: waiting }] : []),
   ]

@@ -18,6 +18,12 @@ describe('lienStepOfRow (v2.4631)', () => {
     expect(lienStepOfRow(row({ kind: 'affidavit', action: 'file_affidavit' }))).toEqual({ ladder: 'affidavit', step: 4 })
     for (const action of ['note_missed', 'add_tracking', 'letter_two', 'review_hold', 'record_service'] as const) expect(lienStepOfRow(row({ action }))).toBeNull()
   })
+  it('a courtesy or letter-two row stands on the REMINDERS ladder when the desk read its rung (punch list #262), and nowhere without it', () => {
+    const reminder = { step: 2 as const, state: 'again' as const, words: 'day 16 · courtesy sent Nov 2 by email · nothing since', day: 16, counted: true }
+    expect(lienStepOfRow(row({ action: 'courtesy', reminder: { ...reminder, step: 1, state: 'due' } }))).toEqual({ ladder: 'reminder', step: 1 })
+    expect(lienStepOfRow(row({ action: 'letter_two', reminder }))).toEqual({ ladder: 'reminder', step: 2 })
+    expect(lienStepOfRow(row({ action: 'courtesy' }))).toBeNull()
+  })
 })
 
 describe('countLienSteps + lienLaddersShown', () => {
@@ -39,6 +45,15 @@ describe('countLienSteps + lienLaddersShown', () => {
     // Without a handed-over count the run rows are the fourth rung; notices always show.
     expect(countLienSteps(rows).notice[3]).toBe(1)
     expect(lienLaddersShown(countLienSteps([]))).toEqual(['notice'])
+  })
+  it('the REMINDERS ladder takes its four counts whole from the desk (punch list #262) and shows between notices and affidavits once something stands on it', () => {
+    const rows = [row({ action: 'courtesy', reminder: { step: 1, state: 'due', words: 'day 21 · nothing since the packet', day: 21, counted: true } }), row({ key: 'a1', kind: 'affidavit', action: 'fix_property' })]
+    const own = countLienSteps(rows)
+    expect(own.reminder).toEqual([1, 0, 0, 0])
+    const handed = countLienSteps(rows, {}, [7, 3, 2, 12])
+    expect(handed.reminder).toEqual([7, 3, 2, 12])
+    expect(lienLaddersShown(handed)).toEqual(['notice', 'reminder', 'affidavit'])
+    expect(lienLaddersShown(countLienSteps([row({})]))).toEqual(['notice'])
   })
 })
 
@@ -86,6 +101,25 @@ describe('lienStepCard', () => {
     const late = lienStepCard(row({ dueOn: '2026-10-01', daysLeft: -4 }))
     expect(late.deadline).toBe('In the mail by Oct 1 · 4 days late')
     expect(late.tone).toBe('red')
+  })
+})
+
+describe('lienStepCard on the REMINDERS ladder (punch list #262)', () => {
+  it('is violet, writes the four reminder steps from the kernel, and counts the foot', () => {
+    const c = lienStepCard(row({ action: 'courtesy', sub: 'day 21 · nothing since the packet', button: 'Send a courtesy notice', dueOn: null, daysLeft: null, reminder: { step: 1, state: 'due', words: 'day 21 · nothing since the packet', day: 21, counted: true } }))
+    expect(c.ladder).toBe('reminder')
+    expect(c.kindWords).toBe('Notice')
+    expect(c.items.map((i) => `${i.state} ${i.title}`)).toEqual(['now Reminder due', 'todo Reminder sent', 'todo Letter two', 'todo Closed'])
+    expect(c.items[0]!.detail).toContain('One press sends the email and the text')
+    expect(c.foot).toBe('Step 1 of 4 · 0 done · 4 to go')
+    expect(c.blocked).toBeNull()
+    expect(c.deadline).toBe('No day of its own')
+    // Without the rung the row keeps its two-rung card beside the ladder, as before.
+    expect(lienStepCard(row({ action: 'courtesy', sub: 'day 21 · nothing since the packet' })).foot).toBe('After step 4 · courtesy notice')
+  })
+  it('the phone’s tiles read Due · Sent · Letter two · Closed, letter two the leader’s', () => {
+    const tiles = lienStepTiles({ ladder: 'reminder', step: 3 }, 'reminder', false)!
+    expect(tiles.map((t) => `${t.label}:${t.state}:${t.who ?? '-'}`)).toEqual(['Due:done:-', 'Sent:done:-', 'Letter two:now:leader', 'Closed:todo:-'])
   })
 })
 

@@ -1,8 +1,8 @@
 ---
 name: "Lien desk: a REMINDERS strip between Notices and Affidavits"
 number: 262
-group: ready
-status: drawn 2026-11-04 from Grace's ask the same day · the kernel `lienReminders.ts` is written and tested on the branch · PR 1 builds on the recommended defaults
+group: waiting
+status: drawn 2026-11-04 from Grace's ask the same day (card #7036) · built the same day as v2.6515 on the recommended defaults · left: the owner's five calls below, then this folder goes or its open rows move to #235
 summary: >
   On the Lien desk's Do now the sent notices that want a reminder sit in Needs you now beside the
   leader's approvals and the affidavits: seven rows reading "day 21 · nothing since the packet ·
@@ -13,9 +13,10 @@ summary: >
   into a Reminders group of their own. Nothing new is sent, written or decided: the strip reads
   the courtesy status and letter two's clock the desk already holds. It is the small version of
   #235's reminders zone.
-next: PR 1 — the strip on Do now with its four counts, each step a press that lists its rows with the presses they have today, the Reminders group below, a render smoke at 1,400 and 375, the Do now guide and the architecture map.
-size: S (one PR; no migration; nothing written on the item)
-blocker: none — PR 1 takes the recommended defaults; the owner's three calls below can change them after
+next: The owner reads the five calls and says which recommendation stands. Each one that changes is a small PR on the kernel; none needs a migration.
+size: XS per call that changes
+blocker: The owner's word on the five calls. The strip is live meanwhile.
+ver: v2.6515
 opinion: build — the rows are mixed with approvals today and every count already exists on the desk, so the strip is mostly reading
 ---
 
@@ -71,7 +72,7 @@ it, as the affidavit and retainage rails do.
 |---|---|---|
 | 1 Reminder due | sent notices from day 7 with nothing since the packet; the ones before day 7 read beside the count as *· 2 before day 7* | *Send a courtesy notice* |
 | 2 Reminder sent | the courtesy went: this week (waiting), or a week ago with nothing since (another may go) | *Send a courtesy notice* again, or *Send letter two* from day 10 |
-| 3 Letter two | a letter two drafting, awaiting the leader, in the run, held, or sent | the letter two's own row on the NOTICES rail, or the notice under Sent |
+| 3 Letter two | letter two due while the courtesy is held (no reminder may go, counsel's letter still does), or a letter two drafting, awaiting the leader, in the run, held, or sent | *Send letter two*, the letter two's own row on the NOTICES rail, or the notice under Sent |
 | 4 Closed | paid, the GC authorized direct pay, the owner called, they answered, the affidavit is filed, or no reminder may go (held) | the notice under Sent |
 
 **The press.** A step's press narrows the list to its rows as the other rails do. The rows a step
@@ -92,7 +93,7 @@ stands where `courtesyStatus` and `letterTwoStatus` put it.
 
 ## What changes underneath
 
-1. **The kernel**, `src/lib/jobs/lienReminders.ts` (written, 11 tests): `lienReminderAt` reads one
+1. **The kernel**, `src/lib/jobs/lienReminders.ts` (11 tests): `lienReminderAt` reads one
    job's rung from its courtesy status and letter two's clock; `buildLienReminders` adds the desk's
    jobs up per rung with the names behind each and the uncounted ones before day 7;
    `lienReminderLadderItems` writes a row's ladder out for the card.
@@ -154,8 +155,8 @@ stands where `courtesyStatus` and `letterTwoStatus` put it.
 
 | PR | What | Size |
 |---|---|---|
-| card | this card and the mock-up | XS |
-| 1 | the strip on Do now with its counts, the step's list, the Reminders group, the dots and tiles, the smoke at 1,400 and 375, the guide, the map | S |
+| card | this card and the mock-up | XS · #7036 |
+| 1 | the strip on Do now with its counts, the step's list, the Reminders group, the dots and tiles, the smoke at 1,400 and 375, the guide, the map | S · v2.6515 |
 
 ## How to verify
 

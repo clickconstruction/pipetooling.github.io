@@ -9,22 +9,28 @@
 import { formatYmdMonthDay } from './billedExpectedPay'
 import type { LienNextUpKind, LienNextUpRow } from './lienNextUp'
 import { lienOfferApprovedWords, type LienPayOffer } from './lienPayOffer'
+import { LIEN_REMINDER_SHORT, LIEN_REMINDER_STEPS, lienReminderLadderItems } from './lienReminders'
 
-export type LienStepLadder = LienNextUpKind
+/** The three kinds of paper, and the REMINDERS ladder a sent notice walks (punch list #262). */
+export type LienStepLadder = LienNextUpKind | 'reminder'
 export type LienStepN = 1 | 2 | 3 | 4
 
 export const LIEN_STEP_LADDERS: ReadonlyArray<{ key: LienStepLadder; label: string; steps: readonly [string, string, string, string] }> = [
   { key: 'notice', label: 'Notices', steps: ['Find the owner', 'Draft notice', 'Approve', 'Send the run'] },
+  { key: 'reminder', label: 'Reminders', steps: LIEN_REMINDER_STEPS },
   { key: 'affidavit', label: 'Affidavits', steps: ['Fix the property', 'Draft affidavit', 'Approve', 'File it'] },
   { key: 'retainage', label: 'Retainage', steps: ['Find the owner', 'Draft notice', 'Approve', 'Send the run'] },
 ]
 
 export type LienStepAt = { ladder: LienStepLadder; step: LienStepN }
 
-/** The rung a row stands on; null for a row past the ladder or beside it (in the mail, letter two, held, missed, to serve). */
-export function lienStepOfRow(row: Pick<LienNextUpRow, 'kind' | 'action'>): LienStepAt | null {
+/** The rung a row stands on; null for a row past the ladder or beside it (in the mail, held, missed, to serve). A courtesy or letter-two row stands on the REMINDERS ladder when the desk read its rung (punch list #262). */
+export function lienStepOfRow(row: Pick<LienNextUpRow, 'kind' | 'action' | 'reminder'>): LienStepAt | null {
   const ladder = row.kind
   switch (row.action) {
+    case 'courtesy':
+    case 'letter_two':
+      return row.reminder ? { ladder: 'reminder', step: row.reminder.step } : null
     case 'find_owner':
     case 'fix_property':
       return { ladder, step: 1 }
@@ -49,10 +55,11 @@ export type LienStepCounts = Record<LienStepLadder, [number, number, number, num
  * Rows per rung. The notice and retainage ladders' fourth rung is how many notices are
  * approved and waiting for the run, which the desk counts itself (a GC with several ready
  * is one row that names them all), so it is handed in; a ladder with no such count takes
- * its rows.
+ * its rows. The REMINDERS ladder's four counts come whole from `buildLienReminders` when the
+ * desk hands them in (punch list #262) — its rungs count sent notices that have no row here.
  */
-export function countLienSteps(rows: ReadonlyArray<Pick<LienNextUpRow, 'kind' | 'action'>>, ready: Partial<Record<LienStepLadder, number>> = {}): LienStepCounts {
-  const counts: LienStepCounts = { notice: [0, 0, 0, 0], affidavit: [0, 0, 0, 0], retainage: [0, 0, 0, 0] }
+export function countLienSteps(rows: ReadonlyArray<Pick<LienNextUpRow, 'kind' | 'action' | 'reminder'>>, ready: Partial<Record<LienStepLadder, number>> = {}, reminders?: readonly [number, number, number, number]): LienStepCounts {
+  const counts: LienStepCounts = { notice: [0, 0, 0, 0], reminder: [0, 0, 0, 0], affidavit: [0, 0, 0, 0], retainage: [0, 0, 0, 0] }
   for (const r of rows) {
     const at = lienStepOfRow(r)
     if (at) counts[at.ladder][at.step - 1] = (counts[at.ladder][at.step - 1] ?? 0) + 1
@@ -61,6 +68,7 @@ export function countLienSteps(rows: ReadonlyArray<Pick<LienNextUpRow, 'kind' | 
     const n = ready[key]
     if (n != null) counts[key][3] = n
   }
+  if (reminders) counts.reminder = [...reminders]
   return counts
 }
 
@@ -216,22 +224,24 @@ function besideItems(row: Pick<LienNextUpRow, 'action' | 'sub'>): { items: LienS
 export function lienStepCard(row: LienNextUpRow, facts: LienStepFacts = {}): LienStepCard {
   const at = lienStepOfRow(row)
   const tone: LienStepCard['tone'] = row.daysLeft != null && row.daysLeft < 0 ? 'red' : row.severity === 'red' ? 'red' : row.severity === 'amber' ? 'amber' : 'quiet'
-  const base = { ladder: row.kind, kindWords: KIND_WORDS[row.kind], title: row.title, deadline: lienStepDueWords(row), tone, button: row.button }
+  const base = { ladder: at?.ladder ?? row.kind, kindWords: KIND_WORDS[row.kind], title: row.title, deadline: lienStepDueWords(row), tone, button: row.button }
   if (!at) {
     const beside = besideItems(row)
     return { ...base, items: beside.items, blocked: null, foot: beside.foot }
   }
-  const items = ladderItems(at.ladder, at.step, facts)
+  // The REMINDERS ladder's words come from its own kernel (punch list #262): the rung, the courtesy's words, letter two's, the closer's.
+  const items = at.ladder === 'reminder' && row.reminder ? lienReminderLadderItems(row.reminder) : ladderItems(at.ladder, at.step, facts)
   // The printed run (punch list #101): step 4 is half done — it printed — and the app cannot tell whether it was mailed.
   if (row.action === 'record_mailing') items[3] = { state: 'now', title: 'Record the mailing', detail: `${row.title.replace(/^\d+ notices printed/, 'Printed')}. Mailed? Type each envelope’s number in the run. Not mailing them? Take the run back.` }
   const done = items.filter((i) => i.state === 'done').length
-  const blocked = at.step === 1 ? (at.ladder === 'affidavit' ? 'the property record' : 'the owner of record') : null
+  const blocked = at.step === 1 && at.ladder !== 'reminder' ? (at.ladder === 'affidavit' ? 'the property record' : 'the owner of record') : null
   return { ...base, items, blocked, foot: `Step ${at.step} of 4 · ${done} done · ${4 - done} to go` }
 }
 
 /** The short names of the four steps, for a phone's row of tiles (v2.4881). */
 export const LIEN_STEP_SHORT: Record<LienStepLadder, readonly [string, string, string, string]> = {
   notice: ['Owner', 'Drafted', 'Approve', 'Mail'],
+  reminder: LIEN_REMINDER_SHORT,
   affidavit: ['Property', 'Drafted', 'Approve', 'File'],
   retainage: ['Owner', 'Drafted', 'Approve', 'Mail'],
 }
