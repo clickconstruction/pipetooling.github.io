@@ -46,6 +46,14 @@ export function callLineBody(first: string, said: string): string {
   return `Called ${first.trim() || 'them'}. They said: ${said.trim()}`
 }
 
+/**
+ * Whether a call line is one the office logged with their words, as `callLineBody` shapes it, rather than a call Quo
+ * recorded (v2.6500): Waiting on them reads a logged call as their word, since it carries what they said.
+ */
+export function isLoggedCall(body: string): boolean {
+  return /^Called \S.*\. They said: \S/.test(body.trim())
+}
+
 /** The day they gave as the box prints it: the date as "Tue Oct 27", or the words as typed. Null for no day. */
 export function callDayWords(day: DayKept | null): string | null {
   if (!day) return null
