@@ -47,6 +47,8 @@ A general contractor's bid platform or a public agency sends us an invitation to
 
 The bid is a Plumbing bid with the rule's estimator on it. Open it to add the address, the plans and the rest. An addendum whose subject names a bid we are pricing lands on that bid's thread. No row is made. The estimator sees it on the bid.
 
+An invitation can also sit in a thread, sorted onto a person already. Open the email there. Its row offers {{button:outline|Start a bid}} and {{button:outline|Put it on a bid…}}. The second ties the email to a bid you made from another source and writes it on the bid's history. [Put an email on a bid](/help/find-every-message-with-a-person-in-one-place#put-an-email-on-a-bid) shows both.
+
 ## Who is this?
 
 The card lists who the sender may be. **A customer we know** comes first, on a text and on an email alike. Each customer says why they match. The reason is the address or number on their record, a bid or job that names them, or their name. The company's email address counts too.

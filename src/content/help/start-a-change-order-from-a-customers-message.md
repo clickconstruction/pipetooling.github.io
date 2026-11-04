@@ -23,10 +23,11 @@ Before you save, the window shows the number the change order takes and its job.
 
 ## When it cannot start one
 
-The message must be tied to a job we won. The words under the button say what is missing.
+The button shows only on a message tied to a job. Tie it first. [Tie a message to a job](/help/find-every-message-with-a-person-in-one-place#tie-a-message-to-a-job) shows how.
 
-- *Tie the message to a job first.* [Tie a message to a job](/help/find-every-message-with-a-person-in-one-place#tie-a-message-to-a-job) shows how.
-- *A change order needs a job we won.* The job was lost, or it is still bidding.
+The job must be one we won. The words under the button say *A change order needs a job we won.* when the job was lost, or it is still bidding.
+
+An invitation to bid has no change order to draft. Its row offers {{button:outline|Start a bid}} and {{button:outline|Put it on a bid…}} instead. [Put an email on a bid](/help/find-every-message-with-a-person-in-one-place#put-an-email-on-a-bid) shows both.
 
 Only a customer's message can start one. A trade partner's thread has no such button, and neither has an architect's.
 

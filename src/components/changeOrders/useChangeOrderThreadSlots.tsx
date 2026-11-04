@@ -10,7 +10,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { becameChip, draftedWords, whoMayDraft } from '../../lib/changeOrders/fromMessage'
 import { supabaseFromMessageIo, type FromMessageIo, type ThreadChangeOrders } from '../../lib/changeOrders/fromMessageIo'
-import { jobRefOf } from '../../lib/messages/load'
+import { lineInvitation } from '../../lib/followUp/newLaneRows'
+import { viewerPresses } from '../../lib/messages/emailViewerActions'
 import { Chip } from '../gc/gcUi'
 import type { ThreadSlots } from '../gc/messages/threadSlots'
 import { useMessagesReread } from '../gc/messages/useMessagesReread'
@@ -80,10 +81,13 @@ export function useChangeOrderThreadSlots(io: FromMessageIo = supabaseFromMessag
               {becameChip(order.number)}
             </Chip>
           )
-        // A line on a Pipeline job goes on its estimate instead (R8 · 8's *Line on the estimate*).
-        if (jobRefOf(m.jobId)?.kind === 'pipeline') return null
+        // The viewer's kernel decides the row (v2.6509): a change order only on a line tied to a GC project that is
+        // not an invitation to bid; a line on a Pipeline job goes on its estimate instead (R8 · 8's *Line on the
+        // estimate*), an email on no job or an invitation offers Start a bid and Put it on a bid.
+        const inv = lineInvitation({ channel: m.channel, direction: m.direction, subject: m.subject, body: m.body, at: m.at, invitation: m.invitation })
+        if (!viewerPresses({ jobId: m.jobId, channel: m.channel, direction: m.direction, invitation: inv !== null, role: auth?.role ?? null }).includes('change_order')) return null
         return <StartChangeOrder key={m.id} message={m} contact={contact} io={io} onDrafted={drafted} />
       },
     }
-  }, [got, io, drafted])
+  }, [got, io, drafted, auth?.role])
 }

@@ -19,6 +19,7 @@ import { FlowTab } from '../../flows/FlowTab'
 import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
 import type { CourtFacts } from '../../../lib/followUp/courtFacts'
 import { useNewLaneThreadSlots } from '../../followUp/useNewLaneThreadSlots'
+import { useEmailViewerThreadSlots } from '../../messages/useEmailViewerThreadSlots'
 import { useLeadDoorThreadSlots } from '../../messages/useLeadDoorThreadSlots'
 import { hasBillOffer, hasPaperOffer } from '../../../lib/messages/lineFiles'
 import { PaperOffers } from './PaperOffers'
@@ -164,6 +165,9 @@ export function useThreadSlots(): ThreadSlots {
   const flow: ThreadSlots = { side: (c, acts) => (c.kind === 'unknown' ? null : <FlowTab key={`flow:${c.id}`} at={{ contactId: c.id }} side onHas={acts?.has} />) }
   // Cut 4b: a change order from a customer's message, after cut 2's in both slots it shares.
   const changeOrders = useChangeOrderThreadSlots()
+  // v2.6509: the email viewer's other presses (Start a bid, Put it on a bid…, Open the bid), after cut 4b's in the
+  // window's first slot; the same kernel (`emailViewerActions.ts`) decides both.
+  const emailViewer = useEmailViewerThreadSlots()
   // Cut 6: a file that reads as a trade partner's paper, offered under its line until someone answers it; since punch
   // list #179 (v2.6095) a supply house's PDF or picture the same way, as a bill to record.
   const email: ThreadSlots = { underLine: (m, c) => (hasPaperOffer(m.files, c) || hasBillOffer(m.files, c) ? <PaperOffers key={m.id} message={m} contact={c} /> : null) }
@@ -177,5 +181,5 @@ export function useThreadSlots(): ThreadSlots {
   const leadDoors = useLeadDoorThreadSlots()
   // By cut number: cut 2's Follow up, cut 3's reply box, cut 4's flow, cut 4b's change orders, R8 · 8's estimate lines,
   // #139's estimate door, cut 6's paper offer, R7's sort card.
-  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, estimateLines, estimateDoor, email, leadDoors, newLane)
+  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, emailViewer, estimateLines, estimateDoor, email, leadDoors, newLane)
 }
