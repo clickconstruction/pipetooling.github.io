@@ -46,7 +46,7 @@ export function supabaseBodyContactsIo(client: unknown = supabase): BodyContacts
       return typeof id === 'string' && id ? id : null
     },
     async makeThread(kind, value, at) {
-      const made = await rpc('contact_make_for_channel' as never, { p_kind: kind, p_value: value } as never)
+      const made = await db.rpc('contact_make_for_channel' as never, { p_kind: kind, p_value: value } as never)
       checkSupabaseError(made, 'make their thread')
       const id = made.data as unknown
       if (typeof id !== 'string' || !id) throw new Error('Their thread could not be made.')
