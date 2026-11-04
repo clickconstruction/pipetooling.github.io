@@ -203,6 +203,8 @@ export function foldSiteChargeEvents(events: readonly JobChargeEvent[], jobLabel
 
 /** How many days keep their source icons: a site's chart holds hundreds of days, and an icon on each is a wall. */
 export const SITE_TIMELINE_ICON_DAYS = 40
+/** A phone's plot is a third as wide, so a third as many days keep their icons. */
+export const SITE_TIMELINE_ICON_DAYS_PHONE = 14
 
 /**
  * Keep the source icons on the `max` days with the biggest cost steps and take them off the rest; the

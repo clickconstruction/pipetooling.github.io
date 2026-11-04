@@ -1323,7 +1323,8 @@ export default function DevelopmentPage() {
             meta={moneyViewShown === 'scoreboard' ? `what the site's jobs earned and cost · ${shown.jobs.length} ${shown.jobs.length === 1 ? 'job' : 'jobs'}` : moneyViewShown === 'timeline' ? `the site's cost and cash over time · ${shown.jobs.length} ${shown.jobs.length === 1 ? 'job' : 'jobs'}` : `where the site's money is · ${siteMoney.band.jobs} ${siteMoney.band.jobs === 1 ? 'job' : 'jobs'}`}
             right={
               <>
-                <span role="group" aria-label="Money views" style={{ display: 'inline-flex', gap: 2, padding: 2, border: '1px solid var(--border)', borderRadius: 9999, background: 'var(--bg-subtle)' }} data-testid="money-views">
+                {/* On a phone the three chips share one full row, each a third of it (v2.6493), so *Where the money is* never stacks four lines tall. */}
+                <span role="group" aria-label="Money views" style={{ display: phone ? 'flex' : 'inline-flex', width: phone ? '100%' : undefined, gap: 2, padding: 2, border: '1px solid var(--border)', borderRadius: 9999, background: 'var(--bg-subtle)' }} data-testid="money-views">
                   {/* The third view, the Timeline, is the finance seats' alone (v2.6493, punch list #257). */}
                   {(canSeeSiteCosts(role) ? (['money', 'scoreboard', 'timeline'] as const) : (['money', 'scoreboard'] as const)).map((v) => (
                     <button
@@ -1333,7 +1334,7 @@ export default function DevelopmentPage() {
                       aria-pressed={moneyViewShown === v}
                       title={v === 'money' ? 'The band and the live jobs by stage: where the site’s money is' : v === 'scoreboard' ? 'The scoreboard: what each job earned and cost, with the site’s totals as the column heads' : 'The timeline: the site’s cost to date and cash position over time, every job’s charges on one chart'}
                       data-testid={`money-view-${v}`}
-                      style={{ border: `1px solid ${moneyViewShown === v ? 'var(--border-strong)' : 'transparent'}`, borderRadius: 9999, padding: '1px 10px', font: 'inherit', fontSize: '0.76rem', cursor: 'pointer', background: moneyViewShown === v ? 'var(--surface)' : 'transparent', color: moneyViewShown === v ? 'var(--text-strong)' : 'var(--text-700)', fontWeight: moneyViewShown === v ? 700 : 500 }}
+                      style={{ border: `1px solid ${moneyViewShown === v ? 'var(--border-strong)' : 'transparent'}`, borderRadius: 9999, padding: phone ? '3px 6px' : '1px 10px', font: 'inherit', fontSize: '0.76rem', lineHeight: 1.2, cursor: 'pointer', background: moneyViewShown === v ? 'var(--surface)' : 'transparent', color: moneyViewShown === v ? 'var(--text-strong)' : 'var(--text-700)', fontWeight: moneyViewShown === v ? 700 : 500, flex: phone ? 1 : undefined, textAlign: 'center' }}
                     >
                       {v === 'money' ? 'Where the money is' : v === 'scoreboard' ? 'Scoreboard' : 'Timeline'}
                     </button>

@@ -2,7 +2,7 @@
 name: "A cost timeline for a development: the site's cost, cash and value over time, for devs and controllers"
 number: 257
 group: ready
-status: claimed 2026-11-04 on claude/site-cost-timeline-e043ae · PR 1 the view, the cost and cash lines, the job chips, the job-naming tooltip and the batched reads
+status: PR 1 the view, the cost and cash lines, the job chips, the job-naming tooltip and the batched reads built 2026-11-04 as v2.6493 on claude/site-cost-timeline-e043ae, walked live on the real site as the dev at three widths · PR 2 and PR 3 next
 summary: >
   The owner saw the Job Summary's Charges & Value chart, the step chart of one job's cost to date and
   cash position with an icon on every charge, and asked for the same chart over a whole development,
@@ -50,6 +50,10 @@ He approved the written draft the same day and asked for it in its own session.
 - **Job chips** above the chart narrow it to one or more jobs; *All jobs* is the default, the chips
   in the Money look's section order. A job with no dated event is left out, and one line counts how
   many. Open question for the owner: whether those jobs should be shown another way.
+- **The phone's view switch.** With three chips, *Where the money is* stacked four lines tall at 375
+  wide. PR 1 lays the three on one full row in the card's head with the GC Review link under them
+  (placement A, built); the other placement, a chip row at the top of the card's body at every
+  width (B), was mocked live. Open question for the owner: A or B.
 - **Reads start only when the view opens**, as the Scoreboard's do, and every one is batched over
   the site's jobs and paged: the cost rows are the ones `useSiteCosts` already reads for the Costs
   column and the Scoreboard (with their dates), so the Timeline, the column and the board say one

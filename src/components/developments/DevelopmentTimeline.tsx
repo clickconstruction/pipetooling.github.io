@@ -7,7 +7,7 @@
  */
 import { useMemo, useState, type CSSProperties } from 'react'
 import { JobChargesTimelineChartView } from '../jobs/JobSummaryChargesTimelineChart'
-import { buildSiteTimeline, siteTimelineLeftOutWords, siteTimelineScopeWords, type SiteTimelineJob } from '../../lib/developments/siteTimeline'
+import { buildSiteTimeline, SITE_TIMELINE_ICON_DAYS_PHONE, siteTimelineLeftOutWords, siteTimelineScopeWords, type SiteTimelineJob } from '../../lib/developments/siteTimeline'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { EmptyState } from '../EmptyState'
 
@@ -42,7 +42,8 @@ const chipStyle = (on: boolean): CSSProperties => ({
 export function DevelopmentTimeline({ read, phone }: { read: SiteTimelineViewRead; phone: boolean }) {
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
   const jobs = read.state === 'ready' ? read.jobs : null
-  const model = useMemo(() => (jobs ? buildSiteTimeline({ jobs, selected }) : null), [jobs, selected])
+  // A phone's plot is a third the width, so a third of the icon days keep their icons.
+  const model = useMemo(() => (jobs ? buildSiteTimeline({ jobs, selected, iconDays: phone ? SITE_TIMELINE_ICON_DAYS_PHONE : undefined }) : null), [jobs, selected, phone])
 
   if (read.state === 'reading') {
     return (

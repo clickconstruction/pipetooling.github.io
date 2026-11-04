@@ -70,7 +70,8 @@ export function Card({ id, title, meta, right, children, tone, fold }: { id?: st
         ) : null}
         <h2 style={{ margin: 0, fontSize: '0.98rem', color: 'var(--text-strong)' }}>{title}</h2>
         {folded ? <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="look-folded-line">{fold?.line}</span> : meta ? <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{meta}</span> : null}
-        {right && !folded ? <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: '0.78rem' }}>{right}</span> : null}
+        {/* The right side wraps inside itself (v2.6493): on a phone the Money card's three view chips take a row and its link the next, instead of squeezing beside each other. */}
+        {right && !folded ? <span style={{ marginLeft: 'auto', display: 'inline-flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, alignItems: 'center', fontSize: '0.78rem', minWidth: 0 }}>{right}</span> : null}
       </header>
       {bodyless ? null : <div style={{ padding: '10px 14px' }}>{children}</div>}
     </section>
