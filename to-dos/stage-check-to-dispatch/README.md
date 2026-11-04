@@ -2,7 +2,7 @@
 name: "Send a stage check to Dispatch: the crew's reason rides with the job, the stage and the check, and Dispatch opens it with the context and acts on it in place"
 number: 245
 group: ready
-status: asked 2026-11-02 on the sheet's screenshot; thought through and mocked up the same day; PR 1 (the send and the inbox doors) built the same day as v2.6360, PR #6829, merged 2026-11-03 with its migration pushed, walked live the same day; PR 2 built 2026-11-04 as a train of two, the self-close (PR #7010) and v2.6495 (the window and the loop back); PR 3 (the marks) next; three calls carry recommendations as defaults
+status: asked 2026-11-02 on the sheet's screenshot; thought through and mocked up the same day; PR 1 (the send and the inbox doors) built the same day as v2.6360, PR #6829, merged 2026-11-03 with its migration pushed, walked live the same day; PR 2 built 2026-11-04 as a train of two, v2.6494 (the self-close, PR #7010) and v2.6495 (the window and the loop back, PR #7013), both merged, pushed and deployed, walked live the same day; PR 3 (the marks) next; three calls carry recommendations as defaults
 summary: >
   A crew member on a stage checklist hits a check they cannot answer: the part is missing, the
   check is wrong for this job, the office has to decide. Today the phone has no door from the row,
@@ -15,7 +15,7 @@ summary: >
 next: PR 3, the marks: #246's door is on main. Then the live walk of PR 2 on the ZZ job once the owner says yes.
 size: M as a train of three (S · M · S); one migration (two columns on dispatch_requests); no edge function beyond the push that already sends
 blocker: none. Call 1 (the reason set) and call 2 (who may close) take the recommendations below as defaults.
-ver: v2.6360 · 6462 · 6466 · 6495 · 6328 · 6347 · 6052 · 6214 · 3246 · 6087 · 6084
+ver: v2.6360 · 6462 · 6466 · 6494 · 6495 · 6328 · 6347 · 6052 · 6214 · 3246 · 6087 · 6084
 opinion: now — the sheet's second pass made the row the place the crew stands; a dead end there sends them to a text message, and the context is lost the moment they type one
 mockup: to-dos/stage-check-to-dispatch/mockup.html
 ---
@@ -191,8 +191,8 @@ app-wide *Customer waiting* banner and **Needs you** too (v2.6466): those stay a
 next; PR 3 can follow it.
 
 2026-11-04: **PR 2 built as a train of two.** A review that morning found the inbox's `stageCheck` and the banner's
-`waitsOnTheBanner` were two predicates for one fact; v2.6495 gives both `isStageCheckRequest`. **PR 2a (PR #7010, the
-self-close)**: migration `20261104170000_stage_check_self_close.sql`, three `SECURITY DEFINER` triggers that close every open
+`waitsOnTheBanner` were two predicates for one fact; v2.6495 gives both `isStageCheckRequest`. **v2.6494 (PR #7010, PR
+2a)**: migration `20261104170000_stage_check_self_close.sql`, three `SECURITY DEFINER` triggers that close every open
 request on a stage and check when it is answered on the sheet, skipped on the job or taken off, in the settler's name
 with a note that says how (*Answered on the sheet by Luis Ortega · Yes*, *Skipped on this job by Sal Super: the reason*,
 *Taken off by Sal Super*, a company question *Taken off the company's list*, a promoted item *Added to the company's
@@ -202,6 +202,14 @@ migration (49 checks, four mutants caught). **v2.6495 (PR 2b)**: the context win
 close** for the dispatch group and a dev and never the sender, **Lower priority**, **Not now**, the two doors), the
 crew's words in the payload, the reply push (`notify-dispatch-request` mode `replied`: the function had no note push,
 confirmed before adding it), Dispatch's reply under the crew's row, the chip read again after a settle with the close
-push to the sender, the guide *answer a check the crew sent*. Call 3 stands. Not walked live yet: a send pushes the
-whole Dispatch group, so the walk waits for the owner's yes, after both PRs land and the migration is pushed and the
-function deployed. PR 3, the marks, is next.
+push to the sender, the guide *answer a check the crew sent*. Call 3 stands. **Walked live 2026-11-04 at 17:45Z** on
+the dev server as the dev, on ZZ TEST Riders Walk, after both PRs merged, the migration pushed (drift 1108 of 1108)
+and the function deployed, with the owner's yes: a job item added for Trim Set from the Documents tab, **Send to
+Dispatch** with *Need a part* (the push answered 200), *With Dispatch · now · need a part* on the row; in Dispatch
+Mode's inbox the row's press opened the window with the live count (*0 of 1 answered · 1 left*), the check, *added by
+Robert · not answered yet*, the words as the thread's first line, the reply box *Reply to Robert…* and, since the dev
+was the sender, no Reply and close and the line *You sent this check. Answer it on the sheet and it closes itself.*;
+**Reply** wrote the note (*Reply sent. The crew reads it under the row.*, the function 200), and the sheet drew
+*Dispatch: “…” · Robert · just now* under the chip; **Yes** cleared the chip and the request closed itself with
+*Answered on the sheet by Robert · Yes* in the dev's name; the item was then taken off. The two ZZ requests and the
+retired item stay as ZZ rows. PR 3, the marks, is next.
