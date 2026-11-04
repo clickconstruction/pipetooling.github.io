@@ -212,6 +212,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
           projectName: c.step_id ? stepInfo.get(c.step_id)?.projectName ?? null : null,
           sheetLabel: !c.step_id && c.labor_job_id ? parseSubWorkOrderSnapshot(c.offer_scope_snapshot).sheetLabel ?? sheetLabelById.get(c.labor_job_id) ?? 'Sub sheet' : null,
           acceptedAtYmd: c.accepted_at ? calendarYmdInAppTzFromIso(c.accepted_at) : null,
+          laborJobId: c.labor_job_id ?? null,
         })),
         docs: docRows.map((d) => ({
           person_id: d.person_id,
