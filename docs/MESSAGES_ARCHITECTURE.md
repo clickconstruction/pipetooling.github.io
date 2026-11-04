@@ -5,7 +5,7 @@ file: docs/MESSAGES_ARCHITECTURE.md
 type: Engineering / Architecture
 purpose: One page for a developer new to Messages — the contact spine, the thread and its slots, Follow up, the flows and the morning run, the channels (Quo texts, email in and out, the portals, push), who sees what, the switches and crons, how to test it live, how it deploys, and what is still open. Everything here is a pointer into code and the per-version record; nothing is repeated that a kernel's header or a fragment already says.
 audience: Developers, AI Agents
-last_updated: 2026-11-03
+last_updated: 2026-11-04
 ---
 
 ## What it is, in one paragraph
@@ -118,7 +118,7 @@ The window reads the open thread through `useThreadWindow` and asks for the read
 `useMessagesReread`. Since v2.5572 a row the page did not write reaches it too: `useMessagesLive` holds one realtime
 channel on `messages` and `contacts` (migration `20261016010000`; Realtime reads the tables' own row policies) behind one
 bus (`lib/messages/liveReread.ts`) shared by the host, Follow up and the header's badge, settles a burst into one read,
-and reads again when the tab comes back to focus. On a phone the header folds (`threadFold.ts`), ⋯ is a sheet, and a press and hold on a line opens
+and reads again when the tab comes back to focus. The header is three rows across the width at every height since v2.6505 (`threadHeader.ts`'s `threadHeaderPlan`: the company line carries their first address and number, the arrow opens the rest), and on a phone it stacks them (`threadFold.ts`), ⋯ is a sheet, and a press and hold on a line opens
 **Tie this message to** (`tieSheet.ts`).
 
 The **reply box** (`reply/ReplyBox.tsx`) is one component for the thread's foot and the job's box: the kinds row
