@@ -104,6 +104,8 @@ export function buildUsersTabKindRoster(k: PersonKind, users: UserRow[], people:
       // The Account lens reads these two (v2.3702); without them every row read "never signed in".
       read_only: u.read_only ?? null,
       last_sign_in_at: u.last_sign_in_at ?? null,
+      // Punch list #260 (v2.6514): a users row with no sign-in behind it reads *no login* like a roster-only row did.
+      login_attached_at: u.login_attached_at ?? null,
     }))
   const liveUserIds = new Set(users.map((u) => u.id))
   const fromPeople = people

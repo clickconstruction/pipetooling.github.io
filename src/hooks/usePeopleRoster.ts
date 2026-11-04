@@ -1,5 +1,7 @@
 import { useEffect, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
+import { addWorker } from '../lib/people/addWorker'
+import { formatErrorMessage } from '../utils/errorHandling'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
 
@@ -31,6 +33,8 @@ export type UserRow = {
   /** v2.3702 (the Users tab's Account lens): training mode and the last sign-in. */
   read_only?: boolean | null
   last_sign_in_at?: string | null
+  /** Punch list #260 (v2.6514): when a sign-in was attached; null is a worker with no login (`users.login_attached_at`). */
+  login_attached_at?: string | null
 }
 export type PersonKind =
   | 'assistant'
@@ -93,7 +97,7 @@ export function usePeopleRoster(
     // rows (the `test` fixture) only when the viewer is dev.
     const [peopleRes, usersRes, meRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes, account_user_id, end_date').is('archived_at', null).order('kind').order('name'),
-      fetchActiveUsers<UserRow>('id, email, name, role, notes, phone, needs_supervision, read_only, last_sign_in_at', { roles: PEOPLE_ROSTER_ROLES, orderByName: false }),
+      fetchActiveUsers<UserRow>('id, email, name, role, notes, phone, needs_supervision, read_only, last_sign_in_at, login_attached_at', { roles: PEOPLE_ROSTER_ROLES, orderByName: false }),
       supabase.from('users').select('role').eq('id', authUserId).single(),
     ])
     if (peopleRes.error) deps.setError(peopleRes.error.message)
@@ -102,7 +106,7 @@ export function usePeopleRoster(
     const myRole = (meRes.data as { role?: string } | null)?.role ?? null
     deps.setAuthUserRole(myRole)
     if (myRole === 'dev') {
-      const { data: devUsers } = await fetchActiveUsers<UserRow>('id, email, name, role, notes, phone, needs_supervision, read_only, last_sign_in_at', { roles: [], includeDev: true, orderByName: false })
+      const { data: devUsers } = await fetchActiveUsers<UserRow>('id, email, name, role, notes, phone, needs_supervision, read_only, last_sign_in_at, login_attached_at', { roles: [], includeDev: true, orderByName: false })
       if (devUsers.length > 0) {
         const existingIds = new Set(usersList.map((u) => u.id))
         const newDevs = devUsers.filter((u) => !existingIds.has(u.id))
@@ -248,13 +252,17 @@ export function usePeopleRoster(
         closeForm()
       }
     } else {
-      const { data, error: err } = await supabase.from('people').insert({ master_user_id: authUserId, ...payload }).select('id, master_user_id, kind, name, email, phone, notes, account_user_id').single()
-      if (err) deps.setError(err.message)
-      else if (data) {
-        setPeople((prev) => [...prev, data as Person].sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name)))
+      // Punch list #260 (v2.6514): the person is a users row with no login and the People record linked to it, in one
+      // transaction (`add_worker`), so they can hold a clock session and a Charged as from day one.
+      try {
+        const added = await addWorker(supabase, { name: trimmedName, kind, email: payload.email, phone: payload.phone, notes: payload.notes })
+        const data: Person = { id: added.personId, master_user_id: authUserId, ...payload, account_user_id: added.userId }
+        setPeople((prev) => [...prev, data].sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name)))
         closeForm()
         setSaving(false)
-        return data as Person
+        return data
+      } catch (e) {
+        deps.setError(formatErrorMessage(e, 'The person was not added.'))
       }
       setSaving(false)
       return null

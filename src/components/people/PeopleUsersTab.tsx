@@ -469,7 +469,7 @@ export function PeopleUsersTab({
   function renderGroup(sectionKind: PersonKind | 'dev') {
     const items: UsersTabRosterListRow[] =
       sectionKind === 'dev'
-        ? users.filter((u) => u.role === 'dev').map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes, role: u.role, needs_supervision: u.needs_supervision ?? null, read_only: u.read_only ?? null, last_sign_in_at: u.last_sign_in_at ?? null }))
+        ? users.filter((u) => u.role === 'dev').map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes, role: u.role, needs_supervision: u.needs_supervision ?? null, read_only: u.read_only ?? null, last_sign_in_at: u.last_sign_in_at ?? null, login_attached_at: u.login_attached_at ?? null }))
         : byKind(sectionKind)
     const label = sectionKind === 'dev' ? 'Devs' : KIND_LABELS[sectionKind]
     const rails = items.map((item) => ({ item, rail: railFor(sectionKind, item) }))
@@ -570,7 +570,7 @@ export function PeopleUsersTab({
         const rails: RailRow[] = []
         for (const sec of USERS_TAB_SECTIONS) {
           if (sec.type === 'dev') {
-            if (isDev) for (const u of users.filter((x) => x.role === 'dev')) rails.push(railFor('dev', { source: 'user', id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes, role: u.role, needs_supervision: u.needs_supervision ?? null, read_only: u.read_only ?? null, last_sign_in_at: u.last_sign_in_at ?? null }))
+            if (isDev) for (const u of users.filter((x) => x.role === 'dev')) rails.push(railFor('dev', { source: 'user', id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes, role: u.role, needs_supervision: u.needs_supervision ?? null, read_only: u.read_only ?? null, last_sign_in_at: u.last_sign_in_at ?? null, login_attached_at: u.login_attached_at ?? null }))
           } else {
             for (const item of byKind(sec.kind)) rails.push(railFor(sec.kind, item))
           }

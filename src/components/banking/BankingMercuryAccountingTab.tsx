@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Database, Json } from '../../types/database'
 import { supabase } from '../../lib/supabase'
+import { addWorker } from '../../lib/people/addWorker'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { fetchAllRows } from '../../lib/supabasePaging'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -988,12 +989,9 @@ export function BankingMercuryAccountingTab({
       const trimmed = name.trim()
       if (trimmed === '') return null
       try {
-        const rows = await withSupabaseRetry(
-          async () => supabase.from('people').insert({ master_user_id: userId, kind: 'sub', name: trimmed }).select('id, name').limit(1),
-          'accounting create person from rule form',
-        )
-        const row = ((rows ?? []) as { id: string; name: string }[])[0]
-        if (!row) return null
+        // Punch list #260 (v2.6514): a users row with no login and the People record linked to it (`add_worker`).
+        const added = await addWorker(supabase, { name: trimmed, kind: 'sub' })
+        const row = { id: added.personId, name: trimmed }
         showToast(`Added ${row.name} to People (sub).`, 'success')
         mintedPersonNameByValueRef.current.set(`p:${row.id}`, row.name)
         return { value: `p:${row.id}`, label: `${row.name} · ${bankingPersonKindTag('sub')}` }
@@ -1002,7 +1000,7 @@ export function BankingMercuryAccountingTab({
         return null
       }
     },
-    [showToast, userId],
+    [showToast],
   )
 
   const runAttributionBackfill = useCallback(async () => {

@@ -23,11 +23,13 @@ describe('hirePlan', () => {
     expect(steps[0]!.detail).toContain('ana@example.com')
   })
 
-  it('a salaried hire adds the workday step after pay, and needs a login', () => {
+  it('a salaried hire adds the workday step after pay, with or without a login (punch list #260: the template belongs to the users row)', () => {
     const { steps } = hirePlan({ ...base, isSalary: true, hourlyWage: 30 }, devCaps)
     expect(steps.map((s) => s.id)).toEqual(['account', 'pay', 'workday'])
-    const { problems } = hirePlan({ ...base, isSalary: true, hourlyWage: 30, invite: false, email: '' }, devCaps)
-    expect(problems).toContain('A salaried hire needs a login: the workday template belongs to the account.')
+    const noLogin = hirePlan({ ...base, isSalary: true, hourlyWage: 30, invite: false, email: '' }, devCaps)
+    expect(noLogin.problems).toEqual([])
+    expect(noLogin.steps.map((s) => s.id)).toEqual(['roster', 'pay', 'workday'])
+    expect(noLogin.steps[0]!.detail).toContain('no login')
   })
 
   it('no email means a roster row, not an invite; a packet adds the paperwork step', () => {
