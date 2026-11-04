@@ -157,7 +157,7 @@ function round2(n: number): number {
  * contract, then the office's percent (the crew's newest report is Job Summary's second source; the
  * page does not read reports yet, so it is not here).
  */
-export function scoreboardPct(job: MemberJob, invoices: ReadonlyArray<{ amount: number; status: string }>): { pct: number | null; source: ScoreboardPctSource } {
+export function scoreboardPct(job: Pick<MemberJob, 'status' | 'pct_complete' | 'revenue'>, invoices: ReadonlyArray<{ amount: number; status: string }>): { pct: number | null; source: ScoreboardPctSource } {
   if (normalizeJobsLedgerStatus(job.status) === 'paid') return { pct: 100, source: 'paid' }
   const r = resolveJobSummaryPercentCompleteWithSource(null, job.pct_complete ?? null, jobSummaryPaidInvoiceOpts([...invoices], job.revenue))
   return { pct: r.pct, source: r.source }
