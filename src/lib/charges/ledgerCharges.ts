@@ -12,6 +12,7 @@ import { indexAdjustments, type ChargeAdjustment } from './adjustments'
 import { premiumOf, type Premium } from './premium'
 import { CREW_SHAPES, NOBODY_CHARGED_WHY, parseChargeStanding, parseCrewShape, type ChargeStanding, type RateCard } from './rateCard'
 import { moneyWords } from './moneyParts'
+import { liveOverArchived, type ChargeStandingRow } from './chargeStandings'
 
 export type LedgerChargesInput = {
   /** The row's team labor breakdown: one entry per person with their hours by work date. */
@@ -189,11 +190,13 @@ export function ledgerSummaryCell(c: Pick<LedgerCharges, 'priced' | 'chargesUsd'
   return { chargesUsd: c.chargesUsd, premiumUsd: c.unpricedDays > 0 ? null : c.premium.signed, note: c.note }
 }
 
-/** The login a breakdown person reaches: by the People record's link, else by the name key; null when none. */
-export function loginLookup(users: ReadonlyArray<{ id: string; name: string | null }>, nameKey: (name: string) => string, personIdToUserId?: ReadonlyMap<string, string>): NonNullable<LedgerChargesInput['loginOf']> {
+/**
+ * The login a breakdown person reaches: by the People record's link, else by the name key; null when none. By name, a
+ * login still here wins over one that left with the same name (v2.6490), since `charge_standings()` answers both.
+ */
+export function loginLookup(users: ReadonlyArray<Pick<ChargeStandingRow, 'id' | 'name' | 'archived_at'>>, nameKey: (name: string) => string, personIdToUserId?: ReadonlyMap<string, string>): NonNullable<LedgerChargesInput['loginOf']> {
   const byId = new Map(users.map((u) => [u.id, u] as const))
-  const byName = new Map<string, { id: string; name: string | null }>()
-  for (const u of users) if (u.name) byName.set(nameKey(u.name), u)
+  const byName = liveOverArchived(users, (u) => (u.name ? nameKey(u.name) : null))
   return (personName, personId) => {
     const userId = personId ? personIdToUserId?.get(personId) : undefined
     const u = (userId ? byId.get(userId) : undefined) ?? byName.get(nameKey(personName))
@@ -201,15 +204,16 @@ export function loginLookup(users: ReadonlyArray<{ id: string; name: string | nu
   }
 }
 
-/** A standing lookup from the users rows the page already holds, by the name key the breakdown uses and by user id. */
-export function standingLookup(users: ReadonlyArray<{ id: string; name: string | null; charge_standing?: unknown }>, nameKey: (name: string) => string, personIdToUserId?: ReadonlyMap<string, string>): LedgerChargesInput['standingOf'] {
-  const byName = new Map<string, ChargeStanding>()
+/**
+ * A standing lookup from the rows `charge_standings()` answers, by the name key the breakdown uses and by user id. By
+ * name, a login still here wins over one that left with the same name (v2.6490); by id every row answers, so a person
+ * who left prices by the standing set on their login.
+ */
+export function standingLookup(users: ReadonlyArray<ChargeStandingRow>, nameKey: (name: string) => string, personIdToUserId?: ReadonlyMap<string, string>): LedgerChargesInput['standingOf'] {
   const byId = new Map<string, ChargeStanding>()
-  for (const u of users) {
-    const s = parseChargeStanding(u.charge_standing)
-    byId.set(u.id, s)
-    if (u.name) byName.set(nameKey(u.name), s)
-  }
+  for (const u of users) byId.set(u.id, parseChargeStanding(u.charge_standing))
+  const byName = new Map<string, ChargeStanding>()
+  for (const [k, u] of liveOverArchived(users, (u) => (u.name ? nameKey(u.name) : null))) byName.set(k, parseChargeStanding(u.charge_standing))
   return (personName, personId) => {
     const userId = personId ? personIdToUserId?.get(personId) : undefined
     if (userId && byId.has(userId)) return byId.get(userId)!

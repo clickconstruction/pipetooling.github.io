@@ -2268,6 +2268,7 @@ export default function Layout() {
           onReset={() => writePhoneDockSlots(authUser?.id, null)}
           modes={phoneDockModes}
           onSignOut={signOutEverywhere}
+          ownLogbookShown={ownLogbookShown}
         />
       ) : null}
       {jobModeFooterActive ? <DispatchModeFooter variant="job" /> : null}

@@ -314,7 +314,8 @@ export function useLienDeskData(
               : Promise.resolve([] as CustomerAddressRow[]),
             jobIds.length
               ? withSupabaseRetry(
-                  () => supabase.from('job_property_owners').select('job_id, owner_mode, owner_name, company_name, mailing_address, owner_email').in('job_id', jobIds),
+                  // The whole row (v2.6497): owner_phone lands with migration 20261104163131, and a column named before the push would fail the desk's read.
+                  () => supabase.from('job_property_owners').select('*').in('job_id', jobIds),
                   'lien desk: owner overrides',
                 )
               : Promise.resolve([]),
