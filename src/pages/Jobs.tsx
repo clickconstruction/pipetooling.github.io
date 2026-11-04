@@ -85,7 +85,8 @@ import { useJobSummaryView } from '../hooks/useJobSummaryView'
 import { useJobsStagesMutations } from '../hooks/useJobsStagesMutations'
 import ChargesWindow from '../components/charges/ChargesWindow'
 import { ledgerChargesFor, ledgerSummaryCell, loginLookup, rateCardChipWords, standingLookup } from '../lib/charges/ledgerCharges'
-import { loadChargeAdjustmentsForJobs, loadRateCard } from '../lib/charges/jobChargesRead'
+import { loadChargeAdjustmentsForJobs, loadChargeStandings, loadRateCard } from '../lib/charges/jobChargesRead'
+import type { ChargeStandingRow } from '../lib/charges/chargeStandings'
 import { isEstimateCharge } from '../lib/charges/materialsCharged'
 import type { ChargeAdjustment } from '../lib/charges/adjustments'
 import type { RateCard } from '../lib/charges/rateCard'
@@ -400,9 +401,11 @@ export default function Jobs() {
   // once for the Job Summary; a read that fails leaves the column unpriced and says so in the console, never breaks the tab.
   const [chargesRateCard, setChargesRateCard] = useState<RateCard | null>(null)
   const [chargeAdjustmentsByJobId, setChargeAdjustmentsByJobId] = useState<Map<string, ChargeAdjustment[]>>(() => new Map())
-  // Every login with its standing, people who left included (the live pass): the page's own user list holds the active
-  // ones only, and a person who left still has days on a job that price by their standing.
-  const [chargeUsers, setChargeUsers] = useState<Array<{ id: string; name: string | null; charge_standing?: unknown }>>([])
+  // Every login with its standing, people who left included, through `charge_standings()` (v2.6490): the one read every
+  // charge reader shares, so a person who left prices the same for a dev, the controller and a pay-approved master
+  // (the page's own user list holds the active ones only, and `users` shows an archived row to a dev alone). Null until
+  // read, so nothing prices from an empty list meanwhile.
+  const [chargeUsers, setChargeUsers] = useState<ChargeStandingRow[] | null>(null)
   // Why the standings (or the People links) could not be read, when they could not (v2.6484): the two cells stay a dash
   // with this reason in their title, never priced at nothing with everyone named as nobody.
   const [chargeStandingsError, setChargeStandingsError] = useState<string | null>(null)
@@ -428,20 +431,19 @@ export default function Jobs() {
         if (on) setChargesRateCard(card)
       })
       .catch((e: unknown) => console.warn('Job Summary: the rate card could not be read', e))
-    // The columns the lookups need, never `*` (v2.6484). A read that fails keeps the standings unread: every row's two
-    // cells stay a dash with the reason, since an empty list would price every day at nothing and name everyone as nobody.
+    // One read for every charge reader (v2.6490), refused outside its gate with the reason. A read that fails keeps the
+    // standings unread: every row's two cells stay a dash with the reason, since an empty list would price every day at
+    // nothing and name everyone as nobody.
     setChargeStandingsError(null)
-    void supabase
-      .from('users')
-      .select('id, name, charge_standing, archived_at')
-      .then(({ data, error }) => {
+    void loadChargeStandings()
+      .then((rows) => {
+        if (on) setChargeUsers(rows)
+      })
+      .catch((e: unknown) => {
         if (!on) return
-        if (error) {
-          console.warn('Job Summary: the standings could not be read', error)
-          setChargeStandingsError(formatErrorMessage(error))
-          return
-        }
-        setChargeUsers(((data ?? []) as unknown as Array<{ id: string; name: string | null; charge_standing?: unknown }>).map((u) => ({ id: u.id, name: u.name ?? null, charge_standing: u.charge_standing })))
+        console.warn('Job Summary: the standings could not be read', e)
+        setChargeUsers([])
+        setChargeStandingsError(formatErrorMessage(e))
       })
     void supabase
       .from('people')
@@ -1474,10 +1476,10 @@ export default function Jobs() {
     for (const r of teamLaborData) {
       teamLaborCostByJobId.set(r.jobId, r.jobCost)
     }
-    const standingOf = chargesRateCard
+    const standingOf = chargesRateCard && chargeUsers
       ? standingLookup(chargeUsers, normalizePersonNameKey, chargePersonLogins)
       : null
-    const loginOf = loginLookup(chargeUsers, normalizePersonNameKey, chargePersonLogins)
+    const loginOf = chargeUsers ? loginLookup(chargeUsers, normalizePersonNameKey, chargePersonLogins) : undefined
     return sourceJobs
       .map((job) => {
         const subLaborCost = laborCostByJobId.get(job.id) ?? 0

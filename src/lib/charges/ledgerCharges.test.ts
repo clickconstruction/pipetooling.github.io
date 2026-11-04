@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ledgerChargesFor, ledgerSummaryCell, loginLookup, standingLookup } from './ledgerCharges'
+import { buildJobCharges } from './jobCharges'
+import { liveOverArchived, standingsById, type ChargeStandingRow } from './chargeStandings'
 import { chargeAdjustmentFromRow } from './adjustments'
 import type { RateCard } from './rateCard'
 
@@ -153,5 +155,51 @@ describe('a row whose crew counts as nobody (punch list #254, the live pass)', (
     })
     expect(r.unpricedDays).toBe(0)
     expect(ledgerSummaryCell(r)).toEqual({ chargesUsd: 2280, premiumUsd: 2720, note: null })
+  })
+})
+
+describe('the standings every reader shares (punch list #254, v2.6490)', () => {
+  // `charge_standings()` answers every login, people who left included, archived rows first: Bobby left in June with
+  // tech set on his login; Zed is still here.
+  const gone: ChargeStandingRow = { id: 'u-bobby', name: 'Bobby', charge_standing: 'tech', archived_at: '2026-06-30T00:00:00Z' }
+  const here: ChargeStandingRow = { id: 'u-zed', name: 'Zed P', charge_standing: 'master', archived_at: null }
+  const rows = [gone, here]
+
+  it("a departed person's standing prices the same for every reader: the Job Summary by name or by the link, the Charges window by id", () => {
+    const breakdown = [
+      { personName: 'Bobby', personId: null, byWorkDate: [{ workDate: '2026-04-24', hours: 8 }, { workDate: '2026-04-27', hours: 8 }] },
+      { personName: 'Bo R', personId: 'p-bobby', byWorkDate: [{ workDate: '2026-04-28', hours: 8 }] },
+    ]
+    const links = new Map([['p-bobby', 'u-bobby']])
+    const summary = ledgerChargesFor({ breakdown, standingOf: standingLookup(rows, key, links), loginOf: loginLookup(rows, key, links), invoicesFromSupplyHouses: 0, partsFromTally: 0, billedMaterialsSum: 0, card: OWNER, job: {}, contractUsd: 2000 })
+    // Three days of a tech alone, priced, with the premium shown and no word that Bobby has no login.
+    expect(summary.laborUsd).toBe(3 * 1480)
+    expect(summary.unpricedDays).toBe(0)
+    expect(summary.note).toBeNull()
+    expect(ledgerSummaryCell(summary)).toEqual({ chargesUsd: 4440, premiumUsd: -2440, note: null })
+    // The Charges window prices the same sessions by id from the same rows and lands on the same labor.
+    const standing = standingsById(rows)
+    expect(standing.get('u-bobby')).toBe('tech')
+    const window = buildJobCharges({ sessions: ['2026-04-24', '2026-04-27', '2026-04-28'].map((workDate) => ({ userId: 'u-bobby', name: 'Bobby', standing: standing.get('u-bobby')!, workDate, hours: 8 })), lines: [], card: OWNER, revenue: 2000 })
+    expect(window.totals.labor).toBe(summary.laborUsd)
+    expect(window.totals.unpricedDays).toBe(0)
+  })
+
+  it('an archived duplicate login never shadows the live one by name, whatever order the read answered in', () => {
+    const newBobby: ChargeStandingRow = { id: 'u-bobby-2', name: 'Bobby', charge_standing: 'helper', archived_at: null }
+    for (const order of [[gone, newBobby], [newBobby, gone]]) {
+      expect(standingLookup(order, key)('Bobby', null)).toBe('helper')
+      expect(loginLookup(order, key)('Bobby', null)).toEqual({ id: 'u-bobby-2', name: 'Bobby' })
+      expect(Array.from(liveOverArchived(order, (u) => (u.name ? key(u.name) : null)).values())).toEqual([newBobby])
+    }
+    // The People record's link still reaches the login that left, and with no live login of the name that login answers.
+    expect(standingLookup([newBobby, gone], key, new Map([['p-bobby', 'u-bobby']]))('Bo R', 'p-bobby')).toBe('tech')
+    expect(standingLookup([gone], key)('Bobby', null)).toBe('tech')
+    // Two logins that both left and share a name: the last read answers, as before.
+    const older: ChargeStandingRow = { id: 'u-bobby-0', name: 'Bobby', charge_standing: 'master', archived_at: '2025-01-01T00:00:00Z' }
+    expect(standingLookup([older, gone], key)('Bobby', null)).toBe('tech')
+    expect(standingLookup([gone, older], key)('Bobby', null)).toBe('master')
+    // A row with no name reaches nothing by name.
+    expect(liveOverArchived([{ id: 'u-x', name: null, archived_at: null }], (u) => (u.name ? key(u.name) : null)).size).toBe(0)
   })
 })
