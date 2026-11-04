@@ -25,6 +25,7 @@ import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids
 import { needsFreezeAfterWrite, resolvePricingWriteTarget } from '../../lib/bids/pricingWriteTarget'
 import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
 import { pricingLockChipText, pricingLockState, pricingLockedMessage, readRevisedBids, writeRevisedBid } from '../../lib/bids/pricingLock'
+import { quoteToShow, sentTagWords } from '../../lib/bids/lockedQuote'
 import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
 import { sumByAlternate } from '../../lib/bids/alternateScope'
 import { sameSolveScope, scopeWorkbenchRows, solveScopeLabel, type WorkbenchSolveScope } from '../../lib/bids/workbenchSolveScope'
@@ -2870,7 +2871,10 @@ export function BidsPricingTab({
                 // v2.6000 (Wendi's video): on an own-takeoff alternate the base rides the row as a card, and the row says where you are.
                 const cardBaseVersions = sameGcBaseVersions(bidVersions, selectedBidVersionId)
                 const cardActiveVersion = bidVersions.find((v) => v.id === selectedBidVersionId) ?? null
-                const cardRevenueOf = (id: string) => cardRevenue(id, { selectedPricingVersionId, openPriceReady: pricingPricesReady, effRevenue, scenarioRevenue: wbScenarioRevenue })
+                // v2.6510: while the lock holds, the ★ card says what went out (`lockedQuote.ts`); the strip and the rows stay live.
+                const sentQuote = quoteToShow({ lockState: pricingLock, bidValue: selectedBidForPricing?.bid_value, live: null })
+                const cardRevenueOf = (id: string) =>
+                  sentQuote?.source === 'sent' && id === customerFacingPricingId ? sentQuote.amount : cardRevenue(id, { selectedPricingVersionId, openPriceReady: pricingPricesReady, effRevenue, scenarioRevenue: wbScenarioRevenue })
                 const cardsMode = cardsRowMode({
                   scenarioCount: cardScenarios.length,
                   alternateCount: cardAltVersions.length + cardBaseVersions.length,
@@ -2891,6 +2895,7 @@ export function BidsPricingTab({
                         selectedBidVersionId={selectedBidVersionId}
                         customerFacingPricingId={customerFacingPricingId}
                         revenueOf={cardRevenueOf}
+                        sentTag={sentTagWords(sentQuote)}
                         totalCost={totalCost}
                         baseMaterials={derived.totalMaterials}
                         altVersionData={altVersionData}
