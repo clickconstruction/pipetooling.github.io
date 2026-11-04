@@ -118,7 +118,8 @@ export default function Logbook({ own = false }: { own?: boolean } = {}) {
           supabase.from('app_settings').select('value_text').eq('key', 'overhead_office_job_ledger_id_v1').maybeSingle(),
           supabase.from('logbook_shares' as never).select('user_id,shown_by,shown_at').eq('user_id', userId).maybeSingle(),
         ])
-        for (const res of [u, l, users, people, r, shared]) if (res.error) throw res.error
+        // The share read is the strip's alone: a failure there names its reason on the strip, never blanks the logbook.
+        for (const res of [u, l, users, people, r]) if (res.error) throw res.error
         if (cancelled) return
         // A name whose account or roster row is archived has left: they sign for nobody.
         const left = new Set<string>()
@@ -129,7 +130,8 @@ export default function Logbook({ own = false }: { own?: boolean } = {}) {
         setLicenses((l.data ?? []) as LicenseRow[])
         setGone(left)
         setRows(withOfficeJob((r.data ?? []) as LicenseHoursLogRow[], office.data?.value_text?.trim() || null))
-        const sr = shared.data as ShareRow | null
+        setShareError(shared.error ? formatErrorMessage(shared.error) : null)
+        const sr = shared.error ? null : (shared.data as ShareRow | null)
         setShare(sr ? { userId: sr.user_id, shownBy: sr.shown_by, shownAt: sr.shown_at } : null)
         if (sr?.shown_by) {
           const by = await supabase.from('users').select('name').eq('id', sr.shown_by).maybeSingle()
