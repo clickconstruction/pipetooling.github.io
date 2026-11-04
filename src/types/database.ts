@@ -7965,9 +7965,11 @@ export type Database = {
           owner_company: string
           owner_confirmed_at: string | null
           owner_confirmed_by: string | null
+          owner_email: string
           owner_mailing_address: string
           owner_mode: string
           owner_name: string
+          owner_phone: string
           parcel_id: string
           parcel_looked_up_at: string | null
           parcel_source: string
@@ -7994,9 +7996,11 @@ export type Database = {
           owner_company?: string
           owner_confirmed_at?: string | null
           owner_confirmed_by?: string | null
+          owner_email?: string
           owner_mailing_address?: string
           owner_mode?: string
           owner_name?: string
+          owner_phone?: string
           parcel_id?: string
           parcel_looked_up_at?: string | null
           parcel_source?: string
@@ -8023,9 +8027,11 @@ export type Database = {
           owner_company?: string
           owner_confirmed_at?: string | null
           owner_confirmed_by?: string | null
+          owner_email?: string
           owner_mailing_address?: string
           owner_mode?: string
           owner_name?: string
+          owner_phone?: string
           parcel_id?: string
           parcel_looked_up_at?: string | null
           parcel_source?: string
@@ -20293,6 +20299,7 @@ export type Database = {
           owner_email: string
           owner_mode: string
           owner_name: string
+          owner_phone: string
           updated_at: string
           updated_by: string | null
         }
@@ -20303,6 +20310,7 @@ export type Database = {
           owner_email?: string
           owner_mode?: string
           owner_name?: string
+          owner_phone?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -20313,6 +20321,7 @@ export type Database = {
           owner_email?: string
           owner_mode?: string
           owner_name?: string
+          owner_phone?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -36644,6 +36653,15 @@ export type Database = {
       can_write_bid_custom_costs: { Args: never; Returns: boolean }
       can_write_job_budget: { Args: { p_job_id: string }; Returns: boolean }
       can_write_payment_promises: { Args: never; Returns: boolean }
+      charge_standings: {
+        Args: never
+        Returns: {
+          archived_at: string
+          charge_standing: string
+          id: string
+          name: string
+        }[]
+      }
       check_lien_sign_code: {
         Args: { p_code: string; p_signer_id: string }
         Returns: Json
