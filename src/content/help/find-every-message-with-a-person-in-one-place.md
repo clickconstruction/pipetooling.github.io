@@ -156,7 +156,7 @@ Most emails end with a signature. The signature holds the sender's phone number,
 - An email address has {{button:outline|Email}} after it.
 - A street address has {{button:outline|Open the map}} after it. The address opens in Google Maps in a new tab.
 
-Press {{button:outline|Text}} or {{button:outline|Email}} and the reply box opens on that kind. When the number or the address is this person's, it opens in this thread. When it is someone else's, it opens in their thread. The app makes a thread for them when nobody has one yet.
+Press {{button:outline|Text}} or {{button:outline|Email}} and the reply box opens on that kind. When the number or the address is this person's, the box opens in this thread. When the number or the address is someone else's, the box opens in their thread. The app makes a thread for them when nobody has one yet.
 
 Every press leaves a gray line on this thread. The line says who pressed what and where it went.
 
