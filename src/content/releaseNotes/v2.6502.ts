@@ -7,6 +7,7 @@ const note: ReleaseNote = {
   kind: 'fix',
   highlights: [
     'A helper, primary, superintendent or estimator whose logbook the office had shown was sent back to the dashboard from My logbook. It now opens for every role.',
+    'In Dispatch Mode on a phone, the More sheet lists My logbook above Help, as the gear menu does.',
   ],
 }
 

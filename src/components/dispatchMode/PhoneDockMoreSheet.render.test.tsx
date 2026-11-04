@@ -14,6 +14,7 @@ vi.mock('../../lib/supabase', async () => {
 vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
 
 import { PhoneDockMoreSheet, type PhoneDockMoreSheetProps } from './PhoneDockMoreSheet'
+import { recordNavClick } from '../../lib/navClickTelemetry'
 import { roleDockDefault } from '../../lib/phoneDock'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
@@ -70,6 +71,21 @@ describe('PhoneDockMoreSheet', () => {
     expect(screen.getByRole('heading', { name: 'Swap PO for…' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Back to More' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(props.onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('no My logbook row until the office shows the logbook (v2.6502)', () => {
+    mount()
+    expect(screen.queryByTestId('more-my-logbook')).toBeNull()
+  })
+
+  it('shown: My logbook sits above Help, as in the gear menu, and closes the sheet on its way to /my-logbook', () => {
+    const props = mount({ ownLogbookShown: true })
+    const row = screen.getByTestId('more-my-logbook')
+    const settingsRows = Array.from(row.parentElement!.querySelectorAll('button')).map((b) => b.textContent)
+    expect(settingsRows.slice(0, 2)).toEqual(['My logbook', 'Help'])
+    fireEvent.click(row)
+    expect(recordNavClick).toHaveBeenCalledWith('u-assistant', 'assistant', 'more-sheet', '/my-logbook')
     expect(props.onClose).toHaveBeenCalledTimes(1)
   })
 
