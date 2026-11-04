@@ -46,6 +46,8 @@ export type JobChargeEvent = {
   who?: string
   /** The hours behind a team labor event (v2.5749). */
   hours?: number
+  /** The job the event is on (v2.6493, the Development page's Timeline): set only where many jobs' events are merged. */
+  jobId?: string
 }
 
 /**
@@ -60,6 +62,8 @@ export type JobValueEvent = {
   percent: number | null
   label: string
   kind?: 'report' | 'manual'
+  /** The job the event is on (v2.6493); set only where many jobs' events are merged. */
+  jobId?: string
 }
 
 /** The office's hand-set percents (`job_pct_events`, source manual) as value events — no 🚩, same value step. */
@@ -94,6 +98,8 @@ export type JobPaymentEvent = {
   dateKey: string | null
   amount: number
   label: string
+  /** The job the payment is on (v2.6493); set only where many jobs' events are merged. */
+  jobId?: string
 }
 
 /**

@@ -37,6 +37,16 @@ describe('allocateSiteLabor', () => {
     expect(out.byJobId.get('j2')).toMatchObject({ hours: 5, costUsd: 175 })
   })
 
+  it('keeps each person’s hours and dollars by day, in date order, for the Timeline (v2.6493)', () => {
+    const j1 = out.byJobId.get('j1')!
+    expect(j1.people.find((p) => p.personName === 'Luis')!.byWorkDate).toEqual([
+      { ymd: '2026-10-26', hours: 5, costUsd: 175 },
+      { ymd: '2026-10-27', hours: 8, costUsd: 280 },
+    ])
+    expect(j1.people.find((p) => p.personName === 'Mateo')!.byWorkDate).toEqual([{ ymd: '2026-10-26', hours: 8, costUsd: 240 }])
+    expect(out.byJobId.get('j2')!.people[0]!.byWorkDate).toEqual([{ ymd: '2026-10-26', hours: 5, costUsd: 175 }])
+  })
+
   it('counts days once each at every level, and the lead days', () => {
     const j1 = out.byJobId.get('j1')!
     expect(j1.days).toBe(2)

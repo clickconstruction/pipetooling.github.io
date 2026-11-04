@@ -258,8 +258,8 @@ words. PR 1 waits for the Gun Dog stack and the photos PRs so the page seam is c
    `scoreboardHeadline()`, its leader's version in hours and earned dollars, the glossary and access-control lines.
 4. **PR 4 · the cuts and the window (M).** *Cut by* job · part · person and *Window* all time · this
    month · 90 days, remembered on the device; the person cut's ≈ share.
-5. **The Timeline view** is the sibling spike's draft, drawn as the third chip when it lands, over
-   the same per-job figures.
+5. **The Timeline view** is punch list #257's own train (`to-dos/site-cost-timeline.md`): the third
+   chip, the Job Summary's cost chart over the site, PR 1 shipped as v2.6493.
 
 No migration. No edge function. The reads are the page's own tables under the reader's policies.
 
