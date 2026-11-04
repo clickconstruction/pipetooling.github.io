@@ -147,10 +147,12 @@ export function buildRowNeeds(input: RowNeedsInput): RowNeeds {
       door: 'access',
     })
   }
-  if (!p.userId) {
-    needs.push({ key: 'no_login', subject: 'account', tone: 'fact', count: 0, short: 'no login', long: 'A roster row with no app account — their portal, paperwork and pay work without one.', verb: 'Invite', door: 'access' })
+  // Punch list #260 (v2.6519): a users row with no sign-in behind it reads *no login* as a roster-only row did; the door is Attach a login on the desk.
+  const hasLogin = p.userId != null && p.hasLogin !== false
+  if (!hasLogin) {
+    needs.push({ key: 'no_login', subject: 'account', tone: 'fact', count: 0, short: 'no login', long: 'No sign-in — their hours, pay, portal and paperwork work without one; a dev attaches a login from the desk.', verb: p.userId ? 'Attach a login' : 'Invite', door: 'access' })
   }
-  if (input.canSeePush && p.userId && input.pushOn === false && FIELD_KINDS.has(p.kind)) {
+  if (input.canSeePush && hasLogin && input.pushOn === false && FIELD_KINDS.has(p.kind)) {
     needs.push({ key: 'no_push', subject: 'account', tone: 'fact', count: 0, short: 'no push', long: 'Push notifications are not enabled on their phone.', verb: 'How to enable', door: 'push' })
   }
   if (p.personId && p.kind === 'sub' && f.portalOnPersonIds?.has(p.personId)) {

@@ -92,7 +92,7 @@ export function useChecklistTechTreeData(
         ),
         withSupabaseRetry(
           // Tier-2 #19: assignee picker = active people (no twins); dev rows stay.
-          () => activeUsersQuery<{ id: string; name: string; email: string }>('id, name, email', { includeDev: true }),
+          () => activeUsersQuery<{ id: string; name: string; email: string }>('id, name, email', { includeDev: true, withLogin: true }),
           'load users for tech tree',
         ),
       ] as const)

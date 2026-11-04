@@ -58,6 +58,9 @@ describe('buildRowNeeds (v2.2809)', () => {
     expect(behar.needs.map((n) => `${n.key}:${n.tone}`)).toEqual(['no_push:fact', 'portal:fact'])
     expect(behar.attention).toBe('green')
     expect(behar.needCount).toBe(0)
+    // Punch list #260: a users row with no login attached carries the no-login fact with the desk's door, and no push fact.
+    const rio = build({ person: person({ name: 'Rio', userId: 'u-rio', personId: 'p-rio', kind: 'helper', hasLogin: false }), canSeePush: true, pushOn: false })
+    expect(rio.needs.filter((n) => n.subject === 'account').map((n) => `${n.key}:${n.verb}`)).toEqual(['no_login:Attach a login'])
     // Devs and primaries never owe a roster row; push is only a field-kind fact.
     expect(build({ person: person({ name: 'Bryan', userId: 'u-br', kind: 'primary' }), canSeePush: true, pushOn: false }).needs).toEqual([])
   })

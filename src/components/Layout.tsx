@@ -462,7 +462,7 @@ export default function Layout() {
   useEffect(() => {
     if (role === 'dev') {
       // Tier-2 #19 (J28-F10): "Pin for someone" offers live accounts only — no archived ghosts, no twins.
-      activeUsersQuery('id, name, email, role, estimator_prospects_access', { includeDev: true }).then(({ data }) => {
+      activeUsersQuery('id, name, email, role, estimator_prospects_access', { includeDev: true, withLogin: true }).then(({ data }) => {
         const rows = (data ?? []) as Array<{ id: string; name: string; email: string; role: string | null; estimator_prospects_access: boolean | null }>
         const users = rows.map((u) => ({
           id: u.id,

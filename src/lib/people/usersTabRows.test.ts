@@ -37,6 +37,13 @@ describe('foldNoLoginRows', () => {
     expect(folded.map((r) => r.name)).toEqual(['Sub G', 'Sub H', 'Sub I'])
   })
 
+  it('a users row with no login attached folds as a roster-only row does (punch list #260)', () => {
+    const mixed = orderUsersTabRows([row({ name: 'Behar', userId: 'u1' }), ...Array.from({ length: 9 }, (_, i) => row({ name: `Day ${String.fromCharCode(65 + i)}`, userId: `u-day-${i}`, hasLogin: false }))])
+    const { shown, folded } = foldNoLoginRows(mixed, { forceOpen: false })
+    expect(shown.map((r) => r.name)).toEqual(['Behar', 'Day A', 'Day B', 'Day C', 'Day D', 'Day E', 'Day F'])
+    expect(folded).toHaveLength(3)
+  })
+
   it('never folds a single row, and force-open shows everything', () => {
     const seven = orderUsersTabRows(Array.from({ length: 7 }, (_, i) => row({ name: `S${i}` })))
     expect(foldNoLoginRows(seven, { forceOpen: false }).folded).toEqual([])
@@ -50,5 +57,7 @@ describe('describeGroupCount', () => {
     expect(describeGroupCount([row({ name: 'a', userId: 'u' })])).toBe('1')
     expect(describeGroupCount([row({ name: 'a' }), row({ name: 'b' })])).toBe('2 · no logins')
     expect(describeGroupCount([])).toBe('')
+    // Punch list #260: a users row with no login attached counts as one without.
+    expect(describeGroupCount([row({ name: 'a', userId: 'u' }), row({ name: 'b', userId: 'u2', hasLogin: false })])).toBe('2 · 1 with a login')
   })
 })

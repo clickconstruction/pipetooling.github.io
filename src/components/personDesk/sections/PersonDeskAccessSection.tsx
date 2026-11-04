@@ -222,13 +222,13 @@ export function PersonDeskAccessSection({
   }
 
   async function archiveDirect() {
-    if (!u.email) return
-    const ok = await confirmDialog({ message: `Archive ${displayName}? They can no longer sign in and disappear from rosters. The account can be restored later. If they own customers, ask a dev to reassign them first.`, confirmLabel: 'Archive', danger: true })
+    const ok = await confirmDialog({ message: `Archive ${displayName}? ${noLogin ? 'They disappear from rosters.' : 'They can no longer sign in and disappear from rosters.'} The account can be restored later. If they own customers, ask a dev to reassign them first.`, confirmLabel: 'Archive', danger: true })
     if (!ok) return
     await run(
       'archive',
       async () => {
-        const { data, error } = await supabase.functions.invoke('archive-user', { body: { email: u.email!.trim(), name: (u.name ?? '').trim() } })
+        // v2.6519 (punch list #260): the row's id is the one sure handle — a person with no login may have no address.
+        const { data, error } = await supabase.functions.invoke('archive-user', { body: { user_id: u.id, email: (u.email ?? '').trim(), name: (u.name ?? '').trim() } })
         if (error) throw error
         const err = (data as { error?: string } | null)?.error
         if (err) throw new Error(err)
@@ -360,11 +360,11 @@ export function PersonDeskAccessSection({
       <DeskRow
         label="Email"
         actions={
-          editable && !noLogin ? (
+          editable ? (
             <button type="button" style={deskBtn(BTN, busy != null)} disabled={busy != null} onClick={() => setEmailOpen(true)}>
               Change…
             </button>
-          ) : editable ? null : (
+          ) : (
             devLock
           )
         }
@@ -568,7 +568,7 @@ export function PersonDeskAccessSection({
                 Merge a duplicate…
               </button>
             ) : null}
-            {canArchiveAccount(viewer) && !isSelf && !noLogin ? (
+            {canArchiveAccount(viewer) && !isSelf ? (
               u.archived_at ? (
                 <button type="button" style={deskBtn(BTN, busy != null)} disabled={busy != null} onClick={() => void restore()}>
                   {busy === 'restore' ? 'Restoring…' : 'Restore'}

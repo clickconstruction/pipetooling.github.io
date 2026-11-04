@@ -125,9 +125,14 @@ serve(async (req) => {
       const adminClient = createClient(supabaseUrl, serviceRoleKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       })
-      const { error: banError } = await adminClient.auth.admin.updateUserById(absorbed_user_id, {
-        ban_duration: BAN_DURATION_FOREVER,
-      })
+      // v2.6519 (punch list #260): an absorbed row with no login behind it has no auth account to ban.
+      const { data: absorbedRow } = await adminClient.from('users').select('login_attached_at').eq('id', absorbed_user_id).maybeSingle()
+      const hasLogin = (absorbedRow as { login_attached_at: string | null } | null)?.login_attached_at != null
+      const { error: banError } = hasLogin
+        ? await adminClient.auth.admin.updateUserById(absorbed_user_id, {
+            ban_duration: BAN_DURATION_FOREVER,
+          })
+        : { error: null }
       if (banError) {
         console.error('merge-users: auth ban failed after data merge committed:', banError)
         return new Response(

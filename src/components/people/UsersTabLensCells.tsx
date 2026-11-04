@@ -54,7 +54,7 @@ export function UsersTabAccountCells({
   onSetSupervision,
   openDesk,
 }: {
-  item: { source: 'user' | 'people'; id: string; name: string; role?: string | null; needs_supervision?: boolean | null; read_only?: boolean | null; last_sign_in_at?: string | null }
+  item: { source: 'user' | 'people'; id: string; name: string; role?: string | null; needs_supervision?: boolean | null; read_only?: boolean | null; last_sign_in_at?: string | null; login_attached_at?: string | null }
   isSelf: boolean
   canSetTraining: boolean
   onSetTraining?: (userId: string, on: boolean) => void
@@ -87,8 +87,8 @@ export function UsersTabAccountCells({
       <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.role }} title="Changing a role is the dev's, on the desk">
         {humanRoleLabel(item.role ?? '')}
       </span>
-      <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.signin, color: 'var(--text-muted)' }} title={item.last_sign_in_at ? `Last signed in ${new Date(item.last_sign_in_at).toLocaleString()}` : 'Has never signed in'}>
-        {lensSignInLabel(item.last_sign_in_at ?? null, Date.now())}
+      <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.signin, color: 'var(--text-muted)' }} title={item.login_attached_at === null ? 'No login attached' : item.last_sign_in_at ? `Last signed in ${new Date(item.last_sign_in_at).toLocaleString()}` : 'Has never signed in'}>
+        {item.login_attached_at === null ? 'no login' : lensSignInLabel(item.last_sign_in_at ?? null, Date.now())}
       </span>
       <span style={{ ...CELL, width: ACCOUNT_CELL_WIDTHS.training }}>
         <input

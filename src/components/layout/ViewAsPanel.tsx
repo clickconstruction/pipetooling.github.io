@@ -37,7 +37,7 @@ export function ViewAsPanel({ onClose }: { onClose: () => void }) {
     void (async () => {
       const [s, p] = await Promise.all([
         supabase.from('users').select(COLS).eq('is_sample', true).is('archived_at', null),
-        activeUsersQuery<AccountRow>(COLS),
+        activeUsersQuery<AccountRow>(COLS, { withLogin: true }),
       ])
       if (cancelled) return
       setSamples(((s.data ?? []) as AccountRow[]).map((r) => ({ ...r, is_sample: true })))

@@ -102,7 +102,9 @@ async function loadUser(admin: Admin, id: string): Promise<UserRow | null> {
     .select('id, email, name, role, archived_at').match(REAL_ACCOUNT)
     .eq('id', id)
     .maybeSingle()
-  return (data as UserRow | null) ?? null
+  const row = (data as UserRow | null) ?? null
+  // v2.6519 (punch list #260): a person with no login may have no address; nothing goes to them.
+  return row && (row.email ?? '').trim() ? row : null
 }
 
 async function sendMoneyWaiting(

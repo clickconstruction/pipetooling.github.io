@@ -12,6 +12,8 @@ const corsHeaders = {
 interface ArchiveUserRequest {
   email?: string
   name?: string
+  /** v2.6519 (punch list #260): the users row's id — the one sure handle for a person with no login, who may have no address. */
+  user_id?: string
   reassign_customers_to?: string  // Optional: UUID of master to reassign customers to
 }
 
@@ -80,18 +82,26 @@ serve(async (req) => {
       )
     }
 
-    const { email, name, reassign_customers_to }: ArchiveUserRequest = await req.json()
+    const { email, name, reassign_customers_to, user_id }: ArchiveUserRequest = await req.json()
 
-    if (!email && !name) {
+    if (!email && !name && !user_id) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: email or name' }),
+        JSON.stringify({ error: 'Missing required fields: user_id, email or name' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     let userToArchive: { id: string; email: string | null; name: string | null } | null = null
 
-    if (email) {
+    if (user_id) {
+      const { data: userById, error: idError } = await supabase.from('users').select('id, email, name').eq('id', user_id).is('archived_at', null).maybeSingle()
+      if (idError) {
+        return new Response(JSON.stringify({ error: `Error finding user: ${idError.message}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      if (userById) userToArchive = userById
+    }
+
+    if (!userToArchive && email) {
       const { data: userByEmail, error: emailError } = await supabase
         .from('users')
         .select('id, email, name')
@@ -273,9 +283,14 @@ serve(async (req) => {
       )
     }
 
-    const { error: banError } = await adminClient.auth.admin.updateUserById(userToArchive.id, {
-      ban_duration: BAN_DURATION_FOREVER,
-    })
+    // v2.6519 (punch list #260): a row with no login behind it has no auth account to ban.
+    const { data: archivedRow } = await adminClient.from('users').select('login_attached_at').eq('id', userToArchive.id).maybeSingle()
+    const hasLogin = (archivedRow as { login_attached_at: string | null } | null)?.login_attached_at != null
+    const { error: banError } = hasLogin
+      ? await adminClient.auth.admin.updateUserById(userToArchive.id, {
+          ban_duration: BAN_DURATION_FOREVER,
+        })
+      : { error: null }
 
     if (banError) {
       console.error('Auth ban failed after public.users updated:', banError)

@@ -45,7 +45,9 @@ type UserRow = { id: string; email: string | null; name: string | null; role: st
 
 async function loadUser(admin: Admin, id: string): Promise<UserRow | null> {
   const { data } = await admin.from('users').select('id, email, name, role, archived_at').match(REAL_ACCOUNT).eq('id', id).maybeSingle()
-  return (data as UserRow | null) ?? null
+  const row = (data as UserRow | null) ?? null
+  // v2.6519 (punch list #260): a person with no login may have no address; nothing goes to them.
+  return row && (row.email ?? '').trim() ? row : null
 }
 
 /** The caller's JWT → an active money-team user; a Response means the gate failed. */

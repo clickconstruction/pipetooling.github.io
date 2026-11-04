@@ -211,7 +211,7 @@ export function PersonDeskHeader({
   }
 
   async function imitate() {
-    if (!user?.email) return
+    if (!user?.email || user.login_attached_at === null) return
     const ok = await confirmDialog({ message: `Sign in as ${name}? Your own session ends until you sign back in.`, confirmLabel: 'Imitate' })
     if (!ok) return
     try {
@@ -245,10 +245,12 @@ export function PersonDeskHeader({
         {personKey ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem', fontSize: '0.75rem', color: 'var(--text-700)', marginTop: '0.2rem' }}>
             <IdDot ok={Boolean(personKey.userId)}>
-              {personKey.userId ? (
+              {personKey.userId && user?.login_attached_at !== null ? (
                 <>
                   Login{user?.email ? ` · ${user.email}` : ''} · {describeLastSeen(user?.last_sign_in_at, Date.now())}
                 </>
+              ) : personKey.userId ? (
+                'Login not attached yet'
               ) : (
                 'No login'
               )}

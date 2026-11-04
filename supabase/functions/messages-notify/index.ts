@@ -163,7 +163,7 @@ serve(async (req) => {
       const [{ data: papers }, { data: clauses }, { data: people }] = await Promise.all([
         admin.from('contract_template_documents').select('id, document_name').in('id', paperIds),
         admin.from('contract_clauses').select('id, paper_id, sequence_order, scope, retired_at').in('paper_id', paperIds),
-        admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).in('role', APPROVER_ROLES).is('archived_at', null),
+        admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).not('email', 'is', null).in('role', APPROVER_ROLES).is('archived_at', null),
       ])
       const approvers = ((people ?? []) as Array<Person & { role: string }>).filter((u) => u.id !== user.id)
       if (approvers.length === 0) return json({ success: true, push_sent: 0, email_sent: 0, approvers: [], message: 'No approver to tell' })

@@ -537,7 +537,7 @@ export function ScheduleShareModal({
                   {selectedIds.map((id) => {
                     const u = userMap.get(id)
                     // Held (punch list #184): no email on file, or the last send did not reach them.
-                    const noEmail = !u || !u.email.trim()
+                    const noEmail = !u || !(u.email ?? '').trim()
                     const failed = failedWhy.get(id)
                     const held = noEmail || failed != null
                     const name = u ? shareRecipientLabel(u) : id.slice(-8)

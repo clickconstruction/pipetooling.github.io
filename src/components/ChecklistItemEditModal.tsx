@@ -182,7 +182,7 @@ export function ChecklistItemEditModal({
         .single(),
       supabase.from('checklist_item_assignees').select('user_id').eq('checklist_item_id', itemId),
       // Tier-2 #19 (J30-2): assignee picker = active people (no twins); dev rows stay.
-      activeUsersQuery('id, name, email', { includeDev: true }),
+      activeUsersQuery('id, name, email', { includeDev: true, withLogin: true }),
     ]).then(([itemRes, assigneesRes, usersRes]) => {
       const item = itemRes.data as ChecklistItem | null
       const assigneeIds = (assigneesRes.data ?? []).map((r: { user_id: string }) => r.user_id)

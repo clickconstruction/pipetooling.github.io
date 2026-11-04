@@ -164,7 +164,7 @@ export default function ChecklistAddModal({
   useEffect(() => {
     if (!modalContext?.isOpen) return
     // Tier-2 #19 (J30-2): assignee picker = active people (no twins); dev rows stay — tasks go to the owner.
-    activeUsersQuery('id, name, email', { includeDev: true })
+    activeUsersQuery('id, name, email', { includeDev: true, withLogin: true })
       .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
