@@ -941,6 +941,9 @@ WHERE proname IN (
 - **Purpose**: Adds a person as a users row with no login (`login_attached_at` NULL, role from the kind) and the People record linked to it, in one transaction, for the office roles (`is_office_staff()`); answers `{ user_id, person_id }` (v2.6514, punch list #260, migration `20261104200000_add_worker.sql`). Every "add a person" in the app calls it (People → Users → Add to roster, Hire with no email, the Hiring board, the workflow step form, the sub-sheet form, the work-order assembler, Banking's pickers)
 - **Refuses**: nobody signed in or a role outside the office (`42501`); a blank name or a kind outside the roster kinds, `dev` included (`22023`); an address another users row holds (`23505`, naming who holds it)
 
+#### `public.backfill_users_for_people()`
+- **Purpose**: Gives every People record with no account a users row with no login (role from the kind, `archived_at` carried, the address where no login holds it) and links it; skips and names a record whose name another users row carries (pay is keyed by name), a `dev`, a blank name; idempotent (v2.6517, punch list #260, migration `20261104210000_people_without_users_backfill.sql`). Runs as the migration and for a dev afterwards; answers `{ linked, skipped_name_held, skipped_dev, skipped }`
+
 #### `public.sync_last_sign_in_at()`
 - **Trigger**: `on_auth_user_signed_in` — fires on `auth.users` UPDATE OF `last_sign_in_at`
 - **Purpose**: Copies `auth.users.last_sign_in_at` (ground truth for every login mechanism: password, magic link, invite acceptance, imitate) into `public.users.last_sign_in_at`, which the Settings "Last login" column displays (migration `20260703160000_sync_last_sign_in_from_auth.sql`)
