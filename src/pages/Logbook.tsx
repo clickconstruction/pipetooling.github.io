@@ -44,6 +44,8 @@ const card: CSSProperties = { background: 'var(--surface)', border: '1px solid v
 const eyebrow: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const btn: CSSProperties = { font: 'inherit', fontSize: '0.875rem', fontWeight: 700, padding: '0.45rem 0.9rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }
 const btnBlue: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }
+/** The small note beside a license's name: "top rung", or the next rung whose rule is not seeded yet. */
+const RUNG_NOTE: CSSProperties = { marginLeft: 6, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }
 
 function shortDate(ymd: string): string {
   const [y = 1970, m = 1, d = 1] = ymd.split('-').map(Number)
@@ -124,7 +126,7 @@ export default function Logbook() {
         .map((l) => ({ personName: l.person_name, license: parseLicenseType(l.license_type, l.date_of_expiry) })),
     [licenses, gone, today],
   )
-  const { goals, topOfLadder } = useMemo(() => goalsFor(held), [held])
+  const { goals, topOfLadder, noRuleYet } = useMemo(() => goalsFor(held), [held])
   const progress = useMemo(() => goals.map((g) => progressFor(g, rows, [], today)), [goals, rows, today])
   const weeks = useMemo(() => logWeeks(rows), [rows])
   const totals = useMemo(() => totalsOf(rows), [rows])
@@ -177,7 +179,12 @@ export default function Logbook() {
       ) : !loading ? (
         <div style={{ ...card, color: 'var(--text-muted)' }}>
           {held.some((l) => l.trade)
-            ? `${firstName} is at the top rung the logbook tracks in every trade they hold.`
+            ? noRuleYet.length
+              ? [
+                  ...noRuleYet.map((n) => `${firstName} holds ${n.holds.name}. The next license is ${n.next.name}, and its rule is not seeded yet.`),
+                  ...(topOfLadder.length ? [`${firstName} is at the top rung in ${topOfLadder.map((l) => TRADE_LABEL[l.trade!].toLowerCase()).join(' and ')}.`] : []),
+                ].join(' ')
+              : `${firstName} is at the top rung the logbook tracks in every trade they hold.`
             : `The Licenses tab holds no trade license for ${firstName} yet. Press Add a license to put in their apprentice registration, and the hours start counting toward the next license.`}
         </div>
       ) : null}
@@ -219,7 +226,14 @@ export default function Logbook() {
               <tr key={heldRows[i]?.id ?? l.raw} style={{ borderTop: '1px solid var(--border)' }}>
                 <td style={{ padding: '6px', fontWeight: 600 }}>
                   {l.name}
-                  {topOfLadder.includes(l) ? <span style={{ marginLeft: 6, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>top rung</span> : null}
+                  {topOfLadder.includes(l) ? <span style={RUNG_NOTE}>top rung</span> : null}
+                  {noRuleYet
+                    .filter((n) => n.holds === l)
+                    .map((n) => (
+                      <span key={n.next.level} style={RUNG_NOTE} data-testid="logbook-no-rule-yet">
+                        {n.next.name} next. Its rule is not seeded yet.
+                      </span>
+                    ))}
                 </td>
                 <td style={{ padding: '6px', fontVariantNumeric: 'tabular-nums' }}>{l.number ?? '—'}</td>
                 <td style={{ padding: '6px' }}>{l.trade ? <TradeChip trade={l.trade} /> : <span style={{ color: 'var(--text-muted)' }}>Not a trade</span>}</td>
@@ -327,6 +341,8 @@ export default function Logbook() {
           employer={PORTAL_COMPANY.name}
           held={held}
           goals={goals}
+          topOfLadder={topOfLadder}
+          noRuleYet={noRuleYet}
           progress={progress}
           supervisorFor={supervisorFor}
           weeks={weeks}

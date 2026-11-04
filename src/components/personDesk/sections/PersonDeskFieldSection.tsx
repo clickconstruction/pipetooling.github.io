@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
@@ -254,9 +255,9 @@ export function PersonDeskFieldSection({ userId, payName, displayName, viewer, c
                 </button>
               ) : null}
               {userId ? (
-                <a href={`/logbook/${userId}`} style={{ ...BTN_QUIET, textDecoration: 'none' }} data-testid="person-desk-open-logbook">
+                <Link to={`/logbook/${userId}`} style={{ ...BTN_QUIET, textDecoration: 'none' }} data-testid="person-desk-open-logbook">
                   Logbook
-                </a>
+                </Link>
               ) : null}
               <a href="/people?tab=licenses" style={{ ...BTN, textDecoration: 'none' }}>
                 Licenses

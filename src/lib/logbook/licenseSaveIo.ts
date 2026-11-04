@@ -5,7 +5,7 @@
  */
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { tdlrQueryUrl, type TdlrRow } from './licenseText'
+import { TDLR_TIMEOUT_MS, TDLR_TIMEOUT_REASON, isTimeoutError, tdlrQueryUrl, type TdlrRow } from './licenseText'
 
 export type LicenseSave = { id: string | null; personName: string; licenseType: string; expiryYmd: string; note: string }
 
@@ -37,9 +37,18 @@ export async function notifyDispatchLicenseExpiry(licenseId: string): Promise<st
   }
 }
 
-/** TDLR's rows for one bare number. Throws when TDLR does not answer. */
+/**
+ * TDLR's rows for one bare number. Throws when TDLR does not answer, and after `TDLR_TIMEOUT_MS`
+ * with the wait named, so a Socrata stall never leaves Checking… lit for good.
+ */
 export async function fetchTdlrRows(number: string, fetchImpl: typeof fetch = fetch): Promise<TdlrRow[]> {
-  const res = await fetchImpl(tdlrQueryUrl(number))
+  let res: Response
+  try {
+    res = await fetchImpl(tdlrQueryUrl(number), { signal: AbortSignal.timeout(TDLR_TIMEOUT_MS) })
+  } catch (e) {
+    if (isTimeoutError(e)) throw new Error(TDLR_TIMEOUT_REASON)
+    throw e
+  }
   if (!res.ok) throw new Error(`TDLR answered ${res.status}. Try again in a minute.`)
   return (await res.json()) as TdlrRow[]
 }
