@@ -5,7 +5,7 @@ file: docs/DRIVE_INTAKE_SETUP.md
 type: Runbook / Setup
 purpose: One-time Google setup for the drive-intake edge function (estimator-twin pipeline Wave 4.4) — a SERVICE ACCOUNT, never a user password. Five minutes in console.cloud.google.com, two supabase secrets, one deploy.
 audience: Owner, Developers
-last_updated: 2026-11-02
+last_updated: 2026-11-04
 ---
 
 Why a service account: the function needs a robot identity that can write ONE shared
@@ -170,7 +170,7 @@ One-time setup, in `console.cloud.google.com` on the `pipetooling-drive` project
    through the processor and answers the provider's own words (`answer.ok` with an empty text and one page when it is
    right; `answer.error` with Google's reason when it is not).
 
-From then on the sweep reads five waiting scans every ten minutes, and every index pass (a press, the backfill, the sweep's own first step) reads at most five scans of its own, so the spend is paced at a few hundred pages an hour at most (the scans the backfill held catch up by
+From then on the sweep reads five waiting scans every ten minutes, and every index pass (a press, the backfill, the sweep's own first step and its reconcile step) reads at most five scans of its own, so a sweep run reads at most fifteen scans, at most about 1,350 pages an hour at fifteen pages a scan (the scans the backfill held catch up by
 themselves), `index_job` and the dev seat's backfill read a scan the first time they meet it, and every row keeps how
 many pages were read (`ocr_pages`). A scan the sweep takes costs one download: its bytes go straight to the processor
 and the row keeps the text, and a scan Drive lists as `application/octet-stream` is queued by its name (v2.6491).

@@ -254,8 +254,8 @@ words. PR 1 waits for the Gun Dog stack and the photos PRs so the page seam is c
    sheets, Supplier rows from the invoices' house, Card rows from the card parse, the Overhead row,
    the Office line from the bills' and payments' authors; each filling Cost with its share bar; the
    gold row; the counts beside a name.
-3. **PR 3 · the lead's tier and the headline (S).** The three-column board for the office door,
-   `scoreboardHeadline()`, the glossary and access-control lines.
+3. **PR 3 · the headline (S). Shipped as v2.6467 (#6973); the lead's tier came with PR 1.**
+   `scoreboardHeadline()`, its leader's version in hours and earned dollars, the glossary and access-control lines.
 4. **PR 4 · the cuts and the window (M).** *Cut by* job · part · person and *Window* all time · this
    month · 90 days, remembered on the device; the person cut's ≈ share.
 5. **The Timeline view** is punch list #257's own train (`to-dos/site-cost-timeline.md`): the third
@@ -269,7 +269,7 @@ No migration. No edge function. The reads are the page's own tables under the re
   Earned − Cost; the rows under an open job sum to its Cost, the Overhead row included, and their
   shares to one; the foot equals the sum of the rows and of the fold; a job with no percent and a
   price earns half and wears ≈; a job with no price and cost wears *no price* and leads the
-  headline; the fold holds exactly the jobs with no earned dollar and no cost; the person cut's
+  headline; the fold holds exactly the jobs with no earned dollar, no cost and no hours; the person cut's
   Earned shares sum to the job's Earned.
 - The render smoke of the whole page at 375 wide (`DevelopmentPage.phone.render.test.tsx`,
   v2.6324) with the Scoreboard view open: `scrollWidth` 375.

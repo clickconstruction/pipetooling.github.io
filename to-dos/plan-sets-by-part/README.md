@@ -16,7 +16,7 @@ summary: >
 next: The real site's papers are kept through Keep a paper now that the doors are live, and the walk's fixes open. A mail's file following its paper is still to be seen live, since no ZZ Test mail with a file is tagged to a ZZ Test job. An as-built's author can still move the row to another job at the row level (`plan_sets_update`), a card of its own.
 size: S (PR 1 the tables) + M (PR 2 the job section) + M (PR 3 the site look) + S (PR 4 the bid) + M (PR 5 Drive and photos) + S (PR 6 the row and History)
 blocker: None in the code. Every migration of the train is pushed (check:migration-drift read fully applied on 2026-11-03); the types stay hand-carried until the next chore(types). The real site's papers wait on one call of the owner's, about which part a few of them go on.
-ver: v2.6297 · 6298 · 6302 · 6312 · 6313 · 6342 · 6344 · 6345
+ver: v2.6297 · 6298 · 6302 · 6312 · 6313 · 6342 · 6344 · 6345 · 6356 · 6435 · 6442
 opinion: build the train as ordered; the one judgement call left to the owner is PR 3's "join an existing part" when a lone job is put into a development
 ---
 

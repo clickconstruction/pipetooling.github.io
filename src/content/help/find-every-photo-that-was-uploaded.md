@@ -14,7 +14,7 @@ Open **Documents** from the gear menu. Press the **Photos** tab. The newest phot
 
 ## Read a row
 
-Each row shows a small picture, its caption, the job and the customer. Under them you see where the photo came from and who took it. A chip names the source. It reads **Report**, **Tally box**, **Checklist**, **Text** or **Email**.
+Each row shows a small picture, its caption, the job and the customer. Under them you see where the photo came from and who took it. A chip names the source. It reads **Report**, **Tally box**, **Checklist**, **Job photo**, **Text** or **Email**.
 
 The time is the moment the camera fired. A photo kept on a phone with no signal and sent the next morning keeps its own time.
 

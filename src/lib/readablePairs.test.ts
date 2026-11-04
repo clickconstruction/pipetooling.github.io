@@ -24,6 +24,7 @@ import { BID_SERVICE_TYPE_TAGS } from '../utils/unifiedJobBidSearch'
 import { RIGHT, WRONG } from '../components/training/figures/plumbingTokens'
 import { SALES_BAR_INKS } from './bridge/sales/salesBarInks'
 import { LINKED_GROUP_ACCENT_PALETTE } from './scheduleDispatchLinkedGroupPalette'
+import { DESK_MARKS } from './messages/deskMarks'
 
 /**
  * The four pairs What everyone sees measured under 3:1 on 2026-10-27, held at 4.5:1 since v2.5981:
@@ -78,6 +79,8 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "a guide's grey mock button (v2.6085)", fg: GUIDE_DEAD_BUTTON.ink, bg: GUIDE_DEAD_BUTTON.fill },
     { label: "a robot's X grade: the Bid Board's badge, the Counts tab's chip, the key and the grade window (v2.6130)", fg: '#ffffff', bg: GRADE_COLORS.X },
     { label: "the nav's Messages count on its red (v2.6151)", fg: '#ffffff', bg: '#b91c1c' },
+    { label: "the Dispatch band on a New row and the header's Task Dispatch press: the bell, white on the deep sky (v2.6507)", fg: DESK_MARKS.dispatch.ink, bg: DESK_MARKS.dispatch.fill },
+    { label: "the Estimating band on a New row and the header's Ask estimating press: the pencil and ruler, white on the violet (v2.6507)", fg: DESK_MARKS.estimating.ink, bg: DESK_MARKS.estimating.fill },
   ]
   for (const p of pairs) {
     for (const theme of THEMES) {

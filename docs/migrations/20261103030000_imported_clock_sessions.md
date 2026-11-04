@@ -10,3 +10,5 @@ Imported clock sessions: the days the app never recorded, put on the clock by a 
 **Apply order**: nothing in the client calls the function, so the client may deploy first or last. Push, then run the import from a dev seat; the rows the Gun Dog work needs are built outside the repo (the bank's payouts, the trip ledger and the person's own word are not in git).
 
 Bed: `supabase/tests/typed_hours/50_imported_scenarios.sql` (the widened check, the controller refused, two rows in and the rerun skipping both, six refusals with their reasons, no typed entry and the importing dev's approval landing the day in the pay).
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day; types regenerated from prod in #6929.

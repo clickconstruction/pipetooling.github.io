@@ -7,3 +7,5 @@ Adjustments on a job's charges (punch list #254, PR 3): the table behind the Cha
 - **Fences**: the three calls at the end, so a read-only account and a digital twin cannot write it.
 
 **Apply order**: the Job Summary's Charges column and the Charges window read the table; before the push the read answers a refusal, which the window shows with its reason and no Retry, and the column reads the record alone. Push right after the merge.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day; types regenerated from prod in #6955.

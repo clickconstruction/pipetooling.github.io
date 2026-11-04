@@ -17,7 +17,7 @@ Press **Photos** with its count, or any tile. The viewer opens with every pictur
 
 ## The Documents tab
 
-The job window's Documents tab has a Photos line too. It says how many photos are in the folder and the day of the newest. Press the line to open the same viewer. Every photo across every job is on [Documents → Photos](/help/find-every-photo-that-was-uploaded).
+The job window's Documents tab has a Photos line too. It says how many photos are in the folder and the day of the newest. Press the line to open the **Job photos** window, where you can also add a photo. {{button:outline|Add a photo}} sits beside it. Every photo across every job is on [Documents → Photos](/help/find-every-photo-that-was-uploaded).
 
 ## Where the photos come from
 

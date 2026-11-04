@@ -181,6 +181,13 @@ serve(async (req) => {
       if (deleteError) {
         return jsonResponse({ error: `Could not replace the pending invite for this email: ${deleteError.message}` }, 500)
       }
+      // v2.6511: deleting the auth account no longer deletes the users row (it detaches it — a worker with no
+      // login keeps their days). A pending invite has no days, so its row goes too, as the cascade took it
+      // before; otherwise the fresh invite's row would land on users_email_key.
+      const { error: rowDeleteError } = await adminClient.from('users').delete().eq('id', existingUser.id)
+      if (rowDeleteError) {
+        return jsonResponse({ error: `Could not replace the pending invite for this email: ${rowDeleteError.message}` }, 500)
+      }
     }
 
     const redirect = redirectTo && ALLOWED_REDIRECT.test(redirectTo) ? redirectTo : DEFAULT_REDIRECT

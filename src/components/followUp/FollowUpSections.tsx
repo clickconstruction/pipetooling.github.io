@@ -28,6 +28,10 @@ import { READING_AGAIN_WORDS } from '../../lib/keptRead'
 import { markedByWords } from '../../lib/messages/owed'
 import { agoWords, channelWord, lineWhen, snippetOf } from '../../lib/messages/thread'
 import { Btn, Card, Chip } from '../gc/gcUi'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { deskRead, type Desk } from '../../lib/messages/rowDesk'
+import { DESK_BAND } from '../../lib/messages/deskMarks'
+import { DeskBand } from './DeskBand'
 import { WhoHasItPill, type Teammate } from './WhoHasItPill'
 import { CallButton } from '../messages/CallButton'
 import { EmptyState } from '../EmptyState'
@@ -216,7 +220,11 @@ function Section({ id, name, count, note, look, color, action, children }: { id:
   )
 }
 
-/** One person's row: a press anywhere off its buttons opens the thread at its line. `lead` draws before the name, `beside` and `pill` after it. */
+/**
+ * One person's row: a press anywhere off its buttons opens the thread at its line. `lead` draws before the name, `beside`
+ * and `pill` after it. `band` (v2.6507) is the desk that finishes the row, drawn as a strip on the row's left edge with
+ * the row's padding moved right by its width; null draws the row as it was.
+ */
 function Row<C, N extends { contactId: string }>({
   contact,
   landOn,
@@ -226,6 +234,7 @@ function Row<C, N extends { contactId: string }>({
   sub,
   snippet,
   acts,
+  band,
   props,
 }: {
   contact: FollowUpContact
@@ -236,11 +245,14 @@ function Row<C, N extends { contactId: string }>({
   sub: string
   snippet?: ReactNode
   acts?: ReactNode
+  band?: { desk: Desk; why: string } | null
   props: FollowUpSectionsProps<C, N>
 }) {
   const { me, team, contacts, todayYmd, nowIso, actions, pressing, held } = props
+  const phone = useIsMobile()
+  const bandWidth = band ? (phone ? DESK_BAND.phone.width : DESK_BAND.desk.width) : 0
   return (
-    <Card style={{ padding: '0.6rem 0.8rem' }}>
+    <Card style={{ padding: '0.6rem 0.8rem', ...(band ? { position: 'relative', paddingLeft: `calc(0.8rem + ${bandWidth}px)` } : {}) }}>
       <div
         role="button"
         tabIndex={0}
@@ -255,6 +267,7 @@ function Row<C, N extends { contactId: string }>({
         }}
         style={{ display: 'grid', gap: '0.35rem', cursor: 'pointer' }}
       >
+        {band && <DeskBand read={band} phone={phone} />}
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span
             aria-hidden
@@ -407,6 +420,7 @@ function NewRowView<C, N extends { contactId: string }>({ row, contact, ...props
     <Row
       contact={contact}
       landOn={row.messageId}
+      band={deskRead(row)}
       lead={
         <button type="button" onClick={() => actions.openThread(contact.id, row.messageId)} title={row.why} style={row.sort === 'bid' ? { ...SORT_PRESS, ...BID_PRESS } : SORT_PRESS} data-new-lane-press={row.sort}>
           {row.head}

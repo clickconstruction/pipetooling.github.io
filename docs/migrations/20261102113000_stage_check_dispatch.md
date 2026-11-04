@@ -12,3 +12,5 @@ A crew member on a stage checklist row hits a check they cannot answer and sends
 Apply order: push right after the merge and before the Pages deploy finishes. The client writes the two columns in every send and reads them back when the sheet opens, by name, which `check:calls-ahead` cannot see; before the push a send fails with the database's reason and the sheet draws no chip, and the inbox reads as before. After the push, `npm run gen-types:linked` as its own `chore(types)` PR.
 
 PR 2 adds the self-close trigger over the two columns (a request closes itself when its check is answered, skipped or taken off on that stage) and the context window; PR 3 the Pipeline's mark.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day; types regenerated from prod in #6918.

@@ -81,15 +81,18 @@ describe('ThreadWindow: the flow rail and the sender’s kind (punch list #149 P
     renderWithProviders(<ThreadWindow contactId={named.id} onClose={vi.fn()} view={view} nowIso={DEMO_NOW} writes={writes()} />)
     await screen.findByRole('dialog')
     expect(rail()).not.toBeNull()
-    // The side's fold under the × (spike): ‹ folds a side that has something, › brings it back.
+    // The side's fold under the × (spike): › folds a side that has something off to the right, ‹ brings it back (v2.6505).
     const fold = await screen.findByRole('button', { name: 'Hide their flow' })
+    expect([fold.textContent, fold.getAttribute('data-thread-side-fold')]).toEqual(['›', 'shown'])
     fireEvent.click(fold)
     expect(rail()).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Show their flow' }))
+    const back = screen.getByRole('button', { name: 'Show their flow' })
+    expect([back.textContent, back.getAttribute('data-thread-side-fold')]).toEqual(['‹', 'folded'])
+    fireEvent.click(back)
     expect(rail()).not.toBeNull()
   })
 
-  it('folds the side by itself for a supply house, whom no flow holds, and › opens it to say so (spike)', async () => {
+  it('folds the side by itself for a supply house, whom no flow holds, and ‹ opens it to say so (spike)', async () => {
     flowGot.value = { state: 'none' }
     const view = spineMessagesView()
     const unknown = view.contacts.find((c) => c.kind === 'unknown')!

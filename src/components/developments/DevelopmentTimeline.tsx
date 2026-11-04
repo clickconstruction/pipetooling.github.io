@@ -5,11 +5,16 @@
  * `JobChargesTimelineChartView`, fed by `lib/developments/siteTimeline.ts`. The selection is a look,
  * forgotten on leaving, as the Scoreboard's order is.
  */
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useRef, useState, type CSSProperties } from 'react'
 import { JobChargesTimelineChartView } from '../jobs/JobSummaryChargesTimelineChart'
-import { buildSiteTimeline, SITE_TIMELINE_ICON_DAYS_PHONE, siteTimelineLeftOutWords, siteTimelineScopeWords, type SiteTimelineJob } from '../../lib/developments/siteTimeline'
+import { buildSiteTimeline, SITE_TIMELINE_ICON_DAYS_PHONE, siteTimelineEndWords, siteTimelineLeftOutWords, siteTimelinePrintHtml, siteTimelineScopeWords, siteTimelineValueWords, type SiteTimelineJob } from '../../lib/developments/siteTimeline'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
+import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { EmptyState } from '../EmptyState'
+import { LinkButton } from './developmentPageBits'
+
+const SITE_VALUE_WORDS = '(each job’s % done × its price, summed, right axis)'
+const SITE_VALUE_HIDDEN = 'Value line hidden: no job on the chart has both a price and a percent'
 
 export type SiteTimelineViewRead =
   | { state: 'reading' }
@@ -25,6 +30,12 @@ export type SiteTimelineViewRead =
       overheadNote: string | null
       /** The day the office pool began, for the key, once the ledger is in. */
       overheadSinceLabel: string | null
+      /** While the reports are still out, or when they failed (v2.6499): the value line is then not on the chart, and the line says so. */
+      valueNote: string | null
+      /** For the print's head and stamp (v2.6499). */
+      siteName: string
+      customerName: string | null
+      printedBy: string | null
     }
 
 const chipStyle = (on: boolean): CSSProperties => ({
@@ -45,6 +56,8 @@ const chipStyle = (on: boolean): CSSProperties => ({
 
 export function DevelopmentTimeline({ read, phone }: { read: SiteTimelineViewRead; phone: boolean }) {
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
+  const [printNote, setPrintNote] = useState<string | null>(null)
+  const chartRef = useRef<HTMLDivElement>(null)
   const jobs = read.state === 'ready' ? read.jobs : null
   // A phone's plot is a third the width, so a third of the icon days keep their icons.
   const model = useMemo(() => (jobs ? buildSiteTimeline({ jobs, selected, iconDays: phone ? SITE_TIMELINE_ICON_DAYS_PHONE : undefined }) : null), [jobs, selected, phone])
@@ -76,6 +89,31 @@ export function DevelopmentTimeline({ read, phone }: { read: SiteTimelineViewRea
       return next
     })
   const leftOut = siteTimelineLeftOutWords(model.leftOut)
+  const valueWords = siteTimelineValueWords(model.valueFallbackJobs)
+  // The print (v2.6499): the chart's own SVG as the screen drew it, with the lines around it, into the print window.
+  const print = () => {
+    const svg = chartRef.current?.querySelector('svg.recharts-surface')
+    if (!svg) {
+      setPrintNote('The chart has not drawn yet. Press again once it is on the screen.')
+      return
+    }
+    const clone = svg.cloneNode(true) as SVGSVGElement
+    if (!clone.getAttribute('viewBox')) clone.setAttribute('viewBox', `0 0 ${svg.getAttribute('width') ?? '1000'} ${svg.getAttribute('height') ?? '320'}`)
+    clone.removeAttribute('width')
+    clone.removeAttribute('height')
+    const keyLines = [...(chartRef.current?.querySelectorAll('p') ?? [])].map((p) => p.textContent ?? '').filter(Boolean)
+    const html = siteTimelinePrintHtml({
+      siteName: read.siteName,
+      customerName: read.customerName,
+      scopeLine: document.querySelector('[data-testid="timeline-scope"]')?.textContent ?? '',
+      endWords: siteTimelineEndWords(model.data, (n) => `$${formatCurrency(n)}`),
+      keyLines,
+      svg: new XMLSerializer().serializeToString(clone),
+      printedAt: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
+      printedBy: read.printedBy,
+    })
+    setPrintNote(openHtmlPrintWindow(html) ? null : 'The print window was blocked. Allow pop-ups for this site and press again.')
+  }
   const jobsWord = model.chips.length === 1 ? 'job' : 'jobs'
 
   return (
@@ -99,10 +137,20 @@ export function DevelopmentTimeline({ read, phone }: { read: SiteTimelineViewRea
         {leftOut ? ` ${leftOut}` : ''}
         {read.teamLaborNote ? ` ${read.teamLaborNote}` : ''}
         {read.overheadNote ? ` ${read.overheadNote}` : ''}
+        {read.valueNote ? ` ${read.valueNote}` : ''}
+        {valueWords ? ` ${valueWords}` : ''}
         {!read.fuelKnown ? ' Fuel could not be told from the other card charges.' : ''}
         {model.iconsThinned ? ' The icons mark the biggest days. Rest the pointer on any step for its lines.' : ''}
       </p>
-      <JobChargesTimelineChartView data={model.data} revenue={null} cardChargesExcluded={false} teamLaborIncluded valueHiddenNote={null} compact={phone} overheadSinceLabel={read.overheadSinceLabel} />
+      <div ref={chartRef}>
+        <JobChargesTimelineChartView data={model.data} revenue={null} cardChargesExcluded={false} teamLaborIncluded valueHiddenNote={SITE_VALUE_HIDDEN} valueWords={SITE_VALUE_WORDS} compact={phone} overheadSinceLabel={read.overheadSinceLabel} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 4, fontSize: '0.78rem' }}>
+        {printNote ? <span style={{ color: 'var(--text-muted)' }} data-testid="timeline-print-note">{printNote}</span> : null}
+        <LinkButton onClick={print} title="Opens the chart in a print window; the print window saves it as a PDF too">
+          Print or save as PDF
+        </LinkButton>
+      </div>
     </div>
   )
 }

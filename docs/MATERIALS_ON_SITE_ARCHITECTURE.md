@@ -5,7 +5,7 @@ file: docs/MATERIALS_ON_SITE_ARCHITECTURE.md
 type: Architecture map
 purpose: The objects, the writes and their rules, the screens, the agent's door and the gaps of Materials on site (punch list #209) — what is in the stencilled cages and boxes a crew leaves on a big job site. Read it before touching `src/lib/materials/onSite*.ts`, the On site tab, Jobs → Materials or the dev MCP's on-site verbs.
 audience: Developers, AI agents
-last_updated: 2026-11-03
+last_updated: 2026-11-04
 sections:
   - The idea
   - The objects
@@ -23,7 +23,7 @@ Nobody types a quantity over another. A press names what happened to some of a p
 
 ## The objects
 
-Five tables, one migration ([`20261029010000_materials_on_site.sql`](./migrations/20261029010000_materials_on_site.md)), all `ON DELETE CASCADE` from the job.
+Five tables, one migration ([`20261029010000_materials_on_site.sql`](./migrations/20261029010000_materials_on_site.md)), all `ON DELETE CASCADE` from the job. A job combine carries them to the target instead (v2.6423): a place of the same name becomes one, the source's Unsorted folds into the target's with its movements, moves and photos, and a live cage or box whose label the target already holds keeps its row and printed code and takes a numbered label (`A1 (2)`).
 
 | Object | Table | What one row is | Changes |
 |---|---|---|---|
@@ -79,12 +79,12 @@ One gate for all five tables, `on_site_can_touch_job(job_id)`, `SECURITY INVOKER
 ## The screens
 
 - **The phone**: `/tally` → **On site** ([`TallyOnSiteTab.tsx`](../src/components/tally/TallyOnSiteTab.tsx); the Job Mode card's *Materials on site* link opens it on the clocked-in job): the job picker, the flow row (Unsorted → Used → Count), the search by part or stencil, the place chips, the boxes grouped by place; a box open has its lines with Used, Move to… (another box, the supply house, the truck, damaged, a new box), Can't find, the Count this box walk, Add a part, Move this box, Mark on the map, Retire, Photo (`PhotoPress.tsx`; with no signal the shot stays on the phone with *Send now*). `useOnSiteJob` ([`useOnSiteStore.ts`](../src/hooks/useOnSiteStore.ts)) loads and reports for `OfflineRetryPanel`. Guide: *keep track of the material in the cages and boxes on site*. Map: [`JOB_TALLY_ARCHITECTURE.md`](./JOB_TALLY_ARCHITECTURE.md).
-- **The office**: Jobs → **Materials** ([`JobsMaterialsTab.tsx`](../src/components/jobs/JobsMaterialsTab.tsx), `/jobs?tab=materials&job=<id>`): with no job the **desk** across every job with a live container, sorted by the week's missing money, plus the *Drive folders* backfill; with a job the flow row, **On site** (boxes by place, the filters All · Due a count · Can't find, Add a container, Correct…, Label), **Missing** (the three-way comparison, Reported this week), **Deliveries** (the Drive-first intake, *Paste the text instead*, *Add N lines to Unsorted*, *Make the job's Drive folders*, Deliveries so far by invoice, and the agent's door *Or have your agent do it via MCP*), **History** (every row with reason and person filters), **Labels** (a half sheet per box with the QR). Guide: *see what is on every job site and what walked away*.
+- **The office**: Jobs → **Materials** ([`JobsMaterialsTab.tsx`](../src/components/jobs/JobsMaterialsTab.tsx), `/jobs?tab=materials&job=<id>`): with no job the **desk** across every job with a live container, sorted by the week's missing money, plus the *Drive folders* backfill; with a job the flow row, **On site** (boxes by place, the filters All · Due a count · Can't find, Add a container, Correct…, Label), **Missing** (the three-way comparison, Reported this week), **Deliveries** (the Drive-first intake, *Paste the text instead*, *Add N lines to Unsorted*, *Make the job's Drive folders*, Deliveries so far by invoice, and the agent's door *Or have your agent do it via MCP*), **History** (every row with reason and person filters), **Labels** (one Letter sheet per box with the stencil, the QR and the ruled lines, printed at full size since v2.6432). **Print the manifest** (v2.6366) prints one Letter page per box. Both windows portal to `<body>` and print through `printRootCss` ([`lib/printRoot.ts`](../src/lib/printRoot.ts), v2.6432), which takes every other child of `<body>` out of the print layout; before that the page behind, though hidden, widened the layout and Chrome shrank the print to about two thirds. `MANIFEST_MIN_ROWS` is 11, so an empty box's page fits one sheet. Guide: *see what is on every job site and what walked away*.
 - **The doors**: the Job window's **Materials** tab ([`JobWindowMaterialsPanel.tsx`](../src/components/jobs/JobWindowMaterialsPanel.tsx)) with the summary chips and *Open the materials page*; the Pipeline tools menu's **Materials desk** row with the week's count; Go anywhere's *Materials desk*, *On site* and the live group *Boxes on site*; the label's QR through `/b/:code` ([`BoxCode.tsx`](../src/pages/BoxCode.tsx)).
 
 ## The agent's door
 
-The dev MCP seat ([`dev-mcp/README.md`](./dev-mcp/README.md)) reads and writes the surface since v2.6367 (server 0.14.0), in its plan → apply grammar:
+The dev MCP seat ([`dev-mcp/README.md`](./dev-mcp/README.md)) reads and writes the surface since v2.6367 (server 0.16.0), in its plan → apply grammar:
 
 | Verb | What it does |
 |---|---|
@@ -94,7 +94,7 @@ The dev MCP seat ([`dev-mcp/README.md`](./dev-mcp/README.md)) reads and writes t
 | `plan_movement` → `apply_movement` | One press on a line: `moved` (with `to`; Put in… from Unsorted is this), `used`, `returned`, `taken` (a note says where), `cannot_find`, `damaged`. Capped at what the box has, as the phone caps it; a box with none of the part refuses. |
 | `plan_count` → `apply_count` | The Count this box walk or the office's Correct…: for each line named, what is there now. A line left out is not reset; a part not yet in the box may be counted into it. |
 
-All four pairs POST one RPC, `dev_on_site_write(p, p_dry_run)` ([`20261102100000`](./migrations/20261102100000_dev_on_site_write.md)), **`SECURITY INVOKER`** on purpose: there is no office RPC to wrap, the screens write under RLS, so the wrapper runs as the dev and the database stays the judge — the gate, the CHECKs, the training blocks and the twin fence decide every row exactly as for a press on the phone, and a training account or a twin is refused in words first. The plan commits to every line's on hand before and after and the box's live row count (a press on the box since the plan makes apply refuse) and carries `now` or the time given, never the clock. Every row reads **`<agent_label> · MCP as <dev>`** in `by_name` with the dev as `by_user_id`, so the crew's History and the office's page say who did it. The server-side grammar is `_shared/devMcpWrites.ts` (`WRITE_VERBS`, `writeRpcBody`), tested in `src/lib/devMcp/devMcpWrites.test.ts`; the wrapper ran on a throwaway Postgres through every action and refusal before it shipped.
+All four pairs POST one RPC, `dev_on_site_write(p, p_dry_run)` ([`20261102100000`](./migrations/20261102100000_dev_on_site_write.md)), **`SECURITY INVOKER`** on purpose: there is no office RPC to wrap, the screens write under RLS, so the wrapper runs as the dev and the database stays the judge — the gate, the CHECKs, the training blocks and the twin fence decide every row exactly as for a press on the phone, and a training account or a twin is refused in words first; since v2.6456 the plan and every refusal name the job as the app does (`JP972`, `J1085`, `formatJobLedgerNumberLabel`'s rule), not the bare number. The plan commits to every line's on hand before and after and the box's live row count (a press on the box since the plan makes apply refuse) and carries `now` or the time given, never the clock. Every row reads **`<agent_label> · MCP as <dev>`** in `by_name` with the dev as `by_user_id`, so the crew's History and the office's page say who did it. The server-side grammar is `_shared/devMcpWrites.ts` (`WRITE_VERBS`, `writeRpcBody`), tested in `src/lib/devMcp/devMcpWrites.test.ts`; the wrapper ran on a throwaway Postgres through every action and refusal before it shipped.
 
 twin-mcp has no materials verb and should not: it is the estimator's seat (`docs/TWIN_MCP_SERVER_ARCHITECTURE.md`), and a twin is fenced from these tables.
 
