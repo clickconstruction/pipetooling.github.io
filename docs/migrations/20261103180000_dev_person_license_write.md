@@ -14,3 +14,5 @@ The dev MCP's dry-run wrapper for a teammate's license: `plan_license` → `appl
 - **No table is created**, so no read-only fence is owed. Training mode is still blocked by `person_licenses`' statement trigger.
 
 Deploy order: push this migration, then deploy `dev-mcp` (server 0.24.0). After the push, regenerate `src/types/database.ts` and the dev-mcp catalog (`node scripts/build-dev-mcp-catalog.mjs`) so `find_rpc` lists the function.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day, `dev-mcp` and `notify-dispatch-request` among them; types regenerated from prod in #6994, open with auto-merge armed at the time of this pass.

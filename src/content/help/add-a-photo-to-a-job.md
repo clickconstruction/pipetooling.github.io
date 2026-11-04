@@ -84,7 +84,7 @@ When photos came through more than one door, chips sit over the grid. Press a ch
 2. Press **Edit the words**.
 3. Type the new words and press {{button:blue|Save the words}}.
 
-You may change the words on your own photos. The office may change the words on any photo. The Drive file takes the new words on the sweep's next pass.
+You may change the words on your own photos. The office and the estimator may change the words on any photo. The Drive file takes the new words on the sweep's next pass.
 
 ## A photo or a report?
 

@@ -11,3 +11,5 @@ Every stretch a roster person worked, kept (v2.6481). `people.start_date` / `end
 Tested by `npm run test:pg:employment-stints` (`supabase/tests/employment_stints/`, in `scripts/sql-beds.txt`): a roster seeded with the trigger off, the migration run twice more (the backfill, then nothing), then End employment, Bring back, an edit, a second end, an end undone, a same-day Reactivate, first dates, a delete, and the reads and the refused insert through RLS.
 
 Apply order: nothing on screen reads the table in this PR. Push after the merge; then `npm run gen-types:linked` as its own `chore(types)` PR, before PR 3's window reads the stints.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day; types regenerated from prod in #6994, open with auto-merge armed at the time of this pass.

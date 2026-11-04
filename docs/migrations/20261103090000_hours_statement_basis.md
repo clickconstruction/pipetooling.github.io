@@ -7,3 +7,5 @@ The hours statement's basis (punch list #251, PR 2): a saved statement says whet
 - **No table, no policy, no fence calls** — three nullable-or-defaulted columns on an existing table.
 
 **Apply order**: the client writes `basis`, `charge_rate` and `charge_words` through a cast and reads a missing `basis` as paid, so the client may deploy first: a charged paper saved before the push is refused with its reason (the column does not exist) and nothing is lost. Push right after the merge, then regenerate the types.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day; types regenerated from prod in #6962.

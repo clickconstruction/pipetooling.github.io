@@ -10,7 +10,7 @@ covers:
   - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-01
+last_updated: 2026-11-04
 ---
 
 ## Overview
@@ -461,7 +461,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | v2.6236 (after `mapped_at`) | `robot-locked`, the fixtures shape | `selectRobotLockedShadows` carries `fixturesFound` / `fixturesTaken`; a sealed run whose fixtures wait on the Counts tab leads the card as *The robot's fixtures are ready on b641* (or *on N live bids*) with the press named, else the sealed-number shape as before | blue |
 | 1173–1185 | `d22-uncoded` | `d22UncodedEnabled` | amber |
 | 1187–1260 | `hours-approvals`, `typed-hours`, `label-approvals` | each `…Enabled`; the first and last also need `oldestAgeDays ≥ …MinAgeDays` | amber |
-| 1262–1284 | `customer-waiting` | `customerWaitingEnabled` | red while any is uncalled, else amber |
+| 1262–1284 | `customer-waiting` | `customerWaitingEnabled` (a customer's open high rows only, never a stage check: `summarizeCustomerWaiting` over `waitsOnTheBanner`, v2.6466) | red while any is uncalled, else amber |
 | 1286–1324 | `dispatch-requests-aged`, `hr-reports-pending` | each `…Enabled` | red at `…RedDays`, else amber |
 | 1326–1341 | `claim-dev` | `claimDevRefusedCount` | red; snooze / dismiss secondaries |
 | 1343–1362 | `job-account-missing` | `jobAccountGapsEnabled` | gray |

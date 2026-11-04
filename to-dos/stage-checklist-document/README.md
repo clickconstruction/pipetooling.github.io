@@ -2,7 +2,7 @@
 name: "Stage checklists as documents on the job: items anyone on the job can add, a stamp on every answer, a signature where the author asks for one, and a record that files itself"
 number: 237
 group: ready
-status: building, PR 1 on claude/checklist-items-237-pr1-385119 (v2.6328) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · PR 1b on claude/checklist-items-237-pr1b (#6798, v2.6347, a draft stacked on PR 1, migration 20261102084500): the named groups on Documents, Skip on this job, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼, the add box staying open, the estimator as author · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
+status: PR 1 shipped v2.6328 (#6797) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · PR 1b shipped v2.6347 (#6798, migration 20261102084500): the named groups on Documents, Skip on this job, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼, the add box staying open, the estimator as author · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
 summary: >
   The stage checklists of punch list #164 live in Settings, hold only the company's questions,
   and show the office nothing per job. The owner wants them moved onto the job's Documents tab as

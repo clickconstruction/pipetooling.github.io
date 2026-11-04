@@ -411,3 +411,7 @@ the signed PDF onto a matter through the document wrapper), the server at 0.20.0
 built. What is left: the owner's look at the five PRs live; counsel's word on the stated block's weight; Drive's *Sent
 by us* when `drive-link`'s `put` has a caller; a sub's sheet lines through the window (the kernel's `sheet` kind has no
 reader yet, so a sub's paper is still made by hand).
+
+## Found in review, 2026-11-04
+
+The signed PDF (`supabase/functions/_shared/hoursStatementPdf.ts`) follows neither v2.6412's full-width layout (its title is only worked / worked and paid, a two-column facts grid, separate In and Out columns, a Rate column whenever there is pay) nor the charged basis (no `basis` handling), yet `HoursStatementModal`'s `canSign` offers Send for signature, Sign here now and File a signed scan on a charged row, so a charged statement sent for signature is drawn as *Statement of hours worked* with no Charged band and the signed copy disagrees with the printed charged paper. The Legal desk's `LegalEvidenceStatementsBand` draws *Nothing signed here yet* for a role that cannot read statements even when signed ones exist. The dev MCP's `get_hours_statement` and `plan_hours_statement` make only the paid paper.
