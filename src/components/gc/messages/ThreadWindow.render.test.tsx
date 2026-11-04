@@ -59,7 +59,7 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     expect(chips.map((c) => c.textContent)).toEqual([
       'PDFHillside-Boerne-sitework-rev1.pdf · 1.3 MB',
       'IMGsite-photo-pad.jpg · 2.8 MB',
-      '↗Addendum 2 drawings · a link',
+      'Addendum 2 drawings · a link',
       'FHillside-Boerne-full-set.zip · 31 MB',
     ])
     expect(line.lastElementChild!.textContent).toBe('11:30 AM')

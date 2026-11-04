@@ -10,6 +10,8 @@ import { callLength, channelWord, fullWhen, type ThreadMessage } from '../../../
 import { PhoneSheet } from '../../PhoneSheet'
 import { Btn } from '../gcUi'
 import { MessageFiles } from './LineFiles'
+import { MessageBody } from './MessageBody'
+import { bodyHtml } from '../../../lib/messages/bodyLinks'
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch] ?? ch)
 
@@ -20,7 +22,8 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&
  * tools: a later cut's first slot (cut 2's
  * highlight, which reads Remove or Highlight by the selection), Copy, Print or save as PDF, and Share. It is drawn
  * inside the thread window's panel, so a press on its backdrop never reaches the thread's. A sheet from the bottom on a
- * phone (`PhoneSheet`, cut 10).
+ * phone (`PhoneSheet`, cut 10). Its words go through `MessageBody` (v2.6508): a web address is one press with a link
+ * mark, the sender's `*bold*` reads bold, and the print page draws the same through `bodyHtml`.
  */
 export function MessageWindow({
   message,
@@ -61,7 +64,7 @@ export function MessageWindow({
 
   const print = () => {
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title></head><body style="font:14px/1.5 -apple-system,Segoe UI,sans-serif;margin:2rem">
-<h2>${esc(title)}</h2><p style="color:#555">${esc(fromWord)} ${esc(who)} · ${esc(fullWhen(message.at))}</p><div style="white-space:pre-wrap">${esc(message.body)}</div></body></html>`
+<h2>${esc(title)}</h2><p style="color:#555">${esc(fromWord)} ${esc(who)} · ${esc(fullWhen(message.at))}</p><div style="white-space:pre-wrap">${bodyHtml(message.body)}</div></body></html>`
     if (!openHtmlPrintWindow(html)) showToast('Allow pop-ups to print it.', 'error')
   }
   const share = async () => {
@@ -130,7 +133,7 @@ export function MessageWindow({
           </Btn>
         </div>
         <div ref={fullRef} data-message-full style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', lineHeight: 1.5 }}>
-          {message.body}
+          <MessageBody body={message.body} />
         </div>
       </div>
     </PhoneSheet>
