@@ -23115,6 +23115,39 @@ export type Database = {
           },
         ]
       }
+      logbook_shares: {
+        Row: {
+          shown_at: string
+          shown_by: string | null
+          user_id: string
+        }
+        Insert: {
+          shown_at?: string
+          shown_by?: string | null
+          user_id: string
+        }
+        Update: {
+          shown_at?: string
+          shown_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logbook_shares_shown_by_fkey"
+            columns: ["shown_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logbook_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mail_pieces: {
         Row: {
           address1: string
@@ -40552,6 +40585,7 @@ export type Database = {
         Args: { p_payment_id: string; p_reason?: string; p_to_job_id: string }
         Returns: string
       }
+      my_logbook: { Args: never; Returns: Json }
       my_mail_set: {
         Args: { p_hidden_labels?: string[]; p_on: boolean }
         Returns: {
@@ -41783,6 +41817,19 @@ export type Database = {
       staff_can_view_user_for_tally_followup: {
         Args: { p_target: string; p_viewer: string }
         Returns: boolean
+      }
+      stage_check_close_settled: {
+        Args: {
+          p_closed_by: string
+          p_fixture_id: string
+          p_note: string
+          p_question_id: string
+        }
+        Returns: number
+      }
+      stage_check_settler_name: {
+        Args: { p_name: string; p_user: string }
+        Returns: string
       }
       stage_checklist_may_author: {
         Args: { p_job_id: string }
