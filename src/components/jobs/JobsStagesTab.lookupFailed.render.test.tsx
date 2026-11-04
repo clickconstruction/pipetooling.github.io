@@ -198,6 +198,23 @@ describe('a failed lookup is not "no match"', () => {
     expect(screen.getByText(/No match anywhere/)).toBeTruthy()
   })
 
+  it('a new term starts clean: the last term’s line comes off while the new lookup runs (v2.6487)', async () => {
+    cache.merged = ALL_SCOPES.filter((s) => s !== 'paid')
+    lean.search = [NETWORK]
+    await mount()
+    await search('smith')
+    await pastTheLookup()
+    expect(failedBlock()).toContain('Only the jobs already on the board were searched.')
+    expect(paidHeader()).toContain('not searched')
+    await search('smithson')
+    // Through the debounce and the request nothing says the new term was searched short.
+    expect(failedBlock()).toBeNull()
+    expect(paidHeader()).not.toContain('not searched')
+    await pastTheLookup()
+    expect(lean.searchCalls).toBe(2)
+    expect(failedBlock()).toContain('Only the jobs already on the board were searched.')
+  })
+
   it('a refusal shows its reason and no Retry', async () => {
     lean.search = [REFUSED]
     await mount()

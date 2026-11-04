@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { replyBoxFolded, type ReplyFoldFacts } from './replyFold'
 
-const quiet: ReplyFoldFacts = { foldBox: true, inJob: false, woke: false, blank: true, files: 0, opensWithWords: false, textWaits: false }
+const quiet: ReplyFoldFacts = { foldBox: true, inJob: false, woke: false, blank: true, files: 0, opensWithWords: false, textWaits: false, blocked: false }
 
 describe('the reply box folds to one row on a short window (v2.6477)', () => {
   it('folds while the window is short and nothing waits in the box', () => {
@@ -22,5 +22,9 @@ describe('the reply box folds to one row on a short window (v2.6477)', () => {
 
   it('leaves the texts-off wait line as it is', () => {
     expect(replyBoxFolded({ ...quiet, textWaits: true })).toBe(false)
+  })
+
+  it('stays whole for a number that sent STOP, so the reason shows under the disabled field (v2.6487)', () => {
+    expect(replyBoxFolded({ ...quiet, blocked: true })).toBe(false)
   })
 })
