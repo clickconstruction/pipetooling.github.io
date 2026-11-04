@@ -3140,7 +3140,7 @@ export default function LienDeskModal({
         if (!first || !courtesyFacts || !courtesyDraft) return
         setCourtesyRecipients(null)
         setCourtesyCtx({ first, facts: courtesyFacts, jobId: selected.jobId, jobLabel: jobLabel(job, selected.jobId), gcCustomerId: job?.gc_customer_id ?? null })
-        void loadCourtesyRecipients({ gcCustomerId: job?.gc_customer_id ?? null, gcName: gc?.name || courtesyDraft.notice.originalContractorName, gcEmail: courtesyDraft.gcEmail || gc?.email || '', ownerName, ownerEmail: (ownerRow?.owner_email ?? '').trim() }).then(setCourtesyRecipients, (e) => {
+        void loadCourtesyRecipients({ gcCustomerId: job?.gc_customer_id ?? null, gcName: gc?.name || courtesyDraft.notice.originalContractorName, gcEmail: courtesyDraft.gcEmail || gc?.email || '', ownerName, ownerEmail: property.owner.email, ownerPhone: property.owner.phone }).then(setCourtesyRecipients, (e) => {
           showToast(formatErrorMessage(e, 'Their addresses could not be found.'), 'error')
           setCourtesyRecipients([])
         })

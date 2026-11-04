@@ -199,7 +199,7 @@ export default function LienPaperPropertyWindow({ job, address: givenAddress, lo
           )}
           {ownerOnJob ? (
             <div style={{ ...note, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
-              This job names its own owner in Edit Job. The paper reads that owner, not the one below.
+              This job names its own owner in Edit Job. The paper reads that owner, not the one below. The courtesy notice reads the job's owner too, and takes the email and phone below only where the job's owner has none.
             </div>
           ) : null}
           {loading ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Reading the property record…</p> : <CustomerPropertyRecordPanel

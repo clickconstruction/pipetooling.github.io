@@ -62,6 +62,45 @@ export function courtesyGcChannels(input: CourtesyGcChannelsInput): CourtesyGcCh
   return { contactId: null, phone, textHold: phone && !input.textsOn ? TEXTS_OFF : '', textChannelId: null, email: input.customerEmail.trim() }
 }
 
+/** The owner's text column when nobody in Messages holds their number (v2.6497): the spine has no kind for a property owner, so no contact is made for them. */
+export const OWNER_NOT_IN_MESSAGES = 'not in Messages, so the email goes alone'
+
+export type CourtesyOwnerChannelsInput = {
+  /** The contact whose phone channel already carries the record's number (`contact_for_channel`); null when nobody's does. */
+  contact: { id: string; channels: ReadonlyArray<CourtesyChannelLike> } | null
+  /** The owner's number as the property record keeps it, '' when none. */
+  phone: string
+  textsOn: boolean
+}
+
+export type CourtesyOwnerChannels = {
+  contactId: string | null
+  /** The channel the text goes on; null when it cannot go. */
+  textChannelId: string | null
+  /** The number as the record keeps it, '' when the spine would keep no channel for it. */
+  phone: string
+  /** Why the number cannot be texted; '' when it can. */
+  textHold: string
+}
+
+/**
+ * The owner of record's text (v2.6497, Taunya's report on job 663): the number is the property record's. The
+ * Messages spine knows customers, trade partners, architects, leads, supply houses, candidates, subs and the
+ * team, and no property owner, so the window never makes a contact for one. The text goes only when the number
+ * already belongs to a contact (the owner is a customer of ours too, say), on the channel that holds it, under
+ * the GC's own holds: Send texts off, or a STOP on that number. Pure; the IO finds the contact.
+ */
+export function courtesyOwnerChannels(input: CourtesyOwnerChannelsInput): CourtesyOwnerChannels {
+  const phone = input.phone.trim()
+  const key = phoneChannelKey(phone)
+  if (!key) return { contactId: null, textChannelId: null, phone: '', textHold: '' }
+  const theirs = input.contact?.channels.find((c) => c.kind === 'phone' && phoneChannelKey(c.value) === key) ?? null
+  if (!input.contact || !theirs) return { contactId: null, textChannelId: null, phone, textHold: OWNER_NOT_IN_MESSAGES }
+  if (theirs.optedOutAt) return { contactId: input.contact.id, textChannelId: null, phone, textHold: 'they sent STOP' }
+  if (!input.textsOn) return { contactId: input.contact.id, textChannelId: null, phone, textHold: TEXTS_OFF }
+  return { contactId: input.contact.id, textChannelId: theirs.id, phone, textHold: '' }
+}
+
 /**
  * On the contact the press made: the live phone channel that holds the planned number, else the
  * first live phone channel; null when the contact holds no number that can be texted.
