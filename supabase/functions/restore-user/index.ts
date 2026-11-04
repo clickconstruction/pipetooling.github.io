@@ -10,6 +10,12 @@ const corsHeaders = {
 
 interface RestoreUserRequest {
   user_id: string
+  /**
+   * Bring back (v2.6481, punch list #256): false discards the open roadmap tasks parked when they
+   * were archived, before the flip, so the restore trigger has nothing to give back (the owner's
+   * call: after 90 days away the box starts unticked). Absent or true keeps today's behaviour.
+   */
+  restore_roadmap?: boolean
 }
 
 serve(async (req) => {
@@ -73,7 +79,7 @@ serve(async (req) => {
       )
     }
 
-    const { user_id }: RestoreUserRequest = await req.json()
+    const { user_id, restore_roadmap }: RestoreUserRequest = await req.json()
 
     if (!user_id) {
       return new Response(
@@ -119,6 +125,24 @@ serve(async (req) => {
       },
     })
 
+    // Bring back with the roadmap box unticked: drop the parked rows first, so the restore trigger
+    // (roadmap_assignees_follow_user_archive) finds nothing to give back.
+    let roadmapDiscarded = 0
+    if (restore_roadmap === false) {
+      const { data: dropped, error: dropError } = await adminClient
+        .from('checklist_tech_tree_task_assignees_parked')
+        .delete()
+        .eq('user_id', user_id)
+        .select('task_id')
+      if (dropError) {
+        return new Response(
+          JSON.stringify({ error: `Failed to set aside old roadmap tasks: ${dropError.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      roadmapDiscarded = (dropped ?? []).length
+    }
+
     const { error: updateUserError } = await adminClient
       .from('users')
       .update({ archived_at: null })
@@ -158,6 +182,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: `User ${targetUser.email || targetUser.name} restored`,
+        roadmap_tasks_discarded: roadmapDiscarded,
         ct_bridge: ctBridge,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
