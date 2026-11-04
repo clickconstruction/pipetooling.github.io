@@ -45,7 +45,7 @@ const costs: SiteCostsRead = {
     supplyAlloc: [{ job_id: 'j1', pct: 100, supply_house_invoices: { invoice_number: '1001', invoice_date: '2026-10-01', amount: 1200, is_paid: true, on_job_account: false, supply_houses: { name: 'Ferguson' } } }],
   },
 }
-const hookCalls = { costs: [] as boolean[], labor: [] as boolean[], timeline: [] as boolean[], overhead: [] as boolean[] }
+const hookCalls = { costs: [] as boolean[], labor: [] as boolean[], timeline: [] as boolean[], overhead: [] as boolean[], values: [] as boolean[] }
 vi.mock('../hooks/useSiteCosts', () => ({
   useSiteCosts: (_ids: string[], enabled: boolean) => {
     hookCalls.costs.push(enabled)
@@ -62,6 +62,12 @@ vi.mock('../hooks/useSiteOverhead', () => ({
   useSiteOverhead: (_ids: string[], enabled: boolean) => {
     hookCalls.overhead.push(enabled)
     return enabled ? { state: 'read', byJobId: new Map([['j1', { usd: 120.5, days: 1, lines: [{ ymd: '2026-10-02', jobHours: 8, fieldHours: 8, poolUsd: 120.5, shareUsd: 120.5 }] }]]) } : { state: 'off' }
+  },
+}))
+vi.mock('../hooks/useSiteValueEvents', () => ({
+  useSiteValueEvents: (_ids: string[], enabled: boolean) => {
+    hookCalls.values.push(enabled)
+    return enabled ? { state: 'read', byJobId: new Map([['j1', [{ dateKey: '2026-10-03', percent: 40, label: 'Report by Dana', jobId: 'j1' }]]]) } : { state: 'off' }
   },
 }))
 vi.mock('../hooks/useSiteTimeline', () => ({
@@ -135,6 +141,7 @@ beforeEach(() => {
   hookCalls.labor.length = 0
   hookCalls.timeline.length = 0
   hookCalls.overhead.length = 0
+  hookCalls.values.length = 0
 })
 afterEach(() => {
   vi.clearAllMocks()
@@ -148,6 +155,7 @@ describe('the Money look’s Timeline view', () => {
     expect(hookCalls.labor.every((e) => !e)).toBe(true)
     expect(hookCalls.timeline.every((e) => !e)).toBe(true)
     expect(hookCalls.overhead.every((e) => !e)).toBe(true)
+    expect(hookCalls.values.every((e) => !e)).toBe(true)
     fireEvent.click(screen.getByTestId('money-view-timeline'))
     await settle()
     expect(screen.getByTestId('money-view-timeline').getAttribute('aria-pressed')).toBe('true')
@@ -163,6 +171,10 @@ describe('the Money look’s Timeline view', () => {
     expect(hookCalls.overhead.some((e) => e)).toBe(true)
     expect(screen.getByText(/cost to date/).textContent).toContain('Amber')
     expect(screen.getByText(/cost to date/).textContent).toContain('since Feb 19, 2026')
+    // The reports read only once the view is open, and a priced job with a percent puts the value line behind its toggle (v2.6499).
+    expect(hookCalls.values.some((e) => e)).toBe(true)
+    expect(screen.getByLabelText('Value created (right axis)')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Print or save as PDF' })).toBeTruthy()
     expect(window.localStorage.getItem('pt.development.dev-zz.money.view')).toBe('timeline')
   })
 
