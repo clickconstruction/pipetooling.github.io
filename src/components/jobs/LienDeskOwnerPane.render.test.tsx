@@ -10,7 +10,7 @@ vi.mock('../../lib/supabase', async () => {
 
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 
-const noOwner = { ownerMode: '', ownerName: '', ownerCompany: '', mailingAddress: '', source: 'none' as const }
+const noOwner = { ownerMode: '', ownerName: '', ownerCompany: '', mailingAddress: '', email: '', phone: '', source: 'none' as const }
 
 describe('LienDeskOwnerPane — Find the owner ›', () => {
   it('opens Edit Job on the Property record row, as its hover promises (#87 E)', async () => {

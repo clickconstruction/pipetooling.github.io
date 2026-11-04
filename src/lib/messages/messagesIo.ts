@@ -458,6 +458,16 @@ export async function findCustomerContactId(customerId: string): Promise<string 
 }
 
 /**
+ * Whose number it is, as the spine answers (`contact_for_channel`: the contact whose phone channel carries the number's
+ * key; when two share it, the one it last carried a message for). Null when nobody's does. A read, so the courtesy
+ * notice's window (v2.6497) can plan the owner of record's text on a thread that already exists without making one.
+ */
+export async function findContactIdForPhone(phone: string): Promise<string | null> {
+  const id = taken(await rpc('contact_for_channel', { p_kind: 'phone', p_value: phone }), 'find whose number it is') as unknown
+  return typeof id === 'string' && id ? id : null
+}
+
+/**
  * One person as the thread reads them: their row, their numbers and addresses, their jobs and the record's name. Null
  * when the row is not there or is of a kind this build does not know.
  */

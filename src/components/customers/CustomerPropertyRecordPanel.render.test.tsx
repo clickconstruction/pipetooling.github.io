@@ -35,6 +35,16 @@ describe('CustomerPropertyRecordPanel', () => {
     renderWithProviders(<CustomerPropertyRecordPanel address={lookedUp.address} fields={lookedUp} onChange={() => {}} />)
     expect(screen.queryByLabelText('Pasted CAD page')).toBeNull()
   })
+  it('takes the owner’s email and phone under the mailing address and hands each to onChange; neither is a lien chip (v2.6497)', () => {
+    const onChange = vi.fn()
+    renderWithProviders(<CustomerPropertyRecordPanel address={lookedUp.address} fields={{ ...lookedUp, owner_email: '', owner_phone: '' }} onChange={onChange} />)
+    fireEvent.change(screen.getByLabelText('Owner email'), { target: { value: 'owner@novy.example' } })
+    expect(onChange).toHaveBeenCalledWith({ owner_email: 'owner@novy.example' })
+    fireEvent.change(screen.getByLabelText('Owner phone'), { target: { value: '(512) 555-0142' } })
+    expect(onChange).toHaveBeenCalledWith({ owner_phone: '(512) 555-0142' })
+    expect(screen.getByText(/3 lien fields missing/)).toBeTruthy()
+    expect(screen.queryByText(/owner email/)).toBeNull()
+  })
   it('names the kinds Residential and Commercial, as the lien screens do; Commercial writes non_residential and drops homestead', () => {
     const onChange = vi.fn()
     renderWithProviders(<CustomerPropertyRecordPanel address={lookedUp.address} fields={lookedUp} onChange={onChange} />)

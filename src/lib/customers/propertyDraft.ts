@@ -26,6 +26,9 @@ export type PropertyDraftPayload = {
   jp_precinct?: string
   jp_precinct_source?: string
   jp_precinct_note?: string
+  /** Present only when the draft carries the owner's contact (v2.6497): a row read after migration 20261104163131, or a typed value. An older row writes neither, so a save never fails on a column that is not there yet. */
+  owner_email?: string
+  owner_phone?: string
 }
 
 /**
@@ -51,7 +54,14 @@ export function payloadFromDraft(d: PropertyDraft, now: Date = new Date()): Prop
     parcel_looked_up_at: d.parcel_looked_up_at.trim() || null,
     updated_at: now.toISOString(),
     ...precinctPayload(d),
+    ...ownerContactPayload(d),
   }
+}
+
+/** The owner's email and phone when the draft carries either (v2.6497): both trimmed, so a cleared one clears. Neither on an older draft. */
+function ownerContactPayload(d: PropertyDraft): Pick<PropertyDraftPayload, 'owner_email' | 'owner_phone'> | Record<string, never> {
+  if (d.owner_email === undefined && d.owner_phone === undefined) return {}
+  return { owner_email: (d.owner_email ?? '').trim(), owner_phone: (d.owner_phone ?? '').trim() }
 }
 
 /** The precinct columns when the draft carries them: hand wins and clears the note; a map value passes through untouched. */
@@ -106,7 +116,15 @@ export function draftFromRow(a: CustomerAddressRow): PropertyDraft {
     parcel_looked_up_at: a.parcel_looked_up_at ?? '',
     jp_precinct: ((a as { jp_precinct?: string | null }).jp_precinct ?? '').trim(),
     jp_precinct_source: ((a as { jp_precinct_source?: string | null }).jp_precinct_source ?? '').trim(),
+    ...ownerContactFromRow(a),
   }
+}
+
+/** The owner's email and phone off a row that carries the columns (migration 20261104163131); nothing off an older row, so the draft writes neither back. */
+function ownerContactFromRow(a: CustomerAddressRow): Pick<PropertyDraft, 'owner_email' | 'owner_phone'> | Record<string, never> {
+  const r = a as { owner_email?: string | null; owner_phone?: string | null }
+  if (r.owner_email === undefined && r.owner_phone === undefined) return {}
+  return { owner_email: (r.owner_email ?? '').trim(), owner_phone: (r.owner_phone ?? '').trim() }
 }
 
 /** What the record says beside its precinct: where it came from. */

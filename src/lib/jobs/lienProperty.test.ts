@@ -90,6 +90,19 @@ describe('resolveLienProperty', () => {
     expect(lienPropertyOwnerDisplayName(r.owner)).toBe('')
   })
 
+  it('the owner’s email and phone come from the source that names the owner, a blank there from the record (v2.6497)', () => {
+    // The record carries the columns once migration 20261104163131 lands; the test row carries them as the generated type will.
+    const contactRow = { ...legalRow, owner_email: 'office@springtown.example', owner_phone: '(512) 555-0142' } as CustomerAddressRow
+    expect(resolveLienProperty(contactRow, null).owner).toMatchObject({ source: 'property_record', email: 'office@springtown.example', phone: '(512) 555-0142' })
+    // The override names the owner and gives its own email: that email, and the record's phone where the override has none.
+    const override = { owner_mode: 'building_owner', owner_name: '', company_name: 'Typed Owner LLC', mailing_address: '1 Main St', owner_email: ' typed@owner.example ' }
+    expect(resolveLienProperty(contactRow, override).owner).toMatchObject({ source: 'job_override', email: 'typed@owner.example', phone: '(512) 555-0142' })
+    expect(resolveLienProperty(contactRow, { ...override, owner_phone: '512-555-0199' }).owner.phone).toBe('512-555-0199')
+    // An older row without the columns, and no row at all: nothing is guessed.
+    expect(resolveLienProperty(legalRow, null).owner).toMatchObject({ email: '', phone: '' })
+    expect(resolveLienProperty(null, null).owner).toMatchObject({ email: '', phone: '', source: 'none' })
+  })
+
   it('an empty override does not shadow the property record', () => {
     const r = resolveLienProperty(legalRow, { owner_mode: 'homeowner', owner_name: '  ', company_name: '', mailing_address: null })
     expect(r.owner.source).toBe('property_record')

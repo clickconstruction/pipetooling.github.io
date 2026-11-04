@@ -27,7 +27,12 @@ import { splitJobAddressForPrefill } from '../../lib/txLocalityAddressSplit'
  * `onChange`; the parent owns persistence.
  */
 
-export type PropertyRecordDraft = PropertyRecordFields & { parcel_looked_up_at: string }
+export type PropertyRecordDraft = PropertyRecordFields & {
+  parcel_looked_up_at: string
+  /** The owner's email and phone (v2.6497): where the courtesy notice before a lien reaches the owner. Absent on a row read before migration 20261104163131, so the draft writes neither back. */
+  owner_email?: string
+  owner_phone?: string
+}
 
 type Props = {
   address: string
@@ -364,6 +369,20 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
         <label style={labelStyle}>Owner mailing address (lien notices go here)</label>
         <input type="text" value={fields.owner_mailing_address} onChange={(e) => onChange({ owner_mailing_address: e.target.value })} placeholder="Owner MAILING address" aria-label="Owner mailing address" style={inputStyle} />
         <div style={provStyle}>{proposal?.found ? recordLink('owner_mailing_address', proposal.ownerMailingAddress) : null}</div>
+      </div>
+      {/* the owner's email and phone (v2.6497, Taunya's report on job 663): the courtesy notice before a lien reaches the owner here; typed by the office, never from the roll; not a lien field, so no chip. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.5rem' }} data-property-owner-contact>
+        <div>
+          <label style={labelStyle}>Owner email (the courtesy notice goes here)</label>
+          <input type="email" value={fields.owner_email ?? ''} onChange={(e) => onChange({ owner_email: e.target.value })} placeholder="Owner email" aria-label="Owner email" autoComplete="off" style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Owner phone (for a call, or a text when the owner is in Messages)</label>
+          <input type="tel" value={fields.owner_phone ?? ''} onChange={(e) => onChange({ owner_phone: e.target.value })} placeholder="Owner phone" aria-label="Owner phone" autoComplete="off" style={inputStyle} />
+        </div>
+      </div>
+      <div style={{ ...provStyle, marginTop: -4 }}>
+        <span>The appraisal roll carries neither. Type them from the owner's letterhead, their website or a call.</span>
       </div>
 
       {/* checklist */}

@@ -1,8 +1,8 @@
 import { supabase } from '../supabase'
 import type { Json } from '../../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { contactForCustomer, findCustomerContactId, loadContact } from '../messages/messagesIo'
-import { courtesyGcChannels, textChannelFor } from './lienCourtesyContact'
+import { contactForCustomer, findContactIdForPhone, findCustomerContactId, loadContact } from '../messages/messagesIo'
+import { courtesyGcChannels, courtesyOwnerChannels, phoneChannelKey, textChannelFor, type CourtesyOwnerChannels } from './lienCourtesyContact'
 import { supabaseTextsSwitchIo } from '../quo/textsSwitchIo'
 import type { LienDeskItemRow } from './lienDesk'
 import {
@@ -29,8 +29,12 @@ import {
  *   which makes the contact, so a window opened and cancelled left one behind. Now the press makes
  *   it, and only when a text goes. A text goes only while Send texts is on and the number has not
  *   sent STOP. `quo-send` adds the opt-out line itself.
- * - The owner's email is the property record's (`job_property_owners.owner_email`). The owner is
- *   not a Messages contact, so the owner gets no text.
+ * - The owner's email and phone are the property's as `resolveLienProperty` gives them (v2.6497): the
+ *   per-job override's where it names the owner, else the property record's, which the office types
+ *   on the property window beside the mailing address. The Messages spine has no kind for a property
+ *   owner, so the window never makes a contact for one: the owner's text goes only when their number
+ *   already belongs to a contact (`contact_for_channel`), on that channel, under the GC's own holds;
+ *   otherwise the Text column says *not in Messages, so the email goes alone*.
  * - The email goes through `send-lien-filing-email` with `email_type: 'lien_courtesy'` and no
  *   attachment: the function logs it, files the sent copy on the job and replies to the office.
  *   Until that kind is deployed the function refuses the missing PDF, and the refusal is recorded
@@ -55,6 +59,8 @@ export type CourtesyRecipientsInput = {
   gcEmail: string
   ownerName: string
   ownerEmail: string
+  /** The owner's number on the property record (v2.6497); '' when none. */
+  ownerPhone: string
 }
 
 /** The number and address on the GC's customer record — what `contact_find_or_make` copies onto the contact it makes. */
@@ -92,12 +98,23 @@ export async function loadCourtesyRecipients(input: CourtesyRecipientsInput): Pr
       textHold = `their Messages contact could not be opened: ${formatErrorMessage(e)}`
     }
   }
+  // The owner (v2.6497): the record's number, texted only on a thread that already holds it; nothing is made for them.
+  let owner: CourtesyOwnerChannels = courtesyOwnerChannels({ contact: null, phone: input.ownerPhone, textsOn })
+  if (phoneChannelKey(input.ownerPhone)) {
+    try {
+      const holderId = await findContactIdForPhone(input.ownerPhone)
+      const holder = holderId ? await loadContact(holderId) : null
+      owner = courtesyOwnerChannels({ contact: holder ? { id: holder.id, channels: holder.channels } : null, phone: input.ownerPhone, textsOn })
+    } catch (e) {
+      owner = { contactId: null, textChannelId: null, phone: input.ownerPhone.trim(), textHold: `their Messages contact could not be read: ${formatErrorMessage(e)}` }
+    }
+  }
   const plans = courtesyPlan([
     // The hold rides whether or not a number was found (v2.6382): with no number it is the reason none was — their contact could not be read.
     { who: 'original_contractor', name: input.gcName, email: gcEmail, phone, textHold },
-    { who: 'owner', name: input.ownerName, email: input.ownerEmail, phone: '', textHold: '' },
+    { who: 'owner', name: input.ownerName, email: input.ownerEmail, phone: owner.phone, textHold: owner.textHold },
   ])
-  return plans.map((p) => (p.who === 'original_contractor' ? { ...p, contactId, textChannelId: p.text.goes ? textChannelId : null } : { ...p, contactId: null, textChannelId: null }))
+  return plans.map((p) => (p.who === 'original_contractor' ? { ...p, contactId, textChannelId: p.text.goes ? textChannelId : null } : { ...p, contactId: owner.contactId, textChannelId: p.text.goes ? owner.textChannelId : null }))
 }
 
 type EmailAnswer = { success?: boolean; resend_email_id?: string | null; error?: string } | null
@@ -148,7 +165,8 @@ export type CourtesySendResult = { record: CourtesyRecord | null; to: CourtesySe
 /**
  * The text's door: the recipient's Messages contact and the channel the number sits on. A GC with no
  * contact yet gets one here, at the press and only because a text goes (punch list #243) — the
- * office's own door, `contact_for_customer`, which copies the record's number onto it.
+ * office's own door, `contact_for_customer`, which copies the record's number onto it. The owner's
+ * text goes only on a contact the plan already found (v2.6497); none is made for them.
  */
 async function textDoorFor(r: CourtesyRecipient, gcCustomerId: string | null): Promise<{ contactId: string; channelId: string }> {
   if (r.contactId && r.textChannelId) return { contactId: r.contactId, channelId: r.textChannelId }

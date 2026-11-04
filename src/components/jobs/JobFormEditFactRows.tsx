@@ -165,6 +165,9 @@ type JobFormEditFactRowsProps = {
     /** Residential or not (v2.3667); absent on older callers = the row shows no kind control. */
     property_kind?: string | null
     homestead?: boolean | null
+    /** The owner's email and phone (v2.6497); absent until migration 20261104163131 lands = the rows are not drawn. */
+    owner_email?: string | null
+    owner_phone?: string | null
   }>
   /** Open the Property record row and flash its kind control — the lien screens' door (v2.3667). */
   propertyRecordFocus?: boolean
@@ -921,6 +924,18 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
                       {f.value ? <span style={{ overflowWrap: 'anywhere' }}>{f.value}</span> : <span style={{ color: 'var(--text-red-700)', fontWeight: 700 }}>Missing</span>}
                     </div>
                   ))}
+                  {/* The owner's email and phone (v2.6497, Taunya's report on job 663): the courtesy notice's, not the papers', so a blank is grey, never Missing. Drawn once the row carries the columns. */}
+                  {linked.owner_email !== undefined
+                    ? [
+                        { key: 'owner_email', label: 'Owner email', value: (linked.owner_email ?? '').trim() },
+                        { key: 'owner_phone', label: 'Owner phone', value: (linked.owner_phone ?? '').trim() },
+                      ].map((f) => (
+                        <div key={f.key} data-testid={`property-record-${f.key}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 9rem) minmax(0, 1fr)', gap: '0.6rem', padding: '0.3rem 0.65rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>{f.label}</span>
+                          {f.value ? <span style={{ overflowWrap: 'anywhere' }}>{f.value}</span> : <span style={{ color: 'var(--text-muted)' }}>not on the record yet · the courtesy notice goes here</span>}
+                        </div>
+                      ))
+                    : null}
                   <div style={{ padding: '0.45rem 0.65rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <button
                       type="button"

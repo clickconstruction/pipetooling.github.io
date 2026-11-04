@@ -67,7 +67,7 @@ vi.mock('../supabase', () => {
 })
 
 import type { ContactRow } from '../contacts/load'
-import { addContactJob, answerPaper, contactForCustomer, findCustomerContactId, loadLineFiles, loadRecords, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
+import { addContactJob, answerPaper, contactForCustomer, findContactIdForPhone, findCustomerContactId, loadLineFiles, loadRecords, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
 
 beforeEach(() => {
   calls.rpc.length = 0
@@ -121,6 +121,18 @@ describe('the presses (the spine’s functions)', () => {
     await expect(findCustomerContactId('cu-nobody')).resolves.toBeNull()
     expect(calls.selected.filter((s) => s.table === 'contacts').map((s) => s.ids)).toEqual(['cu-dana', 'cu-nobody'])
     expect(calls.rpc).toEqual([])
+    expect(calls.writes).toEqual([])
+  })
+
+  it('findContactIdForPhone asks the spine whose number it is and makes nothing (v2.6497)', async () => {
+    calls.next = { data: 'c-novy', error: null }
+    await expect(findContactIdForPhone('(512) 555-0142')).resolves.toBe('c-novy')
+    calls.next = { data: null, error: null }
+    await expect(findContactIdForPhone('(512) 555-0199')).resolves.toBeNull()
+    expect(calls.rpc).toEqual([
+      ['contact_for_channel', { p_kind: 'phone', p_value: '(512) 555-0142' }],
+      ['contact_for_channel', { p_kind: 'phone', p_value: '(512) 555-0199' }],
+    ])
     expect(calls.writes).toEqual([])
   })
 
