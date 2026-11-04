@@ -9,3 +9,5 @@ The dev MCP's dry-run wrapper for a piece of evidence on a person's HR file: `pl
 - No table is created, so no read-only fence is owed; training mode is blocked by the HR tables' statement triggers.
 
 Deploy order: push this migration, then deploy `dev-mcp` (server 0.17.0). `src/types/database.ts` and the seat's catalog follow with the next `gen-types:linked` run; the verbs name the RPC outside the catalog, so the pair works before it.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day, `dev-mcp` and `hr-evidence-drive` among them; types regenerated from prod in #6945.

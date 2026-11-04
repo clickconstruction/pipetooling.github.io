@@ -9,3 +9,5 @@ Additive and idempotent; no table is created, so no fence call. No lock beyond `
 Apply order: right after the merge. The client already draws the Combined tag, so this is harmless on either side of the Pages deploy, but it restates a function the client calls, so `check:calls-ahead` labels the PR *push right after the merge* and the deploy holds until the push.
 
 The bed: `scripts/pgtest-combine-rows.sh` re-applies the newest migration that creates the combine (this file) a second time and plays `supabase/tests/combine_rows/20_scenario.sql`; the second combine must leave one Combined line on the target for the set-aside notice, financial, reading *Lien notice draft set aside in the combine — from Job #9103 · Sep 2026, Oct 2026*, and none for the desk items that moved live or as history. Beds run only in CI; read the `ok:` lines in the job log.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day; no change to `src/types/database.ts` (a replaced body).

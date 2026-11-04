@@ -7,3 +7,5 @@ The saved Statements of charges (punch list #254, PR 2): a job-level paper for a
 - **Fences**: the three calls at the end, so a read-only account and a digital twin cannot write it.
 
 **Apply order**: the section reads the table and the window writes it; before the push the section shows the refusal with its reason and a Save is refused with its reason. Push right after the merge.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day; types regenerated from prod in #6967.

@@ -11,3 +11,5 @@ No table, no fences. `SET lock_timeout = '3s'` first; `CREATE OR REPLACE`, idemp
 ## Order
 
 Merge, `supabase db push`, regenerate types (the types chore regenerates the dev-mcp catalog too, so `find_rpc` knows the door), then **`supabase functions deploy dev-mcp`**.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day, `dev-mcp` among them; types regenerated from prod in #6947.

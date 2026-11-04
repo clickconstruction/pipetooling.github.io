@@ -10,3 +10,5 @@ Search every file deeply (punch list #240, PR 4): search by meaning.
 The dimension (768) and the model (`gemini-embedding-001`) are fixed here: a change of provider or dimension is a new table. `max_distance` is the tunable: set it from live reads once the key is in (the first days' hits by meaning say where the noise starts).
 
 **Apply order**: push before `drive-link`, `file-index-sweep` and `dev-mcp` are redeployed with v2.6338 (the pass writes the three new columns on every row; `search_index` calls the RPC). The secret `GEMINI_API_KEY` is the owner's step (docs/DRIVE_INTAKE_SETUP.md → Search by meaning); until it is set nothing is embedded and the words alone answer.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day, `drive-link` and `file-index-sweep` and `dev-mcp` among them; types regenerated from prod in #6929.

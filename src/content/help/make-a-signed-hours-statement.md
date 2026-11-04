@@ -105,7 +105,7 @@ The statement reads {{chip:green|Signed}}. The signature stays on the scan. The 
 
 ## Opening the signed PDF
 
-A signed row under **Hours statements** carries {{button:outline|Open the signed PDF}}. The same press sits on the window. The PDF opens in a new tab for five minutes. Each open is logged. An assistant opens the hours-only paper. The paper with the money opens for the payroll roles.
+A signed row under **Hours statements** carries {{button:outline|Open the signed PDF}}. The same press sits on the window. The PDF opens in a new tab for five minutes. Each open is logged. Only a dev and the controller can open it.
 
 ## Putting it on a legal matter
 

@@ -112,6 +112,8 @@ line per table, and the bed holds a row each. Bills and payments keep the guard.
 
 ## Also noted
 
+Foreign keys `ON DELETE SET NULL` were not sorted: `messages.jobs_ledger_id`, `mail_pieces.job_id`, `people_labor_jobs.job_ledger_id`, `development_history_entries.job_id`, `file_index.jobs_ledger_id`, `bid_submittals.job_ledger_id`, `lien_owner_record_requests.seed_job_id` and others lose their job on a combine (found in the docs pass after #6888; the Messages lines first, since the guide says everything real moves).
+
 - A split leaves a work order on the old job while its stage window moves with the line (`step_commitments.stage_window_id` then points across jobs). The split moved no work orders before either; a question for the Work Orders tab, not this card.
 - `job_photo_notes.fixture_id` names a line but the split does not carry the photo with the line; #244 shipped the same day and may want to.
 - Deleting a job outright, or moving its costs to a bid (`migrate_job_ledger_costs_to_bid_and_delete`), still takes every row here; the bid has nowhere for most of them.

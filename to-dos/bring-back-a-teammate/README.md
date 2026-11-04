@@ -2,7 +2,7 @@
 name: "Bring back a teammate who left: one press for the login and the roster row, a new stint, the stale rows"
 number: 256
 group: ready
-status: claude/bring-back-kernel · PR 1, the kernel, v2.6480 · every call answered 2026-11-03 (tenure from the day back, roadmap 90 days, wage required, training mode off, the Away note behind a sealed login)
+status: PR 1, the kernel, v2.6480 · PR 2, the stints and `restore_roadmap`, v2.6481 · every call answered 2026-11-03 (tenure from the day back, roadmap 90 days, wage required, training mode off, the Away note behind a sealed login)
 summary: >
   A tech finished their last day on 2026-11-03 and plans to come back in three years. End employment
   closes them out well, but the way back is a dev's undo, not a return. Restore brings back the login
@@ -14,7 +14,7 @@ summary: >
   and the rows three years made stale (sign-in, wage, leader, licenses, paperwork). Hire finds the
   archived match and offers it. While they are away, an Away note the office writes person by person
   (a note, a countdown to the day back, how far they are from the shop) is the one screen they find.
-next: PR 2, the `employment_stints` migration with End employment closing the open stint and `restore-user` taking `restore_roadmap`. For the Away note, the seal (PR 7) ships and its probe passes before PR 8 lets any archived account sign in.
+next: PR 3, the Bring back window on the desk and on Users → Archived (after the `chore(types)` PR that brings `employment_stints` into `database.ts`). For the Away note, the seal (PR 7) ships and its probe passes before PR 8 lets any archived account sign in.
 size: L as a train of nine (S · M · M · S · S, then the Away note S · L · M · S)
 blocker: None.
 opinion: build draft 1 as drawn after the second pass, and the Away note behind a sealed login (call 5): the seal first, proven by its probe, then the note. Keep the account; never re-hire a returner as a new person, since the hours log, the logbook, the HR file and every job's history hang off the old account.
@@ -64,7 +64,7 @@ licenses, the HR file, paperwork. That is why a returner must come back on the s
 3. **Both halves come back in one press**: the login through `restore-user`, the roster row, the end date cleared,
    the start date set to the back-on day, a new stint opened, one HR line (*"Back on Nov 5, 2029 for …, after 3
    years away."*).
-4. **Stints are kept.** A new table `employment_stints` (person, start, end, created by) holds every stint.
+4. **Stints are kept.** A new table `employment_stints` (person, start, end; written only by a trigger on `people`'s dates, v2.6481) holds every stint.
    `people.start_date` / `end_date` stay the current stint, so the salary clamp and every other reader keep working
    unchanged. End employment closes the open stint; Bring back opens one. A backfill writes one stint per roster
    row that has dates.
@@ -168,7 +168,7 @@ equal columns in the A and B comparison, and the same words from *Email me my no
 | PR | What | Size |
 |---|---|---|
 | 1 | Kernel `src/lib/people/bringBack.ts` + tests: away words, the returner checklist rows and which can be left open, the HR line, the roadmap box default, the Hire match (name or email among archived) | S |
-| 2 | Migration: `employment_stints` + backfill from `people` + RLS as `people`, the three fence calls; End employment closes the open stint. `restore-user` takes `restore_roadmap` (edge deploy) | M |
+| 2 | **Shipped v2.6481.** Migration: `employment_stints` + backfill from `people` + RLS as `people`, the three fence calls; the trigger `people_stints_follow_dates` closes and opens stints for every path that writes the dates, End employment among them. `restore-user` takes `restore_roadmap` (edge deployed) | M |
 | 3 | The Bring back window on the desk and on Users → Archived; restores both halves; the returner rows; the stints on Pay & schedule; guides `archive-user-accounts` and `open-a-persons-desk`; release note | M |
 | 4 | Hire stops on an archived match and opens Bring back | S |
 | 5 | Tenure readers: the HR tab, the Employment tab and `list_team_member_start_dates` count from the current stint's start (call 1); the desk lists the earlier stints | S |

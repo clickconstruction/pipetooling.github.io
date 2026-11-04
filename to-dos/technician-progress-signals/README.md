@@ -2,7 +2,7 @@
 name: "Your week: one progress signal a tech can watch move, every week"
 number: 255
 group: ready
-status: card and mock-up 2026-11-03 · the owner answered the calls the same day and named three builds first (the teammate's logbook, the Google review tools, job targets) · the logbook v2.6472 (a spike against live data, then built) · Your week card not started
+status: card and mock-up 2026-11-03 · the owner answered the calls the same day and named three builds first (the teammate's logbook, the Google review tools, job targets) · the logbook v2.6472 (a spike against live data, then built), its license edit v2.6473 and the dev seat's license verbs v2.6475 · Your week card not started
 summary: >
   The app records nearly everything that shows a tech is getting better: the clock, the jobs, the
   customer's stars and words, the crew's ratings, the callbacks Job Summary already finds. Every one
@@ -64,7 +64,7 @@ deals `TrialVerdictPrompt` and `CrewReviewDeck`). Nothing in the app texts staff
 2. **The card says three things at most.** The signal and where it stands. How far it moved this week, with the last
    eight weeks as dots climbing a line. The customer's words, when a customer wrote some this week.
 3. **License hours** show approved hours solid and hours waiting for approval hatched, so a slow approval week never
-   freezes the bar. The target and the class are the office's to set on the Licenses tab (*Journeyman plumber,
+   freezes the bar. The board's targets are seeded in the logbook's `REQUIREMENTS` (v2.6472; opening balances and a stored signer per trade are still to build), and the class is the office's to set on the Licenses tab (*Journeyman plumber,
    8,000 hours* as an example; the board's own number goes in). Hours before the clock started (2026-03-12) are an
    opening balance the office types with its source.
 4. **Jobs without a callback** is a rolling count, *29 of your last 30 jobs*, not a streak. One callback does not

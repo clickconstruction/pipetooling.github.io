@@ -21,3 +21,5 @@ The function's statement, with the gate and the parameter taken out, ran read-on
 ## After the push
 
 The function's signature and return type do not change, so `database.ts` and the dev-mcp catalog do not move and no `chore(types)` PR is owed for this file. Read `npm run check:migration-drift`, then call `list_project_board` as the dev and confirm each job carries `kind`.
+
+**Applied** to prod by 2026-11-04: `npm run check:migration-drift` read 1105 local files and 1105 remote versions, fully applied (read in the docs pass after #6888); `check:edge-drift` read every one of the 178 functions deployed and current the same day; no change to `src/types/database.ts` (`list_project_board` keeps its signature, as above).
