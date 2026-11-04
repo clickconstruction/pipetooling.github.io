@@ -98,7 +98,7 @@ describe('dev-mcp composites', () => {
 })
 
 /**
- * A door over one table's rows that answers as PostgREST does: the `eq` / `in` / `gt` filters, the order, and the
+ * A door over one table's rows that answers as PostgREST does: the `eq` / `in` / `gt` / `gte` filters, the order, and the
  * door's own cut at 200 rows a read (`clampLimit`). What the catalog reader checks, this one serves.
  */
 function pagingReader(rowsByTable: Record<string, Row[]>, base: Reader): Reader & { reads: Record<string, number> } {
@@ -114,6 +114,7 @@ function pagingReader(rowsByTable: Record<string, Row[]>, base: Reader): Reader 
         if (f.op === 'eq') rows = rows.filter((r) => r[f.column] === f.value)
         else if (f.op === 'in') rows = rows.filter((r) => (f.value as unknown[]).includes(r[f.column]))
         else if (f.op === 'gt') rows = rows.filter((r) => String(r[f.column]) > String(f.value))
+        else if (f.op === 'gte') rows = rows.filter((r) => String(r[f.column]) >= String(f.value))
         else throw new Error(`pagingReader: no ${f.op}`)
       }
       for (const o of [...(query.order ?? [])].reverse()) rows.sort((a, b) => (String(a[o.column]) < String(b[o.column]) ? -1 : String(a[o.column]) > String(b[o.column]) ? 1 : 0) * (o.ascending === false ? -1 : 1))
@@ -144,6 +145,26 @@ describe('the reads a big job outgrows (v2.6463)', () => {
     const keyless = pagingReader({ mercury_transaction_job_allocations: rows.map(({ job_id }) => ({ job_id, amount: -1 })) }, catalogReader({}))
     await expect(readAllRows(keyless, 'mercury_transaction_job_allocations', { select: 'amount', filters: [] })).rejects.toThrow('cannot page')
     expect(ALL_ROWS_MAX).toBe(5000)
+    expect(reader.reads.mercury_transaction_job_allocations).toBe(3) // two full pages, then the look past them that found a row
+  })
+
+  it('a read of exactly the cap is whole, not capped: a full last page is followed by one look past it (v2.6488)', async () => {
+    const rows = Array.from({ length: 400 }, (_, i) => ({ id: `a${pad(i)}`, job_id: JOB }))
+    const reader = pagingReader({ mercury_transaction_job_allocations: rows }, catalogReader({}))
+    const read = await readAllRows(reader, 'mercury_transaction_job_allocations', { select: 'id', filters: [] }, 'id', 400)
+    expect(read.capped).toBe(false)
+    expect(read.rows).toHaveLength(400)
+    expect(reader.reads.mercury_transaction_job_allocations).toBe(3) // two full pages, then the look past them that found none
+    // Through get_job: exactly ALL_ROWS_MAX card lines are counted whole, with no "stopped read" over the totals.
+    const header = { id: JOB, click_number: '1032', revenue: 100000, materials: [], invoices: [], payments: [], team: [] }
+    const card = Array.from({ length: ALL_ROWS_MAX }, (_, i) => ({ id: `c${pad(i)}`, job_id: JOB, amount: -2, note: null, mercury_transaction_id: `t${i}`, mercury_transactions: { posted_at: '2026-09-02', counterparty_name: 'HD', amount: -2 } }))
+    const job = pagingReader({ jobs_ledger: [header], service_types: [], mercury_transaction_job_allocations: card, supply_house_invoice_job_allocations: [], people_labor_jobs: [], people_labor_job_items: [], app_settings: [] }, catalogReader({ rows: { jobs_ledger: [header] }, rpc: { get_invoice_amounts_for_jobs: [] } }))
+    const out = (await getJob(job, JOB, '2026-09-20')) as Record<string, unknown>
+    expect(noErrors(out)).toEqual([])
+    const money = out.money as { counts: Record<string, number>; parts: Record<string, number>; stopped_reads?: string[] }
+    expect(money.counts.card_lines).toBe(ALL_ROWS_MAX)
+    expect(money.parts.card_charges).toBe(2 * ALL_ROWS_MAX)
+    expect(money).not.toHaveProperty('stopped_reads')
   })
 
   it('get_job counts every card line, supply invoice and sheet item past the door’s 200', async () => {
@@ -324,20 +345,27 @@ describe('read_on_site (v2.6367, punch list #209)', () => {
     expect(empty.boxes).toEqual([])
     expect(empty.summary.containers).toBe(0)
   })
-  it('reads the ledger a page at a time, oldest first, and dedupes the row a page boundary repeats', async () => {
-    const all = Array.from({ length: 450 }, (_, i) => mv(`r${String(i).padStart(4, '0')}`, { at: `2026-10-${String(1 + Math.floor(i / 100)).padStart(2, '0')}T00:00:${String(i % 100).padStart(2, '0')}Z`, to_container_id: A2, reason: 'delivered' }))
-    const reader = catalogReader({})
-    const pages: string[] = []
-    reader.rows = async (table, q) => {
-      expect(table).toBe('job_material_movements')
-      const since = q.filters?.find((f) => f.column === 'at' && f.op === 'gte')?.value as string | undefined
-      pages.push(since ?? 'start')
-      return all.filter((r) => !since || String(r.at) >= since).slice(0, q.limit)
-    }
+  it('reads the ledger whole when 200 rows share one stamp (a 200-line delivery) and rows follow them (v2.6488)', async () => {
+    // Before v2.6488 the read paged by `at`: every page from the shared stamp on answered the same 200 rows, so the
+    // loop stopped and the 150 rows after the stamp were lost with `capped` still false — a box read short.
+    const mmss = (k: number) => `${String(Math.floor(k / 60)).padStart(2, '0')}:${String(k % 60).padStart(2, '0')}`
+    const stampOf = (i: number) => (i < 100 ? `2026-10-01T00:${mmss(i)}Z` : i < 300 ? '2026-10-02T12:00:00Z' : `2026-10-03T00:${mmss(i - 300)}Z`)
+    const all = Array.from({ length: 450 }, (_, i) => mv(`r${pad(i)}`, { at: stampOf(i), to_container_id: A2, reason: 'delivered' }))
+    const reader = pagingReader({ job_material_movements: all }, catalogReader({}))
     const { movements: got, capped } = await readOnSiteMovements(reader, JOB)
     expect(got).toHaveLength(450)
     expect(new Set(got.map((m) => m.id)).size).toBe(450)
     expect(capped).toBe(false)
-    expect(pages).toHaveLength(3)
+    expect(reader.reads.job_material_movements).toBe(3)
+    // The box reads what every row put in it, through the whole composite; the boxes and places page the same way.
+    const whole = pagingReader({ ...rows, job_material_movements: all }, catalogReader({}))
+    const out = (await getOnSite(whole, JOB, new Date('2026-11-02T17:00:00Z'))) as Loose
+    expect(noErrors(out)).toEqual([])
+    expect(out.summary.ledger_rows).toBe(450)
+    expect(out.summary.ledger_capped).toBeUndefined()
+    expect(out.boxes.find((b: Loose) => b.container === 'A2').lines).toEqual([expect.objectContaining({ on_hand: 450, last_touched: { at: '2026-10-03T00:02:29Z', by: 'Mateo' } })])
+    expect(out.recent[0].at).toBe('2026-10-03T00:02:29Z')
+    expect(whole.reads.job_containers).toBe(1)
+    expect(whole.reads.job_places).toBe(1)
   })
 })

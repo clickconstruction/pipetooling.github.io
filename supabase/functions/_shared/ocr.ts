@@ -8,12 +8,12 @@
 import { b64url } from './driveUpload.ts'
 import type { PassSpend } from './fileIndexKernel.ts'
 import { base64OfBytes } from './messagesEmailFiles.ts'
-import { OCR_MAX_BYTES, OCR_MAX_PAGES, OCR_PROCESSOR_SECRET, OCR_READ_MS, OCR_TOKEN_SCOPE, ocrEndpoint, ocrReadAnswer, ocrRequestBody, type OcrAnswer } from './ocrKernel.ts'
+import { OCR_MAX_BYTES, OCR_MAX_PAGES, OCR_PROCESSOR_SECRET, OCR_READ_MS, OCR_TOKEN_SCOPE, mintOnce, ocrEndpoint, ocrReadAnswer, ocrRequestBody, type OcrAnswer } from './ocrKernel.ts'
 
 export interface OcrSetup {
   processor: string
   url: string
-  /** A cloud-platform token for the service account, minted once per request and reused. */
+  /** A cloud-platform token for the service account, minted once per request and shared; a mint that fails is tried again by the next scan (v2.6488). */
   token: () => Promise<string>
 }
 
@@ -26,8 +26,7 @@ export function ocrSetup(saJson: string | null | undefined): OcrSetup | null {
     console.warn(endpoint.error)
     return null
   }
-  let minted: Promise<string> | null = null
-  return { processor, url: endpoint.url, token: () => (minted ??= cloudPlatformToken(saJson)) }
+  return { processor, url: endpoint.url, token: mintOnce(() => cloudPlatformToken(saJson)) }
 }
 
 /** The service account's token for Google Cloud APIs beyond Drive: the same JWT-bearer grant with the cloud-platform scope. */
