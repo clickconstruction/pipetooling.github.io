@@ -53,7 +53,7 @@ Sometimes the email cannot go. The words on screen then say why. The question st
 Each row has a pill that says who has the conversation.
 
 - {{button:outline|Nobody has it · Take it}} means nobody has claimed it. Whoever answers first takes it.
-- {{button:outline|You have this}} means it is yours. The team leaves it to you.
+- {{button:outline|Robert has this}} names who holds it. When the name is yours, the team leaves it to you.
 - {{button:outline|Rosa has this}} means a teammate has it.
 - {{button:outline|Rosa has this · off until 6 AM}} means a teammate has it and their **Push me** hours are off. The office heard at once. The reply stays theirs until someone takes it.
 - {{button:outline|Nobody has it · the office is off until 6 AM}} means everyone's Push me hours are off. The reply waits on Needs a reply. Each person sees it on their Dashboard when their hours open.

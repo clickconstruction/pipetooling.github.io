@@ -24,8 +24,8 @@ export type UsersTabRowItem = {
   /** Account rows only (v2.3702, the Account lens): training mode and the last sign-in. */
   read_only?: boolean | null
   last_sign_in_at?: string | null
-  /** Account rows only (punch list #260, v2.6514): when a sign-in was attached; null is a person with no login. */
-  login_attached_at?: string | null
+  /** When a sign-in was attached (punch list #260, v2.6514); null is a person with no login, and a roster-only row. Required since v2.6527 (#264). */
+  login_attached_at: string | null
 }
 
 export type UsersTabRowMenuAction = { key: string; label: string; onClick: () => void; disabled?: boolean; title?: string; danger?: boolean }

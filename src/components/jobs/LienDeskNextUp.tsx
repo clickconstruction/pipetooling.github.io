@@ -1,11 +1,11 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { groupLienNextUp, isLienReminderRow, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import { LIEN_REMINDER_STEPS, type LienReminderRow, type LienReminders } from '../../lib/jobs/lienReminders'
+import { LIEN_REMINDER_STEPS, lienReminderRungRuleWords, type LienReminderRow, type LienReminders } from '../../lib/jobs/lienReminders'
 import { countLienSteps, lienLaddersShown, lienStepCard, lienStepOfRow, type LienStepAt, type LienStepFacts, type LienStepLadder } from '../../lib/jobs/lienNextUpSteps'
 import { EmptyState } from '../EmptyState'
 import { LIEN_JOB_DOOR_TITLE } from './LienJobNumber'
-import { LienStepCardView, LienStepMark, LienStepRail, LienStepRow, useLienStepCard } from './LienDeskSteps'
+import { LienStepCardView, LienStepMark, LienStepRail, LienStepRow, LienStepShowingLine, useLienStepCard } from './LienDeskSteps'
 
 /**
  * The Lien desk's Do now tab (Next up until v2.4630; punch list #82, PR 2): every lien paper that asks for an act,
@@ -254,10 +254,16 @@ export default function LienDeskNextUp({
   return (
     <div ref={card.hostRef} data-lien-next-up="list" style={{ position: 'relative', overflowY: 'auto', minHeight: 0, padding: isMobile ? '0.6rem 0.75rem 1rem' : '0.75rem 1.25rem 1.25rem' }}>
       <LienStepRail counts={counts} ladders={ladders} on={on} isMobile={isMobile} onPick={setOn} onOpenRun={onOpenRun} viewerIsLeader={viewerIsLeader} printed={printed} reminderWaiting={reminders?.waiting} />
+      {/* A pressed rung fades the rows off it; the line says so and offers the way back (v2.6522). */}
+      {on ? <LienStepShowingLine on={on} shown={rows.filter((r) => !dimmed(r)).length} total={rows.length} isMobile={isMobile} onClear={() => setOn(null)} /> : null}
       {reminderStep ? (
         <div data-testid="lien-reminder-step-list" data-step={reminderStep} style={{ margin: isMobile ? '-4px 0 14px' : '-6px 0 14px calc(84px + 10px)', borderLeft: '2px solid var(--text-violet-700)', padding: '4px 0 2px 12px', fontSize: '0.8125rem' }}>
           <div style={{ fontSize: '0.66rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-violet-700)', fontWeight: 700, marginBottom: 2 }}>
             {LIEN_REMINDER_STEPS[reminderStep - 1]} · {reminderRows.length}{reminderOnList ? ` here · ${reminderOnList} on the list below` : ''}
+          </div>
+          {/* The rung's rule, so the ladder can be read where it is pressed (v2.6522). */}
+          <div data-testid="lien-reminder-rung-rule" style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '0 0 6px', maxWidth: '72ch' }}>
+            {lienReminderRungRuleWords(reminderStep)}
           </div>
           {reminderRows.length === 0 ? (
             // A sub-list inside the window: `main` alone, its next step the rung above it (`check:empty-words`).

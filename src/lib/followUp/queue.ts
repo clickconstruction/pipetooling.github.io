@@ -598,10 +598,14 @@ export function hasToast(me: string, name: string, after: string | null): string
   return after === me ? `You have ${name}.` : `${after} has ${name}.`
 }
 
-/** The pill on the thread and on a Follow up row. */
+/**
+ * The pill on the thread and on a Follow up row. Since v2.6521 (Grace, 2026-11-04) the holder is always named, you
+ * included — *Robert has this*, never *You have this* — so the pill reads the same to everyone who looks at the row and
+ * a screenshot or a shared screen says who. The one exception is a profile with no name, whose `me` is the word *You*.
+ */
 export function hasPillWords(me: string, has: string | null | undefined): string {
   if (!has) return 'Nobody has it · Take it'
-  return has === me ? 'You have this' : `${has} has this`
+  return has === me && me === 'You' ? 'You have this' : `${has} has this`
 }
 
 /** Since when, on the pill's hover (v1.90): "Since last Saturday, Sat Sep 26, 2:30 PM." */

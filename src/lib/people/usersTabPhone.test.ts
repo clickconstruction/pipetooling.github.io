@@ -18,7 +18,7 @@ const needs = (over: Partial<RowNeeds> = {}): RowNeeds =>
   ({ hoursWaiting: 0, hoursLine: null, needs: [], attention: 'green', reasons: [], ...over }) as unknown as RowNeeds
 
 const row = (over: Partial<RailRow>): RailRow =>
-  ({ userId: 'u1', personId: null, name: 'Grace', kind: 'assistant', archived: false, attention: 'green', badge: '', reasons: [], signals: [], ...over }) as RailRow
+  ({ userId: 'u1', personId: null, name: 'Grace', kind: 'assistant', archived: false, attention: 'green', badge: '', reasons: [], signals: [], hasLogin: over.hasLogin ?? (over.userId === undefined ? true : over.userId != null), ...over }) as RailRow
 
 describe('USERS_TAB_PHONE_FILTERS', () => {
   it('puts the two phone filters beside Everyone and counts only those two', () => {

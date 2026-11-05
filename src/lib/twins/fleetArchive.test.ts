@@ -48,8 +48,8 @@ describe('fleetArchive (v2.5741)', () => {
   })
 
   it('builds the archive-user body with no customers to move', () => {
-    expect(archiveTwinBody(two)).toEqual({ email: 'twin-estimator-2@twins.pipetooling.local', name: 'Twin Estimator 2' })
-    expect(archiveTwinBody(pricer)).toEqual({ email: 'twin-pricer-1@twins.pipetooling.local', name: '' })
+    expect(archiveTwinBody(two)).toEqual({ user_id: two.id, email: 'twin-estimator-2@twins.pipetooling.local', name: 'Twin Estimator 2' })
+    expect(archiveTwinBody(pricer)).toEqual({ user_id: pricer.id, email: 'twin-pricer-1@twins.pipetooling.local', name: '' })
   })
 
   it('labels the fold and each row', () => {

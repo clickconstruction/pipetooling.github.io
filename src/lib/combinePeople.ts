@@ -110,7 +110,7 @@ export async function executeCombinePeople(args: {
   const targetName = target.name.trim()
   if (source.id === target.id) throw new Error('Pick a different person to combine into.')
   if (source.account_user_id && target.account_user_id && source.account_user_id !== target.account_user_id) {
-    throw new Error('Both people are linked to app accounts — merge the accounts first (Settings → Merge users).')
+    throw new Error('Both people have a users row. Merge them from the desk instead: Status → Merge a duplicate… moves everything, the roster link too.')
   }
 
   let renamedRows = 0

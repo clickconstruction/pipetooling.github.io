@@ -33,8 +33,8 @@ export type UserRow = {
   /** v2.3702 (the Users tab's Account lens): training mode and the last sign-in. */
   read_only?: boolean | null
   last_sign_in_at?: string | null
-  /** Punch list #260 (v2.6514): when a sign-in was attached; null is a worker with no login (`users.login_attached_at`). */
-  login_attached_at?: string | null
+  /** Punch list #260 (v2.6514): when a sign-in was attached; null is a worker with no login (`users.login_attached_at`). Required since v2.6527 (#264), so a reader that leaves it out of its select fails to compile. */
+  login_attached_at: string | null
 }
 export type PersonKind =
   | 'assistant'

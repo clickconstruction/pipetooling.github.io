@@ -787,7 +787,10 @@ export function canonicalJson(value: unknown): string {
 /**
  * What a plan commits to. For a cost batch: the op count, the money by job, and each op's
  * seq, kind and BEFORE image — the world as the plan saw it — never the after images, which
- * carry the dry run's own timestamps and ids. For an HR entry the whole reply is stable.
+ * carry the dry run's own timestamps and ids. For clock sessions (v2.6524): the counts and each
+ * op whole, its after image without `approved_at` — an approve stamps the dry run's own now(),
+ * so with the stamp in, no approve plan could ever apply (the fifty of 2026-11-04 hashed three
+ * ways in three runs). For an HR entry the whole reply is stable.
  */
 export function planCommitment(verb: WriteVerb, reply: unknown): unknown {
   const r = obj(reply)
@@ -797,7 +800,20 @@ export function planCommitment(verb: WriteVerb, reply: unknown): unknown {
     return { op_count: r.op_count ?? null, by_job: r.by_job ?? null, ops }
   }
   const { dry_run: _dryRun, ...rest } = r
+  if (verb === 'plan_clock_sessions' || verb === 'apply_clock_sessions') {
+    return { ...rest, ops: Array.isArray(r.ops) ? r.ops.map(clockOpCommitment) : r.ops ?? null }
+  }
   return rest
+}
+
+/** One clock op as its plan commits to it: everything the dry run said, the after image without the approval stamp. */
+export function clockOpCommitment(op: unknown): unknown {
+  const o = obj(op)
+  if (!o) return op
+  const after = obj(o.after)
+  if (!after) return o
+  const { approved_at: _stamp, ...afterRest } = after
+  return { ...o, after: afterRest }
 }
 
 async function sha256Hex(s: string): Promise<string> {

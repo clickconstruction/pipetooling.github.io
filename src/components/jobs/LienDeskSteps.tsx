@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { LIEN_STEP_LADDERS, lienRunRungWords, lienStepTiles, type LienStepAt, type LienStepCard, type LienStepCounts, type LienStepLadder, type LienStepN } from '../../lib/jobs/lienNextUpSteps'
+import { LIEN_STEP_LADDERS, lienRunRungWords, lienStepShowingWords, lienStepTiles, type LienStepAt, type LienStepCard, type LienStepCounts, type LienStepLadder, type LienStepN } from '../../lib/jobs/lienNextUpSteps'
 import { lienReminderRungWords } from '../../lib/jobs/lienReminders'
 
 /**
@@ -108,6 +108,25 @@ export function LienStepRail({
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * The line under the rails while a rung is pressed (v2.6522): the rung's name, how many rows are
+ * bright, that the rest are faded and not held, and *Show all N*, which clears the rung as a second
+ * press on it does. The rows' 0.3 opacity is a filter, and on 2026-11-04 it was read as a hold.
+ */
+export function LienStepShowingLine({ on, shown, total, isMobile, onClear }: { on: LienStepAt; shown: number; total: number; isMobile: boolean; onClear: () => void }) {
+  const tone = LADDER_TONE[on.ladder]
+  const w = lienStepShowingWords(on, shown, total)
+  return (
+    <div data-testid="lien-step-showing" data-ladder={on.ladder} data-step={on.step} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: isMobile ? '4px 10px' : '4px 12px', margin: isMobile ? '-6px 0 12px' : '-8px 0 12px calc(84px + 10px)', padding: '5px 10px', borderRadius: 8, background: tone.tint, fontSize: '0.8125rem' }}>
+      <strong style={{ color: tone.fg }}>{w.head}</strong>
+      <span style={{ color: 'var(--text-muted)' }}>{w.count}</span>
+      <button type="button" onClick={onClear} data-testid="lien-step-show-all" style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: `1px solid ${tone.fg}`, background: 'var(--surface)', color: tone.fg, cursor: 'pointer', marginLeft: isMobile ? 0 : 'auto', minHeight: isMobile ? 32 : undefined }}>
+        {w.clear}
+      </button>
     </div>
   )
 }

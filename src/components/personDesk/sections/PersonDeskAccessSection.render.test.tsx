@@ -60,6 +60,7 @@ const KAI: PersonDeskUserRow = {
   team_prospects_access: false,
   estimator_prospects_access: false,
   counttooling_user_id: null,
+  login_attached_at: '2026-10-01T12:00:00Z',
 }
 const WENDI: PersonDeskUserRow = { ...KAI, id: 'u-wendi', name: 'Wendi', email: 'wendi@example.com', role: 'estimator', helpers_service_type_ids: null, estimator_service_type_ids: null, needs_supervision: false, team_prospects_access: true }
 

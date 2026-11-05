@@ -13,7 +13,7 @@ summary: >
   The Legal desk puts a tagged conversation on a matter's Evidence. The switch on Your account is on by
   default. An independent review found ten defects, the worst a teammate's mail readable through
   Imitate; all ten are fixed, and two more the lead found after it.
-next: A clickplumbing.com office member walks it on a ZZ Test customer (`docs/recent-features/v2.6292.md` → Verify), opening Messages → My email and tagging one conversation onto the ZZ Test job. The dev account is off the Workspace, so the live test proved the gate, the refusal and the screens, not a read. Then a month of use, counting conversations tagged per person; the tab retires if nobody tags.
+next: Grace's own walk as grace@clickplumbing.com on a ZZ Test customer (`docs/recent-features/v2.6292.md` → Verify), opening Messages → My email, counting the guesses over the first thirty rows and tagging one conversation onto the ZZ Test job. The dev account is off the Workspace, so the live test proved the gate, the refusal and the screens, not a read. Reviewed 2026-11-04 (the section at the foot): four days live, no visit by a Workspace person and no tag; the doors that would change that are #263 (`to-dos/messages-my-email-doors/`). The month of use starts at the first visit; the tab retires if nobody tags by its end.
 size: M, built as twelve PRs on 2026-11-01: the five planned, the forward guide, four from the review (the imitation refusal, the follow's window, the tab's Untag, the function's untag and ties) and two the lead found after it (the row's words, hidden labels in an open conversation)
 blocker: Nothing in the code. The first live read and tag needs a clickplumbing.com session, which no agent may open.
 ver: v2.6257 · 6266 · 6274 · 6275 · 6276 · 6279 · 6289 · 6290 · 6291 · 6292 · 6295 · 6296
@@ -345,3 +345,90 @@ components under `src/components/messages/myMail/`, the two guides, the Evidence
 - Left: a clickplumbing.com office member's first real tag, which no agent may sign in to do. The
   importers that `npm run check:edge-drift` names, whose drift is the kernel copy alone. Then a month of
   use, counting conversations tagged per person; the tab retires if nobody tags.
+
+## Review 2026-11-04: is this still relevant, and could we do it better?
+
+Grace, 2026-11-04, re-reading her note that asked for this tab (the ask above), which had shipped three
+days before: "is this still relevant? could we do this better?" Read against the code, the twelve
+fragments, the ledger and the live tab as the dev. The second answer is punch list #263
+(`to-dos/messages-my-email-doors/README.md`, with its mock-up); this section is the review.
+
+### Still relevant? Yes, and unproven
+
+The need the note named has not moved: a person's own mail still reaches a job only by a press of
+theirs (the tab) or a forward (the guide), and #207's finding 1 (Wendi's answer from wendi@ that the
+thread never saw) is still open. What has moved is the evidence: the tab has had no visitor from the
+Workspace in four days. Relevant, and not yet used.
+
+### The note, line by line, against the build
+
+| The note asked | What shipped | Where it differs | What the fragments say was left |
+|---|---|---|---|
+| A new tab in Messages | Messages → **My email** beside Follow up (v2.6274), drawn while the person's switch is on | None | The owner's line on Settings → Phone and texts (who has it on, how many tagged) was listed in PR 3's row and not built (v2.6274, *Not in this PR*); the grey thread line came with PR 4 (v2.6279) |
+| The person's own emails **and sends** | Inbox and Sent, read live as the person under the bids@ delegation (v2.6275); a mail in their Sent is theirs whatever address it went out from (v2.6292 finding 6) | None | The Sent side lands only inside a tagged conversation (the follow); a reply the person sends outside one still never reaches the job (#207 call 1, open) |
+| Associating emails with jobs **and bids** | A tag's job is a bid, a GC project or a Pipeline job (`MyMailJobKind`); the picker lists the sender's jobs first, then a search of all three | The guess's domain step reads a customer's open **Pipeline** jobs only (`customerOpenJobs`); a bid's customer domain gives no guess. A development is not a tag target; a development's History is the dev seat's | — |
+| The team deciding later on shared knowledge | The sender's thread, Job activity with the Customer pill, Where it stands, Lines that match, Went out, the court on Follow up; the Legal desk's Evidence pulls a tagged conversation as the raw `.eml` as received (v2.6276); the `.eml` is `format=raw` with its headers and files, and Evidence falls back to a made record only when the raw copy is gone | None | The Legal pull is walked on fixtures only; no tagged `.eml` exists yet to pull |
+| "Only if it doesn't create undue work" | One press (**Yes**) on a guessed row; **Tag…** and a pick otherwise; **Who is this?** once for an unknown sender; later mail follows for 60 days from the newest mail with no press; the switch is per person and on by default | The hidden work is the visit: the tab shows no count, no line and no door anywhere else, by the owner's call 2, so a person who never opens it tags nothing and misses nothing visible | The card's own retire test (a month of use) |
+
+### The live walk, as the dev
+
+`node scripts/dev-pane-login.mjs /messages?tab=my-email`, 2026-11-04. The bar shows Follow up · My
+email; To tag · Tagged · All and the search draw; the page reads for a second and then draws Google's
+refusal as one calm line (*Google will not read this address for the app: it is not on the company
+Workspace. Google said: Client is unauthorized…*). The dev's address is off the Workspace, as the card
+said on 11-01, so no row, no guess and no press was seen on real mail. The guess count the review asked
+for (right, wrong, none over the first thirty rows) is **unmeasured** and waits on a Workspace person.
+The dev seat's key (`dev-mcp`) was revoked that day, and the auto-mode classifier refused a `psql` read
+of prod, so the counts below were read through the app's own PostgREST as the signed-in dev.
+
+### The counts since 2026-11-01 (the card's own retire test)
+
+| Person | Switch | Conversations tagged | Minutes on the tab |
+|---|---|---|---|
+| Taunya (assistant) | on | 0 | 0 (Messages: 5 min in 3 days) |
+| Roxi (assistant) | on | 0 | 0 (no activity rows) |
+| Grace (assistant) | on | 0 | 0 |
+| Malachi (master) | on | 0 | 0 |
+| Wendi (estimator) | on | 0 | 0 (Messages: 151 min since 10-22) |
+| Zoe, William (estimators) | on | 0 | 0 (no activity rows) |
+| Robert (dev, off the Workspace) | on | 0 | 62 on 11-01, 5 on 11-02, 1 on 11-05 |
+
+`email_tag_threads` is empty and no `messages` row has `mailbox` mine. Where the office lives since
+10-22: Taunya on Jobs → Stages (748 min), Schedule (334), the Dashboard (328) and Quickfill (260); Wendi
+and Grace on the Bid Board (722 and 1264) with the Dashboard second; Malachi on the Tally.
+
+### What would make it better, ranked
+
+1. **A door where the person already works** (#263 call 1, recommended). A line under the job window's
+   Where it stands card and on the bid's rail, read from the person's own Gmail when the window opens
+   and kept nowhere: *Your mail with Dale: 2 conversations not on this job* with **Yes** on each.
+   Evidence: zero visits to the tab; 748 minutes on Jobs → Stages. Cost S. The press stays the person's.
+2. **The Sent side with no press** (#263 call 2, second). The follow widened to a person's Sent: a mail
+   to an address on exactly one open job lands by itself, marked as the app's, with Untag. Evidence:
+   #207 finding 1; the note's "undue work". Cost M. It ties on a guess alone, which #230 refused for the
+   Inbox; the Sent side is the safer half.
+3. **A Needs you line on the Dashboard** (#263 call 3). A morning count per person from a per-person
+   metadata run. Evidence: the Dashboard is every office member's second page. Cost M and a Gmail read
+   per person per run. Not now: it is the count the owner's call 2 refused, and call 1 answers it at the job.
+4. **The guess's thread rule** (#263 call 5). The guess reads each mail alone; another mail of the same
+   Gmail conversation on the page that a box holds on a job says the job outright and is not asked.
+   Pure, an afternoon. Build after Grace's walk gives rows to measure it against.
+5. **A bid's customer domain as a guess**: `customerOpenJobs` reads Pipeline jobs only, so a customer
+   with one open bid and no job gives no guess from their domain. Small; folds into item 4's PR.
+6. **Tagging from the email viewer**: not needed. A mail a box holds is a line already, with the viewer's
+   own *Tied to* and, since v2.6509, *Put it on a bid…*; the tab says *already in Messages ✓* for it.
+7. **After the 60-day follow**: a late reply shows as *not on the job yet ›* with **Put it on the job**
+   (v2.6291, v2.6295). Right as built, and it only helps a person who visits, which is item 1 again.
+8. **The Sent half inside a tagged conversation**: the follow reads `threads.get` as the person, so their
+   Gmail reply lands as ours and flips the court (v2.6279). Right as built; unverified live.
+9. **The legal tie**: the raw `.eml` (`format=raw`) is kept beside each tagged line and Evidence files it
+   as received, headers and files intact (v2.6276). Right as built; unverified live.
+10. **The switch, per person or per role**: per person and on by default is right. The ledger shows the
+    switch is not what stands between anyone and a tag.
+
+### What this review leaves
+
+- Grace's own first live tag, as grace@clickplumbing.com, on a ZZ Test job: the read and the tag no
+  agent can make, and the guess count over the first thirty rows. The month of use starts there.
+- The owner's line on Settings → Phone and texts, still unbuilt from PR 3's row.
+- #263's five calls.

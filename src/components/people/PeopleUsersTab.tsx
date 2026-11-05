@@ -17,6 +17,7 @@ import { UsersRailHeader } from './UsersTabStatusColumn'
 import { PeopleHoursApprovalsQueueModal } from './PeopleHoursApprovalsQueueModal'
 import { ClockSessionEditSplitModal } from '../ClockSessionEditSplitModal'
 import type { ClockSessionRow } from '../../types/clockSessions'
+import { rosterStrayCount, rosterStrayWords } from '../../lib/people/rosterStrays'
 import { USERS_TAB_FILTERS, describeGroupCount, foldNoLoginRows, orderUsersTabRows, rowMatchesFilter, type UsersTabFilter, applyRowNeeds } from '../../lib/people/usersTabRows'
 import { UsersTabRow, type UsersTabRowMenuAction } from './UsersTabRow'
 import { UsersTabPhoneRow } from './UsersTabPhoneRow'
@@ -200,6 +201,8 @@ export function PeopleUsersTab({
     }
   }
   const archivedCount = archivedPeople.length + archivedLogins.length
+  // Punch list #265: the roster records the backfill left for the desk (a users row carries their name).
+  const strayWords = rosterStrayWords(rosterStrayCount(people))
   const lens: UsersTabLens = resolveUsersTabLens(searchParams.get('lens'), { canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport })
   const lensChoices = usersTabLensesFor({ canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport })
   function setLens(next: UsersTabLens) {
@@ -305,7 +308,7 @@ export function PeopleUsersTab({
    */
   function railFor(sectionKind: PersonKind | 'dev', item: UsersTabRosterListRow): RailRow {
     const personId = item.source === 'people' ? item.id : (people.find((p) => p.account_user_id === item.id)?.id ?? resolvePersonIdForUsersRow(item, sectionKind === 'dev' ? null : sectionKind))
-    const person = { userId: item.source === 'user' ? item.id : null, hasLogin: item.source === 'user' ? item.login_attached_at !== null : false, personId, name: item.name, kind: sectionKind === 'dev' ? 'dev' : normaliseKind(sectionKind), archived: false }
+    const person = { userId: item.source === 'user' ? item.id : null, hasLogin: item.source === 'user' && item.login_attached_at !== null, personId, name: item.name, kind: sectionKind === 'dev' ? 'dev' : normaliseKind(sectionKind), archived: false }
     const needs = buildRowNeeds({
       person,
       facts: railFacts,
@@ -341,7 +344,7 @@ export function PeopleUsersTab({
         })
       }
       // Punch list #260 (v2.6518): a person with no sign-in behind their row gets one from their desk, on the same id.
-      if (isDev && item.login_attached_at == null && personDesk?.canOpen) {
+      if (isDev && item.login_attached_at === null && personDesk?.canOpen) {
         out.push({
           key: 'attach',
           label: 'Attach a login',
@@ -382,7 +385,7 @@ export function PeopleUsersTab({
     if (lens === 'account') {
       return (
         <UsersTabAccountCells
-          item={{ source: item.source, id: item.id, name: item.name, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: 'read_only' in item ? (item.read_only ?? null) : null, last_sign_in_at: 'last_sign_in_at' in item ? (item.last_sign_in_at ?? null) : null, login_attached_at: 'login_attached_at' in item ? item.login_attached_at : undefined }}
+          item={{ source: item.source, id: item.id, name: item.name, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: 'read_only' in item ? (item.read_only ?? null) : null, last_sign_in_at: 'last_sign_in_at' in item ? (item.last_sign_in_at ?? null) : null, login_attached_at: item.source === 'user' ? item.login_attached_at : null }}
           isSelf={item.source === 'user' && item.id === authUserId}
           canSetTraining={Boolean(setTrainingMode)}
           onSetTraining={setTrainingMode}
@@ -418,7 +421,7 @@ export function PeopleUsersTab({
     return (
       <UsersTabRow
         key={item.source === 'user' ? `user-${item.id}` : `people-${item.id}`}
-        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: 'read_only' in item ? (item.read_only ?? null) : null, last_sign_in_at: 'last_sign_in_at' in item ? (item.last_sign_in_at ?? null) : null, login_attached_at: 'login_attached_at' in item ? item.login_attached_at : undefined }}
+        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: 'read_only' in item ? (item.read_only ?? null) : null, last_sign_in_at: 'last_sign_in_at' in item ? (item.last_sign_in_at ?? null) : null, login_attached_at: item.source === 'user' ? item.login_attached_at : null }}
         cells={lensCellsFor(item, sectionKind)}
         rail={rail}
         narrowViewport={narrowViewport}
@@ -469,7 +472,7 @@ export function PeopleUsersTab({
     return (
       <UsersTabPhoneRow
         key={rowId}
-        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, login_attached_at: 'login_attached_at' in item ? item.login_attached_at : undefined }}
+        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, login_attached_at: item.source === 'user' ? item.login_attached_at : null }}
         rail={rail}
         openDesk={personDesk?.canOpen ? () => personDesk.open(item.source === 'user' ? { userId: item.id, displayName: item.name } : { personId: item.id, displayName: item.name }) : undefined}
         imitate={canImitate ? () => void imitateOnPhone(item) : undefined}
@@ -740,6 +743,14 @@ export function PeopleUsersTab({
             </button>
           ) : null}
         </div>
+        {strayWords ? (
+          <p data-testid="roster-strays" style={{ margin: '0.45rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            {strayWords}{' '}
+            <button type="button" onClick={() => setFilter('nologin')} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontFamily: 'inherit', fontSize: 'inherit' }}>
+              Show them
+            </button>
+          </p>
+        ) : null}
         <div role="group" aria-label="Filter people" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.45rem' }}>
           {USERS_TAB_FILTERS.map((f) => (
             <button

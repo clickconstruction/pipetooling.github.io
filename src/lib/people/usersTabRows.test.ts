@@ -3,7 +3,7 @@ import type { RailRow } from './deskRailAttention'
 import { describeGroupCount, foldNoLoginRows, orderUsersTabRows, rowMatchesFilter } from './usersTabRows'
 
 function row(p: Partial<RailRow> & { name: string }): RailRow {
-  return { userId: null, personId: `p-${p.name}`, kind: 'sub', archived: false, attention: 'green', badge: '', reasons: [], signals: [], ...p }
+  return { userId: null, personId: `p-${p.name}`, kind: 'sub', archived: false, attention: 'green', badge: '', reasons: [], signals: [], hasLogin: p.hasLogin ?? p.userId != null, ...p }
 }
 
 describe('orderUsersTabRows', () => {

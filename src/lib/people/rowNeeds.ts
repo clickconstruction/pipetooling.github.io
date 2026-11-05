@@ -148,7 +148,7 @@ export function buildRowNeeds(input: RowNeedsInput): RowNeeds {
     })
   }
   // Punch list #260 (v2.6519): a users row with no sign-in behind it reads *no login* as a roster-only row did; the door is Attach a login on the desk.
-  const hasLogin = p.userId != null && p.hasLogin !== false
+  const hasLogin = p.userId != null && p.hasLogin
   if (!hasLogin) {
     needs.push({ key: 'no_login', subject: 'account', tone: 'fact', count: 0, short: 'no login', long: 'No sign-in — their hours, pay, portal and paperwork work without one; a dev attaches a login from the desk.', verb: p.userId ? 'Attach a login' : 'Invite', door: 'access' })
   }

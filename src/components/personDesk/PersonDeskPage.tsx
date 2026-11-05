@@ -43,7 +43,7 @@ export function PersonDeskPage() {
       setLoading(true)
       const todayYmd = denverCalendarDayKey(Date.now())
       const [usersRes, peopleRes, facts] = await Promise.all([
-        supabase.from('users').select('id, name, role, archived_at, is_digital_twin'),
+        supabase.from('users').select('id, name, role, archived_at, is_digital_twin, login_attached_at'),
         supabase.from('people').select('id, name, kind, archived_at, account_user_id'),
         loadRailFacts(access, todayYmd),
       ])
@@ -51,7 +51,7 @@ export function PersonDeskPage() {
       // Tier-2 #19 (J32-F3): the rail folds archived rows itself, so keep those — but twins never
       // sit on a human rail, and dev rows (the `test` fixture) show only to dev viewers.
       const users = activeRosterOnly(
-        (usersRes.data ?? []) as Array<{ id: string; name: string | null; role: string | null; archived_at: string | null; is_digital_twin: boolean | null }>,
+        (usersRes.data ?? []) as Array<{ id: string; name: string | null; role: string | null; archived_at: string | null; is_digital_twin: boolean | null; login_attached_at: string | null }>,
         { includeArchived: true, includeDev: role === 'dev' },
       )
       const roster = ((peopleRes.data ?? []) as Array<{ id: string; name: string; kind: string; archived_at: string | null; account_user_id: string | null }>)
@@ -62,11 +62,11 @@ export function PersonDeskPage() {
       for (const u of users) {
         const p = rosterByAccount.get(u.id)
         if (p) seenPerson.add(p.id)
-        rows.push({ userId: u.id, personId: p?.id ?? null, name: (u.name ?? '').trim() || u.id, kind: normaliseKind(u.role), archived: Boolean(u.archived_at) })
+        rows.push({ userId: u.id, hasLogin: u.login_attached_at !== null, personId: p?.id ?? null, name: (u.name ?? '').trim() || u.id, kind: normaliseKind(u.role), archived: Boolean(u.archived_at) })
       }
       for (const p of roster) {
         if (seenPerson.has(p.id) || p.account_user_id) continue
-        rows.push({ userId: null, personId: p.id, name: p.name.trim(), kind: normaliseKind(p.kind), archived: Boolean(p.archived_at) })
+        rows.push({ userId: null, hasLogin: false, personId: p.id, name: p.name.trim(), kind: normaliseKind(p.kind), archived: Boolean(p.archived_at) })
       }
       setPeople(rows)
       setFacts(facts)

@@ -424,7 +424,7 @@ describe('FollowUpPanel, the kept queue (punch list #183 PR 5)', () => {
     held(lead, 'Book a visit')
     held(lead, 'Start an estimate')
     held(lead, 'No reply needed')
-    held(lead, 'You have this')
+    held(lead, 'Robert has this')
     expect((lead.getByRole('button', { name: 'Reply' }) as HTMLButtonElement).disabled).toBe(false)
     const call = rowIn('We owe them', 'nadia')
     held(call, 'I called')

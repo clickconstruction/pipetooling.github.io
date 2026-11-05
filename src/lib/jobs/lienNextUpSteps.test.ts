@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienNextUpRow } from './lienNextUp'
-import { countLienSteps, lienLaddersShown, lienStepCard, lienStepOfRow, lienStepTiles, lienRunRungWords } from './lienNextUpSteps'
+import { countLienSteps, lienLaddersShown, lienRunRungWords, lienStepCard, lienStepOfRow, lienStepShowingWords, lienStepTiles } from './lienNextUpSteps'
 
 const row = (over: Partial<LienNextUpRow>): LienNextUpRow => ({
   key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · ATI Schertz', sub: 'Notice to draft', dueOn: '2026-10-15', daysLeft: 10, severity: 'amber', group: 'coming', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' },
@@ -147,5 +147,13 @@ describe('the printed run on the ladder (punch list #101)', () => {
     expect(lienRunRungWords(3, 0)).toBe(' ready')
     expect(lienRunRungWords(19, 19)).toBe(' printed')
     expect(lienRunRungWords(22, 19)).toBe(' · 19 printed')
+  })
+})
+
+describe('lienStepShowingWords — the line under the rails while a rung is pressed (v2.6522)', () => {
+  it('names the rung, counts the bright rows, says the rest are faded and not held, and offers the way back', () => {
+    expect(lienStepShowingWords({ ladder: 'reminder', step: 3 }, 4, 15)).toEqual({ head: 'Showing 3 · Letter two', count: '4 of 15 on the list · the rest are faded, not held', clear: 'Show all 15' })
+    expect(lienStepShowingWords({ ladder: 'notice', step: 2 }, 3, 3).count).toBe('every row on the list is on this step')
+    expect(lienStepShowingWords({ ladder: 'affidavit', step: 1 }, 0, 6).count).toBe('none of the 6 on the list is on this step · all are faded, not held')
   })
 })

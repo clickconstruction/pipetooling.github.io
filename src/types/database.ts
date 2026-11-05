@@ -36804,6 +36804,10 @@ export type Database = {
         Args: { p_job_id: string; p_job_kind: string }
         Returns: undefined
       }
+      contact_make_for_channel: {
+        Args: { p_kind: string; p_value: string }
+        Returns: string
+      }
       contact_name_on: {
         Args: { p_name: string; p_record_id: string; p_record_table: string }
         Returns: string

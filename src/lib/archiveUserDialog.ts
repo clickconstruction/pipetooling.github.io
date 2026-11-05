@@ -36,6 +36,8 @@ export function archiveChoiceBlocker(args: {
 }
 
 export type ArchiveRequestBody = {
+  /** The users row's id — the handle `archive-user` looks up (v2.6528, #264). */
+  user_id: string
   email: string
   name: string
   reassign_customers_to?: string
@@ -46,12 +48,13 @@ export type ArchiveRequestBody = {
 /** Body for the archive-user edge function; reassignment rides along only when
  * chosen AND there is actually something to move. */
 export function archiveRequestBody(
-  user: { email: string; name: string | null },
+  user: { id: string; email: string | null; name: string | null },
   customerCount: number | null,
   mode: ArchiveReassignMode,
   reassignTargetId: string,
 ): ArchiveRequestBody {
   const body: ArchiveRequestBody = {
+    user_id: user.id,
     email: (user.email ?? '').trim(),
     name: (user.name ?? '').trim(),
   }
