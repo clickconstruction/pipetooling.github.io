@@ -43,12 +43,21 @@ import { WhoHasItPill } from './WhoHasItPill'
 
 const DEFAULT_IO = supabaseFollowUpThreadIo()
 
-/** The customer's say (v2.5597), as the ⋯ menu offers it. */
-const PREFERS_ROWS: readonly { value: 'text' | 'email' | 'either'; label: string; tip: string }[] = [
-  { value: 'text', label: 'Hears from us by text', tip: 'They asked for texts. The sheet and the morning run text them.' },
-  { value: 'email', label: 'Hears from us by email', tip: 'They asked for email. The morning run holds their texts for the office, and the sheet says so.' },
-  { value: 'either', label: 'Hears from us either way', tip: 'No preference. Texts and emails go as the steps say.' },
+/**
+ * The customer's say (v2.5597), as the ⋯ menu offers it. Since v2.6535 (Grace, 2026-11-05) the rows read *Reach them
+ * by text / by email / either way*, in the office's own direction, and the one that stands wears the tick even when
+ * nothing was ever picked, since no say reads as either way.
+ */
+const PREFERS_ROWS: readonly { value: 'text' | 'email' | 'either'; label: string; tip: string; toast: string }[] = [
+  { value: 'text', label: 'Reach them by text', tip: 'They asked for texts. The sheet and the morning run text them.', toast: 'by text' },
+  { value: 'email', label: 'Reach them by email', tip: 'They asked for email. The morning run holds their texts for the office, and the sheet says so.', toast: 'by email' },
+  { value: 'either', label: 'Reach them either way', tip: 'No preference. Texts and emails go as the steps say.', toast: 'by text or email' },
 ]
+
+/** The way that stands: the one they or the office picked, else either way. */
+export function prefersStanding(prefers: string | null | undefined): 'text' | 'email' | 'either' {
+  return prefers === 'text' || prefers === 'email' ? prefers : 'either'
+}
 
 export type FollowUpThreadSlots = Pick<ThreadSlots, 'headerRight' | 'statusRow' | 'menuRows' | 'aboveBox' | 'underLine' | 'court'>
 
@@ -336,10 +345,10 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
             ...(c.kind === 'customer'
               ? PREFERS_ROWS.map((r) => ({
                   key: `prefers-${r.value}`,
-                  label: `${rows.contact?.prefers === r.value ? '✓ ' : ''}${r.label}`,
+                  label: `${prefersStanding(rows.contact?.prefers) === r.value ? '✓ ' : ''}${r.label}`,
                   tip: r.tip,
-                  disabled: pressing !== null || rows.contact?.prefers === r.value,
-                  onPress: () => void press('prefers', () => io.setPrefers(c.id, r.value), `${callFirst(c) ?? 'They'} ${callFirst(c) ? 'hears' : 'hear'} from us by ${r.value === 'either' ? 'text or email' : r.value}.`),
+                  disabled: pressing !== null || prefersStanding(rows.contact?.prefers) === r.value,
+                  onPress: () => void press('prefers', () => io.setPrefers(c.id, r.value), `We reach ${callFirst(c) ?? 'them'} ${r.toast}.`),
                 }))
               : []),
           ]

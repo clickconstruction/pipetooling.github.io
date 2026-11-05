@@ -369,17 +369,25 @@ describe('how they hear from us (v2.5597)', () => {
     open.contactId = 'priya'
     const io = fakeIo({}, { ...rows(), contact: { state: 'waiting', snoozed_until: null, has_user_id: 'u-rosa', has_since: '2026-10-01T15:00:00.000Z', has_how: 'took', prefers: 'text' } })
     renderThread(io, PRIYA)
-    expect(await more().findByRole('button', { name: '✓ Hears from us by text' })).toBeTruthy()
-    fireEvent.click(more().getByRole('button', { name: 'Hears from us by email' }))
+    expect(await more().findByRole('button', { name: '✓ Reach them by text' })).toBeTruthy()
+    fireEvent.click(more().getByRole('button', { name: 'Reach them by email' }))
     await waitFor(() => expect(io.setPrefers).toHaveBeenCalledWith('priya', 'email'))
-    expect(await screen.findByText('Priya hears from us by email.')).toBeTruthy()
+    expect(await screen.findByText('We reach Priya by email.')).toBeTruthy()
+  })
+
+  it('ticks either way when nothing was ever picked (v2.6535)', async () => {
+    open.contactId = 'priya'
+    renderThread(fakeIo({}, { ...rows(), contact: { state: 'waiting', snoozed_until: null, has_user_id: 'u-rosa', has_since: '2026-10-01T15:00:00.000Z', has_how: 'took', prefers: null } }), PRIYA)
+    const either = (await more().findByRole('button', { name: '✓ Reach them either way' })) as HTMLButtonElement
+    expect(either.disabled).toBe(true)
+    expect((more().getByRole('button', { name: 'Reach them by text' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('offers none on a trade partner', async () => {
     open.contactId = 'greg'
     renderThread(fakeIo(), GREG)
     await more().findByRole('button', { name: 'Remind me Monday' })
-    expect(more().queryByRole('button', { name: /Hears from us/ })).toBeNull()
+    expect(more().queryByRole('button', { name: /Reach them/ })).toBeNull()
   })
 })
 

@@ -99,7 +99,7 @@ A snoozed conversation shows {{chip:gray|snoozed until Mon Oct 5}} there too.
 
 ## How a customer hears from us
 
-A customer can text back one word, EMAIL or TEXT, to say how they want to hear from us. The thread gets a gray line. You can set it too. Open their thread and press **⋯**. The menu offers three ways. Pick **Hears from us by text** or **Hears from us by email**. Pick **Hears from us either way** to clear it. A tick marks the one that stands.
+A customer can text back one word, EMAIL or TEXT, to say how they want to hear from us. The thread gets a gray line. You can set it too. Open their thread and press **⋯**. The menu offers three ways. Pick **Reach them by text** or **Reach them by email**. Pick **Reach them either way** to clear it. A tick marks the one that stands. Either way wears the tick until someone picks a way.
 
 When a customer asked for email, the morning run holds their texts on Today's sends and says why. The Tell the customer sheet says it too.
 
