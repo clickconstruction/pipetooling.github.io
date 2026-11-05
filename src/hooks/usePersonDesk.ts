@@ -14,8 +14,8 @@ export type PersonDeskUserRow = PersonKeyUserRow & {
   team_prospects_access: boolean | null
   estimator_prospects_access: boolean | null
   counttooling_user_id: string | null
-  /** Punch list #260 (v2.6518): when a sign-in was attached; null is a person with no login (left out of a read = a login, the older meaning). */
-  login_attached_at?: string | null
+  /** Punch list #260 (v2.6518): when a sign-in was attached; null is a person with no login. Required since v2.6527 (#264). */
+  login_attached_at: string | null
 }
 
 export type PersonDeskData = {

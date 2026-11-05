@@ -24,7 +24,7 @@ const rail = (over: Partial<RailRow> = {}): RailRow =>
     ...over,
   }) as RailRow
 
-const item = { source: 'user' as const, id: 'u1', name: 'Malachi', email: 'malachi@clickplumbing.com', phone: null, notes: 'Master Plumber (#RMP41130)' }
+const item = { source: 'user' as const, login_attached_at: '2026-10-01T12:00:00Z', id: 'u1', name: 'Malachi', email: 'malachi@clickplumbing.com', phone: null, notes: 'Master Plumber (#RMP41130)' }
 
 describe('UsersTabPhoneRow', () => {
   it('shows the initial, name, note, hours count and Needs you pill; a tap opens the desk', () => {
@@ -73,7 +73,7 @@ describe('UsersTabPhoneRow', () => {
 
   it('a roster-only row reads "no login", gets no Imitate, and a twin shows the robot', () => {
     const { rerender } = render(
-      <UsersTabPhoneRow item={{ ...item, source: 'people', id: 'p1', name: 'Paige', notes: null }} rail={rail({ userId: null, personId: 'p1', name: 'Paige', attention: 'green', reasons: [], rowNeeds: undefined })} imitating={false} more={[]} swipeOpen={false} onSwipeChange={vi.fn()} />,
+      <UsersTabPhoneRow item={{ ...item, source: 'people', id: 'p1', name: 'Paige', notes: null, login_attached_at: null }} rail={rail({ userId: null, personId: 'p1', name: 'Paige', attention: 'green', reasons: [], rowNeeds: undefined })} imitating={false} more={[]} swipeOpen={false} onSwipeChange={vi.fn()} />,
     )
     expect(screen.getByTestId('users-tab-phone-row').textContent).toContain('no login')
     expect(screen.queryByRole('button', { name: /Imitate/ })).toBeNull()
