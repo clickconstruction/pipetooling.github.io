@@ -7,11 +7,14 @@
  * and a foot on every page that names the ledger. Printing draws the paper alone at full size, as the
  * manifest does (`printRootCss`, v2.6432); the PDF is the browser's own Print, Save as PDF. A plain
  * print: no sent copy. The reader switches between the two groupings at leisure (the owner's word on
- * the mock-up), and the device remembers the last pick.
+ * the mock-up), and the device remembers the last pick. Escape closes the window, as the page's other
+ * windows do. No cell clips: Last recorded wraps, since a two-word name, an older year or an agent's
+ * stamp ran past a one-line column and the paper lost the words at the margin (v2.6536).
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { printRootCss } from '../../lib/printRoot'
 import { manifestDateWords } from '../../lib/materials/containerManifest'
@@ -34,6 +37,10 @@ const boxHead: CSSProperties = { display: 'flex', justifyContent: 'space-between
 const th: CSSProperties = { textAlign: 'left', fontSize: '0.6rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-700)', padding: '2px 7px', borderBottom: '1px solid var(--border)', fontWeight: 700 }
 const td: CSSProperties = { padding: '2.5px 7px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }
 const num: CSSProperties = { textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }
+/** The two cells people type into: a line wraps at its spaces and breaks a word only when the word alone is wider than the cell, so nothing runs past the box or the paper's margin. */
+const wraps: CSSProperties = { overflowWrap: 'anywhere' }
+/** Room for *Oct 29, 2025 · Malachi* or *Nov 30 · Joseph Parga* on one line beside the cell's padding (about 136px at this size); an agent's longer stamp wraps. */
+const LAST_RECORDED_PX = 156
 
 type Props = {
   site: ReportSiteInput
@@ -54,6 +61,19 @@ export default function SiteMaterialsReportModal({ site, jobs, printedBy, onClos
   const [tick, setTick] = useState(0)
   // The read keys on the ids as a string: a parent that hands a new array each render must not read the site again.
   const idsKey = jobs.map((j) => j.id).join(',')
+
+  // Escape closes the window; a window opened over it keeps the press for itself.
+  const isTopmost = useModalStackEntry()
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || !isTopmost()) return
+      e.preventDefault()
+      e.stopPropagation()
+      onClose()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [onClose, isTopmost])
 
   useEffect(() => {
     let cancelled = false
@@ -88,7 +108,7 @@ export default function SiteMaterialsReportModal({ site, jobs, printedBy, onClos
   return createPortal(
     <div className="site-materials-report" style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
       {/* Printing draws the paper alone at full size, one Letter sheet after another. The window sits on <body> (a portal) and print takes everything else on <body> out of the layout (lib/printRoot.ts), so the page behind can neither show on the paper nor shrink it (v2.6432). */}
-      <style>{`${printRootCss('site-materials-report')} @media print { ${footCss} .site-materials-report-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; border: none !important; } .site-materials-report-chrome { display: none !important; } .site-materials-report-paper { border: none !important; padding: 0 !important; } .site-materials-report-box { break-inside: avoid; page-break-inside: avoid; } .site-materials-report-section-head, .site-materials-report-group-head { break-after: avoid; page-break-after: avoid; } .site-materials-report-nothing { break-inside: avoid; page-break-inside: avoid; } .site-materials-report-foot { display: none !important; } thead { display: table-header-group; } tr { break-inside: avoid; page-break-inside: avoid; } } @media screen and (max-width: 560px) { .site-materials-report-head { flex-direction: column; align-items: flex-start !important; } .site-materials-report-head > div:last-child { text-align: left !important; } .site-materials-report-lines { table-layout: auto !important; } .site-materials-report-lines th { width: auto !important; } .site-materials-report-dialog { padding: 0.75rem !important; } .site-materials-report-paper { padding: 0.75rem 0.6rem !important; } }`}</style>
+      <style>{`${printRootCss('site-materials-report')} @media print { ${footCss} .site-materials-report-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; border: none !important; } .site-materials-report-chrome { display: none !important; } .site-materials-report-paper { border: none !important; padding: 0 !important; } .site-materials-report-box { break-inside: avoid; page-break-inside: avoid; } .site-materials-report-section-head, .site-materials-report-group-head { break-after: avoid; page-break-after: avoid; } .site-materials-report-nothing { break-inside: avoid; page-break-inside: avoid; } .site-materials-report-foot { display: none !important; } thead { display: table-header-group; } tr { break-inside: avoid; page-break-inside: avoid; } } @media screen and (max-width: 560px) { .site-materials-report-head { flex-direction: column; align-items: flex-start !important; } .site-materials-report-head > div:last-child { text-align: left !important; } .site-materials-report-dialog { padding: 0.75rem !important; } .site-materials-report-paper { padding: 0.75rem 0.6rem !important; } .site-materials-report-lines, .site-materials-report-lines thead, .site-materials-report-lines tbody { display: block; } .site-materials-report-lines tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(3.9rem, auto) minmax(2.6rem, auto); border-bottom: 1px solid var(--border); } .site-materials-report-lines tbody tr:last-child { border-bottom: none; } .site-materials-report-lines th, .site-materials-report-lines td { width: auto !important; border-bottom: none !important; } .site-materials-report-lines th:nth-child(4) { display: none; } .site-materials-report-lines td:nth-child(4) { grid-column: 1 / -1; padding-top: 0; } }`}</style>
       <div role="dialog" aria-modal="true" aria-label="Material location report" className="site-materials-report-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(900px, 100%)', maxHeight: 'min(92vh, 100%)', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
         <div className="site-materials-report-chrome" style={{ display: 'grid', gap: '0.6rem', marginBottom: '0.9rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -182,7 +202,7 @@ function BoxBlock({ box: b, withJob, printedOn }: { box: ReportBox; withJob: boo
         </span>
         {b.code ? <span style={{ fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '0.66rem', color: 'var(--text-muted)' }}>{b.code}</span> : null}
       </div>
-      {/* On a phone the columns size to their words (the fixed widths left Part no room at 375 wide, the live walk 2026-11-04); the print keeps the fixed layout. */}
+      {/* On a phone each line stacks, the part with its count and unit over Last recorded (the screen rule above): four columns left the part a word's width at 320 wide (the viewport walk, 2026-11-05). The print keeps the table. */}
       <table className="site-materials-report-lines" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
         {b.lines.length === 0 ? (
           <tbody>
@@ -195,16 +215,16 @@ function BoxBlock({ box: b, withJob, printedOn }: { box: ReportBox; withJob: boo
                 <th style={th}>Part</th>
                 <th style={{ ...th, ...num, width: 64 }}>On hand</th>
                 <th style={{ ...th, width: 52 }}>Unit</th>
-                <th style={{ ...th, width: 126 }}>Last recorded</th>
+                <th style={{ ...th, width: LAST_RECORDED_PX }}>Last recorded</th>
               </tr>
             </thead>
             <tbody>
               {b.lines.map((l, i) => (
                 <tr key={l.partKey} data-testid="report-line">
-                  <td style={{ ...td, ...(i === b.lines.length - 1 ? { borderBottom: 'none' } : {}) }}>{l.partName}{l.manufacturer ? <span style={{ color: 'var(--text-muted)' }}> · {l.manufacturer}</span> : null}</td>
+                  <td style={{ ...td, ...wraps, ...(i === b.lines.length - 1 ? { borderBottom: 'none' } : {}) }}>{l.partName}{l.manufacturer ? <span style={{ color: 'var(--text-muted)' }}> · {l.manufacturer}</span> : null}</td>
                   <td style={{ ...td, ...num, ...(i === b.lines.length - 1 ? { borderBottom: 'none' } : {}) }}>{l.onHand}</td>
                   <td style={{ ...td, color: 'var(--text-700)', whiteSpace: 'nowrap', ...(i === b.lines.length - 1 ? { borderBottom: 'none' } : {}) }}>{l.unit ?? ''}</td>
-                  <td style={{ ...td, color: 'var(--text-700)', whiteSpace: 'nowrap', ...(i === b.lines.length - 1 ? { borderBottom: 'none' } : {}) }}>{lastRecordedWords(l, printedOn)}</td>
+                  <td style={{ ...td, ...wraps, color: 'var(--text-700)', ...(i === b.lines.length - 1 ? { borderBottom: 'none' } : {}) }} data-testid="report-line-recorded">{lastRecordedWords(l, printedOn)}</td>
                 </tr>
               ))}
             </tbody>
