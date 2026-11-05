@@ -2,7 +2,7 @@
 name: "GC projects: Customers and Trade partners By step as bands"
 number: 109
 group: close
-status: the owner said "Build D, don't fold empty steps, borrow the Project Board colours" 2026-10-15; built as v2.5555 the same day; two calls stay open at the foot
+status: the owner said "Build D, don't fold empty steps, borrow the Project Board colours" 2026-10-15; built as v2.5555 the same day; call 2 answered 2026-11-05 ("Build the switch") and built as v2.6540; call 1 waits on the owner's look at a before-and-after
 summary: >
   The owner's screenshot of Customers → By step: the down arrows abutting the sides of the
   pickers, the first column scrunched, the text sizes all over the place, and the page not as
@@ -10,9 +10,9 @@ summary: >
   bands with the steps inside, columns by step, and the refined cut D with its late case) and
   the critique weighs them. D is built: one line that says who needs a hand today, then one band
   per part of the flow in the Project Board's colours, every step a row inside.
-next: Use the board for a week from 2026-10-15, then decide the two calls at the foot (bigger dots on a heavy board; an "every step" switch to fold the empty rows).
+next: The owner looks at a before-and-after of call 1 (bigger dots on a heavy board, or the company names on the band head) and says build or close; then delete this folder.
 size: S (one PR, v2.5555)
-blocker: Nothing. The two calls at the foot are the owner's, after a week of use.
+blocker: The owner's look at call 1's before-and-after.
 opinion: built as D with every step shown; leave the folds and the dots alone until the board holds twenty customers.
 mockup: to-dos/gc-customers-board/mockup.html
 ---
@@ -86,4 +86,4 @@ phase, Bidding's amber for pricing and Building's green.
 ## Open calls, after a week of use
 
 1. Bigger dots on a heavy board, or the company names on the band head.
-2. An "every step" switch that folds the empty rows for the office once the flow is familiar.
+2. An "every step" switch that folds the empty rows for the office once the flow is familiar — **built as v2.6540** on the owner's word of 2026-11-05.

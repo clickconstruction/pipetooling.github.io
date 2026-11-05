@@ -6,6 +6,8 @@ import {
   boardBands,
   boardFilterOptions,
   boardSummary,
+  foldEmptyRows,
+  foldedStepsWords,
   dueWords,
   stepSubParts,
   tileJobWords,
@@ -168,9 +170,11 @@ function Dot({ d, onPress }: { d: SummaryDot; onPress: (d: SummaryDot) => void }
 }
 
 /** The band's head: the Project Board's own band with the phase's colour, the count, its jobs, late and lapsed, a dot per company, and the lanes' words. */
-function Band({ band, ctx, presses }: { band: BoardBand; ctx: BoardContext; presses: BoardPresses }) {
+function Band({ band, ctx, presses, everyStep }: { band: BoardBand; ctx: BoardContext; presses: BoardPresses; everyStep: boolean }) {
   const c = STAGE_COLORS[PHASE_TONE[band.phase]]
   const jobs = tileJobWords(ctx, band)
+  // The Every step switch (punch list #109, v2.6540): off, the rows nobody is on fold to one line at the band's foot.
+  const { shown, folded } = foldEmptyRows(band.rows, everyStep)
   return (
     <section aria-label={band.words} data-board-band={band.phase} style={{ marginTop: '0.9rem' }}>
       <div className="stagesSectionBand" style={{ ...({ '--stage-color': c.bar } as CSSProperties), display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -190,9 +194,14 @@ function Band({ band, ctx, presses }: { band: BoardBand; ctx: BoardContext; pres
         )}
         <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{bandLaneWords(ctx, band)}</span>
       </div>
-      {band.rows.map((row) => (
+      {shown.map((row) => (
         <Row key={row.step.id} row={row} today={ctx.today} presses={presses} />
       ))}
+      {folded.length > 0 && (
+        <div data-board-folded={band.phase} style={{ ...rowStyle, ...empty }}>
+          {foldedStepsWords(folded)}
+        </div>
+      )}
     </section>
   )
 }
@@ -240,6 +249,32 @@ function Chevron() {
   )
 }
 
+/** The Every step switch (punch list #109, v2.6540): on, every step keeps its row; off, the rows nobody is on fold to one line per band. Drawn in the views row by `GcFlowBoard`. */
+export function EveryStepSwitch({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={() => onChange(!on)}
+      title={on ? 'Every step has its row. Press to fold the steps nobody is on to one line per band.' : 'The steps nobody is on are folded to one line per band. Press to show every step.'}
+      style={{
+        padding: '0.2rem 0.7rem',
+        borderRadius: 999,
+        border: `1px solid ${on ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
+        background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+        color: on ? 'var(--text-blue-500)' : 'var(--text-600)',
+        fontWeight: on ? 600 : 400,
+        cursor: 'pointer',
+        fontSize: '0.8rem',
+        font: 'inherit',
+      }}
+    >
+      Every step
+    </button>
+  )
+}
+
 /** The board's two pickers: which job, whose seat. Drawn in the views row by `GcFlowBoard`, which holds the filter. */
 export function BoardPickers({ ctx, companies, filter, onFilter }: { ctx: BoardContext; companies: readonly BoardCompany[]; filter: BoardFilter; onFilter: (f: BoardFilter) => void }) {
   const options = boardFilterOptions(ctx, companies)
@@ -271,7 +306,20 @@ export function BoardPickers({ ctx, companies, filter, onFilter }: { ctx: BoardC
   )
 }
 
-export function GcBoardByStep({ ctx, companies, presses, filter = NO_FILTER }: { ctx: BoardContext; companies: readonly BoardCompany[]; presses: BoardPresses; filter?: BoardFilter }) {
+export function GcBoardByStep({
+  ctx,
+  companies,
+  presses,
+  filter = NO_FILTER,
+  everyStep = true,
+}: {
+  ctx: BoardContext
+  companies: readonly BoardCompany[]
+  presses: BoardPresses
+  filter?: BoardFilter
+  /** Every step shown (the default, the owner's rule of 2026-10-15); off, the rows nobody is on fold to one line per band (punch list #109). */
+  everyStep?: boolean
+}) {
   const summary = boardSummary(ctx, companies, filter)
   const bands = boardBands(ctx, companies, filter)
   const grey = STAGE_COLORS.grey
@@ -280,7 +328,7 @@ export function GcBoardByStep({ ctx, companies, presses, filter = NO_FILTER }: {
       <TodayLine ctx={ctx} summary={summary} onHand={presses.onNeedsAHand} />
       <div role="group" aria-label="Where everyone stands">
         {bands.map((b) => (
-          <Band key={b.phase} band={b} ctx={ctx} presses={presses} />
+          <Band key={b.phase} band={b} ctx={ctx} presses={presses} everyStep={everyStep} />
         ))}
         {summary.off.length > 0 && (
           <section aria-label="Off the flow" data-board-step="off" style={{ marginTop: '0.9rem' }}>

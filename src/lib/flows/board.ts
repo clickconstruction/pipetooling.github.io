@@ -521,6 +521,24 @@ export function boardBands(ctx: BoardContext, companies: readonly BoardCompany[]
   })
 }
 
+/**
+ * The Every step switch (punch list #109, v2.6540): every step keeps its row by the owner's rule of 2026-10-15, and the
+ * office may fold the rows nobody is on once the flow is familiar. A row folds only while nobody is on its step, so a
+ * late company never hides behind the fold; the folded steps are named in one line at the band's foot.
+ */
+export function foldEmptyRows(rows: readonly BoardRow[], everyStep: boolean): { shown: BoardRow[]; folded: BoardRow[] } {
+  if (everyStep) return { shown: [...rows], folded: [] }
+  const folded = rows.filter((r) => r.lands !== null)
+  return { shown: rows.filter((r) => r.lands === null), folded }
+}
+
+/** The fold's one line: "Nobody on 3 steps: Invited · Opened their link · Final waiver." Empty with nothing folded. */
+export function foldedStepsWords(folded: readonly BoardRow[]): string {
+  if (!folded.length) return ''
+  const n = folded.length
+  return `Nobody on ${n} step${n === 1 ? '' : 's'}: ${folded.map((r) => r.step.name).join(' · ')}.`
+}
+
 /** The band's count: "3 companies", "1 customer". */
 export function bandCountWords(ctx: Pick<BoardContext, 'flow'>, b: BoardBand): string {
   const [one, many] = kindNouns(ctx.flow.kind)
