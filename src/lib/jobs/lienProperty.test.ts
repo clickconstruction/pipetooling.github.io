@@ -32,6 +32,8 @@ function addressRow(overrides: Partial<CustomerAddressRow>): CustomerAddressRow 
     owner_name: '',
     owner_company: '',
     owner_mailing_address: '',
+    owner_email: '',
+    owner_phone: '',
     county_source: '',
     parcel_id: '',
     parcel_source: '',
