@@ -2,7 +2,7 @@
 name: Lien notices sent by hand — record them, link the file, combine a property
 number: 35
 group: close
-status: asked 2026-09-23 · PR 1 shipped v2.3763 · PR 2 (record a notice sent by hand) built v2.3770 · PR 3 (one notice per property, the tick) built v2.3777 · the closed-months call answered 2026-09-25 (v2.3821 — every notice claims the whole balance) · left: the office records the Lenox paper through PR 2's door, and the $350 call
+status: asked 2026-09-23 · PR 1 shipped v2.3763 · PR 2 (record a notice sent by hand) built v2.3770 · PR 3 (one notice per property, the tick) built v2.3777 · the closed-months call answered 2026-09-25 (v2.3821 — every notice claims the whole balance) · the Lenox paper is recorded (273, 858 and 866 read sent 2026-10-06, $28,987 between them) · the $350 call answered 2026-11-05: it belongs on · left: 1009's notice goes out
 summary: >
   **A notice went out and the app never learned of it.** Taunya mailed a § 53.056 notice on
   2026-09-22 to the owner of 9703 Lenox Hl: one paper for jobs 273, 858 and 866 (three jobs at one
@@ -15,16 +15,15 @@ summary: >
   question"); and one paper over several jobs at a property, claiming the whole balance, where the
   app prints one notice per job and (counsel, v2.3745) claims the timely months only.
 next: >
-  The office records the Lenox paper through *Already mailed? Record it…* on 273 (858 and 866 ticked,
-  $28,987, April–August, the Drive link). The owner answers the one call left below (the closed-months
-  call was answered 2026-09-25 by v2.3821: the form claims the whole balance); the combine tick stays
-  off until then. Then delete the folder — the release notes carry the record.
+  1009's $350 belongs on (the owner, 2026-11-05). Job 1009, Lenox Check PU, already holds an
+  approved § 53.056 notice for 2026-09 at $350 (drafted 2026-10-05, not yet sent): the office sends it
+  on the Lien desk's next run, and 9703 Lenox Hl then carries every job's claim. Then delete the
+  folder — the release notes carry the record.
 size: XS (PR 1) · S (PR 2) · M (PR 3)
 blocker: >
-  One call left — whether 1009's $350 (Lenox Check PU) was left out of the Lenox notice on
-  purpose. (Whether the office may claim closed months on the form was answered 2026-09-25: the
-  owner had every notice claim the whole balance, v2.3821, reversing counsel's timely-months rule.)
-opinion: build now — the record is wrong today (273 asks the leader for a notice already in the mail) and the Lenox paper cannot be recorded without PR 2.
+  The office's send of 1009's approved notice on the Lien desk. (The closed-months call was answered
+  2026-09-25 by v2.3821, every notice claims the whole balance; the $350 call on 2026-11-05.)
+opinion: close — the code is done and the Lenox paper is recorded; 1009's send is the office's press
 ---
 
 # Lien notices sent by hand
