@@ -47,6 +47,37 @@ export type PersonEvidenceRecord = {
 
 export type PersonEvidenceDraft = { datedOn: string; title: string; memo: string }
 
+/**
+ * A linked file (v2.6541): a file that already lives in Drive and is never staged — a recording over the cap, a file
+ * the office filed by hand. Its row has `drive_url` and no `storage_path`; the filer leaves it alone and the panel opens
+ * the link. The name is what the chip reads.
+ */
+export type PersonEvidenceLink = { name: string; driveUrl: string }
+
+/** A Drive link: a file, a folder or a doc on drive.google.com or docs.google.com. */
+const DRIVE_URL = /^https:\/\/(drive|docs)\.google\.com\/\S+$/i
+
+/** The Drive id a link names, when it names one: `/file/d/<id>`, `/folders/<id>`, `/document/d/<id>`, `?id=<id>`; null otherwise. */
+export function driveFileIdFromUrl(url: string): string | null {
+  const m = url.match(/\/(?:file|document|spreadsheets|presentation)\/d\/([A-Za-z0-9_-]{10,})/) ?? url.match(/\/folders\/([A-Za-z0-9_-]{10,})/) ?? url.match(/[?&]id=([A-Za-z0-9_-]{10,})/)
+  return m?.[1] ?? null
+}
+
+/** Why a link cannot stand; null when it can: a name, and a Drive address. */
+export function evidenceLinkProblem(l: { name: string; driveUrl: string }): string | null {
+  if (!l.name.trim()) return 'Give the linked file a name.'
+  if (l.name.trim().length > 200) return 'The linked file’s name is over 200 characters.'
+  const url = l.driveUrl.trim()
+  if (!url) return `Paste the Drive link for ${l.name.trim()}.`
+  if (!DRIVE_URL.test(url)) return `${l.name.trim()}: the link is not a Drive address (drive.google.com or docs.google.com).`
+  return null
+}
+
+/** A file row that was linked, never staged. */
+export function evidenceFileIsLinked(f: Pick<PersonEvidenceFile, 'storage_path' | 'drive_url'>): boolean {
+  return !f.storage_path && !!f.drive_url
+}
+
 /** A file goes through the function as bytes it reads from the bucket; the same cap as the company folder's door. */
 export const EVIDENCE_FILE_MAX_BYTES = 10 * 1024 * 1024
 export const EVIDENCE_TITLE_MAX = 160
@@ -56,19 +87,23 @@ export const PEOPLE_FOLDER_NAME = 'People'
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
-/** Why the record cannot be saved as typed; null when it can. Every piece is required: the day, a title, a memo, a file. */
-export function evidenceDraftProblem(d: PersonEvidenceDraft, files: ReadonlyArray<{ name: string; size: number }>, todayYmd: string): string | null {
+/** Why the record cannot be saved as typed; null when it can. Every piece is required: the day, a title, a memo, a file or a link to one in Drive (v2.6541). */
+export function evidenceDraftProblem(d: PersonEvidenceDraft, files: ReadonlyArray<{ name: string; size: number }>, todayYmd: string, links: ReadonlyArray<PersonEvidenceLink> = []): string | null {
   if (!DAY.test(d.datedOn)) return 'Pick the day it is about.'
   if (d.datedOn > todayYmd) return 'The day it is about cannot be ahead of today.'
   if (!d.title.trim()) return 'Give it a title.'
   if (d.title.trim().length > EVIDENCE_TITLE_MAX) return `The title is over ${EVIDENCE_TITLE_MAX} characters.`
   if (!d.memo.trim()) return 'Write a memo: what it shows and why it matters.'
   if (d.memo.length > EVIDENCE_MEMO_MAX) return `The memo is over ${EVIDENCE_MEMO_MAX} characters.`
-  if (files.length === 0) return 'Add at least one file: a photo, a PDF, an email, a screenshot.'
+  if (files.length === 0 && links.length === 0) return 'Add at least one file, or a link to one already in Drive: a photo, a PDF, an email, a screenshot, a recording.'
   for (const f of files) {
     if (!f.name.trim()) return 'One of the files has no name.'
     if (f.size === 0) return `${f.name} is empty.`
-    if (f.size > EVIDENCE_FILE_MAX_BYTES) return `${f.name} is over ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB. Put it in the person's Drive folder by hand and note it in the memo.`
+    if (f.size > EVIDENCE_FILE_MAX_BYTES) return `${f.name} is over ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB. Put it in the person's Drive folder by hand and link it here.`
+  }
+  for (const l of links) {
+    const why = evidenceLinkProblem(l)
+    if (why) return why
   }
   return null
 }
@@ -151,21 +186,31 @@ export function evidenceSizeWords(bytes: number | null): string {
 
 export type EvidenceDriveState = 'filed' | 'partly' | 'waiting' | 'held'
 
-/** Where the record stands with Drive, from its files: every file filed, some, none yet, or a reason it could not go. */
+/** A file that is in Drive: filed by the function, or linked there by hand (v2.6541). */
+const inDrive = (f: Pick<PersonEvidenceFile, 'drive_file_id' | 'storage_path' | 'drive_url'>): boolean => !!f.drive_file_id || evidenceFileIsLinked(f)
+
+/** Where the record stands with Drive, from its files: every file filed or linked, some, none yet, or a reason it could not go. */
 export function evidenceDriveState(r: Pick<PersonEvidenceRecord, 'fail_why' | 'files' | 'filed_at'>): EvidenceDriveState {
-  const filed = r.files.filter((f) => f.drive_file_id).length
+  const filed = r.files.filter(inDrive).length
   if (r.files.length > 0 && filed === r.files.length) return 'filed'
   if (r.fail_why) return 'held'
   if (filed > 0) return 'partly'
   return 'waiting'
 }
 
-/** The state in words for the record's foot: *In Drive* · *2 of 3 files in Drive* · *On its way to Drive* · *Not in Drive: <why>*. */
+/** The file's whereabouts for its chip's tip: *in Drive* · *in Drive, linked* · *kept here, on its way to Drive*. */
+export function evidenceFileWhereWords(f: Pick<PersonEvidenceFile, 'drive_file_id' | 'storage_path' | 'drive_url'>): string {
+  if (evidenceFileIsLinked(f)) return 'in Drive, linked'
+  if (f.drive_url) return 'in Drive'
+  return 'kept here, on its way to Drive'
+}
+
+/** The state in words for the record's foot: *In Drive* · *In Drive, linked* · *2 of 3 files in Drive* · *On its way to Drive* · *Not in Drive: <why>*. */
 export function evidenceDriveWords(r: Pick<PersonEvidenceRecord, 'fail_why' | 'files' | 'filed_at'>): string {
-  const filed = r.files.filter((f) => f.drive_file_id).length
+  const filed = r.files.filter(inDrive).length
   switch (evidenceDriveState(r)) {
     case 'filed':
-      return 'In Drive'
+      return r.files.every(evidenceFileIsLinked) ? 'In Drive, linked' : 'In Drive'
     case 'partly':
       return `${filed} of ${r.files.length} files in Drive`
     case 'held':
