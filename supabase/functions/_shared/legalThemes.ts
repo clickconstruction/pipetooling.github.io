@@ -127,3 +127,77 @@ export function proposedCountWords(marks: ReadonlyArray<Pick<LegalThemeMark, 'pr
 export function markIsProposed(m: Pick<LegalThemeMark, 'proposed' | 'kept_at' | 'removed_at'>): boolean {
   return !m.removed_at && m.proposed && !m.kept_at
 }
+
+// ─── marks on the record (v2.6546, T2) ─────────────────────────────────────
+
+export type MarkTarget = { kind: MarkTargetKind; id: string }
+
+/** What a composer or a line's picker holds before the marks are written: the themes picked, why, how it proves them. */
+export type MarkDraft = { themeIds: string[]; why: string; provesBy: ProvesBy | null }
+
+export const EMPTY_MARK_DRAFT: MarkDraft = { themeIds: [], why: '', provesBy: null }
+
+/** Why the marks cannot be written as typed; null when they can (no theme picked is nothing to write, not a problem). */
+export function markDraftProblem(d: MarkDraft): string | null {
+  if (d.why.length > MARK_WHY_MAX) return `Why it fits is over ${MARK_WHY_MAX} characters.`
+  return null
+}
+
+export function toggleThemeId(d: MarkDraft, themeId: string): MarkDraft {
+  return d.themeIds.includes(themeId) ? { ...d, themeIds: d.themeIds.filter((id) => id !== themeId) } : { ...d, themeIds: [...d.themeIds, themeId] }
+}
+
+const LINE_TABLE_TO_KIND: Record<string, MarkTargetKind> = { person_file_entries: 'hr_entry', person_file_evidence: 'hr_evidence', legal_matter_documents: 'matter_document', legal_matter_entries: 'matter_entry' }
+
+/** The thing a Timeline line can carry a mark on, or null for a line that points into another record (a license, a paper, a write-up). */
+export function markTargetOfLine(line: { ref: { table: string; id: string } }): MarkTarget | null {
+  const kind = LINE_TABLE_TO_KIND[line.ref.table]
+  return kind ? { kind, id: line.ref.id } : null
+}
+
+export function sameTarget(a: MarkTarget, b: Pick<LegalThemeMark, 'target_kind' | 'target_id'>): boolean {
+  return a.kind === b.target_kind && a.id === b.target_id
+}
+
+/** The live marks on one thing. */
+export function marksOnTarget<M extends Pick<LegalThemeMark, 'target_kind' | 'target_id' | 'removed_at'>>(marks: ReadonlyArray<M>, target: MarkTarget): M[] {
+  return marks.filter((m) => !m.removed_at && sameTarget(target, m))
+}
+
+/** How many of the given lines carry each theme (live marks), by theme id. */
+export function themeCountsOnLines(lines: ReadonlyArray<{ ref: { table: string; id: string } }>, marks: ReadonlyArray<Pick<LegalThemeMark, 'theme_id' | 'target_kind' | 'target_id' | 'removed_at'>>): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const line of lines) {
+    const t = markTargetOfLine(line)
+    if (!t) continue
+    const seen = new Set<string>()
+    for (const m of marksOnTarget(marks, t)) {
+      if (seen.has(m.theme_id)) continue
+      seen.add(m.theme_id)
+      out.set(m.theme_id, (out.get(m.theme_id) ?? 0) + 1)
+    }
+  }
+  return out
+}
+
+/** The lines that carry the theme. */
+export function linesWithTheme<L extends { ref: { table: string; id: string } }>(lines: ReadonlyArray<L>, marks: ReadonlyArray<Pick<LegalThemeMark, 'theme_id' | 'target_kind' | 'target_id' | 'removed_at'>>, themeId: string): L[] {
+  return lines.filter((line) => {
+    const t = markTargetOfLine(line)
+    return !!t && marksOnTarget(marks, t).some((m) => m.theme_id === themeId)
+  })
+}
+
+/** `3 lines ticked` · `1 line ticked`. */
+export function tickedWords(n: number): string {
+  return n === 1 ? '1 line ticked' : `${n} lines ticked`
+}
+
+/** `Dishonesty marked on 3 lines.` · `Dishonesty and Interference with the business marked on 1 line.` · `… 2 were marked already.` */
+export function markedWords(themeNames: ReadonlyArray<string>, made: number, already: number, noun: readonly [string, string] = ['line', 'lines']): string {
+  const names = themeNames.length <= 1 ? themeNames[0] ?? 'The theme' : themeNames.length === 2 ? `${themeNames[0]} and ${themeNames[1]}` : `${themeNames.slice(0, -1).join(', ')} and ${themeNames[themeNames.length - 1]}`
+  const count = (n: number) => `${n} ${n === 1 ? noun[0] : noun[1]}`
+  if (made === 0 && already > 0) return `${names} already on ${already === 1 ? 'that ' + noun[0] : 'those ' + noun[1]}.`
+  const head = `${names} marked on ${count(made)}.`
+  return already > 0 ? `${head} ${already === 1 ? '1 was' : `${already} were`} marked already.` : head
+}

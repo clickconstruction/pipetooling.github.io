@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Themes on the record</title>
+<style>
+  :root { --bg:#f9fafb; --surface:#fff; --border:#e5e7eb; --border-strong:#aab2bd; --text:#111827; --muted:#6b7280; --faint:#9ca3af; --blue:#2563eb; --blue-tint:#eff6ff; --blue-700:#1d4ed8; --amber-tint:#fffbeb; --amber-700:#b45309; --green-tint:#f0fdf4; --green-800:#166534; --red-tint:#fef2f2; --red-700:#b91c1c; --purple-tint:#f5f3ff; --purple-700:#6d28d9; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding:24px 16px 48px; }
+  h1 { font-size:20px; margin:0 0 4px }
+  .lede { color:var(--muted); margin:0 0 24px; max-width:760px }
+  h2 { font-size:15px; margin:36px 0 10px; color:var(--text) }
+  .note { color:var(--muted); font-size:13px; margin:0 0 10px; max-width:760px }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; max-width:860px }
+  .row { display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--surface); color:var(--muted); white-space:nowrap }
+  .chip.on { background:var(--blue-tint); color:var(--blue-700); border-color:#bfdbfe }
+  .chip.theme { background:var(--purple-tint); color:var(--purple-700); border-color:#ddd6fe }
+  .chip.theme.proposed { border-style:dashed; background:var(--surface) }
+  .chip.grade { background:var(--surface); color:var(--muted); font-weight:500 }
+  .chip .n { font-weight:700 }
+  .lane { font-size:11px; font-weight:700; padding:1px 7px; border-radius:4px; background:var(--amber-tint); color:var(--amber-700) }
+  .lane.did { background:var(--green-tint); color:var(--green-800) }
+  .lane.paper { background:var(--blue-tint); color:var(--blue-700) }
+  .btn { font:inherit; font-size:13px; font-weight:600; padding:6px 12px; border-radius:6px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); cursor:pointer }
+  .btn.blue { background:var(--blue); color:#fff; border-color:var(--blue) }
+  .btn.dead { background:#e5e7eb; color:#9ca3af; border-color:#e5e7eb; cursor:default }
+  .field { font:inherit; padding:6px 8px; border:1px solid var(--border-strong); border-radius:4px; background:var(--surface); color:var(--text) }
+  table { border-collapse:collapse; width:100% }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:top; font-size:13px }
+  th { color:var(--muted); font-weight:600; font-size:12px }
+  .line { display:grid; grid-template-columns:72px 1fr; gap:10px; padding:9px 0; border-bottom:1px solid var(--border) }
+  .line .day { color:var(--muted); font-size:12px; padding-top:3px }
+  .line.ticked { background:var(--blue-tint); margin:0 -16px; padding-left:16px; padding-right:16px }
+  .month { font-weight:700; font-size:12px; color:var(--muted); letter-spacing:.02em; margin:14px 0 4px }
+  .muted { color:var(--muted) } .faint { color:var(--faint) } .small { font-size:12px }
+  .bar { position:sticky; bottom:0; background:var(--surface); border-top:1px solid var(--border); margin:12px -16px -14px; padding:10px 16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; border-radius:0 0 10px 10px }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:14px } @media (max-width:720px){ .two{grid-template-columns:1fr} }
+  .kpi { border:1px solid var(--border); border-radius:8px; padding:10px 12px } .kpi b { display:block; font-size:18px }
+  input[type=checkbox]{ width:15px; height:15px; margin:0 }
+  .why { font-size:12px; color:var(--muted); margin-top:3px }
+  .stamp { font-size:11px; color:var(--faint) }
+  .hdr { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:8px }
+  .hdr h3 { margin:0; font-size:14px }
+</style>
+</head>
+<body>
+<h1>Themes on the record</h1>
+<p class="lede">A theme is a plain-words name for a pattern the office wants to find again: <i>Dishonesty</i>, <i>Disrespectful conduct</i>, <i>Interference with the business</i>. A theme is marked on things that already exist on the record, an HR entry, a piece of evidence, a matter's document or event, and the review reads by theme instead of by date. Names and events below are made up.</p>
+
+<h2>1 · The company's themes</h2>
+<p class="note">Settings → People → Themes, a dev-only card. A theme has a name the office says, one line on what counts, and optional words for counsel. A theme is retired, never deleted, so old marks keep their meaning.</p>
+<div class="card">
+  <div class="hdr"><h3>Themes</h3><span class="small muted">4 standing · 1 retired</span></div>
+  <table>
+    <tr><th style="width:26%">Theme</th><th>What counts</th><th style="width:26%">Counsel's words (optional)</th><th style="width:10%"></th></tr>
+    <tr><td><span class="chip theme">Dishonesty</span></td><td>A statement shown false by a document or by their own later words. Not an honest mistake.</td><td class="muted">fraud, misrepresentation (candidates for counsel)</td><td><span class="small muted">17 marks</span></td></tr>
+    <tr><td><span class="chip theme">Disrespectful conduct</span></td><td>Words or acts toward a teammate, a customer or the owners that a reasonable person would call disrespectful. Who was present, quoted.</td><td class="muted">—</td><td><span class="small muted">9 marks</span></td></tr>
+    <tr><td><span class="chip theme">Interference with the business</span></td><td>Steering a customer, a job or a teammate away from the company, or dividing its scope.</td><td class="muted">tortious interference; breach of loyalty</td><td><span class="small muted">11 marks</span></td></tr>
+    <tr><td><span class="chip theme">Company money without say-so</span></td><td>Spend, a subscription or a trip after an instruction not to, or with no authority to.</td><td class="muted">unauthorized expenditure; conversion</td><td><span class="small muted">14 marks</span></td></tr>
+    <tr><td><span class="chip theme" style="opacity:.55">Late to jobs</span> <span class="stamp">retired Oct 2026</span></td><td class="muted">Folded into Reliability on the summary. Its 3 marks still read.</td><td></td><td></td></tr>
+  </table>
+  <div class="row" style="margin-top:12px"><button class="btn">+ Add a theme</button><span class="small muted">A theme the agent proposes while reading lands here dashed until a dev keeps it.</span></div>
+</div>
+
+<h2>2 · Marking as you write</h2>
+<p class="note">Every composer that writes to the record gets the same picker: Add entry and Add evidence on the HR file, Record what happened and the document form on a matter. Pick one or more themes, say in a few words why it fits, and how it proves the theme.</p>
+<div class="card" style="max-width:640px">
+  <div class="hdr"><h3>Add evidence</h3><span class="small muted">Jordan Vale · HR file</span></div>
+  <div class="row" style="margin-bottom:8px"><span class="small muted" style="width:70px">The day</span><input class="field" value="2026-06-26" style="width:130px"></div>
+  <div class="row" style="margin-bottom:8px"><span class="small muted" style="width:70px">Title</span><input class="field" value="Text: cancel the satellite service, third time" style="flex:1"></div>
+  <div class="row" style="margin-bottom:8px; align-items:flex-start"><span class="small muted" style="width:70px; padding-top:6px">Memo</span><textarea class="field" style="flex:1; height:54px">Owner's written instruction to cancel, sent 9:12 am. The two earlier instructions were by phone (May 30, Jun 12). Charges continued through July.</textarea></div>
+  <div class="row" style="margin-bottom:8px; align-items:flex-start"><span class="small muted" style="width:70px; padding-top:6px">Files</span><div><span class="chip">cancel-text.png · 212 KB</span> <button class="btn" style="padding:3px 9px; font-size:12px">+ Pick files</button></div></div>
+  <div class="row" style="margin-bottom:6px; align-items:flex-start"><span class="small muted" style="width:70px; padding-top:4px">Themes</span>
+    <div style="flex:1">
+      <div class="row"><span class="chip theme">Company money without say-so ✓</span><span class="chip">Dishonesty</span><span class="chip">Disrespectful conduct</span><span class="chip">Interference with the business</span><span class="chip">+ new…</span></div>
+      <div class="row" style="margin-top:8px"><span class="small muted">Why it fits</span><input class="field" value="written instruction ignored; charges ran 5 more weeks" style="flex:1"></div>
+      <div class="row" style="margin-top:8px"><span class="small muted">Proves it by</span><span class="chip on">a document</span><span class="chip">their own words</span><span class="chip">a firsthand account</span><span class="chip">a relayed account</span></div>
+    </div>
+  </div>
+  <div class="row" style="justify-content:flex-end; margin-top:10px"><button class="btn">Cancel</button><button class="btn blue">Add the evidence</button></div>
+</div>
+
+<h2>3 · The Timeline reads by theme, and marks in bulk</h2>
+<p class="note">The lane chips stay. A theme row joins them, each theme with its count; press one and only its lines stay. Any line takes <b>+ theme</b>. In a large situation, tick lines and mark them at once; the button says what it will do with its count.</p>
+<div class="card">
+  <div class="row" style="margin-bottom:6px"><span class="chip on">All</span><span class="chip">Said</span><span class="chip">Did</span><span class="chip">Paper</span><span class="chip">Missed</span><span class="chip">Ahead</span><span class="faint">·</span><span class="chip">HR entries</span><span class="chip">Evidence</span><span class="chip">Write-ups</span></div>
+  <div class="row"><span class="small muted">Themes</span><span class="chip theme on">Company money without say-so <span class="n">14</span></span><span class="chip theme">Dishonesty <span class="n">17</span></span><span class="chip theme">Interference with the business <span class="n">11</span></span><span class="chip theme">Disrespectful conduct <span class="n">9</span></span><span class="chip theme proposed">proposed by the agent <span class="n">6</span></span><span class="chip">no theme <span class="n">38</span></span></div>
+  <div class="month">JULY 2026</div>
+  <div class="line ticked"><div class="day"><input type="checkbox" checked> Jul 22</div><div><span class="lane did">Did</span> Card charges on a day with no job: breakfast, a clinic, fuel for a long drive to collect a payment personally. <span class="chip theme">Company money without say-so</span> <span class="chip theme proposed">Dishonesty · proposed</span> <span class="chip">photo-of-charges.png</span><div class="why">why: the owner's photo of the charges, sent the same day · proves it by a document</div></div></div>
+  <div class="line ticked"><div class="day"><input type="checkbox" checked> Jul 20</div><div><span class="lane did">Did</span> Trip taken after three refusals by phone that week. <span class="chip theme">Company money without say-so</span><div class="why">why: refusals on Jul 17, 18 and 19 · proves it by a firsthand account</div></div></div>
+  <div class="line"><div class="day"><input type="checkbox"> Jul 11</div><div><span class="lane did">Did</span> Every bid they were paid to prepare set from shared to private. <span class="chip theme">Interference with the business</span> <span class="chip">audit-history.pdf</span><div class="why">why: the audit history, exported Aug 6 · proves it by a document</div></div></div>
+  <div class="month">JUNE 2026</div>
+  <div class="line ticked"><div class="day"><input type="checkbox" checked> Jun 26</div><div><span class="lane paper">Paper</span> Text: cancel the satellite service, third time. <span class="chip theme">Company money without say-so</span> <span class="chip">cancel-text.png</span><div class="why">why: written instruction ignored; charges ran 5 more weeks · proves it by a document</div></div></div>
+  <div class="line"><div class="day"><input type="checkbox"> Jun 15</div><div><span class="lane">Said</span> Asked a teammate to open a company and move every vehicle and trailer into it. <span class="chip theme">Interference with the business</span> <span class="chip theme">Dishonesty</span><div class="why">why: the teammate's same-day email to the owner · proves it by a firsthand account</div></div></div>
+  <div class="bar"><span class="small">3 lines ticked</span><span class="chip theme">Company money without say-so ✓</span><span class="chip">Dishonesty</span><span class="chip">Interference with the business</span><span class="chip">Disrespectful conduct</span><input class="field" placeholder="why, in a few words (one note for all three)" style="flex:1; min-width:200px"><button class="btn blue">Mark 3 lines</button><button class="btn">Clear</button></div>
+</div>
+
+<h2>4 · By theme: the investigation</h2>
+<p class="note">A view beside Timeline, Evidence and Narrative, and the place a large situation is worked. Pick one theme and the page holds only its items, oldest first, each with how it proves the theme. The pick sits in the address (<code>?tab=hr&amp;person=…&amp;theme=money-without-say-so</code>), so a link opens the same isolated view. Press any item and it opens in a window over the list: the whole entry or memo, its files, every theme on it, who marked it and why, and Previous and Next through the theme. Close and you are where you were.</p>
+<div class="card" id="bytheme">
+  <div class="row" style="margin-bottom:10px"><span class="chip theme on">Company money without say-so</span><span class="chip theme">Dishonesty</span><span class="chip theme">Interference with the business</span><span class="chip theme">Disrespectful conduct</span><span class="faint">·</span><span class="small muted">one theme at a time; the others are a press away</span></div>
+  <div class="two" style="margin-bottom:12px">
+    <div class="kpi"><b>14 items</b><span class="small muted">first Apr 3, 2026 · last Aug 15, 2026 · 6 with a file</span></div>
+    <div class="kpi"><b>9 by a document · 3 by their own words · 2 firsthand</b><span class="small muted">0 relayed · 2 proposed by the agent, not yet kept</span></div>
+  </div>
+  <div class="row" style="margin-bottom:8px"><span class="small muted">Show</span><span class="chip on">every item</span><span class="chip">with a file</span><span class="chip">by a document</span><span class="chip">proposed</span><span class="faint">·</span><span class="small muted">Order</span><span class="chip on">oldest first</span><span class="chip">strongest first</span></div>
+  <table id="items">
+    <tr><th style="width:84px">Day</th><th>What</th><th style="width:150px">Proves it by</th><th style="width:150px">Marked</th></tr>
+    <tr class="item" data-i="0"><td>Apr 3</td><td>Satellite service bought on the company card with no say-so. <span class="chip">bank-rows-apr.csv</span></td><td><span class="chip grade">a document</span></td><td class="small muted">Dana O. · Aug 8</td></tr>
+    <tr class="item" data-i="1"><td>May 30</td><td>First instruction to cancel, by phone.</td><td><span class="chip grade">a firsthand account</span></td><td class="small muted">Dana O. · Aug 8</td></tr>
+    <tr class="item" data-i="2"><td>Jun 26</td><td>Text: cancel the satellite service, third time. <span class="chip">cancel-text.png</span></td><td><span class="chip grade">a document</span></td><td class="small muted">Dana O. · Aug 8</td></tr>
+    <tr class="item" data-i="3"><td>Jul 20</td><td>Trip taken after three refusals by phone that week.</td><td><span class="chip grade">a firsthand account</span></td><td class="small muted">Dana O. · Aug 8</td></tr>
+    <tr class="item" data-i="4"><td>Jul 22</td><td>Card charges on a day with no job. <span class="chip">photo-of-charges.png</span></td><td><span class="chip grade">a document</span></td><td class="small muted">Dana O. · Aug 8</td></tr>
+    <tr class="item" data-i="5"><td>Aug 5</td><td>A charge on the company card the day after leaving.</td><td><span class="chip grade">a document</span></td><td class="small muted"><span class="chip theme proposed">proposed</span> <button class="btn" style="padding:2px 8px; font-size:12px">Keep</button> <button class="btn" style="padding:2px 8px; font-size:12px">Drop…</button></td></tr>
+  </table>
+  <div class="row" style="margin-top:12px"><button class="btn">Print this theme</button><button class="btn">Copy as a list for counsel</button><span class="small muted">The matter's packet gets a section per theme in this order. Press a row to open it.</span></div>
+</div>
+
+<div id="overlay" style="display:none; position:fixed; inset:0; background:rgba(17,24,39,.45); z-index:50; align-items:flex-start; justify-content:center; padding:4vh 12px; overflow:auto" onclick="if(event.target===this)closeItem()">
+  <div role="dialog" aria-modal="true" style="background:var(--surface); border:1px solid var(--border); border-radius:10px; width:min(720px,100%); box-shadow:0 18px 48px rgba(17,24,39,.25)">
+    <div style="display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border)">
+      <div style="flex:1; min-width:0"><div class="small muted" id="m-kicker">Company money without say-so · item 3 of 14</div><h3 id="m-title" style="margin:2px 0 0; font-size:15px">Text: cancel the satellite service, third time</h3></div>
+      <button class="btn" onclick="step(-1)" id="m-prev">← Previous</button><button class="btn" onclick="step(1)" id="m-next">Next →</button><button class="btn" onclick="closeItem()" aria-label="Close" title="Close · esc">✕</button>
+    </div>
+    <div style="padding:14px 16px; display:grid; gap:12px">
+      <div class="row small muted"><span id="m-day">Jun 26, 2026</span><span>·</span><span id="m-kind"><span class="lane paper">Paper</span> evidence record</span><span>·</span><span id="m-logged">added Aug 8 by Dana O.</span></div>
+      <div id="m-body" style="white-space:pre-wrap; line-height:1.5">Owner's written instruction to cancel, sent 9:12 am. The two earlier instructions were by phone (May 30, Jun 12). Charges continued through July.</div>
+      <div><div class="small muted" style="margin-bottom:4px">Files</div><div class="row" id="m-files"><span class="chip">cancel-text.png · 212 KB · in Drive</span><button class="btn" style="padding:3px 9px; font-size:12px">Open</button><button class="btn" style="padding:3px 9px; font-size:12px">Open the folder in Drive ›</button></div></div>
+      <div><div class="small muted" style="margin-bottom:4px">Themes on this item</div>
+        <div id="m-themes" style="display:grid; gap:6px">
+          <div class="row"><span class="chip theme">Company money without say-so</span><span class="chip grade">a document</span><span class="small muted">why: written instruction ignored; charges ran 5 more weeks · Dana O., Aug 8</span><button class="btn" style="padding:2px 8px; font-size:12px; margin-left:auto">Remove…</button></div>
+          <div class="row"><span class="chip">+ another theme</span></div>
+        </div></div>
+      <div><div class="small muted" style="margin-bottom:4px">Nearby on the record</div><div class="row small"><span class="chip">Jun 12 · second instruction, by phone</span><span class="chip">Jul 1 · twelve charges on the July statement</span><span class="chip">Jul 22 · card charges on a day with no job</span></div></div>
+      <div class="row" style="justify-content:space-between; border-top:1px solid var(--border); padding-top:10px"><a href="#" class="small" onclick="return false" style="color:var(--blue)">Open on the Timeline</a><span class="small muted">esc closes · ← → move through the theme</span></div>
+    </div>
+  </div>
+</div>
+<script>
+const ITEMS=[
+ {day:'Apr 3, 2026',title:'Satellite service bought on the company card with no say-so',kind:'<span class="lane did">Did</span> HR entry · payroll event',logged:'filed Aug 8 by Dana O.',body:'Bank rows show the first charge on Apr 3. No instruction or approval on record before it. The owner first saw the line on the April statement.',files:'<span class="chip">bank-rows-apr.csv · 18 KB · in Drive</span><button class="btn" style="padding:3px 9px; font-size:12px">Open</button>',grade:'a document',why:'no say-so on record before the first charge'},
+ {day:'May 30, 2026',title:'First instruction to cancel, by phone',kind:'<span class="lane">Said</span> HR entry · conversation',logged:'filed Aug 8 by Dana O.',body:"The owner's call, by the owner's own account the same week. No written trace; the Jun 12 call repeats it.",files:'<span class="small muted">no file</span>',grade:'a firsthand account',why:"the owner's account, repeated on Jun 12"},
+ {day:'Jun 26, 2026',title:'Text: cancel the satellite service, third time',kind:'<span class="lane paper">Paper</span> evidence record',logged:'added Aug 8 by Dana O.',body:"Owner's written instruction to cancel, sent 9:12 am. The two earlier instructions were by phone (May 30, Jun 12). Charges continued through July.",files:'<span class="chip">cancel-text.png · 212 KB · in Drive</span><button class="btn" style="padding:3px 9px; font-size:12px">Open</button><button class="btn" style="padding:3px 9px; font-size:12px">Open the folder in Drive ›</button>',grade:'a document',why:'written instruction ignored; charges ran 5 more weeks'},
+ {day:'Jul 20, 2026',title:'Trip taken after three refusals by phone that week',kind:'<span class="lane did">Did</span> HR entry · incident',logged:'filed Aug 8 by Dana O.',body:'Refusals on Jul 17, 18 and 19 by phone. The trip left Jul 20 with a second teammate; fuel and a hotel on the card Jul 20 to 22.',files:'<span class="chip">card-rows-jul.csv · 9 KB · in Drive</span><button class="btn" style="padding:3px 9px; font-size:12px">Open</button>',grade:'a firsthand account',why:'refusals on Jul 17, 18 and 19'},
+ {day:'Jul 22, 2026',title:'Card charges on a day with no job',kind:'<span class="lane did">Did</span> HR entry · incident',logged:'filed Aug 8 by Dana O.',body:"Breakfast, a clinic, then fuel for a long drive to collect a payment personally. The owner's photo of the charges was sent the same day.",files:'<span class="chip">photo-of-charges.png · 640 KB · in Drive</span><button class="btn" style="padding:3px 9px; font-size:12px">Open</button>',grade:'a document',why:"the owner's photo of the charges, sent the same day"},
+ {day:'Aug 5, 2026',title:'A charge on the company card the day after leaving',kind:'<span class="lane did">Did</span> HR entry · payroll event',logged:'proposed by the agent Aug 9',body:'A travel-center charge of $125.56 on Aug 5, the day after the last day. The card was still open.',files:'<span class="chip">bank-rows-aug.csv · 12 KB · in Drive</span><button class="btn" style="padding:3px 9px; font-size:12px">Open</button>',grade:'a document',why:'proposed: the card was still open the day after leaving'}
+];
+let cur=0;
+function openItem(i){cur=i;const it=ITEMS[i];
+ document.getElementById('m-kicker').textContent='Company money without say-so · item '+(i+1)+' of '+ITEMS.length;
+ document.getElementById('m-title').textContent=it.title;
+ document.getElementById('m-day').textContent=it.day; document.getElementById('m-kind').innerHTML=it.kind; document.getElementById('m-logged').textContent=it.logged;
+ document.getElementById('m-body').textContent=it.body; document.getElementById('m-files').innerHTML=it.files;
+ document.getElementById('m-themes').innerHTML='<div class="row"><span class="chip theme'+(i===5?' proposed':'')+'">Company money without say-so'+(i===5?' · proposed':'')+'</span><span class="chip grade">'+it.grade+'</span><span class="small muted">why: '+it.why+'</span>'+(i===5?'<button class="btn" style="padding:2px 8px; font-size:12px; margin-left:auto">Keep</button><button class="btn" style="padding:2px 8px; font-size:12px">Drop…</button>':'<button class="btn" style="padding:2px 8px; font-size:12px; margin-left:auto">Remove…</button>')+'</div><div class="row"><span class="chip">+ another theme</span></div>';
+ document.getElementById('m-prev').className='btn'+(i===0?' dead':''); document.getElementById('m-next').className='btn'+(i===ITEMS.length-1?' dead':'');
+ document.getElementById('overlay').style.display='flex';
+}
+function closeItem(){document.getElementById('overlay').style.display='none';}
+function step(d){const n=cur+d; if(n>=0&&n<ITEMS.length)openItem(n);}
+document.querySelectorAll('#items tr.item').forEach(tr=>{tr.style.cursor='pointer'; tr.addEventListener('click',e=>{ if(e.target.closest('button')) return; openItem(Number(tr.dataset.i)); });});
+document.addEventListener('keydown',e=>{ if(document.getElementById('overlay').style.display!=='flex') return; if(e.key==='Escape')closeItem(); if(e.key==='ArrowLeft')step(-1); if(e.key==='ArrowRight')step(1); });
+</script>
+
+<h2>5 · Where the firm sees it</h2>
+<p class="note">On a matter, the firm's portal reads the themes on the Evidence tab and the Timeline, grouped and counted, with counsel's words beside the office's. The firm can add its own words to a theme; it cannot mark or unmark.</p>
+<div class="card" style="max-width:640px">
+  <div class="hdr"><h3>Evidence · by theme</h3><span class="small muted">the firm's view</span></div>
+  <div class="row"><span class="chip theme">Company money without say-so <span class="n">14</span></span><span class="small muted">· unauthorized expenditure; conversion</span></div>
+  <div class="row" style="margin-top:6px"><span class="chip theme">Interference with the business <span class="n">11</span></span><span class="small muted">· tortious interference; breach of loyalty</span></div>
+  <div class="row" style="margin-top:6px"><span class="chip theme">Dishonesty <span class="n">17</span></span><span class="small muted">· fraud, misrepresentation</span> <button class="btn" style="padding:2px 8px; font-size:12px">Add our words</button></div>
+</div>
+</body>
+</html>

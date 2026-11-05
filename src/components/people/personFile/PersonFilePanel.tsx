@@ -45,6 +45,10 @@ import {
 import { fileEvidenceToDrive, savePersonEvidence } from '../../../lib/people/personEvidenceIo'
 import { shrinkPhoto } from '../../../lib/materials/photoShrink'
 import { EmptyState } from '../../EmptyState'
+import { EMPTY_MARK_DRAFT, linesWithTheme, markIsProposed, markTargetOfLine, markedWords, marksOnTarget, provesByWords, sortThemes, themeCountsOnLines, themeStands, tickedWords, type LegalTheme, type LegalThemeMark, type MarkDraft, type MarkTarget } from '../../../lib/legal/legalThemes'
+import { addMarks, keepMark, loadThemes, removeMark } from '../../../lib/legal/legalThemesIo'
+import { ThemeMarkPicker } from '../../legal/ThemeMarkPicker'
+import { countedLabel } from '../../../lib/batchWords'
 
 /**
  * The person file (design spike, 2026-11-02): one person's Timeline, Evidence and Narrative,
@@ -244,6 +248,21 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [evTried, setEvTried] = useState(false)
   const [evRetryId, setEvRetryId] = useState<string | null>(null)
   const hrDocRef = useRef<HTMLDivElement>(null)
+  /** Themes on the record (v2.6546): the catalog and this person's marks, the pickers' drafts, the Timeline's theme filter, the ticked lines and the bulk bar. */
+  const [themes, setThemes] = useState<LegalTheme[]>([])
+  const [marks, setMarks] = useState<LegalThemeMark[]>([])
+  const [entryMark, setEntryMark] = useState<MarkDraft>(EMPTY_MARK_DRAFT)
+  const [evMark, setEvMark] = useState<MarkDraft>(EMPTY_MARK_DRAFT)
+  const [themeFilter, setThemeFilter] = useState<string | null>(null)
+  const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set())
+  const [bulkMark, setBulkMark] = useState<MarkDraft>(EMPTY_MARK_DRAFT)
+  const [bulkSaving, setBulkSaving] = useState(false)
+  const [lineMarkKey, setLineMarkKey] = useState<string | null>(null)
+  const [lineMark, setLineMark] = useState<MarkDraft>(EMPTY_MARK_DRAFT)
+  const [lineMarkSaving, setLineMarkSaving] = useState(false)
+  const [removingMarkId, setRemovingMarkId] = useState<string | null>(null)
+  const [removeWhy, setRemoveWhy] = useState('')
+  const [markBusyId, setMarkBusyId] = useState<string | null>(null)
 
   useEffect(() => {
     setView(initialView)
@@ -265,10 +284,36 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     void load()
   }, [load, changeKey])
 
+  const reloadThemes = useCallback(async () => {
+    if (!viewer.isDev || !personId) {
+      setThemes([])
+      setMarks([])
+      return
+    }
+    const r = await loadThemes({ personId })
+    setThemes(r.themes)
+    setMarks(r.marks)
+  }, [viewer.isDev, personId])
+
+  useEffect(() => {
+    void reloadThemes()
+  }, [reloadThemes, changeKey])
+
+  useEffect(() => {
+    setTicked(new Set())
+    setThemeFilter(null)
+    setLineMarkKey(null)
+  }, [personId])
+
   const lines = useMemo(() => (sources ? buildPersonTimeline(sources.input) : []), [sources])
   const facts = useMemo(() => (sources ? personFileFacts(sources.input, lines) : null), [sources, lines])
   const counts = useMemo(() => countPersonTimeline(lines), [lines])
-  const filtered = useMemo(() => filterPersonTimeline(lines, { lane, source }), [lines, lane, source])
+  const laneFiltered = useMemo(() => filterPersonTimeline(lines, { lane, source }), [lines, lane, source])
+  const filtered = useMemo(() => (themeFilter ? linesWithTheme(laneFiltered, marks, themeFilter) : laneFiltered), [laneFiltered, marks, themeFilter])
+  const standingThemes = useMemo(() => sortThemes(themes).filter(themeStands), [themes])
+  const themeById = useMemo(() => new Map(themes.map((t) => [t.id, t])), [themes])
+  const themeCounts = useMemo(() => themeCountsOnLines(lines, marks), [lines, marks])
+  const themeNames = useCallback((ids: ReadonlyArray<string>) => ids.map((id) => themeById.get(id)?.name ?? 'a theme'), [themeById])
   const { ahead, past } = useMemo(() => splitPersonTimeline(filtered, todayYmd), [filtered, todayYmd])
   const months = useMemo(() => groupPersonTimelineByMonth(past), [past])
   const attachmentsById = useMemo(() => new Map((sources?.attachments ?? []).map((a) => [a.id, a])), [sources])
@@ -311,9 +356,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
       return
     }
     let fileWords = ''
+    const entryId = (data as { id: string } | null)?.id ?? null
     if (pendingFiles.length > 0) {
       // The files become a piece of evidence on the entry: its words as the title and the memo, so they are found in Drive.
-      const entryId = (data as { id: string } | null)?.id ?? null
       const words = draftContent.trim()
       const firstLine = words.split('\n')[0]?.trim() || 'Entry'
       const out = await savePersonEvidence({ personId, draft: { datedOn: draftDate, title: firstLine.slice(0, 160), memo: words }, files: pendingFiles, entryId, authUserId: authUser?.id ?? null })
@@ -324,14 +369,21 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         showToast(`The entry is on the line, but its files were not kept: ${out.why}`, 'error')
       }
     }
+    let markWords = ''
+    if (entryId && entryMark.themeIds.length > 0) {
+      const mk = await addMarks({ themeIds: entryMark.themeIds, targets: [{ kind: 'hr_entry', id: entryId }], personId, matterId: null, why: entryMark.why, provesBy: entryMark.provesBy, authUserId: authUser?.id ?? null })
+      markWords = mk.ok ? ` ${markedWords(themeNames(entryMark.themeIds), mk.made, mk.already, ['entry', 'entries'])}` : ` The themes were not marked: ${mk.why}`
+      setEntryMark(EMPTY_MARK_DRAFT)
+      void reloadThemes()
+    }
     setSavingEntry(false)
-    showToast(`Entry added to the line.${fileWords}`, 'success')
+    showToast(`Entry added to the line.${fileWords}${markWords}`, 'success')
     setDraftContent('')
     setDraftDate(todayYmd)
     setComposerOpen(false)
     await load()
     onChanged?.()
-  }, [personId, draftContent, savingEntry, draftDate, draftSource, authUser?.id, pendingFiles, showToast, todayYmd, load, onChanged])
+  }, [personId, draftContent, savingEntry, draftDate, draftSource, authUser?.id, pendingFiles, showToast, todayYmd, load, onChanged, entryMark, themeNames, reloadThemes])
 
   /** File a waiting report from its line: the same RPC as the queue, so the entry lands dated the day it happened. */
   const fileReport = useCallback(
@@ -466,6 +518,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         autoFocus
         style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 7, fontSize: '0.84rem', background: 'var(--bg-page)', color: 'var(--text-base)', resize: 'vertical', fontFamily: 'inherit' }}
       />
+      <div style={{ marginTop: '0.55rem' }}>
+        <ThemeMarkPicker themes={themes} draft={entryMark} onChange={setEntryMark} testId="entry-theme-picker" />
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
         <button
           type="button"
@@ -549,13 +604,197 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     )
   }
 
+  // ─── themes on a line (v2.6546) ──────────────────────────────────────────
+
+  const canMark = canWrite && standingThemes.length > 0
+
+  const writeMarks = async (draft: MarkDraft, targets: MarkTarget[], noun: readonly [string, string]) => {
+    const mk = await addMarks({ themeIds: draft.themeIds, targets, personId, matterId: null, why: draft.why, provesBy: draft.provesBy, authUserId: authUser?.id ?? null })
+    if (!mk.ok) {
+      showToast(`The themes were not marked: ${mk.why}`, 'error')
+      return false
+    }
+    showToast(`${markedWords(themeNames(draft.themeIds), mk.made, mk.already, noun)}${mk.failWhy ? ` One was refused: ${mk.failWhy}` : ''}`, mk.made > 0 ? 'success' : 'info')
+    await reloadThemes()
+    return true
+  }
+
+  const markOneLine = async (target: MarkTarget) => {
+    if (lineMark.themeIds.length === 0 || lineMarkSaving) return
+    setLineMarkSaving(true)
+    const ok = await writeMarks(lineMark, [target], ['line', 'lines'])
+    setLineMarkSaving(false)
+    if (ok) {
+      setLineMarkKey(null)
+      setLineMark(EMPTY_MARK_DRAFT)
+    }
+  }
+
+  const markTickedLines = async () => {
+    const targets = lines.filter((l) => ticked.has(l.key)).map(markTargetOfLine).filter((t): t is MarkTarget => !!t)
+    if (bulkMark.themeIds.length === 0 || targets.length === 0 || bulkSaving) return
+    setBulkSaving(true)
+    const ok = await writeMarks(bulkMark, targets, ['line', 'lines'])
+    setBulkSaving(false)
+    if (ok) {
+      setTicked(new Set())
+      setBulkMark(EMPTY_MARK_DRAFT)
+    }
+  }
+
+  const takeMarkOff = async (id: string) => {
+    if (removeWhy.trim() === '' || markBusyId) return
+    setMarkBusyId(id)
+    const r = await removeMark(id, removeWhy, authUser?.id ?? null)
+    setMarkBusyId(null)
+    if (!r.ok) {
+      showToast(`The mark stays: ${r.why}`, 'error')
+      return
+    }
+    setRemovingMarkId(null)
+    setRemoveWhy('')
+    showToast('The mark is off. Its row stays, with the reason.', 'success')
+    await reloadThemes()
+  }
+
+  const keepOneMark = async (id: string) => {
+    setMarkBusyId(id)
+    const r = await keepMark(id, authUser?.id ?? null)
+    setMarkBusyId(null)
+    if (!r.ok) {
+      showToast(`The mark was not kept: ${r.why}`, 'error')
+      return
+    }
+    showToast('Kept.', 'success')
+    await reloadThemes()
+  }
+
+  const toggleTick = (key: string) =>
+    setTicked((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
+  const themeChipStyle = (proposed: boolean): CSSProperties => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.25rem',
+    padding: '0.1rem 0.5rem',
+    borderRadius: 999,
+    fontSize: '0.72rem',
+    border: `1px ${proposed ? 'dashed' : 'solid'} var(--border-blue)`,
+    background: 'var(--bg-blue-tint)',
+    color: 'var(--text-blue-700)',
+  })
+
+  /** The theme chips on a line, each with its why and grade on the tip and a × that asks why, and the *+ theme* press. */
+  const themeBits = (line: PersonTimelineLine) => {
+    const target = markTargetOfLine(line)
+    if (!target || !viewer.isDev) return null
+    const live = marksOnTarget(marks, target)
+    const open = lineMarkKey === line.key
+    if (live.length === 0 && !canMark) return null
+    return (
+      <span style={{ display: 'block', marginTop: '0.35rem' }} data-testid={`line-themes-${line.key}`}>
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', alignItems: 'center' }}>
+          {live.map((m) => {
+            const proposed = markIsProposed(m)
+            const name = themeById.get(m.theme_id)?.name ?? 'a theme'
+            const tip = [m.why ? `why: ${m.why}` : '', m.proves_by ? `proves it by ${provesByWords(m.proves_by)}` : '', proposed ? 'proposed by the agent, not yet kept' : ''].filter(Boolean).join(' · ')
+            return (
+              <span key={m.id} style={themeChipStyle(proposed)} title={tip || undefined} data-testid={`line-theme-${m.id}`}>
+                {name}
+                {proposed ? <span style={{ color: 'var(--text-muted)' }}>· proposed</span> : null}
+                {proposed && canWrite ? (
+                  <button type="button" disabled={markBusyId === m.id} onClick={() => void keepOneMark(m.id)} style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0 }}>
+                    Keep
+                  </button>
+                ) : null}
+                {canWrite ? (
+                  <button
+                    type="button"
+                    aria-label={`Take ${name} off this line`}
+                    onClick={() => {
+                      setRemovingMarkId(removingMarkId === m.id ? null : m.id)
+                      setRemoveWhy('')
+                    }}
+                    style={{ font: 'inherit', fontSize: '0.74rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                  >
+                    ✕
+                  </button>
+                ) : null}
+              </span>
+            )
+          })}
+          {canMark && !open ? (
+            <button
+              type="button"
+              onClick={() => {
+                setLineMarkKey(line.key)
+                setLineMark(EMPTY_MARK_DRAFT)
+              }}
+              data-testid={`line-add-theme-${line.key}`}
+              style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0 }}
+            >
+              + theme
+            </button>
+          ) : null}
+        </span>
+        {removingMarkId && live.some((m) => m.id === removingMarkId) ? (
+          <span style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={removeWhy}
+              autoFocus
+              maxLength={200}
+              onChange={(e) => setRemoveWhy(e.target.value)}
+              placeholder="Why is the theme coming off?"
+              style={{ flex: '1 1 220px', font: 'inherit', fontSize: '0.78rem', padding: '0.28rem 0.5rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
+            />
+            <button type="button" style={{ ...smallPress(false), color: 'var(--text-red-600)' }} disabled={removeWhy.trim() === '' || !!markBusyId} onClick={() => void takeMarkOff(removingMarkId)}>
+              {markBusyId === removingMarkId ? 'Taking it off…' : 'Take it off'}
+            </button>
+            <button type="button" style={smallPress(false)} onClick={() => setRemovingMarkId(null)}>
+              Keep it
+            </button>
+          </span>
+        ) : null}
+        {open ? (
+          <span style={{ display: 'block', marginTop: '0.45rem', padding: '0.5rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }} data-testid={`line-theme-picker-${line.key}`}>
+            <ThemeMarkPicker themes={themes} draft={lineMark} onChange={setLineMark} alreadyOn={new Set(live.map((m) => m.theme_id))} />
+            <span style={{ display: 'flex', gap: '0.4rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
+              <button type="button" style={smallPress(true)} disabled={lineMark.themeIds.length === 0 || lineMarkSaving} onClick={() => void markOneLine(target)}>
+                {lineMarkSaving ? 'Marking…' : countedLabel('Mark', lineMark.themeIds.length, ['theme', 'themes'])}
+              </button>
+              <button type="button" style={smallPress(false)} onClick={() => setLineMarkKey(null)}>
+                Cancel
+              </button>
+            </span>
+          </span>
+        ) : null}
+      </span>
+    )
+  }
+
   const renderLine = (line: PersonTimelineLine, withYear = false) => {
     const look = lineLook(line)
     const faded = line.state === 'dismissed' || line.state === 'draft'
     const chips = line.attachmentIds.map(fileChipById).filter(Boolean)
+    const tickable = canMark && !!markTargetOfLine(line)
     return (
-      <li key={line.key} data-person-file-line={line.key} style={{ display: 'grid', gridTemplateColumns: withYear ? '5.8rem 1fr' : '3.4rem 1fr', gap: '0.6rem', padding: '0.55rem 0', borderTop: '1px solid var(--border)', opacity: faded ? 0.7 : 1 }}>
-        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', paddingTop: 3, whiteSpace: 'nowrap' }}>{withYear ? dayWordsWithYear(line.ymd) : dayWords(line.ymd)}</span>
+      <li key={line.key} data-person-file-line={line.key} style={{ display: 'grid', gridTemplateColumns: withYear ? (canMark ? '7.2rem 1fr' : '5.8rem 1fr') : canMark ? '4.8rem 1fr' : '3.4rem 1fr', gap: '0.6rem', padding: '0.55rem 0', borderTop: '1px solid var(--border)', opacity: faded ? 0.7 : 1 }}>
+        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', paddingTop: 3, whiteSpace: 'nowrap', display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
+          {canMark ? (
+            tickable ? (
+              <input type="checkbox" checked={ticked.has(line.key)} onChange={() => toggleTick(line.key)} aria-label={`Tick the ${dayWords(line.ymd)} line`} data-testid={`line-tick-${line.key}`} style={{ margin: 0, marginTop: 1 }} />
+            ) : (
+              <span aria-hidden style={{ width: 13, flex: 'none' }} />
+            )
+          ) : null}
+          {withYear ? dayWordsWithYear(line.ymd) : dayWords(line.ymd)}
+        </span>
         <span style={{ minWidth: 0 }}>
           <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem', flexWrap: 'wrap' }}>
             <span style={chip(look)}>{line.kindWords}</span>
@@ -568,6 +807,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
           <span style={{ display: 'block', fontSize: '0.87rem', color: 'var(--text-base)', marginTop: '0.25rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{line.what}</span>
           {line.notes ? <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{line.notes}</span> : null}
           {chips.length > 0 ? <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.35rem' }}>{chips}</span> : null}
+          {themeBits(line)}
           <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: '0.2rem' }}>
             {line.byName ? line.byName : ''}
             {line.byName && line.loggedAt ? ' · ' : ''}
@@ -614,10 +854,24 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         ) : null}
       </div>
 
+      {viewer.isDev && standingThemes.some((t) => (themeCounts.get(t.id) ?? 0) > 0) ? (
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.75rem' }} role="group" aria-label="Filter the line by theme" data-testid="timeline-theme-row">
+          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>Themes</span>
+          {standingThemes.map((t) => {
+            const n = themeCounts.get(t.id) ?? 0
+            return n > 0 ? (
+              <button key={t.id} type="button" aria-pressed={themeFilter === t.id} onClick={() => setThemeFilter((prev) => (prev === t.id ? null : t.id))} title={t.what_counts || undefined} style={filterChip(themeFilter === t.id)} data-testid={`timeline-theme-${t.id}`}>
+                {t.name} · {n}
+              </button>
+            ) : null
+          })}
+        </div>
+      ) : null}
+
       {composer}
 
       {filtered.length === 0 ? (
-        <EmptyState compact {...personTimelineEmptyWords({ filtered: lane !== null || source !== null, canAdd: canWrite, clearFilter: () => { setLane(null); setSource(null) }, openComposer: () => setComposerOpen(true) })} />
+        <EmptyState compact {...personTimelineEmptyWords({ filtered: lane !== null || source !== null || themeFilter !== null, canAdd: canWrite, clearFilter: () => { setLane(null); setSource(null); setThemeFilter(null) }, openComposer: () => setComposerOpen(true) })} />
       ) : (
         <div style={{ maxWidth: '88ch' }}>
           {ahead.length > 0 ? (
@@ -637,6 +891,22 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
           ))}
         </div>
       )}
+      {ticked.size > 0 ? (
+        <div style={{ position: 'sticky', bottom: 'calc(var(--app-bottom-chrome, 0px) + 0.5rem)', marginTop: '0.75rem', padding: '0.6rem 0.8rem', border: '1px solid var(--border-blue)', borderRadius: 10, background: 'var(--surface)', boxShadow: '0 6px 24px rgba(0,0,0,0.12)', display: 'grid', gap: '0.5rem', maxWidth: '88ch' }} data-testid="timeline-bulk-bar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{tickedWords(ticked.size)}</span>
+            <button type="button" onClick={() => setTicked(new Set())} style={{ font: 'inherit', fontSize: '0.76rem', border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0 }}>
+              Untick
+            </button>
+          </div>
+          <ThemeMarkPicker themes={themes} draft={bulkMark} onChange={setBulkMark} label="Mark them with" testId="bulk-theme-picker" />
+          <div>
+            <button type="button" style={smallPress(true)} disabled={bulkMark.themeIds.length === 0 || bulkSaving} onClick={() => void markTickedLines()} data-testid="bulk-mark">
+              {bulkSaving ? 'Marking…' : countedLabel('Mark', ticked.size, ['line', 'lines'])}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 
@@ -670,6 +940,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     setEvLinks([])
     setEvLinkDraft({ name: '', driveUrl: '' })
     setEvTried(false)
+    setEvMark(EMPTY_MARK_DRAFT)
     setEvidenceOpen(true)
   }
 
@@ -703,11 +974,17 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
           : out.drive?.failWhy
             ? `Kept here. Not in Drive: ${out.drive.failWhy}`
             : 'Kept here and on its way to Drive.'
-    showToast(`Evidence kept on the file. ${where}`, 'success')
+    let markWords = ''
+    if (evMark.themeIds.length > 0) {
+      const mk = await addMarks({ themeIds: evMark.themeIds, targets: [{ kind: 'hr_evidence', id: out.recordId }], personId, matterId: null, why: evMark.why, provesBy: evMark.provesBy, authUserId: authUser?.id ?? null })
+      markWords = mk.ok ? ` ${markedWords(themeNames(evMark.themeIds), mk.made, mk.already, ['record', 'records'])}` : ` The themes were not marked: ${mk.why}`
+      void reloadThemes()
+    }
+    showToast(`Evidence kept on the file. ${where}${markWords}`, 'success')
     setEvidenceOpen(false)
     await load()
     onChanged?.()
-  }, [personId, evProblem, evSaving, evDraft, evFiles, evLinks, authUser?.id, showToast, load, onChanged])
+  }, [personId, evProblem, evSaving, evDraft, evFiles, evLinks, authUser?.id, showToast, load, onChanged, evMark, themeNames, reloadThemes])
 
   const retryDrive = useCallback(
     async (recordId: string) => {
@@ -792,6 +1069,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
               ))}
             </ul>
           ) : null}
+        </div>
+        <div style={{ marginTop: '0.8rem' }}>
+          <ThemeMarkPicker themes={themes} draft={evMark} onChange={setEvMark} testId="evidence-theme-picker" />
         </div>
         <p style={{ margin: '0.8rem 0 0', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
           Where it goes: <span style={{ color: 'var(--text-base)' }}>{evidenceDrivePathWords(personName, { dated_on: evDraft.datedOn || todayYmd, title: evDraft.title.trim() || 'untitled' })}</span>

@@ -70,6 +70,22 @@ Dishonesty. What counts: a statement the record shows to be untrue. Counsel's wo
 
 :::
 
+## Mark a theme on the record
+
+A mark says one entry or one piece of evidence shows a theme. Every composer on the file has the same Themes strip. Press a theme to pick it. Say why it fits in a few words. Press how it proves the theme. The four grades are a document, their own words, a firsthand account and a relayed account.
+
+Open Timeline. Press {{button:outline|+ theme}} under a line to mark one that stands already. Tick several lines to mark them at once. The bar at the bottom names the count. Press {{button:blue|Mark 3 lines}} and every ticked line carries the theme.
+
+The Themes row above the line shows each theme with its count. Press a theme and the line shows only what carries it. Press ✕ on a mark to take it off. Give the reason. The mark stays on the record with that reason.
+
+The agent can propose a mark. A proposed mark is drawn dashed. Press Keep to make it yours.
+
+:::example A mark on an entry
+
+Entry: a trip taken after three refusals by phone that week. Theme: company money without say-so. Why it fits: refused three times, went anyway. Proves it by: a firsthand account.
+
+:::
+
 ## Keeping the summary fresh
 
 When you add entries, the summary falls behind. The person's dot turns amber. The Summary view shows how many entries it has not covered. You ask the agent to bring the file current. It rewrites the summary and extends the narrative from the raw entries.
