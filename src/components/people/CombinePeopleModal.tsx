@@ -143,7 +143,7 @@ export default function CombinePeopleModal({
 
         {bothHaveAccounts && (
           <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', border: '1px solid var(--text-red-700)', borderRadius: 6, padding: '0.5rem 0.7rem' }}>
-            Both people are linked to app accounts — merge the accounts first (Settings → Merge users), then combine.
+            Both people have a users row. Merge them from the desk instead: Status → Merge a duplicate… moves everything, the roster link too.
           </p>
         )}
 

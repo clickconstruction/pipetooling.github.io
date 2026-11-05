@@ -17,6 +17,7 @@ import { UsersRailHeader } from './UsersTabStatusColumn'
 import { PeopleHoursApprovalsQueueModal } from './PeopleHoursApprovalsQueueModal'
 import { ClockSessionEditSplitModal } from '../ClockSessionEditSplitModal'
 import type { ClockSessionRow } from '../../types/clockSessions'
+import { rosterStrayCount, rosterStrayWords } from '../../lib/people/rosterStrays'
 import { USERS_TAB_FILTERS, describeGroupCount, foldNoLoginRows, orderUsersTabRows, rowMatchesFilter, type UsersTabFilter, applyRowNeeds } from '../../lib/people/usersTabRows'
 import { UsersTabRow, type UsersTabRowMenuAction } from './UsersTabRow'
 import { UsersTabPhoneRow } from './UsersTabPhoneRow'
@@ -200,6 +201,8 @@ export function PeopleUsersTab({
     }
   }
   const archivedCount = archivedPeople.length + archivedLogins.length
+  // Punch list #265: the roster records the backfill left for the desk (a users row carries their name).
+  const strayWords = rosterStrayWords(rosterStrayCount(people))
   const lens: UsersTabLens = resolveUsersTabLens(searchParams.get('lens'), { canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport })
   const lensChoices = usersTabLensesFor({ canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport })
   function setLens(next: UsersTabLens) {
@@ -740,6 +743,14 @@ export function PeopleUsersTab({
             </button>
           ) : null}
         </div>
+        {strayWords ? (
+          <p data-testid="roster-strays" style={{ margin: '0.45rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            {strayWords}{' '}
+            <button type="button" onClick={() => setFilter('nologin')} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontFamily: 'inherit', fontSize: 'inherit' }}>
+              Show them
+            </button>
+          </p>
+        ) : null}
         <div role="group" aria-label="Filter people" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.45rem' }}>
           {USERS_TAB_FILTERS.map((f) => (
             <button
