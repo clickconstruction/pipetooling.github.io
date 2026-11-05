@@ -491,6 +491,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 **Two-party forms** (v2.2802): `complete-contract-form-office` lets dev · master_technician · assistant · controller fill a form's `party: 'office'` boxes on the filed PDF and flatten it (the I-9's Section 2), provided the row is readable under their own RLS. The signer never sees office boxes; `office_values` stores only non-sensitive office answers.
 
 ### Contract documents: type/expiry/identity columns (v2.1213, `20260801200000_contract_doc_types_expiry.sql`)
+- **The material location report** (v2.6533, punch list #268): the Development page's Jobs & bids look offers **Print the material location report** to the office door alone (`developmentDoorFor`, the roles with a `jobs_ledger` read). The window reads `job_places`, `job_containers` and `job_material_movements` over the site's job ids under the tables' own gate, `on_site_can_touch_job(job_id)` (→ *Materials on site*), so a job the reader may not touch returns no row and prints nothing; an estimator, who comes in the overview door with no `jobs_ledger` read, never sees the press. No new policy, no RPC.
 - `person_contract_documents` gains `doc_type` (agreement|coi|w9|license|other, default agreement), `expires_at`, and `person_id` (FK `people`, resolver backfill + `contract_docs_set_person_id` trigger). **No RLS changes** — column-additive; existing contract-document policies govern who sees the new compliance fields.
 
 ### claim-dev is break-glass only (v2.706, `20260717150000_claim_dev_break_glass.sql`)
