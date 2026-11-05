@@ -20,7 +20,18 @@ const db = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
 type RecordRow = Omit<PersonEvidenceRecord, 'files'>
 
 const RECORD_COLUMNS = 'id, person_id, entry_id, dated_on, title, memo, created_by, author_label, created_at, drive_folder_id, drive_folder_url, filed_at, fail_why'
-const FILE_COLUMNS = 'id, evidence_id, entry_id, filename, mime_type, size_bytes, storage_path, drive_file_id, drive_url, filed_at, fail_why, created_at'
+const FILE_COLUMNS = 'id, evidence_id, entry_id, filename, mime_type, size_bytes, storage_path, drive_file_id, drive_url, filed_at, fail_why, created_at, sha256'
+const FILE_COLUMNS_BEFORE_HASH = 'id, evidence_id, entry_id, filename, mime_type, size_bytes, storage_path, drive_file_id, drive_url, filed_at, fail_why, created_at'
+
+/** The digest of the bytes as picked (v2.6544), lower-case hex. */
+async function sha256HexOf(file: File): Promise<string | null> {
+  try {
+    const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer())
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+  } catch {
+    return null
+  }
+}
 
 export type PersonEvidenceLoad = { records: PersonEvidenceRecord[]; /** Why the table could not be read, or null; a missing table reads as no records. */ heldWhy: string | null }
 
@@ -33,7 +44,11 @@ export async function loadPersonEvidence(personId: string): Promise<PersonEviden
   }
   const rows = (res.data ?? []) as unknown as RecordRow[]
   if (rows.length === 0) return { records: [], heldWhy: null }
-  const filesRes = await db.from('person_file_attachments').select(FILE_COLUMNS).in('evidence_id', rows.map((r) => r.id))
+  type FilesRes = { data: unknown[] | null; error: { code?: string; message: string } | null }
+  const readFiles = async (columns: string): Promise<FilesRes> => (await db.from('person_file_attachments').select(columns).in('evidence_id', rows.map((r) => r.id))) as unknown as FilesRes
+  let filesRes = await readFiles(FILE_COLUMNS)
+  // Before the sha256 column is pushed (42703), the files read without it.
+  if (filesRes.error && filesRes.error.code === '42703') filesRes = await readFiles(FILE_COLUMNS_BEFORE_HASH)
   const files = (filesRes.error ? [] : ((filesRes.data ?? []) as unknown as PersonEvidenceFile[]))
   const byRecord = new Map<string, PersonEvidenceFile[]>()
   for (const f of files) {
@@ -87,7 +102,8 @@ export async function savePersonEvidence(args: SaveEvidenceArgs): Promise<SaveEv
       failures.push(`${file.name}: ${up.error.message}`)
       continue
     }
-    const row = await db.from('person_file_attachments').insert({
+    const sha256 = await sha256HexOf(file)
+    let row = await db.from('person_file_attachments').insert({
       id: fileId,
       person_id: personId,
       entry_id: entryId,
@@ -96,8 +112,13 @@ export async function savePersonEvidence(args: SaveEvidenceArgs): Promise<SaveEv
       filename: file.name,
       mime_type: mime,
       size_bytes: file.size,
+      ...(sha256 ? { sha256 } : {}),
       uploaded_by: authUserId,
     })
+    // Before the sha256 column is pushed, the row is written without it.
+    if (row.error && sha256 && /sha256/.test(row.error.message)) {
+      row = await db.from('person_file_attachments').insert({ id: fileId, person_id: personId, entry_id: entryId, evidence_id: recordId, storage_path: path, filename: file.name, mime_type: mime, size_bytes: file.size, uploaded_by: authUserId })
+    }
     if (row.error) {
       failures.push(`${file.name}: ${row.error.message}`)
       continue

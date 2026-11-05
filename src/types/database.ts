@@ -27756,8 +27756,9 @@ export type Database = {
           id: string
           mime_type: string | null
           person_id: string
+          sha256: string | null
           size_bytes: number | null
-          storage_path: string
+          storage_path: string | null
           uploaded_by: string | null
         }
         Insert: {
@@ -27773,8 +27774,9 @@ export type Database = {
           id?: string
           mime_type?: string | null
           person_id: string
+          sha256?: string | null
           size_bytes?: number | null
-          storage_path: string
+          storage_path?: string | null
           uploaded_by?: string | null
         }
         Update: {
@@ -27790,8 +27792,9 @@ export type Database = {
           id?: string
           mime_type?: string | null
           person_id?: string
+          sha256?: string | null
           size_bytes?: number | null
-          storage_path?: string
+          storage_path?: string | null
           uploaded_by?: string | null
         }
         Relationships: [
