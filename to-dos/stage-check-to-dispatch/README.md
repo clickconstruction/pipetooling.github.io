@@ -12,7 +12,7 @@ summary: >
   or change the check for that job. It rides the dispatch_requests rail the app already has, as a
   structured request, so the inbox, the push, the thread, the priority card and Questions on this
   job all carry it for free.
-next: PR 3, the marks: #246's door is on main. Then the live walk of PR 2 on the ZZ job once the owner says yes.
+next: PR 3, the marks: #246's door is on main and PR 2's live walk passed on the ZZ job 2026-11-04.
 size: M as a train of three (S · M · S); one migration (two columns on dispatch_requests); no edge function beyond the push that already sends
 blocker: none. Call 1 (the reason set) and call 2 (who may close) take the recommendations below as defaults.
 ver: v2.6360 · 6462 · 6466 · 6494 · 6495 · 6328 · 6347 · 6052 · 6214 · 3246 · 6087 · 6084

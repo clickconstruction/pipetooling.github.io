@@ -10,7 +10,7 @@ covers:
   - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 ---
 
 ## Overview
@@ -226,7 +226,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 - **What moved:** the entire inline estimator engine was **deleted and replaced by the existing [`useEstimatorInbox`](../src/hooks/useEstimatorInbox.ts) hook** it duplicated (parity-checked; only channel names differed — `dashboard-estimator-*` vs `checklist-estimator-*`, never co-mounted). The two card JSX copies collapsed into the one component. The card owns `dispatchRequestsOpen`/`estimatorRequestsOpen`.
 - **What stayed in the parent:** both engines — `useDispatchInbox` 584 and `useEstimatorInbox` 594 (the dock + card gates read the eligibility flags; `DispatchDismissedItemsModal` needs `fetchDismissedDispatchInboxRows`; `dispatchAged` 587–593 feeds the Needs You card). `dispatchDismissedModalOpen` 573 + `DispatchDismissedItemsModal` 1531–1537 and `tripChargeTarget` 574 + `CreateTripChargeModal` 1538–1547 (rendered once; `onCreated` → `refreshInvoicesRef.current()`).
 - **Supabase / realtime (estimator, via the hook):** `estimator_group_members`, `estimator_requests`, `estimator_request_dismissals`, `estimator_request_notes`, RPC `estimator_inbox_note_stats`; realtime `checklist-estimator-requests` + `checklist-estimator-request-notes`.
-- **Sub-components:** `DispatchInboxSection`, `EstimatorInboxSection`, `HelpFeedbackInboxSection` (dev-only) inside the card; the two modals parent-side.
+- **Sub-components:** `DispatchInboxSection`, `EstimatorInboxSection`, `HelpFeedbackInboxSection` (dev-only) inside the card; the two modals parent-side. `DispatchInboxSection` draws a stage check's row with its *Stage check* tag and two doors (v2.6360) and, since v2.6495, opens `StageCheckWindow` on the row's press (the Glossary's **Stage check (to Dispatch)**).
 - **Tests:** `dispatchInboxAging` 7; no smoke; the two inbox hooks are untested.
 
 ### 8. Billing Pipeline (field collect queue + Ready to Bill + Billed Waiting for Payment)

@@ -2,7 +2,7 @@
 name: "Search every file deeply: our own index, OCR and meaning, backfilled once by an agent"
 number: 240
 group: close
-status: built 2026-11-03 · PR 1 v2.6319 (#6773: the index, the sweep, Find a file reading it first) · PR 2 v2.6332 (#6809: the dev seat's door, a read inside the platform's limits) · PR 3 v2.6336 (#6894: OCR behind a secret) · PR 4 v2.6338 (#6920: search by meaning behind a key) · PR 5 v2.6417 (#6899: the sweep's reconcile step, live 2026-11-03) · with v2.6369 (the index's hits at once), v2.6396 (no twin reads a file's words) and v2.6408 (a 12 MB cap after a memory kill) · the walk, the fill and the one retry ran: 4,573 rows, 2,002 with their words, every Shared Drive file with a row · left: the owner's two secrets
+status: built 2026-11-03 · PR 1 v2.6319 (#6773: the index, the sweep, Find a file reading it first) · PR 2 v2.6332 (#6809: the dev seat's door, a read inside the platform's limits) · PR 3 v2.6336 (#6894: OCR behind a secret) · PR 4 v2.6338 (#6920: search by meaning behind a key) · PR 5 v2.6417 (#6899: the sweep's reconcile step, live 2026-11-03) · with v2.6369 (the index's hits at once), v2.6396 (no twin reads a file's words), v2.6408 (a 12 MB cap after a memory kill), v2.6488 (#7004: one refused OCR token no longer stops a pass) and v2.6491 (#7008: the review's four fixes — a chunk write fenced on the index stamp, the embedding queue through `file_index_embed_due`, a scan queued by its name and read on one download, held rows retaken an hour on) · the walk, the fill and the one retry ran: 4,573 rows, 2,002 with their words, every Shared Drive file with a row · left: the owner's two secrets
 summary: >
   Find a file (Documents → Search, v2.6305) asks Drive's own full-text index and lands each hit on its job; PR #6752
   adds the line around the words. That finds a file by words Google has indexed, and nothing more. The owner wants
@@ -13,7 +13,7 @@ summary: >
 next: the owner sets `GOOGLE_DOCAI_PROCESSOR` and `GEMINI_API_KEY` (`docs/DRIVE_INTAKE_SETUP.md` → Our own OCR, Search by meaning); nothing redeploys, both are read at call time, and the sweep then reads five waiting scans and embeds ten files a run by itself; `drive-link`'s `ocr_probe` and `embed_probe`, called as a dev, say it took; tune `max_distance` from the first days' hits by meaning
 size: L
 blocker: the two secrets are the owner's. New files in a bid's folder outside the Shared Drive wait on decision 4. PDFs over 12 MB stay `big`, found by Drive's search, unless a heavier reader is built later.
-ver: v2.6319 · 6332 · 6336 · 6338 · 6343 · 6364 · 6369 · 6396 · 6403 · 6408 · 6417
+ver: v2.6319 · 6332 · 6336 · 6338 · 6343 · 6364 · 6369 · 6396 · 6403 · 6408 · 6417 · 6488 · 6491
 opinion: your call — the code is done and deployed; the two secrets are yours, and each turns its part on with no redeploy
 mockup: not required — the box is the shipped Find a file; the index changes what it finds and how fast, not the screen, and PR #6752 already draws the excerpt line the index will feed
 ---

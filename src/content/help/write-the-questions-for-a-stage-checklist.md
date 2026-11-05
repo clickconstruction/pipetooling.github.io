@@ -33,7 +33,7 @@ The crew opens a stage's checklist from Job Mode or the job window. They pick Ye
 
 A stage reads **not ready** on the Pipeline until every question is answered. One question left is enough to hold it. A stage kind with no questions has no checklist. It reads as it does today.
 
-A question you take off stays on the answers the crew already gave. The crew sees the new list on the next stage they open.
+A question you take off stays on the answers the crew already gave. The crew sees the new list on the next stage they open. A check the crew sent to Dispatch on that question closes by itself.
 
 ## A check for one job alone
 

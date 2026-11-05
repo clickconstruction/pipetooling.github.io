@@ -42,7 +42,7 @@ Every row has a **Status**. It is {{chip:green|Active}} with *last worked &lt;da
 Bench a sub who moved, went quiet, or you've paused for now — anyone who might come back. Archive a sub who is gone for good; archived sheets fold into a quiet summary line instead of a row.
 :::
 
-People → Users is only for login accounts. A roster-only sub with no login is fine. Their portal link works without one.
+People → Users lists every sub, with or without a login. A sub with no login is fine. Their portal link works without one.
 
 ## 3 · Offer work: a project step's Sub work order panel
 

@@ -5,7 +5,7 @@ file: SALARY_CLOCK_SESSIONS.md
 type: Runbook / Reference
 purpose: Salaried auto-session sync behavior (salary_sync_one_user_clock_sessions)
 audience: Developers, Operators
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 ---
 
 > **Audience**: Developers and operators changing pay, My Time, or salary Settings.  
@@ -84,7 +84,7 @@ off) from **People → Employment**; see `src/components/people/PeopleEmployment
 
 | Column | Meaning |
 |--------|---------|
-| `origin` | `user_punch` — hand clock-in/out. `salary_schedule` — created/updated only by sync (and split/replace RPCs for continuous parents). `imported` — a day the app never recorded, written by a dev through `import_clock_sessions` (v2.6425, `docs/ACCESS_CONTROL.md`), unapproved until the normal door approves it. A dev's agent adjusts any session's start, end, note, job or approval through `dev_clock_session_write` (v2.6437, `docs/dev-mcp/README.md`), under the same triggers. **RLS**: client INSERT must be `user_punch`. |
+| `origin` | `user_punch` — hand clock-in/out. `salary_schedule` — created/updated only by sync (and split/replace RPCs for continuous parents). `imported` — a day the app never recorded, written by a dev through `import_clock_sessions` (v2.6425, `docs/ACCESS_CONTROL.md`; from the desk's Hours section since v2.6531, *Import days…*, `docs/PEOPLE_TABS_ARCHITECTURE.md`), unapproved until the normal door approves it. A dev's agent adjusts any session's start, end, note, job or approval through `dev_clock_session_write` (v2.6437, `docs/dev-mcp/README.md`), under the same triggers. **RLS**: client INSERT must be `user_punch`. |
 | `salary_segment_index` | **`NULL`** — one **continuous** canonical row for the day. **`1` / `2`** — **split-template** canonical slots only. Splitting **that** **`NULL`**-index row in My Time can yield **additional** indexed **`salary_schedule`** rows (**`salary_segment_index`** **`1..N`**, same `origin`). Splitting **indexed slot 1 or 2** turns children into **`user_punch`** with **`NULL`** index (see [Split RPCs](#split--cluster-rpcs)). |
 
 Partial unique indexes enforce one continuous row per user/day and one row per (user, day, segment index) for split mode (`20270331140000`).

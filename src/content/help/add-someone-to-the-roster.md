@@ -21,7 +21,7 @@ Every row reads the same way, left to right:
 - On a phone the same facts fold into two controls. One is the clock counter. The other is a {{chip:yellow|Needs you · 2}} pill or **Clear**. Tap the pill and the row unfolds one line per item. Each line has a button that opens the right desk section. The buttons are {{button:blue|Send ›}}, {{button:blue|Create roster row ›}}, {{button:outline|How to enable ›}}.
 - The **⋯** menu holds Open desk, Edit, Link account, Combine and Archive, depending on the row. A dev also sees **Invite as user** on a row with no login.
 
-Groups are still by kind. Each header says how many have a login, for example *Subcontractors 16 · 2 with a login*. Long groups fold the roster-only rows behind **+ N more without a login**. Searching or the **No login** filter opens every fold.
+Groups are still by kind. Each header says how many have a login, for example *Subcontractors 16 · 2 with a login*. Long groups fold the rows with no login behind **+ N more without a login**. Searching or the **No login** filter opens every fold.
 
 ## Add someone
 

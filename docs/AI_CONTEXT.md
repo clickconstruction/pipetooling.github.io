@@ -70,7 +70,7 @@ Customer
 
 ### Backend
 - Supabase: PostgreSQL 17 + RLS, Auth, Edge Functions (Deno), some Realtime
-- ~590 tables; ~178 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
+- ~590 tables; ~179 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
 - Linked prod project: `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"); **no staging** — migrations hit prod
 
 ### Deployment (four separate tracks — see `../CLAUDE.md`)
@@ -302,4 +302,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-11-02
+last_updated: 2026-11-05

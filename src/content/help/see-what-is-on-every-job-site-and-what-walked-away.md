@@ -49,6 +49,8 @@ Each box prints on its own Letter page in large plain type. The page carries the
 
 Laminate the page and hang it on the box in a document holder. The manifest is a plain print and files no copy. When someone writes a line on it, press the same thing in the app so the count stays true.
 
+For every cage and box across a development, print the [material location report](/help/print-the-material-location-report) from the Development page.
+
 ## Bring back a retired box
 
 A job's container list ends with a fold named Retired. Open it to see every cage or box retired on the job, with the day it left. Press **Bring back G4** and the box is live again. Its QR label works as before, and nothing in its history changes.

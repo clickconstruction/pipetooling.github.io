@@ -11,7 +11,7 @@ The roster row without a login shows a {{chip:gray|no login}} chip on People →
 
 ## Linking the two rows
 
-1. Go to **People → Users**. Tap the **No login** filter, or find their row. Long groups fold behind *+ N more without a login*. Open the row's **⋯** menu.
+1. Go to **People → Users**. Tap the **No login** filter, or find their row. Long groups fold behind *+ N more without a login*. A line above the filter chips counts the roster records with no users row yet. Tap **Show them** on that line to see them. Open the row's **⋯** menu.
 2. On the person's row, click {{button:outline|Link account}}.
 3. Pick their account from the list. It only offers accounts with the matching role that are not already linked to someone else.
 4. Click {{button:blue|Link}}.

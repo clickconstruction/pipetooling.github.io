@@ -360,6 +360,8 @@ job's Drive folders, and the waiting box photo files on the sweep's next run. Th
 
 **Bring back a retired box** (v2.6406, 2026-11-03, the owner's question that night): retiring only ever set `retired_at`, and nothing cleared it. Now the phone's *G4 retired.* toast carries **Undo** for a minute, and the office list ends with a *Retired · N* fold whose rows offer **Bring back G4**, or the reason when a live box on the job took the stencil (`lib/materials/unretire.ts`). No migration; the ledger is untouched either way.
 
+**The material location report** (v2.6533, 2026-11-04, punch list #268, its own card `to-dos/material-location-report/`): **Print the material location report** on the Development page's Jobs & bids look prints every cage and box across the site's jobs on one Letter paper, by job or by location, from the same three tables read chunked over the site's job ids (`lib/materials/siteMaterialsReport.ts`). It raised one question for this card: a place is a row of one job, so the by-location view folds the same place name on two jobs by name alone.
+
 **Left, each one small PR** (the fragments' own lists):
 
 - prices from the parts book for the missing money, with its checked date (call 5), instead of the
@@ -373,7 +375,8 @@ job's Drive folders, and the waiting box photo files on the sweep's next run. Th
   bucket copy is gone;
 - the real-phone checks: the camera scan of a printed label and the share sheet on iPhone and
   Android;
-- a sent-copy record of the manifest if the week of use asks for it.
+- a sent-copy record of the manifest if the week of use asks for it;
+- a site-wide place that is not a row of one job, so the material location report's by-location fold (#268) stops guessing by name.
 
 **V2 and V3** stay as drawn, less the photo on a count, which shipped first. The jobs root and the
 name of a job's folder, which the live test raised, are #211 (`where-files-go/`).

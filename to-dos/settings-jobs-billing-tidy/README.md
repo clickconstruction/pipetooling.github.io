@@ -16,8 +16,8 @@ summary: >
   the fold presses start counting.
 next: The owner's look at the tab with the headings on, and his word on the seven calls. Then PR 2 if any card leaves the tab.
 size: S (the card) + M (PR 1: the groups kernel, the fold wrapper, the anchors and doors, the strip, the smoke, the docs and guides) + S (PR 2, three cards to other tabs, if wanted)
-blocker: Nothing in the code. The calls below have recommendations; PR 1 takes them.
-ver: proposed
+blocker: Nothing in the code. The calls below have recommendations; PR 1 (v2.6516) took them.
+ver: v2.6516 (PR 1)
 opinion: build — the tab is the company's money and paper settings, the office cannot find a card without reading all 28, and the fix is headings, a fold shape and anchors, nothing that changes what a card does
 mockup: to-dos/settings-jobs-billing-tidy/mockup.html
 ---
