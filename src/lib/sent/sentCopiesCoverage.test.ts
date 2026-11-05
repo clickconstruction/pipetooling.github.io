@@ -49,6 +49,7 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'components/jobs/JobsWeeklyMoneyModal.tsx': 'our own money report',
   'components/jobs/JobsWeeklyMovementModal.tsx': 'our own movement report',
   'components/jobs/JobCostsTabCharts.tsx': 'our own cost report, the Costs tab on paper: it holds wages and margin',
+  'pages/DevelopmentPage.tsx': 'our own cost report, the Scoreboard on paper (v2.6534): it holds wages, overhead and margin for every job on the site, for a dev or a controller alone',
   'components/developments/DevelopmentTimeline.tsx': 'our own cost report, the Development page’s Timeline on paper (punch list #257, v2.6499): it holds wages, overhead and the cash position, for a dev or a controller alone',
   'components/charges/StatementsOfChargesSection.tsx': 'the office copy of a saved Statement of charges printed again from its snapshot (punch list #254): it holds the premium and the shortfall, our own report; the customer copy is filed where the window prints it',
   'lib/people/hoursStatementPrint.ts': 'the signed hours statement printed to be signed with a pen (punch list #212, PR 2): it holds wages, and the copy that goes to the worker is filed where it is sent for signature, from PR 3',

@@ -43,6 +43,8 @@ import { DevelopmentMoney } from '../components/developments/DevelopmentMoney'
 import { DevelopmentScoreboard } from '../components/developments/DevelopmentScoreboard'
 import { DevelopmentTimeline, type SiteTimelineViewRead } from '../components/developments/DevelopmentTimeline'
 import { assembleSiteTimelineJobs, overheadSinceWords } from '../lib/developments/siteTimeline'
+import { buildCostSummary, costSummaryPrintHtml } from '../lib/developments/costSummaryPrint'
+import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
 import { OVERHEAD_POOL_FIRST_YMD } from '../lib/jobs/overheadAllocation'
 import { useSiteTimeline } from '../hooks/useSiteTimeline'
 import { useSiteValueEvents } from '../hooks/useSiteValueEvents'
@@ -112,6 +114,8 @@ export default function DevelopmentPage() {
     writeMoneyView(developmentId, view)
   }
   const [scoreSort, setScoreSort] = useState<ScoreboardSort>(SCOREBOARD_DEFAULT_SORT)
+  // The cost summary print's note (v2.6534): the costs still reading, or the window blocked.
+  const [costPrintNote, setCostPrintNote] = useState<string | null>(null)
   const [moneyFolds, setMoneyFolds] = useState<ReadonlySet<string>>(() => readFolds(developmentId, 'money'))
   const [lookFolds, setLookFolds] = useState<ReadonlySet<string>>(() => readFolds(developmentId, 'looks'))
   const setMoneySortMode = (mode: MoneySortMode) => {
@@ -927,6 +931,32 @@ export default function DevelopmentPage() {
         .filter(Boolean)
         .join(' · ') || null,
   }
+  // The cost summary print (v2.6534): the board's figures and the rows behind them, on paper, the way the Timeline prints.
+  const printCostSummary = () => {
+    if (costsByJobId?.state !== 'read' || !costsByJobId.rows) {
+      setCostPrintNote(costsByJobId?.state === 'failed' ? `The costs did not read, so there is nothing to print: ${costsByJobId.reason ?? 'the site’s costs did not read'}` : 'The costs are still reading. Press again once the board is in.')
+      return
+    }
+    const html = costSummaryPrintHtml(
+      buildCostSummary({
+        model: scoreboard,
+        costs: costsByJobId,
+        labor: laborRead,
+        overhead: overheadRead,
+        head: {
+          siteName: dev.name,
+          line: scoreboardHead.line,
+          small: scoreboardHead.small,
+          printedAt: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
+          printedBy: profileName ?? null,
+        },
+        jobLabelOf: labelOfJobId,
+        toYmd: calendarYmdInAppTzFromIso,
+        overheadSince: overheadRead.state === 'read' ? overheadSinceWords(OVERHEAD_POOL_FIRST_YMD) : null,
+      }),
+    )
+    setCostPrintNote(openHtmlPrintWindow(html) ? null : 'The print window was blocked. Allow pop-ups for this site and press again.')
+  }
   // The fifth tile earns its place (the Gun Dog spike, 2026-11-02): with no bill open it says what is not yet billed.
   const unbilled = moneyShown ? unbilledTileWords(siteMoney, counts.openOnBillsUsd, money) : null
 
@@ -1378,6 +1408,7 @@ export default function DevelopmentPage() {
           >
             {moneyViewShown === 'scoreboard' ? (
               <DevelopmentScoreboard model={scoreboard} columns={scoreboardColumnsFor(canSeeSiteCosts(role), laborRead?.state !== 'read' || laborRead.labor.daysKnown)} phone={phone} onSort={(k) => setScoreSort((s) => nextScoreboardSort(s, k))} openJob={openJob} head={scoreboardHead}
+                print={canSeeSiteCosts(role) ? { onPress: printCostSummary, note: costPrintNote } : null}
                 membersOf={(r) =>
                   scoreboardMembers({
                     jobId: r.jobId,
