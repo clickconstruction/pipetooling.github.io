@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The material location report · mock-up · punch list #268</title>
+<style>
+  /* Punch list #268 (2026-11-04). Every site, job, place, stencil, part, count, person and day on this page is made up. */
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-amber-800: #92400e; --text-red-700: #b91c1c;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  h3 { font-size: 15px; margin: 22px 0 6px; color: var(--text-strong); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 92ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; display: block; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .caption { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; }
+  table.map { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  table.map th, table.map td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.map th { font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); background: var(--bg-subtle); }
+  table.map td:first-child { color: var(--text-strong); font-weight: 600; white-space: nowrap; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
+
+  /* ---- the paper: Letter, half-inch margins, 7.5 × 10 in printable ---- */
+  .sheet { width: 100%; max-width: 8.5in; min-height: 11in; padding: 0.5in 0.5in 0.6in; margin: 10px auto 16px; background: #ffffff; color: #111111; box-shadow: 0 2px 10px rgba(0,0,0,.12); font: 11.5px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; position: relative; }
+  .sheet .foot { position: absolute; left: 0.5in; right: 0.5in; bottom: 0.25in; display: flex; justify-content: space-between; gap: 12px; font-size: 8.5px; color: #555555; border-top: 1px solid #dddddd; padding-top: 4px; }
+  .p-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; border-bottom: 2px solid #111111; padding-bottom: 8px; }
+  .p-head .eye { font-size: 9.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #333333; margin: 0 0 2px; }
+  .p-head h1 { font-size: 22px; margin: 0; line-height: 1.1; color: #111111; }
+  .p-head .sub { font-size: 11.5px; color: #333333; margin-top: 3px; }
+  .p-head .right { text-align: right; font-size: 10.5px; color: #333333; line-height: 1.45; white-space: nowrap; }
+  .p-head .right b { color: #111111; }
+  .counts { font-size: 10.5px; color: #333333; margin: 6px 0 2px; }
+  .job { margin-top: 14px; }
+  .job-head { border-bottom: 1.5px solid #111111; padding: 3px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; break-after: avoid; page-break-after: avoid; }
+  .job-head b { font-size: 14px; color: #111111; }
+  .job-head span { font-size: 10px; color: #555555; }
+  .place { margin-top: 7px; }
+  .place-head { font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #333333; margin: 6px 0 2px; break-after: avoid; page-break-after: avoid; }
+  .box { border: 1px solid #bbbbbb; border-radius: 4px; margin: 4px 0 6px; break-inside: avoid; page-break-inside: avoid; }
+  .box-head { display: flex; justify-content: space-between; gap: 10px; padding: 3px 7px; background: #f3f3f3; border-bottom: 1px solid #dddddd; font-size: 11px; }
+  .box-head b { font-size: 12.5px; letter-spacing: .02em; }
+  .box-head .code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 9.5px; color: #555555; }
+  .box-head .job-of { color: #333333; }
+  table.lines { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.lines th { text-align: left; font-size: 8.5px; letter-spacing: .05em; text-transform: uppercase; color: #555555; padding: 2px 7px; border-bottom: 1px solid #dddddd; }
+  table.lines td { padding: 2.5px 7px; border-bottom: 1px solid #eeeeee; vertical-align: top; }
+  table.lines tr:last-child td { border-bottom: 0; }
+  table.lines .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 700; }
+  table.lines .u { color: #555555; white-space: nowrap; }
+  table.lines .w { color: #333333; white-space: nowrap; }
+  table.lines .mk { color: #555555; }
+  table.lines td.empty { color: #555555; font-style: italic; }
+  thead { display: table-header-group; }
+  .nothing { margin-top: 14px; border-top: 1.5px solid #111111; padding-top: 4px; break-inside: avoid; page-break-inside: avoid; }
+  .nothing b.h { font-size: 12.5px; display: block; margin-bottom: 3px; }
+  .nothing div { padding: 1.5px 0; border-bottom: 1px solid #eeeeee; font-size: 11px; }
+  .nothing div:last-child { border-bottom: 0; }
+  .nothing .j { font-weight: 700; }
+  .empty-site { margin: 24px 0; padding: 14px; border: 1px dashed #bbbbbb; border-radius: 6px; font-size: 12px; color: #333333; }
+
+  /* ---- the app's chrome, as the Development page draws it ---- */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .card-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .card-head .t { font-weight: 700; font-size: 15px; color: var(--text-strong); }
+  .card-head .t small { font-weight: 400; color: var(--text-muted); font-size: 12px; margin-left: 8px; }
+  .card-head .m { font-size: 12px; color: var(--text-muted); width: 100%; }
+  .card-head .r { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.quiet { border: 0; background: none; color: var(--text-link); padding: 0; }
+  .link { color: var(--text-link); font-size: 13px; text-decoration: none; }
+  .card-body { padding: 10px 14px; color: var(--text-700); font-size: 13px; }
+  .strip { display: flex; gap: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); margin-bottom: 12px; flex-wrap: wrap; }
+  .strip .ch { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); font-size: 12.5px; color: var(--text-700); background: var(--bg-subtle); }
+  .strip .ch .o { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--text-strong); font-size: 10px; font-weight: 700; color: var(--text-strong); }
+  .strip .ch.on .o { background: var(--text-strong); color: #fff; }
+  .strip .ch.new { border-color: var(--border-amber); background: var(--bg-amber-tint); }
+  .strip .ch .c { font-weight: 700; color: var(--text-strong); }
+  .screen-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .screen-table th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .screen-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); }
+  .screen-table td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .screen-table tr.g td { background: var(--bg-subtle); font-weight: 700; color: var(--text-strong); }
+  .modal { background: rgba(0,0,0,.5); padding: 18px; border-radius: 12px; }
+  .modal .dlg { background: var(--surface); border-radius: 10px; padding: 12px 16px; max-width: 760px; margin: 0 auto; }
+  .modal .dlg .h { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .modal .dlg .h b { font-size: 15px; color: var(--text-strong); }
+  .modal .dlg .h span { font-size: 12px; color: var(--text-muted); width: 100%; }
+  .modal .sheet { box-shadow: none; border: 1px solid var(--border); margin: 0; min-height: 0; max-width: none; }
+  .phone { width: 375px; border: 10px solid #1f2937; border-radius: 30px; background: var(--bg-page); padding: 10px; margin: 0 auto; }
+  .phone .card-head .r { width: 100%; margin-left: 0; }
+  .phone .btn { font-size: 12px; }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .wrap > *:not(.printme) { display: none !important; }
+    .sheet { box-shadow: none; margin: 0; padding: 0; min-height: 0; max-width: none; }
+    .sheet .foot { display: none; }
+    @page { size: letter; margin: 0.5in 0.5in 0.6in; @bottom-left { content: "Read from the Materials on site ledger, every press on the phone and in the office summed to what is on hand. Printed November 4, 2026 by Dana Example."; font: 8px -apple-system, "Segoe UI", system-ui, sans-serif; color: #555555; } @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8px -apple-system, "Segoe UI", system-ui, sans-serif; color: #555555; } }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #268 · mock-up · 2026-11-04</p>
+    <h1>The material location report: what is at every location across a development, printed to PDF</h1>
+  </div>
+  <div class="stamp">Materials on site (#209) read whole<br>the Development page's door<br>made-up data: Harlow Ranch</div>
+</header>
+
+<div class="ask">
+  <div class="k">The ask, the owner, 2026-11-04</div>
+  <q>I am looking at the gun dog development and I would like the ability to print a report that shows what materials are at all the different locations And we would call this the material location report. … It needs to be able to be printed to pdf.</q>
+</div>
+
+<p class="lede" style="margin-top:14px">The facts already exist: every job's places, its stencilled cages and boxes, and the ledger of presses that sums to what is on hand in each. The report folds a whole development's jobs into one Letter paper. Both papers below are drawn from <b>one set of made-up rows</b> by the script at the foot of this page, the way the kernel will fold them, so the two groupings differ in order alone. Print this page (⌘P) to see the first paper break across real sheets.</p>
+
+<h2>The paper, grouping A <span class="tag rec">recommended</span> by job, then place, then cage or box</h2>
+<p class="lede">The job's section, its places in name order, each cage or box under its place with its lines on hand, the job's <b>Unsorted</b> pile after the places, the boxes with <b>no place yet</b> last. The jobs with nothing on site close the paper in one block, a line each, so the material reads first. A cage or box and its lines never split across a page; a job's head and a place's head stay with the first block under them.</p>
+<div class="printme" id="paperA"></div>
+
+<h2>The paper, grouping B <span class="tag">the other way</span> by location across jobs</h2>
+<p class="lede">One section per place name, folded across jobs (two jobs each have an <b>Arena</b>), each job's cages and boxes under it with the job named on every box. It answers <i>what is at the Arena</i> in one place. But a place is a row of one job, so the same name on two jobs is only probably the same spot; the Unsorted piles and the boxes with no place sit in sections of their own; and a job's share is scattered through the paper.</p>
+<div id="paperB"></div>
+
+<h2>The words when there is nothing</h2>
+<div class="two">
+  <div>
+    <h3>A job with no cages or boxes</h3>
+    <div class="sheet" style="min-height:0; padding:14px 18px">
+      <div class="nothing" style="margin-top:0; border-top:0; padding-top:0">
+        <b class="h">Nothing on site · 2 jobs</b>
+        <div><span class="j">J1051 · Water wells</span>: no cages or boxes on this job yet.</div>
+        <div><span class="j">J1053 · Septic field</span>: S1 at Field edge is empty. Nothing on site.</div>
+      </div>
+    </div>
+    <p class="caption">A job with no places and no boxes says so in one line. A job whose boxes are all empty names them, so the reader knows the box exists and is empty, not unrecorded.</p>
+  </div>
+  <div>
+    <h3>A site with nothing on it</h3>
+    <div class="sheet" style="min-height:0; padding:14px 18px">
+      <div class="p-head"><div><p class="eye">Material location report</p><h1>Harlow Ranch</h1><div class="sub">Ridgeway Builders · 4100 Harlow Ranch Rd, Blanco, TX</div></div><div class="right"><b>November 4, 2026</b><br>printed by Dana Example</div></div>
+      <div class="empty-site">Nothing on site yet. A job's Materials page is where a cage or box is added, and the crew's phone is where parts are counted into it.</div>
+    </div>
+    <p class="caption">Gun Dog today prints one job with a cage and a box, and 23 jobs in the closing block. A development with no box at all gets this one paragraph under the head.</p>
+  </div>
+</div>
+
+<h2>The door, way A <span class="tag rec">recommended</span> a press on the Jobs &amp; bids look</h2>
+<p class="lede"><b>Print the material location report</b> in the card's head, beside Pair bids with jobs. The press opens a window on the paper, read fresh from the site's jobs when pressed, with <b>Print</b> at its head and Close. The page gains no look and no read on open, and the press is the office door's alone (the same readers the materials gate admits).</p>
+<div class="card">
+  <div class="card-head">
+    <div class="t">Jobs &amp; bids <small>5 working or waiting · 2 archived · 17 paid · 1 likely pair</small></div>
+    <div class="r">
+      <button class="btn">Print the material location report</button>
+      <button class="btn primary">Pair bids with jobs</button>
+      <a class="link" href="#">Bid Board</a>
+      <a class="link" href="#">Pipeline</a>
+    </div>
+    <div class="m">each bid with the job it became · newest set Oct 30</div>
+  </div>
+  <div class="card-body">… the Jobs &amp; bids table as it is today …</div>
+</div>
+<p class="caption">The window it opens, with the paper inside it (grouping A), Print and Close:</p>
+<div class="modal">
+  <div class="dlg">
+    <div class="h"><b>Material location report · Harlow Ranch</b><span style="width:auto"></span><button class="btn primary">Print</button><button class="btn">Close</button><span>What is in every cage and box across the site's jobs, by job and place, as the ledger reads it today. Print, then Save as PDF in the print window.</span></div>
+    <div id="paperModal"></div>
+  </div>
+</div>
+
+<h2>The door, way B <span class="tag">the other way</span> a seventh look, Materials</h2>
+<p class="lede">The strip gains <b>Materials</b> with its chip (<i>7 boxes · 23 lines</i>), and the look draws the same table on screen with Print at its head. The whole site's ledger is then read with the page for every reader, the strip's six looks become seven on a phone's one row, and the table repeats Jobs → Materials, which already shows a job's boxes by place.</p>
+<div class="strip">
+  <span class="ch"><span class="o">1</span>History <span class="c">3 new</span></span>
+  <span class="ch"><span class="o">2</span>Jobs &amp; bids <span class="c">24</span></span>
+  <span class="ch"><span class="o">3</span>Money <span class="c">$1.2M</span></span>
+  <span class="ch"><span class="o">4</span>Plans <span class="c">2 sets</span></span>
+  <span class="ch"><span class="o">5</span>Questions <span class="c">1 waiting</span></span>
+  <span class="ch"><span class="o">6</span>Photos <span class="c">118</span></span>
+  <span class="ch on new"><span class="o">7</span>Materials <span class="c">7 boxes · 23 lines</span></span>
+</div>
+<div class="card">
+  <div class="card-head">
+    <div class="t">Materials <small>7 boxes · 23 lines on hand · 2 jobs with nothing</small></div>
+    <div class="r"><button class="btn">Print the material location report</button><a class="link" href="#">Materials desk</a></div>
+    <div class="m">what is in every cage and box across the site, by job and place</div>
+  </div>
+  <div class="card-body" id="screenTable"></div>
+</div>
+
+<h2>On a phone</h2>
+<p class="lede">The card's head wraps its presses onto a row of their own, as the Money look's chips do, so the press reads whole. The paper itself is the same Letter sheet: the phone's Print goes to Save as PDF, as it does for the manifest.</p>
+<div class="phone">
+  <div class="card">
+    <div class="card-head">
+      <div class="t">Jobs &amp; bids <small>5 working · 17 paid</small></div>
+      <div class="r"><button class="btn">Print the material location report</button><button class="btn primary">Pair bids with jobs</button></div>
+      <div class="m">each bid with the job it became</div>
+    </div>
+    <div class="card-body">…</div>
+  </div>
+</div>
+
+<h2>The calls</h2>
+<table class="map">
+  <thead><tr><th>Call</th><th>Recommended</th><th>The other way</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>Grouping</td><td>A. By job, then place, then cage or box</td><td>B. By location across jobs</td><td>The paper matches the screens, and a job's section can be handed to its crew. The kernel folds once; B can be a switch later.</td></tr>
+    <tr><td>Door</td><td>A. A press on the Jobs &amp; bids look</td><td>B. A seventh Materials look</td><td>No new read with the page, no seventh chip on the phone, no table that repeats Jobs → Materials.</td></tr>
+    <tr><td>Jobs with nothing on site</td><td>One closing block, a line each</td><td>A section per job</td><td>Gun Dog has 23 such jobs today; a section each would spend most of the paper on nothing.</td></tr>
+    <tr><td>Unsorted</td><td>Printed under its job after the places, when it holds anything</td><td>Left off</td><td>A delivered pallet nobody put away is material at a location, the laydown by the office; an empty Unsorted prints nothing.</td></tr>
+    <tr><td>An empty box</td><td>Prints with one line, <i>Empty</i></td><td>Left off</td><td>The box is accounted for: empty, not unrecorded.</td></tr>
+    <tr><td>Who may print</td><td>The office door of the page (the roles with a jobs_ledger read)</td><td>Everyone who opens the page</td><td>The materials gate answers an estimator with nothing, so the press would print an empty paper for them.</td></tr>
+    <tr><td>The unit</td><td>From the delivery that named it</td><td>Left off</td><td>The office's Deliveries writes the invoice's unit on the row; a part added on the phone has none, and the cell is blank.</td></tr>
+  </tbody>
+</table>
+
+<h2>Is this the best we can do?</h2>
+<div class="notes">
+  <div class="note k"><b>One fold, two papers</b>The kernel sums the ledger once (the same `containerLines` the phone and the office read) and the paper is a grouping of its lines. Nothing on the paper is typed; a self-check at the foot of this page proves the count line equals the rows drawn.</div>
+  <div class="note k"><b>Read when pressed, not with the page</b>Gun Dog's 24 jobs are four tables over the job ids, chunked and paged, four chunks at a time. The page's open costs nothing new.</div>
+  <div class="note a"><b>Pages break on blocks</b>A cage and its lines stay together; a job's or a place's head stays with its first block. A cage with more lines than a page (the yard's 98 cages are small, but one could grow) splits with its column heads repeated.</div>
+  <div class="note a"><b>The same name on two jobs</b>Two jobs can each have an <i>Arena</i>. Grouping A keeps them under their jobs; grouping B folds them by name, which is a guess. A site-wide place is a later question for #209.</div>
+  <div class="note x"><b>Not in this PR</b>A filter to one job or one place (Jobs → Materials prints a job's manifests already), a sent copy of the paper, a column for the money.</div>
+</div>
+
+<p class="caption" id="selfcheck" style="margin-top:28px"></p>
+
+</div>
+
+<script>
+// Made-up rows, in the kernel's shapes. Nothing here is a real site, job, person or part.
+const SITE = { name: 'Harlow Ranch', customer: 'Ridgeway Builders', address: '4100 Harlow Ranch Rd, Blanco, TX', printedOn: 'November 4, 2026', printedBy: 'Dana Example' };
+const JOBS = [
+  { id: 'j1', label: 'J1042', name: 'Lodge rough-in' },
+  { id: 'j2', label: 'J1047', name: 'Bunkhouse gas line' },
+  { id: 'j3', label: 'J1051', name: 'Water wells' },
+  { id: 'j4', label: 'J1053', name: 'Septic field' },
+];
+const PLACES = [
+  { id: 'p1', jobId: 'j1', name: 'Lodge level 1' }, { id: 'p2', jobId: 'j1', name: 'Lodge level 2' }, { id: 'p3', jobId: 'j1', name: 'Arena' },
+  { id: 'p4', jobId: 'j2', name: 'Arena' }, { id: 'p5', jobId: 'j2', name: 'Laydown yard' },
+  { id: 'p6', jobId: 'j4', name: 'Field edge' },
+];
+const CONTAINERS = [
+  { id: 'c1', jobId: 'j1', label: 'A1', kind: 'cage', code: '7D759246', where: 'by the north stair', placeId: 'p1' },
+  { id: 'c2', jobId: 'j1', label: 'A2', kind: 'cage', code: '0E0B5E41', where: '', placeId: 'p1' },
+  { id: 'c3', jobId: 'j1', label: 'B1', kind: 'box', code: '3B5A0319', where: 'mech room', placeId: 'p2' },
+  { id: 'c4', jobId: 'j1', label: 'C3', kind: 'box', code: '833C8327', where: '', placeId: null },
+  { id: 'c5', jobId: 'j1', label: 'G7', kind: 'cage', code: '83738F0F', where: '', placeId: 'p3' },
+  { id: 'cu1', jobId: 'j1', label: 'Unsorted', kind: 'unsorted', code: 'FFFF0001', where: '', placeId: null },
+  { id: 'c6', jobId: 'j2', label: 'G1', kind: 'cage', code: 'B4B0E605', where: 'inside the gate', placeId: 'p4' },
+  { id: 'c7', jobId: 'j2', label: 'G2', kind: 'cage', code: 'D24B2C53', where: '', placeId: 'p5' },
+  { id: 'c8', jobId: 'j2', label: 'T1', kind: 'loose', code: '2DAF060C', where: 'the coil by the fence', placeId: 'p5' },
+  { id: 'c9', jobId: 'j1', label: 'A3', kind: 'cage', code: 'CDB76211', where: '', placeId: 'p1', retired: true },
+  { id: 'c10', jobId: 'j4', label: 'S1', kind: 'box', code: '1DC28159', where: '', placeId: 'p6' },
+];
+// A line: part, maker, on hand (the ledger's sum), unit (from the delivery that named it, or none), last recorded (day, who).
+const LINES = [
+  { c: 'c1', part: '3/4" copper 90', mk: 'Mueller', n: 48, u: 'ea', d: 'Nov 2', by: 'Jordan' },
+  { c: 'c1', part: '3/4" copper tee', mk: 'Mueller', n: 22, u: 'ea', d: 'Nov 2', by: 'Jordan' },
+  { c: 'c1', part: '1/2" ball valve', mk: null, n: 12, u: 'ea', d: 'Oct 30', by: 'Mateo' },
+  { c: 'c1', part: '3/4" PEX, 100 ft roll', mk: 'Uponor', n: 3, u: 'roll', d: 'Nov 1', by: 'Mateo' },
+  { c: 'c2', part: '2" PVC sch 40, 10 ft', mk: null, n: 30, u: 'pc', d: 'Oct 28', by: 'Office' },
+  { c: 'c2', part: '2" PVC 45', mk: null, n: 16, u: 'ea', d: 'Oct 28', by: 'Office' },
+  { c: 'c2', part: 'PVC cement, qt', mk: 'Oatey', n: 4, u: null, d: 'Nov 3', by: 'Jordan' },
+  { c: 'c3', part: 'No-hub coupling 4"', mk: 'Fernco', n: 18, u: 'ea', d: 'Nov 1', by: 'Mateo' },
+  { c: 'c3', part: 'Wax ring', mk: null, n: 9, u: 'ea', d: 'Oct 31', by: 'Mateo' },
+  { c: 'c4', part: 'Shower valve, pressure balance', mk: 'Moen', n: 6, u: 'ea', d: 'Oct 29', by: 'Office' },
+  { c: 'c5', part: 'Toilet 1.28 gpf, elongated', mk: 'Kohler', n: 11, u: 'ea', d: 'Nov 3', by: 'Jordan' },
+  { c: 'c5', part: 'Toilet seat', mk: 'Kohler', n: 11, u: 'ea', d: 'Nov 3', by: 'Jordan' },
+  { c: 'cu1', part: '1/2" copper 90', mk: 'Mueller', n: 100, u: 'ea', d: 'Nov 4', by: 'Office' },
+  { c: 'cu1', part: '1/2" copper, 20 ft stick', mk: null, n: 40, u: 'pc', d: 'Nov 4', by: 'Office' },
+  { c: 'cu1', part: 'Solder, lead-free, 1 lb', mk: 'Oatey', n: 6, u: 'ea', d: 'Nov 4', by: 'Office' },
+  { c: 'c6', part: 'Gas valve 3/4"', mk: null, n: 14, u: 'ea', d: 'Oct 27', by: 'Reyes' },
+  { c: 'c6', part: '3/4" black iron 90', mk: null, n: 60, u: 'ea', d: 'Oct 27', by: 'Reyes' },
+  { c: 'c6', part: 'Gas tape, yellow', mk: null, n: 10, u: null, d: 'Nov 2', by: 'Reyes' },
+  { c: 'c7', part: 'Tracer wire, 500 ft', mk: null, n: 2, u: 'roll', d: 'Oct 20', by: 'Office' },
+  { c: 'c7', part: 'Riser, 3/4" anodeless', mk: null, n: 8, u: 'ea', d: 'Oct 20', by: 'Office' },
+  { c: 'c8', part: '1" PE gas pipe, 500 ft coil', mk: null, n: 3, u: 'coil', d: 'Oct 20', by: 'Office' },
+  { c: 'c9', part: 'Left in a retired cage, never printed', mk: null, n: 5, u: 'ea', d: 'Oct 1', by: 'Jordan' },
+];
+
+const KIND = { cage: 'cage', box: 'box', loose: 'pile', unsorted: 'unsorted' };
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const cmp = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+const live = CONTAINERS.filter((c) => !c.retired);
+const linesOf = (id) => LINES.filter((l) => l.c === id).sort((a, b) => cmp(a.part, b.part));
+const jobOf = (id) => JOBS.find((j) => j.id === id);
+const placeName = (id) => (PLACES.find((p) => p.id === id) || {}).name;
+
+function linesTable(cid, opts = {}) {
+  const ls = linesOf(cid);
+  if (ls.length === 0) return '<table class="lines"><tbody><tr><td class="empty" colspan="4">Empty</td></tr></tbody></table>';
+  const head = '<thead><tr><th>Part</th><th class="n" style="width:62px">On hand</th><th class="u" style="width:48px">Unit</th><th class="w" style="width:118px">Last recorded</th></tr></thead>';
+  const rows = ls.map((l) => `<tr><td>${esc(l.part)}${l.mk ? ` <span class="mk">· ${esc(l.mk)}</span>` : ''}</td><td class="n">${l.n}</td><td class="u">${l.u ? esc(l.u) : ''}</td><td class="w">${esc(l.d)} · ${esc(l.by)}</td></tr>`).join('');
+  return `<table class="lines">${head}<tbody>${rows}</tbody></table>`;
+}
+function boxBlock(c, withJob) {
+  const j = jobOf(c.jobId);
+  const name = c.kind === 'unsorted' ? 'Unsorted · delivered, not yet put away' : `${esc(c.label)} · ${KIND[c.kind]}`;
+  return `<div class="box"><div class="box-head"><span><b>${name}</b>${c.where ? ` · ${esc(c.where)}` : ''}${withJob ? ` <span class="job-of">· ${esc(j.label)} ${esc(j.name)}</span>` : ''}</span><span class="code">${c.kind === 'unsorted' ? '' : esc(c.code)}</span></div>${linesTable(c.id)}</div>`;
+}
+function headHtml(counts) {
+  return `<div class="p-head"><div><p class="eye">Material location report</p><h1>${esc(SITE.name)}</h1><div class="sub">${esc(SITE.customer)} · ${esc(SITE.address)}</div></div><div class="right"><b>${SITE.printedOn}</b><br>printed by ${esc(SITE.printedBy)}</div></div><div class="counts">${counts}</div>`;
+}
+const foot = `<div class="foot"><span>Read from the Materials on site ledger, every press on the phone and in the office summed to what is on hand. Printed ${SITE.printedOn} by ${esc(SITE.printedBy)}.</span><span>Page 1 of 2</span></div>`;
+
+// The jobs split: those with a line on hand anywhere, and those with nothing.
+function jobState(j) {
+  const cs = live.filter((c) => c.jobId === j.id);
+  if (cs.length === 0) return { kind: 'noBoxes' };
+  const onHand = cs.some((c) => linesOf(c.id).length > 0);
+  return onHand ? { kind: 'material', cs } : { kind: 'empty', cs };
+}
+function nothingBlock(empties) {
+  if (empties.length === 0) return '';
+  const rows = empties.map(({ j, st }) => {
+    if (st.kind === 'noBoxes') return `<div><span class="j">${esc(j.label)} · ${esc(j.name)}</span>: no cages or boxes on this job yet.</div>`;
+    const names = st.cs.filter((c) => c.kind !== 'unsorted').map((c) => `${esc(c.label)}${c.placeId ? ` at ${esc(placeName(c.placeId))}` : ''}`);
+    return `<div><span class="j">${esc(j.label)} · ${esc(j.name)}</span>: ${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} empty. Nothing on site.</div>`;
+  }).join('');
+  return `<div class="nothing"><b class="h">Nothing on site · ${empties.length} ${empties.length === 1 ? 'job' : 'jobs'}</b>${rows}</div>`;
+}
+function countsLine() {
+  const withMaterial = JOBS.filter((j) => jobState(j).kind === 'material').length;
+  const places = new Set(live.filter((c) => c.placeId && linesOf(c.id).length > 0).map((c) => c.placeId)).size;
+  const boxes = live.filter((c) => c.kind !== 'unsorted').length;
+  const lines = live.reduce((s, c) => s + linesOf(c.id).length, 0);
+  return { withMaterial, places, boxes, lines, text: `${JOBS.length} jobs on the site · ${withMaterial} with material · ${places} places · ${boxes} cages and boxes · ${lines} lines on hand` };
+}
+
+function paperByJob() {
+  const counts = countsLine();
+  let html = headHtml(counts.text);
+  const empties = [];
+  for (const j of JOBS) {
+    const st = jobState(j);
+    if (st.kind !== 'material') { empties.push({ j, st }); continue; }
+    const cs = st.cs;
+    const places = PLACES.filter((p) => p.jobId === j.id && cs.some((c) => c.placeId === p.id)).sort((a, b) => cmp(a.name, b.name));
+    const boxes = cs.filter((c) => c.kind !== 'unsorted');
+    html += `<div class="job"><div class="job-head"><b>${esc(j.label)} · ${esc(j.name)}</b><span>${places.length} ${places.length === 1 ? 'place' : 'places'} · ${boxes.length} ${boxes.length === 1 ? 'cage or box' : 'cages and boxes'} · ${cs.reduce((s, c) => s + linesOf(c.id).length, 0)} lines on hand</span></div>`;
+    for (const p of places) {
+      html += `<div class="place"><div class="place-head">${esc(p.name)}</div>` + cs.filter((c) => c.placeId === p.id && c.kind !== 'unsorted').sort((a, b) => cmp(a.label, b.label)).map((c) => boxBlock(c, false)).join('') + '</div>';
+    }
+    const uns = cs.find((c) => c.kind === 'unsorted');
+    if (uns && linesOf(uns.id).length) html += `<div class="place"><div class="place-head">Unsorted</div>${boxBlock(uns, false)}</div>`;
+    const none = cs.filter((c) => !c.placeId && c.kind !== 'unsorted').sort((a, b) => cmp(a.label, b.label));
+    if (none.length) html += `<div class="place"><div class="place-head">No place yet</div>${none.map((c) => boxBlock(c, false)).join('')}</div>`;
+    html += '</div>';
+  }
+  html += nothingBlock(empties);
+  return `<div class="sheet">${html}${foot}</div>`;
+}
+
+function paperByLocation() {
+  const counts = countsLine();
+  let html = headHtml(counts.text);
+  const empties = JOBS.map((j) => ({ j, st: jobState(j) })).filter((x) => x.st.kind !== 'material');
+  const materialJobs = new Set(JOBS.filter((j) => jobState(j).kind === 'material').map((j) => j.id));
+  const shown = live.filter((c) => materialJobs.has(c.jobId));
+  const names = [...new Set(PLACES.filter((p) => shown.some((c) => c.placeId === p.id && c.kind !== 'unsorted')).map((p) => p.name))].sort(cmp);
+  for (const name of names) {
+    const ids = PLACES.filter((p) => p.name === name).map((p) => p.id);
+    const cs = shown.filter((c) => ids.includes(c.placeId) && c.kind !== 'unsorted');
+    const jobs = [...new Set(cs.map((c) => c.jobId))];
+    html += `<div class="job"><div class="job-head"><b>${esc(name)}</b><span>${jobs.length === 1 ? 'one job' : `${jobs.length} jobs each name a place ${esc(name)}`} · ${cs.length} ${cs.length === 1 ? 'cage or box' : 'cages and boxes'}</span></div>`;
+    for (const jid of jobs) {
+      const j = jobOf(jid);
+      html += `<div class="place"><div class="place-head">${esc(j.label)} · ${esc(j.name)}</div>` + cs.filter((c) => c.jobId === jid).sort((a, b) => cmp(a.label, b.label)).map((c) => boxBlock(c, false)).join('') + '</div>';
+    }
+    html += '</div>';
+  }
+  const uns = shown.filter((c) => c.kind === 'unsorted' && linesOf(c.id).length);
+  if (uns.length) html += `<div class="job"><div class="job-head"><b>Unsorted, by job</b><span>delivered, not yet put away</span></div>${uns.map((c) => boxBlock(c, true)).join('')}</div>`;
+  const none = shown.filter((c) => !c.placeId && c.kind !== 'unsorted');
+  if (none.length) html += `<div class="job"><div class="job-head"><b>No place yet</b><span>boxes nobody has placed, by job</span></div>${none.map((c) => boxBlock(c, true)).join('')}</div>`;
+  html += nothingBlock(empties);
+  return `<div class="sheet">${html}${foot}</div>`;
+}
+
+function screenTable() {
+  let html = '<table class="screen-table"><thead><tr><th>Where</th><th>Part</th><th style="text-align:right">On hand</th><th>Unit</th><th>Last recorded</th></tr></thead><tbody>';
+  for (const j of JOBS) {
+    const st = jobState(j);
+    if (st.kind !== 'material') continue;
+    html += `<tr class="g"><td colspan="5">${esc(j.label)} · ${esc(j.name)}</td></tr>`;
+    for (const c of st.cs.sort((a, b) => cmp(a.label, b.label))) {
+      const where = c.kind === 'unsorted' ? 'Unsorted' : `${placeName(c.placeId) || 'no place yet'} · ${esc(c.label)}`;
+      const ls = linesOf(c.id);
+      if (!ls.length) { html += `<tr><td>${where}</td><td style="color:var(--text-muted)">Empty</td><td></td><td></td><td></td></tr>`; continue; }
+      ls.forEach((l, i) => { html += `<tr><td>${i === 0 ? where : ''}</td><td>${esc(l.part)}</td><td class="n">${l.n}</td><td>${l.u || ''}</td><td>${esc(l.d)} · ${esc(l.by)}</td></tr>`; });
+    }
+  }
+  return html + '</tbody></table>';
+}
+
+document.getElementById('paperA').innerHTML = paperByJob();
+document.getElementById('paperB').innerHTML = paperByLocation();
+document.getElementById('paperModal').innerHTML = paperByJob();
+document.getElementById('screenTable').innerHTML = screenTable();
+
+// Self-check: the count line equals what the paper drew, and the retired cage's line is on no paper.
+const a = document.getElementById('paperA');
+const drawnLines = a.querySelectorAll('table.lines tbody tr:not(:has(td.empty))').length;
+const c = countsLine();
+const retiredShown = a.textContent.includes('retired cage');
+document.getElementById('selfcheck').textContent = `Self-check: the paper draws ${drawnLines} lines and the count line says ${c.lines}; ${drawnLines === c.lines && !retiredShown ? 'they agree, and the retired cage A3 is on no paper.' : 'THEY DISAGREE.'}`;
+</script>
+</body>
+</html>
