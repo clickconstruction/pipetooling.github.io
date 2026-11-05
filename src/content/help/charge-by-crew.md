@@ -69,7 +69,7 @@ The crew's hours are the longest day of anyone in it. Two techs out eight hours 
 
 ## Set the markup on materials
 
-Under the rates, open **Markup on materials**. Two boxes sit side by side. The first is the markup, a percent over cost. The second is the margin, a percent of the sale. Type in either box and the other follows. For example, 25% over cost is a 20% margin on the sale. Press {{button:blue|Save the markup}}. Leave both boxes blank and materials are charged at cost. The paper says so when they are.
+Under the rates, open **Markup on materials**. Two boxes sit side by side. The first is the markup, a percent over cost. The second is the margin, a percent of the sale. Type in either box and the other follows. A bar under the boxes shows $1,000 of materials as cost and markup. The bar reads what the customer pays. For example, 25% over cost is a 20% margin on the sale. Press {{button:blue|Save the markup}}. Leave both boxes blank and materials are charged at cost. The paper says so when they are.
 
 ## Give one job its own rule
 
@@ -85,7 +85,7 @@ Open **Jobs** and go to **Job Summary**. Two columns sit at the right of the tab
 
 ## Adjust a job's charges
 
-Press a **Charges** cell and the Charges window opens. The job's rule and markup sit at the top. The markup shows its margin beside it, and you can type either one. Change them and the job keeps the change. Four tiles follow. The tiles show labor, materials, charges, and the stand against the revenue.
+Press a **Charges** cell and the Charges window opens. The job's rule and markup sit at the top. The markup shows its margin beside it, and you can type either one. The bar under them starts from this job's own materials cost. Change them and the job keeps the change. Four tiles follow. The tiles show labor, materials, charges, and the stand against the revenue.
 
 Every crew day lists under its week. Each day has a tick and a chip. Untick a day to leave it off. Change the chip to set that day's crew. A reason box appears under it. Every material line has a tick and {{button:outline|Pass through}}. Pass through charges that line at cost.
 

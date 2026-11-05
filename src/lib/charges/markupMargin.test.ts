@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MARGIN_REFUSAL, MARKUP_REFUSAL, markupFromMargin, markupMarginWords, marginFromMarkup, pairFromMarkup, pairTyped } from './markupMargin'
+import { MARGIN_REFUSAL, MARKUP_REFUSAL, markupBar, markupFromMargin, markupMarginWords, marginFromMarkup, pairFromMarkup, pairTyped } from './markupMargin'
 
 describe('markup and margin, side by side (v2.6538)', () => {
   it('converts both ways: 25% over cost is a 20% margin, and a 20% margin is 25% over cost', () => {
@@ -46,5 +46,21 @@ describe('markup and margin, side by side (v2.6538)', () => {
   it('words the pair', () => {
     expect(markupMarginWords(25)).toBe('25% over cost, a 20% margin on the sale')
     expect(markupMarginWords(0)).toBe('0% over cost, a 0% margin on the sale')
+  })
+})
+
+describe('the bar under the pair', () => {
+  it('shows the cost and the markup as parts of what the customer pays', () => {
+    const b = markupBar(1000, 25)
+    expect(b).toMatchObject({ cost: 1000, pays: 1250, markup: 250, costShare: 80, marginShare: 20 })
+    expect(b.words).toEqual({ cost: 'cost $1,000.00', markup: '+$250.00', costShare: 'cost, 80% of the sale', marginShare: 'margin, 20% of the sale', pays: 'the customer pays $1,250.00' })
+    expect(markupBar(9806.98, 100)).toMatchObject({ pays: 19613.96, markup: 9806.98, costShare: 50, marginShare: 50 })
+  })
+
+  it('with no markup, the whole bar is cost and the words say at cost', () => {
+    const b = markupBar(1000, null)
+    expect(b).toMatchObject({ cost: 1000, pays: 1000, markup: 0, costShare: 100, marginShare: 0 })
+    expect(b.words).toMatchObject({ markup: 'at cost', costShare: 'cost, all of the sale', marginShare: 'no markup', pays: 'the customer pays $1,000.00' })
+    expect(markupBar(-5, 25)).toMatchObject({ cost: 0, pays: 0, markup: 0 })
   })
 })

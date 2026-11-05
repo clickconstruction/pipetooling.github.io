@@ -260,6 +260,8 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
                   compact
                   markupPct={read.jobMarkupPct}
                   companyMarkupPct={card.materialsMarkupPct}
+                  barCost={charges.materials.totals.cost}
+                  barCostWords={`${charges.materials.totals.lines} material ${charges.materials.totals.lines === 1 ? 'line' : 'lines'} on this job`}
                   disabled={!editable || busy != null}
                   testId="charges-markup"
                   onCommit={(n) => {

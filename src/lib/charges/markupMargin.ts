@@ -65,3 +65,48 @@ export function pairTyped(side: MarkupSide, raw: string): MarkupPairState {
 export function markupMarginWords(markupPct: number): string {
   return `${two(markupPct)}% over cost, a ${marginFromMarkup(markupPct) ?? 0}% margin on the sale`
 }
+
+export type MarkupBar = {
+  /** Dollars of materials the bar starts from. */
+  cost: number
+  /** What the customer pays for them, to the cent. */
+  pays: number
+  /** The markup in dollars, to the cent. */
+  markup: number
+  /** The cost's share of the sale, 0 to 100, one place. */
+  costShare: number
+  /** The margin's share of the sale, 0 to 100, one place. */
+  marginShare: number
+  /** `cost $1,000.00` · `+$250.00` · `cost, 80% of the sale` · `margin, 20% of the sale` · `the customer pays $1,250.00`. */
+  words: { cost: string; markup: string; costShare: string; marginShare: string; pays: string }
+}
+
+const money = (n: number): string => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const cents = (n: number): number => Math.round(Math.round(n * 1000) / 10) / 100
+
+/**
+ * The bar under the pair: the cost and the markup as parts of what the customer pays, so the number is shown and not
+ * told. With no markup the whole bar is cost and the words say at cost.
+ */
+export function markupBar(cost: number, markupPct: number | null): MarkupBar {
+  const c = cents(Math.max(0, Number.isFinite(cost) ? cost : 0))
+  const pct = markupPct != null && Number.isFinite(markupPct) && markupPct >= 0 ? markupPct : null
+  const pays = pct == null ? c : cents(c * (1 + pct / 100))
+  const markup = cents(pays - c)
+  const marginShare = pct == null ? 0 : (marginFromMarkup(pct) ?? 0)
+  const costShare = Math.round((100 - marginShare) * 10) / 10
+  return {
+    cost: c,
+    pays,
+    markup,
+    costShare,
+    marginShare,
+    words: {
+      cost: `cost ${money(c)}`,
+      markup: pct == null ? 'at cost' : `+${money(markup)}`,
+      costShare: pct == null ? 'cost, all of the sale' : `cost, ${costShare}% of the sale`,
+      marginShare: pct == null ? 'no markup' : `margin, ${marginShare}% of the sale`,
+      pays: `the customer pays ${money(pays)}`,
+    },
+  }
+}

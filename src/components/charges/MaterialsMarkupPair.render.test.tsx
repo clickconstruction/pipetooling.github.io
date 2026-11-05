@@ -42,15 +42,26 @@ describe('MaterialsMarkupPair', () => {
     expect(onCommit).toHaveBeenCalledWith(null)
   })
 
-  it("on a job door, names the company's markup and margin in the placeholders, and re-draws when the stored markup changes", () => {
+  it("on a job door, names the company's markup and margin in the placeholders, draws the company's markup on the bar, and re-draws when the stored markup changes", () => {
     const { rerender } = render(<MaterialsMarkupPair markupPct={null} companyMarkupPct={25} testId="pair" />)
     expect(markup().placeholder).toBe('Company: 25')
     expect(margin().placeholder).toBe('Company: 20')
+    expect(screen.getByTestId('pair-bar-pays').textContent).toBe('the customer pays $1,250.00')
     rerender(<MaterialsMarkupPair markupPct={30} companyMarkupPct={25} testId="pair" />)
     expect(markup().value).toBe('30')
     expect(margin().value).toBe('23.1')
+    expect(screen.getByTestId('pair-bar-pays').textContent).toBe('the customer pays $1,300.00')
     rerender(<MaterialsMarkupPair markupPct={null} companyMarkupPct={null} testId="pair" />)
     expect(markup().placeholder).toBe('at cost')
     expect(margin().placeholder).toBe('at cost')
+    expect(screen.getByTestId('pair-bar-words').textContent).toBe('cost, all of the saleno markup')
+  })
+
+  it("the bar starts from the door's own cost when it has one, and names it", () => {
+    render(<MaterialsMarkupPair markupPct={100} companyMarkupPct={null} barCost={9806.98} barCostWords="11 material lines on this job" testId="pair" />)
+    expect(screen.getByTestId('pair-bar').textContent).toContain('11 material lines on this job')
+    expect(screen.getByTestId('pair-bar-pays').textContent).toBe('the customer pays $19,613.96')
+    expect(screen.getByTestId('pair-bar').textContent).toContain('+$9,806.98')
+    expect(screen.getByTestId('pair-bar-words').textContent).toBe('cost, 50% of the salemargin, 50% of the sale')
   })
 })

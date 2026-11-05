@@ -9,6 +9,7 @@ const note: ReleaseNote = {
   highlights: [
     'Everywhere a markup on materials is entered, two boxes now sit side by side: the markup, a percent over cost, and the margin, a percent of the sale. Type in either and the other follows, so 25% over cost reads as a 20% margin at the same time.',
     'The pair is at all three doors: Settings → Jobs & billing → Markup on materials, the Charges window on the Job Summary, and Edit Job → Charging the customer. The job and the company still keep the markup; the margin is read from it.',
+    'A bar under the boxes shows the cost and the markup as parts of what the customer pays: $1,000 of materials in Settings and on the job form, the job’s own materials cost in the Charges window. The paragraph that used to explain the number is gone; the bar shows it.',
     'A margin of 100% or more has no markup, so the pair says so under the boxes instead of saving a guess. Edit Job’s Charging the customer row now reads the margin along with the markup in force.',
   ],
 }
