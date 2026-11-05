@@ -61,7 +61,7 @@ Open: whether By theme should default to strongest first rather than oldest firs
 | T1 | `legal_themes`, `legal_theme_marks`, RLS dev-only, the agent's propose and the dev's keep; the seat's doors; Settings → People → Themes | M |
 | T2 | The picker in Add entry and Add evidence; + theme on a line; the Timeline's theme row with counts; tick lines and *Mark N lines*; ✕ with a reason and Keep on a proposed mark (shipped v2.6546) | M |
 | T2b | The same picker in a matter's Record what happened and document form, and the matter Timeline's theme row | S |
-| T3 | By theme beside Timeline, Evidence and Narrative, on the HR file and on a matter: one theme, the counts, oldest or strongest first, the item window with Previous / Next, the pick in the address, Print this theme, Copy as a list | M |
+| T3 | By theme beside Timeline, Evidence and Narrative on the HR file: one theme, the counts, oldest or strongest first, Show by grade, the item window with Previous / Next, the pick in the address, Print this theme, Copy as a list (shipped v2.6547; the matter's By theme comes with T2b) | M |
 | T4 | The matter's packet gets a section per theme; the firm's portal reads themes grouped on Evidence and Timeline and may add its words | S |
 | 2 | `counsel_only` on evidence: the filer skips it, `hr_agent` cannot read it, the seat sends `X-Dev-Seat` and restrictive policies refuse it, `get_person_file` names the hold, the panel's chip and filter, the doc's stated limit | M |
 

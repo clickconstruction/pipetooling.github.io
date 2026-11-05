@@ -73,11 +73,33 @@ export default function PeopleHrTab() {
 
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
   // Deep link from the Person Desk (v2.2710): ?tab=hr&person=<people.id> lands on that file.
-  const [hrSearchParams] = useSearchParams()
+  const [hrSearchParams, setHrSearchParams] = useSearchParams()
   const deepLinkPersonId = hrSearchParams.get('person')
+  /** By theme (v2.6547): `?theme=<id>` opens the file on that theme, and a pick writes it back so a link reopens the same view. */
+  const deepLinkThemeId = hrSearchParams.get('theme')
   useEffect(() => {
     if (deepLinkPersonId) setSelectedPersonId(deepLinkPersonId)
   }, [deepLinkPersonId])
+  useEffect(() => {
+    if (deepLinkPersonId && deepLinkThemeId) {
+      setFileView('themes')
+      setFileViewKey((k) => k + 1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkThemeId])
+  const writeThemeToAddress = (themeId: string) => {
+    if (!selectedPersonId) return
+    setHrSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('tab', 'hr')
+        next.set('person', selectedPersonId)
+        next.set('theme', themeId)
+        return next
+      },
+      { replace: true },
+    )
+  }
   const [fileView, setFileView] = useState<PersonFileView>('timeline')
   const [fileViewKey, setFileViewKey] = useState(0)
   const [fileChangeKey, setFileChangeKey] = useState(0)
@@ -309,6 +331,8 @@ export default function PeopleHrTab() {
                 onChanged={afterFileChange}
                 initialView={fileView}
                 viewKey={fileViewKey}
+                initialThemeId={deepLinkThemeId}
+                onThemePicked={writeThemeToAddress}
               />
             </>
           )}

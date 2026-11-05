@@ -43,6 +43,7 @@ import { EmptyState } from '../../EmptyState'
 import { EMPTY_MARK_DRAFT, linesWithTheme, markIsProposed, markTargetOfLine, markedWords, marksOnTarget, provesByWords, sortThemes, themeCountsOnLines, themeStands, tickedWords, type LegalTheme, type LegalThemeMark, type MarkDraft, type MarkTarget } from '../../../lib/legal/legalThemes'
 import { addMarks, keepMark, loadThemes, removeMark } from '../../../lib/legal/legalThemesIo'
 import { ThemeMarkPicker } from '../../legal/ThemeMarkPicker'
+import { PersonThemesView } from './PersonThemesView'
 import { countedLabel } from '../../../lib/batchWords'
 
 /**
@@ -72,7 +73,7 @@ const SOURCE_LABELS: Record<string, string> = {
 const HR_FILES_BUCKET = 'hr-files'
 const PEOPLE_FOLDER_WORDS = 'People'
 
-export type PersonFileView = 'timeline' | 'evidence' | 'narrative'
+export type PersonFileView = 'timeline' | 'evidence' | 'narrative' | 'themes'
 
 type LaneLook = { background: string; color: string; border?: string }
 
@@ -202,6 +203,9 @@ export type PersonFilePanelProps = {
   userId: string | null
   personName: string
   viewer: PersonFileViewer
+  /** The theme the address names for the By theme view (`?theme=<id>`), and the press that writes a pick into it. */
+  initialThemeId?: string | null
+  onThemePicked?: (themeId: string) => void
   /** Bump to read the file again (a report filed from the queue above, say). */
   changeKey?: number
   /** Called after this panel writes (an entry, an exhibit), so the host can refresh its own counts. */
@@ -211,7 +215,7 @@ export type PersonFilePanelProps = {
   viewKey?: number
 }
 
-export function PersonFilePanel({ personId, userId, personName, viewer, changeKey = 0, onChanged, initialView = 'timeline', viewKey = 0 }: PersonFilePanelProps) {
+export function PersonFilePanel({ personId, userId, personName, viewer, changeKey = 0, onChanged, initialView = 'timeline', viewKey = 0, initialThemeId = null, onThemePicked }: PersonFilePanelProps) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const todayYmd = todayYmdInAppTz()
@@ -255,6 +259,11 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [removingMarkId, setRemovingMarkId] = useState<string | null>(null)
   const [removeWhy, setRemoveWhy] = useState('')
   const [markBusyId, setMarkBusyId] = useState<string | null>(null)
+  /** By theme (v2.6547): the theme picked, from the address first. */
+  const [byThemeId, setByThemeId] = useState<string | null>(initialThemeId)
+  useEffect(() => {
+    if (initialThemeId) setByThemeId(initialThemeId)
+  }, [initialThemeId])
 
   useEffect(() => {
     setView(initialView)
@@ -655,6 +664,35 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     }
     showToast('Kept.', 'success')
     await reloadThemes()
+  }
+
+  /** From the item window: the Timeline with every filter off, scrolled to the line and lit for a moment. */
+  const openOnTimeline = (key: string) => {
+    setLane(null)
+    setSource(null)
+    setThemeFilter(null)
+    setView('timeline')
+    window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-person-file-line="${key}"]`)
+      if (!el) return
+      el.scrollIntoView({ block: 'center' })
+      el.style.transition = 'background 1.2s'
+      el.style.background = 'var(--bg-blue-tint)'
+      window.setTimeout(() => {
+        el.style.background = ''
+      }, 1400)
+    }, 50)
+  }
+
+  const removeMarkFromWindow = async (id: string, why: string) => {
+    const r = await removeMark(id, why, authUser?.id ?? null)
+    if (!r.ok) {
+      showToast(`The mark stays: ${r.why}`, 'error')
+      return false
+    }
+    showToast('The mark is off. Its row stays, with the reason.', 'success')
+    await reloadThemes()
+    return true
   }
 
   const toggleTick = (key: string) =>
@@ -1201,6 +1239,26 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
 
   const heldWords = (sources?.held ?? []).map((h) => `${PERSON_TIMELINE_SOURCES.find((s) => s.source === h.source)?.label ?? h.source} (${h.reason})`)
 
+  const themesView = (
+    <PersonThemesView
+      personName={personName}
+      themes={themes}
+      marks={marks}
+      lines={lines}
+      themeId={byThemeId}
+      onPickTheme={(id) => {
+        setByThemeId(id)
+        onThemePicked?.(id)
+      }}
+      canWrite={canWrite}
+      namesById={sources?.input.namesById ?? {}}
+      renderFiles={(line) => line.attachmentIds.map(fileChipById).filter(Boolean)}
+      onOpenOnTimeline={openOnTimeline}
+      onKeepMark={keepOneMark}
+      onRemoveMark={removeMarkFromWindow}
+    />
+  )
+
   return (
     <div data-person-file-panel>
       {facts ? (
@@ -1224,6 +1282,11 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <button type="button" role="tab" aria-selected={view === 'narrative'} onClick={() => setView('narrative')} style={viewTab(view === 'narrative')}>
           Narrative
         </button>
+        {viewer.isDev && themes.length > 0 ? (
+          <button type="button" role="tab" aria-selected={view === 'themes'} onClick={() => setView('themes')} style={viewTab(view === 'themes')} data-testid="person-file-tab-themes">
+            By theme{marks.some((m) => !m.removed_at) ? ` (${new Set(marks.filter((m) => !m.removed_at).map((m) => `${m.target_kind}:${m.target_id}`)).size})` : ''}
+          </button>
+        ) : null}
       </div>
 
       {loadError ? (
@@ -1232,7 +1295,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Reading the file…</p>
       ) : (
         <>
-          {view === 'timeline' ? timelineView : view === 'evidence' ? evidenceView : narrativeView}
+          {view === 'timeline' ? timelineView : view === 'evidence' ? evidenceView : view === 'themes' ? themesView : narrativeView}
           {heldWords.length > 0 ? (
             <p style={{ margin: '1rem 0 0', fontSize: '0.72rem', color: 'var(--text-faint)' }}>Not read here: {heldWords.join(' · ')}.</p>
           ) : null}
