@@ -1,6 +1,6 @@
 /**
- * Messages, cut 2: who has a conversation (v1.90). A pill on a Follow up row and in the thread's header: *You have this*,
- * *Rosa has this* or *Nobody has it · Take it*, its hover saying since when. Pressing it lists the team (*I'll take it*
+ * Messages, cut 2: who has a conversation (v1.90). A pill on a Follow up row and in the thread's header: *Rosa has this*
+ * (the holder by name, yourself included, since v2.6521) or *Nobody has it · Take it*, its hover saying since when. Pressing it lists the team (*I'll take it*
  * first when it is not yours, each teammate with what they hold open, *Nobody* to put it back); a press takes or hands
  * it on, and the thread records the change (`take_it`, `hand_to`). The words are `followUp/queue.ts`'s.
  *
