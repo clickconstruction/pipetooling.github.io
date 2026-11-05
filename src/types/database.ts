@@ -25581,6 +25581,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notification_history_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notification_history_step_id_fkey"
             columns: ["step_id"]
             isOneToOne: false
@@ -36796,6 +36803,10 @@ export type Database = {
       contact_job_check: {
         Args: { p_job_id: string; p_job_kind: string }
         Returns: undefined
+      }
+      contact_make_for_channel: {
+        Args: { p_kind: string; p_value: string }
+        Returns: string
       }
       contact_name_on: {
         Args: { p_name: string; p_record_id: string; p_record_table: string }
