@@ -701,7 +701,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   }
   if (verb === 'plan_person_evidence' || verb === 'apply_person_evidence') {
     const evidence = obj(input.evidence)
-    const shape = `${verb} needs evidence — { person_id (a people.id; get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, the day it is about, not ahead of today), title (under ${EVIDENCE_TITLE_MAX} characters), memo (what it shows and why it matters, under ${EVIDENCE_MEMO_MAX}), entry_id? (the person_file_entries.id it proves), files: [{ name (with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), mime? }] — at least one, at most ${EVIDENCE_MAX_FILES}, each under ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB }.`
+    const shape = `${verb} needs evidence — { person_id (a people.id; get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, the day it is about, not ahead of today), title (under ${EVIDENCE_TITLE_MAX} characters), memo (what it shows and why it matters, under ${EVIDENCE_MEMO_MAX}), entry_id? (the person_file_entries.id it proves), files: [{ name (with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), mime? } | { name, drive_url (a file already in Drive, linked, never staged) }] — at least one, at most ${EVIDENCE_MAX_FILES}, each sent file under ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB }.`
     if (!evidence) return { ok: false, error: shape }
     const str = (k: string) => (typeof evidence[k] === 'string' ? (evidence[k] as string).trim() : '')
     const personId = str('person_id')
@@ -715,6 +715,13 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     for (const raw of rawFiles) {
       const f = obj(raw)
       const name = f && typeof f.name === 'string' ? f.name.trim() : ''
+      const driveUrl = f && typeof f.drive_url === 'string' ? f.drive_url.trim() : ''
+      if (driveUrl) {
+        // A linked file (v2.6541): the address alone; the RPC holds it to a Drive one.
+        if (!name || name.length > 200 || !/^https:\/\/(drive|docs)\.google\.com\/\S+$/i.test(driveUrl)) return { ok: false, error: shape }
+        files.push({ name, drive_url: driveUrl })
+        continue
+      }
       const mime = f && typeof f.mime === 'string' ? f.mime.trim().toLowerCase() : ''
       const sha256 = f && typeof f.sha256 === 'string' ? f.sha256.trim().toLowerCase() : ''
       const sizeBytes = f && typeof f.size_bytes === 'number' && Number.isInteger(f.size_bytes) ? f.size_bytes : NaN
