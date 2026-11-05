@@ -1,0 +1,8 @@
+# 20261104230000_people_have_a_users_row.sql (2026-11-04, v2.6530)
+
+PR 2 of punch list #265. Since #260 every person is a users row (`add_worker`, the backfill); this file makes the schema hold it for every write the app makes, and stops a users row with a People record from being deleted.
+
+- `people_needs_users_row()` + trigger `BEFORE INSERT OR UPDATE OF account_user_id`: a signed-in write (`auth.uid()` set — every client path) may not leave `account_user_id` NULL; refused with `23502` and *A person is a users row: add them with add_worker…*. A write with no caller (the service role, a migration, a bed's fixture) may: seven whole-schema beds (`combine_rows`, `quo_messages`, `messages_spine`, `gc_papers`, `contacts_kinds`, `employment_stints`) seed roster-only records as fixtures for other tables, and the two records the backfill skipped stand until the desk links them. A `NOT NULL` or a `CHECK` would hold those too; the trigger holds the app, where a stray would be made. The next step, once People → Users counts zero and the beds seed linked records: `ALTER TABLE public.people ALTER COLUMN account_user_id SET NOT NULL` and the roster view a plain join (card #265, PR 3 or the next PR that touches the view).
+- `people_account_user_id_fkey` re-made `ON DELETE RESTRICT` (`NOT VALID` then validated): a users row with a People record is archived, never deleted. `invite-user`'s replace of a pending invite no longer deletes the row: it deletes the auth account (which detaches the row, v2.6511) and re-invites on the same id.
+
+No table is created, so no fence calls. Apply order: push after the merge (no client call lands ahead of it); redeploy `invite-user` after the push. Bed: `supabase/tests/users_without_login/60_people_have_a_users_row.sql` (S1–S3).
