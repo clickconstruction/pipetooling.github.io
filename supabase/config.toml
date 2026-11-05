@@ -616,6 +616,13 @@ verify_jwt = false
 [functions.restore-user]
 verify_jwt = false
 
+[functions.merge-users]
+verify_jwt = false
+
+# Dev: take a login away; the person stays (v2.6532). Bearer + users.role=dev in function.
+[functions.detach-login]
+verify_jwt = false
+
 [functions.create-user]
 verify_jwt = false
 
