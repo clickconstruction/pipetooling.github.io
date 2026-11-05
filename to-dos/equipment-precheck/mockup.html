@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Equipment pre-use check</title>
+<style>
+  /* Punch list #270. Light only, like every to-do mock-up. Phone frames at 375 px, the sheet as the stage checklist
+     sheet draws it. Every machine, job, person and number here is made up: E-12 a Kubota mini excavator and D-3 a
+     Vermeer directional drill on Ridgeway Builders' Oak Hollow Apartments C (JP1042, 4410 Pecan Creek Rd); Mateo Ruiz
+     and Jordan Pike the crew; Carla Nguyen on Dispatch. Nothing here is a frame of the owner's video. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber-mid: #d97706; --amber: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --page: #f3f4f6; --surface: #fff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cbd5e1; --line-2: #e5e7eb; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; background: var(--line-2); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.amber { background: var(--amber-tint); color: var(--amber); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; }
+  .phone { width: 343px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 14px; padding: 12px; font-size: 13px; }
+
+  /* the Job Mode card as DashboardJobModeCard draws it */
+  .status { font-size: 12px; color: var(--ink-2); font-weight: 600; margin-top: 2px; }
+  .jobnum { font-weight: 800; font-size: 18px; letter-spacing: .01em; }
+  .jobnum .sep { color: var(--line); margin: 0 6px; font-weight: 400; }
+  .jobnum .name { font-weight: 700; font-size: 15px; }
+  .addr { color: var(--ink-2); font-size: 13px; }
+  .cal { color: var(--blue-ink); font-size: 11px; font-weight: 600; text-align: center; margin: 2px 0 8px; }
+  .rail { border: 1px solid var(--line-2); border-radius: 10px; padding: 6px 8px; margin: 0 0 10px; }
+  .rail .t { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  .rail .r { display: grid; grid-template-columns: 16px 56px 1fr; gap: 6px; align-items: center; padding: 3px 2px; font-size: 12px; }
+  .rail .r.now { background: var(--green-tint); border-radius: 6px; outline: 1.5px solid var(--green); }
+  .rail .d { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); display: inline-block; }
+  .rail .d.now { border: 4px solid var(--green); }
+  .sec { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; }
+  .line { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; margin-top: 6px; }
+  .line b { font-size: 13px; grid-column: 1; grid-row: 1; }
+  .line .sub { font-size: 12px; color: var(--ink-2); grid-column: 1; }
+  .line .go { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--blue-ink); font-weight: 700; font-size: 12.5px; white-space: nowrap; }
+  .line.ask { border-color: var(--amber-mid); background: var(--amber-tint); }
+  .line.ask .go { color: var(--amber); }
+  .line.ok { border-color: var(--green); background: var(--green-tint); }
+  .line.ok .go { color: var(--green-ink); }
+  .line.held { border-color: var(--red); background: var(--red-tint); }
+  .line.held .go { color: var(--red-ink); }
+  .bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 12px; }
+  .bar button { min-height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font: inherit; font-weight: 700; font-size: 12.5px; color: var(--ink-2); }
+  .bar button.am { border-color: var(--amber-mid); color: var(--amber); }
+  .big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+  .big button { border: 0; border-radius: 12px; color: #fff; font: inherit; font-weight: 800; font-size: 15px; min-height: 64px; padding: 10px; line-height: 1.15; white-space: pre-line; }
+  .big .leave { background: var(--blue); }
+  .big .wrap-up { background: var(--red); }
+
+  /* the sheet (ResponsiveModalShell, full screen on a phone) */
+  .sheet { width: 343px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 14px; font-size: 13px; overflow: hidden; }
+  .sheet .hbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 15px; }
+  .sheet .hbar .x { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .sheet .body { padding: 12px; }
+  .sheet .foot { padding: 10px 12px; border-top: 1px solid var(--line-2); display: grid; gap: 8px; }
+  .who { font-size: 12px; color: var(--ink-2); }
+  .who b { color: var(--ink); }
+  .count { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
+  .lab { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+  .q { border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; margin-top: 6px; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; }
+  .q .t { font-weight: 600; grid-column: 1; grid-row: 1; }
+  .q .st { font-size: 11.5px; color: var(--muted); grid-column: 1; }
+  .q .ans { font-size: 11px; font-weight: 800; border-radius: 999px; padding: 1px 8px; grid-column: 2; grid-row: 1 / span 2; }
+  .q .ans.y { background: var(--green-tint); color: var(--green-ink); }
+  .q .ans.n { background: var(--red-tint); color: var(--red-ink); }
+  .q .ans.nh { background: var(--line-2); color: var(--ink-2); }
+  .q.open { border-color: var(--blue); grid-template-columns: 1fr; }
+  .q.open .next { font-size: 10.5px; font-weight: 800; color: var(--blue-ink); letter-spacing: .06em; text-transform: uppercase; }
+  .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .three button { min-height: 40px; border-radius: 10px; border: 0; font: inherit; font-weight: 800; font-size: 13px; color: #fff; }
+  .three .y { background: var(--green); }
+  .three .n { background: var(--red); }
+  .three .nh { background: #9ca3af; }
+  .q .more { font-size: 12px; color: var(--blue-ink); font-weight: 600; margin-top: 6px; display: flex; gap: 12px; }
+  .q.no { border-color: var(--red); grid-template-columns: 1fr; }
+  .q.no .nt { font-size: 12.5px; background: var(--red-tint); border-radius: 8px; padding: 6px 8px; margin-top: 6px; color: var(--red-ink); }
+  .q.no .nt b { color: var(--ink); }
+
+  /* levels: the sliders */
+  .lvl { border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; margin-top: 6px; }
+  .lvl .h { display: flex; justify-content: space-between; align-items: baseline; }
+  .lvl .h b { font-size: 13px; }
+  .lvl .h .v { font-weight: 800; font-size: 13px; }
+  .lvl .h .v.low { color: var(--amber); }
+  .lvl .h .v.ok { color: var(--green-ink); }
+  .lvl input[type=range] { width: 100%; margin: 6px 0 0; accent-color: var(--blue); }
+  .lvl .ticks { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); padding: 0 2px; }
+  .lvl .last { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .lvl .last b { color: var(--amber); }
+  .meter { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; margin-top: 6px; }
+  .meter b { font-size: 13px; grid-column: 1; grid-row: 1; }
+  .meter .n { height: 40px; min-width: 112px; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; gap: 4px; grid-column: 2; grid-row: 1 / span 2; }
+  .meter .n small { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .meter .last { font-size: 11.5px; color: var(--muted); grid-column: 1; }
+  .meter .last.bad { color: var(--amber); }
+
+  /* photos */
+  .shots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
+  .shot { aspect-ratio: 1; border: 1.5px dashed var(--line); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 700; color: var(--ink-2); text-align: center; padding: 4px; line-height: 1.2; }
+  .shot .cam { font-size: 16px; }
+  .shot.got { border: 1.5px solid var(--green); background: var(--green-tint); color: var(--green-ink); }
+  .shot.want { border-color: var(--blue); color: var(--blue-ink); }
+  .shot.wait { border: 1.5px solid var(--amber-mid); background: var(--amber-tint); color: var(--amber); }
+  .where { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  .where b { color: var(--ink-2); }
+
+  /* sign and the presses */
+  .sign { border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; margin-top: 6px; font-size: 12.5px; color: var(--ink-2); }
+  .sign b { color: var(--ink); }
+  .p { min-height: 46px; padding: 0 14px; border-radius: 10px; border: 0; background: var(--green); color: #fff; font: inherit; font-weight: 800; font-size: 14px; }
+  .p.hold { background: var(--amber-mid); }
+  .p.grey { background: #9ca3af; }
+  .s { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; font-size: 13px; }
+  .acts { display: grid; gap: 6px; margin-top: 8px; }
+  .act { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; font-size: 12.5px; color: var(--ink-2); }
+  .act .i { font-size: 15px; line-height: 1.3; }
+  .warn { margin-top: 8px; font-size: 12.5px; color: var(--amber); background: var(--amber-tint); border-radius: 8px; padding: 6px 8px; }
+
+  /* the sticker on the machine */
+  .sticker { width: 220px; margin: 0 auto; border: 3px solid var(--ink); border-radius: 10px; padding: 10px; background: #fff; text-align: center; }
+  .sticker .code { font-family: ui-monospace, Menlo, monospace; font-size: 30px; font-weight: 800; letter-spacing: .04em; }
+  .sticker .qr { width: 96px; height: 96px; margin: 6px auto; background:
+    repeating-linear-gradient(0deg, var(--ink) 0 6px, transparent 6px 12px),
+    repeating-linear-gradient(90deg, var(--ink) 0 6px, #fff 6px 12px); background-blend-mode: multiply; border: 4px solid #fff; outline: 2px solid var(--ink); }
+  .sticker .w { font-size: 12px; font-weight: 700; }
+  .sticker .url { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--ink-2); }
+
+  /* the fleet board record (desk) */
+  .desk { width: 100%; max-width: 560px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; padding: 12px; font-size: 13px; }
+  .desk .ttl { font-weight: 800; font-size: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; }
+  .chip.g { background: var(--green-tint); color: var(--green-ink); }
+  .chip.a { background: var(--amber-tint); color: var(--amber); }
+  .chip.r { background: var(--red-tint); color: var(--red-ink); }
+  .chip.b { background: var(--blue-tint); color: var(--blue-ink); }
+  .chip.k { background: var(--line-2); color: var(--ink-2); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .tile { border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; }
+  .tile .k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .tile .v { font-weight: 800; font-size: 15px; }
+  .tile .v small { font-weight: 500; font-size: 11.5px; color: var(--muted); }
+  .led { margin-top: 10px; border-top: 1px solid var(--line-2); }
+  .led .r { display: grid; grid-template-columns: 92px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line-2); font-size: 12.5px; }
+  .led .r .d { color: var(--muted); }
+  .led .r b { color: var(--ink); }
+  .inbox { border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; margin-top: 8px; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+  .inbox .t { font-weight: 700; }
+  .inbox .sub { font-size: 12px; color: var(--ink-2); grid-column: 1; }
+  .inbox .doors { grid-column: 1 / -1; display: flex; gap: 12px; font-size: 12px; color: var(--blue-ink); font-weight: 600; margin-top: 4px; }
+
+  /* the lists */
+  ol.alts { padding-left: 22px; max-width: 100ch; }
+  ol.alts li { margin: 6px 0; color: var(--ink-2); }
+  ol.alts li b { color: var(--ink); }
+  .pick { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: var(--green-tint); color: var(--green-ink); margin-left: 6px; vertical-align: 1px; }
+  .no { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: var(--line-2); color: var(--ink-2); margin-left: 6px; vertical-align: 1px; }
+  .tree { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: #fff; border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; white-space: pre; overflow-x: auto; max-width: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #270 · mock-up · 2026-11-05</p>
+  <h1>Equipment pre-use check: check it off, slide the levels, take the photos, then run the machine</h1>
+  <p>Before a crew runs a machine, the phone walks them around it the way the owner's drill video does: a short list of Yes / No / Not here checks, one open at a time, then the levels as sliders (fuel, hydraulic oil, engine oil, coolant) and the hour meter typed off the dash, then four photos that file into the job's Drive folder, then one press that says the machine is safe to run. A No holds the machine and tells Dispatch. The sheet is the stage checklist sheet the crews already fill, with a levels row and a photo row added. Every frame is 375 px. The machines, the job and the people are made up.</p>
+</header>
+
+<h2><span class="num">1</span> Where it starts on a job: the Job Mode card, once you are here</h2>
+<p class="lede">The card already knows the job and, once Dispatch has put a machine on it, the machine. After <b>I'm here</b> a line under the job reads what is on site and whether it has been checked today. The check is asked, never forced: the big presses stay, and the line turns green when the check is done by anyone on the job.</p>
+<div class="row">
+  <div>
+    <div class="cap amber">On site · not checked today</div>
+    <div class="fit"><div class="phone">
+      <div class="status">Here since 7:38 AM</div>
+      <div class="jobnum">JP1042<span class="sep">|</span><span class="name">Oak Hollow Apartments C</span></div>
+      <div class="addr">4410 Pecan Creek Rd · Ridgeway Builders</div>
+      <div class="cal">▦ Job calendar</div>
+      <div class="rail"><div class="t">Today · 0 of 1 done</div>
+        <div class="r now"><span class="d now"></span><span>7:30 AM</span><span><b>JP1042</b> · Oak Hollow Apartments C</span></div>
+      </div>
+      <div class="sec">Machines on this job</div>
+      <div class="line ask"><b>🚜 E-12 · Kubota KX040</b><span class="go">Check it ›</span><span class="sub">Not checked today · Jordan checked it yesterday, 1,412 h</span></div>
+      <div class="line ok"><b>🛠 D-3 · Vermeer D23x30</b><span class="go">Checked ✓</span><span class="sub">Mateo · 7:41 AM · 742 h · safe to run</span></div>
+      <div class="sec">Stage checklists</div>
+      <div class="line"><b>Rough In</b><span class="go">Open ›</span><span class="sub">2 of 5 answered · not ready</span></div>
+      <div class="bar"><button class="am">Turnaway</button><button>% done</button><button>Clock out</button></div>
+      <div class="big"><button class="leave">Leave
+report</button><button class="wrap-up">Wrap Up
+Day</button></div>
+    </div></div>
+    <p class="note"><b>The rule.</b> A machine is on a job because Dispatch handed it to the job on the fleet board, the way a truck is handed to a person. One check a day per machine, by whoever runs it first; the second person sees the green line. A machine with no check today still runs, but the line is amber and the office sees <i>ran unchecked</i> on the machine's ledger at the day's end.</p>
+  </div>
+  <div>
+    <div class="cap green">On site · the day's check done</div>
+    <div class="fit"><div class="phone">
+      <div class="status">Here since 7:38 AM</div>
+      <div class="jobnum">JP1042<span class="sep">|</span><span class="name">Oak Hollow Apartments C</span></div>
+      <div class="addr">4410 Pecan Creek Rd · Ridgeway Builders</div>
+      <div class="cal">▦ Job calendar</div>
+      <div class="rail"><div class="t">Today · 0 of 1 done</div>
+        <div class="r now"><span class="d now"></span><span>7:30 AM</span><span><b>JP1042</b> · Oak Hollow Apartments C</span></div>
+      </div>
+      <div class="sec">Machines on this job</div>
+      <div class="line ok"><b>🚜 E-12 · Kubota KX040</b><span class="go">Checked ✓</span><span class="sub">Mateo · 7:52 AM · 1,418 h · safe to run</span></div>
+      <div class="line held"><b>🛠 D-3 · Vermeer D23x30</b><span class="go">Held ›</span><span class="sub">Hydraulic leak at the rod box · with Dispatch since 7:44</span></div>
+      <div class="sec">Stage checklists</div>
+      <div class="line"><b>Rough In</b><span class="go">Open ›</span><span class="sub">2 of 5 answered · not ready</span></div>
+      <div class="bar"><button class="am">Turnaway</button><button>% done</button><button>Clock out</button></div>
+      <div class="big"><button class="leave">Leave
+report</button><button class="wrap-up">Wrap Up
+Day</button></div>
+    </div></div>
+    <p class="note"><b>A held machine.</b> A No on a check that matters (a leak, a brake, a missing guard) holds the machine: the line goes red, Dispatch has the row in its inbox, and the line stays red until Dispatch replies or the office resolves the problem on the machine's record. A No that does not hold (a dim light, a loose step) files a problem and the machine still reads safe to run.</p>
+  </div>
+</div>
+
+<h2><span class="num">2</span> Where it starts at the machine: the sticker</h2>
+<p class="lede">The check is also one scan away from the machine itself, for the day a machine is on a job the phone does not know about, a rental, or a person not in Job Mode. Each machine wears the same kind of label the on-site boxes wear, with its unit number and a code. Scanning it opens the same sheet, pointed at this machine and at the job the phone is clocked into.</p>
+<div class="row">
+  <div>
+    <div class="cap">The label on the machine · printed from the fleet board</div>
+    <div class="fit"><div class="sticker">
+      <div class="code">E-12</div>
+      <div class="qr" aria-hidden="true"></div>
+      <div class="w">Kubota KX040 · check it before you run it</div>
+      <div class="url">clicktooling.com/m/E12</div>
+    </div></div>
+    <p class="note"><b>Same door as a box's label.</b> A box label's code opens the box on the phone through <code>/b/:code</code>; a machine's opens its check through <code>/m/:code</code>. Signed out, the page says what the label is and asks for a sign-in. A rental has no row yet: the sheet offers <b>Add this machine</b> with its make and model, and Dispatch sees it as a new row to keep or let go.</p>
+  </div>
+  <div>
+    <div class="cap">After the scan · no job clocked in</div>
+    <div class="fit"><div class="sheet">
+      <div class="hbar"><span>Pre-use check · E-12</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="who"><b>Kubota KX040</b> · last checked by Jordan Pike · yesterday 7:40 AM · 1,412 h</div>
+        <div class="lab">Which job is it on?</div>
+        <div class="line ok"><b>JP1042 · Oak Hollow Apartments C</b><span class="go">This one</span><span class="sub">Dispatch put E-12 here on Monday</span></div>
+        <div class="line"><b>Another job…</b><span class="go">Pick ›</span><span class="sub">The photos file on the job you pick</span></div>
+        <div class="warn">You are not clocked in. The check still saves; the photos file on the job you pick.</div>
+      </div>
+      <div class="foot"><button class="p">Start the walk-around</button></div>
+    </div></div>
+  </div>
+</div>
+
+<h2><span class="num">3</span> The check: the walk-around, one question at a time</h2>
+<p class="lede">The sheet is the stage checklist sheet. One question open at a time marked <b>Next</b>, three presses that save by themselves, a stamp on every row, <b>Add a note</b> and <b>Send to Dispatch</b> under the open one. The questions are the machine kind's list, written by the office under Settings the way the stage questions are, with a few added for one machine (the drill's vise dies and sub savers, the excavator's track tension).</p>
+<div class="row">
+  <div>
+    <div class="cap">The walk-around · 3 of 8 answered</div>
+    <div class="fit"><div class="sheet">
+      <div class="hbar"><span>Pre-use check · E-12</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="who"><b>Kubota KX040</b> on <b>JP1042 · Oak Hollow C</b> · Mateo Ruiz · 7:46 AM</div>
+        <div class="count">3 of 8 answered · 5 left · then the levels and the photos</div>
+        <div class="lab">Walk around</div>
+        <div class="q"><span class="t">Tracks and undercarriage clear, no cracks</span><span class="ans y">Yes</span><span class="st">Mateo · 7:46</span></div>
+        <div class="q"><span class="t">Hydraulic hoses and cylinders, no leaks</span><span class="ans y">Yes</span><span class="st">Mateo · 7:47</span></div>
+        <div class="q"><span class="t">Bucket pins, teeth and the thumb tight</span><span class="ans y">Yes</span><span class="st">Mateo · 7:47</span></div>
+        <div class="q open"><span class="next">Next</span><span class="t">Lights, horn and the backup alarm work</span>
+          <div class="three"><button class="y">Yes</button><button class="n">No</button><button class="nh">Not here</button></div>
+          <div class="more"><span>Add a note</span><span>Send to Dispatch</span></div>
+        </div>
+        <div class="q"><span class="t">Seat belt and ROPS in place</span><span class="st">open</span></div>
+        <div class="q"><span class="t">Fire extinguisher on board and charged</span><span class="st">open</span></div>
+        <div class="q"><span class="t">Grease points greased today</span><span class="st">open</span></div>
+        <div class="q"><span class="t">Air filter indicator clear</span><span class="st">open · added for the KX040</span></div>
+      </div>
+      <div class="foot"><button class="p grey">Levels and photos next</button></div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap red">A No · the machine is held</div>
+    <div class="fit"><div class="sheet">
+      <div class="hbar"><span>Pre-use check · D-3</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="who"><b>Vermeer D23x30</b> on <b>JP1042 · Oak Hollow C</b> · Mateo Ruiz · 7:43 AM</div>
+        <div class="count">2 of 9 answered · 1 No · the drill is held</div>
+        <div class="lab">Walk around</div>
+        <div class="q"><span class="t">Rod box latched, rods seated</span><span class="ans y">Yes</span><span class="st">Mateo · 7:43</span></div>
+        <div class="q no"><span class="t">Hydraulic hoses and fittings, no leaks</span>
+          <div class="nt"><b>No</b> · Mateo · 7:44 · <i>wet fitting at the rod box, dripping</i></div>
+          <div class="shots" style="grid-template-columns: repeat(4, 1fr);"><div class="shot got"><span class="cam">📷</span>the leak · 7:44</div><div class="shot want"><span class="cam">📷</span>Another</div></div>
+          <div class="acts">
+            <div class="act"><span class="i">⛔</span><span><b>Holds D-3.</b> It reads <i>Held</i> on the card and the fleet board until Dispatch replies or the office resolves it.</span></div>
+            <div class="act"><span class="i">📨</span><span><b>Sent to Dispatch</b> at 7:44 with the job, the machine, the check and the photo. Carla's reply reads here.</span></div>
+            <div class="act"><span class="i">🔧</span><span>Filed as a <b>Needs service</b> problem on D-3's record, the photo beside it.</span></div>
+          </div>
+        </div>
+        <div class="q open"><span class="next">Next</span><span class="t">Vise dies and sub savers clean, not worn</span>
+          <div class="three"><button class="y">Yes</button><button class="n">No</button><button class="nh">Not here</button></div>
+          <div class="more"><span>Add a note</span><span>Send to Dispatch</span></div>
+        </div>
+        <div class="q"><span class="t">Strike alert and the stakes down</span><span class="st">open</span></div>
+      </div>
+      <div class="foot"><button class="p hold">Finish the walk, D-3 stays held</button><button class="s">Dispatch says run it anyway…</button></div>
+    </div></div>
+    <p class="note"><b>Which No holds.</b> Each question carries <i>holds the machine</i> or not, set where the question is written. A held machine's No is the one sent to Dispatch by itself; the sheet still lets the crew send any row. <b>Run it anyway</b> is Dispatch's press from the inbox row, never the crew's, and it writes who said so on the ledger.</p>
+  </div>
+</div>
+
+<h2><span class="num">4</span> The levels and the hour meter: slide, do not type</h2>
+<p class="lede">Four sliders with the gauge's own marks, so a thumb sets what the eye saw at the sight glass. Each slider remembers yesterday's level as a faint tick and says in words when it is low. The hour meter is typed off the dash, as the video does, with yesterday's reading under it so a slip of the thumb shows at once.</p>
+<div class="row">
+  <div>
+    <div class="cap">Levels · fuel and hydraulics low</div>
+    <div class="fit"><div class="sheet">
+      <div class="hbar"><span>Pre-use check · E-12</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="who"><b>Kubota KX040</b> on <b>JP1042 · Oak Hollow C</b> · Mateo Ruiz · 7:49 AM</div>
+        <div class="count">8 of 8 answered · now the levels</div>
+        <div class="lab">Levels</div>
+        <div class="lvl"><div class="h"><b>Fuel</b><span class="v low">¼ · low</span></div><input type="range" min="0" max="4" value="1" aria-label="Fuel"><div class="ticks"><span>E</span><span>¼</span><span>½</span><span>¾</span><span>F</span></div><div class="last">Yesterday ¾ · <b>fill before noon</b></div></div>
+        <div class="lvl"><div class="h"><b>Hydraulic oil</b><span class="v low">Below the line</span></div><input type="range" min="0" max="2" value="0" aria-label="Hydraulic oil"><div class="ticks"><span>Below</span><span>On the line</span><span>Full</span></div><div class="last">Yesterday on the line · <b>top it up, tell Dispatch</b></div></div>
+        <div class="lvl"><div class="h"><b>Engine oil</b><span class="v ok">On the line</span></div><input type="range" min="0" max="2" value="1" aria-label="Engine oil"><div class="ticks"><span>Below</span><span>On the line</span><span>Full</span></div></div>
+        <div class="lvl"><div class="h"><b>Coolant</b><span class="v ok">Full</span></div><input type="range" min="0" max="2" value="2" aria-label="Coolant"><div class="ticks"><span>Below</span><span>On the line</span><span>Full</span></div></div>
+        <div class="lab">Hour meter</div>
+        <div class="meter"><b>Hours on the dash</b><div class="n">1,418 <small>h</small></div><span class="last">Yesterday 1,412 · +6 h</span></div>
+      </div>
+      <div class="foot"><button class="p">Photos next</button></div>
+    </div></div>
+    <p class="note"><b>Why sliders.</b> A sight glass is a line, a fuel gauge is quarters, a dipstick is two marks: the slider carries the gauge's own marks, and a thumb on a dirty glove lands on one. A level below its line files a <i>Monitor</i> problem by itself (hydraulic oil a <i>Needs service</i>); nothing holds the machine. The hour reading is the machine's odometer reading on the fleet board, so its history, its pace and its service interval in hours come for free.</p>
+  </div>
+  <div>
+    <div class="cap">A slip caught · the meter went backwards</div>
+    <div class="fit"><div class="sheet">
+      <div class="hbar"><span>Pre-use check · E-12</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="who"><b>Kubota KX040</b> on <b>JP1042 · Oak Hollow C</b> · Mateo Ruiz · 7:49 AM</div>
+        <div class="lab">Hour meter</div>
+        <div class="meter"><b>Hours on the dash</b><div class="n" style="border-color: var(--amber-mid)">1,148 <small>h</small></div><span class="last bad">Yesterday 1,412 · this is 264 h less. Read it again?</span></div>
+        <div class="warn">The reading saves either way and is flagged amber on the ledger, as a backwards odometer reading is today.</div>
+        <div class="lab">Levels</div>
+        <div class="lvl"><div class="h"><b>Fuel</b><span class="v ok">¾</span></div><input type="range" min="0" max="4" value="3" aria-label="Fuel"><div class="ticks"><span>E</span><span>¼</span><span>½</span><span>¾</span><span>F</span></div></div>
+        <div class="lvl"><div class="h"><b>Hydraulic oil</b><span class="v ok">On the line</span></div><input type="range" min="0" max="2" value="1" aria-label="Hydraulic oil"><div class="ticks"><span>Below</span><span>On the line</span><span>Full</span></div></div>
+      </div>
+      <div class="foot"><button class="p">Photos next</button></div>
+    </div></div>
+  </div>
+</div>
+
+<h2><span class="num">5</span> The photos: four shots that file on the job, and one more if something is wrong</h2>
+<p class="lede">Four tiles the camera opens in turn: the hour meter, the front, one side, the back. A fifth is for anything wrong. Each shot goes the way a job photo goes today: shrunk on the phone, kept with the camera's time, queued with no signal, filed into the job's Drive Photos folder by the sweep, and shown on the machine's ledger and the job's Photos window with the words <i>E-12 pre-use check</i>.</p>
+<div class="row">
+  <div>
+    <div class="cap">Photos · 2 of 4 taken, one waiting for signal</div>
+    <div class="fit"><div class="sheet">
+      <div class="hbar"><span>Pre-use check · E-12</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="who"><b>Kubota KX040</b> on <b>JP1042 · Oak Hollow C</b> · Mateo Ruiz · 7:51 AM</div>
+        <div class="lab">Photos</div>
+        <div class="shots">
+          <div class="shot got"><span class="cam">📷</span>Hour meter · 7:50</div>
+          <div class="shot wait"><span class="cam">📷</span>Front · waiting for signal</div>
+          <div class="shot want"><span class="cam">📷</span>Left side</div>
+          <div class="shot want"><span class="cam">📷</span>Back</div>
+        </div>
+        <div class="shots" style="grid-template-columns: repeat(4, 1fr); margin-top: 6px;"><div class="shot"><span class="cam">📷</span>Anything wrong</div></div>
+        <div class="where">Files in <b>Ridgeway Builders › JP1042 Oak Hollow C › Photos</b> as <b>2026-11-05 E-12 pre-use</b>, and shows on E-12's record.</div>
+        <div class="lab">Sign</div>
+        <div class="sign">I walked around <b>E-12</b>, read its levels and took the photos. It is safe to run. · <b>Mateo Ruiz</b> · 7:51 AM</div>
+      </div>
+      <div class="foot"><button class="p">E-12 is safe to run</button><button class="s">Finish later, keep what I did</button></div>
+    </div></div>
+    <p class="note"><b>No signal.</b> A shot with no signal waits on the phone and goes when there is one, as a job photo does. The sign press waits on the phone too, with the check marked <i>on its way</i> on the card, so the crew is not stood at the machine watching a spinner.</p>
+  </div>
+  <div>
+    <div class="cap">Where the photos go · the two ways weighed</div>
+    <div class="fit" style="display:block">
+      <div class="tree">Jobs Shared Drive
+└── Ridgeway Builders
+    └── JP1042 Oak Hollow Apartments C
+        └── Photos
+            ├── 2026-11-05 E-12 pre-use · Mateo · 4 photos   ◀ recommended
+            └── 2026-11-05 D-3 pre-use · Mateo · 3 photos
+
+Fleet (a Drive folder per machine)                 ◀ later, if asked
+└── E-12 Kubota KX040
+    └── Pre-use checks
+        └── 2026-11-05 · JP1042 · Mateo</div>
+      <p class="note"><b>Per job first.</b> The job's Photos folder exists and the sweep already files into it, the GC sees a day's machine photos beside the day's work, and a damage claim is a job question. The machine's own folder is a second copy the office may want for a sale or a warranty; a per-machine folder would be a new root under the fleet, which Settings → Where files go does not know yet. The machine's record shows every photo either way, read from the photo rows by machine.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">6</span> The machine's record: the fleet board already has the shape</h2>
+<p class="lede">People → Vehicles is a card per vehicle with a holder, a reading, its problems, maintenance tasks, a service log and a ledger. A machine is a card of a second kind on the same board: its reading is hours, its holder can be a job, and its check-ins are the pre-use checks. Nothing new to invent for who holds it, what is wrong with it or when it was serviced.</p>
+<div class="row">
+  <div>
+    <div class="cap">People → Vehicles · a machine's record</div>
+    <div class="fit"><div class="desk">
+      <div class="ttl">E-12 · Kubota KX040 <span class="chip k">Machine · excavator</span> <span class="chip b">On JP1042 · Oak Hollow C since Mon</span> <span class="chip g">Checked today · Mateo 7:51</span></div>
+      <div class="tiles">
+        <div class="tile"><div class="k">Hours</div><div class="v">1,418 h <small>today</small></div></div>
+        <div class="tile"><div class="k">Service</div><div class="v"><span class="chip a">Oil due in 82 h</span></div></div>
+        <div class="tile"><div class="k">Open problems</div><div class="v">1 <small>fuel ¼ · Monitor</small></div></div>
+      </div>
+      <div class="led">
+        <div class="r"><span class="d">Today 7:51</span><span><b>Pre-use check</b> · Mateo Ruiz · 8 of 8 yes · fuel ¼, hydraulic oil below the line · 4 photos · safe to run</span></div>
+        <div class="r"><span class="d">Today 7:49</span><span><b>Hour reading</b> 1,418 h · +6 h in a day · Mateo Ruiz</span></div>
+        <div class="r"><span class="d">Yesterday 7:40</span><span><b>Pre-use check</b> · Jordan Pike · 8 of 8 yes · 1,412 h · 4 photos · safe to run</span></div>
+        <div class="r"><span class="d">Mon</span><span><b>Hand-off</b> · Motor pool → JP1042 Oak Hollow C · Carla Nguyen</span></div>
+        <div class="r"><span class="d">Oct 28</span><span><b>Service</b> · 500 h service at 1,350 h · Pecan Equipment · $412</span></div>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap"><button class="s">Hand off</button><button class="s">Print the label</button><button class="s">Log service</button><button class="s">Report problem</button><button class="s">Edit</button></div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Dispatch inbox · the held drill</div>
+    <div class="fit" style="display:block">
+      <div class="inbox"><span class="t">🛠 D-3 held · hydraulic leak at the rod box</span><span class="chip r">Pre-use check</span><span class="sub">JP1042 Oak Hollow C · Mateo Ruiz · 7:44 · 1 photo · <i>wet fitting at the rod box, dripping</i></span><div class="doors"><span>Open the machine</span><span>Open the job</span><span>Open the check</span></div></div>
+      <div class="inbox"><span class="t">Reply</span><span class="chip k">Carla</span><span class="sub">Three presses, as a stage check's row has: <b>Reply</b>, <b>Reply and close</b>, <b>Lower priority</b>; and one more for a held machine, <b>Run it anyway</b>, which lifts the hold in Carla's name and writes it on the ledger.</span></div>
+      <div class="inbox"><span class="t">What the crew sees</span><span class="chip g">7:58</span><span class="sub"><i>Carla: a mechanic is coming at 9. Use E-12 for the pit until then.</i> The D-3 line on the card stays red with her words under it.</span></div>
+      <p class="note"><b>Also told, at the day's end.</b> A machine that ran today (the hour meter moved, or the job clocked hours) with no check is one line on the office's Needs you card, <i>E-12 ran unchecked on JP1042</i>, so the habit is seen without anyone being stopped.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">7</span> The two doors, weighed</h2>
+<p class="lede">The owner's two open questions, each as the ways considered. The green pick is the recommendation; the others say why not, or when.</p>
+<h3 style="margin:18px 0 4px">Where and when it triggers for a job</h3>
+<ol class="alts">
+  <li><b>The Job Mode card after I'm here, as a line per machine on the job</b><span class="pick">recommended</span> — the crew is at the site and at the machine; the card already knows the job and, from Dispatch's hand-off, the machine; nothing is forced, and a second person sees the first one's check. Shown in frame 1.</li>
+  <li><b>Before I'm here, between On my way and the arrival</b><span class="no">no</span> — the check is a walk around the machine, which is on site; asking it in the truck gets a check filled from memory.</li>
+  <li><b>A stage checklist question of the kind "equipment check"</b><span class="no">not as the trigger</span> — a stage's questions are answered once per stage; a pre-use check is once per machine per day. The stage checklist <i>sheet</i> is reused whole; a stage may still carry a question <i>Was the excavator checked today?</i> that reads the day's check and answers itself.</li>
+  <li><b>Dispatch's assignment of a machine to a job</b><span class="pick">the source, not the moment</span> — the hand-off is what tells the card which machines to ask about; it is not where the crew does the check.</li>
+  <li><b>The morning clock-in</b><span class="no">no</span> — clock-in happens at the shop or in the truck, and the day may not run the machine at all.</li>
+</ol>
+<h3 style="margin:18px 0 4px">Where it triggers for the equipment itself</h3>
+<ol class="alts">
+  <li><b>A machine is a card on the fleet board, with a label on the machine that opens its check</b><span class="pick">recommended</span> — the board already holds a holder, a reading with its history, problems, tasks, service, insurance, a ledger, and check-in questions with a cadence; a machine adds a kind, hours for miles, and a job as a holder. The label is the on-site box label's twin. Shown in frames 2 and 6.</li>
+  <li><b>An Equipment register beside Vehicles</b><span class="no">no</span> — a second table with the same six things, and a second place for the office to look; if the board gets crowded, a <i>Machines</i> group beside Active and Inactive is the fix.</li>
+  <li><b>The Materials on site ledger</b><span class="no">no</span> — a machine is not a part in a box; it is not counted or used up. Its label, its code route and its phone-first sheet are borrowed; its tables are not.</li>
+</ol>
+</div>
+</body>
+</html>
