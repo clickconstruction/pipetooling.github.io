@@ -369,6 +369,10 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
 
   const openAttachment = useCallback(
     async (a: PersonFileAttachment) => {
+      if (!a.storage_path) {
+        showToast(`${a.filename} has no copy here to open.`, 'error')
+        return
+      }
       if (!(await openOrSaveFromStorage(HR_FILES_BUCKET, a.storage_path, a.filename, 600))) showToast(`Could not open ${a.filename}.`, 'error')
     },
     [showToast],

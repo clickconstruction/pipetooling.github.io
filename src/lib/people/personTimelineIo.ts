@@ -30,7 +30,8 @@ export type PersonFileAttachment = {
   id: string
   person_id: string
   entry_id: string | null
-  storage_path: string
+  /** Null since v2.6541 for a file kept only as a Drive link; an older bucket file always has one. */
+  storage_path: string | null
   filename: string
   mime_type: string | null
   size_bytes: number | null
