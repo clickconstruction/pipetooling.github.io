@@ -21,6 +21,7 @@ import { materializePacketForPerson, type PacketPersonDoc, type PacketTemplateDo
 import { addWorker } from './addWorker'
 import { passwordProblem } from './accountWrites'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { mergeArchivedRows, type ArchivedPeopleRow, type ArchivedPerson, type ArchivedUserRow } from './bringBack'
 
 type Client = SupabaseClient<Database>
 
@@ -90,6 +91,20 @@ export function hirePlan(input: HireInput, caps: HireCaps): { steps: HireStep[];
   if (input.isSalary) steps.push({ id: 'workday', label: 'Workday', detail: `8 hours from ${input.workdayStart}, weekdays — sessions appear on the clock strip by themselves` })
   if (input.packetTemplateId && caps.canAccessContracts) steps.push({ id: 'packet', label: 'Paperwork', detail: 'The packet is assigned; send each document from Contracts' })
   return { steps, problems }
+}
+
+/**
+ * The archived people + Hire checks a name or an email against (punch list #256 PR 4, v2.6525): the archived
+ * accounts with their roster rows, and the archived roster rows, through `mergeArchivedRows`. A table the viewer
+ * cannot read gives nothing, never a false "nobody".
+ */
+export async function listArchivedPeople(supabase: Client): Promise<ArchivedPerson[]> {
+  const [{ data: users }, { data: people }] = await Promise.all([
+    supabase.from('users').select('id, name, email, is_sample, is_digital_twin, is_walk_tester').not('archived_at', 'is', null),
+    supabase.from('people').select('id, name, email, end_date, account_user_id, archived_at').or('archived_at.not.is.null,end_date.not.is.null'),
+  ])
+  const userRows = ((users ?? []) as Array<ArchivedUserRow & { is_sample?: boolean | null; is_digital_twin?: boolean | null; is_walk_tester?: boolean | null }>).filter((u) => !u.is_sample && !u.is_digital_twin && !u.is_walk_tester)
+  return mergeArchivedRows(userRows, (people ?? []) as ArchivedPeopleRow[])
 }
 
 /** A person or account already carrying this exact name — the pay tables are name-keyed, so a second one would share their pay. */

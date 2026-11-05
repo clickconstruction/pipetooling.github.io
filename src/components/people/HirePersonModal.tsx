@@ -11,6 +11,7 @@ import {
   createRosterRow,
   findNameCollision,
   hirePlan,
+  listArchivedPeople,
   inviteHire,
   createHireLogin,
   saveSalaryTemplate,
@@ -21,6 +22,7 @@ import {
 } from '../../lib/people/hireWrites'
 import { BTN, BTN_BLUE, BTN_QUIET, DESK_EDITOR_Z, deskBtn } from '../personDesk/personDeskShared'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { archivedMatchWords, findArchivedMatch, type ArchivedPerson } from '../../lib/people/bringBack'
 
 type StepState = { state: 'pending' | 'running' | 'done' | 'failed'; message?: string }
 
@@ -70,6 +72,29 @@ export function HirePersonModal({
   const [results, setResults] = useState<Partial<Record<HireStepId, StepState>>>({})
   const [context, setContext] = useState<{ userId: string | null; personId: string | null; wrote: boolean }>({ userId: null, personId: null, wrote: false })
   const [collision, setCollision] = useState<string | null>(null)
+  // Bring back (punch list #256 PR 4, v2.6525): the archived people the name and the email are checked against as
+  // they are typed. A match stops the form and offers their desk's Bring back window; "This is someone else" lets it
+  // go on, and the Hire press then still refuses an exact archived name, since pay is keyed by name.
+  const [archived, setArchived] = useState<ArchivedPerson[]>([])
+  const [someoneElse, setSomeoneElse] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void listArchivedPeople(supabase)
+      .then((rows) => {
+        if (!cancelled) setArchived(rows)
+      })
+      .catch(() => {
+        /* a table the viewer cannot read: no match, the name check on the press still runs */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const archivedMatch = useMemo(() => {
+    const m = findArchivedMatch({ name: input.name, email: input.email }, archived)
+    return m && m.person.id !== someoneElse ? m : null
+  }, [archived, input.name, input.email, someoneElse])
+  const archivedWords = archivedMatch ? archivedMatchWords(archivedMatch) : null
 
   const caps = useMemo(() => ({ canInvite: isDev, canAccessPay, canAccessContracts }), [isDev, canAccessPay, canAccessContracts])
   const plan = useMemo(() => hirePlan(input, caps), [input, caps])
@@ -146,6 +171,12 @@ export function HirePersonModal({
           setCollision(c.where === 'account' ? 'An account with this exact name already exists — open their desk instead, or use a distinguishing name (pay is keyed by name).' : 'A roster row with this exact name already exists — open their desk instead, or use a distinguishing name (pay is keyed by name).')
           return
         }
+        // v2.6525: an archived person with this exact name shares the pay row too, "someone else" or not.
+        const gone = findArchivedMatch({ name: input.name, email: '' }, archived)
+        if (gone) {
+          setCollision(`${gone.person.name} is archived under this exact name — pay is keyed by name, so bring them back from their desk or use a distinguishing name.`)
+          return
+        }
         setCollision(null)
       }
       const order = plan.steps
@@ -168,6 +199,12 @@ export function HirePersonModal({
       setRunning(false)
       if (wrote) onHired()
     }
+  }
+
+  function bringBack() {
+    if (!archivedMatch || !personDesk) return
+    personDesk.open({ userId: archivedMatch.person.userId ?? null, personId: archivedMatch.person.personId ?? null, displayName: archivedMatch.person.name, flow: 'bring_back' })
+    onClose()
   }
 
   function openDesk() {
@@ -220,6 +257,24 @@ export function HirePersonModal({
                   <input type="date" value={input.startDate} onChange={(e) => set('startDate', e.target.value)} style={{ fontSize: '0.875rem', padding: '0.3rem 0.5rem' }} aria-label="Start date" />
                 </label>
               </div>
+              {archivedMatch && archivedWords ? (
+                <div role="status" style={{ display: 'grid', gap: '0.35rem', padding: '0.5rem 0.65rem', borderRadius: 6, background: 'var(--bg-amber-tint)', border: '1px solid #f59e0b' }}>
+                  <span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-amber-800)' }}>{archivedWords.headline}</span>
+                    <span style={{ color: 'var(--text-700)' }}> {archivedWords.detail}</span>
+                  </span>
+                  <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    {personDesk ? (
+                      <button type="button" style={BTN_BLUE} onClick={bringBack} title="Opens their desk with the Bring back window up: the day back, both halves restored together, a new stint.">
+                        {archivedWords.bringBackLabel}
+                      </button>
+                    ) : null}
+                    <button type="button" style={BTN_QUIET} onClick={() => setSomeoneElse(archivedMatch.person.id)}>
+                      This is someone else
+                    </button>
+                  </span>
+                </div>
+              ) : null}
               {isDev ? (
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -374,7 +429,7 @@ export function HirePersonModal({
                 {started ? 'Close' : 'Cancel'}
               </button>
               {!started ? (
-                <button type="button" style={deskBtn(BTN_BLUE, running || plan.problems.length > 0 || !nameField)} disabled={running || plan.problems.length > 0 || !nameField} onClick={() => void run(null)}>
+                <button type="button" style={deskBtn(BTN_BLUE, running || plan.problems.length > 0 || !nameField || archivedMatch != null)} disabled={running || plan.problems.length > 0 || !nameField || archivedMatch != null} title={archivedMatch ? 'Bring them back, or say this is someone else.' : undefined} onClick={() => void run(null)}>
                   {running ? 'Hiring…' : `Hire ${nameField || ''}`.trim()}
                 </button>
               ) : null}
