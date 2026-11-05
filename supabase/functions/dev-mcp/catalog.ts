@@ -1711,6 +1711,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "ct-bridge",
   "ct-roster-audit",
   "customer-portal",
+  "detach-login",
   "dev-login",
   "dev-mcp",
   "drive-contract-scan",
