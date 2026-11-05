@@ -59,6 +59,13 @@ function jsonResponse(body: Record<string, unknown>, status: number): Response {
   })
 }
 
+/** A password nobody is told: the invite link sets the real one. */
+function unguessablePassword(): string {
+  const bytes = new Uint8Array(24)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('') + 'aA1!'
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -170,6 +177,7 @@ serve(async (req) => {
       return jsonResponse({ error: `Error checking for existing user: ${checkError.message}` }, 500)
     }
 
+    let reinviteUserId: string | null = null
     if (existingUser && (existingUser as { login_attached_at?: string | null }).login_attached_at == null) {
       // v2.6518 (punch list #260): a person on the roster with no login behind their row. The invite would mint a second
       // id; the login belongs on theirs — Attach a login on their desk makes it there and sends the sign-in email.
@@ -188,16 +196,26 @@ serve(async (req) => {
       if (deleteError) {
         return jsonResponse({ error: `Could not replace the pending invite for this email: ${deleteError.message}` }, 500)
       }
-      // v2.6511: deleting the auth account no longer deletes the users row (it detaches it — a worker with no
-      // login keeps their days). A pending invite has no days, so its row goes too, as the cascade took it
-      // before; otherwise the fresh invite's row would land on users_email_key.
-      const { error: rowDeleteError } = await adminClient.from('users').delete().eq('id', existingUser.id)
-      if (rowDeleteError) {
-        return jsonResponse({ error: `Could not replace the pending invite for this email: ${rowDeleteError.message}` }, 500)
-      }
+      // v2.6530 (punch list #265): the users row and its roster record stay — the key is ON DELETE RESTRICT now, and
+      // the row is the person. Deleting the auth account detached it (v2.6511); the fresh invite is made on the same id
+      // below, so the sign-in lands where the person already is.
+      reinviteUserId = existingUser.id
     }
 
     const redirect = redirectTo && ALLOWED_REDIRECT.test(redirectTo) ? redirectTo : DEFAULT_REDIRECT
+
+    // v2.6530: a re-invite is made on the person's own id first (GoTrue's admin create takes `id`; handle_new_user
+    // re-attaches the row), unconfirmed, so the invite link below sets their password as a first invite does.
+    if (reinviteUserId) {
+      const { error: remakeError } = await adminClient.auth.admin.createUser({
+        id: reinviteUserId,
+        email: normalizedEmail,
+        password: unguessablePassword(),
+        email_confirm: false,
+        user_metadata: { invited_role: role, name: trimmedName || '' },
+      })
+      if (remakeError) return jsonResponse({ error: `Could not re-invite on the same person: ${remakeError.message}` }, 500)
+    }
 
     // generateLink creates the auth user and returns the invite link WITHOUT sending
     // any Supabase SMTP mail — we send the email ourselves through Resend below.

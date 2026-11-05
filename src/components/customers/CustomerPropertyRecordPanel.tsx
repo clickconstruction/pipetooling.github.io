@@ -13,7 +13,7 @@ import {
   type ProposedPropertyRecord,
   type PropertyRecordFields,
 } from '../../lib/customers/propertyRecord'
-import { lookupPropertyRecord, propertyLookupErrorMessage, type PropertyLookupOutcome } from '../../lib/customers/propertyLookupClient'
+import { lookupPropertyRecord, propertyLookupErrorMessage, propertyLookupHoldLine, type PropertyLookupOutcome } from '../../lib/customers/propertyLookupClient'
 import { splitJobAddressForPrefill } from '../../lib/txLocalityAddressSplit'
 
 /**
@@ -89,6 +89,8 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
 
   const proposal: ProposedPropertyRecord | null = outcome?.ok ? outcome.proposal : null
   const parcelError = outcome?.ok ? outcome.parcelError : null
+  // Why the pin or the parcel was not this lot (v2.6520): the roll was not asked, or its parcel names another address.
+  const pinHold = outcome?.ok ? outcome.hold : null
 
   async function runLookup() {
     const a = address.trim()
@@ -262,10 +264,10 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
             Found on the appraisal roll. Blank fields were filled from the record; check each value against the address, then keep or fix it.
           </p>
         ) : (
-          <p style={{ margin: 0, fontSize: '0.8125rem', padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-700)' }}>
-            No parcel under the map pin{parcelError ? ` (${parcelError})` : ''}.{' '}
+          <p data-property-lookup-miss style={{ margin: 0, fontSize: '0.8125rem', padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-700)' }}>
+            {pinHold ? `${propertyLookupHoldLine(pinHold, address)} ` : `No parcel under the map pin${parcelError ? ` (${parcelError})` : ''}. `}
             {proposal.county.county ? `County still resolved: ${proposal.county.county}. ` : ''}
-            Find the rest on the county appraisal district and paste it here.
+            {pinHold ? null : 'Find the rest on the county appraisal district and paste it here.'}
           </p>
         )
       ) : null}

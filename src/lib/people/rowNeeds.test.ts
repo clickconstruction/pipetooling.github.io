@@ -11,7 +11,8 @@ const facts: RailFacts = {
   portalOnPersonIds: new Set(['p-behar']),
 }
 function person(x: Partial<RailPersonInput> & { name: string }): RailPersonInput {
-  return { userId: null, personId: null, kind: 'assistant', archived: false, ...x }
+  const base = { userId: null, personId: null, kind: 'assistant', archived: false, ...x }
+  return { hasLogin: base.userId != null, ...base }
 }
 const build = (x: Partial<RowNeedsInput> & { person: RailPersonInput }) => buildRowNeeds({ facts, ...x })
 

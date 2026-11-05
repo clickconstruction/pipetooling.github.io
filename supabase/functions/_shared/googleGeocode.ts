@@ -17,14 +17,20 @@ type GeocodeResponseJson = {
   status: string
   error_message?: string
   results?: {
-    geometry?: { location?: { lat?: number; lng?: number } }
+    geometry?: { location?: { lat?: number; lng?: number }; location_type?: string }
     address_components?: { long_name?: string; short_name?: string; types?: string[] }[]
+    partial_match?: boolean
+    types?: string[]
   }[]
 }
 
 export type GoogleGeocodeResult =
-  /** `county` (v2.3004): the `administrative_area_level_2` component without the word "County" — '' when Google omits it. */
-  | { ok: true; lat: number; lng: number; county: string }
+  /**
+   * `county` (v2.3004): the `administrative_area_level_2` component without the word "County" — '' when Google omits it.
+   * `locationType`, `partialMatch`, `types` and `streetNumber` (v2.6520): how well Google placed the address, read by the
+   * parcel lookup's pin gate (`parcelPinMatch.ts`); the Map's callers ignore them.
+   */
+  | { ok: true; lat: number; lng: number; county: string; locationType: string; partialMatch: boolean; types: string[]; streetNumber: string }
   | { ok: false; error: GoogleGeocodeErrorCode; detail?: string }
 
 function countyFromComponents(components: { long_name?: string; types?: string[] }[] | undefined): string {
@@ -32,6 +38,13 @@ function countyFromComponents(components: { long_name?: string; types?: string[]
   const c = components.find((x) => Array.isArray(x?.types) && x.types.includes('administrative_area_level_2'))
   const name = (c?.long_name ?? '').trim().replace(/\s+county$/i, '')
   return name
+}
+
+/** The `street_number` component, '' when the result has none (a street, a city or a ZIP). */
+function streetNumberFromComponents(components: { long_name?: string; types?: string[] }[] | undefined): string {
+  if (!Array.isArray(components)) return ''
+  const c = components.find((x) => Array.isArray(x?.types) && x.types.includes('street_number'))
+  return (c?.long_name ?? '').trim()
 }
 
 const DETAIL_MAX = 400
@@ -84,7 +97,17 @@ export async function geocodeWithGoogle(address: string, apiKey: string): Promis
     if (typeof lat === 'number' && typeof lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng)) {
       // A point outside the lower 48 is a wrong answer, a miss (v2.4975).
       if (!inUsPointBox(lat, lng)) return { ok: false, error: 'not_found', detail: refusePointOutsideUs('google', trimmed, lat, lng, j.results[0]) }
-      return { ok: true, lat, lng, county: countyFromComponents(j.results[0]?.address_components) }
+      const first = j.results[0]
+      return {
+        ok: true,
+        lat,
+        lng,
+        county: countyFromComponents(first?.address_components),
+        locationType: typeof first?.geometry?.location_type === 'string' ? first.geometry.location_type : '',
+        partialMatch: first?.partial_match === true,
+        types: Array.isArray(first?.types) ? first.types.filter((t): t is string => typeof t === 'string') : [],
+        streetNumber: streetNumberFromComponents(first?.address_components),
+      }
     }
     return withDetail(j, 'google_no_results')
   }

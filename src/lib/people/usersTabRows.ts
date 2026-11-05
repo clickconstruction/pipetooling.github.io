@@ -24,7 +24,7 @@ export function rowMatchesFilter(row: RailRow, filter: UsersTabFilter): boolean 
     case 'all':
       return true
     case 'nologin':
-      return row.userId == null || row.hasLogin === false
+      return !row.hasLogin
     case 'attention':
       return row.attention !== 'green'
     case 'hours':
@@ -48,8 +48,8 @@ export function applyRowNeeds(row: RailRow, rowNeeds: RowNeeds): RailRow {
 /** Login rows first, then rows with no login (roster-only, or a users row with no sign-in attached — punch list #260), alphabetical within each. */
 export function orderUsersTabRows(rows: readonly RailRow[]): RailRow[] {
   return [...rows].sort((a, b) => {
-    const la = a.userId && a.hasLogin !== false ? 0 : 1
-    const lb = b.userId && b.hasLogin !== false ? 0 : 1
+    const la = a.hasLogin ? 0 : 1
+    const lb = b.hasLogin ? 0 : 1
     if (la !== lb) return la - lb
     return a.name.localeCompare(b.name)
   })
@@ -69,14 +69,14 @@ export function foldNoLoginRows(
   opts: { forceOpen: boolean; threshold?: number },
 ): { shown: RailRow[]; folded: RailRow[] } {
   const threshold = opts.threshold ?? NO_LOGIN_FOLD_THRESHOLD
-  const noLogin = ordered.filter((r) => r.userId == null || r.hasLogin === false)
+  const noLogin = ordered.filter((r) => !r.hasLogin)
   if (opts.forceOpen || noLogin.length <= threshold + 1) return { shown: [...ordered], folded: [] }
   const keyOf = (r: RailRow) => r.personId ?? r.userId ?? r.name
   const keep = new Set(noLogin.slice(0, threshold).map(keyOf))
   const shown: RailRow[] = []
   const folded: RailRow[] = []
   for (const r of ordered) {
-    if ((r.userId != null && r.hasLogin !== false) || keep.has(keyOf(r))) shown.push(r)
+    if (r.hasLogin || keep.has(keyOf(r))) shown.push(r)
     else folded.push(r)
   }
   return { shown, folded }
@@ -85,7 +85,7 @@ export function foldNoLoginRows(
 /** "16 · 2 with a login" — the group header count. */
 export function describeGroupCount(rows: readonly RailRow[]): string {
   const total = rows.length
-  const withLogin = rows.filter((r) => r.userId != null && r.hasLogin !== false).length
+  const withLogin = rows.filter((r) => r.hasLogin).length
   if (total === 0) return ''
   if (withLogin === total) return String(total)
   if (withLogin === 0) return `${total} · no logins`

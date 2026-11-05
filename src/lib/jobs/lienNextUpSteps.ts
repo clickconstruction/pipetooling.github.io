@@ -270,3 +270,17 @@ export function lienRunRungWords(n: number, printed: number): string {
   if (printed >= n) return ' printed'
   return ` · ${printed} printed`
 }
+
+export type LienStepShowing = { head: string; count: string; clear: string }
+
+/**
+ * The line under the rails while a rung is pressed (v2.6522). The press fades every row not on
+ * the rung to a third, and on 2026-11-04 the pale rows were read as blocked: the line names the
+ * rung, counts what is bright, says the rest are faded and not held, and offers the way back.
+ */
+export function lienStepShowingWords(on: LienStepAt, shown: number, total: number): LienStepShowing {
+  const ladder = LIEN_STEP_LADDERS.find((l) => l.key === on.ladder)!
+  const head = `Showing ${on.step} · ${ladder.steps[on.step - 1]}`
+  const count = shown >= total ? `every row on the list is on this step` : shown === 0 ? `none of the ${total} on the list is on this step · all are faded, not held` : `${shown} of ${total} on the list · the rest are faded, not held`
+  return { head, count, clear: `Show all ${total}` }
+}

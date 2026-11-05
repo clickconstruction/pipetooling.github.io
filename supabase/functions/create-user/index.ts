@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { ensureLinkedRosterRow } from '../_shared/rosterRow.ts'
+import { attachCreateRefusal, attachDoorFields, attachRequestRefusal, attachRowRefusal, attachUserIdOf, type AttachCandidate } from '../_shared/attachLoginDoor.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -147,51 +148,41 @@ serve(async (req) => {
       )
     }
 
-    // v2.6518 Attach a login: `user_id` names a users row with no login behind it. Read as the caller (a dev reads every
-    // users row); the row decides the role and the name.
-    const attachUserId = typeof body.user_id === 'string' && body.user_id.trim() ? body.user_id.trim() : null
-    let attachRow: { id: string; name: string | null; role: string; email: string | null } | null = null
+    // v2.6518 Attach a login: `user_id` names a users row with no login behind it. The rules live in
+    // _shared/attachLoginDoor.ts (v2.6528): read the row as the caller (a dev reads every users row); the row decides
+    // the role and the name.
+    const attachUserId = attachUserIdOf(body)
+    let attachFields: ReturnType<typeof attachDoorFields> | null = null
     if (attachUserId) {
-      if (trialCard) {
-        return new Response(JSON.stringify({ error: 'user_id and trial_prospect_id do not go together' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(attachUserId)) {
-        return new Response(JSON.stringify({ error: 'user_id must be a uuid' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
+      const early = attachRequestRefusal(attachUserId, trialProspectId)
+      if (early) return new Response(JSON.stringify({ error: early.error }), { status: early.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       const { data: row, error: rowError } = await supabase
         .from('users')
         .select('id, name, role, email, login_attached_at, is_sample, is_digital_twin, archived_at')
         .eq('id', attachUserId)
         .maybeSingle()
-      const r = row as { id: string; name: string | null; role: string; email: string | null; login_attached_at: string | null; is_sample: boolean | null; is_digital_twin: boolean | null; archived_at: string | null } | null
-      if (rowError || !r) {
-        return new Response(JSON.stringify({ error: rowError ? `Could not read the person: ${rowError.message}` : 'No person with that id' }), { status: rowError ? 500 : 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      if (rowError) {
+        return new Response(JSON.stringify({ error: `Could not read the person: ${rowError.message}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
-      if (r.login_attached_at) {
-        return new Response(JSON.stringify({ error: `${r.name ?? 'This person'} already has a login.` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-      if (r.is_sample || r.is_digital_twin) {
-        return new Response(JSON.stringify({ error: 'A sample or a twin gets its login from its own door.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-      if (r.archived_at) {
-        return new Response(JSON.stringify({ error: `${r.name ?? 'This person'} is archived. Restore them first.` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
-      attachRow = { id: r.id, name: r.name, role: r.role, email: r.email }
+      const candidate = (row as AttachCandidate | null) ?? null
+      const refusal = attachRowRefusal(candidate)
+      if (refusal || !candidate) return new Response(JSON.stringify({ error: refusal?.error ?? 'No person with that id' }), { status: refusal?.status ?? 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      attachFields = attachDoorFields(candidate, body)
     }
 
     // On the Try-out door the card decides who is made; the body only says which column's trades. On the attach door the
     // row decides the role and the name, and a left-out password is an unguessable one (the caller sends the sign-in email).
-    const email = trialCard ? trialCard.email : attachRow ? (typeof body.email === 'string' && body.email.trim() ? body.email : (attachRow.email ?? '')) : body.email
-    const password = trialCard || (attachRow && !body.password) ? unguessablePassword() : body.password
-    const role = trialCard ? 'helpers' : attachRow ? attachRow.role : body.role
-    const name = trialCard ? trialCard.name : attachRow ? attachRow.name ?? undefined : body.name
+    const email = trialCard ? trialCard.email : attachFields ? attachFields.email : body.email
+    const password = trialCard ? unguessablePassword() : attachFields ? (attachFields.password ?? unguessablePassword()) : body.password
+    const role = trialCard ? 'helpers' : attachFields ? attachFields.role : body.role
+    const name = trialCard ? trialCard.name : attachFields ? attachFields.name : body.name
     const service_type_ids = body.service_type_ids
     const read_only = trialCard ? undefined : body.read_only
     const is_sample = trialCard ? undefined : body.is_sample
 
     if (!email || !password || !role) {
       return new Response(
-        JSON.stringify({ error: attachRow ? 'An email is required to attach a login.' : 'Missing required fields: email, password, and role' }),
+        JSON.stringify({ error: attachFields ? 'An email is required to attach a login.' : 'Missing required fields: email, password, and role' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -303,10 +294,10 @@ serve(async (req) => {
 
     if (createAuthError || !newAuthUser.user) {
       const msg = createAuthError?.message || 'Unknown error'
-      const taken = attachUserId && /database error/i.test(msg)
+      const taken = attachUserId ? attachCreateRefusal(msg) : null
       return new Response(
-        JSON.stringify({ error: taken ? 'A login already stands behind that id.' : `Failed to create user in auth: ${msg}` }),
-        { status: taken ? 409 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: taken ? taken.error : `Failed to create user in auth: ${msg}` }),
+        { status: taken ? taken.status : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

@@ -409,7 +409,9 @@ describe('who has it', () => {
   })
 
   it('reads the pill, the toast and the picker', () => {
-    expect([hasPillWords(DEMO_ME, null), hasPillWords(DEMO_ME, 'Robert'), hasPillWords(DEMO_ME, 'Rosa')]).toEqual(['Nobody has it · Take it', 'You have this', 'Rosa has this'])
+    expect([hasPillWords(DEMO_ME, null), hasPillWords(DEMO_ME, 'Robert'), hasPillWords(DEMO_ME, 'Rosa')]).toEqual(['Nobody has it · Take it', 'Robert has this', 'Rosa has this'])
+    // A profile with no name reads its own rows as *You have this* still (v2.6521).
+    expect(hasPillWords('You', 'You')).toBe('You have this')
     expect([hasToast(DEMO_ME, 'Greg Paulk', 'Robert'), hasToast(DEMO_ME, 'Greg Paulk', 'Rosa'), hasToast(DEMO_ME, 'Greg Paulk', null)]).toEqual([
       'You have Greg Paulk.',
       'Rosa has Greg Paulk.',

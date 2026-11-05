@@ -66,7 +66,7 @@ describe('the shared geocoders call a point outside the box a miss', () => {
     answerWith({ status: 'OK', results: [{ geometry: { location: ASSAM }, address_components: [] }] })
     expect(await geocodeWithGoogle('1 Main St', 'test-key')).toEqual({ ok: false, error: 'not_found', detail: 'Google placed it outside the lower 48 (26.7813, 91.9274)' })
     answerWith({ status: 'OK', results: [{ geometry: { location: SEGUIN }, address_components: [{ long_name: 'Guadalupe County', types: ['administrative_area_level_2'] }] }] })
-    expect(await geocodeWithGoogle('123 Main St, Seguin, TX 78155', 'test-key')).toEqual({ ok: true, ...SEGUIN, county: 'Guadalupe' })
+    expect(await geocodeWithGoogle('123 Main St, Seguin, TX 78155', 'test-key')).toEqual({ ok: true, ...SEGUIN, county: 'Guadalupe', locationType: '', partialMatch: false, types: [], streetNumber: '' })
   })
 
   it('the US Census', async () => {

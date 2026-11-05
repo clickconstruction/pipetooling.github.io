@@ -15,6 +15,22 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
+// The function's answer for a street the map lacks (v2.6520): a held pin, no parcel, the county still resolved.
+vi.mock('../../lib/customers/propertyLookupClient', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/customers/propertyLookupClient')>('../../lib/customers/propertyLookupClient')
+  return {
+    ...actual,
+    lookupPropertyRecord: vi.fn(async (address: string) =>
+      actual.proposalFromLookupPayload(address, {
+        ok: true,
+        county_geocoder: 'Williamson',
+        parcel: null,
+        pin_hold: { kind: 'street_unknown', detail: 'the map matched only part of the address' },
+      }),
+    ),
+  }
+})
+
 afterEach(cleanup)
 
 const lookedUp = { ...emptyPropertyDraft('1200 Ilka Rd, Seguin, TX 78155'), county: 'Guadalupe', parcel_looked_up_at: '2026-10-06T12:00:00Z' }
@@ -30,6 +46,17 @@ describe('CustomerPropertyRecordPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Use these' }))
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ legal_description: 'ABS: 131 SUR: BENJAMIN FUQUA 1.2260 AC', owner_name: 'HALL BRUCE & REBECCA' }))
     expect(onChange.mock.calls[0]![0]).not.toHaveProperty('homestead')
+  })
+  it('says the map has no such street when the lookup holds the pin, fills the county alone and never claims a parcel (v2.6520)', async () => {
+    const onChange = vi.fn()
+    const address = '123 ZZ Test Ln, Taylor, TX 76574'
+    renderWithProviders(<CustomerPropertyRecordPanel address={address} fields={emptyPropertyDraft(address)} onChange={onChange} autoLookup />)
+    const line = await screen.findByText(/The map has no street by that name near Taylor, so the roll was not asked\. Check the street name, then look up again\./)
+    expect(line.textContent).toContain('County still resolved: Williamson.')
+    expect(line.textContent).not.toContain('Find the rest on the county appraisal district')
+    expect(screen.queryByText(/Found on the appraisal roll/)).toBeNull()
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ county: 'Williamson' }))
+    expect(onChange.mock.calls[0]![0]).not.toHaveProperty('owner_name')
   })
   it('keeps the paste box folded without pasteFirst', () => {
     renderWithProviders(<CustomerPropertyRecordPanel address={lookedUp.address} fields={lookedUp} onChange={() => {}} />)

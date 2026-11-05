@@ -80,7 +80,7 @@ describe('WhoHasItPill', () => {
 
   it('mine: no row to take it, and a press outside closes the picker', () => {
     renderPill(greg({ has: 'Robert', hasUserId: 'u-robert', hasSince: '2026-10-02T15:00:00.000Z', hasHow: 'took' }))
-    fireEvent.click(screen.getByRole('button', { name: 'You have this' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Robert has this' }))
     expect(screen.getByRole('menu', { name: 'Who has Greg Paulk' })).toBeTruthy()
     expect(screen.queryByRole('menuitemradio', { name: /^I'll take it/ })).toBeNull()
 
@@ -119,7 +119,7 @@ describe('WhoHasItPill: who is off (v2.6060, punch list #141 PR 4)', () => {
 
   it('says you are off when it is yours and your hours are closed', () => {
     renderPill(greg({ has: 'Robert', hasUserId: 'u-robert' }), { pushHours: new Map([['u-robert', WEEKDAYS]]), nowIso: LATE_WED })
-    const pill = screen.getByRole('button', { name: 'You have this · off until 6 AM' })
+    const pill = screen.getByRole('button', { name: 'Robert has this · off until 6 AM' })
     expect(pill.title).toBe('You are off until 6 AM, so a push waits for you. The office hears at once. Your Dashboard lists what waited.')
   })
 

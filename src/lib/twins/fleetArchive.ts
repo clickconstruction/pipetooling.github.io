@@ -69,9 +69,9 @@ export function restoreTwinConfirm(twin: FleetTwin): ConfirmWords {
   }
 }
 
-/** The `archive-user` body: the account by email and name, no customers to move (a twin owns none). */
+/** The `archive-user` body: the account by its id (v2.6528), the email and name for the words, no customers to move (a twin owns none). */
 export function archiveTwinBody(twin: FleetTwin): ArchiveRequestBody {
-  return archiveRequestBody({ email: twin.email, name: twin.name }, 0, 'keep', '')
+  return archiveRequestBody({ id: twin.id, email: twin.email, name: twin.name }, 0, 'keep', '')
 }
 
 /** The fold's label under the fleet. */
