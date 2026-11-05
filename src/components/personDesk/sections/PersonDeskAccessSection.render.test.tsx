@@ -204,6 +204,14 @@ describe('PersonDeskAccessSection — a person with no login (punch list #260, v
     expect(screen.getByRole('button', { name: 'Merge a duplicate…' })).toBeTruthy()
   })
 
+  it('a dev may remove a login, never their own (punch list #266)', () => {
+    renderSection(KAI_LOGIN, DEV)
+    expect(screen.getByTestId('remove-login')).toBeTruthy()
+    const { unmount } = renderWithProviders(<PersonDeskAccessSection user={{ ...KAI_LOGIN, id: 'u-me' }} viewer={DEV} viewerUserId="u-me" serviceTypeNames={TRADES} onChanged={vi.fn()} />)
+    expect(screen.getAllByRole('button', { name: /Remove the login/ })).toHaveLength(1)
+    unmount()
+  })
+
   it('a login row reads as before', () => {
     renderSection(KAI_LOGIN, DEV)
     expect(screen.queryByTestId('no-login-words')).toBeNull()
