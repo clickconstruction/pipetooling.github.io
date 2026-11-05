@@ -129,6 +129,24 @@ describe('JobWindowModal', () => {
     // Stays mounted (state survives), just hidden.
     expect(screen.getByTestId('history-grid-stub')).toBeTruthy()
   })
+  it('at desktop the title row sits above the tabs with the number, the name, the ? and the ✕, and the pane keeps its own title out (v2.6539)', async () => {
+    await renderSettled(windowUi(vi.fn()), {
+      loaded: async () => {
+        await screen.findByDisplayValue('Kitchen rough-in')
+      },
+    })
+    const head = screen.getByTestId('job-window-head')
+    expect(head.textContent).toContain('9001')
+    expect(head.textContent).toContain('Kitchen rough-in')
+    expect(within(head).getByLabelText('Close job window').getAttribute('title')).toBe('Close · esc')
+    expect(within(head).getByRole('button', { name: 'What this window holds' })).toBeTruthy()
+    // The window is named by its own title row, and the tab strip follows it.
+    const dialog = screen.getByRole('dialog', { name: /Kitchen rough-in/ })
+    expect(dialog.querySelector('[data-testid="job-window-head"] + [role="tablist"]')).toBeTruthy()
+    expect(document.getElementById('detail-job-modal-title')).toBeNull()
+    expect(screen.queryByText('esc to close')).toBeNull()
+  })
+
   it('opens on the Job tab with Edit, Bill and Costs available, one ✕, no per-pane Close', async () => {
     renderWindow(vi.fn())
     expect(tab('Job').getAttribute('aria-selected')).toBe('true')
