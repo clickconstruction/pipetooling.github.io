@@ -23,6 +23,7 @@ import {
   type PersonTimelineSource,
 } from '../../../lib/people/personTimeline'
 import { loadPersonFileSources, type PersonFileAttachment, type PersonFileDoc, type PersonFileSources, type PersonFileViewer } from '../../../lib/people/personTimelineIo'
+import { PersonMatterPanel } from './PersonMatterPanel'
 import {
   evidenceCountWords,
   evidenceDraftProblem,
@@ -71,7 +72,7 @@ const SOURCE_LABELS: Record<string, string> = {
 const HR_FILES_BUCKET = 'hr-files'
 const PEOPLE_FOLDER_WORDS = 'People'
 
-export type PersonFileView = 'timeline' | 'evidence' | 'narrative'
+export type PersonFileView = 'timeline' | 'evidence' | 'narrative' | 'matter'
 
 type LaneLook = { background: string; color: string; border?: string }
 
@@ -994,6 +995,11 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <button type="button" role="tab" aria-selected={view === 'narrative'} onClick={() => setView('narrative')} style={viewTab(view === 'narrative')}>
           Narrative
         </button>
+        {viewer.isDev ? (
+          <button type="button" role="tab" aria-selected={view === 'matter'} onClick={() => setView('matter')} style={viewTab(view === 'matter')} data-testid="person-file-tab-matter">
+            Matter
+          </button>
+        ) : null}
       </div>
 
       {loadError ? (
@@ -1002,7 +1008,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Reading the file…</p>
       ) : (
         <>
-          {view === 'timeline' ? timelineView : view === 'evidence' ? evidenceView : narrativeView}
+          {view === 'timeline' ? timelineView : view === 'evidence' ? evidenceView : view === 'matter' ? (personId ? <PersonMatterPanel personId={personId} personName={personName} canEdit={viewer.isDev} changeKey={changeKey} onChanged={onChanged} /> : <EmptyState compact main="A matter hangs on a person row, and this login has none yet." />) : narrativeView}
           {heldWords.length > 0 ? (
             <p style={{ margin: '1rem 0 0', fontSize: '0.72rem', color: 'var(--text-faint)' }}>Not read here: {heldWords.join(' · ')}.</p>
           ) : null}

@@ -107,6 +107,15 @@ describe('PeopleHrTab · the person file', () => {
     expect(headings.some((h) => /March 2025/.test(h))).toBe(true)
   })
 
+  it('Matter is a dev’s fourth view (v2.6543): with none on the person it says what a matter holds and offers Open a matter…', async () => {
+    await openMarcus()
+    fireEvent.click(screen.getByTestId('person-file-tab-matter'))
+    expect(await screen.findByText('No matter on this person.')).toBeTruthy()
+    expect(screen.getByText(/A matter holds the analysis for counsel/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Open a matter…' })).toBeTruthy()
+    expect(screen.queryByTestId('person-matter')).toBeNull()
+  })
+
   it('Evidence lists the older files with the entry each sits on and offers the first record; Narrative shows the summary, its stale banner and the story', async () => {
     await openMarcus()
     fireEvent.click(screen.getByRole('tab', { name: /Evidence \(2\)/ }))
