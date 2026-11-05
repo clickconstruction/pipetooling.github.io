@@ -52,9 +52,9 @@ vi.mock('../../lib/supabase', () => {
 
 const DAY = 86_400_000
 const USERS: UserRow[] = [
-  { id: 'u1', email: 'alex@example.com', name: 'Alex Rivera', role: 'master_technician', notes: null, phone: null, last_sign_in_at: new Date(Date.now() - 12 * DAY).toISOString(), read_only: false },
-  { id: 'u2', email: 'sam@example.com', name: 'Sam Lee', role: 'assistant', notes: null, phone: null, last_sign_in_at: new Date().toISOString(), read_only: false },
-  { id: 'u3', email: 'kai@example.com', name: 'Kai Moss', role: 'helpers', notes: null, phone: null, last_sign_in_at: null, read_only: true, needs_supervision: true },
+  { id: 'u1', email: 'alex@example.com', name: 'Alex Rivera', role: 'master_technician', notes: null, phone: null, last_sign_in_at: new Date(Date.now() - 12 * DAY).toISOString(), read_only: false, login_attached_at: '2026-10-01T12:00:00Z' },
+  { id: 'u2', email: 'sam@example.com', name: 'Sam Lee', role: 'assistant', notes: null, phone: null, last_sign_in_at: new Date().toISOString(), read_only: false, login_attached_at: '2026-10-01T12:00:00Z' },
+  { id: 'u3', email: 'kai@example.com', name: 'Kai Moss', role: 'helpers', notes: null, phone: null, last_sign_in_at: null, read_only: true, login_attached_at: '2026-10-01T12:00:00Z', needs_supervision: true },
 ]
 
 const TAGS = { showUsersTabTags: false, showUsersTabTagOrgSignals: false } as unknown as UsersTabTagsApi

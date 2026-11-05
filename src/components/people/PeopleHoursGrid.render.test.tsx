@@ -36,7 +36,7 @@ function renderGrid(overrides?: {
       hoursFlashWorkDate={null}
       hoursFlashPersonName={null}
       hoursDaysCorrect={new Set()}
-      users={[{ id: 'u-1', email: null, name: PERSON, role: 'helpers', notes: null, phone: null } satisfies UserRow]}
+      users={[{ id: 'u-1', email: null, name: PERSON, role: 'helpers', notes: null, phone: null, login_attached_at: '2026-10-01T12:00:00Z' } satisfies UserRow]}
       canEditCrewJobs={true}
       canAccessHours={true}
       canAccessPay={true}

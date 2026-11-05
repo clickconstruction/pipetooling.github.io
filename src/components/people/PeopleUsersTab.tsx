@@ -308,7 +308,7 @@ export function PeopleUsersTab({
    */
   function railFor(sectionKind: PersonKind | 'dev', item: UsersTabRosterListRow): RailRow {
     const personId = item.source === 'people' ? item.id : (people.find((p) => p.account_user_id === item.id)?.id ?? resolvePersonIdForUsersRow(item, sectionKind === 'dev' ? null : sectionKind))
-    const person = { userId: item.source === 'user' ? item.id : null, hasLogin: item.source === 'user' ? item.login_attached_at !== null : false, personId, name: item.name, kind: sectionKind === 'dev' ? 'dev' : normaliseKind(sectionKind), archived: false }
+    const person = { userId: item.source === 'user' ? item.id : null, hasLogin: item.source === 'user' && item.login_attached_at !== null, personId, name: item.name, kind: sectionKind === 'dev' ? 'dev' : normaliseKind(sectionKind), archived: false }
     const needs = buildRowNeeds({
       person,
       facts: railFacts,
@@ -344,7 +344,7 @@ export function PeopleUsersTab({
         })
       }
       // Punch list #260 (v2.6518): a person with no sign-in behind their row gets one from their desk, on the same id.
-      if (isDev && item.login_attached_at == null && personDesk?.canOpen) {
+      if (isDev && item.login_attached_at === null && personDesk?.canOpen) {
         out.push({
           key: 'attach',
           label: 'Attach a login',
@@ -385,7 +385,7 @@ export function PeopleUsersTab({
     if (lens === 'account') {
       return (
         <UsersTabAccountCells
-          item={{ source: item.source, id: item.id, name: item.name, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: 'read_only' in item ? (item.read_only ?? null) : null, last_sign_in_at: 'last_sign_in_at' in item ? (item.last_sign_in_at ?? null) : null, login_attached_at: 'login_attached_at' in item ? item.login_attached_at : undefined }}
+          item={{ source: item.source, id: item.id, name: item.name, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: 'read_only' in item ? (item.read_only ?? null) : null, last_sign_in_at: 'last_sign_in_at' in item ? (item.last_sign_in_at ?? null) : null, login_attached_at: item.source === 'user' ? item.login_attached_at : null }}
           isSelf={item.source === 'user' && item.id === authUserId}
           canSetTraining={Boolean(setTrainingMode)}
           onSetTraining={setTrainingMode}
@@ -421,7 +421,7 @@ export function PeopleUsersTab({
     return (
       <UsersTabRow
         key={item.source === 'user' ? `user-${item.id}` : `people-${item.id}`}
-        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: 'read_only' in item ? (item.read_only ?? null) : null, last_sign_in_at: 'last_sign_in_at' in item ? (item.last_sign_in_at ?? null) : null, login_attached_at: 'login_attached_at' in item ? item.login_attached_at : undefined }}
+        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: 'read_only' in item ? (item.read_only ?? null) : null, last_sign_in_at: 'last_sign_in_at' in item ? (item.last_sign_in_at ?? null) : null, login_attached_at: item.source === 'user' ? item.login_attached_at : null }}
         cells={lensCellsFor(item, sectionKind)}
         rail={rail}
         narrowViewport={narrowViewport}
@@ -472,7 +472,7 @@ export function PeopleUsersTab({
     return (
       <UsersTabPhoneRow
         key={rowId}
-        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, login_attached_at: 'login_attached_at' in item ? item.login_attached_at : undefined }}
+        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, login_attached_at: item.source === 'user' ? item.login_attached_at : null }}
         rail={rail}
         openDesk={personDesk?.canOpen ? () => personDesk.open(item.source === 'user' ? { userId: item.id, displayName: item.name } : { personId: item.id, displayName: item.name }) : undefined}
         imitate={canImitate ? () => void imitateOnPhone(item) : undefined}

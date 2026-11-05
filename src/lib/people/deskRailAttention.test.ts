@@ -11,14 +11,14 @@ const facts: RailFacts = {
 }
 
 function p(x: Partial<RailPersonInput> & { name: string }): RailPersonInput {
-  return { userId: null, personId: 'p', kind: 'helper', archived: false, ...x }
+  return { userId: null, personId: 'p', kind: 'helper', archived: false, hasLogin: x.hasLogin ?? x.userId != null, ...x }
 }
 
 describe('rail ↔ Users-tab unsent gloss (J32-adj-1)', () => {
   it('the rail reason and the Users row chip say the same words for the same unsentDocsByName count', () => {
     const f: RailFacts = { ...facts, unsentDocsByName: { Isiah: 2 } }
     const rail = buildRailRow(p({ name: 'Isiah', userId: 'u1' }), f)
-    const row = buildRowNeeds({ person: { name: 'Isiah', userId: 'u1', personId: 'p', kind: 'helper', archived: false }, facts: f, signingLight: 'green' })
+    const row = buildRowNeeds({ person: { name: 'Isiah', userId: 'u1', hasLogin: true, personId: 'p', kind: 'helper', archived: false }, facts: f, signingLight: 'green' })
     const paperwork = row.needs.find((n) => n.key === 'paperwork')
     expect(rail.reasons).toContain(railUnsentReason(2))
     expect(paperwork?.long).toContain(railUnsentReason(2))
