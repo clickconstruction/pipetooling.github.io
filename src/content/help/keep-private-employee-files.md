@@ -31,6 +31,19 @@ Stick to facts with dates. If it is an impression, say whose: "my read after the
 
 That is deliberate. The raw log is trustworthy because nothing in it can be quietly rewritten. Made a mistake? You add a new entry: "Correction to the Aug 19 entry: …".
 
+## Keep a piece of evidence
+
+A piece of evidence is a record on the person's file. The record holds the day it is about, a title, a memo on what it shows, and its files.
+
+1. Open the person's file and go to **Evidence**. Press {{button:outline|Add evidence}}.
+2. Set the day it is about. Give it a title. Write the memo: what it shows and why it matters.
+3. Press {{button:outline|+ Pick files}} for a photo, a PDF, an email or a screenshot. Each file is under 10 MB. Photos shrink on the way in.
+4. Press {{button:blue|Keep the evidence}}. The files are kept on the file and filed in Drive under People, the person, the day and the title.
+
+A file over 10 MB, or one already in Drive, is linked instead. Put the file in the person's Drive folder. Then type its name under **Or a file already in Drive** and paste the Drive link. Press {{button:outline|+ Add the link}}. The link joins the list and the record counts it as in Drive. The chip reads *in Drive, linked* and opens the file.
+
+Evidence is never edited or deleted. A mistake is corrected by a new record that says so.
+
 ## Name a theme to look for
 
 A long record is read by pattern, not by date. A theme is a plain name for one pattern. Dishonesty is a theme. Interference with the business is a theme.
