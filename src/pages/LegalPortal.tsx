@@ -393,14 +393,14 @@ export default function LegalPortal() {
               <FirmMatterView
                 packet={packet}
                 companyName={payload.company.name}
-                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, stage: selected.stage, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }}
+                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, stage: selected.stage, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative, themes: selected.themes }}
                 tab={tab}
                 onTab={setTab}
                 onOpenCoverage={payload.coverage ? (county) => { setCoverageOpenOn({ county, nonce: Date.now() }); setPanel('coverage') } : undefined}
                 onUndo={(entryId, reason) => act({ kind: 'void', matterId: selected.id, entryId, note: reason })}
                 timelineActs={<FirmPlanForm matter={selected} act={act} busy={busy} />}
                 acts={<><RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} /><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} actFailure={actFailure} todayYmd={payload.preparedOn} /></>}
-                onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries, heldCount: selected.heldCount, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }, particulars: payload.particulars, officeContacts: payload.officeContacts }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
+                onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries, heldCount: selected.heldCount, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative, themes: selected.themes }, particulars: payload.particulars, officeContacts: payload.officeContacts }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />
             </div>
             <div className="legalPortalList" data-legal-tour="matters">

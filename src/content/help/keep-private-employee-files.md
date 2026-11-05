@@ -80,11 +80,21 @@ The Themes row above the line shows each theme with its count. Press a theme and
 
 The agent can propose a mark. A proposed mark is drawn dashed. Press Keep to make it yours.
 
+A matter carries the same strip. Record what happened and a paper waiting to be saved both show it. The marks read as chips on the matter's Timeline and Evidence.
+
 :::example A mark on an entry
 
 Entry: a trip taken after three refusals by phone that week. Theme: company money without say-so. Why it fits: refused three times, went anyway. Proves it by: a firsthand account.
 
 :::
+
+## Read the record by theme
+
+A large record is worked one theme at a time. Open the By theme view beside Timeline, Evidence and Narrative. Press a theme. The page holds only the items that carry it, oldest first. The counts at the top are what you tell counsel. Press strongest first to read the documents before the accounts. Press a grade under Show to narrow the list.
+
+Press any item to open it in a window over the list. The window shows the whole entry or memo, its files and every theme on it. Press Next to move through the theme. Press Escape to close. The list is where you left it.
+
+Press {{button:outline|Print this theme}} for paper. Press {{button:outline|Copy as a list for counsel}} to put the same words on the clipboard. The theme you picked sits in the address. Send the link and it opens the same view.
 
 ## Keeping the summary fresh
 

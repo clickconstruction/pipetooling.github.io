@@ -14,6 +14,7 @@
  * travel, so the firm's build never sees them.
  */
 import type { LegalEntryRow } from './legalMatters'
+import type { MarkDraft } from './legalThemes'
 import type { LienTimelineStep } from '../jobs/lienTimeline'
 import { type LegalDocumentState, legalDocumentSentHowWords, legalDocumentStateOf, legalDocumentStateWords, legalPortalDocumentFromRow } from './legalMatterDocuments'
 import { isOfferEntry, offerExpiryOnLine, offerExpiryWhat, offerHoldKey, offerMetaOf } from './legalOffers'
@@ -102,7 +103,7 @@ export function eventMetaOf(meta: unknown): LegalEventMeta {
   }
 }
 
-export type LegalEventDraft = { on: string; body: string; notes: string; documentIds: string[] }
+export type LegalEventDraft = { on: string; body: string; notes: string; documentIds: string[]; /** Themes to mark on the event once it stands (v2.6548); the caller writes them after the row. */ marks?: MarkDraft }
 
 /** Why an event cannot be saved as typed; null when it can. The RPC (`legal_event_add`) holds the same rules. */
 export function eventDraftProblem(draft: LegalEventDraft, todayYmd: string): string | null {

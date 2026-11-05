@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { ThemeMarkPicker } from '../../legal/ThemeMarkPicker'
+import { EMPTY_MARK_DRAFT, markIsProposed, marksOnTarget, provesByWords, type LegalTheme, type LegalThemeMark, type MarkDraft } from '../../../lib/legal/legalThemes'
+import { addMarks, authUserIdNow } from '../../../lib/legal/legalThemesIo'
 import { supabase } from '../../../lib/supabase'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, todayYmdInAppTz } from '../../../utils/dateUtils'
@@ -56,9 +59,9 @@ function stateChipColor(state: string): string {
   return 'var(--text-muted)'
 }
 
-type Pending = { key: string; file: File; draft: LegalDocumentDraft; /** The person picked whose paper it is; the title no longer guesses. */ whoseTouched: boolean }
+type Pending = { key: string; file: File; draft: LegalDocumentDraft; /** The person picked whose paper it is; the title no longer guesses. */ whoseTouched: boolean; /** The themes to mark on the paper once it stands (v2.6548). */ marks: MarkDraft }
 
-export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit, onChanged, payerName = '', landOn = null, onLandingDone, linkedStatements = {}, onOpenStatement, fromMessages = null }: { matterId: string; documents: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; onChanged: () => void; /** The payer's name, for the heading of their paper and the guess (v2.6108). */ payerName?: string; /** The row to land on, lit (v2.6166); from the address. */ landOn?: string | null; /** The landed row was pressed: the address lets the row go. */ onLandingDone?: () => void; /** v2.6212 (punch list #220): the statement each signed scan belongs to, by document id. */ linkedStatements?: Record<string, string>; /** Opens the statement's window. */ onOpenStatement?: (entryId: string) => void; /** v2.6276 (punch list #230 PR 5): the account the door reads the email of; null hides it (a closed matter, or no hand to put a paper). */ fromMessages?: { accountName: string; jobs: ReadonlyArray<EvidenceJobRow> } | null }) {
+export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit, onChanged, payerName = '', landOn = null, onLandingDone, linkedStatements = {}, onOpenStatement, fromMessages = null, themes, marks, onMarksChanged }: { matterId: string; documents: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; onChanged: () => void; /** The payer's name, for the heading of their paper and the guess (v2.6108). */ payerName?: string; /** The row to land on, lit (v2.6166); from the address. */ landOn?: string | null; /** The landed row was pressed: the address lets the row go. */ onLandingDone?: () => void; /** v2.6212 (punch list #220): the statement each signed scan belongs to, by document id. */ linkedStatements?: Record<string, string>; /** Opens the statement's window. */ onOpenStatement?: (entryId: string) => void; /** v2.6276 (punch list #230 PR 5): the account the door reads the email of; null hides it (a closed matter, or no hand to put a paper). */ fromMessages?: { accountName: string; jobs: ReadonlyArray<EvidenceJobRow> } | null; /** Themes on the record (v2.6548): the catalog draws the picker under a pending paper; the matter's marks draw the rows' chips; absent for a hand that cannot mark. */ themes?: ReadonlyArray<LegalTheme>; marks?: ReadonlyArray<LegalThemeMark>; onMarksChanged?: () => void }) {
   const [pending, setPending] = useState<Pending[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -125,7 +128,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
   const take = (files: FileList | File[]) => {
     const next = [...files].map((file) => {
       const title = legalDocumentTitleFromName(file.name)
-      return { key: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`, file, draft: { title, shows: '', datedOn: todayYmd, state: 'final' as const, receivedOn: '', whose: legalDocumentWhoseGuess({ title, state: 'final' }, payerName, OUR_NAME) }, whoseTouched: false }
+      return { key: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`, file, draft: { title, shows: '', datedOn: todayYmd, state: 'final' as const, receivedOn: '', whose: legalDocumentWhoseGuess({ title, state: 'final' }, payerName, OUR_NAME) }, whoseTouched: false, marks: EMPTY_MARK_DRAFT }
     })
     setPending((p) => [...p, ...next])
   }
@@ -143,8 +146,14 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
     }
   }
   const save = (p: Pending) => void act(`Could not save ${p.file.name}.`, async () => {
-    await addLegalMatterDocument(supabase, matterId, p.draft, p.file)
+    const docId = await addLegalMatterDocument(supabase, matterId, p.draft, p.file)
     setPending((list) => list.filter((x) => x.key !== p.key))
+    // v2.6548: the themes picked under the paper, marked once it stands.
+    if (themes && p.marks.themeIds.length > 0 && docId) {
+      const mk = await addMarks({ themeIds: p.marks.themeIds, targets: [{ kind: 'matter_document', id: docId }], personId: null, matterId, why: p.marks.why, provesBy: p.marks.provesBy, authUserId: await authUserIdNow() })
+      if (!mk.ok) throw new Error(`The paper is on the matter, but its themes were not marked: ${mk.why}`)
+      onMarksChanged?.()
+    }
   })
   const open = (d: LegalMatterDocumentRow) => void act('Could not open the document.', () => openLegalMatterDocument(supabase, d))
 
@@ -209,6 +218,11 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
               <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>Whose<select aria-label="Whose paper it is" data-legal-document-whose-pick data-guessed={p.whoseTouched ? 'no' : 'yes'} value={p.draft.whose ?? ''} onChange={(e) => patchPending(p.key, (x) => ({ ...x, whoseTouched: true, draft: { ...x.draft, whose: (e.target.value || null) as LegalDocumentWhose | null } }))} style={{ ...input, width: 'auto' }}>{choices.map((c) => <option key={c.value} value={c.value}>{c.words}</option>)}</select></label>
             </span>
             <span style={{ gridColumn: '1 / -1', ...MUTED, fontSize: '0.74rem' }}>{p.file.name} · {legalDocumentSizeWords(p.file.size)}{problem ? ` · ${problem}` : ''}</span>
+            {themes ? (
+              <span style={{ gridColumn: '1 / -1' }} data-legal-document-themes>
+                <ThemeMarkPicker themes={themes} draft={p.marks} onChange={(next) => patchPending(p.key, (x) => ({ ...x, marks: next }))} testId={`document-theme-picker-${p.key}`} />
+              </span>
+            ) : null}
           </div>
         )
       })}
@@ -244,6 +258,25 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
                   <span style={{ display: 'flex', gap: '0 8px', alignItems: 'baseline', minWidth: 0, flexWrap: 'wrap' }}>
                     <button type="button" onClick={() => open(d)} title={`${d.title} · ${legalDocumentKindWords(d.mime)} · ${legalDocumentSizeWords(d.size_bytes)}`} style={{ ...btn, ...oneLine, border: 'none', padding: 0, height: 'auto', fontWeight: 600, color: 'var(--text-link)', flex: '0 1 auto', maxWidth: '100%', display: 'inline-block' }}>{d.title}</button>
                     <span data-legal-document-shows title={d.shows} style={{ ...MUTED, ...oneLine, flex: '1 1 14rem' }}>{d.shows}</span>
+                    {marks && marks.length > 0
+                      ? (() => {
+                          const live = marksOnTarget(marks, { kind: 'matter_document', id: d.id })
+                          return live.length ? (
+                            <span data-legal-document-themes-row style={{ flexBasis: '100%', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                              {live.map((m) => {
+                                const proposed = markIsProposed(m)
+                                const tip = [m.why ? `why: ${m.why}` : '', m.proves_by ? `proves it by ${provesByWords(m.proves_by)}` : '', proposed ? 'proposed by the agent, not yet kept' : ''].filter(Boolean).join(' · ')
+                                return (
+                                  <span key={m.id} data-legal-document-theme={m.theme_id} title={tip || undefined} style={{ fontSize: '0.7rem', padding: '1px 7px', borderRadius: 999, border: `1px ${proposed ? 'dashed' : 'solid'} var(--border-blue)`, color: 'var(--text-blue-700)', whiteSpace: 'nowrap' }}>
+                                    {themes?.find((t) => t.id === m.theme_id)?.name ?? 'a theme'}
+                                    {proposed ? ' · proposed' : ''}
+                                  </span>
+                                )
+                              })}
+                            </span>
+                          ) : null
+                        })()
+                      : null}
                   </span>
                   {canEdit ? (
                     // v2.5850: one menu per row instead of four buttons; the hold form opens in place, as before.

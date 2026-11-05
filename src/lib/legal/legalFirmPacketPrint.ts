@@ -9,6 +9,7 @@
  * literal on purpose (print surfaces pin light).
  */
 import { legalNarrativeBandWords, type LegalNarrative } from './legalNarrative'
+import { portalThemeCountWords, type PortalTheme } from './legalThemes'
 import { legalNarrativeHtml } from './legalNarrativeHtml'
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -28,10 +29,26 @@ export type FirmPacketPrintOptions = {
   preparedOn: string
   companyName: string
   firm: { name: string; handling: string }
-  matter: { stage: string; noteToFirm: string; releasedAt: string | null; entries: ReadonlyArray<LegalEntryRow>; /** Entries the office held back (#85 item 29); 0 or absent says nothing. */ heldCount?: number; /** Documents from the office (v2.4810), listed under Section D and lettered as one exhibit. */ documents?: ReadonlyArray<LegalPortalDocument>; heldDocumentCount?: number; /** The office's account (v2.4812), the first section after the matter block. */ narrative?: LegalNarrative | null }
+  matter: { stage: string; noteToFirm: string; releasedAt: string | null; entries: ReadonlyArray<LegalEntryRow>; /** Entries the office held back (#85 item 29); 0 or absent says nothing. */ heldCount?: number; /** Documents from the office (v2.4810), listed under Section D and lettered as one exhibit. */ documents?: ReadonlyArray<LegalPortalDocument>; heldDocumentCount?: number; /** The office's account (v2.4812), the first section after the matter block. */ narrative?: LegalNarrative | null; /** Themes on the record (v2.6549): a block each under Section D. */ themes?: ReadonlyArray<PortalTheme> }
   particulars: LegalPortalParticulars
   /** Who the firm calls (v2.4755), under the letterhead; omitted, the letterhead carries no number. */
   officeContacts?: LegalOfficeContacts
+}
+
+/** Evidence by theme (v2.6549): under Section D, a block a theme — the name, counsel's words, what counts, the proof counts, then the documents and events that carry it. '' when the office marked nothing that travels. */
+export function firmThemesSectionHtml(themes: ReadonlyArray<PortalTheme>, docs: ReadonlyArray<LegalPortalDocument>, entries: ReadonlyArray<LegalEntryRow>): string {
+  if (themes.length === 0) return ''
+  const blocks = themes.map((t) => {
+    const items = [
+      ...t.documentIds.map((id) => docs.find((d) => d.id === id)?.title ?? null),
+      ...t.entryIds.map((id) => {
+        const e = entries.find((x) => x.id === id)
+        return e ? `${e.occurred_on} · ${e.body}` : null
+      }),
+    ].filter((x): x is string => !!x)
+    return `<h3>${esc(t.name)}${t.counselWords ? ` <span class="muted">· ${esc(t.counselWords)}</span>` : ''}</h3>${t.whatCounts ? `<p>${esc(t.whatCounts)}</p>` : ''}<p class="muted">${esc(portalThemeCountWords(t))}</p>${items.length ? `<ul>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}`
+  })
+  return `<h3>Evidence by theme</h3>\n<p class="muted">The office’s own words for the patterns it marked across this matter, with how each item proves it.</p>\n${blocks.join('\n')}`
 }
 
 function esc(s: string | null | undefined): string {
@@ -196,6 +213,7 @@ ${table(['Date', 'Kind', 'Job', 'What was said', 'Recorded by'], saidRows, 'No c
 ${table(['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes'], evidenceRows, 'No jobs.')}
 ${statementRows.length ? `<h3>Signed hours statements</h3>\n${table(['Job', 'Record', 'Worker', 'Period', 'Hours', 'Stated days', 'Copy'], statementRows, 'None.')}` : ''}
 ${docs.length || heldDocs ? `<h3>Documents from the office${docs.length ? ` (Exhibit ${docLetter})` : ''}</h3>\n${table(['Document', 'What it shows', 'Added'], documentRows, 'None shown.')}${heldDocs ? `<p class="muted">The office held back ${heldDocs} document${heldDocs === 1 ? '' : 's'}.</p>` : ''}` : ''}
+${firmThemesSectionHtml(opts.matter.themes ?? [], docs, opts.matter.entries)}
 <h2><span class="sec">E</span> Fees, costs and steps</h2>
 <h3>${esc(opts.firm.name)}'s fees and costs</h3>
 ${table(['Date', 'Kind', 'Note', 'Amount'], feeRows, 'None recorded yet.', feeFoot)}

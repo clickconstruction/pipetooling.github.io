@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import type { PortalTheme } from '../../../lib/legal/legalThemes'
 import type { LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import type { LegalNarrative } from '../../../lib/legal/legalNarrative'
 import { CARD, COPPER, FAINT, HAIR } from '../../../lib/portal/portalTheme'
@@ -22,7 +23,7 @@ export type FirmMatterLike = {
   /** The matter's stage (v2.6177, punch list #218 PR 4): once suit is filed the filing cost is spent on every path. Absent reads as not filed. */
   stage?: string | null
   /** Documents from the office (v2.4810): the portal passes the function's, each with a link; the desk's preview passes its own, without. */
-  documents?: ReadonlyArray<LegalPortalDocument>
+  documents?: ReadonlyArray<LegalPortalDocument>; /** Themes on the record (v2.6549), as counsel reads them. */ themes?: ReadonlyArray<PortalTheme>
   /** Documents the office held back; the firm sees the count. */
   heldDocumentCount?: number
   /** The office's account of the matter (v2.4812): the first tab when there is one. */

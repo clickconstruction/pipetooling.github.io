@@ -8,6 +8,7 @@ import { contingencyEntries, firmDemand, firmFeeRows, legalRunningLedger } from 
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
+import { portalThemeCountWords, type PortalTheme } from '../../../lib/legal/legalThemes'
 import { legalNarrativeBandWords } from '../../../lib/legal/legalNarrative'
 import { counselReadFacts, counselReadLine, counselTriesWords, currentCounselRead } from '../../../lib/legal/counselRead'
 import { moneyBarDayWords } from '../../../lib/legal/moneyBars'
@@ -269,6 +270,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo, 
       <div>
         <PortalTable head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes']} numCols={[3]} rows={packet.evidence.map((e) => [<b key="l">{e.jobLabel}</b>, `${e.reports} (${e.reportsWithGps} with GPS)`, legalSessionWords(e), `${e.hours}h`, e.firstWorkYmd ? `${e.firstWorkYmd} → ${e.lastWorkYmd}` : '—', String(e.threadNotes)])} empty="No jobs." />
         <p style={{ fontSize: 12, color: MUTED, marginTop: 8 }}><b style={{ color: INK }}>Only approved clock sessions count</b>: hours, days worked and the lien dates read them. Rejected and revoked sessions are left out; sessions not yet approved show as awaiting approval. The printed packet counts the reports and sessions. Ask the office for the reports themselves.</p>
+        <FirmThemes themes={matter.themes ?? []} documents={matter.documents ?? []} entries={matter.entries} />
         <FirmDocuments documents={matter.documents ?? []} held={matter.heldDocumentCount ?? 0} />
       </div>
     )
@@ -436,6 +438,48 @@ function WhereToFile({ account }: { account: LegalPacket['account'] }) {
         <span>{lienForeclosureLine(places.filter((p) => p.basis === 'work').map((p) => p.county))}</span>
       </div>
       <div style={{ fontSize: portalSmall(11), color: FAINT, marginTop: 6 }}>{VENUE_SOURCE_LINE}</div>
+    </div>
+  )
+}
+
+/**
+ * Evidence by theme (v2.6549, punch list #269 T4): the office's themes on this matter as counsel reads them — the name,
+ * counsel's words and what counts, the proof counts, and the documents and events that carry each. The office marks;
+ * the firm reads. Nothing draws when the office has marked nothing that travels.
+ */
+function FirmThemes({ themes, documents, entries }: { themes: ReadonlyArray<PortalTheme>; documents: ReadonlyArray<LegalPortalDocument>; entries: ReadonlyArray<LegalEntryRow> }) {
+  if (themes.length === 0) return null
+  const docTitle = (id: string) => documents.find((d) => d.id === id)?.title ?? null
+  const entryWords = (id: string) => {
+    const e = entries.find((x) => x.id === id)
+    return e ? `${e.occurred_on} · ${e.body}` : null
+  }
+  return (
+    <div data-legal-firm-themes style={{ margin: '14px 0 0' }}>
+      <div style={portalH}>Evidence by theme · {themes.length}</div>
+      <p style={{ fontSize: 12, color: MUTED, margin: '0 0 8px' }}>The office’s own words for the patterns it marked across this matter, with how each item proves it. The documents open under Documents from the office below.</p>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {themes.map((t) => (
+          <div key={t.id} data-legal-firm-theme={t.id} style={{ border: `1px solid ${HAIR}`, borderRadius: 8, padding: '8px 10px' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+              <b style={{ color: INK }}>{t.name}</b>
+              {t.counselWords ? <span style={{ fontSize: 12, color: MUTED, fontStyle: 'italic' }}>{t.counselWords}</span> : null}
+            </div>
+            {t.whatCounts ? <div style={{ fontSize: 12.5, margin: '2px 0 0' }}>{t.whatCounts}</div> : null}
+            <div data-legal-firm-theme-counts style={{ fontSize: 12, color: MUTED, margin: '2px 0 4px' }}>{portalThemeCountWords(t)}</div>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5 }}>
+              {t.documentIds.map((id) => {
+                const title = docTitle(id)
+                return title ? <li key={`d:${id}`}>{title}</li> : null
+              })}
+              {t.entryIds.map((id) => {
+                const words = entryWords(id)
+                return words ? <li key={`e:${id}`}>{words}</li> : null
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
