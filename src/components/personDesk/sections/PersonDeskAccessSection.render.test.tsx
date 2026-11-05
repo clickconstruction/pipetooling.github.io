@@ -230,4 +230,21 @@ describe('PersonDeskAccessSection — a person with no login (punch list #260, v
     expect(invoke).toHaveBeenNthCalledWith(1, 'create-user', { body: { user_id: 'u-rio', email: 'rio@example.test' } })
     expect(invoke).toHaveBeenNthCalledWith(2, 'send-sign-in-email', { body: { email: 'rio@example.test', redirectTo: expect.stringContaining('/dashboard') } })
   })
+
+  it('an archived account whose employment ended offers Bring back… in place of Restore (v2.6523)', () => {
+    const gone = { ...KAI, archived_at: '2026-11-03T18:00:00Z' }
+    const onBringBack = vi.fn()
+    renderWithProviders(<PersonDeskAccessSection user={gone} viewer={DEV} viewerUserId="u-me" serviceTypeNames={TRADES} onChanged={vi.fn()} onBringBack={onBringBack} />)
+    expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Bring back…' }))
+    expect(onBringBack).toHaveBeenCalled()
+    expect(invoke).not.toHaveBeenCalled()
+  })
+
+  it('an archived account with no end date keeps Restore', () => {
+    const gone = { ...KAI, archived_at: '2026-11-03T18:00:00Z' }
+    renderSection(gone, DEV)
+    expect(screen.getByRole('button', { name: 'Restore' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Bring back…' })).toBeNull()
+  })
 })

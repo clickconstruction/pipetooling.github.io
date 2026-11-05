@@ -44,7 +44,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** Account on the desk, PR D1: an archived login, listed under Archived beside the roster rows. */
-type ArchivedLogin = { id: string; name: string | null; email: string | null; role: string; archived_at: string }
+type ArchivedLogin = { id: string; name: string | null; email: string | null; role: string; archived_at: string; /** v2.6523: the linked roster row's end date, when it has one — Bring back… instead of Restore. */ end_date?: string | null }
 
 type EditingUserNote = { id: string; name: string; notes: string; phone: string }
 
@@ -165,8 +165,20 @@ export function PeopleUsersTab({
       .select('id, name, email, role, archived_at, is_sample, is_digital_twin, is_walk_tester')
       .not('archived_at', 'is', null)
       .order('archived_at', { ascending: false })
-      .limit(200)
-    setArchivedLogins(((data ?? []) as Array<ArchivedLogin & { is_sample?: boolean | null; is_digital_twin?: boolean | null; is_walk_tester?: boolean | null }>).filter((u) => !u.is_sample && !u.is_digital_twin && !u.is_walk_tester))
+    const rows = ((data ?? []) as Array<ArchivedLogin & { is_sample?: boolean | null; is_digital_twin?: boolean | null; is_walk_tester?: boolean | null }>).filter((u) => !u.is_sample && !u.is_digital_twin && !u.is_walk_tester)
+    // Bring back (v2.6523): a login whose roster row ended gets Bring back… in Restore's place.
+    const endByUser = new Map<string, string>()
+    if (rows.length > 0) {
+      const { data: ends } = await supabase
+        .from('people')
+        .select('account_user_id, end_date')
+        .in('account_user_id', rows.map((u) => u.id))
+        .not('end_date', 'is', null)
+      for (const r of (ends ?? []) as Array<{ account_user_id: string | null; end_date: string | null }>) {
+        if (r.account_user_id && r.end_date) endByUser.set(r.account_user_id, r.end_date)
+      }
+    }
+    setArchivedLogins(rows.map((u) => ({ ...u, end_date: endByUser.get(u.id) ?? null })))
   }, [canRestoreLogins])
   useEffect(() => {
     void loadArchivedLogins()
@@ -855,9 +867,15 @@ export function PeopleUsersTab({
                         <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>{humanRoleLabel(u.role)}</td>
                         <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>{new Date(u.archived_at).toLocaleDateString()}</td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>
-                          <button type="button" onClick={() => void restoreLogin(u)} disabled={restoringLoginId === u.id} style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }} title="They can sign in again with the same email and history.">
-                            {restoringLoginId === u.id ? 'Restoring…' : 'Restore'}
-                          </button>
+                          {u.end_date && personDesk ? (
+                            <button type="button" onClick={() => personDesk.open({ userId: u.id, displayName: u.name, flow: 'bring_back' })} style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap', border: '1px solid #2563eb', background: '#2563eb', color: '#fff', borderRadius: 4, cursor: 'pointer' }} title="Their employment ended. One window brings back the login and the roster row together, with a new stint.">
+                              Bring back…
+                            </button>
+                          ) : (
+                            <button type="button" onClick={() => void restoreLogin(u)} disabled={restoringLoginId === u.id} style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }} title="They can sign in again with the same email and history.">
+                              {restoringLoginId === u.id ? 'Restoring…' : 'Restore'}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -892,14 +910,20 @@ export function PeopleUsersTab({
                           {p.archived_at ? new Date(p.archived_at).toLocaleDateString() : '—'}
                         </td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => restorePerson(p.id)}
-                            disabled={restoringId === p.id}
-                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                          >
-                            {restoringId === p.id ? 'Restoring…' : 'Restore'}
-                          </button>
+                          {p.end_date && canRestoreLogins && personDesk ? (
+                            <button type="button" onClick={() => personDesk.open({ personId: p.id, userId: p.account_user_id, displayName: p.name, flow: 'bring_back' })} style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap', border: '1px solid #2563eb', background: '#2563eb', color: '#fff', borderRadius: 4, cursor: 'pointer' }} title="Their employment ended. One window brings back the roster row and the login together, with a new stint.">
+                              Bring back…
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => restorePerson(p.id)}
+                              disabled={restoringId === p.id}
+                              style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                            >
+                              {restoringId === p.id ? 'Restoring…' : 'Restore'}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

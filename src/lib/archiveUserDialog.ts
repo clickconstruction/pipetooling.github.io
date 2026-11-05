@@ -39,6 +39,8 @@ export type ArchiveRequestBody = {
   email: string
   name: string
   reassign_customers_to?: string
+  /** v2.6523: the row's id, the one sure handle — a person with no login may have no address (archive-user takes it since v2.6519). */
+  user_id?: string
 }
 
 /** Body for the archive-user edge function; reassignment rides along only when

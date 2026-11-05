@@ -260,11 +260,12 @@ export function PersonDeskLifecycleModal({
           showToast('Create the roster row from the header first — the end date lives on it.', 'warning')
           return
         }
-        const willArchiveAccount = archiveAfter && Boolean(personKey.userId) && archiveAllowed && Boolean(userEmail)
+        // v2.6523: by the row's id, so a person with no login (and no email) is archived too, not left active in every list.
+        const willArchiveAccount = archiveAfter && Boolean(personKey.userId) && archiveAllowed
         const willArchiveRow = archiveAfter && archiveAllowed
         const moving = willArchiveAccount && customerMode === 'reassign' && (customerCount ?? 0) > 0
         const what = [
-          willArchiveAccount ? 'the account is archived (sign-in banned)' : null,
+          willArchiveAccount ? (userEmail ? 'the account is archived (sign-in banned)' : 'the account is archived') : null,
           moving ? `${customerCount} customer${customerCount === 1 ? '' : 's'} move to the company owner` : null,
           willArchiveRow ? 'the roster row is archived' : null,
         ].filter(Boolean)
@@ -285,8 +286,8 @@ export function PersonDeskLifecycleModal({
           })
           if (he) showToast(`End date saved, but the HR line did not: ${he.message}`, 'warning')
         }
-        if (willArchiveAccount && userEmail && viewerUserId) {
-          await archiveAccount(supabase, { email: userEmail.trim(), name: personKey.displayName, customerCount, mode: customerMode, authUserId: viewerUserId })
+        if (willArchiveAccount && viewerUserId) {
+          await archiveAccount(supabase, { userId: personKey.userId, email: (userEmail ?? '').trim(), name: personKey.displayName, customerCount, mode: customerMode, authUserId: viewerUserId })
         }
         if (willArchiveRow) {
           await archiveRosterRow(supabase, personKey.personId)

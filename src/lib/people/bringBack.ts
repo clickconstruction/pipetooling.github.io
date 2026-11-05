@@ -10,6 +10,11 @@
  *   3. the wage row must be pressed, Keep or Change — it cannot be left open,
  *   4. training mode starts off for a returner.
  * Also: + Hire stops on an archived person with the same name or email (`findArchivedMatch`).
+ *
+ * PR 3 (v2.6523): the window is `PersonDeskBringBackModal`, its reads `bringBackFacts.ts`, and its writes
+ * are the ordered plan `planBringBackWrites` returns. The mock-up's Leader row became the **Team** row: the
+ * app records no leader for a person (hours are approved by any office role), but it does keep the Hours
+ * tab's teams, and a returner's old team row is still there, so the row reads it.
  */
 
 import type { LifecycleItem, LifecycleItemState } from './lifecycleChecklist'
@@ -24,7 +29,7 @@ export type BringBackItemKind =
   | 'restore_halves'
   | 'sign_in'
   | 'wage'
-  | 'leader'
+  | 'team'
   | 'licenses'
   | 'paperwork'
   | 'hand_off_vehicle'
@@ -35,8 +40,6 @@ export type BringBackAction =
   | { kind: 'confirm_sign_in'; email: string }
   /** Keep or Change; Change is the main press (a raise is likely after time away). */
   | { kind: 'confirm_wage'; hourlyWage: number | null; isSalary: boolean }
-  /** Offer the old leader by name only while that leader is still active; otherwise Pick… alone. */
-  | { kind: 'assign_leader'; suggest: { id: string; name: string } | null }
   | { kind: 'link'; href: string; label: string }
 
 export type BringBackItem = Omit<LifecycleItem, 'kind' | 'action' | 'blockedBy'> & {
@@ -59,12 +62,10 @@ export type BringBackFacts = {
   lastSignInYmd: string | null
   /** The pay row: null when there is none. `setYmd` is when the wage was last changed, if known. */
   pay: { hourlyWage: number | null; isSalary: boolean; setYmd: string | null } | null
-  /** Whether their kind has hours approved by a leader (helpers, techs). Office roles and subs do not. */
-  needsLeader: boolean
-  /** Who approves their hours now; null when nobody. */
-  currentLeader: { id: string; name: string } | null
-  /** Who approved their hours before they left, with whether that leader is still active. */
-  formerLeader: { id: string; name: string; active: boolean } | null
+  /** Whether their kind works in a Hours-tab team (the field: helpers, leaders, subs). Office roles do not. */
+  needsTeam: boolean
+  /** The Hours-tab team they are on (the member row outlives an archive); null when none. */
+  team: { id: string; name: string } | null
   licenses: Array<{ name: string; date_of_expiry: string | null }>
   /** Documents signed before they left. */
   paperworkSignedEarlier: { count: number; lastYmd: string | null }
@@ -143,11 +144,15 @@ export function roadmapBoxDefault(leftYmd: string, backYmd: string): boolean {
   return days != null && days <= ROADMAP_RETURN_DAYS
 }
 
-/** The box's words, or null when there is nothing parked to give back. */
-export function roadmapBoxWords(parkedOpenTasks: number, leftYmd: string): string | null {
-  if (parkedOpenTasks <= 0) return null
+/**
+ * The box's words, or null when there is nothing parked to give back. `null` in is a count the viewer
+ * cannot read (the parked table is a dev's), so the box shows without a number.
+ */
+export function roadmapBoxWords(parkedOpenTasks: number | null, leftYmd: string): string | null {
+  if (parkedOpenTasks != null && parkedOpenTasks <= 0) return null
   const p = parseYmd(leftYmd)
   const when = p ? ` they had in ${p.y}` : ''
+  if (parkedOpenTasks == null) return `Give back the open roadmap tasks${when}`
   return `Give back ${plural(parkedOpenTasks, 'open roadmap task')}${when}`
 }
 
@@ -214,25 +219,19 @@ export function buildBringBackChecklist(f: BringBackFacts): BringBackItem[] {
     canLeaveOpen: false,
   })
 
-  if (!f.needsLeader) {
-    items.push({ id: 'leader', kind: 'leader', label: 'Leader', detail: 'Not needed for their kind', state: 'skipped', action: null, canLeaveOpen: false })
-  } else if (f.currentLeader) {
-    items.push({ id: 'leader', kind: 'leader', label: 'Leader', detail: `${f.currentLeader.name} approves their hours`, state: 'done', action: null, canLeaveOpen: false })
+  if (!f.needsTeam) {
+    items.push({ id: 'team', kind: 'team', label: 'Team', detail: 'Not needed for their kind', state: 'skipped', action: null, canLeaveOpen: true })
+  } else if (f.team) {
+    items.push({ id: 'team', kind: 'team', label: 'Team', detail: `On ${f.team.name}`, state: 'done', action: null, canLeaveOpen: true })
   } else {
-    const former = f.formerLeader
-    const until = monthYear(f.leftYmd)
     items.push({
-      id: 'leader',
-      kind: 'leader',
-      label: 'Leader',
-      detail: former
-        ? former.active
-          ? `${former.name} approved their hours until ${until}`
-          : `${former.name} approved their hours until ${until} and has since left`
-        : 'Nobody approves their hours',
+      id: 'team',
+      kind: 'team',
+      label: 'Team',
+      detail: 'On no team. The Hours tab groups the crew by team.',
       state: 'open',
-      action: { kind: 'assign_leader', suggest: former && former.active ? { id: former.id, name: former.name } : null },
-      canLeaveOpen: false,
+      action: { kind: 'link', href: '/people?tab=hours&view=teams', label: 'Pick a team…' },
+      canLeaveOpen: true,
     })
   }
 
@@ -379,4 +378,94 @@ export function archivedMatchWords(m: ArchivedMatch): { headline: string; detail
     detail: 'Their hours, logbook and HR file are on that account.',
     bringBackLabel: `Bring back ${first}`,
   }
+}
+
+// ---------------------------------------------------------------------------
+// The writes (PR 3, v2.6523): an ordered plan the window runs one step at a time.
+// ---------------------------------------------------------------------------
+
+export type BringBackWrite =
+  /** `restore-user`: the login back, the ban lifted, the parked roadmap rows kept or dropped first. */
+  | { kind: 'restore_login'; userId: string; restoreRoadmap: boolean }
+  /** ONE update on the roster row: the trigger reads the pair together, so the end and the start change in one statement. */
+  | { kind: 'roster'; personId: string; patch: { archived_at: null; start_date?: string; end_date: null } }
+  /** Call 4: training mode as the box says, off by default for a returner. */
+  | { kind: 'training_mode'; userId: string; on: boolean }
+  /** The wage row's Change… press, keyed by the pay name as the desk's upsert is. */
+  | { kind: 'wage'; payName: string; personId: string | null; hourlyWage: number }
+  /** One dated line on the HR file (a dev's write; the table is append-only). */
+  | { kind: 'hr_line'; personId: string; entryDate: string; content: string }
+
+export type BringBackPlanInput = {
+  userId: string | null
+  /** The account half is archived (a login or a #260 row with none). */
+  loginArchived: boolean
+  personId: string | null
+  payName: string | null
+  displayName: string
+  leftYmd: string
+  backYmd: string
+  restoreRoadmap: boolean
+  trainingMode: boolean
+  /** Training mode as the account has it now: the write runs only when the box differs from it. */
+  trainingWas: boolean
+  /** The new wage when Change… was pressed; null after Keep. */
+  wageChange: number | null
+  hrNote: boolean
+  items: BringBackItem[]
+}
+
+/**
+ * Bring back, in order: the login (so the roadmap flag runs before the roster row flips back), the roster
+ * row in one statement (archived cleared, the end cleared, the start the day back: the trigger opens a new
+ * stint beside the old one), training mode, the wage when it changed, the HR line.
+ */
+export function planBringBackWrites(a: BringBackPlanInput): BringBackWrite[] {
+  const out: BringBackWrite[] = []
+  if (a.userId && a.loginArchived) out.push({ kind: 'restore_login', userId: a.userId, restoreRoadmap: a.restoreRoadmap })
+  if (a.personId) out.push({ kind: 'roster', personId: a.personId, patch: { archived_at: null, start_date: a.backYmd, end_date: null } })
+  if (a.userId && a.trainingMode !== a.trainingWas) out.push({ kind: 'training_mode', userId: a.userId, on: a.trainingMode })
+  if (a.wageChange != null && a.wageChange > 0 && a.payName) out.push({ kind: 'wage', payName: a.payName, personId: a.personId, hourlyWage: a.wageChange })
+  if (a.hrNote && a.personId) {
+    out.push({ kind: 'hr_line', personId: a.personId, entryDate: a.backYmd, content: bringBackHrLine({ displayName: a.displayName, leftYmd: a.leftYmd, backYmd: a.backYmd, items: a.items }) })
+  }
+  return out
+}
+
+/**
+ * "Ended by mistake? Undo the end instead": the login back with its roadmap rows, the roster row back with
+ * the end cleared and the start kept (the trigger reopens the old stint, no new one), one HR line.
+ */
+export function planUndoEndWrites(a: { userId: string | null; loginArchived: boolean; personId: string | null; displayName: string; leftYmd: string; todayYmd: string; hrNote: boolean }): BringBackWrite[] {
+  const out: BringBackWrite[] = []
+  if (a.userId && a.loginArchived) out.push({ kind: 'restore_login', userId: a.userId, restoreRoadmap: true })
+  if (a.personId) out.push({ kind: 'roster', personId: a.personId, patch: { archived_at: null, end_date: null } })
+  if (a.hrNote && a.personId) out.push({ kind: 'hr_line', personId: a.personId, entryDate: a.todayYmd, content: undoEndHrLine({ displayName: a.displayName, leftYmd: a.leftYmd, todayYmd: a.todayYmd }) })
+  return out
+}
+
+/** The day back must be a day, on or after the day they left: before it the trigger would move the old stint instead of opening a new one. */
+export function bringBackDateProblem(leftYmd: string, backYmd: string): string | null {
+  if (!parseYmd(backYmd)) return 'Pick the day they are back.'
+  const days = daysBetweenYmd(leftYmd, backYmd)
+  if (days == null) return 'Pick the day they are back.'
+  if (days < 0) return `The day back is before ${longDate(leftYmd)}, the day they left. Ended by mistake? Undo the end instead.`
+  return null
+}
+
+/** The footer's one line: what the press will do. `accountArchived` with no login is a #260 row: the account comes back, nothing signs in. */
+export function bringBackFooterWords(a: { hasLogin: boolean; accountArchived?: boolean; hasRosterRow: boolean; backYmd: string; hrNote: boolean }): string {
+  const parts: string[] = []
+  const half = a.hasLogin ? 'the login' : a.accountArchived ? 'the account' : null
+  if (half && a.hasRosterRow) parts.push(`Restores ${half} and roster row.`)
+  else if (half) parts.push(`Restores ${half}.`)
+  else if (a.hasRosterRow) parts.push('Restores the roster row.')
+  if (a.hasRosterRow) parts.push(`Opens a stint from ${longDate(a.backYmd)}.`)
+  if (a.hrNote) parts.push('Adds one line to the HR file.')
+  return parts.join(' ')
+}
+
+/** Whether a kind works in a Hours-tab team: the field, not the office. */
+export function kindNeedsTeam(kind: string | null | undefined): boolean {
+  return kind === 'helper' || kind === 'sub' || kind === 'master_technician'
 }

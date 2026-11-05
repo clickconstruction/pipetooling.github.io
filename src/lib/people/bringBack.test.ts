@@ -7,11 +7,16 @@ import {
   awayLine,
   awayWords,
   bringBackButtonLabel,
+  bringBackDateProblem,
+  bringBackFooterWords,
   bringBackHrLine,
   buildBringBackChecklist,
   daysBetweenYmd,
   findArchivedMatch,
+  kindNeedsTeam,
   longDate,
+  planBringBackWrites,
+  planUndoEndWrites,
   roadmapBoxDefault,
   roadmapBoxWords,
   undoEndHrLine,
@@ -28,9 +33,8 @@ function facts(p: Partial<BringBackFacts> = {}): BringBackFacts {
     signInEmail: 'corinne.vela@example.com',
     lastSignInYmd: '2026-11-03',
     pay: { hourlyWage: 24, isSalary: false, setYmd: '2026-01-12' },
-    needsLeader: true,
-    currentLeader: null,
-    formerLeader: { id: 'u-luis', name: 'Luis Ortega', active: true },
+    needsTeam: true,
+    team: null,
     licenses: [{ name: 'Journeyman plumber', date_of_expiry: '2028-06-30' }],
     paperworkSignedEarlier: { count: 5, lastYmd: '2024-03-04' },
     paperworkAssignedSinceBack: false,
@@ -106,7 +110,7 @@ describe('buildBringBackChecklist', () => {
       ['restore_halves', 'done'],
       ['sign_in', 'open'],
       ['wage', 'open'],
-      ['leader', 'open'],
+      ['team', 'open'],
       ['licenses', 'open'],
       ['paperwork', 'open'],
       ['hand_off_vehicle', 'skipped'],
@@ -114,20 +118,20 @@ describe('buildBringBackChecklist', () => {
     ])
     expect(bringBackButtonLabel(items)).toBe('Bring back · 5 open')
     expect(byId(items, 'sign_in').detail).toBe('corinne.vela@example.com, last used Nov 2026')
-    expect(byId(items, 'leader').detail).toBe('Luis Ortega approved their hours until Nov 2026')
-    expect(byId(items, 'leader').action).toEqual({ kind: 'assign_leader', suggest: { id: 'u-luis', name: 'Luis Ortega' } })
+    expect(byId(items, 'team').detail).toBe('On no team. The Hours tab groups the crew by team.')
+    expect(byId(items, 'team').action).toEqual({ kind: 'link', href: '/people?tab=hours&view=teams', label: 'Pick a team…' })
     expect(byId(items, 'licenses')).toMatchObject({ detail: 'Journeyman plumber expired Jun 2028', lapsed: true, canLeaveOpen: true })
     expect(byId(items, 'paperwork').detail).toBe('5 signed in 2024. None signed for this stint.')
   })
 
-  it('sign-in, wage and leader block the finish; licenses and paperwork can be left open', () => {
+  it('sign-in and wage block the finish; team, licenses and paperwork can be left open', () => {
     const items = buildBringBackChecklist(facts())
     const leaveable = items.filter((i) => i.state === 'open' && i.canLeaveOpen).map((i) => i.id)
-    expect(leaveable).toEqual(['licenses', 'paperwork'])
+    expect(leaveable).toEqual(['team', 'licenses', 'paperwork'])
     const resolved = applyChecklistResolutions(items, {
       sign_in: { state: 'done' },
       wage: { state: 'done' },
-      leader: { state: 'done' },
+      team: { state: 'left_open', reason: 'crew not set yet' },
       licenses: { state: 'left_open', reason: 'renewal in the mail' },
       paperwork: { state: 'left_open', reason: 'sending Monday' },
     })
@@ -137,19 +141,14 @@ describe('buildBringBackChecklist', () => {
     expect(byId(resolved, 'licenses').leaveReason).toBe('renewal in the mail')
   })
 
-  it('offers Pick alone when the former leader has left', () => {
-    const leader = byId(buildBringBackChecklist(facts({ formerLeader: { id: 'u-luis', name: 'Luis Ortega', active: false } })), 'leader')
-    expect(leader.detail).toBe('Luis Ortega approved their hours until Nov 2026 and has since left')
-    expect(leader.action).toEqual({ kind: 'assign_leader', suggest: null })
-  })
-
-  it('a leader already set, or a kind with no leader, needs nothing', () => {
-    expect(byId(buildBringBackChecklist(facts({ currentLeader: { id: 'u-sam', name: 'Sam Becker' } })), 'leader')).toMatchObject({
-      state: 'done',
-      detail: 'Sam Becker approves their hours',
-    })
-    expect(byId(buildBringBackChecklist(facts({ needsLeader: false })), 'leader').state).toBe('skipped')
-    expect(byId(buildBringBackChecklist(facts({ formerLeader: null })), 'leader').detail).toBe('Nobody approves their hours')
+  it('the team row reads the Hours-tab team they are still on, and the office needs none', () => {
+    expect(byId(buildBringBackChecklist(facts({ team: { id: 't-1', name: 'Crew A' } })), 'team')).toMatchObject({ state: 'done', detail: 'On Crew A' })
+    expect(byId(buildBringBackChecklist(facts({ needsTeam: false })), 'team').state).toBe('skipped')
+    expect(kindNeedsTeam('helper')).toBe(true)
+    expect(kindNeedsTeam('sub')).toBe(true)
+    expect(kindNeedsTeam('master_technician')).toBe(true)
+    expect(kindNeedsTeam('assistant')).toBe(false)
+    expect(kindNeedsTeam(null)).toBe(false)
   })
 
   it('licenses: lapsed before the day back is red; still good is done; none is skipped', () => {
@@ -192,7 +191,7 @@ describe('HR lines', () => {
     const items = applyChecklistResolutions(buildBringBackChecklist(facts()), {
       sign_in: { state: 'done' },
       wage: { state: 'done' },
-      leader: { state: 'done' },
+      team: { state: 'done' },
       licenses: { state: 'left_open', reason: 'renewal in the mail' },
       paperwork: { state: 'done' },
     })
@@ -238,5 +237,77 @@ describe('findArchivedMatch', () => {
       bringBackLabel: 'Bring back Corinne',
     })
     expect(archivedMatchWords({ person: { ...corinne, leftYmd: null }, by: 'email' }).headline).toBe('Corinne Vela is archived.')
+  })
+})
+
+describe('roadmapBoxWords with a count the viewer cannot read', () => {
+  it('shows the box without a number', () => {
+    expect(roadmapBoxWords(null, '2026-11-03')).toBe('Give back the open roadmap tasks they had in 2026')
+    expect(roadmapBoxWords(0, '2026-11-03')).toBeNull()
+  })
+})
+
+describe('planBringBackWrites', () => {
+  const base = {
+    userId: 'u-1',
+    loginArchived: true,
+    personId: 'p-1',
+    payName: 'Corinne Vela',
+    displayName: 'Corinne Vela',
+    leftYmd: '2026-11-03',
+    backYmd: '2029-11-05',
+    restoreRoadmap: false,
+    trainingMode: false,
+    trainingWas: false,
+    wageChange: null,
+    hrNote: true,
+    items: buildBringBackChecklist(facts()),
+  }
+
+  it('restores the login first, then the roster row in one statement, then the HR line', () => {
+    const plan = planBringBackWrites(base)
+    expect(plan.map((w) => w.kind)).toEqual(['restore_login', 'roster', 'hr_line'])
+    expect(plan[0]).toEqual({ kind: 'restore_login', userId: 'u-1', restoreRoadmap: false })
+    expect(plan[1]).toEqual({ kind: 'roster', personId: 'p-1', patch: { archived_at: null, start_date: '2029-11-05', end_date: null } })
+    expect(plan[2]).toMatchObject({ kind: 'hr_line', personId: 'p-1', entryDate: '2029-11-05' })
+    expect((plan[2] as { content: string }).content).toContain('Back on 2029-11-05 for Corinne Vela, after 3 years away.')
+  })
+
+  it('writes training mode only when the box differs from the account, and the wage only after Change', () => {
+    expect(planBringBackWrites({ ...base, trainingMode: true }).map((w) => w.kind)).toEqual(['restore_login', 'roster', 'training_mode', 'hr_line'])
+    expect(planBringBackWrites({ ...base, trainingWas: true }).map((w) => w.kind)).toEqual(['restore_login', 'roster', 'training_mode', 'hr_line'])
+    expect(planBringBackWrites({ ...base, wageChange: 26 })).toContainEqual({ kind: 'wage', payName: 'Corinne Vela', personId: 'p-1', hourlyWage: 26 })
+    expect(planBringBackWrites({ ...base, wageChange: 0 }).some((w) => w.kind === 'wage')).toBe(false)
+  })
+
+  it('skips the login when it is not archived, and everything on the roster row when there is none', () => {
+    expect(planBringBackWrites({ ...base, loginArchived: false }).map((w) => w.kind)).toEqual(['roster', 'hr_line'])
+    expect(planBringBackWrites({ ...base, personId: null }).map((w) => w.kind)).toEqual(['restore_login'])
+    expect(planBringBackWrites({ ...base, hrNote: false }).map((w) => w.kind)).toEqual(['restore_login', 'roster'])
+  })
+
+  it('undo keeps the old start so the trigger reopens the old stint', () => {
+    const plan = planUndoEndWrites({ userId: 'u-1', loginArchived: true, personId: 'p-1', displayName: 'Corinne Vela', leftYmd: '2026-11-03', todayYmd: '2026-11-06', hrNote: true })
+    expect(plan.map((w) => w.kind)).toEqual(['restore_login', 'roster', 'hr_line'])
+    expect(plan[0]).toEqual({ kind: 'restore_login', userId: 'u-1', restoreRoadmap: true })
+    expect(plan[1]).toEqual({ kind: 'roster', personId: 'p-1', patch: { archived_at: null, end_date: null } })
+  })
+})
+
+describe('the day back and the footer', () => {
+  it('refuses a day before the day they left, and asks for a day when there is none', () => {
+    expect(bringBackDateProblem('2026-11-03', '2029-11-05')).toBeNull()
+    expect(bringBackDateProblem('2026-11-03', '2026-11-03')).toBeNull()
+    expect(bringBackDateProblem('2026-11-03', '2026-11-02')).toBe('The day back is before Nov 3, 2026, the day they left. Ended by mistake? Undo the end instead.')
+    expect(bringBackDateProblem('2026-11-03', '')).toBe('Pick the day they are back.')
+  })
+
+  it('says what the press will do', () => {
+    expect(bringBackFooterWords({ hasLogin: true, hasRosterRow: true, backYmd: '2029-11-05', hrNote: true })).toBe(
+      'Restores the login and roster row. Opens a stint from Nov 5, 2029. Adds one line to the HR file.',
+    )
+    expect(bringBackFooterWords({ hasLogin: false, hasRosterRow: true, backYmd: '2029-11-05', hrNote: false })).toBe('Restores the roster row. Opens a stint from Nov 5, 2029.')
+    expect(bringBackFooterWords({ hasLogin: true, hasRosterRow: false, backYmd: '2029-11-05', hrNote: false })).toBe('Restores the login.')
+    expect(bringBackFooterWords({ hasLogin: false, accountArchived: true, hasRosterRow: true, backYmd: '2029-11-05', hrNote: false })).toBe('Restores the account and roster row. Opens a stint from Nov 5, 2029.')
   })
 })
