@@ -57,6 +57,10 @@ Both halves come back in one press. The end date clears and the start date becom
 
 Under the date, press **Undo the end instead**. The end date clears and the old stint reopens. The login and the roster row come back. Use it when the end was pressed on the wrong person or the wrong day.
 
+## Hire by mistake
+
+Someone may press + Hire for a returner. The form checks the name and the email against everyone who left. A match stops the form and offers {{button:blue|Bring back Corinne}}. That press opens the desk with the Bring back window up. See *hire someone*.
+
 ## Related
 
 - *archive and restore user accounts*: Restore for an account archived without an end date.

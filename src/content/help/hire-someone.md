@@ -25,6 +25,10 @@ An empty group on Users offers **+ Hire** too, and so does an empty People → S
 - **Pay**: the hourly wage, always. Tick **Salaried** for a flat 8-hour weekday day priced at that wage. Then pick the workday's start time. A pay row with no wage cannot be saved. That is exactly how a test account once put 40 phantom hours a week into every payroll total.
 - **Paperwork packet**: optional. The documents appear as unsent. You send each one from Contracts.
 
+## Someone who worked here before
+
+The form checks the name and the email against everyone who left. A match stops the form with an amber line. It names the person and the day they left. Press {{button:blue|Bring back Corinne}} to open their desk with the Bring back window up. Their hours, logbook and HR file stay on that account. Press {{button:outline|This is someone else}} when it is a different person. A new person still needs a name nobody archived holds. Pay is keyed by name. See *bring back a teammate who left*.
+
 ## What happens, in order
 
 :::example The steps

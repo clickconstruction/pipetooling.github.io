@@ -330,6 +330,35 @@ export type ArchivedPerson = {
   email: string | null
   /** The day their employment ended, YYYY-MM-DD; null when archived with no end date. */
   leftYmd: string | null
+  /** PR 4 (v2.6525): the halves behind the match, so Hire can open their desk's Bring back window. */
+  userId?: string | null
+  personId?: string | null
+}
+
+export type ArchivedUserRow = { id: string; name: string | null; email: string | null }
+export type ArchivedPeopleRow = { id: string; name: string; email: string | null; end_date: string | null; account_user_id: string | null; archived_at: string | null }
+
+/**
+ * The archived people + Hire checks against, one entry a person: an archived account with its roster
+ * row (the row's name, end date and email beside the account's email), an archived account with no
+ * row, and an archived roster row with no account. A roster row still active beside an archived
+ * account rides along for its end date, since End employment before v2.6523 could leave it so.
+ */
+export function mergeArchivedRows(users: readonly ArchivedUserRow[], people: readonly ArchivedPeopleRow[]): ArchivedPerson[] {
+  const out: ArchivedPerson[] = []
+  const rowsByAccount = new Map<string, ArchivedPeopleRow>()
+  for (const p of people) if (p.account_user_id && !rowsByAccount.has(p.account_user_id)) rowsByAccount.set(p.account_user_id, p)
+  const seenPeople = new Set<string>()
+  for (const u of users) {
+    const row = rowsByAccount.get(u.id) ?? null
+    if (row) seenPeople.add(row.id)
+    out.push({ id: u.id, name: (row?.name ?? u.name ?? '').trim(), email: u.email ?? row?.email ?? null, leftYmd: row?.end_date ?? null, userId: u.id, personId: row?.id ?? null })
+  }
+  for (const p of people) {
+    if (seenPeople.has(p.id) || !p.archived_at) continue
+    out.push({ id: p.id, name: p.name.trim(), email: p.email, leftYmd: p.end_date, userId: p.account_user_id, personId: p.id })
+  }
+  return out.filter((a) => a.name !== '' || a.email)
 }
 
 export type ArchivedMatch = { person: ArchivedPerson; by: 'name' | 'email' | 'both' }
