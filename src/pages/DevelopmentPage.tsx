@@ -945,7 +945,6 @@ export default function DevelopmentPage() {
         overhead: overheadRead,
         head: {
           siteName: dev.name,
-          customerName: data.customer?.name ?? null,
           line: scoreboardHead.line,
           small: scoreboardHead.small,
           printedAt: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),

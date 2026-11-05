@@ -1,11 +1,10 @@
 /**
- * The cost summary print (punch list #250's third print, after the Timeline's): the Scoreboard's
- * figures on paper for a dev or a controller, the way the owner asked for it on 2026-11-04 after a
- * hand-built spreadsheet had to stand in — the site's totals, a row per job, who put what in, the
- * parts by bucket, the card charges by payee, the supply invoices, every other charge with the
- * estimates marked, and what the total leaves out. The numbers are the board's own: the model's
- * measures and the cost rows the Costs column totals (`siteCosts.ts`), the clock's people
- * (`siteLabor.ts`), the day ledger's overhead. Pure: `buildCostSummary` makes the data,
+ * The cost summary print (v2.6534): the Scoreboard's figures on paper for a dev or a controller. The
+ * owner asked for it on 2026-11-04 after a site's costs had been totted up outside the app. It carries
+ * the site's totals, a row per job, who put what in, the parts by bucket, the card charges by payee,
+ * the supply invoices, every other charge with the estimates marked, and what the total leaves out.
+ * The numbers are the board's own: the model's measures and the cost rows the Costs column totals
+ * (`siteCosts.ts`), the clock's people (`siteLabor.ts`), the day ledger's overhead. Pure: `buildCostSummary` makes the data,
  * `costSummaryPrintHtml` the page, `openHtmlPrintWindow` opens it and the print dialog saves the PDF.
  */
 import {
@@ -29,8 +28,7 @@ export const COST_SUMMARY_ESTIMATE = /^\s*ESTIMATE\b/i
 
 export type CostSummaryHead = {
   siteName: string
-  customerName: string | null
-  /** The board's line under the name: the jobs and bids counted. */
+  /** The board's line under the name: the customer, the jobs and the bids counted. */
   line: string
   /** The board's small line: left to collect, the people on it, the overhead rule; null when the board has none. */
   small: string | null
@@ -309,7 +307,7 @@ tr { page-break-inside: avoid; }
 .stamp { font-size: 9.5px; color: #6b7280; margin-top: 10px; }
 </style></head><body>
 <h1>${esc(s.head.siteName)} · cost summary</h1>
-<p class="line">${s.head.customerName ? `${esc(s.head.customerName)} · ` : ''}${esc(s.head.line)}</p>
+<p class="line">${esc(s.head.line)}</p>
 ${s.head.small ? `<p class="line">${esc(s.head.small)}</p>` : ''}
 <div class="tiles">${tiles}</div>
 <h2>The jobs</h2>

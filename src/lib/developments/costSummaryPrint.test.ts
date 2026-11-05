@@ -86,7 +86,7 @@ function input(over: Partial<CostSummaryInput> = {}): CostSummaryInput {
     costs: costsRead,
     labor: laborRead,
     overhead: overheadRead,
-    head: { siteName: 'Harlow Ranch', customerName: 'Harlow Holdings', line: 'Harlow Holdings · 3 jobs, 2 with money on them · 1 bid', small: '$12,000 left to collect · 2 people on it', printedAt: 'Mar 10, 2026, 9:14 AM', printedBy: 'Dana' },
+    head: { siteName: 'Harlow Ranch', line: 'Harlow Holdings · 3 jobs, 2 with money on them · 1 bid', small: '$12,000 left to collect · 2 people on it', printedAt: 'Mar 10, 2026, 9:14 AM', printedBy: 'Dana' },
     jobLabelOf: (id) => LABEL[id] ?? id,
     toYmd: (iso) => iso.slice(0, 10),
     overheadSince: 'Feb 19, 2026',
@@ -199,7 +199,8 @@ describe('costSummaryPrintHtml', () => {
   it('draws the head, the tiles, every section and the stamp, with no theme token on the page', () => {
     const html = costSummaryPrintHtml(buildCostSummary(input()))
     expect(html).toContain('<title>Harlow Ranch · cost summary</title>')
-    expect(html).toContain('Harlow Holdings · Harlow Holdings · 3 jobs')
+    expect(html).toContain('<p class="line">Harlow Holdings · 3 jobs, 2 with money on them · 1 bid</p>')
+    expect(html.match(/Harlow Holdings/g)).toHaveLength(1)
     expect(html).toContain('$12,000 left to collect')
     expect(html).toContain('<b>JP612</b> Rough in: main house')
     expect(html).toContain('Lowe’s')
