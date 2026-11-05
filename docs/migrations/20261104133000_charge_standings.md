@@ -6,3 +6,5 @@ Every charge reader sees the same standings whatever the viewer's role (punch li
 - `REVOKE ... FROM PUBLIC, anon`, `GRANT EXECUTE ... TO authenticated`.
 
 Idempotent (`CREATE OR REPLACE`); no table is created, so no fence calls. Apply order: the client calls `charge_standings` on the Job Summary, in the Charges window and on the charged hours statement, so push right after the merge, before the Pages deploy finishes (`check:calls-ahead` labels the PR); until the push the three readers fail with `PGRST202`, which the Job Summary shows as an unpriced column with the reason and the two windows as their error. After the push, regenerate `src/types/database.ts` (`npm run gen-types:linked`).
+
+**Applied** to prod by 2026-11-05: the dev seat's `check_migration_ledger` read 1118 applied with this file's version among them, against the 1118 files on `main` (read in the docs pass after #6998; `supabase` is not linked in that worktree, so `check:migration-drift` was not run there); `check:edge-drift` read every one of the 179 functions deployed and current the same day; types regenerated from prod through #7069.

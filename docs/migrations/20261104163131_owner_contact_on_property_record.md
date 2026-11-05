@@ -8,3 +8,5 @@ The owner of record's email and phone get a home on the property record (Taunya'
 No table is made, so no fence calls; additive and idempotent (`ADD COLUMN IF NOT EXISTS`).
 
 Apply order: the client in the same PR reads the columns through `select('*')` and writes them only when the row it read carries them, so before the push the property window saves as before and the courtesy window shows *no email on the property record*. A typed owner email cannot be saved until the column exists, so **push right after the merge** (`bash scripts/db-push.sh` from a checkout at `origin/main`), then `npm run gen-types:linked` as its own `chore(types)` PR.
+
+**Applied** to prod by 2026-11-05: the dev seat's `check_migration_ledger` read 1118 applied with this file's version among them, against the 1118 files on `main` (read in the docs pass after #6998; `supabase` is not linked in that worktree, so `check:migration-drift` was not run there); `check:edge-drift` read every one of the 179 functions deployed and current the same day; types regenerated from prod through #7069.

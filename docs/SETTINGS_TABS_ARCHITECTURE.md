@@ -9,12 +9,12 @@ covers:
   - src/components/settings/SettingsDashboardTab.tsx
 mapped_at: 871e06336
 audience: Developers, AI Agents
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 ---
 
 > **Line numbers are exact as of `871e06336`** (from `npm run map -- <file>` fact sheets) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map -- src/pages/Settings.tsx` (or the tab file) before trusting a range.
 
-> **v2.6077 (after the stamp) — Stage checklists on Jobs & billing:** `Settings.tsx` mounts the self-contained `StageChecklistSettingsCard` in the `settings-jobs` group (since v2.6516 under *The job's record*, folded, § 3) for a dev, a master or an assistant-like role: the office's questions per stage kind (Rough In, Top Out, Trim Set) over `lib/jobs/stageChecklistEditor.ts` (`planQuestionSave`: inserts, updates, retires) and `stageChecklistIo.ts`, writing `stage_checklist_templates` (`docs/recent-features/v2.6077.md`).
+> **v2.6077 (after the stamp) — Stage checklists on Jobs & billing:** `Settings.tsx` mounts the self-contained `StageChecklistSettingsCard` in the `settings-jobs` group (since v2.6516 under *The job's record*, folded, § 3) for a dev, a master or an assistant-like role: the office's questions per stage kind (Rough In, Top Out, Trim Set) over `lib/jobs/stageChecklistEditor.ts` (`planQuestionSave`: inserts, updates, retires) and `stageChecklistIo.ts`, writing `stage_checklist_templates` (`docs/recent-features/v2.6077.md`); since v2.6494 a question taken off here closes every open stage check sent to Dispatch on it, *Taken off the company's list by …* in the editor's name (the Glossary's **Stage check (to Dispatch)**).
 
 > **v2.6083 (after the stamp) — Photos on Jobs & billing:** `Settings.tsx` mounts `ReportPhotoSizeSettingsBlock` in the same group for the same roles, with `canSet` for a dev or a master only: Small · Medium · Large, the long edge a report photo is shrunk to on the phone (`lib/photos/shrink.ts`, `app_settings.report_photo_size`), read by the assistants (`docs/recent-features/v2.6083.md`).
 

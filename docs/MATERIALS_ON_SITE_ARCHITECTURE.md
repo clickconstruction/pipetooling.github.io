@@ -5,7 +5,7 @@ file: docs/MATERIALS_ON_SITE_ARCHITECTURE.md
 type: Architecture map
 purpose: The objects, the writes and their rules, the screens, the agent's door and the gaps of Materials on site (punch list #209) — what is in the stencilled cages and boxes a crew leaves on a big job site. Read it before touching `src/lib/materials/onSite*.ts`, the On site tab, Jobs → Materials or the dev MCP's on-site verbs.
 audience: Developers, AI agents
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 sections:
   - The idea
   - The objects
@@ -125,4 +125,5 @@ From the card's Left list and this reading, each one small PR:
 - **The real-phone checks**: the camera scan of a printed label and the share sheet on iPhone and Android.
 - **Offline writes**: a press that writes waits for signal until #163's queue exists (call 6 went the other way for now).
 - **A yard that is not a job**: the company's own stock sits on a paid job today (the reading above); the surface wants a home for it — a job of its own kind, or a company place — so a count there is not a count against a customer.
+- **A place across jobs**: a place is a row of one job, so the material location report's *by location* view (v2.6533) folds the same place name on two jobs into one section by name alone; a site-wide place is #209's later question.
 - **V2 and V3 as drawn**: the takeoff-based *should be left* guess, loss by week with money, engraved items on `item_id`.

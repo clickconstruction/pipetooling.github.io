@@ -167,7 +167,7 @@ equal columns in the A and B comparison, and the same words from *Email me my no
 
 | PR | What | Size |
 |---|---|---|
-| 1 | Kernel `src/lib/people/bringBack.ts` + tests: away words, the returner checklist rows and which can be left open, the HR line, the roadmap box default, the Hire match (name or email among archived) | S |
+| 1 | **Shipped v2.6480.** Kernel `src/lib/people/bringBack.ts` + tests: away words, the returner checklist rows and which can be left open, the HR line, the roadmap box default, the Hire match (name or email among archived) | S |
 | 2 | **Shipped v2.6481.** Migration: `employment_stints` + backfill from `people` + RLS as `people`, the three fence calls; the trigger `people_stints_follow_dates` closes and opens stints for every path that writes the dates, End employment among them. `restore-user` takes `restore_roadmap` (edge deployed) | M |
 | 3 | **Shipped v2.6523.** The Bring back window on the desk and on Users → Archived; restores both halves; the returner rows (the Leader row became the Team row: the app records no leader); End employment archives a no-login account too (the walk's follow-on 1); guides `bring-back-a-teammate`, `archive-user-accounts`, `open-a-persons-desk`. The stints on Pay & schedule moved to PR 5 | M |
 | 4 | **Shipped v2.6525.** Hire stops on an archived match (name or email, as typed) and opens Bring back; an exact archived name is refused on the press either way | S |
@@ -193,7 +193,7 @@ the screen reads *Today's the day*, and the office's Needs you item appears if i
 
 ## Found in review, 2026-11-04 (for PR 3's author)
 
-The trigger `people_stints_follow_dates` (`20261103203000_employment_stints.sql` ~62-64, 85-99) takes a return only when `NEW.end_date IS NULL`; two paths lose the earlier stint: a past stint recorded in one save with both dates (the Employment tab changing (2024-03-04 → 2026-11-03) to (2027-01-05 → 2027-06-30) overwrites the first stint), and both dates blanked (the early `RETURN NEW`) then a start set later (the closed stint is rewritten). Treat `OLD.end_date IS NOT NULL AND NEW.start_date IS DISTINCT FROM OLD.start_date AND NEW.start_date >= OLD.end_date` as a return whatever `NEW.end_date` is, and close the open stint when both dates are blanked; the bed covers neither case yet. Bring back must clear the end and set the start in ONE `UPDATE people`, or the old stint reopens and then moves. The salary clamp reads the current pair, so a returner's first-stint week regenerated after the return clamps to zero pay until PR 5 reads the stints.
+The trigger `people_stints_follow_dates` (`20261103203000_employment_stints.sql` ~62-64, 85-99) takes a return only when `NEW.end_date IS NULL`; two paths lose the earlier stint: a past stint recorded in one save with both dates (the Employment tab changing (2024-03-04 → 2026-11-03) to (2027-01-05 → 2027-06-30) overwrites the first stint), and both dates blanked (the early `RETURN NEW`) then a start set later (the closed stint is rewritten). Treat `OLD.end_date IS NOT NULL AND NEW.start_date IS DISTINCT FROM OLD.start_date AND NEW.start_date >= OLD.end_date` as a return whatever `NEW.end_date` is, and close the open stint when both dates are blanked; the bed covers neither case yet. Bring back clears the end and sets the start in ONE `UPDATE people` (v2.6523), and the salary clamp reads every stint since PR 5 (v2.6526); the two lost-stint paths above still stand in the trigger (no migration since `20261103203000`), with no bed scenario for either.
 
 ## The walk of 2026-11-04
 

@@ -70,29 +70,35 @@ function tidyAddressLine(s: string): string {
     .trim()
 }
 
+/** A roll field, with the word Null — how some districts spell a blank situs or mailing line — read as '' (v2.6537). */
+function rollText(v: unknown): string {
+  const s = str(v)
+  return /^null$/i.test(s) ? '' : s
+}
+
 function composeMailing(a: Record<string, unknown>): string {
-  const whole = tidyAddressLine(str(a.MAIL_ADDR ?? a.mail_addr))
+  const whole = tidyAddressLine(rollText(a.MAIL_ADDR ?? a.mail_addr))
   if (whole && /[a-z0-9]/i.test(whole)) return whole
-  const l1 = str(a.MAIL_LINE1 ?? a.mail_line1)
-  const l2 = str(a.MAIL_LINE2 ?? a.mail_line2)
-  const city = str(a.MAIL_CITY ?? a.mail_city)
-  const st = str(a.MAIL_STAT ?? a.mail_stat)
-  const zip = str(a.MAIL_ZIP ?? a.mail_zip)
+  const l1 = rollText(a.MAIL_LINE1 ?? a.mail_line1)
+  const l2 = rollText(a.MAIL_LINE2 ?? a.mail_line2)
+  const city = rollText(a.MAIL_CITY ?? a.mail_city)
+  const st = rollText(a.MAIL_STAT ?? a.mail_stat)
+  const zip = rollText(a.MAIL_ZIP ?? a.mail_zip)
   const street = [l1, l2].filter(Boolean).join(' ')
   const tail = [city, [st, zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   return tidyAddressLine([street, tail].filter(Boolean).join(', '))
 }
 
 function composeSitus(a: Record<string, unknown>): string {
-  const whole = tidyAddressLine(str(a.SITUS_ADDR ?? a.situs_addr))
+  const whole = tidyAddressLine(rollText(a.SITUS_ADDR ?? a.situs_addr))
   if (whole && /[a-z0-9]/i.test(whole)) return whole
-  const num = str(a.SITUS_NUM ?? a.situs_num)
-  const stre = str(a.SITUS_STRE ?? a.situs_stre)
-  const s1 = str(a.SITUS_ST_1 ?? a.situs_st_1)
-  const s2 = str(a.SITUS_ST_2 ?? a.situs_st_2)
-  const city = str(a.SITUS_CITY ?? a.situs_city)
-  const st = str(a.SITUS_STAT ?? a.situs_stat)
-  const zip = str(a.SITUS_ZIP ?? a.situs_zip)
+  const num = rollText(a.SITUS_NUM ?? a.situs_num)
+  const stre = rollText(a.SITUS_STRE ?? a.situs_stre)
+  const s1 = rollText(a.SITUS_ST_1 ?? a.situs_st_1)
+  const s2 = rollText(a.SITUS_ST_2 ?? a.situs_st_2)
+  const city = rollText(a.SITUS_CITY ?? a.situs_city)
+  const st = rollText(a.SITUS_STAT ?? a.situs_stat)
+  const zip = rollText(a.SITUS_ZIP ?? a.situs_zip)
   const street = [num, s1, stre, s2].filter(Boolean).join(' ')
   const tail = [city, [st, zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   return tidyAddressLine([street, tail].filter(Boolean).join(', '))

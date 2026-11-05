@@ -2,7 +2,7 @@
 name: "A scoreboard for a development: its jobs, their money, and who put what in"
 number: 250
 group: ready
-status: design 2026-11-02 · draft 1 shown, the owner said *great potential, needs a refinement pass* · draft 2 the same day, read against the game's board (one header, one rule at four levels, the Cost column as the spine every member fills, a dark render) · the owner on draft 2: *right way*, and he took all seven defaults the same evening · PR 1 the board by job shipped as v2.6407 (#6886, merged 2026-11-03 after the Gun Dog stack and the photos PRs, main merged in five times) · PR 2 the rows under each job and the gold row v2.6457 · PR 3 the *Right now* headline v2.6467
+status: design 2026-11-02 · draft 1 shown, the owner said *great potential, needs a refinement pass* · draft 2 the same day, read against the game's board (one header, one rule at four levels, the Cost column as the spine every member fills, a dark render) · the owner on draft 2: *right way*, and he took all seven defaults the same evening · PR 1 the board by job shipped as v2.6407 (#6886, merged 2026-11-03 after the Gun Dog stack and the photos PRs, main merged in five times) · PR 2 the rows under each job and the gold row v2.6457 · PR 3 the *Right now* headline v2.6467 · **Print cost summary** under the board v2.6534 (the owner's ask of 2026-11-04, outside the train)
 summary: >
   The owner saw the game Squad's end-of-match scoreboard and asked for its shape on the Development
   page: one grid where the same columns mean the same thing at every level, a team banner with the
@@ -21,7 +21,7 @@ size: M (PR 1 the board by job) + M (PR 2 the people under each job, the gold ro
 blocker: None. PR 4 follows the train.
 opinion: build — the owner took the design and all seven defaults; every column already exists for one job in Job Summary, and the board turns the page's Money look into the site's P&L with the rows under each job summing to it; the one new weight is the day ledger read for Overhead, which opens lazily with the view
 mockup: to-dos/development-scoreboard/mockup.html
-ver: v2.6040 · v2.6215 base · v2.6407 · v2.6457 · v2.6467
+ver: v2.6040 · v2.6215 base · v2.6407 · v2.6457 · v2.6467 · v2.6534
 ---
 
 # A scoreboard for a development: its jobs, their money, and who put what in (#250)
@@ -259,7 +259,7 @@ words. PR 1 waits for the Gun Dog stack and the photos PRs so the page seam is c
 4. **PR 4 · the cuts and the window (M).** *Cut by* job · part · person and *Window* all time · this
    month · 90 days, remembered on the device; the person cut's ≈ share.
 5. **The Timeline view** is punch list #257's own train (`to-dos/site-cost-timeline.md`): the third
-   chip, the Job Summary's cost chart over the site, PR 1 shipped as v2.6493.
+   chip, the Job Summary's cost chart over the site; PR 1 the lines and chips shipped as v2.6493, PR 2 the amber band v2.6498, PR 3 value created and Print v2.6499, the train done 2026-11-04.
 
 No migration. No edge function. The reads are the page's own tables under the reader's policies.
 

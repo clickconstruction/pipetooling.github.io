@@ -2,7 +2,7 @@
 name: "Your week: one progress signal a tech can watch move, every week"
 number: 255
 group: ready
-status: card and mock-up 2026-11-03 · the owner answered the calls the same day and named three builds first (the teammate's logbook, the Google review tools, job targets) · the logbook v2.6472 (a spike against live data, then built), its license edit v2.6473 and the dev seat's license verbs v2.6475 · Your week card not started
+status: card and mock-up 2026-11-03 · the owner answered the calls the same day and named three builds first (the teammate's logbook, the Google review tools, job targets) · the logbook v2.6472 (a spike against live data, then built), its license edit v2.6473 and the dev seat's license verbs v2.6475 · the logbook shown to its teammate v2.6483 (`/my-logbook` on every role's path and in the phone dock's More sheet v2.6502; the TDLR check's level and Class B numbers and the journeyman's next rung v2.6485) · Your week card not started
 summary: >
   The app records nearly everything that shows a tech is getting better: the clock, the jobs, the
   customer's stars and words, the crew's ratings, the callbacks Job Summary already finds. Every one
@@ -12,7 +12,7 @@ summary: >
   against target for a lead), how far it moved this week, and the customer's words by name the day
   they land. Compared to themselves, never to each other. A sheet after the last clock-out of the
   week says the same thing once more, and a Monday email follows later.
-next: the logbook shown to its teammate (one PR, planned below, mock-up `own-logbook.html`); then the Google review tools and job targets; the Your week card after them.
+next: the Google review tools and job targets; the Your week card after them.
 size: L as a train of seven (S · M · M · S · M · S · M); the raise ladder is its own card once the levels are written
 blocker: None. The raise ladder (call 5) waits on the owner's levels.
 opinion: build draft 2 as drawn. Start with the card and the customer's words, which read data the app already has; the callback count waits for the office's confirm press, never an inferred pair.
@@ -128,7 +128,7 @@ Written after looking at the first render of draft 2 (`mockup.html`; the box at 
 | 6 | The lead's crew hours against target | S |
 | 7 | The sheet after the week's last clock-out, then the Monday email registered in What the team sees | M |
 
-## The logbook, shown to its teammate (next PR)
+## The logbook, shown to its teammate (shipped v2.6483; every role's path and the More sheet v2.6502)
 
 The owner, 2026-11-04: *"Some employees have a log of the work that they've done. I would like to offer a button to
 expose that log."* Mock-up: `own-logbook.html`. The office turns it on one teammate at a time, from the logbook.
