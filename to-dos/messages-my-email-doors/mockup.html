@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My email: a door where the person already works</title>
+<style>
+  /* Punch list #263. Every person, company, address, job and date here is made up: Dale Okafor at Ridgeway Builders, Harlan Freight, Marisol Vega, JP1077 at 4 Elm Ct. */
+  [data-theme='light'] { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-blue-tint: #eff6ff; --bg-green-tint: #f0fdf4; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1f2937; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-blue-700: #1d4ed8; --text-green-700: #15803d; --shadow: 0 1px 2px rgba(0,0,0,.06); }
+  [data-theme='dark'] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-blue-tint: #1e293b; --bg-green-tint: #14291c; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-600: #9ca3af; --text-muted: #9ca3af; --text-blue-700: #93c5fd; --text-green-700: #86efac; --shadow: 0 1px 2px rgba(0,0,0,.4); }
+  :root { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --blue: #2563eb; --green: #16a34a; --new: #f59e0b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  header.top > div { flex: 1 1 520px; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 92ch; }
+  .ghost { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 6px 14px; cursor: pointer; margin-top: 12px; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; }
+  .lede { margin: 0 0 12px; color: var(--text-700); max-width: 110ch; }
+  .pair { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  .col { display: grid; gap: 6px; min-width: 0; flex: 1 1 460px; max-width: 640px; }
+  .col.phone { flex: 0 0 343px; max-width: 343px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap .pick { color: var(--text-green-700); }
+  .frame { background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 12px; display: grid; gap: .6rem; color: var(--text-base); }
+  .col.phone .frame { padding: 8px; }
+  .verdict { margin: 4px 0 0; font-size: 13px; color: var(--text-600); max-width: 70ch; }
+  /* the job window's head and the Where it stands card, as JobThreadSummary draws it */
+  .jobhead { display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; }
+  .jobhead b { font-size: 1.05rem; color: var(--text-strong); }
+  .jobhead .stage { border: 1px solid var(--border-strong); border-radius: 999px; padding: .05rem .6rem; font-size: .75rem; color: var(--text-600); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: .6rem .8rem; display: grid; gap: .4rem; }
+  .card .t { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+  .card .t b { color: var(--text-strong); font-size: .9rem; }
+  .card .t .fold { font-size: .8rem; color: var(--text-muted); }
+  .line { display: grid; grid-template-columns: 6.5rem 1fr; gap: .4rem; font-size: .85rem; align-items: baseline; }
+  .col.phone .line { grid-template-columns: 1fr; gap: .1rem; }
+  .line .lab { color: var(--text-muted); font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .line .door { color: var(--text-blue-700); font-weight: 600; white-space: nowrap; }
+  .card .foot { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; font-size: .8rem; color: var(--text-muted); }
+  .btn { border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-base); font: 600 .8rem var(--font); padding: .25rem .65rem; white-space: nowrap; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.quiet { border-color: transparent; color: var(--text-blue-700); padding-left: .2rem; padding-right: .2rem; }
+  /* the new line: the person's own mail with the job's people */
+  .mymail { position: relative; border: 2px solid var(--blue); border-radius: 10px; padding: .55rem .8rem .6rem; background: var(--surface); display: grid; gap: .4rem; }
+  .mymail .tag { position: absolute; top: -10px; left: 10px; background: var(--blue); color: #fff; font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 0 .5rem; border-radius: 999px; }
+  .mymail .head { display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap; font-size: .85rem; }
+  .mymail .head b { color: var(--text-strong); }
+  .mymail .head .n { color: var(--text-muted); }
+  .mrow { display: grid; grid-template-columns: 1.1rem 1fr auto; gap: .5rem; align-items: center; font-size: .85rem; border-top: 1px solid var(--border); padding-top: .35rem; }
+  .col.phone .mrow { grid-template-columns: 1.1rem 1fr; }
+  .col.phone .mrow .acts { grid-column: 2; justify-self: start; }
+  .mrow .way { color: var(--text-muted); text-align: center; }
+  .mrow .subj { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mrow .subj small { color: var(--text-muted); margin-left: .35rem; }
+  .mrow .acts { display: flex; gap: .35rem; align-items: center; }
+  .mrow .why { font-size: .72rem; color: var(--text-muted); }
+  .mrow.done { color: var(--text-green-700); }
+  .mymail .quiet { font-size: .72rem; color: var(--text-muted); }
+  .mymail .quiet a { color: var(--text-blue-700); font-weight: 600; text-decoration: none; }
+  /* the thread, as ThreadWindow draws lines */
+  .thread { display: grid; gap: .45rem; }
+  .thread .top { display: flex; gap: .5rem; align-items: center; font-weight: 700; color: var(--text-strong); }
+  .thread .top .court { margin-left: auto; font-size: .75rem; font-weight: 600; border: 1px solid var(--border-strong); border-radius: 999px; padding: .1rem .55rem; color: var(--text-600); }
+  .thread .top .court.ours { color: #b45309; border-color: #f59e0b; }
+  .thread .top .court.theirs { color: var(--text-green-700); border-color: var(--green); }
+  .tl { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: .45rem .7rem; font-size: .85rem; max-width: 86%; display: grid; gap: .15rem; }
+  .tl.ours { margin-left: auto; background: var(--bg-blue-tint); }
+  .tl .m { font-size: .72rem; color: var(--text-muted); display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+  .tl .m .jobchip { border: 1px solid var(--border-strong); border-radius: 999px; padding: 0 .45rem; color: var(--text-600); }
+  .tl.new { border: 2px solid var(--blue); position: relative; }
+  .tl.new .mark { font-size: .72rem; color: var(--text-muted); display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  .tl.new .mark .app { border: 1px solid var(--border-strong); border-radius: 999px; padding: 0 .45rem; }
+  .tl.new .mark .untag { color: var(--text-blue-700); font-weight: 600; }
+  .ev { text-align: center; font-size: .75rem; color: var(--text-muted); }
+  .gap { font-size: .78rem; color: var(--text-muted); text-align: center; font-style: italic; }
+  .tablewrap { overflow-x: auto; margin-top: 10px; }
+  table.calls { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13px; }
+  table.calls th, table.calls td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; color: var(--text-base); }
+  table.calls th { background: var(--bg-subtle); color: var(--text-strong); }
+  .note { font-size: 13px; color: var(--text-600); margin: 6px 0 0; max-width: 110ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #263 · Messages → My email</p>
+      <h1>A door on the job, where the person already works</h1>
+      <p>My email (#230) shipped 2026-11-01 as a tab on Messages. Four days on, the ledger shows no office member on the Workspace has opened it and nothing is tagged. Taunya spends her days on Jobs → Stages, Wendi and Grace on the Bid Board. <b>Recommendation:</b> a line under the job window's <i>Where it stands</i> card and on the bid's rail, read from the person's own Gmail when the window opens and kept nowhere, naming the conversations with the job's people that are not on the job yet, with <b>Yes</b> on each. Second, after a month: the Sent side with no press at all.</p>
+      <button class="ghost" type="button" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'">Light / dark</button>
+    </div>
+  </header>
+
+  <h2><span class="num">1</span> Call 1 · The job window, at a desk: now, and my suggestion</h2>
+  <p class="lede">One spot: the top of the job window's Job tab, JP1077 at 4 Elm Ct, as Taunya opens it from Jobs → Stages. Today the <i>Where it stands</i> card reads the lines Messages holds. The suggestion adds one line under it: the person's own mail with Dale that is not on the job, read from their Gmail as the window opens, with the tab's own <b>Yes</b> and <b>Tag…</b> in place.</p>
+  <div class="pair">
+    <div class="col">
+      <div class="cap">Now · nothing says the person has mail about this job</div>
+      <div class="frame">
+        <div class="jobhead"><b>JP1077 · 4 Elm Ct</b><span>Ridgeway Builders</span><span class="stage">Working</span></div>
+        <div class="card">
+          <div class="t"><b>Where it stands with Dale</b><span class="fold">Fold</span></div>
+          <div class="line"><span class="lab">Where it stands</span><span>The last word was ours, a text 3 days ago. <span class="door">open the text ›</span></span></div>
+          <div class="line"><span class="lab">Their word</span><span>Nothing promised.</span></div>
+          <div class="line"><span class="lab">Our word</span><span>We owe them a price on the 50-gal by Thursday. <span class="door">open the note ›</span></span></div>
+          <div class="foot"><span>Nothing is written unless you press Keep as a note.</span><button class="btn">Read again</button><button class="btn">Keep as a note</button></div>
+        </div>
+        <div class="gap">Dale's two emails to Taunya's own box, and her reply, sit in Gmail. The job never hears of them.</div>
+      </div>
+      <p class="verdict">The card is right as far as Messages can see. Dale wrote to Taunya's own address on Monday and again today; the thread's last word is a text from three days ago, so the card reads <i>ours</i> and the court is wrong.</p>
+    </div>
+    <div class="col">
+      <div class="cap"><span class="pick">My suggestion</span> · one line under the card, read on open, kept nowhere</div>
+      <div class="frame">
+        <div class="jobhead"><b>JP1077 · 4 Elm Ct</b><span>Ridgeway Builders</span><span class="stage">Working</span></div>
+        <div class="card">
+          <div class="t"><b>Where it stands with Dale</b><span class="fold">Fold</span></div>
+          <div class="line"><span class="lab">Where it stands</span><span>The last word was ours, a text 3 days ago. <span class="door">open the text ›</span></span></div>
+          <div class="line"><span class="lab">Their word</span><span>Nothing promised.</span></div>
+          <div class="line"><span class="lab">Our word</span><span>We owe them a price on the 50-gal by Thursday. <span class="door">open the note ›</span></span></div>
+          <div class="foot"><span>Nothing is written unless you press Keep as a note.</span><button class="btn">Read again</button><button class="btn">Keep as a note</button></div>
+        </div>
+        <div class="mymail">
+          <span class="tag">New</span>
+          <div class="head"><b>Your mail with Dale Okafor</b><span class="n">2 conversations not on this job</span></div>
+          <div class="mrow"><span class="way" aria-label="It came in">↓</span><span class="subj">Re: 4 Elm Ct water heater<small>Dale · today 9:12 AM · 3 in it · 📎</small></span><span class="acts"><button class="btn primary">Yes</button><button class="btn quiet">other…</button></span></div>
+          <div class="mrow"><span class="way" aria-label="You sent it">↑</span><span class="subj">to Dale: Thursday walk-through<small>you · Mon</small></span><span class="acts"><button class="btn">Tag…</button></span></div>
+          <div class="quiet">Read from your Gmail as this opened. Nothing is kept until you press Yes. <a href="#">All your mail with Dale ›</a></div>
+        </div>
+      </div>
+      <p class="verdict"><b>Yes</b> is the tab's own tag: the whole conversation lands on JP1077 with its files and the court flips to <i>theirs</i>. The line draws only for a person whose switch is on and whose address Google reads, only for a job they open, and never counts anywhere. More than three rows fold to <i>All your mail with Dale ›</i>, which opens the tab searched on him.</p>
+    </div>
+    <div class="col phone">
+      <div class="cap"><span class="pick">The same, on a phone</span> · 375 wide</div>
+      <div class="frame">
+        <div class="jobhead"><b>JP1077 · 4 Elm Ct</b><span class="stage">Working</span></div>
+        <div class="card">
+          <div class="t"><b>Where it stands with Dale</b><span class="fold">Fold</span></div>
+          <div class="line"><span class="lab">Where it stands</span><span>The last word was ours, a text 3 days ago. <span class="door">open ›</span></span></div>
+          <div class="line"><span class="lab">Our word</span><span>We owe them a price on the 50-gal by Thursday.</span></div>
+        </div>
+        <div class="mymail">
+          <span class="tag">New</span>
+          <div class="head"><b>Your mail with Dale</b><span class="n">2 not on this job</span></div>
+          <div class="mrow"><span class="way">↓</span><span class="subj">Re: 4 Elm Ct water heater<small>today</small></span><span class="acts"><button class="btn primary">Yes</button><button class="btn quiet">other…</button></span></div>
+          <div class="mrow"><span class="way">↑</span><span class="subj">to Dale: Thursday walk-through<small>Mon</small></span><span class="acts"><button class="btn">Tag…</button></span></div>
+          <div class="quiet">Read from your Gmail as this opened. Nothing is kept until you press Yes.</div>
+        </div>
+      </div>
+      <p class="verdict">The presses sit under the subject on a phone, each tall enough to tap.</p>
+    </div>
+  </div>
+
+  <h2><span class="num">1b</span> After the press</h2>
+  <p class="lede">The row turns green and names the job, as the tab's green bar does; the card's first line reads again and now says Dale's word came last.</p>
+  <div class="pair">
+    <div class="col">
+      <div class="cap">After Yes</div>
+      <div class="frame">
+        <div class="card">
+          <div class="t"><b>Where it stands with Dale</b><span class="fold">Fold</span></div>
+          <div class="line"><span class="lab">Where it stands</span><span>The last word was Dale’s, an email today. <span class="door">open the email ›</span></span></div>
+        </div>
+        <div class="mymail">
+          <div class="head"><b>Your mail with Dale Okafor</b><span class="n">1 conversation not on this job</span></div>
+          <div class="mrow done"><span class="way">✓</span><span class="subj">Re: 4 Elm Ct water heater<small>on JP1077 · 3 lines and 1 file</small></span><span class="acts"><button class="btn quiet">open the thread ›</button></span></div>
+          <div class="mrow"><span class="way">↑</span><span class="subj">to Dale: Thursday walk-through<small>you · Mon</small></span><span class="acts"><button class="btn">Tag…</button></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">2</span> Call 2 · The Sent side with no press: now, and my suggestion</h2>
+  <p class="lede">One spot: Rusty Cottar's thread on Messages, the row #207 found. Wendi answered Rusty's bid request from her own mailbox on Monday. Today the app never sees that answer unless she tags the conversation. The suggestion widens the follow that already lands later mail in a tagged conversation: a mail she sends from her own box to an address on exactly one open job lands on it by itself, marked as the app's, with <b>Untag</b> on the line.</p>
+  <div class="pair">
+    <div class="col">
+      <div class="cap">Now · her answer is in Gmail only, so the court reads Our move</div>
+      <div class="frame">
+        <div class="thread">
+          <div class="top">Rusty Cottar <span class="court ours">Our move · 1 day</span></div>
+          <div class="tl"><div>Can you get me a number on the clubhouse restrooms by Friday? Plans attached.</div><div class="m"><span>Rusty · email · Mon 8:40 AM</span><span class="jobchip">BP523 · Cedar Bend clubhouse</span></div></div>
+          <div class="gap">Wendi's reply from wendi@ on Monday at 2:10 PM is not here.</div>
+          <div class="ev">Wendi took Rusty Cottar · Mon 2:49 PM</div>
+        </div>
+      </div>
+      <p class="verdict">Follow up lists Rusty under Needs a reply for a day. Wendi answered; the app does not know, and a teammate may answer him twice.</p>
+    </div>
+    <div class="col">
+      <div class="cap"><span class="pick">My suggestion</span> · her sent mail lands by itself, marked, with Untag</div>
+      <div class="frame">
+        <div class="thread">
+          <div class="top">Rusty Cottar <span class="court theirs">Their move · 1 day</span></div>
+          <div class="tl"><div>Can you get me a number on the clubhouse restrooms by Friday? Plans attached.</div><div class="m"><span>Rusty · email · Mon 8:40 AM</span><span class="jobchip">BP523 · Cedar Bend clubhouse</span></div></div>
+          <div class="tl ours new"><div>Rusty, yes. I will have the restrooms priced by Thursday noon. Is the kitchen in scope too?</div><div class="mark"><span>Wendi · email · Mon 2:10 PM</span><span class="app">from Wendi’s mail · put here by the app</span><span class="untag">Untag</span></div></div>
+          <div class="ev">The app put Wendi’s mail to Rusty on BP523: he is on one open job. Later mail in it lands here by itself.</div>
+        </div>
+      </div>
+      <p class="verdict">Within five minutes of her send the line is on the bid as ours, the court flips, and the grey line says the app did it and why. <b>Untag</b> takes it off; a mail to an address on two open jobs, or on none, lands nowhere and waits for the tab.</p>
+    </div>
+  </div>
+
+  <h2><span class="num">3</span> The calls</h2>
+  <div class="tablewrap"><table class="calls">
+    <thead><tr><th>#</th><th>The call</th><th>Options</th><th>Recommended</th><th>Owner's answer</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>A door on the job and the bid</td><td>A the line read on open, with Yes. B a bare press that opens the tab searched on the job's people. 0 nothing, wait the month.</td><td><b>A</b>, with B as the line's own door past three rows.</td><td></td></tr>
+      <tr><td>2</td><td>The Sent side with no press</td><td>A the follow widened to a person's Sent, marked, with Untag. B keep a press.</td><td><b>A, second</b>, after a month of call 1.</td><td></td></tr>
+      <tr><td>3</td><td>A Needs you line on the Dashboard</td><td>A a morning count per person from a metadata run. B none.</td><td><b>B</b> for now: the count call 2 of #230 refused, and call 1 answers it at the job.</td><td></td></tr>
+      <tr><td>4</td><td>The retire test and who walks first</td><td>A Grace, as grace@clickplumbing.com, on a ZZ Test job; the month runs from that day. B wait for someone else.</td><td><b>A</b>.</td><td></td></tr>
+      <tr><td>5</td><td>The guess's thread rule</td><td>A a page-local rule, its own small PR after the walk. B leave the guess as it is.</td><td><b>A</b>, after the walk.</td><td></td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">The Inbox keeps its press in every option: a customer's mail never lands on a guess alone. Nothing here counts on the Dashboard, the strip or the bar.</p>
+</div>
+</body>
+</html>
