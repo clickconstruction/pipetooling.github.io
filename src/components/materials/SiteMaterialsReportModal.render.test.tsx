@@ -3,13 +3,15 @@
  * Render smoke for the material location report (punch list #268): the window reads the site's
  * rows once, draws the paper by job with the head, the counts, the sections, the closing block and
  * the foot; By location regroups the same boxes; Print calls print; the device remembers the view;
- * an empty site says so; a read that fails draws the retry panel.
+ * an empty site says so; a read that fails draws the retry panel; Escape closes it unless a window
+ * sits over it; a long Last recorded wraps (the paper lost the words at the margin, v2.6536).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeUseAuthValue, renderWithProviders } from '../../test/renderSmokeMocks'
 import SiteMaterialsReportModal from './SiteMaterialsReportModal'
 import { readReportView } from '../../lib/materials/siteMaterialsReportPrefs'
+import { registerModal, unregisterModal } from '../../lib/modalStack'
 import type { Container, Movement, Place } from '../../lib/materials/onSite'
 import type { SiteMaterialsRows } from '../../lib/materials/siteMaterialsReport'
 
@@ -125,6 +127,36 @@ describe('SiteMaterialsReportModal', () => {
     expect(screen.queryByTestId('report-paper')).toBeNull()
   })
 
+  it('Escape closes the window, and a window opened over it keeps the press', async () => {
+    const { onClose } = setup()
+    await screen.findByTestId('report-paper')
+    const over = registerModal()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    unregisterModal(over)
+    fireEvent.keyDown(window, { key: 'a' })
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('a long Last recorded and a part with no spaces wrap inside their cells: every word stays on the paper (v2.6536)', async () => {
+    const stamp = 'Cowork agent · MCP as Robert'
+    const unbroken = 'A'.repeat(120)
+    const long: SiteMaterialsRows = { ...rows, movements: [move('m1', 'j1', unbroken, 4, 'delivered', null, A1, '2026-11-02T15:00:00Z', stamp, 'ea')] }
+    setup(() => Promise.resolve(long))
+    const paper = await screen.findByTestId('report-paper')
+    const cell = within(paper).getByTestId('report-line-recorded')
+    expect(cell.textContent).toBe(`Nov 2 · ${stamp}`)
+    // The cell may take a second line: a cell that stays on one line runs past the box, and the printed page cuts it at the margin.
+    expect(cell.style.whiteSpace).not.toBe('nowrap')
+    expect(cell.style.overflowWrap).toBe('anywhere')
+    const part = within(paper).getByTestId('report-line').firstElementChild as HTMLElement
+    expect(part.textContent).toBe(unbroken)
+    expect(part.style.whiteSpace).not.toBe('nowrap')
+    expect(part.style.overflowWrap).toBe('anywhere')
+  })
+
   it('sits on <body> with the print rules that take the page behind out of the print layout, and the foot in the page’s margin boxes', async () => {
     setup()
     await screen.findByTestId('report-paper')
@@ -135,6 +167,10 @@ describe('SiteMaterialsReportModal', () => {
     expect(css).toContain('@bottom-left { content: "Read from the Materials on site ledger')
     expect(css).toContain('counter(pages)')
     expect(css).toContain('.site-materials-report-foot { display: none !important; }')
+    // A phone stacks a line, a screen rule alone: the paper keeps its four columns at every width.
+    const phone = css.slice(css.indexOf('@media screen'))
+    expect(phone).toContain('.site-materials-report-lines td:nth-child(4) { grid-column: 1 / -1;')
+    expect(css.slice(0, css.indexOf('@media screen'))).not.toContain('grid-column')
     expect(css).not.toContain('visibility: hidden')
   })
 })

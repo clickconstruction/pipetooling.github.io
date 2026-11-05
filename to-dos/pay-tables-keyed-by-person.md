@@ -1,16 +1,16 @@
 ---
 name: The pay tables key on the person, not the name
 number: 267
-group: ready
-status: card written 2026-11-04 after the users-without-login train (#260) shipped; Phase E of the person-identity plan, shelved 2026-10-26, reopened on the dev's word · PR 1's audit run 2026-11-05 (`scripts/audit-pay-keys.sql`, read-only on prod, #7068): 85 rows carry no person_id across ten names, none disagrees with its name; the NOT NULL waits on the owner settling the ten names
+group: waiting
+status: PR 1 shipped (#7068, the audit script and its counts, no migration) · left — the NOT NULL and the keys, once ten pay names are settled by hand
 summary: >
   The ten pay tables (people_hours, people_pay_config, people_crew_jobs, …) still key on person_name text, with
   person_id filled by a trigger that resolves the name through users.name and people.account_user_id. That is why
   a rename cascades through the pay tables, why two people cannot share a name, and why the backfill had to skip
   two roster records. Every person now has a users row, so the re-key is cheaper than when it was shelved.
-next: The owner settles the ten names the audit found on the desk (seven match a users row with no People record, three match nobody); then PR 1's second half, person_id NOT NULL on the ten tables with the trigger refusing a name that resolves to nobody.
+next: When `scripts/audit-pay-keys.sql` reads zero rows with no person_id, the NOT NULL and the keys.
 size: L
-blocker: The measurement on prod; a pay row that resolves to nobody has to be settled by hand first.
+blocker: The owner's word on ten names across 85 pay rows; none disagrees with its name, seven are users rows with no People record and three match nobody.
 ver: v2.6517 · 6511
 opinion: build, carefully — it is the last place a person is a string, and it holds the money.
 mockup: not required — no screen changes; the keys under them do
