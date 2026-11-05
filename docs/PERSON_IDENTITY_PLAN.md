@@ -5,7 +5,7 @@ file: docs/PERSON_IDENTITY_PLAN.md
 type: Engineering / Migration plan
 purpose: Staged plan to move pay/labor identity off trimmed-name joins onto people.id keys, ending the name-variant bug class (split Crew P&L rows, silent zero wages on rename). Written 2026-07-23 alongside the Combine-people tool (v2.982).
 audience: Developers, AI Agents
-last_updated: 2026-08-01
+last_updated: 2026-11-04
 ---
 
 ## The problem
@@ -35,9 +35,11 @@ Identity in the pay/labor domain is keyed by **trimmed name text**: `people_hour
 2. Combine people must keep working at every phase (it already does both id-repoint and name-rewrite).
 3. Every phase-C PR includes a before/after check on the surface's totals (Crew P&L totals must not shift from a pure re-keying).
 
-> Phase E and the remaining name-keyed reads were punch list #8 (`to-dos/person-identity-phase-e.md`, the 2026-09-05 sweep) until the owner's cut of 2026-10-26 retired it (#6192).
+> Phase E and the remaining name-keyed reads were punch list #8 (`to-dos/person-identity-phase-e.md`, the 2026-09-05 sweep) until the owner's cut of 2026-10-26 retired it (#6192). Reopened as punch list #267 (`to-dos/pay-tables-keyed-by-person.md`) on 2026-11-04, after the users-without-login train (#260) made every person a users row; the audit for it is `scripts/audit-pay-keys.sql`.
 
 ## Status log
+
+- 2026-11-04 — **Pay keys audit for #267 PR 1** (`scripts/audit-pay-keys.sql`, read-only on prod): of the ten tables' rows, 85 carry no `person_id` — `people_hours` 62, `pay_stub_days` 14, `people_crew_jobs` 4, `pay_stubs` 2, `people_team_members` 2, `people_pay_config` 1 — and none carries a `person_id` whose person's name differs from the row's; the 85 rows name 10 distinct people, 7 of them matching a users row that has no People record (a dev or a fixture account, to read by eye) and 3 matching nobody in `people` or `users`. The `NOT NULL` of Phase E waits on the owner settling those names on the desk; the keys and the readers follow (#267 PRs 2–3).
 
 - 2026-08-16 — **usePayConfig id-first lookups** (v2.1735, client-only): the hook derives `payConfigById` (`src/lib/people/payConfigLookup.ts` — `buildPayConfigById` + `payConfigForPerson`, kernel + tests) and `PeopleEmploymentTab` resolves every pay-config read through `EmploymentEntry.personId` first. The name-keyed map itself is KEPT by design: it's the roster join for dozens of People.tsx call sites and `people_pay_config`'s PK is `person_name` — re-keying state or `onConflict` is Phase-E (re-PK) work, not a client flip. Answer-preserving today; the win is renames. **Phase E formally scoped + gated** (see the phase line): FKs exist, so E = NOT NULL (blocked by fail-soft invariant), re-PK, cascade retirement — none shippable until name-fallbacks stop earning their keep.
 
