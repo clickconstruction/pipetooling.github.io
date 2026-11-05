@@ -169,6 +169,8 @@ type Props = {
    * the read-view body yields to the Edit/Bill panes.
    */
   paneBodyHidden?: boolean
+  /** Pane mode at desktop (v2.6539): the window draws the title row itself, so the pane's own title stays out; the action row stays. */
+  paneTitleHidden?: boolean
   /** Pane mode (v2.3182): the Job tab's Costs card asks the window to switch tabs. */
   onRequestTab?: ((tab: 'edit' | 'bill' | 'costs') => void) | null
   /** Punch list #30, PR 2b: the job window keeps the loaded job for its phone action bar. */
@@ -199,8 +201,8 @@ export function splitScheduleDetailRowLabel(label: string): { hcp: string; jobNa
   }
 }
 
-/** Name-first title (v2.1529): the job name carries the header; the number rides as a chip when present. */
-function formatJobDetailModalTitleParts(
+/** Name-first title (v2.1529): the job name carries the header; the number rides as a chip when present. The window's own title row (v2.6539) reads it too. */
+export function formatJobDetailModalTitleParts(
   hcp: string | null | undefined,
   jobName: string | null | undefined,
 ): { num: string | null; name: string } {
@@ -725,6 +727,7 @@ export default function DetailJobModal({
   externalRefreshKey = 0,
   onEscBlockedChange = null,
   paneBodyHidden = false,
+  paneTitleHidden = false,
 }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -1587,6 +1590,7 @@ export default function DetailJobModal({
             width: '100%',
           }}
         >
+          {paneTitleHidden ? null : (
           <h2
             id="detail-job-modal-title"
             style={{
@@ -1644,6 +1648,7 @@ export default function DetailJobModal({
               </span>
             ) : null}
           </h2>
+          )}
           {/* One action row (v2.1529, Option B): pill · share · supply house · send-task · calendar · mail · gear · close.
               Narrow screens (v2.1607): full-width row under the title — the old
               55% cap forced a ragged two-line wrap once the cluster grew. */}
@@ -1681,11 +1686,11 @@ export default function DetailJobModal({
                     {/* Job window: the pill carries the job number ("961 PLUM") —
                         C#-numbered jobs have no title chip, so this is where the
                         number lives (v2.1677). */}
-                    {paneMode && paneJobNumber ? `${paneJobNumber} ${headerTradePill.label}` : headerTradePill.label}
+                    {paneMode && paneJobNumber && !paneTitleHidden ? `${paneJobNumber} ${headerTradePill.label}` : headerTradePill.label}
                   </button>
                 ) : (
                   <span style={{ ...headerTradePill.style, marginTop: 0 }} title={headerTradePillTitleText}>
-                    {paneMode && paneJobNumber ? `${paneJobNumber} ${headerTradePill.label}` : headerTradePill.label}
+                    {paneMode && paneJobNumber && !paneTitleHidden ? `${paneJobNumber} ${headerTradePill.label}` : headerTradePill.label}
                   </span>
                 )}
               </span>
