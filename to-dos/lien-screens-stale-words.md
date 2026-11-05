@@ -14,7 +14,7 @@ opinion: your call — every item is built; M's live look is all that is left
 mockup: not required — words and one focus on screens that exist
 group: close
 next: Look at M live on a ZZ TEST job, with the steps under *Verify after merge* in v2.4679's notes. A waiver sent to another leader's desk should reopen with that leader in Signs, not the job's default. Then delete this file. Counsel's read of L does not hold the card open. The rules guide keeps that question.
-blocker: A live look at M on a waiting waiver.
+blocker: A live look at M on a waiting waiver, which needs a billed ZZ job — the Release of Lien window opens from a Billed row's Release of lien door, the Bill tab's paperwork card on a sent bill, or a phone card's hold menu; the Working ZZ job of 2026-11-05 had none of the three.
 ---
 
 # Lien screens: the app's own words that are stale

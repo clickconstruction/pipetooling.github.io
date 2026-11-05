@@ -12,9 +12,9 @@ summary: >
   multi-line job: the lines in plan order, each with its own percent, no amounts and no shares
   on the rows, the job's percent derived by the server the way it already is, and the same list
   behind the My Schedule stepper so the fast door stops minting whole-job fifties.
-next: A live walk as a helper on a ZZ job with four priced lines and no Order row (the recipe under How to verify), then the count of reports whose job percent is exactly 50, before and after; then delete the folder.
+next: A live walk as a helper on a ZZ job with four priced lines and no Order row (the recipe under How to verify; the deployed app's pane login signs in as the dev only, so the walk runs on the dev server as a twin helper or on a helper's phone); the count's first reading is below, the second a month on; then delete the folder.
 size: XS
-blocker: A live walk, and a read-only count on prod from the owner's seat (the session's classifier refused it).
+blocker: A live walk as a helper. The count's first reading was taken 2026-11-05 from the dev seat.
 opinion: your call — the code is done; the walk and the count are yours
 mockup: to-dos/report-by-line/mockup.html
 ver: v2.3192 · v2.5661 · v2.5663 · v2.5664 · v2.5665 · v2.5666
@@ -256,10 +256,12 @@ main, D1 to D5 as the defaults. Two things are left, both the owner's:
 - **The live walk** (How to verify above). The session could not seed a ZZ job on prod (a write)
   and the deploy landed after the build; any real job with two or more priced lines shows the
   list on Leave Report and on Update % done now.
-- **The count.** A live count was drafted (how many reports in the last 120 days carried 25/50/75
-  as the job's number, how many Working jobs have two or more priced lines and no stage plan, how
-  many line rows ever got a `progress_pct`) but the session's classifier refused the production
-  read. Run it from the owner's seat, then again a month on: the share of reports whose job
-  percent is exactly 50, before and after, is the number that says whether this worked.
+- **The count.** The first reading, 2026-11-05, from the dev seat over `job_pct_events` since
+  2026-07-08 (the 120 days): 178 manual percent events, 8 of them exactly 25, 50 or 75 (4.5%),
+  and no event from a line report yet (`source` reads `manual` or `seed` only), so the before
+  number is 4.5%. Read it again a month on, after the first line reports: the share of events
+  whose job percent is exactly 25, 50 or 75, before and after, is the number that says whether
+  this worked. The other two counts (Working jobs with two or more priced lines and no stage
+  plan; line rows that ever got a `progress_pct`) wait on that second reading.
 
 Delete the folder when both are done; the release notes and the fragments carry the record.
