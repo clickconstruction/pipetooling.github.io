@@ -94,6 +94,7 @@ import SettingsHcpReconcileSection from '../components/settings/SettingsHcpRecon
 import SettingsReleaseNotesSection from '../components/settings/SettingsReleaseNotesSection'
 import SettingsShipPaceSection from '../components/settings/SettingsShipPaceSection'
 import TeamReviewCadenceSettingsBlock from '../components/settings/TeamReviewCadenceSettingsBlock'
+import LegalThemesSettingsBlock from '../components/settings/LegalThemesSettingsBlock'
 import EasterEggsSettingsBlock from '../components/settings/EasterEggsSettingsBlock'
 import OfficeAddressSettingsBlock from '../components/settings/OfficeAddressSettingsBlock'
 import BankTransferDetailsSettingsBlock from '../components/settings/BankTransferDetailsSettingsBlock'
@@ -1527,6 +1528,9 @@ export default function Settings() {
 
       {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
       {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
+
+      {/* v2.6545: the catalog of themes on the record, a dev's like the HR file. */}
+      {myRole === 'dev' && <LegalThemesSettingsBlock />}
 
       </SettingsGroup>
 
