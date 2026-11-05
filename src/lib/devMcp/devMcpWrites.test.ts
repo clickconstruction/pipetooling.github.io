@@ -377,6 +377,13 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(linked).toContain('VALUES (v_file_id, v_person_id, v_entry_id, v_evidence_id, NULL, btrim(v_file->>\'name\'), NULL, NULL, v_drive_id, v_url, now(), auth.uid(), v_label);')
     expect(linked).toContain("'linked', v_linked, 'staged', v_count - v_linked")
     expect(SERVER).toContain("rows.push({ id, drive_url: f.driveUrl })")
+    // v2.6544: the custody hash the plan committed to is stored on the staged file's row.
+    const hashed = readFileSync('supabase/migrations/20261105230000_evidence_sha256.sql', 'utf8')
+    expect(hashed).toContain("SET lock_timeout = '3s';")
+    expect(hashed).toContain('ALTER TABLE public.person_file_attachments ADD COLUMN IF NOT EXISTS sha256 text;')
+    expect(hashed).toContain("CHECK (sha256 IS NULL OR sha256 ~ '^[0-9a-f]{64}$') NOT VALID")
+    expect(hashed).toContain('INSERT INTO public.person_file_attachments (id, person_id, entry_id, evidence_id, storage_path, filename, mime_type, size_bytes, sha256, uploaded_by, author_label)')
+    expect(hashed).toContain("lower(v_file->>'sha256'), auth.uid(), v_label);")
   })
 
   it('refuses in words an evidence without its person, day, title, memo or files, the caps, a file with no digest or over 10 MB, a bad entry id, and apply without the hash', () => {
