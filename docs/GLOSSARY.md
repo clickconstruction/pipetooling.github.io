@@ -675,6 +675,8 @@ Dev-only per-person employee files on People → HR (v2.2221): a curated **Summa
 
 **Convention**: `docs/HR_FILES.md` (what gets written and how)
 
+**Themes on the record** (v2.6545, punch list #269): a plain-words name for a pattern to find again across a person's record (*Dishonesty*, *Interference with the business*), with one line on what counts and counsel's words beside it, kept as a company catalog under Settings → People & teams, retired and never deleted so old marks keep their meaning. A **mark** hangs a theme on an HR entry, a piece of evidence or a matter's document or event with why it fits and how it proves the theme (by a document · by their own words · firsthand · relayed); the agent proposes, a dev keeps. `legal_themes` and `legal_theme_marks`, a dev's; `docs/HR_FILES.md` → Themes on the record.
+
 ### Adoption
 Process where a master grants an assistant access to their customers and projects. Creates a many-to-many relationship allowing assistants to work for multiple masters.
 

@@ -54,6 +54,22 @@ A file over 10 MB, or one already in Drive, is linked instead. Put the file in t
 
 Evidence is never edited or deleted. A mistake is corrected by a new record that says so.
 
+## Name a theme to look for
+
+A long record is read by pattern, not by date. A theme is a plain name for one pattern. Dishonesty is a theme. Interference with the business is a theme.
+
+Open Settings and pick People & teams. Find Themes on the record. Press {{button:outline|+ Add a theme}}. Give the theme a name. Write one line on what counts. Add counsel's words when the firm has some. Press {{button:blue|Add the theme}}.
+
+Each theme shows how many things carry it. The line under it says how each mark proves the theme. A mark proves it by a document, by their own words, firsthand or relayed.
+
+Press Edit to change the words in place. Press Retire when a theme is no longer useful. A retired theme keeps every mark made under it. Press Bring back to use it again.
+
+:::example A theme the office keeps
+
+Dishonesty. What counts: a statement the record shows to be untrue. Counsel's words: breach of the duty of loyalty.
+
+:::
+
 ## Keeping the summary fresh
 
 When you add entries, the summary falls behind. The person's dot turns amber. The Summary view shows how many entries it has not covered. You ask the agent to bring the file current. It rewrites the summary and extends the narrative from the raw entries.

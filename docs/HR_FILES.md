@@ -93,6 +93,10 @@ Files written before v2.6392 (`entry_id` or neither key) stay as they were: on t
     using (bucket_id = 'hr-files' and public.is_dev());
   ```
 
+## Themes on the record (v2.6545)
+
+A large record is read by pattern, not by date. A **theme** is the company's plain-words name for a pattern to find again across a person's record — *Dishonesty*, *Disrespectful conduct*, *Interference with the business* — with one line on what counts and counsel's words beside it when there are some. The catalog lives under Settings → People & teams → **Themes on the record** (`LegalThemesSettingsBlock.tsx`, a dev's): a theme is edited in place and **retired, never deleted**, so every mark made under it keeps its meaning; a retired theme folds under the list and can be brought back. A **mark** (`legal_theme_marks`) hangs a theme on something that already exists — an HR entry, a piece of evidence, a matter's document or event — with *why it fits* (200 characters) and *how it proves the theme*: by a document, by their own words, firsthand or relayed, the grade counsel's matrix asks at the moment of marking. A mark is what it was when made (the trigger refuses every change but the kept and removed stamps) and is removed with a reason, never deleted. The agent proposes a theme or a mark (`proposed_by_agent` / `proposed`), drawn dashed until a dev keeps it. Kernel `supabase/functions/_shared/legalThemes.ts` (the app's door `src/lib/legal/legalThemes.ts`), reads and writes `legalThemesIo.ts`, migration `20261106000000`. The pickers that make a mark, the Timeline's theme row and the By theme view come in the PRs after T1 (punch list #269).
+
 ## Agent credentials & the write RPC (v2.2232)
 
 > **Sister interface (v2.3196):** the same pattern — a least-privilege role plus one validated RPC — exists for moving job cost: `cost_agent` and `cost_batch_apply` / `cost_batch_revert`, documented in [`COST_BATCHES.md`](./COST_BATCHES.md). Both roles are listed together in [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md) → "Database agent roles".
