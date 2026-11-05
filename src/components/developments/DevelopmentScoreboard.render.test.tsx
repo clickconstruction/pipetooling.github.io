@@ -52,12 +52,12 @@ const overhead = { state: 'read' as const, byJobId: new Map([['j1', { usd: 14920
 const label = (j: MemberJob) => `JP${j.click_number}`
 const head = { name: 'Harlow Ranch', line: 'Ridgeway Builders · 3 jobs · 2 bids', small: '$1,000 left to collect' }
 
-function mount(over: { phone?: boolean; seesCosts?: boolean; jobs?: MemberJob[]; sort?: { key: 'earned' | 'profit'; desc: boolean } } = {}) {
+function mount(over: { phone?: boolean; seesCosts?: boolean; jobs?: MemberJob[]; sort?: { key: 'earned' | 'profit'; desc: boolean }; print?: { onPress: () => void; note: string | null } | null } = {}) {
   const onSort = vi.fn()
   const openJob = vi.fn()
   const model = buildScoreboard({ jobs: over.jobs ?? jobs, invoices: [], jobLabel: label, labor, costs, overhead, sort: over.sort ?? SCOREBOARD_DEFAULT_SORT })
   const columns = scoreboardColumnsFor(over.seesCosts ?? true)
-  const r = renderWithProviders(<DevelopmentScoreboard model={model} columns={columns} phone={over.phone ?? false} onSort={onSort} openJob={openJob} head={head} />)
+  const r = renderWithProviders(<DevelopmentScoreboard model={model} columns={columns} phone={over.phone ?? false} onSort={onSort} openJob={openJob} head={head} print={over.print ?? null} />)
   return { ...r, onSort, openJob, model }
 }
 
@@ -119,6 +119,21 @@ describe('DevelopmentScoreboard', () => {
     expect(card.textContent).not.toContain('54 h')
     fireEvent.click(within(card).getByTestId('scoreboard-open-j2'))
     expect(screen.getByTestId('scoreboard-card-j2').textContent).toContain('54 h')
+  })
+
+  it('the print press (v2.6534) sits under the board for a reader given one, with the last press’s note; a reader without one sees no press', () => {
+    const onPress = vi.fn()
+    mount({ print: { onPress, note: 'The costs are still reading. Press again once the board is in.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Print cost summary' }))
+    expect(onPress).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('scoreboard-print-note').textContent).toContain('still reading')
+    cleanup()
+    mount({ phone: true, print: { onPress, note: null } })
+    expect(screen.getByRole('button', { name: 'Print cost summary' })).toBeTruthy()
+    expect(screen.queryByTestId('scoreboard-print-note')).toBeNull()
+    cleanup()
+    mount({ seesCosts: false })
+    expect(screen.queryByRole('button', { name: 'Print cost summary' })).toBeNull()
   })
 
   it('with no job the board says what fills it', () => {

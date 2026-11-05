@@ -47,6 +47,11 @@ export type DevelopmentScoreboardProps = {
   openJob: (jobId: string) => void
   /** The flag block: the development's name, the line under it, and the small line. */
   head: { name: string; line: string; small: string | null }
+  /**
+   * The cost summary print (v2.6534): the press under the board for a dev or a controller, and the note the last
+   * press left (the costs still reading, the window blocked). Null for a reader the costs are closed to.
+   */
+  print?: { onPress: () => void; note: string | null } | null
   /** The rows under an open job (v2.6457): who put what in. Absent, an open job shows its nine alone. */
   membersOf?: (row: ScoreboardJob) => ScoreboardMembers
 }
@@ -327,7 +332,7 @@ function MemberLines({ list, seesCosts }: { list: ScoreboardMembers; seesCosts: 
   )
 }
 
-export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, head, membersOf }: DevelopmentScoreboardProps) {
+export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, head, membersOf, print }: DevelopmentScoreboardProps) {
   const seesCosts = columns.some((c) => c.key === 'cost')
   // The middle widths read short on the full board only: the leader's board has room for whole dollars. The board's
   // own width decides once it is measured; the window's query guesses for the first paint (and in a test, which has no layout).
@@ -393,6 +398,15 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
       </LinkButton>
     </span>
   )
+  // The print (v2.6534): the board's figures and the rows behind them on paper, the way the Timeline prints.
+  const printLine = print ? (
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline', fontSize: '0.78rem', paddingTop: 6 }} data-testid="scoreboard-print">
+      <LinkButton onClick={print.onPress} title="Opens the site’s cost summary in a print window; the print window saves it as a PDF too">
+        Print cost summary
+      </LinkButton>
+      {print.note ? <span style={{ color: 'var(--text-muted)' }} data-testid="scoreboard-print-note">{print.note}</span> : null}
+    </div>
+  ) : null
   const legend = (
     <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)', paddingTop: 6 }}>
       {(['effort', 'cost', 'money'] as const).filter((g) => columns.some((c) => c.group === g)).map((g) => (
@@ -467,6 +481,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
         {model.rows.map(card)}
         {model.empties.length ? <div style={{ textAlign: 'center', fontSize: '0.78rem', padding: 4 }}>{emptiesLine}</div> : null}
         {showEmpties ? model.empties.map(card) : null}
+        {printLine}
       </div>
     )
   }
@@ -556,6 +571,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
       </table>
       </div>
       {legend}
+      {printLine}
     </div>
   )
 }

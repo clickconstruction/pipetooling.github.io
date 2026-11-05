@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
+keywords: development, site, subdivision, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in six looks.
@@ -145,6 +145,18 @@ Open a job to see who put something into it. Each person shows hours, days and l
 Each row fills Cost, and a thin bar shows its share. The rows add up to the job. The Office row says who sent the bills and booked the payments. Your own rows are gold and say You.
 
 A dev or a controller reads every column and every row. A leader or an assistant reads hours, days and earned only. Their Right now line speaks in hours and earned dollars. Under an open job they see the people alone. The page remembers the view you were in.
+
+## Print the cost summary
+
+Press {{button:outline|Print cost summary}} under the Scoreboard. Only a dev or a controller sees this press. The summary opens in a print window. From there you print it or save it as a PDF.
+
+The page starts with the site's nine totals, then one row per job. Next it names who put something in, each person and each sub. Then the parts come by bucket. The buckets are supply house invoices, card charges, the tally and other charges.
+
+The card charges are grouped by payee, largest first. The small payees fold into one line at the end. The supply house invoices are listed by date. Every other charge is listed with its day. An estimate wears an *Estimate* chip, and a note gives the estimates' total.
+
+The page says what the total leaves out. An internal transfer is not a cost. A card charge also on a supply house invoice is counted under the invoice. A read that did not land shows a dash, never a zero. The page ends with the date and your name.
+
+A single job prints from its own Costs tab. See [the Costs tab](/help/job-window-tabs#the-six-tabs).
 
 ## Read the timeline
 
