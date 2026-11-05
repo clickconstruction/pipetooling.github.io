@@ -5,11 +5,18 @@
  * tab's load, not from a prop.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { PeopleUsersTab } from './PeopleUsersTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { UsersTabTagsApi } from '../../hooks/useUsersTabTags'
 import type { Person, UserRow } from '../../hooks/usePeopleRoster'
+
+/** v2.6550: the desk's change key, bumped by End employment and Bring back, reloads the roster under it. */
+const desk = vi.hoisted(() => ({ changeKey: 0 }))
+vi.mock('../../contexts/PersonDeskContext', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../contexts/PersonDeskContext')>()
+  return { ...actual, useOptionalPersonDesk: () => ({ open: () => {}, close: () => {}, payload: null, changeKey: desk.changeKey, markChanged: () => {}, canOpen: false }) }
+})
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -62,8 +69,8 @@ const TAGS = { showUsersTabTags: false, showUsersTabTagOrgSignals: false } as un
 /** A roster row with an email and no login: the one row the ⋯ menu offers Invite as user on. */
 const ROSTER_ONLY: Person = { id: 'p1', master_user_id: 'u2', kind: 'helper', name: 'Rio Vance', email: 'rio@example.com', phone: null, notes: null, account_user_id: null }
 
-function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => void; isDev?: boolean; people?: Person[]; onOpenHire?: (kind?: string) => void; openAdd?: (kind: string) => void } = {}) {
-  return renderWithProviders(
+function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => void; isDev?: boolean; people?: Person[]; onOpenHire?: (kind?: string) => void; openAdd?: (kind: string) => void; reloadRoster?: () => void } = {}) {
+  const ui = () => (
     <PeopleUsersTab
       isDev={false}
       narrowViewport={false}
@@ -92,8 +99,9 @@ function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => v
       invitingId={null}
       setInviteConfirm={() => {}}
       {...extra}
-    />,
+    />
   )
+  return { ...renderWithProviders(ui()), ui }
 }
 
 describe('PeopleUsersTab', () => {
@@ -184,5 +192,19 @@ describe('PeopleUsersTab', () => {
     fireEvent.click(document.querySelector('[data-empty-state] button') as HTMLButtonElement)
     expect(screen.getByRole('button', { name: 'Everyone' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getAllByText('Alex Rivera').length).toBeGreaterThan(0)
+  })
+
+  it("the desk's change key reloads the roster and the archived logins without a page reload (v2.6550)", async () => {
+    const reloadRoster = vi.fn()
+    desk.changeKey = 0
+    const { rerender, ui } = renderTab({ reloadRoster })
+    await screen.findAllByText('Alex Rivera')
+    expect(reloadRoster).not.toHaveBeenCalled()
+    desk.changeKey = 1
+    rerender(ui())
+    await waitFor(() => expect(reloadRoster).toHaveBeenCalledTimes(1))
+    desk.changeKey = 2
+    rerender(ui())
+    await waitFor(() => expect(reloadRoster).toHaveBeenCalledTimes(2))
   })
 })

@@ -181,6 +181,17 @@ describe('PersonDeskBringBackModal', () => {
     expect(writes).toContainEqual({ what: 'people_pay_config.upsert', args: { person_name: 'Corinne Vela', person_id: 'p-corinne', hourly_wage: 26 } })
   })
 
+  it('Change… on a desk with no pay row reads the typed wage, not No pay setup (v2.6550)', async () => {
+    loadFacts.mockResolvedValueOnce({ ...load, facts: { ...load.facts, pay: null } })
+    await open()
+    expect(screen.getByText(/No pay setup/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Change…' }))
+    fireEvent.change(screen.getByLabelText('New hourly wage'), { target: { value: '20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save wage' }))
+    await screen.findByText(/\$20\.00 \/ h, set Nov 2029/)
+    expect(screen.queryByText(/No pay setup/)).toBeNull()
+  })
+
   it('Undo the end instead keeps the old start so the old stint reopens', async () => {
     const { onClose } = await open()
     fireEvent.click(screen.getByRole('button', { name: 'Undo the end instead' }))

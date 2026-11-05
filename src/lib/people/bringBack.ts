@@ -161,6 +161,16 @@ function money(n: number): string {
 }
 
 /** The rows three years made stale, in the window's order. */
+/**
+ * The facts with the wage Change… typed: the pay row reads the new wage, set on the day back, and a person
+ * with no pay row yet gets one in the words too (v2.6550 — the row kept reading *No pay setup* under a green
+ * dot after Save wage, since the change was folded in only when a pay row already existed).
+ */
+export function withWageChange(f: BringBackFacts, wage: number | null, backYmd: string): BringBackFacts {
+  if (wage == null || !(wage > 0)) return f
+  return { ...f, pay: { hourlyWage: wage, isSalary: f.pay?.isSalary ?? false, setYmd: backYmd } }
+}
+
 export function buildBringBackChecklist(f: BringBackFacts): BringBackItem[] {
   const items: BringBackItem[] = []
 
