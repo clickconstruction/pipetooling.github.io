@@ -2,21 +2,27 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle } from '../_shared/googleGeocode.ts'
 import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
-import { inUsPointBox } from '../_shared/usPointBox.ts'
 import type { ParcelRecord } from '../_shared/txParcelRecord.ts'
 import { identifyParcel } from '../_shared/txParcelIdentify.ts'
+import { lookupParcelForAddress } from '../_shared/parcelPinLookup.ts'
+import type { PinHold } from '../_shared/parcelPinMatch.ts'
 
 /**
  * property-lookup (customer properties train, PR 1 — v2.3004).
  *
  * One address in, the property's legal identity out: geocode the address
- * (cache → Google → US Census), then ask the Texas statewide parcel roll
+ * (Google first, since only Google says how well it placed it; then the
+ * cache and the US Census), then ask the Texas statewide parcel roll
  * (TxGIO, fed by the appraisal districts; public, keyless) which parcel sits
  * under the pin. Returns the parcel record (owner of record, legal
  * description, owner mailing address, county, source district, tax year)
  * plus the geocoder's county as the fallback rung when no parcel matches.
- * The client folds in the city→county table and builds the proposal
- * (`_shared/txParcelRecord.ts`).
+ * A pin Google could not put on the lot, or a parcel whose own address names
+ * another lot, is held (`pin_hold`, v2.6520) and no parcel is returned: a
+ * street the map lacks used to come back with whatever parcel sat at the
+ * city's pin. The ladder is `_shared/parcelPinLookup.ts`, shared with
+ * `owner-confirm-nightly`. The client folds in the city→county table and
+ * builds the proposal (`_shared/txParcelRecord.ts`).
  *
  * Auth: in-function `auth.getUser()` + role gate mirroring who may edit
  * `customer_addresses` (dev, master_technician, assistant, controller,
@@ -31,10 +37,6 @@ const corsHeaders = {
 
 const MIN_ADDRESS_LEN = 5
 const ALLOWED_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller', 'estimator'])
-
-function normalizeKey(address: string): string {
-  return address.trim().replace(/\s+/g, ' ').toLowerCase()
-}
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
@@ -54,6 +56,8 @@ type Ok = {
   parcel: ParcelRecord | null
   /** Set when the parcel service failed (the county rung still answered). */
   parcel_error?: string
+  /** Why the pin or the parcel was not trusted (v2.6520); `parcel` is null with it and the county rung still answers. */
+  pin_hold?: PinHold
 }
 type Fail = { ok: false; address_normalized: string; error: string; detail?: string }
 
@@ -106,81 +110,41 @@ serve(async (req) => {
   if (display.length < MIN_ADDRESS_LEN) {
     return jsonResponse(400, { error: `address must be at least ${MIN_ADDRESS_LEN} characters` })
   }
-  const key = normalizeKey(display)
-
-  // Rung 0: the geocode cache the Map page already fills.
-  let lat: number | null = null
-  let lng: number | null = null
-  let geocodeSource: Ok['geocode_source'] = 'cache'
-  let countyGeocoder = ''
-  const { data: cached } = await supabase
-    .from('address_geocodes')
-    .select('lat, lng')
-    .eq('address_normalized', key)
-    .maybeSingle()
-  const c = cached as { lat: number; lng: number } | null
-  // A cached point outside the lower 48 reads as none and is asked again (v2.4975).
-  if (c && inUsPointBox(c.lat, c.lng)) {
-    lat = c.lat
-    lng = c.lng
-  }
-
   const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
-  let googleDetail: string | undefined
-  if (lat == null || lng == null) {
-    if (googleKey.length > 0) {
-      const g = await geocodeWithGoogle(display, googleKey)
-      if (g.ok) {
-        lat = g.lat
-        lng = g.lng
-        countyGeocoder = g.county
-        geocodeSource = 'google'
-        await supabase.from('address_geocodes').upsert(
-          { address_normalized: key, lat, lng, geocoded_at: new Date().toISOString(), geocode_error: null },
-          { onConflict: 'address_normalized' },
-        )
-      } else {
-        googleDetail = g.detail ? `Google: ${g.error} (${g.detail})` : `Google: ${g.error}`
-      }
-    }
-  }
-  if (lat == null || lng == null) {
-    const cz = await geocodeWithCensus(display)
-    if (cz.ok) {
-      lat = cz.lat
-      lng = cz.lng
-      geocodeSource = 'census'
-    }
-  }
-  if (lat == null || lng == null) {
-    const out: Fail = {
-      ok: false,
-      address_normalized: key,
-      error: 'not_found',
-      detail: [googleDetail, 'no match from US Census'].filter(Boolean).join('; '),
-    }
+
+  // The ladder (v2.6520): Google first, then the geocode cache the Map page
+  // already fills, then the Census; the parcel under the pin; the county rung
+  // when the roll has nothing. A held pin or parcel comes back as `pin_hold`.
+  const res = await lookupParcelForAddress(display, {
+    readCachedPoint: async (key) => {
+      const { data } = await supabase.from('address_geocodes').select('lat, lng').eq('address_normalized', key).maybeSingle()
+      return (data as { lat: number; lng: number } | null) ?? null
+    },
+    writeCachedPoint: async (key, lat, lng) => {
+      await supabase.from('address_geocodes').upsert(
+        { address_normalized: key, lat, lng, geocoded_at: new Date().toISOString(), geocode_error: null },
+        { onConflict: 'address_normalized' },
+      )
+    },
+    geocodeGoogle: googleKey.length > 0 ? (a) => geocodeWithGoogle(a, googleKey) : null,
+    geocodeCensus: geocodeWithCensus,
+    identify: identifyParcel,
+    countyFromGoogleWhenNoParcel: true,
+  })
+  if (!res.ok) {
+    const out: Fail = { ok: false, address_normalized: res.key, error: res.error, detail: res.detail }
     return jsonResponse(200, out)
   }
-
-  // Rung 1: the parcel under the pin.
-  const ident = await identifyParcel(lat, lng)
-
-  // Rung 2: when the parcel is missing and the point came from the cache or
-  // Census, ask Google once for the county so the sheet still gets an answer.
-  if (!ident.parcel && countyGeocoder === '' && googleKey.length > 0 && geocodeSource !== 'google') {
-    const g = await geocodeWithGoogle(display, googleKey)
-    if (g.ok) countyGeocoder = g.county
-  }
-
   const out: Ok = {
     ok: true,
-    address_normalized: key,
-    lat,
-    lng,
-    geocode_source: geocodeSource,
-    county_geocoder: countyGeocoder,
-    parcel: ident.parcel,
-    ...(ident.error ? { parcel_error: ident.error } : {}),
+    address_normalized: res.key,
+    lat: res.lat,
+    lng: res.lng,
+    geocode_source: res.pinSource,
+    county_geocoder: res.countyGeocoder,
+    parcel: res.parcel,
+    ...(res.parcelError ? { parcel_error: res.parcelError } : {}),
+    ...(res.hold ? { pin_hold: res.hold } : {}),
   }
   return jsonResponse(200, out)
 })

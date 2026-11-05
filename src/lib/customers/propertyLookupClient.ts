@@ -2,20 +2,38 @@ import { supabase } from '../supabase'
 import { suggestTxCountyForCity } from '../txCountyLookup'
 import { splitJobAddressForPrefill } from '../txLocalityAddressSplit'
 import { proposePropertyRecord, type ParcelRecord, type ProposedPropertyRecord } from './propertyRecord'
+import { pinHoldWords, type PinHold } from './parcelPinMatch'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Client side of the property lookup (v2.3004): invoke the `property-lookup`
  * edge function for an address, then fold the city→county table (curated +
  * org extras) into the proposal so every rung of the county ladder is on it.
+ * A `pin_hold` (v2.6520) rides along: why the pin or the parcel was not this
+ * lot, said on the panel by `propertyLookupHoldLine`.
  */
 
 export type PropertyLookupOutcome =
-  | { ok: true; proposal: ProposedPropertyRecord; parcel: ParcelRecord | null; parcelError: string | null }
+  | { ok: true; proposal: ProposedPropertyRecord; parcel: ParcelRecord | null; parcelError: string | null; hold: PinHold | null }
   | { ok: false; error: string }
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v : ''
+}
+
+const HOLD_KINDS: ReadonlySet<string> = new Set(['street_unknown', 'number_unknown', 'situs_mismatch'])
+
+/** The function's `pin_hold`: null when absent or of a kind this client does not know. */
+function parseHold(raw: unknown): PinHold | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  const kind = str(o.kind)
+  return HOLD_KINDS.has(kind) ? { kind: kind as PinHold['kind'], detail: str(o.detail) } : null
+}
+
+/** The hold said on the record panel, with the typed address's city when the splitter finds one. */
+export function propertyLookupHoldLine(hold: PinHold, address: string): string {
+  return pinHoldWords(hold, splitJobAddressForPrefill(address).city)
 }
 
 function parseParcel(raw: unknown): ParcelRecord | null {
@@ -68,7 +86,7 @@ export function proposalFromLookupPayload(address: string, payload: unknown): Pr
     cityCounty: suggestTxCountyForCity(city),
     city,
   })
-  return { ok: true, proposal, parcel, parcelError: str(o.parcel_error) || null }
+  return { ok: true, proposal, parcel, parcelError: str(o.parcel_error) || null, hold: parseHold(o.pin_hold) }
 }
 
 export async function lookupPropertyRecord(address: string): Promise<PropertyLookupOutcome> {

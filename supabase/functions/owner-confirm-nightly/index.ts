@@ -2,8 +2,9 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle } from '../_shared/googleGeocode.ts'
 import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
-import { inUsPointBox } from '../_shared/usPointBox.ts'
 import { identifyParcel } from '../_shared/txParcelIdentify.ts'
+import { lookupParcelForAddress } from '../_shared/parcelPinLookup.ts'
+import { pinHoldWords, type PinHold } from '../_shared/parcelPinMatch.ts'
 import { applyProposalToFields, proposePropertyRecord, type ParcelRecord, type PropertyRecordFields } from '../_shared/txParcelRecord.ts'
 import { ownerConfirmPropertyKey, planOwnerConfirmWrites, type OwnerConfirmPlanJob } from '../_shared/ownerConfirmPlan.ts'
 
@@ -15,7 +16,9 @@ import { ownerConfirmPropertyKey, planOwnerConfirmWrites, type OwnerConfirmPlanJ
  * row of `list_jobs_owner_to_confirm()` with NO owner at all (`has_owner`
  * false — a GC job with approved hours whose property record names nobody)
  * is looked up on the statewide parcel roll the way `property-lookup` does
- * (geocode cache → Google → Census, then the parcel under the pin) and the
+ * (the shared ladder of `_shared/parcelPinLookup.ts` since v2.6520: Google,
+ * then the geocode cache and the Census, then the parcel under the pin — held
+ * when the pin or the parcel's own address is not the typed lot) and the
  * roll's answer is written exactly as a person's Use would write it
  * (`planOwnerConfirmWrites` — the shared kernel: fill-blanks on a linked
  * record, else one new row per home linking every job at the property) —
@@ -78,43 +81,24 @@ function fieldsOf(row: Record<string, unknown>): PropertyRecordFields {
   return { ...EMPTY_FIELDS, county: s('county'), county_source: s('county_source'), legal_description: s('legal_description'), property_kind: s('property_kind'), homestead: row.homestead === true, owner_mode: s('owner_mode'), owner_name: s('owner_name'), owner_company: s('owner_company'), owner_mailing_address: s('owner_mailing_address'), parcel_id: s('parcel_id'), parcel_source: s('parcel_source'), parcel_tax_year: s('parcel_tax_year') }
 }
 
-function normalizeKey(address: string): string {
-  return address.trim().replace(/\s+/g, ' ').toLowerCase()
-}
-
-/** The property-lookup ladder, server-side: the geocode cache, Google, Census; then the parcel under the pin. */
+/** The property-lookup ladder, server-side — one copy for both functions since v2.6520 (`_shared/parcelPinLookup.ts`): Google, the geocode cache, the Census; then the parcel under the pin, with the pin and situs gates. */
 // deno-lint-ignore no-explicit-any
-async function lookup(admin: any, display: string, googleKey: string): Promise<{ parcel: ParcelRecord | null; geocoderCounty: string; error?: string }> {
-  const key = normalizeKey(display)
-  let lat: number | null = null
-  let lng: number | null = null
-  let county = ''
-  const { data: cached } = await admin.from('address_geocodes').select('lat, lng').eq('address_normalized', key).maybeSingle()
-  const c = cached as { lat: number; lng: number } | null
-  // A cached point outside the lower 48 reads as none and is asked again (v2.4975).
-  if (c && inUsPointBox(c.lat, c.lng)) {
-    lat = c.lat
-    lng = c.lng
-  }
-  if ((lat == null || lng == null) && googleKey) {
-    const g = await geocodeWithGoogle(display, googleKey)
-    if (g.ok) {
-      lat = g.lat
-      lng = g.lng
-      county = g.county
+async function lookup(admin: any, display: string, googleKey: string): Promise<{ parcel: ParcelRecord | null; geocoderCounty: string; error?: string; hold?: PinHold }> {
+  const res = await lookupParcelForAddress(display, {
+    readCachedPoint: async (key) => {
+      const { data } = await admin.from('address_geocodes').select('lat, lng').eq('address_normalized', key).maybeSingle()
+      return (data as { lat: number; lng: number } | null) ?? null
+    },
+    writeCachedPoint: async (key, lat, lng) => {
       await admin.from('address_geocodes').upsert({ address_normalized: key, lat, lng, geocoded_at: new Date().toISOString(), geocode_error: null }, { onConflict: 'address_normalized' })
-    }
-  }
-  if (lat == null || lng == null) {
-    const cz = await geocodeWithCensus(display)
-    if (cz.ok) {
-      lat = cz.lat
-      lng = cz.lng
-    }
-  }
-  if (lat == null || lng == null) return { parcel: null, geocoderCounty: '', error: 'not_found' }
-  const ident = await identifyParcel(lat, lng)
-  return { parcel: ident.parcel, geocoderCounty: county, error: ident.error }
+    },
+    geocodeGoogle: googleKey ? (a: string) => geocodeWithGoogle(a, googleKey) : null,
+    geocodeCensus: geocodeWithCensus,
+    identify: identifyParcel,
+    countyFromGoogleWhenNoParcel: false,
+  })
+  if (!res.ok) return { parcel: null, geocoderCounty: '', error: res.error }
+  return { parcel: res.parcel, geocoderCounty: res.countyGeocoder, ...(res.parcelError ? { error: res.parcelError } : {}), ...(res.hold ? { hold: res.hold } : {}) }
 }
 
 serve(async (req) => {
@@ -173,6 +157,7 @@ serve(async (req) => {
 
     let found = 0
     let misses = 0
+    let held = 0
     let noMailing = 0
     let updated = 0
     let inserted = 0
@@ -183,6 +168,12 @@ serve(async (req) => {
     for (const p of todo) {
       try {
         const res = await lookup(admin, p.address, googleKey)
+        if (res.hold) {
+          // The pin or the parcel is not this lot (v2.6520): nothing is written, and the summary says why.
+          held += 1
+          details.push({ address: p.address, outcome: `held: ${pinHoldWords(res.hold, '')}` })
+          continue
+        }
         const proposal = proposePropertyRecord({ address: p.address, parcel: res.parcel, geocoderCounty: res.geocoderCounty, cityCounty: '', city: '' })
         if (!proposal.found) {
           misses += 1
@@ -261,9 +252,9 @@ serve(async (req) => {
       }
     }
 
-    const summary = `owner-confirm-nightly${dryRun ? ' (dry run)' : ''}: ${rows.length} ownerless jobs on ${all.length} properties · ${todo.length} looked up · ${found} found · ${misses} misses · ${noMailing} without a mailing address · ${updated} records filled · ${inserted} records added · ${linked} jobs linked · ${failed} failed · ${remaining} left for tomorrow${skippedAddress ? ` · ${skippedAddress} jobs with no address` : ''}`
+    const summary = `owner-confirm-nightly${dryRun ? ' (dry run)' : ''}: ${rows.length} ownerless jobs on ${all.length} properties · ${todo.length} looked up · ${found} found · ${misses} misses · ${held} held · ${noMailing} without a mailing address · ${updated} records filled · ${inserted} records added · ${linked} jobs linked · ${failed} failed · ${remaining} left for tomorrow${skippedAddress ? ` · ${skippedAddress} jobs with no address` : ''}`
     console.log(summary)
-    return jsonResponse({ ok: true, dry_run: dryRun, summary, jobs: rows.length, properties: all.length, looked_up: todo.length, found, misses, no_mailing: noMailing, updated, inserted, linked, failed, remaining, details })
+    return jsonResponse({ ok: true, dry_run: dryRun, summary, jobs: rows.length, properties: all.length, looked_up: todo.length, found, misses, held, no_mailing: noMailing, updated, inserted, linked, failed, remaining, details })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('owner-confirm-nightly failed:', msg)
