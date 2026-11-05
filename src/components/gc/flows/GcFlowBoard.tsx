@@ -8,7 +8,8 @@ import type { BoardBy } from '../../../lib/gc/links'
 import { useCompanyOpener } from '../gcCompanyOpener'
 import { useCustomerOpener } from '../gcCustomerOpener'
 import { GcBoardByCompany } from './GcBoardByCompany'
-import { BoardPickers, GcBoardByStep, type BoardPresses } from './GcBoardByStep'
+import { readEveryStep, writeEveryStep } from '../../../lib/flows/everyStepPref'
+import { BoardPickers, EveryStepSwitch, GcBoardByStep, type BoardPresses } from './GcBoardByStep'
 import { GcBoardByTrade } from './GcBoardByTrade'
 
 /**
@@ -61,6 +62,12 @@ export function GcFlowBoard({
   const board = useFlowBoard(kind, { enabled: shown !== 'list' })
   // By step's two pickers (v2.5555): held here so they sit in the views row, at its right.
   const [filter, setFilter] = useState<BoardFilter>(NO_FILTER)
+  // The Every step switch (punch list #109, v2.6540): kept on this device; on by the owner's rule until the office folds the empty rows.
+  const [everyStep, setEveryStep] = useState<boolean>(() => readEveryStep())
+  const changeEveryStep = (on: boolean) => {
+    setEveryStep(on)
+    writeEveryStep(on)
+  }
   // A customer's last open of their page, for By company's Portal column (helper 8's read). Null until read, or when it fails.
   const [pageOpens, setPageOpens] = useState<Record<string, string> | null>(null)
   const read = board.read
@@ -142,7 +149,12 @@ export function GcFlowBoard({
           ))}
         </div>
       )}
-      {shown === 'step' && board.ctx && board.read && <BoardPickers ctx={board.ctx} companies={board.read.companies} filter={filter} onFilter={setFilter} />}
+      {shown === 'step' && board.ctx && board.read && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <EveryStepSwitch on={everyStep} onChange={changeEveryStep} />
+          <BoardPickers ctx={board.ctx} companies={board.read.companies} filter={filter} onFilter={setFilter} />
+        </div>
+      )}
       </div>
       {shown === 'list' ? (
         list
@@ -161,7 +173,7 @@ export function GcFlowBoard({
       ) : shown === 'trade' ? (
         <GcBoardByTrade ctx={board.ctx} companies={board.read.companies} onOpen={(c) => openFlow(c.contactId)} {...(list ? { onList: () => onBy('list') } : {})} />
       ) : (
-        <GcBoardByStep ctx={board.ctx} companies={board.read.companies} presses={presses} filter={filter} />
+        <GcBoardByStep ctx={board.ctx} companies={board.read.companies} presses={presses} filter={filter} everyStep={everyStep} />
       )}
     </div>
   )

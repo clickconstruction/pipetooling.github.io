@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { contextFor, CUSTOMER_FLOW, CUSTOMERS, TRADE_FLOW, TRADES } from '../../../lib/flows/boardFixtures'
 import { installDomShims } from '../../../test/renderSmokeMocks'
-import { BoardPickers, GcBoardByStep, type BoardPresses } from './GcBoardByStep'
+import { BoardPickers, EveryStepSwitch, GcBoardByStep, type BoardPresses } from './GcBoardByStep'
 
 installDomShims()
 
@@ -41,6 +41,26 @@ describe('GcBoardByStep', () => {
     expect(within(row('papers')).getByText('insurance expired')).toBeTruthy()
     expect(within(row('ask')).getByText('Boerne Retail Shell · due Thu')).toBeTruthy()
     expect(within(row('ask')).getByText('late 2 days')).toBeTruthy()
+  })
+
+  it('v2.6540 · with Every step off, the rows nobody is on fold to one line per band and the rows with someone on them stay', () => {
+    render(<GcBoardByStep ctx={contextFor(TRADE_FLOW)} companies={TRADES} presses={presses()} everyStep={false} />)
+    expect(row('invited')).toBeNull()
+    expect(row('portal')).toBeNull()
+    expect(within(band('Getting set up')).queryByText(/lands here\./)).toBeNull()
+    expect(within(band('Getting set up')).getByText(/^Nobody on 2 steps: .+ · .+\.$/)).toBeTruthy()
+    expect(row('papers')).toBeTruthy()
+    expect(within(row('papers')).getByText('insurance expired')).toBeTruthy()
+    expect(within(row('ask')).getByText('late 2 days')).toBeTruthy()
+  })
+
+  it('v2.6540 · the Every step switch reads its state and presses the other way', () => {
+    const onChange = vi.fn()
+    render(<EveryStepSwitch on onChange={onChange} />)
+    const sw = screen.getByRole('switch', { name: 'Every step' })
+    expect(sw.getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(sw)
+    expect(onChange).toHaveBeenCalledWith(false)
   })
 
   it('opens a company from its chip and from its dot, gives each row its own press, and opens Follow up from the today line', () => {

@@ -51,6 +51,8 @@ Asked to quote shows one chip for each job. Each job has its own line, named onc
 
 A step nobody is on keeps its row. The row says what lands there next.
 
+Once the flow is familiar, press {{button:outline-blue|Every step}} in the views row to fold those rows. Each band then ends with one line that names the steps nobody is on. A step with anyone on it never folds. Press {{button:outline|Every step}} again to show every row. The choice stays on your device.
+
 ## Act from a row
 
 1. Press a company's chip to open its window on the Flow tab.

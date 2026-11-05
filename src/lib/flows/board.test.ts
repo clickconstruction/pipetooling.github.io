@@ -13,6 +13,8 @@ import {
   companyJobLines,
   companyTable,
   dueWords,
+  foldEmptyRows,
+  foldedStepsWords,
   lineDayWords,
   landsWords,
   NO_TRADE,
@@ -436,5 +438,25 @@ describe('the words', () => {
     const ids = [TRADE_FLOW, CUSTOMER_FLOW, ARCH_FLOW].flatMap(flat).map((s) => s.id)
     const sentences = [...ids.map((id) => landsWords(id)), landsWords('x1')]
     expect(sentences.flatMap((s) => plainWordsFailures(s))).toEqual([])
+  })
+})
+
+describe('foldEmptyRows', () => {
+  it('v2.6540 · keeps every row while the switch is on', () => {
+    const rows = rowsOf(trade, TRADES)
+    const { shown, folded } = foldEmptyRows(rows, true)
+    expect(shown.map((r) => r.step.id)).toEqual(rows.map((r) => r.step.id))
+    expect(folded).toEqual([])
+    expect(foldedStepsWords(folded)).toBe('')
+  })
+
+  it('v2.6540 · off, folds only the rows nobody is on and names them in one line', () => {
+    const rows = boardBands(trade, TRADES).find((b) => b.phase === 'setup')!.rows
+    const { shown, folded } = foldEmptyRows(rows, false)
+    expect(folded.map((r) => r.step.id)).toEqual(['invited', 'portal'])
+    expect(shown.every((r) => r.lands === null && r.groups.length > 0)).toBe(true)
+    expect(shown.map((r) => r.step.id)).toEqual(rows.filter((r) => r.lands === null).map((r) => r.step.id))
+    expect(foldedStepsWords(folded)).toBe(`Nobody on 2 steps: ${folded[0]!.step.name} · ${folded[1]!.step.name}.`)
+    expect(foldedStepsWords(folded.slice(0, 1))).toBe(`Nobody on 1 step: ${folded[0]!.step.name}.`)
   })
 })
