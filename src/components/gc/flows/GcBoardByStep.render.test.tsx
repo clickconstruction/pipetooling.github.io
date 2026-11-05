@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { BAND_NAMES_KEY } from '../../../lib/flows/bandNamesPref'
 import { contextFor, CUSTOMER_FLOW, CUSTOMERS, TRADE_FLOW, TRADES } from '../../../lib/flows/boardFixtures'
 import { installDomShims } from '../../../test/renderSmokeMocks'
 import { BoardPickers, EveryStepSwitch, GcBoardByStep, type BoardPresses } from './GcBoardByStep'
@@ -11,8 +12,11 @@ const presses = (): BoardPresses => ({ onCompany: vi.fn(), onRowPress: vi.fn(), 
 const row = (stepId: string) => document.querySelector(`[data-board-step="${stepId}"]`) as HTMLElement
 const band = (name: string) => screen.getByRole('region', { name })
 const today = () => document.querySelector('[data-board-today]') as HTMLElement
+const clusters = (shape: 'dots' | 'names') => document.querySelectorAll(`[data-board-cluster="${shape}"]`).length
 
 describe('GcBoardByStep', () => {
+  beforeEach(() => window.localStorage.clear())
+
   it('v2.5555 · draws the today line, then a band per phase with its count, its jobs, late and lapsed, its dots and its lanes', () => {
     render(<GcBoardByStep ctx={contextFor(TRADE_FLOW)} companies={TRADES} presses={presses()} />)
     expect(today().getAttribute('data-board-today')).toBe('loud')
@@ -26,7 +30,7 @@ describe('GcBoardByStep', () => {
     expect(within(band('Getting set up')).getByText('1 lapsed')).toBeTruthy()
     expect(within(band('Quoting')).getByText('on 2 bids')).toBeTruthy()
     expect(within(band('Quoting')).getByText('1 late')).toBeTruthy()
-    expect(within(band('Quoting')).getByRole('button', { name: 'Hillside Excavation: Asked to quote' })).toBeTruthy()
+    expect(within(band('Quoting')).getByRole('button', { name: '5 companies, 1 late, 1 over usual' })).toBeTruthy()
     expect(within(band('Building')).getByText('on Stone Oak Pharmacy')).toBeTruthy()
     expect(within(band('Building')).getByText('once per job')).toBeTruthy()
   })
@@ -63,11 +67,48 @@ describe('GcBoardByStep', () => {
     expect(onChange).toHaveBeenCalledWith(false)
   })
 
-  it('opens a company from its chip and from its dot, gives each row its own press, and opens Follow up from the today line', () => {
+  it('v2.6542 · the band head’s dots are one press that unfolds to the names, worst first, each a chip that opens its company, and Fold folds them back', () => {
+    const p = presses()
+    render(<GcBoardByStep ctx={contextFor(TRADE_FLOW)} companies={TRADES} presses={p} />)
+    const quoting = band('Quoting')
+    expect(quoting.querySelector('[data-board-cluster="dots"]')).toBeTruthy()
+    expect(within(quoting).queryByRole('button', { name: 'Hillside Excavation: Asked to quote' })).toBeNull()
+    const dots = within(quoting).getByRole('button', { name: '5 companies, 1 late, 1 over usual' })
+    expect(dots.querySelectorAll('span').length).toBe(5)
+    expect((dots.querySelector('span') as HTMLElement).style.width).toBe('16px')
+    fireEvent.click(dots)
+    expect(quoting.querySelector('[data-board-cluster="dots"]')).toBeNull()
+    const chips = within(within(quoting).getByRole('group', { name: '5 companies, 1 late, 1 over usual' })).getAllByRole('button')
+    expect(chips.map((c) => c.getAttribute('aria-label') ?? c.textContent)).toEqual(['Fold', 'Hillside Excavation: Asked to quote', 'Tejas Power: Compared', 'Lone Star Mechanical: Asked to quote', 'Kerr Electric: Asked to quote', 'Cibolo Fence: Asked to quote'])
+    fireEvent.click(chips[1]!)
+    expect(p.onCompany).toHaveBeenCalledWith(expect.objectContaining({ contactId: 'greg', jobId: 'boerne', step: expect.objectContaining({ id: 'ask' }) }))
+    fireEvent.click(within(quoting).getByRole('button', { name: 'Fold' }))
+    expect(quoting.querySelector('[data-board-cluster="dots"]')).toBeTruthy()
+    expect(within(quoting).queryByRole('button', { name: 'Hillside Excavation: Asked to quote' })).toBeNull()
+    expect(p.onCompany).toHaveBeenCalledTimes(1)
+  })
+
+  it('v2.6542 · one press changes every band, the board keeps the state on the device, and absent reads as dots; the Every step fold is untouched', () => {
+    const { unmount } = render(<GcBoardByStep ctx={contextFor(TRADE_FLOW)} companies={TRADES} presses={presses()} everyStep={false} />)
+    expect([clusters('dots'), clusters('names')]).toEqual([3, 0])
+    fireEvent.click(within(band('Quoting')).getByRole('button', { name: '5 companies, 1 late, 1 over usual' }))
+    expect([clusters('dots'), clusters('names')]).toEqual([0, 3])
+    expect(window.localStorage.getItem(BAND_NAMES_KEY)).toBe('1')
+    expect(document.querySelector('[data-board-folded="setup"]')).toBeTruthy()
+    unmount()
+    render(<GcBoardByStep ctx={contextFor(TRADE_FLOW)} companies={TRADES} presses={presses()} />)
+    expect([clusters('dots'), clusters('names')]).toEqual([0, 3])
+    fireEvent.click(within(band('Building')).getByRole('button', { name: 'Fold' }))
+    expect([clusters('dots'), clusters('names')]).toEqual([3, 0])
+    expect(window.localStorage.getItem(BAND_NAMES_KEY)).toBe('0')
+  })
+
+  it('opens a company from its chip and from its name on the band head, gives each row its own press, and opens Follow up from the today line', () => {
     const p = presses()
     render(<GcBoardByStep ctx={contextFor(TRADE_FLOW)} companies={TRADES} presses={p} />)
     fireEvent.click(within(row('compare')).getByRole('button', { name: /Tejas Power/ }))
     expect(p.onCompany).toHaveBeenCalledWith(expect.objectContaining({ contactId: 'bill', step: expect.objectContaining({ id: 'compare' }) }))
+    fireEvent.click(within(band('Quoting')).getByRole('button', { name: '5 companies, 1 late, 1 over usual' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hillside Excavation: Asked to quote' }))
     expect(p.onCompany).toHaveBeenLastCalledWith(expect.objectContaining({ contactId: 'greg', jobId: 'boerne' }))
     fireEvent.click(within(row('papers')).getByRole('button', { name: 'Ask the 4 for papers' }))
