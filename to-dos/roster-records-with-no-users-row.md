@@ -1,15 +1,15 @@
 ---
 name: Every People record has a users row, and the drafted days have a door
 number: 265
-group: ready
-status: card written 2026-11-04 after the users-without-login train (#260) shipped; the backfill left 2 records for the desk
+group: close
+status: shipped 2026-11-04 · PR 1 the count and the combine's refusal v2.6529 · PR 2 `people_needs_users_row` and the key on RESTRICT v2.6530 · PR 3 Import days… on the desk v2.6531 · left: the two records the backfill skipped, which the count on People → Users reads until the owner links them, then the NOT NULL and the roster view as a plain join
 summary: >
   The backfill (v2.6517) linked 19 roster records to new users rows and skipped 2 whose name a login already
   carries. people.account_user_id stays nullable and roster_people keeps account_kind 'external' as the guard that
   shows a straggler, but nothing on screen counts them. Surface them with their door, move the combine onto the
   account merge, then make the column NOT NULL and the roster view a plain join. Then the payoff: a dev-only door
   on the desk that imports a person's drafted days with every refusal named.
-next: A count on People → Users of the roster records with no users row, each with its Link account door.
+next: the owner links the two roster records from their rows' Link account; then `people.account_user_id NOT NULL` and the roster view as a plain join, one migration; then delete this card.
 size: M
 blocker: None for the count and the door; the NOT NULL waits on the two records being linked by hand.
 ver: v2.6511 · 6514 · 6517 · 6425
@@ -28,7 +28,7 @@ The dev, 2026-11-04, after the users-without-login train shipped: "is there anyt
 - `backfill_users_for_people()` (v2.6517, `20261104210000`) answered **19 linked, 2 skipped**: two People records whose trimmed name another users row carries, left for the desk because the pay tables key on the name (`resolve_pay_person_id` reads `users.name → people.account_user_id` first). A dev may run it again; it links nothing new until those two are linked or renamed.
 - `people.account_user_id` is nullable: `people_account_user_id_fkey` is `ON DELETE SET NULL` (invite-user's replace of a pending invite deletes its users row — v2.6511 made the function delete the row itself) and `combinePeople.ts` nulls a source's account before moving it. `roster_people` keeps `account_kind 'external'` for a record with no users row; `has_login` reads the column.
 - The desk's *Merge a duplicate* (`MergeDuplicateDialog.tsx`) lists roster-only subs as externals; `eligibleAbsorbCandidates` already lists no-login users rows, and `merge_user_accounts` moves the roster link, so a no-login person merges through the account merge today.
-- The End employment flow sat on *Saving…* for over thirty seconds on the walk's `ZZ Test` person with no error; the account was archived by calling `archive-user` directly. Not understood yet.
+- The End employment flow sat on *Saving…* for over thirty seconds on the walk's `ZZ Test` person with no error; the account was archived by calling `archive-user` directly. Read on PR 1 (v2.6529): not a hang — `finish()` opens its own confirm window before it writes, and the walk's script never pressed it.
 - The owner's drafted days import only through the RPC `import_clock_sessions` (v2.6425) by hand; the walk did it with a REST call from the pane.
 
 ## The decision

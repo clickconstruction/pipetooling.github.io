@@ -1,14 +1,14 @@
 ---
 name: A login can be taken away and the person stays
 number: 266
-group: ready
-status: card written 2026-11-04 after the users-without-login train (#260) shipped; the detach is proven on the bed only
+group: close
+status: shipped 2026-11-04 · v2.6532: `detach-login` with its door in `_shared/detachLoginDoor.ts`, the desk's Remove the login… with its confirm, the guide section and ACCESS_CONTROL
 summary: >
   Since v2.6511 deleting an auth account detaches it (login_attached_at NULL) instead of taking the person and
   every clock session with it. No door in the app deletes an auth account, so the detach is proven only on the
   bed. Give the desk a dev-only Remove the login press, through one function, with the confirm that names what
   stays and what goes.
-next: A detach-login edge function and the desk's press, walked on a ZZ Test person.
+next: nothing left; delete this card.
 size: S
 blocker: None.
 ver: v2.6511 · 6518

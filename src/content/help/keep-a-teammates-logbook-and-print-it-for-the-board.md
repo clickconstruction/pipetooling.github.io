@@ -87,7 +87,7 @@ Jordan cannot see this logbook. Show it, and Jordan finds My logbook in the app'
 2. Press {{button:outline|Show Jordan this logbook}}.
 3. The strip turns green. It names the day and who pressed.
 
-The teammate now finds **My logbook** in the gear menu. They see their own hours and licenses and can print the summary sheet. They cannot edit a license or see anyone else's logbook.
+The teammate now finds **My logbook** in the gear menu. On a phone in Dispatch Mode it sits in the **More** sheet. They see their own hours and licenses and can print the summary sheet. They cannot edit a license or see anyone else's logbook.
 
 Press {{button:outline|Stop showing}} to take it back. On the Licenses tab, a row says **Jordan sees it** beside **Open logbook**.
 

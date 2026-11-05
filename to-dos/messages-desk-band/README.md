@@ -2,7 +2,7 @@
 name: "Messages: a band on each New row says which desk finishes it, Dispatch or Estimating"
 number: 258
 group: ready
-status: proposed 2026-11-04 from Grace's look at New on the Messages page · PR 1 building on the recommended defaults
+status: proposed 2026-11-04 from Grace's look at New on the Messages page · PR 1 built 2026-11-04 as v2.6507 (PR #7022) on the recommended defaults, merged; the owner's look at New with the band on and his word on the six calls next
 summary: >
   New on Messages → Follow up draws every row the same way but for the color of the sort's
   question, so a customer asking for a visit and a trade partner sending a quote read alike until
@@ -16,7 +16,7 @@ summary: >
 next: The owner's look at New with the band on, and his word on the six calls. Then PR 2 on Needs a reply if call 3 is a yes.
 size: S (PR 1 the rule, the kernel the header and the band share, the band on New's rows, the guide) + S (PR 2 Needs a reply and the folded sort card, if wanted)
 blocker: Nothing in the code. The calls below have recommendations; PR 1 takes them.
-ver: proposed
+ver: v2.6507
 opinion: build — the rule is five facts the lane already holds, the colors and icons exist, and the band costs the row nothing; what is new is one kernel and one strip
 mockup: to-dos/messages-desk-band/mockup.html
 ---
@@ -168,4 +168,4 @@ answered.
 
 ## Where it stands
 
-Proposed 2026-11-04. PR 1 is building on the recommended defaults; the calls wait on the owner.
+Proposed 2026-11-04. **PR 1 built the same day as v2.6507 (PR #7022)** on the recommended defaults: `rowDesk.ts` (the rule, reading facts and never words), `deskMarks.ts` (the header's four presses and the band drawing from one record, `deskMarks.test.ts` refusing a literal written back), `DeskBand.tsx` over `Row`'s `band` (22 px at a desk, 18 on a phone, not a press), the guide's *The band on the left*, the Glossary's New entry and MESSAGES_ARCHITECTURE's New sentence. Walked on the worktree's dev server as the dev on `/messages`, read-only: the nine *Bid it?* rows wore the violet band with each hover naming its kind, the *Who is this?* rows none, the band 18 px at 375 and the fills kept in dark; no customer row was in New that day and the ZZ Test insert was refused by the auto-mode classifier, so the Dispatch band was seen in the render smoke alone. The calls wait on the owner's look at New with the band on; PR 2 (Needs a reply and the folded sort card) waits on call 3.

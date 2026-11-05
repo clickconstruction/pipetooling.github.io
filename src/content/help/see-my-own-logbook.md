@@ -14,6 +14,8 @@ The office turns your logbook on for you. Until then it stays closed.
 
 Once it is on, press the gear at the top of the app. Press {{button:outline|My logbook}}.
 
+On a phone in Dispatch Mode, press **More** on the bottom bar instead. **My logbook** sits above Help.
+
 If the row is not there, ask the office to show you your logbook.
 
 ## What it shows

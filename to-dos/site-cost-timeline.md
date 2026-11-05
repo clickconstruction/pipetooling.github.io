@@ -17,7 +17,7 @@ next: the owner's two calls, the jobs with no dated event and the phone's view s
 size: M (PR 1 the view, the two lines, the chips, the reads) + S (PR 2 the overhead band) + M (PR 3 value created, Print / Save as PDF)
 blocker: None.
 mockup: not required — the chart is the Job Summary's Charges & Value chart at the site's scale, nothing new in shape; the owner approved the written draft in chat on 2026-11-03 and asked for it in its own session
-ver: —
+ver: v2.6493 · v2.6498 · v2.6499
 opinion: build — the kernel, the chart view and every read exist; the work is a job id on the events, one batched read per source over the site's jobs, and a chip row
 ---
 
@@ -73,18 +73,18 @@ He approved the written draft the same day and asked for it in its own session.
   the jobs left out, the chart data through `buildJobChargesTimelineChartData`.
 - The reads: `useSiteCosts` keeps the rows it read (dates added to the sheet and other-charge
   selects, the bank category on the card embed); `siteLabor.ts` keeps each person's days;
-  `useSiteTimeline` (new) reads the fuel ids and, in PR 3, the reports and percents.
+  `useSiteTimeline` (new) reads the fuel ids; `useSiteValueEvents` (new, PR 3) the reports and hand-set percents by job id.
 - The view: `DevelopmentTimeline.tsx` (new) over the shared `JobChargesTimelineChartView`; the third
   chip and the view's state in `DevelopmentPage.tsx`; `MoneyView` gains `timeline`.
 - No migration. No edge function.
 
 ## The PR train
 
-1. **PR 1** · the view, the red and green lines, the job chips, the job-naming tooltip, the batched
+1. **PR 1 (v2.6493)** · the view, the red and green lines, the job chips, the job-naming tooltip, the batched
    reads, the parity test, the guide's words, the glossary and access-control lines.
-2. **PR 2** · the amber overhead band from `useSiteOverhead`'s lines (the hook keeps them), the true
+2. **PR 2 (v2.6498)** · the amber overhead band from `useSiteOverhead`'s lines (the hook keeps them), the true
    cost on top, the tooltip's overhead lines.
-3. **PR 3** · value created on the right axis from the site's reports and hand-set percents, and
+3. **PR 3 (v2.6499)** · value created on the right axis from the site's reports and hand-set percents, and
    Print / Save as PDF.
 
 ## How to verify

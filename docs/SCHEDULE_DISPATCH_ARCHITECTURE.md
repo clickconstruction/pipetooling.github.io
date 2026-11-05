@@ -9,7 +9,7 @@ covers:
   - src/components/schedule/ScheduleDispatchHubPage.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-28
+last_updated: 2026-11-05
 ---
 
 ## What this surface is
@@ -281,7 +281,7 @@ Consequence for extraction: Hub-file splits are prop-preserving file moves (chea
 19. **NCNS order** — the incident RPC runs while the day's blocks still exist (with zero clock sessions it only accepts "scheduled, no clock time"); clearing blocks first would make it refuse. Pinned by `recordNcns.test.ts`. The hub's call differs from the My Time day editor's (`lib/myTimeNcns.ts`) in two ways, both kept: it sends the details untrimmed, and it treats no row back as a refusal where the day editor treats it as done.
 20. **Day-first redirect is one-shot** (`hubMobileDayFirstAppliedRef`, mount-only) and skipped when the URL names `hubTab` or `placeJob`.
 21. **A linked copy groups a solo source before it checks the overlap** — `insertScheduleDispatchCopiedLeg` calls `ensureSharedBlockGroupForRow` first, so a copy refused for overlap (or for a failed day read) leaves the source with a group of one. Nothing shows it: the card's linked float and accent both need `linkPeerCount > 1`. Pinned by `scheduleDispatchMirrorInsert.test.ts`; reordering the two is a behavior change, its own PR.
-22. **The assign picker's number box reads jobs and bids differently** — a job matches when its HCP or Click number **is** the digits or **starts with** them (`findJobsByNumber`); a bid matches when its number **contains** them anywhere. `375` finds job 3751 but not job 1375, and finds bid 1375. The job rows are re-sorted (newest first, billed and paid last); the bid rows keep the fetch order. Pinned by `hubJobPicker.test.ts`.
+22. **The assign picker's number box reads jobs and bids differently** — a job matches when its HCP or Click number **is** the digits or **starts with** them (`findJobsByNumber`); a bid matches when its number **contains** them anywhere. `375` finds job 3751 but not job 1375, and finds bid 1375. The job rows are re-sorted (newest first, billed and paid last); the bid rows keep the fetch order. Pinned by `hubJobPicker.test.ts`. The **search box** in every caller is one predicate, `jobPickerSearchMatches` (v2.6496): the HCP number, the Click number, the identity line, the name, the address and the customer, each a substring; the Quick Assign sheet's rows (Dispatch Mode's **Assign work**, `QuickAssignSheet`) come from `filterQuickAssignPickerJobs` (the number box exact then prefix, the search newest first, 60 rows, finished jobs last) — the sheet's own memo (v2.1519) matched `hcp_number` and never `click_number`, so a job made in the app read *No jobs match.* when its number was typed.
 23. ~~**An archived person on the roster defeats the time-off prime (#3)** — `loadHub` primed `rosterKey` with every roster id, the archived included, while the effect compares `hubVisibleUserIdsSerialized`, which leaves them out, so with anyone archived on the roster every load was followed by one more `user_time_off` read of the same week.~~ **Fixed v2.4869:** `loadHub` primes with the roster minus `archivedSet`, the board's own key. Live on 2026-10-07 the roster was 31 with 8 archived, so every load paid the read. Pinned by `useScheduleDispatchHubData.render.test.tsx`.
 
 ---

@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: 58caa94ee
 audience: Developers, AI Agents
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 ---
 
 > **Line numbers are as of `58caa94ee`** (v2.4706, from the `npm run map` fact sheets). This is the hottest surface in the repo (253 commits in 90 days on the tab, 82 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -150,7 +150,7 @@ Cluster N's 52 states: 18 single-job opener targets (`activityExpandJob`, `crewM
 `{(() => { … })()}` returns `JobsRecentlyAddedList` while `stagesRecentViewOpen`; otherwise:
 
 - **Totals + helpers** (3336–3410): `waitingTotal` / `workingTotal` = `stagesJobsOpenBalanceTotal`; `capableToBillTotal` = `capableToBillTotalWithPlans(working, workingStageInputs)`; `readyToBillTotal` = `readyToBillRowsExposureTotal`; `billedTotal` / `collectionsTotal` = `billedRowsRemainingTotal`; `billedListRows` = the aging-chip filter over `billedActiveRows` (inline; list only, headers keep the whole section). `sectionShown` / `sectionMerged` (every scope of `scopesForStagesSection` landed, v2.4761) / `sectionScopeBusy` / `sectionHdr` (header count + total from live rows when merged or searching, else `cacheHeaderStats`, else `…` — inline, untested); phone-strip numbers (3375–3395); `canManageCollections`; `paidSearchHint`.
-- **Phone strip** (3411–3420) and **paid-search hint** row (3421–3457, `data-testid="stages-paid-search-hint"`), then `StagesSearchHeldBackHint` (v2.6405, `data-testid="stages-search-held-back"`): the matches the filters hold back from a search, and a dev's ZZ matches; then `StagesSearchLookupFailed` (v2.6410, `data-testid="stages-search-lookup-failed"`): a lookup that failed, or found rows that did not load, says what was not searched over `OfflineRetryPanel`, whose Retry bumps `stagesServerSearchAttempt`. The # jump's `jumpViaLeanLookup` answers `'failed'` in the same two cases, with a toast, and `StagesJobNumberJumpChip` keeps the digits instead of flashing *No job matches that number*.
+- **Phone strip** (3411–3420) and **paid-search hint** row (3421–3457, `data-testid="stages-paid-search-hint"`), then `StagesSearchHeldBackHint` (v2.6405, `data-testid="stages-search-held-back"`): the matches the filters hold back from a search, and a dev's ZZ matches; then `StagesSearchLookupFailed` (v2.6410, `data-testid="stages-search-lookup-failed"`): a lookup that failed, or found rows that did not load, says what was not searched over `OfflineRetryPanel`, whose Retry bumps `stagesServerSearchAttempt`; since v2.6487 a new term clears the line before the debounce (`stagesServerSearchTermRef` holds the term the lookup last ran for), so only a Retry of the same term keeps it until the answer. The # jump's `jumpViaLeanLookup` answers `'failed'` in the same two cases, with a toast, and `StagesJobNumberJumpChip` keeps the digits instead of flashing *No job matches that number*.
 
 | Section | Header (id via `stagesSectionElementId`) | Body | Wiring notes |
 |---|---|---|---|

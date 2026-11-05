@@ -6,3 +6,5 @@ PR 2 of punch list #265. Since #260 every person is a users row (`add_worker`, t
 - `people_account_user_id_fkey` re-made `ON DELETE RESTRICT` (`NOT VALID` then validated): a users row with a People record is archived, never deleted. `invite-user`'s replace of a pending invite no longer deletes the row: it deletes the auth account (which detaches the row, v2.6511) and re-invites on the same id.
 
 No table is created, so no fence calls. Apply order: push after the merge (no client call lands ahead of it); redeploy `invite-user` after the push. Bed: `supabase/tests/users_without_login/60_people_have_a_users_row.sql` (S1–S3).
+
+**Applied** to prod by 2026-11-05: the dev seat's `check_migration_ledger` read 1118 applied with this file's version among them, against the 1118 files on `main` (read in the docs pass after #6998; `supabase` is not linked in that worktree, so `check:migration-drift` was not run there); `check:edge-drift` read every one of the 179 functions deployed and current the same day; types regenerated from prod through #7069.

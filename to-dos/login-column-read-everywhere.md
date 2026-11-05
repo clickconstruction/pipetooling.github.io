@@ -1,15 +1,15 @@
 ---
 name: The login column is read everywhere a login is drawn
 number: 264
-group: ready
-status: card written 2026-11-04 after the users-without-login train (#260) shipped
+group: close
+status: shipped 2026-11-04 · PR 1 the column required on the five row types, the picker rule pinned and the GLOSSARY entry v2.6527 · PR 2 archive-user by the id alone and the attach door in `_shared/attachLoginDoor.ts` v2.6528
 summary: >
   Since v2.6511 a users row is a person and users.login_attached_at says whether a sign-in stands behind it. The
   one bug the live walk found was a reader that never selected the column, so a person with no login drew as a
   login. The column is optional on every row type, so the typecheck cannot catch the next one. Make it required
   where a login is drawn, pin the picker rule, give the words a glossary home, and move the account functions'
   callers onto the id.
-next: Make login_attached_at required on the row types a chip or a press reads from, and let the typecheck name every reader that forgot it.
+next: nothing left; delete this card.
 size: S
 blocker: None.
 ver: v2.6511 · 6514 · 6518 · 6519

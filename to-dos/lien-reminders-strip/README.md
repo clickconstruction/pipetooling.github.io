@@ -157,6 +157,7 @@ stands where `courtesyStatus` and `letterTwoStatus` put it.
 |---|---|---|
 | card | this card and the mock-up | XS · #7036 |
 | 1 | the strip on Do now with its counts, the step's list, the Reminders group, the dots and tiles, the smoke at 1,400 and 375, the guide, the map | S · v2.6515 |
+| 2 | the *Showing N · step* line under a pressed rung with **Show all**, the rung's rule under the rail, the guide `read-the-reminders-ladder-on-the-lien-desk` (Grace's screenshot of eight pale rows) | XS · v2.6522 |
 
 ## How to verify
 

@@ -13,7 +13,7 @@ Turn it on and a tab bar pins to the bottom of every screen. The tabs are **Dash
 :::example The pinned tab bar
 {{button:blue|Dashboard}} {{button:outline|Schedule}} {{button:outline|Inbox}} {{chip:red|4}} {{button:outline|Customers}} {{button:outline|PO}}
 
-The red badge on Inbox counts **open** dispatch and estimator requests — closed ones don't count, whether or not anyone has dismissed them yet.
+The red badge on Inbox counts **open** dispatch and estimator requests — closed ones don't count, whether or not anyone has dismissed them yet. It breathes while a customer or a crew is waiting. Its label counts them apart. Read [answer a customer waiting request](/help/answer-a-customer-waiting-request).
 :::
 
 :::example The assistant's bar on a phone
