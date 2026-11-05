@@ -65,12 +65,10 @@ async function fnErrorMessage(e: unknown): Promise<string> {
  */
 export async function archiveAccount(
   supabase: Client,
-  args: { userId?: string | null; email: string; name: string | null; customerCount: number | null; mode: ArchiveReassignMode; authUserId: string },
+  args: { userId: string; email: string | null; name: string | null; customerCount: number | null; mode: ArchiveReassignMode; authUserId: string },
 ): Promise<void> {
   const reassignTo = args.mode === 'reassign' && (args.customerCount ?? 0) > 0 ? await resolveCompanyOwnerUserId(supabase, args.authUserId) : ''
-  const body = archiveRequestBody({ email: args.email, name: args.name }, args.customerCount, args.mode, reassignTo)
-  // v2.6523 (punch list #256's walk): a person with no login has no email, so the id is the handle, as the desk's Archive… sends it.
-  if (args.userId) body.user_id = args.userId
+  const body = archiveRequestBody({ id: args.userId, email: args.email, name: args.name }, args.customerCount, args.mode, reassignTo)
   try {
     const { data, error } = await supabase.functions.invoke('archive-user', { body })
     if (error) throw error

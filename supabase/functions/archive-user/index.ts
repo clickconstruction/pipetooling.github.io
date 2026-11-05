@@ -10,10 +10,11 @@ const corsHeaders = {
 }
 
 interface ArchiveUserRequest {
+  /** The users row's id — the one handle since v2.6528 (#264); a person with no login may have no address. */
+  user_id?: string
+  /** Kept for the words in the answer; no longer a lookup. */
   email?: string
   name?: string
-  /** v2.6519 (punch list #260): the users row's id — the one sure handle for a person with no login, who may have no address. */
-  user_id?: string
   reassign_customers_to?: string  // Optional: UUID of master to reassign customers to
 }
 
@@ -84,9 +85,9 @@ serve(async (req) => {
 
     const { email, name, reassign_customers_to, user_id }: ArchiveUserRequest = await req.json()
 
-    if (!email && !name && !user_id) {
+    if (!user_id) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: user_id, email or name' }),
+        JSON.stringify({ error: 'Missing required field: user_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -101,72 +102,16 @@ serve(async (req) => {
       if (userById) userToArchive = userById
     }
 
-    if (!userToArchive && email) {
-      const { data: userByEmail, error: emailError } = await supabase
-        .from('users')
-        .select('id, email, name')
-        .eq('email', email.trim())
-        .is('archived_at', null)
-        .maybeSingle()
-
-      if (emailError) {
-        return new Response(
-          JSON.stringify({ error: `Error finding user: ${emailError.message}` }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      if (userByEmail) {
-        userToArchive = userByEmail
-      }
-    }
-
-    if (!userToArchive && name) {
-      const { data: userByName, error: nameError } = await supabase
-        .from('users')
-        .select('id, email, name')
-        .eq('name', name.trim())
-        .is('archived_at', null)
-        .maybeSingle()
-
-      if (nameError) {
-        return new Response(
-          JSON.stringify({ error: `Error finding user: ${nameError.message}` }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      if (userByName) {
-        userToArchive = userByName
-      }
-    }
-
     if (!userToArchive) {
       // The active-only lookups above can't see archived accounts — check for one so the
       // error says "already archived" instead of the misleading "User not found".
-      let archivedMatch: { email: string | null; name: string | null; archived_at: string | null } | null = null
-      if (email) {
-        const { data } = await supabase
-          .from('users')
-          .select('email, name, archived_at')
-          .eq('email', email.trim())
-          .not('archived_at', 'is', null)
-          .order('archived_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        if (data) archivedMatch = data
-      }
-      if (!archivedMatch && name) {
-        const { data } = await supabase
-          .from('users')
-          .select('email, name, archived_at')
-          .eq('name', name.trim())
-          .not('archived_at', 'is', null)
-          .order('archived_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        if (data) archivedMatch = data
-      }
+      const { data: archivedById } = await supabase
+        .from('users')
+        .select('email, name, archived_at')
+        .eq('id', user_id)
+        .not('archived_at', 'is', null)
+        .maybeSingle()
+      const archivedMatch = (archivedById as { email: string | null; name: string | null; archived_at: string | null } | null) ?? null
       if (archivedMatch) {
         let archivedOn = ''
         if (archivedMatch.archived_at) {
