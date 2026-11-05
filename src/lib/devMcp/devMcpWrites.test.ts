@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ROBOT_PLANS_SHARED_DRIVE, robotPlansDivisionFolderName, robotPlansPathWords } from '../../../supabase/functions/_shared/bidPlansFolders'
-import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, canonicalJson, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, canonicalJson, clockOpCommitment, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 import { DEFAULT_JOB_LEDGER_PREFIX, formatJobLedgerNumberLabel } from '../ledgerDisplayPrefixes'
 
 const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_batches.sql', 'utf8')
@@ -268,7 +268,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.1'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -332,7 +332,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.1'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
   })
 })
 
@@ -407,7 +407,7 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
     expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
     expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.1'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
   })
 })
 
@@ -456,7 +456,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.1'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
     expect(SERVER).toContain('Writes are forty-three verbs and nothing else')
   })
 })
@@ -680,7 +680,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.1'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
     expect(SERVER).toContain('Writes are forty-three verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
@@ -978,7 +978,7 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.1'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
     expect(SERVER).toContain('forty-three verbs')
   })
@@ -1062,7 +1062,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.1'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')
@@ -1070,6 +1070,28 @@ describe('the clock session verbs (v2.6437)', () => {
     expect(alreadyApplied('apply_clock_sessions', { target: '1 clock session op', at: '2026-11-03T05:00:00Z' })).toContain('on those sessions at 2026-11-03T05:00:00Z')
     expect(alreadyApplied('apply_clock_sessions', { target: null, at: null })).toContain('read_rows on clock_sessions')
     expect(planMismatch('apply_clock_sessions', 'a'.repeat(64), 'b'.repeat(64))).toContain('plan_clock_sessions')
+  })
+
+  it('an approve plan hashes the same on two runs seconds apart, since the after image\'s approval stamp is left out (v2.6524); a session whose times or job moved hashes differently', async () => {
+    const image = (over: Record<string, unknown>) => ({ job: { id: JOB, number: '1042', name: 'Ridgeway Lofts' }, hours: 8, notes: 'a day', bid_id: null, origin: 'imported', work_date: '2026-03-10', approved_at: null, clocked_in_at: '2026-03-10T14:00:00+00:00', clocked_out_at: '2026-03-10T22:00:00+00:00', ...over })
+    const run = (stamp: string, before: Record<string, unknown> = {}) => ({
+      dry_run: true, reason: 'why', by: 'Robert', applied: 1, held: 0, refused: 0,
+      ops: [{ seq: 1, op: 'approve', session_id: SESSION, person: 'Marcus', outcome: 'applied', words: 'approved', before: image(before), after: image({ approved_at: stamp }) }],
+    })
+    const p = { reason: 'why', ops: [{ op: 'approve', session_id: SESSION }] }
+    const first = await planHash('plan_clock_sessions', p, run('2026-11-05T01:13:45.954878+00:00'))
+    expect(first).toBe(await planHash('apply_clock_sessions', p, run('2026-11-05T01:15:02.118204+00:00')))
+    const { approved_at: _stamp, ...afterNoStamp } = image({})
+    expect(planCommitment('plan_clock_sessions', run('2026-11-05T01:13:45.954878+00:00'))).toMatchObject({ applied: 1, ops: [{ op: 'approve', before: image({}), after: afterNoStamp }] })
+    expect((planCommitment('plan_clock_sessions', run('x')) as { ops: Array<{ after: Record<string, unknown> }> }).ops[0]!.after).not.toHaveProperty('approved_at')
+    // The world moved: a different end, a different job, or the session already approved, and the plan no longer matches.
+    expect(first).not.toBe(await planHash('plan_clock_sessions', p, run('x', { clocked_out_at: '2026-03-10T23:00:00+00:00' })))
+    expect(first).not.toBe(await planHash('plan_clock_sessions', p, run('x', { job: { id: SESSION, number: '7', name: 'Other' } })))
+    expect(first).not.toBe(await planHash('plan_clock_sessions', p, run('x', { approved_at: '2026-11-04T00:00:00+00:00' })))
+    // A refused op carries no after image and still hashes.
+    const refused = { ...run('x'), applied: 0, refused: 1, ops: [{ seq: 1, op: 'approve', session_id: SESSION, person: 'Marcus', outcome: 'refused', words: 'the session is already approved', before: image({}), after: null }] }
+    expect(planCommitment('plan_clock_sessions', refused)).toMatchObject({ refused: 1, ops: [{ outcome: 'refused', after: null }] })
+    expect(clockOpCommitment('not an op')).toBe('not an op')
   })
 })
 
