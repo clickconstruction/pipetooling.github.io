@@ -78,7 +78,8 @@
   .tl.new .mark .untag { color: var(--text-blue-700); font-weight: 600; }
   .ev { text-align: center; font-size: .75rem; color: var(--text-muted); }
   .gap { font-size: .78rem; color: var(--text-muted); text-align: center; font-style: italic; }
-  table.calls { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; }
+  .tablewrap { overflow-x: auto; margin-top: 10px; }
+  table.calls { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13px; }
   table.calls th, table.calls td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; color: var(--text-base); }
   table.calls th { background: var(--bg-subtle); color: var(--text-strong); }
   .note { font-size: 13px; color: var(--text-600); margin: 6px 0 0; max-width: 110ch; }
@@ -204,7 +205,7 @@
   </div>
 
   <h2><span class="num">3</span> The calls</h2>
-  <table class="calls">
+  <div class="tablewrap"><table class="calls">
     <thead><tr><th>#</th><th>The call</th><th>Options</th><th>Recommended</th><th>Owner's answer</th></tr></thead>
     <tbody>
       <tr><td>1</td><td>A door on the job and the bid</td><td>A the line read on open, with Yes. B a bare press that opens the tab searched on the job's people. 0 nothing, wait the month.</td><td><b>A</b>, with B as the line's own door past three rows.</td><td></td></tr>
@@ -213,7 +214,7 @@
       <tr><td>4</td><td>The retire test and who walks first</td><td>A Grace, as grace@clickplumbing.com, on a ZZ Test job; the month runs from that day. B wait for someone else.</td><td><b>A</b>.</td><td></td></tr>
       <tr><td>5</td><td>The guess's thread rule</td><td>A a page-local rule, its own small PR after the walk. B leave the guess as it is.</td><td><b>A</b>, after the walk.</td><td></td></tr>
     </tbody>
-  </table>
+  </table></div>
   <p class="note">The Inbox keeps its press in every option: a customer's mail never lands on a guess alone. Nothing here counts on the Dashboard, the strip or the bar.</p>
 </div>
 </body>
