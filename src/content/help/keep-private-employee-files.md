@@ -31,6 +31,16 @@ Stick to facts with dates. If it is an impression, say whose: "my read after the
 
 That is deliberate. The raw log is trustworthy because nothing in it can be quietly rewritten. Made a mistake? You add a new entry: "Correction to the Aug 19 entry: …".
 
+## Open a matter on a person
+
+A matter is the analysis for counsel, kept apart from the record. The matter holds the narrative for the firm and the documents with what each one shows. The matter also holds the timeline of planned steps and recorded events. The Legal desk's matters stand on a customer who owes. This one stands on the person.
+
+1. Open the person's file and go to **Matter**. Only a dev sees this view.
+2. Press {{button:outline|Open a matter…}}. The matter stands on the person from then on.
+3. Write the narrative under **Narrative** and press {{button:blue|Save}}. Put each paper on **Evidence** with one line on what it shows. Plan a step or record what happened on **Timeline**.
+
+Nothing on a matter reaches a law firm until the matter is released. The account tabs of the Legal desk do not appear here. There is no bill and no lien paper on a person.
+
 ## Keep a piece of evidence
 
 A piece of evidence is a record on the person's file. The record holds the day it is about, a title, a memo on what it shows, and its files.
