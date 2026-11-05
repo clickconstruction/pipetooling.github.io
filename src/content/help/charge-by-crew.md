@@ -69,7 +69,7 @@ The crew's hours are the longest day of anyone in it. Two techs out eight hours 
 
 ## Set the markup on materials
 
-Under the rates, open **Markup on materials**. Type a percent over cost and press {{button:blue|Save the markup}}. The line under the field reads the number both ways. For example, 25% over cost is a 20% margin on the sale. Leave it blank and materials are charged at cost. The paper says so when they are.
+Under the rates, open **Markup on materials**. Two boxes sit side by side. The first is the markup, a percent over cost. The second is the margin, a percent of the sale. Type in either box and the other follows. A bar under the boxes shows $1,000 of materials as cost and markup. The bar reads what the customer pays. For example, 25% over cost is a 20% margin on the sale. Press {{button:blue|Save the markup}}. Leave both boxes blank and materials are charged at cost. The paper says so when they are.
 
 ## Give one job its own rule
 
@@ -77,7 +77,7 @@ Open the job window and go to **Edit**. The last row reads **Charging the custom
 
 **Charge this job's labor as** lists the choices. The first is the crew on each day, from the rate card. Each shape follows with its rate. The last is a flat rate for every hour. Pick the flat rate and the dollars box wakes.
 
-**Markup on materials** takes a percent for this job alone. Leave it blank and the company's markup stands. The row saves as you pick. The Charges window writes the same facts, so a change there shows here.
+**Markup on materials** takes a percent for this job alone. Type it as a markup over cost or as a margin on the sale. The other box follows. Leave both blank and the company's markup stands. The row saves when you leave the box. The Charges window writes the same facts, so a change there shows here.
 
 ## See what a job is charged at
 
@@ -85,7 +85,7 @@ Open **Jobs** and go to **Job Summary**. Two columns sit at the right of the tab
 
 ## Adjust a job's charges
 
-Press a **Charges** cell and the Charges window opens. The job's rule and markup sit at the top. Change them and the job keeps the change. Four tiles follow. They show labor, materials, charges, and the stand against the revenue.
+Press a **Charges** cell and the Charges window opens. The job's rule and markup sit at the top. The markup shows its margin beside it, and you can type either one. The bar under them starts from this job's own materials cost. Change them and the job keeps the change. Four tiles follow. The tiles show labor, materials, charges, and the stand against the revenue.
 
 Every crew day lists under its week. Each day has a tick and a chip. Untick a day to leave it off. Change the chip to set that day's crew. A reason box appears under it. Every material line has a tick and {{button:outline|Pass through}}. Pass through charges that line at cost.
 
