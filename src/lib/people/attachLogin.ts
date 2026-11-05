@@ -57,6 +57,13 @@ async function invokeOrThrow(client: FnClient, name: string, body: Record<string
   return data
 }
 
+/** Removes the person's login (punch list #266, v2.6532): `detach-login` deletes the auth account by the row's id; the person and everything that points at them stay. Throws with the refusal's words. */
+export async function removeLogin(client: SupabaseClient<never> | SupabaseClient, input: { userId: string }): Promise<{ userId: string }> {
+  const fn = client as unknown as FnClient
+  const made = (await invokeOrThrow(fn, 'detach-login', { user_id: input.userId }, 'The login was not removed.')) as { user?: { id?: string } } | null
+  return { userId: made?.user?.id ?? input.userId }
+}
+
 /** Attaches the login on the person's id, then sends the sign-in email unless a password was set. Throws with the refusal's words. */
 export async function attachLogin(client: SupabaseClient<never> | SupabaseClient, input: AttachLoginInput): Promise<AttachLoginResult> {
   const problem = attachEmailProblem(input.email)

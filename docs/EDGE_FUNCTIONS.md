@@ -22,7 +22,10 @@ key_sections:
     description: "Create users with roles (dev-only; Hiring's Try out door for a trial helper)"
   - name: "archive-user"
     anchor: "#archive-user"
-    description: "Archive users by email/name (dev-only)"
+    description: "Archive users by their id (dev-only)"
+  - name: "detach-login"
+    anchor: "#detach-login"
+    description: "Remove a person's login; the person stays (dev-only, punch list #266)"
   - name: "login-as-user"
     anchor: "#login-as-user"
     description: "Generate magic link for impersonation"
@@ -80,6 +83,7 @@ when_to_read:
    - [send-supply-house-job-account](#send-supply-house-job-account)
    - [invite-user](#invite-user)
    - [send-sign-in-email](#send-sign-in-email)
+   - [detach-login](#detach-login)
    - [merge-users](#merge-users)
    - [notify-help-feedback](#notify-help-feedback)
    - [gsa-per-diem](#gsa-per-diem)
@@ -523,6 +527,34 @@ The emailed link verifies through Supabase Auth and redirects to **`/accept-invi
 **Deploy**: `supabase functions deploy invite-user --no-verify-jwt`
 
 ---
+
+### detach-login
+
+**Purpose**: Remove a person's login (punch list #266, v2.6532): the auth account is deleted by the row's id, `on_auth_user_deleted` (v2.6511) clears `users.login_attached_at`, and nothing that points at the person moves — clock sessions, Charged as, pay, paperwork, the People record, the portal. The sign-in, any password and their push devices (`push_subscriptions` keys on `auth.users`) go. The way back is *Attach a login* on the desk (`create-user` with `user_id`), which lands on the same id.
+
+**Endpoint**: `POST /functions/v1/detach-login`
+
+**Required Role**: `dev` (Bearer + `users.role`, like `set-user-password`)
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Called from**: the person's desk → *Access & account* → the Sign-in row's **Remove the login…** (`removeLogin` in [`src/lib/people/attachLogin.ts`](../src/lib/people/attachLogin.ts)), after a confirm that names what goes and what stays.
+
+#### Request Parameters
+
+```typescript
+interface DetachLoginRequest {
+  user_id: string   // the users row's id
+}
+```
+
+**Refused** (the rules in [`_shared/detachLoginDoor.ts`](../supabase/functions/_shared/detachLoginDoor.ts), tested in `src/lib/people/detachLoginDoor.test.ts`): a missing or malformed id (400), no such person (404), the caller's own account, a sample or twin, a person with no login (400, each with its words).
+
+#### Success Response
+
+```json
+{ "success": true, "user": { "id": "…", "name": "…", "login_attached_at": null }, "goes": "the sign-in, any password, and their push devices", "stays": "the person, their hours, Charged as, pay, paperwork and portal" }
+```
 
 ### send-sign-in-email
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { attachEmailProblem, attachLogin } from './attachLogin'
+import { attachEmailProblem, attachLogin, removeLogin } from './attachLogin'
 
 function client(invoke: (name: string, opts: { body: Record<string, unknown> }) => Promise<{ data: unknown; error: unknown }>) {
   return { functions: { invoke } } as unknown as Parameters<typeof attachLogin>[0]
@@ -10,6 +10,18 @@ describe('attachEmailProblem', () => {
     expect(attachEmailProblem('')).toBe('An email is required to attach a login.')
     expect(attachEmailProblem('rio at example')).toBe('That email does not look right.')
     expect(attachEmailProblem(' Rio@Example.test ')).toBeNull()
+  })
+})
+
+describe('removeLogin', () => {
+  it('calls detach-login with the id and answers it', async () => {
+    const invoke = vi.fn(async () => ({ data: { success: true, user: { id: 'u1', login_attached_at: null } }, error: null }))
+    await expect(removeLogin(client(invoke), { userId: 'u1' })).resolves.toEqual({ userId: 'u1' })
+    expect(invoke).toHaveBeenCalledWith('detach-login', { body: { user_id: 'u1' } })
+  })
+  it("throws the function's reason", async () => {
+    const invoke = vi.fn(async () => ({ data: { error: 'You cannot remove your own login.' }, error: null }))
+    await expect(removeLogin(client(invoke), { userId: 'me' })).rejects.toThrow('You cannot remove your own login.')
   })
 })
 
