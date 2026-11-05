@@ -98,20 +98,20 @@ What is left to build, as of the evening of 2026-10-09. Each row is read from th
 | [#35 Lien notices sent by hand](../to-dos/lien-notice-sent-by-hand/README.md) | Nothing to build — delete after the office records the Lenox paper on 273 and the owner answers the $350 call |
 | [#42 Lien windows](../to-dos/lien-windows/README.md) | Counsel's answers to three questions |
 | [#45 Owner's portal](../to-dos/owner-portal-property-view/README.md) | Nothing to build — delete after the first real owner's notices are recorded and the owner switch is on |
-| [#47 The owner is calling](../to-dos/owner-is-calling/README.md) | Counsel reads the script's words. Option 3 and the other doors wait until the office asks. |
+| #47 The owner is calling (closed 2026-11-05) | Counsel reads the script's words. Option 3 and the other doors wait until the office asks. |
 | [#50 Contracts & terms](../to-dos/contracts-and-terms/README.md) | Nothing to build — delete after the month of use ends on 2026-10-28 and the owner makes the card's two calls |
 | [#52 Fuel is a job cost](../to-dos/fuel-is-a-job-cost.md) | Nothing to build — delete after the owner enters the 2007 Ram 3500's costs on People → Vehicles. The follow-ups are the owner's pick. |
 | [#55 Where the checks went](../to-dos/where-the-checks-went-residuals.md) | Nothing to build. Print all only if someone asks for it. |
-| [#60 What the team sees](../to-dos/what-the-team-sees/README.md) | Nothing to build. Retire it after the owner looks at the live tab. |
+| #60 What the team sees (closed 2026-11-05) | Nothing to build. Retire it after the owner looks at the live tab. |
 | [#66 Robot audits backlog](../to-dos/robot-audits-backlog.md) | Half an hour a week from each estimator. Measure on 2026-10-23. |
 | [#72 Job Parts Tally → Transactions](../to-dos/tally-transactions-refresh.md) | The owner's word on a few days of use for PR 2b, then 2c. The pending-charges call for PR 4. Five sample cases for the 48 charges. |
 | [#76 Returned checks](../to-dos/ar-returned-checks.md) | Grace's four Stripe endpoint events, then one test-mode dispute on a ZZ TEST Stripe bill |
 | [#77 By Stage is retired](../to-dos/retire-by-stage-materials.md) | The office's word on B82, B83 and B85. Item 4's drop waits on it. |
-| [#82 Lien desk Next up](../to-dos/lien-desk-next-up/README.md) | Nothing to build — delete after a week of use raises nothing |
+| #82 Lien desk Next up (closed 2026-11-05) | Nothing to build — delete after a week of use raises nothing |
 | [#85 Legal portal](../to-dos/legal-portal-firm-ready/README.md) | The owner swaps in the real firm and fills its particulars. The firm's answers for items 12–15 and 19. |
 | [#86 Records for an owner](../to-dos/owner-records-portal/README.md) | Nothing to build — delete after the first real owner signs |
 | [#87 Lien screens' stale words](../to-dos/lien-screens-stale-words.md) | Nothing to build — delete after the live look at M on a ZZ TEST job |
-| [#92 AIA G702-G703](../to-dos/aia-pay-application-follow-ups.md) | Taunya's look on a phone for item 4 |
+| #92 AIA G702-G703 (closed 2026-11-05) | Taunya's look on a phone for item 4 |
 | #98 A check on a Stripe bill — retired 2026-10-10 | Done: the owner reported the last three steps done himself at ~02:10 UTC on 2026-10-10 (the sweep closed J904's test bill; Move to job… on Taunya's check with Stripe on Live). J904 and J907 still read Paid in header search at 04:20 UTC, so the deletes are still his and the card is deleted; the fragments v2.4801, v2.4803 and v2.4822 carry the record. |
 | [#99 Lien desk Rules window](../to-dos/lien-rules-window/README.md) | Nothing to build — delete after a week of use raises nothing |
 | [#100 Map residuals](../to-dos/map-residuals.md) | Item 1, a mock-up and a reason to build it. Item 2, a pick among the card's options. |
