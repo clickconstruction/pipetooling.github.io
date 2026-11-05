@@ -11,9 +11,9 @@ describe("Edit Job's Charging the customer row (punch list #254, PR 4)", () => {
   })
 
   it("words the markup: the job's own, the company's, or none", () => {
-    expect(jobMarkupWords(30, 25)).toBe('materials 30% over cost, this job’s own')
-    expect(jobMarkupWords(null, 25)).toBe('materials 25% over cost, the company’s markup')
+    expect(jobMarkupWords(30, 25)).toBe('materials 30% over cost, a 23.1% margin on the sale, this job’s own')
+    expect(jobMarkupWords(null, 25)).toBe('materials 25% over cost, a 20% margin on the sale, the company’s markup')
     expect(jobMarkupWords(null, null)).toBe('materials at cost')
-    expect(jobChargingValueWords({ kind: 'crew' }, null, CARD)).toBe('the crew on each day, from the rate card · materials 25% over cost, the company’s markup')
+    expect(jobChargingValueWords({ kind: 'crew' }, null, CARD)).toBe('the crew on each day, from the rate card · materials 25% over cost, a 20% margin on the sale, the company’s markup')
   })
 })

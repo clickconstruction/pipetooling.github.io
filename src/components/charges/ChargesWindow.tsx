@@ -8,7 +8,7 @@ import { addChargeAdjustments, loadJobCharges, revertChargeAdjustments, saveJobC
 import { chargeAdjustmentWords, saveAdjustmentsLabel, type ChargeAdjustment } from '../../lib/charges/adjustments'
 import { jobChargeRuleWords, officeNotes, type CrewDay, type JobChargeRule } from '../../lib/charges/crewDays'
 import { CREW_SHAPES, CREW_SHAPE_LOWER, CREW_SHAPE_WORDS, crewRateWords, crewRateFor, type CrewShape } from '../../lib/charges/rateCard'
-import { marginOfMarkup } from '../../lib/charges/materialsCharged'
+import { MaterialsMarkupPair } from './MaterialsMarkupPair'
 import { Money } from './Money'
 import { premiumWaitsWords } from '../../lib/charges/premium'
 import { UnchargedCallout } from './UnchargedCallout'
@@ -254,32 +254,19 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
                   />
                 </label>
               ) : null}
-              <label style={label}>
-                Markup on materials
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    defaultValue={read.jobMarkupPct ?? ''}
-                    placeholder={card.materialsMarkupPct != null ? String(card.materialsMarkupPct) : 'not set'}
-                    disabled={!editable || busy != null}
-                    aria-label="Markup on materials, percent over cost"
-                    data-testid="charges-markup"
-                    style={{ ...field, width: 90 }}
-                    onBlur={(e) => {
-                      const raw = e.target.value.trim()
-                      const n = raw === '' ? null : Number(raw)
-                      if (n != null && !(Number.isFinite(n) && n >= 0)) return
-                      if (n !== read.jobMarkupPct) void saveRule(rule, n == null ? null : Math.round(n * 100) / 100)
-                    }}
-                  />
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-base)', fontWeight: 500 }}>
-                    % over cost{read.jobMarkupPct == null ? ' · the company’s' : ''}
-                    {markupInForce != null ? ` · a ${marginOfMarkup(markupInForce)}% margin` : ''}
-                  </span>
-                </span>
-              </label>
+              <div style={{ display: 'grid', gap: '0.2rem' }}>
+                <span style={label}>Markup on materials{read.jobMarkupPct == null ? (markupInForce != null ? ' · the company’s' : ' · none, at cost') : ' · this job’s own'}</span>
+                <MaterialsMarkupPair
+                  compact
+                  markupPct={read.jobMarkupPct}
+                  companyMarkupPct={card.materialsMarkupPct}
+                  disabled={!editable || busy != null}
+                  testId="charges-markup"
+                  onCommit={(n) => {
+                    if (n !== read.jobMarkupPct) void saveRule(rule, n)
+                  }}
+                />
+              </div>
               <p style={{ ...quiet, marginLeft: 'auto', maxWidth: 420, lineHeight: 1.4 }}>These two write to the job. Everything below them is the record, line by line, with the adjustments on top.</p>
             </div>
 

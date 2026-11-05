@@ -7,6 +7,8 @@ import { loadRateCard, saveJobChargeRule } from '../../lib/charges/jobChargesRea
 import { jobChargeRuleFrom, type JobChargeRule } from '../../lib/charges/crewDays'
 import { CREW_SHAPES, CREW_SHAPE_LOWER, crewRateFor, crewRateWords, parseCrewShape, type CrewShape, type RateCard } from '../../lib/charges/rateCard'
 import { jobChargingValueWords } from '../../lib/charges/jobChargingWords'
+import { markupMarginWords } from '../../lib/charges/markupMargin'
+import { MaterialsMarkupPair } from '../charges/MaterialsMarkupPair'
 
 /**
  * Edit Job → *Charging the customer* (punch list #254, PR 4): the job's rule for its labor — the crew on each day from
@@ -128,37 +130,23 @@ export function JobFormChargingRow({ jobId, expanded, onToggle }: { jobId: strin
                   }}
                 />
               </label>
-              <label style={label}>
-                <span style={small}>Markup on materials, percent over cost</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    key={`markup-${loaded.markupPct ?? 'none'}`}
-                    defaultValue={loaded.markupPct ?? ''}
-                    placeholder={card.materialsMarkupPct != null ? `Company: ${card.materialsMarkupPct}` : 'at cost'}
-                    disabled={busy}
-                    aria-label="Markup on materials, percent over cost"
-                    data-testid="charging-markup"
-                    style={{ ...field, width: 110, textAlign: 'right' }}
-                    onBlur={(e) => {
-                      const raw = e.target.value.trim()
-                      const next = raw === '' ? null : Number(raw)
-                      if (next != null && (!Number.isFinite(next) || next < 0)) return
-                      if (next !== loaded.markupPct) void save(loaded.rule, next)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-                    }}
-                  />
-                  <span style={{ fontSize: '0.8125rem' }}>%</span>
-                </span>
-              </label>
+              <div style={{ display: 'grid', gap: 3 }}>
+                <span style={small}>Markup on materials{loaded.markupPct == null ? (card.materialsMarkupPct != null ? ', the company’s' : ', none') : ', this job’s own'}</span>
+                <MaterialsMarkupPair
+                  compact
+                  markupPct={loaded.markupPct}
+                  companyMarkupPct={card.materialsMarkupPct}
+                  disabled={busy}
+                  testId="charging-markup"
+                  onCommit={(next) => {
+                    if (next !== loaded.markupPct) void save(loaded.rule, next)
+                  }}
+                />
+              </div>
             </div>
             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {card.materialsMarkupPct != null ? `Company: ${card.materialsMarkupPct}% over cost. ` : 'The company has no markup set, so materials are charged at cost unless this job says otherwise. '}
-              The Charges window on the Job Summary writes these too, so a choice made there shows here. Saved on the job as you pick.
+              {card.materialsMarkupPct != null ? `Company: ${markupMarginWords(card.materialsMarkupPct)}. ` : 'The company has no markup set, so materials are charged at cost unless this job says otherwise. '}
+              Type the markup or the margin and the other follows. The Charges window on the Job Summary writes these too, so a choice made there shows here. Saved on the job as you pick.
             </p>
           </div>
         )}
