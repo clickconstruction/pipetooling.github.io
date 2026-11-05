@@ -96,3 +96,27 @@ describe('salariedDayCreditReasonLabel', () => {
     expect(salariedDayCreditReasonLabel('weekend')).toBeNull()
   })
 })
+
+describe('salariedDayCredit — a person who left and came back (v2.6526)', () => {
+  const stints = [
+    { start_date: '2024-03-04', end_date: '2026-07-14' },
+    { start_date: '2026-07-16', end_date: null },
+  ]
+  // The pair is the current stint, so without the stints the first stint's Monday would clamp to zero.
+  const w = windowWith({ employmentStart: '2026-07-16', employmentEnd: null, stints })
+
+  it('a day in the first stint still pays', () => {
+    expect(salariedDayCredit(MON, w)).toEqual({ hours: 8, reason: 'workday' })
+    expect(salariedDayCredit(MON, windowWith({ employmentStart: '2026-07-16', employmentEnd: null }))).toEqual({ hours: 0, reason: 'before_start' })
+  })
+
+  it('a day in the gap does not, and a day before the first start is before the start', () => {
+    expect(salariedDayCredit(WED, w)).toEqual({ hours: 0, reason: 'after_end' })
+    expect(salariedDayCredit('2024-03-01', w)).toEqual({ hours: 0, reason: 'before_start' })
+    expect(salariedDayCredit('2026-07-17', w)).toEqual({ hours: 8, reason: 'workday' })
+  })
+
+  it('one stint leaves the pair as the clamp', () => {
+    expect(salariedDayCredit(MON, windowWith({ employmentStart: '2026-07-16', employmentEnd: null, stints: [stints[1]!] }))).toEqual({ hours: 0, reason: 'before_start' })
+  })
+})
