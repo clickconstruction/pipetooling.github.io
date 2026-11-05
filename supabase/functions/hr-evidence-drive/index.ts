@@ -38,7 +38,7 @@ const HR_FILES_BUCKET = 'hr-files'
 const SWEEP_BATCH = 20
 
 type EvidenceRow = { id: string; person_id: string; dated_on: string; title: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null }
-type FileRow = { id: string; evidence_id: string; filename: string; mime_type: string | null; storage_path: string | null; drive_file_id: string | null }
+type FileRow = { id: string; evidence_id: string; filename: string; mime_type: string | null; storage_path: string | null; drive_file_id: string | null; drive_url: string | null }
 
 const folderUrl = (id: string) => `https://drive.google.com/drive/folders/${id}`
 const fileUrl = (id: string) => `https://drive.google.com/file/d/${id}/view`
@@ -49,11 +49,19 @@ function recordFolderName(r: Pick<EvidenceRow, 'dated_on' | 'title'>): string {
 }
 
 async function fileRecord(admin: SupabaseClient, google: string, peopleRoot: string, record: EvidenceRow, personName: string): Promise<{ filed: number; remaining: number; failWhy: string | null; folderUrl: string | null }> {
-  const { data: files } = await admin.from('person_file_attachments').select('id, evidence_id, filename, mime_type, storage_path, drive_file_id').eq('evidence_id', record.id)
+  const { data: files } = await admin.from('person_file_attachments').select('id, evidence_id, filename, mime_type, storage_path, drive_file_id, drive_url').eq('evidence_id', record.id)
   const rows = (files ?? []) as FileRow[]
   let folderId = record.drive_folder_id
   let filed = 0
   let failWhy: string | null = null
+  // A linked file (v2.6541) is already in Drive and was never staged: it counts as filed and the function never touches it.
+  const linked = rows.filter((f) => !f.storage_path && f.drive_url)
+  const toFile = rows.filter((f) => !(!f.storage_path && f.drive_url))
+  if (toFile.length === 0) {
+    const remaining = rows.length - linked.length
+    await admin.from('person_file_evidence').update({ fail_why: null, ...(rows.length > 0 ? { filed_at: new Date().toISOString() } : {}) }).eq('id', record.id)
+    return { filed: linked.length, remaining, failWhy: null, folderUrl: folderId ? folderUrl(folderId) : null }
+  }
   try {
     if (!folderId) {
       const person = await findOrCreateFolder(google, peopleRoot, driveSafeName(personName) || `Person ${record.person_id.slice(0, 8)}`)
@@ -61,7 +69,8 @@ async function fileRecord(admin: SupabaseClient, google: string, peopleRoot: str
       folderId = own.id
       await admin.from('person_file_evidence').update({ drive_folder_id: folderId, drive_folder_url: folderUrl(folderId), fail_why: null }).eq('id', record.id)
     }
-    for (const f of rows) {
+    filed += linked.length
+    for (const f of toFile) {
       if (f.drive_file_id) {
         filed += 1
         continue

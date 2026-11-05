@@ -268,7 +268,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.25.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -332,7 +332,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.25.0'")
   })
 })
 
@@ -359,6 +359,24 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(pOf(apply).entry_id).toBe(ENTRY)
     expect(pOf(apply).files).toEqual([FILE]) // the mime and the digest lowered
     expect(JSON.stringify(pOf(apply))).not.toContain('content_base64')
+  })
+
+  it('a file already in Drive travels as { name, drive_url } alone and is held to a Drive address (v2.6541); the migration writes it with its link and reads its id', () => {
+    const LINK = { name: 'Call recording, Aug 29', drive_url: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view?usp=sharing' }
+    const plan = writeRpcBody('plan_person_evidence', { evidence: { ...EVIDENCE, files: [FILE, LINK] } })
+    expect(plan.ok).toBe(true)
+    expect(pOf(plan).files).toEqual([FILE, LINK])
+    expect(writeRpcBody('plan_person_evidence', { evidence: { ...EVIDENCE, files: [LINK] } }).ok).toBe(true)
+    expect(problem({ evidence: { ...EVIDENCE, files: [{ ...LINK, drive_url: 'https://example.com/call.mp3' }] } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, files: [{ ...LINK, name: '' }] } })).toContain('needs evidence')
+    const linked = readFileSync('supabase/migrations/20261105200000_evidence_linked_file.sql', 'utf8')
+    expect(linked).toContain("SET lock_timeout = '3s';")
+    expect(linked).toContain('ALTER TABLE public.person_file_attachments ALTER COLUMN storage_path DROP NOT NULL;')
+    expect(linked).toContain('CHECK (storage_path IS NOT NULL OR drive_url IS NOT NULL) NOT VALID')
+    expect(linked).toContain("btrim(v_file->>'drive_url') !~ '^https://(drive|docs)\\.google\\.com/\\S+$'")
+    expect(linked).toContain('VALUES (v_file_id, v_person_id, v_entry_id, v_evidence_id, NULL, btrim(v_file->>\'name\'), NULL, NULL, v_drive_id, v_url, now(), auth.uid(), v_label);')
+    expect(linked).toContain("'linked', v_linked, 'staged', v_count - v_linked")
+    expect(SERVER).toContain("rows.push({ id, drive_url: f.driveUrl })")
   })
 
   it('refuses in words an evidence without its person, day, title, memo or files, the caps, a file with no digest or over 10 MB, a bad entry id, and apply without the hash', () => {
@@ -407,7 +425,7 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
     expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
     expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.25.0'")
   })
 })
 
@@ -456,7 +474,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.25.0'")
     expect(SERVER).toContain('Writes are forty-three verbs and nothing else')
   })
 })
@@ -680,7 +698,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.25.0'")
     expect(SERVER).toContain('Writes are forty-three verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
@@ -978,7 +996,7 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.25.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
     expect(SERVER).toContain('forty-three verbs')
   })
@@ -1062,7 +1080,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.24.2'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.25.0'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')

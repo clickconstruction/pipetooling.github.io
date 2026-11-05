@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import { evidenceMime, evidenceStoragePath, type PersonEvidenceDraft, type PersonEvidenceFile, type PersonEvidenceRecord } from './personEvidence'
+import { driveFileIdFromUrl, evidenceMime, evidenceStoragePath, type PersonEvidenceDraft, type PersonEvidenceFile, type PersonEvidenceLink, type PersonEvidenceRecord } from './personEvidence'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
@@ -49,18 +49,23 @@ export type SaveEvidenceArgs = {
   personId: string
   draft: PersonEvidenceDraft
   files: File[]
+  /** Files already in Drive, linked rather than staged (v2.6541). */
+  links?: PersonEvidenceLink[]
   /** The entry it proves, when it was attached to one. */
   entryId?: string | null
   authUserId: string | null
 }
 
 export type SaveEvidenceOutcome =
-  | { ok: true; recordId: string; staged: number; drive: { filed: number; remaining: number; failWhy: string | null } | null }
+  | { ok: true; recordId: string; staged: number; linked: number; drive: { filed: number; remaining: number; failWhy: string | null } | null }
   | { ok: false; why: string }
 
-/** Insert the record, stage each file, ask Drive. The record stands even when a file or Drive fails; the words say which. */
+/**
+ * Insert the record, stage each file, write each link, ask Drive for the staged ones. The record stands even when a file
+ * or Drive fails; the words say which. A record of links alone never asks Drive: every file is already there.
+ */
 export async function savePersonEvidence(args: SaveEvidenceArgs): Promise<SaveEvidenceOutcome> {
-  const { personId, draft, files, entryId = null, authUserId } = args
+  const { personId, draft, files, links = [], entryId = null, authUserId } = args
   const ins = await db
     .from('person_file_evidence')
     .insert({ person_id: personId, entry_id: entryId, dated_on: draft.datedOn, title: draft.title.trim(), memo: draft.memo.trim(), created_by: authUserId })
@@ -99,7 +104,32 @@ export async function savePersonEvidence(args: SaveEvidenceArgs): Promise<SaveEv
     }
     staged += 1
   }
-  if (staged === 0 && files.length > 0) return { ok: false, why: `The record was kept but no file could be staged. ${failures.join(' ')}` }
+  // A linked file (v2.6541): its row carries the link and no staged copy; it reads as in Drive from the start.
+  let linked = 0
+  for (const l of links) {
+    const url = l.driveUrl.trim()
+    const row = await db.from('person_file_attachments').insert({
+      id: crypto.randomUUID(),
+      person_id: personId,
+      entry_id: entryId,
+      evidence_id: recordId,
+      storage_path: null,
+      filename: l.name.trim(),
+      mime_type: null,
+      size_bytes: null,
+      drive_file_id: driveFileIdFromUrl(url),
+      drive_url: url,
+      filed_at: new Date().toISOString(),
+      uploaded_by: authUserId,
+    })
+    if (row.error) {
+      failures.push(`${l.name}: ${row.error.message}`)
+      continue
+    }
+    linked += 1
+  }
+  if (staged === 0 && linked === 0 && files.length + links.length > 0) return { ok: false, why: `The record was kept but no file could be staged or linked. ${failures.join(' ')}` }
+  if (staged === 0) return { ok: true, recordId, staged, linked, drive: { filed: linked, remaining: 0, failWhy: null } }
   // Drive: fail-soft. A function not deployed, or a refusal, leaves the record waiting for the sweep.
   let drive: { filed: number; remaining: number; failWhy: string | null } | null = null
   try {
@@ -111,7 +141,7 @@ export async function savePersonEvidence(args: SaveEvidenceArgs): Promise<SaveEv
   } catch {
     drive = null
   }
-  return { ok: true, recordId, staged, drive }
+  return { ok: true, recordId, staged, linked, drive }
 }
 
 /** Ask Drive again for one record (the foot's *Try Drive again*). */
