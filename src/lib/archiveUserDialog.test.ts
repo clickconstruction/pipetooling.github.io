@@ -33,15 +33,16 @@ describe('archiveChoiceBlocker (one company, v2.3063: no target to pick)', () =>
 
 describe('archiveRequestBody', () => {
   it('trims identity fields and omits reassignment by default', () => {
-    expect(archiveRequestBody({ email: ' a@x.com ', name: ' Al ' }, 0, 'keep', '')).toEqual({ email: 'a@x.com', name: 'Al' })
+    expect(archiveRequestBody({ id: 'u1', email: ' a@x.com ', name: ' Al ' }, 0, 'keep', '')).toEqual({ user_id: 'u1', email: 'a@x.com', name: 'Al' })
   })
   it('tolerates a null name', () => {
-    expect(archiveRequestBody({ email: 'a@x.com', name: null }, 2, 'keep', '')).toEqual({ email: 'a@x.com', name: '' })
+    expect(archiveRequestBody({ id: 'u1', email: 'a@x.com', name: null }, 2, 'keep', '')).toEqual({ user_id: 'u1', email: 'a@x.com', name: '' })
+    expect(archiveRequestBody({ id: 'u2', email: null, name: 'No Address' }, 0, 'keep', '')).toEqual({ user_id: 'u2', email: '', name: 'No Address' })
   })
   it('adds reassign_customers_to only when chosen, targeted, and there are customers', () => {
-    expect(archiveRequestBody({ email: 'a@x.com', name: 'Al' }, 2, 'reassign', 'm1')).toEqual({ email: 'a@x.com', name: 'Al', reassign_customers_to: 'm1' })
-    expect(archiveRequestBody({ email: 'a@x.com', name: 'Al' }, 0, 'reassign', 'm1')).toEqual({ email: 'a@x.com', name: 'Al' })
-    expect(archiveRequestBody({ email: 'a@x.com', name: 'Al' }, null, 'reassign', 'm1')).toEqual({ email: 'a@x.com', name: 'Al' })
-    expect(archiveRequestBody({ email: 'a@x.com', name: 'Al' }, 2, 'reassign', '')).toEqual({ email: 'a@x.com', name: 'Al' })
+    expect(archiveRequestBody({ id: 'u1', email: 'a@x.com', name: 'Al' }, 2, 'reassign', 'm1')).toEqual({ user_id: 'u1', email: 'a@x.com', name: 'Al', reassign_customers_to: 'm1' })
+    expect(archiveRequestBody({ id: 'u1', email: 'a@x.com', name: 'Al' }, 0, 'reassign', 'm1')).toEqual({ user_id: 'u1', email: 'a@x.com', name: 'Al' })
+    expect(archiveRequestBody({ id: 'u1', email: 'a@x.com', name: 'Al' }, null, 'reassign', 'm1')).toEqual({ user_id: 'u1', email: 'a@x.com', name: 'Al' })
+    expect(archiveRequestBody({ id: 'u1', email: 'a@x.com', name: 'Al' }, 2, 'reassign', '')).toEqual({ user_id: 'u1', email: 'a@x.com', name: 'Al' })
   })
 })
