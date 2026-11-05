@@ -24,6 +24,14 @@ export type PersonEvidenceFile = {
   filed_at: string | null
   fail_why: string | null
   created_at: string
+  /** The SHA-256 of the staged bytes as picked (v2.6544), lower-case hex; null on a linked file and on older rows. */
+  sha256?: string | null
+}
+
+/** The custody hash for a chip's tip: `sha256 3a7bd3e2360a…`; '' when the row has none. */
+export function evidenceHashWords(sha256: string | null | undefined): string {
+  const s = (sha256 ?? '').trim().toLowerCase()
+  return /^[0-9a-f]{64}$/.test(s) ? `sha256 ${s.slice(0, 12)}…` : ''
 }
 
 export type PersonEvidenceRecord = {
