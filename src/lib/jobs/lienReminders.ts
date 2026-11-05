@@ -1,5 +1,5 @@
-import { COURTESY_FROM_DAY, type CourtesyStatus } from './lienCourtesyNotice'
-import { LETTER_TWO_FROM_DAY, type LetterTwoStatus } from './lienLetterTwo'
+import { COURTESY_AGAIN_DAYS, COURTESY_FROM_DAY, type CourtesyStatus } from './lienCourtesyNotice'
+import { LETTER_TWO_BY_DAY, LETTER_TWO_FROM_DAY, type LetterTwoStatus } from './lienLetterTwo'
 
 /**
  * The REMINDERS strip on the Lien desk's Do now (punch list #262, Grace's ask of 2026-11-04): a
@@ -185,4 +185,30 @@ export function lienReminderLadderItems(at: LienReminderAt): LienReminderCardIte
       detail: s(4) === 'now' ? `${at.words[0]?.toUpperCase() ?? ''}${at.words.slice(1)}.` : 'Paid, the GC authorized direct pay, the owner called, they answered, or the affidavit is filed.',
     },
   ]
+}
+
+export type LienReminderRungRule = { when: string; press: string; who: 'office' | 'leader'; movesOn: string }
+
+/**
+ * A rung's rule in words, for the list under the rail when the rung is pressed (v2.6522): when a
+ * sent notice stands here, what the row's press is, whose it is and what moves it on. The days are
+ * the clocks' own constants, so the words follow a rule when it changes.
+ */
+export function lienReminderRungRule(step: LienReminderStep): LienReminderRungRule {
+  switch (step) {
+    case 1:
+      return { when: `the packet went, nothing came back, and it is day ${COURTESY_FROM_DAY} or later`, press: 'Send a courtesy notice, one email and one text from the notice’s own facts, never certified mail', who: 'office', movesOn: 'the courtesy goes' }
+    case 2:
+      return { when: 'a courtesy notice went', press: `none for ${COURTESY_AGAIN_DAYS} days, then Send a courtesy notice again, with Send letter two leading from day ${LETTER_TWO_FROM_DAY}`, who: 'office', movesOn: 'letter two is drafted, or something closes it' }
+    case 3:
+      return { when: `letter two is due from day ${LETTER_TWO_FROM_DAY} and overdue from day ${LETTER_TWO_BY_DAY} while the courtesy is held, or a letter two is drafting, awaiting the leader, in the run or sent`, press: 'Send letter two, counsel’s certified second letter, drafted on the notice and approved and run like any notice', who: 'leader', movesOn: 'something closes it, or the affidavit is filed' }
+    default:
+      return { when: 'paid, the GC authorized direct pay, the owner called, they answered, the affidavit is filed, or no reminder may go', press: 'none; the notice reads under Sent', who: 'office', movesOn: 'nothing; this is the end of the ladder' }
+  }
+}
+
+/** The rule as one line the list under the rail reads. */
+export function lienReminderRungRuleWords(step: LienReminderStep): string {
+  const r = lienReminderRungRule(step)
+  return `Stands here when ${r.when}. The press: ${r.press}. ${r.who === 'leader' ? 'The leader' : 'The office'} presses it. Moves on when ${r.movesOn}.`
 }
