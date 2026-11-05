@@ -2,7 +2,7 @@
 title: set what a crew's hour is charged
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: charge rate, rate card, crew, master with a helper, two techs, helper alone, markup, materials, margin, charged as, standing, 285
+keywords: charge rate, rate card, crew, master with a helper, two techs, helper alone, markup, materials, margin, charged as, standing, 285, import days, imported days, days the app never recorded
 order: 101
 ---
 The company charges the customer for a crew's hour, not for each person. What a day costs depends on who was out. A master with a helper is one rate. Two techs together are one rate. A tech alone is another. A helper alone is another. The rate card in Settings holds those numbers. A dev sets what each person counts as.
@@ -100,6 +100,22 @@ Press {{button:blue|Save 1 adjustment}}. The button counts what you changed.
 :::
 
 Adjustments live on the job's charges. They never touch anyone's clock session or invoice. The log on the right lists every one with its reason. Press {{button:outline|Revert to the record}} to undo them all. The app asks first.
+
+## Import the days the app never recorded
+
+A dev can put a person's old days into the clock. Open the person's desk and find the **Imported days** row under Hours. Press {{button:outline|Import days…}}.
+
+Type the job number in **Job number**. Paste one day a line in the box. Each line has the day, the hours, and where the day came from. Use a comma between them.
+
+:::example Three days from the bank
+2026-10-06, 8, bank row of Oct 10
+
+2026-10-07, 8, bank row of Oct 10
+
+2026-10-08, 4, bank row of Oct 10
+:::
+
+Press **Import** and read the answer. The answer says how many days went in and how many were already there. A line that was refused says why. The days wait for approval like a punch. A day that is already there is skipped, so the same lines can be pasted twice.
 
 ## Show the customer a statement of charges
 

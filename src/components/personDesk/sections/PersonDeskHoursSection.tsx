@@ -15,6 +15,7 @@ import { ClockSessionEditSplitModal } from '../../ClockSessionEditSplitModal'
 import { HoursStatementsSection } from '../../jobs/HoursStatementsSection'
 import { BTN_GREEN, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, DeskRow, DeskSection, deskBtn, fmtDay } from '../personDeskShared'
 import { formatErrorMessage } from '../../../utils/errorHandling'
+import { PersonDeskImportDays } from './PersonDeskImportDays'
 
 type OpenRow = { id: string; clocked_in_at: string; label: string | null }
 
@@ -176,6 +177,8 @@ export function PersonDeskHoursSection({
         {weekHours == null ? <span style={{ color: 'var(--text-muted)' }}>—</span> : <span>{formatHoursShort(weekHours)} closed</span>}
       </DeskRow>
       <DeskRow label="Reviewed through">{reviewedThrough ? fmtDay(reviewedThrough) : <span style={{ color: 'var(--text-muted)' }}>never</span>}</DeskRow>
+      {/* Punch list #265, PR 3: the dev-only door over import_clock_sessions for the days the app never recorded. */}
+      {viewer.isDev && userId ? <PersonDeskImportDays userId={userId} displayName={displayName} onImported={() => { setQueueReload((k) => k + 1); onChanged() }} /> : null}
       {/* The signed hours statements for the person (punch list #212, PR 2): the list and the window, the job picked instead of the person. */}
       <HoursStatementsSection scope={{ kind: 'person', userId, name: displayName }} zIndex={DESK_EDITOR_Z} canAccessPay={viewer.canAccessPay} desk />
 

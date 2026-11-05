@@ -15,7 +15,7 @@ export type ParsedLine = {
   raw: string
 }
 
-const UNITS = ['EA', 'EACH', 'FT', 'LF', 'PC', 'PCS', 'BX', 'BOX', 'RL', 'ROLL', 'CS', 'CASE', 'BG', 'BAG', 'PR', 'ST', 'SET', 'CTN', 'PK']
+export const UNITS = ['EA', 'EACH', 'FT', 'LF', 'PC', 'PCS', 'BX', 'BOX', 'RL', 'ROLL', 'CS', 'CASE', 'BG', 'BAG', 'PR', 'ST', 'SET', 'CTN', 'PK']
 const SKIP = /^(invoice|inv\b|date|ship|sold|bill|total|subtotal|sub-total|tax|freight|balance|terms|page|qty\b|quantity|description|amount|thank|remit|po\b|p\.o\.|order|account|customer|phone|fax|due)/i
 
 function money(s: string | undefined): number | null {

@@ -78,22 +78,22 @@ export function getVersion(): number {
 // Rows ↔ the kernel's shapes
 // ---------------------------------------------------------------------------
 
-type PlaceRow = { id: string; job_id: string; name: string; created_at: string }
-type ContainerRow = { id: string; job_id: string; label: string; kind: ContainerKind; where_note: string; place_id: string | null; lat: number | null; lng: number | null; retired_at: string | null; created_at: string }
+export type PlaceRow = { id: string; job_id: string; name: string; created_at: string }
+export type ContainerRow = { id: string; job_id: string; label: string; kind: ContainerKind; where_note: string; place_id: string | null; lat: number | null; lng: number | null; retired_at: string | null; created_at: string }
 type MoveRow = { id: string; container_id: string; from_place_id: string | null; to_place_id: string | null; by_name: string; at: string }
-type MovementRow = { id: string; job_id: string; part_id: string | null; part_name: string; manufacturer: string | null; quantity: number; reason: MovementReason; from_container_id: string | null; to_container_id: string | null; note: string; source: string | null; item_id: string | null; by_user_id: string | null; by_name: string; at: string }
+export type MovementRow = { id: string; job_id: string; part_id: string | null; part_name: string; manufacturer: string | null; quantity: number; reason: MovementReason; from_container_id: string | null; to_container_id: string | null; note: string; source: string | null; item_id: string | null; by_user_id: string | null; by_name: string; at: string }
 type PhotoRow = { id: string; job_id: string; container_id: string; by_user_id: string | null; by_name: string; words: string; file_name: string; taken_at: string; bytes: number; width: number; height: number; status: PhotoStatus; storage_path: string | null; drive_file_id: string | null; filed_at: string | null; fail_why: string | null }
 
-const PLACE_COLS = 'id, job_id, name, created_at'
-const CONTAINER_COLS = 'id, job_id, label, kind, where_note, place_id, lat, lng, retired_at, created_at'
+export const PLACE_COLS = 'id, job_id, name, created_at'
+export const CONTAINER_COLS = 'id, job_id, label, kind, where_note, place_id, lat, lng, retired_at, created_at'
 const MOVE_COLS = 'id, container_id, from_place_id, to_place_id, by_name, at'
-const MOVEMENT_COLS = 'id, job_id, part_id, part_name, manufacturer, quantity, reason, from_container_id, to_container_id, note, source, item_id, by_user_id, by_name, at'
+export const MOVEMENT_COLS = 'id, job_id, part_id, part_name, manufacturer, quantity, reason, from_container_id, to_container_id, note, source, item_id, by_user_id, by_name, at'
 const PHOTO_COLS = 'id, job_id, container_id, by_user_id, by_name, words, file_name, taken_at, bytes, width, height, status, storage_path, drive_file_id, filed_at, fail_why'
 
-const placeOf = (r: PlaceRow): Place => ({ id: r.id, jobId: r.job_id, name: r.name, createdAt: r.created_at })
-const containerOf = (r: ContainerRow): Container => ({ id: r.id, jobId: r.job_id, label: r.label, kind: r.kind, where: r.where_note ?? '', locationId: r.place_id, lat: r.lat, lng: r.lng, retiredAt: r.retired_at, createdAt: r.created_at })
+export const placeOf = (r: PlaceRow): Place => ({ id: r.id, jobId: r.job_id, name: r.name, createdAt: r.created_at })
+export const containerOf = (r: ContainerRow): Container => ({ id: r.id, jobId: r.job_id, label: r.label, kind: r.kind, where: r.where_note ?? '', locationId: r.place_id, lat: r.lat, lng: r.lng, retiredAt: r.retired_at, createdAt: r.created_at })
 const moveOf = (r: MoveRow, jobId: string): ContainerMove => ({ id: r.id, jobId, containerId: r.container_id, fromLocationId: r.from_place_id, toLocationId: r.to_place_id, byName: r.by_name ?? '', at: r.at })
-const movementOf = (r: MovementRow): Movement => ({ id: r.id, jobId: r.job_id, partId: r.part_id, partName: r.part_name, manufacturer: r.manufacturer, quantity: r.quantity, reason: r.reason, fromContainerId: r.from_container_id, toContainerId: r.to_container_id, note: r.note ?? '', byUserId: r.by_user_id, byName: r.by_name ?? '', at: r.at, source: r.source, itemId: r.item_id })
+export const movementOf = (r: MovementRow): Movement => ({ id: r.id, jobId: r.job_id, partId: r.part_id, partName: r.part_name, manufacturer: r.manufacturer, quantity: r.quantity, reason: r.reason, fromContainerId: r.from_container_id, toContainerId: r.to_container_id, note: r.note ?? '', byUserId: r.by_user_id, byName: r.by_name ?? '', at: r.at, source: r.source, itemId: r.item_id })
 const photoOf = (r: PhotoRow): PhotoNote => ({ id: r.id, jobId: r.job_id, containerId: r.container_id, fileName: r.file_name, byUserId: r.by_user_id, byName: r.by_name ?? '', at: r.taken_at, bytes: r.bytes ?? 0, width: r.width ?? 0, height: r.height ?? 0, status: r.status, driveFileId: r.drive_file_id, storagePath: r.storage_path, words: r.words ?? '', failWhy: r.fail_why })
 
 // ---------------------------------------------------------------------------
