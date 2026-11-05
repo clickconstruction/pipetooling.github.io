@@ -126,6 +126,15 @@ describe('parseTxParcelIdentify', () => {
     expect(parseTxParcelIdentify(null)).toBeNull()
     expect(parseTxParcelIdentify('x')).toBeNull()
   })
+
+  it('reads a situs or mailing line the roll spells as the word Null as blank (v2.6537)', () => {
+    const a = IDENTIFY_HIT.results[0]!.attributes
+    const nulls = { SITUS_ADDR: 'Null', SITUS_NUM: 'Null', SITUS_STRE: 'Null', SITUS_ST_1: 'Null', SITUS_ST_2: 'Null', SITUS_CITY: 'Null', SITUS_STAT: 'Null', SITUS_ZIP: 'Null', MAIL_ADDR: 'NULL', MAIL_LINE1: 'Null', MAIL_LINE2: 'Null', MAIL_CITY: 'Null', MAIL_STAT: 'Null', MAIL_ZIP: 'Null' }
+    const p = parseTxParcelIdentify({ results: [{ attributes: { ...a, ...nulls } }] })
+    expect(p?.situsAddress).toBe('')
+    expect(p?.mailingAddress).toBe('')
+    expect(p?.ownerName).toBe('WHITFIELD DANA & MARCUS')
+  })
 })
 
 describe('county names', () => {

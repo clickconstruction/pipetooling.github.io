@@ -101,20 +101,34 @@ export function geocodePinHold(typedAddress: string, g: GeocodePrecision): PinHo
   return null
 }
 
+/** Some districts spell a blank situs as the word Null (seen 2026-11-05 on Medina and Bastrop parcels, v2.6537). */
+export function isBlankSitus(situs: string): boolean {
+  const s = situs.trim()
+  return s === '' || /^null$/i.test(s) || /^n\/a$/i.test(s)
+}
+
 /**
  * Why the parcel under the pin is not the typed lot, or null when the roll's own
  * address for it (its situs) agrees or is blank. A blank situs is common on rural
  * parcels and says nothing either way; the pin gate carries those.
+ *
+ * The streets agree when the first word of either side's core appears among the
+ * other's words: Bexar's situs line carries the city with no comma
+ * ("150 E SONTERRA BLVD SAN ANTONIO, TX 78258"), so one core inside the other
+ * was too strict (v2.6537; the audit of 2026-11-05 held a parcel against its
+ * own address).
  */
 export function parcelSitusHold(typedAddress: string, parcel: Pick<ParcelRecord, 'situsAddress'>): PinHold | null {
   const situs = parcel.situsAddress.trim()
-  if (!situs) return null
+  if (isBlankSitus(situs)) return null
   const typedNumber = typedHouseNumber(typedAddress)
   const situsNumber = typedHouseNumber(situs)
   if (typedNumber && situsNumber && typedNumber !== situsNumber) return { kind: 'situs_mismatch', detail: situs }
-  const typedStreet = streetCore(typedAddress)
-  const situsStreet = streetCore(situs)
-  if (typedStreet && situsStreet && !typedStreet.includes(situsStreet) && !situsStreet.includes(typedStreet)) {
+  const typedWords = streetCore(typedAddress).split(' ').filter(Boolean)
+  const situsWords = streetCore(situs).split(' ').filter(Boolean)
+  const typedFirst = typedWords[0] ?? ''
+  const situsFirst = situsWords[0] ?? ''
+  if (typedFirst && situsFirst && !situsWords.includes(typedFirst) && !typedWords.includes(situsFirst)) {
     return { kind: 'situs_mismatch', detail: situs }
   }
   return null
