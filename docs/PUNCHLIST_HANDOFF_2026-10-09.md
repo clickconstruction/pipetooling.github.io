@@ -97,7 +97,7 @@ What is left to build, as of the evening of 2026-10-09. Each row is read from th
 | [#29 People spine](../to-dos/people-spine-residuals.md) | The owner's data. Twin Estimator 2's flag, the Training Helper row and the archived "Kyle" row. |
 | [#35 Lien notices sent by hand](../to-dos/lien-notice-sent-by-hand/README.md) | Nothing to build — delete after the office records the Lenox paper on 273 and the owner answers the $350 call |
 | [#42 Lien windows](../to-dos/lien-windows/README.md) | Counsel's answers to three questions |
-| [#45 Owner's portal](../to-dos/owner-portal-property-view/README.md) | Nothing to build — delete after the first real owner's notices are recorded and the owner switch is on |
+| #45 Owner's portal (dropped 2026-11-05) | Nothing to build — delete after the first real owner's notices are recorded and the owner switch is on |
 | #47 The owner is calling (closed 2026-11-05) | Counsel reads the script's words. Option 3 and the other doors wait until the office asks. |
 | [#50 Contracts & terms](../to-dos/contracts-and-terms/README.md) | Nothing to build — delete after the month of use ends on 2026-10-28 and the owner makes the card's two calls |
 | [#52 Fuel is a job cost](../to-dos/fuel-is-a-job-cost.md) | Nothing to build — delete after the owner enters the 2007 Ram 3500's costs on People → Vehicles. The follow-ups are the owner's pick. |
