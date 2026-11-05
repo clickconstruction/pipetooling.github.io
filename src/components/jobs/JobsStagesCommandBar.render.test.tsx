@@ -141,6 +141,33 @@ describe('JobsStagesCommandBar', () => {
     expect(screen.queryByTestId('stages-zz-test-jobs-chip')).toBeNull()
   })
 
+  it('v2.6551 · the Checklist left chip counts the jobs with a question left, narrows on a tap and clears on the next (punch list #246, PR 2)', () => {
+    const off = props({ filters: { ...props().filters, checklistLeft: { count: 4, on: false } }, onToggleChecklistLeft: vi.fn() })
+    const { unmount } = render(<JobsStagesCommandBar {...off} />)
+    const chip = screen.getByTestId('stages-checklist-left-chip')
+    expect(chip.textContent).toBe('Checklist left · 4')
+    expect(chip.getAttribute('aria-pressed')).toBe('false')
+    expect(chip.getAttribute('aria-label')).toBe('Show only the 4 jobs with a question left on a stage checklist')
+    fireEvent.click(chip)
+    expect(off.onToggleChecklistLeft).toHaveBeenCalledTimes(1)
+    unmount()
+    const on = props({ filters: { ...props().filters, checklistLeft: { count: 4, on: true } }, onToggleChecklistLeft: vi.fn() })
+    render(<JobsStagesCommandBar {...on} />)
+    const pressed = screen.getByTestId('stages-checklist-left-chip')
+    expect(pressed.getAttribute('aria-pressed')).toBe('true')
+    expect(pressed.textContent).toBe('Checklist left · 4×')
+    fireEvent.click(pressed)
+    expect(on.onToggleChecklistLeft).toHaveBeenCalledTimes(1)
+  })
+
+  it('v2.6551 · no Checklist left chip while the board holds no job with a question left, or without the press', () => {
+    const { unmount } = render(<JobsStagesCommandBar {...props({ filters: { ...props().filters, checklistLeft: null }, onToggleChecklistLeft: vi.fn() })} />)
+    expect(screen.queryByTestId('stages-checklist-left-chip')).toBeNull()
+    unmount()
+    render(<JobsStagesCommandBar {...props({ filters: { ...props().filters, checklistLeft: { count: 2, on: false } } })} />)
+    expect(screen.queryByTestId('stages-checklist-left-chip')).toBeNull()
+  })
+
   it('a dev’s ZZ test jobs chip: quiet with the count while hidden, amber while shown; either opens Hide groups (punch list #61)', () => {
     const base = props().filters
     const hidden = props({ filters: { ...base, zzTestJobs: { count: 3, shown: false } } })

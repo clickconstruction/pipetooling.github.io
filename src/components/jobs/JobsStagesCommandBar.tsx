@@ -20,6 +20,7 @@ import { STAGES_ACCOUNT_MAN_FILTER_NONE, STAGES_DEVELOPMENT_FILTER_NONE, STAGES_
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 import type { StagesToolsFilters } from './JobsStagesToolsMenu'
 import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
+import { checklistLeftChip } from '../../lib/jobs/pipelineChecklistDoor'
 
 export type JobsStagesCommandBarProps = {
   onNewJob: () => void
@@ -50,6 +51,8 @@ export type JobsStagesCommandBarProps = {
   onClearDevelopment: () => void
   onClearAccountMan: () => void
   onOpenHideGroups: () => void
+  /** The Checklist left chip's press (punch list #246, PR 2): on narrows the board to the jobs with a question left, off shows every job. */
+  onToggleChecklistLeft?: () => void
   /** The ⋯ tools menu, rendered at the bar's right edge. */
   toolsMenu: ReactNode
 }
@@ -96,8 +99,10 @@ export function JobsStagesCommandBar({
   onClearDevelopment,
   onClearAccountMan,
   onOpenHideGroups,
+  onToggleChecklistLeft,
   toolsMenu,
 }: JobsStagesCommandBarProps) {
+  const checklistChip = filters.checklistLeft ? checklistLeftChip(filters.checklistLeft.count, filters.checklistLeft.on) : null
   const [focused, setFocused] = useState(false)
   return (
     <div style={{ marginBottom: '1rem' }}>
@@ -483,6 +488,32 @@ export function JobsStagesCommandBar({
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
               Hiding {filters.exclusionCount} group{filters.exclusionCount === 1 ? '' : 's'}
             </span>
+          </button>
+        ) : null}
+        {checklistChip && onToggleChecklistLeft ? (
+          // Checklist left · N (punch list #246, PR 2, v2.6551): the jobs with a question left on a stage
+          // checklist. Quiet with the count while off; amber while the board is narrowed to them. One
+          // tap each way, since the count is one number and nothing else hides with it.
+          <button
+            type="button"
+            data-testid="stages-checklist-left-chip"
+            aria-pressed={checklistChip.on}
+            onClick={() => onToggleChecklistLeft()}
+            title={checklistChip.title}
+            aria-label={checklistChip.aria}
+            style={{
+              ...stagesActiveFilterChipStyle,
+              ...(checklistChip.on
+                ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+                : { background: 'var(--surface)', color: 'var(--text-700)', boxShadow: 'inset 0 0 0 1px var(--border-strong)' }),
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{checklistChip.label}</span>
+            {checklistChip.on ? (
+              <span aria-hidden style={{ flexShrink: 0 }}>
+                ×
+              </span>
+            ) : null}
           </button>
         ) : null}
         {filters.zzTestJobs ? (

@@ -11,6 +11,9 @@
  * to answer: the answered and asked of the stages still open, added up, so one open stage reads its own *3/6*. The
  * title names every stage. This kernel reads the row's own line items against the marks the board already computed
  * (`stageChecklistMarks` over `useStageChecklistStates`), so the door costs the board no read. Pure.
+ *
+ * PR 2 (v2.6551) adds the board's chip: *Checklist left · N* in the search bar counts the jobs with a question left and,
+ * pressed, narrows every section to them, the sections keeping their order.
  */
 import { jobShortLabel } from '../plans/planSets'
 import { STAGE_CHECKLIST_KIND_NAMES, stageChecklistKindOf, type StageChecklistState } from './stageChecklist'
@@ -111,6 +114,54 @@ export function pipelineChecklistDoor(fixtures: ReadonlyArray<DoorFixture>, mark
     title: `Checklists · ${ordered.map(stageTitleWords).join(' · ')}`,
     aria: `Checklists on this job · ${answered} of ${asked} answered`,
     badge: `${answered} of ${asked}`,
+  }
+}
+
+// ── The board's chip (PR 2, v2.6551) ────────────────────────────────────────
+
+/** A job with a question left on any of its stages: the chip counts these, and the filter keeps only them. */
+export function jobHasChecklistLeft(fixtures: ReadonlyArray<DoorFixture>, marks: ReadonlyMap<string, StageChecklistState> | null): boolean {
+  return pipelineChecklistDoor(fixtures, marks).kind === 'open'
+}
+
+type JobWithFixtures = { fixtures?: ReadonlyArray<DoorFixture> | null }
+type MarksFor<T> = (job: T) => ReadonlyMap<string, StageChecklistState> | null
+
+/** How many of the board's jobs have a question left, read before the chip's own filter so the number holds while it is on. */
+export function countJobsWithChecklistLeft<T extends JobWithFixtures>(jobs: readonly T[], marksFor: MarksFor<T>): number {
+  return jobs.reduce((n, j) => n + (jobHasChecklistLeft(j.fixtures ?? [], marksFor(j)) ? 1 : 0), 0)
+}
+
+/** The jobs with a question left while the chip is on; every job while it is off. The sections keep their order. */
+export function filterJobsByChecklistLeft<T extends JobWithFixtures>(jobs: readonly T[], on: boolean, marksFor: MarksFor<T>): T[] {
+  if (!on) return [...jobs]
+  return jobs.filter((j) => jobHasChecklistLeft(j.fixtures ?? [], marksFor(j)))
+}
+
+export interface ChecklistLeftChip {
+  count: number
+  on: boolean
+  /** *Checklist left · 4*. */
+  label: string
+  title: string
+  aria: string
+}
+
+/**
+ * The chip in the board's search bar, beside the hidden-groups chip: drawn while any job on the board has a question
+ * left, and while the filter is on so it can be cleared; null otherwise, so a board with nothing left shows no chip.
+ */
+export function checklistLeftChip(count: number, on: boolean): ChecklistLeftChip | null {
+  if (count === 0 && !on) return null
+  const jobs = `${count} job${count === 1 ? '' : 's'}`
+  return {
+    count,
+    on,
+    label: `Checklist left · ${count}`,
+    title: on
+      ? `Showing only the ${jobs} with a question left on a stage checklist — tap to show every job`
+      : `${jobs} ${count === 1 ? 'has' : 'have'} a question left on a stage checklist — tap to show only ${count === 1 ? 'it' : 'them'}`,
+    aria: on ? `Clear the checklist filter: showing only the ${jobs} with a question left` : `Show only the ${jobs} with a question left on a stage checklist`,
   }
 }
 
