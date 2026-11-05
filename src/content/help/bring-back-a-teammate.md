@@ -47,7 +47,7 @@ Each takes {{button:outline|Leave open…}} with a reason. A license that expire
 
 :::
 
-Both halves come back in one press. The end date clears and the start date becomes the day back. A new stint opens beside the old one. One line lands on the HR file.
+Both halves come back in one press. The end date clears and the start date becomes the day back. A new stint opens beside the old one. One line lands on the HR file. The desk's Employment row then lists every stint with the time away between. Tenure counts from the day back.
 
 :::example The HR line
 "Back on 2029-11-05 for Corinne Vela, after 3 years away. Left open on purpose: licenses (renewal in the mail)."

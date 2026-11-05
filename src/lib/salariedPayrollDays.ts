@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { inAnyStint, type Stint } from './people/employmentStints'
 
 /**
  * Salaried payroll day credit — the single source for "how many hours does a
@@ -11,6 +12,10 @@ import { withSupabaseRetry } from '../utils/errorHandling'
  *     (paid kind is salaried-only).
  *   - The employment window (`people.start_date` / `end_date`, inclusive)
  *     clamps the credit — no pay before the start date or after the end date.
+ *     A person who left and came back (v2.6526, punch list #256) has every
+ *     stint in `employment_stints`; with two or more, a day pays when it falls
+ *     inside any stint, so a first-stint week regenerated after the return
+ *     is not clamped to zero by the current pair.
  *
  * Cost/display surfaces (Hours grid, cost matrix, teamLabor, man-hours RPC)
  * intentionally still use the plain flat 8/0 rule.
@@ -24,6 +29,8 @@ export type SalariedPayrollWindow = {
   employmentStart: string | null
   /** people.end_date — inclusive; null = still employed. */
   employmentEnd: string | null
+  /** v2.6526: every stint (`employment_stints`); with two or more they replace the pair as the clamp. */
+  stints?: Stint[]
 }
 
 export const EMPTY_SALARIED_PAYROLL_WINDOW: SalariedPayrollWindow = {
@@ -50,8 +57,16 @@ export function isWeekendYmd(ymd: string): boolean {
 /** Unpaid wins over paid when ranges overlap (never pay on ambiguity). */
 export function salariedDayCredit(ymd: string, w: SalariedPayrollWindow): SalariedDayCredit {
   if (isWeekendYmd(ymd)) return { hours: 0, reason: 'weekend' }
-  if (w.employmentStart != null && ymd < w.employmentStart) return { hours: 0, reason: 'before_start' }
-  if (w.employmentEnd != null && ymd > w.employmentEnd) return { hours: 0, reason: 'after_end' }
+  const stints = w.stints ?? []
+  if (stints.length >= 2) {
+    if (!inAnyStint(ymd, stints)) {
+      const firstStart = stints.map((s) => s.start_date).filter((d): d is string => d != null).sort()[0]
+      return { hours: 0, reason: firstStart != null && ymd < firstStart ? 'before_start' : 'after_end' }
+    }
+  } else {
+    if (w.employmentStart != null && ymd < w.employmentStart) return { hours: 0, reason: 'before_start' }
+    if (w.employmentEnd != null && ymd > w.employmentEnd) return { hours: 0, reason: 'after_end' }
+  }
   const overlapping = w.timeOff.filter((r) => ymd >= r.start_date && ymd <= r.end_date)
   if (overlapping.some((r) => r.kind !== 'paid')) return { hours: 0, reason: 'unpaid_time_off' }
   if (overlapping.length > 0) return { hours: 8, reason: 'paid_time_off' }
@@ -99,23 +114,39 @@ export async function fetchSalariedPayrollWindows(
   const [usersData, peopleData] = await Promise.all([
     withSupabaseRetry(async () => supabase.from('users').select('id, name'), 'salaried payroll windows users'),
     withSupabaseRetry(
-      async () => supabase.from('people').select('name, start_date, end_date, archived_at').in('name', names),
+      async () => supabase.from('people').select('id, name, start_date, end_date, archived_at').in('name', names),
       'salaried payroll windows people',
     ),
   ])
 
   const peopleRows = (peopleData ?? []) as Array<{
+    id: string
     name: string
     start_date: string | null
     end_date: string | null
     archived_at: string | null
   }>
+  const personIdByName = new Map<string, string>()
   for (const n of names) {
     const rows = peopleRows.filter((p) => p.name.trim() === n)
     const row = rows.find((p) => !p.archived_at) ?? rows[0]
     if (row) {
       out[n]!.employmentStart = row.start_date
       out[n]!.employmentEnd = row.end_date
+      personIdByName.set(n, row.id)
+    }
+  }
+  // v2.6526: every stint of the people found, so a returner's earlier weeks still pay.
+  const personIds = [...personIdByName.values()]
+  if (personIds.length > 0) {
+    const stintData = await withSupabaseRetry(
+      async () => supabase.from('employment_stints').select('person_id, start_date, end_date').in('person_id', personIds),
+      'salaried payroll windows stints',
+    )
+    const stintRows = (stintData ?? []) as Array<{ person_id: string; start_date: string | null; end_date: string | null }>
+    for (const [n, pid] of personIdByName) {
+      const mine = stintRows.filter((r) => r.person_id === pid).map((r) => ({ start_date: r.start_date, end_date: r.end_date }))
+      if (mine.length >= 2) out[n]!.stints = mine
     }
   }
 

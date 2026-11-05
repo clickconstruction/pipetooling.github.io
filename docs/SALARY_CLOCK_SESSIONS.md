@@ -67,6 +67,10 @@ There is **no** stored salary amount or per-person daily-hours override; the 8 h
      `salary_schedule` sessions (the sync's time-off check ignores `kind`).
    - The **employment window** (`people.start_date` / `end_date`, inclusive) clamps the credit —
      no pay before the start date or after the end date.
+     A person who left and came back (v2.6526, punch list #256) has every stint in `employment_stints`;
+     with two or more, a day pays when it falls inside any stint (`inAnyStint`), so a first-stint week
+     run again after the return is not clamped to zero by the current pair. The server-side sync still
+     clamps to the pair; it makes today's and upcoming sessions, always in the current stint.
    - Legacy stub **view/print fallbacks** (stubs with no `pay_stub_days` rows) intentionally keep
      the unadjusted flat rule: they must display what was actually paid.
 
