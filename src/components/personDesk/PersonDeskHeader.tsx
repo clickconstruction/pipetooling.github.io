@@ -56,6 +56,7 @@ export function PersonDeskHeader({
   onClose,
   placeholderName,
   onOpenFlow,
+  onBringBack,
   hideClose = false,
 }: {
   personKey: PersonKey | null
@@ -69,6 +70,8 @@ export function PersonDeskHeader({
   placeholderName: string | null
   /** PR 2: the Start / End employment checklists (pay roles). */
   onOpenFlow?: (mode: 'start' | 'end') => void
+  /** Bring back (v2.6523): set on an archived desk whose employment ended, for the people who may archive. */
+  onBringBack?: () => void
   /** PR 3: the page variant has no close button. */
   hideClose?: boolean
 }) {
@@ -324,6 +327,11 @@ export function PersonDeskHeader({
               </button>
               {menuOpen ? (
                 <div role="menu" style={{ position: 'absolute', top: '110%', left: 0, zIndex: 5, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', minWidth: 190, padding: '0.25rem', display: 'flex', flexDirection: 'column' }}>
+                  {onBringBack ? (
+                    <button type="button" role="menuitem" style={{ ...BTN_QUIET, border: 'none', justifyContent: 'flex-start', color: 'var(--text-link)', fontWeight: 600 }} onClick={() => { setMenuOpen(false); onBringBack() }}>
+                      Bring back…
+                    </button>
+                  ) : null}
                   <button type="button" role="menuitem" style={{ ...BTN_QUIET, border: 'none', justifyContent: 'flex-start', color: 'var(--text-700)' }} onClick={() => { setMenuOpen(false); onOpenFlow('start') }}>
                     Start employment…
                   </button>

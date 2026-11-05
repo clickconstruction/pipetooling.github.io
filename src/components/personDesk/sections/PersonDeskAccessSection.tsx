@@ -63,6 +63,7 @@ export function PersonDeskAccessSection({
   serviceTypeNames,
   onChanged,
   onOpenFlow,
+  onBringBack,
 }: {
   user: PersonDeskUserRow | null
   viewer: PersonDeskViewer
@@ -71,6 +72,8 @@ export function PersonDeskAccessSection({
   onChanged: () => void
   /** Leave (v2.3700): Archive… opens the End employment flow, which finishes everything here — no Settings hop. */
   onOpenFlow?: (mode: 'start' | 'end') => void
+  /** Bring back (v2.6523): on an archived account whose employment ended, Bring back… takes Restore's place. */
+  onBringBack?: () => void
 }) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
@@ -570,9 +573,15 @@ export function PersonDeskAccessSection({
             ) : null}
             {canArchiveAccount(viewer) && !isSelf ? (
               u.archived_at ? (
-                <button type="button" style={deskBtn(BTN, busy != null)} disabled={busy != null} onClick={() => void restore()}>
-                  {busy === 'restore' ? 'Restoring…' : 'Restore'}
-                </button>
+                onBringBack ? (
+                  <button type="button" style={deskBtn(BTN_BLUE, busy != null)} disabled={busy != null} onClick={onBringBack} title="One window: the day back, the login and roster row together, a new stint, and the rows time away made stale.">
+                    Bring back…
+                  </button>
+                ) : (
+                  <button type="button" style={deskBtn(BTN, busy != null)} disabled={busy != null} onClick={() => void restore()}>
+                    {busy === 'restore' ? 'Restoring…' : 'Restore'}
+                  </button>
+                )
               ) : (
                 <button
                   type="button"

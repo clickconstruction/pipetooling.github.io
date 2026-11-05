@@ -29,6 +29,9 @@ export type PersonKeyPersonRow = {
   kind: string
   archived_at: string | null
   account_user_id: string | null
+  /** Bring back (v2.6523): the desk reads the current stint's pair; older readers leave them out. */
+  start_date?: string | null
+  end_date?: string | null
 }
 
 export type PersonGap =

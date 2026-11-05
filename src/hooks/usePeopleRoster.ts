@@ -275,7 +275,7 @@ export function usePeopleRoster(
     if (!authUserId) return
     const { data } = await supabase
       .from('people')
-      .select('id, master_user_id, kind, name, email, phone, notes, account_user_id, archived_at')
+      .select('id, master_user_id, kind, name, email, phone, notes, account_user_id, archived_at, end_date')
       .not('archived_at', 'is', null)
       .order('archived_at', { ascending: false })
     const list = (data ?? []) as Array<Person & { archived_at: string }>

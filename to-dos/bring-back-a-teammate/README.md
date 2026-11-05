@@ -2,7 +2,7 @@
 name: "Bring back a teammate who left: one press for the login and the roster row, a new stint, the stale rows"
 number: 256
 group: ready
-status: PR 1, the kernel, v2.6480 · PR 2, the stints and `restore_roadmap`, v2.6481 · every call answered 2026-11-03 (tenure from the day back, roadmap 90 days, wage required, training mode off, the Away note behind a sealed login)
+status: PR 1, the kernel, v2.6480 · PR 2, the stints and `restore_roadmap`, v2.6481 · PR 3, the Bring back window, v2.6523 · the walk of 2026-11-04 on the card with seven follow-ons · every call answered 2026-11-03 (tenure from the day back, roadmap 90 days, wage required, training mode off, the Away note behind a sealed login)
 summary: >
   A tech finished their last day on 2026-11-03 and plans to come back in three years. End employment
   closes them out well, but the way back is a dev's undo, not a return. Restore brings back the login
@@ -14,7 +14,7 @@ summary: >
   and the rows three years made stale (sign-in, wage, leader, licenses, paperwork). Hire finds the
   archived match and offers it. While they are away, an Away note the office writes person by person
   (a note, a countdown to the day back, how far they are from the shop) is the one screen they find.
-next: PR 3, the Bring back window on the desk and on Users → Archived (after the `chore(types)` PR that brings `employment_stints` into `database.ts`). For the Away note, the seal (PR 7) ships and its probe passes before PR 8 lets any archived account sign in.
+next: PR 4, Hire stops on an archived match; PR 5, the tenure readers and the stints on the desk. For the Away note, the seal (PR 7) ships and its probe passes before PR 8 lets any archived account sign in.
 size: L as a train of nine (S · M · M · S · S, then the Away note S · L · M · S)
 blocker: None.
 opinion: build draft 1 as drawn after the second pass, and the Away note behind a sealed login (call 5): the seal first, proven by its probe, then the note. Keep the account; never re-hire a returner as a new person, since the hours log, the logbook, the HR file and every job's history hang off the old account.
@@ -169,7 +169,7 @@ equal columns in the A and B comparison, and the same words from *Email me my no
 |---|---|---|
 | 1 | Kernel `src/lib/people/bringBack.ts` + tests: away words, the returner checklist rows and which can be left open, the HR line, the roadmap box default, the Hire match (name or email among archived) | S |
 | 2 | **Shipped v2.6481.** Migration: `employment_stints` + backfill from `people` + RLS as `people`, the three fence calls; the trigger `people_stints_follow_dates` closes and opens stints for every path that writes the dates, End employment among them. `restore-user` takes `restore_roadmap` (edge deployed) | M |
-| 3 | The Bring back window on the desk and on Users → Archived; restores both halves; the returner rows; the stints on Pay & schedule; guides `archive-user-accounts` and `open-a-persons-desk`; release note | M |
+| 3 | **Shipped v2.6523.** The Bring back window on the desk and on Users → Archived; restores both halves; the returner rows (the Leader row became the Team row: the app records no leader); End employment archives a no-login account too (the walk's follow-on 1); guides `bring-back-a-teammate`, `archive-user-accounts`, `open-a-persons-desk`. The stints on Pay & schedule moved to PR 5 | M |
 | 4 | Hire stops on an archived match and opens Bring back | S |
 | 5 | Tenure readers: the HR tab, the Employment tab and `list_team_member_start_dates` count from the current stint's start (call 1); the desk lists the earlier stints | S |
 | 6 | Kernel `src/lib/people/awayNote.ts` + tests: the countdown parts and bar, the day-of words, the miles and drive words from two points, the sign-in's resting words | S |
@@ -194,3 +194,99 @@ the screen reads *Today's the day*, and the office's Needs you item appears if i
 ## Found in review, 2026-11-04 (for PR 3's author)
 
 The trigger `people_stints_follow_dates` (`20261103203000_employment_stints.sql` ~62-64, 85-99) takes a return only when `NEW.end_date IS NULL`; two paths lose the earlier stint: a past stint recorded in one save with both dates (the Employment tab changing (2024-03-04 → 2026-11-03) to (2027-01-05 → 2027-06-30) overwrites the first stint), and both dates blanked (the early `RETURN NEW`) then a start set later (the closed stint is rewritten). Treat `OLD.end_date IS NOT NULL AND NEW.start_date IS DISTINCT FROM OLD.start_date AND NEW.start_date >= OLD.end_date` as a return whatever `NEW.end_date` is, and close the open stint when both dates are blanked; the bed covers neither case yet. Bring back must clear the end and set the start in ONE `UPDATE people`, or the old stint reopens and then moves. The salary clamp reads the current pair, so a returner's first-stint week regenerated after the return clamps to zero pay until PR 5 reads the stints.
+
+## The walk of 2026-11-04
+
+Grace's ask, dictated: *"take a look at how we would have someone leave, and we have the expectation that she's going to
+come back in three years. Make sure we have the right features and the right workflow to make this easy for a user to
+follow and do."* Walked on the dev server as the dev with a roster person **ZZ Test Returner** (a Helper, made with no
+login, since a session cannot delete a login it makes; where the login changes what the screen says, it is said below).
+Every row was deleted after.
+
+### Step by step, what the screen said
+
+1. **People → Users → + Hire.** Name *ZZ Test Returner*, Kind *Helper*, *Send the invite* unticked, Starts *2024-03-04*,
+   Pay *$24/h*. The form ran two steps: *1. Person · ZZ Test Returner as Helper, starting 2024-03-04 — on the roster with
+   no login; a login can be attached later* and *2. Pay · $24.00/h*, then *ZZ Test Returner is on the roster* with
+   **Open their desk**. The desk's Pay & schedule read *Employment · Mar 4, 2024 → present*.
+2. **People → Paperwork → Licenses → ZZ Test Returner → + Add license.** *Journeyman Plumber #ZZ000*, expiry 2027-06-30.
+   Saved; the desk's Field section listed it as *exp Jun 30, 2027*.
+3. **Roadmap → Plan → a task in Needs a person → ＋ Assign someone.** The picker's *On this roadmap* and *Everyone* list
+   login accounts only (`fetchActiveUsers` with `withLogin`, punch list #260), so a worker with no login cannot take a
+   roadmap task. Skipped on this walk; the park-on-archive and give-back-on-restore are proven by PR 2's bed.
+4. **People → Pay → Hours → the clock strip's + Add session.** ZZ Test Returner, Tue 11/3, 8:00 AM to 4:00 PM. Saved:
+   the desk read *1 session waiting · 8h*.
+5. **The desk → ⋯ → End employment….** *2 open · 0 done*. The rows: *On the clock · Not clocked in*; *Pending sessions ·
+   1 session · 8h not yet in payroll* with **Open approvals**; *Final pay report · No pay report yet — one covers through
+   2026-11-04* with **Generate report** and **Leave open…**; *Salary · Hourly*; *Vehicle · None held*; *Housing · None*.
+   The footer: *End date*, *Archive after (account + roster row)* ticked, *Note to HR file* ticked.
+6. **Open approvals.** The typed session read *typed by Robert · You typed these — waiting on a second person*, with
+   **Reject** and **Edit** only. The office person who types the last day's hours cannot approve them, and End employment
+   will not finish while a session waits, so the last day takes two office people. Rejected for the walk.
+7. **Leave open…** on the final pay report with a reason; end date 2026-11-03; **End employment**. The confirm read
+   *End ZZ Test Returner's employment on Nov 3, 2026? Then the roster row is archived.* The account was not named: the
+   modal archives the account only when the row carries an email, so a person with no login keeps an active account.
+   Toast: *ZZ Test Returner's employment ended Nov 3, 2026*.
+8. **The desk after.** The header read *Helper · archived* with an *Archived* chip; *Employment · Mar 4, 2024 → Nov 3,
+   2026 · Ended*; *HR file · 1 entry*; the license still listed; and the Status row still *Active* with **Archive…**,
+   the account half untouched (with a login and an email it is archived and the sign-in banned, and the row reads
+   *Archived* with **Restore**). Nothing on the desk says she plans to be back, or when.
+9. **People → Users.** The person still sat in the Helper group as active (the account half) **and** under
+   *Archived (29) → Roster rows* with **Restore**. Archived has two lists, *Logins* (restore-user) and *Roster rows*
+   (`people.archived_at = null`), each with its own Restore.
+10. **Restore on the roster row.** No confirm, no toast; the row left the list; the desk read *Helper* with no chip and
+    *Employment · Mar 4, 2024 → Nov 3, 2026 · Ended*. Nothing asked for the day back, the wage, the leader or the
+    license; the end date stayed, so the person looks active and ended at once. With a login, *Logins → Restore* brings
+    back the login alone and the roster row stays archived: two presses on two lists, and the dates stay wrong on both.
+11. **+ Hire with the same name.** The form took *ZZ Test Returner*; the name check runs on the Hire press against
+    active rows only (`findNameCollision`, `.is('archived_at', null)`), so once both halves are archived a second person
+    is made, and the pay row, keyed by name, lands on the old one. On this walk the account half was still active, so
+    Hire would have refused with *An account with this exact name already exists*.
+
+### A three-year leave and return, step by step: what is there, what is missing
+
+| Step | Today | #256's list |
+|---|---|---|
+| The last day: close the clock, approve the hours, the final report, the truck, housing, the account and the roster row | End employment does it in one window | — (shipped) |
+| The last day: a worker with no login | The account stays active and in every list | **Missing** → follow-on 1, folded into PR 3 |
+| The last day: when she plans to be back | Nowhere to write it | **Missing** → follow-on 2 |
+| While away: her login | Banned; the sign-in page says the account is banned | PR 7 + PR 8, the Away note |
+| While away: her licenses' expiry | The Licenses tab's expired strip and the dispatch notice count her lapsed license for three years | **Missing** → follow-on 3 |
+| While away: her open jobs and crew spot | Pickers skip an archived account; her team rows and job memberships stay as they are | **Missing** → follow-on 4 |
+| While away: her open roadmap tasks | Parked on archive, in Needs a person | — (shipped) |
+| The day back: one press | Two Restores on two lists, the end date left set, no questions | PR 3 |
+| The day back: the first stint's dates | One pair, written over on edit | PR 2 (shipped) + PR 3 + PR 5 |
+| The day back: wage, leader, licenses, paperwork, truck, housing | Nothing asks | PR 3 |
+| The day back: old roadmap tasks | Come back by themselves, however old | PR 2 (shipped) + PR 3 |
+| The day back: someone presses + Hire instead | A second account | PR 4 |
+| Tenure | Reads the one pair | PR 5 |
+| Her first sign-in back | Training mode as it was; push off until she turns it on; nothing says welcome back | call 4 in PR 3; follow-on 5 |
+| The office on the day back, told | The owner remembers | PR 9 (the Needs-you item) |
+
+The PR list covers the return itself. What it misses is the three years in between and the no-login shape, numbered
+below so the owner has one list.
+
+### Follow-ons found on the walk
+
+1. **End employment archives the account of a person with no login.** The modal archives the account only when the row
+   carries an email, so a #260 worker who leaves stays active in every list. Recommendation: archive by the row's id,
+   email or not, as the desk's Archive… press does since v2.6519. **Folded into PR 3**, since Bring back restores both
+   halves and the end must close both.
+2. **A "plans to be back" date on the last day.** End employment takes an optional *Expects to be back* date, kept on
+   the closed stint (`employment_stints.expected_back_on`), read on the archived desk (*Left Nov 3, 2026 · plans to be
+   back Nov 2029*), by the Away note's countdown as its default (PR 8) and by the Needs-you item (PR 9). Recommendation:
+   add the column to PR 8's migration and the row to PR 8's End employment change, one PR.
+3. **License expiry notices for someone away.** `person_licenses` is name-keyed and knows nothing of the archive, so the
+   expired strip lists her for three years and the dispatch notice fires on the day. Recommendation: the strip folds
+   archived people under *away* and the notice skips them; Bring back's Licenses row already reads red on the day back.
+   Size S, after PR 3.
+4. **Open jobs and the crew spot.** `jobs_ledger_team_members` and `people_team_members` rows stay as they are, so a
+   job's team still lists her and the Hours tab's team keeps her name until someone edits it (the teams view already
+   hides archived members). Recommendation: End employment lists the jobs she is on with *Take off jobs*, the roadmap's
+   precedent, and Bring back's Leader row offers the old team back. Size S, after PR 3.
+5. **Her first sign-in back.** Nothing greets a returner. Recommendation: one dashboard line for her first week back,
+   *Welcome back · your wage and leader were set on Nov 5*, read from the open stint. Size S, optional.
+6. **The last day's typed hours need a second person.** By design (an approval the guard holds). Recommendation: keep
+   the rule; the leaving guide says to have the leader approve the last day before End employment is pressed.
+7. **Roadmap tasks for a worker with no login.** The picker lists logins only, so a #260 worker never holds one.
+   Out of #256's scope; noted for #260's owner.

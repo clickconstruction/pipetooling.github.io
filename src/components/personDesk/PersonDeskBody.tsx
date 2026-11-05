@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PersonDeskPushSection } from './sections/PersonDeskPushSection'
 import { deskSectionDomId } from '../../lib/people/personDeskSections'
 import { supabase } from '../../lib/supabase'
@@ -6,7 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
 import { usePersonDesk } from '../../hooks/usePersonDesk'
 import type { PersonDeskOpenArgs } from '../../contexts/PersonDeskContext'
-import type { PersonDeskViewer } from '../../lib/people/personDeskGates'
+import { canArchiveAccount, type PersonDeskViewer } from '../../lib/people/personDeskGates'
 import { PersonDeskHeader } from './PersonDeskHeader'
 import { PersonDeskAccessSection } from './sections/PersonDeskAccessSection'
 import { PersonDeskHoursSection } from './sections/PersonDeskHoursSection'
@@ -19,6 +19,7 @@ import { PersonDeskPaperworkSection } from './sections/PersonDeskPaperworkSectio
 import { PersonDeskRecordsSection } from './sections/PersonDeskRecordsSection'
 import { PersonDeskScheduleSection } from './sections/PersonDeskScheduleSection'
 import { PersonDeskLifecycleModal } from './PersonDeskLifecycleModal'
+import { PersonDeskBringBackModal } from './PersonDeskBringBackModal'
 
 /**
  * The Person Desk body (PR 3): header + the section registry + the lifecycle
@@ -43,7 +44,7 @@ export function PersonDeskBody({
   const access = usePeopleAccess(authUser?.id)
   const { key, user, person, loading, error } = usePersonDesk(payload, changeKey)
   const [serviceTypeNames, setServiceTypeNames] = useState<Map<string, string>>(() => new Map())
-  const [flow, setFlow] = useState<'start' | 'end' | null>(null)
+  const [flow, setFlow] = useState<'start' | 'end' | 'bring_back' | null>(null)
 
   const viewer: PersonDeskViewer = useMemo(
     () => ({
@@ -72,6 +73,18 @@ export function PersonDeskBody({
 
   const displayName = key?.displayName ?? payload.displayName ?? 'Loading…'
   const viewerUserId = authUser?.id ?? null
+
+  // Bring back (v2.6523, punch list #256): offered on an archived desk whose employment ended, to the people who
+  // may archive. Users → Archived opens the desk with the window already up (`payload.flow`), once per open.
+  const bringBackOffered = canArchiveAccount(viewer) && Boolean(person?.end_date) && (Boolean(user?.archived_at) || Boolean(person?.archived_at))
+  const openedFlowFor = useRef<string | null>(null)
+  useEffect(() => {
+    if (payload.flow !== 'bring_back' || !bringBackOffered || !key) return
+    const token = `${key.userId ?? ''}:${key.personId ?? ''}`
+    if (openedFlowFor.current === token) return
+    openedFlowFor.current = token
+    setFlow('bring_back')
+  }, [payload.flow, bringBackOffered, key])
 
   // v2.2810: a door that named a section scrolls the Desk there once the sections exist,
   // with a short ring so the eye lands on it.
@@ -110,6 +123,7 @@ export function PersonDeskBody({
         onClose={onClose}
         placeholderName={payload.displayName ?? null}
         onOpenFlow={(m) => setFlow(m)}
+        onBringBack={bringBackOffered ? () => setFlow('bring_back') : undefined}
         hideClose={variant === 'page'}
       />
       <div
@@ -141,11 +155,12 @@ export function PersonDeskBody({
             <PersonDeskPaperworkSection payName={key.payName} personId={key.personId} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskRecordsSection userId={key.userId} personId={key.personId} viewer={viewer} changeKey={changeKey} />
             <PersonDeskScheduleSection userId={key.userId} displayName={displayName} />
-            <PersonDeskAccessSection user={user} viewer={viewer} viewerUserId={viewerUserId} serviceTypeNames={serviceTypeNames} onChanged={onChanged} onOpenFlow={viewer.canAccessPay ? (m) => setFlow(m) : undefined} />
+            <PersonDeskAccessSection user={user} viewer={viewer} viewerUserId={viewerUserId} serviceTypeNames={serviceTypeNames} onChanged={onChanged} onOpenFlow={viewer.canAccessPay ? (m) => setFlow(m) : undefined} onBringBack={bringBackOffered ? () => setFlow('bring_back') : undefined} />
           </>
         ) : null}
       </div>
-      {flow && key ? <PersonDeskLifecycleModal mode={flow} personKey={key} viewer={viewer} viewerUserId={viewerUserId} userEmail={user?.email ?? null} onClose={() => setFlow(null)} onChanged={onChanged} /> : null}
+      {flow && flow !== 'bring_back' && key ? <PersonDeskLifecycleModal mode={flow} personKey={key} viewer={viewer} viewerUserId={viewerUserId} userEmail={user?.email ?? null} onClose={() => setFlow(null)} onChanged={onChanged} /> : null}
+      {flow === 'bring_back' && key ? <PersonDeskBringBackModal personKey={key} viewer={viewer} viewerUserId={viewerUserId} onClose={() => setFlow(null)} onChanged={onChanged} /> : null}
     </>
   )
 }

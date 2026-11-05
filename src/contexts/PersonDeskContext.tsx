@@ -17,6 +17,8 @@ export type PersonDeskOpenArgs = {
   displayName?: string | null
   /** v2.2810: scroll the Desk to this section once it renders. */
   section?: PersonDeskSectionId | null
+  /** Bring back (v2.6523): Users → Archived opens the desk with the Bring back window already up. */
+  flow?: 'bring_back' | null
 }
 
 type PersonDeskContextValue = {
@@ -43,7 +45,7 @@ export function PersonDeskProvider({ children }: { children: ReactNode }) {
     const personId = args.personId?.trim() || null
     const payName = args.payName?.trim() || null
     if (!userId && !personId && !payName) return
-    setPayload({ userId, personId, payName, displayName: args.displayName?.trim() || payName, section: args.section ?? null })
+    setPayload({ userId, personId, payName, displayName: args.displayName?.trim() || payName, section: args.section ?? null, flow: args.flow ?? null })
   }, [])
 
   const close = useCallback(() => setPayload(null), [])

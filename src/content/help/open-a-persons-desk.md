@@ -53,6 +53,10 @@ The header's **⋯** menu opens **End employment…** for pay roles. It is a che
 "Employment ended 2026-09-05 for Isiah. Closed out: pending sessions. Left open on purpose: final pay report (runs Friday)."
 :::
 
+## Bring back
+
+An archived person whose employment ended gets {{button:blue|Bring back…}} on the Status row and in the **⋯** menu. One window takes the day back and the rows time away made stale. It restores the login and the roster row together. The guide *bring back a teammate who left* walks it through.
+
 ## Start employment
 
 The mirror is **Start employment…**. It lists the start date, wage, packet, truck and housing. You type the date or the wage right on the row and tap {{button:blue|Save}}. The packet and the optional truck and housing link to their tabs. Rows a dev must do stay on the Access section with their {{chip:gray|dev only}} tag. Those are the role and the sign-in. So a controller finishes everything else and sends the dev one message.
