@@ -296,3 +296,45 @@ export function themeListText(theme: Pick<LegalTheme, 'name' | 'what_counts' | '
   })
   return [...head, '', ...rows].join('\n')
 }
+
+// ─── the firm's read (v2.6549, T4) ─────────────────────────────────────────
+
+/** A theme as the firm's portal carries it: the words, the kept marks' proof counts, and which of the matter's travelling documents and entries carry it. Never a why, a who or a proposal. */
+export type PortalTheme = {
+  id: string
+  name: string
+  whatCounts: string
+  counselWords: string
+  documentIds: string[]
+  entryIds: string[]
+  proof: Record<ProvesBy, number>
+}
+
+/**
+ * The themes on a matter as counsel reads them: kept marks only (never a proposal, never a removed one), on the
+ * documents and entries that travel (a held one stays home with its marks), the themes with something on them,
+ * most marked first then by name. The firm reads the words and the counts; it does not mark.
+ */
+export function portalThemesForMatter(themes: ReadonlyArray<LegalTheme>, marks: ReadonlyArray<LegalThemeMark>, matterId: string, travels: { documentIds: ReadonlySet<string>; entryIds: ReadonlySet<string> }): PortalTheme[] {
+  const out = new Map<string, PortalTheme>()
+  for (const m of marks) {
+    if (m.matter_id !== matterId || m.removed_at || !m.kept_at) continue
+    const isDoc = m.target_kind === 'matter_document'
+    const isEntry = m.target_kind === 'matter_entry'
+    if (!(isDoc && travels.documentIds.has(m.target_id)) && !(isEntry && travels.entryIds.has(m.target_id))) continue
+    const t = themes.find((x) => x.id === m.theme_id)
+    if (!t) continue
+    const row = out.get(t.id) ?? { id: t.id, name: t.name, whatCounts: t.what_counts, counselWords: t.counsel_words, documentIds: [], entryIds: [], proof: { document: 0, own_words: 0, firsthand: 0, relayed: 0 } }
+    if (isDoc && !row.documentIds.includes(m.target_id)) row.documentIds.push(m.target_id)
+    if (isEntry && !row.entryIds.includes(m.target_id)) row.entryIds.push(m.target_id)
+    if (m.proves_by) row.proof[m.proves_by] += 1
+    out.set(t.id, row)
+  }
+  return [...out.values()].sort((a, b) => b.documentIds.length + b.entryIds.length - (a.documentIds.length + a.entryIds.length) || a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }))
+}
+
+/** `6 items · 4 by a document · 1 by their own words · 1 firsthand · 0 relayed`, the firm's line under a theme. */
+export function portalThemeCountWords(t: Pick<PortalTheme, 'documentIds' | 'entryIds' | 'proof'>): string {
+  const n = t.documentIds.length + t.entryIds.length
+  return `${n === 1 ? '1 item' : `${n} items`} · ${PROVES_BY.map((p) => `${t.proof[p.key]} ${p.short}`).join(' · ')}`
+}

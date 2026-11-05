@@ -9,6 +9,7 @@
  * page still on the old default rule shows them too.
  */
 import { shapeLegalFirmIntake, type LegalFirmIntake } from './legalFirmIntake'
+import type { PortalTheme } from './legalThemes'
 import { parseLegalPortalDocuments, type LegalPortalDocument } from './legalMatterDocuments'
 import { parseLegalNarrative, type LegalNarrative } from './legalNarrative'
 import { emptyOfficeContacts, type LegalOfficeContacts } from './legalOfficeContacts'
@@ -50,6 +51,8 @@ export type LegalPortalMatter = {
   narrative: LegalNarrative | null
   /** Gap answers (v2.5923): what the office knows, by gap key; [] from an older function. */
   gapAnswers: Array<{ gapKey: string; label: string; answer: string; documentId: string | null; answeredOn: string; answeredByName: string }>
+  /** Themes on the record (v2.6549): the words, the proof counts and which documents and entries carry each; [] from an older function. */
+  themes: LegalPortalTheme[]
   jobs: Array<JobWithDetails & { collections_by_name?: string | null }>
   customer: LegalCustomerLike
   contacts: LegalContactLike[]
@@ -108,6 +111,22 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return v != null && typeof v === 'object' && !Array.isArray(v)
 }
 
+export type LegalPortalTheme = PortalTheme
+
+/** The themes as the function sends them (v2.6549); a row without an id and a name is dropped, a count that is not a number reads 0. */
+export function parseLegalPortalThemes(raw: unknown): LegalPortalTheme[] {
+  if (!Array.isArray(raw)) return []
+  const out: LegalPortalTheme[] = []
+  for (const t of raw) {
+    if (!isRecord(t) || typeof t.id !== 'string' || typeof t.name !== 'string') continue
+    const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+    const proof = isRecord(t.proof) ? t.proof : {}
+    const n = (k: string) => (typeof proof[k] === 'number' && Number.isFinite(proof[k]) ? Math.max(0, Math.floor(proof[k] as number)) : 0)
+    out.push({ id: t.id, name: t.name, whatCounts: typeof t.whatCounts === 'string' ? t.whatCounts : '', counselWords: typeof t.counselWords === 'string' ? t.counselWords : '', documentIds: ids(t.documentIds), entryIds: ids(t.entryIds), proof: { document: n('document'), own_words: n('own_words'), firsthand: n('firsthand'), relayed: n('relayed') } })
+  }
+  return out
+}
+
 /** Defensive parse — null when the shape is not the function's. */
 export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null {
   if (!isRecord(raw) || !isRecord(raw.firm) || !Array.isArray(raw.matters)) return null
@@ -127,6 +146,7 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       sharedOverrides: isRecord(m.sharedOverrides) ? Object.fromEntries(Object.entries(m.sharedOverrides).filter(([, v]) => typeof v === 'boolean') as Array<[string, boolean]>) : {},
       heldCount: typeof m.heldCount === 'number' && Number.isFinite(m.heldCount) && m.heldCount > 0 ? Math.floor(m.heldCount) : 0,
       documents: parseLegalPortalDocuments(m.documents),
+      themes: parseLegalPortalThemes(m.themes),
       heldDocumentCount: typeof m.heldDocumentCount === 'number' && Number.isFinite(m.heldDocumentCount) && m.heldDocumentCount > 0 ? Math.floor(m.heldDocumentCount) : 0,
       narrative: parseLegalNarrative(m.narrative),
       gapAnswers: Array.isArray(m.gapAnswers)

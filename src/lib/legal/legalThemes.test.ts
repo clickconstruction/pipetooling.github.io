@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_MARK_DRAFT, itemKickerWords, linesWithTheme, markCountWords, markDraftProblem, markIsProposed, markTargetOfLine, markedWords, marksByTheme, marksOnTarget, proofCountsWords, proposedCountWords, provesByWords, sortThemes, nearbyLines, themeCountsOnLines, themeDraftProblem, themeItems, themeItemsHeadWords, themeListText, tickedWords, toggleThemeId, type LegalThemeMark } from './legalThemes'
+import { EMPTY_MARK_DRAFT, itemKickerWords, linesWithTheme, markCountWords, markDraftProblem, markIsProposed, markTargetOfLine, markedWords, marksByTheme, marksOnTarget, proofCountsWords, proposedCountWords, provesByWords, sortThemes, nearbyLines, portalThemeCountWords, portalThemesForMatter, themeCountsOnLines, themeDraftProblem, themeItems, themeItemsHeadWords, themeListText, tickedWords, toggleThemeId, type LegalThemeMark } from './legalThemes'
 
 const theme = (id: string, name: string, retired_at: string | null = null) => ({ id, name, retired_at })
 const mark = (over: Partial<LegalThemeMark> = {}): LegalThemeMark => ({
@@ -143,5 +143,28 @@ describe('By theme (v2.6547)', () => {
     expect(near.after.map((l) => l.key)).toEqual(['license:l1'])
     const text = themeListText({ name: 'Dishonesty', what_counts: 'A false statement.', counsel_words: 'fraud' }, 'Jordan Vale', items.slice(0, 2), day, (id) => (id === 'u1' ? 'Dana O.' : 'the agent'))
     expect(text).toBe(['Dishonesty — Jordan Vale', 'What counts: A false statement.', 'Counsel’s words: fraud', '2 items · first 2026-05-30 · last 2026-06-26 · 1 with a file · 1 by a document · 0 by their own words · 1 firsthand · 0 relayed', '', '1. 2026-05-30 · conversation · First instruction to cancel, by phone.', '   proves it by a firsthand account · marked by Dana O.', '2. 2026-06-26 · conversation · Text: cancel the service, third time.', '   proves it by a document · marked by Dana O.', '   1 file'].join('\n'))
+  })
+})
+
+describe('the firm’s read (v2.6549)', () => {
+  it('carries kept marks on travelling documents and entries, grouped by theme with the proof counts, most marked first', () => {
+    const themes = [theme('t1', 'Dishonesty'), theme('t2', 'Interference with the business')].map((t) => ({ ...t, what_counts: 'w', counsel_words: 'c', created_by: null, created_at: '', updated_at: '', retired_by: null, proposed_by_agent: false, kept_at: null }))
+    const kept = { kept_at: '2026-11-05T00:00:00Z', matter_id: 'm1', person_id: null }
+    const marks = [
+      mark({ id: 'a', ...kept, target_kind: 'matter_document', target_id: 'd1', proves_by: 'document' }),
+      mark({ id: 'b', ...kept, target_kind: 'matter_entry', target_id: 'e1', proves_by: 'firsthand' }),
+      mark({ id: 'c', ...kept, target_kind: 'matter_document', target_id: 'd-held', proves_by: 'document' }),
+      mark({ id: 'd', ...kept, target_kind: 'matter_entry', target_id: 'e1', theme_id: 't2', proves_by: null }),
+      mark({ id: 'e', ...kept, target_kind: 'matter_entry', target_id: 'e2', proposed: true, kept_at: null }),
+      mark({ id: 'f', ...kept, target_kind: 'matter_entry', target_id: 'e2', removed_at: '2026-11-05T01:00:00Z' }),
+      mark({ id: 'g', kept_at: '2026-11-05T00:00:00Z', matter_id: 'm-other', person_id: null, target_kind: 'matter_entry', target_id: 'e1' }),
+    ]
+    const out = portalThemesForMatter(themes, marks, 'm1', { documentIds: new Set(['d1']), entryIds: new Set(['e1', 'e2']) })
+    expect(out.map((t) => [t.name, t.documentIds, t.entryIds, t.proof])).toEqual([
+      ['Dishonesty', ['d1'], ['e1'], { document: 1, own_words: 0, firsthand: 1, relayed: 0 }],
+      ['Interference with the business', [], ['e1'], { document: 0, own_words: 0, firsthand: 0, relayed: 0 }],
+    ])
+    expect(portalThemeCountWords(out[0]!)).toBe('2 items · 1 by a document · 0 by their own words · 1 firsthand · 0 relayed')
+    expect(portalThemeCountWords(out[1]!)).toBe('1 item · 0 by a document · 0 by their own words · 0 firsthand · 0 relayed')
   })
 })

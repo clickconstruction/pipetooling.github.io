@@ -13,6 +13,7 @@ import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
 // Item 24 (#85): the payer's contact log reaches the firm only about the matter's jobs or the account.
 import { contactGoesWithShare, contactScopeNumbers } from '../_shared/legalContactScope.ts'
 import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'
+import { portalThemesForMatter, type LegalTheme, type LegalThemeMark } from '../_shared/legalThemes.ts'
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 // Item 23 (#85): the matter's rows name their columns and are cut to them once more before they leave.
 import { MATTER_COUNSEL_SELECT, MATTER_ENTRY_PENDING_COLUMNS, shapeMatterForCounsel } from '../_shared/legalMatterShape.ts'
@@ -438,6 +439,12 @@ serve(async (req) => {
     const { data: docRows, error: docErr } = docRead
     const documentRows = docErr ? [] : ((docRows ?? []) as Row[])
     const documentHeld = (d: Row) => String(d.held_reason ?? '').trim().length > 0
+    // Themes on the record (v2.6549): the catalog and the matters' kept marks, read fail-soft — before migration
+    // 20261106000000 is pushed the tables are missing and every matter carries no themes.
+    const themeRead = await admin.from('legal_themes').select('id, name, what_counts, counsel_words, retired_at')
+    const themeRows = (themeRead.error ? [] : ((themeRead.data ?? []) as Row[])) as unknown as LegalTheme[]
+    const markRead = themeRead.error ? null : await admin.from('legal_theme_marks').select('id, theme_id, target_kind, target_id, matter_id, proves_by, kept_at, removed_at, proposed').in('matter_id', matterIds)
+    const markRows = (!markRead || markRead.error ? [] : ((markRead.data ?? []) as Row[])) as unknown as LegalThemeMark[]
     const documentUrls = new Map<string, string>()
     await Promise.all(documentRows.filter((d) => !documentHeld(d)).map(async (d) => {
       const { data: signed } = await admin.storage.from(LEGAL_MATTER_DOCUMENTS_BUCKET).createSignedUrl(d.storage_path as string, SIGNED_PDF_SECONDS)
@@ -494,6 +501,8 @@ serve(async (req) => {
         }
         return true
       }
+      // v2.6549: the entries that travel, named once for the entries list and the themes' read; a held one stays home with its marks.
+      const travellingEntries = entries.filter((e) => e.matter_id === m.id).filter((e) => (e.kind !== 'plan' && e.kind !== 'event' && e.kind !== 'offer' && e.kind !== 'statement') || goes(`${e.kind as string}:${e.id as string}`))
       // Every entry that arrives is marked shared, so a page still on the old pre-bill rule shows it too.
       const sharedOverrides: Record<string, boolean> = {}
       const share = (key: string): boolean => {
@@ -582,7 +591,9 @@ serve(async (req) => {
         // v2.5800: a planned step (kind plan) the office held back under held_overrides key plan:<id> stays home and counts;
         // v2.5836: so does an event (kind event) held under event:<id>; v2.5847: an offer (kind offer) under offer:<id>;
         // v2.6209 (punch list #220): a statement (kind statement) under statement:<id>.
-        entries: entries.filter((e) => e.matter_id === m.id).filter((e) => (e.kind !== 'plan' && e.kind !== 'event' && e.kind !== 'offer' && e.kind !== 'statement') || goes(`${e.kind as string}:${e.id as string}`)),
+        entries: travellingEntries,
+        // v2.6549: the themes as counsel reads them — kept marks on the travelling documents and entries, the words and the proof counts, never a why or a who.
+        themes: portalThemesForMatter(themeRows, markRows, m.id as string, { documentIds: new Set(documentRows.filter((d) => d.matter_id === m.id && !documentHeld(d)).map((d) => d.id as string)), entryIds: new Set(travellingEntries.map((e) => e.id as string)) }),
       })
     })
 
