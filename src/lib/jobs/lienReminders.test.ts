@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CourtesyStatus } from './lienCourtesyNotice'
 import type { LetterTwoStatus } from './lienLetterTwo'
-import { buildLienReminders, lienReminderAt, lienReminderLadderItems, lienReminderRungWords, lienReminderStepWho } from './lienReminders'
+import { buildLienReminders, lienReminderAt, lienReminderLadderItems, lienReminderRungRule, lienReminderRungRuleWords, lienReminderRungWords, lienReminderStepWho } from './lienReminders'
 
 const two = (over: Partial<LetterTwoStatus> = {}): LetterTwoStatus => ({ state: 'waiting', day: 4, clock: { kind: 'recorded', at: '2026-10-31T15:00:00Z', why: '' }, firstItemId: 'i1', firstSentAt: '2026-10-31T15:00:00Z', letterTwo: null, gcAuthorized: null, ownerCalledAt: null, words: 'day 4', ...over })
 
@@ -107,5 +107,18 @@ describe('the rung’s words, whose press each rung is, and the card', () => {
     expect(closed[3]!.detail).toBe('Paid.')
     const waiting = lienReminderLadderItems({ step: 1, state: 'waiting', words: 'day 4 · courtesy from day 7', day: 4, counted: false })
     expect(waiting[0]!.detail).toBe('day 4 · courtesy from day 7. The desk offers the press from day 7 after the packet.')
+  })
+})
+
+describe('lienReminderRungRule — a rung’s rule in words (v2.6522)', () => {
+  it('names when a notice stands on each rung, the press, whose it is and what moves it on, with the clocks’ own days', () => {
+    expect(lienReminderRungRule(1)).toMatchObject({ who: 'office', movesOn: 'the courtesy goes' })
+    expect(lienReminderRungRule(1).when).toBe('the packet went, nothing came back, and it is day 7 or later')
+    expect(lienReminderRungRule(2).press).toBe('none for 7 days, then Send a courtesy notice again, with Send letter two leading from day 10')
+    expect(lienReminderRungRule(3)).toMatchObject({ who: 'leader' })
+    expect(lienReminderRungRule(3).when).toContain('due from day 10 and overdue from day 14 while the courtesy is held')
+    expect(lienReminderRungRule(4).press).toBe('none; the notice reads under Sent')
+    expect(lienReminderRungRuleWords(3)).toBe('Stands here when letter two is due from day 10 and overdue from day 14 while the courtesy is held, or a letter two is drafting, awaiting the leader, in the run or sent. The press: Send letter two, counsel’s certified second letter, drafted on the notice and approved and run like any notice. The leader presses it. Moves on when something closes it, or the affidavit is filed.')
+    expect(lienReminderRungRuleWords(1)).toContain('The office presses it.')
   })
 })
