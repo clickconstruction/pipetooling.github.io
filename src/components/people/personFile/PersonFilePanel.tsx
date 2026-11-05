@@ -34,6 +34,7 @@ import {
   evidenceSizeWords,
   evidenceTitleFromName,
   evidenceFileWhereWords,
+  evidenceHashWords,
   evidenceLinkProblem,
   type PersonEvidenceLink,
   sortEvidenceNewestFirst,
@@ -369,6 +370,10 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
 
   const openAttachment = useCallback(
     async (a: PersonFileAttachment) => {
+      if (!a.storage_path) {
+        showToast(`${a.filename} has no copy here to open.`, 'error')
+        return
+      }
       if (!(await openOrSaveFromStorage(HR_FILES_BUCKET, a.storage_path, a.filename, 600))) showToast(`Could not open ${a.filename}.`, 'error')
     },
     [showToast],
@@ -394,7 +399,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
       key={f.id}
       type="button"
       onClick={() => void openEvidenceFile(f)}
-      title={`${f.filename}${f.size_bytes !== null ? ` · ${evidenceSizeWords(f.size_bytes)}` : ''} · ${evidenceFileWhereWords(f)}`}
+      title={`${f.filename}${f.size_bytes !== null ? ` · ${evidenceSizeWords(f.size_bytes)}` : ''} · ${evidenceFileWhereWords(f)}${evidenceHashWords(f.sha256) ? ` · ${evidenceHashWords(f.sha256)}` : ''}`}
       style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.12rem 0.55rem', borderRadius: 999, fontSize: '0.74rem', border: '1px solid var(--border-strong)', background: 'var(--bg-page)', color: 'var(--text-link)', cursor: 'pointer', maxWidth: '32ch' }}
     >
       <span aria-hidden>📎</span>

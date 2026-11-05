@@ -9,6 +9,7 @@ import {
   evidenceDriveWords,
   evidenceFileIsLinked,
   evidenceFileWhereWords,
+  evidenceHashWords,
   evidenceFolderName,
   evidenceKindWords,
   evidenceMime,
@@ -76,6 +77,13 @@ describe('evidenceDraftProblem · every piece is required', () => {
     const mixed = { fail_why: null, filed_at: null, files: [linked, file({ drive_file_id: 'd1', drive_url: 'https://drive.google.com/file/d/d1/view' })] }
     expect(evidenceDriveWords(mixed)).toBe('In Drive')
     expect(evidenceDriveWords({ fail_why: null, filed_at: null, files: [linked, file()] })).toBe('1 of 2 files in Drive')
+  })
+
+  it('a custody hash reads on the chip as its first twelve characters, and nothing without one (v2.6544)', () => {
+    expect(evidenceHashWords('3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b')).toBe('sha256 3a7bd3e2360a…')
+    expect(evidenceHashWords('3A7BD3E2360A3D29EEA436FCFB7E44C735D117C42D1C1835420B6B9942DD4F1B')).toBe('sha256 3a7bd3e2360a…')
+    expect(evidenceHashWords(null)).toBe('')
+    expect(evidenceHashWords('not a hash')).toBe('')
   })
 
   it('holds an empty file and one over the cap, naming it', () => {
