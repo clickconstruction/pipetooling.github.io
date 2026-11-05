@@ -4,6 +4,7 @@
  */
 export {
   geocodePinHold,
+  isBlankSitus,
   parcelSitusHold,
   pinHoldWords,
   streetCore,

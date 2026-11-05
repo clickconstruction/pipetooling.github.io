@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { geocodePinHold, parcelSitusHold, pinHoldWords, streetCore, typedHouseNumber, type GeocodePrecision } from './parcelPinMatch'
+import { geocodePinHold, isBlankSitus, parcelSitusHold, pinHoldWords, streetCore, typedHouseNumber, type GeocodePrecision } from './parcelPinMatch'
 
 /** The address of 2026-11-04: a street Taylor does not have, which came back lien-ready with a downtown parcel. */
 const TAYLOR = '123 ZZ Test Ln, Taylor, TX 76574'
@@ -89,6 +89,22 @@ describe('parcelSitusHold', () => {
   it('compares the street alone when one side has no number', () => {
     expect(parcelSitusHold('Lot 5 FM 1234, Kyle, TX', { situsAddress: '100 FM 1234, KYLE, TX' })).toBeNull()
     expect(parcelSitusHold('Lot 5 FM 1234, Kyle, TX', { situsAddress: '100 MAIN ST, KYLE, TX' })?.kind).toBe('situs_mismatch')
+  })
+
+  it('reads the roll’s word Null as a blank situs (v2.6537, the audit of 2026-11-05)', () => {
+    expect(isBlankSitus('Null')).toBe(true)
+    expect(isBlankSitus('NULL')).toBe(true)
+    expect(isBlankSitus(' n/a ')).toBe(true)
+    expect(isBlankSitus('858 FM 1209')).toBe(false)
+    expect(parcelSitusHold('858 FM1209, Bastrop, TX 78602', { situsAddress: 'Null' })).toBeNull()
+    expect(parcelSitusHold('976 County Road 7718, Devine, TX 78016', { situsAddress: 'NULL' })).toBeNull()
+  })
+
+  it('accepts Bexar’s situs line that carries the city with no comma, and still holds another street (v2.6537)', () => {
+    expect(parcelSitusHold('150 E Sonterra Blvd 200B, San Antonio, TX 78258', { situsAddress: '150 E SONTERRA BLVD SAN ANTONIO, TX 78258' })).toBeNull()
+    expect(parcelSitusHold('628 Terrell Rd, San Antonio, TX 78209', { situsAddress: '628 TERRELL RD TERRELL HILLS, TX 78209' })).toBeNull()
+    expect(parcelSitusHold('123 Oak St, San Antonio, TX', { situsAddress: '123 MAIN ST SAN ANTONIO, TX 78209' })?.kind).toBe('situs_mismatch')
+    expect(parcelSitusHold(TAYLOR, { situsAddress: '123 MAIN ST TAYLOR, TX 76574' })?.kind).toBe('situs_mismatch')
   })
 })
 
