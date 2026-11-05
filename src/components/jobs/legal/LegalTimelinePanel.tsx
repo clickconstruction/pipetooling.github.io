@@ -1,4 +1,6 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { ThemeMarkPicker } from '../../legal/ThemeMarkPicker'
+import { EMPTY_MARK_DRAFT, markIsProposed, marksOnTarget, provesByWords, type LegalTheme, type LegalThemeMark, type MarkDraft } from '../../../lib/legal/legalThemes'
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
 import { timelineCountChips, timelineStrip } from '../../../lib/legal/timelineStrip'
 import LegalTimelineStrip from './LegalTimelineStrip'
@@ -50,6 +52,9 @@ export type TimelinePlanActs = {
   addEvent?: (draft: LegalEventDraft) => Promise<boolean>
   /** The matter's live Evidence documents, for an event to name. */
   documents?: ReadonlyArray<{ id: string; title: string }>
+  /** Themes on the record (v2.6548): the catalog, drawn as the picker on Record what happened, and the matter's marks for the rows' chips. Absent for a hand that cannot mark. */
+  themes?: ReadonlyArray<LegalTheme>
+  marks?: ReadonlyArray<LegalThemeMark>
   /** Change a live planned step. The office only. */
   update?: (entryId: string, draft: LegalPlanDraft) => Promise<boolean>
   /** Say a planned step happened, on a day not ahead of today. The office only. */
@@ -114,6 +119,29 @@ function foldDocumentBursts(items: ReadonlyArray<LegalTimelineItem>): Burst[] {
 
 function chip(text: string, look: TimelineLook, color?: string, title?: string): ReactNode {
   return <span title={title} style={{ fontSize: '0.68rem', fontWeight: 600, padding: '1px 7px', borderRadius: 999, background: look.band, color: color ?? look.muted, whiteSpace: 'nowrap' }}>{text}</span>
+}
+
+/** v2.6548: the themes marked on an event, a step or a document, read-only on the line; the why and the grade on the tip, a proposed mark dashed. */
+function themeChips(item: LegalTimelineItem, marks: ReadonlyArray<LegalThemeMark> | undefined, themes: ReadonlyArray<LegalTheme> | undefined, look: TimelineLook): ReactNode {
+  if (!marks || marks.length === 0) return null
+  const target = item.documentId ? { kind: 'matter_document' as const, id: item.documentId } : item.entryId ? { kind: 'matter_entry' as const, id: item.entryId } : null
+  if (!target) return null
+  const live = marksOnTarget(marks, target)
+  if (live.length === 0) return null
+  return (
+    <div data-legal-timeline-themes style={{ display: 'flex', gap: 4, flexWrap: 'wrap', margin: '4px 0 0' }}>
+      {live.map((m) => {
+        const proposed = markIsProposed(m)
+        const tip = [m.why ? `why: ${m.why}` : '', m.proves_by ? `proves it by ${provesByWords(m.proves_by)}` : '', proposed ? 'proposed by the agent, not yet kept' : ''].filter(Boolean).join(' · ')
+        return (
+          <span key={m.id} data-legal-timeline-theme={m.theme_id} title={tip || undefined} style={{ fontSize: '0.7rem', padding: '1px 7px', borderRadius: 999, border: `1px ${proposed ? 'dashed' : 'solid'} ${look.accent}`, color: look.accent, whiteSpace: 'nowrap' }}>
+            {themes?.find((t) => t.id === m.theme_id)?.name ?? 'a theme'}
+            {proposed ? ' · proposed' : ''}
+          </span>
+        )
+      })}
+    </div>
+  )
 }
 
 function stateColor(item: LegalTimelineItem, look: TimelineLook): string {
@@ -236,7 +264,7 @@ export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, 
  * deadline in one line instead of a standing select; Serves a deadline… still opens the full pick.
  */
 function ComposerForm({ look, todayYmd, acts, btn, deadlines, onClose }: { look: TimelineLook; todayYmd: string; acts: TimelinePlanActs; btn: CSSProperties; deadlines: ReadonlyArray<LegalTimelineDeadline>; onClose: () => void }) {
-  const [draft, setDraft] = useState<{ on: string; body: string; notes: string; deadlineKey: string | null; documentIds: string[] }>({ on: todayYmd, body: '', notes: '', deadlineKey: null, documentIds: [] })
+  const [draft, setDraft] = useState<{ on: string; body: string; notes: string; deadlineKey: string | null; documentIds: string[]; marks: MarkDraft }>({ on: todayYmd, body: '', notes: '', deadlineKey: null, documentIds: [], marks: EMPTY_MARK_DRAFT })
   const [override, setOverride] = useState<LegalComposerKind | null>(null)
   const [dismissed, setDismissed] = useState<string[]>([])
   const [pickOpen, setPickOpen] = useState(false)
@@ -258,9 +286,9 @@ function ComposerForm({ look, todayYmd, acts, btn, deadlines, onClose }: { look:
     if (problem) return
     const ok = kind === 'plan'
       ? await acts.add!({ on: draft.on, body: draft.body.trim(), notes: draft.notes.trim(), deadlineKey: draft.deadlineKey })
-      : await acts.addEvent!({ on: draft.on, body: draft.body.trim(), notes: draft.notes.trim(), documentIds: draft.documentIds })
+      : await acts.addEvent!({ on: draft.on, body: draft.body.trim(), notes: draft.notes.trim(), documentIds: draft.documentIds, ...(acts.themes ? { marks: draft.marks } : {}) })
     if (ok) {
-      setDraft({ on: todayYmd, body: '', notes: '', deadlineKey: null, documentIds: [] })
+      setDraft({ on: todayYmd, body: '', notes: '', deadlineKey: null, documentIds: [], marks: EMPTY_MARK_DRAFT })
       setOverride(null)
       setDismissed([])
       setTouched(false)
@@ -279,6 +307,11 @@ function ComposerForm({ look, todayYmd, acts, btn, deadlines, onClose }: { look:
       </div>
       {both ? <div style={{ fontSize: '0.72rem', color: look.faint, marginTop: -2 }}>{kind === 'plan' ? 'A day ahead of today makes this a planned step. Tap the tag to change it.' : 'Today or earlier records what happened. Tap the tag to change it.'}</div> : null}
       <textarea aria-label={kind === 'plan' ? 'Notes' : 'Event notes'} value={draft.notes} rows={draft.notes.length > 90 ? 3 : 1} placeholder={kind === 'plan' ? 'Who does it, what goes with it, what happens if they do not answer' : 'Who was there, what was said, what it changes'} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} style={{ ...input, resize: 'vertical' }} />
+      {kind === 'event' && acts.themes ? (
+        <div data-legal-composer-themes>
+          <ThemeMarkPicker themes={acts.themes} draft={draft.marks} onChange={(marks) => setDraft((d) => ({ ...d, marks }))} testId="event-theme-picker" />
+        </div>
+      ) : null}
       {served ? (
         <div data-legal-composer-serves style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem', color: look.muted }}>
           <span>Serves {served.what} · {timelineDayWords(served.ymd, todayYmd)}</span>
@@ -436,6 +469,7 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
               <span style={{ fontSize: '0.74rem', color: look.faint }}>{item.byName}</span>
             </div>
             {item.notes ? <div data-legal-timeline-notes style={{ fontSize: '0.8rem', color: look.muted, whiteSpace: 'pre-wrap', margin: '3px 0 0', overflowWrap: 'anywhere' }}>{item.notes}</div> : null}
+            {themeChips(item, acts?.marks, acts?.themes, look)}
             {item.documents.length ? (
               <div data-legal-timeline-documents style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0 0', alignItems: 'center' }}>
                 {item.documents.map((d) => <span key={d.id} data-legal-timeline-document={d.id} style={{ fontSize: '0.74rem', padding: '1px 7px', borderRadius: 4, border: `1px solid ${look.hair}`, color: d.held && reader === 'office' ? look.warn : look.muted }}>📄 {d.title}{d.held && reader === 'office' ? ' · held' : ''}</span>)}

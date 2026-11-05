@@ -117,3 +117,12 @@ export async function keepMark(id: string, authUserId: string | null): Promise<M
   const r = await db.from('legal_theme_marks').update({ kept_at: new Date().toISOString(), kept_by: authUserId }).eq('id', id)
   return r.error ? { ok: false, why: r.error.message } : { ok: true }
 }
+
+/** The signed-in user's id for a mark's `marked_by`, or null when the session cannot say. */
+export async function authUserIdNow(): Promise<string | null> {
+  try {
+    return (await supabase.auth.getUser()).data.user?.id ?? null
+  } catch {
+    return null
+  }
+}

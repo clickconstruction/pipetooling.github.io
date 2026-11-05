@@ -57,6 +57,8 @@ The Themes row above the line shows each theme with its count. Press a theme and
 
 The agent can propose a mark. A proposed mark is drawn dashed. Press Keep to make it yours.
 
+A matter carries the same strip. Record what happened and a paper waiting to be saved both show it. The marks read as chips on the matter's Timeline and Evidence.
+
 :::example A mark on an entry
 
 Entry: a trip taken after three refusals by phone that week. Theme: company money without say-so. Why it fits: refused three times, went anyway. Proves it by: a firsthand account.

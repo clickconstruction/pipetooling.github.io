@@ -20,6 +20,8 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateU
 import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
+import { addMarks, authUserIdNow, loadThemes } from '../../../lib/legal/legalThemesIo'
+import { markedWords, type LegalTheme, type LegalThemeMark } from '../../../lib/legal/legalThemes'
 import { supabase } from '../../../lib/supabase'
 import { addLegalMatterDocument, listLegalMatterDocuments, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
 import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
@@ -667,14 +669,39 @@ export default function LegalDesk(props: LegalDeskProps) {
     if (ok) showToast('Marked done — it stays on the line, on the day it was done.', 'success')
     return Boolean(ok)
   }
+  // Themes on the record (v2.6548, punch list #269 T2b): the catalog and this matter's marks, a dev's (the mark-ready hand);
+  // the office reads none, so its composers draw no picker and its rows no chips.
+  const [themeCatalog, setThemeCatalog] = useState<{ themes: LegalTheme[]; marks: LegalThemeMark[] }>({ themes: [], marks: [] })
+  const matterIdForThemes = canMarkReady ? (matter?.id ?? null) : null
+  const reloadThemes = useCallback(async () => {
+    if (!matterIdForThemes) {
+      setThemeCatalog({ themes: [], marks: [] })
+      return
+    }
+    const r = await loadThemes({ matterId: matterIdForThemes })
+    setThemeCatalog({ themes: r.themes, marks: r.marks })
+  }, [matterIdForThemes])
+  useEffect(() => {
+    void reloadThemes()
+  }, [reloadThemes])
   /** Punch list #167 (v2.5836): record what happened — an event on its day, with the documents that prove it. */
   const eventAdd = async (draft: LegalEventDraft): Promise<boolean> => {
+    let markWords = ''
     const ok = await run('Record what happened', async () => {
       const m = await ensureMatterId()
       if (m.error || !m.id) return m.error ?? 'The matter could not be made'
-      return legalRpc('legal_event_add', { p_matter_id: m.id, p_on: draft.on, p_body: draft.body, p_notes: draft.notes, p_document_ids: draft.documentIds })
+      const r = await legalRpcData('legal_event_add', { p_matter_id: m.id, p_on: draft.on, p_body: draft.body, p_notes: draft.notes, p_document_ids: draft.documentIds })
+      if (r.error) return r.error
+      // v2.6548: the themes picked on the composer, marked once the event stands.
+      const entryId = typeof r.data?.entry_id === 'string' ? r.data.entry_id : null
+      if (entryId && draft.marks && draft.marks.themeIds.length > 0) {
+        const mk = await addMarks({ themeIds: draft.marks.themeIds, targets: [{ kind: 'matter_entry', id: entryId }], personId: null, matterId: m.id, why: draft.marks.why, provesBy: draft.marks.provesBy, authUserId: await authUserIdNow() })
+        markWords = mk.ok ? ` ${markedWords(draft.marks.themeIds.map((id) => themeCatalog.themes.find((t) => t.id === id)?.name ?? 'a theme'), mk.made, mk.already, ['event', 'events'])}` : ` The themes were not marked: ${mk.why}`
+        void reloadThemes()
+      }
+      return null
     })
-    if (ok) showToast('Recorded — it is on the timeline, on the day it happened.', 'success')
+    if (ok) showToast(`Recorded — it is on the timeline, on the day it happened.${markWords}`, 'success')
     return Boolean(ok)
   }
   /** Punch list #220 (v2.6210): save a statement's draft — a new one on the matter (made first when the account has none), or a change to one. */
@@ -726,10 +753,11 @@ export default function LegalDesk(props: LegalDeskProps) {
     return Boolean(ok)
   }
   const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []
+  const themesForActs = themeCatalog.themes.length > 0 ? themeCatalog.themes : undefined
   const planActs: PlanActs = {
     holds: holdOverrides,
     holdReasons: heldReasonsOf(matter),
-    acts: stored && canEditReview ? { busy, add: planAdd, addEvent: eventAdd, documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })), update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event' || i.kind === 'statement') && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined, swearStatement: (on) => setStatementWin({ entryId: null, on, print: null, file: false }), editStatement: (entryId, opts) => setStatementWin({ entryId, on: null, print: opts?.print ? 'whole' : null, file: Boolean(opts?.file) }) } : null,
+    acts: stored && canEditReview ? { busy, add: planAdd, addEvent: eventAdd, themes: themesForActs, marks: themeCatalog.marks, documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })), update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event' || i.kind === 'statement') && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined, swearStatement: (on) => setStatementWin({ entryId: null, on, print: null, file: false }), editStatement: (entryId, opts) => setStatementWin({ entryId, on: null, print: opts?.print ? 'whole' : null, file: Boolean(opts?.file) }) } : null,
   }
   /** #85 item 16: accept a firm step that would have moved the stage back. */
   const moveStage = async (stageTo: string, entryId: string) => {
@@ -1192,7 +1220,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                   <PacketTab tab={tab} onTab={showTab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} onShowOnEvidence={showOnEvidence} evidenceDoc={evidenceDoc} onEvidenceLanded={() => setEvidenceDoc(null)}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, setCounselRead, counselRead, moveStage, voidEntry } : null}
-                    documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, canPull: stored && canEditReview && !closed, reload: () => void legal?.reload() } : null}
+                    documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, canPull: stored && canEditReview && !closed, reload: () => void legal?.reload(), themes: themeCatalog.themes.length > 0 ? themeCatalog.themes : undefined, marks: themeCatalog.marks, onMarksChanged: () => void reloadThemes() } : null}
                     narrative={narrativeDesk} busy={busy} planActs={planActs} onStatementsChanged={reload} />
                 ) : null}
                 </div>
