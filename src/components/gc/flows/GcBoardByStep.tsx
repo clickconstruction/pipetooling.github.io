@@ -1,15 +1,20 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import {
+  CLUSTER_FOLD_LABEL,
   NO_FILTER,
+  bandCluster,
   bandCountWords,
   bandLaneWords,
   boardBands,
   boardFilterOptions,
   boardSummary,
+  foldEmptyRows,
+  foldedStepsWords,
   dueWords,
   stepSubParts,
   tileJobWords,
   todayWords,
+  type BandCluster,
   type BoardBand,
   type BoardCompany,
   type BoardContext,
@@ -22,6 +27,7 @@ import {
   type RowPress,
   type SummaryDot,
 } from '../../../lib/flows/board'
+import { readBandNames, writeBandNames } from '../../../lib/flows/bandNamesPref'
 import type { FlowPhase, FlowStep } from '../../../lib/flows/state'
 import { shortDate } from '../../../lib/gc/words'
 import { STAGE_COLORS } from '../GcBoardStages'
@@ -32,8 +38,9 @@ import type { Tone } from '../gcUi'
  * today line, then one band per phase in the flow's order, each wearing the Project Board's stage colour, with every
  * step of the phase its own row. Under each step, whose move it is, late, lapsed, over usual, waiting, and the usual.
  * The chips group by job in the per-job lane, each job on its own line, named once with the day they share. The press
- * at the right is the step's own. The job and the seat pickers (`BoardPickers`, drawn by `GcFlowBoard` in its views
- * row) narrow every row and band. The words and the rules are `flows/board.ts`'s; this only draws them.
+ * at the right is the step's own. The band head's dots, one per company and worst first, are the switch to the names
+ * (v2.6542). The job and the seat pickers (`BoardPickers`, drawn by `GcFlowBoard` in its views row) narrow every row and
+ * band. The words and the rules are `flows/board.ts`'s; this only draws them.
  */
 
 export interface BoardPresses {
@@ -155,22 +162,62 @@ function Row({ row, today, presses }: { row: BoardRow; today: string; presses: B
   )
 }
 
-function Dot({ d, onPress }: { d: SummaryDot; onPress: (d: SummaryDot) => void }) {
+/** The band head's dots (v2.6542): 16 pixels, a thumb's target on a phone, 5 apart; a name chip's dot is half that. */
+const DOT_SIZE = 16
+const DOT_GAP = 5
+const dotStyle = (tone: SummaryDot['tone'], size = DOT_SIZE): CSSProperties => ({ width: size, height: size, borderRadius: '50%', background: DOT[tone], flex: '0 0 auto' })
+const nameChipStyle: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: DOT_GAP, font: 'inherit', fontSize: '0.75rem', lineHeight: 1.4, padding: '0.05rem 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'inherit', cursor: 'pointer' }
+
+/** The dots folded (shape A): one press, the switch to the names. */
+function DotCluster({ cluster, onPress }: { cluster: BandCluster; onPress: () => void }) {
   return (
     <button
       type="button"
-      aria-label={`${d.name}: ${d.line.step.name}`}
-      title={`${d.name}, ${d.line.step.name}`}
-      onClick={() => onPress(d)}
-      style={{ width: 10, height: 10, borderRadius: '50%', border: 'none', padding: 0, cursor: 'pointer', background: DOT[d.tone] }}
-    />
+      aria-label={cluster.words}
+      title={cluster.title}
+      onClick={onPress}
+      data-board-cluster="dots"
+      style={{ display: 'inline-flex', gap: DOT_GAP, flexWrap: 'wrap', alignItems: 'center', border: 'none', background: 'none', padding: 2, margin: -2, cursor: 'pointer' }}
+    >
+      {cluster.dots.map((d) => (
+        <span key={d.contactId} aria-hidden="true" style={dotStyle(d.tone)} />
+      ))}
+    </button>
   )
 }
 
-/** The band's head: the Project Board's own band with the phase's colour, the count, its jobs, late and lapsed, a dot per company, and the lanes' words. */
-function Band({ band, ctx, presses }: { band: BoardBand; ctx: BoardContext; presses: BoardPresses }) {
+/** A name unfolded (shape B): the company with its tone dot, the press the dot made before v2.6542. */
+function NameChip({ d, onPress }: { d: SummaryDot; onPress: (d: SummaryDot) => void }) {
+  return (
+    <button type="button" aria-label={`${d.name}: ${d.line.step.name}`} title={`${d.name}, ${d.line.step.name}`} onClick={() => onPress(d)} style={nameChipStyle}>
+      <span aria-hidden="true" style={dotStyle(d.tone, DOT_SIZE / 2)} />
+      {d.name}
+    </button>
+  )
+}
+
+/** The names unfolded: Fold first, where the dots were, then a chip per company, worst first. */
+function NameCluster({ cluster, onFold, onCompany }: { cluster: BandCluster; onFold: () => void; onCompany: (line: BoardLine) => void }) {
+  return (
+    <span role="group" aria-label={cluster.words} data-board-cluster="names" style={{ display: 'inline-flex', gap: DOT_GAP, flexWrap: 'wrap', alignItems: 'center' }}>
+      <button type="button" onClick={onFold} title={cluster.title} style={{ ...nameChipStyle, color: 'var(--text-muted)' }}>
+        {CLUSTER_FOLD_LABEL}
+      </button>
+      {cluster.dots.map((d) => (
+        <NameChip key={d.contactId} d={d} onPress={(dot) => onCompany(dot.line)} />
+      ))}
+    </span>
+  )
+}
+
+/** The band's head: the Project Board's own band with the phase's colour, the count, its jobs, late and lapsed, the dots (one per company, the switch to the names), and the lanes' words. */
+function Band({ band, ctx, presses, everyStep, names, onToggleNames }: { band: BoardBand; ctx: BoardContext; presses: BoardPresses; everyStep: boolean; names: boolean; onToggleNames: () => void }) {
   const c = STAGE_COLORS[PHASE_TONE[band.phase]]
   const jobs = tileJobWords(ctx, band)
+  // The dots are the switch (punch list #109, v2.6542): folded, the dots; a press unfolds the names, and Fold folds them back.
+  const cluster = bandCluster(ctx, band, names)
+  // The Every step switch (punch list #109, v2.6540): off, the rows nobody is on fold to one line at the band's foot.
+  const { shown, folded } = foldEmptyRows(band.rows, everyStep)
   return (
     <section aria-label={band.words} data-board-band={band.phase} style={{ marginTop: '0.9rem' }}>
       <div className="stagesSectionBand" style={{ ...({ '--stage-color': c.bar } as CSSProperties), display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -181,18 +228,17 @@ function Band({ band, ctx, presses }: { band: BoardBand; ctx: BoardContext; pres
         {jobs && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{jobs}</span>}
         {band.late > 0 && <span style={smallPill('var(--text-red-700)', 'var(--bg-red-tint)')}>{band.late} late</span>}
         {band.lapsed > 0 && <span style={smallPill('var(--text-orange-700)', 'var(--surface)')}>{band.lapsed} lapsed</span>}
-        {band.dots.length > 0 && (
-          <span style={{ display: 'inline-flex', gap: 3, flexWrap: 'wrap' }}>
-            {band.dots.map((d) => (
-              <Dot key={d.contactId} d={d} onPress={(dot) => presses.onCompany(dot.line)} />
-            ))}
-          </span>
-        )}
+        {cluster && (cluster.shape === 'dots' ? <DotCluster cluster={cluster} onPress={onToggleNames} /> : <NameCluster cluster={cluster} onFold={onToggleNames} onCompany={presses.onCompany} />)}
         <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{bandLaneWords(ctx, band)}</span>
       </div>
-      {band.rows.map((row) => (
+      {shown.map((row) => (
         <Row key={row.step.id} row={row} today={ctx.today} presses={presses} />
       ))}
+      {folded.length > 0 && (
+        <div data-board-folded={band.phase} style={{ ...rowStyle, ...empty }}>
+          {foldedStepsWords(folded)}
+        </div>
+      )}
     </section>
   )
 }
@@ -240,6 +286,32 @@ function Chevron() {
   )
 }
 
+/** The Every step switch (punch list #109, v2.6540): on, every step keeps its row; off, the rows nobody is on fold to one line per band. Drawn in the views row by `GcFlowBoard`. */
+export function EveryStepSwitch({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={() => onChange(!on)}
+      title={on ? 'Every step has its row. Press to fold the steps nobody is on to one line per band.' : 'The steps nobody is on are folded to one line per band. Press to show every step.'}
+      style={{
+        padding: '0.2rem 0.7rem',
+        borderRadius: 999,
+        border: `1px solid ${on ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
+        background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+        color: on ? 'var(--text-blue-500)' : 'var(--text-600)',
+        fontWeight: on ? 600 : 400,
+        cursor: 'pointer',
+        fontSize: '0.8rem',
+        font: 'inherit',
+      }}
+    >
+      Every step
+    </button>
+  )
+}
+
 /** The board's two pickers: which job, whose seat. Drawn in the views row by `GcFlowBoard`, which holds the filter. */
 export function BoardPickers({ ctx, companies, filter, onFilter }: { ctx: BoardContext; companies: readonly BoardCompany[]; filter: BoardFilter; onFilter: (f: BoardFilter) => void }) {
   const options = boardFilterOptions(ctx, companies)
@@ -271,16 +343,36 @@ export function BoardPickers({ ctx, companies, filter, onFilter }: { ctx: BoardC
   )
 }
 
-export function GcBoardByStep({ ctx, companies, presses, filter = NO_FILTER }: { ctx: BoardContext; companies: readonly BoardCompany[]; presses: BoardPresses; filter?: BoardFilter }) {
+export function GcBoardByStep({
+  ctx,
+  companies,
+  presses,
+  filter = NO_FILTER,
+  everyStep = true,
+}: {
+  ctx: BoardContext
+  companies: readonly BoardCompany[]
+  presses: BoardPresses
+  filter?: BoardFilter
+  /** Every step shown (the default, the owner's rule of 2026-10-15); off, the rows nobody is on fold to one line per band (punch list #109). */
+  everyStep?: boolean
+}) {
   const summary = boardSummary(ctx, companies, filter)
   const bands = boardBands(ctx, companies, filter)
   const grey = STAGE_COLORS.grey
+  // The band heads' dots are the switch (punch list #109, v2.6542): one state for every band, kept on the device.
+  const [names, setNames] = useState<boolean>(() => readBandNames())
+  const toggleNames = () => {
+    const next = !names
+    setNames(next)
+    writeBandNames(next)
+  }
   return (
     <div>
       <TodayLine ctx={ctx} summary={summary} onHand={presses.onNeedsAHand} />
       <div role="group" aria-label="Where everyone stands">
         {bands.map((b) => (
-          <Band key={b.phase} band={b} ctx={ctx} presses={presses} />
+          <Band key={b.phase} band={b} ctx={ctx} presses={presses} everyStep={everyStep} names={names} onToggleNames={toggleNames} />
         ))}
         {summary.off.length > 0 && (
           <section aria-label="Off the flow" data-board-step="off" style={{ marginTop: '0.9rem' }}>

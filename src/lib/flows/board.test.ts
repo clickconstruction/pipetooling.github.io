@@ -4,15 +4,19 @@ import {
   NO_FILTER,
   boardFilterOptions,
   bandCountWords,
+  bandCluster,
   bandLaneWords,
   boardBands,
   boardLines,
   boardPasses,
   boardSummary,
   byTrade,
+  CLUSTER_FOLD_LABEL,
   companyJobLines,
   companyTable,
   dueWords,
+  foldEmptyRows,
+  foldedStepsWords,
   lineDayWords,
   landsWords,
   NO_TRADE,
@@ -436,5 +440,57 @@ describe('the words', () => {
     const ids = [TRADE_FLOW, CUSTOMER_FLOW, ARCH_FLOW].flatMap(flat).map((s) => s.id)
     const sentences = [...ids.map((id) => landsWords(id)), landsWords('x1')]
     expect(sentences.flatMap((s) => plainWordsFailures(s))).toEqual([])
+  })
+})
+
+describe('foldEmptyRows', () => {
+  it('v2.6540 · keeps every row while the switch is on', () => {
+    const rows = rowsOf(trade, TRADES)
+    const { shown, folded } = foldEmptyRows(rows, true)
+    expect(shown.map((r) => r.step.id)).toEqual(rows.map((r) => r.step.id))
+    expect(folded).toEqual([])
+    expect(foldedStepsWords(folded)).toBe('')
+  })
+
+  it('v2.6540 · off, folds only the rows nobody is on and names them in one line', () => {
+    const rows = boardBands(trade, TRADES).find((b) => b.phase === 'setup')!.rows
+    const { shown, folded } = foldEmptyRows(rows, false)
+    expect(folded.map((r) => r.step.id)).toEqual(['invited', 'portal'])
+    expect(shown.every((r) => r.lands === null && r.groups.length > 0)).toBe(true)
+    expect(shown.map((r) => r.step.id)).toEqual(rows.filter((r) => r.lands === null).map((r) => r.step.id))
+    expect(foldedStepsWords(folded)).toBe(`Nobody on 2 steps: ${folded[0]!.step.name} · ${folded[1]!.step.name}.`)
+    expect(foldedStepsWords(folded.slice(0, 1))).toBe(`Nobody on 1 step: ${folded[0]!.step.name}.`)
+  })
+})
+
+describe('bandCluster', () => {
+  const quoting = () => boardBands(trade, TRADES).find((b) => b.phase === 'pricing')!
+
+  it('v2.6542 · folded, the dots worst first by tone, named by the count and the worst, with the press that unfolds them', () => {
+    const c = bandCluster(trade, quoting(), false)!
+    expect(c.shape).toBe('dots')
+    expect(c.dots.slice(0, 2).map((d) => [d.contactId, d.tone])).toEqual([['greg', 'bad'], ['bill', 'warn']])
+    expect(c.dots.slice(2).map((d) => d.tone)).toEqual(['', '', ''])
+    expect(c.dots.slice(2).map((d) => d.contactId)).toEqual(quoting().dots.filter((d) => d.tone === '').map((d) => d.contactId))
+    expect([...c.dots].sort((x, y) => x.contactId.localeCompare(y.contactId))).toEqual([...quoting().dots].sort((x, y) => x.contactId.localeCompare(y.contactId)))
+    expect(c.words).toBe('5 companies, 1 late, 1 over usual')
+    expect(c.title).toBe('One dot per company, worst first: red late, orange lapsed or over usual. Press for the names.')
+  })
+
+  it('v2.6542 · unfolded, the same companies in the same order, named, with the way back', () => {
+    const c = bandCluster(trade, quoting(), true)!
+    expect(c.shape).toBe('names')
+    expect(c.dots.map((d) => d.name)).toEqual(bandCluster(trade, quoting(), false)!.dots.map((d) => d.name))
+    expect(c.dots[0]!.name).toBe('Hillside Excavation')
+    expect(c.words).toBe('5 companies, 1 late, 1 over usual')
+    expect(c.title).toContain(`Press ${CLUSTER_FOLD_LABEL} to go back to the dots.`)
+  })
+
+  it('counts a lapsed paper, reads the customers in their own noun, and is nothing for a band nobody is on', () => {
+    const setup = boardBands(trade, TRADES).find((b) => b.phase === 'setup')!
+    expect(bandCluster(trade, setup, false)!.words).toBe('5 companies, 1 lapsed, 2 over usual')
+    const bands = boardBands(customer, CUSTOMERS)
+    expect(bandCluster(customer, bands.find((b) => b.phase === 'setup')!, false)).toBeNull()
+    expect(bandCluster(customer, bands.find((b) => b.phase === 'pricing')!, true)!.words).toMatch(/^2 customers/)
   })
 })

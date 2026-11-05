@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  driveFileIdFromUrl,
+  EVIDENCE_FILE_MAX_BYTES,
   evidenceCountWords,
   evidenceDraftProblem,
   evidenceDrivePathWords,
   evidenceDriveState,
   evidenceDriveWords,
+  evidenceFileIsLinked,
+  evidenceFileWhereWords,
   evidenceFolderName,
   evidenceKindWords,
   evidenceMime,
@@ -42,8 +46,38 @@ describe('evidenceDraftProblem · every piece is required', () => {
     expect(evidenceDraftProblem({ ...draft, datedOn: '2026-11-03' }, one, TODAY)).toBe('The day it is about cannot be ahead of today.')
     expect(evidenceDraftProblem({ ...draft, title: '  ' }, one, TODAY)).toBe('Give it a title.')
     expect(evidenceDraftProblem({ ...draft, memo: '' }, one, TODAY)).toBe('Write a memo: what it shows and why it matters.')
-    expect(evidenceDraftProblem(draft, [], TODAY)).toBe('Add at least one file: a photo, a PDF, an email, a screenshot.')
+    expect(evidenceDraftProblem(draft, [], TODAY)).toBe('Add at least one file, or a link to one already in Drive: a photo, a PDF, an email, a screenshot, a recording.')
   })
+
+  it('a link to a file already in Drive stands in for a file; a bad link is named (v2.6541)', () => {
+    expect(evidenceDraftProblem(draft, [], TODAY, [{ name: 'Call recording, Aug 29', driveUrl: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view' }])).toBeNull()
+    expect(evidenceDraftProblem(draft, [], TODAY, [{ name: '', driveUrl: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view' }])).toBe('Give the linked file a name.')
+    expect(evidenceDraftProblem(draft, [], TODAY, [{ name: 'Call', driveUrl: '' }])).toBe('Paste the Drive link for Call.')
+    expect(evidenceDraftProblem(draft, [], TODAY, [{ name: 'Call', driveUrl: 'https://example.com/x.mp3' }])).toBe('Call: the link is not a Drive address (drive.google.com or docs.google.com).')
+    expect(evidenceDraftProblem(draft, [], TODAY)).toBe('Add at least one file, or a link to one already in Drive: a photo, a PDF, an email, a screenshot, a recording.')
+    expect(evidenceDraftProblem(draft, [{ name: 'call.m4a', size: EVIDENCE_FILE_MAX_BYTES + 1 }], TODAY)).toBe('call.m4a is over 10 MB. Put it in the person\'s Drive folder by hand and link it here.')
+    expect(driveFileIdFromUrl('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view?usp=sharing')).toBe('1AbCdEfGhIjKlMnOp')
+    expect(driveFileIdFromUrl('https://drive.google.com/drive/folders/1FoLdErIdXyZ1234')).toBe('1FoLdErIdXyZ1234')
+    expect(driveFileIdFromUrl('https://drive.google.com/open?id=1OpEnIdXyZ12345')).toBe('1OpEnIdXyZ12345')
+    expect(driveFileIdFromUrl('https://docs.google.com/document/d/1DoCiDxYz123456/edit')).toBe('1DoCiDxYz123456')
+    expect(driveFileIdFromUrl('https://drive.google.com/')).toBeNull()
+  })
+
+  it('a linked file counts as in Drive: the record reads filed, linked, and the chip says so', () => {
+    const linked = file({ id: 'f2', storage_path: null, drive_file_id: '1AbCdEfGhIjKlMnOp', drive_url: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view', filed_at: '2026-11-05T00:00:00Z' })
+    expect(evidenceFileIsLinked(linked)).toBe(true)
+    expect(evidenceFileIsLinked(file())).toBe(false)
+    expect(evidenceFileWhereWords(linked)).toBe('in Drive, linked')
+    expect(evidenceFileWhereWords(file({ drive_url: 'https://drive.google.com/file/d/x/view', drive_file_id: 'x' }))).toBe('in Drive')
+    expect(evidenceFileWhereWords(file())).toBe('kept here, on its way to Drive')
+    const r = { fail_why: null, filed_at: null, files: [linked] }
+    expect(evidenceDriveState(r)).toBe('filed')
+    expect(evidenceDriveWords(r)).toBe('In Drive, linked')
+    const mixed = { fail_why: null, filed_at: null, files: [linked, file({ drive_file_id: 'd1', drive_url: 'https://drive.google.com/file/d/d1/view' })] }
+    expect(evidenceDriveWords(mixed)).toBe('In Drive')
+    expect(evidenceDriveWords({ fail_why: null, filed_at: null, files: [linked, file()] })).toBe('1 of 2 files in Drive')
+  })
+
   it('holds an empty file and one over the cap, naming it', () => {
     expect(evidenceDraftProblem(draft, [{ name: 'a.pdf', size: 0 }], TODAY)).toBe('a.pdf is empty.')
     expect(evidenceDraftProblem(draft, [{ name: 'big.mov', size: 11 * 1024 * 1024 }], TODAY)).toMatch(/^big\.mov is over 10 MB\./)

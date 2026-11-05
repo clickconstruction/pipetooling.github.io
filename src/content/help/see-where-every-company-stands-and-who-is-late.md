@@ -28,8 +28,12 @@ Above the bands, one line says who needs a hand today. The late and the lapsed a
 
 Over usual is only a watch. Over usual never counts toward needing a hand, and it never reaches Follow up.
 
-1. Press a dot to open that company.
-2. Press **Open Follow up →** on the line to open Follow up at **We are waiting on them**.
+1. Press the dots on a band to see the names, worst first.
+2. Press a name to open that company.
+3. Press {{button:outline|Fold}} to go back to the dots.
+4. Press **Open Follow up →** on the line to open Follow up at **We are waiting on them**.
+
+The dots change on every band at once. The board keeps your choice on your device.
 
 :::example The bands
 {{chip:gray|Getting set up · 5 companies}} {{chip:gray|Quoting · 5 companies · on 2 bids}} {{chip:gray|Building · 4 companies}} {{chip:red|1 late}} {{chip:yellow|3 over usual}}
@@ -50,6 +54,8 @@ Each company on the step is a chip with its day.
 Asked to quote shows one chip for each job. Each job has its own line, named once, with the due day when they share it.
 
 A step nobody is on keeps its row. The row says what lands there next.
+
+Once the flow is familiar, press {{button:outline-blue|Every step}} in the views row to fold those rows. Each band then ends with one line that names the steps nobody is on. A step with anyone on it never folds. Press {{button:outline|Every step}} again to show every row. The choice stays on your device.
 
 ## Act from a row
 

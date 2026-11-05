@@ -33,6 +33,9 @@ import {
   evidenceKindWords,
   evidenceSizeWords,
   evidenceTitleFromName,
+  evidenceFileWhereWords,
+  evidenceLinkProblem,
+  type PersonEvidenceLink,
   sortEvidenceNewestFirst,
   type PersonEvidenceDraft,
   type PersonEvidenceFile,
@@ -232,6 +235,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [evidenceOpen, setEvidenceOpen] = useState(false)
   const [evDraft, setEvDraft] = useState<PersonEvidenceDraft>({ datedOn: todayYmd, title: '', memo: '' })
   const [evFiles, setEvFiles] = useState<File[]>([])
+  // Files already in Drive, linked rather than staged (v2.6541): a recording over the cap, a file filed by hand.
+  const [evLinks, setEvLinks] = useState<PersonEvidenceLink[]>([])
+  const [evLinkDraft, setEvLinkDraft] = useState<PersonEvidenceLink>({ name: '', driveUrl: '' })
   const [evSaving, setEvSaving] = useState(false)
   const [evShrinking, setEvShrinking] = useState(false)
   const [evTried, setEvTried] = useState(false)
@@ -388,7 +394,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
       key={f.id}
       type="button"
       onClick={() => void openEvidenceFile(f)}
-      title={`${f.filename}${f.size_bytes !== null ? ` · ${evidenceSizeWords(f.size_bytes)}` : ''}${f.drive_url ? ' · in Drive' : ' · kept here, on its way to Drive'}`}
+      title={`${f.filename}${f.size_bytes !== null ? ` · ${evidenceSizeWords(f.size_bytes)}` : ''} · ${evidenceFileWhereWords(f)}`}
       style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.12rem 0.55rem', borderRadius: 999, fontSize: '0.74rem', border: '1px solid var(--border-strong)', background: 'var(--bg-page)', color: 'var(--text-link)', cursor: 'pointer', maxWidth: '32ch' }}
     >
       <span aria-hidden>📎</span>
@@ -656,28 +662,47 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const openEvidenceWindow = () => {
     setEvDraft({ datedOn: todayYmd, title: '', memo: '' })
     setEvFiles([])
+    setEvLinks([])
+    setEvLinkDraft({ name: '', driveUrl: '' })
     setEvTried(false)
     setEvidenceOpen(true)
   }
 
-  const evProblem = evidenceDraftProblem(evDraft, evFiles, todayYmd)
+  const evProblem = evidenceDraftProblem(evDraft, evFiles, todayYmd, evLinks)
+  const evLinkDraftProblem = evLinkDraft.name.trim() || evLinkDraft.driveUrl.trim() ? evidenceLinkProblem(evLinkDraft) : null
+
+  /** The link row's press: the draft becomes a linked file when it stands; the title starts from the first name when blank. */
+  const addEvidenceLink = () => {
+    if (evLinkDraftProblem || !(evLinkDraft.name.trim() || evLinkDraft.driveUrl.trim())) return
+    const link = { name: evLinkDraft.name.trim(), driveUrl: evLinkDraft.driveUrl.trim() }
+    setEvLinks((prev) => [...prev, link])
+    setEvDraft((d) => (d.title.trim() === '' && evFiles.length === 0 ? { ...d, title: evidenceTitleFromName(link.name) } : d))
+    setEvLinkDraft({ name: '', driveUrl: '' })
+  }
 
   const saveEvidence = useCallback(async () => {
     setEvTried(true)
     if (!personId || evProblem || evSaving) return
     setEvSaving(true)
-    const out = await savePersonEvidence({ personId, draft: evDraft, files: evFiles, authUserId: authUser?.id ?? null })
+    const out = await savePersonEvidence({ personId, draft: evDraft, files: evFiles, links: evLinks, authUserId: authUser?.id ?? null })
     setEvSaving(false)
     if (!out.ok) {
       showToast(`Could not keep the evidence: ${out.why}`, 'error')
       return
     }
-    const where = out.drive && out.drive.remaining === 0 && !out.drive.failWhy ? 'In Drive.' : out.drive?.failWhy ? `Kept here. Not in Drive: ${out.drive.failWhy}` : 'Kept here and on its way to Drive.'
+    const where =
+      out.staged === 0 && out.linked > 0
+        ? `${out.linked === 1 ? 'The file is' : `All ${out.linked} files are`} linked in Drive.`
+        : out.drive && out.drive.remaining === 0 && !out.drive.failWhy
+          ? 'In Drive.'
+          : out.drive?.failWhy
+            ? `Kept here. Not in Drive: ${out.drive.failWhy}`
+            : 'Kept here and on its way to Drive.'
     showToast(`Evidence kept on the file. ${where}`, 'success')
     setEvidenceOpen(false)
     await load()
     onChanged?.()
-  }, [personId, evProblem, evSaving, evDraft, evFiles, authUser?.id, showToast, load, onChanged])
+  }, [personId, evProblem, evSaving, evDraft, evFiles, evLinks, authUser?.id, showToast, load, onChanged])
 
   const retryDrive = useCallback(
     async (recordId: string) => {
@@ -724,7 +749,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
               Take a photo
               <input type="file" accept="image/*" capture="environment" disabled={evShrinking} onChange={(e) => { void pickEvidenceFiles(e.target.files); e.target.value = '' }} style={{ display: 'none' }} />
             </label>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>A photo, a PDF, an email, a screenshot. Up to 10 MB each. Photos shrink on the way in.</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>A photo, a PDF, an email, a screenshot. Up to 10 MB each. Photos shrink on the way in. A larger file, or a recording, is linked from Drive below.</span>
           </div>
           {evFiles.length > 0 ? (
             <ul style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0, display: 'grid', gap: '0.25rem' }}>
@@ -733,6 +758,31 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                   <span style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
                   <span style={{ color: 'var(--text-muted)', flex: 'none' }}>{evidenceKindWords(f.type)} · {evidenceSizeWords(f.size)}</span>
                   <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setEvFiles((prev) => prev.filter((_, j) => j !== i))} style={{ border: 'none', background: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: '0.8rem' }}>✕</button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {/* A file already in Drive (v2.6541): linked, never staged. The row takes a name and the link; + Add the link keeps it on the list. */}
+          <div style={{ marginTop: '0.6rem' }} data-testid="evidence-link-row">
+            <span style={fieldLabel}>Or a file already in Drive</span>
+            {/* The name, the link and the press wrap onto their own lines at phone width. */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+              <input type="text" value={evLinkDraft.name} maxLength={200} placeholder="Its name" aria-label="Linked file name" onChange={(e) => setEvLinkDraft((d) => ({ ...d, name: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addEvidenceLink() } }} style={input({ width: 'auto', flex: '1 1 9rem', minWidth: 0 })} />
+              <input type="url" value={evLinkDraft.driveUrl} placeholder="https://drive.google.com/file/d/…" aria-label="Drive link" onChange={(e) => setEvLinkDraft((d) => ({ ...d, driveUrl: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addEvidenceLink() } }} style={input({ width: 'auto', flex: '2 1 14rem', minWidth: 0 })} />
+              <button type="button" onClick={addEvidenceLink} disabled={!!evLinkDraftProblem || !(evLinkDraft.name.trim() || evLinkDraft.driveUrl.trim())} data-testid="evidence-add-link" style={{ padding: '0.45rem 0.8rem', borderRadius: 7, fontSize: '0.82rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: evLinkDraftProblem || !(evLinkDraft.name.trim() || evLinkDraft.driveUrl.trim()) ? 'var(--text-faint)' : 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+                + Add the link
+              </button>
+            </div>
+          </div>
+          {evLinkDraftProblem ? <p style={{ margin: '0.3rem 0 0', fontSize: '0.74rem', color: 'var(--text-muted)' }}>{evLinkDraftProblem}</p> : null}
+          {evLinks.length > 0 ? (
+            <ul style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0, display: 'grid', gap: '0.25rem' }} data-testid="evidence-links">
+              {evLinks.map((l, i) => (
+                <li key={`${l.driveUrl}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
+                  <span aria-hidden>🔗</span>
+                  <span style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
+                  <span style={{ color: 'var(--text-muted)', flex: 'none' }}>in Drive, linked</span>
+                  <button type="button" aria-label={`Remove the link ${l.name}`} onClick={() => setEvLinks((prev) => prev.filter((_, j) => j !== i))} style={{ border: 'none', background: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: '0.8rem' }}>✕</button>
                 </li>
               ))}
             </ul>

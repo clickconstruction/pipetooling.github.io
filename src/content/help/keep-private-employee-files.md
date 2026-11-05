@@ -41,6 +41,19 @@ A matter is the analysis for counsel, kept apart from the record. The matter hol
 
 Nothing on a matter reaches a law firm until the matter is released. The account tabs of the Legal desk do not appear here. There is no bill and no lien paper on a person.
 
+## Keep a piece of evidence
+
+A piece of evidence is a record on the person's file. The record holds the day it is about, a title, a memo on what it shows, and its files.
+
+1. Open the person's file and go to **Evidence**. Press {{button:outline|Add evidence}}.
+2. Set the day it is about. Give it a title. Write the memo: what it shows and why it matters.
+3. Press {{button:outline|+ Pick files}} for a photo, a PDF, an email or a screenshot. Each file is under 10 MB. Photos shrink on the way in.
+4. Press {{button:blue|Keep the evidence}}. The files are kept on the file and filed in Drive under People, the person, the day and the title.
+
+A file over 10 MB, or one already in Drive, is linked instead. Put the file in the person's Drive folder. Then type its name under **Or a file already in Drive** and paste the Drive link. Press {{button:outline|+ Add the link}}. The link joins the list and the record counts it as in Drive. The chip reads *in Drive, linked* and opens the file.
+
+Evidence is never edited or deleted. A mistake is corrected by a new record that says so.
+
 ## Keeping the summary fresh
 
 When you add entries, the summary falls behind. The person's dot turns amber. The Summary view shows how many entries it has not covered. You ask the agent to bring the file current. It rewrites the summary and extends the narrative from the raw entries.

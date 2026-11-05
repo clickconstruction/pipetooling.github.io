@@ -521,6 +521,58 @@ export function boardBands(ctx: BoardContext, companies: readonly BoardCompany[]
   })
 }
 
+/**
+ * The Every step switch (punch list #109, v2.6540): every step keeps its row by the owner's rule of 2026-10-15, and the
+ * office may fold the rows nobody is on once the flow is familiar. A row folds only while nobody is on its step, so a
+ * late company never hides behind the fold; the folded steps are named in one line at the band's foot.
+ */
+export function foldEmptyRows(rows: readonly BoardRow[], everyStep: boolean): { shown: BoardRow[]; folded: BoardRow[] } {
+  if (everyStep) return { shown: [...rows], folded: [] }
+  const folded = rows.filter((r) => r.lands !== null)
+  return { shown: rows.filter((r) => r.lands === null), folded }
+}
+
+/** The fold's one line: "Nobody on 3 steps: Invited · Opened their link · Final waiver." Empty with nothing folded. */
+export function foldedStepsWords(folded: readonly BoardRow[]): string {
+  if (!folded.length) return ''
+  const n = folded.length
+  return `Nobody on ${n} step${n === 1 ? '' : 's'}: ${folded.map((r) => r.step.name).join(' · ')}.`
+}
+
+/**
+ * The band head's cluster (punch list #109, call 1, v2.6542): the dots are the switch. One dot per company on the phase,
+ * worst first, 16 pixels each (shape A of the before-and-after the owner chose from on 2026-11-05); a press on the dots
+ * unfolds them to the names, worst first, each with its tone dot and opening its company (shape B); the Fold press folds
+ * them back. One state for the board, kept on the device (`bandNamesPref.ts`); absent reads as dots.
+ */
+export type ClusterShape = 'dots' | 'names'
+
+export interface BandCluster {
+  shape: ClusterShape
+  /** The band's dots, worst first by tone (late, lapsed, over usual, the rest), each the step order's within a tone: a press on a name opens its company at its worst line. */
+  dots: SummaryDot[]
+  /** The cluster's name: the count and the worst, "5 companies, 1 late, 2 over usual". */
+  words: string
+  /** What the press does, for its title. */
+  title: string
+}
+
+/** The Fold press's label: the names' way back to the dots. */
+export const CLUSTER_FOLD_LABEL = 'Fold'
+
+export function bandCluster(ctx: Pick<BoardContext, 'flow'>, b: BoardBand, names: boolean): BandCluster | null {
+  if (!b.dots.length) return null
+  const count = (tone: LineTone) => b.dots.filter((d) => d.line.tone === tone).length
+  const late = count('late')
+  const lapsed = count('lapsed')
+  const over = count('over')
+  const words = [bandCountWords(ctx, b), late ? `${late} late` : '', lapsed ? `${lapsed} lapsed` : '', over ? `${over} over usual` : ''].filter(Boolean).join(', ')
+  // Worst first, by tone: the band's dots came in step order, and a late name must lead the row of names.
+  const dots = [...b.dots].sort((x, y) => TONE_RANK[x.line.tone] - TONE_RANK[y.line.tone])
+  if (names) return { shape: 'names', dots, words, title: `The names, worst first. Press a name to open the company. Press ${CLUSTER_FOLD_LABEL} to go back to the dots.` }
+  return { shape: 'dots', dots, words, title: 'One dot per company, worst first: red late, orange lapsed or over usual. Press for the names.' }
+}
+
 /** The band's count: "3 companies", "1 customer". */
 export function bandCountWords(ctx: Pick<BoardContext, 'flow'>, b: BoardBand): string {
   const [one, many] = kindNouns(ctx.flow.kind)
