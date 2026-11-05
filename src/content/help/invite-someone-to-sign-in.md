@@ -2,7 +2,7 @@
 title: invite someone to sign in
 category: Getting Started
 roles: dev
-keywords: invite, invite via email, new user, new hire, add user, manually add user, set a password, create login, role, choose a role, training mode, read only, accounts, attach a login, no login
+keywords: invite, invite via email, new user, new hire, add user, manually add user, set a password, create login, role, choose a role, training mode, read only, accounts, attach a login, no login, remove a login, take a login away
 order: 41
 ---
 You invite a new hire by email and they choose their own password. Or you set a password now and hand it over.
@@ -46,6 +46,14 @@ Only a dev can attach a login. An invite to that address from the Hire form is r
 ## Changing a role later
 
 Open their desk. The **Role** menu on the *Access & account* section asks you to confirm before it saves. **Cancel** leaves the role exactly as it was.
+
+## Take a login away
+
+A dev can remove a person's login and keep the person. Open their desk and find the **Sign-in** row under *Access & account*. Press {{button:outline|Remove the login…}} and confirm.
+
+The sign-in, any password and their push devices go. The person, their hours, Charged as, pay, paperwork and portal stay. The row then reads {{chip:gray|no login}}, and **Attach a login** brings a sign-in back on the same person.
+
+Nobody can remove their own login. A sample account or a digital twin keeps its login and retires from its own door.
 
 ## Good to know
 

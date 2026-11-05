@@ -47,7 +47,7 @@ Each takes {{button:outline|Leave open…}} with a reason. A license that expire
 
 :::
 
-Both halves come back in one press. The end date clears and the start date becomes the day back. A new stint opens beside the old one. One line lands on the HR file.
+Both halves come back in one press. The end date clears and the start date becomes the day back. A new stint opens beside the old one. One line lands on the HR file. The desk's Employment row then lists every stint with the time away between. Tenure counts from the day back.
 
 :::example The HR line
 "Back on 2029-11-05 for Corinne Vela, after 3 years away. Left open on purpose: licenses (renewal in the mail)."
@@ -56,6 +56,10 @@ Both halves come back in one press. The end date clears and the start date becom
 ## Ended by mistake
 
 Under the date, press **Undo the end instead**. The end date clears and the old stint reopens. The login and the roster row come back. Use it when the end was pressed on the wrong person or the wrong day.
+
+## Hire by mistake
+
+Someone may press + Hire for a returner. The form checks the name and the email against everyone who left. A match stops the form and offers {{button:blue|Bring back Corinne}}. That press opens the desk with the Bring back window up. See *hire someone*.
 
 ## Related
 

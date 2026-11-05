@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { earlierStintsLine, tenureLabel, type Stint } from '../../lib/people/employmentStints'
 import { useSearchParams } from 'react-router-dom'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { KINDS, KIND_LABELS } from './peopleUsersTabShared'
@@ -47,17 +48,6 @@ function formatYmd(ymd: string | null): string {
   if (!y || !m || !d) return ymd
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   return `${months[m - 1]} ${d}, ${y}`
-}
-
-function tenureLabel(startYmd: string | null, todayYmd: string): string {
-  if (!startYmd) return ''
-  const [sy, sm] = startYmd.split('-').map(Number)
-  const [ty, tm] = todayYmd.split('-').map(Number)
-  if (!sy || !sm || !ty || !tm) return ''
-  const months = (ty - sy) * 12 + (tm - sm)
-  if (months < 0) return ''
-  if (months < 12) return `${months}m`
-  return `${Math.floor(months / 12)}y ${months % 12}m`
 }
 
 const chipStyle = (colors: { background: string; color: string }): React.CSSProperties => ({
@@ -160,6 +150,23 @@ export default function PeopleHrTab() {
   }, [people, entryMeta, summaryByPerson])
 
   const selectedPerson = useMemo(() => people.find((p) => p.id === selectedPersonId) ?? null, [people, selectedPersonId])
+  // v2.6526 (punch list #256): a person who left and came back has more than one stint; the earlier ones follow the tenure.
+  const [earlierStints, setEarlierStints] = useState<string | null>(null)
+  useEffect(() => {
+    setEarlierStints(null)
+    if (!selectedPersonId) return
+    let on = true
+    void supabase
+      .from('employment_stints')
+      .select('start_date, end_date')
+      .eq('person_id', selectedPersonId)
+      .then(({ data }) => {
+        if (on) setEarlierStints(earlierStintsLine(((data ?? []) as Stint[])))
+      })
+    return () => {
+      on = false
+    }
+  }, [selectedPersonId])
 
   const rosterSections = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -287,6 +294,7 @@ export default function PeopleHrTab() {
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                     started {formatYmd(selectedPerson.start_date)}
                     {tenureLabel(selectedPerson.start_date, todayYmd) ? ` · ${tenureLabel(selectedPerson.start_date, todayYmd)}` : ''}
+                    {earlierStints ? ` · ${earlierStints}` : ''}
                   </span>
                 )}
                 {selectedPerson.archived_at && <span style={chipStyle({ background: 'var(--bg-neutral-100)', color: 'var(--text-muted)' })}>Archived</span>}

@@ -40,6 +40,8 @@ With a person selected, the header row offers two buttons and four totals:
 
 Leave the end date empty while the person still works here.
 
+A person who left and came back has more than one stint. The card keeps the current stint's dates. A line under them names the earlier stints. Tenure counts from the day they came back. Salaried pay still counts the days of every stint. See *bring back a teammate who left*.
+
 :::example Why dates matter for salaried people
 A salaried person is credited 8 hours per weekday on pay reports. Setting the start and end dates
 keeps that credit inside their actual employment — someone hired mid-week isn't credited for the

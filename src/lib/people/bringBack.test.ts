@@ -15,6 +15,7 @@ import {
   findArchivedMatch,
   kindNeedsTeam,
   longDate,
+  mergeArchivedRows,
   planBringBackWrites,
   planUndoEndWrites,
   roadmapBoxDefault,
@@ -309,5 +310,32 @@ describe('the day back and the footer', () => {
     expect(bringBackFooterWords({ hasLogin: false, hasRosterRow: true, backYmd: '2029-11-05', hrNote: false })).toBe('Restores the roster row. Opens a stint from Nov 5, 2029.')
     expect(bringBackFooterWords({ hasLogin: true, hasRosterRow: false, backYmd: '2029-11-05', hrNote: false })).toBe('Restores the login.')
     expect(bringBackFooterWords({ hasLogin: false, accountArchived: true, hasRosterRow: true, backYmd: '2029-11-05', hrNote: false })).toBe('Restores the account and roster row. Opens a stint from Nov 5, 2029.')
+  })
+})
+
+describe('mergeArchivedRows (+ Hire, v2.6525)', () => {
+  it('one entry a person: the account with its row, an account alone, a row alone', () => {
+    const merged = mergeArchivedRows(
+      [
+        { id: 'u-corinne', name: 'Corinne Vela', email: 'corinne.vela@example.com' },
+        { id: 'u-sam', name: 'Sam Becker', email: null },
+      ],
+      [
+        { id: 'p-corinne', name: 'Corinne Vela', email: 'c.vela@home.example', end_date: '2026-11-03', account_user_id: 'u-corinne', archived_at: '2026-11-03T18:00:00Z' },
+        { id: 'p-edgar', name: 'Edgar', email: null, end_date: null, account_user_id: null, archived_at: '2026-03-31T18:00:00Z' },
+        { id: 'p-active', name: 'Still Here', email: null, end_date: '2026-01-01', account_user_id: null, archived_at: null },
+      ],
+    )
+    expect(merged).toEqual([
+      { id: 'u-corinne', name: 'Corinne Vela', email: 'corinne.vela@example.com', leftYmd: '2026-11-03', userId: 'u-corinne', personId: 'p-corinne' },
+      { id: 'u-sam', name: 'Sam Becker', email: null, leftYmd: null, userId: 'u-sam', personId: null },
+      { id: 'p-edgar', name: 'Edgar', email: null, leftYmd: null, userId: null, personId: 'p-edgar' },
+    ])
+  })
+
+  it('a roster row still active beside an archived account lends its end date (End employment before v2.6523)', () => {
+    const merged = mergeArchivedRows([{ id: 'u-1', name: 'Kai Moss', email: 'kai@example.com' }], [{ id: 'p-1', name: 'Kai Moss', email: null, end_date: '2026-10-01', account_user_id: 'u-1', archived_at: null }])
+    expect(merged).toEqual([{ id: 'u-1', name: 'Kai Moss', email: 'kai@example.com', leftYmd: '2026-10-01', userId: 'u-1', personId: 'p-1' }])
+    expect(findArchivedMatch({ name: 'kai moss', email: '' }, merged)?.person.leftYmd).toBe('2026-10-01')
   })
 })

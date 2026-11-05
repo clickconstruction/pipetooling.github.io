@@ -94,6 +94,7 @@ import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { DevelopmentPhotosLook } from '../components/developments/DevelopmentPhotosLook'
+import SiteMaterialsReportModal from '../components/materials/SiteMaterialsReportModal'
 import { useSitePhotos } from '../hooks/useSitePhotos'
 import { photosCardMeta, photosLookWords } from '../lib/photos/sitePhotos'
 import { foldPhotoBatches } from '../lib/developments/photoLines'
@@ -151,6 +152,8 @@ export default function DevelopmentPage() {
   const [lastLooked, setLastLooked] = useState<string | null>(() => readLastLooked(developmentId))
   const [hideNotInIt, setHideNotInIt] = useState(false)
   const [pairMode, setPairMode] = useState(false)
+  // The material location report (punch list #268): the site's cages and boxes on one paper, read when the window opens.
+  const [reportOpen, setReportOpen] = useState(false)
   const [olderOpen, setOlderOpen] = useState(false)
   const [feedQuery, setFeedQuery] = useState('')
   // The History look (the owner's pick A of history-mockup.html): the chips that narrow, the piece from a Pieces row, the whole of a long line, the composer's door, and the entries people keep (read with the page, a kept one prepended).
@@ -1333,6 +1336,12 @@ export default function DevelopmentPage() {
           meta={`each bid with the job it became${plans.newest ? ` · newest set ${plans.newest.dated ? shortDay(plans.newest.dated) : shortDay(plans.newest.filedAt)}` : ''}`}
           right={
             <>
+              {/* The material location report (punch list #268): the office door's press, as the materials gate admits the same readers; the paper is read when pressed, never with the page. */}
+              {moneyShown && shown.jobs.length > 0 ? (
+                <SmallButton onClick={() => setReportOpen(true)} title="One Letter paper of what is in every cage and box across the site’s jobs, by job or by location, read fresh when pressed; Print, then Save as PDF">
+                  Print the material location report
+                </SmallButton>
+              ) : null}
               {wonCandidates.length > 0 && !pairMode ? (
                 <SmallButton onClick={doMarkWon} disabled={busy} title="Sets Won on the paired bids that have no outcome yet, after a window shows what changes; the Bid Board moves them, so this press is yours">
                   {`${countedLabel('Mark the', wonCandidates.length, 'paired bid')} won`}
@@ -1467,6 +1476,14 @@ export default function DevelopmentPage() {
           busy={busy}
           onMake={(v) => doMakeBid(backfillJob, v)}
           onClose={() => setBackfillJob(null)}
+        />
+      ) : null}
+      {reportOpen ? (
+        <SiteMaterialsReportModal
+          site={{ name: dev.name, customer: data.customer?.name ?? null, address: address || null }}
+          jobs={shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), name: (j.job_name ?? '').trim() }))}
+          printedBy={profileName}
+          onClose={() => setReportOpen(false)}
         />
       ) : null}
     </div>

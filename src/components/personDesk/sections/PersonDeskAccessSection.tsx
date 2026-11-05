@@ -22,7 +22,7 @@ import {
   tradesMeaningForRole,
 } from '../../../lib/people/accountWrites'
 import type { PersonDeskUserRow } from '../../../hooks/usePersonDesk'
-import { attachEmailProblem, attachLogin } from '../../../lib/people/attachLogin'
+import { attachEmailProblem, attachLogin, removeLogin } from '../../../lib/people/attachLogin'
 import { MergeDuplicateDialog } from './MergeDuplicateDialog'
 import { useHiringColumnShares } from '../../../hooks/useHiringColumnShares'
 import { sharedColumnsLine } from '../../../lib/hiring/columnShares'
@@ -207,6 +207,17 @@ export function PersonDeskAccessSection({
       },
       on ? 'Training mode on. Every write is blocked for them.' : 'Training mode off',
     )
+  }
+
+  // Punch list #266 (v2.6532): the sign-in goes; the person stays, and Attach a login is the way back on the same id.
+  async function removeLoginPress() {
+    const ok = await confirmDialog({
+      message: `Remove ${displayName}'s login? The sign-in, any password and their push devices go. ${displayName}, their hours, Charged as, pay, paperwork and portal stay. Attach a login brings one back on the same person.`,
+      confirmLabel: 'Remove the login',
+      danger: true,
+    })
+    if (!ok) return
+    await run('detach', () => removeLogin(supabase, { userId: u.id }), `${displayName}'s login removed. Their hours, pay and paperwork stayed.`)
   }
 
   async function sendSignIn() {
@@ -525,6 +536,11 @@ export function PersonDeskAccessSection({
               <button type="button" style={deskBtn(BTN, busy != null)} disabled={busy != null} onClick={() => setPasswordOpen(true)}>
                 Set password…
               </button>
+              {!isSelf ? (
+                <button type="button" style={deskBtn(BTN_QUIET, busy != null)} disabled={busy != null} onClick={() => void removeLoginPress()} data-testid="remove-login" title="Take the sign-in away; the person and everything that points at them stay. Attach a login brings one back on the same person.">
+                  {busy === 'detach' ? 'Removing…' : 'Remove the login…'}
+                </button>
+              ) : null}
             </>
           ) : (
             devLock

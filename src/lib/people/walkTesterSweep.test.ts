@@ -22,6 +22,8 @@ const LEFT_ALONE = [
   'src/types/database.ts',
   'src/types/settingsRows.ts',
   'src/lib/people/activeRoster.ts',
+  // + Hire's archived-people read (v2.6525): a leaver is matched by name or email; the tester, a sample and a twin never are.
+  'src/lib/people/hireWrites.ts',
   'src/lib/people/rosterPeople.ts',
   // The walk tester's own door reads both flags on purpose, and its fixtures beside it are not a picker.
   'src/lib/walk/kitDoor.ts',

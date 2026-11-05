@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { earlierStintsLine, type Stint } from '../../lib/people/employmentStints'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -262,6 +263,24 @@ export default function PeopleEmploymentTab({
   // Group only when the roster actually has salaried people; keep grouping stable while searching.
   const groupRoster = entries.some((e) => !e.archived_at && cfgFor(e)?.is_salary)
 
+  // v2.6526 (punch list #256): every stint of the selected person; the earlier ones are named under the dates.
+  const [earlierStints, setEarlierStints] = useState<string | null>(null)
+  const selectedPersonIdForStints = selected?.personId ?? null
+  useEffect(() => {
+    setEarlierStints(null)
+    if (!selectedPersonIdForStints) return
+    let on = true
+    void supabase
+      .from('employment_stints')
+      .select('start_date, end_date')
+      .eq('person_id', selectedPersonIdForStints)
+      .then(({ data }) => {
+        if (on) setEarlierStints(earlierStintsLine(((data ?? []) as Stint[])))
+      })
+    return () => {
+      on = false
+    }
+  }, [selectedPersonIdForStints])
   const datesDirty = selected != null && ((selected.start_date ?? '') !== draftStart || (selected.end_date ?? '') !== draftEnd)
 
   const selectedCfg: PayConfigRow | null = selected
@@ -788,6 +807,7 @@ export default function PeopleEmploymentTab({
               <p style={{ margin: '0 0 0.6rem 0', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                 Leave end date empty while the person still works here. Salaried payroll credit will be limited to
                 this window.
+                {earlierStints ? <span style={{ display: 'block', marginTop: '0.25rem' }}>These dates are the current stint. They were here {earlierStints}.</span> : null}
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
                 <label>

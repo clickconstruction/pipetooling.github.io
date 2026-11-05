@@ -5,6 +5,7 @@ import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../../utils/errorHandling'
 import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../../../lib/salaryScheduleSync'
 import { loadPayConfigFacts, type PayConfigFacts } from '../../../lib/people/personDeskFacts'
+import { stintRange, stintRows, type Stint } from '../../../lib/people/employmentStints'
 import type { PersonDeskViewer } from '../../../lib/people/personDeskGates'
 import type { PersonKey } from '../../../lib/people/personKey'
 import { PersonOffsetFormModal } from '../../pay/PersonOffsetFormModal'
@@ -39,6 +40,8 @@ export function PersonDeskPaySection({
   const confirmDialog = useConfirmDialog()
   const [pay, setPay] = useState<PayConfigFacts | null | undefined>(undefined)
   const [dates, setDates] = useState<{ start: string | null; end: string | null } | null>(null)
+  /** v2.6526: every stint (`employment_stints`); the row lists them when there is more than one. */
+  const [stints, setStints] = useState<Stint[]>([])
   const [timeOff, setTimeOff] = useState<TimeOffRow[]>([])
   const [lastStub, setLastStub] = useState<StubRow | null | undefined>(undefined)
   const [openOffsets, setOpenOffsets] = useState<number | null>(null)
@@ -57,15 +60,17 @@ export function PersonDeskPaySection({
     if (!viewer.canAccessPay) return
     let cancelled = false
     void (async () => {
-      const [p, personRow, to, stubs, offsets] = await Promise.all([
+      const [p, personRow, to, stubs, offsets, stintRowsRes] = await Promise.all([
         loadPayConfigFacts(payName),
         personId ? supabase.from('people').select('start_date, end_date').eq('id', personId).maybeSingle() : Promise.resolve({ data: null }),
         userId ? supabase.from('user_time_off').select('id, start_date, end_date, kind, note').eq('user_id', userId).gte('end_date', todayYmd).order('start_date', { ascending: true }) : Promise.resolve({ data: [] }),
         payName ? supabase.from('pay_stubs').select('period_start, period_end, paid_at').eq('person_name', payName).order('period_end', { ascending: false }).limit(1) : Promise.resolve({ data: [] }),
         payName ? supabase.from('person_offsets').select('id', { count: 'exact', head: true }).eq('person_name', payName).is('pay_stub_id', null) : Promise.resolve({ count: null }),
+        personId ? supabase.from('employment_stints').select('start_date, end_date').eq('person_id', personId) : Promise.resolve({ data: [] }),
       ])
       if (cancelled) return
       setPay(p)
+      setStints((((stintRowsRes as { data: Stint[] | null }).data ?? []) as Stint[]))
       const pr = (personRow as { data: { start_date: string | null; end_date: string | null } | null }).data
       setDates(personId ? { start: pr?.start_date ?? null, end: pr?.end_date ?? null } : null)
       setTimeOff(((to as { data: unknown[] | null }).data ?? []) as TimeOffRow[])
@@ -315,9 +320,16 @@ export function PersonDeskPaySection({
                 <input type="date" value={editDates.end} onChange={(e) => setEditDates({ ...editDates, end: e.target.value })} style={{ fontSize: '0.8125rem' }} aria-label="End date" />
               </>
             ) : (
-              <span>
-                {dates?.start ? fmtDate(dates.start) : <span style={{ color: 'var(--text-muted)' }}>no start date</span>} → {dates?.end ? fmtDate(dates.end) : 'present'}
-                {dates?.end && dates.end < todayYmd ? <Chip tone="gray">Ended</Chip> : null}
+              <span style={{ display: 'grid', gap: '0.15rem' }}>
+                <span>
+                  {dates?.start ? fmtDate(dates.start) : <span style={{ color: 'var(--text-muted)' }}>no start date</span>} → {dates?.end ? fmtDate(dates.end) : 'present'}
+                  {dates?.end && dates.end < todayYmd ? <Chip tone="gray">Ended</Chip> : null}
+                </span>
+                {stintRows(stints, todayYmd).map((r) => (
+                  <span key={`${r.kind}-${r.from ?? ''}-${r.to ?? ''}`} style={{ fontSize: '0.75rem', color: r.kind === 'away' ? 'var(--text-faint)' : 'var(--text-muted)', fontStyle: r.kind === 'away' ? 'italic' : undefined }} aria-label={`${stintRange(r)}, ${r.words}`}>
+                    {stintRange(r)} · {r.words}
+                  </span>
+                ))}
               </span>
             )}
           </DeskRow>
