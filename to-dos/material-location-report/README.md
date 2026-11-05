@@ -2,7 +2,7 @@
 name: "The material location report: what is at every location across a development, printed to PDF"
 number: 268
 group: close
-status: built 2026-11-04 · the paper drawn two ways and the door two ways in `mockup.html` · the owner's pick the same day, *I would like the option for the user to be able to select either version at their leisure* · one PR v2.6533, the press on the Jobs & bids look with By job and By location as chips the device remembers, walked live on Gun Dog as the dev
+status: built 2026-11-04 · the paper drawn two ways and the door two ways in `mockup.html` · the owner's pick the same day, *I would like the option for the user to be able to select either version at their leisure* · one PR v2.6533, the press on the Jobs & bids look with By job and By location as chips the device remembers, walked live on Gun Dog as the dev · v2.6536 the owner's seven-viewport test, a long Last recorded cut off at the margin and Escape, fixed
 summary: >
   The owner, looking at the Gun Dog development, asked for a printable report that shows what
   materials are at all the different locations, called the material location report, printed to
@@ -18,7 +18,7 @@ next: The owner's first print on Gun Dog, then delete this card.
 size: M (one PR: the kernel, the site-wide read, the paper, the door, the guide, the maps)
 blocker: None.
 mockup: to-dos/material-location-report/mockup.html
-ver: v2.6533
+ver: v2.6533 · v2.6536
 opinion: build — the ledger, the kernel that sums it, the print root and the Development page's batched reads all exist; the work is one fold of the site's rows into report rows, one batched read, one print window and one press
 ---
 
@@ -94,4 +94,4 @@ Dev server from the worktree, signed in as the dev through `/dev-login?as=1&to=%
 
 ## Where it stands
 
-2026-11-04: the card claimed (#268), the paper and the door drawn two ways in `mockup.html`, the recommendation A + A made. The owner the same day: *I like what you've built. I would like the option for the user to be able to select either version at their leisure.* Built as v2.6533: the press on the Jobs & bids look, the window with **By job** and **By location** as chips the device remembers, the kernel folding once and each view an order of the same lines. Walked live on Gun Dog as the dev: JP1091's section with G4 at Arena and G1 under No place yet, 23 jobs in the closing block, both views, printed to one Letter sheet. Left: the owner's first print; then delete the folder, the fragment carries the record.
+2026-11-04: the card claimed (#268), the paper and the door drawn two ways in `mockup.html`, the recommendation A + A made. The owner the same day: *I like what you've built. I would like the option for the user to be able to select either version at their leisure.* Built as v2.6533: the press on the Jobs & bids look, the window with **By job** and **By location** as chips the device remembers, the kernel folding once and each view an order of the same lines. Walked live on Gun Dog as the dev: JP1091's section with G4 at Arena and G1 under No place yet, 23 jobs in the closing block, both views, printed to one Letter sheet. 2026-11-05: the owner, *please test with screenshots on multiple viewports*. Seven widths passed on Gun Dog's rows; a made-up dense site showed a long Last recorded cut off at the paper's margin and the whole print shrunk to fit it. Fixed as v2.6536 with Escape to close, and the same walk passed. Left: the owner's first print, and Safari, a real phone and the browser's print dialog, none of them walked; then delete the folder, the fragments carry the record.
