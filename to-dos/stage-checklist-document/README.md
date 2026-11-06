@@ -2,7 +2,7 @@
 name: "Stage checklists as documents on the job: items anyone on the job can add, a stamp on every answer, a signature where the author asks for one, and a record that files itself"
 number: 237
 group: ready
-status: PR 1 shipped v2.6328 (#6797) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · PR 1b shipped v2.6347 (#6798, migration 20261102084500): the named groups on Documents, Skip on this job, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼, the add box staying open, the estimator as author · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
+status: PR 1 shipped v2.6328 (#6797) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · PR 1b shipped v2.6347 (#6798, migration 20261102084500): the named groups on Documents, Skip on this job, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼, the add box staying open, the estimator as author · PR 2 built on claude/237-needs-a-signature (v2.6563, migration 20261106040000): the Needs a signature toggle, the signature sheet, the lock, Take it back, the outbox ride, the guide; the migration waits on the push after the merge · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
 summary: >
   The stage checklists of punch list #164 live in Settings, hold only the company's questions,
   and show the office nothing per job. The owner wants them moved onto the job's Documents tab as
@@ -12,10 +12,10 @@ summary: >
   with a number and a PDF in the job's Drive folder. The company's standard lists are made in the
   same place and promoted from a job, so Settings becomes a read-only mirror. The superintendent's
   line of #234 reads the same count as its proof.
-next: PR 2, needs a signature.
+next: PR 3, the record.
 size: L as a train of six (M · M · M · M · S · S); four migrations; no edge function beyond the PDF renderer the hours statement already has
 blocker: none for PR 1b and PR 4. PR 2 takes "Not here signs" and PR 3 takes "files itself at the last answer" as the owner's defaults; he can change either before they build.
-ver: v2.6420 · 6350 · 6347 · 6329 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
+ver: v2.6563 · 6420 · 6350 · 6347 · 6329 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
 opinion: now — the office has typed no questions yet because there was nowhere good to read the answers; this gives them the place, and the signature is what makes a checklist worth more than a report
 mockup: to-dos/stage-checklist-document/mockup-document-and-signature.html
 ---
@@ -293,6 +293,17 @@ with v1 still filed; press *Use as the company's list* and read the Settings car
 Delete every ZZ Test row after.
 
 ## Where it stands
+
+2026-11-05: PR 2 built on `claude/237-needs-a-signature` (v2.6563, migration `20261106040000`,
+`docs/recent-features/v2.6563.md`): *Needs a signature* beside *Asks for a photo* on the sheet's and the Documents
+tab's add box and on each Settings row; the signature sheet over `SignatureTypeOrDrawInput` with the gravity words and
+the agreed line, writing the pick and the six signature columns in one update with the hash of the words, the pick and
+the note; Not here signs too (the owner's default); the locked row with its mark; *Take it back* with a reason as a void
+on the row (a partial unique index keeps one live answer per stage and question, the voided ones stay and read under the
+question with their mark); the mark riding the outbox as `checklist-sign`; the guide *sign a checklist answer*. The two
+calls the card said the build would meet: a technician may take back their own signed answer (the walk's call), and the
+PDF question is PR 3's. The job label in the gravity words reads *this job* until PR 3's record id gives a better one.
+Not merged yet; the migration is pushed right after the merge.
 
 2026-11-01: thought through with the owner on the click-through and mocked up; nothing built.
 The owner asked to build it. PR 1 and PR 4 wait on nothing; PR 2 and PR 3 take the recommended

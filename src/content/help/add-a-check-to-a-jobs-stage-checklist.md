@@ -2,7 +2,7 @@
 title: add a check to a job's stage checklist
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent, estimator
-keywords: stage checklist, checklist, add a check, item, job, rough in, top out, trim set, superintendent, estimator, documents tab, take off, stamp, name and time, not ready, pipeline, skip on this job, put it back, plan sheet, plans folder, company's list, move up, move down
+keywords: stage checklist, checklist, add a check, item, job, rough in, top out, trim set, superintendent, estimator, documents tab, take off, stamp, name and time, not ready, pipeline, skip on this job, put it back, plan sheet, plans folder, company's list, move up, move down, needs a signature, signature
 where: /jobs
 order: 31
 ---
@@ -25,7 +25,8 @@ A superintendent or an estimator adds from the sheet. The office can too, once t
 3. Type the check as a question. Write it so Yes, No or Not here answers it.
 4. Type the plan sheet it comes from, if it has one. Type why the check is here, if you want to say.
 5. Tick **Asks for a photo** when the crew must take a photo with the answer.
-6. Press {{button:blue|Add the check}}.
+6. Tick **Needs a signature** when the crew must sign the answer. Use it where a wrong answer costs a wall or an inspection.
+7. Press {{button:blue|Add the check}}.
 
 The sheet counts it at once. The toast says the new count, like *Added. Trim Set is now 3 of 6.*
 
@@ -92,3 +93,5 @@ The crew stops seeing it. The Documents tab stops listing it too. The app keeps 
 ## Read the answers
 
 Every answer stamps its row with the person's name and the time. On the Documents tab each row reads the pick, the name, the time, the note and where the photo is. A row that reads *open* is not answered yet. A No or a Not here is an answer. Open is what holds a stage.
+
+A check that needs a signature reads *needs a signature* until the crew signs it. A signed row reads *signed* with the mark. The guide [sign a checklist answer](/help/sign-a-checklist-answer) says what the crew sees and how an answer is taken back.

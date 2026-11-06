@@ -29,9 +29,11 @@ export type TemplateRow = {
   /** The plan sheet and the why (#237 PR 1b, migration 20261102084500). */
   plan_sheet?: string | null
   why?: string | null
+  /** Whoever answers signs (#237 PR 2, migration 20261106040000). */
+  needs_signature?: boolean | null
 }
 
-const TEMPLATE_COLS = 'id, stage_kind, sort_order, words, asks_photo, job_id, fixture_id, created_by, created_by_name, created_at, plan_sheet, why'
+const TEMPLATE_COLS = 'id, stage_kind, sort_order, words, asks_photo, needs_signature, job_id, fixture_id, created_by, created_by_name, created_at, plan_sheet, why'
 
 /** A skip row as the table keeps it (#237 PR 1b). */
 export type SkipRow = {
@@ -64,6 +66,7 @@ export function questionsFromRows(rows: readonly TemplateRow[]): StageChecklistQ
             order: Number(r.sort_order) || 0,
             words: r.words,
             asksPhoto: r.asks_photo === true,
+            needsSignature: r.needs_signature === true,
             fixtureId: r.fixture_id ?? null,
             addedById: r.created_by ?? null,
             addedBy: r.created_by_name ?? '',
@@ -125,6 +128,8 @@ export interface AddJobItemInput {
   kind: StageChecklistKind
   words: string
   asksPhoto: boolean
+  /** Whoever answers signs (#237 PR 2). */
+  needsSignature?: boolean
   /** Its place among the stage's own checks (`nextItemOrder`). */
   order?: number
   /** The plan sheet it comes from, as typed. */
@@ -142,6 +147,7 @@ export async function addJobItem(input: AddJobItemInput, who: { userId: string |
       sort_order: input.order ?? 0,
       words: cleanItemWords(input.words).slice(0, 200),
       asks_photo: input.asksPhoto,
+      needs_signature: input.needsSignature === true,
       plan_sheet: cleanShortLine(input.sheet, PLAN_SHEET_MAX_CHARS),
       why: cleanShortLine(input.why, ITEM_WHY_MAX_CHARS),
       job_id: input.jobId,
@@ -237,13 +243,13 @@ export async function saveQuestions(kind: StageChecklistKind, before: readonly S
     checkSupabaseError(result, 'take the questions off')
   }
   for (const u of plan.updates) {
-    const result = await db.from('stage_checklist_templates').update({ sort_order: u.order, words: u.words, asks_photo: u.asksPhoto, updated_at: now }).eq('id', u.id)
+    const result = await db.from('stage_checklist_templates').update({ sort_order: u.order, words: u.words, asks_photo: u.asksPhoto, needs_signature: u.needsSignature, updated_at: now }).eq('id', u.id)
     checkSupabaseError(result, 'save the question')
   }
   if (plan.inserts.length) {
     const result = await db
       .from('stage_checklist_templates')
-      .insert(plan.inserts.map((i) => ({ stage_kind: i.kind, sort_order: i.order, words: i.words, asks_photo: i.asksPhoto, created_by: byUserId })))
+      .insert(plan.inserts.map((i) => ({ stage_kind: i.kind, sort_order: i.order, words: i.words, asks_photo: i.asksPhoto, needs_signature: i.needsSignature, created_by: byUserId })))
     checkSupabaseError(result, 'add the questions')
   }
 }

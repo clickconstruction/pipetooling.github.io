@@ -23,6 +23,8 @@ Press {{button:outline|Add a question}} under the stage. Type the question in th
 
 Tick **Asks for a photo** when the crew must take a photo with their answer. The photo saves to the customer's Google Drive folder. The crew does not need a photo when they answer Not here.
 
+Tick **Needs a signature** when the crew must sign their answer. Use it where a wrong answer costs a wall or an inspection. The question is not answered until it is signed. Not here needs a signature too. The guide [sign a checklist answer](/help/sign-a-checklist-answer) says what the crew sees.
+
 Press the arrows to move a question up or down. Press **Take off** to remove one. Press {{button:blue|Save the questions}} when the list reads right. Press **Put them back** to undo your typing before a save.
 
 ## What the crew sees
