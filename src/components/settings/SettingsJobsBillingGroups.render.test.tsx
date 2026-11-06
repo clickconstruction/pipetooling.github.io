@@ -52,7 +52,7 @@ describe('SettingsJobsBillingGroups (punch list #261)', () => {
       expect(document.getElementById(c.anchor)?.getAttribute('data-open'), c.anchor).toBe('yes')
       expect(container.querySelector(`[data-stub="${c.slug}"]`), c.anchor).toBeTruthy()
     }
-    expect(container.querySelectorAll('[data-stub]')).toHaveLength(28)
+    expect(container.querySelectorAll('[data-stub]')).toHaveLength(29)
   })
 
   it('a child anchor opens its card alone', () => {
@@ -78,16 +78,16 @@ describe('SettingsJobsBillingGroups (punch list #261)', () => {
     expect(head.getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('a master sees four headings and nine cards, the office two headings and no strip below two', () => {
+  it('a master sees four headings and ten cards, the office two headings and no strip below two', () => {
     const master = renderWithProviders(<SettingsJobsBillingGroups role="master_technician" cards={stubs()} />)
     expect([...master.container.querySelectorAll('[data-settings-jobs-group]')]).toHaveLength(4)
-    expect(master.container.querySelectorAll('[data-settings-card]')).toHaveLength(9)
+    expect(master.container.querySelectorAll('[data-settings-card]')).toHaveLength(10)
     expect(master.container.querySelector('[data-settings-jobs-strip]')).toBeTruthy()
     master.unmount()
     const office = renderWithProviders(<SettingsJobsBillingGroups role="assistant" cards={stubs()} />)
     expect([...office.container.querySelectorAll('[data-settings-jobs-group]')]).toHaveLength(2)
     expect(office.container.querySelector('[data-settings-jobs-strip]')).toBeTruthy()
-    expect(jobsBillingGroupsFor('assistant').flatMap((g) => g.cards)).toHaveLength(4)
+    expect(jobsBillingGroupsFor('assistant').flatMap((g) => g.cards)).toHaveLength(5)
     office.unmount()
     const tech = renderWithProviders(<SettingsJobsBillingGroups role="helpers" cards={stubs()} />)
     expect(tech.container.querySelectorAll('[data-settings-card]')).toHaveLength(0)
@@ -99,6 +99,6 @@ describe('SettingsJobsBillingGroups (punch list #261)', () => {
     delete cards.rates
     const { container } = renderWithProviders(<SettingsJobsBillingGroups role="dev" cards={cards} />)
     expect(document.getElementById('settings-jobs-rates')).toBeNull()
-    expect(container.querySelectorAll('[data-settings-card]')).toHaveLength(27)
+    expect(container.querySelectorAll('[data-settings-card]')).toHaveLength(28)
   })
 })
