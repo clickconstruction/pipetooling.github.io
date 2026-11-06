@@ -8,7 +8,9 @@
  * box, which stays open for the next one), takes one off with two presses, its answer kept, moves the job's own checks
  * with ▲ and ▼, skips a company question on this job with a reason, and adds a job's check to the company's list with
  * two presses. A ready stage folds to one line on a phone; a press on a stage's name opens or folds it. The office
- * answers on the sheet under the window's address, as the crew does; this section reads. The rules are
+ * answers on the sheet under the window's address, as the crew does; this section reads. A check that needs a signature
+ * (PR 2) wears *needs a signature* while open and *signed* with the mark once signed, and an answer taken back reads as
+ * a *Taken back* line under its row with the voided mark kept. The rules are
  * `lib/jobs/stageChecklist.ts` and `stageChecklistItems.ts`; the read is `useJobStageChecklists`, the one the strip
  * uses, whose readers on a job move together: a check added here counts on the strip at once, and an answer on the
  * strip's sheet lands here.
@@ -18,7 +20,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useJobStageChecklists } from '../../hooks/useJobStageChecklists'
 import { useToastContext } from '../../contexts/ToastContext'
-import { addSkip, dropSkip, groupCountWords, checklistProgress, noQuestionsWords, skippedFor, stageChecklistState, templateFor, templateGroups, type JobStageChecklist, type StageChecklistQuestion } from '../../lib/jobs/stageChecklist'
+import { addSkip, dropSkip, groupCountWords, checklistProgress, liveAnswersById, noQuestionsWords, signatureStands, skippedFor, stageChecklistState, templateFor, templateGroups, voidedAnswersOf, type JobStageChecklist, type StageChecklistQuestion } from '../../lib/jobs/stageChecklist'
 import {
   GROUP_WORDS,
   MOVE_WORDS,
@@ -43,6 +45,7 @@ import {
   rowGlyph,
   rowMetaWords,
   rowPickWords,
+  rowSignatureTag,
   skipProblem,
   skipWords,
   skippedLineWords,
@@ -58,6 +61,8 @@ import { dispatchReplyWords, openStageCheckFor, withDispatchWords, type OpenStag
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import { TAKE_BACK_WORDS, voidedLineWords } from '../../lib/jobs/stageChecklistSignature'
+import { SignatureMark } from '../stageChecklists/ChecklistSignatureSheet'
 import { PlanSheetChip } from '../stageChecklists/PlanSheetChip'
 import { AddCheckBox } from '../stageChecklists/StageChecklistSheet'
 import { documentsChip, documentsHeading, documentsLinkButton, documentsQuietButton } from './jobDocumentsStyles'
@@ -69,6 +74,9 @@ const chipTone: Record<StandingTone, CSSProperties> = {
   muted: { background: 'var(--bg-subtle)', color: 'var(--text-muted)' },
 }
 const photoTag: CSSProperties = { ...documentsChip, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+// Needs a signature (#237 PR 2): amber while the row waits on it, green once the signature stands.
+const signedTag: CSSProperties = { ...documentsChip, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }
+const voidedLine: CSSProperties = { ...muted, display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.2rem' }
 // A check with Dispatch (#245, PR 3): the sheet's chip on the read-out's row, and Dispatch's reply under it.
 const withDispatchTag: CSSProperties = { ...documentsChip, marginLeft: 0, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }
 const dispatchReply: CSSProperties = { ...muted, marginTop: '0.15rem', color: 'var(--text-700)', fontStyle: 'italic' }
@@ -238,7 +246,8 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
             const template = templateFor(read.questions, kind, stage.fixtureId)
             const groups = templateGroups(template)
             const skipped = skippedFor(read.questions, kind, stage.fixtureId)
-            const answers = new Map((read.answersByFixture.get(stage.fixtureId) ?? []).map((a) => [a.questionId, a]))
+            const stageAnswers = read.answersByFixture.get(stage.fixtureId) ?? []
+            const answers = liveAnswersById(stageAnswers)
             const chip = stageStandingChip(stage.state, skipped.length)
             const isFolded = folded?.[stage.fixtureId] ?? false
             const words = addCheckWords(stage.name)
@@ -257,6 +266,9 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
               const promoting = promoteWords(stage.name, q)
               const rowBusy = busy === q.id || busy === stage.fixtureId
               const sent = openStageCheckFor(withDispatch, stage.fixtureId, q.id)
+              const sig = signatureStands(q, a)
+              const sigTag = rowSignatureTag(q, a)
+              const voidedRows = voidedAnswersOf(stageAnswers, q.id)
               return (
                 <div key={q.id} style={rowStyle} data-testid="job-documents-checklist-row" data-pick={a?.pick ?? 'open'}>
                   <span style={glyphTone(a?.pick)} aria-hidden>
@@ -269,6 +281,11 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
                         {index}. {q.words}
                       </span>
                       {rowAsksPhotoTag(q, a) ? <span style={photoTag}>asks for a photo</span> : null}
+                      {sigTag ? (
+                        <span style={sigTag.signed ? signedTag : photoTag} data-checklist-signature-tag={sigTag.signed ? 'signed' : 'needs'}>
+                          {sigTag.words}
+                        </span>
+                      ) : null}
                       {q.sheet ? (
                         <span style={{ marginLeft: '0.4rem' }}>
                           <PlanSheetChip sheet={q.sheet} plansUrl={job.job_plans_link} />
@@ -276,6 +293,20 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
                       ) : null}
                     </div>
                     {metaWords ? <div style={muted}>{metaWords}</div> : null}
+                    {sig ? (
+                      <div style={{ marginTop: '0.2rem' }}>
+                        <SignatureMark signature={sig} inkUrl={read.io.inkUrl} />
+                      </div>
+                    ) : null}
+                    {voidedRows.map((v) => (
+                      <div key={v.id} style={voidedLine} data-checklist-voided={v.id}>
+                        {v.signature ? <SignatureMark signature={v.signature} inkUrl={read.io.inkUrl} /> : null}
+                        <span style={{ flex: '1 1 12rem' }}>
+                          <span style={{ fontWeight: 600 }}>{TAKE_BACK_WORDS.heading} · </span>
+                          {voidedLineWords(v)}
+                        </span>
+                      </div>
+                    ))}
                     {sent ? (
                       <div style={{ marginTop: '0.2rem' }}>
                         <span style={withDispatchTag} data-checklist-with-dispatch={q.id}>

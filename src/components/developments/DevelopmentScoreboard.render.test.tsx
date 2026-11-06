@@ -9,6 +9,7 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
 import { buildScoreboard, scoreboardColumnsFor, scoreboardMembers, SCOREBOARD_DEFAULT_SORT } from '../../lib/developments/scoreboard'
+import { scoreboardPartGroups, scoreboardPeopleCut, type ScoreboardCut, type ScoreboardWindowKey } from '../../lib/developments/scoreboardCuts'
 import type { MemberJob } from '../../lib/developments/overview'
 import type { SiteCostsRead } from '../../lib/developments/siteCosts'
 import type { SiteLaborRead } from '../../lib/developments/siteLabor'
@@ -314,5 +315,121 @@ describe('DevelopmentScoreboard · the Right now headline (v2.6467, punch list #
   it('nothing while a read is out', () => {
     draw({ costsIn: { state: 'reading' } })
     expect(screen.queryByTestId('scoreboard-headline')).toBeNull()
+  })
+})
+
+describe('DevelopmentScoreboard · the cuts and the window (v2.6558, punch list #250 PR 4)', () => {
+  const day = (ymd: string, hours: number, costUsd: number) => ({ ymd, hours, costUsd })
+  const clock: SiteLaborRead = {
+    state: 'read',
+    labor: {
+      byJobId: new Map([
+        ['j1', { jobId: 'j1', hours: 100, costUsd: 3000, days: 2, people: [{ personName: 'Luis Ortega', personId: 'p1', userId: 'u-luis', hours: 75, costUsd: 2250, days: 2, leadDays: 2, byWorkDate: [day('2026-11-02', 40, 1200), day('2026-11-03', 35, 1050)] }, { personName: 'Ana Reyes', personId: 'p2', userId: null, hours: 25, costUsd: 750, days: 1, leadDays: 0, byWorkDate: [day('2026-11-03', 25, 750)] }] }],
+        ['j2', { jobId: 'j2', hours: 54, costUsd: 1296, days: 5, people: [{ personName: 'Ana Reyes', personId: 'p2', userId: null, hours: 54, costUsd: 1296, days: 5, leadDays: 0, byWorkDate: [day('2026-10-20', 54, 1296)] }] }],
+      ]),
+      siteDays: 3,
+      people: 2,
+      daysKnown: true,
+    },
+  }
+  const parted = [{ ...jobs[0]!, plan_part_id: 'lodge' }, { ...jobs[1]!, plan_part_id: 'bunker' }, jobs[2]!]
+  const parts = [
+    { id: 'lodge', name: 'The lodge' },
+    { id: 'bunker', name: 'The bunker' },
+  ]
+  function mountCuts(over: { cut?: ScoreboardCut; window?: ScoreboardWindowKey; range?: { from: string; to: string } | null; phone?: boolean; seesCosts?: boolean; windowOffered?: boolean } = {}) {
+    const onCut = vi.fn()
+    const onWindow = vi.fn()
+    const openJob = vi.fn()
+    const seesCosts = over.seesCosts ?? true
+    const model = buildScoreboard({ jobs: parted, invoices: [], jobLabel: label, labor: clock, costs, overhead, window: over.range ?? null, chargeEvents: new Map() })
+    const cut = over.cut ?? 'job'
+    const cuts = {
+      cut,
+      onCut,
+      window: over.window ?? 'all',
+      onWindow,
+      windowOffered: over.windowOffered ?? true,
+      parts: cut === 'part' ? scoreboardPartGroups(model, new Map(parted.map((j) => [j.id, j.plan_part_id ?? null])), parts) : null,
+      people: cut === 'person' ? scoreboardPeopleCut({ model, labor: clock, seesCosts, viewer: { userId: 'u-luis', name: null } }) : null,
+    }
+    const r = renderWithProviders(<DevelopmentScoreboard model={model} columns={scoreboardColumnsFor(seesCosts)} phone={over.phone ?? false} onSort={vi.fn()} openJob={openJob} head={head} print={null} cuts={cuts} />)
+    return { ...r, onCut, onWindow, openJob, model }
+  }
+
+  it('draws Cut by and Window as chip rows; a press asks for the cut or the window; the window’s two days read beside the chips', () => {
+    const { onCut, onWindow } = mountCuts({ window: 'month', range: { from: '2026-11-01', to: '2026-11-05' } })
+    expect(screen.getByTestId('scoreboard-cut-job').getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByTestId('scoreboard-cut-part'))
+    expect(onCut).toHaveBeenCalledWith('part')
+    expect(screen.getByTestId('scoreboard-window-month').getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByTestId('scoreboard-window-90d'))
+    expect(onWindow).toHaveBeenCalledWith('90d')
+    expect(screen.getByTestId('scoreboard-window-words').textContent).toBe('Nov 1 – Nov 5')
+  })
+
+  it('a read without days offers no window chips; without the cuts prop there are no chips at all', () => {
+    mountCuts({ windowOffered: false })
+    expect(screen.queryByTestId('scoreboard-window-all')).toBeNull()
+    expect(screen.getByTestId('scoreboard-cut-job')).toBeTruthy()
+    cleanup()
+    mount()
+    expect(screen.queryByTestId('scoreboard-cuts')).toBeNull()
+  })
+
+  it('the cut by part: each part a row folded to its three, opening to its nine and its jobs; the jobs on no part last', () => {
+    mountCuts({ cut: 'part' })
+    const lodge = screen.getByTestId('scoreboard-part-lodge')
+    expect(lodge.textContent).toContain('The lodge')
+    expect(lodge.textContent).toContain('1 job')
+    expect(screen.getByTestId('scoreboard-part-bunker')).toBeTruthy()
+    expect(screen.queryByTestId('scoreboard-part-none')).toBeNull()
+    expect(screen.queryByTestId('scoreboard-row-j1')).toBeNull()
+    // Folded: the money three; the effort cells are blank.
+    const cells = within(lodge).getAllByRole('cell')
+    expect(cells[cells.length - 1]!.textContent).toContain('$')
+    expect(cells[1]!.textContent).toBe('')
+    fireEvent.click(screen.getByTestId('scoreboard-open-part-lodge'))
+    expect(screen.getByTestId('scoreboard-row-j1')).toBeTruthy()
+    expect(within(screen.getByTestId('scoreboard-part-lodge')).getAllByRole('cell')[1]!.textContent).toBe('100 h')
+    // The site's foot stays.
+    expect(screen.getByText(/The site · 3 jobs/)).toBeTruthy()
+  })
+
+  it('the cut by person: a person is a row with hours and their share of earned marked ≈, the viewer gold; it opens to their jobs with the role tag', () => {
+    const { openJob } = mountCuts({ cut: 'person' })
+    const luis = screen.getByTestId('scoreboard-person-p1')
+    expect(luis.getAttribute('data-you')).toBe('true')
+    expect(within(luis).getByTestId('scoreboard-you')).toBeTruthy()
+    expect(luis.textContent).toContain('Luis Ortega')
+    expect(luis.textContent).toContain('1 job')
+    const cells = within(luis).getAllByRole('cell')
+    expect(cells[1]!.textContent).toBe('75 h')
+    const earnedCell = cells.find((c) => c.getAttribute('title') === 'Their share of the job’s earned dollars, by hours')!
+    expect(earnedCell.textContent).toContain('≈')
+    // Subs, parts and overhead are not a person's: blank.
+    expect(cells[4]!.textContent).toBe('')
+    expect(screen.getByTestId('scoreboard-person-note').textContent).toContain('not people')
+    expect(screen.queryByTestId('scoreboard-fold-row')).toBeNull()
+    fireEvent.click(screen.getByTestId('scoreboard-open-person-p1'))
+    const line = screen.getByTestId('scoreboard-person-line-p1-j1')
+    expect(line.textContent).toContain('Lead')
+    expect(line.textContent).toContain('JP612')
+    fireEvent.click(within(line).getByText('JP612'))
+    expect(openJob).toHaveBeenCalledWith('j1')
+    // Ana is not the viewer and led nobody.
+    expect(screen.getByTestId('scoreboard-person-p2').getAttribute('data-you')).toBeNull()
+  })
+
+  it('on a phone the parts are headings over their cards and a person is a card that opens to their jobs', () => {
+    mountCuts({ cut: 'part', phone: true })
+    expect(screen.getByTestId('scoreboard-part-lodge').textContent).toContain('The lodge')
+    expect(screen.getByTestId('scoreboard-card-j1')).toBeTruthy()
+    cleanup()
+    mountCuts({ cut: 'person', phone: true })
+    const card = screen.getByTestId('scoreboard-person-p1')
+    expect(card.textContent).toContain('≈ $')
+    fireEvent.click(screen.getByTestId('scoreboard-open-person-p1'))
+    expect(screen.getByTestId('scoreboard-person-lines-p1').textContent).toContain('JP612')
   })
 })

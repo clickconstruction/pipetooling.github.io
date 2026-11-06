@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { freeName, photoFolderOrWhy } from '../_shared/driveJobFolder.ts'
+import { machineFolderOrWhy } from '../_shared/driveMachineFolder.ts'
 import { driveFailWords } from '../_shared/whereFilesGo.ts'
 import type { JobRef } from '../_shared/driveLink.ts'
 import {
@@ -412,6 +413,89 @@ async function sweepNamedPhotos(admin: SupabaseClient, source: NamedSource): Pro
   return { saved, failed }
 }
 
+/* ------------------------------------------------------------------ a sixth source: a machine's check photos */
+
+type MachinePhotoRow = { id: string; vehicle_id: string; storage_path: string; file_name: string }
+
+/**
+ * Equipment pre-use check (punch list #270, v2.6556): the photos a pre-use walk or a leaving check takes, up to twenty
+ * `machine_check_photos` rows with a `storage_path` and no `filed_at`, oldest first. Each is copied from the
+ * `machine-check-photos` bucket into the machine's own Drive folder (`machineFolderOrWhy`: the row's link, else one made
+ * under the office's Fleet folder) under the row's `file_name` (*2026-11-05 Robert · E-12 pre-use front.jpg*), with
+ * *(2)* when the folder holds the name; the row keeps `drive_file_id` and `filed_at`, `fail_why` is cleared, and the
+ * bucket copy is deleted. A shot it cannot file gets the reason on its row and is tried again every run.
+ */
+async function sweepMachinePhotos(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
+  const { data, error } = await admin
+    .from('machine_check_photos')
+    .select('id, vehicle_id, storage_path, file_name')
+    .is('filed_at', null)
+    .not('storage_path', 'is', null)
+    .order('taken_at', { ascending: true })
+    .limit(REPORT_PHOTO_BATCH)
+  if (error) return { saved: 0, failed: [{ id: '', why: `the machine photos did not read: ${error.message}` }] }
+  const rows = (data ?? []) as MachinePhotoRow[]
+  if (rows.length === 0) return { saved: 0, failed: [] }
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  let saved = 0
+  const failed: { id: string; why: string }[] = []
+  const fail = async (r: MachinePhotoRow, why: string) => {
+    failed.push({ id: r.id, why })
+    await admin.from('machine_check_photos').update({ fail_why: why.slice(0, 300) }).eq('id', r.id).is('filed_at', null)
+  }
+  if (!saJson) {
+    for (const r of rows) await fail(r, 'Drive is not set up here yet.')
+    return { saved, failed }
+  }
+  let google: string
+  try {
+    google = await googleAccessToken(saJson)
+  } catch (e) {
+    for (const r of rows) await fail(r, `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`)
+    return { saved, failed }
+  }
+  const folders = new Map<string, { id: string } | { why: string }>()
+  for (const r of rows) {
+    try {
+      if (!folders.has(r.vehicle_id)) folders.set(r.vehicle_id, await machineFolderOrWhy(admin, google, r.vehicle_id))
+      const landing = folders.get(r.vehicle_id)!
+      if ('why' in landing) {
+        await fail(r, landing.why)
+        continue
+      }
+      const { data: blob, error: dl } = await admin.storage.from('machine-check-photos').download(r.storage_path)
+      if (dl || !blob) {
+        await fail(r, 'Our copy of that photo did not read.')
+        continue
+      }
+      const mime = blob.type || 'image/jpeg'
+      const base = r.file_name.replace(/\.jpe?g$/i, '')
+      const name = await freeName(google, landing.id, (taken) => {
+        let n = 2
+        let candidate = `${base}.jpg`
+        while (taken.has(candidate)) candidate = `${base} (${n++}).jpg`
+        return candidate
+      })
+      const put = await uploadBytes(google, landing.id, new Uint8Array(await blob.arrayBuffer()), name, mime)
+      const { error: kept } = await admin
+        .from('machine_check_photos')
+        .update({ drive_file_id: put.id, filed_at: new Date().toISOString(), fail_why: null })
+        .eq('id', r.id)
+        .is('drive_file_id', null)
+      if (kept) {
+        await fail(r, 'Saved to Drive, but the row did not keep it.')
+        continue
+      }
+      await admin.storage.from('machine-check-photos').remove([r.storage_path])
+      saved += 1
+    } catch (e) {
+      await fail(r, driveFailWords(e instanceof Error ? e.message : String(e)))
+    }
+  }
+  if (failed.length) console.warn('photo-save: some machine photos were not filed', failed)
+  return { saved, failed }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405)
@@ -425,8 +509,9 @@ serve(async (req) => {
     const reports = await sweepNamedPhotos(admin, REPORT_SOURCE)
     const checklists = await sweepWaiting(admin, CHECKLIST_SOURCE)
     const jobPhotos = await sweepNamedPhotos(admin, JOB_PHOTO_SOURCE)
+    const machines = await sweepMachinePhotos(admin)
     const body = (await messages.json()) as Record<string, unknown>
-    return json({ ...body, boxes, reports, checklists, jobPhotos }, messages.status)
+    return json({ ...body, boxes, reports, checklists, jobPhotos, machines }, messages.status)
   } catch (e) {
     console.error('photo-save', e)
     return json({ error: e instanceof Error ? e.message : 'The sweep failed.' }, 500)

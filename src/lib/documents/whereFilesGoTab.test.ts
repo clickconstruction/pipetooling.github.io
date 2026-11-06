@@ -276,3 +276,10 @@ describe('the tidy press (v2.6287)', () => {
     for (const w of [UNDER_CUSTOMER_WORDS, APPLIES_FROM_NOW_WORDS, tidyWords(3).button, treeHeldLineWords(3)!, tidyDoneWords({ looked: 5, made: 1, moved: 1, renamed: 1, inPlace: 2, held: 1, left: 0 })]) expect(plainWordsFailures(w)).toEqual([])
   })
 })
+
+describe('the Fleet folder on the answer (punch list #270)', () => {
+  it('reads the fleet block like the company’s, and null while none is set', () => {
+    expect(whereFilesGoFromAnswer({ fleet: { id: 'f1', url: 'https://drive.google.com/drive/folders/f1', ok: true, words: 'The app can write here.', folder: null } }).fleet).toEqual({ id: 'f1', url: 'https://drive.google.com/drive/folders/f1', ok: true, words: 'The app can write here.', folder: null })
+    expect(whereFilesGoFromAnswer({}).fleet).toBeNull()
+  })
+})

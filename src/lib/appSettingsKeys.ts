@@ -31,6 +31,8 @@ export const APP_SETTINGS_KEY_DRIVE_FOLDERS_MADE = 'drive_folders_made' as const
 export const APP_SETTINGS_KEY_DRIVE_COMPANY_FOLDER_ID = 'drive_company_folder_id' as const
 /** `value_text` — the Drive folder the people's files go under (a person's evidence, filed by `hr-evidence-drive` as People › <person> › <day · title>); missing = no folder yet. */
 export const APP_SETTINGS_KEY_DRIVE_PEOPLE_FOLDER_ID = 'drive_people_folder_id' as const
+/** `value_text` — the Drive folder the machines' folders go under (a machine's check photos, filed by `photo-save` as PipeTooling Fleet › <unit · make model>; punch list #270); missing = no folder yet. */
+export const APP_SETTINGS_KEY_DRIVE_FLEET_ROOT_FOLDER_ID = 'drive_fleet_root_folder_id' as const
 
 /** JSON map in `value_text`: Mercury kind → `{ nickname, color }` for Jobs → Bank Payments. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES = 'bank_payments_kind_badges_v1' as const

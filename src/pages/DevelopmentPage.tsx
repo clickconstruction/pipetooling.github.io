@@ -42,7 +42,8 @@ import { DevelopmentNotInChips, type NotInChip } from '../components/development
 import { DevelopmentMoney } from '../components/developments/DevelopmentMoney'
 import { DevelopmentScoreboard } from '../components/developments/DevelopmentScoreboard'
 import { DevelopmentTimeline, type SiteTimelineViewRead } from '../components/developments/DevelopmentTimeline'
-import { assembleSiteTimelineJobs, overheadSinceWords } from '../lib/developments/siteTimeline'
+import { assembleSiteTimelineJobs, overheadSinceWords, siteChargeEventsFromCostRows } from '../lib/developments/siteTimeline'
+import { scoreboardPartGroups, scoreboardPeopleCut, scoreboardWindowRange, type ScoreboardCut, type ScoreboardWindowKey } from '../lib/developments/scoreboardCuts'
 import { buildCostSummary, costSummaryPrintHtml } from '../lib/developments/costSummaryPrint'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
 import { OVERHEAD_POOL_FIRST_YMD } from '../lib/jobs/overheadAllocation'
@@ -55,7 +56,7 @@ import { useSiteLabor } from '../hooks/useSiteLabor'
 import { useSiteOverhead } from '../hooks/useSiteOverhead'
 import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, sortMoneyRows, unbilledTileWords, type MoneySortMode } from '../lib/developments/siteMoney'
 import { countKeysFor, developmentDoorFor, jobDoorClosedWords, OFFICE_READS_MONEY, OFFICE_READS_MONEY_CHIP } from '../lib/developments/readDoor'
-import { isFolded, readFolds, readMoneySort, readMoneyView, toggleFold, writeFolds, writeMoneySort, writeMoneyView, type MoneyView } from '../lib/developments/devicePrefs'
+import { isFolded, readFolds, readMoneySort, readMoneyView, readScoreboardCut, readScoreboardWindow, toggleFold, writeFolds, writeMoneySort, writeMoneyView, writeScoreboardCut, writeScoreboardWindow, type MoneyView } from '../lib/developments/devicePrefs'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { foldSameDayRuns } from '../lib/developments/historyFolds'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
@@ -114,6 +115,18 @@ export default function DevelopmentPage() {
     writeMoneyView(developmentId, view)
   }
   const [scoreSort, setScoreSort] = useState<ScoreboardSort>(SCOREBOARD_DEFAULT_SORT)
+  // The Scoreboard's cut and window (v2.6558, punch list #250 PR 4): the device remembers both.
+  const [scoreCut, setScoreCut] = useState<ScoreboardCut>(() => readScoreboardCut(developmentId))
+  const setScoreCutMode = (cut: ScoreboardCut) => {
+    setScoreCut(cut)
+    writeScoreboardCut(developmentId, cut)
+  }
+  const [scoreWindow, setScoreWindow] = useState<ScoreboardWindowKey>(() => readScoreboardWindow(developmentId))
+  const setScoreWindowMode = (key: ScoreboardWindowKey) => {
+    setScoreWindow(key)
+    writeScoreboardWindow(developmentId, key)
+  }
+  const scoreWindowRange = useMemo(() => scoreboardWindowRange(scoreWindow, todayYmdInAppTz()), [scoreWindow])
   // The cost summary print's note (v2.6534): the costs still reading, or the window blocked.
   const [costPrintNote, setCostPrintNote] = useState<string | null>(null)
   const [moneyFolds, setMoneyFolds] = useState<ReadonlySet<string>>(() => readFolds(developmentId, 'money'))
@@ -302,6 +315,14 @@ export default function DevelopmentPage() {
   // Who holds the card each counted charge went on (v2.6457): the card id alone out of each bank record, while the board is open.
   const cardTxIds = useMemo(() => (costsByJobId?.state === 'read' ? [...costsByJobId.byJobId.values()].flatMap((r) => r.breakdown.cardLines.map((l) => l.txId).filter((id): id is string => !!id)) : []), [costsByJobId])
   const cardHoldersRead = useSiteCardHolders(cardTxIds, scoreboardOpen && canSeeSiteCosts(role))
+  // The window needs the clock's days (v2.6558): the man-hours fallback has none, so the window chips are not offered and the board stays whole-life.
+  const scoreWindowOffered = laborRead?.state !== 'read' || laborRead.labor.daysKnown
+  const scoreWindowApplied = scoreboardOpen && scoreWindowOffered ? scoreWindowRange : null
+  // The dated charge events the window sums subs and parts from: the Timeline's own builder over the cost rows, only while a window is on; fuel is a card charge here, so no fuel read.
+  const scoreEvents = useMemo(
+    () => (scoreWindowApplied && costsByJobId?.state === 'read' && costsByJobId.rows ? siteChargeEventsFromCostRows(costsByJobId.rows, { fuelTxIds: new Set(), toYmd: (raw) => ymdFromDateOnlyOrIso(raw, calendarYmdInAppTzFromIso) }) : null),
+    [scoreWindowApplied, costsByJobId],
+  )
   // The Timeline's own read (v2.6493): the fuel split of the site's card charges, once the cost rows are in and only while the view is open.
   const timelineRead = useSiteTimeline(costsByJobId, timelineOpen)
   // The value line's percent events (v2.6499): the reports and the hand-set percents, one chunked read each, only while the view is open.
@@ -917,7 +938,18 @@ export default function DevelopmentPage() {
   const siteMoney = buildSiteMoney({ members: counted, invoices: data.invoices, names: data.names, teamMembers: data.teamMembers, jobLabel, paySpeed: data.paySpeed, todayYmd: todayYmdInAppTz() })
   const moneyWords = moneyLookWords(siteMoney, money)
   // The scoreboard (v2.6407): the same members the Money look reads, the nine measures, the site's totals as the column heads.
-  const scoreboard = buildScoreboard({ jobs: counted.jobs, invoices: data.invoices, jobLabel, labor: laborRead, costs: costsByJobId, overhead: overheadRead, sort: scoreSort })
+  const scoreboardWhole = buildScoreboard({ jobs: counted.jobs, invoices: data.invoices, jobLabel, labor: laborRead, costs: costsByJobId, overhead: overheadRead, sort: scoreSort })
+  // With a window on (v2.6558) the board is cut to its days; the print keeps the whole life, as its heading says.
+  const scoreboard = scoreWindowApplied ? buildScoreboard({ jobs: counted.jobs, invoices: data.invoices, jobLabel, labor: laborRead, costs: costsByJobId, overhead: overheadRead, sort: scoreSort, window: scoreWindowApplied, chargeEvents: scoreEvents }) : scoreboardWhole
+  const scoreboardCuts = {
+    cut: scoreCut,
+    onCut: setScoreCutMode,
+    window: scoreWindow,
+    onWindow: setScoreWindowMode,
+    windowOffered: scoreWindowOffered,
+    parts: scoreCut === 'part' ? scoreboardPartGroups(scoreboard, new Map(counted.jobs.map((j) => [j.id, j.plan_part_id ?? null])), siteRead?.parts ?? []) : null,
+    people: scoreCut === 'person' ? scoreboardPeopleCut({ model: scoreboard, labor: laborRead, seesCosts: canSeeSiteCosts(role), viewer: { userId: authUser?.id ?? null, name: profileName ?? null }, sort: scoreSort }) : null,
+  }
   // The head's bid count leaves a robot's shadow bid out, as the tiles do (v2.6378).
   const scoreboardHead = {
     name: dev.name,
@@ -939,7 +971,7 @@ export default function DevelopmentPage() {
     }
     const html = costSummaryPrintHtml(
       buildCostSummary({
-        model: scoreboard,
+        model: scoreboardWhole,
         costs: costsByJobId,
         labor: laborRead,
         overhead: overheadRead,
@@ -1409,6 +1441,7 @@ export default function DevelopmentPage() {
             {moneyViewShown === 'scoreboard' ? (
               <DevelopmentScoreboard model={scoreboard} columns={scoreboardColumnsFor(canSeeSiteCosts(role), laborRead?.state !== 'read' || laborRead.labor.daysKnown)} phone={phone} onSort={(k) => setScoreSort((s) => nextScoreboardSort(s, k))} openJob={openJob} head={scoreboardHead}
                 print={canSeeSiteCosts(role) ? { onPress: printCostSummary, note: costPrintNote } : null}
+                cuts={scoreboardCuts}
                 membersOf={(r) =>
                   scoreboardMembers({
                     jobId: r.jobId,

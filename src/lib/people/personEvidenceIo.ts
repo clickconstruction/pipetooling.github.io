@@ -19,7 +19,9 @@ const db = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
 
 type RecordRow = Omit<PersonEvidenceRecord, 'files'>
 
-const RECORD_COLUMNS = 'id, person_id, entry_id, dated_on, title, memo, created_by, author_label, created_at, drive_folder_id, drive_folder_url, filed_at, fail_why'
+const RECORD_COLUMNS = 'id, person_id, entry_id, dated_on, title, memo, created_by, author_label, created_at, drive_folder_id, drive_folder_url, filed_at, fail_why, counsel_only'
+/** Before migration 20261106020000 is pushed the column is not there; the read falls back and every record reads as not counsel-only. */
+const RECORD_COLUMNS_BEFORE_COUNSEL = 'id, person_id, entry_id, dated_on, title, memo, created_by, author_label, created_at, drive_folder_id, drive_folder_url, filed_at, fail_why'
 const FILE_COLUMNS = 'id, evidence_id, entry_id, filename, mime_type, size_bytes, storage_path, drive_file_id, drive_url, filed_at, fail_why, created_at, sha256'
 const FILE_COLUMNS_BEFORE_HASH = 'id, evidence_id, entry_id, filename, mime_type, size_bytes, storage_path, drive_file_id, drive_url, filed_at, fail_why, created_at'
 
@@ -36,7 +38,10 @@ async function sha256HexOf(file: File): Promise<string | null> {
 export type PersonEvidenceLoad = { records: PersonEvidenceRecord[]; /** Why the table could not be read, or null; a missing table reads as no records. */ heldWhy: string | null }
 
 export async function loadPersonEvidence(personId: string): Promise<PersonEvidenceLoad> {
-  const res = await db.from('person_file_evidence').select(RECORD_COLUMNS).eq('person_id', personId)
+  type RecordsRes = { data: Record<string, unknown>[] | null; error: { code?: string; message: string } | null }
+  const readRecords = async (columns: string): Promise<RecordsRes> => (await db.from('person_file_evidence').select(columns).eq('person_id', personId)) as unknown as RecordsRes
+  let res = await readRecords(RECORD_COLUMNS)
+  if (res.error && res.error.code === '42703') res = await readRecords(RECORD_COLUMNS_BEFORE_COUNSEL)
   if (res.error) {
     // 42P01: the migration is not pushed yet — nothing to show, nothing to say.
     if (res.error.code === '42P01' || /does not exist/i.test(res.error.message)) return { records: [], heldWhy: null }
@@ -83,9 +88,10 @@ export async function savePersonEvidence(args: SaveEvidenceArgs): Promise<SaveEv
   const { personId, draft, files, links = [], entryId = null, authUserId } = args
   const ins = await db
     .from('person_file_evidence')
-    .insert({ person_id: personId, entry_id: entryId, dated_on: draft.datedOn, title: draft.title.trim(), memo: draft.memo.trim(), created_by: authUserId })
+    .insert({ person_id: personId, entry_id: entryId, dated_on: draft.datedOn, title: draft.title.trim(), memo: draft.memo.trim(), created_by: authUserId, ...(draft.counselOnly ? { counsel_only: true } : {}) })
     .select('id')
     .single()
+  if (ins.error && ins.error.code === '42703' && draft.counselOnly) return { ok: false, why: 'Counsel-only is not on this database yet: the migration has not been pushed. The record was not kept.' }
   if (ins.error) {
     if (ins.error.code === '42P01' || /does not exist/i.test(ins.error.message)) return { ok: false, why: 'Evidence records are not on this database yet: the migration has not been pushed.' }
     return { ok: false, why: ins.error.message }
@@ -152,7 +158,9 @@ export async function savePersonEvidence(args: SaveEvidenceArgs): Promise<SaveEv
   if (staged === 0 && linked === 0 && files.length + links.length > 0) return { ok: false, why: `The record was kept but no file could be staged or linked. ${failures.join(' ')}` }
   if (staged === 0) return { ok: true, recordId, staged, linked, drive: { filed: linked, remaining: 0, failWhy: null } }
   // Drive: fail-soft. A function not deployed, or a refusal, leaves the record waiting for the sweep.
+  // v2.6554: a counsel-only record never asks Drive; the bucket copy is the only copy in the app.
   let drive: { filed: number; remaining: number; failWhy: string | null } | null = null
+  if (draft.counselOnly) return { ok: true, recordId, staged, linked, drive: null }
   try {
     const { data, error } = await supabase.functions.invoke('hr-evidence-drive', { body: { evidence_id: recordId } })
     if (!error && data && typeof data === 'object') {

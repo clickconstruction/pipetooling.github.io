@@ -544,7 +544,7 @@ function QuickfillScheduleUserAgendaRow({
         const timeChip = `${agendaShortTime(seg.time_start)}–${agendaShortTime(seg.time_end)}`
         const rowInner = (
           <>
-            <span style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, background: '#fed7aa', color: 'var(--text-orange-800)', borderRadius: 6, padding: '0.15rem 0.5rem', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, background: 'var(--bg-orange-100)', color: 'var(--text-orange-800)', borderRadius: 6, padding: '0.15rem 0.5rem', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
               {timeChip}
             </span>
             <span style={{ flex: 1, minWidth: 0, fontSize: '0.8125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>

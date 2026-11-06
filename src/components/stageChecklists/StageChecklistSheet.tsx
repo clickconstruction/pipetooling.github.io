@@ -19,6 +19,14 @@
  * the question (`checklistPhotoName`), put in the bucket and filed in the customer's Drive folder by the photo-save
  * sweep. The foot carries the rule: the stage reads not ready on the Pipeline until every question is answered. The
  * rules are `lib/jobs/stageChecklist.ts` and `stageChecklistItems.ts`.
+ *
+ * A check the author marked *needs a signature* (#237 PR 2): its open row wears the *signature* chip, and Yes, No or
+ * Not here opens `ChecklistSignatureSheet` on top instead of saving, which says what is being claimed and who will read
+ * it, takes the mark and the agreed line, and writes the pick and the signature in one press through the outbox
+ * (`checklist-sign`), so a signature on one bar of signal still lands. A signed row is locked: its open view shows the
+ * pick, the mark and *Signed by … · Nov 1 · 9:14 am*, with **Take it back** as its one door, which asks why and voids the
+ * row; the voided row stays as a *Taken back* line under the question with its mark, and the question waits on its pick
+ * again. The words are `stageChecklistSignature.ts`.
  */
 import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type KeyboardEvent } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
@@ -36,21 +44,31 @@ import {
   dropSkip,
   groupCountWords,
   isJobItem,
+  isVoidedAnswer,
+  liveAnswersById,
   noQuestionsWords,
   progressWords,
   questionWaitsOn,
   savedWords,
   sheetFootWords,
+  signatureStands,
   skippedFor,
   stageChecklistKindOf,
   stageChecklistState,
   templateFor,
   templateGroups,
+  voidedAnswersOf,
   waitsOnWords,
+  type ChecklistSignature,
   type JobStageRef,
   type StageChecklistPick,
   type StageChecklistQuestion,
 } from '../../lib/jobs/stageChecklist'
+import { NEEDS_SIGNATURE_WORDS, SIGN_WORDS, TAKE_BACK_WORDS, VOID_WHY_MAX_CHARS, canTakeBack, signedRowWords, signedStampWords, signedToastWords, takeBackProblem, takenBackToastWords, voidedLineWords, type SignInput } from '../../lib/jobs/stageChecklistSignature'
+import { landChecklistSign } from '../../lib/offline/landFieldPress'
+import { pressThroughOutbox } from '../../lib/offline/pressThroughOutbox'
+import { jobWindowPath } from '../../lib/photos/uploadedPhotos'
+import { ChecklistSignatureSheet, SignatureMark } from './ChecklistSignatureSheet'
 import {
   GROUP_WORDS,
   ITEM_WHY_MAX_CHARS,
@@ -99,6 +117,8 @@ export interface StageChecklistSheetProps {
   canAuthor?: boolean
   /** The job's Plans folder, the door a plan-sheet chip opens; the chip is words alone without one. */
   plansUrl?: string | null
+  /** The job as the signature sheet's gravity words name it (#237 PR 2): its number, or *this job*. */
+  jobLabel?: string
   io: StageChecklistSheetIo
   /** Each saved answer, for the strip's count. */
   onAnswer: (answer: JobAnswer) => void
@@ -123,6 +143,8 @@ export interface StageChecklistSheetProps {
 export interface AddCheckDraft {
   words: string
   asksPhoto: boolean
+  /** Whoever answers signs (#237 PR 2). */
+  needsSignature: boolean
   sheet: string
   why: string
 }
@@ -159,8 +181,11 @@ const withDispatchTag: CSSProperties = { display: 'inline-block', padding: '0.05
 // Dispatch's reply under the crew's row (#245 PR 2b), until the row is answered.
 const dispatchReply: CSSProperties = { display: 'block', marginTop: '0.2rem', fontSize: '0.8125rem', color: 'var(--text-700)', fontStyle: 'italic' }
 const skippedRow: CSSProperties = { display: 'grid', gridTemplateColumns: '1.4rem minmax(0, 1fr) auto', gap: '0.15rem 0.5rem', alignItems: 'start', padding: '0.55rem 0', borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }
+// A signed row's lock (#237 PR 2): the pick as a statement, the mark, the stamp, and Take it back as the one door.
+const lockedPick: CSSProperties = { display: 'inline-block', padding: '0.3rem 0.7rem', borderRadius: 10, border: '1.5px solid var(--border-strong)', fontWeight: 700 }
+const voidedLine: CSSProperties = { ...meta, display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', paddingLeft: '1.9rem', marginTop: '0.1rem' }
 
-export function StageChecklistSheet({ jobId, stage, questions, answers: given, who, role = null, canAuthor = false, plansUrl = null, io, onAnswer, onQuestionAdded, onQuestionRetired, onQuestionsChanged, initialOpenQuestionId = null, onClose, frame = 'sheet' }: StageChecklistSheetProps) {
+export function StageChecklistSheet({ jobId, stage, questions, answers: given, who, role = null, canAuthor = false, plansUrl = null, jobLabel = 'this job', io, onAnswer, onQuestionAdded, onQuestionRetired, onQuestionsChanged, initialOpenQuestionId = null, onClose, frame = 'sheet' }: StageChecklistSheetProps) {
   const { showToast } = useToastContext()
   const kind = stageChecklistKindOf(stage.name)
   const template = useMemo(() => (kind ? templateFor(questions, kind, stage.fixtureId) : []), [questions, kind, stage.fixtureId])
@@ -192,13 +217,20 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
   const [skipWhy, setSkipWhy] = useState('')
   const [skipBlocked, setSkipBlocked] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
-  const byQuestion = useMemo(() => new Map(answers.map((a) => [a.questionId, a])), [answers])
+  // Needs a signature (#237 PR 2): the check being signed with the pick pressed, and the signed row being taken back.
+  const [signing, setSigning] = useState<{ question: StageChecklistQuestion; pick: StageChecklistPick; note: string } | null>(null)
+  const [takingBack, setTakingBack] = useState<string | null>(null)
+  const [takeBackWhy, setTakeBackWhy] = useState('')
+  const [takeBackBlocked, setTakeBackBlocked] = useState<string | null>(null)
+  // The live answer of each question; a row taken back stays in `answers` for its line under the question.
+  const byQuestion = useMemo(() => liveAnswersById(answers), [answers])
   const state = useMemo(() => stageChecklistState({ stageName: stage.name, fixtureId: stage.fixtureId, questions, answers }), [stage.name, stage.fixtureId, questions, answers])
   const progress = useMemo(() => checklistProgress(template, byQuestion), [template, byQuestion])
   const openId = reopened && template.some((q) => q.id === reopened) ? reopened : (progress.next?.id ?? null)
 
   const land = (a: JobAnswer) => {
-    setAnswers((prev) => [...prev.filter((x) => x.id !== a.id && x.questionId !== a.questionId), a])
+    // The row by its id, or the question's live row, gives way; the question's voided rows stay as its record.
+    setAnswers((prev) => [...prev.filter((x) => x.id !== a.id && !(x.questionId === a.questionId && !isVoidedAnswer(x) && !isVoidedAnswer(a))), a])
     onAnswer(a)
   }
   const key = (q: StageChecklistQuestion) => ({ jobId, fixtureId: stage.fixtureId, questionId: q.id })
@@ -220,6 +252,11 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
   }
 
   const pick = async (q: StageChecklistQuestion, p: StageChecklistPick) => {
+    // A check that needs a signature saves nothing on the press: the signature sheet writes the pick with the mark.
+    if (q.needsSignature) {
+      setSigning({ question: q, pick: p, note: (notes[q.id] ?? byQuestion.get(q.id)?.note ?? '').trim() })
+      return
+    }
     setBusy(q.id)
     try {
       land(await io.pick(key(q), p, who))
@@ -230,6 +267,59 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
       void settleWithDispatch(q)
     } catch (e) {
       showToast(`The answer was not saved. ${formatErrorMessage(e)}`, 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+  /**
+   * Sign and save (#237 PR 2): the pick and the signature in one press through the outbox. Online it lands at once
+   * through the sheet's io; with no signal it waits on the phone with the press's time as its signed time, and the
+   * reader hears of the landing. A refusal comes back to the sheet with its reason.
+   */
+  const sign = async (q: StageChecklistQuestion, input: SignInput) => {
+    if (!who.userId) throw new Error('Sign in again to sign the answer.')
+    const outcome = await pressThroughOutbox(
+      {
+        kind: 'checklist-sign',
+        userId: who.userId,
+        pressedAt: Date.now(),
+        payload: { jobId, fixtureId: stage.fixtureId, questionId: q.id, questionWords: q.words, stageName: stage.name, pick: input.pick, note: input.note.trim(), printedName: input.printedName.trim(), mode: input.mode, pngDataUrl: input.mode === 'draw' ? input.drawnPng : null, byName: who.name },
+        about: `${stage.name} · ${q.words}`,
+        door: jobWindowPath(jobId),
+      },
+      { land: (press) => landChecklistSign(press, { sign: (i, w) => io.sign(i, w) }) },
+    )
+    if (outcome.kind === 'refused') throw new Error(outcome.message)
+    if (outcome.kind === 'failed') throw new Error(formatErrorMessage(outcome.error, 'The answer was not signed.'))
+    setSigning(null)
+    setNotes((n) => ({ ...n, [q.id]: input.note.trim() }))
+    setReopened(null)
+    if (outcome.kind === 'queued') {
+      showToast(SIGN_WORDS.queued, 'success')
+      return
+    }
+    const saved = outcome.result as JobAnswer
+    land(saved)
+    void settleWithDispatch(q)
+    const after = stageChecklistState({ stageName: stage.name, fixtureId: stage.fixtureId, questions, answers: [...answers.filter((x) => x.id !== saved.id), saved] })
+    showToast(signedToastWords(stage.name, after), 'success')
+  }
+  /** Take it back (#237 PR 2): the signed row is voided with its reason and stays; the question waits on its pick again. */
+  const takeBack = async (q: StageChecklistQuestion, a: JobAnswer) => {
+    const blocked = takeBackProblem(takeBackWhy)
+    setTakeBackBlocked(blocked)
+    if (blocked) return
+    setBusy(q.id)
+    try {
+      const voided = await io.takeBack(a.id, takeBackWhy, who)
+      land(voided)
+      setTakingBack(null)
+      setTakeBackWhy('')
+      setReopened(null)
+      const after = stageChecklistState({ stageName: stage.name, fixtureId: stage.fixtureId, questions, answers: answers.map((x) => (x.id === voided.id ? voided : x)) })
+      showToast(takenBackToastWords(stage.name, after), 'success')
+    } catch (e) {
+      showToast(`The answer was not taken back. ${formatErrorMessage(e)}`, 'error')
     } finally {
       setBusy(null)
     }
@@ -365,9 +455,24 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
     const mayTakeOff = canTakeOffJobItem(role, q, who.userId)
     const maySkip = canSkipQuestion(canAuthor, q)
     const sent = openStageCheckFor(withDispatch, stage.fixtureId, q.id)
+    const sig = signatureStands(q, a)
+    const voidedRows = voidedAnswersOf(answers, q.id)
+    const voidedLines = voidedRows.length > 0 ? (
+      <div data-checklist-voided-lines={q.id}>
+        {voidedRows.map((v) => (
+          <div key={v.id} style={voidedLine} data-checklist-voided={v.id}>
+            {v.signature ? <SignatureMark signature={v.signature} inkUrl={io.inkUrl} /> : null}
+            <span style={{ flex: '1 1 12rem' }}>
+              <span style={{ fontWeight: 600 }}>{TAKE_BACK_WORDS.heading} · </span>
+              {voidedLineWords(v)}
+            </span>
+          </div>
+        ))}
+      </div>
+    ) : null
     if (!isOpen) {
       const stamp = answerStampWords(a)
-      const second = stamp ? `${waitsOn === 'photo' ? `${stamp} · waits for the photo` : stamp}` : [q.asksPhoto ? 'asks for a photo' : '', added].filter(Boolean).join(' · ')
+      const second = stamp ? `${waitsOn === 'photo' ? `${stamp} · waits for the photo` : sig ? signedStampWords(stamp) : waitsOn === 'signature' ? `${stamp} · not signed yet` : stamp}` : [q.asksPhoto ? 'asks for a photo' : '', q.needsSignature ? NEEDS_SIGNATURE_WORDS.tag : '', added].filter(Boolean).join(' · ')
       return (
         <Fragment key={q.id}>
           <button
@@ -395,6 +500,11 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
               {/* The stamp holds the line once answered, so an item says who added it on a line of its own. */}
               {stamp && added ? <span style={{ ...meta, display: 'block' }}>{added}</span> : null}
               {a?.note ? <span style={{ ...meta, display: 'block', fontStyle: 'italic' }}>“{a.note}”</span> : null}
+              {sig ? (
+                <span style={{ display: 'block', marginTop: '0.2rem' }}>
+                  <SignatureMark signature={sig} inkUrl={io.inkUrl} />
+                </span>
+              ) : null}
               {sent ? (
                 <span style={{ display: 'block', marginTop: '0.2rem' }}>
                   <span style={withDispatchTag} data-checklist-with-dispatch={q.id}>
@@ -416,13 +526,15 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
               <PlanSheetChip sheet={q.sheet} plansUrl={plansUrl} />
             </div>
           ) : null}
+          {voidedLines}
         </Fragment>
       )
     }
     return (
       <div key={q.id} data-checklist-question={q.id} data-checklist-row="open" style={open}>
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={nextTag}>{isNext ? 'Next' : 'Open'}</span>
+          <span style={nextTag}>{isNext ? 'Next' : sig ? 'Signed' : 'Open'}</span>
+          {q.needsSignature ? <span style={needTag}>signature</span> : null}
           {q.asksPhoto ? <span style={needTag}>photo</span> : null}
           {q.sheet ? <PlanSheetChip sheet={q.sheet} plansUrl={plansUrl} /> : null}
           {added ? <span style={meta}>{added}</span> : null}
@@ -501,6 +613,8 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
               </button>
             </div>
           </div>
+        ) : sig && a?.pick ? (
+          <LockedRow stage={stage} question={q} answer={a} signature={sig} jobId={jobId} who={who} io={io} busy={busy === q.id} takingBack={takingBack === q.id} why={takeBackWhy} blocked={takeBackBlocked} onWhy={setTakeBackWhy} onAsk={() => { setTakeBackWhy(''); setTakeBackBlocked(null); setTakingBack(q.id) }} onKeep={() => setTakingBack(null)} onTakeBack={() => void takeBack(q, a)} onAnswer={land} waitsOn={waitsOn} reopened={reopened === q.id} onCloseRow={() => setReopened(null)} />
         ) : (
           <>
             <div role="group" aria-label={q.words} style={{ display: 'flex', gap: '0.5rem' }}>
@@ -556,8 +670,8 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
                 {dispatchReplyWords(sent.reply, Date.now())}
               </p>
             ) : null}
-            {/* The presses say what a row with no pick waits on; a row that owes its photo says so. */}
-            {waitsOn === 'photo' ? <p style={waits}>{waitsOnWords(waitsOn)}</p> : null}
+            {/* The presses say what a row with no pick waits on; a row that owes its photo or its signature says so. */}
+            {waitsOn === 'photo' || waitsOn === 'signature' ? <p style={waits}>{waitsOnWords(waitsOn)}</p> : null}
             {reopened === q.id ? (
               <button
                 type="button"
@@ -572,6 +686,7 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
             ) : null}
           </>
         )}
+        {voidedLines}
       </div>
     )
   }
@@ -663,12 +778,17 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
       onClose={() => setSending(null)}
     />
   ) : null
+  // The signature sheet (#237 PR 2) sits over either frame too.
+  const signatureSheet = signing ? (
+    <ChecklistSignatureSheet stage={stage} jobLabel={jobLabel} question={signing.question} pick={signing.pick} note={signing.note} who={who} onSign={(input) => sign(signing.question, input)} onClose={() => setSigning(null)} />
+  ) : null
   if (frame === 'inline') {
     return (
       <div data-stage-checklist-inline={stage.fixtureId}>
         {body}
         {state.asked > 0 ? ruleLine : null}
         {dispatchSheet}
+        {signatureSheet}
       </div>
     )
   }
@@ -676,7 +796,77 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
     <ResponsiveModalShell title={`${stage.name} checklist`} onRequestClose={onClose} footer={foot} maxWidthDesktop={520}>
       {body}
       {dispatchSheet}
+      {signatureSheet}
     </ResponsiveModalShell>
+  )
+}
+
+/**
+ * A signed row's open view (#237 PR 2): the pick as a statement, the mark, *Signed by … · Nov 1 · 9:14 am*, the note,
+ * the photo it still owes, and **Take it back** as its one door, which asks why before it voids the row.
+ */
+function LockedRow({ stage, question, answer, signature, jobId, who, io, busy, takingBack, why, blocked, onWhy, onAsk, onKeep, onTakeBack, onAnswer, waitsOn, reopened, onCloseRow }: { stage: JobStageRef; question: StageChecklistQuestion; answer: JobAnswer; signature: ChecklistSignature; jobId: string; who: AnswerWho; io: StageChecklistSheetIo; busy: boolean; takingBack: boolean; why: string; blocked: string | null; onWhy: (why: string) => void; onAsk: () => void; onKeep: () => void; onTakeBack: () => void; onAnswer: (a: JobAnswer) => void; waitsOn: ReturnType<typeof questionWaitsOn>; reopened: boolean; onCloseRow: () => void }) {
+  const pick = answer.pick!
+  return (
+    <div style={{ display: 'grid', gap: '0.5rem' }} data-checklist-locked={question.id}>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ ...lockedPick, ...chipOn[pick] }} data-checklist-locked-pick={pick}>
+          {PICK_WORDS[pick]}
+        </span>
+        <SignatureMark signature={signature} inkUrl={io.inkUrl} size="large" />
+      </div>
+      <p style={meta} data-checklist-signed-words>
+        {signedRowWords(signature)}
+      </p>
+      {answer.note ? <p style={{ ...meta, fontStyle: 'italic' }}>“{answer.note}”</p> : null}
+      {question.asksPhoto && pick !== 'not_here' ? <PhotoRow stage={stage} question={question} answer={answer} jobId={jobId} who={who} io={io} onAnswer={onAnswer} /> : null}
+      {waitsOn === 'photo' ? <p style={waits}>{waitsOnWords(waitsOn)}</p> : null}
+      {takingBack ? (
+        <div style={askBox} data-checklist-take-back>
+          <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>{TAKE_BACK_WORDS.hint}</span>
+          <input
+            type="text"
+            aria-label={TAKE_BACK_WORDS.label}
+            placeholder={TAKE_BACK_WORDS.placeholder}
+            value={why}
+            maxLength={VOID_WHY_MAX_CHARS}
+            autoFocus
+            onChange={(e) => onWhy(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              e.preventDefault()
+              onTakeBack()
+            }}
+            style={noteStyle}
+          />
+          {blocked ? <p style={waits}>{blocked}</p> : null}
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button type="button" style={S.secondaryBtn} disabled={busy} onClick={onTakeBack}>
+              {TAKE_BACK_WORDS.confirm}
+            </button>
+            <button type="button" style={quiet} onClick={onKeep}>
+              {TAKE_BACK_WORDS.keep}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <p style={meta}>{SIGN_WORDS.lockHint}</p>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {canTakeBack(answer) ? (
+              <button type="button" style={{ ...quiet, minHeight: 44 }} disabled={busy} onClick={onAsk} aria-label={`${TAKE_BACK_WORDS.press}: ${question.words}`}>
+                {TAKE_BACK_WORDS.press}
+              </button>
+            ) : null}
+            {reopened ? (
+              <button type="button" style={{ ...quiet, minHeight: 44 }} onClick={onCloseRow}>
+                Close this one
+              </button>
+            ) : null}
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -691,6 +881,7 @@ export function AddCheckBox({ stageName, onAdd, onDone }: { stageName: string; o
   const [sheet, setSheet] = useState('')
   const [why, setWhy] = useState('')
   const [asksPhoto, setAsksPhoto] = useState(false)
+  const [needsSignature, setNeedsSignature] = useState(false)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [added, setAdded] = useState(0)
@@ -706,11 +897,12 @@ export function AddCheckBox({ stageName, onAdd, onDone }: { stageName: string; o
     setBusy(true)
     setProblem(null)
     try {
-      await onAdd({ words: text, asksPhoto, sheet, why })
+      await onAdd({ words: text, asksPhoto, needsSignature, sheet, why })
       setText('')
       setSheet('')
       setWhy('')
       setAsksPhoto(false)
+      setNeedsSignature(false)
       setAdded((n) => n + 1)
       first.current?.focus()
     } catch (e) {
@@ -735,6 +927,10 @@ export function AddCheckBox({ stageName, onAdd, onDone }: { stageName: string; o
       <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.9375rem', color: 'var(--text-strong)', minHeight: 44 }}>
         <input type="checkbox" checked={asksPhoto} onChange={(e) => setAsksPhoto(e.target.checked)} /> {words.photo}
       </label>
+      <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.9375rem', color: 'var(--text-strong)', minHeight: 44 }}>
+        <input type="checkbox" checked={needsSignature} onChange={(e) => setNeedsSignature(e.target.checked)} data-checklist-add-signature /> {words.signature}
+      </label>
+      {needsSignature ? <p style={{ ...meta, marginTop: '-0.35rem' }}>{words.signatureHint}</p> : null}
       <p style={meta}>{words.hint}</p>
       {problem ? <p style={waits}>{problem}</p> : null}
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>

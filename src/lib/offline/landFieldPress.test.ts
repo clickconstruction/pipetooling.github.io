@@ -6,8 +6,8 @@ import { RPC_KIND, landJobPhotos, outcomeOfFailure, rpcPayload } from './landFie
 const T = 1_780_000_000_000
 
 describe('landFieldPress · the press as the RPC reads it', () => {
-  it('names the four kinds in the database’s words', () => {
-    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos' })
+  it('names the kinds in the database’s words', () => {
+    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos', 'checklist-sign': 'checklist_sign' })
   })
 
   it('maps each payload to snake case, every column the RPC reads', () => {

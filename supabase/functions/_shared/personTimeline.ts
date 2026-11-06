@@ -86,6 +86,8 @@ export type PersonTimelineEvidence = {
   created_by: string | null
   author_label: string | null
   drive_folder_url: string | null
+  /** v2.6554: a counsel-only record's line reads its title alone. */
+  counsel_only?: boolean
   fileIds: string[]
 }
 export type PersonTimelineReport = {
@@ -228,13 +230,13 @@ export function buildPersonTimeline(input: PersonTimelineInput): PersonTimelineL
       source: 'evidence',
       ymd,
       loggedAt: ev.created_at,
-      kindWords: 'evidence',
+      kindWords: ev.counsel_only ? 'evidence · counsel-only' : 'evidence',
       what: ev.title,
-      notes: ev.memo,
+      notes: ev.counsel_only ? '' : ev.memo,
       byName: name(ev.created_by) || (ev.author_label ?? ''),
       state: 'live',
       ref: { table: 'person_file_evidence', id: ev.id },
-      door: ev.drive_folder_url ? { label: 'Open in Drive', to: ev.drive_folder_url } : null,
+      door: ev.drive_folder_url && !ev.counsel_only ? { label: 'Open in Drive', to: ev.drive_folder_url } : null,
       attachmentIds: ev.fileIds,
     })
   }

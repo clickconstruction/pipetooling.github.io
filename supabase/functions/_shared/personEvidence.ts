@@ -50,10 +50,12 @@ export type PersonEvidenceRecord = {
   drive_folder_url: string | null
   filed_at: string | null
   fail_why: string | null
+  /** v2.6554: kept here only — never filed in Drive, never read by the agent or by the seat as deployed. */
+  counsel_only?: boolean
   files: PersonEvidenceFile[]
 }
 
-export type PersonEvidenceDraft = { datedOn: string; title: string; memo: string }
+export type PersonEvidenceDraft = { datedOn: string; title: string; memo: string; /** v2.6554: the counsel-only tick. */ counselOnly?: boolean }
 
 /**
  * A linked file (v2.6541): a file that already lives in Drive and is never staged — a recording over the cap, a file
@@ -192,13 +194,14 @@ export function evidenceSizeWords(bytes: number | null): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-export type EvidenceDriveState = 'filed' | 'partly' | 'waiting' | 'held'
+export type EvidenceDriveState = 'filed' | 'partly' | 'waiting' | 'held' | 'counsel'
 
 /** A file that is in Drive: filed by the function, or linked there by hand (v2.6541). */
 const inDrive = (f: Pick<PersonEvidenceFile, 'drive_file_id' | 'storage_path' | 'drive_url'>): boolean => !!f.drive_file_id || evidenceFileIsLinked(f)
 
 /** Where the record stands with Drive, from its files: every file filed or linked, some, none yet, or a reason it could not go. */
-export function evidenceDriveState(r: Pick<PersonEvidenceRecord, 'fail_why' | 'files' | 'filed_at'>): EvidenceDriveState {
+export function evidenceDriveState(r: Pick<PersonEvidenceRecord, 'fail_why' | 'files' | 'filed_at' | 'counsel_only'>): EvidenceDriveState {
+  if (r.counsel_only) return 'counsel'
   const filed = r.files.filter(inDrive).length
   if (r.files.length > 0 && filed === r.files.length) return 'filed'
   if (r.fail_why) return 'held'
@@ -214,9 +217,11 @@ export function evidenceFileWhereWords(f: Pick<PersonEvidenceFile, 'drive_file_i
 }
 
 /** The state in words for the record's foot: *In Drive* · *In Drive, linked* · *2 of 3 files in Drive* · *On its way to Drive* · *Not in Drive: <why>*. */
-export function evidenceDriveWords(r: Pick<PersonEvidenceRecord, 'fail_why' | 'files' | 'filed_at'>): string {
+export function evidenceDriveWords(r: Pick<PersonEvidenceRecord, 'fail_why' | 'files' | 'filed_at' | 'counsel_only'>): string {
   const filed = r.files.filter(inDrive).length
   switch (evidenceDriveState(r)) {
+    case 'counsel':
+      return 'Kept here only, counsel-only'
     case 'filed':
       return r.files.every(evidenceFileIsLinked) ? 'In Drive, linked' : 'In Drive'
     case 'partly':
@@ -234,12 +239,14 @@ export function sortEvidenceNewestFirst<T extends { dated_on: string; created_at
 }
 
 /** The Evidence view's count line: *3 pieces of evidence, 7 files. 1 not in Drive yet.* */
-export function evidenceCountWords(records: ReadonlyArray<Pick<PersonEvidenceRecord, 'files' | 'fail_why' | 'filed_at'>>): string {
+export function evidenceCountWords(records: ReadonlyArray<Pick<PersonEvidenceRecord, 'files' | 'fail_why' | 'filed_at' | 'counsel_only'>>): string {
   if (records.length === 0) return ''
   const files = records.reduce((n, r) => n + r.files.length, 0)
-  const notFiled = records.filter((r) => evidenceDriveState(r) !== 'filed').length
+  const counsel = records.filter((r) => r.counsel_only).length
+  const notFiled = records.filter((r) => !r.counsel_only && evidenceDriveState(r) !== 'filed').length
   const pieces = records.length === 1 ? '1 piece of evidence' : `${records.length} pieces of evidence`
   const fileWords = files === 1 ? '1 file' : `${files} files`
   const tail = notFiled === 0 ? '' : notFiled === 1 ? ' 1 not in Drive yet.' : ` ${notFiled} not in Drive yet.`
-  return `${pieces}, ${fileWords}.${tail}`
+  const held = counsel === 0 ? '' : counsel === 1 ? ' 1 counsel-only.' : ` ${counsel} counsel-only.`
+  return `${pieces}, ${fileWords}.${tail}${held}`
 }

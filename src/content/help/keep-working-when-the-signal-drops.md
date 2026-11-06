@@ -26,7 +26,7 @@ Some presses never wait on the phone. They fail as they do today, and you press 
 
 - A payment, a bill or a card split.
 - A text or an email to a customer.
-- A signature.
+- A customer's or the leader's signature. Your own signature on a checklist answer does wait on the phone.
 - A Turnaway report, because it also raises a dispatch alert.
 
 ## The line at the top
