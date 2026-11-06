@@ -34,7 +34,13 @@ A 12% rate with a $9,000 cost of going back is a training conversation. A 12% ra
 
 The pairs table lists every return. Each row shows the first job and when it was billed. The row shows the return and when it started, and the days between. The row also shows what the return cost in labor, subs, parts and overhead. You click either job number to open it on the Jobs view.
 
+## Confirm a callback
+
+Each row in the pairs table ends with two presses. {{button:outline|It was a callback}} says we went back to fix our own work. {{button:outline|Not a callback}} says it was new work or a planned second phase. Both presses weigh the same.
+
+A callback counts against every tech who clocked onto the first job. It shows on their Your week card as one job of their last thirty. Nothing counts until someone presses. A second press replaces the verdict, and the row names who pressed and when.
+
 ## Watch-outs
 
-- A planned second phase counts as a return today. A genuinely new scope of work at the same address counts too. You cannot yet mark a pair "not rework". So read the list before you read the rate.
+- A planned second phase counts as a return in the rate today. A genuinely new scope of work at the same address counts too. Press **Not a callback** so it never reaches a tech's card. The rate itself still counts it, so read the list before you read the rate.
 - A job with no invoice uses its paid date as the "done" date. With no paid date, it uses its last field day.

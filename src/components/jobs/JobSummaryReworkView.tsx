@@ -1,4 +1,8 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useAuth } from '../../hooks/useAuth'
+import { pairKey, PRESS_NOTE, VERDICT_PRESS, verdictWords, verdictsByPair, type CallbackVerdict, type JobCallbackRow } from '../../lib/jobs/jobCallbacks'
+import { supabaseJobCallbacksIo, type JobCallbacksIo } from '../../lib/jobs/jobCallbacksIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import type { JobDayLedger } from '../../lib/jobs/jobDayLedger'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { JobSummaryEnrichedRow } from '../../lib/jobs/jobSummaryLedgerView'
@@ -12,6 +16,10 @@ import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
  * the list of pairs so each one can be checked. Runs on every job the page
  * knows (not the Show filter): the first job may be finished long before the
  * window. Presentational; kernel in `lib/jobs/jobSummaryRework.ts`.
+ *
+ * v2.6589 (punch list #255): each pair takes the office's verdict, **It was a callback** or **Not a callback**
+ * (`job_callbacks` through `jobCallbacksIo`). A callback counts against every tech clocked on the first job on their
+ * Your week card only once pressed; an inferred pair alone never reaches a card. Both presses weigh the same.
  */
 type Props = {
   allRows: readonly JobSummaryEnrichedRow[]
@@ -20,6 +28,8 @@ type Props = {
   userNameById: ReadonlyMap<string, string | null | undefined>
   showMoney: boolean
   onOpenJob: (jobNumber: string) => void
+  /** v2.6589: the verdicts' reads and writes; a smoke hands its own. */
+  callbacksIo?: JobCallbacksIo
 }
 
 const RATE = '#d97706'
@@ -50,7 +60,15 @@ const money = (v: number | null | undefined): string => (v == null ? '—' : `${
 const pct = (v: number | null | undefined): string => (v == null ? '—' : `${v.toFixed(1)}%`)
 const linkBtn: CSSProperties = { border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer' }
 
-export default function JobSummaryReworkView({ allRows, ledger, ledgerLoading, userNameById, showMoney, onOpenJob }: Props) {
+const VERDICT_BTN: CSSProperties = { font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.5rem', minHeight: 26, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', whiteSpace: 'nowrap' }
+
+export default function JobSummaryReworkView({ allRows, ledger, ledgerLoading, userNameById, showMoney, onOpenJob, callbacksIo: ioIn }: Props) {
+  const { role, readOnly, profileName } = useAuth()
+  const io = useMemo(() => ioIn ?? supabaseJobCallbacksIo(), [ioIn])
+  const canPress = (role === 'dev' || role === 'master_technician' || role === 'assistant') && !readOnly
+  const [verdicts, setVerdicts] = useState<Map<string, JobCallbackRow>>(() => new Map())
+  const [pressing, setPressing] = useState<string | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
   const [windowDays, setWindowDays] = useState(90)
   const [rateBy, setRateBy] = useState<ReworkRateBy>('tech')
   const [count, setCount] = useState<ReworkCount>('callbacks')
@@ -61,6 +79,30 @@ export default function JobSummaryReworkView({ allRows, ledger, ledgerLoading, u
   const openCount = allPairs.filter((p) => p.kind === 'open').length
   const groups = useMemo(() => reworkRateBy(pairs, allRows, rateBy, ctx).filter((g) => g.jobs >= 2).slice(0, 12), [pairs, allRows, rateBy, ctx])
   const summary = useMemo(() => summarizeRework(pairs, allRows), [pairs, allRows])
+
+  // v2.6589: the verdicts on every inferred pair, read once the pairs are known.
+  const firstIds = useMemo(() => [...new Set(allPairs.map((p) => p.first.jobId))].sort().join(','), [allPairs])
+  useEffect(() => {
+    if (!firstIds) return
+    let live = true
+    void io.forFirstJobs(firstIds.split(',')).then((rows) => live && setVerdicts(verdictsByPair(rows)), () => live && setVerdicts(new Map()))
+    return () => {
+      live = false
+    }
+  }, [io, firstIds])
+  const press = async (firstJobId: string, secondJobId: string, verdict: CallbackVerdict) => {
+    const key = pairKey(firstJobId, secondJobId)
+    setPressing(key)
+    setProblem(null)
+    try {
+      await io.setVerdict(firstJobId, secondJobId, verdict, profileName ?? '')
+      setVerdicts((prev) => new Map(prev).set(key, { first_job_id: firstJobId, second_job_id: secondJobId, verdict, decided_by_name: profileName ?? '', decided_at: new Date().toISOString() }))
+    } catch (e) {
+      setProblem(formatErrorMessage(e, 'The verdict was not recorded.'))
+    } finally {
+      setPressing(null)
+    }
+  }
 
   const W = 520
   const L = 150
@@ -148,7 +190,7 @@ export default function JobSummaryReworkView({ allRows, ledger, ledgerLoading, u
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>
             <thead>
               <tr>
-                {['First job', 'Return', 'Days after', showMoney ? (count === 'all' ? 'Return billed · cost' : 'Cost of return') : 'Address'].map((h, i) => (
+                {['First job', 'Return', 'Days after', showMoney ? (count === 'all' ? 'Return billed · cost' : 'Cost of return') : 'Address', 'Callback?'].map((h, i) => (
                   <th key={h} style={{ padding: '0.4rem 0.5rem', textAlign: i >= 2 ? 'right' : 'left', fontSize: '0.64rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: 'var(--surface)' }}>
                     {h}
                   </th>
@@ -177,26 +219,60 @@ export default function JobSummaryReworkView({ allRows, ledger, ledgerLoading, u
                   <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)', color: showMoney ? 'var(--text-red-700)' : 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '10rem' }}>
                     {showMoney ? (count === 'all' ? `${p.kind === 'repeat' ? money(p.returnRevenueUsd) : '$0'} · ${money(p.returnCostUsd)}` : money(p.returnCostUsd)) : p.addressLabel}
                   </td>
+                  <td style={{ padding: '0.35rem 0.5rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }} data-testid="rework-verdict">
+                    {(() => {
+                      const key = pairKey(p.first.jobId, p.second.jobId)
+                      const v = verdicts.get(key)
+                      const busy = pressing === key
+                      const other: CallbackVerdict | null = v ? (v.verdict === 'callback' ? 'not_callback' : 'callback') : null
+                      return (
+                        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          {v ? <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0 0.45rem', borderRadius: 999, background: v.verdict === 'callback' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', color: v.verdict === 'callback' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{verdictWords(v)}</span> : null}
+                          {canPress && other ? (
+                            <button type="button" style={VERDICT_BTN} disabled={busy} onClick={() => void press(p.first.jobId, p.second.jobId, other)}>
+                              {VERDICT_PRESS[other]}
+                            </button>
+                          ) : null}
+                          {canPress && !v ? (
+                            <>
+                              <button type="button" style={VERDICT_BTN} disabled={busy} onClick={() => void press(p.first.jobId, p.second.jobId, 'callback')}>
+                                {VERDICT_PRESS.callback}
+                              </button>
+                              <button type="button" style={VERDICT_BTN} disabled={busy} onClick={() => void press(p.first.jobId, p.second.jobId, 'not_callback')}>
+                                {VERDICT_PRESS.not_callback}
+                              </button>
+                            </>
+                          ) : null}
+                          {!canPress && !v ? <span style={{ color: 'var(--text-muted)' }}>not pressed</span> : null}
+                        </span>
+                      )
+                    })()}
+                  </td>
                 </tr>
               ))}
               {pairs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
+                  <td colSpan={5} style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
                     {ledgerLoading ? 'Loading the day ledger…' : `No return visits within ${windowDays} days.`}
                   </td>
                 </tr>
               ) : null}
               {pairs.length > 60 ? (
                 <tr>
-                  <td colSpan={4} style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)', fontSize: '0.72rem' }}>… {pairs.length - 60} more</td>
+                  <td colSpan={5} style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)', fontSize: '0.72rem' }}>… {pairs.length - 60} more</td>
                 </tr>
               ) : null}
             </tbody>
           </table>
         </div>
       </div>
+      {problem ? (
+        <p role="alert" style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-red-700)' }}>
+          {problem}
+        </p>
+      ) : null}
       <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-        Jobs match by their address record, else by the street text (suite and unit numbers ignored). An unbilled return is the warranty-shaped one; a billed return is repeat work at the same site and is set aside unless you count all returns. Marking a pair “not rework” is a follow-up.
+        Jobs match by their address record, else by the street text (suite and unit numbers ignored). An unbilled return is the warranty-shaped one; a billed return is repeat work at the same site and is set aside unless you count all returns. {PRESS_NOTE}
       </p>
     </div>
   )

@@ -87,6 +87,7 @@ The strip shows **six group tabs** and a **second row** listing the active group
 - **Train**:
   - ~~PR 2 Pay & schedule + End / Start employment flows~~ (shipped).
   - PR 3: Field, Paperwork, Records, Schedule, plus a People → Person tab (the same section registry in a page).
+  - Since v2.6589 (punch list #255) a **Your week** section (`PersonDeskWeekSection`, anchor `week`) sits after Field: the one signal the person sees move on their home (`users.week_signal` through `set_week_signal`; the leader and the office press, the controller reads).
   - PR 4: doors everywhere, plus the `/` quick sheet.
   - Then the gate widenings and an optional summary RPC.
 
