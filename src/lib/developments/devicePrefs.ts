@@ -5,6 +5,7 @@
  * Pipeline does it. One key per development, in `localStorage`, nothing in the database.
  */
 import { MONEY_SORT_IS_SETTING, type MoneySortMode } from './siteMoney'
+import { isScoreboardCut, isScoreboardWindowKey, type ScoreboardCut, type ScoreboardWindowKey } from './scoreboardCuts'
 
 const foldsKey = (developmentId: string, scope: string) => `pt.development.${developmentId}.folds.${scope}`
 const sortKey = (developmentId: string) => `pt.development.${developmentId}.money.sort`
@@ -98,6 +99,46 @@ export function writeMoneyView(developmentId: string, view: MoneyView): void {
   try {
     if (view === 'money') window.localStorage.removeItem(viewKey(developmentId))
     else window.localStorage.setItem(viewKey(developmentId), view)
+  } catch {
+    /* the page works without the memory */
+  }
+}
+
+/** The Scoreboard's cut and window (v2.6558, punch list #250 PR 4): the device remembers both; job and all time, the defaults, leave no key. */
+const cutKey = (developmentId: string) => `pt.development.${developmentId}.scoreboard.cut`
+const windowKey = (developmentId: string) => `pt.development.${developmentId}.scoreboard.window`
+
+export function readScoreboardCut(developmentId: string): ScoreboardCut {
+  try {
+    const raw = window.localStorage.getItem(cutKey(developmentId))
+    return isScoreboardCut(raw) ? raw : 'job'
+  } catch {
+    return 'job'
+  }
+}
+
+export function writeScoreboardCut(developmentId: string, cut: ScoreboardCut): void {
+  try {
+    if (cut === 'job') window.localStorage.removeItem(cutKey(developmentId))
+    else window.localStorage.setItem(cutKey(developmentId), cut)
+  } catch {
+    /* the page works without the memory */
+  }
+}
+
+export function readScoreboardWindow(developmentId: string): ScoreboardWindowKey {
+  try {
+    const raw = window.localStorage.getItem(windowKey(developmentId))
+    return isScoreboardWindowKey(raw) ? raw : 'all'
+  } catch {
+    return 'all'
+  }
+}
+
+export function writeScoreboardWindow(developmentId: string, key: ScoreboardWindowKey): void {
+  try {
+    if (key === 'all') window.localStorage.removeItem(windowKey(developmentId))
+    else window.localStorage.setItem(windowKey(developmentId), key)
   } catch {
     /* the page works without the memory */
   }
