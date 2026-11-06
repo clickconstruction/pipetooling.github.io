@@ -50,7 +50,7 @@ function clockOut(over: Partial<OutboxPress<'clock-out'>> = {}): OutboxPress<'cl
 
 describe('outbox · what may queue', () => {
   it('four presses may queue, in this order of names, and nothing else', () => {
-    expect(OUTBOX_KINDS).toEqual(['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos'])
+    expect(OUTBOX_KINDS).toEqual(['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign'])
     expect(isOutboxKind('clock-in')).toBe(true)
     expect(isOutboxKind('payment')).toBe(false)
     expect(isOutboxKind(null)).toBe(false)
@@ -61,7 +61,7 @@ describe('outbox · what may queue', () => {
     expect(NEVER_QUEUES).toContain('a bill')
     expect(NEVER_QUEUES).toContain('a card split')
     expect(NEVER_QUEUES).toContain('a text or an email to a customer')
-    expect(NEVER_QUEUES).toContain('a signature')
+    expect(NEVER_QUEUES).toContain('a customer’s or the leader’s signature')
   })
 
   it('a fetch-layer failure or a timeout queues; a refusal does not; offline is not even tried', () => {

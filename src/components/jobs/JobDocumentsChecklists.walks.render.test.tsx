@@ -44,6 +44,9 @@ function fakeIo(over: Partial<StageChecklistSheetIo> = {}, questions: StageCheck
     note: vi.fn(async () => { throw new Error('not here') }),
     photo: vi.fn(async () => { throw new Error('not here') }),
     photoUrl: vi.fn(async () => null),
+    sign: vi.fn(async () => { throw new Error('not here') }),
+    takeBack: vi.fn(async () => { throw new Error('not here') }),
+    inkUrl: vi.fn(async () => null),
     addItem: vi.fn(async (input, who) => {
       const q: StageChecklistQuestion = { id: `j-new-${++seq}`, kind: input.kind, order: input.order ?? 0, words: input.words, asksPhoto: input.asksPhoto, fixtureId: input.fixtureId, addedById: who.userId, addedBy: who.name, addedAt: '2026-11-02T16:00:00.000Z', sheet: input.sheet || null, why: input.why || null }
       live.push(q)
@@ -237,7 +240,7 @@ describe('the chip, the why and the add box', () => {
     fireEvent.change(words, { target: { value: 'Is the riser where P-201 shows it?' } })
     fireEvent.change(screen.getByLabelText('The plan sheet it comes from, if any'), { target: { value: 'P-201' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add the check' }))
-    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB.id, fixtureId: 'f3', kind: 'trim_set', order: 3, words: 'Is the riser where P-201 shows it?', asksPhoto: false, sheet: 'P-201', why: '' }, WHO))
+    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB.id, fixtureId: 'f3', kind: 'trim_set', order: 3, words: 'Is the riser where P-201 shows it?', asksPhoto: false, needsSignature: false, sheet: 'P-201', why: '' }, WHO))
     expect(await screen.findByText('Added. Trim Set is now 0 of 5.')).toBeTruthy()
     await waitFor(() => expect(words.value).toBe(''))
     fireEvent.change(words, { target: { value: 'Is the vent through the roof?' } })

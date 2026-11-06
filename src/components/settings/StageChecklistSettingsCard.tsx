@@ -27,6 +27,7 @@ import {
   type QuestionDraft,
 } from '../../lib/jobs/stageChecklistEditor'
 import { supabaseStageChecklistEditorIo, type StageChecklistEditorIo } from '../../lib/jobs/stageChecklistIo'
+import { NEEDS_SIGNATURE_WORDS } from '../../lib/jobs/stageChecklistSignature'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import { clauseButtonStyle, clauseInputStyle, clausePrimaryStyle } from '../contracts/clauseStyles'
@@ -112,7 +113,7 @@ export function StageChecklistSettingsCard({ io = DEFAULT_IO }: { io?: StageChec
         STAGE_CHECKLIST_KINDS.map((kind) => {
           const rows = drafts[kind]
           const name = STAGE_CHECKLIST_KIND_NAMES[kind]
-          const add = () => setKind(kind, [...rows, { id: null, words: '', asksPhoto: false }])
+          const add = () => setKind(kind, [...rows, { id: null, words: '', asksPhoto: false, needsSignature: false }])
           return (
             <fieldset key={kind} data-settings-stage-kind={kind} style={kindBox}>
               <legend style={{ fontWeight: 600, fontSize: '0.95rem', padding: '0 0.25rem' }}>
@@ -139,6 +140,10 @@ export function StageChecklistSettingsCard({ io = DEFAULT_IO }: { io?: StageChec
                       <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                         <input type="checkbox" checked={q.asksPhoto} disabled={saving} onChange={(e) => setRow(kind, i, { asksPhoto: e.target.checked })} aria-label={`${name}: question ${i + 1} asks for a photo`} />
                         Asks for a photo
+                      </label>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }} title={NEEDS_SIGNATURE_WORDS.hint}>
+                        <input type="checkbox" checked={q.needsSignature} disabled={saving} onChange={(e) => setRow(kind, i, { needsSignature: e.target.checked })} aria-label={`${name}: question ${i + 1} needs a signature`} />
+                        {NEEDS_SIGNATURE_WORDS.label}
                       </label>
                       <button type="button" style={smallBtn} disabled={saving || i === 0} aria-label={`${name}: move question ${i + 1} up`} onClick={() => setKind(kind, moveDraft(rows, i, -1))}>
                         ↑

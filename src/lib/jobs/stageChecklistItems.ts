@@ -20,7 +20,8 @@
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { jobDocumentFolderLinks } from './jobDocumentsTab'
-import { QUESTION_MAX_CHARS, addedByWords, answerStampWords, isJobItem, questionAnswered, skipOn, stampWords, type JobStageChecklist, type StageChecklistAnswer, type StageChecklistQuestion, type StageChecklistSkip, type StageChecklistState } from './stageChecklist'
+import { QUESTION_MAX_CHARS, addedByWords, answerStampWords, isJobItem, questionWaitsOn, signatureStands, skipOn, stampWords, type JobStageChecklist, type QuestionAsks, type StageChecklistAnswer, type StageChecklistQuestion, type StageChecklistSkip, type StageChecklistState } from './stageChecklist'
+import { NEEDS_SIGNATURE_WORDS } from './stageChecklistSignature'
 
 /** The office set that adds and takes off a check anywhere, and writes the company's questions. */
 const OFFICE: ReadonlySet<string> = new Set<UserRole>(['dev', 'master_technician', 'assistant', 'controller'])
@@ -89,7 +90,7 @@ export function cleanShortLine(raw: string | null | undefined, max: number): str
 }
 
 /** The add box's words, in the stage's name. */
-export function addCheckWords(stageName: string): { press: string; title: string; hint: string; confirm: string; done: string; placeholder: string; photo: string; sheet: string; sheetPlaceholder: string; why: string; whyPlaceholder: string } {
+export function addCheckWords(stageName: string): { press: string; title: string; hint: string; confirm: string; done: string; placeholder: string; photo: string; signature: string; signatureHint: string; sheet: string; sheetPlaceholder: string; why: string; whyPlaceholder: string } {
   return {
     press: `+ Add a check for ${stageName}`,
     title: `Add a check for ${stageName} on this job`,
@@ -98,6 +99,8 @@ export function addCheckWords(stageName: string): { press: string; title: string
     done: 'Done adding',
     placeholder: 'The question the crew answers',
     photo: 'Asks for a photo',
+    signature: NEEDS_SIGNATURE_WORDS.label,
+    signatureHint: NEEDS_SIGNATURE_WORDS.hint,
     sheet: 'The plan sheet it comes from, if any',
     sheetPlaceholder: 'Plan sheet, like P-201 detail 4',
     why: 'Why this check, if you want to say',
@@ -275,11 +278,19 @@ export function checklistsSummary(rows: readonly JobStageChecklist[], questions:
   return `${ready} of ${withList.length} ${stages} ready · ${added}${skipped > 0 ? ` · ${skipped} skipped` : ''}`
 }
 
-/** The read-out row's standing: the pick's word, or *open* for a row not yet answered. */
-export function rowPickWords(q: Pick<StageChecklistQuestion, 'asksPhoto'>, a: StageChecklistAnswer | null | undefined): string {
-  if (!a?.pick) return 'open'
-  if (!questionAnswered(q, a)) return `${pickWord(a.pick)}, no photo yet`
+/** The read-out row's standing: the pick's word, or *open* for a row not yet answered; *Yes, not signed yet* and *Yes, no photo yet* for what it still owes. */
+export function rowPickWords(q: QuestionAsks, a: StageChecklistAnswer | null | undefined): string {
+  const waits = questionWaitsOn(q, a)
+  if (!a?.pick || waits === 'pick') return 'open'
+  if (waits === 'signature') return `${pickWord(a.pick)}, not signed yet`
+  if (waits === 'photo') return `${pickWord(a.pick)}, no photo yet`
   return pickWord(a.pick)
+}
+
+/** The read-out's tag on a signature item: *needs a signature* while unsigned, *signed* once the signature stands, null on any other row. */
+export function rowSignatureTag(q: Pick<StageChecklistQuestion, 'needsSignature' | 'words'>, a: StageChecklistAnswer | null | undefined): { words: string; signed: boolean } | null {
+  if (signatureStands(q, a)) return { words: NEEDS_SIGNATURE_WORDS.signed, signed: true }
+  return q.needsSignature ? { words: NEEDS_SIGNATURE_WORDS.tag, signed: false } : null
 }
 
 function pickWord(pick: NonNullable<StageChecklistAnswer['pick']>): string {

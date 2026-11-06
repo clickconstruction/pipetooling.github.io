@@ -15,11 +15,13 @@ export interface QuestionDraft {
   id: string | null
   words: string
   asksPhoto: boolean
+  /** Whoever answers signs (#237 PR 2). */
+  needsSignature: boolean
 }
 
 export const EDITOR_TITLE = 'Stage checklists'
 export const EDITOR_INTRO = 'The crew answers these questions on the phone for each stage of a job, Yes, No or Not here, with a note and a photo where a question asks for one.'
-export const EDITOR_RULE = 'A stage reads not ready on the Pipeline until every question is answered. A stage kind with no questions has no checklist and reads as it does today.'
+export const EDITOR_RULE = 'A stage reads not ready on the Pipeline until every question is answered. A stage kind with no questions has no checklist and reads as it does today. A question that needs a signature is answered only once the crew signs it. Use that where a wrong answer costs a wall or an inspection.'
 export const ADD_QUESTION = 'Add a question'
 export const SAVE_QUESTIONS = 'Save the questions'
 export const SAVED_TOAST = 'The questions are saved. The crew sees them on the next stage they open.'
@@ -30,17 +32,17 @@ export function draftsOf(questions: readonly StageChecklistQuestion[], kind: Sta
   return questions
     .filter((q) => q.kind === kind && !isJobItem(q))
     .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
-    .map((q) => ({ id: q.id, words: q.words, asksPhoto: q.asksPhoto }))
+    .map((q) => ({ id: q.id, words: q.words, asksPhoto: q.asksPhoto, needsSignature: q.needsSignature === true }))
 }
 
 /** The drafts with their words trimmed. */
 export function cleanDrafts(drafts: readonly QuestionDraft[]): QuestionDraft[] {
-  return drafts.map((d) => ({ id: d.id, words: d.words.trim().replace(/\s+/g, ' '), asksPhoto: d.asksPhoto }))
+  return drafts.map((d) => ({ id: d.id, words: d.words.trim().replace(/\s+/g, ' '), asksPhoto: d.asksPhoto, needsSignature: d.needsSignature }))
 }
 
 export function sameDrafts(a: readonly QuestionDraft[], b: readonly QuestionDraft[]): boolean {
   if (a.length !== b.length) return false
-  return a.every((d, i) => d.id === b[i]!.id && d.words === b[i]!.words && d.asksPhoto === b[i]!.asksPhoto)
+  return a.every((d, i) => d.id === b[i]!.id && d.words === b[i]!.words && d.asksPhoto === b[i]!.asksPhoto && d.needsSignature === b[i]!.needsSignature)
 }
 
 /** What stops a save, in words, or null: a question with no words, or one too long. */
@@ -65,8 +67,8 @@ export function moveDraft(drafts: readonly QuestionDraft[], index: number, by: -
 }
 
 export interface QuestionSavePlan {
-  inserts: { kind: StageChecklistKind; order: number; words: string; asksPhoto: boolean }[]
-  updates: { id: string; order: number; words: string; asksPhoto: boolean }[]
+  inserts: { kind: StageChecklistKind; order: number; words: string; asksPhoto: boolean; needsSignature: boolean }[]
+  updates: { id: string; order: number; words: string; asksPhoto: boolean; needsSignature: boolean }[]
   /** The ids of the live rows the drafts no longer hold. */
   retires: string[]
 }
@@ -82,11 +84,11 @@ export function planQuestionSave(kind: StageChecklistKind, before: readonly Stag
     const order = i + 1
     const was = d.id ? live.get(d.id) : undefined
     if (!d.id || !was) {
-      plan.inserts.push({ kind, order, words: d.words, asksPhoto: d.asksPhoto })
+      plan.inserts.push({ kind, order, words: d.words, asksPhoto: d.asksPhoto, needsSignature: d.needsSignature })
       return
     }
     kept.add(d.id)
-    if (was.order !== order || was.words !== d.words || was.asksPhoto !== d.asksPhoto) plan.updates.push({ id: d.id, order, words: d.words, asksPhoto: d.asksPhoto })
+    if (was.order !== order || was.words !== d.words || was.asksPhoto !== d.asksPhoto || (was.needsSignature === true) !== d.needsSignature) plan.updates.push({ id: d.id, order, words: d.words, asksPhoto: d.asksPhoto, needsSignature: d.needsSignature })
   })
   for (const id of live.keys()) if (!kept.has(id)) plan.retires.push(id)
   return plan
@@ -97,11 +99,12 @@ export function planIsEmpty(plan: QuestionSavePlan): boolean {
   return plan.inserts.length === 0 && plan.updates.length === 0 && plan.retires.length === 0
 }
 
-/** The words under a kind's heading: how many questions, and whether a question asks for a photo. */
+/** The words under a kind's heading: how many questions, how many ask for a photo, how many need a signature. */
 export function kindSummary(drafts: readonly QuestionDraft[]): string {
   const n = drafts.length
   if (n === 0) return ''
   const photos = drafts.filter((d) => d.asksPhoto).length
+  const signed = drafts.filter((d) => d.needsSignature).length
   const questions = n === 1 ? '1 question' : `${n} questions`
-  return photos === 0 ? questions : `${questions}, ${photos} with a photo`
+  return [questions, photos > 0 ? `${photos} with a photo` : '', signed > 0 ? `${signed} with a signature` : ''].filter(Boolean).join(', ')
 }

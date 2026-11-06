@@ -44,6 +44,9 @@ function fakeIo(over: Partial<StageChecklistSheetIo> = {}, questions: StageCheck
     note: vi.fn(async () => { throw new Error('not here') }),
     photo: vi.fn(async () => { throw new Error('not here') }),
     photoUrl: vi.fn(async () => null),
+    sign: vi.fn(async () => { throw new Error('not here') }),
+    takeBack: vi.fn(async () => { throw new Error('not here') }),
+    inkUrl: vi.fn(async () => null),
     addItem: vi.fn(async (input, who) => {
       const q: StageChecklistQuestion = { id: `j-new-${++seq}`, kind: input.kind, order: input.order ?? 0, words: input.words, asksPhoto: input.asksPhoto, fixtureId: input.fixtureId, addedById: who.userId, addedBy: who.name, addedAt: '2026-11-02T16:00:00.000Z', sheet: input.sheet || null, why: input.why || null }
       live.push(q)
@@ -84,7 +87,7 @@ describe('the add box', () => {
     fireEvent.change(why, { target: { value: 'The slab pours Thursday' } })
     fireEvent.click(screen.getByLabelText('Asks for a photo'))
     fireEvent.click(screen.getByRole('button', { name: 'Add the check' }))
-    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB, fixtureId: 'f3', kind: 'trim_set', order: 1, words: 'Is the pan drain run to the hub?', asksPhoto: true, sheet: 'P-201 detail 4', why: 'The slab pours Thursday' }, WHO))
+    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB, fixtureId: 'f3', kind: 'trim_set', order: 1, words: 'Is the pan drain run to the hub?', asksPhoto: true, needsSignature: false, sheet: 'P-201 detail 4', why: 'The slab pours Thursday' }, WHO))
 
     // The box is still there with its boxes empty and its tally up; the check is on the list and counted.
     expect(await screen.findByText('Added. Trim Set is now 0 of 3.')).toBeTruthy()
@@ -101,7 +104,7 @@ describe('the add box', () => {
     // The second goes in after the first, without reopening anything.
     fireEvent.change(words, { target: { value: 'Is the vent through the roof?' } })
     fireEvent.keyDown(words, { key: 'Enter' })
-    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB, fixtureId: 'f3', kind: 'trim_set', order: 2, words: 'Is the vent through the roof?', asksPhoto: false, sheet: '', why: '' }, WHO))
+    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB, fixtureId: 'f3', kind: 'trim_set', order: 2, words: 'Is the vent through the roof?', asksPhoto: false, needsSignature: false, sheet: '', why: '' }, WHO))
     expect(await within(addBox()).findByText('2 added')).toBeTruthy()
 
     fireEvent.click(within(addBox()).getByRole('button', { name: 'Done adding' }))

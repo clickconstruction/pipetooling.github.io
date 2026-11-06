@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { jobStageChecklists, type JobStageChecklist, type JobStageRef, type StageChecklistQuestion } from '../lib/jobs/stageChecklist'
 import { supabaseStageChecklistSheetIo, type JobAnswer, type StageChecklistSheetIo } from '../lib/jobs/stageChecklistSheetIo'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
+import { OUTBOX_LANDED_EVENT, type OutboxLandedDetail } from './useOutboxReplay'
 
 export interface JobStageChecklistsRead {
   /** The job's stages with their standing, in order; null while loading or after a failed read. */
@@ -150,6 +151,17 @@ export function useJobStageChecklists(jobId: string | null | undefined, io?: Sta
   const dropQuestion = useCallback((questionId: string) => announce({ droppedId: questionId }), [announce])
   const promoteQuestion = useCallback((fromId: string, company: StageChecklistQuestion) => announce({ promotedFromId: fromId, company }), [announce])
   const reload = useCallback(() => setTick((t) => t + 1), [])
+
+  // A signed answer that waited on the phone landed (#237 PR 2): the job's readers read again, so the row reads signed.
+  useEffect(() => {
+    if (!jobId || typeof window === 'undefined') return
+    const onLanded = (e: Event) => {
+      const detail = (e as CustomEvent<OutboxLandedDetail>).detail
+      if (detail?.kind === 'checklist-sign') reload()
+    }
+    window.addEventListener(OUTBOX_LANDED_EVENT, onLanded)
+    return () => window.removeEventListener(OUTBOX_LANDED_EVENT, onLanded)
+  }, [jobId, reload])
 
   return { rows, stages: current?.stages ?? [], questions: current?.questions ?? [], answersByFixture, loading, error: failure?.message ?? null, failure, putAnswer, putQuestion, putQuestions, dropQuestion, promoteQuestion, mayAuthor, reload, io: sheetIo }
 }

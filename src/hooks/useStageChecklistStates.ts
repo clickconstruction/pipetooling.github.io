@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
-import { withSkips, type StageChecklistAnswer, type StageChecklistQuestion } from '../lib/jobs/stageChecklist'
+import { withSkips, type ChecklistSignatureMode, type StageChecklistAnswer, type StageChecklistQuestion } from '../lib/jobs/stageChecklist'
 import { loadJobItems, loadJobSkips, loadQuestions } from '../lib/jobs/stageChecklistIo'
 import { loadOpenStageCheckCounts } from '../lib/jobs/stageCheckDispatchIo'
 import { NO_WITH_DISPATCH } from '../lib/jobs/stageChecklistMarks'
@@ -18,7 +18,21 @@ import { NO_WITH_DISPATCH } from '../lib/jobs/stageChecklistMarks'
 // The tables are younger than the generated types; the types PR after the push removes this cast.
 const db = supabase as unknown as SupabaseClient
 
-type AnswerMarkRow = { fixture_id: string; question_id: string; pick: string | null; photo_file_name: string | null }
+type AnswerMarkRow = {
+  fixture_id: string
+  question_id: string
+  pick: string | null
+  photo_file_name: string | null
+  /** The signature and the void (#237 PR 2): a signed row counts only while its hash matches, a voided one never. */
+  signed_at?: string | null
+  signed_answer_hash?: string | null
+  signer_printed_name?: string | null
+  signer_signature_mode?: string | null
+  voided_at?: string | null
+  note?: string | null
+}
+
+const ANSWER_MARK_COLS = 'fixture_id, question_id, pick, note, photo_file_name, signed_at, signed_answer_hash, signer_printed_name, signer_signature_mode, voided_at'
 
 const NO_ANSWERS: ReadonlyMap<string, readonly StageChecklistAnswer[]> = new Map()
 
@@ -28,7 +42,9 @@ export function markAnswersFromRows(rows: readonly AnswerMarkRow[]): ReadonlyMap
   for (const r of rows) {
     const pick = r.pick === 'yes' || r.pick === 'no' || r.pick === 'not_here' ? r.pick : null
     const photo = r.photo_file_name ? { fileName: r.photo_file_name, takenAt: '', state: 'waiting' as const, driveFileId: null, failWhy: null } : null
-    out.set(r.fixture_id, [...(out.get(r.fixture_id) ?? []), { questionId: r.question_id, pick, note: '', photo }])
+    const signature = r.signed_at ? { mode: (r.signer_signature_mode === 'draw' ? 'draw' : 'type') as ChecklistSignatureMode, printedName: r.signer_printed_name ?? '', storagePath: null, signedAt: r.signed_at, signedById: null, hash: r.signed_answer_hash ?? '' } : null
+    const voided = r.voided_at ? { at: r.voided_at, by: '', why: '' } : null
+    out.set(r.fixture_id, [...(out.get(r.fixture_id) ?? []), { questionId: r.question_id, pick, note: r.note ?? '', photo, signature, voided }])
   }
   return out
 }
@@ -82,7 +98,7 @@ export function useStageChecklistStates(jobIds: ReadonlyArray<string>, enabled: 
         const [rows, open] = await Promise.all([
           fetchAllRowsChunkedIn<AnswerMarkRow, string>(
             ids,
-            (chunk, from, to) => db.from('stage_checklist_answers').select('fixture_id, question_id, pick, photo_file_name').in('job_id', chunk).order('id').range(from, to),
+            (chunk, from, to) => db.from('stage_checklist_answers').select(ANSWER_MARK_COLS).in('job_id', chunk).order('id').range(from, to),
             'stageChecklistStates.answers',
           ),
           loadOpenStageCheckCounts([...ids]).catch(() => NO_WITH_DISPATCH),
