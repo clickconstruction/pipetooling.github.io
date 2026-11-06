@@ -147,3 +147,16 @@ describe('where a record stands with Drive', () => {
     expect(evidenceCountWords([])).toBe('')
   })
 })
+
+describe('counsel-only (v2.6554)', () => {
+  const file = { id: 'f1', drive_file_id: null, storage_path: 'p/x', drive_url: null }
+  const rec = (over: Record<string, unknown> = {}) => ({ fail_why: null, filed_at: null, files: [file], counsel_only: false, ...over }) as Parameters<typeof evidenceDriveWords>[0]
+  it('a counsel-only record is kept here only, whatever its files say, and counts apart from the ones on their way to Drive', () => {
+    expect(evidenceDriveState(rec({ counsel_only: true }))).toBe('counsel')
+    expect(evidenceDriveWords(rec({ counsel_only: true }))).toBe('Kept here only, counsel-only')
+    expect(evidenceDriveWords(rec({ counsel_only: true, files: [{ ...file, drive_file_id: 'd1' }] }))).toBe('Kept here only, counsel-only')
+    expect(evidenceDriveState(rec())).toBe('waiting')
+    expect(evidenceCountWords([rec({ counsel_only: true }), rec(), rec({ files: [{ ...file, drive_file_id: 'd1' }] })])).toBe('3 pieces of evidence, 3 files. 1 not in Drive yet. 1 counsel-only.')
+    expect(evidenceCountWords([rec({ counsel_only: true }), rec({ counsel_only: true })])).toBe('2 pieces of evidence, 2 files. 2 counsel-only.')
+  })
+})

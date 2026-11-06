@@ -27879,6 +27879,7 @@ export type Database = {
       person_file_evidence: {
         Row: {
           author_label: string | null
+          counsel_only: boolean
           created_at: string
           created_by: string | null
           dated_on: string
@@ -27894,6 +27895,7 @@ export type Database = {
         }
         Insert: {
           author_label?: string | null
+          counsel_only?: boolean
           created_at?: string
           created_by?: string | null
           dated_on: string
@@ -27909,6 +27911,7 @@ export type Database = {
         }
         Update: {
           author_label?: string | null
+          counsel_only?: boolean
           created_at?: string
           created_by?: string | null
           dated_on?: string
@@ -37247,6 +37250,18 @@ export type Database = {
       dev_theme_marks_write: {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
+      }
+      evidence_is_counsel_only: {
+        Args: { p_evidence_id: string }
+        Returns: boolean
+      }
+      person_counsel_only_count: {
+        Args: { p_person_id: string }
+        Returns: number
+      }
+      request_is_dev_seat: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
       dismiss_mercury_duplicate_pair: {
         Args: { p_id_a: string; p_id_b: string }
