@@ -75,7 +75,7 @@ import {
   type WhereFilesGoBid,
   type WhereFilesGoJob,
 } from '../../lib/documents/whereFilesGoTab'
-import { checkDriveFolder, findWhereFilesGoJobs, loadWhereFilesGoBid, loadWhereFilesGoJobs, readWhereFilesGo, setWhereFilesGo, tidyDriveFolders, type WhereFilesGoSet } from '../../lib/documents/whereFilesGoIo'
+import { checkDriveFolder, findWhereFilesGoJobs, loadWhereFilesGoBid, loadWhereFilesGoJobs, makeFleetFolder, readWhereFilesGo, setWhereFilesGo, tidyDriveFolders, type WhereFilesGoSet } from '../../lib/documents/whereFilesGoIo'
 
 // --- looks -----------------------------------------------------------------------------------------------------------
 
@@ -321,6 +321,129 @@ function CompanyCard({ settings, save }: { settings: WhereFilesGo; save: Save })
             <div>
               <button type="button" style={btnPrimary} disabled={saving} onClick={() => void use()}>
                 {saving ? 'Saving…' : 'Use this folder for company papers'}
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </section>
+  )
+}
+
+// --- the Fleet folder (Equipment pre-use check, punch list #270, v2.6564) -------------------------------------------
+
+/** The machines' folders go under it: a machine's check photos land in a folder per machine. The app makes it beside the Jobs folder, or the office pastes one. */
+function FleetCard({ settings, save, onMade }: { settings: WhereFilesGo; save: Save; onMade: (next: WhereFilesGo) => void }) {
+  const [pasted, setPasted] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [checked, setChecked] = useState<{ link: string; check: FolderCheck } | null>(null)
+  const [checkProblem, setCheckProblem] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [making, setMaking] = useState(false)
+  const [madeProblem, setMadeProblem] = useState<string | null>(null)
+  const confirmDialog = useConfirmDialog()
+  const check = async () => {
+    const link = pasted.trim()
+    if (!link || checking) return
+    setChecking(true)
+    setCheckProblem(null)
+    setChecked(null)
+    try {
+      setChecked({ link, check: await checkDriveFolder(link) })
+    } catch (e) {
+      setCheckProblem(formatErrorMessage(e, 'The folder was not checked.'))
+    } finally {
+      setChecking(false)
+    }
+  }
+  const checkedId = checked ? driveFolderIdFromLinkOrId(checked.link) : null
+  const isNew = Boolean(checked?.check.ok && checkedId && checkedId !== settings.fleet?.id)
+  const use = async () => {
+    if (!checked || saving) return
+    const name = checked.check.folder?.name || 'this folder'
+    const ok = await confirmDialog({
+      title: 'Use this folder for the machines’ folders',
+      message: `A machine’s check photos will land under ${name}, in a folder per machine. The files that exist stay where they are.`,
+      confirmLabel: 'Use this folder',
+    })
+    if (!ok) return
+    setSaving(true)
+    const saved = await save({ fleet: checked.link }, `The machines’ folders now live under ${name}.`)
+    setSaving(false)
+    if (saved) {
+      setChecked(null)
+      setPasted('')
+    }
+  }
+  const make = async () => {
+    if (making) return
+    const ok = await confirmDialog({
+      title: 'Make the Fleet folder',
+      message: `The app’s account, ${settings.appEmail || 'the app'}, makes a folder named PipeTooling Fleet beside the Jobs folder in its Shared Drive, and the machines’ folders go under it. A folder of that name already there is used as it is.`,
+      confirmLabel: 'Make the Fleet folder',
+    })
+    if (!ok) return
+    setMaking(true)
+    setMadeProblem(null)
+    try {
+      onMade(await makeFleetFolder())
+    } catch (e) {
+      setMadeProblem(formatErrorMessage(e, 'The Fleet folder was not made.'))
+    } finally {
+      setMaking(false)
+    }
+  }
+  const name = settings.fleet?.folder?.name || (settings.fleet ? 'The Fleet folder' : 'No Fleet folder yet')
+  const path = settings.fleet?.folder && settings.fleet.folder.path.length > 0 ? [...settings.fleet.folder.path, settings.fleet.folder.name].join(' › ') : null
+  return (
+    <section style={card} aria-label="The Fleet folder" data-testid="wfg-fleet-card">
+      <h4 style={cardH}>The Fleet folder</h4>
+      <p style={{ ...muted, margin: 0 }}>A machine’s check photos land under it, a folder per machine named by its unit, or by the rental agreement. Let the app make it beside the Jobs folder, or paste one.</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.95rem' }}>
+        <FolderGlyph />
+        <span style={{ minWidth: 0 }}>
+          <span data-testid="wfg-fleet-name">{name}</span>
+          {path ? <span style={{ ...muted, display: 'block', fontWeight: 500 }}>{path}</span> : null}
+        </span>
+      </div>
+      {settings.fleet ? (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <CheckWords ok={settings.fleet.ok} words={settings.fleet.words} testId="wfg-fleet-check" />
+          <button type="button" style={btnQuiet} onClick={() => openInExternalBrowser(settings.fleet!.url)}>
+            Open in Drive
+          </button>
+        </div>
+      ) : (
+        <div>
+          <button type="button" style={btnPrimary} disabled={making} onClick={() => void make()} data-testid="wfg-fleet-make">
+            {making ? 'Making it…' : 'Make the Fleet folder'}
+          </button>
+        </div>
+      )}
+      {madeProblem ? <p style={warnLine}>{madeProblem}</p> : null}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <input
+          aria-label="A Drive folder link for the machines’ folders"
+          placeholder={settings.fleet ? 'Paste a Drive folder link to move it' : 'Or paste a Drive folder link'}
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void check()
+          }}
+          style={input}
+        />
+        <button type="button" style={btn} aria-label="Check the Fleet folder link" disabled={checking || !pasted.trim()} onClick={() => void check()}>
+          {checking ? 'Checking…' : 'Check'}
+        </button>
+      </div>
+      {checkProblem ? <p style={warnLine}>{checkProblem}</p> : null}
+      {checked ? (
+        <>
+          <CheckWords ok={checked.check.ok} words={checked.check.words} testId="wfg-fleet-pasted-check" />
+          {isNew ? (
+            <div>
+              <button type="button" style={btnPrimary} disabled={saving} onClick={() => void use()}>
+                {saving ? 'Saving…' : 'Use this folder for the machines’ folders'}
               </button>
             </div>
           ) : null}
@@ -933,6 +1056,7 @@ export function DocumentsWhereFilesGo() {
           <RootCard settings={settings} save={save} />
           <CompanyCard settings={settings} save={save} />
           <PeopleCard settings={settings} save={save} />
+          <FleetCard settings={settings} save={save} onMade={(next) => setSettings(next)} />
           <NameCard settings={settings} job={sample} bid={bid} save={save} />
           <TreeCard settings={settings} exampleName={sampleName} customerName={sample?.customer_name?.trim() || (sample ? NO_CUSTOMER_FOLDER_NAME : null)} save={save} />
         </div>

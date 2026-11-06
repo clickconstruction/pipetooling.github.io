@@ -251,6 +251,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [evShrinking, setEvShrinking] = useState(false)
   const [evTried, setEvTried] = useState(false)
   const [evRetryId, setEvRetryId] = useState<string | null>(null)
+  /** v2.6554: the Evidence tab's filter, All or Counsel-only. */
+  const [evFilter, setEvFilter] = useState<'all' | 'counsel'>('all')
   const hrDocRef = useRef<HTMLDivElement>(null)
   /** Themes on the record (v2.6546): the catalog and this person's marks, the pickers' drafts, the Timeline's theme filter, the ticked lines and the bulk bar. */
   const [themes, setThemes] = useState<LegalTheme[]>([])
@@ -455,12 +457,12 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     [showToast],
   )
 
-  const evidenceFileChip = (f: PersonEvidenceFile) => (
+  const evidenceFileChip = (f: PersonEvidenceFile, rec?: Pick<PersonEvidenceRecord, 'counsel_only'>) => (
     <button
       key={f.id}
       type="button"
       onClick={() => void openEvidenceFile(f)}
-      title={`${f.filename}${f.size_bytes !== null ? ` · ${evidenceSizeWords(f.size_bytes)}` : ''} · ${evidenceFileWhereWords(f)}${evidenceHashWords(f.sha256) ? ` · ${evidenceHashWords(f.sha256)}` : ''}`}
+      title={`${f.filename}${f.size_bytes !== null ? ` · ${evidenceSizeWords(f.size_bytes)}` : ''} · ${(rec?.counsel_only ? 'kept here only, counsel-only' : evidenceFileWhereWords(f))}${evidenceHashWords(f.sha256) ? ` · ${evidenceHashWords(f.sha256)}` : ''}`}
       style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.12rem 0.55rem', borderRadius: 999, fontSize: '0.74rem', border: '1px solid var(--border-strong)', background: 'var(--bg-page)', color: 'var(--text-link)', cursor: 'pointer', maxWidth: '32ch' }}
     >
       <span aria-hidden>📎</span>
@@ -472,7 +474,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   /** A chip for any file id the line names: an evidence file, else an older bucket-only file. */
   const fileChipById = (id: string) => {
     const ev = evidenceFilesById.get(id)
-    if (ev) return evidenceFileChip(ev.file)
+    if (ev) return evidenceFileChip(ev.file, ev.record)
     const a = attachmentsById.get(id)
     return a ? attachmentChip(a) : null
   }
@@ -973,7 +975,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   }, [])
 
   const openEvidenceWindow = () => {
-    setEvDraft({ datedOn: todayYmd, title: '', memo: '' })
+    setEvDraft({ datedOn: todayYmd, title: '', memo: '', counselOnly: false })
     setEvFiles([])
     setEvLinks([])
     setEvLinkDraft({ name: '', driveUrl: '' })
@@ -1111,8 +1113,18 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <div style={{ marginTop: '0.8rem' }}>
           <ThemeMarkPicker themes={themes} draft={evMark} onChange={setEvMark} testId="evidence-theme-picker" />
         </div>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', marginTop: '0.8rem', fontSize: '0.8rem', cursor: 'pointer' }} data-testid="evidence-counsel-only">
+          <input type="checkbox" checked={Boolean(evDraft.counselOnly)} onChange={(e) => setEvDraft((d) => ({ ...d, counselOnly: e.target.checked }))} style={{ marginTop: 2 }} />
+          <span>
+            <span style={{ fontWeight: 600 }}>Counsel-only.</span> Kept here only: never filed in Drive, never read by the agent or by the dev seat. A dev signed in still reads it.
+          </span>
+        </label>
         <p style={{ margin: '0.8rem 0 0', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-          Where it goes: <span style={{ color: 'var(--text-base)' }}>{evidenceDrivePathWords(personName, { dated_on: evDraft.datedOn || todayYmd, title: evDraft.title.trim() || 'untitled' })}</span>
+          {evDraft.counselOnly ? (
+            <>Where it goes: <span style={{ color: 'var(--text-base)' }}>kept here only, counsel-only. Not filed in Drive.</span></>
+          ) : (
+            <>Where it goes: <span style={{ color: 'var(--text-base)' }}>{evidenceDrivePathWords(personName, { dated_on: evDraft.datedOn || todayYmd, title: evDraft.title.trim() || 'untitled' })}</span></>
+          )}
         </p>
         {evTried && evProblem ? <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-red-600)' }}>{evProblem}</p> : null}
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.9rem', justifyContent: 'flex-end' }}>
@@ -1130,6 +1142,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const evidenceView = (() => {
     const older = sources?.attachments ?? []
     const nothing = evidenceRecords.length === 0 && older.length === 0
+    // v2.6554: counsel-only records fold behind a filter once there is one; All shows every record.
+    const counselCount = evidenceRecords.filter((r) => r.counsel_only).length
+    const shownRecords = evFilter === 'counsel' ? evidenceRecords.filter((r) => r.counsel_only) : evidenceRecords
     return (
       <div style={{ maxWidth: '88ch' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.7rem' }}>
@@ -1137,6 +1152,16 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
             {evidenceRecords.length > 0 ? evidenceCountWords(evidenceRecords) : 'What is on file about them, each with the day, a title, a memo and its files.'}
             {' '}Filed in Drive under {PEOPLE_FOLDER_WORDS} › {personName}.
           </span>
+          {counselCount > 0 ? (
+            <span role="group" aria-label="Show which records" style={{ display: 'inline-flex', gap: '0.3rem' }} data-testid="evidence-filter">
+              <button type="button" aria-pressed={evFilter === 'all'} onClick={() => setEvFilter('all')} style={filterChip(evFilter === 'all')}>
+                All · {evidenceRecords.length}
+              </button>
+              <button type="button" aria-pressed={evFilter === 'counsel'} onClick={() => setEvFilter('counsel')} style={filterChip(evFilter === 'counsel')}>
+                🔒 Counsel-only · {counselCount}
+              </button>
+            </span>
+          ) : null}
           {canWrite ? (
             <button type="button" onClick={openEvidenceWindow} style={{ marginLeft: 'auto', padding: '0.3rem 0.75rem', borderRadius: 7, fontSize: '0.78rem', fontWeight: 600, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               + Add evidence
@@ -1148,7 +1173,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         ) : (
           <>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.5rem' }}>
-              {evidenceRecords.map((r) => {
+              {shownRecords.map((r) => {
                 const state = evidenceDriveState(r)
                 const on = r.entry_id ? lineByEntryId.get(r.entry_id) : null
                 const stateLook: LaneLook = state === 'filed' ? FACT_TONE.green : state === 'held' ? FACT_TONE.red : FACT_TONE.amber
@@ -1158,10 +1183,10 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{r.title}</div>
                       {r.memo ? <div style={{ fontSize: '0.84rem', color: 'var(--text-base)', marginTop: '0.2rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{r.memo}</div> : null}
-                      {r.files.length > 0 ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.45rem' }}>{r.files.map(evidenceFileChip)}</div> : null}
+                      {r.files.length > 0 ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.45rem' }}>{r.files.map((f) => evidenceFileChip(f, r))}</div> : null}
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.7rem', marginTop: '0.45rem', fontSize: '0.72rem', color: 'var(--text-faint)' }}>
-                        <span style={chip(stateLook)}>{evidenceDriveWords(r)}</span>
-                        {r.drive_folder_url ? (
+                        <span style={chip(r.counsel_only ? FACT_TONE.gray : stateLook)} data-testid={r.counsel_only ? 'evidence-counsel-chip' : undefined}>{r.counsel_only ? '🔒 ' : ''}{evidenceDriveWords(r)}</span>
+                        {r.counsel_only ? null : r.drive_folder_url ? (
                           <a href={r.drive_folder_url} target="_blank" rel="noopener" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
                             Open the folder in Drive ›
                           </a>

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { isFolded, readFolds, readMoneySort, toggleFold, writeFolds, writeMoneySort } from './devicePrefs'
+import { isFolded, readFolds, readMoneySort, readScoreboardCut, readScoreboardWindow, toggleFold, writeFolds, writeMoneySort, writeScoreboardCut, writeScoreboardWindow } from './devicePrefs'
 
 // The node test environment has no window; a Map-backed stand-in is installed per test.
 const g = globalThis as unknown as { window?: unknown }
@@ -102,5 +102,31 @@ describe('readMoneySort / writeMoneySort', () => {
     throwing = true
     expect(readMoneySort(D)).toBe('tightest')
     expect(() => writeMoneySort(D, 'number')).not.toThrow()
+  })
+})
+
+describe('the Scoreboard’s cut and window (v2.6558)', () => {
+  it('reads job and all time until a cut or a window is written; anything else reads the defaults', () => {
+    expect(readScoreboardCut(D)).toBe('job')
+    expect(readScoreboardWindow(D)).toBe('all')
+    writeScoreboardCut(D, 'person')
+    writeScoreboardWindow(D, '90d')
+    expect(readScoreboardCut(D)).toBe('person')
+    expect(readScoreboardWindow(D)).toBe('90d')
+    store.set(`pt.development.${D}.scoreboard.cut`, 'team')
+    store.set(`pt.development.${D}.scoreboard.window`, 'week')
+    expect(readScoreboardCut(D)).toBe('job')
+    expect(readScoreboardWindow(D)).toBe('all')
+  })
+  it('the defaults remove the keys, and a device that refuses storage reads the defaults', () => {
+    writeScoreboardCut(D, 'part')
+    writeScoreboardCut(D, 'job')
+    writeScoreboardWindow(D, 'month')
+    writeScoreboardWindow(D, 'all')
+    expect(store.size).toBe(0)
+    throwing = true
+    writeScoreboardCut(D, 'part')
+    expect(readScoreboardCut(D)).toBe('job')
+    expect(readScoreboardWindow(D)).toBe('all')
   })
 })

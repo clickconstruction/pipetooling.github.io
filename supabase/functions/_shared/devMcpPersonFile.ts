@@ -246,6 +246,16 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const { ahead, past } = splitPersonTimeline(lines, who.todayYmd)
   const months = groupPersonTimelineByMonth(past).map((m) => ({ month: m.monthKey, label: m.label, lines: m.lines }))
 
+  // v2.6554: counsel-only records are refused to this seat by RLS (the X-Dev-Seat header); the count is a definer's answer, never a row.
+  if (isDev) {
+    try {
+      const raw = await reader.rpc('person_counsel_only_count', { p_person_id: personId })
+      const n = Number(Array.isArray(raw) ? raw[0] : raw)
+      if (Number.isFinite(n) && n > 0) held.push({ source: 'evidence', reason: `${n} counsel-only record${n === 1 ? '' : 's'}, kept from the seat; a dev reads them on People → HR` })
+    } catch {
+      // Before the migration is pushed the function is not there: nothing to name.
+    }
+  }
   // A held source is named once, even when two reads share it.
   const seen = new Set<string>()
   const heldOnce = held.filter((h) => {

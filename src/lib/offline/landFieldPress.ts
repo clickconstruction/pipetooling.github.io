@@ -1,5 +1,5 @@
 import { DatabaseError, databaseErrorFromResult, errorKindOf, formatErrorMessage, OperationTimeoutError, withOperationTimeout, type SupabaseResultError } from '../../utils/errorHandling'
-import { failureQueues, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OutboxKind, type OutboxPress, type OutboxRefusal } from './outbox'
+import { failureQueues, type ChecklistSignPayload, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OutboxKind, type OutboxPress, type OutboxRefusal } from './outbox'
 
 /**
  * The send (punch list #163 PR 2): one press to the `land_field_press` RPC, which takes the
@@ -23,6 +23,8 @@ export const RPC_KIND: Record<OutboxKind, string> = {
   'field-report': 'field_report',
   /** Never sent to the RPC: a job photos press lands through the table's own policies (`landJobPhotos`). */
   'job-photos': 'job_photos',
+  /** Never sent to the RPC either: a signed checklist answer lands through the table's own policies and lock (`landChecklistSign`). */
+  'checklist-sign': 'checklist_sign',
 }
 
 /** The press's payload as the RPC reads it. */
@@ -48,6 +50,31 @@ export function rpcPayload(press: OutboxPress): Record<string, unknown> {
       const p = press.payload as JobPhotosPayload
       return { job_ledger_id: p.jobLedgerId, photo_ids: p.photos.map((ph) => ph.id) }
     }
+    case 'checklist-sign': {
+      const p = press.payload as ChecklistSignPayload
+      return { job_id: p.jobId, fixture_id: p.fixtureId, question_id: p.questionId, pick: p.pick }
+    }
+  }
+}
+
+export type LandChecklistSignIo = {
+  sign?: (input: ChecklistSignPayload & { signedAt: string }, who: { userId: string; name: string }) => Promise<unknown>
+}
+
+/**
+ * A signed checklist answer lands without the RPC (punch list #237, PR 2): the same write the sheet makes online,
+ * `signAnswer`, under the table's own policies and the lock trigger, with the press's time as the signed time. A row
+ * the first try already signed with this hash by this signer is answered as it stands, so a repeat counts once. The
+ * outcome is classed as any press's: a lost signal or a timeout fails and waits, a refusal keeps the server's reason.
+ */
+export async function landChecklistSign(press: OutboxPress, io: LandChecklistSignIo = {}): Promise<LandOutcome> {
+  try {
+    const sign = io.sign ?? (await import('../jobs/stageChecklistSheetIo')).signAnswer
+    const p = press.payload as ChecklistSignPayload
+    const result = await withOperationTimeout(sign({ ...p, signedAt: new Date(press.pressedAt).toISOString() }, { userId: press.userId, name: p.byName }), LAND_TIMEOUT_MS, 'Sign the answer')
+    return { kind: 'landed', result: result ?? {} }
+  } catch (e) {
+    return outcomeOfFailure(e)
   }
 }
 
@@ -90,6 +117,7 @@ export function outcomeOfFailure(error: unknown): LandOutcome {
 
 export async function landFieldPress(press: OutboxPress): Promise<LandOutcome> {
   if (press.kind === 'job-photos') return landJobPhotos(press)
+  if (press.kind === 'checklist-sign') return landChecklistSign(press)
   try {
     // The client is read here, not at import, so the kernels that take this send as a default load without it (a test, a worker).
     const { supabase } = await import('../supabase')

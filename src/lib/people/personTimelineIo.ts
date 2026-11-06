@@ -226,6 +226,7 @@ export async function loadPersonFileSources(args: {
         author_label: r.author_label,
         drive_folder_url: r.drive_folder_url,
         fileIds: r.files.map((f) => f.id),
+        counsel_only: Boolean(r.counsel_only),
       })),
       reports,
       contracts: [...contracts.values()],

@@ -28,10 +28,14 @@ import type { DatabaseErrorKind } from '../../utils/errorHandling'
 // ---------------------------------------------------------------------------
 // What may queue
 
-/** `job-photos` (punch list #244, PR 5): photos added to a job with their words from the Job photos window, kept on the phone with no signal. */
-export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos'
+/**
+ * `job-photos` (punch list #244, PR 5): photos added to a job with their words from the Job photos window, kept on the
+ * phone with no signal. `checklist-sign` (punch list #237, PR 2): a signed checklist answer, the mark a small PNG in the
+ * payload, so a signature on one bar of signal still lands.
+ */
+export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos' | 'checklist-sign'
 
-export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos']
+export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign']
 
 export function isOutboxKind(value: unknown): value is OutboxKind {
   return typeof value === 'string' && (OUTBOX_KINDS as readonly string[]).includes(value)
@@ -44,19 +48,22 @@ export const OUTBOX_KIND_WORDS: Record<OutboxKind, string> = {
   'job-note': 'Job note',
   'field-report': 'Field report',
   'job-photos': 'Job photos',
+  'checklist-sign': 'Signed checklist answer',
 }
 
 /**
  * What never queues, in the guide's words. A payment, a bill or a card split moves money; a text
- * or an email to a customer leaves the company; a signature needs the server's own stamp. Each
- * fails as it does today and the person sends it again when the signal is back.
+ * or an email to a customer leaves the company; a customer's or a leader's signature needs the
+ * server's own stamp (the crew's own signature on a checklist answer does queue, since #237 PR 2:
+ * it is their act under their own sign-in, and the press's time is its time). Each fails as it
+ * does today and the person sends it again when the signal is back.
  */
 export const NEVER_QUEUES: readonly string[] = [
   'a payment',
   'a bill',
   'a card split',
   'a text or an email to a customer',
-  'a signature',
+  'a customer’s or the leader’s signature',
 ]
 
 // ---------------------------------------------------------------------------
@@ -159,6 +166,27 @@ export interface JobPhotosPayload {
   photos: KeptJobPhoto[]
 }
 
+/**
+ * A signed checklist answer (punch list #237, PR 2): the pick and the signature in one press, as `signAnswer` takes
+ * them. The drawn mark rides as a data URL, a few kilobytes, so the press carries everything it needs; the signed time
+ * is the press's own. The landing writes under the table's own policies and lock, and a resend finds the row signed
+ * with the same hash by the same signer and counts once.
+ */
+export interface ChecklistSignPayload {
+  jobId: string
+  fixtureId: string
+  questionId: string
+  questionWords: string
+  stageName: string
+  pick: 'yes' | 'no' | 'not_here'
+  note: string
+  printedName: string
+  mode: 'type' | 'draw'
+  pngDataUrl: string | null
+  /** The signer's name as the stamp prints it. */
+  byName: string
+}
+
 export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
   ? ClockInPayload
   : K extends 'clock-out'
@@ -167,7 +195,9 @@ export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
       ? JobNotePayload
       : K extends 'job-photos'
         ? JobPhotosPayload
-        : FieldReportPayload
+        : K extends 'checklist-sign'
+          ? ChecklistSignPayload
+          : FieldReportPayload
 
 export interface OutboxPress<K extends OutboxKind = OutboxKind> {
   /** Minted on the phone when pressed; the server counts a send that lands twice once by it. */

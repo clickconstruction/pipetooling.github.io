@@ -68,6 +68,9 @@ function fakeIo(over: Partial<StageChecklistSheetIo> = {}, answers: JobAnswer[] 
       return next
     }),
     photoUrl: vi.fn(async () => null),
+    sign: vi.fn(async () => { throw new Error('not here') }),
+    takeBack: vi.fn(async () => { throw new Error('not here') }),
+    inkUrl: vi.fn(async () => null),
     addItem: vi.fn(async (input, who) => {
       const q: StageChecklistQuestion = { id: `j${++seq}`, kind: input.kind, order: 0, words: input.words, asksPhoto: input.asksPhoto, fixtureId: input.fixtureId, addedById: who.userId, addedBy: who.name, addedAt: '2026-11-01T16:00:00.000Z' }
       live.push(q)
@@ -219,7 +222,7 @@ describe('JobStageChecklistStrip', () => {
     fireEvent.change(box, { target: { value: 'Is the water heater pan drain run to the hub?' } })
     fireEvent.click(screen.getByLabelText('Asks for a photo'))
     fireEvent.click(screen.getByRole('button', { name: 'Add the check' }))
-    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB, fixtureId: 'f1', kind: 'rough_in', order: 1, words: 'Is the water heater pan drain run to the hub?', asksPhoto: true, sheet: '', why: '' }, { userId: 'u-pat', name: 'Pat Sample' }))
+    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB, fixtureId: 'f1', kind: 'rough_in', order: 1, words: 'Is the water heater pan drain run to the hub?', asksPhoto: true, needsSignature: false, sheet: '', why: '' }, { userId: 'u-pat', name: 'Pat Sample' }))
     expect(await screen.findByText('Added. Rough In is now 0 of 3.')).toBeTruthy()
     expect(screen.getByText('0 of 3 answered · 3 left')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Rough In checklist: 0 of 3 answered, not ready' })).toBeTruthy()

@@ -17,6 +17,7 @@ import { useJobMessages } from '../../hooks/useJobMessages'
 import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
 import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
 import { JobModePhotosLine } from './JobModePhotosLine'
+import { JobModeMachinesLine } from '../machines/JobModeMachinesLine'
 
 type CustomerContact = {
   customer_name: string | null
@@ -205,6 +206,8 @@ export default function JobModeDetailsSection({
     >
       {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, each opening its sheet. */}
       <JobStageChecklistStrip jobId={jobId} rev={updatesRev} plansUrl={contact?.job_plans_link} />
+      {/* Equipment pre-use check (punch list #270): a line per machine on the job, under the stage checklists */}
+      <JobModeMachinesLine jobId={jobId} jobWords={[hcpNumber, jobName].filter(Boolean).join(' · ')} />
       {/* The field's door to the job's photos (punch list #244, PR 4): the same window the Pipeline row's camera opens. */}
       <JobModePhotosLine jobId={jobId} hcpNumber={hcpNumber} jobName={jobName} jobAddress={jobAddress} />
       <div
