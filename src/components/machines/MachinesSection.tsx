@@ -10,12 +10,8 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import {
-  GAUGE_LOOKS,
-  GAUGE_LOOK_WORDS,
   MACHINE_KIND_WORDS,
   dayWords,
-  fluidColor,
-  gaugePreset,
   hoursWords,
   isHeld,
   lastHours,
@@ -27,7 +23,6 @@ import {
   machineName,
   rentalWords,
   todayDay,
-  type GaugeLook,
   type LevelDef,
   type Machine,
   type MachineKind,
@@ -39,7 +34,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { MachineCheckSheet } from './MachineCheckSheet'
 import { JobLookupBox } from './JobLookupBox'
 import { MachineLabelModal } from './MachineLabelModal'
-import { LevelGauge } from './LevelGauge'
+import { GaugeListEditor } from './GaugeListEditor'
 
 const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 12, padding: '0.75rem 0.9rem', background: 'var(--surface)', display: 'grid', gap: '0.5rem' }
 const chip: CSSProperties = { display: 'inline-block', padding: '0 0.5rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 700, lineHeight: '1.3rem' }
@@ -208,53 +203,13 @@ function Tile({ k, v, s }: { k: string; v: string; s: string }) {
  */
 function GaugeEditor({ machine, template, busy, onSave, onClose }: { machine: Machine; template: MachineTemplate | null; busy: boolean; onSave: (levels: LevelDef[] | null) => void; onClose: () => void }) {
   const [levels, setLevels] = useState<LevelDef[]>(machine.levels)
-  function patch(key: string, change: Partial<LevelDef>) {
-    setLevels((ls) => ls.map((d) => (d.key === key ? { ...d, ...change } : d)))
-  }
-  function setLook(d: LevelDef, look: GaugeLook) {
-    const p = gaugePreset(look, d.name, d.where, d.key)
-    patch(d.key, { look, marks: p.marks, lowBelow: p.lowBelow })
-  }
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.7rem', display: 'grid', gap: '0.6rem', background: 'var(--bg-subtle)' }} data-gauge-editor>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
         <b style={{ fontSize: '0.9375rem' }}>Gauges on {machine.unitLabel}</b>
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>The crew sees each one drawn this way on the check sheet, with the words on where to find it.</span>
       </div>
-      {levels.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nothing to read on this one. Add a gauge if it has a tank, a glass, a stick or a dial.</p> : null}
-      {levels.map((d) => (
-        <div key={d.key} style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.5rem 0.75rem', alignItems: 'start', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }} data-gauge-row={d.name}>
-          <LevelGauge def={d} value={d.look === 'dial' ? 70 : (d.marks.find((m) => m.line)?.at ?? 70)} last={undefined} readOnly onChange={() => {}} small />
-          <div style={{ display: 'grid', gap: '0.4rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.4rem' }}>
-              <input value={d.name} onChange={(e) => patch(d.key, { name: e.target.value, color: fluidColor(e.target.value) })} aria-label="What it holds" placeholder="What it holds, like Fuel" style={field} />
-              <button type="button" style={{ ...press, color: 'var(--text-muted)' }} onClick={() => setLevels((ls) => ls.filter((x) => x.key !== d.key))}>
-                Remove
-              </button>
-            </div>
-            <input value={d.where} onChange={(e) => patch(d.key, { where: e.target.value })} aria-label="Where to read it" placeholder="Where to read it, like Sight glass behind the cab" style={field} />
-            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }} role="radiogroup" aria-label="What it looks like">
-              {GAUGE_LOOKS.map((look) => {
-                const on = d.look === look
-                return (
-                  <button key={look} type="button" role="radio" aria-checked={on} onClick={() => setLook(d, look)} style={{ ...press, minHeight: 32, fontSize: '0.75rem', ...(on ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb' } : {}) }} title={GAUGE_LOOK_WORDS[look].how}>
-                    {GAUGE_LOOK_WORDS[look].name}
-                  </button>
-                )
-              })}
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', alignSelf: 'center' }}>{GAUGE_LOOK_WORDS[d.look].how}</span>
-            </div>
-          </div>
-        </div>
-      ))}
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Add a gauge:</span>
-        {GAUGE_LOOKS.map((look) => (
-          <button key={look} type="button" style={press} onClick={() => setLevels((ls) => [...ls, gaugePreset(look, '', '')])}>
-            + {GAUGE_LOOK_WORDS[look].name}
-          </button>
-        ))}
-      </div>
+      <GaugeListEditor levels={levels} onChange={setLevels} disabled={busy} />
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
         <button type="button" style={{ ...press, background: '#2563eb', color: '#fff', borderColor: '#2563eb' }} disabled={busy} onClick={() => { onSave(levels); onClose() }}>
           Save {machine.unitLabel}’s gauges
