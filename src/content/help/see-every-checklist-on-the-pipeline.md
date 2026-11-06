@@ -2,7 +2,7 @@
 title: see every checklist on the Pipeline
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent, estimator
-keywords: stage checklist, checklist, pipeline, board, row, icon, door, progress, not ready, ready, rough in, top out, trim set, answer, add a check, skip on this job, take off, open on the job, documents tab, phone, more actions
+keywords: stage checklist, checklist, pipeline, board, row, icon, door, progress, checklist left, chip, narrow, not ready, ready, rough in, top out, trim set, answer, add a check, skip on this job, take off, open on the job, documents tab, phone, more actions
 where: /jobs
 order: 32
 ---
@@ -59,6 +59,16 @@ Who sees these presses follows the same rule as the job window. The office sees 
 ## Open the job for the rest
 
 Press {{button:blue|Open on the job}} at the foot of the sheet. The job window opens on its Documents tab. There you read the skipped questions, put one back, or add a job's check to the company's list.
+
+## Show only the jobs with a question left
+
+The search bar shows {{chip:gray|Checklist left · 4}} when a job on the board has a question left. The number counts the jobs.
+
+1. Press {{chip:gray|Checklist left · 4}} in the search bar.
+2. Read the board. Every section shows only the jobs with a question left, in the usual order.
+3. Press {{chip:yellow|Checklist left · 4 ×}} to show every job again.
+
+The chip is not there when no job has a question left.
 
 ## On a phone
 

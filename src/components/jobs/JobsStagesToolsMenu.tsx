@@ -55,6 +55,11 @@ export type StagesToolsFilters = {
    * switch shows them. Null for every other role, and when the board holds none.
    */
   zzTestJobs?: { count: number; shown: boolean } | null
+  /**
+   * The jobs with a question left on a stage checklist (punch list #246, PR 2, v2.6551): how many the board holds and
+   * whether the chip narrows the board to them. Null while the board holds none and the chip is off.
+   */
+  checklistLeft?: { count: number; on: boolean } | null
 }
 
 /** The per-device board modes the bottom of the menu toggles. */

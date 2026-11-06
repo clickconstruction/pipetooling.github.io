@@ -89,7 +89,7 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useJobCrewPositions } from '../../hooks/useJobCrewPositions'
 import { useStageChecklistStates } from '../../hooks/useStageChecklistStates'
 import { stageChecklistMarks, type MarkFixture } from '../../lib/jobs/stageChecklistMarks'
-import { doorJobLabel } from '../../lib/jobs/pipelineChecklistDoor'
+import { countJobsWithChecklistLeft, doorJobLabel, filterJobsByChecklistLeft } from '../../lib/jobs/pipelineChecklistDoor'
 import { PipelineChecklistSheet } from '../stageChecklists/PipelineChecklistSheet'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 import JobsContractSweepModal from './JobsContractSweepModal'
@@ -1429,6 +1429,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const stagesDevelopmentFilterOptions = useMemo(() => developmentFilterOptionsFromJobs(jobs), [jobs])
   /** Stages Account Man filter (v2.1477): '' = all, STAGES_ACCOUNT_MAN_FILTER_NONE = jobs without one, else user id. */
   const [stagesAccountManFilter, setStagesAccountManFilter] = useState('')
+  /** The Checklist left chip (punch list #246, PR 2, v2.6551): on, the board narrows to the jobs with a question left on a stage checklist. */
+  const [stagesChecklistLeftFilter, setStagesChecklistLeftFilter] = useState(false)
 
   const stagesAccountManFilterOptions = useMemo(() => accountManFilterOptionsFromJobs(jobs), [jobs])
   /** "Hide groups" exclusions (v2.1476): per-device; applied before the include filters and search. */
@@ -1455,6 +1457,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     Boolean(stagesAccountManFilter) ||
     Boolean(stagesContractFilter) ||
     Boolean(stagesKindFilter) ||
+    stagesChecklistLeftFilter ||
     contractSweepOpen ||
     // Billed aging / no-line filter (v2.2155): billed lines hang on working
     // and waiting jobs too, and the board routes them into Billed only once
@@ -1515,8 +1518,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     })
   }, [])
   const stagesExclusionCount = countStagesExclusions(stagesExcludeFilters)
-  /** The jobs every board filter lets through, before the search. */
-  const stagesJobsUnderFilters = useMemo(
+  /** The jobs every board filter but the Checklist left chip lets through: the chip counts over these, so its number holds while it is on. */
+  const stagesJobsBeforeChecklist = useMemo(
     () =>
       filterJobsByKind(
         filterJobsByContractCoverage(
@@ -1534,6 +1537,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         stagesKindFilter,
       ),
     [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, contractFloorCents, stagesKindFilter],
+  )
+  /** How many jobs on the board have a question left on a stage checklist (punch list #246, PR 2): the chip's count. */
+  const stagesChecklistLeftCount = useMemo(() => countJobsWithChecklistLeft(stagesJobsBeforeChecklist, checklistMarksFor), [stagesJobsBeforeChecklist, checklistMarksFor])
+  /** The jobs every board filter lets through, before the search. */
+  const stagesJobsUnderFilters = useMemo(
+    () => filterJobsByChecklistLeft(stagesJobsBeforeChecklist, stagesChecklistLeftFilter, checklistMarksFor),
+    [stagesJobsBeforeChecklist, stagesChecklistLeftFilter, checklistMarksFor],
   )
   const stagesSeesPastFilters = stagesSearchShowsHeldBack && stagesSearchQuery.trim() !== ''
   const stagesBoardLists = useMemo(
@@ -3021,6 +3031,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     accountManOptions: stagesAccountManFilterOptions,
     exclusionCount: stagesExclusionCount,
     zzTestJobs: zzTestJobsLine,
+    checklistLeft: stagesChecklistLeftCount > 0 || stagesChecklistLeftFilter ? { count: stagesChecklistLeftCount, on: stagesChecklistLeftFilter } : null,
   }
   /** The # jump chip: the loaded board first, then the lean lookup across every job (any status); the chip shows its checking state meanwhile. */
   const jumpToTypedNumber = (digits: string) => {
@@ -3330,6 +3341,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             onClearDevelopment={() => setStagesDevelopmentFilter('')}
             onClearAccountMan={() => setStagesAccountManFilter('')}
             onOpenHideGroups={() => setStagesHideGroupsModalOpen(true)}
+            onToggleChecklistLeft={() => setStagesChecklistLeftFilter((v) => !v)}
             toolsMenu={
                     <JobsStagesToolsMenu
                       open={stagesToolsMenuOpen}

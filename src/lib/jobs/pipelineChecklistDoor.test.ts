@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { StageChecklistState } from './stageChecklist'
-import { DOOR_SHEET_WORDS, doorEmptyWords, doorJobLabel, doorSheetTitle, pipelineChecklistDoor } from './pipelineChecklistDoor'
+import { checklistLeftChip, countJobsWithChecklistLeft, DOOR_SHEET_WORDS, doorEmptyWords, doorJobLabel, doorSheetTitle, filterJobsByChecklistLeft, jobHasChecklistLeft, pipelineChecklistDoor } from './pipelineChecklistDoor'
 
 const notReady = (answered: number, asked: number, kind: StageChecklistState['kind'] = 'trim_set'): StageChecklistState => ({ kind, asked, answered, standing: 'not_ready', ready: false })
 const filled = (asked: number, kind: StageChecklistState['kind'] = 'rough_in'): StageChecklistState => ({ kind, asked, answered: asked, standing: 'ready', ready: true })
@@ -94,5 +94,46 @@ describe('pipelineChecklistDoor: the sheet’s words', () => {
     expect(doorEmptyWords().tail).toMatch(/Bill tab/)
     expect(DOOR_SHEET_WORDS.openOnJob).toBe('Open on the job')
     expect(DOOR_SHEET_WORDS.foot).toMatch(/under your name/)
+  })
+})
+
+describe('the Checklist left chip (punch list #246, PR 2)', () => {
+  const open = new Map<string, StageChecklistState>([['f3', notReady(3, 6)]])
+  const done = new Map<string, StageChecklistState>([['f1', filled(4)], ['f3', filled(6)]])
+  const JOBS = [
+    { id: 'a', fixtures: STAGES },
+    { id: 'b', fixtures: STAGES },
+    { id: 'c', fixtures: [{ id: 'x', name: 'Service call' }] },
+    { id: 'd', fixtures: STAGES },
+  ]
+  const marksFor = (j: { id: string }) => (j.id === 'a' || j.id === 'd' ? open : j.id === 'b' ? done : null)
+
+  it('v2.6551 · a job has a question left only while a stage is open: not filled, not empty, not without a stage', () => {
+    expect(jobHasChecklistLeft(STAGES, open)).toBe(true)
+    expect(jobHasChecklistLeft(STAGES, done)).toBe(false)
+    expect(jobHasChecklistLeft(STAGES, null)).toBe(false)
+    expect(jobHasChecklistLeft([{ id: 'x', name: 'Service call' }], open)).toBe(false)
+  })
+
+  it('v2.6551 · counts the jobs with a question left, and the filter keeps only them in their order while on, every job while off', () => {
+    expect(countJobsWithChecklistLeft(JOBS, marksFor)).toBe(2)
+    expect(filterJobsByChecklistLeft(JOBS, true, marksFor).map((j) => j.id)).toEqual(['a', 'd'])
+    expect(filterJobsByChecklistLeft(JOBS, false, marksFor).map((j) => j.id)).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  it('v2.6551 · the chip reads the count, says what a press does either way, and is nothing with nothing left and the filter off', () => {
+    expect(checklistLeftChip(0, false)).toBeNull()
+    const off = checklistLeftChip(4, false)!
+    expect(off.label).toBe('Checklist left · 4')
+    expect(off.title).toBe('4 jobs have a question left on a stage checklist — tap to show only them')
+    expect(off.aria).toBe('Show only the 4 jobs with a question left on a stage checklist')
+    const one = checklistLeftChip(1, false)!
+    expect(one.title).toBe('1 job has a question left on a stage checklist — tap to show only it')
+    const on = checklistLeftChip(4, true)!
+    expect(on.label).toBe('Checklist left · 4')
+    expect(on.title).toBe('Showing only the 4 jobs with a question left on a stage checklist — tap to show every job')
+    expect(on.aria).toBe('Clear the checklist filter: showing only the 4 jobs with a question left')
+    // On with nothing left (the answers not read yet, or the last one answered): the chip stays so the filter can be cleared.
+    expect(checklistLeftChip(0, true)!.label).toBe('Checklist left · 0')
   })
 })
