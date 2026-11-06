@@ -351,6 +351,9 @@ Roles: all (Team for dev, master, assistant/controller; payroll actions gated).
 ### /b/:code — A box label's short address
 The door a printed box label's QR opens: `prts.co/b/7D759246` forwards here (v2.6039, punch list #209). The page finds the box by its eight-character code and opens it on the tally's On site tab; a code no box carries says so and offers the tab. Roles: anyone signed in who can see the job.
 
+### /m/:code — A machine label's short address
+The door a machine's printed label opens (v2.6559, punch list #270): the page finds the machine by its code and opens its pre-use check on the job it is on, asking which job when it is in the yard; once today's walk is signed it opens the leaving check instead. A code no machine carries offers Add this machine with the templates, the rental's door. Roles: anyone signed in. Guide `check-a-machine-before-you-run-it`.
+
 ### /banking — Banking
 Mercury bank ledger: user/drag sort, accounting labels, card + category review,
 reconciliation; every Approvals card says the day the charge was made (v2.5804), and the Account nicknames window shows each

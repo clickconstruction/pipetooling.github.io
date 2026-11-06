@@ -76,6 +76,7 @@ import { EmptyState } from '../EmptyState'
 import { vehicleLedgerEmptyWords, vehiclesEmptyWords } from '../../lib/people/peopleEmptyWords'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MachinesSection } from '../machines/MachinesSection'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -391,7 +392,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   async function loadFleet() {
     setLoading(true)
     setError(null)
-    const { data: vehiclesData, error: vErr } = await supabase.from('vehicles').select('*').order('year', { ascending: false })
+    const { data: vehiclesData, error: vErr } = await supabase.from('vehicles').select('*').eq('kind', 'truck').order('year', { ascending: false })
     setLoading(false)
     if (vErr) {
       setError(vErr.message)
@@ -1382,6 +1383,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, fontSize: '0.9rem', width: '100%', maxWidth: 440, boxSizing: 'border-box' }}
           />
         </div>
+        {/* Equipment pre-use check (punch list #270): the machines, their own board above the trucks' strip. */}
+        <MachinesSection />
         {/* Fleet strip (v2.2169): facts as one line, to-dos as a short list — see VehiclesFleetSummary. */}
         <VehiclesFleetSummary
           facts={fleetFactsLine({ total: summary.total, motorPool: summary.motorPool, weeklyInsReg: weeklyTotal }, formatCurrency)}

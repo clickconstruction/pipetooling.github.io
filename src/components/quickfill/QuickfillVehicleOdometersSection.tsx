@@ -141,7 +141,7 @@ export function QuickfillVehicleOdometersSection({ lastMarkedAt = null }: { /** 
     setError(null)
     try {
       const [{ data: vehiclesData, error: vErr }, checkinSettings] = await Promise.all([
-        supabase.from('vehicles').select('id, year, make, model, vin').order('year', { ascending: false }),
+        supabase.from('vehicles').select('id, year, make, model, vin').eq('kind', 'truck').order('year', { ascending: false }),
         fetchVehicleCheckinSettings(),
       ])
       if (vErr) throw vErr
