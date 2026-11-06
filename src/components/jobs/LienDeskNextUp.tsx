@@ -1,8 +1,8 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { groupLienNextUp, isLienReminderRow, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import { lienReminderBrief, type LienReminderRow, type LienReminders } from '../../lib/jobs/lienReminders'
-import { countLienSteps, lienLaddersShown, lienStepCard, lienStepGroups, lienStepOfRow, type LienStepAt, type LienStepFacts, type LienStepLadder } from '../../lib/jobs/lienNextUpSteps'
+import type { LienReminderRow, LienReminders } from '../../lib/jobs/lienReminders'
+import { countLienSteps, lienLaddersShown, lienStepBrief, lienStepCard, lienStepGroups, lienStepOfRow, type LienStepAt, type LienStepFacts, type LienStepLadder } from '../../lib/jobs/lienNextUpSteps'
 import { EmptyState } from '../EmptyState'
 import { LIEN_JOB_DOOR_TITLE } from './LienJobNumber'
 import { LienStepBrief, LienStepCardView, LienStepMark, LienStepRail, LienStepRow, useLienStepCard } from './LienDeskSteps'
@@ -251,9 +251,9 @@ export default function LienDeskNextUp({
   return (
     <div ref={card.hostRef} data-lien-next-up="list" style={{ position: 'relative', overflowY: 'auto', minHeight: 0, padding: isMobile ? '0.6rem 0.75rem 1rem' : '0.75rem 1.25rem 1.25rem' }}>
       <LienStepRail counts={counts} ladders={ladders} on={on} isMobile={isMobile} onPick={setOn} onOpenRun={onOpenRun} viewerIsLeader={viewerIsLeader} printed={printed} reminderWaiting={reminders?.waiting} />
-      {/* The step brief (v2.6574): what the step is, why a notice is here, the usual move, the other moves, what closes it — and the REMINDERS rail's notices with no row here. */}
+      {/* The step brief (v2.6574; every rail since v2.6577): what the step is, why a row is here, the usual move, the other moves, what closes it — and the REMINDERS rail's notices with no row here. */}
       {on ? (
-        <LienStepBrief on={on} brief={on.ladder === 'reminder' ? lienReminderBrief(on.step) : null} count={(groups[0]?.rows.length ?? 0) + reminderRows.length} marks={on.ladder === 'reminder' ? [...(groups[0]?.rows ?? []).map((r) => r.reminder?.day ?? null), ...reminderRows.map((r) => r.day)] : []} isMobile={isMobile} onClear={() => setOn(null)}>
+        <LienStepBrief on={on} brief={lienStepBrief(on)} count={(groups[0]?.rows.length ?? 0) + reminderRows.length} marks={on.ladder === 'reminder' ? [...(groups[0]?.rows ?? []).map((r) => r.reminder?.day ?? null), ...reminderRows.map((r) => r.day)] : []} isMobile={isMobile} onClear={() => setOn(null)}>
           {reminderStep ? (
         <div data-testid="lien-reminder-step-list" data-step={reminderStep} style={{ borderTop: '1px solid var(--border)', paddingTop: 8, fontSize: '0.8125rem' }}>
           <div style={{ fontSize: '0.66rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-violet-700)', fontWeight: 700, marginBottom: 2 }}>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienNextUpRow } from './lienNextUp'
-import { countLienSteps, lienLaddersShown, lienRunRungWords, lienStepCard, lienStepGroups, lienStepName, lienStepOfRow, lienStepTiles } from './lienNextUpSteps'
+import { countLienSteps, lienLaddersShown, lienRunRungWords, lienStepCard, lienStepBrief, lienStepGroups, lienStepName, lienStepOfRow, lienStepTiles } from './lienNextUpSteps'
 
 const row = (over: Partial<LienNextUpRow>): LienNextUpRow => ({
   key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · ATI Schertz', sub: 'Notice to draft', dueOn: '2026-10-15', daysLeft: 10, severity: 'amber', group: 'coming', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' },
@@ -164,5 +164,34 @@ describe('lienStepGroups — the list under a pressed rung, sorted and never fad
   it('names the rung for the brief’s head', () => {
     expect(lienStepName({ ladder: 'reminder', step: 3 })).toBe('3 · Letter two')
     expect(lienStepName({ ladder: 'affidavit', step: 1 })).toBe('1 · Fix the property')
+  })
+})
+
+describe('lienStepBrief — every rail’s step brief (v2.6577)', () => {
+  it('gives each of the twelve rungs a what, a why, the usual press, whose it is, other presses and a closer', () => {
+    for (const ladder of ['notice', 'affidavit', 'retainage'] as const) {
+      for (const step of [1, 2, 3, 4] as const) {
+        const b = lienStepBrief({ ladder, step })
+        expect(b.title.length, `${ladder} ${step}`).toBeGreaterThan(0)
+        expect(b.what.length).toBeGreaterThan(20)
+        expect(b.why.length).toBeGreaterThan(10)
+        expect(b.usual).toBeTruthy()
+        expect(b.instead.length).toBeGreaterThan(0)
+        expect(b.closes).toContain('paid')
+        expect(b.who).toBe(step === 3 ? 'leader' : 'office')
+      }
+    }
+  })
+  it('names the panes’ own presses: the notice’s Sign and approve, the affidavit’s File the affidavit, retainage’s contract-end door', () => {
+    expect(lienStepBrief({ ladder: 'notice', step: 3 })).toMatchObject({ title: 'Approve', usual: 'Sign and approve ▸', who: 'leader' })
+    expect(lienStepBrief({ ladder: 'notice', step: 3 }).instead[0]).toBe('Not yet, with the hold’s reason')
+    expect(lienStepBrief({ ladder: 'notice', step: 1 }).instead).toEqual(['Property record ›', 'Hold — they promised…', 'Hold — I’ll call first'])
+    expect(lienStepBrief({ ladder: 'affidavit', step: 4 })).toMatchObject({ title: 'File it', usual: 'File the affidavit' })
+    expect(lienStepBrief({ ladder: 'affidavit', step: 1 }).instead[0]).toBe('Fill in the record ›')
+    expect(lienStepBrief({ ladder: 'retainage', step: 1 }).instead).toContain('Set the day our contract ended ›')
+    expect(lienStepBrief({ ladder: 'retainage', step: 2 }).what).toContain('retainage held')
+  })
+  it('hands the REMINDERS rail to its own brief', () => {
+    expect(lienStepBrief({ ladder: 'reminder', step: 3 })).toMatchObject({ title: 'Letter two', usual: 'Send letter two', who: 'leader' })
   })
 })

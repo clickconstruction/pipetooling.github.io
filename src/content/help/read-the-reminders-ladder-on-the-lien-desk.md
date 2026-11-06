@@ -11,6 +11,8 @@ The Lien desk's Do now draws a Reminders strip above the rows. The strip has fou
 
 Press a step on the Reminders strip. A brief opens under the strip in the step's own words. The brief says what the step is and why a notice is on it. The brief names the usual move and whose press it is. The brief also names the other moves you may take instead. Every press stays yours. The brief ends with what closes the step by itself, like a payment.
 
+The Notices, Affidavits and Retainage strips open the same kind of brief.
+
 The list below the brief sorts itself. The rows on that step come first under **On this step**. The rest follow under **On other steps**. No row fades and every button still works. Press {{button:outline|Every step}} to put the list back. A second press on the same step does the same.
 
 ## Our schedule after a notice
