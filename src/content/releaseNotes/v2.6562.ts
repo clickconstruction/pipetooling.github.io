@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'fix',
   roles: ['dev', 'master_technician', 'assistant', 'controller', 'superintendent'],
   highlights: [
-    'On the Schedule page’s Day tab, the orange time chip beside each stop, 8a–10a, now keeps dark words on its light fill in dark mode. It had turned pale on pale.',
+    'On the Schedule page’s Day tab, the orange time chip beside each stop, 8a–10a, reads in dark mode: its fill and its words are a token pair that darkens together, so the words stay apart from the fill. It had turned pale on pale.',
   ],
 }
 
