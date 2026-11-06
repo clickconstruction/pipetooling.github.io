@@ -121,7 +121,7 @@ export const NOT_COUNTED_LABEL: Record<NotCountedReason, string> = {
  * The company's office job (People → Overhead, `overhead_office_job_ledger_id_v1`) carries a trade on
  * its service type like any job, but time there is office time. Its rows read as office, not trade.
  */
-export function withOfficeJob(rows: readonly LicenseHoursLogRow[], officeJobId: string | null): LicenseHoursLogRow[] {
+export function withOfficeJob<R extends LicenseHoursLogRow>(rows: readonly R[], officeJobId: string | null): R[] {
   if (!officeJobId) return [...rows]
   return rows.map((r) => (r.job_ledger_id === officeJobId ? { ...r, job_ledger_id: null, bid_id: null } : r))
 }

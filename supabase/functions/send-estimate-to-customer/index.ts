@@ -24,6 +24,7 @@ import {
   findEstimateAcceptUrl,
   rewriteEstimateAcceptUrl,
 } from '../_shared/estimateLinkResend.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -133,6 +134,8 @@ serve(async (req) => {
     // through is the walk kit's tester, at the kit's own estimate and address alone (checked once the address is
     // known, below).
     const admin = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: who } = await admin
       .from('users')
       .select('id, name, email, read_only, is_sample, is_digital_twin, is_walk_tester')

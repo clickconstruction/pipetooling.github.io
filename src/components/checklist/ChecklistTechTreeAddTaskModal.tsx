@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChecklistCrewTagsRow } from './ChecklistCrewTagsRow'
+import { parseLines } from '../../lib/taskCriteria'
 import {
   matchesPersonQuery,
   singleEnterTarget,
@@ -22,7 +23,8 @@ type Props = {
   /** When set and present in `users`, that row is shown first. */
   currentUserId: string | null
   onClose: () => void
-  onSave: (title: string, assigneeUserIds: string[]) => Promise<boolean>
+  /** Task cards (#273, PR 2): the Done when… lines typed on a new task ride along, one a row, already parsed. */
+  onSave: (title: string, assigneeUserIds: string[], lines: string[]) => Promise<boolean>
   /** e.g. roadmap canvas in Fullscreen API — modals must mount inside the fullscreen element */
   portalContainer?: HTMLElement | null
   /** When set, modal is in edit mode (title + assignees pre-filled). */
@@ -52,6 +54,7 @@ export function ChecklistTechTreeAddTaskModal({
   initialEditAssigneeUserIds = NO_PRESET_ASSIGNEES,
 }: Props) {
   const [title, setTitle] = useState('')
+  const [linesText, setLinesText] = useState('')
   const [assignees, setAssignees] = useState<Record<string, boolean>>({})
   const [personQuery, setPersonQuery] = useState('')
   const [saving, setSaving] = useState(false)
@@ -79,6 +82,7 @@ export function ChecklistTechTreeAddTaskModal({
       setTitle('')
       setAssignees({})
     }
+    setLinesText('')
     setViaCrew({})
     setPersonQuery('')
   }, [open, groupId, editingTaskId, initialEditTitle, initialEditAssigneeUserIds])
@@ -93,8 +97,11 @@ export function ChecklistTechTreeAddTaskModal({
       const assigneeUserIds = Object.entries(assignees)
         .filter(([, v]) => v)
         .map(([k]) => k)
-      const ok = await onSave(trimmed, assigneeUserIds)
-      if (ok) onClose()
+      const ok = await onSave(trimmed, assigneeUserIds, editingTaskId ? [] : parseLines(linesText))
+      if (ok) {
+        setLinesText('')
+        onClose()
+      }
     } finally {
       setSaving(false)
     }
@@ -165,6 +172,22 @@ export function ChecklistTechTreeAddTaskModal({
           style={{ width: '100%', padding: '8px 10px', marginBottom: 12, boxSizing: 'border-box' }}
           disabled={saving}
         />
+        {!editingTaskId ? (
+          <>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }} htmlFor="tech-tree-add-task-lines">
+              Done when… (optional, one line a row)
+            </label>
+            <textarea
+              id="tech-tree-add-task-lines"
+              value={linesText}
+              onChange={(e) => setLinesText(e.target.value)}
+              rows={3}
+              placeholder="Each line becomes a box the person ticks. The task reads its percent from the ticks."
+              style={{ width: '100%', padding: '8px 10px', marginBottom: 12, boxSizing: 'border-box', fontFamily: 'inherit', fontSize: 14 }}
+              disabled={saving}
+            />
+          </>
+        ) : null}
         <div style={{ fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }}>Assignees (optional)</div>
         <ChecklistCrewTagsRow
           users={users}

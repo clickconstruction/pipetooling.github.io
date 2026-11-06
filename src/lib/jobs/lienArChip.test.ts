@@ -153,7 +153,7 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(noted.sentence.endsWith('· noted')).toBe(true)
   })
 
-  it('a sent notice reads from its mail pieces, with letter two riding along', () => {
+  it('a sent notice reads from its mail pieces, with the attorney’s letter riding along', () => {
     const base = input({ jobId: 'j858', filings: [filing()], piecesByFiling: { f1: [piece()] } })
     const delivered = lienArChipFor({ ...base, letterTwo: two() })!
     expect(delivered).toMatchObject({ tone: 'green', state: 'out', paper: 'notice', words: 'Delivered Sep 16 · day 5' })
@@ -166,9 +166,9 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(lienArChipFor({ ...base, piecesByFiling: { f1: [piece({ status: 'returned' })] } })!).toMatchObject({ tone: 'red', words: 'Returned to sender' })
     expect(lienArChipFor({ ...base, piecesByFiling: { f1: [piece({ status: 'sent', delivered_at: null, mailed_at: null })] } })!).toMatchObject({ tone: 'blue', words: 'With Docsmit · number coming' })
     // Letter two due without Do now’s row: the clock still says it.
-    const due = lienArChipFor({ ...base, letterTwo: two({ state: 'due', day: 12, words: 'day 12 · letter two · from delivery' }) })!
-    expect(due).toMatchObject({ tone: 'amber', paper: 'letter_two', words: 'Delivered Sep 16 · day 12 · letter two' })
-    expect(lienArChipFor({ ...base, letterTwo: two({ state: 'sent', letterTwo: { itemId: 'i2', kind: 'paid_out', status: 'sent', sentAt: '2026-10-01T15:00:00Z' } }) })!).toMatchObject({ tone: 'green', paper: 'letter_two', words: 'Letter two sent Oct 1' })
+    const due = lienArChipFor({ ...base, letterTwo: two({ state: 'due', day: 12, words: 'day 12 · the attorney’s letter · from delivery' }) })!
+    expect(due).toMatchObject({ tone: 'amber', paper: 'letter_two', words: 'Delivered Sep 16 · day 12 · the attorney’s letter' })
+    expect(lienArChipFor({ ...base, letterTwo: two({ state: 'sent', letterTwo: { itemId: 'i2', kind: 'paid_out', status: 'sent', sentAt: '2026-10-01T15:00:00Z' } }) })!).toMatchObject({ tone: 'green', paper: 'letter_two', words: 'The attorney’s letter sent Oct 1' })
   })
 
   it('an envelope that came back or went unclaimed is the desk’s red row: the chip leads with the piece’s state, names who, and opens the notice under Sent', () => {
@@ -201,7 +201,7 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(lienArChipFor(input({ entry: entry({ pile: 'sent', item: { sent_at: '2026-09-12T15:00:00Z' } as never }) }))!.words).toBe('Sent Sep 12')
   })
 
-  it('a filed lien and a release of record read from the filing; letter two’s row beats a sent notice', () => {
+  it('a filed lien and a release of record read from the filing; the attorney’s letter’s row beats a sent notice', () => {
     const filed = lienArChipFor(input({ jobId: 'j867', filings: [filing({ id: 'a1', job_id: 'j867', kind: 'affidavit', filed_at: '2026-10-02', served_at: '2026-10-06', recording_number: '2026-0412' })] }))!
     expect(filed).toMatchObject({ tone: 'green', state: 'out', paper: 'affidavit', words: 'Lien filed Oct 2 · served Oct 6' })
     expect(filed.door).toEqual({ to: 'window', jobId: 'j867', tab: 'affidavit' })
@@ -209,8 +209,8 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(unserved).toMatchObject({ tone: 'amber', words: 'Lien filed Oct 2 · serve by Oct 7' })
     const released = lienArChipFor(input({ jobId: 'j867', filings: [filing({ id: 'a1', job_id: 'j867', kind: 'affidavit', filed_at: '2026-10-02' }), filing({ id: 'r1', job_id: 'j867', kind: 'release_of_record', filed_at: '2026-10-10', created_at: '2026-10-10T12:00:00Z' })] }))!
     expect(released).toMatchObject({ tone: 'muted', paper: 'release', words: 'Released Oct 10' })
-    const letter = lienArChipFor(input({ jobId: 'j858', nextUp: [row({ key: 'letter-two:j858', jobId: 'j858', action: 'letter_two', sub: 'day 12 · letter two', dueOn: null, daysLeft: null, severity: 'amber', group: 'coming', target: { open: 'notices', jobId: 'j858', pile: 'sent' } })], entry: entry({ jobId: 'j858', pile: 'sent' }), filings: [filing()], piecesByFiling: { f1: [piece()] }, letterTwo: two({ state: 'due', day: 12 }) }))!
-    expect(letter).toMatchObject({ tone: 'amber', state: 'due', paper: 'letter_two', words: 'Delivered Sep 16 · day 12 · letter two' })
+    const letter = lienArChipFor(input({ jobId: 'j858', nextUp: [row({ key: 'letter-two:j858', jobId: 'j858', action: 'letter_two', sub: 'day 12 · the attorney’s letter', dueOn: null, daysLeft: null, severity: 'amber', group: 'coming', target: { open: 'notices', jobId: 'j858', pile: 'sent' } })], entry: entry({ jobId: 'j858', pile: 'sent' }), filings: [filing()], piecesByFiling: { f1: [piece()] }, letterTwo: two({ state: 'due', day: 12 }) }))!
+    expect(letter).toMatchObject({ tone: 'amber', state: 'due', paper: 'letter_two', words: 'Delivered Sep 16 · day 12 · the attorney’s letter' })
     expect(letter.door).toEqual({ to: 'desk', jobId: 'j858', kind: 'notice', pile: 'sent' })
   })
 

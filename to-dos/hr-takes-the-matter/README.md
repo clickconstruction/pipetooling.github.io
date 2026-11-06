@@ -1,8 +1,8 @@
 ---
 name: "The HR file carries a person's matter whole: linked files of any size, a custody hash, themes on the record with a By theme investigation, a matter on a person, and a counsel-only hold"
 number: 269
-group: ready
-status: planned 2026-11-05 · building on claude/* branches from the same session, one PR a step
+group: waiting
+status: built 2026-11-05 and 2026-11-06 · every code step on main (v2.6541, v2.6543, v2.6544, v2.6545, v2.6546, v2.6547, v2.6548, v2.6549, v2.6552, v2.6554, v2.6582, v2.6588), pushed, deployed and walked · left: the load, the owner's
 summary: >
   The owner asked whether People → HR could take on a former teammate's case folder: an analysis
   for counsel, forty-odd exhibits, two dozen call recordings and a privileged subset. The HR file
@@ -16,9 +16,9 @@ summary: >
   events, with a By theme view where one theme's items open in a window over the list; and a
   counsel-only flag that keeps a record out of Drive and out of the agent seat, with its limit
   stated.
-next: PR 1a the linked file; then 1b, 3a, 3b, T1, T2, T3, T4, 2; then the owner loads the folder through the seat, one batch an Apply it.
+next: The owner loads the folder through the seat, one batch an Apply it — plan_matter_open_person on the person, plan_person_evidence for each exhibit (bytes under 10 MB, a Drive link above it, counsel_only where it must not reach the agent), plan_matter_document for the analysis, plan_theme_marks on what each exhibit proves; then delete this folder.
 size: S + S + M + S + M + M + M + S + M
-blocker: None.
+blocker: The load waits on the owner's Apply it per batch; nothing for a session until he says go.
 mockup: themes-mockup.html — the catalog, the picker, the Timeline's theme row and bulk bar, the By theme investigation with the item window, the firm's view; the other pieces are a column, a policy and a chip on surfaces that exist
 opinion: build — the HR file is the right record for the facts and the exhibits, the Legal desk the right page for the analysis, and themes are how a large record gets read again; the one honest limit is the counsel-only hold, which binds the seat as deployed and Drive, not a holder of the dev's own session
 ---
@@ -54,18 +54,23 @@ Open: whether By theme should default to strongest first rather than oldest firs
 
 | PR | What | Size |
 |---|---|---|
-| 1a | A linked file on an evidence record: `storage_path` nullable with a CHECK that one of `storage_path` / `drive_url` stands; the filer skips linked rows; *in Drive, linked* in the kernel's words; a link row under the file picker; the seat's files as `{ name, drive_url }` | S |
-| 1b | `sha256` on attachments, computed as the file is picked and by the seat; shown on the chip's tip; carried by `get_person_file` | S |
-| 3a | `legal_matters.kind` (account \| person) and `person_id`; `legal_matter_open_person`; the desk's People group with Account and Paper absent and the money sections out of the packet | M |
-| 3b | The HR file's Matter chip and Open a matter…; the seat's `plan_matter_open_person` → `apply_matter_open_person` | S |
-| T1 | `legal_themes`, `legal_theme_marks`, RLS dev-only, the agent's propose and the dev's keep; the seat's doors; Settings → People → Themes | M |
+| 1a | A linked file on an evidence record: `storage_path` nullable with a CHECK that one of `storage_path` / `drive_url` stands; the filer skips linked rows; *in Drive, linked* in the kernel's words; a link row under the file picker; the seat's files as `{ name, drive_url }` (shipped v2.6541) | S |
+| 1b | `sha256` on attachments, computed as the file is picked and by the seat; shown on the chip's tip; carried by `get_person_file` (shipped v2.6544) | S |
+| 3a | `legal_matters.kind` (account \| person) and `person_id`; `legal_matter_open_person`; the desk's People group with Account and Paper absent and the money sections out of the packet (shipped v2.6543 as the HR file's Matter view, drawn from the desk's own pieces) | M |
+| 3b | The HR file's Matter chip and Open a matter…; the seat's `plan_matter_open_person` → `apply_matter_open_person` (Open a matter… shipped with 3a; the chip and the seat's door v2.6582) | S |
+| T1 | `legal_themes`, `legal_theme_marks`, RLS dev-only, the agent's propose and the dev's keep; the seat's doors; Settings → People → Themes (shipped v2.6545; the seat's doors v2.6552) | M |
 | T2 | The picker in Add entry and Add evidence; + theme on a line; the Timeline's theme row with counts; tick lines and *Mark N lines*; ✕ with a reason and Keep on a proposed mark (shipped v2.6546) | M |
-| T2b | The same picker in a matter's Record what happened and document form, the marks as chips on the matter's Timeline and Evidence rows (shipped v2.6548); the matter's By theme view with T4 | S |
+| T2b | The same picker in a matter's Record what happened and document form, the marks as chips on the matter's Timeline and Evidence rows (shipped v2.6548; on the HR file's Matter view v2.6588); the matter's By theme view (shipped v2.6588) | S |
 | T3 | By theme beside Timeline, Evidence and Narrative on the HR file: one theme, the counts, oldest or strongest first, Show by grade, the item window with Previous / Next, the pick in the address, Print this theme, Copy as a list (shipped v2.6547; the matter's By theme comes with T2b) | M |
-| T4 | The matter's packet gets a section per theme; the firm's portal reads themes grouped on Evidence and Timeline and may add its words (the firm's read and the packet section shipped v2.6549; the seat's doors and the matter's By theme view follow 3a) | S |
-| 2 | `counsel_only` on evidence: the filer skips it, `hr_agent` cannot read it, the seat sends `X-Dev-Seat` and restrictive policies refuse it, `get_person_file` names the hold, the panel's chip and filter, the doc's stated limit | M |
+| T4 | The matter's packet gets a section per theme; the firm's portal reads themes grouped on Evidence and Timeline and may add its words (the firm's read and the packet section shipped v2.6549; the seat's doors v2.6552; the matter's By theme view v2.6588) | S |
+| 2 | `counsel_only` on evidence: the filer skips it, `hr_agent` cannot read it, the seat sends `X-Dev-Seat` and restrictive policies refuse it, `get_person_file` names the hold, the panel's chip and filter, the doc's stated limit (shipped v2.6554) | M |
 
 Then the load, through the seat on the owner's *Apply it* per batch.
+
+## Where it stands
+
+- 2026-11-05 and 2026-11-06: nine steps on main, each pushed and deployed — 1a (v2.6541), 3a (v2.6543), 1b (v2.6544), T1 (v2.6545), T2 (v2.6546), T3 (v2.6547), T2b (v2.6548), T4's firm read and packet section (v2.6549), the seat's theme doors (v2.6552), 2 (v2.6554). The ledger reads every migration applied and `check:edge-drift` every function current.
+- 2026-11-06: 3b shipped as v2.6582 — the Matter chip on the fact strip and the seat's `plan_matter_open_person` → `apply_matter_open_person`, no wrapper RPC, dev-mcp 0.31.0 deployed. The matter's By theme view (T2b's and T4's remainder) shipped as v2.6588: the Legal desk's seventh tab and the Matter view's sub tab, whose composers now carry the picker. Every code step is on main; the load is the owner's, through the seat, one batch an Apply it.
 
 ## How to verify
 

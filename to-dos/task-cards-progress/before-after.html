@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Task cards before and after</title>
+<style>
+  /* Layout: five stops, each a pair of panels, Before (the screen as it is today, drawn from the live pages) and After (the change); pairs stack to one column on a phone. The app's light look, committed. */
+  :root {
+    --bg: #f3f4f6; --surface: #ffffff; --surface-2: #f9fafb; --border: #d1d5db; --line: #e5e7eb; --fg: #111827; --muted: #6b7280; --soft: #374151;
+    --blue: #2563eb; --blue-bg: #dbeafe; --blue-fg: #1e40af;
+    --green: #15803d; --green-fill: #16a34a; --green-bg: #f0fdf4;
+    --amber-bg: #fef3c7; --amber: #92400e; --amber-ring: #f59e0b;
+    --purple-bg: #ede9fe; --purple: #5b21b6;
+    --red-bg: #fee2e2; --red: #b91c1c;
+    --press-grey: #e5e7eb; --press-grey-fg: #374151;
+    --font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding-block: 0 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--bg); color: var(--fg); font: 15px/1.45 var(--font); }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--fg); margin-bottom: 8px; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0 0 6px; font-size: 1.5rem; line-height: 1.2; text-wrap: balance; }
+  .lede { margin: 0; color: var(--muted); max-width: 80ch; }
+  h2 { font-size: 1.15rem; margin: 34px 0 4px; text-wrap: balance; }
+  h2 .num { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--fg); color: var(--bg); font-weight: 800; font-size: .85rem; margin-right: 8px; vertical-align: middle; }
+  p.why { color: var(--soft); max-width: 80ch; margin: 0 0 12px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; margin-bottom: 16px; }
+  .pair > * { min-width: 0; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .panel .cap { padding: 7px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: var(--surface-2); border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+  .panel .cap .tag { padding: 1px 8px; border-radius: 999px; }
+  .panel.before .cap .tag { background: var(--red-bg); color: var(--red); }
+  .panel.after .cap .tag { background: var(--green-bg); color: var(--green); }
+  .panel .cap span.where { color: var(--muted); }
+  .panel .body { padding: 14px; }
+  .panel .read { padding: 10px 14px; border-top: 1px solid var(--line); color: var(--soft); font-size: .85rem; background: var(--surface-2); }
+  h3 { font-size: 1rem; margin: 0 0 6px; }
+  p { margin: 0 0 8px; }
+  .meta { color: var(--muted); font-size: .85rem; }
+  .sub { font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 10px 0 6px; }
+  .sub:first-child { margin-top: 0; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: .72rem; font-weight: 700; line-height: 1.35rem; margin-right: 4px; white-space: nowrap; }
+  .chip.purple { background: var(--purple-bg); color: var(--purple); }
+  .chip.blue { background: var(--blue-bg); color: var(--blue-fg); }
+  .chip.amber { background: var(--amber-bg); color: var(--amber); }
+  .chip.green { background: var(--green-bg); color: var(--green); }
+  .chip.grey { background: var(--press-grey); color: var(--press-grey-fg); }
+  .chip.red { background: var(--red-bg); color: var(--red); }
+  .press { display: inline-block; border-radius: 10px; padding: 9px 14px; font-weight: 700; font-size: .92rem; }
+  .press.go { background: var(--blue); color: #fff; }
+  .press.green { background: var(--green-fill); color: #fff; }
+  .press.greenline { background: var(--surface); color: var(--green); border: 1.5px solid var(--green-fill); }
+  .press.dead { background: var(--press-grey); color: var(--press-grey-fg); }
+  .press.outline { background: var(--surface); color: var(--fg); border: 1.5px solid var(--border); }
+  .press.small { padding: 5px 10px; font-size: .78rem; }
+  .press.wide { display: block; text-align: center; }
+  .field { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: .9rem; color: var(--muted); background: var(--surface); margin: 0 0 8px; }
+  .field.on { color: var(--fg); border-color: var(--blue); }
+  .people { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 4px; }
+  .people span { border: 1.5px solid var(--border); border-radius: 999px; padding: 3px 10px; font-size: .82rem; font-weight: 600; background: var(--surface); }
+  .people span.on { border-color: var(--blue); background: var(--blue-bg); color: var(--blue-fg); }
+  .tickrow { display: flex; gap: 8px; align-items: center; font-size: .88rem; margin: 4px 0; }
+  .tickrow .box { width: 16px; height: 16px; border: 2px solid var(--soft); border-radius: 4px; flex: none; }
+  .tickrow .box.on { background: var(--blue); border-color: var(--blue); }
+  .new { outline: 2px dashed var(--green-fill); outline-offset: 4px; border-radius: 6px; }
+
+  /* The card as Today draws it. */
+  .card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; display: grid; grid-template-columns: 48px 1fr 14px; gap: 10px; background: var(--surface); }
+  .card.slim { grid-template-columns: 34px 1fr 14px; }
+  .card .chev { color: var(--muted); font-size: .8rem; align-self: center; }
+  .tick { width: 30px; height: 30px; border: 2.5px solid var(--soft); border-radius: 8px; margin-top: 2px; display: grid; place-items: center; font-weight: 800; }
+  .tick.on { background: var(--green-fill); border-color: var(--green-fill); color: #fff; }
+  .ring { width: 48px; height: 48px; display: grid; place-items: center; position: relative; }
+  .ring svg { position: absolute; inset: 0; width: 48px; height: 48px; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 5; }
+  .ring .track { stroke: var(--border); }
+  .ring .fill { stroke: var(--blue); stroke-linecap: round; }
+  .ring.done .fill { stroke: var(--green-fill); }
+  .ring .pct { font-size: .78rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .ring.done .pct { color: var(--green); }
+  .card .title { font-weight: 600; line-height: 1.3; margin: 0 0 4px; }
+  .card .line { font-size: .82rem; color: var(--muted); margin: 0 0 6px; }
+  .card .line.due { color: var(--red); font-weight: 600; }
+  .lines { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 5px; }
+  .lines li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; font-size: .9rem; }
+  .lines .box { width: 18px; height: 18px; border: 2px solid var(--soft); border-radius: 5px; margin-top: 2px; }
+  .lines .box.on { background: var(--green-fill); border-color: var(--green-fill); position: relative; }
+  .lines .box.on::after { content: "✓"; color: #fff; font-size: .75rem; font-weight: 800; position: absolute; inset: 0; display: grid; place-items: center; }
+  .lines .box.next { border-color: var(--amber-ring); box-shadow: 0 0 0 2px var(--amber-bg); }
+  .lines small { display: block; color: var(--muted); font-size: .75rem; }
+  .thumbs { display: flex; gap: 6px; margin: 4px 0 8px; }
+  .thumb { width: 56px; height: 42px; border-radius: 6px; border: 1px solid var(--border); background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, var(--border) 6px 8px); display: grid; place-items: end; font-size: .6rem; padding: 2px 3px; color: var(--muted); }
+  .foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sheet { border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: var(--surface-2); margin-bottom: 10px; }
+  .chips { display: flex; gap: 6px; margin: 8px 0 10px; }
+  .chips span { flex: 1; text-align: center; border: 2px solid var(--border); border-radius: 10px; padding: 8px 0; font-weight: 800; font-variant-numeric: tabular-nums; background: var(--surface); font-size: .9rem; }
+  .chips span.on { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .chips span.was { color: var(--muted); }
+  .tile { border: 1.5px dashed var(--border); border-radius: 10px; min-height: 66px; display: grid; place-items: center; text-align: center; font-weight: 700; font-size: .85rem; color: var(--soft); padding: 8px; margin: 0 0 8px; background: var(--surface); }
+  .tile.in { border-style: solid; border-color: var(--green-fill); background: var(--green-bg); color: var(--green); }
+
+  /* The desk rows. */
+  .ledger { display: grid; gap: 6px; }
+  .lrow { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
+  .lrow .ring, .lrow .ring svg { width: 36px; height: 36px; }
+  .lrow .ring circle { stroke-width: 4; }
+  .lrow .ring .pct { font-size: .68rem; }
+  .lrow .tick { width: 22px; height: 22px; border-width: 2px; border-radius: 6px; margin: 0 auto; }
+  .lrow .t { font-weight: 600; font-size: .92rem; }
+  .lrow .s { font-size: .78rem; color: var(--muted); }
+  .lrow .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: end; }
+  .lrow.signoff { grid-template-columns: 34px 1fr auto; }
+  .rail { width: 26px; height: 100%; min-height: 44px; border-radius: 8px; background: var(--green-fill); color: #fff; display: grid; place-items: center; font-weight: 800; }
+  @media (max-width: 560px) { .lrow { grid-template-columns: 36px 1fr; } .lrow .acts { grid-column: 2; justify-content: start; } }
+  .tiles3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 10px; }
+  .tiles3 div { border: 1px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; }
+  .tiles3 b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+  .tiles3 small { display: block; font-size: .65rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  .tiles3 .n-red b { color: var(--red); }
+  .tiles3 .n-amber b { color: var(--amber); }
+
+  /* The roadmap. */
+  .slots { display: flex; gap: 4px; margin: 6px 0; }
+  .slot { flex: 1; height: 12px; border-radius: 3px; border: 1.5px solid var(--border); background: linear-gradient(90deg, var(--green-fill) var(--p, 0%), transparent var(--p, 0%)); }
+  .slot.next { border-color: var(--amber-ring); box-shadow: 0 0 0 1.5px var(--amber-bg); }
+  .slot.part { border-color: var(--amber-ring); background: linear-gradient(90deg, var(--blue) var(--p, 0%), transparent var(--p, 0%)); }
+  .dock { display: grid; grid-template-columns: 1fr 44px 44px; gap: 8px; margin-top: 8px; }
+  .dock .sq { border: 1.5px solid var(--border); border-radius: 10px; display: grid; place-items: center; font-size: 1.1rem; min-height: 40px; }
+  .bar { display: flex; gap: 3px; }
+  .bar span { flex: 1; height: 40px; border-radius: 8px; border: 1.5px solid var(--border); display: grid; place-items: center; font-size: .75rem; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar span.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  /* Drive and the email. */
+  .wfg { display: grid; gap: 6px; }
+  .wfg div { border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: .88rem; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .tree { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .78rem; line-height: 1.55; color: var(--soft); white-space: pre; overflow-x: auto; margin: 6px 0 0; }
+  .mail .hdr { border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 10px; font-size: .85rem; color: var(--muted); }
+  .mail .hdr b { color: var(--fg); }
+  .person { border-top: 1px solid var(--line); padding: 10px 0; }
+  .person h3 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .person h3 small { font-weight: 600; color: var(--muted); font-size: .78rem; }
+  .group { display: grid; grid-template-columns: 70px 1fr; gap: 8px; margin: 4px 0; font-size: .88rem; }
+  .group b { font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+  .group ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+  .group li { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .group li .mv { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+  .group li .lk { color: var(--blue); font-size: .82rem; }
+  .group li .quiet { color: var(--muted); font-size: .82rem; }
+  .sched { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--surface); font-size: .86rem; margin-bottom: 6px; }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+</style>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">to-dos/task-cards-progress · punch list #273 · before / after</p>
+  <h1>Task cards: each stop as it is today, and as it would be</h1>
+  <p class="lede">Made-up data. The <b>Before</b> panels are drawn from the live pages read on 2026-11-06 (Checklist → Today and Review, the Dashboard's My Inbox, Roadmap → Plan and its task card, Documents → Where files go, Settings → My email schedule). The <b>After</b> panels are the change, with what is new ringed in green.</p>
+</header>
+
+<h2><span class="num">1</span>Writing the card</h2>
+<p class="why">The ＋ Task dialog gains one section. Everything already on it stays where it is.</p>
+<div class="pair">
+  <div class="panel before"><div class="cap"><span class="tag">Before</span><span class="where">＋ Task, from any page</span></div><div class="body">
+    <div class="field on">Put the plumbing tools in a neat home</div>
+    <p class="sub">People</p>
+    <div class="people"><span class="on">Mateo ✕</span><span>Farm crew +3</span><span>Shop crew +2</span></div>
+    <p class="sub">When</p>
+    <div class="people"><span class="on">Today</span><span>On a date</span><span>Repeats</span></div>
+    <div class="tickrow"><span class="box"></span>Stays on the list until done</div>
+    <p class="sub">Reminders</p>
+    <div class="tickrow"><span class="box"></span>Remind the day before</div>
+    <div class="tickrow"><span class="box on"></span>Tell me when it is done</div>
+    <p class="sub">Links</p>
+    <div class="field">URL</div>
+    <span class="press go">Send</span>
+  </div><div class="read">What done means goes in the title or a note, where nobody can tick it.</div></div>
+  <div class="panel after"><div class="cap"><span class="tag">After</span><span class="where">＋ Task, from any page</span></div><div class="body">
+    <div class="field on">Put the plumbing tools in a neat home</div>
+    <p class="sub">People</p>
+    <div class="people"><span class="on">Mateo ✕</span><span>Farm crew +3</span><span>Shop crew +2</span></div>
+    <p class="sub">When</p>
+    <div class="people"><span class="on">Today</span><span>On a date</span><span>Repeats</span></div>
+    <div class="tickrow"><span class="box"></span>Stays on the list until done</div>
+    <div class="new" style="padding:4px 0">
+      <p class="sub">Done when…</p>
+      <ul class="lines">
+        <li><span class="box"></span><span>Pipe is racked by size</span></li>
+        <li><span class="box"></span><span>Fittings are in labeled bins</span></li>
+        <li><span class="box"></span><span>The cart is clear and the floor swept</span></li>
+      </ul>
+      <span class="press outline small">＋ Add a line</span>
+      <ul class="lines" style="margin-top:8px"><li><span class="box on"></span><span>Asks for a photo at the finish<small>on by itself once lines are written; off on a plain one-off</small></span></li></ul>
+      <p class="meta" style="margin-top:6px">A photo is offered at each new % on every card. Only a card with this on holds its finish for one.</p>
+    </div>
+    <p class="sub">Reminders</p>
+    <div class="tickrow"><span class="box"></span>Remind the day before</div>
+    <div class="tickrow"><span class="box on"></span>Tell me when it is done</div>
+    <p class="sub">Links</p>
+    <div class="field">URL</div>
+    <span class="press go">Send</span>
+  </div><div class="read">Lines are optional. A card with none keeps the hand %. The edit dialog and the Roadmap's Add task get the same section.</div></div>
+</div>
+
+<h2><span class="num">2</span>On the phone: the card</h2>
+<p class="why">Checklist → Today and the Dashboard's My Inbox draw the same card. The 30px tick box becomes a 48px ring in the same seat; the title, the chips and the Notes press do not move.</p>
+<div class="pair">
+  <div class="panel before"><div class="cap"><span class="tag">Before</span><span class="where">Checklist → Today · Outstanding</span></div><div class="body">
+    <div class="card slim">
+      <div class="tick"></div>
+      <div>
+        <p class="title">Put the plumbing tools in a neat home</p>
+        <p class="line"><span class="chip blue">do we have all the tools easily acce…</span></p>
+        <p class="line due">due Thu, Aug 20 · 78 days ago · 💬 2 notes</p>
+      </div>
+      <div class="chev">▸</div>
+    </div>
+    <div class="card slim">
+      <div class="tick"></div>
+      <div>
+        <p class="title">Clear the back half of the floor</p>
+        <p class="line"><span class="chip purple">⛰ Workout Facility Floors</span></p>
+        <p class="line due">due Mon, Aug 24 · 74 days ago</p>
+      </div>
+      <div class="chev">▸</div>
+    </div>
+    <div class="card slim">
+      <div class="tick on">✓</div>
+      <div>
+        <p class="title">Check the AAA policy</p>
+        <p class="line">Completed by Mateo · 10:31 AM <span class="chip blue">Waiting on review</span></p>
+      </div>
+      <div class="chev">▸</div>
+    </div>
+  </div><div class="read">A tap on the box: done. A second tap: reopened. Between nothing and done there is no word, and a photo of the work has nowhere to go but a note.</div></div>
+  <div class="panel after"><div class="cap"><span class="tag">After</span><span class="where">Checklist → Today · Outstanding</span></div><div class="body">
+    <div class="card">
+      <div class="ring new"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="80 40"/></svg><span class="pct">67</span></div>
+      <div>
+        <p class="title">Put the plumbing tools in a neat home</p>
+        <p class="line"><span class="chip blue">do we have all the tools easily acce…</span></p>
+        <p class="line due">due Thu, Aug 20 · 78 days ago · 💬 2 notes</p>
+        <ul class="lines new">
+          <li><span class="box on"></span><span>Pipe is racked by size<small>Mateo · 9:12 AM · 📷</small></span></li>
+          <li><span class="box on"></span><span>Fittings are in labeled bins<small>Mateo · 9:40 AM</small></span></li>
+          <li><span class="box next"></span><span>The cart is clear and the floor swept</span></li>
+        </ul>
+        <div class="thumbs new"><div class="thumb">9:12</div><div class="thumb">9:40</div></div>
+      </div>
+      <div class="chev">▸</div>
+    </div>
+    <div class="card">
+      <div class="ring new"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="60 60"/></svg><span class="pct">50</span></div>
+      <div>
+        <p class="title">Clear the back half of the floor</p>
+        <p class="line"><span class="chip purple">⛰ Workout Facility Floors</span></p>
+        <p class="line due">due Mon, Aug 24 · 74 days ago</p>
+        <p class="line new" style="display:inline-block">Mateo · 50% · Tue 3:12 PM · 📷 1</p>
+      </div>
+      <div class="chev">▸</div>
+    </div>
+    <div class="card">
+      <div class="ring done"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="120 0"/></svg><span class="pct">✓</span></div>
+      <div>
+        <p class="title">Check the AAA policy</p>
+        <p class="line">Mateo · 100% · 10:31 AM <span class="chip blue">Waiting on review</span></p>
+      </div>
+      <div class="chev">▸</div>
+    </div>
+  </div><div class="read">The ring reads the ticks when the card has lines (2 of 3 is 67) and the hand's number when it has none. A repeating card is left exactly as Before.</div></div>
+</div>
+
+<h2><span class="num">2b</span>On the phone: the press</h2>
+<p class="why">Today a tap on the box is the whole press. After, a tap on the ring opens a sheet, and the last line's tick opens the finishing sheet.</p>
+<div class="pair">
+  <div class="panel before"><div class="cap"><span class="tag">Before</span><span class="where">A tap on the box</span></div><div class="body">
+    <div class="card slim">
+      <div class="tick on">✓</div>
+      <div>
+        <p class="title">Clear the back half of the floor</p>
+        <p class="line">Completed by Mateo · 3:12 PM</p>
+        <div class="foot"><span class="press outline small">💬 Notes 1</span></div>
+      </div>
+      <div class="chev">▸</div>
+    </div>
+    <p class="meta">The thread keeps <em>completed</em> and <em>reopened</em> with who and when. Nothing is asked. A note is the only place for a picture, as words.</p>
+  </div><div class="read">One press, one state. Half-done work reads as not done until the day it is finished.</div></div>
+  <div class="panel after"><div class="cap"><span class="tag">After</span><span class="where">A tap on the ring · the last tick</span></div><div class="body">
+    <div class="sheet new">
+      <h3>Where does it stand?</h3>
+      <p class="meta">Clear the back half of the floor · was 50% on Tue</p>
+      <div class="chips"><span class="was">25</span><span class="was">50</span><span class="on">75</span></div>
+      <div class="field on">What is left? Puddy and the glue, Thursday</div>
+      <div class="tile">📷 A photo of where it stands · offered, never held</div>
+      <span class="press go wide">Set 75%</span>
+      <p class="meta" style="margin:10px 0 6px; text-align:center">or</p>
+      <span class="press green wide">✓ Done</span>
+    </div>
+    <div class="sheet new">
+      <h3>Every line is ticked</h3>
+      <p class="meta">Put the plumbing tools in a neat home · 3 of 3 · this card asks for a photo</p>
+      <div class="tile in">📷 The finishing photo · taken 10:31 AM</div>
+      <div class="field">No photo, here is why…</div>
+      <span class="press green wide">Done · 100%</span>
+    </div>
+  </div><div class="read">Done stays two taps: the ring, then Done. A % is two taps and a word: the chip, <em>what is left</em>, Set. The finishing sheet appears only on a card that asks for a photo; a typed reason frees its press. The thread adds <em>Mateo · 75% · Wed 2:05 PM · "puddy and the glue, Thursday"</em>.</div></div>
+</div>
+
+<h2><span class="num">3</span>At the desk: My Inbox and Review</h2>
+<p class="why">The Dashboard's rows and Review's sign-off row carry the same numbers, so the office sees how far along a card is and what the finishing photo shows before signing off.</p>
+<div class="pair">
+  <div class="panel before"><div class="cap"><span class="tag">Before</span><span class="where">Dashboard → My Inbox · Overdue</span></div><div class="body">
+    <div class="ledger">
+      <div class="lrow"><div class="tick"></div><div><div class="t">Put the plumbing tools in a neat home <span class="meta">(T+78)</span></div></div><div class="acts"><span class="chip amber">Reopened · Aug 25</span><span class="chip blue">2 notes</span><span class="press outline small">+ Note</span></div></div>
+      <div class="lrow"><div class="tick"></div><div><div class="t">Clear the back half of the floor <span class="meta">(T+74)</span></div></div><div class="acts"><span class="press outline small">+ Note</span></div></div>
+      <div class="lrow"><div class="tick"></div><div><div class="t">One marker every mile <span class="meta">(T+74)</span></div></div><div class="acts"><span class="press outline small">+ Note</span></div></div>
+    </div>
+    <p class="sub" style="margin-top:14px">Checklist → Review · To sign off</p>
+    <div class="lrow signoff"><div class="rail">✓</div><div><div class="t">Put the plumbing tools in a neat home</div><div class="s">Mateo · done yesterday 4:41 PM · “racked and labeled”</div></div><div class="acts"><span class="press outline small">Reopen with comment</span></div></div>
+  </div><div class="read">A row is open or done. Sign-off reads the person's words and nothing else.</div></div>
+  <div class="panel after"><div class="cap"><span class="tag">After</span><span class="where">Dashboard → My Inbox · Overdue</span></div><div class="body">
+    <div class="ledger">
+      <div class="lrow"><div class="ring new"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="80 40"/></svg><span class="pct">67</span></div><div><div class="t">Put the plumbing tools in a neat home <span class="meta">(T+78)</span></div><div class="s new" style="display:inline-block">2 of 3 done when… · 📷 2</div></div><div class="acts"><span class="chip amber">Reopened · Aug 25</span><span class="chip blue">2 notes</span><span class="press outline small">+ Note</span></div></div>
+      <div class="lrow"><div class="ring new"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="60 60"/></svg><span class="pct">50</span></div><div><div class="t">Clear the back half of the floor <span class="meta">(T+74)</span></div><div class="s new" style="display:inline-block">Mateo · 50% Tue · 📷 1</div></div><div class="acts"><span class="press outline small">+ Note</span></div></div>
+      <div class="lrow"><div class="ring new"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/></svg></div><div><div class="t">One marker every mile <span class="meta">(T+74)</span></div><div class="s">not started · an untouched ring is empty, no digits</div></div><div class="acts"><span class="press outline small">+ Note</span></div></div>
+    </div>
+    <p class="sub" style="margin-top:14px">Checklist → Review · To sign off</p>
+    <div class="lrow signoff"><div class="rail">✓</div><div><div class="t">Put the plumbing tools in a neat home</div><div class="s">Mateo · done yesterday 4:41 PM · “racked and labeled” · <span class="new" style="display:inline-block">3 of 3 · finishing photo</span></div><div class="thumbs new"><div class="thumb">4:41</div></div></div><div class="acts"><span class="press outline small">Reopen with comment</span></div></div>
+  </div><div class="read">The ring and the line under the title are the only additions. Sign-off shows the finishing photo, so the office signs off on what it can see.</div></div>
+</div>
+
+<h2><span class="num">3b</span>At the desk: the Roadmap</h2>
+<p class="why">A stage's slots and the goal's bar count fractions. The task card's dock sets a % where it marked done.</p>
+<div class="pair">
+  <div class="panel before"><div class="cap"><span class="tag">Before</span><span class="where">Roadmap → Plan · a stage card and the task card's dock</span></div><div class="body">
+    <h3>31 · Shelve the containers</h3>
+    <p class="meta">2 of 6 done · Darren, Micah <span class="press outline small" style="margin-left:6px">Staff this stage</span></p>
+    <div class="slots"><span class="slot" style="--p:100%"></span><span class="slot" style="--p:100%"></span><span class="slot next"></span><span class="slot"></span><span class="slot"></span><span class="slot"></span></div>
+    <p class="meta">A green slot is done, the amber ring is next, an outlined slot remains.</p>
+    <p class="sub" style="margin-top:14px">31.5 · Darren welds up the second set of shelves</p>
+    <div class="dock"><span class="press greenline wide">○ Mark done</span><div class="sq">☆</div><div class="sq">🗑</div></div>
+    <p class="meta" style="margin-top:6px">The press flips to <em>✓ Done · reopen</em>.</p>
+  </div><div class="read">A task is done or not, so a stage reads whole numbers until the last task closes.</div></div>
+  <div class="panel after"><div class="cap"><span class="tag">After</span><span class="where">Roadmap → Plan · a stage card and the task card's dock</span></div><div class="body">
+    <h3>31 · Shelve the containers</h3>
+    <p class="meta"><span class="new" style="display:inline-block">2.5 of 6 done</span> · Darren, Micah <span class="press outline small" style="margin-left:6px">Staff this stage</span></p>
+    <div class="slots"><span class="slot" style="--p:100%"></span><span class="slot" style="--p:100%"></span><span class="slot part new" style="--p:50%"></span><span class="slot"></span><span class="slot"></span><span class="slot"></span></div>
+    <p class="meta">The next slot carries its % in blue. The goal bar up top adds the fractions the same way.</p>
+    <p class="sub" style="margin-top:14px">31.5 · Darren welds up the second set of shelves</p>
+    <div class="dock"><div class="bar new"><span class="on">0</span><span class="on">25</span><span class="on">50</span><span>75</span><span>100</span></div><div class="sq">☆</div><div class="sq">🗑</div></div>
+    <p class="meta" style="margin-top:6px"><strong>Set the %</strong> in the press's seat. A task with Done when… lines shows the lines instead; 100 marks it done as the press did.</p>
+  </div><div class="read">The stage unlocks on the same rule as before, every task at 100. Only the reading between changes.</div></div>
+</div>
+
+<h2><span class="num">3c</span>The office's Dashboard: your people's cards</h2>
+<p class="why">Added on the second look. Goal 1 may also mean the person who hands out cards sees their people's cards on the Dashboard. Today the office's Dashboard shows its own cards and a fold of completed tasks waiting for sign-off; the people's open cards live a tab away on Review.</p>
+<div class="pair">
+  <div class="panel before"><div class="cap"><span class="tag">Before</span><span class="where">Dashboard, an office role</span></div><div class="body">
+    <p class="sub">My Inbox</p>
+    <div class="ledger">
+      <div class="lrow"><div class="tick"></div><div><div class="t">Check the AAA policy <span class="meta">(T+67)</span></div></div><div class="acts"><span class="press outline small">+ Note</span></div></div>
+    </div>
+    <p class="sub" style="margin-top:12px">Teams Inbox</p>
+    <div class="sched"><div><b>Checklist review</b><br><span class="meta">6 completed tasks waiting for your sign-off</span></div><span class="meta">▸</span></div>
+    <p class="meta" style="margin-top:10px">What Mateo, Darren and Rosa have open, and whether it moved, is on Checklist → Review → Outstanding by person.</p>
+  </div><div class="read">The Dashboard shows what is done and waiting on you. It never shows what your people are in the middle of.</div></div>
+  <div class="panel after"><div class="cap"><span class="tag">After</span><span class="where">Dashboard, an office role · under My Inbox</span></div><div class="body">
+    <div class="new" style="padding:6px">
+      <h3>Your people <span class="meta" style="font-weight:600">· 3 cards done this week · 2 moved · 1 stuck</span></h3>
+      <div class="ledger" style="margin-top:8px">
+        <div class="lrow"><div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="80 40"/></svg><span class="pct">67</span></div><div><div class="t">Mateo · 2 open</div><div class="s">Put the plumbing tools in a neat home · 2 of 3 · 📷 2 · 9:40 AM today</div></div><div class="acts"><span class="chip green">moved today</span></div></div>
+        <div class="lrow"><div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="60 60"/></svg><span class="pct">50</span></div><div><div class="t">Darren · 1 open</div><div class="s">31.5 · Weld up the second set of shelves · 50% · “uprights done” · yesterday</div></div><div class="acts"><span class="chip grey">moved Wed</span></div></div>
+        <div class="lrow"><div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/></svg></div><div><div class="t">Rosa · 3 open</div><div class="s">One marker every mile · nothing moved · oldest 32 days</div></div><div class="acts"><span class="chip red">stuck 32 days</span><span class="press outline small">🔔 Remind</span></div></div>
+      </div>
+      <p style="margin-top:10px"><span class="press outline small">Open Review</span> <span class="press outline small">✉ Get this every Monday</span></p>
+    </div>
+  </div><div class="read">One row per person, the newest-moved card as its line, the rest behind the row's tap. <em>Stuck</em> is Review's own age rule, so the two never disagree. A question for Taunya: is this what goal 1 meant, or only a person's own cards?</div></div>
+</div>
+
+<h2><span class="num">4</span>Where the photos go</h2>
+<p class="why">Documents → Where files go gets a fifth card. The sweep that files every other photo files these.</p>
+<div class="pair">
+  <div class="panel before"><div class="cap"><span class="tag">Before</span><span class="where">Documents → Where files go</span></div><div class="body">
+    <div class="wfg">
+      <div><span>The jobs root</span><span class="chip green">PipeTooling Jobs</span></div>
+      <div><span>The company folder</span><span class="chip green">set</span></div>
+      <div><span>The people folder</span><span class="chip green">set</span></div>
+      <div><span>The Fleet folder</span><span class="chip green">PipeTooling Fleet</span></div>
+    </div>
+    <p class="meta" style="margin-top:10px">A photo of task work goes nowhere the card can see: into a text to the office, or a job's report.</p>
+  </div><div class="read">Four folders, none for a task.</div></div>
+  <div class="panel after"><div class="cap"><span class="tag">After</span><span class="where">Documents → Where files go · Drive after a week</span></div><div class="body">
+    <div class="wfg">
+      <div><span>The jobs root</span><span class="chip green">PipeTooling Jobs</span></div>
+      <div><span>The company folder</span><span class="chip green">set</span></div>
+      <div><span>The people folder</span><span class="chip green">set</span></div>
+      <div><span>The Fleet folder</span><span class="chip green">PipeTooling Fleet</span></div>
+      <div class="new"><span>The Tasks folder</span><span><span class="press go small">Make the Tasks folder</span> <span class="press outline small">Paste a folder link</span></span></div>
+    </div>
+<pre class="tree">PipeTooling Tasks
+├── 2026-11-04 · Put the plumbing tools in a neat home
+│   ├── 2026-11-04 Mateo · pipe racked.jpg
+│   ├── 2026-11-04 Mateo · 67%.jpg
+│   └── 2026-11-05 Mateo · finish.jpg
+└── Farm 1
+    └── 31 · Shelve the containers
+        └── 31.5 · Darren welds up the second set of shelves
+            └── 2026-11-06 Darren · 50%.jpg</pre>
+  </div><div class="read">The press makes the folder beside Jobs in the app's Shared Drive, as the Fleet press does; the paste takes a folder from tooling@clickplumbing's Drive. One folder per card, named by the day, the person and what the shot is for.</div></div>
+</div>
+
+<h2><span class="num">5</span>Monday's email</h2>
+<p class="why">Today nothing tells a person how their people's week went; they open Review and read Outstanding by person. After, one email a person subscribes to.</p>
+<div class="pair">
+  <div class="panel before"><div class="cap"><span class="tag">Before</span><span class="where">Checklist → Review · Settings → My email schedule</span></div><div class="body">
+    <div class="tiles3"><div><small>To sign off</small><b>6</b></div><div class="n-red"><small>Outstanding</small><b>15</b></div><div class="n-amber"><small>Missed this week</small><b>5</b></div></div>
+    <p class="meta">Outstanding by person: Robert · 7 outstanding · oldest 78 days · 🔔 Remind …</p>
+    <p class="sub" style="margin-top:14px">Settings → My email schedule</p>
+    <div class="sched"><div><b>Field reports</b><br><span class="meta">every report · from everyone</span></div><span class="press outline small">Cancel</span></div>
+    <div class="sched"><div><b>Crew day</b><br><span class="meta">weekdays 6:00 AM</span></div><span class="press outline small">Cancel</span></div>
+  </div><div class="read">Review answers what is open now. Nothing answers what moved last week, and nothing arrives by mail.</div></div>
+  <div class="panel after"><div class="cap"><span class="tag">After</span><span class="where">Checklist → Review · the email · Settings</span></div><div class="body">
+    <div class="tiles3"><div><small>To sign off</small><b>6</b></div><div class="n-red"><small>Outstanding</small><b>15</b></div><div class="n-amber"><small>Missed this week</small><b>5</b></div></div>
+    <p><span class="press outline small new">✉ Email me their week</span></p>
+    <div class="mail new" style="padding:10px; margin:10px 0">
+      <div class="hdr"><b>Your people's week · Nov 2 to 8</b><br>Monday 6:00 AM · to Taunya</div>
+      <p><b>3 cards done · 2 moved · 1 stuck.</b></p>
+      <div class="person" style="border-top:0; padding-top:0">
+        <h3>Mateo <small>2 cards done · 1 moved · 4 photos</small></h3>
+        <div class="group"><b>Cards</b><ul>
+          <li><span>Put the plumbing tools in a neat home</span><span class="mv">0 → 100</span><span class="chip green">done · 3 of 3</span><span class="lk">3 photos</span></li>
+          <li><span>Clear the back half of the floor</span><span class="mv">25 → 75</span><span class="quiet">“puddy and the glue, Thursday”</span><span class="lk">1 photo</span></li>
+        </ul></div>
+        <div class="group"><b>Roadmap</b><ul><li><span>Workout Facility Floors</span><span class="quiet">stage 7 · 2 of 5</span></li></ul></div>
+        <div class="group"><b>Jobs</b><ul><li><span>1105 · Madison Park kitchen</span><span class="mv">40 → 65</span><span class="quiet">2 reports · Top Out ticked</span></li></ul></div>
+      </div>
+      <div class="person"><h3>Rosa <small>nothing moved</small></h3><div class="group"><b>Stuck</b><ul><li><span>One marker every mile</span><span class="chip red">32 days, no move</span></li><li><span class="quiet">2 more open, none moved this week</span></li></ul></div></div>
+    </div>
+    <p class="sub">Settings → My email schedule</p>
+    <div class="sched"><div><b>Field reports</b><br><span class="meta">every report · from everyone</span></div><span class="press outline small">Cancel</span></div>
+    <div class="sched new"><div><b>Your people's week</b><br><span class="meta">Mateo, Darren, Rosa · Monday 6:00 AM · every week</span></div><span class="press outline small">Cancel</span></div>
+  </div><div class="read">The office picks anyone; everyone else gets their own week. Rebuilt fresh at send time from the rows, as every stream is. A person with nothing moved reads <em>nothing moved</em>, never a blank.</div></div>
+</div>
+</div>
+</body>
+</html>

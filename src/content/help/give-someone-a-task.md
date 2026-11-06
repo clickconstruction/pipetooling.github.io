@@ -2,7 +2,7 @@
 title: give someone a task
 category: Office
 roles: dev, master_technician, assistant, controller, primary, estimator, subcontractor, helpers
-keywords: task, add task, assign, checklist, crew, team, send task, todo, messages, thread, send as task, email as a task
+keywords: task, add task, assign, checklist, crew, team, send task, todo, messages, thread, send as task, email as a task, done when, success criteria, lines
 order: 40
 ---
 The ＋ Task button in the top bar opens the Add-task dialog from anywhere in the app. Type what needs doing, pick who does it and send it.
@@ -25,6 +25,22 @@ The **＋ Task button** is the checkmark icon. Tap {{button:blue|Send}}. The tas
 **Today** is the default. **On a date** schedules it. **Repeats** makes it weekly-on-days or "N days after it's done". *Stays on the list until done* keeps an unfinished task visible past its day.
 
 Reminders, notify-on-complete, and links to app pages live in the same dialog. Set them and Send. To see or edit everything you've handed out, open **Checklist → Manage**.
+
+## Say what done looks like
+
+Open **Done when…** under Links. Type one line a row. Each line is one thing that has to be true. The card shows each line as a box the person ticks. The card reads its percent from the ticks. Two of three ticked reads 67%. Leave the box empty and the person sets the percent by hand.
+
+:::example Lines on a card
+Put the plumbing tools in a neat home
+
+{{chip:gray|Done when…}} Pipe is racked by size
+
+{{chip:gray|Done when…}} Fittings are in labeled bins
+
+{{chip:gray|Done when…}} The cart is clear and the floor swept
+:::
+
+You can change the lines later. Open **Checklist → Manage**, then **Edit** on the task. A line you take off keeps the ticks already on it. The Roadmap's **Add task** takes the same lines. Every card the roadmap makes from that task carries them.
 
 ## Send a job as a task
 

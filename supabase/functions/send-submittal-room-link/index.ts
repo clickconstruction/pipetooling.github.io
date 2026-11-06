@@ -16,6 +16,7 @@ import {
   ROOM_LINK_KIND,
   type RoomLinkErrorKey,
 } from '../_shared/submittalRoomLinkEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * send-submittal-room-link — Submittals decision 11 (v2.5026, the owner's call of 2026-10-09): the app may send the
@@ -72,6 +73,8 @@ serve(async (req) => {
     const auth = req.headers.get('Authorization') ?? ''
     const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
     const { data: u } = await userClient.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (!u?.user) return refuse('signIn')
     const { data: who } = await admin.from('users').select('email, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
 

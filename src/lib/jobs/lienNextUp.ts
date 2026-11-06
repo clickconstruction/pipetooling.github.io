@@ -99,7 +99,7 @@ const BUTTON: Record<LienNextUpAction, string> = {
   add_tracking: 'Add tracking',
   record_mailing: 'Record the mailing',
   review_hold: 'Review the hold',
-  letter_two: 'Send letter two',
+  letter_two: 'Send the attorney’s letter',
   courtesy: COURTESY_BUTTON,
   note_missed: 'Note it',
   fix_property: 'Fix the property',
@@ -241,7 +241,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
           break
         }
         if (!two || !twoDue) break
-        push({ ...base, key: `letter-two:${e.jobId}`, sub: `${two.words || 'Letter two is due'}${courtesy?.lastSentAt ? ` · ${courtesy.words}` : ''}`, dueOn: null, daysLeft: null, severity: two.state === 'overdue' ? 'red' : 'amber', action: 'letter_two', button: office ? BUTTON.letter_two : null, target: pane('sent'), reminder })
+        push({ ...base, key: `letter-two:${e.jobId}`, sub: `${two.words || 'The attorney’s letter is due'}${courtesy?.lastSentAt ? ` · ${courtesy.words}` : ''}`, dueOn: null, daysLeft: null, severity: two.state === 'overdue' ? 'red' : 'amber', action: 'letter_two', button: office ? BUTTON.letter_two : null, target: pane('sent'), reminder })
         break
       }
       case 'missed':

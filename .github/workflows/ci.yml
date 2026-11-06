@@ -89,6 +89,11 @@ jobs:
       - name: Every edge function links (a missing export fails here, not at boot)
         run: npm run check:edge-bundles
 
+      # The fourth lock of the seal behind the Away note (v2.6572, v2.6579): a function that reads the caller and
+      # switches to the service role queries as nobody, so it must refuse an archived caller itself.
+      - name: Every edge function that reads the caller and switches to the service role carries the archived guard
+        run: npm run check:edge-archived-guard
+
       - name: Theme token check
         run: node scripts/theme-tokenize.mjs --check src
 

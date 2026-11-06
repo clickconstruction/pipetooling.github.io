@@ -914,7 +914,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   <div style={card}>
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                        <thead><tr><th style={th}>Job</th><th style={th}>Windows still open</th><th style={th}>Window closed · named as information</th><th style={th}>Letter two</th><th style={{ ...th, textAlign: 'right' }}>Affidavit by</th><th style={{ ...th, textAlign: 'right' }}>Claim</th></tr></thead>
+                        <thead><tr><th style={th}>Job</th><th style={th}>Windows still open</th><th style={th}>Window closed · named as information</th><th style={th}>Attorney’s letter</th><th style={{ ...th, textAlign: 'right' }}>Affidavit by</th><th style={{ ...th, textAlign: 'right' }}>Claim</th></tr></thead>
                         <tbody>
                           {data.jobs.filter((j) => j.readiness !== 'public_owner').map((j) => {
                             const split = splitNoticeMonths(j.months)

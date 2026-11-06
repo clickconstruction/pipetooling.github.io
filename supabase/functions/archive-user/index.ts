@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { APP_CALENDAR_TZ } from "../_shared/appTimeZone.ts"
 import { forwardCtSeatState } from '../_shared/ctBridge.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -160,6 +161,8 @@ serve(async (req) => {
         persistSession: false,
       },
     })
+    const archivedRefusal = await refuseArchivedCaller(adminClient, authUser?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     let customerCount = 0
     if (reassign_customers_to) {
@@ -231,7 +234,11 @@ serve(async (req) => {
     // v2.6519 (punch list #260): a row with no login behind it has no auth account to ban.
     const { data: archivedRow } = await adminClient.from('users').select('login_attached_at').eq('id', userToArchive.id).maybeSingle()
     const hasLogin = (archivedRow as { login_attached_at: string | null } | null)?.login_attached_at != null
-    const { error: banError } = hasLogin
+    // The Away note (#256 PR 8, v2.6587): a note left for them keeps the sign-in open, and the seal of migration
+    // *_archived_seal holds that sign-in to the one screen. No note, the ban as before.
+    const { data: awayNote } = hasLogin ? await adminClient.from('away_notes').select('user_id').eq('user_id', userToArchive.id).maybeSingle() : { data: null }
+    const awayNoteOn = awayNote != null
+    const { error: banError } = hasLogin && !awayNoteOn
       ? await adminClient.auth.admin.updateUserById(userToArchive.id, {
           ban_duration: BAN_DURATION_FOREVER,
         })
@@ -260,6 +267,7 @@ serve(async (req) => {
           ? `User ${userToArchive.email || userToArchive.name} archived and ${customerCount} customer${customerCount !== 1 ? 's' : ''} reassigned`
           : `User ${userToArchive.email || userToArchive.name} archived successfully`,
         customersReassigned: reassign_customers_to ? customerCount : 0,
+        away_note_on: awayNoteOn,
         ct_bridge: ctBridge,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -20,6 +20,7 @@ import { agreementHeading, agreementKindOf, agreementNoun, amountCentsFromFields
 import { buildJobContractPaperEmail } from '../_shared/jobContractEmail.ts'
 import { filedOnPaper, signerNamesLine } from '../_shared/jobContractSigners.ts'
 import { writeJobAgreementThreadLine } from '../_shared/jobContractThreadLine.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 type Body = {
   contract_id?: string
@@ -99,6 +100,8 @@ serve(async (req) => {
     } = await userClient.auth.getUser(jwt)
     if (authError || !user) return json({ error: 'Unauthorized' }, 401)
     const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     const body = (await req.json().catch(() => ({}))) as Body
     const mode: 'email' | 'pdf_url' | 'draft_pdf' | 'send_to_sign' = body.mode === 'pdf_url' ? 'pdf_url' : body.mode === 'draft_pdf' ? 'draft_pdf' : body.mode === 'send_to_sign' ? 'send_to_sign' : 'email'

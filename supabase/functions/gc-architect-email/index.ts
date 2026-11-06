@@ -5,6 +5,7 @@ import type { SentEmailFiling } from '../_shared/fileSentCopy.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { officeYmd } from '../_shared/bidFollowupReminder.ts'
 import { buildGcRfiEmail, buildGcSubmittalEmail } from '../_shared/gcArchitectEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * gc-architect-email — GC mode, the real build, the Building lane's U4b and U5b (to-dos/gc-mode/mockups/building-u4.md
@@ -102,6 +103,8 @@ serve(async (req) => {
     const auth = req.headers.get('Authorization') ?? ''
     const asCaller = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
     const { data: u } = await asCaller.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (!u?.user) return json({ error: 'Sign in first.' }, 401)
     const { data: who } = await admin.from('users').select('name, email, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
     if (!who) return json({ error: 'Sign in first.' }, 401)

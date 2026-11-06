@@ -9,7 +9,7 @@
 import { formatYmdMonthDay } from './billedExpectedPay'
 import type { LienNextUpKind, LienNextUpRow } from './lienNextUp'
 import { lienOfferApprovedWords, type LienPayOffer } from './lienPayOffer'
-import { LIEN_REMINDER_SHORT, LIEN_REMINDER_STEPS, lienReminderBrief, lienReminderLadderItems, type LienReminderBrief } from './lienReminders'
+import { LIEN_REMINDER_SHORT, LIEN_REMINDER_STEPS, lienReminderBrief, lienReminderLadderItems, type LienBriefMove, type LienReminderBrief } from './lienReminders'
 
 /** The three kinds of paper, and the REMINDERS ladder a sent notice walks (punch list #262). */
 export type LienStepLadder = LienNextUpKind | 'reminder'
@@ -191,9 +191,9 @@ function besideItems(row: Pick<LienNextUpRow, 'action' | 'sub'>): { items: LienS
       return {
         items: [
           { state: 'done', title: 'Notice sent', detail: 'The first letter went out and nothing has happened since.' },
-          { state: 'now', title: 'Send letter two', detail: row.sub },
+          { state: 'now', title: 'Send the attorney’s letter', detail: row.sub },
         ],
-        foot: 'After step 4 · letter two',
+        foot: 'After step 4 · the attorney’s letter',
       }
     case 'courtesy':
       return {
@@ -296,40 +296,44 @@ export function lienStepName(on: LienStepAt): string {
   return `${on.step} · ${ladder.steps[on.step - 1]}`
 }
 
-const HOLDS = ['Hold — they promised…', 'Hold — I’ll call first']
+const HOLDS: LienBriefMove[] = [
+  { press: 'Hold — they promised…', means: 'they gave a date; the desk waits for it and asks again' },
+  { press: 'Hold — I’ll call first', means: 'you want to phone before anything goes out' },
+]
+const PAID = 'the bill is paid first'
 
 /**
- * The step brief for any rail (v2.6577; the REMINDERS rail's came with v2.6574): what the step is,
- * why a row is here, the usual press and whose it is, the other presses the row or the paper's pane
- * already offers (named, never invented: the panes' own buttons), and what moves a paper on with
- * no press. The words agree with the row's card (`ladderItems`) and the row's button (`BUTTON`).
+ * The step brief for any rail (v2.6577; rewritten v2.6594 for a first-week employee, punch list #274):
+ * in plain words, why a row is here, the usual press and what it does, the other presses the paper's
+ * own pane offers with what each means, what ends the step on its own, and what happens if nobody acts.
+ * The words agree with the row's card (`ladderItems`) and the row's button (`BUTTON`).
  */
 export function lienStepBrief(on: LienStepAt): LienReminderBrief {
   if (on.ladder === 'reminder') return lienReminderBrief(on.step)
   const ladder = LIEN_STEP_LADDERS.find((l) => l.key === on.ladder)!
   const title = ladder.steps[on.step - 1] ?? ''
-  const paid = 'the bill is paid'
   if (on.ladder === 'affidavit') {
     switch (on.step) {
       case 1:
-        return { title, who: 'office', what: 'The affidavit names the property by its legal description and its owner. The property record must be complete first.', why: 'The property record is missing the owner, the legal description or the county.', usual: 'Fix the property', instead: ['Fill in the record ›', 'Send the notice first ›, when the month’s notice never went', 'Refer to the Legal desk ›'], closes: `${paid}, or the filing window closes` }
+        return { title, who: 'office', plain: 'An affidavit is the lien itself, filed at the county. It must say exactly which property and who owns it. This property record is missing part of that, so the affidavit cannot be written yet.', why: 'The property record is missing the owner, the legal description or the county.', usual: { press: 'Fix the property', means: 'opens the property record with the missing lines marked; fill them and the affidavit moves to Draft by itself' }, instead: [{ press: 'Fill in the record ›', means: 'the same record, opened in full' }, { press: 'Send the notice first ›', means: 'when no lien notice ever went for this month; the affidavit needs one before it' }], closes: `${PAID}, or the filing window closes`, ifNobody: 'On the lien’s day the window closes and the lien is gone for good. The money becomes a collections matter.' }
       case 2:
-        return { title, who: 'office', what: 'The office drafts the affidavit from the notice already sent: the months, the money, the property.', why: 'The property record is complete and the affidavit’s day is coming.', usual: 'Draft affidavit', instead: ['The leader said to file it ▸', ...HOLDS, 'Refer to the Legal desk ›'], closes: paid }
+        return { title, who: 'office', plain: 'The property record is complete and the lien’s last day is coming. The desk can write the affidavit from the notice we already mailed.', why: 'The property record is complete and the affidavit’s day is coming.', usual: { press: 'Draft affidavit', means: 'writes it from the notice; the leader must sign it in front of a notary, so send it to him early' }, instead: [{ press: 'The leader said to file it ▸', means: 'he already told you to; it goes straight to Ready' }, ...HOLDS], closes: PAID, ifNobody: 'The affidavit is not written. On the lien’s day the window closes and the lien is gone for good.' }
       case 3:
-        return { title, who: 'leader', what: 'The leader signs the affidavit before a notary, then approves it for filing.', why: 'The affidavit is drafted and waits on the leader.', usual: 'Approve — file it ▸', instead: ['Hold', 'Pull back to draft', 'Back to the office'], closes: paid }
+        return { title, who: 'leader', plain: 'The affidavit is written. The leader signs it in front of a notary and says it may be filed.', why: 'The affidavit is drafted and waits on the leader.', usual: { press: 'Approve — file it ▸', means: 'marks it signed and ready for the county' }, instead: [{ press: 'Hold', means: 'keeps it with a reason; the desk asks again' }, { press: 'Pull back to draft', means: 'the office changes something first' }, { press: 'Back to the office', means: 'hands it back without a change' }], closes: PAID, ifNobody: 'Nothing is filed. On the lien’s day the window closes and the lien is gone for good.' }
       default:
-        return { title, who: 'office', what: 'The affidavit is filed with the county clerk by its day, then served on the owner within five days.', why: 'The affidavit is approved and its day is coming, or it is filed and waits on service.', usual: 'File the affidavit', instead: ['Record service ›, once the copies went', 'Open the affidavit tab ›', 'The Legal desk ›'], closes: paid }
+        return { title, who: 'office', plain: 'Take or send the signed affidavit to the county clerk before its last day. Then mail a copy to the owner within five days, which the law requires.', why: 'The affidavit is approved and its day is coming, or it is filed and waits on service.', usual: { press: 'File the affidavit', means: 'records the filing with the county’s stamp' }, instead: [{ press: 'Record service ›', means: 'records the copy you mailed to the owner' }, { press: 'Open the affidavit tab ›', means: 'the paper and its record on the job' }], closes: PAID, ifNobody: 'Unfiled on the lien’s day, the lien is gone for good. Filed but not served within five days, it can be challenged.' }
     }
   }
   const retainage = on.ladder === 'retainage'
+  const paper = retainage ? 'retainage notice' : 'notice'
   switch (on.step) {
     case 1:
-      return { title, who: 'office', what: retainage ? 'The § 53.057 retainage notice goes to the owner and the GC within 30 days of our contract’s end. The owner must be named first.' : 'The notice goes to the owner of record and the GC. The owner must be named first, from the property record or the GC’s contract.', why: 'Nobody is named as the owner of record on the property yet.', usual: 'Find the owner', instead: retainage ? ['Property record ›', 'Set the day our contract ended ›'] : ['Property record ›', ...HOLDS], closes: `the owner is named on the property record, or ${paid}` }
+      return { title, who: 'office', plain: retainage ? 'Retainage is the part of our money a GC holds back until the end. A separate notice protects it, and it must reach the owner. We do not know the owner yet.' : 'A lien notice has to reach the person who owns the land, not only the GC we worked for. We do not know who that is yet for these jobs.', why: 'Nobody is named as the owner of record on the property yet.', usual: { press: 'Find the owner', means: 'opens the property record with the owner line empty; type the name from the county’s record or the GC’s contract' }, instead: retainage ? [{ press: 'Property record ›', means: 'the record in full' }, { press: 'Set the day our contract ended ›', means: 'starts the 30-day clock the retainage notice runs on' }] : [{ press: 'Property record ›', means: 'the record in full' }, ...HOLDS], closes: `the owner is named on the property record, or ${PAID}`, ifNobody: `The ${paper} cannot be written, and its day keeps coming. After it the lien right for that month is lost.` }
     case 2:
-      return { title, who: 'office', what: retainage ? 'The office drafts the retainage notice once our contract on the job has ended: the retainage held, the owner, the GC.' : 'The office drafts the § 53.056 notice from the job: the unpaid months, the money, the owner and the GC.', why: retainage ? 'Our contract on the job ended and the retainage is unpaid.' : 'The owner is named and a work month is unpaid with its window still open.', usual: 'Draft notice', instead: retainage ? ['The leader said to send it ▸', ...HOLDS, 'The monthly notices on this job ›'] : ['The leader said to send it ▸', ...HOLDS], closes: retainage ? paid : `${paid}, or the month’s window closes and the notice is noted missed` }
+      return { title, who: 'office', plain: retainage ? 'Our work on the job is finished and the held-back money is unpaid. The notice must go within 30 days of the finish.' : 'The owner is known and a month of our work is unpaid. The desk can write the notice from the job. Each month gets its own notice.', why: retainage ? 'Our contract on the job ended and the retainage is unpaid.' : 'The owner is named and a work month is unpaid with its window still open.', usual: { press: 'Draft notice', means: 'fills the state’s form from the job; read it once, then send it to the leader' }, instead: retainage ? [{ press: 'The leader said to send it ▸', means: 'he already told you to; it goes straight to Ready' }, ...HOLDS, { press: 'The monthly notices on this job ›', means: 'the month notices this one sits beside' }] : [{ press: 'The leader said to send it ▸', means: 'he already told you to; it goes straight to Ready' }, ...HOLDS], closes: retainage ? PAID : `${PAID}, or the month’s window closes and the notice is noted missed`, ifNobody: retainage ? 'After 30 days from the finish the retainage notice is late, and the lien right on the retainage weakens.' : 'Nothing is mailed. After the notice’s day the lien right for that month is lost.' }
     case 3:
-      return { title, who: 'leader', what: retainage ? 'The leader approves and signs the retainage notice as he does a monthly notice.' : 'The leader approves a notice once per notice or once per GC, and signs it with his code or by pen.', why: `The ${retainage ? 'retainage notice' : 'notice'} is drafted and waits on the leader’s approval.`, usual: 'Sign and approve ▸', instead: retainage ? ['Hold', 'Pull back to draft', 'Back to the office'] : ['Not yet, with the hold’s reason', 'Pull back to draft', 'Ask counsel to sign off…', 'Send notices without asking, the GC’s standing rule'], closes: paid }
+      return { title, who: 'leader', plain: retainage ? 'Written and waiting for the leader, who signs it as he signs any notice.' : 'A lien notice is the letter the law makes us send to the owner before we can ever lien their property. The office has written it. Only the leader may approve one, because it is sent in his name.', why: `The ${paper} is drafted and waits on the leader’s approval.`, usual: { press: 'Sign and approve ▸', means: 'signs it with the leader’s code and puts it in the next certified run; one press per notice' }, instead: retainage ? [{ press: 'Hold', means: 'keeps it with a reason; the desk asks again' }, { press: 'Pull back to draft', means: 'the office changes something first' }, { press: 'Back to the office', means: 'hands it back without a change' }] : [{ press: 'Not yet', means: 'holds it with a reason, they promised or I’ll call first; the desk asks again' }, { press: 'Pull back to draft', means: 'the office changes something first' }, { press: 'Ask counsel to sign off…', means: 'the attorney reads it before it goes' }, { press: 'Send notices without asking', means: 'the GC’s standing rule; every future month approves itself' }], closes: PAID, ifNobody: 'Nothing is mailed. A late notice still goes, but every day past its day weakens the claim, and after the month’s window the lien right is lost.' }
     default:
-      return { title, who: 'office', what: retainage ? 'The retainage notice goes out in the same packet as the monthly notices, by certified mail.' : 'Every approved notice goes out in one packet by certified mail, one tracking number per envelope, and the run records the mailing.', why: `The ${retainage ? 'retainage notice' : 'notice'} is approved and waits for the run, or is printed and waits on its tracking number.`, usual: 'Send the run', instead: ['Record the mailing, once the envelopes are in the mail', 'Back to the office'], closes: paid }
+      return { title, who: 'office', plain: retainage ? 'It mails with the other notices, by certified mail.' : 'Approved notices wait to be printed and mailed together, by certified mail so we can prove they arrived.', why: `The ${paper} is approved and waits for the run, or is printed and waits on its tracking number.`, usual: { press: 'Send the run', means: 'prints every approved notice and its envelope; Record the mailing then takes each tracking number' }, instead: [{ press: 'Record the mailing', means: 'once the envelopes are at the post office, type in each tracking number' }, { press: 'Back to the office', means: 'takes a notice out of the run' }], closes: PAID, ifNobody: 'The notices sit printed and unmailed; each day past a notice’s day weakens its claim.' }
   }
 }

@@ -22,6 +22,7 @@ import { createNextChecklistRepeat } from '../../lib/checklistCompleteInstance'
 import type { ChecklistInstance } from '../../lib/dashboardBootTypes'
 import { ChecklistInstanceCard } from '../checklist/ChecklistInstanceCard'
 import { groupEventsByInstance, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { useTaskLines } from '../../hooks/useTaskLines'
 
 /**
  * Dashboard "My Inbox" group card: Due Today / Overdue checklists and the
@@ -260,7 +261,7 @@ export function DashboardMyInboxCard({
     const today = toLocalDateString(new Date())
     const { data: todayData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -273,7 +274,7 @@ export function DashboardMyInboxCard({
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
         .eq('checklist_instance_assignees.user_id', authUserId)
         .is('completed_at', null)
         .lt('scheduled_date', today)
@@ -291,7 +292,7 @@ export function DashboardMyInboxCard({
     setOutstandingLoading(true)
     const { data, error } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
@@ -587,6 +588,21 @@ export function DashboardMyInboxCard({
     await createNextChecklistRepeat(inst.checklist_item_id)
   }
 
+  // Task cards (#273, PR 2): the Done when… lines of every card on this screen, with their ticks on each day row.
+  const taskLines = useTaskLines(
+    [...todayChecklist, ...outstandingItems].map((i) => ({
+      instanceId: i.id,
+      itemId: i.checklist_item_id,
+      roadmapTaskId: (i.checklist_items as { roadmap_group_task_id?: string | null } | null)?.roadmap_group_task_id ?? null,
+    })),
+    authUserId ?? null,
+  )
+  const tickLineOnCard = async (inst: { id: string }, criterionId: string, ticked: boolean, reload: () => Promise<void>) => {
+    const r = await taskLines.tick(inst.id, criterionId, ticked)
+    if (!r.ok && r.error) setUserError(r.error)
+    // The last tick closes the card in the database; read the list again so the tick box and the queue agree.
+    if (r.allTicked) await reload()
+  }
   const showChecklist = checklistLoading || todayChecklist.length > 0
   /** Recently Completed only earns its corner link when something was actually completed (dev-only feature). */
   const showRecentlyCompleted = isDev && completedItems.length > 0
@@ -664,6 +680,8 @@ export function DashboardMyInboxCard({
                   variant={isMobile ? 'card' : 'row'}
                   onToggleComplete={() => void toggleChecklistComplete(inst)}
                   onPostComment={(body) => postCardComment(inst, body)}
+                  lines={taskLines.linesFor(inst.id)}
+                  onTickLine={(criterionId, ticked) => tickLineOnCard(inst, criterionId, ticked, loadTodayChecklist)}
                   fullHistory={{
                     item: {
                       id: inst.checklist_item_id,
@@ -740,6 +758,8 @@ export function DashboardMyInboxCard({
                     currentUserId={authUserId ?? null}
                     variant={isMobile ? 'card' : 'row'}
                     onToggleComplete={() => void toggleOutstandingComplete(inst)}
+                    lines={taskLines.linesFor(inst.id)}
+                    onTickLine={(criterionId, ticked) => tickLineOnCard(inst, criterionId, ticked, loadOutstanding)}
                     onPostComment={(body) => postCardComment(inst, body)}
                     fullHistory={{
                       item: {

@@ -28,7 +28,10 @@ import {
   lineState,
   machineName,
   machinesOnJob,
+  EMPTY_RENTAL_DRAFT,
   mintRentalLabel,
+  newMachineReady,
+  newMachineWords,
   rentalWords,
   templateBlanksWords,
   todayDay,
@@ -38,11 +41,13 @@ import {
   type MachineCheck,
   type MachineOnJob,
   type MachineQuestion,
+  type RentalDraft,
 } from '../../lib/machines/machines'
 import { addAssignment, patchAssignment, removeAssignment, forgetDay } from '../../lib/machines/assignmentsIo'
 import { addMachine, saveRental, type MachineTemplate } from '../../lib/machines/machinesIo'
 import { answerArrival, loadQuestions } from '../../lib/machines/checksIo'
 import { MachineCheckSheet } from './MachineCheckSheet'
+import { OursOrRental, RentalFields } from './RentalFields'
 
 const chip: CSSProperties = { display: 'inline-block', padding: '0 0.45rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, lineHeight: '1.2rem', whiteSpace: 'nowrap' }
 const chipBlue: CSSProperties = { ...chip, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }
@@ -182,9 +187,7 @@ function AddFromTemplate({ templates, day, busy, onAdd, onClose }: { templates: 
   const [unit, setUnit] = useState('')
   const [make, setMake] = useState('')
   const [model, setModel] = useState('')
-  const [from, setFrom] = useState('')
-  const [agreementNo, setAgreementNo] = useState('')
-  const [dueBack, setDueBack] = useState('')
+  const [rental, setRental] = useState<RentalDraft>(EMPTY_RENTAL_DRAFT)
   useEffect(() => {
     let live = true
     loadQuestions()
@@ -195,8 +198,8 @@ function AddFromTemplate({ templates, day, busy, onAdd, onClose }: { templates: 
     }
   }, [])
   const template = templates.find((t) => t.id === templateId) ?? null
-  const ready = template != null && make.trim() !== '' && (ours ? unit.trim() !== '' : from.trim() !== '' || agreementNo.trim() !== '')
-  const what = ours ? unit.trim() || 'it' : from.trim() ? `the ${from.trim()} rental` : 'the rental'
+  const ready = template != null && newMachineReady(ours, { unit, make, from: rental.from, agreementNo: rental.agreementNo })
+  const what = newMachineWords(ours, { unit, from: rental.from })
   return (
     <div style={{ display: 'grid', gap: '0.45rem', padding: '0.5rem 0.6rem 0.6rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }} data-add-from-template>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -220,31 +223,11 @@ function AddFromTemplate({ templates, day, busy, onAdd, onClose }: { templates: 
       ) : (
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>No template is set up. Settings → Machine templates adds one.</span>
       )}
-      <div style={{ display: 'flex', gap: '0.4rem' }} role="group" aria-label="Ours or a rental">
-        <button type="button" style={ours ? chosen : press} aria-pressed={ours} onClick={() => setOurs(true)}>
-          Ours
-        </button>
-        <button type="button" style={ours ? press : chosen} aria-pressed={!ours} onClick={() => setOurs(false)}>
-          Rental
-        </button>
-      </div>
+      <OursOrRental ours={ours} onChange={setOurs} press={press} chosen={chosen} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.4rem' }}>
-        {ours ? (
-          <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unit, like E-14" aria-label="Unit" style={field} />
-        ) : (
-          <>
-            <input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="Rented from, like Sunbelt" aria-label="Rented from" style={field} />
-            <input value={agreementNo} onChange={(e) => setAgreementNo(e.target.value)} placeholder="Agreement number" aria-label="Agreement number" style={field} />
-          </>
-        )}
+        {ours ? <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unit, like E-14" aria-label="Unit" style={field} /> : <RentalFields value={rental} onChange={setRental} field={field} />}
         <input value={make} onChange={(e) => setMake(e.target.value)} placeholder="Make" aria-label="Make" style={field} />
         <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="Model" aria-label="Model" style={field} />
-        {ours ? null : (
-          <label style={{ display: 'grid', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-            Due back
-            <input type="date" value={dueBack} onChange={(e) => setDueBack(e.target.value)} aria-label="Due back" style={field} />
-          </label>
-        )}
       </div>
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
         <button
@@ -254,9 +237,9 @@ function AddFromTemplate({ templates, day, busy, onAdd, onClose }: { templates: 
           onClick={() =>
             onAdd(async (job, userId) => {
               if (!template) return
-              const unitLabel = ours ? unit.trim() : mintRentalLabel(from, agreementNo)
+              const unitLabel = ours ? unit.trim() : mintRentalLabel(rental.from, rental.agreementNo)
               const id = await addMachine({ unitLabel, make: make.trim(), model: model.trim(), templateId: template.id, kind: template.kind })
-              if (!ours) await saveRental(id, { from: from.trim(), agreementNo: agreementNo.trim(), outOn: day, dueBack })
+              if (!ours) await saveRental(id, { from: rental.from.trim(), agreementNo: rental.agreementNo.trim(), outOn: day, dueBack: rental.dueBack })
               await addAssignment({ machineId: id, jobId: job, day, createdBy: userId })
             })
           }

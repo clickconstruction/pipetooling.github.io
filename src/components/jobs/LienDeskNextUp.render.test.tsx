@@ -147,9 +147,10 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
     expect(screen.getByTestId('lien-step-brief-title').textContent).toBe('2 · Draft notice')
     expect(screen.getByTestId('lien-step-brief-count').textContent).toBe('the office’s step · 1 notice here')
     // The notice rail's own brief (v2.6577): the four parts, no schedule strip (that is the REMINDERS rail's).
-    expect(brief.textContent).toContain('The office drafts the § 53.056 notice from the job')
-    expect(brief.textContent).toContain('Draft notice · the office presses it')
-    expect(screen.getByTestId('lien-step-brief-instead').textContent).toBe('The leader said to send it ▸ · Hold — they promised… · Hold — I’ll call first')
+    expect(screen.getByTestId('lien-step-brief-plain').textContent).toContain('The owner is known and a month of our work is unpaid.')
+    expect(screen.getByTestId('lien-step-brief-usual').textContent).toBe('Draft notice · the office presses it · fills the state’s form from the job; read it once, then send it to the leader')
+    expect(Array.from(screen.getByTestId('lien-step-brief-instead').querySelectorAll('strong')).map((el) => el.textContent)).toEqual(['The leader said to send it ▸', 'Hold — they promised…', 'Hold — I’ll call first'])
+    expect(screen.getByTestId('lien-step-brief-nobody').textContent).toContain('After the notice’s day the lien right for that month is lost.')
     expect(screen.queryByTestId('lien-schedule-strip')).toBeNull()
     expect(screen.queryByTestId('lien-step-showing')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Every step' }))
@@ -160,7 +161,7 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
     render(<LienDeskNextUp rows={rows} loading={false} isMobile onAct={() => {}} />)
     fireEvent.click(screen.getByTestId('lien-step-affidavit-1'))
     expect(screen.getByTestId('lien-step-brief-title').textContent).toBe('1 · Fix the property')
-    expect(screen.getByTestId('lien-step-brief').textContent).toContain('Fix the property · the office presses it')
+    expect(screen.getByTestId('lien-step-brief-usual').textContent).toContain('Fix the property · the office presses it · opens the property record')
     expect(screen.getByTestId('lien-step-brief-count').textContent).toBe('the office’s step · 1 affidavit here')
     expect(screen.getByTestId('lien-step-brief-instead').textContent).toContain('Fill in the record ›')
     expect(screen.getByTestId('lien-step-brief-clear').textContent).toBe('Every step')
@@ -289,7 +290,7 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
       { jobId: 'j5', title: '752 · Pecan Grove', step: 1 as const, state: 'due' as const, words: 'day 29 · nothing since the packet', day: 29, counted: true },
       { jobId: 'j6', title: '760 · Harlan Homes', step: 1 as const, state: 'waiting' as const, words: 'day 4 · courtesy from day 7', day: 4, counted: false },
       { jobId: 'j7', title: '741 · Ridgeway', step: 2 as const, state: 'sent' as const, words: 'courtesy sent Nov 2 by email and text', day: 9, counted: true },
-      { jobId: 'j8', title: '733 · Castell II', step: 3 as const, state: 'two_drafting' as const, words: 'letter two · unresponsive · drafting', day: 16, counted: true },
+      { jobId: 'j8', title: '733 · Castell II', step: 3 as const, state: 'two_drafting' as const, words: 'the attorney’s letter · unresponsive · drafting', day: 16, counted: true },
       { jobId: 'j9', title: '729 · Pecan Grove II', step: 4 as const, state: 'paid' as const, words: 'paid', day: 30, counted: true },
       { jobId: 'j10', title: '706 · Summit', step: 4 as const, state: 'owner_called' as const, words: 'owner called Nov 1', day: 22, counted: true },
     ],
@@ -305,7 +306,7 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(rails).toEqual(['lien-step-rail-notice', 'lien-step-rail-reminder'])
     expect(['1', '2', '3', '4'].map((n) => screen.getByTestId(`lien-step-count-reminder-${n}`).textContent)).toEqual(['2 · 1 before day 7', '1', '1', '2'])
     expect(screen.getByRole('group', { name: "The reminder's four steps" }).textContent).toContain('Reminder due')
-    expect(screen.getByRole('group', { name: "The reminder's four steps" }).textContent).toContain('Letter twoyou')
+    expect(screen.getByRole('group', { name: "The reminder's four steps" }).textContent).toContain('Attorney’s letteryou')
     const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
     expect(titles).toEqual(['Needs you now · 1', 'Reminders · 2'])
     const group = screen.getByRole('region', { name: 'Reminders' })
@@ -328,8 +329,8 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(Array.from(brief.querySelectorAll('[data-lien-schedule-point]')).map((el) => el.getAttribute('data-lien-schedule-point'))).toEqual(['0', '7', '10', '14'])
     expect(Array.from(brief.querySelectorAll('[data-lien-schedule-mark]')).map((el) => el.textContent)).toEqual(['day 4', 'day 21', 'day 29+'])
     expect(brief.textContent).toContain('The packet went, nothing came back, and it is day 7 or later.')
-    expect(brief.textContent).toContain('Send a courtesy notice · the office presses it')
-    expect(screen.getByTestId('lien-step-brief-instead').textContent).toBe('Send letter two now, without the light step · Record the owner’s call · The GC authorized direct pay')
+    expect(screen.getByTestId('lien-step-brief-usual').textContent).toContain('Send a courtesy notice · the office presses it · sends the email and the text in one press')
+    expect(Array.from(screen.getByTestId('lien-step-brief-instead').querySelectorAll('strong')).map((el) => el.textContent)).toEqual(['Send the attorney’s letter', 'Record the owner’s call', 'The GC authorized direct pay'])
     expect(Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)).toEqual(['On this step · 2', 'On other steps · 1'])
     expect(document.querySelectorAll('[data-dim]')).toHaveLength(0)
     const list = within(brief).getByTestId('lien-reminder-step-list')
@@ -342,7 +343,7 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(closed.getAttribute('data-step')).toBe('4')
     expect(closed.textContent).toContain('Also on this step, with no row on the list · 2')
     expect(screen.getByTestId('lien-step-brief-count').textContent).toBe('the office’s step · 2 notices here')
-    expect(screen.getByTestId('lien-step-brief').textContent).toContain('The notice reads under Sent, with no press left.')
+    expect(screen.getByTestId('lien-step-brief-usual').textContent).toBe('Nothing. This one needs nobody.')
     expect(closed.textContent).toContain('owner called Nov 1')
     fireEvent.click(within(closed).getAllByRole('button', { name: 'Open' })[0]!)
     expect(onOpenReminder).toHaveBeenCalledTimes(1)
@@ -366,7 +367,7 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     const card = document.querySelector('[data-lien-next-up-row="courtesy:j1"]') as HTMLElement
     const stepRow = within(card).getByTestId('lien-step-row')
     expect(stepRow.getAttribute('data-ladder')).toBe('reminder')
-    expect(Array.from(stepRow.querySelectorAll('.lienStepTile')).map((t) => `${t.textContent}:${t.getAttribute('data-state')}`)).toEqual(['youDue:now', ' Sent:todo', ' Letter two:todo', ' Closed:todo'])
+    expect(Array.from(stepRow.querySelectorAll('.lienStepTile')).map((t) => `${t.textContent}:${t.getAttribute('data-state')}`)).toEqual(['youDue:now', ' Sent:todo', ' Attorney’s letter:todo', ' Closed:todo'])
     fireEvent.click(screen.getByTestId('lien-step-reminder-2'))
     expect((within(screen.getByTestId('lien-reminder-step-list')).getByRole('button', { name: 'Open' }) as HTMLButtonElement).style.width).toBe('100%')
   })

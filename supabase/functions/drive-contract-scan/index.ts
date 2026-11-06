@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 // drive-contract-scan — the Contract sweep's Drive pass (v2.3390). Lists the
 // contract-looking files in the jobs Shared Drive so the office can file the
@@ -126,6 +127,8 @@ serve(async (req) => {
     const { data: u } = await anon.auth.getUser()
     if (!u?.user) return json({ error: 'Sign in first' }, 401)
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     // The jobs root the office set on Documents → Where files go (punch list #211) is scanned with the env's: a moved root leaves the older job folders where they were.
     const settingRoot = (await readDriveSettings(admin, envRoot)).rootFolderId
     const roots = [...new Set([settingRoot, envRoot, ...extraRoots].filter((x): x is string => Boolean(x)))]

@@ -13,6 +13,7 @@ import {
   buildRecurringJobReportPayload,
   getReportingWindowForActivityScope,
 } from '../_shared/recurringJobReportCore.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -87,6 +88,8 @@ serve(async (req) => {
       data: { user },
       error: authErr,
     } = await jwtClient.auth.getUser(token)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,

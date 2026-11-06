@@ -20,7 +20,9 @@ Their login is banned and they leave every roster and picker. Their open roadmap
 
 ## While they are away
 
-Their desk stays. Open People → Users, press {{button:outline|Archived}}, and find their name. The desk reads *Archived* with the dates of the stint that ended. There is nothing to do while they are away. A license that expires meanwhile still shows on Licenses. Bring back marks it red on the day back.
+Their desk stays. Open People → Users, press {{button:outline|Archived}}, and find their name. The desk reads *Archived* with the dates of the stint that ended. A license that expires meanwhile still shows on Licenses. Bring back marks it red on the day back.
+
+You can leave them one screen to find when they sign in. Press {{button:outline|Leave a note…}} on the Status row. See [leave a note for a teammate who is away](/help/leave-a-note-for-a-teammate-who-is-away). Bring back takes the note down.
 
 ## On the day they are back
 

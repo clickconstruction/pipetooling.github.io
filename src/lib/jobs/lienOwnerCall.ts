@@ -228,7 +228,7 @@ export const PLAYBOOK_GRID_COLUMNS: ReadonlyArray<{ key: keyof PlaybookGridRow |
   { key: 'paidOut', label: 'Paid out' },
   { key: 'reserved', label: '10% held' },
   { key: 'theirContractDone', label: 'Their contract done' },
-  { key: 'letterTwo', label: 'Letter two' },
+  { key: 'letterTwo', label: 'Attorney’s letter' },
   { key: 'pileWords', label: 'Pile' },
 ]
 

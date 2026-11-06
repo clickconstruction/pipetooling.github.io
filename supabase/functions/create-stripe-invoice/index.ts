@@ -31,6 +31,7 @@ import { stripeInvoiceFooter } from '../_shared/stripeInvoiceFooterPortalLink.ts
 import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
 import { ensurePortalShortAddress } from '../_shared/portalShortAddress.ts'
 import { GC_BILL_PORTAL_CARD_ONLY } from '../_shared/gcCardBill.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -261,6 +262,8 @@ serve(async (req) => {
         if (footFromStripe && !footerStored) backfill.stripe_invoice_footer = footFromStripe
         if (Object.keys(backfill).length > 0) {
           const admin = createClient(supabaseUrl, serviceKey)
+          const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+          if (archivedRefusal) return archivedRefusal
           const { error: bfErr } = await admin
             .from('jobs_ledger_invoices')
             .update(backfill)

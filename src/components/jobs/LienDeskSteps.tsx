@@ -194,23 +194,32 @@ export function LienStepBrief({ on, brief, count, marks, isMobile, onClear, chil
       </div>
       {on.ladder === 'reminder' ? <LienReminderScheduleStrip marks={marks} isMobile={isMobile} tone={tone.fg} tint={tone.tint} /> : null}
       {brief ? (
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.1fr) minmax(0, 1fr)', gap: isMobile ? 8 : '10px 24px' }}>
-          <div><div style={k}>What this step is</div><p style={words}>{brief.what}</p></div>
-          <div>
-            <div style={k}>The usual move</div>
-            {brief.usual ? (
-              <p style={words}><strong>{brief.usual}</strong> · {brief.who === 'leader' ? 'the leader presses it' : 'the office presses it'}</p>
-            ) : (
-              <p style={words}>The notice reads under Sent, with no press left.</p>
-            )}
+        <div style={{ display: 'grid', gap: 10 }}>
+          <div><div style={k}>In plain words</div><p style={{ ...words, fontSize: '0.875rem', maxWidth: '76ch' }} data-testid="lien-step-brief-plain">{brief.plain}</p></div>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.1fr) minmax(0, 1fr)', gap: isMobile ? 8 : '10px 24px' }}>
+            <div>
+              <div style={k}>What to do now</div>
+              {brief.usual ? (
+                <p style={words} data-testid="lien-step-brief-usual"><strong>{brief.usual.press}</strong> · {brief.who === 'leader' ? 'the leader presses it' : 'the office presses it'} · {brief.usual.means}</p>
+              ) : (
+                <p style={words} data-testid="lien-step-brief-usual">Nothing. This one needs nobody.</p>
+              )}
+            </div>
+            <div><div style={k}>Why {paper === 'affidavit' ? 'an affidavit' : 'a notice'} is here</div><p style={words}>{brief.why}</p></div>
+            <div>
+              <div style={k}>If that is not right</div>
+              <div data-testid="lien-step-brief-instead" style={{ display: 'grid', gap: 3 }}>
+                {brief.instead.map((m) => (
+                  <p key={m.press} style={words}><strong>{m.press}</strong> <span style={{ color: 'var(--text-muted)' }}>· {m.means}</span></p>
+                ))}
+              </div>
+              <p style={{ ...words, color: 'var(--text-muted)', marginTop: 4 }}>Each press sits {where}.</p>
+            </div>
+            <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
+              {brief.closes ? <div><div style={k}>This step ends on its own when</div><p style={words}>{brief.closes[0]!.toUpperCase()}{brief.closes.slice(1)}.</p></div> : null}
+              <div><div style={k}>If nobody acts</div><p style={words} data-testid="lien-step-brief-nobody">{brief.ifNobody}</p></div>
+            </div>
           </div>
-          <div><div style={k}>Why {paper === 'affidavit' ? 'an affidavit' : 'a notice'} is here</div><p style={words}>{brief.why}</p></div>
-          <div>
-            <div style={k}>You may instead</div>
-            <p style={words} data-testid="lien-step-brief-instead">{brief.instead.map((w, i) => (<span key={w}>{i ? ' · ' : ''}<strong>{w}</strong></span>))}</p>
-            <p style={{ ...words, color: 'var(--text-muted)', marginTop: 4 }}>Each press sits {where}.</p>
-          </div>
-          {brief.closes ? <div style={{ gridColumn: isMobile ? undefined : '1 / -1' }}><div style={k}>It closes by itself when</div><p style={words}>{brief.closes[0]!.toUpperCase()}{brief.closes.slice(1)}.</p></div> : null}
         </div>
       ) : null}
       {children}

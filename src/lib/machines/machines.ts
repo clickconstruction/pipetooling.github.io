@@ -465,6 +465,48 @@ export function agreementPhotoWords(checks: readonly MachineCheck[], machineId: 
   return newest.photo.filedAt ? 'photo filed' : 'photo in'
 }
 
+/**
+ * The newest agreement photo as the fleet board card draws it: a signed URL while the bytes are in the bucket, the
+ * Drive file once the sweep has filed it, and the file's name alone when neither is in hand yet.
+ */
+export interface AgreementPhotoView {
+  src: string | null
+  /** Where Open the photo goes: the signed URL, else the Drive file, else nowhere yet. */
+  href: string | null
+  fileName: string
+  byName: string
+  day: string
+}
+export function agreementPhotoView(x: { photo: MachinePhoto; check: MachineCheck }, src: string | null | undefined): AgreementPhotoView {
+  const drive = x.photo.driveFileId ? `https://drive.google.com/file/d/${x.photo.driveFileId}/view` : null
+  const shown = src ?? x.photo.src
+  return { src: shown, href: shown ?? drive, fileName: x.photo.fileName, byName: x.check.byName, day: x.check.day }
+}
+
+/** What the add forms type for a rental before it is a `Rental`: the out-on day is the day it is added. */
+export interface RentalDraft {
+  from: string
+  agreementNo: string
+  /** YYYY-MM-DD, or empty while open-ended. */
+  dueBack: string
+}
+export const EMPTY_RENTAL_DRAFT: RentalDraft = { from: '', agreementNo: '', dueBack: '' }
+
+/**
+ * The add forms' gate (the board's + Add a machine, the label page's for a code the board does not know, the block
+ * editor's A machine not on the board yet): a make, and the unit the crew says for ours, or who it is from or the
+ * agreement number for a rental. The number may stay blank: the tech photographs the paper at pickup (#271).
+ */
+export function newMachineReady(ours: boolean, x: { unit: string; make: string; from: string; agreementNo: string }): boolean {
+  if (!x.make.trim()) return false
+  return ours ? x.unit.trim() !== '' : x.from.trim() !== '' || x.agreementNo.trim() !== ''
+}
+
+/** What the add press names: *E-14*, *it*, *the Sunbelt rental*, *the rental*. */
+export function newMachineWords(ours: boolean, x: { unit: string; from: string }): string {
+  return ours ? x.unit.trim() || 'it' : x.from.trim() ? `the ${x.from.trim()} rental` : 'the rental'
+}
+
 /** A rental's unit label, shared by the block editor's add form and the label page: *Rental 48812-3* by its number, *Sunbelt rental* without one. */
 export function mintRentalLabel(from: string, agreementNo: string): string {
   const no = agreementNo.trim()

@@ -12,11 +12,11 @@ function item(partial: Partial<LienDeskItemRow> & { id: string; status: LienDesk
 const notice = { noticeDate: '2026-09-05', projectDescription: '', claimantName: 'Click', laborMaterialsType: '', originalContractorName: 'Harborline', contractedWithIfDifferent: '', claimAmount: '9800.00', contactPerson: 'Rey', claimantAddress: '' }
 const first = item({ id: 'first', status: 'sent', sent_at: '2026-09-05T15:00:00Z', fields: { notice, gcEmail: '' } })
 
-describe('letter two — the clock on a sent notice', () => {
+describe('the attorney’s letter — the clock on a sent notice', () => {
   it('counts the days from the first packet: waiting, due from day 10, overdue from day 14', () => {
     expect(letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-11' })).toMatchObject({ state: 'waiting', day: 6, words: 'day 6' })
-    expect(letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-15' })).toMatchObject({ state: 'due', day: 10, words: 'day 10 · letter two' })
-    expect(letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-19' })).toMatchObject({ state: 'overdue', day: 14, words: 'day 14 · letter two overdue' })
+    expect(letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-15' })).toMatchObject({ state: 'due', day: 10, words: 'day 10 · the attorney’s letter' })
+    expect(letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-19' })).toMatchObject({ state: 'overdue', day: 14, words: 'day 14 · the attorney’s letter overdue' })
     expect(letterTwoIsDue({ state: 'due' })).toBe(true)
     expect(letterTwoIsDue({ state: 'waiting' })).toBe(false)
   })
@@ -30,12 +30,12 @@ describe('letter two — the clock on a sent notice', () => {
     expect(letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: TODAY, ownerCalledAt: '2026-09-16T12:00:00Z' }).state).toBe('owner_called')
   })
 
-  it('a letter-two draft on the job is in flight; a sent one is sent; the first packet is the latest sent item that is not a letter two', () => {
+  it('a letter-two draft on the job is in flight; a sent one is sent; the first packet is the latest sent item that is not an attorney’s letter', () => {
     const twoDraft = item({ id: 'two', status: 'awaiting_approval', created_at: '2026-09-16T10:00:00Z', fields: { notice, gcEmail: '', letterTwo: { kind: 'paid_out', afterItemId: 'first', afterSentAt: '2026-09-05T15:00:00Z' } } })
-    expect(letterTwoStatus({ items: [first, twoDraft], openBalance: 9_800, todayYmd: TODAY })).toMatchObject({ state: 'in_flight', words: 'letter two · paid-out · awaiting the leader', letterTwo: { itemId: 'two', kind: 'paid_out' } })
+    expect(letterTwoStatus({ items: [first, twoDraft], openBalance: 9_800, todayYmd: TODAY })).toMatchObject({ state: 'in_flight', words: 'the attorney’s letter · paid-out · awaiting the leader', letterTwo: { itemId: 'two', kind: 'paid_out' } })
     const twoSent = item({ ...twoDraft, status: 'sent', sent_at: '2026-09-19T15:00:00Z' })
     const s = letterTwoStatus({ items: [first, twoSent], openBalance: 9_800, todayYmd: '2026-09-22', formatDay: (d) => d })
-    expect(s).toMatchObject({ state: 'sent', firstItemId: 'first', words: 'letter two sent 2026-09-19 · paid-out' })
+    expect(s).toMatchObject({ state: 'sent', firstItemId: 'first', words: 'the attorney’s letter sent 2026-09-19 · paid-out' })
     expect(letterTwoStatus({ items: [], openBalance: 9_800, todayYmd: TODAY }).state).toBe('none')
     expect(letterTwoStatus({ items: [item({ id: 'd', status: 'drafted' })], openBalance: 9_800, todayYmd: TODAY }).state).toBe('none')
   })
@@ -72,7 +72,7 @@ describe('counsel’s paid-out letter', () => {
   })
 })
 
-describe('letter two — an evening packet, okay, call or send keeps its day (v2.4468)', () => {
+describe('the attorney’s letter — an evening packet, okay, call or send keeps its day (v2.4468)', () => {
   // 00:30 UTC on Sep 6 is 7:30 pm CDT on Sep 5; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
   const evening = item({ id: 'first', status: 'sent', sent_at: '2026-09-06T00:30:00Z', fields: { notice, gcEmail: '' } })
 
@@ -89,13 +89,13 @@ describe('letter two — an evening packet, okay, call or send keeps its day (v2
     expect(letterTwoStatus({ items: [okayed], openBalance: 9_800, todayYmd: TODAY, formatDay: fmt }).words).toBe('GC authorized direct pay 2026-09-15')
     expect(letterTwoStatus({ items: [evening], openBalance: 9_800, todayYmd: '2026-12-10', ownerCalledAt: '2026-12-02T00:30:00Z', formatDay: fmt }).words).toBe('owner called 2026-12-01')
     const twoSent = item({ id: 'two', status: 'sent', created_at: '2026-09-16T10:00:00Z', sent_at: '2026-09-20T00:30:00Z', fields: { notice, gcEmail: '', letterTwo: { kind: 'paid_out', afterItemId: 'first', afterSentAt: '2026-09-06T00:30:00Z' } } })
-    expect(letterTwoStatus({ items: [evening, twoSent], openBalance: 9_800, todayYmd: '2026-09-22', formatDay: fmt }).words).toBe('letter two sent 2026-09-19 · paid-out')
+    expect(letterTwoStatus({ items: [evening, twoSent], openBalance: 9_800, todayYmd: '2026-09-22', formatDay: fmt }).words).toBe('the attorney’s letter sent 2026-09-19 · paid-out')
     const twoNoon = item({ ...twoSent, sent_at: '2026-09-20T12:00:00Z' })
-    expect(letterTwoStatus({ items: [evening, twoNoon], openBalance: 9_800, todayYmd: '2026-09-22', formatDay: fmt }).words).toBe('letter two sent 2026-09-20 · paid-out')
+    expect(letterTwoStatus({ items: [evening, twoNoon], openBalance: 9_800, todayYmd: '2026-09-22', formatDay: fmt }).words).toBe('the attorney’s letter sent 2026-09-20 · paid-out')
   })
 })
 
-describe('letter two — day 0 from the later of the mailing and the delivery (the Docsmit train, PR 1, D9)', () => {
+describe('the attorney’s letter — day 0 from the later of the mailing and the delivery (the Docsmit train, PR 1, D9)', () => {
   const fmt = (d: string) => d
   // The run recorded the packet Sep 5; USPS accepted it Sep 6 (the next day's batch); it was delivered Sep 9.
   const mailed = { mailedAt: '2026-09-06T20:10:00Z', deliveredAt: null }
@@ -103,20 +103,20 @@ describe('letter two — day 0 from the later of the mailing and the delivery (t
 
   it('with no mail piece the clock is the run’s record, and says so', () => {
     const s = letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-15', formatDay: fmt })
-    expect(s).toMatchObject({ state: 'due', day: 10, words: 'day 10 · letter two', clock: { kind: 'recorded', at: '2026-09-05T15:00:00Z', why: 'from the day the run recorded it, 2026-09-05' } })
+    expect(s).toMatchObject({ state: 'due', day: 10, words: 'day 10 · the attorney’s letter', clock: { kind: 'recorded', at: '2026-09-05T15:00:00Z', why: 'from the day the run recorded it, 2026-09-05' } })
   })
 
   it('counts from the day USPS accepted it once the piece knows that, and from the delivery once it knows that', () => {
     const m = letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-15', formatDay: fmt, mailClocks: { first: mailed } })
     expect(m).toMatchObject({ state: 'waiting', day: 9, words: 'day 9 · from the mailing', clock: { kind: 'mailed', at: '2026-09-06T20:10:00Z', why: 'from the day USPS accepted it, 2026-09-06' } })
     const d = letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-19', formatDay: fmt, mailClocks: { first: delivered } })
-    expect(d).toMatchObject({ state: 'due', day: 10, words: 'day 10 · letter two · from delivery', clock: { kind: 'delivered', at: '2026-09-09T16:40:00Z', why: 'from the day it was delivered, 2026-09-09' } })
-    expect(letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-23', formatDay: fmt, mailClocks: { first: delivered } }).words).toBe('day 14 · letter two overdue · from delivery')
+    expect(d).toMatchObject({ state: 'due', day: 10, words: 'day 10 · the attorney’s letter · from delivery', clock: { kind: 'delivered', at: '2026-09-09T16:40:00Z', why: 'from the day it was delivered, 2026-09-09' } })
+    expect(letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-23', formatDay: fmt, mailClocks: { first: delivered } }).words).toBe('day 14 · the attorney’s letter overdue · from delivery')
   })
 
   it('a piece that came back or sits unclaimed keeps the mailing clock and says why', () => {
     const r = letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-16', formatDay: fmt, mailClocks: { first: { ...mailed, status: 'returned' } } })
-    expect(r).toMatchObject({ state: 'due', day: 10, words: 'day 10 · letter two · from the mailing, returned', clock: { kind: 'mailed', why: 'from the day USPS accepted it, 2026-09-06; the piece came back' } })
+    expect(r).toMatchObject({ state: 'due', day: 10, words: 'day 10 · the attorney’s letter · from the mailing, returned', clock: { kind: 'mailed', why: 'from the day USPS accepted it, 2026-09-06; the piece came back' } })
     const u = letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-10', formatDay: fmt, mailClocks: { first: { ...mailed, status: 'notice_left' } } })
     expect(u.words).toBe('day 4 · from the mailing, unclaimed')
   })
@@ -131,7 +131,7 @@ describe('letter two — day 0 from the later of the mailing and the delivery (t
 })
 
 describe('the owner’s call rides on the status whatever the state (v2.6383)', () => {
-  it('a letter two that went out reads sent, and still carries the owner’s call for the courtesy to close on', () => {
+  it('an attorney’s letter that went out reads sent, and still carries the owner’s call for the courtesy to close on', () => {
     const first = item({ id: 'a', status: 'sent', sent_at: '2026-09-01T15:00:00Z', created_at: '2026-08-30T10:00:00Z' })
     const two = item({ id: 'b', status: 'sent', sent_at: '2026-09-14T15:00:00Z', created_at: '2026-09-12T10:00:00Z', fields: { letterTwo: { kind: 'unresponsive' } } })
     const s = letterTwoStatus({ items: [first, two], openBalance: 9_800, todayYmd: TODAY, ownerCalledAt: '2026-09-16T12:00:00Z' })

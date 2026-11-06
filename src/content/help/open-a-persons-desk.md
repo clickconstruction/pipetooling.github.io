@@ -39,6 +39,12 @@ Or you open the **People → Person** tab. It is the same desk as a page, with a
 
 Links can land on one section. You add `&section=paperwork` to a `?person=` link and the Desk opens scrolled there. Other sections are `hours`, `pay`, `push`, `access` and more.
 
+## Your week
+
+The **Your week** section picks the one number this person sees move on their home. Press {{button:outline|License hours}}, {{button:outline|Jobs without a callback}} or {{button:outline|Crew hours against target}}. The row names a guess for their role until you pick. {{button:outline|No card}} takes the card away.
+
+The leader and the office pick. See [see your week move](/help/see-your-week) for what the card shows.
+
 ## End employment
 
 The header's **⋯** menu opens **End employment…** for pay roles. It is a checklist of everything still open for that person, built from every section at once. That is a running clock, sessions waiting on approval, and the final pay report. It is a sub's balance, a live portal, a truck they hold, and housing. It is team-lead links, open work orders, and missing paperwork.

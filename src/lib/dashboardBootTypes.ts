@@ -46,6 +46,8 @@ export type ChecklistInstance = {
     /** For the card's full-history spine (v2.2193). */
     created_at?: string | null
     repeat_type?: string
+    /** Task cards (#273): a card the roadmap sync made carries its task's Done when… lines too. */
+    roadmap_group_task_id?: string | null
   } | null
   checklist_instance_assignees?: Array<{ user_id: string }>
 }

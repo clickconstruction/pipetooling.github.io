@@ -51,6 +51,16 @@ The card then reads the target with 🎯, who set it, when, from what, and why. 
 
 A project at or over its labor budget shows the slider pinned. The words say the budget is the lever now, on the Costs tab. Read [how the labor budget is set](/help/job-charges-timeline) for that lever.
 
+## Set a target on any job
+
+A service job never lands on the board. Its target lives on the job window instead.
+
+Open the job and stay on the **Job** tab. The **Target** line sits above the review. It reads the expected hours if the office set them. Otherwise it reads the labor budget's hours and says where they came from. With neither it reads **No target yet**.
+
+Press {{button:outline|Set a target}}. Type the hours and say why in a few words. Press {{button:blue|Keep it}}. The line then reads the target, who set it, when, and the reason. {{button:outline|Change the target}} opens the same box again. {{button:outline|Back to the budget}} clears it.
+
+The crew reads the line and the reason. A lead's Your week card counts the crew's hours against this number once the job finishes. A job that finishes with no target is named as not counted.
+
 ## Undo a change
 
 **Recent changes** at the top of the page lists the last changes, newest first. Press {{button:outline|Undo the last change}} to put the latest one back. Press **back to the budget** on a card to clear its target.

@@ -142,6 +142,7 @@ export function makeUseAuthValue(overrides: Record<string, unknown> = {}) {
     profileName: 'Smoke Dev',
     loading: false,
     readOnly: false,
+    archivedCaller: false,
     sessionExpiresAt: null,
     signOut: async () => {},
     ...overrides,

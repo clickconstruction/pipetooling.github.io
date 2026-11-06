@@ -14,6 +14,7 @@ import { PersonDeskPortalSection } from './sections/PersonDeskPortalSection'
 import { PersonDeskWorkOrdersSection } from './sections/PersonDeskWorkOrdersSection'
 import { PersonDeskPaySection } from './sections/PersonDeskPaySection'
 import { PersonDeskFieldSection } from './sections/PersonDeskFieldSection'
+import { PersonDeskWeekSection } from './sections/PersonDeskWeekSection'
 import { PersonDeskBioSection } from './sections/PersonDeskBioSection'
 import { PersonDeskPaperworkSection } from './sections/PersonDeskPaperworkSection'
 import { PersonDeskRecordsSection } from './sections/PersonDeskRecordsSection'
@@ -151,6 +152,8 @@ export function PersonDeskBody({
             <PersonDeskPaySection personKey={key} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskPushSection userId={key.userId} canSeePush={access.canSeePushStatus} changeKey={changeKey} />
             <PersonDeskFieldSection userId={key.userId} payName={key.payName} displayName={displayName} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
+            {/* Your week (v2.6589, punch list #255): the one signal this person sees move on their home, the office's pick. */}
+            <PersonDeskWeekSection userId={key.userId} displayName={displayName} personRole={user?.role ?? null} viewer={viewer} changeKey={changeKey} />
             <PersonDeskBioSection userId={key.userId} displayName={displayName} personRole={user?.role ?? null} viewer={viewer} changeKey={changeKey} />
             <PersonDeskPaperworkSection payName={key.payName} personId={key.personId} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskRecordsSection userId={key.userId} personId={key.personId} viewer={viewer} changeKey={changeKey} />
@@ -159,7 +162,7 @@ export function PersonDeskBody({
           </>
         ) : null}
       </div>
-      {flow && flow !== 'bring_back' && key ? <PersonDeskLifecycleModal mode={flow} personKey={key} viewer={viewer} viewerUserId={viewerUserId} userEmail={user?.email ?? null} onClose={() => setFlow(null)} onChanged={onChanged} /> : null}
+      {flow && flow !== 'bring_back' && key ? <PersonDeskLifecycleModal mode={flow} personKey={key} viewer={viewer} viewerUserId={viewerUserId} userEmail={user?.email ?? null} userHasLogin={user?.login_attached_at != null} onClose={() => setFlow(null)} onChanged={onChanged} /> : null}
       {flow === 'bring_back' && key ? <PersonDeskBringBackModal personKey={key} viewer={viewer} viewerUserId={viewerUserId} onClose={() => setFlow(null)} onChanged={onChanged} /> : null}
     </>
   )
