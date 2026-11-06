@@ -10,7 +10,7 @@ Plan sets by part (punch list #239), the last code item on the card. `plan_sets_
 
 ## What stays
 
-`plan_sets_select` and `plan_sets_delete` as they were — and with them the read gate `plan_part_can_see`, which still shows a crew member no part on a development's job and a helper no part at all without a clock session (punch list #272, found by this migration's bed); the predicate is a definer so the day that gate opens, the crew branch is ready. `plan_part_can_see`, `plan_part_can_write` and the mirror and History triggers untouched. The restrictive fences (training mode, the twin fence, the archived seal, primary scope) still apply on top. No client file changes: `planSetsIo.ts` writes the same rows.
+`plan_sets_select` and `plan_sets_delete` as they were — and with them the read gate `plan_part_can_see`, which showed a crew member no part on a development's job (punch list #272, found by this migration's bed; opened by `20261106234500`, v2.6604, whose bed also showed that a helper on the crew reads a standalone job's part through the ledger, so the card's second claim did not hold); the predicate is a definer, so the crew branch was ready for it. `plan_part_can_see`, `plan_part_can_write` and the mirror and History triggers untouched. The restrictive fences (training mode, the twin fence, the archived seal, primary scope) still apply on top. No client file changes: `planSetsIo.ts` writes the same rows.
 
 ## Checked before the push
 

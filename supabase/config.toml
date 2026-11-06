@@ -623,6 +623,10 @@ verify_jwt = false
 [functions.detach-login]
 verify_jwt = false
 
+# The Away note (#256 PR 8, v2.6587): save or clear the one screen a teammate who left sees; opens or closes their sign-in. Bearer + the archive gate in function.
+[functions.away-note]
+verify_jwt = false
+
 [functions.create-user]
 verify_jwt = false
 

@@ -162,6 +162,20 @@ describe('useAuth role gate', () => {
     expect(result.current.profileName).toBeNull()
   })
 
+  it('settles an archived caller on the seal’s refusal (PT403) instead of retrying or holding the gate (punch list #256 PR 8)', async () => {
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    const reads = roleReads
+    resolveSession(SESSION)
+    await waitFor(() => expect(roleReads).toBe(reads + 1))
+    await act(async () => {
+      resolveRole({ data: null, error: { message: 'This account is archived. The Away note is the one page it may read.', code: 'PT403' }, status: 403 })
+    })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.archivedCaller).toBe(true)
+    expect(result.current.role).toBeNull()
+    expect(roleReads).toBe(reads + 1)
+  })
+
   it('does not gate the signed-out path', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
     await act(async () => {

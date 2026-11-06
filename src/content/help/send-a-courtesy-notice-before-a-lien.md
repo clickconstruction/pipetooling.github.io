@@ -15,7 +15,7 @@ Open the Lien desk and go to **Do now**. A sent notice with nothing paid shows a
 
 - Day 7 is counted the way the attorney’s letter counts it. The desk uses the delivery day when the mail piece knows it.
 - The attorney’s letter keeps its own day. From day 10 the desk offers counsel's certified second letter beside the courtesy notice.
-- Once a courtesy notice goes, the desk waits a week before offering another.
+- The desk sends one courtesy notice. After a week of silence it offers the attorney's letter. The footer still lets you send the courtesy again by hand when an email or a text bounced.
 
 ## When the desk holds it
 
@@ -24,7 +24,10 @@ A reminder may not name a lien that cannot go on. The desk holds the button and 
 - The property is a homestead.
 - The job has no approved work month yet.
 - The affidavit window has already closed.
-- The affidavit is due inside a week. File the affidavit instead.
+
+## The affidavit's week
+
+Seven days before the lien's day the affidavit comes first. The paper takes about a week to draft, sign before a notary and file. The desk puts the affidavit first and says so on the notice. The courtesy button stays on the footer, so you may still send one by hand.
 
 ## Press it
 
