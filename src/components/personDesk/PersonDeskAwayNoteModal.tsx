@@ -86,13 +86,16 @@ export function PersonDeskAwayNoteModal({
 
   useEffect(() => {
     let on = true
-    void Promise.all([loadAwayNote(userId), loadAwayOffice().catch(() => null)])
-      .then(([note, off]) => {
+    // Two reads, each on its own: the office settings still draw in the preview when the note's read fails.
+    void loadAwayOffice()
+      .then((off) => on && setOffice(off))
+      .catch(() => on && setOffice(null))
+    void loadAwayNote(userId)
+      .then((note) => {
         if (!on) return
         setDraft(note.draft)
         setHadNote(note.row != null)
         setUpdatedYmd(note.row?.updated_at ? note.row.updated_at.slice(0, 10) : null)
-        setOffice(off)
       })
       .catch((e: unknown) => on && setError(formatErrorMessage(e, 'Could not read the note')))
       .finally(() => on && setLoaded(true))
