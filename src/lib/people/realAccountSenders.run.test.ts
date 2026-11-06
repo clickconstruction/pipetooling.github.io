@@ -55,7 +55,7 @@ async function send(bearer: string, recipient: string) {
 describe('send-bid-pricing-package takes only a real account (punch list #29)', () => {
   it('refuses a twin as the sender, before it reads the bid', async () => {
     expect(await send('twin-jwt', 'u-gc-contact')).toEqual({ status: 403, body: { ok: false, error: 'Sender not found' } })
-    expect(box.db.calls).toEqual(['auth.getUser', 'select users'])
+    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'select users'])
   })
 
   it('refuses a View-as sample account as the sender, as it did before', async () => {
@@ -64,12 +64,12 @@ describe('send-bid-pricing-package takes only a real account (punch list #29)', 
 
   it('refuses a twin as the recipient', async () => {
     expect(await send('estimator-jwt', 'u-twin')).toEqual({ status: 404, body: { ok: false, error: 'Recipient not found' } })
-    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'select bids', 'select users'])
+    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'select users', 'select bids', 'select users'])
   })
 
   it('lets a person send to a person: past both checks, on to the price', async () => {
     const res = await send('estimator-jwt', 'u-gc-contact')
     expect(res).toEqual({ status: 404, body: { ok: false, error: 'Price book version not found' } })
-    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'select bids', 'select users', 'select price_book_versions'])
+    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'select users', 'select bids', 'select users', 'select price_book_versions'])
   })
 })

@@ -15,6 +15,7 @@ import { brandImageAbsoluteUrl } from '../_shared/estimateEmailBrandImage.ts'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
 import { buildBidRoomLinkEmail } from '../_shared/bidRoomLinkEmail.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,6 +48,8 @@ serve(async (req) => {
     if (!visible) return json({ error: 'Room not found or access denied' }, 403)
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, userData?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: room } = await admin
       .from('bid_proposal_rooms')
       .select('id, public_token, closed_at, bid_id, customer_id')

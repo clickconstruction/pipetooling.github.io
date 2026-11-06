@@ -28,13 +28,15 @@ const roleOf = (id: string) => {
   const account = ACCOUNTS.find((a) => a.id === id)
   return account ? { data: { role: account.role }, error: null } : { data: null, error: { message: 'no row' } }
 }
-/** `from('users').select('role').eq('id', id).single()`, and the service role's insert into `user_imitations`. */
+/** `from('users').select('role').eq('id', id).single()`, the guard's `.maybeSingle()` on the same table, and the service role's insert into `user_imitations`. */
 const from = (table: string) => {
   let id = ''
   const chain = {
     select: () => chain,
     eq: (_column: string, value: string) => ((id = value), chain),
     single: async () => (table === 'users' ? roleOf(id) : { data: null, error: { message: 'no row' } }),
+    // The archived guard's read (v2.6579, refuseArchivedCaller): every account here is active.
+    maybeSingle: async () => (table === 'users' ? { data: { archived_at: null }, error: null } : { data: null, error: null }),
     insert: async (row: Record<string, unknown>) => {
       fake.steps.push(`insert ${table}`)
       if (fake.recordError) return { data: null, error: fake.recordError }

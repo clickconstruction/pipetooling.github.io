@@ -51,12 +51,12 @@ const atOther = { contactId: OTHER.contactId, channelId: OTHER.channelId, body: 
 describe('quo-send and the walk tester (punch list #142 PR 5)', () => {
   it('lets the tester through at the kit’s phone channel, past the door and the office check', async () => {
     expect(await send('tester-jwt', atKit)).toEqual({ status: 404, body: { ok: false, error: 'notFound', words: 'That number is not one of theirs.' } })
-    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'select app_settings', 'rpc gc_office_team', 'select contact_channels'])
+    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'select users', 'select app_settings', 'rpc gc_office_team', 'select contact_channels'])
   })
 
   it('refuses the tester at anyone else’s channel, with the words, before the office check', async () => {
     expect(await send('tester-jwt', atOther)).toEqual({ status: 403, body: { ok: false, error: 'walkTesterOnly', words: KIT_DOOR_WORDS } })
-    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'select app_settings'])
+    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'select users', 'select app_settings'])
     expect(await send('tester-jwt', { ...atKit, contactId: OTHER.contactId })).toMatchObject({ status: 403, body: { error: 'walkTesterOnly' } })
     expect(await send('tester-jwt', { contactId: KIT.contactId })).toMatchObject({ status: 403, body: { error: 'walkTesterOnly' } })
   })
@@ -71,7 +71,7 @@ describe('quo-send and the walk tester (punch list #142 PR 5)', () => {
       status: 403,
       body: { ok: false, error: 'walkTesterOnly', words: KIT_DOOR_WORDS },
     })
-    expect(box.db.calls).toEqual(['auth.getUser', 'select users'])
+    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'select users'])
   })
 
   it('refuses a sample, a twin and a training account that is not the tester, as before', async () => {
@@ -82,6 +82,6 @@ describe('quo-send and the walk tester (punch list #142 PR 5)', () => {
 
   it('leaves the office as it was: no kit read, on to the number', async () => {
     expect(await send('office-jwt', atOther)).toEqual({ status: 404, body: { ok: false, error: 'notFound', words: 'That number is not one of theirs.' } })
-    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'rpc gc_office_team', 'select contact_channels'])
+    expect(box.db.calls).toEqual(['auth.getUser', 'select users', 'select users', 'rpc gc_office_team', 'select contact_channels'])
   })
 })

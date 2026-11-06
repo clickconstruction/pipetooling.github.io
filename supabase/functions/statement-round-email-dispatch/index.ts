@@ -28,6 +28,7 @@ import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { isOfficeWeekPayload, officeWeekSubject, officeWeekText, renderOfficeWeekHtml, type OfficeWeekPayload } from './renderOfficeWeek.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -79,6 +80,8 @@ async function requireOffice(req: Request, admin: Admin): Promise<UserRow | Resp
     data: { user },
     error: authErr,
   } = await jwtClient.auth.getUser(token)
+  const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+  if (archivedRefusal) return archivedRefusal
   if (authErr || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
   const me = await loadUser(admin, user.id)
   if (!me || me.archived_at || !OFFICE_ROLES.has(String(me.role))) return jsonResponse({ error: 'Forbidden' }, 403)

@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { loadQuoApiKey, quoGet, type QuoKeyDb } from '../_shared/quoKey.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * quo-config (v2.5718, the Quo connection in Settings; the owner's ask of 2026-10-21: no terminal in setup): the
@@ -58,6 +59,8 @@ serve(async (req) => {
     if (authError || !user) return jsonResponse({ error: 'Sign in first.' }, 401)
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: who } = await admin.from('users').select('id, name, role, read_only').match(REAL_ACCOUNT).eq('id', user.id).maybeSingle()
     const row = who as { name?: string | null; role?: string; read_only?: boolean } | null
     const role = String(row?.role ?? '')

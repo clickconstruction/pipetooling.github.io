@@ -16,6 +16,7 @@ import { readGcStatementGate } from '../_shared/gcStatementGateIo.ts'
 import { PORTAL_QR_CONTENT_ID, PORTAL_QR_FILENAME } from '../_shared/portalAccountCard.ts'
 import { qrMatrix } from '../_shared/qrMatrix.ts'
 import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Send a GC statement email (v2.1416, phase 2 of GC statements).
@@ -202,6 +203,8 @@ serve(async (req) => {
     }
 
     const serviceClient = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(serviceClient, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     // The gate (v2.5022): a GC's statement goes out only when this week's check stands — certified,
     // and nothing moved since. Held, it answers 200 with the worklist's words, as a duplicate does.

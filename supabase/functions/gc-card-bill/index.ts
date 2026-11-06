@@ -23,6 +23,7 @@ import {
   parseGcCardBillRequest,
   type GcCardBillErrorKey,
 } from '../_shared/gcCardBill.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * gc-card-bill — GC mode, Owner Billing's O8b: the customer pays a certified GC bill by card from their portal, with
@@ -198,6 +199,8 @@ async function undoDoor(req: Request, admin: Admin, invoiceId: string): Promise<
   if (!authHeader.startsWith('Bearer ')) return refuse('signIn')
   const userClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } })
   const { data: u } = await userClient.auth.getUser(authHeader.slice(7))
+  const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+  if (archivedRefusal) return archivedRefusal
   if (!u?.user) return refuse('signIn')
   const { data: who } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
   const w = who as { role?: string | null; read_only?: boolean | null; is_digital_twin?: boolean | null } | null

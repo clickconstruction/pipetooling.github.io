@@ -13,6 +13,7 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { appOrigin } from '../_shared/jobContract.ts'
 import { buildSubmittalReplyEmail } from '../_shared/submittalReplyEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,6 +40,8 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await userClient.auth.getUser(jwt)
     if (authErr || !user) return json({ error: 'Unauthorized' }, 401)
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     const body = (await req.json().catch(() => ({}))) as { message_id?: string; public_origin?: string }
     const messageId = (body.message_id ?? '').trim()

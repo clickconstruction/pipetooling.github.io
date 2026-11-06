@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { type HeldSubmittalTask, twinMayReadPlans } from '../_shared/twinSeatGate.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 // plan-fetch — the pipeline's plan-bytes door (estimator-twin pipeline, CT-1).
 // Streams a bid's plan set (the Drive file behind bids.plans_link) to an authorized
@@ -271,6 +272,8 @@ serve(async (req) => {
       const auth = req.headers.get('Authorization') ?? ''
       const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
       const { data: u } = await anon.auth.getUser()
+      const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+      if (archivedRefusal) return archivedRefusal
       if (!u?.user) return json({ error: 'Auth required (twin token or staff session)' }, 401)
       const { data: row } = await admin.from('users').select('role').eq('id', u.user.id).maybeSingle()
       const staffRoles = ['dev', 'master_technician', 'assistant', 'controller', 'estimator']

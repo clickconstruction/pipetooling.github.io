@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { buildReconcileReceipt } from '../_shared/reconcileReceipt.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const MERCURY_BASE = 'https://api.mercury.com/api/v1'
 
@@ -105,6 +106,8 @@ serve(async (req) => {
     // Service-role client: mercury_transactions RLS is dev-only select; we need
     // the existence check to run regardless of the caller's row visibility.
     const admin = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     // 1. Live balances + account list.
     const accRes = await mercuryGet('/accounts', mercuryKey)

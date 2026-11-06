@@ -24,6 +24,7 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { buildJobAccountMoveEmail } from '../_shared/jobAccountMoveEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -74,6 +75,8 @@ serve(async (req) => {
     if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
     const admin = createClient(supabaseUrl, serviceRole)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: meRow } = await admin.from('users').select('id, name, email, role, archived_at, read_only').eq('id', user.id).match(REAL_ACCOUNT).maybeSingle()
     const me = meRow as { id: string; name: string | null; email: string | null; role: string | null; archived_at: string | null; read_only: boolean | null } | null
     if (!me || me.archived_at || !OFFICE_ROLES.has(String(me.role))) return json({ error: 'Only the office can ask for a job-account move.' }, 403)

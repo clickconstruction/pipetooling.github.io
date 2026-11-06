@@ -4,6 +4,7 @@ import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import { stripeApiKeyForMode } from '../_shared/stripeSecrets.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { lienOfferCreditCents, lienOfferCreditMemo, lienOfferExpired, type LienOfferRow } from '../_shared/lienPayOffer.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * lien-pay-offer (v2.4704): the money side of the pay offer — the leader's discount on each
@@ -132,6 +133,8 @@ serve(async (req) => {
       data: { user },
       error: authErr,
     } = await userClient.auth.getUser(authHeader.replace(/^Bearer\s+/i, ''))
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (authErr || !user) return jsonResponse({ error: 'Invalid session' }, 401)
     const { data: roleRow } = await admin.from('users').select('role, read_only').eq('id', user.id).maybeSingle()
     const role = String((roleRow as { role?: string } | null)?.role ?? '')

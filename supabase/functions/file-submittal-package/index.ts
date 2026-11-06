@@ -4,6 +4,7 @@ import { driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken, uploadFrom
 import { driveFileLink, isFileable, jobFolderName, packageFileName, SUBMITTALS_FOLDER } from '../_shared/submittalDriveNames.ts'
 import { jobsRootFolderId, NO_ROOT_WORDS } from '../_shared/driveSettings.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 // file-submittal-package — Submittals stage 6c (v2.3552). Files a SHARED revision's package
 // PDF in the bid's job folder on Drive, under Submittals/, as "Rev N · <date>.pdf": the
@@ -37,6 +38,8 @@ serve(async (req) => {
     const { data: u } = await asUser.auth.getUser()
     if (!u?.user) return json({ error: 'Sign in first.' }, 401)
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     // The jobs root: the office's setting on Documents → Where files go (punch list #211), the DRIVE_JOBS_FOLDER_ID env while it is empty.
     const jobsFolderId = await jobsRootFolderId(admin)
     if (!jobsFolderId) return json({ ok: false, error: NO_ROOT_WORDS, code: 'not_configured' }, 503)

@@ -37,6 +37,7 @@ import {
   type PutWhere,
   twinRefusalWords,
 } from '../_shared/driveLink.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Messages, cut 7b (v2.5383): our own link to one Drive file of one job, and the office's door to a job's Drive folder.
@@ -297,6 +298,8 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   const auth = req.headers.get('Authorization') ?? ''
   const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
   const { data: u } = await anon.auth.getUser()
+  const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+  if (archivedRefusal) return archivedRefusal
   if (!u?.user) return json({ error: 'Sign in first.' }, 401)
   const { data: who } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
   if (!who || !OFFICE_ROLES.includes(String(who.role))) return json({ error: 'Office only.' }, 403)
