@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CourtesyStatus } from './lienCourtesyNotice'
 import type { LetterTwoStatus } from './lienLetterTwo'
-import { buildLienReminders, lienReminderAt, lienReminderLadderItems, lienReminderRungRule, lienReminderRungRuleWords, lienReminderRungWords, lienReminderStepWho } from './lienReminders'
+import { buildLienReminders, lienReminderAt, lienReminderLadderItems, lienReminderBrief, lienReminderRungRule, lienReminderRungWords, lienReminderStepWho } from './lienReminders'
 
 const two = (over: Partial<LetterTwoStatus> = {}): LetterTwoStatus => ({ state: 'waiting', day: 4, clock: { kind: 'recorded', at: '2026-10-31T15:00:00Z', why: '' }, firstItemId: 'i1', firstSentAt: '2026-10-31T15:00:00Z', letterTwo: null, gcAuthorized: null, ownerCalledAt: null, words: 'day 4', ...over })
 
@@ -118,7 +118,24 @@ describe('lienReminderRungRule — a rung’s rule in words (v2.6522)', () => {
     expect(lienReminderRungRule(3)).toMatchObject({ who: 'leader' })
     expect(lienReminderRungRule(3).when).toContain('due from day 10 and overdue from day 14 while the courtesy is held')
     expect(lienReminderRungRule(4).press).toBe('none; the notice reads under Sent')
-    expect(lienReminderRungRuleWords(3)).toBe('Stands here when letter two is due from day 10 and overdue from day 14 while the courtesy is held, or a letter two is drafting, awaiting the leader, in the run or sent. The press: Send letter two, counsel’s certified second letter, drafted on the notice and approved and run like any notice. The leader presses it. Moves on when something closes it, or the affidavit is filed.')
-    expect(lienReminderRungRuleWords(1)).toContain('The office presses it.')
+  })
+})
+
+describe('lienReminderBrief — the step brief a pressed rung opens (v2.6574)', () => {
+  it('answers what, why, the usual move and whose, the other moves, and what closes the step, from the clocks’ days', () => {
+    const one = lienReminderBrief(1)
+    expect(one).toMatchObject({ title: 'Reminder due', who: 'office', usual: 'Send a courtesy notice' })
+    expect(one.why).toBe('The packet went, nothing came back, and it is day 7 or later.')
+    expect(one.instead).toEqual(['Send letter two now, without the light step', 'Record the owner’s call', 'The GC authorized direct pay'])
+    expect(lienReminderBrief(2).usual).toBe('Send a courtesy notice again after 7 days, or Send letter two from day 10')
+    const three = lienReminderBrief(3)
+    expect(three).toMatchObject({ title: 'Letter two', who: 'leader', usual: 'Send letter two' })
+    expect(three.what).toContain('offered from day 10 and overdue from day 14')
+    expect(three.why).toContain('the affidavit is inside 7 days')
+    expect(three.closes).toContain('the affidavit is filed')
+    const four = lienReminderBrief(4)
+    expect(four.usual).toBeNull()
+    expect(four.closes).toBe('')
+    expect(four.instead[1]).toContain('Not what I said')
   })
 })

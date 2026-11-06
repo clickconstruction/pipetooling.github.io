@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienNextUpRow } from './lienNextUp'
-import { countLienSteps, lienLaddersShown, lienRunRungWords, lienStepCard, lienStepOfRow, lienStepShowingWords, lienStepTiles } from './lienNextUpSteps'
+import { countLienSteps, lienLaddersShown, lienRunRungWords, lienStepCard, lienStepGroups, lienStepName, lienStepOfRow, lienStepTiles } from './lienNextUpSteps'
 
 const row = (over: Partial<LienNextUpRow>): LienNextUpRow => ({
   key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · ATI Schertz', sub: 'Notice to draft', dueOn: '2026-10-15', daysLeft: 10, severity: 'amber', group: 'coming', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' },
@@ -150,10 +150,19 @@ describe('the printed run on the ladder (punch list #101)', () => {
   })
 })
 
-describe('lienStepShowingWords — the line under the rails while a rung is pressed (v2.6522)', () => {
-  it('names the rung, counts the bright rows, says the rest are faded and not held, and offers the way back', () => {
-    expect(lienStepShowingWords({ ladder: 'reminder', step: 3 }, 4, 15)).toEqual({ head: 'Showing 3 · Letter two', count: '4 of 15 on the list · the rest are faded, not held', clear: 'Show all 15' })
-    expect(lienStepShowingWords({ ladder: 'notice', step: 2 }, 3, 3).count).toBe('every row on the list is on this step')
-    expect(lienStepShowingWords({ ladder: 'affidavit', step: 1 }, 0, 6).count).toBe('none of the 6 on the list is on this step · all are faded, not held')
+describe('lienStepGroups — the list under a pressed rung, sorted and never faded (v2.6574)', () => {
+  it('puts the rung’s rows first under On this step and the rest under On other steps, in the list’s own order', () => {
+    const rows = [row({ key: 'a', action: 'draft' }), row({ key: 'b', kind: 'affidavit', action: 'fix_property' }), row({ key: 'c', action: 'draft' }), row({ key: 'd', action: 'approve' })]
+    const g = lienStepGroups(rows, { ladder: 'notice', step: 2 })
+    expect(g.map((x) => [x.group, x.label, x.rows.map((y) => y.key)])).toEqual([
+      ['step_on', 'On this step', ['a', 'c']],
+      ['step_other', 'On other steps', ['b', 'd']],
+    ])
+    expect(lienStepGroups(rows, { ladder: 'affidavit', step: 4 })[0]!.rows).toEqual([])
+    expect(lienStepGroups([rows[0]!], { ladder: 'notice', step: 2 })).toHaveLength(1)
+  })
+  it('names the rung for the brief’s head', () => {
+    expect(lienStepName({ ladder: 'reminder', step: 3 })).toBe('3 · Letter two')
+    expect(lienStepName({ ladder: 'affidavit', step: 1 })).toBe('1 · Fix the property')
   })
 })

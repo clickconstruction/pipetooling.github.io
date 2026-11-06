@@ -110,6 +110,9 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     // The window arrives on the lazy chunk's Suspense retry.
     await screen.findByTestId('lien-rules-modal')
     const strip = await screen.findByTestId('lien-rules-job')
+    // Our schedule after a notice (v2.6574): the strip and whose rule each day is, under the job's dates.
+    expect(screen.getByTestId('lien-rules-schedule').textContent).toContain('day 10 letter two is due')
+    expect(screen.getByTestId('lien-rules-schedule-sources').textContent).toContain('counsel’s rule')
     expect(strip.textContent).toContain('Sub job')
     // The job's property kind is not set: the residential dates, a month earlier than commercial (v2.5031).
     expect(screen.getByTestId('lien-rules-job-notice').textContent).toBe('Sep 15')

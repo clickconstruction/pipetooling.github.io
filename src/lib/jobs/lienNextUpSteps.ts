@@ -271,16 +271,27 @@ export function lienRunRungWords(n: number, printed: number): string {
   return ` · ${printed} printed`
 }
 
-export type LienStepShowing = { head: string; count: string; clear: string }
-
 /**
- * The line under the rails while a rung is pressed (v2.6522). The press fades every row not on
- * the rung to a third, and on 2026-11-04 the pale rows were read as blocked: the line names the
- * rung, counts what is bright, says the rest are faded and not held, and offers the way back.
+ * The list under a pressed rung (v2.6574): the rows on the rung first under *On this step*, the rest
+ * at full strength under *On other steps*, each in the order the list already had. Until v2.6574 a
+ * pressed rung faded the rows off it to a third (v2.4631), and the pale rows were read as blocked;
+ * the sort says the same thing with nothing greyed, so every row keeps its button and its look.
  */
-export function lienStepShowingWords(on: LienStepAt, shown: number, total: number): LienStepShowing {
+export function lienStepGroups(rows: ReadonlyArray<LienNextUpRow>, on: LienStepAt): Array<{ group: 'step_on' | 'step_other'; label: string; rows: LienNextUpRow[] }> {
+  const isOn = (r: LienNextUpRow) => {
+    const at = lienStepOfRow(r)
+    return !!at && at.ladder === on.ladder && at.step === on.step
+  }
+  const here = rows.filter(isOn)
+  const other = rows.filter((r) => !isOn(r))
+  return [
+    { group: 'step_on', label: 'On this step', rows: here },
+    ...(other.length ? [{ group: 'step_other' as const, label: 'On other steps', rows: other }] : []),
+  ]
+}
+
+/** A pressed rung's name, *3 · Letter two*, for the brief's head on any rail. */
+export function lienStepName(on: LienStepAt): string {
   const ladder = LIEN_STEP_LADDERS.find((l) => l.key === on.ladder)!
-  const head = `Showing ${on.step} · ${ladder.steps[on.step - 1]}`
-  const count = shown >= total ? `every row on the list is on this step` : shown === 0 ? `none of the ${total} on the list is on this step · all are faded, not held` : `${shown} of ${total} on the list · the rest are faded, not held`
-  return { head, count, clear: `Show all ${total}` }
+  return `${on.step} · ${ladder.steps[on.step - 1]}`
 }

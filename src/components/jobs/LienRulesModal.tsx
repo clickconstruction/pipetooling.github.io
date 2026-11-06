@@ -44,6 +44,9 @@ function chipWords(title: string): string {
 const kbd: CSSProperties = { fontSize: '0.7rem', border: '1px solid var(--border-strong)', borderBottomWidth: 2, borderRadius: 4, padding: '0 5px', background: 'var(--surface)' }
 const smallBtn: CSSProperties = { font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '3px 9px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }
 
+import { LienReminderScheduleStrip } from './LienDeskSteps'
+import { lienScheduleSourceLines } from '../../lib/jobs/lienReminderSchedule'
+
 export default function LienRulesModal({ cite, onClose, job = null, todayYmd }: Props) {
   const isMobile = useIsMobile()
   const guide = useMemo(() => HELP_GUIDES.find((g) => g.slug === LIEN_RULES_GUIDE_SLUG) ?? null, [])
@@ -299,6 +302,16 @@ export default function LienRulesModal({ cite, onClose, job = null, todayYmd }: 
         ) : (
           <div />
         )}
+        {/* Our schedule after a notice (v2.6574): the path from the packet to the affidavit's day, with whose rule each day is — the days are the clocks' own. */}
+        <div data-testid="lien-rules-schedule" style={{ padding: isMobile ? '0.5rem 0.75rem 0.6rem' : '0.55rem 1.25rem 0.7rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: 6 }}>
+          <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-violet-700)' }}>Our schedule after a notice</div>
+          <LienReminderScheduleStrip isMobile={isMobile} />
+          <ul data-testid="lien-rules-schedule-sources" style={{ margin: 0, padding: '0 0 0 1rem', fontSize: '0.76rem', color: 'var(--text-muted)', display: 'grid', gap: 1 }}>
+            {lienScheduleSourceLines().map((l) => (
+              <li key={l}>{l}</li>
+            ))}
+          </ul>
+        </div>
         <div className="lienRulesSplit" data-mobile={isMobile ? 'yes' : 'no'}>
           {isMobile ? chips : railNav}
           <div
