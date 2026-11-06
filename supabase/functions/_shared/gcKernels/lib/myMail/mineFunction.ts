@@ -34,6 +34,8 @@ import {
   type MyMailRefusalError,
   type MyMailRequest,
   type MyMailRow,
+  type MyMailTagPlanMail,
+  type MyMailTagPlanOk,
   type MyMailView,
 } from './contract.ts'
 import { subjectJobChip, type MyMailGuess, type MyMailGuessFacts } from './mailGuess.ts'
@@ -98,7 +100,10 @@ export function parseMyMailRequest(raw: unknown): MyMailRequest | null {
       const j = job as Record<string, unknown>
       const kind = JOB_KINDS.find((k) => k === j.kind)
       if (!kind || typeof j.id !== 'string' || !UUID.test(j.id)) return null
-      return { action: 'tag', threadId: r.threadId, job: { kind, id: j.id.toLowerCase() } }
+      // The seat's door (server 0.30.0): `as` the login whose box it is, `plan` for the dry run. Anything else in them is no request.
+      if (r.plan !== undefined && typeof r.plan !== 'boolean') return null
+      if (r.as !== undefined && (typeof r.as !== 'string' || !myMailAddressKey(r.as))) return null
+      return { action: 'tag', threadId: r.threadId, job: { kind, id: j.id.toLowerCase() }, ...(r.plan === true ? { plan: true } : {}), ...(typeof r.as === 'string' ? { as: r.as.trim().toLowerCase() } : {}) }
     }
     case 'untag':
       return typeof r.threadId === 'string' && GMAIL_ID.test(r.threadId) ? { action: 'untag', threadId: r.threadId } : null
@@ -968,3 +973,32 @@ export function planFollow(
 
 /** A followed conversation's `last_error` when Gmail no longer has it in the person's box: deleted there, nothing more lands. */
 export const MY_MAIL_FOLLOW_GONE = 'This conversation is gone from their Gmail. Later mail in it cannot land.'
+
+// ---------- the seat's dry run (server 0.30.0) ----------
+
+/** Why a mail is never written, in words the seat reads back. */
+export const MY_MAIL_SKIP_WORDS: Readonly<Record<MyMailTagSkip, string>> = {
+  draft: 'a draft',
+  spamOrTrash: 'in spam or the trash',
+  chat: 'a chat',
+  hidden: 'under a label the person leaves out',
+  noParty: 'nobody outside to land it on',
+  twice: 'the same mail twice in the conversation',
+}
+
+/**
+ * The plan of a tag as the dev seat reads it back before anything is written (`plan_mail_tag`): the job, the counts,
+ * each mail with what the tag would do to it and the headers that say which mail it is, and the job the conversation
+ * was on before when a tag would move it. Pure: the function hands in the plan it would execute and the mails it read.
+ */
+export function tagPlanPreview(plan: MyMailTagPlan, emails: readonly EmailIn[], account: string, movingFrom: string | null): MyMailTagPlanOk {
+  const byId = new Map(emails.map((e) => [e.gmailId, e]))
+  const mails: MyMailTagPlanMail[] = plan.steps.map((s) => {
+    const e = byId.get(s.gmailId)
+    const head = { gmailId: s.gmailId, at: e?.at ?? null, from: e?.from ? (e.from.name?.trim() ? `${e.from.name.trim()} <${e.from.address}>` : e.from.address) : '', subject: e?.subject ?? '' }
+    if (s.kind === 'skip') return { ...head, kind: 'skip', why: MY_MAIL_SKIP_WORDS[s.why] }
+    if (s.kind === 'tie') return { ...head, kind: 'tie', tie: s.tie, why: s.tie ? (s.onJob ? `a line on ${s.onJob} moves onto this job` : 'a line on the person is tied to this job') : s.onJob === plan.jobKey ? 'already on this job' : `the office’s tie on ${s.onJob ?? 'nothing'} stays` }
+    return { ...head, kind: 'write', files: s.files.length }
+  })
+  return { ok: true, plan: true, threadId: plan.threadId, account, job: plan.job, counts: plan.counts, mails, movingFrom }
+}

@@ -159,6 +159,7 @@ import {
   newestMailAt,
   orphanCopies,
   parseMyMailRequest,
+  tagPlanPreview,
   planFollow,
   planUntag,
   stoppedRefusal,
@@ -182,7 +183,7 @@ import {
 
 /** The roles whose addresses are ours, as the bids@ reader's `loadTeam` reads them. A sub or a helper is someone we write to. */
 const STAFF_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent']
-const USER_COLUMNS = 'id, name, email, read_only, is_sample, is_digital_twin, is_walk_tester, my_mail_on, my_mail_hidden_labels'
+const USER_COLUMNS = 'id, name, email, role, archived_at, read_only, is_sample, is_digital_twin, is_walk_tester, my_mail_on, my_mail_hidden_labels'
 const LINE_COLUMNS = 'id, gmail_id, rfc_message_id, bid_id, project_id, jobs_ledger_id, mail_user_id'
 const HELD_COLUMNS = 'id, contact_id, gmail_id, rfc_message_id, bid_id, project_id, jobs_ledger_id, mailbox, mail_user_id, tied_by'
 /** A conversation's row as the tag and the untag read it: its job, who tagged it, and the lines its tag tied. */
@@ -856,6 +857,11 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
     boxes: box.boxes,
     hidden,
   })
+  // The seat's dry run (server 0.30.0): the plan read back, nothing written, no label put on.
+  if (ask.plan === true) {
+    log({ event: 'gmail_mine_tag_plan', user: me.id, job_kind: chip.kind, mails: plan.steps.length, ...plan.counts })
+    return json(tagPlanPreview(plan, emails, me.email, wasOn !== null && wasOn !== plan.jobKey ? wasOn : null))
+  }
   const heldById = new Map([...held, ...own].map((l) => [l.id, l]))
   const emailById = new Map(emails.map((e) => [e.gmailId, e]))
   const run = newRun()
@@ -1295,13 +1301,38 @@ serve(async (req) => {
     if (whoError) return refuse(stoppedRefusal('Reading your account failed.', whoError.message), MY_MAIL_STOPPED_STATUS)
     // A sample (a dev's View as), a twin and the walk tester have no mailbox of their own.
     if (!who || isFixtureAccount(who) || who.is_walk_tester === true) return refuse(myMailRefusal('readOnly'))
-    const { data: office, error: officeError } = await caller.rpc('gc_office_team')
-    if (officeError || office !== true) return refuse(myMailRefusal('officeOnly'))
-    if (who.my_mail_on !== true) return refuse(myMailRefusal('off'))
 
     const ask = parseMyMailRequest(await req.json().catch(() => null))
     if (!ask) return refuse(myMailRefusal('badRequest'))
     action = ask.action
+
+    // The dev seat's door (server 0.30.0, `plan_mail_tag` → `apply_mail_tag`): a dev's own key, naming itself with
+    // X-Dev-Seat, tags a conversation out of another login's box onto a job — the plan first, written nowhere, then
+    // the tag — as that person, under the same delegation and the same planner, so the lines land as their own press
+    // would land them. Only a tag comes through here: the seat reads mail with its own verbs, and never untags.
+    if (ask.action === 'tag' && typeof ask.as === 'string') {
+      if (req.headers.get('X-Dev-Seat') !== 'dev-mcp' || who.role !== 'dev') return refuse(myMailRefusal('badRequest', 'A tag as another login is the dev seat’s alone.'), MY_MAIL_REFUSAL_STATUS.badRequest, action)
+      if (who.read_only === true) return refuse(myMailRefusal('readOnly'), MY_MAIL_REFUSAL_STATUS.readOnly, action)
+      const { data: them, error: themError } = await admin.from('users').select(USER_COLUMNS).ilike('email', ask.as).maybeSingle()
+      if (themError) return refuse(stoppedRefusal('Reading that login failed.', themError.message), MY_MAIL_STOPPED_STATUS)
+      if (!them || isFixtureAccount(them) || them.is_walk_tester === true || them.archived_at) return refuse(myMailRefusal('notFound', `No current login of the Workspace reads as ${ask.as}.`), MY_MAIL_REFUSAL_STATUS.notFound, action)
+      const theirEmail = String(them.email ?? '').trim()
+      let token: string
+      try {
+        token = await googleServiceToken(saJson, GMAIL_SCOPES, theirEmail)
+      } catch (e) {
+        return refuse(tokenRefusal(words(e)), undefined, action)
+      }
+      const theirHidden = Array.isArray(them.my_mail_hidden_labels) ? (them.my_mail_hidden_labels as unknown[]).filter((l): l is string => typeof l === 'string') : []
+      const ctx: Ctx = { admin, caller, token, me: { id: String(them.id), name: String(them.name ?? '').trim(), email: theirEmail, readOnly: false, hiddenLabels: theirHidden } }
+      log({ event: 'gmail_mine_seat_tag', dev: String(who.id), as: String(them.id), plan: ask.plan === true })
+      return await tag(ctx, ask)
+    }
+    if (ask.action === 'tag' && ask.plan === true) return refuse(myMailRefusal('badRequest', 'The plan of a tag is the dev seat’s alone.'), MY_MAIL_REFUSAL_STATUS.badRequest, action)
+
+    const { data: office, error: officeError } = await caller.rpc('gc_office_team')
+    if (officeError || office !== true) return refuse(myMailRefusal('officeOnly'))
+    if (who.my_mail_on !== true) return refuse(myMailRefusal('off'))
     // Training mode reads, and never writes.
     if ((ask.action === 'tag' || ask.action === 'untag') && who.read_only === true) return refuse(myMailRefusal('readOnly'), MY_MAIL_REFUSAL_STATUS.readOnly, action)
     const email = String(who.email ?? '').trim()

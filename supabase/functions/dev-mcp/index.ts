@@ -17,9 +17,13 @@ import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthRead
 import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { findExistingFile, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
-import { GmailError, gmailMessage, gmailMessageHeaders, gmailMessagePage } from '../_shared/gmail.ts'
+import { GmailError, gmailAttachment, gmailMessage, gmailMessageHeaders, gmailMessagePage } from '../_shared/gmail.ts'
 import { googleServiceToken } from '../_shared/googleToken.ts'
-import { readGmailMessage } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
+import { base64UrlBytes, readGmailMessage } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
+import { MAIL_FILE_MAX_BYTES, bytesToBase64, innerVerbFor, jobApplyReply, jobCommitment, jobPlanReply, mailFileAppliedWords, mailFileArgs, mailFileChangedWords, mailFileReadArgs, mailFileReadReply, pickMailFile, type MailFileBytes, type MailFileJobRef } from '../_shared/devMcpMailFile.ts'
+import { sha256Hex } from '../_shared/gcTradeLink.ts'
+import { mailTagAppliedWords, mailTagArgs, mailTagChangedWords, tagApplyReply, tagCommitment, tagPlanReply } from '../_shared/devMcpMailTag.ts'
+import type { MyMailTagOk, MyMailTagPlanOk } from '../_shared/gcKernels/lib/myMail/contract.ts'
 import { GMAIL_READONLY_SCOPE, MAIL_HIT_HEADERS, MAIL_SEARCH_ACCOUNTS_CAP, MAIL_SEARCH_MAX_CAP, MAIL_SEARCH_MAX_DEFAULT, inBatches, mailDomain, mailHit, mailReadArgs, mailReadReply, mailRefusal, mailSearchArgs, mailSearchReply, type MailAccount, type MailAccountOutcome } from '../_shared/devMcpMailSearch.ts'
 import { ROBOT_PLANS_SHARED_DRIVE, divisionBidFolderByKey, driveFolderUrl, robotPlansDivisionFolderName, robotPlansPathWords } from '../_shared/bidPlansFolders.ts'
 import { indexContext, indexFiles, jobFilesToIndex } from '../_shared/fileIndex.ts'
@@ -76,7 +80,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.28.0'
+const SERVER_VERSION = '0.30.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -226,6 +230,31 @@ const TOOLS: McpTool[] = [
     name: 'read_mail',
     description: "One mail whole from a search_mail hit (v2.6565): its headers, the reader's words as plain text (up to 30,000 characters), its labels and its files by name, kind and size. The bytes stay in Gmail. Read-only, under the same delegation and scope.",
     inputSchema: { type: 'object', properties: { account: { type: 'string', description: 'The address the hit names' }, id: { type: 'string', description: "The hit's Gmail id" } }, required: ['account', 'id'] },
+  },
+  {
+    name: 'read_mail_file',
+    description: "One file off a search_mail hit, whole (server 0.29.0): read from Gmail on the server by its name as read_mail lists it, handed back as content_base64 with its mime, size and sha256, up to 10 MB. Read-only. When the file belongs on a job, a person's file or a matter, plan_mail_file files it there without the bytes passing through you.",
+    inputSchema: { type: 'object', properties: { account: { type: 'string', description: 'The address the hit names' }, id: { type: 'string', description: "The hit's Gmail id" }, name: { type: 'string', description: "The file's name as read_mail lists it" } }, required: ['account', 'id', 'name'] },
+  },
+  {
+    name: 'plan_mail_file',
+    description: "Dry-run filing one file off a search_mail hit where it belongs (server 0.29.0): the file is read from Gmail on the server (never through you, up to 10 MB) and the plan commits to its bytes. to.kind job lands it in the job's Drive folder as the Documents tab's Add a file does (drive-link's put, as you: where top | plans | pictures | sent | photos, top when left out); person_evidence makes the evidence record plan_person_evidence makes, the file as its one file; matter_document makes the document plan_matter_document makes. Replies with the plan and a plan_hash; the evidence and document kinds reply as their own plan verbs do. Nothing is written.",
+    inputSchema: { type: 'object', properties: { file: { type: 'object', description: "{ account, id, name, to: { kind: 'job', jobs_ledger_id | bid_id | project_id, where? } | { kind: 'person_evidence', person_id, dated_on, title, memo, entry_id?, counsel_only? } | { kind: 'matter_document', matter_id, title, shows, dated_on?, state?, received_on?, sent_on?, sent_how?, sent_to? } }" } }, required: ['file'] },
+  },
+  {
+    name: 'apply_mail_file',
+    description: 'File the mail file you planned: the same file plus the plan_hash from plan_mail_file. Reads the file off the mail again and writes only when the job, the landing and the bytes are what the plan saw; the evidence and document kinds run their own dry run again first. One apply per plan.',
+    inputSchema: { type: 'object', properties: { file: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['file', 'plan_hash'] },
+  },
+  {
+    name: 'plan_mail_tag',
+    description: "Dry-run tagging a whole Gmail conversation onto a job (server 0.30.0): out of the box of the login named, as that person, through gmail-mine's own tag — the Messages → My email press — so every mail lands on the job's Activity and notes at its own time, a line the boxes already hold is tied instead of written twice, and later mail in the conversation follows by itself. The plan lists each mail with what the tag would do (write, tie, skip and why), the counts, and the job the conversation was on before when a tag would move it. Nothing is written and no label is put on. Find the conversation with search_mail (a hit's thread_id) and the job with find_job.",
+    inputSchema: { type: 'object', properties: { tag: { type: 'object', description: "{ account (the address the hit names), thread_id (the hit's thread_id), job: { jobs_ledger_id | bid_id | project_id } }" } }, required: ['tag'] },
+  },
+  {
+    name: 'apply_mail_tag',
+    description: "Tag the conversation you planned: the same tag plus the plan_hash from plan_mail_tag. Plans again first and tags only when the conversation and the job are as the plan saw them; writes the lines, keeps the files, puts the Tagged in ClickTooling label on the mails in that person's Gmail, and arms the follow. One apply per plan.",
+    inputSchema: { type: 'object', properties: { tag: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['tag', 'plan_hash'] },
   },
   {
     name: 'check_license',
@@ -499,7 +528,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. search_mail runs one Gmail search across the company's own mailboxes under the service account's delegation, as each login, read-only by scope, and read_mail reads one hit whole; every search is logged with its query and its accounts, never a mail's words, and neither verb can label, trash or delete a mail. Secret columns (tokens, hashes, passwords) come back redacted. Writes are forty-five verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_license → apply_license (a teammate's license added, or its level, number, expiry or note changed, the words written the logbook's way; check_license reads TDLR's record of an electrical or HVAC number first, and never writes), plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64, or as a Drive link for one already there — staged in hr-files and filed into the People Shared Drive), plan_person_report → apply_person_report (a waiting field report filed onto a person's HR file as the entry it becomes, or dismissed with a reason, through the queue's own RPCs), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_theme_marks → apply_theme_marks (themes on the record: a theme from the catalog on an HR entry, a piece of evidence, a matter document or a matter event, with why it fits and how it proves the theme, up to 100 a call, kept or proposed; read_rows on legal_themes for the catalog, get_person_file for the entries and records), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil; plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. search_mail runs one Gmail search across the company's own mailboxes under the service account's delegation, as each login, read-only by scope, and read_mail reads one hit whole; every search is logged with its query and its accounts, never a mail's words, and neither verb can label, trash or delete a mail. read_mail_file hands one file off a hit back as base64, and plan_mail_file → apply_mail_file files one straight where it belongs — a job's Drive folder as the Documents tab's Add a file does, a person's HR file as evidence, or a matter's Evidence tab — under the same plan then apply rule, the bytes read on the server and never passing through you. plan_mail_tag → apply_mail_tag tags a whole conversation out of any login's box onto a job's Activity and notes, as that person, through the My email press's own planner, every mail at its own time and later mail following by itself — the plan shows what each mail would become before anything lands. Secret columns (tokens, hashes, passwords) come back redacted. Writes are forty-five verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_license → apply_license (a teammate's license added, or its level, number, expiry or note changed, the words written the logbook's way; check_license reads TDLR's record of an electrical or HVAC number first, and never writes), plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64, or as a Drive link for one already there — staged in hr-files and filed into the People Shared Drive), plan_person_report → apply_person_report (a waiting field report filed onto a person's HR file as the entry it becomes, or dismissed with a reason, through the queue's own RPCs), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_theme_marks → apply_theme_marks (themes on the record: a theme from the catalog on an HR entry, a piece of evidence, a matter document or a matter event, with why it fits and how it proves the theme, up to 100 a call, kept or proposed; read_rows on legal_themes for the catalog, get_person_file for the entries and records), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil; plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -905,6 +934,25 @@ const composite = (out: unknown, target: string): Outcome =>
 type Hooks = { priorApply: (verb: string, hash: string) => Promise<{ target: string | null; at: string | null } | null> }
 const NO_HOOKS: Hooks = { priorApply: () => Promise.resolve(null) }
 
+/** The job a mail file lands on, in words, and whether it has a Drive folder yet (0.29.0). Read as the dev: RLS applies. */
+async function jobWordsFor(reader: Reader, job: MailFileJobRef): Promise<{ label: string; folder: string } | { error: string }> {
+  const folderWords = (link: unknown): string => (typeof link === 'string' && link.trim() ? 'present' : 'none yet: apply is refused until the job has one (Documents → Jobs → the job → Make the folder)')
+  if ('jobs_ledger_id' in job) {
+    const r = (await reader.rows('jobs_ledger', { select: 'id,job_name,click_number,hcp_number,google_drive_link', filters: [{ column: 'id', op: 'eq', value: job.jobs_ledger_id }], limit: 1 }))[0]
+    if (!r) return { error: 'No Pipeline job with that jobs_ledger_id (find_job names one).' }
+    const number = typeof r.click_number === 'string' && r.click_number ? r.click_number : typeof r.hcp_number === 'string' && r.hcp_number ? r.hcp_number : ''
+    return { label: `${number ? `${number} ` : ''}${String(r.job_name ?? '')}`.trim() || `job ${job.jobs_ledger_id}`, folder: folderWords(r.google_drive_link) }
+  }
+  if ('bid_id' in job) {
+    const r = (await reader.rows('bids', { select: 'id,project_name,drive_link', filters: [{ column: 'id', op: 'eq', value: job.bid_id }], limit: 1 }))[0]
+    if (!r) return { error: 'No bid with that bid_id (find_bid names one).' }
+    return { label: `bid ${String(r.project_name ?? job.bid_id)}`, folder: folderWords(r.drive_link) }
+  }
+  const r = (await reader.rows('gc_projects', { select: 'project_id,drive_folder_url', filters: [{ column: 'project_id', op: 'eq', value: job.project_id }], limit: 1 }))[0]
+  if (!r) return { error: 'No GC project with that project_id.' }
+  return { label: `GC project ${job.project_id}`, folder: folderWords(r.drive_folder_url) }
+}
+
 /** One read verb, as `who`. `jwt` is minted lazily: the catalog verbs never need a session. */
 async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, args: Record<string, unknown>, hooks: Hooks = NO_HOOKS): Promise<Outcome> {
   switch (name) {
@@ -979,8 +1027,14 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'get_bid':
       return composite(await getBid(readerAs(await jwt()), String(args.bid ?? '')), 'bids')
     case 'search_mail':
-    case 'read_mail': {
+    case 'read_mail':
+    case 'read_mail_file':
+    case 'plan_mail_file':
+    case 'apply_mail_file':
+    case 'plan_mail_tag':
+    case 'apply_mail_tag': {
       // v2.6565: the company's own mailboxes under the delegation, as each login, read-only by scope. Nothing is kept but the log.
+      // 0.29.0: a file off a mail, read on the server and handed back or filed where it belongs (devMcpMailFile.ts).
       const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
       const domain = mailDomain(Deno.env.get('GMAIL_IMPERSONATE_USER'))
       if (!saJson || !domain) return refused('The mail reader is not set up on this project (GOOGLE_SERVICE_ACCOUNT_JSON and GMAIL_IMPERSONATE_USER, docs/EDGE_FUNCTIONS.md → gmail-sync).', { target: 'gmail' })
@@ -1007,6 +1061,109 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
           if (e instanceof GmailError && e.status === 404) return refused(`Gmail has no mail ${parsed.id} in ${parsed.account.email}.`, { target: parsed.account.email })
           return refused(mailRefusal(parsed.account.email, reason(e)), { target: parsed.account.email })
         }
+      }
+      // A file off a mail, by its name as read_mail lists it, never over the cap: the bytes come from the part itself or attachments.get.
+      const fileOff = async (account: string, id: string, fileName: string): Promise<MailFileBytes | { error: string }> => {
+        const token = await tokenFor(account)
+        const email = readGmailMessage(await gmailMessage(token, id))
+        const picked = pickMailFile(email.files, fileName)
+        if (!picked.ok) return { error: picked.error }
+        const f = picked.file
+        const over = (n: number) => `${f.name} is ${(n / 1024 / 1024).toFixed(1)} MB; a file off a mail takes at most ${MAIL_FILE_MAX_BYTES / 1024 / 1024} MB. Save it to Drive by hand and link it.`
+        if (f.size > MAIL_FILE_MAX_BYTES) return { error: over(f.size) }
+        const data = f.data ?? (f.attachmentId ? ((await gmailAttachment(token, id, f.attachmentId)).data ?? '') : '')
+        const bytes = base64UrlBytes(data)
+        if (bytes.length < 1) return { error: `${f.name} came back empty from Gmail.` }
+        if (bytes.length > MAIL_FILE_MAX_BYTES) return { error: over(bytes.length) }
+        const sha256 = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map((b) => b.toString(16).padStart(2, '0')).join('')
+        return { name: f.name, mime: f.mime, size_bytes: bytes.length, sha256, content_base64: bytesToBase64(bytes) }
+      }
+      if (name === 'read_mail_file') {
+        const parsed = mailFileReadArgs(args, known)
+        if (!parsed.ok) return refused(parsed.error, { target: 'gmail' })
+        try {
+          const file = await fileOff(parsed.account.email, parsed.id, parsed.name)
+          if ('error' in file) return refused(file.error, { target: parsed.account.email })
+          return ok(mailFileReadReply(parsed.account.email, parsed.id, file), { target: parsed.account.email })
+        } catch (e) {
+          if (e instanceof GmailError && e.status === 404) return refused(`Gmail has no mail ${parsed.id} in ${parsed.account.email}.`, { target: parsed.account.email })
+          return refused(mailRefusal(parsed.account.email, reason(e)), { target: parsed.account.email })
+        }
+      }
+      if (name === 'plan_mail_file' || name === 'apply_mail_file') {
+        if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+        const parsed = mailFileArgs(args, known)
+        if (!parsed.ok) return refused(parsed.error, { target: 'gmail' })
+        const step = name === 'plan_mail_file' ? 'plan' : 'apply'
+        const quoted = typeof args.plan_hash === 'string' ? args.plan_hash.trim() : ''
+        if (step === 'apply' && !quoted) return refused('apply_mail_file needs plan_hash from plan_mail_file.', { target: parsed.value.target })
+        let file: MailFileBytes
+        try {
+          const read = await fileOff(parsed.value.account.email, parsed.value.id, parsed.value.name)
+          if ('error' in read) return refused(read.error, { target: parsed.value.target })
+          file = read
+        } catch (e) {
+          if (e instanceof GmailError && e.status === 404) return refused(`Gmail has no mail ${parsed.value.id} in ${parsed.value.account.email}.`, { target: parsed.value.target })
+          return refused(mailRefusal(parsed.value.account.email, reason(e)), { target: parsed.value.target })
+        }
+        if (step === 'apply') {
+          // One apply per plan: the outer call is the one on the log, so the outer verb is the one asked.
+          const prior = await hooks.priorApply(name, quoted)
+          if (prior) return refused(mailFileAppliedWords(prior), { target: parsed.value.target })
+        }
+        if (parsed.value.to.kind !== 'job') {
+          // The evidence and document doors with the file as they take it: the plan, the hash and the refusals are theirs.
+          const inner = innerVerbFor(step, parsed.value.to, file, quoted || null)
+          const out = await runVerb(who, jwt, inner.verb, inner.args, hooks)
+          return { ...out, log: { ...out.log, target: out.log.target ?? parsed.value.target } }
+        }
+        // A job: drive-link's put as the dev, the Documents tab's own door. The plan commits to the job, the landing and the bytes.
+        const job = await jobWordsFor(readerAs(await jwt()), parsed.value.to.job)
+        if ('error' in job) return refused(job.error, { target: parsed.value.target })
+        const commitment = jobCommitment(parsed.value, job.label, file)
+        const hash = await sha256Hex(JSON.stringify(commitment))
+        if (step === 'plan') return ok({ ...jobPlanReply(commitment, hash), drive_folder: job.folder }, { target: parsed.value.target })
+        if (hash !== quoted) return refused(mailFileChangedWords(file.name), { target: parsed.value.target })
+        const put = await invokeAsDev(await jwt(), 'drive-link', { action: 'put', job: parsed.value.to.job, name: file.name, mime: file.mime, where: parsed.value.to.where, base64: file.content_base64 })
+        if (!put.ok) {
+          const message = restError(put.status, put.body)
+          return { log: { status: 'error', target: parsed.value.target, error: message }, text: message, isError: true }
+        }
+        const landed = put.body as { driveFileId?: string; url?: string }
+        return ok(jobApplyReply(commitment, { driveFileId: String(landed.driveFileId ?? ''), url: String(landed.url ?? '') }), { target: parsed.value.target })
+      }
+      if (name === 'plan_mail_tag' || name === 'apply_mail_tag') {
+        // 0.30.0: a conversation onto a job through gmail-mine's own tag as that login (its seat door: `as`, `plan`).
+        if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+        const parsed = mailTagArgs(args, known)
+        if (!parsed.ok) return refused(parsed.error, { target: 'gmail' })
+        const target = parsed.value.target
+        const step = name === 'plan_mail_tag' ? 'plan' : 'apply'
+        const quoted = typeof args.plan_hash === 'string' ? args.plan_hash.trim() : ''
+        if (step === 'apply' && !quoted) return refused('apply_mail_tag needs plan_hash from plan_mail_tag.', { target })
+        const session = await jwt()
+        const ask = { action: 'tag', threadId: parsed.value.threadId, job: parsed.value.job, as: parsed.value.account.email }
+        const mineWords = (r: { status: number; body: unknown }): string => {
+          const b = r.body && typeof r.body === 'object' ? (r.body as { words?: unknown; error?: unknown }) : null
+          return typeof b?.words === 'string' ? b.words : restError(r.status, r.body)
+        }
+        const planned = await invokeAsDev(session, 'gmail-mine', { ...ask, plan: true })
+        if (!planned.ok) return refused(mineWords(planned), { target })
+        const preview = planned.body as MyMailTagPlanOk
+        if (preview?.plan !== true) return refused('gmail-mine answered without a plan; it may be a deploy behind.', { target })
+        const commitment = tagCommitment(parsed.value, preview)
+        const hash = await sha256Hex(JSON.stringify(commitment))
+        if (step === 'plan') return ok(tagPlanReply(commitment, preview, hash), { target, rowCount: preview.mails.length })
+        if (hash !== quoted) return refused(mailTagChangedWords(), { target })
+        const prior = await hooks.priorApply(name, quoted)
+        if (prior) return refused(mailTagAppliedWords(prior), { target })
+        const done = await invokeAsDev(session, 'gmail-mine', ask)
+        if (!done.ok) {
+          const message = mineWords(done)
+          return { log: { status: 'error', target, error: message }, text: message, isError: true }
+        }
+        const tagged = done.body as MyMailTagOk
+        return ok(tagApplyReply(commitment, preview, tagged), { target, rowCount: (tagged.lines ?? 0) + (tagged.tied ?? 0) })
       }
       const parsed = mailSearchArgs(args, known)
       if (!parsed.ok) return refused(parsed.error, { target: 'gmail' })
@@ -1720,7 +1877,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
     if (name === 'view_as') {
       const verb = String(args.verb ?? '')
       if (!verb || verb === 'view_as') return finish(refused('view_as needs a `verb` — any read verb of this server except view_as.'))
-      if (isWriteVerb(verb) || verb === 'mint_twin_setup_code' || verb === 'plan_index_backfill' || verb === 'apply_index_backfill') return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
+      if (isWriteVerb(verb) || verb === 'mint_twin_setup_code' || verb === 'plan_index_backfill' || verb === 'apply_index_backfill' || verb === 'plan_mail_file' || verb === 'apply_mail_file' || verb === 'plan_mail_tag' || verb === 'apply_mail_tag') return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
       const target = await resolveViewAsTarget(admin, args)
       if ('error' in target) return finish(refused(target.error))
       const inner = (args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {}) as Record<string, unknown>
