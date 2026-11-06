@@ -311,17 +311,20 @@ describe('SignIn Tooling family strip (v2.3622)', () => {
   })
 })
 
-describe('SignIn tagline (v2.6503)', () => {
-  it('draws the two beats under the title, inside the header and above the trade tiles', async () => {
+describe('SignIn tagline (v2.6503, the lockup on glass v2.6575)', () => {
+  it('draws the two beats under the title on the plated header, above the trade tiles', async () => {
     renderSignIn()
     await settle()
     const line = document.querySelector('.auth-public-landing__tagline')
     expect(line).not.toBeNull()
-    expect(line?.textContent).toBe('Changes are constant. ClickTooling keeps you paid.')
-    expect(line?.closest('.letter-header')).not.toBeNull()
+    expect(line?.textContent).toBe('Changes are constant. ClickTooling keeps you moving.')
     const header = line?.closest('.letter-header')
+    expect(header).not.toBeNull()
+    // v2.6575: the sign-in header is the glass plate; a page with no tagline keeps the bare header
+    expect(header?.classList.contains('letter-header--plate')).toBe(true)
+    expect(line?.querySelector('.auth-public-landing__tagline-rule')).not.toBeNull()
     const tiles = screen.getByRole('list', { name: 'Service highlights' })
     expect(header?.compareDocumentPosition(tiles) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(line?.querySelector('.auth-public-landing__tagline-two')?.textContent).toBe('ClickTooling keeps you paid.')
+    expect(line?.querySelector('.auth-public-landing__tagline-two')?.textContent).toBe('ClickTooling keeps you moving.')
   })
 })

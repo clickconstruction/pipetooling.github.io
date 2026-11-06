@@ -718,33 +718,98 @@
   }
 }
 
-/* The tagline (v2.6503): two beats under the pipe title, the truth soft and the promise strong. */
+/* The lockup (v2.6575, Grace's pick B of three treatments; the tagline itself since v2.6503): on the sign-in
+   page the header is a glass plate, the trade tiles' own material, so the pipe title and the tagline sit on a
+   steady ground over the photo. The title shrinks a step inside it, a short rule in the handwheels' red follows,
+   the truth is a small spaced caption in the app's sans, and the promise is the one serif line, bold. Pages that
+   pass no tagline keep the bare header. */
+.auth-public-landing .letter-header--plate {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 1.25rem;
+  padding: 1.4rem 2.2rem 1.25rem;
+  border-radius: 16px;
+  background: rgba(12, 16, 22, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-sizing: border-box;
+}
+
+.auth-public-landing .letter-header--plate h1 {
+  text-shadow: none;
+}
+
+.auth-public-landing .letter-header--plate h1 .auth-public-landing__title-mark {
+  /* a set width, not a percentage: the plate is fit-content, so a percentage would size the title to the
+     promise line below it (347 px on the first cut) instead of the other way round */
+  width: 440px;
+  max-width: 100%;
+  filter: none;
+}
+
+.auth-public-landing .letter-header--plate h1 .auth-public-landing__title-link:hover .auth-public-landing__title-mark {
+  filter: brightness(1.08);
+}
+
 .auth-public-landing .auth-public-landing__tagline {
-  margin: 0.75rem 0 0;
+  margin: 0;
   text-align: center;
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 1.5rem;
-  line-height: 1.35;
   color: #fff;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.auth-public-landing .auth-public-landing__tagline-rule {
+  display: block;
+  width: 44px;
+  height: 3px;
+  margin: 1rem auto 0.7rem;
+  border-radius: 2px;
+  background: #d21f1f; /* the handwheels' red, a saturated accent kept literal (v2.3583) */
 }
 
 .auth-public-landing .auth-public-landing__tagline-one {
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.78);
+  display: block;
+  font-family: 'Open Sans', system-ui, -apple-system, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .auth-public-landing .auth-public-landing__tagline-two {
+  display: block;
+  margin-top: 0.25rem;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.5rem;
   font-weight: 600;
-  white-space: nowrap;
+  line-height: 1.2;
 }
 
-/* Phones: a beat a line, so the card stays on the first screen */
+@media (max-width: 768px) {
+  .auth-public-landing .letter-header--plate h1 .auth-public-landing__title-mark {
+    width: 380px;
+  }
+}
+
+/* Phones: the plate takes the width, the title fills it, and the lines shrink so the card stays on the first screen */
 @media (max-width: 480px) {
-  .auth-public-landing .auth-public-landing__tagline {
-    font-size: 1.15rem;
+  .auth-public-landing .letter-header--plate {
+    width: 100%;
+    margin-bottom: 0.75rem;
+    padding: 1rem 1rem 0.9rem;
+  }
+  .auth-public-landing .letter-header--plate h1 .auth-public-landing__title-mark {
+    width: 100%;
+  }
+  .auth-public-landing .auth-public-landing__tagline-rule {
+    margin: 0.75rem auto 0.55rem;
   }
   .auth-public-landing .auth-public-landing__tagline-one {
-    display: block;
+    font-size: 0.66rem;
+    letter-spacing: 0.16em;
+  }
+  .auth-public-landing .auth-public-landing__tagline-two {
+    font-size: 1.12rem;
   }
 }
