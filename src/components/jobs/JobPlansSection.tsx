@@ -95,12 +95,16 @@ function AddFilesPress({ setName, disabled, onPick }: { setName: string; disable
   )
 }
 
+/** Where the section's read stands: `data-job-documents-plans` carries it, and `onState` reports it. */
+export type JobPlansSectionState = 'loading' | 'failed' | 'current' | 'no-current' | 'no-part'
+
 export function JobPlansSection({
   job,
   io: ioProp,
   filesIo = supabasePlanSetFilesIo,
   onPlansLinkChanged,
   onLeave,
+  onState,
 }: {
   job: { id: string; job_name?: string | null; click_number?: string | null; hcp_number?: string | null }
   io?: JobPlansIo
@@ -110,6 +114,8 @@ export function JobPlansSection({
   onPlansLinkChanged?: (link: string) => void
   /** Called before the notice's door leaves for the site's page, so the window closes first. */
   onLeave?: () => void
+  /** Where the read stands, each time it changes (punch list #276): the crew's window keeps its Open plans row only while no part is read. */
+  onState?: (state: JobPlansSectionState) => void
 }) {
   const io = useMemo(() => ioProp ?? supabaseJobPlansIo(), [ioProp])
   const { role, user } = useAuth()
@@ -420,7 +426,10 @@ export function JobPlansSection({
     </div>
   )
 
-  const state = !read && !error ? 'loading' : error ? 'failed' : view.current ? 'current' : view.part ? 'no-current' : 'no-part'
+  const state: JobPlansSectionState = !read && !error ? 'loading' : error ? 'failed' : view.current ? 'current' : view.part ? 'no-current' : 'no-part'
+  useEffect(() => {
+    onState?.(state)
+  }, [state, onState])
   // Green only when nothing stayed behind: a held file is a word the person still has to act on.
   const filedTone = filed?.outcome.tone === 'success' && filed.held.length > 0 ? 'warning' : filed?.outcome.tone
 
