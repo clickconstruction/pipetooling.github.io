@@ -18,6 +18,8 @@ function fakeClient(tables: Record<string, Row[]>, opts: { failTable?: string } 
       lte: (col: string, v: string) => (call.filters.push(`${col} <= ${v}`), (rows = rows.filter((r) => String(r[col]) <= v)), b),
       or: (expr: string) => (call.filters.push(`or(${expr})`), b),
       in: (col: string, vals: unknown[]) => (call.filters.push(`${col} in (${vals.length})`), (rows = rows.filter((r) => vals.includes(r[col]))), b),
+      // the fleet read keeps to trucks since v2.6557 (a machine is a vehicles row too); the fake records nothing for it
+      eq: (column: string, value: string) => ((call.filters.push(`${column}=${value}`)), b),
       order: () => b,
       range: (fromRow: number, to: number) => ((call.range = [fromRow, to]), (rows = rows.slice(fromRow, to + 1)), b),
       then: (resolve: (r: { data: Row[] | null; error: { message: string } | null }) => unknown, reject?: (e: unknown) => unknown) => {
