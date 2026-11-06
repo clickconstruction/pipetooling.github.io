@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } 
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { EmptyState } from '../EmptyState'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
   APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS,
@@ -865,7 +866,7 @@ export default function SettingsEmailStreamsSection({ focus }: {
         manage="schedule more → Checklist → Review → ✉ Email me their week"
       >
         {(data.people_week_requests ?? []).length === 0
-          ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Nothing scheduled.</span>
+          ? <EmptyState compact main="Nobody gets it yet. Checklist → Review → ✉ Email me their week starts the first one." />
           : (data.people_week_requests ?? []).map((r) => (
               <RecipientChip
                 key={r.id}
