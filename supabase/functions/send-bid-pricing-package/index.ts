@@ -35,6 +35,7 @@ import {
   type PackageRowInput,
 } from '../_shared/bidPricingPackage.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -146,6 +147,8 @@ serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     // Sender — must be a Pricing-tab staff role.
     const { data: senderRow, error: senderErr } = await admin

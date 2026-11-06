@@ -8,8 +8,9 @@ import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
 import { isStageChecklistKind, withSkips, type StageChecklistKind, type StageChecklistQuestion, type StageChecklistSkip } from './stageChecklist'
-import { ITEM_WHY_MAX_CHARS, PLAN_SHEET_MAX_CHARS, PUT_BACK_REFUSED, SKIP_WHY_MAX_CHARS, TAKE_OFF_WORDS, cleanItemWords, cleanShortLine } from './stageChecklistItems'
-import { planIsEmpty, planQuestionSave, type QuestionDraft } from './stageChecklistEditor'
+import { COMPANY_TAKE_OFF_WHY_MAX_CHARS, ITEM_WHY_MAX_CHARS, PLAN_SHEET_MAX_CHARS, PUT_BACK_REFUSED, SKIP_WHY_MAX_CHARS, TAKE_OFF_WORDS, cleanItemWords, cleanShortLine, companyTakeOffWords } from './stageChecklistItems'
+import type { CompanyMirror, QuestionSource, TakenOffQuestion } from './stageChecklistEditor'
+import { paperJobLabel } from './stageChecklistRecord'
 
 // The tables are younger than the generated types; the types PR after the push removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -31,6 +32,12 @@ export type TemplateRow = {
   why?: string | null
   /** Whoever answers signs (#237 PR 2, migration 20261106040000). */
   needs_signature?: boolean | null
+  /** On a company row, the job item it was added to the company's list from (#237 PR 1b). */
+  promoted_from?: string | null
+  /** A company question taken off the company's list with its reason (#237 PR 4, migration 20261106130000). */
+  retired_at?: string | null
+  retired_by_name?: string | null
+  retired_why?: string | null
 }
 
 const TEMPLATE_COLS = 'id, stage_kind, sort_order, words, asks_photo, needs_signature, job_id, fixture_id, created_by, created_by_name, created_at, plan_sheet, why'
@@ -227,33 +234,115 @@ export async function promoteJobItem(itemId: string): Promise<StageChecklistQues
   return q
 }
 
-/** The editor's io: the live questions, and a kind's drafts written as the plan says. */
-export interface StageChecklistEditorIo {
-  load: () => Promise<StageChecklistQuestion[]>
-  save: (kind: StageChecklistKind, before: readonly StageChecklistQuestion[], drafts: readonly QuestionDraft[], byUserId: string | null) => Promise<void>
+// ── The company's list from a job's Documents tab (#237 PR 4) ───────────────
+
+export interface AddCompanyQuestionInput {
+  kind: StageChecklistKind
+  words: string
+  asksPhoto: boolean
+  needsSignature?: boolean
+  /** Its place after the kind's live company questions (`nextCompanyOrder`). */
+  order?: number
 }
 
-export async function saveQuestions(kind: StageChecklistKind, before: readonly StageChecklistQuestion[], drafts: readonly QuestionDraft[], byUserId: string | null): Promise<void> {
-  const plan = planQuestionSave(kind, before, drafts)
-  if (planIsEmpty(plan)) return
+/** One question for every stage of the kind, written from a job's Documents tab by the office; the database refuses anyone else. */
+export async function addCompanyQuestion(input: AddCompanyQuestionInput, who: { userId: string | null; name: string }): Promise<StageChecklistQuestion> {
+  const result = await db
+    .from('stage_checklist_templates')
+    .insert({ stage_kind: input.kind, sort_order: input.order ?? 0, words: cleanItemWords(input.words).slice(0, 200), asks_photo: input.asksPhoto, needs_signature: input.needsSignature === true, created_by: who.userId, created_by_name: who.name.slice(0, 120) })
+    .select(TEMPLATE_COLS)
+    .single()
+  checkSupabaseError(result, "add the question to the company's list")
+  const [q] = questionsFromRows([result.data as TemplateRow])
+  if (!q) throw new Error('The question was added with a stage kind the app does not read.')
+  return q
+}
+
+/** A company question taken off the company's list with its reason: retired, never deleted, so every answer keeps its words. */
+export async function retireCompanyQuestion(questionId: string, why: string, who: { userId: string | null; name: string }): Promise<void> {
   const now = new Date().toISOString()
-  // The rows taken off first, then the changed, then the new: a half-done save leaves the list readable either way.
-  if (plan.retires.length) {
-    const result = await db.from('stage_checklist_templates').update({ retired_at: now, updated_at: now }).in('id', plan.retires)
-    checkSupabaseError(result, 'take the questions off')
-  }
-  for (const u of plan.updates) {
-    const result = await db.from('stage_checklist_templates').update({ sort_order: u.order, words: u.words, asks_photo: u.asksPhoto, needs_signature: u.needsSignature, updated_at: now }).eq('id', u.id)
-    checkSupabaseError(result, 'save the question')
-  }
-  if (plan.inserts.length) {
-    const result = await db
-      .from('stage_checklist_templates')
-      .insert(plan.inserts.map((i) => ({ stage_kind: i.kind, sort_order: i.order, words: i.words, asks_photo: i.asksPhoto, needs_signature: i.needsSignature, created_by: byUserId })))
-    checkSupabaseError(result, 'add the questions')
+  const result = await db
+    .from('stage_checklist_templates')
+    .update({ retired_at: now, retired_by: who.userId, retired_by_name: who.name.slice(0, 120), retired_why: cleanShortLine(why, COMPANY_TAKE_OFF_WHY_MAX_CHARS), updated_at: now })
+    .eq('id', questionId)
+    .is('job_id', null)
+    .is('retired_at', null)
+    .select('id')
+  checkSupabaseError(result, "take the question off the company's list")
+  // The database's rule filters a write it refuses: no error and no row. That is a refusal, not a save.
+  if ((result.data ?? []).length === 0) throw new Error(companyTakeOffWords('').refused)
+}
+
+/** The kind's company questions in the order given, one row at a time as the old editor wrote them; a half-done order still reads. */
+export async function reorderCompanyQuestions(kind: StageChecklistKind, ids: readonly string[]): Promise<void> {
+  const now = new Date().toISOString()
+  for (const [i, id] of ids.entries()) {
+    const result = await db.from('stage_checklist_templates').update({ sort_order: i + 1, updated_at: now }).eq('id', id).eq('stage_kind', kind).is('job_id', null)
+    checkSupabaseError(result, 'move the question')
   }
 }
 
-export function supabaseStageChecklistEditorIo(): StageChecklistEditorIo {
-  return { load: loadQuestions, save: saveQuestions }
+/** The company's list as the job's Documents tab writes it (#237 PR 4). */
+export interface StageChecklistCompanyIo {
+  add: (input: AddCompanyQuestionInput, who: { userId: string | null; name: string }) => Promise<StageChecklistQuestion>
+  retire: (questionId: string, why: string, who: { userId: string | null; name: string }) => Promise<void>
+  reorder: (kind: StageChecklistKind, ids: readonly string[]) => Promise<void>
+}
+
+export function supabaseStageChecklistCompanyIo(): StageChecklistCompanyIo {
+  return { add: addCompanyQuestion, retire: retireCompanyQuestion, reorder: reorderCompanyQuestions }
+}
+
+// ── The Settings mirror (#237 PR 4) ─────────────────────────────────────────
+
+const MIRROR_COLS = `${TEMPLATE_COLS}, promoted_from`
+const TAKEN_OFF_COLS = 'id, stage_kind, words, retired_at, retired_by_name, retired_why'
+/** How many taken-off questions the mirror lists under each kind. */
+export const TAKEN_OFF_LIMIT = 10
+
+/**
+ * What Settings → Stage checklists reads: the company's live questions, where each came from (the job a promote took it
+ * from, else who wrote it), and the questions taken off the company's list with a reason, newest first.
+ */
+export async function loadCompanyMirror(): Promise<CompanyMirror> {
+  const [live, gone] = await Promise.all([
+    db.from('stage_checklist_templates').select(MIRROR_COLS).is('retired_at', null).is('job_id', null).order('stage_kind').order('sort_order'),
+    db.from('stage_checklist_templates').select(TAKEN_OFF_COLS).is('job_id', null).not('retired_at', 'is', null).not('retired_why', 'is', null).order('retired_at', { ascending: false }).limit(TAKEN_OFF_LIMIT * 3),
+  ])
+  checkSupabaseError(live, 'read the stage checklists')
+  checkSupabaseError(gone, 'read the questions taken off')
+  const rows = (live.data ?? []) as TemplateRow[]
+  const questions = questionsFromRows(rows)
+  // The job each promoted question came from: the retired job item it points at, then that job's label.
+  const fromIds = rows.map((r) => r.promoted_from).filter((id): id is string => Boolean(id))
+  const items = fromIds.length ? await db.from('stage_checklist_templates').select('id, job_id, created_by_name').in('id', fromIds) : { data: [], error: null }
+  checkSupabaseError(items, 'read the stage checklists')
+  const itemRows = (items.data ?? []) as { id: string; job_id: string | null; created_by_name: string | null }[]
+  const jobIds = [...new Set(itemRows.map((r) => r.job_id).filter((id): id is string => Boolean(id)))]
+  const jobs = jobIds.length ? await db.from('jobs_ledger').select('id, hcp_number, click_number, job_name').in('id', jobIds) : { data: [], error: null }
+  checkSupabaseError(jobs, 'read the jobs')
+  const jobLabel = new Map(((jobs.data ?? []) as { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null }[]).map((j) => [j.id, paperJobLabel(j)]))
+  const itemById = new Map(itemRows.map((r) => [r.id, r]))
+  const sources = new Map<string, QuestionSource>()
+  for (const r of rows) {
+    const item = r.promoted_from ? itemById.get(r.promoted_from) : undefined
+    sources.set(r.id, {
+      jobLabel: item?.job_id ? (jobLabel.get(item.job_id) ?? 'a job since deleted') : null,
+      by: (item ? item.created_by_name : r.created_by_name) ?? '',
+      at: r.created_at ?? null,
+    })
+  }
+  const takenOff: TakenOffQuestion[] = ((gone.data ?? []) as TemplateRow[]).flatMap((r) =>
+    isStageChecklistKind(r.stage_kind) ? [{ id: r.id, kind: r.stage_kind, words: r.words, by: r.retired_by_name ?? '', at: r.retired_at ?? null, why: r.retired_why ?? '' }] : [],
+  )
+  return { questions, sources, takenOff }
+}
+
+/** The mirror's io: one read. */
+export interface StageChecklistMirrorIo {
+  load: () => Promise<CompanyMirror>
+}
+
+export function supabaseStageChecklistMirrorIo(): StageChecklistMirrorIo {
+  return { load: loadCompanyMirror }
 }

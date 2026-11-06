@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -125,6 +126,8 @@ serve(async (req) => {
       const adminClient = createClient(supabaseUrl, serviceRoleKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       })
+      const archivedRefusal = await refuseArchivedCaller(adminClient, authUser?.id, corsHeaders)
+      if (archivedRefusal) return archivedRefusal
       // v2.6519 (punch list #260): an absorbed row with no login behind it has no auth account to ban.
       const { data: absorbedRow } = await adminClient.from('users').select('login_attached_at').eq('id', absorbed_user_id).maybeSingle()
       const hasLogin = (absorbedRow as { login_attached_at: string | null } | null)?.login_attached_at != null

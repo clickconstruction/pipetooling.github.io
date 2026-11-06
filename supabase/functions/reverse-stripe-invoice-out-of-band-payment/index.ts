@@ -8,6 +8,7 @@ import {
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
 import { STRIPE_OOB_META_PAYMENT_TYPE } from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -172,6 +173,8 @@ serve(async (req) => {
         return jsonResponse({ error: msg }, 502)
       }
       const admin = createClient(supabaseUrl, serviceKey)
+      const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+      if (archivedRefusal) return archivedRefusal
       const { error: delErr } = await admin
         .from('jobs_ledger_payments')
         .delete()

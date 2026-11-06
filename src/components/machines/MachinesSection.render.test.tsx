@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders, useAuthModuleMock } from '../../test/renderSmokeMocks'
 import type { Fleet } from '../../lib/machines/machinesIo'
-import { defaultLevels } from '../../lib/machines/machines'
+import { defaultLevels, todayDay } from '../../lib/machines/machines'
 import { MachinesSection } from './MachinesSection'
 
 vi.mock('../../hooks/useAuth', () => useAuthModuleMock({ profileName: 'Carla Nguyen' }))
@@ -37,6 +37,20 @@ describe('the machines board at People → Vehicles', () => {
     expect(document.querySelectorAll('[data-gauge-row]')).toHaveLength(4)
     fireEvent.click(screen.getByText('Save E-12’s gauges'))
     expect(io.saveLevels).toHaveBeenCalledWith('m1', expect.any(Array))
+  })
+
+  it('Add a machine as a rental mints its label from who it is from, with the number free to wait for the photo', async () => {
+    renderWithProviders(<MachinesSection />)
+    await screen.findByText('E-12 · Kubota KX040')
+    fireEvent.click(screen.getByText('+ Add a machine'))
+    fireEvent.click(screen.getByText('Rental'))
+    expect(screen.queryByLabelText('Unit')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Rented from'), { target: { value: 'Sunbelt' } })
+    fireEvent.change(screen.getByLabelText('Make'), { target: { value: 'Bobcat' } })
+    fireEvent.change(screen.getByLabelText('Due back'), { target: { value: '2026-11-20' } })
+    fireEvent.click(screen.getByText('Add the Sunbelt rental'))
+    expect(io.addMachine).toHaveBeenLastCalledWith(expect.objectContaining({ unitLabel: 'Sunbelt rental', make: 'Bobcat', kind: 'excavator' }))
+    await vi.waitFor(() => expect(io.saveRental).toHaveBeenLastCalledWith('m3', { from: 'Sunbelt', agreementNo: '', outOn: todayDay(), dueBack: '2026-11-20' }))
   })
 
   it('Add a machine writes the row with its template', async () => {

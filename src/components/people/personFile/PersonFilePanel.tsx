@@ -24,6 +24,8 @@ import {
 } from '../../../lib/people/personTimeline'
 import { loadPersonFileSources, type PersonFileAttachment, type PersonFileDoc, type PersonFileSources, type PersonFileViewer } from '../../../lib/people/personTimelineIo'
 import { PersonMatterPanel } from './PersonMatterPanel'
+import { personMatterChipWords } from '../../../lib/people/personMatter'
+import { loadPersonMatterStanding, type PersonMatterStanding } from '../../../lib/people/personMatterIo'
 import {
   evidenceCountWords,
   evidenceDraftProblem,
@@ -271,6 +273,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [markBusyId, setMarkBusyId] = useState<string | null>(null)
   /** By theme (v2.6547): the theme picked, from the address first. */
   const [byThemeId, setByThemeId] = useState<string | null>(initialThemeId)
+  // v2.6582 (punch list #269 PR 3b): the matter standing on the person, the row alone, for the fact strip's chip.
+  const [matterStanding, setMatterStanding] = useState<PersonMatterStanding | null>(null)
   useEffect(() => {
     if (initialThemeId) setByThemeId(initialThemeId)
   }, [initialThemeId])
@@ -309,6 +313,18 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   useEffect(() => {
     void reloadThemes()
   }, [reloadThemes, changeKey])
+
+  const reloadMatter = useCallback(async () => {
+    if (!viewer.isDev || !personId) {
+      setMatterStanding(null)
+      return
+    }
+    setMatterStanding(await loadPersonMatterStanding(personId))
+  }, [viewer.isDev, personId])
+
+  useEffect(() => {
+    void reloadMatter()
+  }, [reloadMatter, changeKey])
 
   useEffect(() => {
     setTicked(new Set())
@@ -1318,6 +1334,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
 
   // ─── the frame ─────────────────────────────────────────────────────────────
 
+  // The strip's Matter chip (v2.6582): the matter's stage once one stands on the person, a press to the Matter view.
+  const matterChip = personMatterChipWords(matterStanding)
+
   const heldWords = (sources?.held ?? []).map((h) => `${PERSON_TIMELINE_SOURCES.find((s) => s.source === h.source)?.label ?? h.source} (${h.reason})`)
 
   const themesView = (
@@ -1349,6 +1368,11 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
               {c.label}
             </span>
           ))}
+          {matterChip ? (
+            <button type="button" onClick={() => setView('matter')} title="Open the matter" style={chip(FACT_TONE.gray, { cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, lineHeight: 'inherit' })} data-testid="person-file-matter-chip">
+              {matterChip}
+            </button>
+          ) : null}
           {facts.lastYmd ? <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>last on record {dayWords(facts.lastYmd)}{facts.lastYmd.slice(0, 4) !== todayYmd.slice(0, 4) ? `, ${facts.lastYmd.slice(0, 4)}` : ''}</span> : null}
         </div>
       ) : null}
@@ -1381,7 +1405,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Reading the file…</p>
       ) : (
         <>
-          {view === 'timeline' ? timelineView : view === 'evidence' ? evidenceView : view === 'themes' ? themesView : view === 'matter' ? (personId ? <PersonMatterPanel personId={personId} personName={personName} canEdit={viewer.isDev} changeKey={changeKey} onChanged={onChanged} /> : <EmptyState compact main="A matter hangs on a person row, and this login has none yet." />) : narrativeView}
+          {view === 'timeline' ? timelineView : view === 'evidence' ? evidenceView : view === 'themes' ? themesView : view === 'matter' ? (personId ? <PersonMatterPanel personId={personId} personName={personName} canEdit={viewer.isDev} changeKey={changeKey} onChanged={() => { void reloadMatter(); onChanged?.() }} /> : <EmptyState compact main="A matter hangs on a person row, and this login has none yet." />) : narrativeView}
           {heldWords.length > 0 ? (
             <p style={{ margin: '1rem 0 0', fontSize: '0.72rem', color: 'var(--text-faint)' }}>Not read here: {heldWords.join(' · ')}.</p>
           ) : null}

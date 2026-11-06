@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,6 +84,8 @@ serve(async (req) => {
     if (rows.length === 0) return jsonResponse({ ok: true, synced: 0 })
 
     const admin = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     // Upsert on the Resend id; webhook rows win on freshness via updated_at, but a
     // sync never downgrades a row's last_event to null.
     let synced = 0

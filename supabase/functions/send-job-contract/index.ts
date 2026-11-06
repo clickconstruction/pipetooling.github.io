@@ -30,6 +30,7 @@ import {
   randomUrlToken,
   signingUrl,
 } from '../_shared/jobContract.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 type Body = {
   contract_id?: string
@@ -131,6 +132,8 @@ serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const token = (c.public_token ?? '').trim() || randomUrlToken()
     const nowIso = new Date().toISOString()
     const expiresAt = new Date(Date.now() + JOB_CONTRACT_LINK_DAYS * 86_400_000).toISOString()

@@ -7,6 +7,7 @@ import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { readReportSubject, reportSendSkip } from '../_shared/reportSubject.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
 import { reportPhotoCountClause } from '../_shared/reportPhotoEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /** Matches client `reportTemplateDisplayName` legacy alias for notification copy. */
 const LEGACY_SUPERINTENDENT_REPORT_TEMPLATE_NAME = 'Superintendent Report'
@@ -76,6 +77,8 @@ serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
+    const archivedRefusal = await refuseArchivedCaller(adminClient, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     // Fetch report
     const { data: reportRow, error: reportErr } = await adminClient

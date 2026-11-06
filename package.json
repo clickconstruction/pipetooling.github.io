@@ -137,6 +137,7 @@
     "test:pg:bed-apply": "bash scripts/pgtest-bed-apply.sh",
     "test:pg:lien-release-sign": "bash scripts/pgtest-lien-release-sign.sh",
     "test:pg:archived-seal": "bash scripts/pgtest-archived-seal.sh",
+    "test:pg:plan-sets-author": "bash scripts/pgtest-plan-sets-author.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",

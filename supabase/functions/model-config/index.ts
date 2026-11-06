@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0'
 import { DRAFT_BETAS, DRAFT_MODEL, MODEL_KEY_SHAPE, isModelProvider, loadModelKey, modelRefusalWhy, type ModelKeyDb } from '../_shared/modelKey.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * model-config (punch list #186, v2.5916, the Model keys card in Settings): the owner's and a dev's door to a language
@@ -67,6 +68,8 @@ serve(async (req) => {
     if (authError || !user) return jsonResponse({ error: 'Sign in first.' }, 401)
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: who } = await admin.from('users').select('id, name, role, read_only').match(REAL_ACCOUNT).eq('id', user.id).maybeSingle()
     const row = who as { name?: string | null; role?: string; read_only?: boolean } | null
     const role = String(row?.role ?? '')

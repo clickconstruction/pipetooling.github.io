@@ -6,6 +6,7 @@ import { buildReportEmail, type ReportContent } from '../_shared/fieldReportEmai
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { readReportSubject, reportSendSkip, type ReportSubject } from '../_shared/reportSubject.ts'
 import { photoBytesBase64, planReportEmailPhotos, type ReportEmailPhoto, type ReportEmailPhotoRow } from '../_shared/reportPhotoEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Emails reports to configured recipients (report_email_subscriptions).
@@ -221,6 +222,8 @@ serve(async (req) => {
     if (!serviceRoleKey) return json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' }, 500)
     if (!resendApiKey) return json({ error: 'RESEND_API_KEY not configured' }, 500)
     const admin = createClient(supabaseUrl, serviceRoleKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     const body = (await req.json().catch(() => ({}))) as {
       mode?: string

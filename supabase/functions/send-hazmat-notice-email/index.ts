@@ -3,6 +3,7 @@ import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 // Companion email for the Biohazard Remediation Fee Notice: Stripe invoices
 // cannot carry attachments, so the notice PDF (built client-side, same as the
@@ -197,6 +198,8 @@ serve(async (req) => {
       const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
       if (serviceKey) {
         const admin = createClient(supabaseUrl, serviceKey)
+        const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+        if (archivedRefusal) return archivedRefusal
         const sentAt = new Date().toISOString()
         await admin
           .from('job_hazmat_incidents')

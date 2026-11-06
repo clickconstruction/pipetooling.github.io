@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, driveFileIdFromUrl, driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken } from '../_shared/driveUpload.ts'
 import { officeYmd } from '../_shared/bidFollowupReminder.ts'
 import { jobsRootFolderId, NO_ROOT_WORDS } from '../_shared/driveSettings.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * gc-drive-access — GC mode, the real build, step 5 (to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md on
@@ -96,6 +97,8 @@ serve(async (req) => {
     const auth = req.headers.get('Authorization') ?? ''
     const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
     const { data: u } = await anon.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (!u?.user) return json({ error: 'Sign in first.' }, 401)
     const { data: who } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
     if (!who || !OFFICE_ROLES.includes(String(who.role))) return json({ error: 'Office only.' }, 403)

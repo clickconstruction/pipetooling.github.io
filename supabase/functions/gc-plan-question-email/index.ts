@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { officeYmd } from '../_shared/bidFollowupReminder.ts'
 import { buildGcPlanQuestionEmail } from '../_shared/gcPlanQuestionEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * gc-plan-question-email — GC mode, the real build, step 8 (to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md
@@ -50,6 +51,8 @@ serve(async (req) => {
     const auth = req.headers.get('Authorization') ?? ''
     const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
     const { data: u } = await anon.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (!u?.user) return json({ error: 'Sign in first.' }, 401)
     const { data: who } = await admin.from('users').select('role, name, email, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
     if (!who || !OFFICE_ROLES.includes(String(who.role))) return json({ error: 'Office only.' }, 403)

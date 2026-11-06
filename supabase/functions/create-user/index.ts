@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { ensureLinkedRosterRow } from '../_shared/rosterRow.ts'
 import { attachCreateRefusal, attachDoorFields, attachRequestRefusal, attachRowRefusal, attachUserIdOf, type AttachCandidate } from '../_shared/attachLoginDoor.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -282,6 +283,8 @@ serve(async (req) => {
         persistSession: false,
       },
     })
+    const archivedRefusal = await refuseArchivedCaller(adminClient, authUser?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     // Create user in auth.users (requires service role). On the attach door the account is created ON the person's id
     // (GoTrue's admin create has taken `id` since v2.155.0), and handle_new_user's ON CONFLICT stamps the row.

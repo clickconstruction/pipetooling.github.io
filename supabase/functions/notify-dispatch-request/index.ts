@@ -8,6 +8,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from '../_shared/ledgerDisplayPrefixes.ts'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -202,6 +203,8 @@ serve(async (req) => {
         data: { user: authed },
         error: authError,
       } = await userClient.auth.getUser(token)
+      const archivedRefusal = await refuseArchivedCaller(adminClient, authed?.id, corsHeaders)
+      if (archivedRefusal) return archivedRefusal
       if (authError || !authed) {
         return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
           status: 401,

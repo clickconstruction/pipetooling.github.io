@@ -4,6 +4,7 @@ import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { DRAFT_BETAS, DRAFT_MODEL, loadModelKey, modelRefusalWhy, type ModelKeyDb } from '../_shared/modelKey.ts'
 import { DRAFT_SCHEMA, DRAFT_SYSTEM, costCents, draftFromAnswer, draftUserMessage, readDraftRequest } from '../_shared/reportDraft.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * report-draft (punch list #186, item 1, PR 2, v2.5916): the words a tech said on the job, drafted into the field
@@ -58,6 +59,8 @@ serve(async (req) => {
     if (authError || !user) return json({ ok: false, error: 'signIn', words: 'Sign in first.' }, 401)
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: who } = await admin.from('users').select('id, role, read_only').match(REAL_ACCOUNT).eq('id', user.id).maybeSingle()
     const row = who as { role?: string; read_only?: boolean } | null
     if (!row || row.read_only || !REPORT_ROLES.has(String(row.role ?? ''))) return json({ ok: false, error: 'notAllowed', words: 'This account cannot ask for a draft.' }, 403)

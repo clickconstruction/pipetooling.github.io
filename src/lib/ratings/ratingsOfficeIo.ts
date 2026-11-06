@@ -10,6 +10,7 @@ import { checkSupabaseError } from '../../utils/errorHandling'
 import { ratingJobWord } from '../../../supabase/functions/_shared/ratingEventLine'
 import { LOW_RATING_WINDOW_DAYS, type OfficeRating } from './ratingsOffice'
 import { CALL_AT_OR_BELOW } from './rating'
+import { creditedTechsByJob, type CreditSession } from './ratingCredit'
 
 export const GOOGLE_REVIEW_LINK_KEY = 'google_review_link_v1'
 
@@ -55,6 +56,8 @@ export interface RatingsOfficeIo {
   recordCall(ratingId: string, note: string): Promise<void>
   googleLink(): Promise<string>
   saveGoogleLink(value: string): Promise<void>
+  /** v2.6584 (punch list #255): the techs credited on each job, by name, the On my way presser first. A reader the clock's policy keeps out gets none. */
+  techsOnJobs?(jobIds: readonly string[]): Promise<Map<string, string[]>>
 }
 
 export function supabaseRatingsOfficeIo(client: unknown = supabase): RatingsOfficeIo {
@@ -83,6 +86,18 @@ export function supabaseRatingsOfficeIo(client: unknown = supabase): RatingsOffi
       const data = (result.data ?? {}) as { ok?: boolean; error?: string }
       if (data.error) throw new Error(data.error)
       if (!data.ok) throw new Error('The call was not recorded.')
+    },
+    async techsOnJobs(jobIds) {
+      const ids = [...new Set(jobIds.filter(Boolean))]
+      if (!ids.length) return new Map()
+      const s = await db.from('clock_sessions').select('user_id, job_ledger_id, travel_started_at, clocked_in_at, revoked_at, rejected_at').in('job_ledger_id', ids).is('revoked_at', null).is('rejected_at', null).limit(2000)
+      if (s.error) return new Map()
+      const sessions = (s.data ?? []) as CreditSession[]
+      const userIds = [...new Set(sessions.map((x) => x.user_id))]
+      if (!userIds.length) return new Map()
+      const u = await db.from('users').select('id, name').in('id', userIds)
+      const names = new Map(((u.data ?? []) as Array<{ id: string; name: string | null }>).map((x) => [x.id, x.name] as const))
+      return creditedTechsByJob(sessions, (id) => names.get(id))
     },
     async googleLink() {
       const result = await db.from('app_settings').select('value_text').eq('key', GOOGLE_REVIEW_LINK_KEY).maybeSingle()

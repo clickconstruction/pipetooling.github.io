@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { checkSignInEmail, exactIlikePattern } from '../_shared/signInEmailChange.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Account on the desk, PR C (v2.4344): change the email someone signs in with.
@@ -51,6 +52,8 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (!serviceRoleKey) return json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured.' }, 500)
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, authUser?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     const { data: target, error: targetError } = await admin.from('users').select('id, email, login_attached_at').eq('id', user_id).maybeSingle()
     if (targetError) return json({ error: targetError.message }, 500)

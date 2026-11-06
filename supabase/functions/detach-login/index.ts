@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DETACH_WORDS, detachRowRefusal, detachUserIdOf, type DetachCandidate } from '../_shared/detachLoginDoor.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Remove a person's login (punch list #266, v2.6532): the auth account is deleted by the row's id, and the person stays.
@@ -46,6 +47,8 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (!serviceRoleKey) return json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured.' }, 500)
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, authUser?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     const { data: row, error: rowError } = await admin.from('users').select('id, name, login_attached_at, is_sample, is_digital_twin').eq('id', userId).maybeSingle()
     if (rowError) return json({ error: `Could not read the person: ${rowError.message}` }, 500)

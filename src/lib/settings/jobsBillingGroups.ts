@@ -104,7 +104,7 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
     short: 'The job’s record',
     line: 'What a job carries: its stages, photos, test papers, development and address.',
     cards: [
-      card('stage-checklists', 'Stage checklists', 'the questions for Rough In, Top Out and Trim Set', 'dev-master-office'),
+      card('stage-checklists', 'Stage checklists', 'the company’s questions for Rough In, Top Out and Trim Set, and which job each came from', 'dev-master-office'),
       card('machine-templates', 'Machine templates', 'the gauges and the walk for small, medium and large excavators, skid steers and drills', 'dev-master-office'),
       card('photos', 'Photos', 'the size a report photo is shrunk to', 'dev-master-office', false),
       card('test-reports', 'Test reports', 'who certifies, the words on the paper, who sends', 'dev-master-office'),

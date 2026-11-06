@@ -7,6 +7,7 @@ import {
   stripeApiKeyForMode,
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -69,6 +70,8 @@ serve(async (req) => {
       data: { user },
       error: authErr,
     } = await userClient.auth.getUser(authHeader.replace(/^Bearer\s+/i, ''))
+    const archivedRefusal = await refuseArchivedCaller(adminClient, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (authErr || !user) {
       return jsonResponse({ error: 'Invalid session' }, 401)
     }

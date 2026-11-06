@@ -6,6 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from '../_shared/ledgerDisplayPrefixes.ts'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -132,6 +133,8 @@ serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
+    const archivedRefusal = await refuseArchivedCaller(adminClient, userId, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     const { data: members, error: memErr } = await adminClient.from('estimator_group_members').select('user_id')
     if (memErr) {

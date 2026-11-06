@@ -19,6 +19,7 @@ import { webPushSender } from '../_shared/webPushSend.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { lienApprovalPush, lienCodeUsedPush, lienPenRecordedPush, lienWaiverCodeUsedPush, signedYmdOf } from '../_shared/lienApprovalPush.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 // v2.5924: the waiver push names the form; the titles mirror lienWaiverTitle (src/lib/jobsDocuments/lienWaiverRelease.ts).
 const WAIVER_TITLES: Record<string, string> = {
@@ -64,6 +65,8 @@ serve(async (req) => {
     if (waiverCodeUsed ? !release_id : !item_id) return json({ error: waiverCodeUsed ? 'Missing release_id' : 'Missing item_id' }, 400)
 
     const admin = createClient(supabaseUrl, serviceRoleKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     let item: { job_id: string | null; fields?: unknown; signed_by?: string | null; signed_at?: string | null; signed_witness_how?: string | null }
     let waiverAmount: number | null = null
     let waiverFormType = ''
