@@ -6,7 +6,7 @@
 import { supabase } from '../supabase'
 import type { Database } from '../../types/database'
 import { todayDay, type Machine, type MachineAssignment, type MachineCheck } from './machines'
-import { jobWordsOf, machineFromRow, templateFromRow } from './machinesIo'
+import { jobWordsOf, machineFromRow, templateFromRow, type MachineTemplate } from './machinesIo'
 import { checksOfVehicles } from './checksIo'
 
 type AssignmentRow = Database['public']['Tables']['machine_assignments']['Row']
@@ -15,6 +15,8 @@ type JobWordsRow = { id: string; hcp_number: string | null; click_number: string
 export interface DayPlan {
   day: string
   machines: Machine[]
+  /** The active templates, in their order, for the picker's machine not on the board yet. */
+  templates: MachineTemplate[]
   assignments: MachineAssignment[]
   /** Sixty days of the machines' checks, for the held chip. */
   checks: MachineCheck[]
@@ -36,7 +38,7 @@ export function peekDay(day: string): DayPlan | null {
 async function readDay(day: string): Promise<DayPlan> {
   const [vehicles, templates, assignments] = await Promise.all([
     supabase.from('vehicles').select('*').eq('kind', 'machine').order('unit_label', { ascending: true }),
-    supabase.from('machine_templates').select('*').eq('active', true),
+    supabase.from('machine_templates').select('*').eq('active', true).order('sort', { ascending: true }),
     supabase.from('machine_assignments').select('*').eq('work_date', day),
   ])
   for (const r of [vehicles, templates, assignments]) if (r.error) throw r.error
@@ -61,6 +63,7 @@ async function readDay(day: string): Promise<DayPlan> {
   return {
     day,
     machines: (vehicles.data ?? []).map((v) => machineFromRow(v, ts, placeOf.get(v.id) ?? null)),
+    templates: ts,
     assignments: ((assignments.data ?? []) as AssignmentRow[]).map((a) => assignmentFromRow(a, words.get(a.job_id) ?? '')),
     checks: checks.checks,
   }

@@ -11,8 +11,9 @@
  * The plan is `machine_assignments` through `assignmentsIo.ts`, one read a day shared by every block; the stops read
  * the job's machines through `useJobMachines`.
  */
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { useDayPlan } from '../../hooks/useDayPlan'
 import { useJobMachines } from '../../hooks/useJobMachines'
 import {
@@ -28,15 +29,18 @@ import {
   machineName,
   machinesOnJob,
   rentalWords,
+  templateBlanksWords,
   todayDay,
   type ArrivalAnswer,
   type CheckKind,
   type Machine,
   type MachineCheck,
   type MachineOnJob,
+  type MachineQuestion,
 } from '../../lib/machines/machines'
 import { addAssignment, patchAssignment, removeAssignment, forgetDay } from '../../lib/machines/assignmentsIo'
-import { answerArrival } from '../../lib/machines/checksIo'
+import { addMachine, saveRental, type MachineTemplate } from '../../lib/machines/machinesIo'
+import { answerArrival, loadQuestions } from '../../lib/machines/checksIo'
 import { MachineCheckSheet } from './MachineCheckSheet'
 
 const chip: CSSProperties = { display: 'inline-block', padding: '0 0.45rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, lineHeight: '1.2rem', whiteSpace: 'nowrap' }
@@ -64,6 +68,7 @@ function placeChip(m: Machine, checks: readonly MachineCheck[], today: string) {
 export function BlockMachinesRow({ jobId, day, userId }: { jobId: string | null; day: string; userId: string | null }) {
   const { plan, problem } = useDayPlan(jobId && day ? day : null)
   const [picking, setPicking] = useState(false)
+  const [adding, setAdding] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const today = todayDay()
@@ -127,8 +132,25 @@ export function BlockMachinesRow({ jobId, day, userId }: { jobId: string | null;
               </button>
             )
           })}
-          {rest.length === 0 ? <span style={{ padding: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Every machine on the board is already on this job.</span> : null}
-          <button type="button" style={{ ...quiet, borderRadius: '0 0 8px 8px', border: 'none', borderTop: '1px solid var(--border)' }} onClick={() => setPicking(false)}>
+          {rest.length === 0 ? (
+            <span style={{ padding: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {plan.machines.length === 0 ? 'The fleet board has nothing on it yet. Add the first machine below.' : 'Every machine on the board is already on this job.'}
+            </span>
+          ) : null}
+          {adding ? (
+            <AddFromTemplate
+              templates={plan.templates}
+              day={day}
+              busy={busy}
+              onAdd={(fn) => void run(async () => { await fn(job, userId); setAdding(false); setPicking(false) })}
+              onClose={() => setAdding(false)}
+            />
+          ) : (
+            <button type="button" style={{ ...quiet, borderRadius: 0, border: 'none', borderTop: '1px solid var(--border)', minHeight: 40 }} disabled={busy} onClick={() => setAdding(true)} data-machine-picker-new>
+              + A machine not on the board yet
+            </button>
+          )}
+          <button type="button" style={{ ...quiet, borderRadius: '0 0 8px 8px', border: 'none', borderTop: '1px solid var(--border)' }} onClick={() => { setAdding(false); setPicking(false) }}>
             Not now
           </button>
         </div>
@@ -137,6 +159,113 @@ export function BlockMachinesRow({ jobId, day, userId }: { jobId: string | null;
           + Add a machine
         </button>
       )}
+    </div>
+  )
+}
+
+const chosen: CSSProperties = { ...press, background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }
+const dead: CSSProperties = { ...press, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, border: '1px solid var(--border)', cursor: 'default' }
+
+/**
+ * A machine not on the fleet board yet, from the block editor: the template first, since it is what shapes the
+ * crew's check, the blanks it hands them under it, ours or a rental, then the few fields each needs. One press puts
+ * it on the board with that template and on the job's day. A rental has no unit label of ours, so its label is
+ * *Rental 48812-3* from the agreement number (or *Sunbelt rental* without one), which is how the morning's question and
+ * the rail then name it.
+ */
+function AddFromTemplate({ templates, day, busy, onAdd, onClose }: { templates: readonly MachineTemplate[]; day: string; busy: boolean; onAdd: (fn: (job: string, userId: string | null) => Promise<void>) => void; onClose: () => void }) {
+  const [questions, setQuestions] = useState<MachineQuestion[] | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+  const [templateId, setTemplateId] = useState(templates[0]?.id ?? '')
+  const [ours, setOurs] = useState(true)
+  const [unit, setUnit] = useState('')
+  const [make, setMake] = useState('')
+  const [model, setModel] = useState('')
+  const [from, setFrom] = useState('')
+  const [agreementNo, setAgreementNo] = useState('')
+  const [dueBack, setDueBack] = useState('')
+  useEffect(() => {
+    let live = true
+    loadQuestions()
+      .then((qs) => live && setQuestions(qs))
+      .catch((e) => live && setProblem(formatErrorMessage(e, 'The walk’s questions did not read.')))
+    return () => {
+      live = false
+    }
+  }, [])
+  const template = templates.find((t) => t.id === templateId) ?? null
+  const ready = template != null && make.trim() !== '' && (ours ? unit.trim() !== '' : from.trim() !== '' || agreementNo.trim() !== '')
+  const what = ours ? unit.trim() || 'it' : from.trim() ? `the ${from.trim()} rental` : 'the rental'
+  return (
+    <div style={{ display: 'grid', gap: '0.45rem', padding: '0.5rem 0.6rem 0.6rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }} data-add-from-template>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <b style={{ fontSize: '0.875rem' }}>A machine not on the board yet</b>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>It joins the fleet board too, with this template’s gauges and walk.</span>
+      </div>
+      <label style={{ display: 'grid', gap: '0.15rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+        Template
+        <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} aria-label="Template" style={field}>
+          {templates.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {template ? (
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }} data-template-blanks>
+          {questions ? templateBlanksWords(template.levels, questions, template.id) : problem ?? 'Reading the walk…'}
+        </span>
+      ) : (
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>No template is set up. Settings → Machine templates adds one.</span>
+      )}
+      <div style={{ display: 'flex', gap: '0.4rem' }} role="group" aria-label="Ours or a rental">
+        <button type="button" style={ours ? chosen : press} aria-pressed={ours} onClick={() => setOurs(true)}>
+          Ours
+        </button>
+        <button type="button" style={ours ? press : chosen} aria-pressed={!ours} onClick={() => setOurs(false)}>
+          Rental
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.4rem' }}>
+        {ours ? (
+          <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unit, like E-14" aria-label="Unit" style={field} />
+        ) : (
+          <>
+            <input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="Rented from, like Sunbelt" aria-label="Rented from" style={field} />
+            <input value={agreementNo} onChange={(e) => setAgreementNo(e.target.value)} placeholder="Agreement number" aria-label="Agreement number" style={field} />
+          </>
+        )}
+        <input value={make} onChange={(e) => setMake(e.target.value)} placeholder="Make" aria-label="Make" style={field} />
+        <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="Model" aria-label="Model" style={field} />
+        {ours ? null : (
+          <label style={{ display: 'grid', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+            Due back
+            <input type="date" value={dueBack} onChange={(e) => setDueBack(e.target.value)} aria-label="Due back" style={field} />
+          </label>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          style={busy || !ready ? dead : chosen}
+          disabled={busy || !ready}
+          onClick={() =>
+            onAdd(async (job, userId) => {
+              if (!template) return
+              const unitLabel = ours ? unit.trim() : agreementNo.trim() ? `Rental ${agreementNo.trim()}` : `${from.trim()} rental`
+              const id = await addMachine({ unitLabel, make: make.trim(), model: model.trim(), templateId: template.id, kind: template.kind })
+              if (!ours) await saveRental(id, { from: from.trim(), agreementNo: agreementNo.trim(), outOn: day, dueBack })
+              await addAssignment({ machineId: id, jobId: job, day, createdBy: userId })
+            })
+          }
+        >
+          {busy ? 'Adding…' : `Add ${what} to this job`}
+        </button>
+        <button type="button" style={quiet} disabled={busy} onClick={onClose}>
+          Not this
+        </button>
+      </div>
     </div>
   )
 }
