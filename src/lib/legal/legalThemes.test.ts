@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_MARK_DRAFT, itemKickerWords, linesWithTheme, markCountWords, markDraftProblem, markIsProposed, markTargetOfLine, markedWords, marksByTheme, marksOnTarget, proofCountsWords, proposedCountWords, provesByWords, sortThemes, nearbyLines, portalThemeCountWords, portalThemesForMatter, themeCountsOnLines, themeDraftProblem, themeItems, themeItemsHeadWords, themeListText, tickedWords, toggleThemeId, type LegalThemeMark } from './legalThemes'
+import { EMPTY_MARK_DRAFT, MATTER_ENTRY_KIND_WORDS, matterThemeLines, itemKickerWords, linesWithTheme, markCountWords, markDraftProblem, markIsProposed, markTargetOfLine, markedWords, marksByTheme, marksOnTarget, proofCountsWords, proposedCountWords, provesByWords, sortThemes, nearbyLines, portalThemeCountWords, portalThemesForMatter, themeCountsOnLines, themeDraftProblem, themeItems, themeItemsHeadWords, themeListText, tickedWords, toggleThemeId, type LegalThemeMark } from './legalThemes'
 
 const theme = (id: string, name: string, retired_at: string | null = null) => ({ id, name, retired_at })
 const mark = (over: Partial<LegalThemeMark> = {}): LegalThemeMark => ({
@@ -166,5 +166,38 @@ describe('the firm’s read (v2.6549)', () => {
     ])
     expect(portalThemeCountWords(out[0]!)).toBe('2 items · 1 by a document · 0 by their own words · 1 firsthand · 0 relayed')
     expect(portalThemeCountWords(out[1]!)).toBe('1 item · 0 by a document · 0 by their own words · 0 firsthand · 0 relayed')
+  })
+})
+
+describe('a matter’s lines (v2.6588)', () => {
+  it('turns the live documents and the unvoided entries into By theme lines in the record’s order, the event’s documents as its files', () => {
+    const dayOf = (iso: string) => iso.slice(0, 10)
+    const lines = matterThemeLines(
+      [
+        { id: 'e1', kind: 'event', body: 'Said the truck was in the shop.', occurred_on: '2026-07-01', created_at: '2026-07-01T15:00:00Z', voided_at: null, meta: { notes: 'Checked with the shop.', document_ids: ['d1', 7, ''] } },
+        { id: 'e2', kind: 'plan', body: 'Send the demand.', occurred_on: '2026-12-01', created_at: '2026-07-02T15:00:00Z', voided_at: null, meta: null },
+        { id: 'e3', kind: 'event', body: 'Undone.', occurred_on: '2026-07-03', created_at: '2026-07-03T15:00:00Z', voided_at: '2026-07-04T00:00:00Z' },
+        { id: 'e4', kind: 'statement', body: 'Sworn.', occurred_on: '2026-07-01', created_at: '2026-07-01T09:00:00Z' },
+      ],
+      [
+        { id: 'd1', title: 'Shop ledger', shows: 'No truck that week.', dated_on: '2026-06-30', added_at: '2026-10-02T15:00:00Z', state: 'final', voided_at: null },
+        { id: 'd2', title: 'Card statement', shows: null, dated_on: null, added_at: '2026-10-02T16:00:00Z', state: null, voided_at: null },
+        { id: 'd3', title: 'Gone', shows: null, dated_on: null, added_at: '2026-10-02T17:00:00Z', state: 'final', voided_at: '2026-10-03T00:00:00Z' },
+      ],
+      dayOf,
+    )
+    expect(lines.map((l) => [l.key, l.ymd, l.kindWords, l.attachmentIds])).toEqual([
+      ['doc:d1', '2026-06-30', 'document · final', ['d1']],
+      ['entry:e4', '2026-07-01', 'statement', []],
+      ['entry:e1', '2026-07-01', 'event', ['d1']],
+      ['doc:d2', '2026-10-02', 'document', ['d2']],
+      ['entry:e2', '2026-12-01', 'planned step', []],
+    ])
+    expect(lines[0]).toMatchObject({ what: 'Shop ledger', notes: 'No truck that week.', ref: { table: 'legal_matter_documents', id: 'd1' }, loggedAt: '2026-10-02T15:00:00Z' })
+    expect(lines[2]).toMatchObject({ what: 'Said the truck was in the shop.', notes: 'Checked with the shop.', ref: { table: 'legal_matter_entries', id: 'e1' } })
+    expect(MATTER_ENTRY_KIND_WORDS.plan).toBe('planned step')
+    // The marks read a matter line as they read a person's.
+    const m = mark({ id: 'x', target_kind: 'matter_document', target_id: 'd1', theme_id: 't9' })
+    expect(themeItems(lines, [m], 't9').map((i) => i.line.key)).toEqual(['doc:d1'])
   })
 })

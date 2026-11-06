@@ -23,7 +23,7 @@ import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/us
 import { addMarks, authUserIdNow, loadThemes } from '../../../lib/legal/legalThemesIo'
 import { markedWords, type LegalTheme, type LegalThemeMark } from '../../../lib/legal/legalThemes'
 import { supabase } from '../../../lib/supabase'
-import { addLegalMatterDocument, listLegalMatterDocuments, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
+import { addLegalMatterDocument, listLegalMatterDocuments, openLegalMatterDocument, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
 import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
@@ -74,6 +74,7 @@ import type { LegalMapOpenOn } from './LegalDeskMapView'
 
 import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo, LegalMoneySmallCents } from './legalDeskShared'
 import { type PlanActs, PacketTab } from './LegalDeskPacketTab'
+import MatterThemesView from './MatterThemesView'
 import { ErrorDoorButton, ErrorDoorCard } from '../../help/ErrorDoor'
 import { LEGAL_DESK_DEFAULT_TAB } from '../../../lib/legal/legalDeskRoute'
 
@@ -753,6 +754,8 @@ export default function LegalDesk(props: LegalDeskProps) {
     return Boolean(ok)
   }
   const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []
+  // v2.6588: who marked what, by user id, for the By theme window.
+  const namesById = useMemo(() => Object.fromEntries(users.map((u) => [u.id, u.name ?? ''])), [users])
   const themesForActs = themeCatalog.themes.length > 0 ? themeCatalog.themes : undefined
   const planActs: PlanActs = {
     holds: holdOverrides,
@@ -903,15 +906,18 @@ export default function LegalDesk(props: LegalDeskProps) {
     showTab(t)
     if (stacked) setTabPresses((n) => n + 1)
   }
+  // By theme (v2.6588, punch list #269): the seventh tab, for the hand that may mark, once the catalog has a standing theme.
+  const themesTabShown = canMarkReady && Boolean(matter) && themeCatalog.themes.some((t) => !t.retired_at)
+  const themesMarkedCount = new Set(themeCatalog.marks.filter((m) => !m.removed_at).map((m) => `${m.target_kind}:${m.target_id}`)).size
   const tabStrip = (
     <div role="tablist" aria-label="Packet sections" data-legal-desk-tabs
       style={stacked
         ? { display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', overflowX: 'auto', position: 'sticky', top: -12, zIndex: 1, background: 'var(--surface)', margin: '-12px -12px 10px', padding: '0 6px' }
         : { display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', overflowX: 'auto', margin: '16px 0 4px' }}>
-      {TABS.map((t) => (
-        <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => pressTab(t)}
+      {TABS.filter((t) => t !== 'themes' || themesTabShown).map((t) => (
+        <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => pressTab(t)} data-testid={`legal-desk-tab-${t}`}
           style={{ flex: 'none', whiteSpace: 'nowrap', border: 'none', background: 'none', padding: '8px 12px', fontSize: '0.84rem', fontWeight: tab === t ? 600 : 500, color: tab === t ? 'var(--text)' : 'var(--text-muted)', borderBottom: tab === t ? '2px solid var(--text-base)' : '2px solid transparent', cursor: 'pointer' }}>
-          {TAB_LABELS[t]}
+          {TAB_LABELS[t]}{t === 'themes' && themesMarkedCount > 0 ? ` (${themesMarkedCount})` : ''}
         </button>
       ))}
     </div>
@@ -1216,7 +1222,28 @@ export default function LegalDesk(props: LegalDeskProps) {
                 {stacked ? null : tabStrip}
 
                 <div ref={tabContentRef} style={{ scrollMarginTop: TAB_STRIP_PHONE_HEIGHT }}>
-                {packet ? (
+                {packet && tab === 'themes' && matter ? (
+                  themesTabShown ? (
+                    <MatterThemesView
+                      matterName={matter.payer_name}
+                      themes={themeCatalog.themes}
+                      marks={themeCatalog.marks}
+                      entries={legal?.entriesByMatter.get(matter.id) ?? []}
+                      documents={matterDocuments}
+                      canWrite={stored && canEditReview && !closed}
+                      namesById={namesById}
+                      onOpenDocument={(id) => {
+                        const row = matterDocuments.find((d) => d.id === id)
+                        if (row) void openLegalMatterDocument(supabase, row)
+                      }}
+                      onOpenOnTimeline={(line) => {
+                        if (line.ref.table === 'legal_matter_documents') showOnEvidence(line.ref.id)
+                        else showTab('timeline')
+                      }}
+                      onMarksChanged={() => void reloadThemes()}
+                    />
+                  ) : null
+                ) : packet ? (
                   <PacketTab tab={tab} onTab={showTab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} onShowOnEvidence={showOnEvidence} evidenceDoc={evidenceDoc} onEvidenceLanded={() => setEvidenceDoc(null)}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, setCounselRead, counselRead, moveStage, voidEntry } : null}

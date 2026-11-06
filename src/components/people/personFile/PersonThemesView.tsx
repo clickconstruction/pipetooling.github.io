@@ -18,10 +18,10 @@ import {
   type LegalTheme,
   type LegalThemeMark,
   type ThemeItem,
+  type ThemeLine,
   type ThemeItemsOrder,
   type ThemeItemsShow,
 } from '../../../lib/legal/legalThemes'
-import type { PersonTimelineLine } from '../../../lib/people/personTimeline'
 import { EmptyState } from '../../EmptyState'
 
 /**
@@ -31,7 +31,8 @@ import { EmptyState } from '../../EmptyState'
  * with why and how it proves it and who marked it, the lines around it on the record, Open on the Timeline, and
  * Previous and Next through the theme; Escape closes and the list is where it was. Print this theme draws the list
  * on paper; Copy as a list puts the same words on the clipboard for counsel. The pick sits in the address
- * (`?theme=<id>`) so a link opens the same view.
+ * (`?theme=<id>`) so a link opens the same view. Generic over the line since v2.6588: the HR file hands its Timeline's
+ * lines, a matter (`MatterThemesView`) its documents and entries through `matterThemeLines`.
  */
 
 const CHIP = (on: boolean): CSSProperties => ({
@@ -64,25 +65,27 @@ function isoDayWords(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export type PersonThemesViewProps = {
+export type PersonThemesViewProps<L extends ThemeLine = ThemeLine> = {
   personName: string
   themes: ReadonlyArray<LegalTheme>
   marks: ReadonlyArray<LegalThemeMark>
   /** The whole Timeline, every line, in the record's order. */
-  lines: ReadonlyArray<PersonTimelineLine>
+  lines: ReadonlyArray<L>
   themeId: string | null
   /** A press on a theme chip: the panel keeps the pick and the page writes it into the address. */
   onPickTheme: (id: string) => void
   canWrite: boolean
   namesById: Record<string, string>
   /** The line's file chips, drawn by the panel so a press opens the file the same way everywhere. */
-  renderFiles: (line: PersonTimelineLine) => ReactNode
+  renderFiles: (line: L) => ReactNode
   onOpenOnTimeline: (lineKey: string) => void
   onKeepMark: (markId: string) => Promise<void>
   onRemoveMark: (markId: string, why: string) => Promise<boolean>
+  /** The words on the door out of the item window (v2.6588): the HR file's *Open on the Timeline ›*, a matter's *Open on the matter ›*. */
+  openLabel?: string
 }
 
-export function PersonThemesView({ personName, themes, marks, lines, themeId, onPickTheme, canWrite, namesById, renderFiles, onOpenOnTimeline, onKeepMark, onRemoveMark }: PersonThemesViewProps) {
+export function PersonThemesView<L extends ThemeLine>({ personName, themes, marks, lines, themeId, onPickTheme, canWrite, namesById, renderFiles, onOpenOnTimeline, onKeepMark, onRemoveMark, openLabel = 'Open on the Timeline ›' }: PersonThemesViewProps<L>) {
   const { showToast } = useToastContext()
   const [order, setOrder] = useState<ThemeItemsOrder>('oldest')
   const [show, setShow] = useState<ThemeItemsShow>('every')
@@ -323,7 +326,7 @@ export function PersonThemesView({ personName, themes, marks, lines, themeId, on
           })()}
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', flexWrap: 'wrap' }}>
             <button type="button" style={QUIET} onClick={() => onOpenOnTimeline(open.line.key)} data-testid="by-theme-open-timeline">
-              Open on the Timeline ›
+              {openLabel}
             </button>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>esc closes · ← → move through the theme</span>
           </div>
@@ -377,7 +380,7 @@ export function PersonThemesView({ personName, themes, marks, lines, themeId, on
         <EmptyState compact main={show === 'every' ? `Nothing on the record carries ${picked.name} yet.` : `No item of ${picked.name} is ${THEME_ITEMS_SHOW.find((s) => s.key === show)?.label ?? ''}.`} {...(show === 'every' ? {} : { next: { label: 'every item', onPress: () => setShow('every') }, tail: 'shows the whole theme.' })} />
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} data-testid="by-theme-items">
-          {items.map((it: ThemeItem<PersonTimelineLine>, n) => (
+          {items.map((it: ThemeItem<L>, n) => (
             <li key={it.line.key} style={{ borderTop: '1px solid var(--border)' }}>
               <button
                 type="button"

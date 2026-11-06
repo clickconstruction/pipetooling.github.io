@@ -1,7 +1,7 @@
 /**
  * The Legal desk's address (punch list #182, PR 1): the desk is a page at `/legal-desk`, and
  * what it shows is in the address, so a reload keeps your place and the address bar is the
- * link to paste. `?account=<payer key>` is the account, `&tab=` one of the six tabs by a plain
+ * link to paste. `?account=<payer key>` is the account, `&tab=` one of the seven tabs by a plain
  * name, `&view=map` the county map, and since v2.6166 `&doc=<id>` with `&tab=evidence` the
  * Evidence row to land on (Show on Evidence from the Timeline), lit when the tab opens. The default
  * view and the default tab are never written, and `doc` rides only with its tab.
@@ -16,7 +16,7 @@ import type { DeskView, Tab } from '../../components/jobs/legal/legalDeskShared'
 
 export const LEGAL_DESK_PATH = '/legal-desk'
 
-/** The six tabs by the names the address uses. `fees` is the old name of `firm` and still reads. */
+/** The seven tabs by the names the address uses. `fees` is the old name of `firm` and still reads; `themes` is By theme (v2.6588). */
 const TAB_BY_ADDRESS: Record<string, Tab> = {
   narrative: 'narrative',
   account: 'account',
@@ -25,6 +25,7 @@ const TAB_BY_ADDRESS: Record<string, Tab> = {
   firm: 'fees_steps',
   fees: 'fees_steps',
   timeline: 'timeline',
+  themes: 'themes',
 }
 
 const ADDRESS_BY_TAB: Record<Tab, string> = {
@@ -34,6 +35,7 @@ const ADDRESS_BY_TAB: Record<Tab, string> = {
   evidence: 'evidence',
   fees_steps: 'firm',
   timeline: 'timeline',
+  themes: 'themes',
 }
 
 /** The tab the desk opens on when the address names none. */
