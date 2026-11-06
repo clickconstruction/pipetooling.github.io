@@ -4,6 +4,7 @@
  * the first job only after the office presses; an inferred pair alone never reaches a Your week card. Both presses
  * weigh the same. Pure: the key, the words, the chip.
  */
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 export type CallbackVerdict = 'callback' | 'not_callback'
 
@@ -17,7 +18,7 @@ export const VERDICT_PRESS: Record<CallbackVerdict, string> = { callback: 'It wa
 export function verdictWords(row: Pick<JobCallbackRow, 'verdict' | 'decided_by_name' | 'decided_at'>): string {
   const who = row.decided_by_name.trim() || 'the office'
   const ms = Date.parse(row.decided_at)
-  const day = Number.isNaN(ms) ? '' : new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' })
+  const day = Number.isNaN(ms) ? '' : new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: APP_CALENDAR_TZ })
   return `${row.verdict === 'callback' ? 'Callback' : 'Not a callback'} · ${who}${day ? ` · ${day}` : ''}`
 }
 
