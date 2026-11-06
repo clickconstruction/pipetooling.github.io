@@ -30,7 +30,7 @@ describe('the owner’s call → counsel’s piles', () => {
     expect(reservationHoldEndsOn(null)).toBe('')
   })
 
-  it('the latest call per job comes off the notice items, and turns letter two off', () => {
+  it('the latest call per job comes off the notice items, and turns the attorney’s letter off', () => {
     const item = (id: string, at: string, c: OwnerCall | null): LienDeskItemRow => ({ id, job_id: 'j1', kind: 'notice_53_056', status: 'sent', sent_at: '2026-09-05T15:00:00Z', months: ['2026-07'], fields: { notice: { noticeDate: '2026-09-05', projectDescription: '', claimantName: 'Click', laborMaterialsType: '', originalContractorName: '', contractedWithIfDifferent: '', claimAmount: '1.00', contactPerson: '', claimantAddress: '' }, gcEmail: '', ...(c ? { ownerCall: c } : {}) }, cover_note: true, drafted_by: null, drafted_at: at, submitted_at: null, approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, pulled_back_by: null, pulled_back_at: null, created_at: at, updated_at: at, voided_at: null, printed_at: null, printed_by: null, offer_pct: 0, offer_by: null, offer_set_by: null, offer_set_at: null }) as unknown as LienDeskItemRow
     const older = item('a', '2026-09-01T10:00:00Z', call({ at: '2026-09-10T10:00:00Z', owesGc: 'no', reserved: 'never' }))
     const newer = item('b', '2026-09-02T10:00:00Z', call())
@@ -40,9 +40,9 @@ describe('the owner’s call → counsel’s piles', () => {
   })
 
   it('the grid row carries every date and fact, with "?" for what the office still owes it', () => {
-    const base = { jobId: 'j1', label: 'J377 · Lantern Row', owner: 'Pat Okafor', kindWords: 'Res · Comal', homestead: false, lastMonth: '2026-09', unpaid: 9_800, noticedMonths: ['2026-07'], openMonths: [{ key: '2026-08', deadline: '2026-11-16' }], affidavitBy: '2026-12-15', bond: 'no' as const, retainage: { deadline: '2026-10-05', daysLeft: 11, noticed: false, contractEndedOn: '2026-09-03' }, call: call({ originalContractCompletedOn: '2026-08-20' }), letterTwo: { state: 'due' as const, words: 'day 12 · letter two' } }
+    const base = { jobId: 'j1', label: 'J377 · Lantern Row', owner: 'Pat Okafor', kindWords: 'Res · Comal', homestead: false, lastMonth: '2026-09', unpaid: 9_800, noticedMonths: ['2026-07'], openMonths: [{ key: '2026-08', deadline: '2026-11-16' }], affidavitBy: '2026-12-15', bond: 'no' as const, retainage: { deadline: '2026-10-05', daysLeft: 11, noticed: false, contractEndedOn: '2026-09-03' }, call: call({ originalContractCompletedOn: '2026-08-20' }), letterTwo: { state: 'due' as const, words: 'day 12 · the attorney’s letter' } }
     const r = buildPlaybookGridRow(base, fmt)
-    expect(r).toMatchObject({ notice56: '2026-07 ✓ · 2026-08 by 2026-11-16', notice57: 'by 2026-10-05', affidavitBy: '2026-12-15', paidOut: 'no · $14,000 owed', reserved: 'yes · held', theirContractDone: '2026-08-20', holdEndsOn: '2026-09-21', letterTwo: 'day 12 · letter two', pile: 'A' })
+    expect(r).toMatchObject({ notice56: '2026-07 ✓ · 2026-08 by 2026-11-16', notice57: 'by 2026-10-05', affidavitBy: '2026-12-15', paidOut: 'no · $14,000 owed', reserved: 'yes · held', theirContractDone: '2026-08-20', holdEndsOn: '2026-09-21', letterTwo: 'day 12 · the attorney’s letter', pile: 'A' })
     const q = buildPlaybookGridRow({ ...base, call: null, retainage: null, letterTwo: null, noticedMonths: [], openMonths: [] }, fmt)
     expect(q).toMatchObject({ notice56: '—', notice57: '—', paidOut: '?', reserved: '?', theirContractDone: '?', letterTwo: '—', pile: null })
     const html = playbookGridHtml('Harborline Builders', [r, { ...q, homestead: true }], 'September 24, 2026', fmt)

@@ -191,9 +191,9 @@ function besideItems(row: Pick<LienNextUpRow, 'action' | 'sub'>): { items: LienS
       return {
         items: [
           { state: 'done', title: 'Notice sent', detail: 'The first letter went out and nothing has happened since.' },
-          { state: 'now', title: 'Send letter two', detail: row.sub },
+          { state: 'now', title: 'Send the attorney’s letter', detail: row.sub },
         ],
-        foot: 'After step 4 · letter two',
+        foot: 'After step 4 · the attorney’s letter',
       }
     case 'courtesy':
       return {

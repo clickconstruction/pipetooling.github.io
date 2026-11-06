@@ -72,11 +72,11 @@ describe('buildLienNextUp — notices', () => {
     expect(build({ notices: [notice('j1', 'ready'), notice('j2', 'ready', { gcCustomerId: 'gc2' })] }).map((r) => r.action)).toEqual(['send', 'send'])
   })
 
-  it('sent: a row only when letter two is due, with letter two’s own words', () => {
+  it('sent: a row only when the attorney’s letter is due, with the attorney’s letter’s own words', () => {
     expect(build({ notices: [notice('j1', 'sent')] })).toEqual([])
     expect(build({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('waiting') } })).toEqual([])
-    const due = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('due', 'day 12 · letter two due') } })
-    expect([due.key, due.action, due.button, due.sub, due.dueOn, due.severity]).toEqual(['letter-two:j1', 'letter_two', 'Send letter two', 'day 12 · letter two due', null, 'amber'])
+    const due = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('due', 'day 12 · the attorney’s letter due') } })
+    expect([due.key, due.action, due.button, due.sub, due.dueOn, due.severity]).toEqual(['letter-two:j1', 'letter_two', 'Send the attorney’s letter', 'day 12 · the attorney’s letter due', null, 'amber'])
     expect(due.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'sent' })
     expect(one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue') } }).group).toBe('now')
   })
@@ -312,9 +312,9 @@ describe('Signed with your code, as recorded (v2.5791)', () => {
 describe('the REMINDERS ladder (punch list #262)', () => {
   const courtesy = (over: Partial<CourtesyStatus> = {}): CourtesyStatus => ({ state: 'due', day: 21, words: 'day 21 · nothing since the packet', reason: '', lastSentAt: null, lienDay: '2026-11-16', records: [], ...over })
   it('a courtesy row stands on step 1, a letter-two row after a courtesy went on step 2; with no courtesy status the rung is null and the row still reads under Reminders', () => {
-    const due = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue', 'day 21 · letter two overdue') }, courtesyByJob: { j1: courtesy() } })
+    const due = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue', 'day 21 · the attorney’s letter overdue') }, courtesyByJob: { j1: courtesy() } })
     expect([due.action, due.reminder?.step, due.reminder?.state]).toEqual(['courtesy', 1, 'due'])
-    const again = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue', 'day 21 · letter two overdue') }, courtesyByJob: { j1: courtesy({ lastSentAt: '2026-09-28T12:00:00Z', words: 'day 21 · courtesy sent Sep 28 by email · nothing since' }) } })
+    const again = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue', 'day 21 · the attorney’s letter overdue') }, courtesyByJob: { j1: courtesy({ lastSentAt: '2026-09-28T12:00:00Z', words: 'day 21 · courtesy sent Sep 28 by email · nothing since' }) } })
     expect([again.action, again.reminder?.step, again.reminder?.state]).toEqual(['letter_two', 2, 'again'])
     const bare = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('due') } })
     expect(bare.reminder).toBeNull()

@@ -205,12 +205,12 @@ export function courtesyFooterSentence(s: CourtesyStatus, amountWords: string, f
     case 'held':
       return `Courtesy notice held: ${s.reason}. A reminder may not name a lien that cannot go on.`
     case 'sent':
-      return `${s.words[0]!.toUpperCase()}${s.words.slice(1)}. Another may go in ${COURTESY_AGAIN_DAYS} days if nothing comes; ${s.letterTwoWords ? `${s.letterTwoWords}.` : "letter two is counsel's certified second letter from day 10."}`
+      return `${s.words[0]!.toUpperCase()}${s.words.slice(1)}. Another may go in ${COURTESY_AGAIN_DAYS} days if nothing comes; ${s.letterTwoWords ? `${s.letterTwoWords}.` : "the attorney’s letter is counsel's certified letter from day 10."}`
     case 'waiting':
       return `A courtesy notice may go from day ${COURTESY_FROM_DAY}: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number.`
     case 'due':
       // After one went (v2.6382) the sentence says so: *nothing since the courtesy notice of Oct 20*, not *since the packet*.
-      return `Nothing has come since ${s.lastSentAt ? `the courtesy notice of ${formatDay(calendarYmdInAppTzFromIso(s.lastSentAt))}` : 'the packet'}. ${s.lastSentAt ? 'Another' : 'A courtesy notice'} goes by email and text in a minute: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number. ${s.letterTwoWords ? `${s.letterTwoWords[0]!.toUpperCase()}${s.letterTwoWords.slice(1)}.` : "Letter two is counsel's certified second letter, from day 10."}`
+      return `Nothing has come since ${s.lastSentAt ? `the courtesy notice of ${formatDay(calendarYmdInAppTzFromIso(s.lastSentAt))}` : 'the packet'}. ${s.lastSentAt ? 'Another' : 'A courtesy notice'} goes by email and text in a minute: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number. ${s.letterTwoWords ? `${s.letterTwoWords[0]!.toUpperCase()}${s.letterTwoWords.slice(1)}.` : "The attorney’s letter is counsel's certified letter, from day 10."}`
   }
 }
 

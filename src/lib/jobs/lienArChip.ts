@@ -91,7 +91,7 @@ const MOVE_WORDS: Record<LienNextUpAction, string> = {
   record_mailing: 'In the mail · tracking owed',
   mail_needs_you: 'Envelope came back',
   review_hold: 'Held',
-  letter_two: 'Letter two',
+  letter_two: 'Attorney’s letter',
   courtesy: 'Courtesy notice',
   note_missed: 'Window closed',
   fix_property: 'Affidavit · fix the property',
@@ -217,8 +217,8 @@ function fromNextUp(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string
         tone: overdue ? 'red' : 'amber',
         state: 'due',
         paper: 'letter_two',
-        words: `${lead}${day != null ? `day ${day} · ` : ''}letter two${overdue ? ' overdue' : ''}`,
-        sentence: `${noticeSentence(input, fmt)} · the GC has not paid${letterTwo?.clock ? ` · counted ${letterTwo.clock.why}` : ''} · letter two is ${overdue ? 'overdue' : 'due by day 14'}`,
+        words: `${lead}${day != null ? `day ${day} · ` : ''}the attorney’s letter${overdue ? ' overdue' : ''}`,
+        sentence: `${noticeSentence(input, fmt)} · the GC has not paid${letterTwo?.clock ? ` · counted ${letterTwo.clock.why}` : ''} · the attorney’s letter is ${overdue ? 'overdue' : 'due by day 14'}`,
         title,
         door,
         dueOn: null,
@@ -358,16 +358,16 @@ function fromPaperOut(input: LienArJobInput, fmt: (ymd: string) => string): Lien
   // Letter two rides on the notice's chip: the day count while waiting, its own state once it moved.
   if (two) {
     if (two.state === 'sent' && two.letterTwo?.sentAt) {
-      words = `Letter two sent ${fmt(dayOf(two.letterTwo.sentAt))}`
+      words = `The attorney’s letter sent ${fmt(dayOf(two.letterTwo.sentAt))}`
       paper = 'letter_two'
       tone = 'green'
     } else if (two.state === 'in_flight') {
-      words = `Letter two · ${two.letterTwo?.status === 'awaiting_approval' ? 'awaiting the leader' : 'in the run'}`
+      words = `Attorney’s letter · ${two.letterTwo?.status === 'awaiting_approval' ? 'awaiting the leader' : 'in the run'}`
       paper = 'letter_two'
       tone = 'blue'
     } else if (two.state === 'due' || two.state === 'overdue') {
       // Without Do now's row (a light read), the clock still says it.
-      words = `${mail?.words && mail.tone === 'green' ? `${mail.words} · ` : ''}day ${two.day ?? ''} · letter two${two.state === 'overdue' ? ' overdue' : ''}`.replace('day  ·', 'day ·')
+      words = `${mail?.words && mail.tone === 'green' ? `${mail.words} · ` : ''}day ${two.day ?? ''} · the attorney’s letter${two.state === 'overdue' ? ' overdue' : ''}`.replace('day  ·', 'day ·')
       paper = 'letter_two'
       tone = two.state === 'overdue' ? 'red' : 'amber'
     } else if (two.state === 'gc_authorized' && two.gcAuthorized) {

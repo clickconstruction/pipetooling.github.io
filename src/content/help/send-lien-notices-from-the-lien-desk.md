@@ -2,7 +2,7 @@
 title: send lien notices from the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien desk, lien notice, he is here, standing over me, typing it in, letter two, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due, sent by hand, retainage release, pay application figure
+keywords: lien desk, lien notice, he is here, standing over me, typing it in, the attorney’s letter, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due, sent by hand, retainage release, pay application figure
 where: /jobs?tab=stages&liendesk=1
 ---
 Texas counts lien deadlines from the month the work was done, not from the bill. The Lien desk keeps every notice in one queue, so no deadline passes quietly.
@@ -23,8 +23,8 @@ Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do n
 - Signing is the other step only the leader can take. An approved notice with no signature sits first, under **Only you can sign**, with {{button:blue|Sign}}. It opens the notice, where {{button:green|Sign ▸}} waits. The office's row says it waits on the leader by name. The Dashboard's Needs you carries the same count for the leader.
 - The job's number and name underline when you point at them. Press them to open the job itself, over the desk. Close the job and the desk reads its rows again. The same door is on every view of the desk.
 - A rail above the rows shows the four steps of a notice. The steps are Find the owner, Draft notice, Approve and Send the run. Each step shows how many rows stand on it. Send the run counts the notices ready and the ones printed. Press a step and a brief opens under the rails. The brief says what the step is and why a row is on it. The brief names the usual move and the other moves you may take instead. The rows on that step come first under **On this step**. The rest follow under **On other steps**. Press {{button:outline|Every step}} to put the list back. Affidavits and retainage get rails of their own when one needs an act, with the same kind of brief.
-- A violet rail named **Reminders** sits between Notices and Affidavits once a notice has been sent. The rail's four steps are Reminder due, Reminder sent, Letter two and Closed. Reminder due counts the sent notices from day 7 with nothing since the packet. The count says beside it how many notices are still before day 7. Reminder sent counts the notices a courtesy notice went to. Letter two counts the second letters drafting, waiting on the leader, in the run or sent. Closed counts the notices that are paid, answered, called about, okayed by the GC or filed on. Press a step and its brief opens, with the schedule of days across the top. A step whose notices have no row on the list names them under the rail. Each name has {{button:outline|Open}}, which opens that notice. The strip's own guide is [read the reminders ladder on the Lien desk](/help/read-the-reminders-ladder-on-the-lien-desk).
-- The courtesy and letter two rows sit under their own heading, **Reminders**. They are not in Needs you now. Their dots read 1/4 or 2/4 on the Reminders rail. On a phone their four tiles read Due, Sent, Letter two and Closed.
+- A violet rail named **Reminders** sits between Notices and Affidavits once a notice has been sent. The rail's four steps are Reminder due, Reminder sent, The attorney’s letter and Closed. Reminder due counts the sent notices from day 7 with nothing since the packet. The count says beside it how many notices are still before day 7. Reminder sent counts the notices a courtesy notice went to. The attorney’s letter counts the second letters drafting, waiting on the leader, in the run or sent. Closed counts the notices that are paid, answered, called about, okayed by the GC or filed on. Press a step and its brief opens, with the schedule of days across the top. A step whose notices have no row on the list names them under the rail. Each name has {{button:outline|Open}}, which opens that notice. The strip's own guide is [read the reminders ladder on the Lien desk](/help/read-the-reminders-ladder-on-the-lien-desk).
+- The courtesy and the attorney’s letter rows sit under their own heading, **Reminders**. They are not in Needs you now. Their dots read 1/4 or 2/4 on the Reminders rail. On a phone their four tiles read Due, Sent, The attorney’s letter and Closed.
 - On a phone each row shows the four steps by name. Done steps have a tick. The step waiting on you says *you*. A step on someone else says *office* or *leader*. Press the row of steps to see the card.
 - The Notice or Affidavit chip on a row is a door too. It rings when you point at it. A red count on it says how many details the paper still needs. Press it to see the paper as it would print today. Each missing detail is marked in red on the page with a number. A list beside the page names each one and gives the button that fills it. {{button:blue|Fix the property}} opens the property record in a window above the paper. The lookup fills the county, the legal description and the owner when it can. {{button:blue|Pick the GC}} sets the job's original contractor the same way. Press {{button:blue|Done}} and the paper fills in behind it. Each filled detail turns green in the list and shows what it reads now. The arrow keys walk the rows. Esc closes the paper.
 - Each row wears four dots and a count like 2/4. Point at the dots to read where that paper stands. The card lists what is done, what is being done now and what is left. On a phone, tap the dots.
@@ -152,7 +152,7 @@ A notice already sent to him has {{button:blue|Leader here, Approve ▸}} on its
 
 Some notices are printed here and mailed by hand. One paper may even cover several jobs at a property. Record it with **Already mailed? Record it…**, the quiet link left of {{button:outline|Save draft}}. On a notice past the draft, the footer is one row. A chip at the left says the state, like {{chip:green|Approved · leader's word · Oct 7}}. Hold the mouse on it to read the whole line. The side doors are links, and the one button sits at the right end.
 
-Type when it went out, how and to whom. The day you type is the day the notice went out. Letter two, the courtesy notice and the day count all run from that day. Type the claim and the months as they were printed, and the link to the saved copy. Then tick the other unpaid jobs at the property it covered. On a phone this step opens as its own page over the desk, and **Back** returns to the notice.
+Type when it went out, how and to whom. The day you type is the day the notice went out. Attorney’s letter, the courtesy notice and the day count all run from that day. Type the claim and the months as they were printed, and the link to the saved copy. Then tick the other unpaid jobs at the property it covered. On a phone this step opens as its own page over the desk, and **Back** returns to the notice.
 
 The record lands on every one of those jobs, and the desk stops asking for them. When the paper's claim differs from the app's, the record shows both figures. Neither one is rewritten. The Lien window's notice tab has the same door, {{button:outline|Already sent — record it…}}.
 
@@ -253,7 +253,7 @@ The desk shows the master only what needs a decision. He sees what is open with 
 
 ### Signing a notice
 
-The notice's own signature line sits above the buttons. Your name waits on it in cursive. Press {{button:green|Sign and approve ▸}} and your name goes on the line with today's date. The record says who pressed, from which sign-in, and when. The notice, the cover letter and letter two print your name above the rule. It sits in a frame that reads **Signed electronically**. The frame carries a short record ID. Press **Draw instead** to sign with a finger or the mouse. Press **Press instead** to go back to the name.
+The notice's own signature line sits above the buttons. Your name waits on it in cursive. Press {{button:green|Sign and approve ▸}} and your name goes on the line with today's date. The record says who pressed, from which sign-in, and when. The notice, the cover letter and the attorney’s letter print your name above the rule. It sits in a frame that reads **Signed electronically**. The frame carries a short record ID. Press **Draw instead** to sign with a finger or the mouse. Press **Press instead** to go back to the name.
 
 The chip on a ready notice reads **signed** with the day. Edit a signed notice and the chip reads **unsigned** again. Sign it again before the run.
 
@@ -375,18 +375,18 @@ The cover letters give the signing master's own phone as the number to call. It 
 
 A sent notice still needs watching. The notice's footer counts the days since the packet went out. From day 7 the footer offers {{button:blue|Send a courtesy notice ▸}}. On Do now the same press sits on the row under the **Reminders** heading. The Reminders rail counts that notice on its first step. The courtesy notice is a plain reminder by email and text. The reminder says the notice stands. The reminder names the day the lien goes on unless the claim is paid. The reminder carries the pay link. The desk holds the press when the lien cannot go on, and says why. See [send a courtesy notice before a lien](/help/send-a-courtesy-notice-before-a-lien).
 
-## Letter two
+## Attorney’s letter
 
-The footer also says whether the GC has paid, and whether the GC told the owner to pay us. Counsel's rule is a second owner letter 10 to 14 days after the first packet, when neither has happened. From day 10 the row under Sent wears {{chip:yellow|day 12 · letter two}}. It turns red on day 14, and the Dashboard's lien card counts them. While no courtesy notice has gone, the row leads with the courtesy press instead.
+The footer also says whether the GC has paid, and whether the GC told the owner to pay us. Counsel's rule is a second owner letter 10 to 14 days after the first packet, when neither has happened. From day 10 the row under Sent wears {{chip:yellow|day 12 · the attorney’s letter}}. It turns red on day 14, and the Dashboard's lien card counts them. While no courtesy notice has gone, the row leads with the courtesy press instead.
 
-- {{button:blue|Send letter two ▸}} asks which letter to send.
+- {{button:blue|Send the attorney’s letter ▸}} asks which letter to send.
   - **We believe the owner paid the GC out** is the paid out letter. It names the 10 percent the owner had to reserve and the affidavit date. It asks the owner three questions to answer by phone.
   - **The GC is not answering** is the letter for a GC who has gone quiet.
-- Either one is drafted on the job's notice, with the same form and the same two recipients. The row moves to To draft and wears {{chip:blue|letter two · paid-out}}. Read it, then send it for approval as usual. The run sends and records it.
-- {{button:outline|The GC authorized direct pay…}} is for when the GC wrote that the owner may pay us. Note where that okay is and when it came. Letter two is then off, and the owner's check comes against a release.
+- Either one is drafted on the job's notice, with the same form and the same two recipients. The row moves to To draft and wears {{chip:blue|the attorney’s letter · paid-out}}. Read it, then send it for approval as usual. The run sends and records it.
+- {{button:outline|The GC authorized direct pay…}} is for when the GC wrote that the owner may pay us. Note where that okay is and when it came. The attorney’s letter is then off, and the owner's check comes against a release.
 
 :::example Paid means done
-Once the job's balance is paid, the footer says there is nothing more to send. Once the owner has called and the call is recorded, letter two is off too.
+Once the job's balance is paid, the footer says there is nothing more to send. Once the owner has called and the call is recorded, the attorney’s letter is off too.
 :::
 
 ## The owner's call and the three piles
@@ -412,7 +412,7 @@ The pane's **payment bond** line says whether a bond is on the project. Check it
 When one GC stops paying everywhere at once, a month at a time is too slow. **Put a GC on notice** sends § 53.056 notices to the owners of every unpaid job under that GC. It names every month not yet noticed, in one run. Three doors open it with the GC already picked.
 
 - **Jobs, Pipeline, ⋯ Pipeline tools**, with the board filtered to one GC, shows {{button:amber|⚠ Put <GC> on notice…}}.
-- **The desk's title bar** has {{button:amber|⚠ Put a GC on notice…}} on its second line. It opens a picker of the GCs with notices due in the next 30 days, most money first. Each row shows the dollars, the jobs, the first window to close and what is stuck. A GC whose windows have all closed sits greyed under **Nothing left to claim**. It still opens, for letter two and the grid.
+- **The desk's title bar** has {{button:amber|⚠ Put a GC on notice…}} on its second line. It opens a picker of the GCs with notices due in the next 30 days, most money first. Each row shows the dollars, the jobs, the first window to close and what is stuck. A GC whose windows have all closed sits greyed under **Nothing left to claim**. It still opens, for the attorney’s letter and the grid.
 - **Bids, Customer review** has {{button:amber|⚠ Put on notice…}} beside *set terms…* on the GC's row.
 
 The run covers every unpaid job with the GC, not only the ones the picker counts.

@@ -95,7 +95,7 @@ describe('someone’s calling (v2.3854)', () => {
     expect(practiceCallFacts({ us: 'Click', todayYmd: '2027-01-05', signer: '', phone: '' })).toMatchObject({ mailedOn: '2026-12-28', months: 'October and November 2026' })
   })
 
-  it('letter two: the hit is the first packet (the call is recorded there), and its facts say which letter went out', () => {
+  it('the attorney’s letter: the hit is the first packet (the call is recorded there), and its facts say which letter went out', () => {
     const two = notice({ id: 'two', job_id: 'j273', sent_at: '2026-10-06T15:00:00Z', fields: { ...(notice({ id: 'x', job_id: 'j273' }).fields as object), letterTwo: { kind: 'paid_out', afterItemId: 'n273', afterSentAt: '2026-09-22T15:00:00Z' } } })
     const items = [...input.items, two]
     const letterTwoByJob = letterTwoByJobFrom(items, () => 7_902, '2026-10-08')
