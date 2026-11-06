@@ -1441,6 +1441,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "plan_part_can_write": [{"args":{"p_part_id":"string"},"returns":"boolean"}],
   "plan_part_mirror_job_links": [{"args":{"p_part_id":"string"},"returns":"undefined"}],
   "plan_part_switch_words": [{"args":{"p_old":"string","p_part":"string","p_set":"Database[\"public\"][\"Tables\"][\"plan_sets\"][\"Row\"]"},"returns":"string"}],
+  "plan_set_crew_on_job": [{"args":{"p_job_id":"string","p_part_id":"string"},"returns":"boolean"}],
   "plan_set_is_drawing": [{"args":{"p_kind":"string"},"returns":"boolean"}],
   "plan_set_link_key": [{"args":{"p_link":"string"},"returns":"string"}],
   "plan_set_paper_words": [{"args":{"p":"Database[\"public\"][\"Tables\"][\"plan_sets\"][\"Row\"]","p_goes_with":"string","p_replaces":"string"},"returns":"string"}],

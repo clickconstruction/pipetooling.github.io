@@ -22,6 +22,7 @@ import DashboardJobModeFirstRunCard from '../components/dashboard/DashboardJobMo
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import DashboardYourRecordCard from '../components/dashboard/DashboardYourRecordCard'
 import { DashboardCustomerWordsStrip } from '../components/dashboard/DashboardCustomerWordsStrip'
+import { DashboardYourWeekCard } from '../components/dashboard/DashboardYourWeekCard'
 import { MissedClockInDoor } from '../components/clock/MissedClockInDoor'
 import TurnawayModal from '../components/jobMode/TurnawayModal'
 import JobReportsModal from '../components/JobReportsModal'
@@ -1211,6 +1212,8 @@ export default function Dashboard() {
           onTurnaway={(j) => setTurnawayJob(j)}
           canClockOut={!dashboardSelfIsSalary}
         />
+        {/* Your week (v2.6589, punch list #255): the one progress signal the office picked for this person, and how far it moved this week. */}
+        <DashboardYourWeekCard userId={authUser.id} />
         {/* Your record (v2.3368): the three things only this person can put right, no money on it. */}
         <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} />
         {/* A day the clock missed (v2.4257): Job Mode shows no My Time, so the door sits under the card. */}
@@ -1444,6 +1447,7 @@ export default function Dashboard() {
         afterJobReportRow={
           <>
             {authUser?.id ? <DashboardCustomerWordsStrip userId={authUser.id} /> : null}
+            {authUser?.id ? <DashboardYourWeekCard userId={authUser.id} /> : null}
             {authUser?.id ? <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} /> : null}
             {myScheduleSection}
           </>

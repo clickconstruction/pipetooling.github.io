@@ -725,13 +725,13 @@ describe('buildNeedsYouItems', () => {
     const withTwo = { ...desk, office: { ...desk.office, letterTwo: { due: 2, overdue: 1, jobIds: ['j1', 'j2'] } } }
     const d = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: withTwo }))
     expect(d[0]?.secondary).toEqual([
-      { key: 'letter-two', label: '2 sent notices at day 10+ — letter two (1 past day 14) ›' },
+      { key: 'letter-two', label: '2 sent notices at day 10+ — the attorney’s letter (1 past day 14) ›' },
       { key: 'missed', label: '5 windows closed with nothing recorded · $51,780 · note them ›' },
     ])
     const onlyTwo = { ...quiet, office: { ...quiet.office, letterTwo: { due: 1, overdue: 0, jobIds: ['j1'] } } }
     const e = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: onlyTwo }))
     expect(e.map((i) => i.key)).toEqual(['lien-notice-draft'])
-    expect(e[0]).toMatchObject({ severity: 'amber', title: 'Letter two is due on a sent notice', figure: '1', actionLabel: 'Open the Lien desk' })
+    expect(e[0]).toMatchObject({ severity: 'amber', title: 'The attorney’s letter is due on a sent notice', figure: '1', actionLabel: 'Open the Lien desk' })
     expect(e[0]?.detail).toContain('the GC has neither paid nor authorized the owner to pay us')
   })
 

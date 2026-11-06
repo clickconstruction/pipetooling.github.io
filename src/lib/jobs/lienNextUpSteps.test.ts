@@ -109,7 +109,7 @@ describe('lienStepCard on the REMINDERS ladder (punch list #262)', () => {
     const c = lienStepCard(row({ action: 'courtesy', sub: 'day 21 · nothing since the packet', button: 'Send a courtesy notice', dueOn: null, daysLeft: null, reminder: { step: 1, state: 'due', words: 'day 21 · nothing since the packet', day: 21, counted: true } }))
     expect(c.ladder).toBe('reminder')
     expect(c.kindWords).toBe('Notice')
-    expect(c.items.map((i) => `${i.state} ${i.title}`)).toEqual(['now Reminder due', 'todo Reminder sent', 'todo Letter two', 'todo Closed'])
+    expect(c.items.map((i) => `${i.state} ${i.title}`)).toEqual(['now Reminder due', 'todo Reminder sent', 'todo Attorney’s letter', 'todo Closed'])
     expect(c.items[0]!.detail).toContain('One press sends the email and the text')
     expect(c.foot).toBe('Step 1 of 4 · 0 done · 4 to go')
     expect(c.blocked).toBeNull()
@@ -117,9 +117,9 @@ describe('lienStepCard on the REMINDERS ladder (punch list #262)', () => {
     // Without the rung the row keeps its two-rung card beside the ladder, as before.
     expect(lienStepCard(row({ action: 'courtesy', sub: 'day 21 · nothing since the packet' })).foot).toBe('After step 4 · courtesy notice')
   })
-  it('the phone’s tiles read Due · Sent · Letter two · Closed, letter two the leader’s', () => {
+  it('the phone’s tiles read Due · Sent · Attorney’s letter · Closed, the attorney’s letter the leader’s', () => {
     const tiles = lienStepTiles({ ladder: 'reminder', step: 3 }, 'reminder', false)!
-    expect(tiles.map((t) => `${t.label}:${t.state}:${t.who ?? '-'}`)).toEqual(['Due:done:-', 'Sent:done:-', 'Letter two:now:leader', 'Closed:todo:-'])
+    expect(tiles.map((t) => `${t.label}:${t.state}:${t.who ?? '-'}`)).toEqual(['Due:done:-', 'Sent:done:-', 'Attorney’s letter:now:leader', 'Closed:todo:-'])
   })
 })
 
@@ -162,7 +162,7 @@ describe('lienStepGroups — the list under a pressed rung, sorted and never fad
     expect(lienStepGroups([rows[0]!], { ladder: 'notice', step: 2 })).toHaveLength(1)
   })
   it('names the rung for the brief’s head', () => {
-    expect(lienStepName({ ladder: 'reminder', step: 3 })).toBe('3 · Letter two')
+    expect(lienStepName({ ladder: 'reminder', step: 3 })).toBe('3 · Attorney’s letter')
     expect(lienStepName({ ladder: 'affidavit', step: 1 })).toBe('1 · Fix the property')
   })
 })
@@ -192,6 +192,6 @@ describe('lienStepBrief — every rail’s step brief (v2.6577)', () => {
     expect(lienStepBrief({ ladder: 'retainage', step: 2 }).what).toContain('retainage held')
   })
   it('hands the REMINDERS rail to its own brief', () => {
-    expect(lienStepBrief({ ladder: 'reminder', step: 3 })).toMatchObject({ title: 'Letter two', usual: 'Send letter two', who: 'leader' })
+    expect(lienStepBrief({ ladder: 'reminder', step: 3 })).toMatchObject({ title: 'Attorney’s letter', usual: 'Send the attorney’s letter', who: 'leader' })
   })
 })

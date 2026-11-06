@@ -289,7 +289,7 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
       { jobId: 'j5', title: '752 · Pecan Grove', step: 1 as const, state: 'due' as const, words: 'day 29 · nothing since the packet', day: 29, counted: true },
       { jobId: 'j6', title: '760 · Harlan Homes', step: 1 as const, state: 'waiting' as const, words: 'day 4 · courtesy from day 7', day: 4, counted: false },
       { jobId: 'j7', title: '741 · Ridgeway', step: 2 as const, state: 'sent' as const, words: 'courtesy sent Nov 2 by email and text', day: 9, counted: true },
-      { jobId: 'j8', title: '733 · Castell II', step: 3 as const, state: 'two_drafting' as const, words: 'letter two · unresponsive · drafting', day: 16, counted: true },
+      { jobId: 'j8', title: '733 · Castell II', step: 3 as const, state: 'two_drafting' as const, words: 'the attorney’s letter · unresponsive · drafting', day: 16, counted: true },
       { jobId: 'j9', title: '729 · Pecan Grove II', step: 4 as const, state: 'paid' as const, words: 'paid', day: 30, counted: true },
       { jobId: 'j10', title: '706 · Summit', step: 4 as const, state: 'owner_called' as const, words: 'owner called Nov 1', day: 22, counted: true },
     ],
@@ -305,7 +305,7 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(rails).toEqual(['lien-step-rail-notice', 'lien-step-rail-reminder'])
     expect(['1', '2', '3', '4'].map((n) => screen.getByTestId(`lien-step-count-reminder-${n}`).textContent)).toEqual(['2 · 1 before day 7', '1', '1', '2'])
     expect(screen.getByRole('group', { name: "The reminder's four steps" }).textContent).toContain('Reminder due')
-    expect(screen.getByRole('group', { name: "The reminder's four steps" }).textContent).toContain('Letter twoyou')
+    expect(screen.getByRole('group', { name: "The reminder's four steps" }).textContent).toContain('Attorney’s letteryou')
     const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
     expect(titles).toEqual(['Needs you now · 1', 'Reminders · 2'])
     const group = screen.getByRole('region', { name: 'Reminders' })
@@ -329,7 +329,7 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(Array.from(brief.querySelectorAll('[data-lien-schedule-mark]')).map((el) => el.textContent)).toEqual(['day 4', 'day 21', 'day 29+'])
     expect(brief.textContent).toContain('The packet went, nothing came back, and it is day 7 or later.')
     expect(brief.textContent).toContain('Send a courtesy notice · the office presses it')
-    expect(screen.getByTestId('lien-step-brief-instead').textContent).toBe('Send letter two now, without the light step · Record the owner’s call · The GC authorized direct pay')
+    expect(screen.getByTestId('lien-step-brief-instead').textContent).toBe('Send the attorney’s letter now, without the light step · Record the owner’s call · The GC authorized direct pay')
     expect(Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)).toEqual(['On this step · 2', 'On other steps · 1'])
     expect(document.querySelectorAll('[data-dim]')).toHaveLength(0)
     const list = within(brief).getByTestId('lien-reminder-step-list')
@@ -366,7 +366,7 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     const card = document.querySelector('[data-lien-next-up-row="courtesy:j1"]') as HTMLElement
     const stepRow = within(card).getByTestId('lien-step-row')
     expect(stepRow.getAttribute('data-ladder')).toBe('reminder')
-    expect(Array.from(stepRow.querySelectorAll('.lienStepTile')).map((t) => `${t.textContent}:${t.getAttribute('data-state')}`)).toEqual(['youDue:now', ' Sent:todo', ' Letter two:todo', ' Closed:todo'])
+    expect(Array.from(stepRow.querySelectorAll('.lienStepTile')).map((t) => `${t.textContent}:${t.getAttribute('data-state')}`)).toEqual(['youDue:now', ' Sent:todo', ' Attorney’s letter:todo', ' Closed:todo'])
     fireEvent.click(screen.getByTestId('lien-step-reminder-2'))
     expect((within(screen.getByTestId('lien-reminder-step-list')).getByRole('button', { name: 'Open' }) as HTMLButtonElement).style.width).toBe('100%')
   })

@@ -116,14 +116,14 @@ export function letterTwoStatus(input: { items: ReadonlyArray<LetterTwoItemLike>
   const tag = clockTag(clock)
   const base = { day, clock, firstItemId: first.item.id, firstSentAt, gcAuthorized, ownerCalledAt, letterTwo: two ? { itemId: two.item.id, kind: two.draft!.letterTwo!.kind, status: two.item.status, sentAt: two.item.sent_at } : null }
   if (two) {
-    if (two.item.status === 'sent') return { ...base, state: 'sent', words: `letter two sent ${two.item.sent_at ? fmt(calendarYmdInAppTzFromIso(two.item.sent_at)) : ''} · ${letterTwoKindLabel(two.draft!.letterTwo!.kind)}` }
-    return { ...base, state: 'in_flight', words: `letter two · ${letterTwoKindLabel(two.draft!.letterTwo!.kind)} · ${two.item.status === 'awaiting_approval' ? 'awaiting the leader' : two.item.status === 'approved' ? 'in the run' : two.item.status === 'held' ? 'held' : 'drafting'}` }
+    if (two.item.status === 'sent') return { ...base, state: 'sent', words: `the attorney’s letter sent ${two.item.sent_at ? fmt(calendarYmdInAppTzFromIso(two.item.sent_at)) : ''} · ${letterTwoKindLabel(two.draft!.letterTwo!.kind)}` }
+    return { ...base, state: 'in_flight', words: `the attorney’s letter · ${letterTwoKindLabel(two.draft!.letterTwo!.kind)} · ${two.item.status === 'awaiting_approval' ? 'awaiting the leader' : two.item.status === 'approved' ? 'in the run' : two.item.status === 'held' ? 'held' : 'drafting'}` }
   }
   if (input.openBalance <= 0.005) return { ...base, state: 'paid', words: 'paid' }
   if (gcAuthorized) return { ...base, state: 'gc_authorized', words: `GC authorized direct pay ${fmt(calendarYmdInAppTzFromIso(gcAuthorized.at))}` }
   if (ownerCalledAt) return { ...base, state: 'owner_called', words: `owner called ${fmt(calendarYmdInAppTzFromIso(ownerCalledAt))}` }
-  if (day >= LETTER_TWO_BY_DAY) return { ...base, state: 'overdue', words: `day ${day} · letter two overdue${tag}` }
-  if (day >= LETTER_TWO_FROM_DAY) return { ...base, state: 'due', words: `day ${day} · letter two${tag}` }
+  if (day >= LETTER_TWO_BY_DAY) return { ...base, state: 'overdue', words: `day ${day} · the attorney’s letter overdue${tag}` }
+  if (day >= LETTER_TWO_FROM_DAY) return { ...base, state: 'due', words: `day ${day} · the attorney’s letter${tag}` }
   return { ...base, state: 'waiting', words: `day ${day}${tag}` }
 }
 

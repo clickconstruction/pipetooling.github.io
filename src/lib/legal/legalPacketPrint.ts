@@ -40,7 +40,7 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
     const main = row([`<b>${esc(e.letter)}</b>`, esc(envelopeKindWords(e)), esc(envelopeWentOutWords(e, packet.todayYmd)), formatLegalMoney(e.claim), esc(envelopeMonthsWords(e) || '—'), esc(envelopeSharesWords(e, formatLegalMoney)), esc([e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—'), e.documentUrl ? `<a href="${esc(e.documentUrl)}">${esc(e.documentUrl)}</a>` : '—'], [false, false, false, true, false, false, false, false])
     if (!e.answers) return [main]
     const w = envelopeAnswersWords(e.answers, { todayYmd: packet.todayYmd, gcName, formatMoney: formatLegalMoney })
-    return [main, `<tr><td colspan="8" class="band"><b>The owner's answers</b> · ${esc(w.owner)}<br><b>Letter two</b> · ${esc(w.letterTwo)} &nbsp; <b>GC's written okay to pay Click direct:</b> ${esc(w.gcOkay)}</td></tr>`]
+    return [main, `<tr><td colspan="8" class="band"><b>The owner's answers</b> · ${esc(w.owner)}<br><b>Attorney’s letter</b> · ${esc(w.letterTwo)} &nbsp; <b>GC's written okay to pay Click direct:</b> ${esc(w.gcOkay)}</td></tr>`]
   })
   const agreementRows = packet.paper.agreements.map((g) => {
     const c = g.coverage

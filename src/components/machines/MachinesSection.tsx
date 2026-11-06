@@ -2,15 +2,20 @@
  * Equipment pre-use check (punch list #270): the machines on the fleet board (People → Vehicles). A card per machine
  * with its template, who holds it (a job or the yard), today's check, the hours, the days on jobs, Hand off, Print the
  * label, the rental, its gauges, and Add a machine. A machine is a vehicles row with kind = machine; its place is a
- * possession by job. Every press writes and reads again; a failure names its reason.
+ * possession by job. Every press writes and reads again; a failure names its reason. A rental whose agreement came in
+ * as the tech's photo (punch list #271) shows that photo on its card with Type it off the photo, which opens the
+ * rental editor beside the picture so the office types the number and the due-back day off the paper.
  */
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useFleet } from '../../hooks/useFleet'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import {
   MACHINE_KIND_WORDS,
+  agreementPhotoView,
+  agreementPhotos,
+  agreementState,
   dayWords,
   hoursWords,
   isHeld,
@@ -29,12 +34,15 @@ import {
   todayDay,
   type LevelDef,
   type Machine,
+  type AgreementPhotoView,
+  type MachineCheck,
   type MachineKind,
+  type MachinePhoto,
   type Rental,
   type RentalDraft,
 } from '../../lib/machines/machines'
 import { addMachine, placeMachine, saveLevels, saveRental, type MachineTemplate } from '../../lib/machines/machinesIo'
-import { runAnyway } from '../../lib/machines/checksIo'
+import { photoSrc, runAnyway } from '../../lib/machines/checksIo'
 import { useAuth } from '../../hooks/useAuth'
 import { MachineCheckSheet } from './MachineCheckSheet'
 import { JobLookupBox } from './JobLookupBox'
@@ -65,7 +73,10 @@ export function MachinesSection() {
   const [adding, setAdding] = useState(false)
   const [gauges, setGauges] = useState<string | null>(null)
   const [renting, setRenting] = useState<string | null>(null)
+  /** The rental editor opened from Type it off the photo draws the agreement photo beside its fields. */
+  const [typingOff, setTypingOff] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const srcs = useAgreementPhotoSrcs(fleet?.machines ?? [], fleet?.checks ?? [])
   const [failed, setFailed] = useState<string | null>(null)
 
   async function run(what: string, fn: () => Promise<void>) {
@@ -104,13 +115,16 @@ export function MachinesSection() {
           const h = lastHours(fleet!.checks, m.id)
           const days = machineDays(fleet!.checks, m.id)
           const template = fleet!.templates.find((t) => t.id === m.templateId)
-          const rental = m.rental ? rentalWords(m.rental, today) : null
+          const agreement = agreementState(m, fleet!.checks)
+          const rental = m.rental ? rentalWords(m.rental, today, agreement) : null
+          const newest = agreement === 'photo' ? agreementPhotos(fleet!.checks, m.id)[0] ?? null : null
+          const shot = newest ? agreementPhotoView(newest, srcs[newest.photo.id]) : null
           return (
             <div key={m.id} style={card} data-machine-card={m.unitLabel}>
               <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <b style={{ fontSize: '1rem' }}>{machineName(m)}</b>
                 <span style={chips.k}>{template?.name ?? MACHINE_KIND_WORDS[m.kind]}</span>
-                {rental ? <span style={rental.late ? chips.r : rental.soon ? chips.a : chips.b} data-rental-chip>{rental.words}</span> : null}
+                {rental ? <span style={rental.late ? chips.r : rental.soon || agreement !== 'typed' ? chips.a : chips.b} data-rental-chip>{rental.words}</span> : null}
                 <span style={m.jobId ? chips.b : chips.k}>{m.jobId ? `On ${m.jobWords}` : 'In the yard'}</span>
                 <span style={st.kind === 'checked' ? chips.g : st.kind === 'held' ? chips.r : chips.a}>{w.head}{st.kind === 'checked' ? ` · ${st.check.byName}` : ''}</span>
               </div>
@@ -130,6 +144,26 @@ export function MachinesSection() {
                   </div>
                 </div>
               ) : null}
+              {newest && shot ? (
+                <div style={{ background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderRadius: 8, padding: '0.5rem 0.7rem', fontSize: '0.875rem', display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.5rem 0.7rem', alignItems: 'start' }} data-agreement-box>
+                  <AgreementThumb shot={shot} size={72} />
+                  <div style={{ display: 'grid', gap: '0.35rem', minWidth: 0 }}>
+                    <span>
+                      <b>Agreement photo in</b> · {newest.check.byName} took it {dayWords(newest.check.day, today)}. The number is not typed yet.
+                    </span>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <button type="button" style={{ ...press, background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }} disabled={busy != null} onClick={() => { setRenting(m.id); setTypingOff(m.id) }} data-type-off-photo={m.unitLabel}>
+                        Type it off the photo
+                      </button>
+                      {shot.href ? (
+                        <a href={shot.href} target="_blank" rel="noreferrer" style={{ ...press, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }} data-open-agreement-photo>
+                          Open the photo
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 <button type="button" style={press} disabled={busy != null} onClick={() => setHanding(handing === m.id ? null : m.id)}>
                   {m.jobId ? 'Hand off' : 'Put on a job'}
@@ -145,7 +179,7 @@ export function MachinesSection() {
                 <button type="button" style={press} onClick={() => setGauges(gauges === m.id ? null : m.id)} data-machine-gauges={m.unitLabel}>
                   Gauges · {m.levels.length}
                 </button>
-                <button type="button" style={press} onClick={() => setRenting(renting === m.id ? null : m.id)} data-machine-rental={m.unitLabel}>
+                <button type="button" style={press} onClick={() => { setTypingOff(null); setRenting(renting === m.id ? null : m.id) }} data-machine-rental={m.unitLabel}>
                   {m.rental ? 'Rental…' : 'Ours · make it a rental'}
                 </button>
               </div>
@@ -160,7 +194,7 @@ export function MachinesSection() {
                 </div>
               ) : null}
               {gauges === m.id ? <GaugeEditor machine={m} template={template ?? null} busy={busy != null} onSave={(levels) => void run('levels', () => saveLevels(m.id, levels))} onClose={() => setGauges(null)} /> : null}
-              {renting === m.id ? <RentalEditor machine={m} busy={busy != null} onSave={(r) => void run('rental', () => saveRental(m.id, r))} onClose={() => setRenting(null)} /> : null}
+              {renting === m.id ? <RentalEditor machine={m} busy={busy != null} photo={typingOff === m.id ? shot : null} onSave={(r) => void run('rental', () => saveRental(m.id, r))} onClose={() => { setRenting(null); setTypingOff(null) }} /> : null}
               {m.driveLink ? (
                 <a href={m.driveLink} target="_blank" rel="noreferrer" style={{ fontSize: '0.8125rem', color: 'var(--text-link)' }}>
                   Its Drive folder · {machineFolderName(m)}
@@ -233,18 +267,70 @@ function GaugeEditor({ machine, template, busy, onSave, onClose }: { machine: Ma
   )
 }
 
-/** Who it is rented from and when it is due back; the chip on the card and the line on the sheet read it. */
-function RentalEditor({ machine, busy, onSave, onClose }: { machine: Machine; busy: boolean; onSave: (r: Rental | null) => void; onClose: () => void }) {
+/** Signed URLs for the newest agreement photo of every rental whose number is not typed yet, read once per photo. */
+function useAgreementPhotoSrcs(machines: readonly Machine[], checks: readonly MachineCheck[]): Record<string, string | null> {
+  const [srcs, setSrcs] = useState<Record<string, string | null>>({})
+  const wanted = machines
+    .filter((m) => agreementState(m, checks) === 'photo')
+    .map((m) => agreementPhotos(checks, m.id)[0])
+    .filter((x): x is { photo: MachinePhoto; check: MachineCheck } => x != null && !x.photo.src && !x.photo.filedAt)
+    .map((x) => ({ vehicleId: x.check.machineId, photoId: x.photo.id }))
+  const key = wanted.map((w) => `${w.vehicleId}/${w.photoId}`).join('|')
+  useEffect(() => {
+    const missing = wanted.filter((w) => !(w.photoId in srcs))
+    if (missing.length === 0) return
+    let live = true
+    Promise.all(missing.map(async (w) => [w.photoId, await photoSrc(w.vehicleId, w.photoId).catch(() => null)] as const)).then((pairs) => {
+      if (live) setSrcs((s) => ({ ...s, ...Object.fromEntries(pairs) }))
+    })
+    return () => {
+      live = false
+    }
+    // once per set of photos; `wanted` is derived from `key`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+  return srcs
+}
+
+/** The agreement photo drawn small: the picture, or the camera and the file's name while it has no URL. */
+function AgreementThumb({ shot, size }: { shot: AgreementPhotoView; size: number }) {
+  const box: CSSProperties = { width: size, height: size, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', display: 'grid', placeItems: 'center', overflow: 'hidden', flex: 'none' }
+  const img = shot.src ? <img src={shot.src} alt={`The agreement, ${shot.fileName}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textAlign: 'center', padding: '0.2rem' }}>📷 {shot.fileName}</span>
+  return shot.href ? (
+    <a href={shot.href} target="_blank" rel="noreferrer" style={box} aria-label="Open the agreement photo" data-agreement-thumb>
+      {img}
+    </a>
+  ) : (
+    <span style={box} data-agreement-thumb>{img}</span>
+  )
+}
+
+/**
+ * Who it is rented from and when it is due back; the chip on the card and the line on the sheet read it. Opened from
+ * Type it off the photo, it draws the agreement photo beside its fields so the number is read off the paper here.
+ */
+function RentalEditor({ machine, busy, photo, onSave, onClose }: { machine: Machine; busy: boolean; photo?: AgreementPhotoView | null; onSave: (r: Rental | null) => void; onClose: () => void }) {
   const [r, setR] = useState<Rental>(machine.rental ?? { from: '', agreementNo: '', outOn: todayDay(), dueBack: '' })
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.7rem', display: 'grid', gap: '0.5rem', background: 'var(--bg-subtle)' }} data-rental-editor>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
         <b style={{ fontSize: '0.9375rem' }}>{machine.rental ? `${machine.unitLabel} is a rental` : `Rent ${machine.unitLabel}?`}</b>
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>The checks at pickup and at return are the evidence against a damage claim.</span>
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{photo ? 'Read the agreement number and the due-back day off the paper.' : 'The checks at pickup and at return are the evidence against a damage claim.'}</span>
       </div>
+      {photo ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.7rem', alignItems: 'flex-start' }} data-rental-editor-photo>
+          <AgreementThumb shot={photo} size={160} />
+          <div style={{ display: 'grid', gap: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-muted)', flex: '1 1 200px', minWidth: 0 }}>
+            <span>
+              {photo.byName} took it {dayWords(photo.day, todayDay())}. Tap the picture to open it full size.
+            </span>
+            <input value={r.agreementNo} onChange={(e) => setR({ ...r, agreementNo: e.target.value })} aria-label="Agreement number" placeholder="Agreement number, off the paper" style={{ ...field, fontSize: '1rem', fontWeight: 700 }} autoFocus />
+          </div>
+        </div>
+      ) : null}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.4rem' }}>
         <input value={r.from} onChange={(e) => setR({ ...r, from: e.target.value })} aria-label="Rented from" placeholder="Rented from, like Sunbelt" style={field} />
-        <input value={r.agreementNo} onChange={(e) => setR({ ...r, agreementNo: e.target.value })} aria-label="Agreement number" placeholder="Agreement number" style={field} />
+        {photo ? null : <input value={r.agreementNo} onChange={(e) => setR({ ...r, agreementNo: e.target.value })} aria-label="Agreement number" placeholder="Agreement number" style={field} />}
         <label style={{ display: 'grid', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
           Out on
           <input type="date" value={r.outOn} onChange={(e) => setR({ ...r, outOn: e.target.value })} aria-label="Out on" style={field} />

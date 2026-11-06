@@ -2,7 +2,7 @@
 title: send a courtesy notice before a lien
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: courtesy notice, reminder, before the lien, lien desk, 53.056, letter two, pay link, text, email, affidavit day, GC, owner of record
+keywords: courtesy notice, reminder, before the lien, lien desk, 53.056, the attorney’s letter, pay link, text, email, affidavit day, GC, owner of record
 where: /jobs?tab=stages&liendesk=1&liendeskPile=sent
 ---
 A courtesy notice is a plain reminder sent after the lien notice and before the lien itself. The reminder says the notice we mailed still stands. The reminder names the day the lien goes on unless the bill is paid. The reminder carries the pay link and the office's number.
@@ -13,8 +13,8 @@ Supply houses send this letter before they lien, and it gets bills paid. Ours go
 
 Open the Lien desk and go to **Do now**. A sent notice with nothing paid shows a row from day 7 after the packet. The row sits under the **Reminders** heading. The row's button reads {{button:blue|Send a courtesy notice}}. The same button sits on the notice's footer under **Sent**. The Reminders rail above the rows counts these notices on its first step, Reminder due. The rail's other steps count the reminders sent, the second letters and the notices closed.
 
-- Day 7 is counted the way letter two counts it. The desk uses the delivery day when the mail piece knows it.
-- Letter two keeps its own day. From day 10 the desk offers counsel's certified second letter beside the courtesy notice.
+- Day 7 is counted the way the attorney’s letter counts it. The desk uses the delivery day when the mail piece knows it.
+- The attorney’s letter keeps its own day. From day 10 the desk offers counsel's certified second letter beside the courtesy notice.
 - Once a courtesy notice goes, the desk waits a week before offering another.
 
 ## When the desk holds it
@@ -67,4 +67,4 @@ The button leaves the row once any of these happens.
 
 The sent notice keeps every press with who pressed, each address and the lien day it named. The job's History shows a **Courtesy** line. The footer under **Sent** reads *courtesy sent* with the day and the channels.
 
-See [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk) for the notice itself and letter two.
+See [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk) for the notice itself and the attorney’s letter.

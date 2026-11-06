@@ -63,6 +63,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { JobReviewLine } from '../ratings/JobReviewLine'
+import { JobTargetLine } from './JobTargetLine'
 import PaidJobEmailSendModal from './PaidJobEmailSendModal'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -2234,6 +2235,8 @@ export default function DetailJobModal({
           </div>
         ) : null}
 
+        {/* v2.6585 (punch list #255): the job's target in hours, for any job: the expected hours, else the labor budget, else none yet. */}
+        {jobId ? <JobTargetLine jobId={jobId} /> : null}
         {/* v2.5946 (punch list #185): the job's review ask, the stars and the words, and I called on a low one. */}
         {jobId ? <JobReviewLine jobId={jobId} /> : null}
 
