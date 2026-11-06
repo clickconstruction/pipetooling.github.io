@@ -27,6 +27,8 @@ export const DRIVE_FOLDERS_MADE_KEY = 'drive_folders_made'
 export const DRIVE_COMPANY_FOLDER_ID_KEY = 'drive_company_folder_id'
 /** `app_settings.key` — the Drive folder the people's files go under (a person's evidence, `hr-evidence-drive`); empty = none set yet. */
 export const DRIVE_PEOPLE_FOLDER_ID_KEY = 'drive_people_folder_id'
+/** `app_settings.key` — the Drive folder the machines' folders go under (a machine's check photos, `photo-save`; punch list #270); empty = none set yet. */
+export const DRIVE_FLEET_FOLDER_ID_KEY = 'drive_fleet_root_folder_id'
 
 /** The pieces a job's folder name is built from, in the order the tray offers them. */
 export type JobFolderPiece = 'number' | 'name' | 'customer' | 'address' | 'year'
@@ -187,6 +189,8 @@ export interface DriveSettings {
   companyFolderId: string | null
   /** The folder the people's files go under, or null while none is set. */
   peopleFolderId: string | null
+  /** The folder the machines' folders go under, or null while none is set. */
+  fleetFolderId: string | null
 }
 
 /** The five rows (any missing) and the env's root → the settings. The setting wins; the env fills in while it is empty. */
@@ -202,8 +206,12 @@ export function driveSettingsFromRows(rows: readonly { key: string; value_text: 
     foldersMade: parseFoldersMade(text(DRIVE_FOLDERS_MADE_KEY)),
     companyFolderId: (text(DRIVE_COMPANY_FOLDER_ID_KEY) ?? '').trim() || null,
     peopleFolderId: (text(DRIVE_PEOPLE_FOLDER_ID_KEY) ?? '').trim() || null,
+    fleetFolderId: (text(DRIVE_FLEET_FOLDER_ID_KEY) ?? '').trim() || null,
   }
 }
+
+/** The words the sweep writes on a machine's photo while no Fleet folder is set. */
+export const NO_FLEET_FOLDER_WORDS = 'The Fleet folder is not set yet. Set it on Documents → Where files go.'
 
 /** The words the person file and the Drive door answer while no People folder is set. */
 export const NO_PEOPLE_FOLDER_WORDS = 'The People folder is not set yet. Set it on Documents → Where files go.'
