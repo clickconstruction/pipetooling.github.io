@@ -38,6 +38,7 @@ function ioWith(link: string, rows: OfficeRating[]): RatingsOfficeIo & { saveGoo
     recordCall: vi.fn(async () => undefined),
     googleLink: vi.fn(async () => link),
     saveGoogleLink: vi.fn(async (_v: string) => undefined),
+    techsOnJobs: vi.fn(async (ids: readonly string[]) => new Map(ids.map((id) => [id, ['Luis Ortega']]))),
   }
 }
 
@@ -68,6 +69,8 @@ describe('SettingsReviewsBlock (v2.5946, punch list #185)', () => {
     const tom = screen.getByRole('link', { name: 'Tom Reyes' })
     expect(tom.getAttribute('href')).toBe('/messages?thread=c-tom')
     expect(screen.getByText('“Late twice.”')).toBeTruthy()
+    // v2.6584 (punch list #255): whose work each answer praises.
+    expect((await screen.findAllByText('Luis Ortega was on the job')).length).toBe(2)
   })
 
   it('an assistant reads the link and cannot change it', async () => {

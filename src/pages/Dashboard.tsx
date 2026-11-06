@@ -21,6 +21,7 @@ import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
 import DashboardJobModeFirstRunCard from '../components/dashboard/DashboardJobModeFirstRunCard'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import DashboardYourRecordCard from '../components/dashboard/DashboardYourRecordCard'
+import { DashboardCustomerWordsStrip } from '../components/dashboard/DashboardCustomerWordsStrip'
 import { MissedClockInDoor } from '../components/clock/MissedClockInDoor'
 import TurnawayModal from '../components/jobMode/TurnawayModal'
 import JobReportsModal from '../components/JobReportsModal'
@@ -1202,6 +1203,8 @@ export default function Dashboard() {
         <Suspense fallback={null}>
           <DashboardTrialVerdictSection authUserId={authUser?.id} role={role} />
         </Suspense>
+        {/* The customer's words, the day they land (v2.6584, punch list #255): a four or five star answer on a job this person clocked onto. */}
+        <DashboardCustomerWordsStrip userId={authUser.id} />
         <DashboardJobModeCard
           userId={authUser.id}
           onLeaveReport={(j) => setLeaveReportJob(j)}
@@ -1440,6 +1443,7 @@ export default function Dashboard() {
         quietSquares={phoneOffice}
         afterJobReportRow={
           <>
+            {authUser?.id ? <DashboardCustomerWordsStrip userId={authUser.id} /> : null}
             {authUser?.id ? <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} /> : null}
             {myScheduleSection}
           </>

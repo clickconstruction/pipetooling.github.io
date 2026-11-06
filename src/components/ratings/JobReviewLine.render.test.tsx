@@ -37,6 +37,7 @@ function ioWith(rows: OfficeRating[][]): RatingsOfficeIo & { recordCall: ReturnT
     recordCall: vi.fn(async (_id: string, _note: string) => undefined),
     googleLink: vi.fn(async () => ''),
     saveGoogleLink: vi.fn(async () => undefined),
+    techsOnJobs: vi.fn(async (ids: readonly string[]) => new Map(ids.map((id) => [id, ['Luis Ortega', 'Jordan Price']]))),
   }
 }
 
@@ -65,6 +66,12 @@ describe('JobReviewLine (v2.5946, punch list #185)', () => {
     expect(await screen.findByText('5 stars')).toBeTruthy()
     expect(screen.getByText(/pressed Post it on Google/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'I called' })).toBeNull()
+  })
+
+  it('names the techs on the job under an answer (v2.6584, punch list #255)', async () => {
+    render(<JobReviewLine jobId="job-1312" io={ioWith([[row({})]])} />)
+    expect(await screen.findByTestId('job-review-techs')).toBeTruthy()
+    expect(screen.getByText('Luis Ortega and Jordan Price were on the job')).toBeTruthy()
   })
 
   it('an ask not answered says so, and a job never asked draws nothing', async () => {
