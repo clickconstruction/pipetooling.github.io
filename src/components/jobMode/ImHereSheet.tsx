@@ -18,6 +18,7 @@ import { recordNavClick } from '../../lib/navClickTelemetry'
 import type { PhoneLine } from '../../lib/quickReplies/phone'
 import { acts, driveMinutes, ON_MY_WAY_WORDS, pressLine, textHold, type TravelFacts } from '../../lib/jobMode/onMyWay'
 import * as S from './sheetStyles'
+import { MachineArrivalStop } from '../machines/MachineStops'
 
 /** The press's row in `ui_nav_clicks`: `#text` or `#no-text`. */
 export const IM_HERE_CONTROL = 'job_mode_im_here'
@@ -156,6 +157,8 @@ export function ImHereSheet({ sessionId, jobId, jobLabel, jobName, jobAddress, u
                 <span>{r.words}</span>
               </p>
             ))}
+            {/* Equipment pre-use check (punch list #270, SPIKE): is the planned machine here? */}
+            <MachineArrivalStop jobId={jobId} jobWords={[jobLabel, jobName].filter(Boolean).join(' · ')} userId={userId} byName={me} />
           </>
         )}
       </div>

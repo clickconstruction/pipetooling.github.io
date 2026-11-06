@@ -46,6 +46,7 @@ import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
 import AdditionalReportModal from './AdditionalReportModal'
 import OfflineRetryPanel from './OfflineRetryPanel'
+import { ClockOutMachinesStop } from './machines/MachineStops'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import CrewReviewDeck from './team-feedback/CrewReviewDeck'
 import TrialVerdictPrompt from './team-feedback/TrialVerdictPrompt'
@@ -209,7 +210,7 @@ export default function ClockInOutButton({
   embedded = false,
   oneLine = false,
 }: Props) {
-  const { user: authUser, role, readOnly } = useAuth()
+  const { user: authUser, role, readOnly, profileName } = useAuth()
   const { prefixMap } = useLedgerDisplayPrefixes()
   const { showToast } = useToastContext()
   const { notifyFirstClockInOfDay } = useDailyGoalsGate()
@@ -2597,6 +2598,8 @@ export default function ClockInOutButton({
                 </div>
               ) : null}
             </div>
+            {/* Equipment pre-use check (punch list #270, SPIKE): the leaving check as a stop before the press */}
+            {openSession ? <ClockOutMachinesStop jobId={clockOutJob({ pick: clockOutPickOf(selectedAssociation), touched: clockOutPickTouchedRef.current, session: openSession }).jobLedgerId} userId={authUser?.id ?? null} byName={profileName ?? null} /> : null}
             <OfflineRetryPanel
               failure={clockOutReviewFailure}
               onRetry={handleCompleteClockOutReview}

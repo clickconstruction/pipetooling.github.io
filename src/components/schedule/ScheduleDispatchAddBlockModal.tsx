@@ -27,6 +27,7 @@ import {
   scheduleMoveDaySaveLabel,
 } from '../../lib/scheduleBlockMoveDayOptions'
 import { DispatchAddBlockTimeRange, type DispatchOccupiedBand } from './DispatchAddBlockTimeRange'
+import { BlockMachinesRow } from '../machines/MachineStops'
 
 export function ScheduleDispatchAddBlockModal({
   open,
@@ -48,6 +49,7 @@ export function ScheduleDispatchAddBlockModal({
   addTimeline,
   newWorkDate,
   onChangeWorkDate,
+  jobId,
   warning = null,
 }: {
   open: boolean
@@ -84,6 +86,8 @@ export function ScheduleDispatchAddBlockModal({
   onChangeWorkDate?: (v: string) => void
   /** v2.3612 Supervision: a line under the person while the block is built (nobody on it can run the job). Null = nothing to say. */
   warning?: string | null
+  /** Equipment pre-use check (punch list #270, SPIKE): the job the block is on, for the Equipment row; absent on bids and where the caller has none. */
+  jobId?: string | null
   addTimeline?: {
     segments: AddBlockTimelineSegment[]
     draftByBlockId: Record<string, { time_start: string; time_end: string }>
@@ -456,6 +460,7 @@ export function ScheduleDispatchAddBlockModal({
             style={{ display: 'block', marginTop: 4, width: '100%', padding: '0.4rem', fontSize: '0.875rem' }}
           />
         </label>
+        {jobId ? <BlockMachinesRow jobId={jobId} day={selectedWorkDate} userId={null} /> : null}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: mode === 'edit' && onRemove ? 'space-between' : 'flex-end', alignItems: 'center' }}>
           {mode === 'edit' && onRemove ? (
             <button

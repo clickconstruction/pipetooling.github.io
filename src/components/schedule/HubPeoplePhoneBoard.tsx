@@ -26,6 +26,7 @@ import { ScheduleDispatchTimeOffChip } from './ScheduleDispatchTimeOffChip'
 import type { ScheduleDispatchCardPlacementMode, ScheduleDispatchCardPlacementVariant } from './ScheduleDispatchGrid'
 import type { PhonePeopleView } from '../../lib/scheduleDispatch/phonePeopleBoard'
 import { EmptyState } from '../EmptyState'
+import { BlockMachineChips } from '../machines/MachineStops'
 import {
   availabilityLabel,
   buildDayStrip,
@@ -568,6 +569,8 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
                               </span>
                             ) : null}
                           </span>
+                          {/* Equipment pre-use check (punch list #270, SPIKE): the machines riding with this block */}
+                          <BlockMachineChips jobId={b.job_id} day={b.work_date} />
                         </span>
                         <span style={{ color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{formatShortRange(timeToMinutes(b.time_start), timeToMinutes(b.time_end))}</span>
                       </button>

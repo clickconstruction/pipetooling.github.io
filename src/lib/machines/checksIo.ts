@@ -35,7 +35,7 @@ async function jobWordsById(ids: Iterable<string>): Promise<Map<string, string>>
   return words
 }
 
-async function checksOfVehicles(vehicleIds: readonly string[]): Promise<{ checks: MachineCheck[]; words: Map<string, string> }> {
+export async function checksOfVehicles(vehicleIds: readonly string[]): Promise<{ checks: MachineCheck[]; words: Map<string, string> }> {
   if (vehicleIds.length === 0) return { checks: [], words: new Map() }
   const since = new Date(Date.now() - DAYS_BACK * 86400000).toISOString().slice(0, 10)
   const { data, error } = await supabase.from('machine_checks').select('*').in('vehicle_id', [...vehicleIds]).gte('work_date', since).order('started_at', { ascending: false })
