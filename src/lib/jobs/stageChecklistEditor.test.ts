@@ -1,92 +1,39 @@
 import { describe, expect, it } from 'vitest'
 import type { StageChecklistQuestion } from './stageChecklist'
-import { cleanDrafts, draftsOf, editorProblem, kindSummary, moveDraft, planIsEmpty, planQuestionSave, sameDrafts } from './stageChecklistEditor'
+import { MIRROR_INTRO, companyQuestionsOf, emptyKindWords, kindSummary, questionTags, sourceLineWords, takenOffLineWords, takenOffSummary } from './stageChecklistEditor'
 
 // Made-up questions for a made-up company. The owner writes the real ones.
 const LIVE: StageChecklistQuestion[] = [
-  { id: 'q1', kind: 'rough_in', order: 1, words: 'Did the water test hold?', asksPhoto: true },
   { id: 'q2', kind: 'rough_in', order: 2, words: 'Are the stub-outs marked?', asksPhoto: false },
+  { id: 'q1', kind: 'rough_in', order: 1, words: 'Did the water test hold?', asksPhoto: true, needsSignature: true },
   { id: 't1', kind: 'trim_set', order: 1, words: 'Do all the fixtures run?', asksPhoto: false },
+  { id: 'j1', kind: 'rough_in', order: 0, words: 'Are the carriers in units 7 and 8 set?', asksPhoto: false, fixtureId: 'f1', addedById: 'u-pat', addedBy: 'Pat Sample', addedAt: '2026-11-01T15:00:00.000Z' },
 ]
 
-describe('draftsOf and the drafts’ housekeeping', () => {
-  it('gives one kind’s rows in order, and none for a kind with no questions', () => {
-    expect(draftsOf(LIVE, 'rough_in')).toEqual([
-      { id: 'q1', words: 'Did the water test hold?', asksPhoto: true, needsSignature: false },
-      { id: 'q2', words: 'Are the stub-outs marked?', asksPhoto: false, needsSignature: false },
-    ])
-    expect(draftsOf(LIVE, 'top_out')).toEqual([])
-  })
-  it('trims and compares', () => {
-    const a = cleanDrafts([{ id: null, words: '  Is the  cleanout capped? ', asksPhoto: false, needsSignature: false }])
-    expect(a[0]!.words).toBe('Is the cleanout capped?')
-    expect(sameDrafts(a, [{ id: null, words: 'Is the cleanout capped?', asksPhoto: false, needsSignature: false }])).toBe(true)
-    expect(sameDrafts(a, [{ id: null, words: 'Is the cleanout capped?', asksPhoto: true, needsSignature: false }])).toBe(false)
-  })
-  it('moves a draft a place, and not past the ends', () => {
-    const d = draftsOf(LIVE, 'rough_in')
-    expect(moveDraft(d, 1, -1).map((x) => x.id)).toEqual(['q2', 'q1'])
-    expect(moveDraft(d, 0, -1).map((x) => x.id)).toEqual(['q1', 'q2'])
-    expect(moveDraft(d, 1, 1).map((x) => x.id)).toEqual(['q1', 'q2'])
-  })
-})
-
-describe('editorProblem: what stops a save', () => {
-  it('names the empty question and the long one', () => {
-    expect(editorProblem('rough_in', [{ id: null, words: 'Did it hold?', asksPhoto: false, needsSignature: false }, { id: null, words: '   ', asksPhoto: false, needsSignature: false }])).toBe('Question 2 for Rough In has no words. Type the question or take it off.')
-    expect(editorProblem('top_out', [{ id: null, words: 'x'.repeat(201), asksPhoto: false, needsSignature: false }])).toBe('Question 1 for Top Out is over 200 characters. Shorten it.')
-    expect(editorProblem('trim_set', [])).toBeNull()
-  })
-})
-
-describe('planQuestionSave: the diff the io writes', () => {
-  it('inserts the new, updates the changed and moved, retires the gone', () => {
-    const plan = planQuestionSave('rough_in', LIVE, [
-      { id: 'q2', words: 'Are the stub-outs marked?', asksPhoto: true, needsSignature: false },
-      { id: null, words: 'Is the cleanout capped?', asksPhoto: false, needsSignature: false },
-    ])
-    expect(plan).toEqual({
-      inserts: [{ kind: 'rough_in', order: 2, words: 'Is the cleanout capped?', asksPhoto: false, needsSignature: false }],
-      updates: [{ id: 'q2', order: 1, words: 'Are the stub-outs marked?', asksPhoto: true, needsSignature: false }],
-      retires: ['q1'],
-    })
-    expect(planIsEmpty(plan)).toBe(false)
-  })
-  it('writes nothing when nothing changed, and never touches another kind', () => {
-    const plan = planQuestionSave('rough_in', LIVE, draftsOf(LIVE, 'rough_in'))
-    expect(planIsEmpty(plan)).toBe(true)
-    expect(plan.retires).toEqual([])
-  })
-  it('never lists or retires an item added for a job (punch list #237)', () => {
-    const item: StageChecklistQuestion = { id: 'j1', kind: 'rough_in', order: 0, words: 'Are the carriers in units 7 and 8 set?', asksPhoto: false, fixtureId: 'f1', addedById: 'u-pat', addedBy: 'Pat Sample', addedAt: '2026-11-01T15:00:00.000Z' }
-    const live = [...LIVE, item]
-    expect(draftsOf(live, 'rough_in').map((d) => d.id)).toEqual(['q1', 'q2'])
-    const plan = planQuestionSave('rough_in', live, draftsOf(live, 'rough_in'))
-    expect(planIsEmpty(plan)).toBe(true)
-  })
-  it('treats a draft whose row is no longer live as new', () => {
-    const plan = planQuestionSave('trim_set', LIVE, [{ id: 'gone', words: 'Is the water heater strapped?', asksPhoto: false, needsSignature: false }])
-    expect(plan.inserts).toHaveLength(1)
-    expect(plan.retires).toEqual(['t1'])
-  })
-})
-
-describe('kindSummary', () => {
-  it('counts the questions and the photos', () => {
+describe('the mirror (#237 PR 4)', () => {
+  it('lists one kind’s company questions in order, never a job item, and sums their asks', () => {
+    expect(companyQuestionsOf(LIVE, 'rough_in').map((q) => q.id)).toEqual(['q1', 'q2'])
+    expect(companyQuestionsOf(LIVE, 'top_out')).toEqual([])
+    expect(kindSummary(companyQuestionsOf(LIVE, 'rough_in'))).toBe('2 questions, 1 with a photo, 1 with a signature')
+    expect(kindSummary(companyQuestionsOf(LIVE, 'trim_set'))).toBe('1 question')
     expect(kindSummary([])).toBe('')
-    expect(kindSummary([{ id: null, words: 'a', asksPhoto: false, needsSignature: false }])).toBe('1 question')
-    expect(kindSummary(draftsOf(LIVE, 'rough_in'))).toBe('2 questions, 1 with a photo')
+    expect(questionTags(LIVE[1]!)).toEqual(['asks for a photo', 'needs a signature'])
+    expect(questionTags(LIVE[2]!)).toEqual([])
   })
-})
-
-describe('needs a signature in the editor (#237 PR 2)', () => {
-  it('reads the toggle off the live row, counts it, and writes it when it changes', () => {
-    const live: StageChecklistQuestion[] = [{ id: 'q1', kind: 'rough_in', order: 1, words: 'Did the water test hold?', asksPhoto: false, needsSignature: true }]
-    expect(draftsOf(live, 'rough_in')).toEqual([{ id: 'q1', words: 'Did the water test hold?', asksPhoto: false, needsSignature: true }])
-    expect(kindSummary(draftsOf(live, 'rough_in'))).toBe('1 question, 1 with a signature')
-    expect(kindSummary([{ id: null, words: 'a', asksPhoto: true, needsSignature: true }, { id: null, words: 'b', asksPhoto: false, needsSignature: false }])).toBe('2 questions, 1 with a photo, 1 with a signature')
-    const plan = planQuestionSave('rough_in', live, [{ id: 'q1', words: 'Did the water test hold?', asksPhoto: false, needsSignature: false }])
-    expect(plan.updates).toEqual([{ id: 'q1', order: 1, words: 'Did the water test hold?', asksPhoto: false, needsSignature: false }])
-    expect(planIsEmpty(planQuestionSave('rough_in', live, draftsOf(live, 'rough_in')))).toBe(true)
+  it('says which job a question came from, else who wrote it, else the old editor', () => {
+    expect(sourceLineWords({ jobLabel: 'Job 1042 · Riders Walk', by: 'Pat Sample', at: '2026-11-03T16:14:00.000Z' })).toBe('From Job 1042 · Riders Walk, where Pat Sample added it · Nov 3 · 10:14 am')
+    expect(sourceLineWords({ jobLabel: 'Job 1042', by: '', at: null })).toBe('From Job 1042, where someone added it')
+    expect(sourceLineWords({ jobLabel: null, by: 'Jo Sample', at: '2026-11-03T16:14:00.000Z' })).toBe('Written by Jo Sample · Nov 3 · 10:14 am')
+    expect(sourceLineWords({ jobLabel: null, by: '', at: '2026-11-03T16:14:00.000Z' })).toBe('Written on Settings · Nov 3 · 10:14 am')
+    expect(sourceLineWords(null)).toBe('Written on Settings')
+  })
+  it('reads a taken-off question with who, when and why, and folds them under a count', () => {
+    expect(takenOffLineWords({ words: 'Did the test hold?', by: 'Pat Sample', at: '2026-11-05T17:20:00.000Z', why: ' the inspector no longer asks ' })).toBe('Did the test hold? · Taken off by Pat Sample · Nov 5 · 11:20 am · “the inspector no longer asks”')
+    expect(takenOffSummary(2)).toBe('Taken off · 2')
+    expect(takenOffSummary(0)).toBe('')
+  })
+  it('names the empty kind and the door', () => {
+    expect(emptyKindWords('top_out')).toBe('No questions for Top Out yet.')
+    expect(MIRROR_INTRO).toContain('Documents tab')
   })
 })

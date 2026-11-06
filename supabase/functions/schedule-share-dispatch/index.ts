@@ -16,6 +16,7 @@ import {
 } from '../_shared/recurringJobReportTimezone.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -188,6 +189,8 @@ async function runInstant(req: Request, admin: Admin, resendApiKey: string): Pro
     data: { user },
     error: authErr,
   } = await userClient.auth.getUser(token)
+  const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+  if (archivedRefusal) return archivedRefusal
   if (authErr || !user) {
     return jsonResponse({ error: 'Invalid session' }, 401)
   }

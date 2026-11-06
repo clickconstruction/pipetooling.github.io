@@ -465,6 +465,24 @@ export function agreementPhotoWords(checks: readonly MachineCheck[], machineId: 
   return newest.photo.filedAt ? 'photo filed' : 'photo in'
 }
 
+/**
+ * The newest agreement photo as the fleet board card draws it: a signed URL while the bytes are in the bucket, the
+ * Drive file once the sweep has filed it, and the file's name alone when neither is in hand yet.
+ */
+export interface AgreementPhotoView {
+  src: string | null
+  /** Where Open the photo goes: the signed URL, else the Drive file, else nowhere yet. */
+  href: string | null
+  fileName: string
+  byName: string
+  day: string
+}
+export function agreementPhotoView(x: { photo: MachinePhoto; check: MachineCheck }, src: string | null | undefined): AgreementPhotoView {
+  const drive = x.photo.driveFileId ? `https://drive.google.com/file/d/${x.photo.driveFileId}/view` : null
+  const shown = src ?? x.photo.src
+  return { src: shown, href: shown ?? drive, fileName: x.photo.fileName, byName: x.check.byName, day: x.check.day }
+}
+
 /** What the add forms type for a rental before it is a `Rental`: the out-on day is the day it is added. */
 export interface RentalDraft {
   from: string

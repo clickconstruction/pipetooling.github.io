@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { MERCURY_BASE, mapMercuryTransactionToRow } from '../_shared/mercuryTransaction.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -76,6 +77,8 @@ serve(async (req) => {
       if (authErr || !user) {
         return jsonResponse({ error: 'Invalid session' }, 401)
       }
+      const archivedRefusal = await refuseArchivedCaller(createClient(supabaseUrl, serviceKey), user.id, corsHeaders)
+      if (archivedRefusal) return archivedRefusal
       const { data: userRow, error: roleErr } = await userClient
         .from('users')
         .select('role')

@@ -10,6 +10,7 @@ import {
   logPaidJobBillBlockedBestEffort,
   shouldBlockBillOnPaidJob,
 } from '../_shared/paidJobBillGuard.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -97,6 +98,9 @@ serve(async (req) => {
     if (authError || !user) {
       return jsonResponse({ error: 'Unauthorized' }, 401)
     }
+    const serviceKeyForGuard = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const archivedRefusal = serviceKeyForGuard ? await refuseArchivedCaller(createClient(supabaseUrl, serviceKeyForGuard), user.id, corsHeaders) : null
+    if (archivedRefusal) return archivedRefusal
 
     const body = (await req.json()) as {
       jobs_ledger_invoice_id?: string

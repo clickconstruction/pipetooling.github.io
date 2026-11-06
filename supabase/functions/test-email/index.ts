@@ -3,6 +3,7 @@ import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -64,6 +65,8 @@ serve(async (req) => {
       )
     }
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
+    const archivedRefusal = await refuseArchivedCaller(adminClient, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     // Check role with service role so RLS never hides the caller's row (anon + JWT can return 0 rows).
     const { data: userData, error: userError } = await adminClient

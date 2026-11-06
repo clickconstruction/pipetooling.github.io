@@ -5,6 +5,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -120,6 +121,8 @@ serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
+    const archivedRefusal = await refuseArchivedCaller(adminClient, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     // Audience is the dev role (no group-members table for help feedback).
     const { data: devs, error: devErr } = await adminClient.from('users').select('id').eq('role', 'dev')

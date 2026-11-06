@@ -84,6 +84,7 @@ import {
   SKIP_WHY_MAX_CHARS,
   TAKE_OFF_WORDS,
   addCheckWords,
+  addScopeWords,
   addedSoFarWords,
   addedWords,
   canSkipQuestion,
@@ -100,6 +101,7 @@ import {
   skippedToastWords,
   takenOffWords,
   withOrder,
+  type AddScope,
 } from '../../lib/jobs/stageChecklistItems'
 import type { AnswerWho, JobAnswer, StageChecklistSheetIo } from '../../lib/jobs/stageChecklistSheetIo'
 import { STAGE_CHECK_WORDS, dispatchReplyWords, openStageCheckFor, withDispatchWords, type OpenStageCheck } from '../../lib/jobs/stageCheckDispatch'
@@ -156,6 +158,8 @@ export interface AddCheckDraft {
   needsSignature: boolean
   sheet: string
   why: string
+  /** This job's stage, or every stage of the kind in the company (#237 PR 4); 'job' unless the box offered the pick. */
+  scope: AddScope
 }
 
 const groupHead: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', margin: '0.9rem 0 0.2rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -770,7 +774,7 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
                   stageName={stage.name}
                   onDone={() => setAdding(false)}
                   onAdd={async (draft) => {
-                    const q = await io.addItem({ jobId, fixtureId: stage.fixtureId, kind, order: nextItemOrder(questions, stage.fixtureId), ...draft }, who)
+                    const q = await io.addItem({ jobId, fixtureId: stage.fixtureId, kind, order: nextItemOrder(questions, stage.fixtureId), words: draft.words, asksPhoto: draft.asksPhoto, needsSignature: draft.needsSignature, sheet: draft.sheet, why: draft.why }, who)
                     onQuestionAdded?.(q)
                     const after = stageChecklistState({ stageName: stage.name, fixtureId: stage.fixtureId, questions: [...questions, q], answers })
                     showToast(addedWords(stage.name, after), 'success')
@@ -966,18 +970,22 @@ function LockedRow({ stage, question, answer, signature, jobId, who, io, busy, t
  * Done adding. It stays open after an add with its boxes empty and the cursor back in the words, so a list goes in without
  * reopening it (PR 1b). Shared with the Documents read-out.
  */
-export function AddCheckBox({ stageName, onAdd, onDone }: { stageName: string; onAdd: (draft: AddCheckDraft) => Promise<void>; onDone: () => void }) {
+export function AddCheckBox({ stageName, onAdd, onDone, allowCompany = false }: { stageName: string; onAdd: (draft: AddCheckDraft) => Promise<void>; onDone: () => void; allowCompany?: boolean }) {
   const { showToast } = useToastContext()
   const [text, setText] = useState('')
   const [sheet, setSheet] = useState('')
   const [why, setWhy] = useState('')
   const [asksPhoto, setAsksPhoto] = useState(false)
   const [needsSignature, setNeedsSignature] = useState(false)
+  // Where the check goes (#237 PR 4): this job, or every stage of the kind in the company. The job is the default.
+  const [scope, setScope] = useState<AddScope>('job')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [added, setAdded] = useState(0)
   const first = useRef<HTMLInputElement>(null)
   const words = addCheckWords(stageName)
+  const scopes = addScopeWords(stageName)
+  const company = allowCompany && scope === 'company'
   const submit = async () => {
     if (busy) return
     const p = jobItemProblem(text)
@@ -988,7 +996,7 @@ export function AddCheckBox({ stageName, onAdd, onDone }: { stageName: string; o
     setBusy(true)
     setProblem(null)
     try {
-      await onAdd({ words: text, asksPhoto, needsSignature, sheet, why })
+      await onAdd({ words: text, asksPhoto, needsSignature, sheet: company ? '' : sheet, why: company ? '' : why, scope: company ? 'company' : 'job' })
       setText('')
       setSheet('')
       setWhy('')
@@ -1007,14 +1015,27 @@ export function AddCheckBox({ stageName, onAdd, onDone }: { stageName: string; o
     e.preventDefault()
     void submit()
   }
+  const scopeBtn = (on: boolean): CSSProperties => ({ ...S.secondaryBtn, minHeight: 44, ...(on ? { background: 'var(--bg-subtle)', borderColor: 'var(--border-strong)', fontWeight: 600 } : {}) })
   return (
-    <div style={addBox} data-checklist-add>
-      <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{words.title}</p>
+    <div style={addBox} data-checklist-add data-checklist-add-scope={company ? 'company' : 'job'}>
+      <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{company ? scopes.company : words.title}</p>
+      {allowCompany ? (
+        <div role="radiogroup" aria-label={scopes.label} style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <button type="button" role="radio" aria-checked={!company} style={scopeBtn(!company)} onClick={() => setScope('job')}>
+            {scopes.job}
+          </button>
+          <button type="button" role="radio" aria-checked={company} style={scopeBtn(company)} onClick={() => setScope('company')}>
+            {scopes.company}
+          </button>
+        </div>
+      ) : null}
       <input ref={first} type="text" aria-label={words.title} placeholder={words.placeholder} value={text} maxLength={200} autoFocus onChange={(e) => setText(e.target.value)} onKeyDown={onEnter} style={noteStyle} />
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <input type="text" aria-label={words.sheet} placeholder={words.sheetPlaceholder} value={sheet} maxLength={PLAN_SHEET_MAX_CHARS} onChange={(e) => setSheet(e.target.value)} onKeyDown={onEnter} style={{ ...noteStyle, flex: '1 1 10rem', width: 'auto', minWidth: 0 }} />
-        <input type="text" aria-label={words.why} placeholder={words.whyPlaceholder} value={why} maxLength={ITEM_WHY_MAX_CHARS} onChange={(e) => setWhy(e.target.value)} onKeyDown={onEnter} style={{ ...noteStyle, flex: '1 1 10rem', width: 'auto', minWidth: 0 }} />
-      </div>
+      {company ? null : (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <input type="text" aria-label={words.sheet} placeholder={words.sheetPlaceholder} value={sheet} maxLength={PLAN_SHEET_MAX_CHARS} onChange={(e) => setSheet(e.target.value)} onKeyDown={onEnter} style={{ ...noteStyle, flex: '1 1 10rem', width: 'auto', minWidth: 0 }} />
+          <input type="text" aria-label={words.why} placeholder={words.whyPlaceholder} value={why} maxLength={ITEM_WHY_MAX_CHARS} onChange={(e) => setWhy(e.target.value)} onKeyDown={onEnter} style={{ ...noteStyle, flex: '1 1 10rem', width: 'auto', minWidth: 0 }} />
+        </div>
+      )}
       <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.9375rem', color: 'var(--text-strong)', minHeight: 44 }}>
         <input type="checkbox" checked={asksPhoto} onChange={(e) => setAsksPhoto(e.target.checked)} /> {words.photo}
       </label>
@@ -1022,7 +1043,7 @@ export function AddCheckBox({ stageName, onAdd, onDone }: { stageName: string; o
         <input type="checkbox" checked={needsSignature} onChange={(e) => setNeedsSignature(e.target.checked)} data-checklist-add-signature /> {words.signature}
       </label>
       {needsSignature ? <p style={{ ...meta, marginTop: '-0.35rem' }}>{words.signatureHint}</p> : null}
-      <p style={meta}>{words.hint}</p>
+      <p style={meta}>{company ? scopes.companyHint : words.hint}</p>
       {problem ? <p style={waits}>{problem}</p> : null}
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
         {added > 0 ? (
@@ -1034,7 +1055,7 @@ export function AddCheckBox({ stageName, onAdd, onDone }: { stageName: string; o
           {words.done}
         </button>
         <button type="button" style={busy ? { ...S.hereBtn, ...S.disabled } : S.hereBtn} onClick={() => void submit()} disabled={busy}>
-          {busy ? 'Adding…' : words.confirm}
+          {busy ? 'Adding…' : company ? scopes.companyConfirm : words.confirm}
         </button>
       </div>
     </div>

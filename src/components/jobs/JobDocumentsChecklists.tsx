@@ -15,7 +15,10 @@
  * counts and the PDF's standing with *Open in Drive*, every version on a line of its own, and **Amend** (two presses,
  * with a reason) opens the stage again as the next version; a stage open after a filing reads *Amending v1 · 3 of 6*.
  * **Print the checklists** beside the heading draws the three stages on light paper and keeps a copy under Sent from this
- * job (`printAndFile`), since it is the paper an inspector or the GC reads. The rules are
+ * job (`printAndFile`), since it is the paper an inspector or the GC reads. The company's questions are written here too
+ * (PR 4), by the office alone: the add box takes *This job* or *Every Trim Set in the company*, a company question comes
+ * off the company's list with a reason and moves with the same ▲ ▼, and **Use as the company's Trim Set list** adds the
+ * job's own checks at once, doing what is ready and naming a check the company's list already asks. The rules are
  * `lib/jobs/stageChecklist.ts` and `stageChecklistItems.ts`; the read is `useJobStageChecklists`, the one the strip
  * uses, whose readers on a job move together: a check added here counts on the strip at once, and an answer on the
  * strip's sheet lands here.
@@ -29,19 +32,29 @@ import { addSkip, dropSkip, groupCountWords, checklistProgress, liveAnswersById,
 import {
   GROUP_WORDS,
   MOVE_WORDS,
+  COMPANY_TAKE_OFF_WHY_MAX_CHARS,
   READOUT_FOOT,
   SKIP_WHY_MAX_CHARS,
   TAKE_OFF_WORDS,
   addCheckWords,
+  addedCompanyWords,
   addedWords,
   asksMayAuthor,
   canAuthorOnJob,
+  canMoveCompanyQuestions,
   canPromoteJobItem,
   canSkipQuestion,
+  canTakeOffCompanyQuestion,
   canTakeOffJobItem,
+  canUseAsCompanyList,
+  canWriteCompanyList,
   checklistsSummary,
+  companyTakeOffProblem,
+  companyTakeOffWords,
+  companyTakenOffWords,
   itemMetaWords,
   movedOrder,
+  nextCompanyOrder,
   nextItemOrder,
   noJobItemsWords,
   promoteWords,
@@ -57,6 +70,8 @@ import {
   skippedToastWords,
   stageStandingChip,
   takenOffWords,
+  companyListFromJobOutcome,
+  companyListFromJobWords,
   withOrder,
   type StandingTone,
 } from '../../lib/jobs/stageChecklistItems'
@@ -98,9 +113,11 @@ const deadArrow: CSSProperties = { opacity: 0.5, cursor: 'not-allowed' }
 const reasonBox: CSSProperties = { flex: '1 1 14rem', minWidth: 0, padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.875rem' }
 const glyphTone = (pick: string | null | undefined): CSSProperties => ({ fontWeight: 700, color: pick === 'yes' ? 'var(--text-green-700)' : pick === 'no' ? 'var(--text-red-700)' : 'var(--text-muted)' })
 
-/** The one two-press ask a row can have open: the take off, the skip with its reason, or the company's list. */
 const recordLine: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0.15rem 0 0' }
-type RowAsk = { id: string; kind: 'take-off' | 'skip' | 'promote' }
+/** The one two-press ask a row can have open: the take off, the skip with its reason, the company's list, or a company question's take-off with its reason (PR 4). */
+type RowAsk = { id: string; kind: 'take-off' | 'skip' | 'promote' | 'company-take-off' }
+/** What *Use as the company's list* held, under the group head, each with the database's reason (PR 4). */
+type HeldCheck = { id: string; words: string; reason: string }
 
 export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: string; job_plans_link?: string | null; hcp_number?: string | null; click_number?: string | null; job_name?: string | null; customer_name?: string | null; job_address?: string | null }; io?: StageChecklistSheetIo; onRequestTab?: (tab: JobWindowTabKey) => void }) {
   const { role, user, profileName } = useAuth()
@@ -109,6 +126,9 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
   const read = useJobStageChecklists(job.id, io, 0, asksMayAuthor(role))
   const who = useMemo(() => ({ userId: user?.id ?? null, name: profileName ?? '' }), [user?.id, profileName])
   const canAdd = canAuthorOnJob(role, read.mayAuthor)
+  // The company's list from this tab (PR 4): the office alone, and only through an io that writes it.
+  const companyIo = read.io.company ?? null
+  const writesCompany = companyIo != null && canWriteCompanyList(role)
   // The stages that take a checklist, with or without questions yet, so the office can add the first check.
   const stages = useMemo(() => (read.rows ?? []).filter((r) => r.state.kind != null), [read.rows])
   const [folded, setFolded] = useState<Record<string, boolean> | null>(null)
@@ -116,6 +136,12 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
   const [ask, setAsk] = useState<RowAsk | null>(null)
   const [skipWhy, setSkipWhy] = useState('')
   const [skipBlocked, setSkipBlocked] = useState<string | null>(null)
+  // A company question's take-off (PR 4): its reason, and what stops it.
+  const [companyWhy, setCompanyWhy] = useState('')
+  const [companyBlocked, setCompanyBlocked] = useState<string | null>(null)
+  // Use as the company's list (PR 4): the stage whose ask is open, and the checks a run held, by stage.
+  const [usingAsCompany, setUsingAsCompany] = useState<string | null>(null)
+  const [held, setHeld] = useState<Record<string, HeldCheck[]>>({})
   const [busy, setBusy] = useState<string | null>(null)
   // Amend (#237 PR 3): the filed record being amended, with its reason.
   const [amendingId, setAmendingId] = useState<string | null>(null)
@@ -252,6 +278,69 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
     const ok = printAndFile(buildChecklistPaperHtml({ jobLabel, customer: (job.customer_name ?? '').trim() || null, address: (job.job_address ?? '').trim() || null, printedAtIso: new Date().toISOString(), stages: paper }), { kind: 'stage_checklists', title: `Stage checklists · ${jobLabel}`, jobIds: [job.id], source: { table: 'jobs_ledger', id: job.id } })
     if (!ok) showToast(PRINT_WORDS.blocked, 'error')
   }
+  // PR 4: a question for every stage of the kind, written from this job.
+  const addCompany = async (stage: JobStageChecklist, kind: StageChecklistQuestion['kind'], draft: { words: string; asksPhoto: boolean; needsSignature: boolean }) => {
+    if (!companyIo) return
+    const q = await companyIo.add({ kind, order: nextCompanyOrder(read.questions, kind), words: draft.words, asksPhoto: draft.asksPhoto, needsSignature: draft.needsSignature }, who)
+    read.putQuestion(q)
+    showToast(addedCompanyWords(stage.name), 'success')
+  }
+  const takeOffCompany = async (stage: JobStageChecklist, q: StageChecklistQuestion) => {
+    if (!companyIo) return
+    const blocked = companyTakeOffProblem(companyWhy)
+    setCompanyBlocked(blocked)
+    if (blocked) return
+    setBusy(q.id)
+    try {
+      await companyIo.retire(q.id, companyWhy, who)
+      read.dropQuestion(q.id)
+      dropWithDispatch(q.id)
+      setAsk(null)
+      setCompanyWhy('')
+      showToast(companyTakenOffWords(stage.name, stateAfter(stage, read.questions.filter((x) => x.id !== q.id))), 'success')
+    } catch (e) {
+      showToast(`The question was not taken off the company's list. ${formatErrorMessage(e)}`, 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+  const moveCompany = async (stage: JobStageChecklist, kind: StageChecklistQuestion['kind'], group: readonly StageChecklistQuestion[], q: StageChecklistQuestion, by: -1 | 1) => {
+    if (!companyIo) return
+    const ids = movedOrder(group, q.id, by)
+    if (!ids) return
+    setBusy(stage.fixtureId)
+    try {
+      await companyIo.reorder(kind, ids)
+      read.putQuestions(withOrder(read.questions, ids))
+    } catch (e) {
+      showToast(`The question did not move. ${formatErrorMessage(e)}`, 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+  // Use as the company's list: every job check in turn, past a refusal, each landed as it takes; what stayed is listed with its reason.
+  const promoteJobList = async (stage: JobStageChecklist, items: readonly StageChecklistQuestion[]) => {
+    setBusy(stage.fixtureId)
+    const stayed: HeldCheck[] = []
+    let done = 0
+    try {
+      for (const q of items) {
+        try {
+          const company = await read.io.promote(q.id)
+          read.promoteQuestion(q.id, company)
+          done += 1
+        } catch (e) {
+          stayed.push({ id: q.id, words: q.words, reason: formatErrorMessage(e) })
+        }
+      }
+    } finally {
+      setBusy(null)
+    }
+    setHeld((h) => ({ ...h, [stage.fixtureId]: stayed }))
+    setUsingAsCompany(null)
+    const outcome = companyListFromJobOutcome(done, stayed.length)
+    showToast(outcome.line, outcome.tone)
+  }
   const promote = async (stage: JobStageChecklist, q: StageChecklistQuestion) => {
     setBusy(q.id)
     try {
@@ -318,6 +407,10 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
             const words = addCheckWords(stage.name)
             const skipLines = skipWords(stage.name)
             const hasList = template.length > 0 || skipped.length > 0
+            const companyLines = companyTakeOffWords(stage.name)
+            const useAs = companyListFromJobWords(stage.name, groups.job.length)
+            const heldHere = held[stage.fixtureId] ?? []
+            const heldHead = heldHere.length > 0 ? companyListFromJobOutcome(0, heldHere.length).head : null
             const row = (q: StageChecklistQuestion, index: number) => {
               const a = answers.get(q.id) ?? null
               const pickWords = rowPickWords(q, a)
@@ -326,7 +419,14 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
               const mayTakeOff = canTakeOffJobItem(role, q, who.userId)
               const maySkip = canSkipQuestion(canAdd, q)
               const mayPromote = canPromoteJobItem(role, q)
-              const mayMove = canAdd && groups.job.length > 1 && groups.job.some((x) => x.id === q.id)
+              const inJobGroup = groups.job.some((x) => x.id === q.id)
+              const mayMove = canAdd && groups.job.length > 1 && inJobGroup
+              // PR 4: the office moves the company's questions and takes one off the company's list with a reason.
+              const mayMoveCompany = writesCompany && !inJobGroup && canMoveCompanyQuestions(role, groups.company.length)
+              const mayTakeOffCompany = writesCompany && canTakeOffCompanyQuestion(role, q)
+              const group = inJobGroup ? groups.job : groups.company
+              const firstInGroup = group[0]?.id === q.id
+              const lastInGroup = group[group.length - 1]?.id === q.id
               const asking = ask?.id === q.id ? ask.kind : null
               const promoting = promoteWords(stage.name, q)
               const rowBusy = busy === q.id || busy === stage.fixtureId
@@ -430,14 +530,40 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
                           {promoting.keep}
                         </button>
                       </div>
-                    ) : mayMove || mayPromote || mayTakeOff || maySkip ? (
+                    ) : asking === 'company-take-off' ? (
+                      <div style={askLine} data-testid="job-documents-checklist-company-take-off">
+                        <span style={{ ...muted, flexBasis: '100%' }}>{companyLines.hint}</span>
+                        <input
+                          type="text"
+                          aria-label={companyLines.label}
+                          placeholder={companyLines.placeholder}
+                          value={companyWhy}
+                          maxLength={COMPANY_TAKE_OFF_WHY_MAX_CHARS}
+                          autoFocus
+                          onChange={(e) => setCompanyWhy(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return
+                            e.preventDefault()
+                            void takeOffCompany(stage, q)
+                          }}
+                          style={reasonBox}
+                        />
+                        <button type="button" style={documentsQuietButton} disabled={rowBusy} onClick={() => void takeOffCompany(stage, q)}>
+                          {companyLines.confirm}
+                        </button>
+                        <button type="button" style={{ ...quiet, ...touch }} onClick={() => setAsk(null)}>
+                          {companyLines.keep}
+                        </button>
+                        {companyBlocked ? <span style={{ ...muted, flexBasis: '100%', color: 'var(--text-amber-700)', fontWeight: 600 }}>{companyBlocked}</span> : null}
+                      </div>
+                    ) : mayMove || mayMoveCompany || mayPromote || mayTakeOff || maySkip || mayTakeOffCompany ? (
                       <div style={pressLine}>
-                        {mayMove ? (
+                        {mayMove || mayMoveCompany ? (
                           <>
-                            <button type="button" style={{ ...arrow, ...(isMobile ? { minWidth: 44, minHeight: 44 } : {}), ...(groups.job[0]?.id === q.id ? deadArrow : {}) }} disabled={rowBusy || groups.job[0]?.id === q.id} onClick={() => void move(stage, groups.job, q, -1)} aria-label={`${MOVE_WORDS.up}: ${q.words}`}>
+                            <button type="button" style={{ ...arrow, ...(isMobile ? { minWidth: 44, minHeight: 44 } : {}), ...(firstInGroup ? deadArrow : {}) }} disabled={rowBusy || firstInGroup} onClick={() => void (inJobGroup ? move(stage, groups.job, q, -1) : moveCompany(stage, kind, groups.company, q, -1))} aria-label={`${MOVE_WORDS.up}: ${q.words}`}>
                               ▲
                             </button>
-                            <button type="button" style={{ ...arrow, ...(isMobile ? { minWidth: 44, minHeight: 44 } : {}), ...(groups.job[groups.job.length - 1]?.id === q.id ? deadArrow : {}) }} disabled={rowBusy || groups.job[groups.job.length - 1]?.id === q.id} onClick={() => void move(stage, groups.job, q, 1)} aria-label={`${MOVE_WORDS.down}: ${q.words}`}>
+                            <button type="button" style={{ ...arrow, ...(isMobile ? { minWidth: 44, minHeight: 44 } : {}), ...(lastInGroup ? deadArrow : {}) }} disabled={rowBusy || lastInGroup} onClick={() => void (inJobGroup ? move(stage, groups.job, q, 1) : moveCompany(stage, kind, groups.company, q, 1))} aria-label={`${MOVE_WORDS.down}: ${q.words}`}>
                               ▼
                             </button>
                           </>
@@ -464,6 +590,20 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
                         {mayTakeOff ? (
                           <button type="button" style={{ ...quiet, ...touch }} onClick={() => setAsk({ id: q.id, kind: 'take-off' })} aria-label={`${TAKE_OFF_WORDS.press}: ${q.words}`}>
                             {TAKE_OFF_WORDS.press}
+                          </button>
+                        ) : null}
+                        {mayTakeOffCompany ? (
+                          <button
+                            type="button"
+                            style={{ ...quiet, ...touch }}
+                            onClick={() => {
+                              setCompanyWhy('')
+                              setCompanyBlocked(null)
+                              setAsk({ id: q.id, kind: 'company-take-off' })
+                            }}
+                            aria-label={`${companyLines.press}: ${q.words}`}
+                          >
+                            {companyLines.press}
                           </button>
                         ) : null}
                       </div>
@@ -583,18 +723,52 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
                           <span>{GROUP_WORDS.job}</span>
                           <span>{groupCountWords(checklistProgress(groups.job, answers))}</span>
                         </div>
+                        {writesCompany && canUseAsCompanyList(role, groups.job.length) ? (
+                          usingAsCompany === stage.fixtureId ? (
+                            <div style={askLine} data-testid="job-documents-checklist-use-as-company">
+                              <span style={{ ...muted, flexBasis: '100%' }}>{useAs.hint}</span>
+                              <button type="button" style={documentsQuietButton} disabled={busy === stage.fixtureId} onClick={() => void promoteJobList(stage, groups.job)}>
+                                {useAs.confirm}
+                              </button>
+                              <button type="button" style={{ ...quiet, ...touch }} onClick={() => setUsingAsCompany(null)}>
+                                {useAs.keep}
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={pressLine}>
+                              <button type="button" style={{ ...link, ...touch }} onClick={() => setUsingAsCompany(stage.fixtureId)} aria-label={`${useAs.press}`}>
+                                {useAs.press}
+                              </button>
+                            </div>
+                          )
+                        ) : null}
+                        {heldHead ? (
+                          <div style={{ ...muted, marginTop: '0.25rem' }} data-testid="job-documents-checklist-held">
+                            <div style={{ fontWeight: 600, color: 'var(--text-amber-700)' }}>{heldHead}</div>
+                            {heldHere.map((h) => (
+                              <div key={h.id}>
+                                {h.words} · {h.reason}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                         {groups.job.length === 0 ? <p style={muted}>{noJobItemsWords(stage.name, canAdd)}</p> : groups.job.map((q, i) => row(q, groups.company.length + i + 1))}
                       </>
                     ) : adding !== stage.fixtureId ? (
-                      <EmptyState compact {...(canAdd ? { main: 'No questions yet.', next: { label: words.press, onPress: () => setAdding(stage.fixtureId) }, tail: 'adds the first for this job.' } : { main: noQuestionsWords(stage.name) })} />
+                      <EmptyState compact {...(canAdd ? { main: 'No questions yet.', next: { label: words.press, onPress: () => setAdding(stage.fixtureId) }, tail: writesCompany ? `adds the first, for this job or for every ${stage.name} in the company.` : 'adds the first for this job.' } : { main: noQuestionsWords(stage.name) })} />
                     ) : null}
                     {canAdd ? (
                       adding === stage.fixtureId ? (
                         <AddCheckBox
                           stageName={stage.name}
+                          allowCompany={writesCompany}
                           onDone={() => setAdding(null)}
                           onAdd={async (draft) => {
-                            const q = await read.io.addItem({ jobId: job.id, fixtureId: stage.fixtureId, kind, order: nextItemOrder(read.questions, stage.fixtureId), ...draft }, who)
+                            if (draft.scope === 'company') {
+                              await addCompany(stage, kind, draft)
+                              return
+                            }
+                            const q = await read.io.addItem({ jobId: job.id, fixtureId: stage.fixtureId, kind, order: nextItemOrder(read.questions, stage.fixtureId), words: draft.words, asksPhoto: draft.asksPhoto, needsSignature: draft.needsSignature, sheet: draft.sheet, why: draft.why }, who)
                             read.putQuestion(q)
                             showToast(addedWords(stage.name, stateAfter(stage, [...read.questions, q])), 'success')
                           }}

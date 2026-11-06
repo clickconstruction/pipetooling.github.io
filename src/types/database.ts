@@ -41671,6 +41671,10 @@ export type Database = {
         }
         Returns: string
       }
+      plan_set_crew_on_job: {
+        Args: { p_job_id: string; p_part_id: string }
+        Returns: boolean
+      }
       plan_set_is_drawing: { Args: { p_kind: string }; Returns: boolean }
       plan_set_link_key: { Args: { p_link: string }; Returns: string }
       plan_set_paper_words: {

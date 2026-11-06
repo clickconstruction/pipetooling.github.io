@@ -35,6 +35,7 @@ import {
   parseCustomerEmail,
   type CustomerEmailErrorKey,
 } from '../_shared/gcCustomerEmails.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * gc-customer-email — GC mode, Owner Billing's O4b: our emails to a GC project's customer and its architect, from one
@@ -102,6 +103,8 @@ serve(async (req) => {
     const auth = req.headers.get('Authorization') ?? ''
     const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
     const { data: u } = await anon.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (!u?.user) return refuse('signIn')
     const { data: who } = await admin.from('users').select('role, name, email, read_only').match(REAL_ACCOUNT).eq('id', u.user.id).maybeSingle()
     if (!who || who.read_only) return refuse('readOnly')

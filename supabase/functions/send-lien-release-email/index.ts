@@ -10,6 +10,7 @@ import { PORTAL_QR_CONTENT_ID, PORTAL_QR_FILENAME } from '../_shared/portalAccou
 import { qrMatrix } from '../_shared/qrMatrix.ts'
 import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
 import { waiverEmailFromName, waiverEmailRecipientCustomerId, withWaiverAccountCard } from '../_shared/lienWaiverEmailCard.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 // Email a SIGNED lien release to the job's customer, PDF attached (v2.2621 —
 // the signing loop's "ready to send" lane). Mirrors send-physical-invoice-email:
@@ -143,6 +144,8 @@ serve(async (req) => {
       const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
       if (recipientId && serviceKey) {
         const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+        const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+        if (archivedRefusal) return archivedRefusal
         const appOrigin = Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com'
         await ensurePortalShortAddress(admin, recipientId, user.id)
         portalUrl = await loadPortalReturnUrl(admin, recipientId, appOrigin, { paid: false })

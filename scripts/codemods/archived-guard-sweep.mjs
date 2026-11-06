@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The guard sweep (punch list #256, PR 7b, v2.6573): every edge function that reads the caller (`auth.getUser`) and
+ * The guard sweep (punch list #256, PR 7b, v2.6579): every edge function that reads the caller (`auth.getUser`) and
  * switches to the service role (`SUPABASE_SERVICE_ROLE_KEY`) gets one call to `refuseArchivedCaller` from
  * `_shared/refuseArchivedCaller.ts`, placed after both the caller read and the service-role client's declaration, in
  * the function's own indentation, with its `corsHeaders`:

@@ -18,6 +18,7 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildRfqEmail, type RfqEmailInput } from '../_shared/rfqEmail.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,6 +62,8 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     })
     const { data: userData, error: authErr } = await userClient.auth.getUser(jwt)
+    const archivedRefusal = await refuseArchivedCaller(admin, userData?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (authErr || !userData?.user) return json({ error: 'Not signed in' }, 401)
     const { data: sender } = await admin
       .from('users')
