@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arrivalWords, assignmentClash, daysBetween, defaultLevels, machineDayWords, machineDays, machinesOnJob, placeAfterLeaving, type MachineAssignment, gaugePreset, hoursLine, isHeld, leaveState, leaveWords, levelWords, rentalWords, lineState, lineWords, nextOpen, questionsFor, templateBlanksWords, verdictOf, walkProgress, type Machine, type MachineCheck, type MachineQuestion } from './machines'
+import { agreementDue, agreementPhotoWords, agreementPhotos, agreementState, arrivalWords, assignmentClash, daysBetween, defaultLevels, machineDayWords, machineDays, machinesOnJob, mintRentalLabel, placeAfterLeaving, type MachineAssignment, gaugePreset, hoursLine, isHeld, leaveState, leaveWords, levelWords, rentalWords, lineState, lineWords, nextOpen, questionsFor, templateBlanksWords, verdictOf, walkProgress, type Machine, type MachineCheck, type MachinePhoto, type MachineQuestion } from './machines'
 
 const m: Machine = { id: 'm1', unitLabel: 'E-12', make: 'Kubota', model: 'KX040', kind: 'excavator', templateId: 't-exc', code: 'E12KX040', jobId: 'j1', jobWords: '972 · Test', heldSince: null, levels: defaultLevels('excavator'), rental: null, driveLink: null }
 const qs: MachineQuestion[] = [
@@ -138,5 +138,42 @@ describe('the plan on a job’s day and the pair per day', () => {
     expect(days.map((d) => [d.day, d.hoursUsed])).toEqual([['2026-11-05', 8], ['2026-11-03', null]])
     expect(machineDayWords(days[0]!, '2026-11-05')).toContain('1,418 → 1,426 · 8 h · on the job')
     expect(machineDayWords(days[1]!, '2026-11-05')).toContain('no leaving check')
+  })
+})
+
+describe('a rental’s agreement (punch list #271)', () => {
+  const rental: Machine = { ...m, id: 'r1', unitLabel: 'Sunbelt rental', make: 'Bobcat', model: 'E35', rental: { from: 'Sunbelt', agreementNo: '', outOn: '2026-11-06', dueBack: '' } }
+  const shot = (id: string, shot: string, filedAt: string | null = null): MachinePhoto => ({ id, shot, fileName: `${shot}.jpg`, src: null, driveFileId: null, filedAt, failWhy: null })
+  const withPhoto: MachineCheck = { ...base, id: 'c5', machineId: 'r1', day: '2026-11-06', startedAt: '2026-11-06T12:40:00Z', signedAt: null, verdict: 'unfinished', photos: [shot('p1', 'front'), shot('p2', 'agreement')] }
+  it('is not in before the number or the photo, in by the photo, and typed once the office has the number', () => {
+    expect(agreementState(rental, [])).toBe('none')
+    expect(agreementState(rental, [withPhoto])).toBe('photo')
+    expect(agreementState({ ...rental, rental: { ...rental.rental!, agreementNo: '48812-3' } }, [])).toBe('typed')
+    expect(agreementState(m, [])).toBe('typed')
+  })
+  it('holds the pre-use check’s sign until the agreement is in, and never the leaving check', () => {
+    expect(agreementDue(rental, 'pre', [])).toBe(true)
+    expect(agreementDue(rental, 'pre', [withPhoto])).toBe(false)
+    expect(agreementDue(rental, 'post', [])).toBe(false)
+    expect(agreementDue(m, 'pre', [])).toBe(false)
+  })
+  it('lists the agreement photos newest first with the check each was taken on, and says whether the newest is filed', () => {
+    const older: MachineCheck = { ...withPhoto, id: 'c4', day: '2026-11-05', startedAt: '2026-11-05T12:40:00Z', photos: [shot('p0', 'agreement_more', '2026-11-05T13:00:00Z')] }
+    expect(agreementPhotos([older, withPhoto], 'r1').map((x) => [x.photo.id, x.check.id])).toEqual([['p2', 'c5'], ['p0', 'c4']])
+    expect(agreementPhotos([withPhoto], 'm1')).toEqual([])
+    expect(agreementPhotoWords([withPhoto], 'r1')).toBe('photo in')
+    expect(agreementPhotoWords([older], 'r1')).toBe('photo filed')
+    expect(agreementPhotoWords([base], 'm1')).toBeNull()
+  })
+  it('reads the rental line by the state, so a blank number never reads as agreement followed by nothing', () => {
+    const r = rental.rental!
+    expect(rentalWords(r, '2026-11-06').words).toBe('Rental · Sunbelt · agreement not in yet · open-ended')
+    expect(rentalWords({ ...r, dueBack: '2026-11-20' }, '2026-11-06', 'photo').words).toBe('Rental · Sunbelt · agreement photo in · number not typed yet · due back Nov 20 (14 days)')
+    expect(rentalWords({ ...r, agreementNo: '48812-3' }, '2026-11-06').words).toBe('Rental · Sunbelt · agreement 48812-3 · open-ended')
+  })
+  it('mints a rental’s label from its number, else from who it is from', () => {
+    expect(mintRentalLabel('Sunbelt', '48812-3')).toBe('Rental 48812-3')
+    expect(mintRentalLabel('Sunbelt', '')).toBe('Sunbelt rental')
+    expect(mintRentalLabel(' ', ' ')).toBe('Rental')
   })
 })

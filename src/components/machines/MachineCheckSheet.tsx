@@ -3,7 +3,9 @@
  * leaving check: one question open at a time marked Next, Yes / No / Not here at 44 px, a note and a photo under a No,
  * the gauges drawn the way they look on the machine (full screen on a phone), the hour meter with yesterday's reading
  * under it, four photos and one for anything wrong, where it is tonight on the leaving check, and the sign press. Every
- * press writes its row at once; a No on a holding question holds the machine and tells Dispatch on the sign.
+ * press writes its row at once; a No on a holding question holds the machine and tells Dispatch on the sign. A rental
+ * whose agreement is not in yet opens with a first stop, the photo of the paper the yard handed over, and the sign press
+ * waits for it (punch list #271); the office types the number off that photo on the fleet board.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
@@ -13,11 +15,15 @@ import { shrinkPhoto } from '../../lib/materials/photoShrink'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
+  AGREEMENT_SHOTS,
   CHECK_KIND_WORDS,
   FLEET_ROOT_WORDS,
   LEFT_WHERE_WORDS,
   SHOT_ORDER,
   SHOT_WORDS,
+  agreementDue,
+  agreementPhotoWords,
+  agreementState,
   clockWords,
   heldWhy,
   hoursLine,
@@ -34,6 +40,7 @@ import {
   todayDay,
   verdictOf,
   walkProgress,
+  type AgreementShot,
   type Answer,
   type CheckKind,
   type LeftWhere,
@@ -43,7 +50,6 @@ import {
   type MachinePhoto,
   type MachineQuestion,
   type MachinePick,
-  type ShotKey,
 } from '../../lib/machines/machines'
 import { addCheckPhoto, holdMachine, patchCheck, photoSrc, signCheck, startCheck } from '../../lib/machines/checksIo'
 import { JobLookupBox, type JobPick } from './JobLookupBox'
@@ -171,7 +177,14 @@ export function MachineCheckSheet({ machine, questions: allQuestions, checks, jo
   const [bigGauge, setBigGauge] = useState<LevelDef | null>(null)
   const [otherJob, setOtherJob] = useState<JobPick | null>(null)
   const leaveAnswered = kind !== 'post' || (check?.leftWhere != null && (check.leftWhere !== 'other' || otherJob != null))
-  const rental = machine.rental ? rentalWords(machine.rental, today) : null
+  // a rental's agreement: the stop at the top until the number is typed or the paper is photographed, this check's photos counted
+  const all = useMemo(() => (check ? [check, ...others] : others), [check, others])
+  const agreement = agreementState(machine, all)
+  const agreementOwed = agreementDue(machine, kind, all)
+  const agreementShotHere = check?.photos.some((p) => p.shot === 'agreement' || p.shot === 'agreement_more') ?? false
+  const showAgreement = machine.rental != null && (agreementShotHere || (agreementOwed && !readOnly))
+  const agreementTail = machine.rental && agreement === 'typed' ? agreementPhotoWords(all, machine.id) : null
+  const rental = machine.rental ? rentalWords(machine.rental, today, agreement) : null
 
   function pick(q: MachineQuestion, p: MachinePick) {
     patch(
@@ -234,8 +247,8 @@ export function MachineCheckSheet({ machine, questions: allQuestions, checks, jo
       </div>
     ) : (
       <div style={{ width: '100%', display: 'grid', gap: '0.4rem' }}>
-        <button type="button" style={walkDone && leaveAnswered ? (verdict === 'held' ? { ...S.primaryBtn, background: '#d97706' } : S.primaryBtn) : { ...S.primaryBtn, ...S.disabled }} disabled={!walkDone || !leaveAnswered || sending} onClick={() => void sign()}>
-          {sending ? 'Signing…' : !walkDone ? `${progress.asked - progress.answered} left${kind === 'pre' ? ' on the walk' : ''}` : !leaveAnswered ? 'Say where it is tonight' : signPressWords(machine, verdict, kind)}
+        <button type="button" style={walkDone && leaveAnswered && !agreementOwed ? (verdict === 'held' ? { ...S.primaryBtn, background: '#d97706' } : S.primaryBtn) : { ...S.primaryBtn, ...S.disabled }} disabled={!walkDone || !leaveAnswered || agreementOwed || sending} onClick={() => void sign()}>
+          {sending ? 'Signing…' : agreementOwed ? 'Photo of the agreement first' : !walkDone ? `${progress.asked - progress.answered} left${kind === 'pre' ? ' on the walk' : ''}` : !leaveAnswered ? 'Say where it is tonight' : signPressWords(machine, verdict, kind)}
         </button>
         <button type="button" style={S.quietMuted} onClick={onClose}>
           Finish later, keep what I did
@@ -248,7 +261,8 @@ export function MachineCheckSheet({ machine, questions: allQuestions, checks, jo
       <p style={{ ...meta, margin: '0.25rem 0 0.5rem', color: 'var(--text-700)' }}>{who}</p>
       {rental ? (
         <p style={{ ...meta, color: rental.late ? 'var(--text-red-700)' : 'var(--text-amber-800)', fontWeight: 600 }} data-rental-line>
-          {rental.words}. {kind === 'pre' ? 'The photos today are the evidence if they claim damage.' : 'At return, the four sides and the hour meter are the evidence.'}
+          {rental.words}
+          {agreementTail ? ` · ${agreementTail}` : ''}. {kind === 'pre' ? 'The photos today are the evidence if they claim damage.' : 'At return, the four sides and the hour meter are the evidence.'}
         </p>
       ) : null}
       {last && !readOnly ? (
@@ -268,6 +282,17 @@ export function MachineCheckSheet({ machine, questions: allQuestions, checks, jo
 
       {check ? (
         <>
+          {showAgreement ? (
+            <div data-agreement-stop={agreementOwed ? 'owed' : 'in'}>
+              <p style={S.label}>The rental agreement</p>
+              <p style={{ ...meta, marginBottom: '0.4rem' }}>{agreementOwed ? 'Photo of the paper the yard handed you. The office types the number off it.' : 'The agreement is in. The office types the number off the photo.'}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem' }}>
+                {(['agreement', 'agreement_more'] as AgreementShot[]).map((k) => (
+                  <ShotTile key={k} k={k} words={AGREEMENT_SHOTS[k].tile} photo={photoOf(k)} readOnly={readOnly} onFile={(f) => void takePhoto(k, AGREEMENT_SHOTS[k].file, f)} />
+                ))}
+              </div>
+            </div>
+          ) : null}
           <p style={S.label}>{kw.lead}</p>
           {kind === 'post' ? <p style={{ ...meta, marginBottom: '0.3rem' }}>Short on purpose: only what using {machine.unitLabel} changes. The morning walk finds the rest.</p> : null}
           <p style={meta} data-machine-progress>
@@ -376,11 +401,12 @@ export function MachineCheckSheet({ machine, questions: allQuestions, checks, jo
           <p style={S.label}>Photos</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem' }}>
             {SHOT_ORDER.filter((k) => k !== 'wrong').map((k) => (
-              <ShotTile key={k} k={k} photo={photoOf(k)} readOnly={readOnly} onFile={(f) => void takePhoto(k, SHOT_WORDS[k].toLowerCase(), f)} />
+              <ShotTile key={k} k={k} words={SHOT_WORDS[k]} photo={photoOf(k)} readOnly={readOnly} onFile={(f) => void takePhoto(k, SHOT_WORDS[k].toLowerCase(), f)} />
             ))}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem', marginTop: '0.4rem' }}>
-            <ShotTile k="wrong" photo={photoOf('wrong')} readOnly={readOnly} onFile={(f) => void takePhoto('wrong', SHOT_WORDS.wrong.toLowerCase(), f)} />
+            <ShotTile k="wrong" words={SHOT_WORDS.wrong} photo={photoOf('wrong')} readOnly={readOnly} onFile={(f) => void takePhoto('wrong', SHOT_WORDS.wrong.toLowerCase(), f)} />
+            {kind === 'post' && machine.rental ? <ShotTile k="return_slip" words={AGREEMENT_SHOTS.return_slip.tile} photo={photoOf('return_slip')} readOnly={readOnly} onFile={(f) => void takePhoto('return_slip', AGREEMENT_SHOTS.return_slip.file, f)} /> : null}
           </div>
           <p style={{ ...meta, marginTop: '0.4rem' }}>
             Every photo here files in {machine.unitLabel}’s own Drive folder, <b>{FLEET_ROOT_WORDS} › {machineFolderName(machine)}</b>, as <b>{photoFileName(check, machine, 'front')}</b> and the like, within a few minutes.
@@ -458,11 +484,12 @@ function GaugeShot({ def, photo, low, readOnly, onFile }: { def: LevelDef; photo
   )
 }
 
-function ShotTile({ k, photo, readOnly, onFile }: { k: ShotKey; photo: MachinePhoto | undefined; readOnly: boolean; onFile: (f: File) => void }) {
+/** One photo tile: the shot's key for the row, its words on the tile, the picture once taken. */
+function ShotTile({ k, words, photo, readOnly, onFile }: { k: string; words: string; photo: MachinePhoto | undefined; readOnly: boolean; onFile: (f: File) => void }) {
   return (
     <label style={photo ? { ...tile, border: '1.5px solid #16a34a' } : tile} data-machine-shot={k}>
-      {photo?.src ? <img src={photo.src} alt={SHOT_WORDS[k]} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} /> : photo ? <span style={{ fontSize: '0.65rem', color: 'var(--text-green-700)' }}>in Drive</span> : <CameraGlyph size={18} />}
-      <span style={photo?.src ? { position: 'absolute', left: 0, right: 0, bottom: 0, background: 'rgba(17,24,39,.65)', color: '#fff', fontSize: '0.65rem', padding: '0.15rem' } : undefined}>{SHOT_WORDS[k]}</span>
+      {photo?.src ? <img src={photo.src} alt={words} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} /> : photo ? <span style={{ fontSize: '0.65rem', color: 'var(--text-green-700)' }}>in Drive</span> : <CameraGlyph size={18} />}
+      <span style={photo?.src ? { position: 'absolute', left: 0, right: 0, bottom: 0, background: 'rgba(17,24,39,.65)', color: '#fff', fontSize: '0.65rem', padding: '0.15rem' } : undefined}>{words}</span>
       {readOnly ? null : <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />}
     </label>
   )

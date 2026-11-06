@@ -391,9 +391,60 @@ export function machineDayWords(r: MachineDay, today: string): string {
 
 /* ------------------------------------------------------------------ rentals */
 
-/** The rental line on the card and the sheet: who, the agreement, and when it is due back against today. */
-export function rentalWords(r: Rental, today: string): { words: string; late: boolean; soon: boolean } {
-  const head = `Rental · ${r.from} · agreement ${r.agreementNo}`
+/**
+ * Whether a rental's agreement is in (punch list #271): `typed` once the office has the number on the card, `photo` once
+ * the tech has photographed the paper at pickup and the office has not typed the number yet, `none` before either. A
+ * machine of ours reads `typed`, since nothing is owed on it.
+ */
+export type AgreementState = 'none' | 'photo' | 'typed'
+
+/** The shots a rental adds: the agreement paper at pickup, its back page or a second sheet, and the return slip when it goes back. */
+export type AgreementShot = 'agreement' | 'agreement_more' | 'return_slip'
+export const AGREEMENT_SHOTS: Record<AgreementShot, { tile: string; file: string }> = {
+  agreement: { tile: 'The agreement', file: 'agreement' },
+  agreement_more: { tile: 'Back page or return slip', file: 'agreement back page' },
+  return_slip: { tile: 'Return slip', file: 'return slip' },
+}
+
+/** The agreement photos on a machine's checks, newest first, each with the check it was taken on, for who and when. */
+export function agreementPhotos(checks: readonly MachineCheck[], machineId: string): Array<{ photo: MachinePhoto; check: MachineCheck }> {
+  const out: Array<{ photo: MachinePhoto; check: MachineCheck }> = []
+  for (const c of checksOf(checks, machineId)) for (const p of c.photos) if (p.shot === 'agreement' || p.shot === 'agreement_more') out.push({ photo: p, check: c })
+  return out
+}
+
+export function agreementState(m: Machine, checks: readonly MachineCheck[]): AgreementState {
+  if (!m.rental || m.rental.agreementNo.trim()) return 'typed'
+  return agreementPhotos(checks, m.id).length ? 'photo' : 'none'
+}
+
+/** The pre-use check of a rental holds its sign until the agreement is in, by number or by photo; the leaving check never does. */
+export function agreementDue(m: Machine, kind: CheckKind, checks: readonly MachineCheck[]): boolean {
+  return kind === 'pre' && agreementState(m, checks) === 'none'
+}
+
+/** After the agreement on a later check: the photo is in, or filed in Drive once the sweep has copied it. Null with no photo. */
+export function agreementPhotoWords(checks: readonly MachineCheck[], machineId: string): string | null {
+  const [newest] = agreementPhotos(checks, machineId)
+  if (!newest) return null
+  return newest.photo.filedAt ? 'photo filed' : 'photo in'
+}
+
+/** A rental's unit label, shared by the block editor's add form and the label page: *Rental 48812-3* by its number, *Sunbelt rental* without one. */
+export function mintRentalLabel(from: string, agreementNo: string): string {
+  const no = agreementNo.trim()
+  const f = from.trim()
+  return no ? `Rental ${no}` : f ? `${f} rental` : 'Rental'
+}
+
+/**
+ * The rental line on the card and the sheet: who, the agreement (its number, or that it is in as a photo, or not in
+ * yet), and when it is due back against today. The state defaults from the number alone; a caller with the checks in
+ * hand passes `agreementState` so a photographed agreement reads as in.
+ */
+export function rentalWords(r: Rental, today: string, state: AgreementState = r.agreementNo.trim() ? 'typed' : 'none'): { words: string; late: boolean; soon: boolean } {
+  const agreement = state === 'typed' && r.agreementNo.trim() ? `agreement ${r.agreementNo.trim()}` : state === 'photo' ? 'agreement photo in · number not typed yet' : 'agreement not in yet'
+  const head = ['Rental', r.from.trim(), agreement].filter(Boolean).join(' · ')
   if (!r.dueBack) return { words: `${head} · open-ended`, late: false, soon: false }
   const days = daysBetween(today, r.dueBack)
   if (days < 0) return { words: `${head} · due back ${dayWords(r.dueBack, today)} · ${-days} day${days === -1 ? '' : 's'} over`, late: true, soon: false }

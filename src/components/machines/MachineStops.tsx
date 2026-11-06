@@ -28,6 +28,7 @@ import {
   lineState,
   machineName,
   machinesOnJob,
+  mintRentalLabel,
   rentalWords,
   templateBlanksWords,
   todayDay,
@@ -253,7 +254,7 @@ function AddFromTemplate({ templates, day, busy, onAdd, onClose }: { templates: 
           onClick={() =>
             onAdd(async (job, userId) => {
               if (!template) return
-              const unitLabel = ours ? unit.trim() : agreementNo.trim() ? `Rental ${agreementNo.trim()}` : `${from.trim()} rental`
+              const unitLabel = ours ? unit.trim() : mintRentalLabel(from, agreementNo)
               const id = await addMachine({ unitLabel, make: make.trim(), model: model.trim(), templateId: template.id, kind: template.kind })
               if (!ours) await saveRental(id, { from: from.trim(), agreementNo: agreementNo.trim(), outOn: day, dueBack })
               await addAssignment({ machineId: id, jobId: job, day, createdBy: userId })
