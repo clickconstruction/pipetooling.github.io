@@ -2,7 +2,7 @@
 name: "A rental's agreement arrives at pickup: the tech photographs the paper, the office types the number off it"
 number: 271
 group: ready
-status: written up 2026-11-06 from the owner's question; the design is decided (photo first), nothing built
+status: PR 1 built on claude/271-agreement-stop (2026-11-06, the stop on the check); PRs 2 and 3 not started
 summary: >
   The office often books a rental before anyone has the agreement number, which the yard hands the
   tech at pickup. Today the block editor and the fleet board want the number up front. The decided
@@ -13,7 +13,7 @@ summary: >
   the office types the number and the due-back day from the paper. No migration: the photos table
   takes any shot name and the Drive filing already works. The tech typing the number at the yard
   was rejected for now (crews cannot edit the fleet board; it would need a database function).
-next: PR 1, the kernels and the agreement stop on the check; PR 2, the card's photo and Type it off the photo; PR 3, Ours or Rental on the label page's add form
+next: PR 2, the card's photo and Type it off the photo; PR 3, Ours or Rental on the label page's add form
 size: S as a train of three, each S
 blocker: none — the owner picked photo first on 2026-11-06
 opinion: ship PR 1 and PR 2 together if one session has both in hand; PR 3 can wait, since the block editor already adds a rental (v2.6573)

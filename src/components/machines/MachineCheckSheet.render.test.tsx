@@ -16,6 +16,7 @@ const io = vi.hoisted(() => ({
   photoSrc: vi.fn(async () => null),
 }))
 vi.mock('../../lib/machines/checksIo', () => io)
+vi.mock('../../lib/materials/photoShrink', () => ({ shrinkPhoto: async (file: File) => ({ blob: file, width: 1, height: 1, shrunk: false }) }))
 
 const machine: Machine = { id: 'm1', unitLabel: 'E-12', make: 'Kubota', model: 'KX040', kind: 'excavator', templateId: 't1', code: 'E12KX040', jobId: 'j1', jobWords: '972 · Tovi Pinpoint', heldSince: null, levels: defaultLevels('excavator'), rental: null, driveLink: null }
 const questions: MachineQuestion[] = [
@@ -64,5 +65,34 @@ describe('the pre-use check sheet', () => {
     fireEvent.click(screen.getByText('Back to the yard'))
     expect(io.patchCheck).toHaveBeenCalledWith('c2', { leftWhere: 'yard', leftJobId: null })
     expect(screen.getByText('I left E-12 as it says')).toBeTruthy()
+  })
+
+  it('a rental with no agreement yet opens with the agreement stop, and the sign press waits for the photo (punch list #271)', async () => {
+    const rental: Machine = { ...machine, id: 'r1', unitLabel: 'Sunbelt rental', make: 'Bobcat', model: 'E35', rental: { from: 'Sunbelt', agreementNo: '', outOn: today, dueBack: '' } }
+    io.addCheckPhoto.mockResolvedValue({ id: 'p1', shot: 'agreement', fileName: 'agreement.jpg', src: 'blob:agreement', driveFileId: null, filedAt: null, failWhy: null })
+    renderWithProviders(<MachineCheckSheet machine={rental} questions={[]} checks={[{ ...open, id: 'c3', machineId: 'r1' }]} jobId="j1" jobWords="972 · Tovi Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={() => {}} />)
+    expect(document.querySelector('[data-rental-line]')?.textContent).toContain('agreement not in yet')
+    expect(screen.getByText('The rental agreement')).toBeTruthy()
+    const press = screen.getByText('Photo of the agreement first') as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    const input = document.querySelector('[data-machine-shot="agreement"] input[type=file]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [new File(['x'], 'agreement.jpg', { type: 'image/jpeg' })] } })
+    await vi.waitFor(() => expect(io.addCheckPhoto).toHaveBeenCalledWith(expect.objectContaining({ shot: 'agreement', fileName: expect.stringContaining('pre-use agreement.jpg') })))
+    await vi.waitFor(() => expect(screen.getByText('Sunbelt rental is safe to run')).toBeTruthy())
+    expect(document.querySelector('[data-agreement-stop]')?.getAttribute('data-agreement-stop')).toBe('in')
+    // an agreement can run to several pages: the taken page stays and one more tile is offered
+    expect([...document.querySelectorAll('[data-agreement-stop] [data-machine-shot]')].map((el) => [el.getAttribute('data-machine-shot'), el.textContent])).toEqual([
+      ['agreement', 'The agreement'],
+      ['agreement_p2', 'Another page'],
+    ])
+    expect(document.querySelector('[data-machine-shot="return_slip"]')).toBeNull()
+  })
+
+  it('the leaving check of a rental offers the return slip tile and never waits for the agreement', () => {
+    const rental: Machine = { ...machine, id: 'r1', unitLabel: 'Sunbelt rental', make: 'Bobcat', model: 'E35', rental: { from: 'Sunbelt', agreementNo: '', outOn: today, dueBack: '' } }
+    renderWithProviders(<MachineCheckSheet machine={rental} questions={[]} checks={[{ ...open, id: 'c4', kind: 'post', machineId: 'r1' }]} kind="post" jobId="j1" jobWords="972 · Tovi Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={() => {}} />)
+    expect(document.querySelector('[data-agreement-stop]')).toBeNull()
+    expect(document.querySelector('[data-machine-shot="return_slip"]')?.textContent).toContain('Return slip')
+    expect(screen.getByText('Say where it is tonight')).toBeTruthy()
   })
 })

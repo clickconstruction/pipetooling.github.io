@@ -391,9 +391,95 @@ export function machineDayWords(r: MachineDay, today: string): string {
 
 /* ------------------------------------------------------------------ rentals */
 
-/** The rental line on the card and the sheet: who, the agreement, and when it is due back against today. */
-export function rentalWords(r: Rental, today: string): { words: string; late: boolean; soon: boolean } {
-  const head = `Rental · ${r.from} · agreement ${r.agreementNo}`
+/**
+ * Whether a rental's agreement is in (punch list #271): `typed` once the office has the number on the card, `photo` once
+ * the tech has photographed the paper at pickup and the office has not typed the number yet, `none` before either. A
+ * machine of ours reads `typed`, since nothing is owed on it.
+ */
+export type AgreementState = 'none' | 'photo' | 'typed'
+
+/**
+ * The shots a rental adds. The agreement paper at pickup files page by page, `agreement` for the first and
+ * `agreement_p2`, `agreement_p3`… after it, since an agreement can run to several pages and the condition report is
+ * often not the front (Taunya, 2026-11-06); the return slip when it goes back is `return_slip`.
+ */
+export const RETURN_SLIP_SHOT = 'return_slip'
+export const RETURN_SLIP_WORDS = { tile: 'Return slip', file: 'return slip' } as const
+export function agreementShot(page: number): string {
+  return page <= 1 ? 'agreement' : `agreement_p${page}`
+}
+/** Which page of the agreement a shot is, or null for any other shot. */
+export function agreementPage(shot: string): number | null {
+  if (shot === 'agreement') return 1
+  const m = /^agreement_p(\d+)$/.exec(shot)
+  return m ? Number(m[1]) : null
+}
+export interface AgreementTile {
+  page: number
+  shot: string
+  /** On the tile. */
+  tile: string
+  /** In the file's name. */
+  file: string
+  photo: MachinePhoto | null
+}
+/** The agreement's tiles on one check: every page taken, in order, then one empty tile for the next page. */
+export function agreementTiles(photos: readonly MachinePhoto[]): AgreementTile[] {
+  const taken = photos
+    .flatMap((p) => {
+      const page = agreementPage(p.shot)
+      return page == null ? [] : [{ p, page }]
+    })
+    .sort((a, b) => a.page - b.page)
+  const words = (page: number, empty: boolean) => ({ tile: page === 1 ? 'The agreement' : empty ? 'Another page' : `Page ${page}`, file: page === 1 ? 'agreement' : `agreement page ${page}` })
+  const out: AgreementTile[] = taken.map(({ p, page }) => ({ page, shot: p.shot, ...words(page, false), photo: p }))
+  const next = (taken[taken.length - 1]?.page ?? 0) + 1
+  out.push({ page: next, shot: agreementShot(next), ...words(next, true), photo: null })
+  return out
+}
+
+/** The agreement photos on a machine's checks, newest check first and its first page first, each with the check it was taken on. */
+export function agreementPhotos(checks: readonly MachineCheck[], machineId: string): Array<{ photo: MachinePhoto; check: MachineCheck }> {
+  const out: Array<{ photo: MachinePhoto; check: MachineCheck }> = []
+  for (const c of checksOf(checks, machineId)) {
+    const pages = c.photos.filter((p) => agreementPage(p.shot) != null).sort((a, b) => (agreementPage(a.shot) ?? 0) - (agreementPage(b.shot) ?? 0))
+    for (const p of pages) out.push({ photo: p, check: c })
+  }
+  return out
+}
+
+export function agreementState(m: Machine, checks: readonly MachineCheck[]): AgreementState {
+  if (!m.rental || m.rental.agreementNo.trim()) return 'typed'
+  return agreementPhotos(checks, m.id).length ? 'photo' : 'none'
+}
+
+/** The pre-use check of a rental holds its sign until the agreement is in, by number or by photo; the leaving check never does. */
+export function agreementDue(m: Machine, kind: CheckKind, checks: readonly MachineCheck[]): boolean {
+  return kind === 'pre' && agreementState(m, checks) === 'none'
+}
+
+/** After the agreement on a later check: the photo is in, or filed in Drive once the sweep has copied it. Null with no photo. */
+export function agreementPhotoWords(checks: readonly MachineCheck[], machineId: string): string | null {
+  const [newest] = agreementPhotos(checks, machineId)
+  if (!newest) return null
+  return newest.photo.filedAt ? 'photo filed' : 'photo in'
+}
+
+/** A rental's unit label, shared by the block editor's add form and the label page: *Rental 48812-3* by its number, *Sunbelt rental* without one. */
+export function mintRentalLabel(from: string, agreementNo: string): string {
+  const no = agreementNo.trim()
+  const f = from.trim()
+  return no ? `Rental ${no}` : f ? `${f} rental` : 'Rental'
+}
+
+/**
+ * The rental line on the card and the sheet: who, the agreement (its number, or that it is in as a photo, or not in
+ * yet), and when it is due back against today. The state defaults from the number alone; a caller with the checks in
+ * hand passes `agreementState` so a photographed agreement reads as in.
+ */
+export function rentalWords(r: Rental, today: string, state: AgreementState = r.agreementNo.trim() ? 'typed' : 'none'): { words: string; late: boolean; soon: boolean } {
+  const agreement = state === 'typed' && r.agreementNo.trim() ? `agreement ${r.agreementNo.trim()}` : state === 'photo' ? 'agreement photo in · number not typed yet' : 'agreement not in yet'
+  const head = ['Rental', r.from.trim(), agreement].filter(Boolean).join(' · ')
   if (!r.dueBack) return { words: `${head} · open-ended`, late: false, soon: false }
   const days = daysBetween(today, r.dueBack)
   if (days < 0) return { words: `${head} · due back ${dayWords(r.dueBack, today)} · ${-days} day${days === -1 ? '' : 's'} over`, late: true, soon: false }
