@@ -1368,7 +1368,7 @@ describe('LienDeskModal · a notice that already went out (#35 PR 2)', () => {
   })
 })
 
-describe('LienDeskModal letter two (v2.3760)', () => {
+describe('LienDeskModal the attorney’s letter (v2.3760)', () => {
   const sentPacket = {
     id: 'sent1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07'], status: 'sent', approval_mode: 'leader', drafted_by: 'u-taunya', submitted_at: '2026-09-02T14:00:00Z', sent_at: '2026-09-02T15:00:00Z',
     fields: { notice: { noticeDate: '2026-09-02', projectDescription: '', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '' }, gcEmail: 'office@loberg.test' },
@@ -1382,17 +1382,17 @@ describe('LienDeskModal letter two (v2.3760)', () => {
     return d
   }
 
-  it('the sent row and footer count the days, and Send letter two drafts counsel’s paid-out letter on the job', async () => {
+  it('the sent row and footer count the days, and Send the attorney’s letter drafts counsel’s paid-out letter on the job', async () => {
     startTwoMock.mockReset()
     startTwoMock.mockResolvedValue('two1')
     const onChanged = vi.fn()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={sentDesk()} onChanged={onChanged} />)
-    expect((document.querySelector('[data-lien-letter-two]') as HTMLElement).textContent).toBe('day 12 · letter two')
+    expect((document.querySelector('[data-lien-letter-two]') as HTMLElement).textContent).toBe('day 12 · the attorney’s letter')
     const since = document.querySelector('[data-lien-since-sent]') as HTMLElement
     expect(since.textContent).toContain('Day 12')
     expect(since.textContent).toContain('GC paid: no')
     expect(since.textContent).toContain('GC authorized direct pay: no')
-    fireEvent.click(screen.getByRole('button', { name: 'Send letter two ▸' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send the attorney’s letter ▸' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /We believe the owner paid the GC out/ }))
     await waitFor(() => expect(startTwoMock).toHaveBeenCalled())
     const input = startTwoMock.mock.calls[0]![0] as { first: { id: string }; fields: { letterTwo?: { kind: string; afterItemId: string }; coverLetter?: string; notice: { claimAmount: string } } }
@@ -1403,7 +1403,7 @@ describe('LienDeskModal letter two (v2.3760)', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
-  it('the GC’s written okay is recorded on the first packet and turns letter two off', async () => {
+  it('the GC’s written okay is recorded on the first packet and turns the attorney’s letter off', async () => {
     gcOkayMock.mockReset()
     gcOkayMock.mockResolvedValue(undefined)
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={sentDesk()} />)
@@ -1421,8 +1421,8 @@ describe('LienDeskModal letter two (v2.3760)', () => {
     const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sentPacket, twoDraft], true)
     d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
-    expect((document.querySelector('[data-lien-letter-two="draft"]') as HTMLElement).textContent).toBe('letter two · unresponsive')
-    expect((document.querySelector('[data-lien-letter-two-heading]') as HTMLElement).textContent).toContain('letter two · unresponsive · after the Sep 2 packet')
+    expect((document.querySelector('[data-lien-letter-two="draft"]') as HTMLElement).textContent).toBe('the attorney’s letter · unresponsive')
+    expect((document.querySelector('[data-lien-letter-two-heading]') as HTMLElement).textContent).toContain('the attorney’s letter · unresponsive · after the Sep 2 packet')
   })
 })
 

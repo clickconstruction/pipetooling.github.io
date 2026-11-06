@@ -832,7 +832,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     const m = inputs.lienDesk.missed
     // Letter two (v2.3760): sent notices at day 10+ with no payment, no GC okay and no owner call — one quiet secondary line, or its own card when nothing else is due.
     const two = o.letterTwo && o.letterTwo.due > 0 ? o.letterTwo : null
-    const twoLine = two ? `${two.due} sent ${two.due === 1 ? 'notice' : 'notices'} at day 10+ — letter two${two.overdue ? ` (${two.overdue} past day 14)` : ''} ›` : null
+    const twoLine = two ? `${two.due} sent ${two.due === 1 ? 'notice' : 'notices'} at day 10+ — the attorney’s letter${two.overdue ? ` (${two.overdue} past day 14)` : ''} ›` : null
     const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
     const missedLine = m.jobs > 0 ? `${m.months} ${m.months === 1 ? 'window' : 'windows'} closed with nothing recorded · ${usd(m.dollars)} · note ${m.months === 1 ? 'it' : 'them'} ›` : null
     const next = o.next
@@ -859,7 +859,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         key: 'lien-notice-draft',
         severity: two.overdue > 0 ? 'red' : 'amber',
         kicker: 'Lien deadlines',
-        title: two.due === 1 ? 'Letter two is due on a sent notice' : `Letter two is due on ${two.due} sent notices`,
+        title: two.due === 1 ? 'The attorney’s letter is due on a sent notice' : `The attorney’s letter is due on ${two.due} sent notices`,
         detail: `${two.due === 1 ? 'A notice' : `${two.due} notices`} went out 10 or more days ago and the GC has neither paid nor authorized the owner to pay us${two.overdue ? ` — ${two.overdue} past day 14` : ''}. Counsel's second letter (the paid-out or the unresponsive one) goes from the desk's Sent pile.`,
         figure: String(two.due),
         actionLabel: 'Open the Lien desk',

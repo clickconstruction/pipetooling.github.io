@@ -469,7 +469,7 @@ export function attachEnvelopeAnswers(envelopes: ReadonlyArray<LegalEnvelope>, a
 
 /** `§ 53.056 notice` / `§ 53.056 notice · letter two, paid-out` — the Paper cell. */
 export function envelopeKindWords(e: Pick<LegalEnvelope, 'kindLabel' | 'letterTwo'>): string {
-  return e.letterTwo ? `${e.kindLabel} · letter two, ${letterTwoKindLabel(e.letterTwo.kind)}` : e.kindLabel
+  return e.letterTwo ? `${e.kindLabel} · the attorney’s letter, ${letterTwoKindLabel(e.letterTwo.kind)}` : e.kindLabel
 }
 
 /** What each pile means to the reader of the paper — counsel's own short call. */
