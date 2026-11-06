@@ -31869,6 +31869,125 @@ export type Database = {
           },
         ]
       }
+      stage_checklist_records: {
+        Row: {
+          amend_why: string | null
+          amended_at: string | null
+          amended_by: string | null
+          amended_by_name: string
+          answer_count: number
+          created_at: string
+          filed_at: string
+          filed_by: string | null
+          filed_by_name: string
+          fixture_id: string
+          id: string
+          job_id: string
+          no_count: number
+          pdf_drive_file_id: string | null
+          pdf_fail_why: string | null
+          pdf_file_name: string | null
+          pdf_filed_at: string | null
+          pdf_tries: number
+          record_id: string
+          record_no: number
+          signed_count: number
+          snapshot: Json
+          stage_kind: string
+          stage_name: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          amend_why?: string | null
+          amended_at?: string | null
+          amended_by?: string | null
+          amended_by_name?: string
+          answer_count?: number
+          created_at?: string
+          filed_at: string
+          filed_by?: string | null
+          filed_by_name?: string
+          fixture_id: string
+          id?: string
+          job_id: string
+          no_count?: number
+          pdf_drive_file_id?: string | null
+          pdf_fail_why?: string | null
+          pdf_file_name?: string | null
+          pdf_filed_at?: string | null
+          pdf_tries?: number
+          record_id: string
+          record_no: number
+          signed_count?: number
+          snapshot?: Json
+          stage_kind: string
+          stage_name: string
+          state?: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          amend_why?: string | null
+          amended_at?: string | null
+          amended_by?: string | null
+          amended_by_name?: string
+          answer_count?: number
+          created_at?: string
+          filed_at?: string
+          filed_by?: string | null
+          filed_by_name?: string
+          fixture_id?: string
+          id?: string
+          job_id?: string
+          no_count?: number
+          pdf_drive_file_id?: string | null
+          pdf_fail_why?: string | null
+          pdf_file_name?: string | null
+          pdf_filed_at?: string | null
+          pdf_tries?: number
+          record_id?: string
+          record_no?: number
+          signed_count?: number
+          snapshot?: Json
+          stage_kind?: string
+          stage_name?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_checklist_records_amended_by_fkey"
+            columns: ["amended_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_records_filed_by_fkey"
+            columns: ["filed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_records_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_records_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stage_checklist_skips: {
         Row: {
           fixture_id: string
@@ -36959,6 +37078,44 @@ export type Database = {
         }
         Returns: number
       }
+      amend_stage_checklist_record: {
+        Args: { p_record_id: string; p_why: string }
+        Returns: {
+          amend_why: string | null
+          amended_at: string | null
+          amended_by: string | null
+          amended_by_name: string
+          answer_count: number
+          created_at: string
+          filed_at: string
+          filed_by: string | null
+          filed_by_name: string
+          fixture_id: string
+          id: string
+          job_id: string
+          no_count: number
+          pdf_drive_file_id: string | null
+          pdf_fail_why: string | null
+          pdf_file_name: string | null
+          pdf_filed_at: string | null
+          pdf_tries: number
+          record_id: string
+          record_no: number
+          signed_count: number
+          snapshot: Json
+          stage_kind: string
+          stage_name: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "stage_checklist_records"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       answer_invitation: {
         Args: { p_answer: string; p_message_id: string; p_reason?: string }
         Returns: undefined
@@ -36968,6 +37125,7 @@ export type Database = {
         Args: { p_invoice_id: string; p_new_amount: number; p_note: string }
         Returns: Json
       }
+      apply_archived_read_blocks: { Args: never; Returns: number }
       apply_bid_estimating_hours_to_job: {
         Args: { p_bid_id: string; p_job_id: string }
         Returns: Json
@@ -37058,6 +37216,7 @@ export type Database = {
         Args: { p_mercury_transaction_id: string }
         Returns: boolean
       }
+      archived_pre_request: { Args: never; Returns: undefined }
       assert_caller_can_merge_customer_pair: {
         Args: {
           p_survivor_master_user_id: string
@@ -37196,6 +37355,7 @@ export type Database = {
         Args: { p_contact: string; p_message: string }
         Returns: number
       }
+      caller_is_archived: { Args: never; Returns: boolean }
       can_access_bid_for_pricing: {
         Args: { bid_id_param: string }
         Returns: boolean
@@ -42535,9 +42695,14 @@ export type Database = {
         Args: { p_name: string; p_user: string }
         Returns: string
       }
+      stage_checklist_kind_of: { Args: { p_name: string }; Returns: string }
       stage_checklist_may_author: {
         Args: { p_job_id: string }
         Returns: boolean
+      }
+      stage_checklist_record_settle: {
+        Args: { p_fixture_id: string }
+        Returns: undefined
       }
       stamp_bid_priced_margin: {
         Args: {
