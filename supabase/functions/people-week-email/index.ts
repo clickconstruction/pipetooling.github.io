@@ -17,6 +17,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 import { calendarYmdInAppTzFromIso } from '../_shared/appTimeZone.ts'
 import { peopleWeekSubject, renderPeopleWeekHtml, renderPeopleWeekText, type PeopleWeekPayload } from '../_shared/peopleWeekEmail.ts'
 
@@ -61,7 +62,9 @@ async function requireUser(req: Request, admin: Admin): Promise<UserRow | Respon
   } = await jwtClient.auth.getUser(token)
   if (authErr || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
   const me = await loadUser(admin, user.id)
-  if (!me || me.archived_at) return jsonResponse({ error: 'Forbidden' }, 403)
+  const archivedRefusal = await refuseArchivedCaller(admin, user.id, corsHeaders)
+  if (archivedRefusal) return archivedRefusal
+  if (!me) return jsonResponse({ error: 'Forbidden' }, 403)
   return me
 }
 
