@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agreementDue, agreementPhotoWords, agreementPhotos, agreementState, arrivalWords, assignmentClash, daysBetween, defaultLevels, machineDayWords, machineDays, machinesOnJob, mintRentalLabel, placeAfterLeaving, type MachineAssignment, gaugePreset, hoursLine, isHeld, leaveState, leaveWords, levelWords, rentalWords, lineState, lineWords, nextOpen, questionsFor, templateBlanksWords, verdictOf, walkProgress, type Machine, type MachineCheck, type MachinePhoto, type MachineQuestion } from './machines'
+import { agreementDue, agreementPage, agreementPhotoWords, agreementPhotos, agreementShot, agreementState, agreementTiles, arrivalWords, assignmentClash, daysBetween, defaultLevels, machineDayWords, machineDays, machinesOnJob, mintRentalLabel, placeAfterLeaving, type MachineAssignment, gaugePreset, hoursLine, isHeld, leaveState, leaveWords, levelWords, rentalWords, lineState, lineWords, nextOpen, questionsFor, templateBlanksWords, verdictOf, walkProgress, type Machine, type MachineCheck, type MachinePhoto, type MachineQuestion } from './machines'
 
 const m: Machine = { id: 'm1', unitLabel: 'E-12', make: 'Kubota', model: 'KX040', kind: 'excavator', templateId: 't-exc', code: 'E12KX040', jobId: 'j1', jobWords: '972 · Test', heldSince: null, levels: defaultLevels('excavator'), rental: null, driveLink: null }
 const qs: MachineQuestion[] = [
@@ -157,13 +157,29 @@ describe('a rental’s agreement (punch list #271)', () => {
     expect(agreementDue(rental, 'post', [])).toBe(false)
     expect(agreementDue(m, 'pre', [])).toBe(false)
   })
-  it('lists the agreement photos newest first with the check each was taken on, and says whether the newest is filed', () => {
-    const older: MachineCheck = { ...withPhoto, id: 'c4', day: '2026-11-05', startedAt: '2026-11-05T12:40:00Z', photos: [shot('p0', 'agreement_more', '2026-11-05T13:00:00Z')] }
-    expect(agreementPhotos([older, withPhoto], 'r1').map((x) => [x.photo.id, x.check.id])).toEqual([['p2', 'c5'], ['p0', 'c4']])
+  it('lists the agreement photos newest check first, pages in order, and says whether the newest is filed', () => {
+    const older: MachineCheck = { ...withPhoto, id: 'c4', day: '2026-11-05', startedAt: '2026-11-05T12:40:00Z', photos: [shot('p0b', 'agreement_p2', '2026-11-05T13:00:00Z'), shot('p0', 'agreement', '2026-11-05T13:00:00Z')] }
+    expect(agreementPhotos([older, withPhoto], 'r1').map((x) => [x.photo.id, x.check.id])).toEqual([['p2', 'c5'], ['p0', 'c4'], ['p0b', 'c4']])
     expect(agreementPhotos([withPhoto], 'm1')).toEqual([])
     expect(agreementPhotoWords([withPhoto], 'r1')).toBe('photo in')
     expect(agreementPhotoWords([older], 'r1')).toBe('photo filed')
     expect(agreementPhotoWords([base], 'm1')).toBeNull()
+  })
+  it('files the agreement page by page and always offers one more tile, since an agreement can run to several pages', () => {
+    expect(agreementShot(1)).toBe('agreement')
+    expect(agreementShot(3)).toBe('agreement_p3')
+    expect(agreementPage('agreement')).toBe(1)
+    expect(agreementPage('agreement_p12')).toBe(12)
+    expect(agreementPage('return_slip')).toBeNull()
+    expect(agreementPage('front')).toBeNull()
+    expect(agreementTiles([]).map((t) => [t.shot, t.tile, t.file, t.photo])).toEqual([['agreement', 'The agreement', 'agreement', null]])
+    const two = agreementTiles([shot('b', 'agreement_p2'), shot('f', 'front'), shot('a', 'agreement')])
+    expect(two.map((t) => [t.page, t.shot, t.tile, t.photo?.id ?? null])).toEqual([
+      [1, 'agreement', 'The agreement', 'a'],
+      [2, 'agreement_p2', 'Page 2', 'b'],
+      [3, 'agreement_p3', 'Another page', null],
+    ])
+    expect(two[2]?.file).toBe('agreement page 3')
   })
   it('reads the rental line by the state, so a blank number never reads as agreement followed by nothing', () => {
     const r = rental.rental!

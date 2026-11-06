@@ -49,6 +49,6 @@ The label works for the leaving check too. Scan it after the morning walk is sig
 
 A rental shows who it is from and when it is due back at the top of the check. The photos you take are the evidence if the rental company claims damage. Take all five at pickup and all five at return.
 
-Sometimes the office books the rental before anyone has the agreement number. The yard hands you the paper at pickup. The check then opens with **The rental agreement** as its first stop. Tap {{button:outline|The agreement}} and take a photo of the paper. Tap {{button:outline|Back page or return slip}} for a second page when there is one. The sign press reads **Photo of the agreement first** until the photo is in. The office types the number off your photo. Later checks show the number and that the photo is filed, with no stop.
+Sometimes the office books the rental before anyone has the agreement number. The yard hands you the paper at pickup. The check then opens with **The rental agreement** as its first stop. Tap {{button:outline|The agreement}} and take a photo of the first page. A tile named {{button:outline|Another page}} appears after each photo. Tap it for every page the agreement has. The sign press reads **Photo of the agreement first** until the first photo is in. The office types the number off your photo. Later checks show the number and that the photo is filed, with no stop.
 
 The leaving check of a rental has one more photo tile. Tap {{button:outline|Return slip}} when the yard hands you one.

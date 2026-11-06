@@ -398,18 +398,53 @@ export function machineDayWords(r: MachineDay, today: string): string {
  */
 export type AgreementState = 'none' | 'photo' | 'typed'
 
-/** The shots a rental adds: the agreement paper at pickup, its back page or a second sheet, and the return slip when it goes back. */
-export type AgreementShot = 'agreement' | 'agreement_more' | 'return_slip'
-export const AGREEMENT_SHOTS: Record<AgreementShot, { tile: string; file: string }> = {
-  agreement: { tile: 'The agreement', file: 'agreement' },
-  agreement_more: { tile: 'Back page or return slip', file: 'agreement back page' },
-  return_slip: { tile: 'Return slip', file: 'return slip' },
+/**
+ * The shots a rental adds. The agreement paper at pickup files page by page, `agreement` for the first and
+ * `agreement_p2`, `agreement_p3`… after it, since an agreement can run to several pages and the condition report is
+ * often not the front (Taunya, 2026-11-06); the return slip when it goes back is `return_slip`.
+ */
+export const RETURN_SLIP_SHOT = 'return_slip'
+export const RETURN_SLIP_WORDS = { tile: 'Return slip', file: 'return slip' } as const
+export function agreementShot(page: number): string {
+  return page <= 1 ? 'agreement' : `agreement_p${page}`
+}
+/** Which page of the agreement a shot is, or null for any other shot. */
+export function agreementPage(shot: string): number | null {
+  if (shot === 'agreement') return 1
+  const m = /^agreement_p(\d+)$/.exec(shot)
+  return m ? Number(m[1]) : null
+}
+export interface AgreementTile {
+  page: number
+  shot: string
+  /** On the tile. */
+  tile: string
+  /** In the file's name. */
+  file: string
+  photo: MachinePhoto | null
+}
+/** The agreement's tiles on one check: every page taken, in order, then one empty tile for the next page. */
+export function agreementTiles(photos: readonly MachinePhoto[]): AgreementTile[] {
+  const taken = photos
+    .flatMap((p) => {
+      const page = agreementPage(p.shot)
+      return page == null ? [] : [{ p, page }]
+    })
+    .sort((a, b) => a.page - b.page)
+  const words = (page: number, empty: boolean) => ({ tile: page === 1 ? 'The agreement' : empty ? 'Another page' : `Page ${page}`, file: page === 1 ? 'agreement' : `agreement page ${page}` })
+  const out: AgreementTile[] = taken.map(({ p, page }) => ({ page, shot: p.shot, ...words(page, false), photo: p }))
+  const next = (taken[taken.length - 1]?.page ?? 0) + 1
+  out.push({ page: next, shot: agreementShot(next), ...words(next, true), photo: null })
+  return out
 }
 
-/** The agreement photos on a machine's checks, newest first, each with the check it was taken on, for who and when. */
+/** The agreement photos on a machine's checks, newest check first and its first page first, each with the check it was taken on. */
 export function agreementPhotos(checks: readonly MachineCheck[], machineId: string): Array<{ photo: MachinePhoto; check: MachineCheck }> {
   const out: Array<{ photo: MachinePhoto; check: MachineCheck }> = []
-  for (const c of checksOf(checks, machineId)) for (const p of c.photos) if (p.shot === 'agreement' || p.shot === 'agreement_more') out.push({ photo: p, check: c })
+  for (const c of checksOf(checks, machineId)) {
+    const pages = c.photos.filter((p) => agreementPage(p.shot) != null).sort((a, b) => (agreementPage(a.shot) ?? 0) - (agreementPage(b.shot) ?? 0))
+    for (const p of pages) out.push({ photo: p, check: c })
+  }
   return out
 }
 

@@ -69,7 +69,7 @@ describe('the pre-use check sheet', () => {
 
   it('a rental with no agreement yet opens with the agreement stop, and the sign press waits for the photo (punch list #271)', async () => {
     const rental: Machine = { ...machine, id: 'r1', unitLabel: 'Sunbelt rental', make: 'Bobcat', model: 'E35', rental: { from: 'Sunbelt', agreementNo: '', outOn: today, dueBack: '' } }
-    io.addCheckPhoto.mockResolvedValue({ id: 'p1', shot: 'agreement', fileName: 'agreement.jpg', src: null, driveFileId: null, filedAt: null, failWhy: null })
+    io.addCheckPhoto.mockResolvedValue({ id: 'p1', shot: 'agreement', fileName: 'agreement.jpg', src: 'blob:agreement', driveFileId: null, filedAt: null, failWhy: null })
     renderWithProviders(<MachineCheckSheet machine={rental} questions={[]} checks={[{ ...open, id: 'c3', machineId: 'r1' }]} jobId="j1" jobWords="972 · Tovi Pinpoint" userId="u1" byName="Mateo Ruiz" onClose={() => {}} />)
     expect(document.querySelector('[data-rental-line]')?.textContent).toContain('agreement not in yet')
     expect(screen.getByText('The rental agreement')).toBeTruthy()
@@ -80,6 +80,11 @@ describe('the pre-use check sheet', () => {
     await vi.waitFor(() => expect(io.addCheckPhoto).toHaveBeenCalledWith(expect.objectContaining({ shot: 'agreement', fileName: expect.stringContaining('pre-use agreement.jpg') })))
     await vi.waitFor(() => expect(screen.getByText('Sunbelt rental is safe to run')).toBeTruthy())
     expect(document.querySelector('[data-agreement-stop]')?.getAttribute('data-agreement-stop')).toBe('in')
+    // an agreement can run to several pages: the taken page stays and one more tile is offered
+    expect([...document.querySelectorAll('[data-agreement-stop] [data-machine-shot]')].map((el) => [el.getAttribute('data-machine-shot'), el.textContent])).toEqual([
+      ['agreement', 'The agreement'],
+      ['agreement_p2', 'Another page'],
+    ])
     expect(document.querySelector('[data-machine-shot="return_slip"]')).toBeNull()
   })
 

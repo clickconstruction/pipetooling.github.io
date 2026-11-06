@@ -15,15 +15,18 @@ import { shrinkPhoto } from '../../lib/materials/photoShrink'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
-  AGREEMENT_SHOTS,
   CHECK_KIND_WORDS,
   FLEET_ROOT_WORDS,
   LEFT_WHERE_WORDS,
+  RETURN_SLIP_SHOT,
+  RETURN_SLIP_WORDS,
   SHOT_ORDER,
   SHOT_WORDS,
   agreementDue,
+  agreementPage,
   agreementPhotoWords,
   agreementState,
+  agreementTiles,
   clockWords,
   heldWhy,
   hoursLine,
@@ -40,7 +43,6 @@ import {
   todayDay,
   verdictOf,
   walkProgress,
-  type AgreementShot,
   type Answer,
   type CheckKind,
   type LeftWhere,
@@ -181,7 +183,7 @@ export function MachineCheckSheet({ machine, questions: allQuestions, checks, jo
   const all = useMemo(() => (check ? [check, ...others] : others), [check, others])
   const agreement = agreementState(machine, all)
   const agreementOwed = agreementDue(machine, kind, all)
-  const agreementShotHere = check?.photos.some((p) => p.shot === 'agreement' || p.shot === 'agreement_more') ?? false
+  const agreementShotHere = check?.photos.some((p) => agreementPage(p.shot) != null) ?? false
   const showAgreement = machine.rental != null && (agreementShotHere || (agreementOwed && !readOnly))
   const agreementTail = machine.rental && agreement === 'typed' ? agreementPhotoWords(all, machine.id) : null
   const rental = machine.rental ? rentalWords(machine.rental, today, agreement) : null
@@ -285,11 +287,13 @@ export function MachineCheckSheet({ machine, questions: allQuestions, checks, jo
           {showAgreement ? (
             <div data-agreement-stop={agreementOwed ? 'owed' : 'in'}>
               <p style={S.label}>The rental agreement</p>
-              <p style={{ ...meta, marginBottom: '0.4rem' }}>{agreementOwed ? 'Photo of the paper the yard handed you. The office types the number off it.' : 'The agreement is in. The office types the number off the photo.'}</p>
+              <p style={{ ...meta, marginBottom: '0.4rem' }}>{agreementOwed ? 'Photo of the paper the yard handed you, every page of it. The office types the number off it.' : 'The agreement is in. Add any page not taken yet; the office types the number off the photos.'}</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem' }}>
-                {(['agreement', 'agreement_more'] as AgreementShot[]).map((k) => (
-                  <ShotTile key={k} k={k} words={AGREEMENT_SHOTS[k].tile} photo={photoOf(k)} readOnly={readOnly} onFile={(f) => void takePhoto(k, AGREEMENT_SHOTS[k].file, f)} />
-                ))}
+                {agreementTiles(check.photos)
+                  .filter((t) => t.photo || !readOnly)
+                  .map((t) => (
+                    <ShotTile key={t.shot} k={t.shot} words={t.tile} photo={t.photo ?? undefined} readOnly={readOnly} onFile={(f) => void takePhoto(t.shot, t.file, f)} />
+                  ))}
               </div>
             </div>
           ) : null}
@@ -406,7 +410,7 @@ export function MachineCheckSheet({ machine, questions: allQuestions, checks, jo
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem', marginTop: '0.4rem' }}>
             <ShotTile k="wrong" words={SHOT_WORDS.wrong} photo={photoOf('wrong')} readOnly={readOnly} onFile={(f) => void takePhoto('wrong', SHOT_WORDS.wrong.toLowerCase(), f)} />
-            {kind === 'post' && machine.rental ? <ShotTile k="return_slip" words={AGREEMENT_SHOTS.return_slip.tile} photo={photoOf('return_slip')} readOnly={readOnly} onFile={(f) => void takePhoto('return_slip', AGREEMENT_SHOTS.return_slip.file, f)} /> : null}
+            {kind === 'post' && machine.rental ? <ShotTile k={RETURN_SLIP_SHOT} words={RETURN_SLIP_WORDS.tile} photo={photoOf(RETURN_SLIP_SHOT)} readOnly={readOnly} onFile={(f) => void takePhoto(RETURN_SLIP_SHOT, RETURN_SLIP_WORDS.file, f)} /> : null}
           </div>
           <p style={{ ...meta, marginTop: '0.4rem' }}>
             Every photo here files in {machine.unitLabel}’s own Drive folder, <b>{FLEET_ROOT_WORDS} › {machineFolderName(machine)}</b>, as <b>{photoFileName(check, machine, 'front')}</b> and the like, within a few minutes.
