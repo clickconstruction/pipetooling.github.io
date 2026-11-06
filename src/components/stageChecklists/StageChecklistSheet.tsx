@@ -27,6 +27,12 @@
  * pick, the mark and *Signed by … · Nov 1 · 9:14 am*, with **Take it back** as its one door, which asks why and voids the
  * row; the voided row stays as a *Taken back* line under the question with its mark, and the question waits on its pick
  * again. The words are `stageChecklistSignature.ts`.
+ *
+ * Once filed (#237 PR 3: the database files the record by itself at the last answer) the sheet reads as paper
+ * (`FiledPaper`): the header *Record CL-1042-1 · v1 · Oct 15 · 4:02 pm · 4 answers, 1 signed · PDF in the job's Drive
+ * folder*, every row a statement from the record's snapshot with the mark where it was signed, nothing to press, and the
+ * foot *Filed. Nothing here changes. The office can amend it as a new version.* with Close. A stage the office amended
+ * reads open again with *Amending v1* under the progress. The words are `stageChecklistRecord.ts`.
  */
 import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type KeyboardEvent } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
@@ -65,6 +71,7 @@ import {
   type StageChecklistQuestion,
 } from '../../lib/jobs/stageChecklist'
 import { NEEDS_SIGNATURE_WORDS, SIGN_WORDS, TAKE_BACK_WORDS, VOID_WHY_MAX_CHARS, canTakeBack, signedRowWords, signedStampWords, signedToastWords, takeBackProblem, takenBackToastWords, voidedLineWords, type SignInput } from '../../lib/jobs/stageChecklistSignature'
+import { FILED_PAPER_WORDS, amendingRecordOf, filedFootWords, filedHeaderWords, filedJustNowWords, filedRecordOf, filedTitleWords, paperRowFromRecordRow, recordPdfUrl, skippedLineWords as recordSkippedLineWords, type ChecklistRecord } from '../../lib/jobs/stageChecklistRecord'
 import { landChecklistSign } from '../../lib/offline/landFieldPress'
 import { pressThroughOutbox } from '../../lib/offline/pressThroughOutbox'
 import { jobWindowPath } from '../../lib/photos/uploadedPhotos'
@@ -119,6 +126,8 @@ export interface StageChecklistSheetProps {
   plansUrl?: string | null
   /** The job as the signature sheet's gravity words name it (#237 PR 2): its number, or *this job*. */
   jobLabel?: string
+  /** The job's filed records, every version (#237 PR 3); the sheet reads as paper while this stage's latest is filed. */
+  records?: readonly ChecklistRecord[]
   io: StageChecklistSheetIo
   /** Each saved answer, for the strip's count. */
   onAnswer: (answer: JobAnswer) => void
@@ -185,13 +194,19 @@ const skippedRow: CSSProperties = { display: 'grid', gridTemplateColumns: '1.4re
 const lockedPick: CSSProperties = { display: 'inline-block', padding: '0.3rem 0.7rem', borderRadius: 10, border: '1.5px solid var(--border-strong)', fontWeight: 700 }
 const voidedLine: CSSProperties = { ...meta, display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', paddingLeft: '1.9rem', marginTop: '0.1rem' }
 
-export function StageChecklistSheet({ jobId, stage, questions, answers: given, who, role = null, canAuthor = false, plansUrl = null, jobLabel = 'this job', io, onAnswer, onQuestionAdded, onQuestionRetired, onQuestionsChanged, initialOpenQuestionId = null, onClose, frame = 'sheet' }: StageChecklistSheetProps) {
+export function StageChecklistSheet({ jobId, stage, questions, answers: given, who, role = null, canAuthor = false, plansUrl = null, jobLabel = 'this job', records = [], io, onAnswer, onQuestionAdded, onQuestionRetired, onQuestionsChanged, initialOpenQuestionId = null, onClose, frame = 'sheet' }: StageChecklistSheetProps) {
   const { showToast } = useToastContext()
   const kind = stageChecklistKindOf(stage.name)
   const template = useMemo(() => (kind ? templateFor(questions, kind, stage.fixtureId) : []), [questions, kind, stage.fixtureId])
   const groups = useMemo(() => templateGroups(template), [template])
   const skipped = useMemo(() => (kind ? skippedFor(questions, kind, stage.fixtureId) : []), [questions, kind, stage.fixtureId])
   const [answers, setAnswers] = useState<JobAnswer[]>(() => [...given])
+  // The record (#237 PR 3): filed, the sheet is paper; amended, it is open again and says so. A record that appears
+  // while the sheet is open was filed by the press just made, and the paper says so on its first line.
+  const filed = useMemo(() => filedRecordOf(records, stage.fixtureId), [records, stage.fixtureId])
+  const amending = useMemo(() => amendingRecordOf(records, stage.fixtureId), [records, stage.fixtureId])
+  const [filedAtOpen] = useState<string | null>(() => filed?.id ?? null)
+  const filedJustNow = filed != null && filed.id !== filedAtOpen
   const [busy, setBusy] = useState<string | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [noteOpen, setNoteOpen] = useState<string | null>(null)
@@ -695,11 +710,18 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
   const jobProgress = checklistProgress(groups.job, byQuestion)
   const words = addCheckWords(stage.name)
 
-  const body = (
+  const body = filed ? (
+    <FiledPaper record={filed} stageName={stage.name} justNow={filedJustNow} io={io} />
+  ) : (
       <div data-stage-checklist-sheet={stage.fixtureId}>
         <p style={{ ...meta, margin: '0 0 0.25rem' }} data-checklist-progress>
           {progressWords(progress)}
         </p>
+        {amending ? (
+          <p style={{ ...meta, margin: '0.25rem 0 0', color: 'var(--text-amber-700)', fontWeight: 600 }} data-checklist-amending={amending.version}>
+            {FILED_PAPER_WORDS.amending(amending.version)}
+          </p>
+        ) : null}
         <div style={{ height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }} aria-hidden>
           <i style={{ display: 'block', height: 6, width: `${progress.asked ? Math.round((progress.answered / progress.asked) * 100) : 0}%`, background: '#16a34a' }} />
         </div>
@@ -782,22 +804,91 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
   const signatureSheet = signing ? (
     <ChecklistSignatureSheet stage={stage} jobLabel={jobLabel} question={signing.question} pick={signing.pick} note={signing.note} who={who} onSign={(input) => sign(signing.question, input)} onClose={() => setSigning(null)} />
   ) : null
+  // The filed paper's foot: the rule and Close; nothing to press on the paper itself.
+  const filedFoot = (
+    <div style={{ width: '100%' }}>
+      <p style={{ ...meta, margin: '0 0 0.5rem' }} data-checklist-filed-foot>
+        {FILED_PAPER_WORDS.foot}
+      </p>
+      <div style={S.footerRow}>
+        <button type="button" style={S.secondaryBtn} onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  )
   if (frame === 'inline') {
     return (
       <div data-stage-checklist-inline={stage.fixtureId}>
         {body}
-        {state.asked > 0 ? ruleLine : null}
+        {filed ? <p style={{ ...meta, margin: '0.5rem 0 0' }}>{FILED_PAPER_WORDS.foot}</p> : state.asked > 0 ? ruleLine : null}
         {dispatchSheet}
         {signatureSheet}
       </div>
     )
   }
   return (
-    <ResponsiveModalShell title={`${stage.name} checklist`} onRequestClose={onClose} footer={foot} maxWidthDesktop={520}>
+    <ResponsiveModalShell title={filed ? filedTitleWords(stage.name) : `${stage.name} checklist`} onRequestClose={onClose} footer={filed ? filedFoot : foot} maxWidthDesktop={520}>
       {body}
       {dispatchSheet}
       {signatureSheet}
     </ResponsiveModalShell>
+  )
+}
+
+/**
+ * The filed sheet as paper (#237 PR 3): light paper whatever the theme, the header with the record id, every row a
+ * statement from the snapshot with the mark where it was signed, the company questions left off this job, and the foot
+ * that says what filing did. Nothing to press.
+ */
+function FiledPaper({ record, stageName, justNow, io }: { record: ChecklistRecord; stageName: string; justNow: boolean; io: StageChecklistSheetIo }) {
+  const pdfUrl = recordPdfUrl(record)
+  const skipped = recordSkippedLineWords(record.skipped)
+  return (
+    <div data-theme="light" data-checklist-paper={record.recordId} style={{ background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.9rem 1rem', display: 'grid', gap: '0.4rem', fontFamily: 'Georgia, "Times New Roman", serif' }}>
+      {justNow ? (
+        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-green-800)', fontWeight: 600 }} data-checklist-filed-now>
+          {filedJustNowWords(record)}
+        </p>
+      ) : null}
+      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-checklist-filed-header>
+        {filedHeaderWords(record)}
+        {pdfUrl ? (
+          <>
+            {' · '}
+            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)' }}>
+              Open in Drive ↗
+            </a>
+          </>
+        ) : null}
+      </p>
+      {record.rows.map((r, i) => {
+        const row = paperRowFromRecordRow(r)
+        return (
+          <div key={r.questionId || i} style={{ display: 'grid', gridTemplateColumns: '1.4rem minmax(0, 1fr)', gap: '0.15rem 0.5rem', padding: '0.45rem 0', borderTop: '1px solid var(--border)' }} data-checklist-paper-row={r.pick}>
+            <span style={{ fontWeight: 700, color: row.isNo ? 'var(--text-red-700)' : 'var(--text-strong)' }} aria-hidden>
+              {row.glyph}
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '0.95rem' }}>
+                {i + 1}. {row.words}
+                {row.sheet ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}> · {row.sheet}</span> : null}
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span>{row.answer}</span>
+                {r.signature ? <SignatureMark signature={{ mode: r.signature.mode, printedName: r.signature.printedName, storagePath: r.signature.storagePath, signedAt: r.signature.signedAt, signedById: null, hash: '' }} inkUrl={io.inkUrl} /> : null}
+                {row.photo ? <span>· {row.photo}</span> : null}
+                {row.note ? <span style={{ color: row.isNo ? 'var(--text-red-700)' : 'var(--text-muted)', fontStyle: 'italic' }}>· “{row.note}”</span> : null}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+      {skipped ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.4rem' }}>{skipped}</p> : null}
+      <p style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 600, color: record.noCount > 0 ? 'var(--text-red-700)' : 'var(--text-green-800)', borderTop: '1px solid var(--border)', paddingTop: '0.4rem' }} data-checklist-filed-words>
+        {filedFootWords(stageName, record.noCount)}
+      </p>
+    </div>
   )
 }
 

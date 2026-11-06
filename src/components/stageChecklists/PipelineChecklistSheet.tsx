@@ -121,6 +121,7 @@ export function PipelineChecklistSheet({ job, io, onClose, onOpenDocuments }: Pi
                     role={role}
                     canAuthor={canAuthor}
                     plansUrl={plansUrl}
+                    records={read.records}
                     io={read.io}
                     onAnswer={read.putAnswer}
                     onQuestionAdded={read.putQuestion}
