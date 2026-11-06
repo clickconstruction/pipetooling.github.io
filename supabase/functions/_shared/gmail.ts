@@ -160,6 +160,12 @@ export function gmailThreadHeaders(token: string, threadId: string, headers: rea
   return call(token, `/threads/${encodeURIComponent(threadId)}?format=metadata${asked}`)
 }
 
+/** One message by its headers alone (`format=metadata`), each header named, with Gmail's snippet: the dev seat's `search_mail` hit (v2.6565). */
+export function gmailMessageHeaders(token: string, id: string, headers: readonly string[]): Promise<GmailMessage & { snippet?: string }> {
+  const asked = headers.map((h) => `&metadataHeaders=${encodeURIComponent(h)}`).join('')
+  return call(token, `/messages/${encodeURIComponent(id)}?format=metadata${asked}`)
+}
+
 /** Takes a label off a message. Nothing else about the message changes. */
 export async function gmailRemoveLabel(token: string, messageId: string, labelId: string): Promise<void> {
   await call(token, `/messages/${encodeURIComponent(messageId)}/modify`, { method: 'POST', body: { removeLabelIds: [labelId] } })

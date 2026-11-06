@@ -113,10 +113,20 @@ Found live during cutover:
 - The SA could upload but not delete its own probe file (404 on delete) — likely a
   member-role ceiling; harmless for intake (it only ever adds).
 
-Domain-wide delegation remains a documented alternative (admin.google.com → Security →
-API controls → Domain-wide delegation → SA's Unique ID + scope
-`https://www.googleapis.com/auth/drive`, then set `DRIVE_IMPERSONATE_USER` and redeploy),
-but the Shared Drive is the chosen path — tighter blast radius than impersonating a user.
+## Domain-wide delegation
+
+The SA's client **is** on the Workspace's domain-wide delegation (admin.google.com → Security → Access and data
+control → API controls → Manage domain-wide delegation → the client of `drive-intake@…`), for Gmail alone: the grant
+holds `https://www.googleapis.com/auth/gmail.modify` (the bids@ reader `gmail-sync`, Messages → My email
+`gmail-mine`) and `https://www.googleapis.com/auth/gmail.metadata` (`gmail-count`), and since v2.6565 the dev seat's
+`search_mail` / `read_mail` ask for `https://www.googleapis.com/auth/gmail.readonly` and nothing wider — add that
+line to the client and Authorize, or every search answers *refused* with this step named. A grant is per scope, never
+per account: every login of the Workspace is readable under it, the admins' included, and the fences are the scope
+(read-only cannot label, trash or delete; `gmail.modify` can trash but not delete for good, which only
+`https://mail.google.com/` allows — keep that one off) and the code. The Drive scope
+(`https://www.googleapis.com/auth/drive`, then `DRIVE_IMPERSONATE_USER` and a redeploy) was never added: the Shared
+Drive is the chosen path for files — tighter blast radius than impersonating a user — and the SA sits in a drive a
+person makes.
 
 ## Where the dev seat files a plan set (v2.6185, v2.6241)
 
