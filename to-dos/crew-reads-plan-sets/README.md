@@ -2,7 +2,7 @@
 name: "A crew member on a development's job reads no plan set, and a helper none at all"
 number: 272
 group: ready
-status: found 2026-11-06 by the SQL bed of v2.6583 (punch list #239's last code item); not started
+status: found 2026-11-06 by the SQL bed of v2.6583 (#7131, punch list #239's last code item); not started
 summary: >
   The job window's Plans section is drawn for everyone on the job, and Add our as-built is the crew's press
   (v2.6298, v2.6345). The database shows them nothing to add it to. A part owned by a development is read through
