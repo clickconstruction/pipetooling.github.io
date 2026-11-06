@@ -133,6 +133,14 @@ export function runDoorWords(counts: { ready: number; printed: number; retReady:
  */
 export type RunDoorPill = { sealedPct: number; waitPct: number; words: string }
 
+/**
+ * The pill's words after the door's own count (v2.6569): *Record the mailing · 7 sealed*, never *· 7  7 sealed*.
+ * When the words are only the count sealed, the count goes; words that say more stay whole.
+ */
+export function runDoorTail(count: number, words: string): string {
+  return words === `${count} sealed` ? 'sealed' : words
+}
+
 export function runDoorPill(counts: { ready: number; printed: number; retReady: number; waits: number }, leaderName?: string | null): RunDoorPill {
   const total = counts.ready + counts.printed + counts.retReady
   const waits = Math.min(counts.waits, counts.ready + counts.retReady)

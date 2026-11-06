@@ -244,20 +244,26 @@ describe('LienDeskModal', () => {
     const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onOpenOwnerRecords={onOpenOwnerRecords} />)
     await settle()
     const door = screen.getByTestId('lien-owner-records-door')
-    // On All filings too (v2.4786): on the title line, just before § Rules, not on the second line with the paper tabs (where v2.4629 and v2.4740 kept it).
-    expect(door.closest('[data-lien-desk-right]')).toBeNull()
-    expect(door.parentElement!.querySelector('[data-lien-desk-share]')).toBeTruthy()
+    // Since v2.6569 the door leads the tool row, the title bar's steady second line on a computer, just before § Rules and Share (v2.4786 had it on the title line).
+    const right = door.closest('[data-lien-desk-right]') as HTMLElement
+    expect(right).toBeTruthy()
+    expect(right.querySelector('[data-lien-desk-share]')).toBeTruthy()
+    expect(right.querySelector('[data-testid="lien-rules-door"]')).toBeTruthy()
     expect(door.textContent).toBe('An owner asked for records ›')
     fireEvent.click(door)
     expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)
     view.unmount()
-    // v2.4740: on Deadlines it is on the title line, just before § Rules, and the title bar is one line.
+    // On Deadlines too (v2.6569): the tool row under the title line, with the break before it, the same shape as on All filings.
     const deadlines = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="calendar" onOpenOwnerRecords={onOpenOwnerRecords} />)
     await settle()
     const up = screen.getByTestId('lien-owner-records-door')
-    expect(up.closest('[data-lien-desk-right]')).toBeNull()
-    expect(up.parentElement!.querySelector('[data-lien-desk-share]')).toBeTruthy()
-    expect(document.querySelector('[data-lien-desk-header-break]')).toBeNull()
+    expect(up.closest('[data-lien-desk-right]')).toBeTruthy()
+    expect(up.closest('[data-lien-desk-right]')!.querySelector('[data-lien-desk-share]')).toBeTruthy()
+    expect(document.querySelector('[data-lien-desk-header-break]')).not.toBeNull()
+    // The run stays on the title line after the views; the break comes after it.
+    const bar = document.querySelector('.lienDeskTitleBar') as HTMLElement
+    const order = Array.from(bar.children).map((el) => (el.hasAttribute('data-lien-desk-kinds') ? 'views' : el.hasAttribute('data-lien-desk-header-break') ? 'break' : el.hasAttribute('data-lien-desk-right') ? 'tools' : el.hasAttribute('data-lien-desk-run') ? 'run' : null)).filter(Boolean)
+    expect(order).toEqual(['views', 'break', 'tools'])
     deadlines.unmount()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
     await settle()
@@ -654,7 +660,7 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('button', { name: 'Hold' })).toBeTruthy()
   })
 
-  it('the leader’s FYI list in the title bar names what went on his word and what a GC’s standing rule sent, marked as the rule’s (v2.5028)', async () => {
+  it('the title bar carries no FYI line for the leader (v2.6569 took the Sent on your word strip of v2.5028 out), and none for the office', async () => {
     const item = (id: string, job: string, over: Record<string, unknown>) =>
       ({ id, job_id: job, kind: 'notice_53_056', months: ['2026-06'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: '2026-09-14T15:00:00Z', approval_mode: 'rule', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, printed_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T15:00:00Z', voided_at: null, ...over }) as unknown as LienDeskItemRow
     const rows = [...J650, row('j651', '2026-06', '2026-09-15'), row('j652', '2026-06', '2026-09-15'), row('j653', '2026-06', '2026-09-15')]
@@ -674,7 +680,9 @@ describe('LienDeskModal', () => {
     }
     const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={withJobs()} />)
     await settle()
-    expect((document.querySelector('[data-lien-fyi]') as HTMLElement).textContent).toBe('Sent on your word: 650, 653 · by Loberg Contracting’s rule: 651, 652')
+    // Until v2.6569 the leader read *Sent on your word: 650, 653 · by Loberg Contracting’s rule: 651, 652* in the title bar; Grace found it meaningless and it is gone. The record stays on each notice.
+    expect(document.querySelector('[data-lien-fyi]')).toBeNull()
+    expect(screen.queryByText(/Sent on your word/)).toBeNull()
     view.unmount()
     // The office drafts and sends; the list is the leader's.
     renderWithProviders(<LienDeskModal {...baseProps} authRole="controller" data={withJobs()} />)

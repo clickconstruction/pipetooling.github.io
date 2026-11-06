@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runDoorPill, runRecordWords, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords, runRecipientWithPiece } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, noticesFullyPrinted, recipientMailed, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runCopyHtml, runCopyKey, runCopyPages, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords, runCoverNoteBlocks, runDoorPill, runDoorTail, runDoorWords, runEnvelopeFacesHtml, runEnvelopeHtml, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, runRecipientWithPiece, runRecordSplit, runRecordWords, stepRunPreview, trackingShape } from './lienDeskRun'
 import type { LienMailPieceRow } from '../mail/lienMailPieces'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { runEnvelopes } from './runEnvelopes'
@@ -723,3 +723,11 @@ describe('the window envelope on the cover letter (the Docsmit train, PR 4)', ()
   })
 })
 
+describe('runDoorTail — the pill’s words after the door’s count (v2.6569)', () => {
+  it('drops the count when the words are only it sealed, and keeps words that say more', () => {
+    expect(runDoorTail(7, '7 sealed')).toBe('sealed')
+    expect(runDoorTail(9, '7 sealed · 2 ready')).toBe('7 sealed · 2 ready')
+    expect(runDoorTail(3, '3 ready')).toBe('3 ready')
+    expect(runDoorTail(0, '')).toBe('')
+  })
+})
