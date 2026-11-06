@@ -82,7 +82,7 @@ COMMENT ON FUNCTION public.my_customer_words() IS
 REVOKE ALL ON FUNCTION public.my_customer_words() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.my_customer_words() TO authenticated;
 
-SELECT public.apply_read_only_write_blocks();
-SELECT public.apply_read_only_stmt_blocks();
-SELECT public.apply_digital_twin_write_blocks();
-SELECT public.apply_archived_read_blocks();
+select public.apply_read_only_write_blocks();
+select public.apply_read_only_stmt_blocks();
+select public.apply_digital_twin_write_blocks();
+select public.apply_archived_read_blocks();

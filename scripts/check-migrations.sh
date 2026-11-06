@@ -113,7 +113,7 @@ for f in $names; do
   grep -qiE 'create +table' <<<"$stripped" || continue
   missing=""
   for fence in $FENCES; do
-    grep -qE "select +public\.$fence\(\)" <<<"$stripped" || missing="$missing $fence"
+    grep -qiE "select +public\.$fence\(\)" <<<"$stripped" || missing="$missing $fence"
   done
   [ -z "$missing" ] || fence_refs="$fence_refs$f:$missing"$'\n'
 done
