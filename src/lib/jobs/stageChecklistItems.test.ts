@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { JobStageChecklist, StageChecklistAnswer, StageChecklistQuestion } from './stageChecklist'
-import { GROUP_WORDS, READOUT_FOOT, TAKE_OFF_WORDS, addCheckWords, addedWords, asksMayAuthor, canAuthorOnJob, canTakeOffJobItem, checklistsSummary, cleanItemWords, jobItemProblem, noJobItemsWords, rowAsksPhotoTag, rowGlyph, rowMetaWords, rowPickWords, stageStandingChip, stripListsEmptyStage, takenOffWords } from './stageChecklistItems'
+import { checklistAnswerHash, type JobStageChecklist, type StageChecklistAnswer, type StageChecklistQuestion } from './stageChecklist'
+import { GROUP_WORDS, READOUT_FOOT, TAKE_OFF_WORDS, addCheckWords, addedWords, asksMayAuthor, canAuthorOnJob, canTakeOffJobItem, checklistsSummary, cleanItemWords, jobItemProblem, noJobItemsWords, rowAsksPhotoTag, rowGlyph, rowMetaWords, rowPickWords, rowSignatureTag, stageStandingChip, stripListsEmptyStage, takenOffWords } from './stageChecklistItems'
 
 // Made-up people and checks on a made-up job.
 const company: StageChecklistQuestion = { id: 'q1', kind: 'trim_set', order: 1, words: 'Did the final water test hold?', asksPhoto: true }
@@ -98,5 +98,23 @@ describe('the Documents read-out', () => {
     expect(rowMetaWords(a({ photo: { fileName: 'x.jpg', takenAt: '', state: 'filed', driveFileId: 'd', failWhy: null } }))).toBe('Luis Ortega · Nov 1 · 9:14 am · photo in Drive')
     expect(rowMetaWords(a({ photo: { fileName: 'x.jpg', takenAt: '', state: 'waiting', driveFileId: null, failWhy: null } }))).toBe('Luis Ortega · Nov 1 · 9:14 am · photo on its way to Drive')
     expect(READOUT_FOOT.startsWith('A No or a Not here is an answer.')).toBe(true)
+  })
+})
+
+describe('needs a signature on the read-out (#237 PR 2)', () => {
+  const signedQ: StageChecklistQuestion = { ...company, asksPhoto: false, needsSignature: true }
+  const hash = checklistAnswerHash({ questionWords: signedQ.words, pick: 'yes', note: '' })
+  const signature = { mode: 'type' as const, printedName: 'Luis Ortega', storagePath: null, signedAt: '2026-11-01T15:14:00.000Z', signedById: 'u-luis', hash }
+  it('words a row that waits on its signature, and tags it', () => {
+    expect(rowPickWords(signedQ, a({ pick: 'yes' }))).toBe('Yes, not signed yet')
+    expect(rowPickWords(signedQ, a({ pick: 'yes', signature }))).toBe('Yes')
+    expect(rowSignatureTag(signedQ, null)).toEqual({ words: 'needs a signature', signed: false })
+    expect(rowSignatureTag(signedQ, a({ pick: 'yes', signature }))).toEqual({ words: 'signed', signed: true })
+    expect(rowSignatureTag(company, a({ pick: 'yes' }))).toBeNull()
+  })
+  it('the add box carries the toggle and its rule', () => {
+    const w = addCheckWords('Trim Set')
+    expect(w.signature).toBe('Needs a signature')
+    expect(w.signatureHint).toContain('Use it where a wrong answer costs a wall or an inspection.')
   })
 })

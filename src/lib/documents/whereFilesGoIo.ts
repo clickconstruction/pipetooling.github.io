@@ -49,6 +49,8 @@ export interface WhereFilesGoSet {
   company?: string
   /** The people's folder's link or id (a person's evidence lands under it); refused as `people_unwritable` or `people_in_jobs_drive`. */
   people?: string
+  /** The machines' folders' link or id (a machine's check photos land under it, punch list #270); refused as `fleet_unwritable`. */
+  fleet?: string
   job_pattern?: readonly JobFolderPiece[]
   bid_pattern?: readonly BidFolderPiece[]
   folders_made?: FoldersMade
@@ -58,6 +60,14 @@ export interface WhereFilesGoSet {
 export async function setWhereFilesGo(set: WhereFilesGoSet): Promise<WhereFilesGo> {
   const r = (await supabase.functions.invoke('job-drive-folders', { body: { set } })) as FnResult
   const problem = await fnProblem(r, 'The setting was not saved.')
+  if (problem) throw new WhereFilesGoRefused(problem, await fnWhy(r))
+  return whereFilesGoFromAnswer(r.data)
+}
+
+/** The app makes the Fleet folder itself, beside the Jobs folder in its Shared Drive, and writes the setting (punch list #270, v2.6564). */
+export async function makeFleetFolder(): Promise<WhereFilesGo> {
+  const r = (await supabase.functions.invoke('job-drive-folders', { body: { make: 'fleet' } })) as FnResult
+  const problem = await fnProblem(r, 'The Fleet folder was not made.')
   if (problem) throw new WhereFilesGoRefused(problem, await fnWhy(r))
   return whereFilesGoFromAnswer(r.data)
 }

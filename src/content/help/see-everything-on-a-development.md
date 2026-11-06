@@ -146,6 +146,12 @@ Each row fills Cost, and a thin bar shows its share. The rows add up to the job.
 
 A dev or a controller reads every column and every row. A leader or an assistant reads hours, days and earned only. Their Right now line speaks in hours and earned dollars. Under an open job they see the people alone. The page remembers the view you were in.
 
+Two chip rows sit above the board. Cut by picks the rows. Window picks the days.
+
+Press {{chip:gray|part of the site}} to read each part of the site as a row. Open a part to see its jobs. Jobs on no part come last. Press {{chip:gray|person}} to turn the grid over. Each person who clocked on the site is a row. Their earned dollars are their share of each job by hours, so they wear ≈. Open a person to see their jobs.
+
+Press {{chip:gray|this month}} or {{chip:gray|90 days}} to cut every figure to those days. Hours, labor, subs, parts and overhead count what is dated inside the window. Earned follows the hours in it. A charge with no date stays out. The two days of the window read beside the chips. The page remembers your cut and your window on this device.
+
 ## Print the cost summary
 
 Press {{button:outline|Print cost summary}} under the Scoreboard. Only a dev or a controller sees this press. The summary opens in a print window. From there you print it or save it as a PDF.

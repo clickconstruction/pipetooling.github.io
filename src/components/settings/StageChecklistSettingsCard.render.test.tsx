@@ -55,7 +55,7 @@ describe('StageChecklistSettingsCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save the questions' }))
     expect(await screen.findByText(SAVED_TOAST)).toBeTruthy()
     expect(io.save).toHaveBeenCalledTimes(1)
-    expect(io.save).toHaveBeenCalledWith('rough_in', [], [{ id: null, words: 'Did the water test hold?', asksPhoto: true }], expect.any(String))
+    expect(io.save).toHaveBeenCalledWith('rough_in', [], [{ id: null, words: 'Did the water test hold?', asksPhoto: true, needsSignature: false }], expect.any(String))
   })
 
   it('stops on an empty question with its words, and saves nothing', async () => {
@@ -89,6 +89,20 @@ describe('StageChecklistSettingsCard', () => {
     fireEvent.click(screen.getByLabelText('Rough In: take question 2 off'))
     expect(screen.queryByLabelText('Rough In: question 2')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Save the questions' }))
-    await waitFor(() => expect(io.save).toHaveBeenCalledWith('rough_in', expect.anything(), [{ id: 'q2', words: 'Are the stub-outs marked?', asksPhoto: false }], expect.any(String)))
+    await waitFor(() => expect(io.save).toHaveBeenCalledWith('rough_in', expect.anything(), [{ id: 'q2', words: 'Are the stub-outs marked?', asksPhoto: false, needsSignature: false }], expect.any(String)))
+  })
+})
+
+describe('needs a signature (#237 PR 2)', () => {
+  it('ticks the toggle on a question and saves it, counting it under the kind', async () => {
+    const io = fakeIo(LIVE)
+    renderWithProviders(<StageChecklistSettingsCard io={io} />)
+    await waitFor(() => expect(kindBox('rough_in')).toBeTruthy())
+    expect(kindBox('rough_in').textContent).toContain('1 question, 1 with a photo')
+    fireEvent.click(screen.getByLabelText('Rough In: question 1 needs a signature'))
+    expect(kindBox('rough_in').textContent).toContain('1 question, 1 with a photo, 1 with a signature')
+    fireEvent.click(screen.getByRole('button', { name: 'Save the questions' }))
+    expect(await screen.findByText(SAVED_TOAST)).toBeTruthy()
+    expect(io.save).toHaveBeenCalledWith('rough_in', LIVE, [{ id: 'q1', words: 'Did the water test hold?', asksPhoto: true, needsSignature: true }], expect.any(String))
   })
 })

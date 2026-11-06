@@ -2,7 +2,7 @@
 title: fill a stage checklist on the phone
 category: Field Work
 roles: helpers, subcontractor, master_technician, superintendent, primary
-keywords: stage checklist, checklist, rough in, top out, trim set, yes no not here, photo, not ready, pipeline, job mode, job window, crew, next, stamp, added for this job, skipped on this job, plan sheet, send to dispatch, with dispatch
+keywords: stage checklist, checklist, rough in, top out, trim set, yes no not here, photo, not ready, pipeline, job mode, job window, crew, next, stamp, added for this job, skipped on this job, plan sheet, send to dispatch, with dispatch, signature, needs a signature, signed
 where: /dashboard
 order: 12
 ---
@@ -23,6 +23,10 @@ Every answer stamps its row with your name and the time. The office reads the st
 Press **Add a note** under the open question when there is something to say. The note saves when you leave the box.
 
 To change an answer, tap its row. The row opens again with its three presses. Press **Close this one** when you are done.
+
+## Questions that need a signature
+
+Some questions wear a chip that reads *signature*. Yes, No or Not here opens a sheet where you sign your answer. The question is not answered until you sign. Not here needs a signature too. A signed row locks. The guide [sign a checklist answer](/help/sign-a-checklist-answer) has the steps, and how an answer is taken back.
 
 ## Checks added for this job
 

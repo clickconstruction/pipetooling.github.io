@@ -446,3 +446,70 @@ describe('a reader with the hours but not the days (v2.6457)', () => {
     expect(members).toEqual([{ key: 'person:Luis', kind: 'crew', name: 'Luis', kit: null, m: { hours: 50 }, cost: null, share: null, words: null, you: true }])
   })
 })
+
+describe('the window (v2.6558, punch list #250 PR 4)', () => {
+  const day = (ymd: string, hours: number, costUsd: number) => ({ ymd, hours, costUsd })
+  const windowed: SiteLaborRead = {
+    state: 'read',
+    labor: {
+      byJobId: new Map([
+        ['j612', { jobId: 'j612', hours: 100, costUsd: 3000, days: 3, people: [{ personName: 'Luis Ortega', personId: 'p1', userId: 'u1', hours: 60, costUsd: 1800, days: 2, leadDays: 2, byWorkDate: [day('2026-10-20', 20, 600), day('2026-11-02', 40, 1200)] }, { personName: 'Ana Reyes', personId: 'p2', userId: null, hours: 40, costUsd: 1200, days: 2, leadDays: 0, byWorkDate: [day('2026-11-02', 30, 900), day('2026-11-04', 10, 300)] }] }],
+        ['j583', { jobId: 'j583', hours: 54, costUsd: 1296, days: 5, people: [{ personName: 'Luis Ortega', personId: 'p1', userId: 'u1', hours: 54, costUsd: 1296, days: 5, leadDays: 0, byWorkDate: [day('2026-09-01', 54, 1296)] }] }],
+      ]),
+      siteDays: 8,
+      people: 2,
+      daysKnown: true,
+    },
+  }
+  const events = new Map([
+    ['j612', [
+      { source: 'sub_labor' as const, dateKey: '2026-11-03', amount: 4000, label: 'Reyes' },
+      { source: 'sub_labor' as const, dateKey: '2026-10-01', amount: 14400, label: 'Reyes' },
+      { source: 'supply_house' as const, dateKey: '2026-11-01', amount: 500, label: 'Ferguson' },
+      { source: 'mercury_card' as const, dateKey: null, amount: 9100, label: 'Card' },
+      { source: 'team_labor' as const, dateKey: '2026-11-02', amount: 999, label: 'Luis' },
+    ]],
+  ])
+  const lines = (...days: Array<[string, number]>) => days.map(([ymd, shareUsd]) => ({ ymd, jobHours: 8, fieldHours: 8, poolUsd: 0, shareUsd }))
+  const overheadDays: SiteOverheadRead = { state: 'read', byJobId: new Map([['j612', { usd: 14920, days: 118, lines: lines(['2026-10-20', 100], ['2026-11-02', 120], ['2026-11-04', 80]) }]]) }
+  const nov = { from: '2026-11-01', to: '2026-11-05' }
+
+  it('cuts hours, days and labor to the clock’s days inside the window, each day once across the people', () => {
+    const m = buildScoreboard({ jobs, invoices: [], jobLabel: label, labor: windowed, costs, overhead: overheadDays, window: nov, chargeEvents: events })
+    const j612 = m.rows.find((r) => r.jobId === 'j612')!
+    expect(j612.m.hours).toBe(80)
+    expect(j612.m.days).toBe(2)
+    expect(j612.m.labor).toBe(2400)
+    expect([...j612.dayKeys!]).toEqual(['2026-11-02', '2026-11-04'])
+    // The other job's only day is outside: nothing on it, so it folds.
+    expect(m.empties.map((r) => r.jobId)).toContain('j583')
+    expect(m.site.days).toBe(2)
+    expect(m.window).toEqual(nov)
+  })
+  it('sums subs and parts from the dated events inside the window; an undated charge and the clock’s own events stay out', () => {
+    const m = buildScoreboard({ jobs, invoices: [], jobLabel: label, labor: windowed, costs, overhead: overheadDays, window: nov, chargeEvents: events })
+    const j612 = m.rows.find((r) => r.jobId === 'j612')!
+    expect(j612.m.subs).toBe(4000)
+    expect(j612.m.parts).toBe(500)
+    expect(j612.m.overhead).toBe(200)
+    expect(j612.m.cost).toBe(2400 + 4000 + 500 + 200)
+  })
+  it('earns by the hours in the window as Job Summary does: a paid job earns its contract across its lifetime hours', () => {
+    const m = buildScoreboard({ jobs, invoices: [], jobLabel: label, labor: windowed, costs, overhead: overheadDays, window: nov, chargeEvents: events })
+    const j612 = m.rows.find((r) => r.jobId === 'j612')!
+    // 80 of 100 lifetime hours in the window, on a paid job of $241,431.
+    expect(j612.m.earned).toBe(Math.round(241431 * 0.8 * 100) / 100)
+    expect(j612.flags).not.toContain('assumed-50')
+    expect(j612.m.profit).toBe(Math.round((j612.m.earned - j612.m.cost) * 100) / 100)
+  })
+  it('without a window the measures are the whole life, and the days ride the rows for a part to count once', () => {
+    const m = buildScoreboard({ jobs, invoices: [], jobLabel: label, labor: windowed, costs, overhead: overheadDays })
+    const j612 = m.rows.find((r) => r.jobId === 'j612')!
+    expect(j612.m).toMatchObject({ hours: 100, days: 3, labor: 3000, subs: 18400, overhead: 14920 })
+    expect([...j612.dayKeys!].sort()).toEqual(['2026-10-20', '2026-11-02', '2026-11-04'])
+    expect(m.window).toBeNull()
+    // A read with no days rides no day keys.
+    const plain = buildScoreboard({ jobs, invoices: [], jobLabel: label, labor, costs, overhead })
+    expect(plain.rows.find((r) => r.jobId === 'j612')!.dayKeys).toBeNull()
+  })
+})

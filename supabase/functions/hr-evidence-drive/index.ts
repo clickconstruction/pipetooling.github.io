@@ -37,7 +37,7 @@ function json(body: unknown, status = 200): Response {
 const HR_FILES_BUCKET = 'hr-files'
 const SWEEP_BATCH = 20
 
-type EvidenceRow = { id: string; person_id: string; dated_on: string; title: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null }
+type EvidenceRow = { id: string; person_id: string; dated_on: string; title: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null; counsel_only?: boolean | null }
 type FileRow = { id: string; evidence_id: string; filename: string; mime_type: string | null; storage_path: string | null; drive_file_id: string | null; drive_url: string | null }
 
 const folderUrl = (id: string) => `https://drive.google.com/drive/folders/${id}`
@@ -49,6 +49,8 @@ function recordFolderName(r: Pick<EvidenceRow, 'dated_on' | 'title'>): string {
 }
 
 async function fileRecord(admin: SupabaseClient, google: string, peopleRoot: string, record: EvidenceRow, personName: string): Promise<{ filed: number; remaining: number; failWhy: string | null; folderUrl: string | null }> {
+  // v2.6554: a counsel-only record is kept here only — never filed, never touched; the bucket copy is the only copy in the app.
+  if (record.counsel_only) return { filed: 0, remaining: 0, failWhy: null, folderUrl: null }
   const { data: files } = await admin.from('person_file_attachments').select('id, evidence_id, filename, mime_type, storage_path, drive_file_id, drive_url').eq('evidence_id', record.id)
   const rows = (files ?? []) as FileRow[]
   let folderId = record.drive_folder_id
@@ -142,11 +144,11 @@ serve(async (req) => {
   const peopleRoot = settings.peopleFolderId
   const records: EvidenceRow[] = []
   if (body.evidence_id) {
-    const { data } = await admin.from('person_file_evidence').select('id, person_id, dated_on, title, drive_folder_id, drive_folder_url, filed_at, fail_why').eq('id', body.evidence_id).maybeSingle()
+    const { data } = await admin.from('person_file_evidence').select('id, person_id, dated_on, title, drive_folder_id, drive_folder_url, filed_at, fail_why, counsel_only').eq('id', body.evidence_id).maybeSingle()
     if (!data) return json({ error: 'No such record.' }, 404)
     records.push(data as EvidenceRow)
   } else {
-    const { data } = await admin.from('person_file_evidence').select('id, person_id, dated_on, title, drive_folder_id, drive_folder_url, filed_at, fail_why').is('filed_at', null).order('created_at', { ascending: true }).limit(SWEEP_BATCH)
+    const { data } = await admin.from('person_file_evidence').select('id, person_id, dated_on, title, drive_folder_id, drive_folder_url, filed_at, fail_why, counsel_only').is('filed_at', null).eq('counsel_only', false).order('created_at', { ascending: true }).limit(SWEEP_BATCH)
     records.push(...((data ?? []) as EvidenceRow[]))
   }
 

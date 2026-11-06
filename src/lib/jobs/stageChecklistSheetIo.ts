@@ -4,14 +4,20 @@
  * the answers are `stage_checklist_answers` rows, one per stage and question, written as each press lands so a sheet
  * closed early keeps what was answered. A photo is shrunk on the phone, put in the `stage-checklist-photos` bucket as
  * `<job_id>/<answer_id>-<ms>.jpg`, and named on the row; the `photo-save` sweep files it in the customer's Drive folder.
- * The rules are `stageChecklist.ts`; the screens take this io so their tests run over a fake.
+ * A signature (#237 PR 2, migration 20261106040000) is the row's own six columns, written with the pick in one update
+ * (`signAnswer`); a drawn mark's PNG goes in the same bucket under `<job_id>/sig/`, which the sweep never reads. *Take
+ * it back* voids the row (`takeBackAnswer`), and the next press makes a new live row for the stage and question, so a
+ * read carries the voided rows beside the live ones and every reader takes the live one (`liveAnswersById`). The rules
+ * are `stageChecklist.ts` and `stageChecklistSignature.ts`; the screens take this io so their tests run over a fake.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { checkSupabaseError, formatErrorMessage } from '../../utils/errorHandling'
 import { REPORT_PHOTOS_BUCKET, reportPhotoPath } from '../photos/reportPhotos'
 import { stageProgressRowsFromRpc } from '../reports/stageProgressReport'
-import { type JobStageRef, type StageChecklistAnswer, type StageChecklistPick, type StageChecklistQuestion } from './stageChecklist'
+import { trimSignatureInk } from '../signatureInkTrim'
+import { checklistAnswerHash, type ChecklistSignatureMode, type JobStageRef, type StageChecklistAnswer, type StageChecklistPick, type StageChecklistQuestion } from './stageChecklist'
+import { PRINTED_NAME_MAX_CHARS, TAKE_BACK_WORDS, VOID_WHY_MAX_CHARS, signaturePngPath } from './stageChecklistSignature'
 import { supabaseStageCheckDispatchIo, type StageCheckDispatchIo } from './stageCheckDispatchIo'
 import { addJobItem, loadQuestionsForJob, mayAuthorOnJob, promoteJobItem, putBackQuestion, reorderJobItems, retireJobItem, skipQuestion, type AddJobItemInput, type QuestionSkip, type SkipQuestionInput } from './stageChecklistIo'
 
@@ -37,6 +43,17 @@ export interface AnswerRow {
   photo_fail_why: string | null
   /** The report photo that is the answer's photo (punch list #189 PR 6, migration 20261031150000); absent before the push. */
   report_photo_id?: string | null
+  /** The signature and the void (#237 PR 2, migration 20261106040000). */
+  signed_at?: string | null
+  signed_by?: string | null
+  signer_printed_name?: string | null
+  signer_signature_mode?: string | null
+  signer_signature_storage_path?: string | null
+  signed_answer_hash?: string | null
+  voided_at?: string | null
+  voided_by?: string | null
+  voided_by_name?: string | null
+  void_why?: string | null
 }
 
 /** The kernel's answer from a row. */
@@ -51,7 +68,11 @@ export function answerFromRow(r: AnswerRow): StageChecklistAnswer & { id: string
         failWhy: r.photo_fail_why,
       }
     : null
-  return { id: r.id, fixtureId: r.fixture_id, questionId: r.question_id, pick, note: r.note ?? '', photo, answeredBy: r.answered_by_name ?? '', answeredAt: r.answered_at ?? null, storagePath: r.photo_storage_path, reportPhotoId: r.report_photo_id ?? null }
+  const signature = r.signed_at
+    ? { mode: (r.signer_signature_mode === 'draw' ? 'draw' : 'type') as ChecklistSignatureMode, printedName: r.signer_printed_name ?? '', storagePath: r.signer_signature_storage_path ?? null, signedAt: r.signed_at, signedById: r.signed_by ?? null, hash: r.signed_answer_hash ?? '' }
+    : null
+  const voided = r.voided_at ? { at: r.voided_at, by: r.voided_by_name ?? '', byId: r.voided_by ?? null, why: r.void_why ?? '' } : null
+  return { id: r.id, fixtureId: r.fixture_id, questionId: r.question_id, pick, note: r.note ?? '', photo, answeredBy: r.answered_by_name ?? '', answeredAt: r.answered_at ?? null, storagePath: r.photo_storage_path, reportPhotoId: r.report_photo_id ?? null, signature, voided }
 }
 
 export type JobAnswer = ReturnType<typeof answerFromRow>
@@ -87,9 +108,9 @@ export interface AnswerWho {
   name: string
 }
 
-/** The row for a stage and question, made when there is none yet. */
+/** The live row for a stage and question (a row taken back is the record, never the answer), made when there is none yet. */
 async function ensureAnswerRow(key: AnswerKey, who: AnswerWho): Promise<JobAnswer> {
-  const found = await db.from('stage_checklist_answers').select(ANSWER_COLS).eq('fixture_id', key.fixtureId).eq('question_id', key.questionId).maybeSingle()
+  const found = await db.from('stage_checklist_answers').select(ANSWER_COLS).eq('fixture_id', key.fixtureId).eq('question_id', key.questionId).is('voided_at', null).maybeSingle()
   checkSupabaseError(found, 'read the answer')
   if (found.data) return answerFromRow(found.data as AnswerRow)
   const made = await db
@@ -99,7 +120,7 @@ async function ensureAnswerRow(key: AnswerKey, who: AnswerWho): Promise<JobAnswe
     .single()
   // Another press made the row first, a note saving as a pick lands or a second phone: the row is there, so read it.
   if (made.error?.code === '23505') {
-    const again = await db.from('stage_checklist_answers').select(ANSWER_COLS).eq('fixture_id', key.fixtureId).eq('question_id', key.questionId).single()
+    const again = await db.from('stage_checklist_answers').select(ANSWER_COLS).eq('fixture_id', key.fixtureId).eq('question_id', key.questionId).is('voided_at', null).single()
     checkSupabaseError(again, 'read the answer')
     return answerFromRow(again.data as AnswerRow)
   }
@@ -126,6 +147,87 @@ export async function saveAnswerNote(key: AnswerKey, note: string, who: AnswerWh
   const result = await db.from('stage_checklist_answers').update({ note: note.trim().slice(0, 500), updated_at: now }).eq('id', row.id).select(ANSWER_COLS).single()
   checkSupabaseError(result, 'save the note')
   return answerFromRow(result.data as AnswerRow)
+}
+
+export interface SignAnswerInput extends AnswerKey {
+  /** The question's words as the sheet shows them: the hash binds the signature to them. */
+  questionWords: string
+  pick: StageChecklistPick
+  note: string
+  printedName: string
+  mode: ChecklistSignatureMode
+  /** The drawn mark as a data URL; null for a typed signature. */
+  pngDataUrl: string | null
+  /** The press's moment, ISO: now for a live press, the pressed time for one that waited on the phone. */
+  signedAt?: string
+}
+
+/**
+ * The pick and the signature in one write (#237 PR 2): the live row is made or found, a drawn mark is trimmed to its
+ * strokes and put in the bucket under `sig/`, and the row takes the pick, the note, the stamp and the six signature
+ * columns, with the hash of the answer as given. The database holds the signature to the signer's own sign-in and locks
+ * the row after. A row already signed by this signer with this hash (a resend from the outbox whose first try landed)
+ * is answered as it stands, so a send that lands twice counts once.
+ */
+export async function signAnswer(input: SignAnswerInput, who: AnswerWho): Promise<JobAnswer> {
+  const row = await ensureAnswerRow(input, who)
+  const hash = checklistAnswerHash({ questionWords: input.questionWords, pick: input.pick, note: input.note })
+  if (row.signature && row.signature.hash === hash && row.signature.signedById === who.userId) return row
+  const signedAt = input.signedAt ?? new Date().toISOString()
+  let path: string | null = null
+  if (input.mode === 'draw') {
+    if (!input.pngDataUrl) throw new Error('A drawn signature needs its mark.')
+    const ink = await trimSignatureInk(input.pngDataUrl)
+    const bytes = await (await fetch(ink)).blob()
+    path = signaturePngPath(input.jobId, row.id, Date.parse(signedAt) || Date.now())
+    const up = await db.storage.from(STAGE_CHECKLIST_PHOTOS_BUCKET).upload(path, bytes, { contentType: 'image/png', upsert: false })
+    if (up.error) throw new Error(formatErrorMessage(up.error, 'The signature did not send.'))
+  }
+  const now = new Date().toISOString()
+  const result = await db
+    .from('stage_checklist_answers')
+    .update({
+      pick: input.pick,
+      note: input.note.trim().slice(0, 500),
+      answered_by: who.userId,
+      answered_by_name: who.name,
+      answered_at: signedAt,
+      signed_at: signedAt,
+      signed_by: who.userId,
+      signer_printed_name: input.printedName.trim().slice(0, PRINTED_NAME_MAX_CHARS),
+      signer_signature_mode: input.mode,
+      signer_signature_storage_path: path,
+      signed_answer_hash: hash,
+      updated_at: now,
+    })
+    .eq('id', row.id)
+    .select(ANSWER_COLS)
+    .single()
+  checkSupabaseError(result, 'sign the answer')
+  return answerFromRow(result.data as AnswerRow)
+}
+
+/** *Take it back*: the row is voided with who, when and why, and stays; the next press writes a new live row. */
+export async function takeBackAnswer(answerId: string, why: string, who: AnswerWho): Promise<JobAnswer> {
+  const now = new Date().toISOString()
+  const result = await db
+    .from('stage_checklist_answers')
+    .update({ voided_at: now, voided_by: who.userId, voided_by_name: who.name.slice(0, 120), void_why: why.trim().slice(0, VOID_WHY_MAX_CHARS), updated_at: now })
+    .eq('id', answerId)
+    .is('voided_at', null)
+    .select(ANSWER_COLS)
+  checkSupabaseError(result, 'take the answer back')
+  // The database's rule filters a write it refuses: no error and no row. That is a refusal, not a save.
+  const rows = (result.data ?? []) as AnswerRow[]
+  if (rows.length === 0) throw new Error(TAKE_BACK_WORDS.refused)
+  return answerFromRow(rows[0]!)
+}
+
+/** A link to a drawn mark's PNG in the bucket, for the row's ink; null for a typed signature or when the bucket will not say. */
+export async function signatureInkUrl(storagePath: string | null | undefined): Promise<string | null> {
+  if (!storagePath) return null
+  const { data } = await db.storage.from(STAGE_CHECKLIST_PHOTOS_BUCKET).createSignedUrl(storagePath, 3600)
+  return data?.signedUrl ?? null
 }
 
 /** Where the shot waits in the bucket until the sweep files it. */
@@ -250,6 +352,12 @@ export interface StageChecklistSheetIo {
   note: (key: AnswerKey, note: string, who: AnswerWho) => Promise<JobAnswer>
   photo: (input: AttachPhotoInput, who: AnswerWho) => Promise<JobAnswer>
   photoUrl: (photo: WaitingPhotoRef) => Promise<string | null>
+  /** The pick and the signature in one write (#237 PR 2). */
+  sign: (input: SignAnswerInput, who: AnswerWho) => Promise<JobAnswer>
+  /** A signed answer taken back with a reason; the voided row comes back and stays. */
+  takeBack: (answerId: string, why: string, who: AnswerWho) => Promise<JobAnswer>
+  /** A link to a drawn mark, for the row's ink. */
+  inkUrl: (storagePath: string | null | undefined) => Promise<string | null>
   /** A check added for one of the job's stages (#237). */
   addItem: (input: AddJobItemInput, who: AnswerWho) => Promise<StageChecklistQuestion>
   /** A job item taken off; its answer stays. */
@@ -269,5 +377,5 @@ export interface StageChecklistSheetIo {
 }
 
 export function supabaseStageChecklistSheetIo(): StageChecklistSheetIo {
-  return { stages: loadJobStages, questions: loadQuestionsForJob, answers: loadJobAnswers, pick: saveAnswerPick, note: saveAnswerNote, photo: attachAnswerPhoto, photoUrl: waitingPhotoUrl, addItem: addJobItem, retireItem: retireJobItem, mayAuthor: mayAuthorOnJob, skip: skipQuestion, putBack: putBackQuestion, reorder: reorderJobItems, promote: promoteJobItem, dispatch: supabaseStageCheckDispatchIo() }
+  return { stages: loadJobStages, questions: loadQuestionsForJob, answers: loadJobAnswers, pick: saveAnswerPick, note: saveAnswerNote, photo: attachAnswerPhoto, photoUrl: waitingPhotoUrl, sign: signAnswer, takeBack: takeBackAnswer, inkUrl: signatureInkUrl, addItem: addJobItem, retireItem: retireJobItem, mayAuthor: mayAuthorOnJob, skip: skipQuestion, putBack: putBackQuestion, reorder: reorderJobItems, promote: promoteJobItem, dispatch: supabaseStageCheckDispatchIo() }
 }

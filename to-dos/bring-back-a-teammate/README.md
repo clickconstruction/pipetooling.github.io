@@ -2,7 +2,7 @@
 name: "Bring back a teammate who left: one press for the login and the roster row, a new stint, the stale rows"
 number: 256
 group: ready
-status: PR 1, the kernel, v2.6480 · PR 2, the stints and `restore_roadmap`, v2.6481 · PR 3, the Bring back window, v2.6523 · PR 4, Hire finds them, v2.6525 · PR 5, the stints in view, v2.6526 · the walk of 2026-11-04 on the card with seven follow-ons · every call answered 2026-11-03 (tenure from the day back, roadmap 90 days, wage required, training mode off, the Away note behind a sealed login)
+status: PR 1, the kernel, v2.6480 · PR 2, the stints and `restore_roadmap`, v2.6481 · PR 3, the Bring back window, v2.6523 · PR 4, Hire finds them, v2.6525 · PR 5, the stints in view, v2.6526 · PR 6, the Away note's kernel, v2.6566 · the walk of 2026-11-04 on the card with seven follow-ons · every call answered 2026-11-03 (tenure from the day back, roadmap 90 days, wage required, training mode off, the Away note behind a sealed login)
 summary: >
   A tech finished their last day on 2026-11-03 and plans to come back in three years. End employment
   closes them out well, but the way back is a dev's undo, not a return. Restore brings back the login
@@ -14,7 +14,7 @@ summary: >
   and the rows three years made stale (sign-in, wage, leader, licenses, paperwork). Hire finds the
   archived match and offers it. While they are away, an Away note the office writes person by person
   (a note, a countdown to the day back, how far they are from the shop) is the one screen they find.
-next: PR 6, the Away-note kernel. For the Away note, the seal (PR 7) ships and its probe passes before PR 8 lets any archived account sign in.
+next: PR 7, the seal, proven by its probe on the local bed and confirmed on prod's shape before PR 8 lets any archived account sign in and draws the screen over PR 6's model.
 size: L as a train of nine (S · M · M · S · S, then the Away note S · L · M · S)
 blocker: None.
 opinion: build draft 1 as drawn after the second pass, and the Away note behind a sealed login (call 5): the seal first, proven by its probe, then the note. Keep the account; never re-hire a returner as a new person, since the hours log, the logbook, the HR file and every job's history hang off the old account.
@@ -172,7 +172,7 @@ equal columns in the A and B comparison, and the same words from *Email me my no
 | 3 | **Shipped v2.6523.** The Bring back window on the desk and on Users → Archived; restores both halves; the returner rows (the Leader row became the Team row: the app records no leader); End employment archives a no-login account too (the walk's follow-on 1); guides `bring-back-a-teammate`, `archive-user-accounts`, `open-a-persons-desk`. The stints on Pay & schedule moved to PR 5 | M |
 | 4 | **Shipped v2.6525.** Hire stops on an archived match (name or email, as typed) and opens Bring back; an exact archived name is refused on the press either way | S |
 | 5 | **Shipped v2.6526.** The desk's Employment row lists every stint with the away gaps; the HR tab and the Employment tab name the earlier stints after the tenure (every reader already counted from the current stint, call 1); the salary clamp pays a day inside any stint. The server-side sync's clamp is left for a migration | S |
-| 6 | Kernel `src/lib/people/awayNote.ts` + tests: the countdown parts and bar, the day-of words, the miles and drive words from two points, the sign-in's resting words | S |
+| 6 | **Shipped v2.6566.** Kernel `src/lib/people/awayNote.ts` + tests: the countdown parts and bar, the day-of words, the miles and drive words from two points, the city from the office address, the call and text links, the signature, and `buildAwayScreen`, the one model the preview and the sealed page both draw | S |
 | 7 | The seal, nothing visible: `caller_is_archived()`, the pre-request gate, `apply_archived_read_blocks()` on every table, the `storage.objects` policy, `refuseArchivedCaller` + its CI check, the `CLAUDE.md` rule, the seal probe in CI. Push and confirm the probe on prod's shape before PR 8 | L |
 | 8 | Migration: `away_notes` (person, words, countdown date, show city, show call, alert on the day) + `my_away_note()`; `archive-user` skips the ban when a note is on and `restore-user` takes the note down; the app's away gate (a signed-in archived account draws only the Away page); the Leave a note window on the desk and in End employment, its preview rendering the one `AwayScreen` component the sealed sign-in renders; guide + release note | M |
 | 9 | The Needs you item on the countdown's day, with Bring back… | S |

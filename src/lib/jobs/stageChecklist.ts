@@ -20,11 +20,19 @@
  * skips, so `templateFor` leaves it off that stage's list and off its count, on every surface, and the company's list
  * stays whole. A check can also name the plan sheet it came from and why it is there.
  *
+ * Since PR 2 (v2.6563) the author can mark a question *needs a signature*: whoever answers it signs the way the app
+ * signs a lien notice (`lienNoticeSignature.ts`, v2.5077), the record and not the mark, bound to the answer as given
+ * by a hash (`checklistAnswerHash`), so a later change voids it. A signature item is not answered until the signature
+ * stands; Not here signs too, since it is the claim an inspector would test. A signed row locks; *Take it back* voids
+ * the row with a reason and the next press writes a new one, so a question can carry voided answers beside its live
+ * one, and every reader takes the live one (`liveAnswersById`). The words are `stageChecklistSignature.ts`.
+ *
  * Pure. The tables are `stage_checklist_templates` and `stage_checklist_answers` (PR 2); the sheet, the Pipeline's
  * mark and the gallery come after.
  */
 import { calendarYmdInAppTzFromIso, formatDenverCalendarDayShort, formatDenverTimeOnly } from '../../utils/dateUtils'
 import { driveSafe } from '../photos/photoName'
+import { lienFieldsHash } from './lienNoticeSignature'
 import { stageRank } from './stageRecognition'
 
 /** The three stage kinds a checklist is written for, in the order the work goes. */
@@ -61,6 +69,8 @@ export interface StageChecklistQuestion {
   order: number
   words: string
   asksPhoto: boolean
+  /** True when whoever answers signs, Not here too, and the row locks after (#237 PR 2). Absent reads as false. */
+  needsSignature?: boolean
   /** The job stage an item was added for; null or absent on the company's questions. */
   fixtureId?: string | null
   /** The adder's login, for *Take off* (the adder or the office). */
@@ -168,9 +178,33 @@ export interface StageChecklistPhoto {
   failWhy: string | null
 }
 
+/** How an answer was signed (#237 PR 2): `type` = one press placed the name in cursive; `draw` = the signer drew it. */
+export type ChecklistSignatureMode = 'type' | 'draw'
+
+/** The signature on an answer, as its row keeps it: the record, not the mark. */
+export interface ChecklistSignature {
+  mode: ChecklistSignatureMode
+  printedName: string
+  /** The drawn PNG's path in the checklist bucket; null for a typed signature. */
+  storagePath: string | null
+  signedAt: string
+  signedById: string | null
+  /** The hash of the answer as given at signing; the signature stands only while it still matches. */
+  hash: string
+}
+
+/** An answer taken back (#237 PR 2): who, when and why. The row and its signature stay as the record. */
+export interface ChecklistAnswerVoid {
+  at: string
+  by: string
+  byId?: string | null
+  why: string
+}
+
 /**
  * The crew's answer on one question, as its row keeps it. A row with no pick is a note or a photo left before the
- * pick. The stamp (#237): who pressed, and when, ISO.
+ * pick. The stamp (#237): who pressed, and when, ISO. A signed answer carries its signature; one taken back carries
+ * its void, and reads on no surface as the question's answer.
  */
 export interface StageChecklistAnswer {
   questionId: string
@@ -179,22 +213,51 @@ export interface StageChecklistAnswer {
   photo: StageChecklistPhoto | null
   answeredBy?: string
   answeredAt?: string | null
+  signature?: ChecklistSignature | null
+  voided?: ChecklistAnswerVoid | null
 }
 
-/** What a question still waits on: the crew's pick, the photo it asks for, or nothing. */
-export type QuestionWaitsOn = 'pick' | 'photo' | null
+/** True for an answer taken back: the row is the record, never the question's answer. */
+export function isVoidedAnswer(answer: Pick<StageChecklistAnswer, 'voided'> | null | undefined): boolean {
+  return Boolean(answer?.voided)
+}
 
 /**
- * A question is answered when it has its pick, and the photo it asks for. Not here needs no photo: there is nothing
- * there to photograph. The photo counts from the moment it is taken, before the sweep files it.
+ * The hash a signature binds to (#237 PR 2): the question's words, the pick and the note as given, through the lien
+ * notice's own hash. It detects a change after signing; it is not a secret.
  */
-export function questionWaitsOn(question: Pick<StageChecklistQuestion, 'asksPhoto'>, answer: StageChecklistAnswer | null | undefined): QuestionWaitsOn {
-  if (!answer?.pick) return 'pick'
+export function checklistAnswerHash(input: { questionWords: string; pick: StageChecklistPick; note: string }): string {
+  return lienFieldsHash({ words: input.questionWords.trim(), pick: input.pick, note: input.note.trim() })
+}
+
+/**
+ * The answer's signature while it still counts: the row is signed, not taken back, and the answer as it stands is the
+ * answer that was signed. Null for an unsigned row, a voided one, or one whose pick or note changed after signing.
+ */
+export function signatureStands(question: Pick<StageChecklistQuestion, 'words'>, answer: StageChecklistAnswer | null | undefined): ChecklistSignature | null {
+  if (!answer?.signature || !answer.pick || isVoidedAnswer(answer)) return null
+  return answer.signature.hash === checklistAnswerHash({ questionWords: question.words, pick: answer.pick, note: answer.note }) ? answer.signature : null
+}
+
+/** What a question still waits on: the crew's pick, the signature the author asked for, the photo it asks for, or nothing. */
+export type QuestionWaitsOn = 'pick' | 'signature' | 'photo' | null
+
+/** The parts of a question the waits-on rule reads. */
+export type QuestionAsks = Pick<StageChecklistQuestion, 'asksPhoto' | 'needsSignature' | 'words'>
+
+/**
+ * A question is answered when it has its pick, the signature where the author asked for one (Not here signs too), and
+ * the photo it asks for. Not here needs no photo: there is nothing there to photograph. The photo counts from the moment
+ * it is taken, before the sweep files it. An answer taken back is no answer: the question waits on its pick again.
+ */
+export function questionWaitsOn(question: QuestionAsks, answer: StageChecklistAnswer | null | undefined): QuestionWaitsOn {
+  if (!answer?.pick || isVoidedAnswer(answer)) return 'pick'
+  if (question.needsSignature && !signatureStands(question, answer)) return 'signature'
   if (question.asksPhoto && answer.pick !== 'not_here' && !answer.photo) return 'photo'
   return null
 }
 
-export function questionAnswered(question: Pick<StageChecklistQuestion, 'asksPhoto'>, answer: StageChecklistAnswer | null | undefined): boolean {
+export function questionAnswered(question: QuestionAsks, answer: StageChecklistAnswer | null | undefined): boolean {
   return questionWaitsOn(question, answer) === null
 }
 
@@ -225,7 +288,17 @@ export interface StageChecklistStateInput {
 
 function answersById(answers: StageChecklistStateInput['answers']): ReadonlyMap<string, StageChecklistAnswer> {
   if (answers instanceof Map) return answers
-  return new Map((answers as readonly StageChecklistAnswer[]).map((a) => [a.questionId, a]))
+  return liveAnswersById(answers as readonly StageChecklistAnswer[])
+}
+
+/** The live answer of each question, by question id: a row taken back is left out, so the question reads unanswered. */
+export function liveAnswersById<A extends StageChecklistAnswer>(answers: readonly A[]): Map<string, A> {
+  return new Map(answers.filter((a) => !isVoidedAnswer(a)).map((a) => [a.questionId, a]))
+}
+
+/** The answers taken back on one question, oldest first: the *Taken back* lines under its row. */
+export function voidedAnswersOf<A extends StageChecklistAnswer>(answers: readonly A[], questionId: string): A[] {
+  return answers.filter((a) => a.questionId === questionId && isVoidedAnswer(a)).sort((a, b) => (a.voided?.at ?? '').localeCompare(b.voided?.at ?? ''))
 }
 
 export function stageChecklistState(input: StageChecklistStateInput): StageChecklistState {
@@ -357,7 +430,7 @@ export function noQuestionsWords(stageName: string): string {
 
 /** What a question row says it still waits on. */
 export function waitsOnWords(waits: QuestionWaitsOn): string {
-  return waits === 'pick' ? 'Pick Yes, No or Not here.' : waits === 'photo' ? 'Take the photo this one asks for.' : ''
+  return waits === 'pick' ? 'Pick Yes, No or Not here.' : waits === 'signature' ? 'Sign the answer. This one needs a signature.' : waits === 'photo' ? 'Take the photo this one asks for.' : ''
 }
 
 /** The toast once the sheet saves. */
