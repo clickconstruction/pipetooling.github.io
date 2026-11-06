@@ -36,7 +36,7 @@ That is deliberate. The raw log is trustworthy because nothing in it can be quie
 A matter is the analysis for counsel, kept apart from the record. The matter holds the narrative for the firm and the documents with what each one shows. The matter also holds the timeline of planned steps and recorded events. The Legal desk's matters stand on a customer who owes. This one stands on the person.
 
 1. Open the person's file and go to **Matter**. Only a dev sees this view.
-2. Press {{button:outline|Open a matter…}}. The matter stands on the person from then on.
+2. Press {{button:outline|Open a matter…}}. The matter stands on the person from then on. A {{chip:gray|Matter · Under review}} chip joins the top row of the file. Press the chip to come back here.
 3. Write the narrative under **Narrative** and press {{button:blue|Save}}. Put each paper on **Evidence** with one line on what it shows. Plan a step or record what happened on **Timeline**.
 
 Nothing on a matter reaches a law firm until the matter is released. The account tabs of the Legal desk do not appear here. There is no bill and no lien paper on a person.
