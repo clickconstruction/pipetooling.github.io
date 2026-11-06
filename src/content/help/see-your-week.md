@@ -46,6 +46,10 @@ A callback counts only after the office confirms it. The office reads the return
 
 Everyone clocked on the first job shares the callback, not the lead alone.
 
+## The Monday email
+
+On Monday morning the same card comes to your email, for last week. It goes only to people with a signal, and only once a dev turns the Monday email on.
+
 ## The customer's words
 
 When a customer gives your job four or five stars this week, their words sit on the card. See [see what a customer said about my work](/help/see-what-a-customer-said-about-my-work).

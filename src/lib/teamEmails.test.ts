@@ -81,12 +81,13 @@ describe('whose week', () => {
 describe('coverage', () => {
   it('counts the three render kinds and reads as one line', () => {
     const c = teamEmailCoverage()
-    // 28 since O10b: the office's GC notices; 29 since v2.5224: the Bridge's Monday sheet; 30 since v2.5883: its weekly send.
-    expect(c.total).toBe(30)
-    expect(c.sample + c.real + c.soon).toBe(30)
+    // 28 since O10b: the office's GC notices; 29 since v2.5224: the Bridge's Monday sheet; 30 since v2.5883: its weekly send;
+    // 31 since v2.6607: Your week's Monday email, the one row that renders the real one.
+    expect(c.total).toBe(31)
+    expect(c.sample + c.real + c.soon).toBe(31)
     expect(c.sample).toBe(30)
-    expect(c.real).toBe(0)
-    expect(teamCoverageLine(c)).toBe('30 emails · 30 render live')
+    expect(c.real).toBe(1)
+    expect(teamCoverageLine(c)).toBe('31 emails · 30 render live · 1 show the real one')
     expect(teamCoverageLine({ total: 1, sample: 1, real: 0, soon: 0 })).toBe('1 email · 1 render live')
   })
 })
