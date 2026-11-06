@@ -43,6 +43,16 @@ describe('goalsStripRows', () => {
     })
   })
 
+  it('a stage row carries the fraction its open tasks’ percents add (#273)', () => {
+    const rows = goalsStageRows({
+      groups: groups.map((g, i) => ({ id: g.id, title: g.title, sort_index: i })),
+      tasks: tasks.map((t) => (t.id === 't3' ? { ...t, percent_complete: 50 } : t)),
+      edges,
+    })
+    const g2 = rows.find((r) => r.groupId === 'g2')!
+    expect(g2).toMatchObject({ done: 1, doneFraction: 1.5, total: 2 })
+  })
+
   it('skips empty roadmaps; locked stages never count as current', () => {
     expect(goalsStripRows({ roadmaps: [{ id: 'rX', title: 'Empty' }], groups: [], tasks: [], edges: [] })).toEqual([])
     const row = goalsStripRows({ roadmaps, groups, tasks, edges })[0]!
@@ -70,8 +80,12 @@ describe('stageBadgeFor', () => {
     expect(stageBadgeFor([{ completedAt: 'x' }, { completedAt: null }, { completedAt: null }])).toEqual({
       kind: 'progress',
       done: 1,
+      doneFraction: 1,
       total: 3,
     })
+  })
+  it('an open task at 50 counts half toward the fraction (#273)', () => {
+    expect(stageBadgeFor([{ completedAt: 'x' }, { completedAt: null, percentComplete: 50 }, { completedAt: null }])).toMatchObject({ kind: 'progress', done: 1, doneFraction: 1.5, total: 3 })
   })
   it('all complete -> done', () => {
     expect(stageBadgeFor([{ completedAt: 'x' }, { completedAt: 'y' }])).toEqual({ kind: 'done' })
@@ -198,6 +212,7 @@ describe('lockedStagePrerequisiteChain', () => {
     groupId,
     title: groupId.toUpperCase(),
     done,
+    doneFraction: done,
     total,
     state,
     openAssigned: 0,

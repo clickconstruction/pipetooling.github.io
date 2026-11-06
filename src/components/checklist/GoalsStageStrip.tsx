@@ -1,4 +1,5 @@
 import type { GoalsStageRow } from '../../lib/roadmapBridge'
+import { fractionWords } from '../../lib/taskProgress'
 
 /**
  * The Goals-card segmented stage bar (v2.2021) — one segment per stage in
@@ -24,7 +25,7 @@ export function GoalsStageStrip({ stages }: { stages: GoalsStageRow[] }) {
       {stages.map((s, stageIndex) => (
         <span
           key={s.groupId}
-          title={`${stageIndex + 1} · ${s.title} — ${s.total > 0 ? `${s.done} of ${s.total}` : s.state === 'unplanned' ? 'not planned yet' : 'milestone'}`}
+          title={`${stageIndex + 1} · ${s.title} — ${s.total > 0 ? `${fractionWords(s.doneFraction)} of ${s.total}` : s.state === 'unplanned' ? 'not planned yet' : 'milestone'}`}
           style={{
             height: 13,
             borderRadius: 3,
@@ -39,8 +40,9 @@ export function GoalsStageStrip({ stages }: { stages: GoalsStageRow[] }) {
             ...(s.state === 'unplanned' ? { border: '1px dashed var(--border-strong)' } : {}),
           }}
         >
-          {s.state === 'current' && s.total > 0 && s.done > 0 ? (
-            <span style={{ position: 'absolute', inset: 0, display: 'block', width: `${Math.round((s.done / s.total) * 100)}%`, background: '#2563eb' }} />
+          {s.state === 'current' && s.total > 0 && s.doneFraction > 0 ? (
+            // Task cards (#273, PR 3b): the fill adds the open tasks' percents, so a stage half through its next task shows it.
+            <span style={{ position: 'absolute', inset: 0, display: 'block', width: `${Math.round((s.doneFraction / s.total) * 100)}%`, background: '#2563eb' }} />
           ) : null}
           {/* The 12px wrap minimum always fits a number, so the pre-wrap ">40 stages hides them" gate is gone. */}
           <span

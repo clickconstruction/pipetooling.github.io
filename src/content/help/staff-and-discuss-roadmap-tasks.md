@@ -42,7 +42,7 @@ Tap the **title itself**. The faint ✎ marks it. Type, and press **Enter**. Esc
 
 Everything you press lives in one **dock at the bottom of the card**, the same on phone and desktop:
 
-- {{button:green|○ Mark done}} completes the roadmap task right there. Marking done is the same as ticking the task's box on the Map. The button flips to ***✓ Done · reopen***, so one more tap undoes it. The button responds the moment you tap. If the save doesn't stick, say from bad signal, the button says ***Tap to retry — not saved***. The button does not quietly revert.
+- **Set the %** sits where Mark done was. Tap **25**, **50** or **75** to say how far along the task is. The stage's bar fills by that much. Tap {{button:green|✓ Done}} beside them to finish it. Marking done is the same as ticking the task's box on the Map. The press flips to ***✓ Done · reopen***, so one more tap undoes it. The press responds the moment you tap. If the save doesn't stick, say from bad signal, the press says ***Tap to retry — not saved***. It does not quietly revert. A task with Done when… lines reads its percent from the ticks on its card.
 - The **☆ square** pins the task. The square shows an amber ★ when pinned. The task jumps to the top of its lane on the Plan's ⚡ Next up shortlist.
 - The **🗑 square** starts the two-step delete: {{button:red|Delete permanently}} or **Keep it**. Completed history always stays.
 
