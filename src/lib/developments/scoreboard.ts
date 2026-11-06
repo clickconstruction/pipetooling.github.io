@@ -6,11 +6,16 @@
  * each filling Cost with what it put in so they sum to the job. A folded row shows the three that
  * matter most, Earned · Cost · Profit; opened, all nine. Green is effort, red is what it cost, gold
  * is the money. Earned is Job Summary's rule (`jobEarned`), the costs are the Jobs & bids table's
- * (`siteCosts.ts`), hours and days the clock's (`siteLabor.ts`), overhead the day share. Pure: the
+ * (`siteCosts.ts`), hours and days the clock's (`siteLabor.ts`), overhead the day share. A window (PR 4,
+ * v2.6558) cuts every measure to the days in it: hours, days and labor from the clock's days, subs and
+ * parts from the dated charge events the Timeline builds, overhead from its day lines, earned by the
+ * hours in the window as Job Summary earns it; an undated charge stays out of a window. Pure: the
  * component draws, the hooks read.
  */
 import { jobSummaryPaidInvoiceOpts, resolveJobSummaryPercentCompleteWithSource, type JobSummaryPercentSource } from '../jobSummaryPercentComplete'
 import { jobEarned } from '../jobs/jobEarned'
+import { earnedRevenueInWindow } from '../bridge/earnedRevenue'
+import type { JobChargeEvent } from '../jobChargesTimeline'
 import type { JobOverheadDayLine } from '../jobs/jobDayLedger'
 import { normalizeJobsLedgerStatus, type JobsLedgerPipelineStatus } from '../jobsLedgerStatusPipeline'
 import type { MemberJob } from './overview'
@@ -115,7 +120,12 @@ export type ScoreboardJob = {
   m: ScoreboardMeasures
   /** No earned dollar, no cost and no hours: folded under *Nothing on them yet*. Hours count since v2.6467, so the leader's board, which reads no cost, keeps a job with hours on it in view. */
   empty: boolean
+  /** The job's work days, each once (PR 4): the clock's days, or the window's; null when the read has no days, so a part's days can be counted once across its jobs. */
+  dayKeys: ReadonlySet<string> | null
 }
+
+/** A window on the board (PR 4): two calendar days, both inside, in APP_CALENDAR_TZ. */
+export type ScoreboardWindowRange = { from: string; to: string }
 
 export type ScoreboardModel = {
   /** The site's nine: the sum of every job, days counted once each across the site. */
@@ -130,6 +140,8 @@ export type ScoreboardModel = {
   sort: ScoreboardSort
   /** People with hours on the site, from the clock; 0 until that read is in. */
   people: number
+  /** The window the measures are cut to (PR 4), or null for the site's whole life. */
+  window: ScoreboardWindowRange | null
 }
 
 export type ScoreboardInput = {
@@ -140,6 +152,19 @@ export type ScoreboardInput = {
   costs?: SiteCostsRead
   overhead?: SiteOverheadRead
   sort?: ScoreboardSort
+  /** The window (PR 4): given, every measure is cut to its days. */
+  window?: ScoreboardWindowRange | null
+  /**
+   * The dated charge events per job (`siteChargeEventsFromCostRows`), read with a window: subs and parts in the window
+   * are summed from them. Absent with a window, the costs keep their whole-life totals (an older caller).
+   */
+  chargeEvents?: ReadonlyMap<string, readonly JobChargeEvent[]> | null
+}
+
+/** Inside the window, or anywhere when there is none; an undated row is never inside a window. */
+export function inScoreboardWindow(window: ScoreboardWindowRange | null | undefined, ymd: string | null | undefined): boolean {
+  if (!window) return true
+  return !!ymd && ymd >= window.from && ymd <= window.to
 }
 
 const ZERO: ScoreboardMeasures = { hours: 0, days: 0, labor: 0, subs: 0, parts: 0, overhead: 0, earned: 0, cost: 0, profit: 0 }
@@ -175,22 +200,67 @@ export function buildScoreboard(input: ScoreboardInput): ScoreboardModel {
     if (list) list.push(i)
     else invoicesByJob.set(i.job_id, [i])
   }
+  const win = input.window ?? null
+  const events = win ? (input.chargeEvents ?? null) : null
   const all: ScoreboardJob[] = input.jobs.map((job) => {
     const contractUsd = Number(job.revenue) || 0
     const { pct, source } = scoreboardPct(job, invoicesByJob.get(job.id) ?? [])
     const finished = pct === 100
-    const earned = jobEarned({ contractUsd, pct, finished })
     const l = laborBy?.get(job.id)
     const c = costsBy?.get(job.id)
     const o = overheadBy?.get(job.id)
+    // The clock's days, each once; in a window, the days inside it and the hours and dollars on them.
+    const dayKeys = new Set<string>()
+    let hours = l?.hours ?? 0
+    let laborUsd = l?.costUsd ?? 0
+    let days = l?.days ?? 0
+    let daysDated = false
+    if (l) {
+      if (win) {
+        hours = 0
+        laborUsd = 0
+      }
+      for (const p of l.people) {
+        for (const d of p.byWorkDate ?? []) {
+          daysDated = true
+          if (!inScoreboardWindow(win, d.ymd)) continue
+          dayKeys.add(d.ymd)
+          if (win) {
+            hours += d.hours
+            laborUsd += d.costUsd
+          }
+        }
+      }
+      if (win) days = dayKeys.size
+    }
+    // With a window the costs come from the dated events; an undated charge is not in any window.
+    let subs = c?.subLabor ?? 0
+    let parts = c ? c.parts.supplyInvoices + c.parts.cardCharges + c.parts.tallyParts + c.parts.otherCharges : 0
+    if (win && events && c) {
+      subs = 0
+      parts = 0
+      for (const e of events.get(job.id) ?? []) {
+        if (!inScoreboardWindow(win, e.dateKey)) continue
+        if (e.source === 'team_labor') continue
+        if (e.source === 'sub_labor') subs += e.amount
+        else parts += e.amount
+      }
+    }
+    let overheadUsd = o?.usd ?? 0
+    if (win && o) overheadUsd = (o.lines ?? []).reduce((sum, line) => sum + (inScoreboardWindow(win, line.ymd) ? line.shareUsd : 0), 0)
+    // Earned: the whole-life rule, or in a window the hours' share of it as Job Summary earns it (the clock's hours in the window over the job's expected hours).
+    const whole = jobEarned({ contractUsd, pct, finished })
+    const windowed = win ? earnedRevenueInWindow({ contractUsd, pctComplete: pct, status: job.status ?? 'in_progress', finished, hoursInWindow: hours, lifetimeHours: l?.hours ?? 0 }) : null
+    const earnedUsd = win ? (windowed?.usd ?? 0) : whole.usd
+    const assumed = win ? (windowed ? windowed.assumedHalf : contractUsd > 0 && pct == null) : whole.flags.includes('assumed-50')
     const m: ScoreboardMeasures = {
-      hours: l?.hours ?? 0,
-      days: l?.days ?? 0,
-      labor: round2(l?.costUsd ?? 0),
-      subs: round2(c?.subLabor ?? 0),
-      parts: round2(c ? c.parts.supplyInvoices + c.parts.cardCharges + c.parts.tallyParts + c.parts.otherCharges : 0),
-      overhead: round2(o?.usd ?? 0),
-      earned: round2(earned.usd),
+      hours,
+      days,
+      labor: round2(laborUsd),
+      subs: round2(subs),
+      parts: round2(parts),
+      overhead: round2(overheadUsd),
+      earned: round2(earnedUsd),
       cost: 0,
       profit: 0,
     }
@@ -201,7 +271,7 @@ export function buildScoreboard(input: ScoreboardInput): ScoreboardModel {
     if (!(contractUsd > 0) && (m.cost > 0 || m.hours > 0)) flags.push('no-price')
     const materialsOnly = job.billing_only === true || (laborBy != null && costsBy != null && m.earned > 0 && m.hours === 0 && m.subs === 0 && m.parts > 0)
     if (materialsOnly) flags.push('materials-only')
-    if (earned.flags.includes('assumed-50')) flags.push('assumed-50')
+    if (assumed) flags.push('assumed-50')
     if (pct == null) flags.push('no-pct')
     return {
       jobId: job.id,
@@ -215,6 +285,7 @@ export function buildScoreboard(input: ScoreboardInput): ScoreboardModel {
       priced: contractUsd > 0,
       m,
       empty: m.earned === 0 && m.cost === 0 && m.hours === 0,
+      dayKeys: l && (daysDated || win) ? dayKeys : null,
     }
   })
   const dir = sort.desc ? -1 : 1
@@ -224,14 +295,14 @@ export function buildScoreboard(input: ScoreboardInput): ScoreboardModel {
   const empties = sorted.filter((r) => r.empty)
   const site: ScoreboardMeasures = { ...ZERO }
   for (const r of all) for (const k of Object.keys(site) as ScoreboardColumnKey[]) site[k] = round2(site[k] + r.m[k])
-  // Days are counted once each across the site, not summed over jobs: the clock read knows the site's days.
-  site.days = input.labor?.state === 'read' ? input.labor.labor.siteDays : 0
+  // Days are counted once each across the site, not summed over jobs: the clock read knows the site's days; in a window, the jobs' days inside it, each once.
+  site.days = input.labor?.state === 'read' ? (win ? new Set(all.flatMap((r) => [...(r.dayKeys ?? [])])).size : input.labor.labor.siteDays) : 0
   const setAside = rows.filter((r) => r.flags.includes('materials-only'))
   const work =
     setAside.length > 0
       ? rows.filter((r) => !r.flags.includes('materials-only')).reduce((acc, r) => ({ earned: round2(acc.earned + r.m.earned), profit: round2(acc.profit + r.m.profit), jobs: acc.jobs + 1 }), { earned: 0, profit: 0, jobs: 0 })
       : null
-  return { site, work, rows, empties, reads, sort, people: input.labor?.state === 'read' ? input.labor.labor.people : 0 }
+  return { site, work, rows, empties, reads, sort, people: input.labor?.state === 'read' ? input.labor.labor.people : 0, window: win }
 }
 
 // ---- words -------------------------------------------------------------------------------------
