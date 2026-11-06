@@ -32,6 +32,10 @@ If it's not done right, you type a comment. The comment is required, so the pers
 - They get a notification with your reason.
 - When they complete it again, it returns here for another look.
 
+## Your people on the Dashboard
+
+The office sees **Your people** under My Inbox on the Dashboard. It is one row per person with an open one-off task. The row shows the card that moved last with its ring. A chip reads {{chip:green|moved today}}, {{chip:gray|moved Wed}} or {{chip:red|stuck 32 days}}. Stuck follows the same age rule as this tab. The line above the rows counts the cards done this week, who moved and who is stuck. Tap a row to open this tab. Tap **🔔 Remind** to nudge that person the same way the board does.
+
 ## Good to know
 
 - **Rearrange someone's list by feel**: you press and hold any card on the by-person board. About a third of a second does it, with mouse or finger. The card lifts to you, and you drag it above or below the others. A quick tap still opens the card. Scrolling never picks one up. The order saves per person. It is the same order their Today list follows.
