@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
@@ -67,6 +67,7 @@ import {
   unpackJobModeKeptRows,
   type JobModeKeptRow,
 } from '../../lib/jobMode/keptDay'
+import { RailMachineStops } from '../machines/MachineStops'
 
 type LeaveReportJobPick = {
   id: string
@@ -323,7 +324,7 @@ function safeTrim(s: string | null | undefined): string {
 export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway, canClockOut }: Props) {
   const { prefixMap } = useLedgerDisplayPrefixes()
   const navigate = useNavigate()
-  const { role, profileName } = useAuth()
+  const { user: authUser, role, profileName } = useAuth()
   const { showToast } = useToastContext()
   /** A phone (punch list #189, PR 2): the day's press leaves the card for the bar pinned above the tab bar. */
   const phone = useNarrowViewport640()
@@ -1103,8 +1104,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             const num = jobNumberLabel(row.block.service_type_id, row.block.hcp_number, row.block.click_number)
             const name = safeTrim(row.block.job_name) || '—'
             return (
+              <Fragment key={row.block.job_id}>
               <button
-                key={row.block.job_id}
                 type="button"
                 disabled={!tappable || held}
                 className={held && tappable ? 'keptPress' : undefined}
@@ -1144,6 +1145,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
                   <span style={{ ...railFlagStyle, color: '#d97706' }}>STILL OPEN</span>
                 ) : null}
               </button>
+              {/* Equipment pre-use check (punch list #270, SPIKE): the machine stops under the job's row */}
+              <RailMachineStops jobId={row.block.job_id} jobWords={`${num} · ${name}`} day={workDateYmd} userId={authUser?.id ?? null} byName={profileName} />
+              </Fragment>
             )
           })}
         </div>

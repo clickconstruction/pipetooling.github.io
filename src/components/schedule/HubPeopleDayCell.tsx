@@ -49,6 +49,7 @@ import {
   effectiveNoteRequirement,
   surroundingIconColorForRequirement,
 } from '../../lib/dispatchNoteRequirements'
+import { BlockMachineChips } from '../machines/MachineStops'
 
 function HubPeopleBlockCard({
   block,
@@ -438,6 +439,7 @@ function HubPeopleBlockCard({
             <div style={{ color: 'var(--text-600)', marginTop: 2, overflowWrap: 'anywhere' }}>{block.note}</div>
           ) : null}
         </button>
+        <BlockMachineChips jobId={block.job_id} day={block.work_date} />
       </div>
       {showEditNoteBtn ? (
         <div

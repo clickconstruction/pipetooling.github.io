@@ -2,7 +2,7 @@
 title: schedule people onto jobs
 category: Jobs & Scheduling
 roles: assistant, superintendent, master_technician
-keywords: schedule, dispatch, assign, blocks, not coming in, share schedule, phone, board, day strip, copy to techs, desktop view, tech card
+keywords: schedule, dispatch, assign, blocks, equipment, machines, machine, excavator, skid steer, not coming in, share schedule, phone, board, day strip, copy to techs, desktop view, tech card
 order: 10
 ---
 The Schedule page is where the office puts people on jobs. Only devs, leaders, assistants, and superintendents can open it.
@@ -281,3 +281,15 @@ The Quickfill page embeds this schedule twice. **Schedule** asks *"Are there any
 Subs, the subcontractors, are not on the crew grid. They are people on work orders, not users with blocks. So the People tab shows them in a **Subs** section under the crew. There is one row per sub, one chip per day. It is solid green when they picked those days on their portal. It is striped when a window is set but they have not picked yet. It is dashed while an offer is still out. You tap a chip to open the job. There is nothing to drag. To move a sub, you change the window on **Jobs → Subs → Work** or let them re-pick.
 
 A sub may be definitely on a job. Then everyone assigned to that job sees a small {{chip:green|sub}} badge on those days. You hover for the names. The **Day** tab lists **Subs on site** above the crew. {{button:outline|Add a site visit ›}} arms place-a-job for that job. So you can drop a real block on a superintendent's lane. The Crew Day email ends with the same list.
+
+## Equipment on the job
+
+A job can take a machine along. The block editor has an **Equipment on this job** row under the note. It shows when the block is on a job.
+
+Tap {{button:outline|+ Add a machine}}. The list shows every machine on the fleet board. Each one says where it is. It reads in the yard, on a job, held or rental. A machine already planned on another job that day reads red. Pick one and it joins the job for that day. It saves at once, with or without the block.
+
+Type who brings it in the **Who brings it** box. The crew sees that name on their phone in the morning. {{button:outline|Remove}} takes a machine off the day.
+
+The block wears a chip per machine on the board. The chip reads red with the other job's number when the machine is on two jobs that day.
+
+In the morning the crew's phone asks **Is E-12 here?**. Here opens the walk. Not coming tells you why. The crew checks the machine before it runs. See [check a machine before you run it](/help/check-a-machine-before-you-run-it).

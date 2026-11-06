@@ -172,6 +172,13 @@ export function useScheduleDispatchAddBlockModal({
     return b?.work_date ?? ''
   }, [blockModalState, blockById])
 
+  // Equipment pre-use check (punch list #270, SPIKE): the job the block is on, for the editor's Equipment row
+  const blockModalJobId = useMemo(() => {
+    if (!blockModalState) return null
+    if (blockModalState.kind === 'add') return blockModalState.jobId
+    return blockById.get(blockModalState.blockId)?.job_id ?? null
+  }, [blockModalState, blockById])
+
   const addBlockModalTimeline = useMemo(() => {
     if (blockModalState?.kind !== 'add') return undefined
     return {
@@ -275,6 +282,7 @@ export function useScheduleDispatchAddBlockModal({
     onSave: () => void saveBlockModal(),
     addTimeline: addBlockModalTimeline,
     warning: blockModalSupervisionWarning,
+    jobId: blockModalJobId,
   }
 
   return { blockModalState, openAddBlock, closeAdd, closeAddBlockWindow, addBlockModalProps }

@@ -19,6 +19,7 @@ import {
   type AddBlockTimelineSegment,
 } from '../../lib/scheduleDispatchAddBlockTimeline'
 import { segmentsToOccupiedBands } from '../../lib/quickfillScheduleSegments'
+import { BlockMachineChips } from '../machines/MachineStops'
 import type { BoundaryDot } from '../../lib/dayScheduleDotDrag'
 
 /** Matches per-row name column so shared 8 AM / 12 PM / 4 PM labels align with each timeline. */
@@ -554,6 +555,8 @@ function QuickfillScheduleUserAgendaRow({
                 ⛓
               </span>
             ) : null}
+            {/* Equipment pre-use check (punch list #270, SPIKE): the machines riding with this block */}
+            <BlockMachineChips jobId={seg.jobId && !seg.jobId.startsWith('bid:') ? seg.jobId : null} day={scheduleDayYmd} />
           </>
         )
         return (

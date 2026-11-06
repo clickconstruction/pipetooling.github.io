@@ -103,6 +103,7 @@ import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeIn
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import TestReportSettingsBlock from '../components/settings/TestReportSettingsBlock'
 import StageChecklistSettingsCard from '../components/settings/StageChecklistSettingsCard'
+import MachineTemplatesSettingsCard from '../components/settings/MachineTemplatesSettingsCard'
 import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfirmSettingsBlock'
 import GcBillDayCutoffSettingsBlock from '../components/settings/GcBillDayCutoffSettingsBlock'
 import GcCardBillSettingsBlock from '../components/settings/GcCardBillSettingsBlock'
@@ -1089,6 +1090,7 @@ export default function Settings() {
     photos: <ReportPhotoSizeSettingsBlock canSet={myRole === 'dev' || myRole === 'master_technician'} />,
     'test-reports': <TestReportSettingsBlock />,
     'stage-checklists': <StageChecklistSettingsCard />,
+    'machine-templates': <MachineTemplatesSettingsCard />,
     'owner-of-record': <OwnerAutoConfirmSettingsBlock />,
     'gc-card': <GcCardBillSettingsBlock />,
     'gc-office-notices': <GcOfficeNoticesSettingsBlock />,

@@ -102,6 +102,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Trades cut-off before bill day', keywords: ['cut-off', 'cutoff', 'bill day', 'days before bill day'], tabId: 'settings-jobs', anchorId: 'settings-jobs-gc-cutoff' },
   { label: 'Sub portal pay schedule', keywords: ['pay run day', 'pay-run', 'how pay works', 'sub portal'], tabId: 'settings-jobs', anchorId: 'settings-jobs-sub-pay' },
   { label: 'Stage checklists', keywords: ['checklist questions', 'rough in', 'top out', 'trim set', 'stage questions'], tabId: 'settings-jobs', anchorId: 'settings-jobs-stage-checklists' },
+  { label: 'Machine templates', keywords: ['machine', 'excavator', 'skid steer', 'drill', 'gauges', 'pre-use check', 'walk around', 'equipment'], tabId: 'settings-jobs', anchorId: 'settings-jobs-machine-templates' },
   { label: 'Photos', keywords: ['photo size', 'report photo', 'shrink'], tabId: 'settings-jobs', anchorId: 'settings-jobs-photos' },
   { label: 'Test reports', keywords: ['certifier', 'hydrostatic', 'pinpoint', 'gas test', 'test report words'], tabId: 'settings-jobs', anchorId: 'settings-jobs-test-reports' },
   { label: 'Manage developments', keywords: ['developments', 'default gc', 'archive development'], tabId: 'settings-jobs', anchorId: 'settings-jobs-developments' },
