@@ -23,7 +23,8 @@ vi.mock('../../hooks/useAuth', async () => {
   return { ...useAuthModuleMock(), useAuth: value, useOptionalAuth: value }
 })
 const printed: string[] = []
-vi.mock('../../lib/jobsDocuments/printWindow', () => ({ openHtmlPrintWindow: (html: string) => { printed.push(html); return true } }))
+const filed: unknown[] = []
+vi.mock('../../lib/sent/sentCopiesIo', () => ({ printAndFile: (html: string, filing: unknown) => { printed.push(html); filed.push(filing); return true } }))
 
 const JOB = { id: 'job-zz-1', hcp_number: '1042', click_number: '', job_name: 'Harbor Lane Offices', customer_name: 'Pruett & Vance', job_address: '12 Harbor Lane' }
 const STAGES: JobStageRef[] = [
@@ -87,6 +88,7 @@ function fakeIo(records: ChecklistRecord[], over: Partial<StageChecklistSheetIo>
 afterEach(() => {
   cleanup()
   printed.length = 0
+  filed.length = 0
 })
 
 const stageRows = () => screen.getAllByTestId('job-documents-checklist-stage')
@@ -123,7 +125,7 @@ describe('JobDocumentsChecklists with records', () => {
     expect(within(trim).queryByRole('button', { name: 'Amend: Trim Set' })).toBeNull()
   })
 
-  it('Print the checklists draws every stage on the paper, the filed one from its record and the open one as it stands', async () => {
+  it('Print the checklists draws every stage on the paper, the filed one from its record and the open one as it stands, and files a copy under Sent from this job', async () => {
     renderWithProviders(<JobDocumentsChecklists job={JOB} io={fakeIo([record()])} />)
     await screen.findByTestId('job-documents-checklists-summary')
     fireEvent.click(screen.getByTestId('job-documents-checklists-print'))
@@ -135,5 +137,6 @@ describe('JobDocumentsChecklists with records', () => {
     expect(html).toContain('Trim Set <span class="standing">Record CL-1042-1 · v1')
     expect(html).toContain('Yes · Luis Ortega · Nov 1 · 9:14 am')
     expect(html).toContain('Trim Set now reads ready on the Pipeline.')
+    expect(filed).toEqual([{ kind: 'stage_checklists', title: 'Stage checklists · Job 1042 · Harbor Lane Offices', jobIds: ['job-zz-1'], source: { table: 'jobs_ledger', id: 'job-zz-1' } }])
   })
 })

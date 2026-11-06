@@ -51,4 +51,4 @@ Some presses open a filed stage without Amend. Adding a check for the job. Skipp
 
 Press {{button:outline|Print the checklists}} beside the **Stage checklists** heading. A print window opens with every stage on one paper. A filed stage prints from its record. An open stage prints as it stands, with *open* where there is no answer yet. A signed row prints the signer's name in the signature face. The ink itself is on the PDF in Drive.
 
-This is the paper an inspector or the GC reads. The filed PDF is the same paper.
+This is the paper an inspector or the GC reads. The filed PDF is the same paper. A copy of each print is kept under **Sent from this job** on the Documents tab.

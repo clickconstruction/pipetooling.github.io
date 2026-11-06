@@ -14,7 +14,8 @@
  * itself at the last answer) the stage's chip reads *Filed · CL-1042-1*, the line under it the record's version, time,
  * counts and the PDF's standing with *Open in Drive*, every version on a line of its own, and **Amend** (two presses,
  * with a reason) opens the stage again as the next version; a stage open after a filing reads *Amending v1 · 3 of 6*.
- * **Print the checklists** beside the heading draws the three stages on light paper. The rules are
+ * **Print the checklists** beside the heading draws the three stages on light paper and keeps a copy under Sent from this
+ * job (`printAndFile`), since it is the paper an inspector or the GC reads. The rules are
  * `lib/jobs/stageChecklist.ts` and `stageChecklistItems.ts`; the read is `useJobStageChecklists`, the one the strip
  * uses, whose readers on a job move together: a check added here counts on the strip at once, and an answer on the
  * strip's sheet lands here.
@@ -67,7 +68,7 @@ import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { TAKE_BACK_WORDS, voidedLineWords } from '../../lib/jobs/stageChecklistSignature'
 import { AMEND_WHY_MAX_CHARS, AMEND_WORDS, PRINT_WORDS, amendProblem, amendedToastWords, amendingChipWords, amendingRecordOf, buildChecklistPaperHtml, filedChipWords, filedFootWords, filedRecordOf, paperJobLabel, paperRowFromLive, paperRowFromRecordRow, recordLineWords, recordPdfUrl, recordsOfStage, skippedLineWords as recordSkippedLineWords, versionsLineWords, type ChecklistRecord, type PaperStage } from '../../lib/jobs/stageChecklistRecord'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { SignatureMark } from '../stageChecklists/ChecklistSignatureSheet'
 import { PlanSheetChip } from '../stageChecklists/PlanSheetChip'
 import { AddCheckBox } from '../stageChecklists/StageChecklistSheet'
@@ -246,7 +247,9 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
       showToast(PRINT_WORDS.nothing, 'warning')
       return
     }
-    const ok = openHtmlPrintWindow(buildChecklistPaperHtml({ jobLabel: paperJobLabel(job), customer: (job.customer_name ?? '').trim() || null, address: (job.job_address ?? '').trim() || null, printedAtIso: new Date().toISOString(), stages: paper }))
+    // The paper an inspector or the GC reads: a copy is kept under Sent from this job, as every print that leaves the office.
+    const jobLabel = paperJobLabel(job)
+    const ok = printAndFile(buildChecklistPaperHtml({ jobLabel, customer: (job.customer_name ?? '').trim() || null, address: (job.job_address ?? '').trim() || null, printedAtIso: new Date().toISOString(), stages: paper }), { kind: 'stage_checklists', title: `Stage checklists · ${jobLabel}`, jobIds: [job.id], source: { table: 'jobs_ledger', id: job.id } })
     if (!ok) showToast(PRINT_WORDS.blocked, 'error')
   }
   const promote = async (stage: JobStageChecklist, q: StageChecklistQuestion) => {
