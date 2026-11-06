@@ -6,6 +6,7 @@ import { countLienSteps, lienLaddersShown, lienStepBrief, lienStepCard, lienStep
 import { EmptyState } from '../EmptyState'
 import { LIEN_JOB_DOOR_TITLE } from './LienJobNumber'
 import { LienStepBrief, LienStepCardView, LienStepMark, LienStepRail, LienStepRow, useLienStepCard } from './LienDeskSteps'
+import { lienTimelineWhyChips, type LienTimelineRow } from '../../lib/jobs/lienNoticeTimeline'
 
 /**
  * The Lien desk's Do now tab (Next up until v2.4630; punch list #82, PR 2): every lien paper that asks for an act,
@@ -67,6 +68,7 @@ export default function LienDeskNextUp({
   waitingOn,
   reminders,
   onOpenReminder,
+  timelineFor,
 }: {
   rows: ReadonlyArray<LienNextUpRow>
   loading: boolean
@@ -97,9 +99,13 @@ export default function LienDeskNextUp({
   reminders?: LienReminders
   /** A rung's row with no row on the list, pressed: the desk opens its notice. Without it the row opens the notice under Sent through `onAct`. */
   onOpenReminder?: (row: LienReminderRow) => void
+  /** One sent notice's dated timeline for the step brief (PR 2 of #274); null when the desk has no clock for it. */
+  timelineFor?: (jobId: string) => ReadonlyArray<LienTimelineRow> | null
 }) {
   // The rung the list is narrowed to (v2.4631); session-only, cleared on a second press.
   const [on, setOn] = useState<LienStepAt | null>(null)
+  // The notice the brief's timeline draws (PR 2 of #274); the first on the step until picked.
+  const [pickedJobId, setPickedJobId] = useState<string | null>(null)
   const counts = useMemo(() => countLienSteps(rows, ready ?? {}, reminders?.counts), [rows, ready, reminders])
   const ladders = useMemo(() => lienLaddersShown(counts), [counts])
   const card = useLienStepCard(isMobile)
@@ -246,6 +252,12 @@ export default function LienDeskNextUp({
   const reminderRows = reminderStep && reminders ? reminders.rows.filter((r) => r.step === reminderStep && !rows.some((x) => x.jobId === r.jobId && isLienReminderRow(x))) : []
   const reminderOnList = reminderStep ? rows.filter((r) => isLienReminderRow(r) && r.reminder?.step === reminderStep).length : 0
   const reminderStub = (r: LienReminderRow): LienNextUpRow => ({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: 'sent' }, reminder: r })
+  // The brief's timeline (PR 2 of #274): the notices on the pressed REMINDERS rung, the picked one's rows, and why each is here as counts.
+  const stepNotices = on?.ladder === 'reminder' ? [...(groups[0]?.rows ?? []).filter((r) => r.jobId).map((r) => ({ jobId: r.jobId as string, title: r.title })), ...reminderRows.map((r) => ({ jobId: r.jobId, title: r.title }))] : []
+  const picked = stepNotices.find((n) => n.jobId === pickedJobId)?.jobId ?? stepNotices[0]?.jobId ?? null
+  const timelineRows = picked && timelineFor ? timelineFor(picked) : null
+  const timeline = picked && timelineRows && timelineRows.length ? { rows: timelineRows, options: stepNotices, picked, onPick: setPickedJobId } : null
+  const whyChips = on?.ladder === 'reminder' && reminders ? lienTimelineWhyChips(reminders.rows.filter((r) => r.step === on.step && r.counted).map((r) => r.why ?? '')) : undefined
   const openCard = card.open
   const cardButton = openCard ? openRow : null
   return (
@@ -253,7 +265,7 @@ export default function LienDeskNextUp({
       <LienStepRail counts={counts} ladders={ladders} on={on} isMobile={isMobile} onPick={setOn} onOpenRun={onOpenRun} viewerIsLeader={viewerIsLeader} printed={printed} reminderWaiting={reminders?.waiting} />
       {/* The step brief (v2.6574; every rail since v2.6577): what the step is, why a row is here, the usual move, the other moves, what closes it — and the REMINDERS rail's notices with no row here. */}
       {on ? (
-        <LienStepBrief on={on} brief={lienStepBrief(on)} count={(groups[0]?.rows.length ?? 0) + reminderRows.length} marks={on.ladder === 'reminder' ? [...(groups[0]?.rows ?? []).map((r) => r.reminder?.day ?? null), ...reminderRows.map((r) => r.day)] : []} isMobile={isMobile} onClear={() => setOn(null)}>
+        <LienStepBrief on={on} brief={lienStepBrief(on)} count={(groups[0]?.rows.length ?? 0) + reminderRows.length} marks={on.ladder === 'reminder' ? [...(groups[0]?.rows ?? []).map((r) => r.reminder?.day ?? null), ...reminderRows.map((r) => r.day)] : []} timeline={timeline} whyChips={whyChips} isMobile={isMobile} onClear={() => setOn(null)}>
           {reminderStep ? (
         <div data-testid="lien-reminder-step-list" data-step={reminderStep} style={{ borderTop: '1px solid var(--border)', paddingTop: 8, fontSize: '0.8125rem' }}>
           <div style={{ fontSize: '0.66rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-violet-700)', fontWeight: 700, marginBottom: 2 }}>

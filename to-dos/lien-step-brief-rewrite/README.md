@@ -2,7 +2,7 @@
 name: "Lien desk: the step brief rewritten for a first-week employee — the attorney's letter, one courtesy, the affidavit's week, a dated timeline with payments"
 number: 274
 group: waiting
-status: decided 2026-11-06 with Grace over five passes of one board · PR 1a the rename sweep (v2.6591) · PR 1b the words and the two policy changes · PR 2 the dated timeline with payments · the owner's calls listed below
+status: decided 2026-11-06 with Grace over five passes of one board · PR 1a the rename sweep (v2.6591, #7142) · PR 1b the words and the two policy changes (v2.6594, #7145) · PR 2 the dated timeline with payments (v2.6596) · PR 3 the paying-it-down pause waits on the owner's calls below
 summary: >
   v2.6574 and v2.6577 gave a pressed rung on Do now a step brief and sorted the list instead of
   fading it. Reading the briefs as a new employee would, Grace found them telling rather than
@@ -59,7 +59,8 @@ Earlier boards: the explainer for the owner https://claude.ai/artifact/R9TCeLBJT
 |---|---|---|
 | 1a · v2.6591 | The rename sweep: `scripts/codemods/attorneys-letter-rename.mjs` over `src/**/*.ts{,x}` and `src/content/help/*.md` (strings, JSX text, guide prose; never identifiers, comments, release notes or fragments); the tests' expected words; `docs/GLOSSARY.md` amended. | Mechanical; merges alone from fresh main before 1b. |
 | 1b | `lienStepBrief` / `lienReminderBrief` rewritten to the board's words with `instead` as `{ press, means }`; `LienStepBrief` gains *In plain words* and *If nobody acts*; one courtesy (`courtesyStatus` never `due` again after a send; rung 2 words); the affidavit's week as a priority (`courtesyStatus` returns a new `affidavit_week` state, not `held`; the Do now row recommends the affidavit; the footer keeps the press); *Refer to the Legal desk* out; guides; `lienReminderSchedule` source lines (*Day 7 is the owner's choice*). | Fresh main after 1a. |
-| 2 | `LienReminderScheduleStrip` → a vertical `LienNoticeTimeline` per notice: day 0 from letter two's clock (`clock.why`), the affidavit's day from the desk's affidavit entry, today, the windows, payments from the job's payments under `attributeJobPayments` with the remainder, *paying it down* (a payment after the packet pauses `courtesyStatus` / `letterTwoStatus` until the promised date or a week), the status pills, *Show another*, the counts chips from `courtesy.reason` grouping; § Rules keeps a schedule strip with no marks. Verify first that the server's affidavit list drops a job at zero balance. | Fresh main after 1b. |
+| 2 · v2.6596 | `LienReminderScheduleStrip` → a vertical `LienNoticeTimeline` per notice: day 0 from letter two's clock (`clock.why`), the affidavit's day from the desk's affidavit entry, today, the windows, payments from the job's payments under `attributeJobPayments` with the remainder, *paying it down* (a payment after the packet pauses `courtesyStatus` / `letterTwoStatus` until the promised date or a week), the status pills, *Show another*, the counts chips from `courtesy.reason` grouping; § Rules keeps a schedule strip with no marks. Verify first that the server's affidavit list drops a job at zero balance. | Stacked on 1b. **Shipped without the pause:** the payment rows and remainders are in; *paying it down* / *Record what they promised* moved to PR 3. |
+| 3 | *Paying it down*: a payment after the packet pauses `courtesyStatus` / `letterTwoStatus` until the promised date or a week; the usual move becomes *Record what they promised* (a promise record on the sent notice); the attorney's letter waits unless the office sends it by hand. Needs Taunya's two answers below. | After 2, with the owner's word. |
 
 ## Where it was built
 

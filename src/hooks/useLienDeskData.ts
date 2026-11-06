@@ -111,6 +111,8 @@ export type LienDeskData = {
   gcsHeldBefore: ReadonlySet<string>
   /** The claim set by hand per job (v2.3682) — empty when none, or when the table is not there yet. */
   claimCorrectionsByJob: Record<string, LienClaimCorrection>
+  /** The payments on every job with a sent notice, with their day (PR 2 of #274): the step brief's timeline draws each as a row. Absent in light mode or when the read failed. */
+  paymentsByJob?: Record<string, Array<{ amount: number; paidOn: string | null }>>
   /** The job's affidavits and releases of record (v2.3761) — the timeline's tail; empty in light mode. */
   filingsByJob: Record<string, JobLienFilingRow[]>
   /** The job's live demand letters (v2.3880) — the timeline's demand node on the desk's panes; absent in light mode and on the GC run. */
@@ -277,6 +279,19 @@ export function useLienDeskData(
             }
           }
         }
+        // The payments behind every sent notice, with their day (PR 2 of #274): the timeline's green rows. A failed read leaves them out, never the desk dark.
+        let paymentsByJob: Record<string, Array<{ amount: number; paidOn: string | null }>> | undefined
+        const sentJobIds = light ? [] : [...new Set(items.filter((i) => i.status === 'sent').map((i) => i.job_id))]
+        if (sentJobIds.length > 0) {
+          type PaidRow = { job_id: string; amount: number | null; paid_on: string | null }
+          const paid = await withSupabaseRetry(() => supabase.from('jobs_ledger_payments').select('job_id, amount, paid_on').in('job_id', sentJobIds), 'lien desk: payments behind the sent notices').catch(() => null)
+          if (cancelled) return
+          if (paid) {
+            paymentsByJob = {}
+            for (const p of paid as PaidRow[]) (paymentsByJob[p.job_id] ??= []).push({ amount: Number(p.amount) || 0, paidOn: p.paid_on ? String(p.paid_on).slice(0, 10) : null })
+            for (const list of Object.values(paymentsByJob)) list.sort((a, b) => (a.paidOn ?? '') < (b.paidOn ?? '') ? -1 : 1)
+          }
+        }
         const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd, queueJobs)
         const gcNames: Record<string, string> = {}
         for (const g of Object.values(gcsById)) gcNames[g.id] = g.name
@@ -388,6 +403,7 @@ export function useLienDeskData(
           summary: summaryWithBatches,
           rows,
           items,
+          paymentsByJob,
           affidavits,
           affidavitRows,
           retainage,

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { LIEN_STEP_LADDERS, lienRunRungWords, lienStepName, lienStepTiles, type LienStepAt, type LienStepCard, type LienStepCounts, type LienStepLadder, type LienStepN } from '../../lib/jobs/lienNextUpSteps'
 import { lienReminderRungWords, type LienReminderBrief } from '../../lib/jobs/lienReminders'
 import { LIEN_REMINDER_SCHEDULE, LIEN_SCHEDULE_AXIS_DAYS, LIEN_SCHEDULE_TAIL, lienScheduleMarks, lienSchedulePct, lienScheduleWords } from '../../lib/jobs/lienReminderSchedule'
+import type { LienTimelineRow } from '../../lib/jobs/lienNoticeTimeline'
+import { LienNoticeTimeline } from './LienNoticeTimeline'
 
 /**
  * The Do now list's steps, drawn (v2.4631): the rail of four rungs per kind of paper above the
@@ -176,7 +178,9 @@ export function LienReminderScheduleStrip({ marks = [], isMobile, tone = 'var(--
  * so; the brief teaches the step instead, and the list below is sorted, not dimmed. On a rail that
  * had no brief yet (v2.6574) the head and the count still read; since v2.6577 every rail has one.
  */
-export function LienStepBrief({ on, brief, count, marks, isMobile, onClear, children }: { on: LienStepAt; brief: LienReminderBrief | null; count: number; marks?: ReadonlyArray<number | null | undefined>; isMobile: boolean; onClear: () => void; children?: ReactNode }) {
+export type LienStepBriefTimeline = { rows: ReadonlyArray<LienTimelineRow>; options: ReadonlyArray<{ jobId: string; title: string }>; picked: string; onPick: (jobId: string) => void }
+
+export function LienStepBrief({ on, brief, count, marks, timeline, whyChips, isMobile, onClear, children }: { on: LienStepAt; brief: LienReminderBrief | null; count: number; marks?: ReadonlyArray<number | null | undefined>; /** One notice's dated timeline (PR 2 of #274); without it the REMINDERS rail draws the schedule strip. */ timeline?: LienStepBriefTimeline | null; /** Why these N are here, as counts. */ whyChips?: ReadonlyArray<{ why: string; n: number }>; isMobile: boolean; onClear: () => void; children?: ReactNode }) {
   const tone = LADDER_TONE[on.ladder]
   const k: CSSProperties = { fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 2 }
   const words: CSSProperties = { fontSize: '0.8125rem', lineHeight: 1.45, color: 'var(--text-700)', margin: 0 }
@@ -192,10 +196,14 @@ export function LienStepBrief({ on, brief, count, marks, isMobile, onClear, chil
           Every step
         </button>
       </div>
-      {on.ladder === 'reminder' ? <LienReminderScheduleStrip marks={marks} isMobile={isMobile} tone={tone.fg} tint={tone.tint} /> : null}
+      {brief ? <div><div style={k}>In plain words</div><p style={{ ...words, fontSize: '0.875rem', maxWidth: '76ch' }} data-testid="lien-step-brief-plain">{brief.plain}</p></div> : null}
+      {on.ladder === 'reminder' && timeline && timeline.rows.length ? (
+        <LienNoticeTimeline rows={timeline.rows} isMobile={isMobile} tone={tone.fg} picker={{ options: timeline.options, picked: timeline.picked, onPick: timeline.onPick }} action={brief?.usual ? { press: brief.usual.press, who: brief.who, means: brief.usual.means, instead: brief.instead.slice(0, 2) } : null} />
+      ) : on.ladder === 'reminder' ? (
+        <LienReminderScheduleStrip marks={marks} isMobile={isMobile} tone={tone.fg} tint={tone.tint} />
+      ) : null}
       {brief ? (
         <div style={{ display: 'grid', gap: 10 }}>
-          <div><div style={k}>In plain words</div><p style={{ ...words, fontSize: '0.875rem', maxWidth: '76ch' }} data-testid="lien-step-brief-plain">{brief.plain}</p></div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.1fr) minmax(0, 1fr)', gap: isMobile ? 8 : '10px 24px' }}>
             <div>
               <div style={k}>What to do now</div>
@@ -205,7 +213,17 @@ export function LienStepBrief({ on, brief, count, marks, isMobile, onClear, chil
                 <p style={words} data-testid="lien-step-brief-usual">Nothing. This one needs nobody.</p>
               )}
             </div>
-            <div><div style={k}>Why {paper === 'affidavit' ? 'an affidavit' : 'a notice'} is here</div><p style={words}>{brief.why}</p></div>
+            <div>
+              <div style={k}>Why {whyChips && whyChips.length ? `these ${count === 1 ? 'one is' : `${count} are`}` : paper === 'affidavit' ? 'an affidavit is' : 'a notice is'} here</div>
+              {whyChips && whyChips.length ? (
+                <div data-testid="lien-step-brief-why" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+                  {whyChips.map((c) => (
+                    <span key={c.why} style={{ fontSize: '0.78rem', padding: '2px 9px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--border-strong)' }}><strong style={{ color: tone.fg }}>{c.n}</strong> · {c.why}</span>
+                  ))}
+                </div>
+              ) : null}
+              <p style={{ ...words, color: whyChips && whyChips.length ? 'var(--text-muted)' : undefined }}>{brief.why}</p>
+            </div>
             <div>
               <div style={k}>If that is not right</div>
               <div data-testid="lien-step-brief-instead" style={{ display: 'grid', gap: 3 }}>
