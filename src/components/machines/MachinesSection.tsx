@@ -268,13 +268,13 @@ function useAgreementPhotoSrcs(machines: readonly Machine[], checks: readonly Ma
     .filter((m) => agreementState(m, checks) === 'photo')
     .map((m) => agreementPhotos(checks, m.id)[0])
     .filter((x): x is { photo: MachinePhoto; check: MachineCheck } => x != null && !x.photo.src && !x.photo.filedAt)
-    .map((x) => `${x.check.machineId}/${x.photo.id}`)
-  const key = wanted.join('|')
+    .map((x) => ({ vehicleId: x.check.machineId, photoId: x.photo.id }))
+  const key = wanted.map((w) => `${w.vehicleId}/${w.photoId}`).join('|')
   useEffect(() => {
-    const missing = wanted.filter((w) => !(w.split('/')[1] in srcs))
+    const missing = wanted.filter((w) => !(w.photoId in srcs))
     if (missing.length === 0) return
     let live = true
-    Promise.all(missing.map(async (w) => { const [vehicleId, photoId] = w.split('/'); return [photoId, await photoSrc(vehicleId, photoId).catch(() => null)] as const })).then((pairs) => {
+    Promise.all(missing.map(async (w) => [w.photoId, await photoSrc(w.vehicleId, w.photoId).catch(() => null)] as const)).then((pairs) => {
       if (live) setSrcs((s) => ({ ...s, ...Object.fromEntries(pairs) }))
     })
     return () => {
@@ -312,9 +312,9 @@ function RentalEditor({ machine, busy, photo, onSave, onClose }: { machine: Mach
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{photo ? 'Read the agreement number and the due-back day off the paper.' : 'The checks at pickup and at return are the evidence against a damage claim.'}</span>
       </div>
       {photo ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.5rem 0.7rem', alignItems: 'start' }} data-rental-editor-photo>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.7rem', alignItems: 'flex-start' }} data-rental-editor-photo>
           <AgreementThumb shot={photo} size={160} />
-          <div style={{ display: 'grid', gap: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'grid', gap: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-muted)', flex: '1 1 200px', minWidth: 0 }}>
             <span>
               {photo.byName} took it {dayWords(photo.day, todayDay())}. Tap the picture to open it full size.
             </span>
