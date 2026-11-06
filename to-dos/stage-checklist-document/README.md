@@ -2,7 +2,7 @@
 name: "Stage checklists as documents on the job: items anyone on the job can add, a stamp on every answer, a signature where the author asks for one, and a record that files itself"
 number: 237
 group: ready
-status: PR 1 shipped v2.6328 (#6797) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · PR 1b shipped v2.6347 (#6798, migration 20261102084500): the named groups on Documents, Skip on this job, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼, the add box staying open, the estimator as author · PR 2 shipped v2.6563 (#7109, migration 20261106040000, pushed 2026-11-05): the Needs a signature toggle, the signature sheet, the lock, Take it back, the outbox ride, the guide · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
+status: PR 1 shipped v2.6328 (#6797) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · PR 1b shipped v2.6347 (#6798, migration 20261102084500): the named groups on Documents, Skip on this job, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼, the add box staying open, the estimator as author · PR 2 shipped v2.6563 (#7109, migration 20261106040000, pushed 2026-11-05): the Needs a signature toggle, the signature sheet, the lock, Take it back, the outbox ride, the guide · PR 3 built on claude/237-record-pr3 (v2.6571, migration 20261106050000): stage_checklist_records filed by trigger at the last answer, the sheet as paper, the PDF by the photo-save sweep, Amend, Print the checklists, the guide; the migration and the photo-save deploy wait on the merge · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
 summary: >
   The stage checklists of punch list #164 live in Settings, hold only the company's questions,
   and show the office nothing per job. The owner wants them moved onto the job's Documents tab as
@@ -12,10 +12,10 @@ summary: >
   with a number and a PDF in the job's Drive folder. The company's standard lists are made in the
   same place and promoted from a job, so Settings becomes a read-only mirror. The superintendent's
   line of #234 reads the same count as its proof.
-next: PR 3, the record.
+next: PR 4, authoring on Documents.
 size: L as a train of six (M · M · M · M · S · S); four migrations; no edge function beyond the PDF renderer the hours statement already has
 blocker: none for PR 1b and PR 4. PR 2 takes "Not here signs" and PR 3 takes "files itself at the last answer" as the owner's defaults; he can change either before they build.
-ver: v2.6563 · 6420 · 6350 · 6347 · 6329 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
+ver: v2.6571 · 6563 · 6420 · 6350 · 6347 · 6329 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
 opinion: now — the office has typed no questions yet because there was nowhere good to read the answers; this gives them the place, and the signature is what makes a checklist worth more than a report
 mockup: to-dos/stage-checklist-document/mockup-document-and-signature.html
 ---
@@ -293,6 +293,17 @@ with v1 still filed; press *Use as the company's list* and read the Settings car
 Delete every ZZ Test row after.
 
 ## Where it stands
+
+2026-11-06: PR 3 built on `claude/237-record-pr3` (v2.6571, migration `20261106050000`,
+`docs/recent-features/v2.6571.md`): `stage_checklist_records` filed by the database at the last answer
+(`stage_checklist_record_settle`, the SQL twin of `questionWaitsOn`, so a report photo and a signature from the outbox
+file too), `CL-<job number>-<n>` counted per job, the sheet as paper with the record line and nothing to press, the
+Documents chip *Filed · CL-…* with Open in Drive, **Amend** with a reason as the next version (a check added, a skip or
+a take back amends by itself), **Print the checklists** on light paper, and the PDF drawn by `photo-save` from the
+snapshot into the job's photo folder, each version its own file. The two calls the card said the build would meet: each
+version keeps its own PDF (the recommendation), and a technician may take back their own signed answer (PR 2's call),
+which amends the record. Not in it: the filed No on the Pipeline's mark, and the PDF on the GC portal and the pay
+application packet. Not merged yet; the migration is pushed right after the merge and `photo-save` deployed after it.
 
 2026-11-05: PR 2 shipped as #7109 (v2.6563, migration `20261106040000`, pushed the same night,
 `docs/recent-features/v2.6563.md`): *Needs a signature* beside *Asks for a photo* on the sheet's and the Documents

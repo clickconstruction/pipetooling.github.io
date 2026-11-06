@@ -10,7 +10,11 @@
  * two presses. A ready stage folds to one line on a phone; a press on a stage's name opens or folds it. The office
  * answers on the sheet under the window's address, as the crew does; this section reads. A check that needs a signature
  * (PR 2) wears *needs a signature* while open and *signed* with the mark once signed, and an answer taken back reads as
- * a *Taken back* line under its row with the voided mark kept. The rules are
+ * a *Taken back* line under its row with the voided mark kept. Once filed (PR 3: the database files the record by
+ * itself at the last answer) the stage's chip reads *Filed · CL-1042-1*, the line under it the record's version, time,
+ * counts and the PDF's standing with *Open in Drive*, every version on a line of its own, and **Amend** (two presses,
+ * with a reason) opens the stage again as the next version; a stage open after a filing reads *Amending v1 · 3 of 6*.
+ * **Print the checklists** beside the heading draws the three stages on light paper. The rules are
  * `lib/jobs/stageChecklist.ts` and `stageChecklistItems.ts`; the read is `useJobStageChecklists`, the one the strip
  * uses, whose readers on a job move together: a check added here counts on the strip at once, and an answer on the
  * strip's sheet lands here.
@@ -62,6 +66,8 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { TAKE_BACK_WORDS, voidedLineWords } from '../../lib/jobs/stageChecklistSignature'
+import { AMEND_WHY_MAX_CHARS, AMEND_WORDS, PRINT_WORDS, amendProblem, amendedToastWords, amendingChipWords, amendingRecordOf, buildChecklistPaperHtml, filedChipWords, filedFootWords, filedRecordOf, paperJobLabel, paperRowFromLive, paperRowFromRecordRow, recordLineWords, recordPdfUrl, recordsOfStage, skippedLineWords as recordSkippedLineWords, versionsLineWords, type ChecklistRecord, type PaperStage } from '../../lib/jobs/stageChecklistRecord'
+import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { SignatureMark } from '../stageChecklists/ChecklistSignatureSheet'
 import { PlanSheetChip } from '../stageChecklists/PlanSheetChip'
 import { AddCheckBox } from '../stageChecklists/StageChecklistSheet'
@@ -92,9 +98,10 @@ const reasonBox: CSSProperties = { flex: '1 1 14rem', minWidth: 0, padding: '0.3
 const glyphTone = (pick: string | null | undefined): CSSProperties => ({ fontWeight: 700, color: pick === 'yes' ? 'var(--text-green-700)' : pick === 'no' ? 'var(--text-red-700)' : 'var(--text-muted)' })
 
 /** The one two-press ask a row can have open: the take off, the skip with its reason, or the company's list. */
+const recordLine: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0.15rem 0 0' }
 type RowAsk = { id: string; kind: 'take-off' | 'skip' | 'promote' }
 
-export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: string; job_plans_link?: string | null }; io?: StageChecklistSheetIo; onRequestTab?: (tab: JobWindowTabKey) => void }) {
+export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: string; job_plans_link?: string | null; hcp_number?: string | null; click_number?: string | null; job_name?: string | null; customer_name?: string | null; job_address?: string | null }; io?: StageChecklistSheetIo; onRequestTab?: (tab: JobWindowTabKey) => void }) {
   const { role, user, profileName } = useAuth()
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
@@ -109,6 +116,10 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
   const [skipWhy, setSkipWhy] = useState('')
   const [skipBlocked, setSkipBlocked] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  // Amend (#237 PR 3): the filed record being amended, with its reason.
+  const [amendingId, setAmendingId] = useState<string | null>(null)
+  const [amendWhy, setAmendWhy] = useState('')
+  const [amendBlocked, setAmendBlocked] = useState<string | null>(null)
   // The checks with Dispatch on this job (#245, PR 3), read once beside the rows; a refused read draws no chip.
   const [withDispatch, setWithDispatch] = useState<OpenStageCheck[]>([])
   const dispatchIo = read.io.dispatch ?? null
@@ -202,6 +213,42 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
       setBusy(null)
     }
   }
+  const amend = async (stage: JobStageChecklist, record: ChecklistRecord) => {
+    const blocked = amendProblem(amendWhy)
+    setAmendBlocked(blocked)
+    if (blocked) return
+    setBusy(record.id)
+    try {
+      const amended = await read.io.amend(record.id, amendWhy)
+      read.putRecords([amended])
+      setAmendingId(null)
+      setAmendWhy('')
+      showToast(amendedToastWords(stage.name, amended), 'success')
+    } catch (e) {
+      showToast(`The record was not amended. ${formatErrorMessage(e)}`, 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+  // Print the checklists (#237 PR 3): the job's stages on light paper, a filed one from its record, an open one as it stands.
+  const print = () => {
+    const paper: PaperStage[] = stages.map((stage) => {
+      const kind = stage.state.kind!
+      const filedRecord = filedRecordOf(read.records, stage.fixtureId)
+      if (filedRecord) return { name: stage.name, standing: recordLineWords(filedRecord), rows: filedRecord.rows.map(paperRowFromRecordRow), skipped: recordSkippedLineWords(filedRecord.skipped), foot: filedFootWords(stage.name, filedRecord.noCount) }
+      const template = templateFor(read.questions, kind, stage.fixtureId)
+      const answers = liveAnswersById(read.answersByFixture.get(stage.fixtureId) ?? [])
+      const p = checklistProgress(template, answers)
+      const skippedRows = skippedFor(read.questions, kind, stage.fixtureId).map(({ question, skip: s }) => ({ words: question.words, by: s.by, why: s.why }))
+      return { name: stage.name, standing: p.asked === 0 ? 'No questions yet' : `Open · ${p.answered} of ${p.asked} answered`, rows: template.map((q) => paperRowFromLive(q, answers.get(q.id))), skipped: recordSkippedLineWords(skippedRows), foot: '' }
+    })
+    if (paper.every((s) => s.rows.length === 0)) {
+      showToast(PRINT_WORDS.nothing, 'warning')
+      return
+    }
+    const ok = openHtmlPrintWindow(buildChecklistPaperHtml({ jobLabel: paperJobLabel(job), customer: (job.customer_name ?? '').trim() || null, address: (job.job_address ?? '').trim() || null, printedAtIso: new Date().toISOString(), stages: paper }))
+    if (!ok) showToast(PRINT_WORDS.blocked, 'error')
+  }
   const promote = async (stage: JobStageChecklist, q: StageChecklistQuestion) => {
     setBusy(q.id)
     try {
@@ -227,6 +274,11 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
             {summary}
           </span>
         ) : null}
+        {stages.length > 0 ? (
+          <button type="button" style={{ ...documentsQuietButton, marginLeft: 'auto' }} onClick={print} data-testid="job-documents-checklists-print">
+            {PRINT_WORDS.press}
+          </button>
+        ) : null}
       </div>
       {failure ? (
         <OfflineRetryPanel failure={failure} onRetry={read.reload} surface="job-documents-checklists" idempotent busy={read.loading} />
@@ -248,7 +300,17 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
             const skipped = skippedFor(read.questions, kind, stage.fixtureId)
             const stageAnswers = read.answersByFixture.get(stage.fixtureId) ?? []
             const answers = liveAnswersById(stageAnswers)
-            const chip = stageStandingChip(stage.state, skipped.length)
+            // The record (#237 PR 3): filed, the chip and the line say so; amended, the chip says which version is open again.
+            const stageRecords = recordsOfStage(read.records, stage.fixtureId)
+            const filedRecord = filedRecordOf(read.records, stage.fixtureId)
+            const amendingRecord = amendingRecordOf(read.records, stage.fixtureId)
+            const chip = filedRecord
+              ? { words: filedChipWords(filedRecord), tone: 'green' as StandingTone }
+              : amendingRecord
+                ? { words: amendingChipWords(amendingRecord, stage.state.answered, stage.state.asked), tone: 'amber' as StandingTone }
+                : stageStandingChip(stage.state, skipped.length)
+            const pdfUrl = filedRecord ? recordPdfUrl(filedRecord) : null
+            const versions = versionsLineWords(stageRecords)
             const isFolded = folded?.[stage.fixtureId] ?? false
             const words = addCheckWords(stage.name)
             const skipLines = skipWords(stage.name)
@@ -413,8 +475,72 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
                   <button type="button" style={documentsLinkButton} aria-expanded={!isFolded} onClick={() => setFolded((f) => ({ ...(f ?? {}), [stage.fixtureId]: !isFolded }))}>
                     {stage.name}
                   </button>
-                  <span style={{ ...documentsChip, marginLeft: 0, ...chipTone[chip.tone] }}>{chip.words}</span>
+                  <span style={{ ...documentsChip, marginLeft: 0, ...chipTone[chip.tone] }} data-checklist-stage-chip={filedRecord ? 'filed' : amendingRecord ? 'amending' : 'open'}>
+                    {chip.words}
+                  </span>
                 </div>
+                {filedRecord ? (
+                  <p style={recordLine} data-testid="job-documents-checklist-record">
+                    {recordLineWords(filedRecord)}
+                    {pdfUrl ? (
+                      <>
+                        {' · '}
+                        <a href={pdfUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)' }}>
+                          Open in Drive ↗
+                        </a>
+                      </>
+                    ) : null}
+                  </p>
+                ) : null}
+                {versions ? (
+                  <p style={recordLine} data-testid="job-documents-checklist-versions">
+                    {versions}
+                  </p>
+                ) : null}
+                {filedRecord && canAdd ? (
+                  amendingId === filedRecord.id ? (
+                    <div style={askLine} data-testid="job-documents-checklist-amend">
+                      <span style={{ ...muted, flexBasis: '100%' }}>{AMEND_WORDS.hint}</span>
+                      <input
+                        type="text"
+                        aria-label={AMEND_WORDS.label}
+                        placeholder={AMEND_WORDS.placeholder}
+                        value={amendWhy}
+                        maxLength={AMEND_WHY_MAX_CHARS}
+                        autoFocus
+                        onChange={(e) => setAmendWhy(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key !== 'Enter') return
+                          e.preventDefault()
+                          void amend(stage, filedRecord)
+                        }}
+                        style={reasonBox}
+                      />
+                      <button type="button" style={documentsQuietButton} disabled={busy === filedRecord.id} onClick={() => void amend(stage, filedRecord)}>
+                        {AMEND_WORDS.confirm}
+                      </button>
+                      <button type="button" style={{ ...quiet, ...touch }} onClick={() => setAmendingId(null)}>
+                        {AMEND_WORDS.keep}
+                      </button>
+                      {amendBlocked ? <span style={{ ...muted, flexBasis: '100%', color: 'var(--text-amber-700)', fontWeight: 600 }}>{amendBlocked}</span> : null}
+                    </div>
+                  ) : (
+                    <div style={pressLine}>
+                      <button
+                        type="button"
+                        style={{ ...quiet, ...touch }}
+                        onClick={() => {
+                          setAmendWhy('')
+                          setAmendBlocked(null)
+                          setAmendingId(filedRecord.id)
+                        }}
+                        aria-label={`${AMEND_WORDS.press}: ${stage.name}`}
+                      >
+                        {AMEND_WORDS.press}
+                      </button>
+                    </div>
+                  )
+                ) : null}
                 {isFolded ? null : (
                   <div style={{ marginTop: '0.25rem' }}>
                     {hasList ? (

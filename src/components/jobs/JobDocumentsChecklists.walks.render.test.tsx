@@ -47,6 +47,8 @@ function fakeIo(over: Partial<StageChecklistSheetIo> = {}, questions: StageCheck
     sign: vi.fn(async () => { throw new Error('not here') }),
     takeBack: vi.fn(async () => { throw new Error('not here') }),
     inkUrl: vi.fn(async () => null),
+    records: vi.fn(async () => []),
+    amend: vi.fn(async () => { throw new Error('not here') }),
     addItem: vi.fn(async (input, who) => {
       const q: StageChecklistQuestion = { id: `j-new-${++seq}`, kind: input.kind, order: input.order ?? 0, words: input.words, asksPhoto: input.asksPhoto, fixtureId: input.fixtureId, addedById: who.userId, addedBy: who.name, addedAt: '2026-11-02T16:00:00.000Z', sheet: input.sheet || null, why: input.why || null }
       live.push(q)

@@ -350,7 +350,7 @@ export function JobWindowDocumentsTab({
       <StatementsOfChargesSection job={job} onOverlayOpenChange={onOverlayOpenChange} zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX} />
 
       {/* Stage checklists as documents (punch list #237, PR 1): each stage's standing and every answer with its stamp; the office adds a check for this job inline. */}
-      <JobDocumentsChecklists job={job} onRequestTab={onRequestTab} />
+      <JobDocumentsChecklists job={{ id: job.id, job_plans_link: job.job_plans_link, hcp_number: job.hcp_number, click_number: job.click_number, job_name: job.job_name, customer_name: job.customer_name, job_address: job.job_address }} onRequestTab={onRequestTab} />
 
       {canReadSentCopies(role) ? <JobDocumentsSent job={job} rows={otherSent} /> : null}
 

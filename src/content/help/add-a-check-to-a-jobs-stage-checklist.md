@@ -95,3 +95,5 @@ The crew stops seeing it. The Documents tab stops listing it too. The app keeps 
 Every answer stamps its row with the person's name and the time. On the Documents tab each row reads the pick, the name, the time, the note and where the photo is. A row that reads *open* is not answered yet. A No or a Not here is an answer. Open is what holds a stage.
 
 A check that needs a signature reads *needs a signature* until the crew signs it. A signed row reads *signed* with the mark. The guide [sign a checklist answer](/help/sign-a-checklist-answer) says what the crew sees and how an answer is taken back.
+
+Once every question is answered, the stage files itself as a record with a number. Its chip reads like *Filed · CL-1042-1*. A check added to a filed stage opens it again as a new version. The guide [read a filed stage checklist](/help/read-a-filed-stage-checklist) has the record, Amend and Print the checklists.

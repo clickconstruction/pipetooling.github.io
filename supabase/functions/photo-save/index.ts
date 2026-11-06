@@ -1,7 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import { googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { freeName, photoFolderOrWhy } from '../_shared/driveJobFolder.ts'
+import type { PdfLibLike } from '../_shared/jobContractPdf.ts'
+import { buildStageChecklistPdf, recordPdfFileName, type RecordPdfRow } from '../_shared/stageChecklistPdf.ts'
 import { machineFolderOrWhy } from '../_shared/driveMachineFolder.ts'
 import { driveFailWords } from '../_shared/whereFilesGo.ts'
 import type { JobRef } from '../_shared/driveLink.ts'
@@ -29,7 +32,7 @@ import {
  * job later is caught then. The design is quo-messages-mockup.html drafts 8 and 9 on branch spike/gc-mode.
  *
  *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }], boxes: { saved, failed }, reports: { saved, failed },
- *     checklists: { saved, failed }, jobPhotos: { saved, failed } }
+ *     checklists: { saved, failed }, jobPhotos: { saved, failed }, records: { saved, failed } }
  *
  * Materials on site (punch list #209, v2.6045): a second source after the Messages pass. A photo a crew takes of a box on
  * the On site tab waits in the box-photos bucket with a row in job_box_photos; the sweep files it in the same photo folder
@@ -496,6 +499,116 @@ async function sweepMachinePhotos(admin: SupabaseClient): Promise<{ saved: numbe
   return { saved, failed }
 }
 
+// ---------------------------------------------------------------------------
+// The checklist records (punch list #237, PR 3): a stage's list files itself as stage_checklist_records at the last
+// answer (migration 20261106050000); the sweep draws each record's PDF from its snapshot, with the drawn marks read from
+// the stage-checklist-photos bucket, and files it in the job's photo folder, each version its own file. Five tries at
+// most; a failure is written on the row and tried again next run.
+// ---------------------------------------------------------------------------
+
+const RECORD_BATCH = 10
+const RECORD_PDF_TRIES = 5
+
+type RecordRowDb = {
+  id: string
+  job_id: string
+  record_id: string
+  version: number
+  stage_name: string
+  filed_at: string
+  snapshot: { rows?: RecordPdfRow[]; skipped?: Array<{ words: string; by?: string | null; why?: string | null }> } | null
+  answer_count: number
+  signed_count: number
+  no_count: number
+  pdf_file_name: string | null
+  pdf_tries: number
+}
+
+async function sweepRecords(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
+  const { data, error } = await admin
+    .from('stage_checklist_records')
+    .select('id, job_id, record_id, version, stage_name, filed_at, snapshot, answer_count, signed_count, no_count, pdf_file_name, pdf_tries')
+    .is('pdf_filed_at', null)
+    .lt('pdf_tries', RECORD_PDF_TRIES)
+    .order('filed_at', { ascending: true })
+    .limit(RECORD_BATCH)
+  if (error) return { saved: 0, failed: [{ id: '', why: `the checklist records did not read: ${error.message}` }] }
+  const rows = (data ?? []) as RecordRowDb[]
+  if (rows.length === 0) return { saved: 0, failed: [] }
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  let saved = 0
+  const failed: { id: string; why: string }[] = []
+  const fail = async (r: RecordRowDb, why: string) => {
+    failed.push({ id: r.id, why })
+    await admin.from('stage_checklist_records').update({ pdf_fail_why: why.slice(0, 300), pdf_tries: r.pdf_tries + 1, updated_at: new Date().toISOString() }).eq('id', r.id).is('pdf_filed_at', null)
+  }
+  if (!saJson) {
+    for (const r of rows) await fail(r, 'Drive is not set up here yet.')
+    return { saved, failed }
+  }
+  let google: string
+  try {
+    google = await googleAccessToken(saJson)
+  } catch (e) {
+    for (const r of rows) await fail(r, `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`)
+    return { saved, failed }
+  }
+  const folders = new Map<string, { id: string } | { why: string }>()
+  for (const r of rows) {
+    try {
+      const job: JobRef = { jobs_ledger_id: r.job_id }
+      if (!folders.has(r.job_id)) folders.set(r.job_id, await photoFolderOrWhy(admin, google, job))
+      const landing = folders.get(r.job_id)!
+      if ('why' in landing) {
+        await fail(r, landing.why)
+        continue
+      }
+      const { data: jobRow } = await admin.from('jobs_ledger').select('hcp_number, click_number, job_name, customer_name, job_address').eq('id', r.job_id).maybeSingle()
+      const j = (jobRow ?? {}) as { hcp_number?: string | null; click_number?: string | null; job_name?: string | null; customer_name?: string | null; job_address?: string | null }
+      const number = (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim() || r.job_id.slice(0, 8)
+      const snapRows = Array.isArray(r.snapshot?.rows) ? r.snapshot!.rows! : []
+      // The drawn marks, read from the bucket; one that will not read prints the name instead.
+      const inks = new Map<string, Uint8Array>()
+      for (const row of snapRows) {
+        const path = row.signature?.storagePath
+        if (!path || inks.has(path)) continue
+        const { data: blob } = await admin.storage.from('stage-checklist-photos').download(path)
+        if (blob) inks.set(path, new Uint8Array(await blob.arrayBuffer()))
+      }
+      const bytes = await buildStageChecklistPdf(pdfLib as unknown as PdfLibLike, {
+        recordId: r.record_id,
+        version: r.version,
+        stageName: r.stage_name,
+        filedAtIso: r.filed_at,
+        job: { number, name: (j.job_name ?? '').trim(), customer: (j.customer_name ?? '').trim() || null, address: (j.job_address ?? '').trim() || null },
+        rows: snapRows,
+        skipped: Array.isArray(r.snapshot?.skipped) ? r.snapshot!.skipped! : [],
+        answerCount: r.answer_count,
+        signedCount: r.signed_count,
+        noCount: r.no_count,
+        inks,
+      })
+      const wanted = r.pdf_file_name || recordPdfFileName(r.record_id, r.stage_name)
+      const name = await freeName(google, landing.id, (taken) => nextFreeName(wanted, taken))
+      const put = await uploadBytes(google, landing.id, bytes, name, 'application/pdf')
+      const { error: kept } = await admin
+        .from('stage_checklist_records')
+        .update({ pdf_drive_file_id: put.id, pdf_file_name: name.slice(0, 200), pdf_filed_at: new Date().toISOString(), pdf_fail_why: null, updated_at: new Date().toISOString() })
+        .eq('id', r.id)
+        .is('pdf_drive_file_id', null)
+      if (kept) {
+        await fail(r, 'Saved to Drive, but the row did not keep it.')
+        continue
+      }
+      saved += 1
+    } catch (e) {
+      await fail(r, driveFailWords(e instanceof Error ? e.message : String(e)))
+    }
+  }
+  if (failed.length) console.warn('photo-save: some checklist records were not filed', failed)
+  return { saved, failed }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405)
@@ -510,8 +623,9 @@ serve(async (req) => {
     const checklists = await sweepWaiting(admin, CHECKLIST_SOURCE)
     const jobPhotos = await sweepNamedPhotos(admin, JOB_PHOTO_SOURCE)
     const machines = await sweepMachinePhotos(admin)
+    const records = await sweepRecords(admin)
     const body = (await messages.json()) as Record<string, unknown>
-    return json({ ...body, boxes, reports, checklists, jobPhotos, machines }, messages.status)
+    return json({ ...body, boxes, reports, checklists, jobPhotos, machines, records }, messages.status)
   } catch (e) {
     console.error('photo-save', e)
     return json({ error: e instanceof Error ? e.message : 'The sweep failed.' }, 500)

@@ -52,6 +52,8 @@ function fakeIo(over: Partial<StageChecklistSheetIo> = {}): StageChecklistSheetI
     sign: vi.fn(async () => { throw new Error('not here') }),
     takeBack: vi.fn(async () => { throw new Error('not here') }),
     inkUrl: vi.fn(async (path) => (path ? `blob:${path}` : null)),
+    records: vi.fn(async () => []),
+    amend: vi.fn(async () => { throw new Error('not here') }),
     addItem: vi.fn(async (input, who) => ({ id: 'j-new', kind: input.kind, order: input.order ?? 0, words: input.words, asksPhoto: input.asksPhoto, needsSignature: input.needsSignature === true, fixtureId: input.fixtureId, addedById: who.userId, addedBy: who.name, addedAt: '2026-11-05T16:00:00.000Z' })),
     retireItem: vi.fn(async () => undefined),
     mayAuthor: vi.fn(async () => false),

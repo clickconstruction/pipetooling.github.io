@@ -88,6 +88,7 @@ export function JobStageChecklistStrip({ jobId, io, rev = 0, plansUrl = null, op
           role={role}
           canAuthor={canAuthorOnJob(role, read.mayAuthor)}
           plansUrl={plansUrl}
+          records={read.records}
           io={read.io}
           onAnswer={read.putAnswer}
           onQuestionAdded={read.putQuestion}

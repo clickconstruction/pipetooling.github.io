@@ -2,7 +2,7 @@
 title: fill a stage checklist on the phone
 category: Field Work
 roles: helpers, subcontractor, master_technician, superintendent, primary
-keywords: stage checklist, checklist, rough in, top out, trim set, yes no not here, photo, not ready, pipeline, job mode, job window, crew, next, stamp, added for this job, skipped on this job, plan sheet, send to dispatch, with dispatch, signature, needs a signature, signed
+keywords: stage checklist, checklist, rough in, top out, trim set, yes no not here, photo, not ready, pipeline, job mode, job window, crew, next, stamp, added for this job, skipped on this job, plan sheet, send to dispatch, with dispatch, signature, needs a signature, signed, filed, record, paper
 where: /dashboard
 order: 12
 ---
@@ -53,5 +53,9 @@ A photo from a field report can answer the question too. Under a new photo on th
 ## When the stage reads ready
 
 The bottom of the sheet counts what is left. A stage reads **not ready** on the Pipeline until every question is answered. A question that asks for a photo needs its photo too. Once every question is answered, press {{button:green|Done}}.
+
+## When the checklist files
+
+The last answer files the checklist as a record. The sheet turns to paper. The top line reads the record number, like *Record CL-1042-1*. Nothing on the paper can be pressed. The office can amend it, and the sheet opens again as a new version. The guide [read a filed stage checklist](/help/read-a-filed-stage-checklist) has the rest.
 
 The answers never change the stage's percent or its bill. A test report does not count as a checklist.
