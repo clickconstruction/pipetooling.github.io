@@ -71,6 +71,20 @@ describe('the machines board at People → Vehicles', () => {
     expect(io.saveRental).toHaveBeenCalledWith('m3', expect.objectContaining({ from: 'Sunbelt', agreementNo: '48812-9', dueBack: '2026-11-20' }))
   })
 
+  it('Add a machine as a rental mints its label from who it is from, with the number free to wait for the photo', async () => {
+    renderWithProviders(<MachinesSection />)
+    await screen.findByText('E-12 · Kubota KX040')
+    fireEvent.click(screen.getByText('+ Add a machine'))
+    fireEvent.click(screen.getByText('Rental'))
+    expect(screen.queryByLabelText('Unit')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Rented from'), { target: { value: 'Sunbelt' } })
+    fireEvent.change(screen.getByLabelText('Make'), { target: { value: 'Bobcat' } })
+    fireEvent.change(screen.getByLabelText('Due back'), { target: { value: '2026-11-20' } })
+    fireEvent.click(screen.getByText('Add the Sunbelt rental'))
+    expect(io.addMachine).toHaveBeenLastCalledWith(expect.objectContaining({ unitLabel: 'Sunbelt rental', make: 'Bobcat', kind: 'excavator' }))
+    await vi.waitFor(() => expect(io.saveRental).toHaveBeenLastCalledWith('m3', { from: 'Sunbelt', agreementNo: '', outOn: todayDay(), dueBack: '2026-11-20' }))
+  })
+
   it('Add a machine writes the row with its template', async () => {
     renderWithProviders(<MachinesSection />)
     await screen.findByText('E-12 · Kubota KX040')

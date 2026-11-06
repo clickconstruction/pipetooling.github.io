@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agreementDue, agreementPage, agreementPhotoView, agreementPhotoWords, agreementPhotos, agreementShot, agreementState, agreementTiles, arrivalWords, assignmentClash, daysBetween, defaultLevels, machineDayWords, machineDays, machinesOnJob, mintRentalLabel, placeAfterLeaving, type MachineAssignment, gaugePreset, hoursLine, isHeld, leaveState, leaveWords, levelWords, rentalWords, lineState, lineWords, nextOpen, questionsFor, templateBlanksWords, verdictOf, walkProgress, type Machine, type MachineCheck, type MachinePhoto, type MachineQuestion } from './machines'
+import { agreementDue, agreementPage, agreementPhotoView, agreementPhotoWords, agreementPhotos, agreementShot, agreementState, agreementTiles, arrivalWords, assignmentClash, daysBetween, defaultLevels, machineDayWords, machineDays, machinesOnJob, mintRentalLabel, newMachineReady, newMachineWords, placeAfterLeaving, type MachineAssignment, gaugePreset, hoursLine, isHeld, leaveState, leaveWords, levelWords, rentalWords, lineState, lineWords, nextOpen, questionsFor, templateBlanksWords, verdictOf, walkProgress, type Machine, type MachineCheck, type MachinePhoto, type MachineQuestion } from './machines'
 
 const m: Machine = { id: 'm1', unitLabel: 'E-12', make: 'Kubota', model: 'KX040', kind: 'excavator', templateId: 't-exc', code: 'E12KX040', jobId: 'j1', jobWords: '972 · Test', heldSince: null, levels: defaultLevels('excavator'), rental: null, driveLink: null }
 const qs: MachineQuestion[] = [
@@ -206,5 +206,24 @@ describe('the agreement photo on the fleet board card (punch list #271, PR 2)', 
   })
   it('has nowhere to open before the URL is read, and names the file', () => {
     expect(agreementPhotoView({ photo, check }, undefined)).toMatchObject({ src: null, href: null, fileName: photo.fileName })
+  })
+})
+
+describe('the add forms’ gate and press (punch list #271, PR 3)', () => {
+  it('ours needs a make and the unit the crew says', () => {
+    expect(newMachineReady(true, { unit: 'E-14', make: 'Kubota', from: '', agreementNo: '' })).toBe(true)
+    expect(newMachineReady(true, { unit: ' ', make: 'Kubota', from: 'Sunbelt', agreementNo: '1' })).toBe(false)
+    expect(newMachineReady(true, { unit: 'E-14', make: '', from: '', agreementNo: '' })).toBe(false)
+  })
+  it('a rental needs a make and who it is from or its number, the number free to wait for the photo', () => {
+    expect(newMachineReady(false, { unit: '', make: 'Bobcat', from: 'Sunbelt', agreementNo: '' })).toBe(true)
+    expect(newMachineReady(false, { unit: '', make: 'Bobcat', from: '', agreementNo: '48812-3' })).toBe(true)
+    expect(newMachineReady(false, { unit: 'E-14', make: 'Bobcat', from: '', agreementNo: '' })).toBe(false)
+  })
+  it('the press names what it adds', () => {
+    expect(newMachineWords(true, { unit: 'E-14', from: '' })).toBe('E-14')
+    expect(newMachineWords(true, { unit: '', from: 'Sunbelt' })).toBe('it')
+    expect(newMachineWords(false, { unit: '', from: 'Sunbelt' })).toBe('the Sunbelt rental')
+    expect(newMachineWords(false, { unit: '', from: '' })).toBe('the rental')
   })
 })

@@ -130,7 +130,7 @@ A vehicle someone drives may have no insurance, registration or service on file.
 
 A machine is an excavator, a drill, a skid steer or a trencher. Machines have their own board above the trucks. It sits at People → Vehicles. A machine counts hours on a meter, not miles. The crew checks it before it runs.
 
-{{button:outline|+ Add a machine}} adds one. Give it the name the crew says, like E-14. Add the make and the model. Pick its template, like Small excavator or Skid steer. The template gives the machine its gauges and the questions of its walk. The app mints the code for its label.
+{{button:outline|+ Add a machine}} adds one. Choose {{button:blue|Ours}} or {{button:outline|Rental}}. Ours takes the name the crew says, like E-14. A rental takes who it is from, the agreement number and the due back day. The agreement number may stay blank until the tech photographs the paper at pickup. Add the make and the model. Pick its template, like Small excavator or Skid steer. The template gives the machine its gauges and the questions of its walk. The app mints the code for its label. A rental's name on the board comes from its number, like Rental 48812-3, or from the yard, like Sunbelt rental.
 
 Each card says where the machine is. The card reads On a job or In the yard. {{button:outline|Put on a job}} moves it to a job. {{button:outline|Hand off}} moves it to another job. {{button:outline|Back to the yard}} brings it home.
 
