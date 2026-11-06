@@ -25,6 +25,7 @@ import type { ArchiveReassignMode } from '../../lib/archiveUserDialog'
 import { PeopleHoursApprovalsQueueModal } from '../people/PeopleHoursApprovalsQueueModal'
 import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, DESK_EDITOR_Z, deskBtn, fmtDate } from './personDeskShared'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { PersonDeskAwayNoteModal } from './PersonDeskAwayNoteModal'
 
 type Resolutions = Record<string, { state: 'done' | 'left_open'; reason?: string }>
 
@@ -58,6 +59,7 @@ export function PersonDeskLifecycleModal({
   viewer,
   viewerUserId,
   userEmail,
+  userHasLogin = false,
   onClose,
   onChanged,
 }: {
@@ -66,6 +68,8 @@ export function PersonDeskLifecycleModal({
   viewer: PersonDeskViewer
   viewerUserId: string | null
   userEmail: string | null
+  /** A login stands behind the account (`users.login_attached_at`): the Away note can open their sign-in once archived. */
+  userHasLogin?: boolean
   onClose: () => void
   onChanged: () => void
 }) {
@@ -82,6 +86,8 @@ export function PersonDeskLifecycleModal({
   const [busy, setBusy] = useState<string | null>(null)
   const [queueOpen, setQueueOpen] = useState(false)
   const [queueReload, setQueueReload] = useState(0)
+  // The Away note (punch list #256 PR 8, v2.6587): written here before the finish, archive-user skips the ban for it.
+  const [awayNoteOpen, setAwayNoteOpen] = useState(false)
   const [wageInput, setWageInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   /** Leave: customers still on the account's name (null = not counted yet / no account). */
@@ -430,6 +436,11 @@ export function PersonDeskLifecycleModal({
                     <input type="checkbox" checked={hrNote} onChange={(e) => setHrNote(e.target.checked)} /> Note to HR file
                   </label>
                 ) : null}
+                {archiveAfter && archiveAllowed && personKey.userId && userHasLogin ? (
+                  <button type="button" style={deskBtn(BTN_QUIET, busy != null)} disabled={busy != null} onClick={() => setAwayNoteOpen(true)} title="The one screen they see while they are away: a note, a countdown to the day back, where we are and the office line. Their sign-in opens to it instead of the ban.">
+                    Leave a note…
+                  </button>
+                ) : null}
               </>
             ) : (
               <span style={{ color: 'var(--text-muted)' }}>
@@ -442,6 +453,9 @@ export function PersonDeskLifecycleModal({
           </button>
         </div>
       </div>
+      {awayNoteOpen && personKey.userId ? (
+        <PersonDeskAwayNoteModal userId={personKey.userId} displayName={personKey.displayName} archived={false} hasLogin={userHasLogin} leftYmd={endDate} readOnly={viewer.readOnly} onClose={() => setAwayNoteOpen(false)} />
+      ) : null}
       {queueOpen && personKey.userId ? (
         <PeopleHoursApprovalsQueueModal
           pinUserId={personKey.userId}

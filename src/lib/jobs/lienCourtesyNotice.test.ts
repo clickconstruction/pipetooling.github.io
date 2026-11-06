@@ -6,7 +6,7 @@ import {
   courtesyEmailText,
   courtesyFooterSentence,
   courtesyGreeting,
-  courtesyIsDue,
+  courtesyIsDue, courtesyMaySend,
   courtesyOutcomeWords,
   courtesyOwnerSubject,
   courtesyPayLine,
@@ -93,14 +93,18 @@ describe('the courtesy notice — where it stands on a sent notice', () => {
     expect(courtesyStatus({ letterTwo: letterTwo(), records: [], openBalance: 4850, todayYmd: TODAY, affidavit: null })).toMatchObject({ state: 'held', reason: 'no approved work month on the job yet — the filing window cannot be computed' })
     expect(courtesyStatus({ letterTwo: letterTwo(), records: [], openBalance: 4850, todayYmd: TODAY, affidavit: { ...affidavit, deadline: '' } })).toMatchObject({ state: 'held', reason: 'no filing window on record' })
     const near = courtesyStatus({ letterTwo: letterTwo({ day: 20 }), records: [], openBalance: 4850, todayYmd: '2026-11-12', affidavit, formatDay: (d) => d })
-    expect(near).toMatchObject({ state: 'held', reason: 'the affidavit is due 2026-11-16 · file it instead' })
+    // v2.6594: the affidavit's week is a priority, not a hold — its own state, no reason, the press still allowed.
+    expect(near).toMatchObject({ state: 'affidavit_week', words: 'the affidavit’s week · file it by 2026-11-16', reason: '' })
+    expect(courtesyMaySend(near)).toBe(true)
   })
 
-  it('reads sent inside a week of the last press, then due again with the send named', () => {
+  it('reads sent inside a week of the last press, and stays sent after it with the attorney’s letter named (v2.6594: one courtesy, never a second)', () => {
     const sent = courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [record], openBalance: 4850, todayYmd: TODAY, affidavit, formatDay: (d) => d })
-    expect(sent).toMatchObject({ state: 'sent', words: 'courtesy sent 2026-10-31 by email and text', lastSentAt: '2026-10-31T14:00:00Z' })
-    const again = courtesyStatus({ letterTwo: letterTwo({ day: 16 }), records: [record], openBalance: 4850, todayYmd: '2026-11-09', affidavit, formatDay: (d) => d })
-    expect(again).toMatchObject({ state: 'due', words: 'day 16 · courtesy sent 2026-10-31 by email and text · nothing since' })
+    expect(sent).toMatchObject({ state: 'sent', waitingForAnswer: true, words: 'courtesy sent 2026-10-31 by email and text', lastSentAt: '2026-10-31T14:00:00Z' })
+    const quiet = courtesyStatus({ letterTwo: letterTwo({ day: 16 }), records: [record], openBalance: 4850, todayYmd: '2026-11-09', affidavit, formatDay: (d) => d })
+    expect(quiet).toMatchObject({ state: 'sent', waitingForAnswer: false, words: 'day 16 · courtesy sent 2026-10-31 by email and text · nothing since · the attorney’s letter next' })
+    expect(courtesyIsDue(quiet)).toBe(false)
+    expect(courtesyMaySend(quiet)).toBe(true)
     const emailOnly: CourtesyRecord = { ...record, to: record.to.filter((t) => t.channel === 'email') }
     expect(courtesyStatus({ letterTwo: letterTwo(), records: [emailOnly], openBalance: 4850, todayYmd: TODAY, affidavit }).words).toMatch(/by email$/)
   })
@@ -114,7 +118,7 @@ describe('the courtesy notice — where it stands on a sent notice', () => {
     const closed = courtesyStatus({ letterTwo: letterTwo(), records: [], openBalance: 0, todayYmd: TODAY, affidavit })
     expect(courtesyFooterSentence(closed, '$0.00')).toBe('Courtesy notice: paid.')
     const sent = courtesyStatus({ letterTwo: letterTwo(), records: [record], openBalance: 4850, todayYmd: TODAY, affidavit })
-    expect(courtesyFooterSentence(sent, '$4,850.00')).toMatch(/^Courtesy sent Oct 31 by email and text\. Another may go in 7 days/)
+    expect(courtesyFooterSentence(sent, '$4,850.00')).toMatch(/^Courtesy sent Oct 31 by email and text\. One courtesy notice goes; after 7 days of silence the attorney’s letter leads/)
     const waiting = courtesyStatus({ letterTwo: letterTwo({ day: 3 }), records: [], openBalance: 4850, todayYmd: TODAY, affidavit })
     expect(courtesyFooterSentence(waiting, '$4,850.00')).toMatch(/^A courtesy notice may go from day 7/)
     expect(courtesyFooterSentence({ ...due, state: 'none' }, '')).toBe('')
@@ -235,9 +239,12 @@ describe('the words follow the state (v2.6382, the sweep after Taunya’s report
   const lt = { state: 'overdue' as const, day: 23, firstSentAt: '2026-10-10T15:00:00Z', firstItemId: 'it-1', gcAuthorized: null, letterTwo: null, words: 'day 23 · the attorney’s letter overdue', clock: { kind: 'recorded' as const, at: '2026-10-10T15:00:00Z', why: '' } }
   it('a courtesy that went, seven days quiet: the footer sentence says nothing came since that notice, not since the packet', () => {
     const s = courtesyStatus({ letterTwo: lt as never, records: [{ at: '2026-10-20T15:00:00Z', by: 'Taunya', lienDay: '2026-11-16', claim: 4850, to: [{ who: 'original_contractor', name: 'Dana', channel: 'email', address: 'd@x.test', ok: true, id: null, reason: '' }] }], openBalance: 4850, todayYmd: '2026-11-02', affidavit: { deadline: '2026-11-16', filedAt: null, homestead: false, hasWorkMonth: true } })
-    expect(s.state).toBe('due')
+    expect(s.state).toBe('sent')
     expect(s.lastSentAt).toBe('2026-10-20T15:00:00Z')
-    expect(courtesyFooterSentence(s, '$4,850.00')).toMatch(/^Nothing has come since the courtesy notice of Oct 20\. Another goes by email and text in a minute/)
+        const sentence = courtesyFooterSentence(s, '$4,850.00')
+    expect(sentence).toMatch(/^Day 23 · courtesy sent Oct 20 by email/)
+    expect(sentence).toMatch(/nothing since · the attorney’s letter next\. One courtesy notice goes; after 7 days of silence the attorney’s letter leads/)
+    expect(sentence).not.toMatch(/since the packet/)
   })
   it('the dead button’s detail carries no full stop — the window ends the sentence', () => {
     expect(courtesySendButton([]).detail).toBe('Nothing can go: no email and no number that may be texted')
@@ -263,6 +270,6 @@ describe('after the attorney’s letter went out (v2.6383)', () => {
     expect(s.letterTwoWords).toBe('the attorney’s letter sent Oct 24 · unresponsive')
     expect(courtesyFooterSentence(s, '$4,850.00')).toMatch(/your number\. The attorney’s letter sent Oct 24 · unresponsive\.$/)
     const afterOne = courtesyStatus({ letterTwo: sentTwo as never, records: [{ at: '2026-11-01T15:00:00Z', by: 'Taunya', lienDay: '2026-11-16', claim: 4850, to: [] }], openBalance: 4850, todayYmd: '2026-11-02', affidavit })
-    expect(courtesyFooterSentence(afterOne, '$4,850.00')).toMatch(/if nothing comes; the attorney’s letter sent Oct 24 · unresponsive\.$/)
+    expect(courtesyFooterSentence(afterOne, '$4,850.00')).toMatch(/after 7 days of silence the attorney’s letter sent Oct 24 · unresponsive\. Send it again by hand only when a channel bounced\.$/)
   })
 })

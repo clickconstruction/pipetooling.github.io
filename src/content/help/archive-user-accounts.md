@@ -23,6 +23,8 @@ Sign-in banned · hidden from active lists and assignment pickers · taken off o
 
 A person with no login is archived the same way. Their row leaves every list even though there is no sign-in to ban.
 
+An Away note changes one thing. When one is on for the person, their sign-in stays open to that one screen instead of being banned. See [leave a note for a teammate who is away](/help/leave-a-note-for-a-teammate-who-is-away).
+
 ## Restore
 
 Open People → Users and press {{button:outline|Archived}}. The **Logins** list shows every archived account. Click **Restore** beside one. The account is un-archived and can sign in again. {{button:outline|Restore}} on the person's desk does the same.

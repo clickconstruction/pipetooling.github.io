@@ -8,6 +8,7 @@ import Layout from './components/Layout'
 import { IndexLanding } from './components/IndexLanding'
 import { indexLandingPath } from './lib/devBridgeLanding'
 import SignIn from './pages/SignIn'
+import Away from './pages/Away'
 import BidRoom from './pages/BidRoom'
 import SubmittalRoom from './pages/SubmittalRoom'
 import DevLogin from './pages/DevLogin'
@@ -425,16 +426,29 @@ function DispatchNoteRequirementsBridge({ children }: { children: React.ReactNod
   )
 }
 
+/**
+ * The Away note (punch list #256 PR 8, v2.6587): a signed-in account the seal refused (archived, with a note left for
+ * it) gets the Away page in place of everything under it, providers and routes alike, so nothing else reads as them.
+ * Whatever path they typed, this is the page. `my_away_note()` is the one read the gate lets through.
+ */
+function ArchivedCallerGate({ children }: { children: React.ReactNode }) {
+  const { archivedCaller, loading } = useAuth()
+  if (!loading && archivedCaller) return <Away />
+  return <>{children}</>
+}
+
 export default function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
         <ConfirmDialogProvider>
+        <ArchivedCallerGate>
         <LedgerDisplayPrefixBridge>
           <DispatchNoteRequirementsBridge>
             <AppContent />
           </DispatchNoteRequirementsBridge>
         </LedgerDisplayPrefixBridge>
+        </ArchivedCallerGate>
         </ConfirmDialogProvider>
       </ToastProvider>
     </ThemeProvider>

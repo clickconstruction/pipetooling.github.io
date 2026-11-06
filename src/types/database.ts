@@ -30559,6 +30559,39 @@ export type Database = {
         }
         Relationships: []
       }
+      rating_credit_seen: {
+        Row: {
+          rating_id: string
+          seen_at: string
+          user_id: string
+        }
+        Insert: {
+          rating_id: string
+          seen_at?: string
+          user_id: string
+        }
+        Update: {
+          rating_id?: string
+          seen_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rating_credit_seen_rating_id_fkey"
+            columns: ["rating_id"]
+            isOneToOne: false
+            referencedRelation: "customer_ratings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rating_credit_seen_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_job_report_dispatch_log: {
         Row: {
           dispatched_at: string
@@ -32077,6 +32110,8 @@ export type Database = {
           promoted_from: string | null
           retired_at: string | null
           retired_by: string | null
+          retired_by_name: string | null
+          retired_why: string | null
           sort_order: number
           stage_kind: string
           updated_at: string
@@ -32096,6 +32131,8 @@ export type Database = {
           promoted_from?: string | null
           retired_at?: string | null
           retired_by?: string | null
+          retired_by_name?: string | null
+          retired_why?: string | null
           sort_order?: number
           stage_kind: string
           updated_at?: string
@@ -32115,6 +32152,8 @@ export type Database = {
           promoted_from?: string | null
           retired_at?: string | null
           retired_by?: string | null
+          retired_by_name?: string | null
+          retired_why?: string | null
           sort_order?: number
           stage_kind?: string
           updated_at?: string
@@ -41443,6 +41482,7 @@ export type Database = {
         Args: { p_payment_id: string; p_reason?: string; p_to_job_id: string }
         Returns: string
       }
+      my_customer_words: { Args: never; Returns: Json }
       my_logbook: { Args: never; Returns: Json }
       my_mail_set: {
         Args: { p_hidden_labels?: string[]; p_on: boolean }
@@ -41734,6 +41774,8 @@ export type Database = {
           promoted_from: string | null
           retired_at: string | null
           retired_by: string | null
+          retired_by_name: string | null
+          retired_why: string | null
           sort_order: number
           stage_kind: string
           updated_at: string

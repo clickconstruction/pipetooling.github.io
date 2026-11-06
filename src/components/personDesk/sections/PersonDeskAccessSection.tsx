@@ -30,6 +30,9 @@ import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, Desk
 import type { UserRole } from '../../../hooks/useAuth'
 import { humanRoleLabel } from '../../../lib/roleLabels'
 import { formatErrorMessage } from '../../../utils/errorHandling'
+import { PersonDeskAwayNoteModal } from '../PersonDeskAwayNoteModal'
+import { loadAwayNote } from '../../../lib/people/awayNoteIo'
+import { awayNoteChipWords } from '../../../lib/people/awayNote'
 
 /** Least-privilege first; labels come from the one shared helper (`roleLabels.ts`), same as the invite dialog and the email. */
 const ROLE_ORDER: UserRole[] = ['helpers', 'subcontractor', 'assistant', 'controller', 'estimator', 'master_technician', 'superintendent', 'primary', 'dev']
@@ -104,6 +107,26 @@ export function PersonDeskAccessSection({
   }, [standingUserId])
   const [emailOpen, setEmailOpen] = useState(false)
   const [mergeOpen, setMergeOpen] = useState(false)
+  // The Away note (punch list #256 PR 8, v2.6587): whether one is on for this account, read as the office under RLS;
+  // null while unread or when the viewer may not read it. Leave a note… opens the window on an archived desk.
+  const [awayNoteOn, setAwayNoteOn] = useState<boolean | null>(null)
+  const [awayNoteOpen, setAwayNoteOpen] = useState(false)
+  const [awayNoteKey, setAwayNoteKey] = useState(0)
+  const awayUserId = user?.id ?? null
+  const mayLeaveNote = canArchiveAccount(viewer)
+  useEffect(() => {
+    if (!awayUserId || !mayLeaveNote) {
+      setAwayNoteOn(null)
+      return
+    }
+    let on = true
+    void loadAwayNote(awayUserId)
+      .then((n) => on && setAwayNoteOn(n.row != null))
+      .catch(() => on && setAwayNoteOn(null))
+    return () => {
+      on = false
+    }
+  }, [awayUserId, mayLeaveNote, awayNoteKey])
   // Attach a login (punch list #260, v2.6518): null = the form is closed.
   const [attachDraft, setAttachDraft] = useState<string | null>(null)
   const [attachError, setAttachError] = useState<string | null>(null)
@@ -587,6 +610,11 @@ export function PersonDeskAccessSection({
                 Merge a duplicate…
               </button>
             ) : null}
+            {canArchiveAccount(viewer) && !isSelf && (u.archived_at || awayNoteOn) ? (
+              <button type="button" style={deskBtn(BTN_QUIET, busy != null)} disabled={busy != null} onClick={() => setAwayNoteOpen(true)} title="The one screen they see while they are away: a note, a countdown to the day back, where we are and the office line.">
+                {awayNoteOn ? 'Edit the note…' : 'Leave a note…'}
+              </button>
+            ) : null}
             {canArchiveAccount(viewer) && !isSelf ? (
               u.archived_at ? (
                 onBringBack ? (
@@ -616,7 +644,27 @@ export function PersonDeskAccessSection({
         }
       >
         {u.archived_at ? <Chip tone="gray">Archived</Chip> : <Chip tone="green">Active</Chip>}
+        {awayNoteOn ? (
+          <Chip tone="blue" title="They sign in as always and see the note, the countdown, where we are and the office line. Nothing else opens.">
+            {awayNoteChipWords(Boolean(u.archived_at))}
+          </Chip>
+        ) : null}
       </DeskRow>
+
+      {awayNoteOpen ? (
+        <PersonDeskAwayNoteModal
+          userId={u.id}
+          displayName={displayName}
+          archived={Boolean(u.archived_at)}
+          hasLogin={u.login_attached_at != null}
+          readOnly={viewer.readOnly}
+          onClose={() => setAwayNoteOpen(false)}
+          onChanged={() => {
+            setAwayNoteKey((k) => k + 1)
+            onChanged()
+          }}
+        />
+      ) : null}
 
       {passwordOpen ? <SetPasswordDialog userId={u.id} name={displayName} onClose={() => setPasswordOpen(false)} /> : null}
       {mergeOpen ? (
