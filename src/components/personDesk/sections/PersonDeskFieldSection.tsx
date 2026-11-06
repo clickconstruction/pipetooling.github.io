@@ -48,7 +48,7 @@ export function PersonDeskFieldSection({ userId, payName, displayName, viewer, c
     void (async () => {
       const [vp, fl, hp, hu, li] = await Promise.all([
         showVehicles && userId ? supabase.from('vehicle_possessions').select('id, vehicle_id, start_date, vehicles(year, make, model)').eq('user_id', userId).is('end_date', null) : Promise.resolve({ data: [] }),
-        showVehicles ? supabase.from('vehicles').select('id, year, make, model').order('year', { ascending: false }) : Promise.resolve({ data: [] }),
+        showVehicles ? supabase.from('vehicles').select('id, year, make, model').eq('kind', 'truck').order('year', { ascending: false }) : Promise.resolve({ data: [] }),
         showHousing && userId ? supabase.from('housing_possessions').select('id, start_date, end_date, housing_units(address)').eq('user_id', userId).or(`end_date.is.null,end_date.gte.${todayYmd}`) : Promise.resolve({ data: [] }),
         showHousing ? supabase.from('housing_units').select('id, address').order('address') : Promise.resolve({ data: [] }),
         showLicenses && payName ? supabase.from('person_licenses').select('id, license_type, date_of_expiry, note').eq('person_name', payName).order('date_of_expiry', { ascending: true }) : Promise.resolve({ data: [] }),

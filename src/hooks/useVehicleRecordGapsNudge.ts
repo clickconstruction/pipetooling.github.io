@@ -45,7 +45,7 @@ export async function loadVehicleRecordGaps(todayYmd: string = todayYmdInAppTz()
   const reachesToday = `end_date.is.null,end_date.gte.${todayYmd}`
   const [vehicles, possessions, insurancePeriods] = await Promise.all([
     fetchAllRows<VehicleRecordVehicle>(
-      (from, to) => client.from('vehicles').select('id, year, make, model, weekly_insurance_cost, weekly_registration_cost').order('id').range(from, to),
+      (from, to) => client.from('vehicles').select('id, year, make, model, weekly_insurance_cost, weekly_registration_cost').eq('kind', 'truck').order('id').range(from, to),
       'needs you vehicles',
     ),
     fetchAllRows<FleetPossession>(

@@ -23157,6 +23157,349 @@ export type Database = {
           },
         ]
       }
+      machine_assignments: {
+        Row: {
+          answer: string | null
+          answered_at: string | null
+          brought_by: string
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          vehicle_id: string
+          why: string
+          work_date: string
+        }
+        Insert: {
+          answer?: string | null
+          answered_at?: string | null
+          brought_by?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          vehicle_id: string
+          why?: string
+          work_date: string
+        }
+        Update: {
+          answer?: string | null
+          answered_at?: string | null
+          brought_by?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          vehicle_id?: string
+          why?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_assignments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_assignments_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_check_photos: {
+        Row: {
+          by_user_id: string | null
+          bytes: number
+          check_id: string
+          created_at: string
+          drive_file_id: string | null
+          fail_why: string | null
+          file_name: string
+          filed_at: string | null
+          id: string
+          job_id: string | null
+          shot: string
+          storage_path: string | null
+          taken_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          by_user_id?: string | null
+          bytes?: number
+          check_id: string
+          created_at?: string
+          drive_file_id?: string | null
+          fail_why?: string | null
+          file_name: string
+          filed_at?: string | null
+          id?: string
+          job_id?: string | null
+          shot: string
+          storage_path?: string | null
+          taken_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          by_user_id?: string | null
+          bytes?: number
+          check_id?: string
+          created_at?: string
+          drive_file_id?: string | null
+          fail_why?: string | null
+          file_name?: string
+          filed_at?: string | null
+          id?: string
+          job_id?: string | null
+          shot?: string
+          storage_path?: string | null
+          taken_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_check_photos_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_check_photos_check_id_fkey"
+            columns: ["check_id"]
+            isOneToOne: false
+            referencedRelation: "machine_checks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_check_photos_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_check_photos_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_check_questions: {
+        Row: {
+          active: boolean
+          asked_on: string
+          created_at: string
+          holds_machine: boolean
+          id: string
+          sort: number
+          template_id: string | null
+          vehicle_id: string | null
+          words: string
+        }
+        Insert: {
+          active?: boolean
+          asked_on?: string
+          created_at?: string
+          holds_machine?: boolean
+          id?: string
+          sort?: number
+          template_id?: string | null
+          vehicle_id?: string | null
+          words: string
+        }
+        Update: {
+          active?: boolean
+          asked_on?: string
+          created_at?: string
+          holds_machine?: boolean
+          id?: string
+          sort?: number
+          template_id?: string | null
+          vehicle_id?: string | null
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_check_questions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "machine_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_check_questions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_checks: {
+        Row: {
+          answers: Json
+          by_name: string
+          by_user_id: string | null
+          created_at: string
+          dispatch_request_id: string | null
+          hours: number | null
+          id: string
+          job_id: string | null
+          kind: string
+          left_job_id: string | null
+          left_where: string | null
+          levels: Json
+          run_anyway_at: string | null
+          run_anyway_by_name: string | null
+          run_anyway_by_user_id: string | null
+          signed_at: string | null
+          started_at: string
+          updated_at: string
+          vehicle_id: string
+          verdict: string
+          work_date: string
+        }
+        Insert: {
+          answers?: Json
+          by_name?: string
+          by_user_id?: string | null
+          created_at?: string
+          dispatch_request_id?: string | null
+          hours?: number | null
+          id?: string
+          job_id?: string | null
+          kind?: string
+          left_job_id?: string | null
+          left_where?: string | null
+          levels?: Json
+          run_anyway_at?: string | null
+          run_anyway_by_name?: string | null
+          run_anyway_by_user_id?: string | null
+          signed_at?: string | null
+          started_at?: string
+          updated_at?: string
+          vehicle_id: string
+          verdict?: string
+          work_date: string
+        }
+        Update: {
+          answers?: Json
+          by_name?: string
+          by_user_id?: string | null
+          created_at?: string
+          dispatch_request_id?: string | null
+          hours?: number | null
+          id?: string
+          job_id?: string | null
+          kind?: string
+          left_job_id?: string | null
+          left_where?: string | null
+          levels?: Json
+          run_anyway_at?: string | null
+          run_anyway_by_name?: string | null
+          run_anyway_by_user_id?: string | null
+          signed_at?: string | null
+          started_at?: string
+          updated_at?: string
+          vehicle_id?: string
+          verdict?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_checks_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_checks_dispatch_request_id_fkey"
+            columns: ["dispatch_request_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_checks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_checks_left_job_id_fkey"
+            columns: ["left_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_checks_run_anyway_by_user_id_fkey"
+            columns: ["run_anyway_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_checks_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_templates: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          levels: Json
+          machine_kind: string
+          name: string
+          size: string | null
+          sort: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          levels?: Json
+          machine_kind: string
+          name: string
+          size?: string | null
+          sort?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          levels?: Json
+          machine_kind?: string
+          name?: string
+          size?: string | null
+          sort?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mail_pieces: {
         Row: {
           address1: string
@@ -35288,6 +35631,7 @@ export type Database = {
           created_at: string | null
           end_date: string | null
           id: string
+          job_id: string | null
           start_date: string
           user_id: string | null
           vehicle_id: string
@@ -35296,6 +35640,7 @@ export type Database = {
           created_at?: string | null
           end_date?: string | null
           id?: string
+          job_id?: string | null
           start_date: string
           user_id?: string | null
           vehicle_id: string
@@ -35304,6 +35649,7 @@ export type Database = {
           created_at?: string | null
           end_date?: string | null
           id?: string
+          job_id?: string | null
           start_date?: string
           user_id?: string | null
           vehicle_id?: string
@@ -35321,6 +35667,13 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_possessions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -35481,14 +35834,26 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          code: string | null
           created_at: string | null
+          google_drive_link: string | null
           id: string
+          kind: string
+          levels: Json | null
+          machine_kind: string | null
           make: string
+          meter: string
           model: string
           oil_change_interval_miles: number
           oil_require_past_due_miles: number
           oil_suggest_window_miles: number
+          rental_agreement_no: string | null
+          rental_due_back: string | null
+          rental_from: string | null
+          rental_out_on: string | null
+          template_id: string | null
           trim: string | null
+          unit_label: string | null
           updated_at: string | null
           vin: string | null
           weekly_insurance_cost: number
@@ -35496,14 +35861,26 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          code?: string | null
           created_at?: string | null
+          google_drive_link?: string | null
           id?: string
+          kind?: string
+          levels?: Json | null
+          machine_kind?: string | null
           make?: string
+          meter?: string
           model?: string
           oil_change_interval_miles?: number
           oil_require_past_due_miles?: number
           oil_suggest_window_miles?: number
+          rental_agreement_no?: string | null
+          rental_due_back?: string | null
+          rental_from?: string | null
+          rental_out_on?: string | null
+          template_id?: string | null
           trim?: string | null
+          unit_label?: string | null
           updated_at?: string | null
           vin?: string | null
           weekly_insurance_cost?: number
@@ -35511,21 +35888,41 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          code?: string | null
           created_at?: string | null
+          google_drive_link?: string | null
           id?: string
+          kind?: string
+          levels?: Json | null
+          machine_kind?: string | null
           make?: string
+          meter?: string
           model?: string
           oil_change_interval_miles?: number
           oil_require_past_due_miles?: number
           oil_suggest_window_miles?: number
+          rental_agreement_no?: string | null
+          rental_due_back?: string | null
+          rental_from?: string | null
+          rental_out_on?: string | null
+          template_id?: string | null
           trim?: string | null
+          unit_label?: string | null
           updated_at?: string | null
           vin?: string | null
           weekly_insurance_cost?: number
           weekly_registration_cost?: number
           year?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "machine_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weekly_money_email_requests: {
         Row: {

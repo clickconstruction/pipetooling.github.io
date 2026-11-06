@@ -2,7 +2,7 @@
 title: manage company vehicles and track their odometers
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: vehicles, fleet, odometer, hand off, possession, assign truck, mileage, replacement value, VIN, insurance, insurance plan, policy, coverage, motor pool, parked, active, inactive, maintenance, tasks, battery, repair checklist, check-in, check-ins, dash lights, questions, cadence
+keywords: vehicles, fleet, machines, machine, excavator, skid steer, drill, equipment, template, gauges, label, rental, odometer, hand off, possession, assign truck, mileage, replacement value, VIN, insurance, insurance plan, policy, coverage, motor pool, parked, active, inactive, maintenance, tasks, battery, repair checklist, check-in, check-ins, dash lights, questions, cadence
 ---
 
 People → Vehicles is the fleet board, one card per vehicle. Each card shows who holds it, its latest odometer reading and its insurance plan.
@@ -125,3 +125,19 @@ Every on and off lands in the vehicle's ledger as an {{chip:gray|Insurance}} row
 {{button:outline|Edit}} on an open vehicle changes year, make, model, trim, VIN, and the weekly registration cost. The registration cost prints on pay stubs and feeds the fleet total. The **insurance** cost lives on the vehicle's **Insurance** card instead. See below. {{button:outline|Update value}} records what replacing the vehicle would cost today. The history stays in the ledger. Deleting a vehicle removes its whole history with it. So park old vehicles as **Unassigned** instead unless you really mean delete.
 
 A vehicle someone drives may have no insurance, registration or service on file. Then the office sees it on the Needs you card until all three are entered. The card shows on the Dashboard and on Quickfill. See [work the Needs you list on the dashboard](/help/needs-you-card).
+
+## Machines on the board
+
+A machine is an excavator, a drill, a skid steer or a trencher. Machines have their own board above the trucks. It sits at People → Vehicles. A machine counts hours on a meter, not miles. The crew checks it before it runs.
+
+{{button:outline|+ Add a machine}} adds one. Give it the name the crew says, like E-14. Add the make and the model. Pick its template, like Small excavator or Skid steer. The template gives the machine its gauges and the questions of its walk. The app mints the code for its label.
+
+Each card says where the machine is. It reads On a job or In the yard. {{button:outline|Put on a job}} moves it to a job. {{button:outline|Hand off}} moves it to another job. {{button:outline|Back to the yard}} brings it home.
+
+{{button:outline|Gauges}} opens the machine's own list. Each gauge says what it holds, what it looks like and where to read it. A gauge looks like a tank, a sight glass, a dipstick or a dial. The list starts from the template. Save keeps this machine's own list. Use the template's goes back to it.
+
+{{button:outline|Print the label}} prints the QR code for the machine. Stick it on the machine. The crew scans it to open the check.
+
+{{button:outline|Ours · make it a rental}} marks a rented machine. Enter who it is from, the agreement number and the due back day. The card turns amber the day before it is due. It turns red once it is over. {{button:outline|Returned, it is not ours to check any more}} ends the rental.
+
+The checks, the hours and the days on jobs fill in once the crew checks the machine on the phone.
