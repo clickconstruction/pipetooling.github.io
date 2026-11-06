@@ -18,6 +18,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { paperForName } from '../_shared/companyPaper.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const FORM_PDFS_BUCKET = 'contract-form-pdfs'
 const LINK_SECONDS = 300
@@ -59,6 +60,8 @@ serve(async (req) => {
     if (!docId) return json({ error: 'person_contract_document_id is required' }, 400)
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     // Gate: dev | controller | pay-approved master.
     const { data: me } = await admin.from('users').select('role').eq('id', user.id).maybeSingle()

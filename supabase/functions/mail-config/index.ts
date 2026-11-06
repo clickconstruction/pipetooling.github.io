@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DocsmitClient, DocsmitError, docsmitEnvOf } from '../_shared/docsmitClient.ts'
 import { DOCSMIT_SECRET_NAMES, loadDocsmitConfig, type DocsmitSecretName, type MailConfigDb } from '../_shared/mailConfig.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * mail-config (the Docsmit train, PR 9 — docs/DOCSMIT_LIEN_RUN_PLAN.md, "Managed from Developer settings"):
@@ -62,6 +63,8 @@ serve(async (req) => {
     if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: roleRow } = await admin.from('users').select('role, read_only').eq('id', user.id).maybeSingle()
     const role = String((roleRow as { role?: string } | null)?.role ?? '')
     if (role !== 'dev' || (roleRow as { read_only?: boolean } | null)?.read_only) return jsonResponse({ error: 'Developers only' }, 403)

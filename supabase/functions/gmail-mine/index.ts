@@ -180,6 +180,7 @@ import {
   type MyMailPipelineRow,
   type MyMailProjectRow,
 } from '../_shared/gcKernels/lib/myMail/mineFunction.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /** The roles whose addresses are ours, as the bids@ reader's `loadTeam` reads them. A sub or a helper is someone we write to. */
 const STAFF_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent']
@@ -1296,6 +1297,8 @@ serve(async (req) => {
     const caller = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } })
 
     const { data: u } = await caller.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (!u?.user) return refuse(myMailRefusal('signIn'))
     const { data: who, error: whoError } = await admin.from('users').select(USER_COLUMNS).eq('id', u.user.id).maybeSingle()
     if (whoError) return refuse(stoppedRefusal('Reading your account failed.', whoError.message), MY_MAIL_STOPPED_STATUS)

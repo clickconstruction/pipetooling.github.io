@@ -26,6 +26,7 @@ import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
 import { buildFillPlan, hasOfficeBoxes, schemaForParty, splitFormValuesForStorage, type FormSchema, type FormValues } from '../_shared/formSchema.ts'
 import { fillFormPdf, type FormPdfLibLike } from '../_shared/fillFormPdf.ts'
 import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const FORM_TEMPLATES_BUCKET = 'contract-form-templates'
 const FORM_PDFS_BUCKET = 'contract-form-pdfs'
@@ -93,6 +94,8 @@ serve(async (req) => {
     if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: me } = await admin.from('users').select('role, name').eq('id', user.id).maybeSingle()
     const role = (me as { role?: string } | null)?.role ?? ''
     if (!ALLOWED_ROLES.has(role)) return json({ error: 'Only office staff can enter a form from paper.', code: 'forbidden' }, 403)

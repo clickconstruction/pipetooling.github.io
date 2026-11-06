@@ -12,6 +12,7 @@ import {
   STRIPE_OOB_META_PAYMENT_TYPE,
   STRIPE_OOB_META_REFERENCE,
 } from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -132,6 +133,8 @@ serve(async (req) => {
     const reverseReason = (body.reason ?? '').trim().slice(0, 200) || null
 
     const admin = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     let row: InvoiceRow | null = null
 

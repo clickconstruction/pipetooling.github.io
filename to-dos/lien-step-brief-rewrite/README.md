@@ -2,7 +2,7 @@
 name: "Lien desk: the step brief rewritten for a first-week employee — the attorney's letter, one courtesy, the affidavit's week, a dated timeline with payments"
 number: 274
 group: waiting
-status: decided 2026-11-06 with Grace over five passes of one board · PR 1a the rename sweep (v2.6591, #7142) · PR 1b the words and the two policy changes (v2.6594, #7145) · PR 2 the dated timeline with payments (v2.6596) · PR 3 the paying-it-down pause waits on the owner's calls below
+status: decided 2026-11-06 with Grace over five passes of one board · PR 1a the rename sweep (v2.6591, #7142) · PR 1b the words and the two policy changes (v2.6594, #7145) · PR 2 the dated timeline with payments (v2.6596, #7146) · PR 3 the paying-it-down pause waits on the owner's calls below
 summary: >
   v2.6574 and v2.6577 gave a pressed rung on Do now a step brief and sorted the list instead of
   fading it. Reading the briefs as a new employee would, Grace found them telling rather than
@@ -65,3 +65,39 @@ Earlier boards: the explainer for the owner https://claude.ai/artifact/R9TCeLBJT
 ## Where it was built
 
 Session worktree `lien-deadlines-bills-170aad` (Grace, 2026-11-04 to 06). Memory stream `lien-reminders-strip-stream`.
+
+## The mock-ups in this folder
+
+Copies of the four boards above, kept here so the card stands without the chat links. Every job, customer, street and amount in them is made up, and the live screenshots in their *Now* columns are left out (the repo is public); the private boards keep both.
+
+- `mockup.html` — the decision board, the fifth pass of 2026-11-06: Reminders step 3, Affidavits step 1, Notices step 3, then section 1b *When money comes in* (a partial payment and paid in full), then every rung's words before and after. **PR 3 builds section 1b's partial payment.**
+- `earlier-step-brief.html` — the step brief that replaced the fade (v2.6574, every rail v2.6577).
+- `earlier-reminders-ladder.html` — the owner's explainer of the Reminders ladder (#262), with the walker that moves one notice up the rungs.
+- `earlier-lien-desk-header.html` — the desk's header board (one tool row, the leader's FYI as a chip), shipped separately.
+
+## Picking up PR 3 (hand-off, 2026-11-06)
+
+**Where it stopped.** A session read the kernels on top of PR 2's branch and was stopped before writing code, on Grace's word, so this card could carry it. Nothing of PR 3 is committed. No answer from Taunya on the two calls is recorded anywhere: build the defaults in the table above and name both in the release note so she can change either.
+
+**Start** from fresh `main` once PR 1b (#7145) and PR 2 (#7146) have landed; claim the version with `npm run claim`. Read PR 2's fragment first: its timeline already draws the payment rows and the remainder.
+
+**The ask, as briefed.**
+
+1. `courtesyStatus` and `letterTwoStatus` take the job's payments since day 0 (the packet). A payment after the packet that leaves money owed puts the courtesy in a new state `paying` (words *paying it down · $4,000 paid Nov 3 · $8,045 still owed*) until the promised date on the notice when there is one, else `COURTESY_AGAIN_DAYS` after the payment. While `paying`, `courtesyIsDue` is false and the Do now row's usual press is *Record what they promised*. Letter two stays `due` / `overdue` on its own clock, but the Do now row leads with the promise press while the courtesy is `paying`; the footer keeps *Send the attorney's letter ▸* plain, not amber, with a title saying the office may still send it when the payment was token. The legal day never moves; `affidavit_week` still wins inside the week.
+2. *Record what they promised*: a press on the sent notice's footer and on the Do now row that records a promised date and an amount for the rest onto the sent item. The desk asks again on that date: the courtesy returns to `sent`, the letter to its clock.
+3. `lienReminderAt`: `paying` stands on step 2 (*Reminder sent*) with state `paying`. `lienReminderBrief(2)` gains the board's paying words: *They have started paying. A partial payment is an answer, so the desk stops reminding and asks what they promised for the rest. The lien's last day does not move.* The timeline's today row (`lienTimelineTodayWords`) reads *They are paying it down. The attorney's letter waits while they pay.* and the payment row's next line reads *reminders paused until <date>*.
+4. Tests on the three kernels and the render smokes in `LienDeskNextUp.render.test.tsx` and `LienDeskModal.render.test.tsx`; the guides `send-a-courtesy-notice-before-a-lien` and `read-the-reminders-ladder-on-the-lien-desk` gain a short *When they pay part of it* section in plain words; release note + fragment; `docs/twins/APP_DIRECTORY.md` line 89 (the courtesy notice's line) names the new press.
+
+**Where it plugs in** (line numbers as of PR 2's branch):
+
+- `courtesyStatus` (`src/lib/jobs/lienCourtesyNotice.ts`) reads in this order: nothing out → closed (paid, the GC's okay, the owner's call, filed, a reply) → held (`lienLineBlockedReason`) → `affidavit_week` → sent / waiting / due. It takes no payments today. `paying` goes after `affidavit_week` and before the sent branch. `courtesyIsDue`, `courtesyMaySend` and `courtesyFooterSentence` each need a `paying` case.
+- The courtesy map is built in one place, `courtesyByJobFrom` (`src/lib/jobs/lienCourtesyDesk.ts`), called from `LienDeskModal.tsx` (~654) and `useArLienChips.ts` (~91). That is where the payments come in. Its `openBalance` is revenue less payments made.
+- Payments: `paymentsByJob` on the desk data (`src/hooks/useLienDeskData.ts` ~283–292), `{ amount, paidOn }` oldest first; optional, so the AR chips' reader may not have it. Day 0 is `letterTwo.clock.at` (an ISO stamp; take its app-time day with `calendarYmdInAppTzFromIso`).
+- `letterTwoStatus` (`src/lib/jobs/lienLetterTwo.ts`) is built by `letterTwoByJobFrom` (`useLienDeskData.ts` ~301). The brief keeps its states; only the Do now row's lead and the footer's tone change. Decide whether it needs the payments at all.
+- The Do now row: `src/lib/jobs/lienNextUp.ts` ~232–244 picks the courtesy row or the letter-two row; `BUTTON` ~102. A paying row needs its own action (say `promise`) with the button *Record what they promised*, mapped to the REMINDERS rung by `lienStepOfRow` (`lienNextUpSteps.ts`) and given a beside-card in `besideItems`.
+- The rung: add `paying` to `LienReminderState` in `src/lib/jobs/lienReminders.ts`; in `lienReminderAt` it goes after the closed / in-flight / held / `affidavit_week` branches. `lienReminderWhy` and `lienReminderLadderItems` each need a paying line.
+- The timeline: `lienNoticeTimeline` and `lienTimelineTodayWords` (`src/lib/jobs/lienNoticeTimeline.ts`) take a new fact, the day the pause ends, for the payment row's next line. Built in `LienDeskModal.tsx` ~661–686.
+- The footer: `LienDeskModal.tsx` ~3253–3262 holds the sentence, *Record the owner's call…*, *The GC authorized direct pay…*, the courtesy door and the attorney's letter door (amber when `letterTwoIsDue`). The new door sits beside *Record the owner's call…*.
+- The promise: there is no `fields.promise` on a sent item yet. The sent item's `fields` already carry `courtesy` (written by `withCourtesyRecord`), `ownerCall` and `gcAuthorizedDirectPay` (read by `parseLienNoticeSentFacts`, `src/lib/jobs/lienNoticeDraft.ts` ~281). The pre-send hold's promise is the job's promised pay date, `PromisedPayDate { promisedYmd, markedByName }` from `list_job_promised_pay_dates`, written by `set_job_promised_pay_date(p_job_id, p_date)` (`SetPromisedPayDateModal.tsx`, `paymentChaseIo.ts`). **Decide first:** write the date through `set_job_promised_pay_date` so the Stages board, the forecast and the desk's pre-send hold read the same promise, and keep only the amount and the note on `fields.promise`; or keep the whole promise on `fields.promise`. Either way no migration is needed. If one turns out to be needed after all, it gets `SET lock_timeout = '3s';`, the three fence calls and its `docs/migrations/` note.
+
+**Verify.** `rm -rf .cache/typecheck` then `npm run typecheck`; lint; the desk's render suites; `node scripts/theme-tokenize.mjs --check src` and the word checks; walk it on the worktree's dev server. Prod has no partial payment on a sent notice to walk, so seed one under BEGIN / ROLLBACK or ask before writing a ZZ row: prod writes need the owner's yes.

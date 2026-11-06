@@ -4,6 +4,7 @@ import { driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken, uploadFrom
 import { NO_ROOT_WORDS, readDriveSettings } from '../_shared/driveSettings.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { bidFolderName } from '../_shared/whereFilesGo.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 // drive-intake — estimator-twin pipeline Wave 4.4 (docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md).
 // Creates the job folder in the shared Google Drive jobs folder, optionally uploads the
@@ -69,6 +70,8 @@ serve(async (req) => {
       const auth = req.headers.get('Authorization') ?? ''
       const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
       const { data: u } = await anon.auth.getUser()
+      const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+      if (archivedRefusal) return archivedRefusal
       if (!u?.user) return json({ error: 'Auth required (twin token or staff session)' }, 401)
       const { data: row } = await admin.from('users').select('role').eq('id', u.user.id).maybeSingle()
       const staffRoles = ['dev', 'master_technician', 'assistant', 'controller', 'estimator']

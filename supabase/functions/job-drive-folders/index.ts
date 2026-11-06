@@ -22,6 +22,7 @@ import {
   tidyOutcomeWords,
   type TidyCounts,
 } from '../_shared/whereFilesGo.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * job-drive-folders — Materials on site (punch list #209), the owner's ask of 2026-10-29: a tool of ours makes a
@@ -152,6 +153,8 @@ serve(async (req) => {
       const auth = req.headers.get('Authorization') ?? ''
       const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
       const { data: u } = await anon.auth.getUser()
+      const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+      if (archivedRefusal) return archivedRefusal
       if (!u?.user) return json({ error: 'Sign in first.' }, 401)
       const { data: row } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
       who = (row as typeof who) ?? null

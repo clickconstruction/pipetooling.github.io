@@ -98,6 +98,8 @@ Press any item to open it in a window over the list. The window shows the whole 
 
 Press {{button:outline|Print this theme}} for paper. Press {{button:outline|Copy as a list for counsel}} to put the same words on the clipboard. The theme you picked sits in the address. Send the link and it opens the same view.
 
+A matter reads by theme too. Open **By theme** on the Legal desk or on the person's **Matter** view. The items are the matter's papers and events. Press a paper in the window to open it. Press {{button:outline|Open on the matter ›}} to land on its row.
+
 ## Keeping the summary fresh
 
 When you add entries, the summary falls behind. The person's dot turns amber. The Summary view shows how many entries it has not covered. You ask the agent to bring the file current. It rewrites the summary and extends the narrative from the raw entries.

@@ -79,7 +79,7 @@ describe('send-estimate-to-customer and the walk tester (punch list #142 PR 5)',
     expect(res.status).toBe(200)
     expect(res.body).toMatchObject({ ok: true, emailed: false, sent_to: KIT.email })
     expect(String(res.body.accept_url)).toMatch(/^https:\/\/clicktooling\.example\/estimate\/accept\?t=[0-9a-f]{64}$/)
-    expect(box.db.calls.slice(0, 5)).toEqual(['auth.getUser', 'select users', 'select estimates', 'select app_settings', 'select app_settings'])
+    expect(box.db.calls.slice(0, 6)).toEqual(['auth.getUser', 'select users', 'select users', 'select estimates', 'select app_settings', 'select app_settings'])
     const marked = box.db.writes.find((w) => w.table === 'estimates')
     expect(marked?.values).toMatchObject({ status: 'sent', customer_email: KIT.email })
     expect(marked?.matched.map((r) => r.id)).toEqual([KIT.estimateId])
@@ -98,7 +98,7 @@ describe('send-estimate-to-customer and the walk tester (punch list #142 PR 5)',
     for (const jwt of ['sample-jwt', 'twin-jwt']) {
       box.db.calls = []
       expect(await send(jwt, kitSend), jwt).toEqual({ status: 403, body: { error: 'Only a real account sends an estimate', code: 'not_a_real_account' } })
-      expect(box.db.calls, jwt).toEqual(['auth.getUser', 'select users'])
+      expect(box.db.calls, jwt).toEqual(['auth.getUser', 'select users', 'select users'])
     }
     expect(await send('training-jwt', kitSend)).toEqual({ status: 403, body: { error: 'A training account cannot send an estimate', code: 'read_only' } })
     expect(box.db.writes).toEqual([])
@@ -108,7 +108,7 @@ describe('send-estimate-to-customer and the walk tester (punch list #142 PR 5)',
     const res = await send('office-jwt', { estimate_id: OTHER.estimateId, customer_email: 'dana@example.com', public_origin: 'https://clicktooling.example' })
     expect(res.status).toBe(200)
     expect(res.body).toMatchObject({ ok: true, emailed: false, sent_to: 'dana@example.com' })
-    expect(box.db.calls.slice(0, 4)).toEqual(['auth.getUser', 'select users', 'select estimates', 'select app_settings'])
+    expect(box.db.calls.slice(0, 5)).toEqual(['auth.getUser', 'select users', 'select users', 'select estimates', 'select app_settings'])
     expect(box.db.calls.filter((c) => c === 'select app_settings')).toHaveLength(1)
   })
 })

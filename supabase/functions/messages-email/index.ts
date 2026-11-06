@@ -10,6 +10,7 @@ import { KIT_DOOR_WORDS, isFixtureAccount, isWalkTester, kitDoorVerdict } from '
 import { loadWalkKit } from '../_shared/walkKit.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { placeFiles, readFiles, takeBack } from './files.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * messages-email — Messages, cut 3: an email from the reply box's send window, to one person at one of their
@@ -63,6 +64,8 @@ serve(async (req) => {
     const caller = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } })
 
     const { data: u } = await caller.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (!u?.user) return refuse('signIn', 'Sign in to send an email.', 401)
     const { data: who } = await admin
       .from('users')

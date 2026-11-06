@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -97,6 +98,8 @@ serve(async (req) => {
         persistSession: false,
       },
     })
+    const archivedRefusal = await refuseArchivedCaller(adminClient, authUser?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     const { error: updateError } = await adminClient.auth.admin.updateUserById(user_id, { password })
 

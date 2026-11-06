@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -113,6 +114,8 @@ serve(async (req) => {
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     })
+    const archivedRefusal = await refuseArchivedCaller(adminClient, authUser?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     // The link must sign in an existing account, never create one.
     const { data: targetUser, error: lookupError } = await adminClient

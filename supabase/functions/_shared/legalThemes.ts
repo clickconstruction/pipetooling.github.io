@@ -338,3 +338,55 @@ export function portalThemeCountWords(t: Pick<PortalTheme, 'documentIds' | 'entr
   const n = t.documentIds.length + t.entryIds.length
   return `${n === 1 ? '1 item' : `${n} items`} · ${PROVES_BY.map((p) => `${t.proof[p.key]} ${p.short}`).join(' · ')}`
 }
+
+// ─── a matter's lines (v2.6588, T2b's and T4's remainder) ──────────────────
+
+/** A matter's Timeline entry as the By theme view needs it (`legal_matter_entries`). */
+export type MatterEntryLine = { id: string; kind: string; body: string; occurred_on: string; created_at: string; voided_at?: string | null; meta?: unknown }
+/** A matter's document as the By theme view needs it (`legal_matter_documents`). */
+export type MatterDocumentLine = { id: string; title: string; shows: string | null; dated_on: string | null; added_at: string; state: string | null; voided_at: string | null }
+
+/** An entry's kind in plain words on the item: *event* · *planned step* · *statement*. */
+export const MATTER_ENTRY_KIND_WORDS: Record<string, string> = { event: 'event', plan: 'planned step', statement: 'statement' }
+
+const objOf = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null)
+
+/**
+ * A matter's record as By theme lines: its live documents (dated the day the paper is about, else the day it was
+ * added; the paper is its own file) and its unvoided entries (an event with its documents as its files and its notes
+ * under it, a planned step, a statement), in the record's order. The same `themeItems`, `nearbyLines` and
+ * `themeListText` then read a matter as they read a person.
+ */
+export function matterThemeLines(entries: ReadonlyArray<MatterEntryLine>, documents: ReadonlyArray<MatterDocumentLine>, dayOfIso: (iso: string) => string): ThemeLine[] {
+  const docs: ThemeLine[] = documents
+    .filter((d) => !d.voided_at)
+    .map((d) => ({
+      key: `doc:${d.id}`,
+      ymd: d.dated_on ?? dayOfIso(d.added_at),
+      loggedAt: d.added_at,
+      kindWords: d.state ? `document · ${d.state}` : 'document',
+      what: d.title,
+      notes: d.shows ?? '',
+      byName: '',
+      ref: { table: 'legal_matter_documents', id: d.id },
+      attachmentIds: [d.id],
+    }))
+  const ents: ThemeLine[] = entries
+    .filter((e) => !e.voided_at)
+    .map((e) => {
+      const m = objOf(e.meta)
+      const ids = Array.isArray(m?.document_ids) ? (m!.document_ids as unknown[]).filter((x): x is string => typeof x === 'string' && x.length > 0) : []
+      return {
+        key: `entry:${e.id}`,
+        ymd: e.occurred_on,
+        loggedAt: e.created_at,
+        kindWords: MATTER_ENTRY_KIND_WORDS[e.kind] ?? e.kind,
+        what: e.body,
+        notes: typeof m?.notes === 'string' ? m.notes : '',
+        byName: '',
+        ref: { table: 'legal_matter_entries', id: e.id },
+        attachmentIds: ids,
+      }
+    })
+  return [...docs, ...ents].sort((a, b) => a.ymd.localeCompare(b.ymd) || (a.loggedAt ?? '').localeCompare(b.loggedAt ?? ''))
+}

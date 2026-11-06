@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { humanRoleLabel } from '../_shared/roleLabels.ts'
 import { ensureLinkedRosterRow } from '../_shared/rosterRow.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -163,6 +164,8 @@ serve(async (req) => {
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     })
+    const archivedRefusal = await refuseArchivedCaller(adminClient, authUser?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     // Duplicate check. A previously invited user who never accepted (never confirmed,
     // never signed in) is replaced so the invite can be re-sent with a fresh link;

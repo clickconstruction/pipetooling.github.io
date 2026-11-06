@@ -8,6 +8,7 @@ import {
   stripeApiKeyForMode,
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -134,6 +135,8 @@ serve(async (req) => {
       return jsonResponse({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_MISSING' }, 500)
     }
     const admin = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     const { data: inv, error: invErr } = await admin
       .from('jobs_ledger_invoices')

@@ -1,0 +1,260 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Step Brief</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one decision, one spot — the Reminders rail's rung 3 pressed on Do now. Now is the app's live render (v2.6522); My suggestion is drawn at the same width: a step brief under the rail, the list re-sorted into On this step and On other steps, nothing faded. */
+  :root {
+    --bg: #f4f4f6; --surface: #ffffff; --fg: #1c1c24; --muted: #6b6b7a; --border: #d9d9e1; --border-strong: #b9b9c6; --subtle: #f6f6f9;
+    --blue: #2563eb; --blue-tint: #dbe6fe; --blue-text: #1d4ed8; --violet: #6d28d9; --violet-tint: #efe9fb; --violet-dot: #c9bdf0; --red: #b91c1c; --red-tint: #fde8e8; --amber-tint: #fff4d6; --amber-text: #92400e; --green: #15803d;
+    --mark: #d97706; --mark-tint: #fff4df;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #141418; --surface: #1f1f27; --fg: #ececf1; --muted: #9a9aaa; --border: #33333f; --border-strong: #4a4a58; --subtle: #262630;
+    --blue-tint: #243764; --blue-text: #93b4ff; --violet: #b89cff; --violet-tint: #2b2340; --violet-dot: #4a3d75; --red: #f87171; --red-tint: #3a1f1f; --amber-tint: #3a3017; --amber-text: #fbbf24; --green: #4ade80;
+    --mark: #f59e0b; --mark-tint: #3a2e14; color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #141418; --surface: #1f1f27; --fg: #ececf1; --muted: #9a9aaa; --border: #33333f; --border-strong: #4a4a58; --subtle: #262630;
+    --blue-tint: #243764; --blue-text: #93b4ff; --violet: #b89cff; --violet-tint: #2b2340; --violet-dot: #4a3d75; --red: #f87171; --red-tint: #3a1f1f; --amber-tint: #3a3017; --amber-text: #fbbf24; --green: #4ade80;
+    --mark: #f59e0b; --mark-tint: #3a2e14; color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); line-height: 1.45; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 1.5rem 3rem; }
+  main, section, .col, .fit, .pair, .two { min-width: 0; max-width: 100%; }
+  main { max-width: 1180px; margin: 0 auto; display: grid; gap: 2rem; }
+  h1 { font-size: 1.5rem; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+  h2 { font-size: 1.05rem; margin: 0; }
+  p { margin: 0; max-width: 70ch; }
+  .lede { color: var(--muted); }
+  .rec { padding: .8rem 1rem; border-radius: 10px; background: var(--mark-tint); border: 1px solid var(--mark); font-size: .95rem; max-width: none; }
+  section { display: grid; gap: .8rem; }
+  .col { display: grid; gap: .35rem; }
+  .lab { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .lab.sug { color: var(--mark); }
+  .cap { font-size: .88rem; color: var(--muted); max-width: 70ch; }
+  .fit { position: relative; overflow: hidden; }
+  .fit > .w { transform-origin: top left; }
+  .shot { display: block; border: 1px solid var(--border); border-radius: 10px; max-width: 100%; height: auto; }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; align-items: start; }
+  @media (max-width: 820px) { .pair { grid-template-columns: 1fr; } }
+  .tbl { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  .tbl th, .tbl td { text-align: left; padding: .45rem .6rem; border-top: 1px solid var(--border); vertical-align: top; }
+  .tbl th { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-top: none; }
+  .tbl td:first-child { white-space: nowrap; font-weight: 600; }
+  .scroll { overflow-x: auto; }
+  ul.plain { margin: 0; padding-left: 1.1rem; display: grid; gap: .3rem; font-size: .92rem; max-width: 70ch; }
+
+  /* The drawn desk */
+  .desk { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px 18px; font-family: var(--font); color: var(--fg); display: grid; gap: 10px; box-sizing: border-box; }
+  .desk.dark { --surface: #1f1f27; --fg: #ececf1; --muted: #9a9aaa; --border: #33333f; --border-strong: #4a4a58; --subtle: #262630; --blue-tint: #243764; --blue-text: #93b4ff; --violet: #b89cff; --violet-tint: #2b2340; --violet-dot: #4a3d75; --red: #f87171; --red-tint: #3a1f1f; --amber-tint: #3a3017; --amber-text: #fbbf24; --green: #4ade80; }
+  .desk.light { --surface: #ffffff; --fg: #1c1c24; --muted: #6b6b7a; --border: #d9d9e1; --border-strong: #b9b9c6; --subtle: #f6f6f9; --blue-tint: #dbe6fe; --blue-text: #1d4ed8; --violet: #6d28d9; --violet-tint: #efe9fb; --violet-dot: #c9bdf0; --red: #b91c1c; --red-tint: #fde8e8; --amber-tint: #fff4d6; --amber-text: #92400e; --green: #15803d; }
+  .rail { display: grid; grid-template-columns: 84px 1fr; gap: 10px; align-items: center; }
+  .rail .k { font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .rungs { display: flex; border: 1px solid var(--border-strong); border-radius: 9px; overflow: hidden; }
+  .rung { flex: 1; display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: .82rem; font-weight: 600; border-left: 1px solid var(--border); position: relative; color: var(--fg); }
+  .rung:first-child { border-left: none; }
+  .rung .n { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--border-strong); color: var(--muted); display: inline-grid; place-items: center; font-size: .66rem; font-weight: 700; }
+  .rung .c { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .rung.quiet { color: var(--muted); font-weight: 500; }
+  .rung.quiet .c { color: var(--muted); font-weight: 500; }
+  .rung.b .n { border-color: var(--blue-text); color: var(--blue-text); }
+  .rung.v .n { border-color: var(--violet); color: var(--violet); }
+  .rung.r .n { border-color: var(--red); color: var(--red); }
+  .rung.a .n { border-color: var(--amber-text); color: var(--amber-text); }
+  .rung.on { background: var(--violet-tint); box-shadow: inset 0 -2px 0 var(--violet); }
+  .you { font-size: .66rem; font-weight: 700; background: #fcd34d; color: #1c1c24; border-radius: 4px; padding: 0 5px; }
+  /* the step brief */
+  .brief { border-left: 3px solid var(--violet); background: var(--violet-tint); border-radius: 0 10px 10px 0; padding: 12px 16px 12px 16px; margin-left: 94px; display: grid; gap: 10px; }
+  .brief .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .brief .head b { font-size: 1rem; }
+  .brief .head .who { font-size: .78rem; color: var(--muted); }
+  .brief .head .every { margin-left: auto; font-size: .78rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--violet); color: var(--violet); background: var(--surface); }
+  .brief .grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 10px 24px; font-size: .84rem; }
+  .brief .k { font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+  .brief p { font-size: .84rem; max-width: none; }
+  .press { display: inline-flex; align-items: center; font-size: .82rem; font-weight: 600; padding: 5px 12px; border-radius: 8px; background: var(--blue); color: #fff; white-space: nowrap; }
+  .alt { display: inline-flex; align-items: center; font-size: .78rem; font-weight: 600; padding: 3px 10px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); white-space: nowrap; }
+  .alts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  /* the list */
+  .gh { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--violet); margin-top: 4px; display: flex; gap: 8px; align-items: center; }
+  .gh.other { color: var(--muted); }
+  .rows { border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+  .row { display: grid; grid-template-columns: 84px minmax(0, 1.2fr) 86px minmax(0, 1.4fr) auto; gap: 12px; align-items: center; padding: 8px 13px; border-top: 1px solid var(--border); font-size: .9rem; }
+  .row:first-child { border-top: none; }
+  .kind { font-size: .82rem; padding: 2px 8px; border-radius: 6px; background: var(--blue-tint); color: var(--blue-text); justify-self: start; }
+  .kind i { color: var(--green); font-style: normal; }
+  .ttl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dots { display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; font-weight: 700; color: var(--violet); }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--violet-dot); display: inline-block; }
+  .dots i.on { background: var(--violet); }
+  .words { font-size: .86rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .words.red { color: var(--red); }
+  .row .press { justify-self: end; font-size: .8rem; padding: 4px 11px; }
+  .more { padding: 7px 13px; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--border); }
+  .mark { outline: 2px solid var(--mark); outline-offset: 4px; border-radius: 10px; position: relative; }
+  .tag { position: absolute; font-size: .62rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: var(--mark); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+  /* phone */
+  .desk.ph { padding: 10px 10px 14px; gap: 8px; }
+  .desk.ph .rail { grid-template-columns: 1fr; gap: 3px; }
+  .desk.ph .rungs { flex-direction: column; }
+  .desk.ph .rung { border-left: none; border-top: 1px solid var(--border); padding: 8px 12px; }
+  .desk.ph .rung:first-child { border-top: none; }
+  .desk.ph .brief { margin-left: 0; padding: 10px 12px; }
+  .desk.ph .brief .grid { grid-template-columns: 1fr; }
+  .desk.ph .rows { border: none; display: grid; gap: 8px; }
+  .desk.ph .row { grid-template-columns: 1fr auto; grid-template-rows: auto auto auto; border: 1px solid var(--border); border-radius: 9px; padding: 9px 10px; row-gap: 5px; }
+  .desk.ph .row .kind { grid-column: 1; }
+  .desk.ph .row .dots { grid-column: 2; grid-row: 1; justify-self: end; }
+  .desk.ph .row .ttl { grid-column: 1 / -1; white-space: normal; font-weight: 700; }
+  .desk.ph .row .words { grid-column: 1 / -1; white-space: normal; }
+  .desk.ph .row .press { grid-column: 1 / -1; justify-self: stretch; text-align: center; justify-content: center; padding: 8px; }
+  .desk.ph .more { border: none; padding: 4px 2px; }
+</style>
+
+<main>
+  <section>
+    <div class="lab">Lien desk · Do now · a rung pressed</div>
+    <h1>A step brief instead of a fade</h1>
+    <p class="rec"><b>I recommend My suggestion.</b> Press a rung and the desk teaches that step in its own words: what it is, why a notice is here, the usual move and whose it is, the other moves you may take instead, and what closes it by itself. The list re-sorts into <em>On this step</em> and <em>On other steps</em>, every row bright with its button live. Nothing is greyed, so nothing reads as locked, and the choices are named rather than implied.</p>
+    <p class="lede">The Now column is the app as it renders today, v2.6522, with the Reminders rail's rung 3 pressed. My suggestion is drawn at the same width. What is new wears one orange outline.</p>
+  </section>
+
+  <section>
+    <h2>At 1,400 wide</h2>
+    <div class="col"><div class="lab">Now · light</div><div class="shot" style="padding:1rem 1.1rem;color:var(--muted);font-size:.86rem;background:var(--surface)">Now: a screenshot of the live desk stood here. It is left out of this copy because the repo is public; the private board linked on the card has it. Every name on this page is made up.</div><p class="cap">The line says a filter is on and the rule reads under the rail, but the pale rows still look disabled, the brief is one dense paragraph, and nothing says what else the office may do.</p></div>
+    <div class="col"><div class="lab sug">My suggestion · light</div>
+      <div class="fit" data-w="1140"><div class="w" style="width:1140px">
+        <div class="desk light">
+          <div class="rail"><span class="k">Notices</span><div class="rungs"><span class="rung b"><span class="n">1</span>Find the owner<span class="c">3</span></span><span class="rung b"><span class="n">2</span>Draft notice<span class="c">1</span></span><span class="rung b"><span class="n">3</span>Approve <span class="you">you</span><span class="c">3</span></span><span class="rung b"><span class="n">4</span>Send the run<span class="c">7 <span style="font-weight:500;color:var(--muted)">printed</span></span></span></div></div>
+          <div class="rail"><span class="k">Reminders</span><div class="rungs"><span class="rung v"><span class="n">1</span>Reminder due<span class="c">8</span></span><span class="rung v quiet"><span class="n">2</span>Reminder sent<span class="c">0</span></span><span class="rung v on"><span class="n">3</span>Letter two <span class="you">you</span><span class="c">4</span></span><span class="rung v quiet"><span class="n">4</span>Closed<span class="c">0</span></span></div></div>
+          <div class="rail"><span class="k">Affidavits</span><div class="rungs"><span class="rung r"><span class="n">1</span>Fix the property<span class="c">1</span></span><span class="rung r"><span class="n">2</span>Draft affidavit<span class="c">12</span></span><span class="rung r quiet"><span class="n">3</span>Approve<span class="c">0</span></span><span class="rung r quiet"><span class="n">4</span>File it<span class="c">0</span></span></div></div>
+          <div class="brief mark"><span class="tag" style="right:10px;top:-11px">new · the step brief</span>
+            <div class="head"><b>3 · Letter two</b><span class="who">counsel's certified second letter · the leader's step · 4 notices here</span><span class="every">Every step</span></div>
+            <div class="grid">
+              <div><div class="k">What this step is</div><p>The second letter after a notice, sent certified by counsel. The desk offers it from day 10 after the packet and calls it overdue from day 14.</p></div>
+              <div><div class="k">The usual move</div><div class="alts"><span class="press">Send letter two</span><span style="font-size:.8rem;color:var(--muted)">the leader presses it, drafted on the notice and run like any notice</span></div></div>
+              <div><div class="k">Why a notice is here</div><p>Letter two is due and the courtesy notice could not go. A reminder may never name a lien day the law would not allow, so the courtesy waits when the affidavit is inside a week, the property is a homestead, no work month is approved, or the window closed. A notice is also here while a letter two is drafting, awaiting the leader, in the run or sent.</p></div>
+              <div><div class="k">You may instead</div><div class="alts"><span class="alt">Send a courtesy notice</span><span class="alt">The owner called</span><span class="alt">Hold it</span><span class="alt">Open the notice</span></div><p style="margin-top:6px;color:var(--muted)">The courtesy goes only once its hold has cleared. Each press is on the row and on the notice's footer.</p></div>
+              <div style="grid-column:1 / -1"><div class="k">It closes by itself when</div><p>The bill is paid, the GC authorizes direct pay in writing, the owner's call is recorded, they answer, or the affidavit is filed.</p></div>
+            </div>
+          </div>
+          <div class="gh">On this step · 4</div>
+          <div class="rows">
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="ttl">412 · Service Visit — 140 Cedar Bend Rd</span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i>3/4</span><span class="words red">day 21 · letter two overdue</span><span class="press">Send letter two</span></div>
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="ttl">427 · Service Visit — 2210 Mill Pond Rd</span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i>3/4</span><span class="words red">day 21 · letter two overdue</span><span class="press">Send letter two</span></div>
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="ttl">418 · Service Visit — 140 Cedar Bend Rd</span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i>3/4</span><span class="words red">day 21 · letter two overdue</span><span class="press">Send letter two</span></div>
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="ttl">436 · Ridgeway Builders- Elm Park</span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i>3/4</span><span class="words red">day 29 · letter two overdue</span><span class="press">Send letter two</span></div>
+          </div>
+          <div class="gh other mark" style="display:inline-flex;width:max-content;padding:0 4px;margin-top:14px"><span class="tag" style="left:calc(100% + 14px);top:0">bright, not faded</span>On other steps · 11</div>
+          <div class="rows">
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="ttl">301 · Harlan Construction- Brookside</span><span class="dots"><i class="on"></i><i></i><i></i><i></i>1/4</span><span class="words">day 21 · nothing since the packet</span><span class="press">Send a courtesy notice</span></div>
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="ttl">322 · Harlan Construction- Oakmont</span><span class="dots"><i class="on"></i><i></i><i></i><i></i>1/4</span><span class="words">day 21 · nothing since the packet</span><span class="press">Send a courtesy notice</span></div>
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="ttl">455 · Pruitt Homes</span><span class="dots"><i class="on"></i><i></i><i></i><i></i>1/4</span><span class="words">day 21 · nothing since the packet</span><span class="press">Send a courtesy notice</span></div>
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="ttl">448 · Bluebonnet Lube- Riverton</span><span class="dots"><i class="on"></i><i></i><i></i><i></i>1/4</span><span class="words">day 21 · nothing since the packet</span><span class="press">Send a courtesy notice</span></div>
+            <div class="more">7 more on step 1, each with its own button, as before</div>
+          </div>
+        </div>
+      </div></div>
+      <p class="cap">One press on a rung answers four questions in order: what, why, the usual move, the other moves. The rows below are sorted, not dimmed. Every step clears the sort, as a second press on the rung does.</p>
+    </div>
+    <div class="pair">
+      <div class="col"><div class="lab">Now · dark</div><div class="shot" style="padding:1rem 1.1rem;color:var(--muted);font-size:.86rem;background:var(--surface)">Now: a screenshot of the live desk stood here. It is left out of this copy because the repo is public; the private board linked on the card has it. Every name on this page is made up.</div></div>
+      <div class="col"><div class="lab sug">My suggestion · dark, the brief</div>
+        <div class="fit" data-w="1140"><div class="w" style="width:1140px"><div class="desk dark">
+          <div class="rail"><span class="k">Reminders</span><div class="rungs"><span class="rung v"><span class="n">1</span>Reminder due<span class="c">8</span></span><span class="rung v quiet"><span class="n">2</span>Reminder sent<span class="c">0</span></span><span class="rung v on"><span class="n">3</span>Letter two <span class="you">you</span><span class="c">4</span></span><span class="rung v quiet"><span class="n">4</span>Closed<span class="c">0</span></span></div></div>
+          <div class="brief">
+            <div class="head"><b>3 · Letter two</b><span class="who">counsel's certified second letter · the leader's step · 4 notices here</span><span class="every">Every step</span></div>
+            <div class="grid">
+              <div><div class="k">What this step is</div><p>The second letter after a notice, sent certified by counsel. The desk offers it from day 10 after the packet and calls it overdue from day 14.</p></div>
+              <div><div class="k">The usual move</div><div class="alts"><span class="press">Send letter two</span><span style="font-size:.8rem;color:var(--muted)">the leader presses it</span></div></div>
+              <div><div class="k">Why a notice is here</div><p>Letter two is due and the courtesy notice could not go: the affidavit is inside a week, the property is a homestead, no work month is approved, or the window closed.</p></div>
+              <div><div class="k">You may instead</div><div class="alts"><span class="alt">Send a courtesy notice</span><span class="alt">The owner called</span><span class="alt">Hold it</span><span class="alt">Open the notice</span></div></div>
+            </div>
+          </div>
+          <div class="gh">On this step · 4</div>
+          <div class="rows">
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="ttl">412 · Service Visit — 140 Cedar Bend Rd</span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i>3/4</span><span class="words red">day 21 · letter two overdue</span><span class="press">Send letter two</span></div>
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="ttl">427 · Service Visit — 2210 Mill Pond Rd</span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i>3/4</span><span class="words red">day 21 · letter two overdue</span><span class="press">Send letter two</span></div>
+          </div>
+          <div class="gh other">On other steps · 11</div>
+          <div class="rows">
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="ttl">301 · Harlan Construction- Brookside</span><span class="dots"><i class="on"></i><i></i><i></i><i></i>1/4</span><span class="words">day 21 · nothing since the packet</span><span class="press">Send a courtesy notice</span></div>
+          </div>
+        </div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>At 375 wide</h2>
+    <div class="pair">
+      <div class="col"><div class="lab">Now · light</div><div class="shot" style="padding:1rem 1.1rem;color:var(--muted);font-size:.86rem;background:var(--surface)">Now: a screenshot of the live desk stood here. It is left out of this copy because the repo is public; the private board linked on the card has it. Every name on this page is made up.</div></div>
+      <div class="col"><div class="lab sug">My suggestion · light</div>
+        <div class="desk ph light" style="width:min(359px,100%)">
+          <div class="rail"><span class="k">Reminders</span><div class="rungs"><span class="rung v"><span class="n">1</span>Reminder due<span class="c">8</span></span><span class="rung v quiet"><span class="n">2</span>Reminder sent<span class="c">0</span></span><span class="rung v on"><span class="n">3</span>Letter two <span class="you">you</span><span class="c">4</span></span><span class="rung v quiet"><span class="n">4</span>Closed<span class="c">0</span></span></div></div>
+          <div class="brief mark"><span class="tag" style="left:-3px;top:-20px">new</span>
+            <div class="head"><b>3 · Letter two</b><span class="who">the leader's step · 4 here</span></div>
+            <div class="grid">
+              <div><div class="k">What this step is</div><p>Counsel's certified second letter, from day 10, overdue from day 14.</p></div>
+              <div><div class="k">Why a notice is here</div><p>Letter two is due and the courtesy could not go: the affidavit is inside a week, a homestead, no work month, or the window closed.</p></div>
+              <div><div class="k">The usual move</div><span class="press">Send letter two</span></div>
+              <div><div class="k">You may instead</div><div class="alts"><span class="alt">Send a courtesy notice</span><span class="alt">The owner called</span><span class="alt">Hold it</span></div></div>
+              <div><span class="every" style="display:inline-block">Every step</span></div>
+            </div>
+          </div>
+          <div class="gh">On this step · 4</div>
+          <div class="rows">
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i>3/4</span><span class="ttl">412 · Service Visit — 140 Cedar Bend Rd</span><span class="words red">day 21 · letter two overdue</span><span class="press">Send letter two</span></div>
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i>3/4</span><span class="ttl">427 · Service Visit — 2210 Mill Pond Rd</span><span class="words red">day 21 · letter two overdue</span><span class="press">Send letter two</span></div>
+            <div class="more">2 more on this step</div>
+          </div>
+          <div class="gh other">On other steps · 11</div>
+          <div class="rows">
+            <div class="row"><span class="kind">Notice <i>✓</i></span><span class="dots"><i class="on"></i><i></i><i></i><i></i>1/4</span><span class="ttl">301 · Harlan Construction- Brookside</span><span class="words">day 21 · nothing since the packet</span><span class="press">Send a courtesy notice</span></div>
+            <div class="more">10 more, each with its own button</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">On a phone the brief stacks and the card rows keep their full-width buttons. The Every step press sits at the end of the brief.</p>
+  </section>
+
+  <section>
+    <h2>The four briefs on the Reminders rail</h2>
+    <p class="lede">The step's words come from the kernel's rule. The other moves are presses the row or the notice's footer already offers, so the brief names them and invents nothing.</p>
+    <div class="scroll"><table class="tbl">
+      <thead><tr><th>Step</th><th>Why a notice is here</th><th>The usual move · whose</th><th>You may instead</th><th>Closes by itself when</th></tr></thead>
+      <tbody>
+        <tr><td>1 · Reminder due</td><td>the packet went, nothing came back, day 7 or later</td><td>Send a courtesy notice · the office</td><td>Send letter two now · The owner called · Hold it</td><td>paid, GC authorized direct pay, owner called, they answered, affidavit filed</td></tr>
+        <tr><td>2 · Reminder sent</td><td>a courtesy went; the desk waits a week</td><td>wait, then Send a courtesy notice again, or Send letter two from day 10 · the office</td><td>Send letter two now · The owner called · Hold it</td><td>the same</td></tr>
+        <tr><td>3 · Letter two</td><td>letter two due while the courtesy is held, or a letter two drafting, awaiting, in the run or sent</td><td>Send letter two · the leader</td><td>Send a courtesy notice once the hold clears · The owner called · Hold it · Open the notice</td><td>the same, or the affidavit filed</td></tr>
+        <tr><td>4 · Closed</td><td>paid, GC authorized, owner called, they answered, affidavit filed, or no reminder may go</td><td>nothing · the notice reads under Sent</td><td>Open the notice · Not what I said while a word or rule send has not gone out</td><td>it is the end of the ladder</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>What changes and what does not</h2>
+    <ul class="plain">
+      <li><b>Changes:</b> a pressed rung draws a step brief under the rail in place of the Showing line and the one-line rule; the rows re-sort into On this step and On other steps at full strength, and the fade goes. The Notices, Affidavits and Retainage rails get briefs of their own in the same shape.</li>
+      <li><b>Does not:</b> any rule, any press, who approves what. The alternatives are the row's and the footer's existing presses, named. A second press on the rung, or Every step, clears the sort.</li>
+      <li><b>Size:</b> two small PRs. The first is the Reminders brief and the re-sort. The second writes the briefs for the other three rails.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+(function () {
+  function fit() {
+    document.querySelectorAll('.fit').forEach(function (f) {
+      var w = Number(f.getAttribute('data-w')); var inner = f.querySelector('.w');
+      var s = Math.min(1, f.clientWidth / w);
+      inner.style.transform = 'scale(' + s + ')';
+      f.style.height = (inner.offsetHeight * s) + 'px';
+    });
+  }
+  fit(); window.addEventListener('resize', fit); setTimeout(fit, 300); setTimeout(fit, 1200);
+})();
+</script>
+
+</body></html>

@@ -28,6 +28,7 @@ import { clauseDecisionNote, clauseProposalNote, notifyScope, type NotifyChange,
 import { pushHoursFor, readReplyPushBody, runReplyPushes } from '../_shared/messagesReplyPush.ts'
 import { HANDED_TEMPLATE, handedFresh, handedPush } from '../_shared/gcKernels/lib/messages/handedPush.ts'
 import { pushDecision } from '../_shared/gcKernels/lib/messages/pushHours.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -131,6 +132,8 @@ serve(async (req) => {
 
     const body = (await req.json().catch(() => ({}))) as { proposal_ids?: unknown; decided?: unknown; handed?: unknown }
     const admin = createClient(supabaseUrl, serviceRoleKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     const appOrigin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
 
