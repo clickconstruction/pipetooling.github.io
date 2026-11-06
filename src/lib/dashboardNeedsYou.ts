@@ -145,6 +145,7 @@ export type NeedsYouItem = {
     | 'capacity-under'
     | 'dispatch-requests-aged'
     | 'hr-reports-pending'
+    | 'away-back-day'
     | 'job-account-missing'
     | 'job-account-window'
     | 'vehicle-records-missing'
@@ -259,6 +260,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'capacity-under': 50,
   'dispatch-requests-aged': 40,
   'hr-reports-pending': 50,
+  // People tier: a teammate's Away note countdown has ended and the office said to be told (punch list #256 PR 9).
+  'away-back-day': 30,
   'lost-bids': 60,
   'd22-uncoded': 60,
   'job-account-missing': 60,
@@ -604,6 +607,12 @@ export type NeedsYouInputs = {
    */
   hrReportsEnabled?: boolean
   hrReportsAged?: { count: number; total: number; oldestAgeDays: number } | null
+  /**
+   * The day back (punch list #256 PR 9, v2.6590): the Away notes whose *Tell me when the countdown ends* is on and
+   * whose day has come, as `useAwayBackDay` hands them in (`people/awayBackDay.ts`). The people who may archive.
+   */
+  awayBackDayEnabled?: boolean
+  awayBackDay?: import('./people/awayBackDay').AwayBackDayNeed | null
   hrReportsMinAgeDays?: number
   hrReportsRedDays?: number
   /**
@@ -1636,6 +1645,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         `${total > n ? ` (${total} open in all)` : ''}. The inbox lists them oldest first; answer or close each with a note and the sender hears back.`,
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Open Dispatch inbox',
+    })
+  }
+
+  if (inputs.awayBackDayEnabled && inputs.awayBackDay && inputs.awayBackDay.count > 0) {
+    const a = inputs.awayBackDay
+    items.push({
+      key: 'away-back-day',
+      severity: 'blue',
+      kicker: 'Away',
+      title: a.title,
+      detail: a.detail,
+      figure: a.count > 99 ? '99+' : String(a.count),
+      actionLabel: 'Bring back…',
     })
   }
 

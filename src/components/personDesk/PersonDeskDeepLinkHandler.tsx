@@ -6,6 +6,8 @@ import { parseDeskSectionParam } from '../../lib/people/personDeskSections'
 
 const PARAM = 'person'
 const SECTION_PARAM = 'section'
+/** `&flow=bring_back` opens the desk with the Bring back window already up (punch list #256 PR 9, v2.6590). */
+const FLOW_PARAM = 'flow'
 
 /**
  * Opens the Person Desk when the URL carries `?person=u:<users.id>` or
@@ -25,12 +27,14 @@ export function PersonDeskDeepLinkHandler() {
     handledRef.current = raw
     const parsed = parsePersonDeskParam(raw)
     const section = parseDeskSectionParam(searchParams.get(SECTION_PARAM))
-    if (parsed) desk.open({ ...parsed, section })
+    const flow = searchParams.get(FLOW_PARAM) === 'bring_back' ? 'bring_back' : null
+    if (parsed) desk.open({ ...parsed, section, flow })
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
         next.delete(PARAM)
         next.delete(SECTION_PARAM)
+        next.delete(FLOW_PARAM)
         return next
       },
       { replace: true },

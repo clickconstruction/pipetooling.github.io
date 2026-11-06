@@ -24,7 +24,7 @@ Their desk stays. Open People → Users, press {{button:outline|Archived}}, and 
 
 ## On the day they are back
 
-1. Open People → Users and press {{button:outline|Archived}}. Press {{button:blue|Bring back…}} on their row. The desk's Status row and its **⋯** menu offer the same press.
+1. Open People → Users and press {{button:outline|Archived}}. Press {{button:blue|Bring back…}} on their row. The desk's Status row and its **⋯** menu offer the same press. If their Away note counted down to today, the Dashboard's Needs you card lists them with {{button:blue|Bring back…}} too.
 2. Set **Back on** to their first day back. The line under it says how long they were away and the first stint's dates.
 3. Work the rows. Each one is something time away made stale.
 4. Tick **Give back their open roadmap tasks** only when you want the old tasks back. The box starts ticked within 90 days of leaving. After that it starts unticked.
