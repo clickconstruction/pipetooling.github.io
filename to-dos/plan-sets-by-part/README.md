@@ -2,7 +2,7 @@
 name: "Plan sets by part: an updated set mid-project, and our own as-builts kept with the build"
 number: 239
 group: ready
-status: building 2026-11-01 · PR 1 the tables merged as v2.6297 (#6743), migration 20261101210000 pushed · PR 2 the Plans section in the job window's Documents tab merged as v2.6298 (#6744) · PR 3 the Development page's Plans look by part merged as v2.6302 (#6749) · the papers ground v2.6312 (#6760) and doors v2.6313 (#6762) merged, migration 20261102010000 pushed · PR 4 the bid's priced-on and the hand-off v2.6342 (#6789) and PR 6 the row and History v2.6344 (#6790) merged, both migrations pushed · PR 5 Drive and photos merged as v2.6345 (#6793) and `plan-set-files` deployed; its live check on a ZZ Test job passed on 2026-11-03 (an as-built's photos land in its own folder under Plans, a later photo takes the next name, a set with no link gets its folder) · the live walk of the papers doors passed on 2026-11-02
+status: building 2026-11-01 · PR 1 the tables merged as v2.6297 (#6743), migration 20261101210000 pushed · PR 2 the Plans section in the job window's Documents tab merged as v2.6298 (#6744) · PR 3 the Development page's Plans look by part merged as v2.6302 (#6749) · the papers ground v2.6312 (#6760) and doors v2.6313 (#6762) merged, migration 20261102010000 pushed · PR 4 the bid's priced-on and the hand-off v2.6342 (#6789) and PR 6 the row and History v2.6344 (#6790) merged, both migrations pushed · PR 5 Drive and photos merged as v2.6345 (#6793) and `plan-set-files` deployed; its live check on a ZZ Test job passed on 2026-11-03 (an as-built's photos land in its own folder under Plans, a later photo takes the next name, a set with no link gets its folder) · the live walk of the papers doors passed on 2026-11-02 · the walk of v2.6356 on 2026-11-03 found two phone faults on the Plans look, fixed as v2.6435 (#6915) and v2.6442 · the last code item, the as-built author's row-level move, closed 2026-11-06 as v2.6583 (#7131; migration 20261106180000, the SQL bed plan_sets_author; push right after its merge) · the bed found the crew's read gate closed on a development's job and for every helper, card #272
 summary: >
   The owner, 2026-11-01, after a read-only assessment of a development's Plans look: on a project they
   often get an updated set of plans halfway through, or the crew makes its own as-builts and wants them
@@ -13,10 +13,10 @@ summary: >
   site (the Lodge, the Bunker, the whole site), each part has one set it builds from, a job names its
   part and follows it, a bid pins what it was priced on, and an as-built is ours, on the job, marking up
   the set it built from. A job outside any development owns its own part, so it gets the same thing.
-next: The real site's papers are kept through Keep a paper now that the doors are live, and the walk's fixes open. A mail's file following its paper is still to be seen live, since no ZZ Test mail with a file is tagged to a ZZ Test job. An as-built's author can still move the row to another job at the row level (`plan_sets_update`), a card of its own.
+next: The real site's papers are kept through Keep a paper, once the owner says which part a few of them go on. A mail's file following its paper is still to be seen live: no ZZ Test mail with a file is tagged to a ZZ Test job, and a session cannot open a Workspace mailbox to send one, so a person sends the test mail or the first real paper proves it.
 size: S (PR 1 the tables) + M (PR 2 the job section) + M (PR 3 the site look) + S (PR 4 the bid) + M (PR 5 Drive and photos) + S (PR 6 the row and History)
-blocker: None in the code. Every migration of the train is pushed (check:migration-drift read fully applied on 2026-11-03); the types stay hand-carried until the next chore(types). The real site's papers wait on one call of the owner's, about which part a few of them go on.
-ver: v2.6297 · 6298 · 6302 · 6312 · 6313 · 6342 · 6344 · 6345 · 6356 · 6435 · 6442
+blocker: None in the code once 20261106180000 is pushed. The real site's papers wait on one call of the owner's, about which part a few of them go on; the mail-file check waits on a ZZ Test mail with a file, which only a person with a mailbox can send.
+ver: v2.6297 · 6298 · 6302 · 6312 · 6313 · 6317 · 6342 · 6344 · 6345 · 6351 · 6355 · 6356 · 6435 · 6442 · 6583
 opinion: build the train as ordered; the one judgement call left to the owner is PR 3's "join an existing part" when a lone job is put into a development
 ---
 
