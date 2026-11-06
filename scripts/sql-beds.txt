@@ -88,3 +88,4 @@ employment-stints
 logbook-shares
 stage-check-self-close
 users-without-login
+archived-seal
