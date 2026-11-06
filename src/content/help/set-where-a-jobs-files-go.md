@@ -2,7 +2,7 @@
 title: set where a job's files go
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: where files go, drive, google drive, jobs root, job folder, folder name, pattern, drive folders, check a folder, documents, customer pictures, plans, team only, bid folder, people folder, evidence, shared drive
+keywords: where files go, fleet folder, machines, machine photos, drive, google drive, jobs root, job folder, folder name, pattern, drive folders, check a folder, documents, customer pictures, plans, team only, bid folder, people folder, evidence, shared drive
 order: 46
 ---
 Every job's files live in one Drive folder under its customer's folder, under the jobs root. On the Documents page you set where that root is and how a job's folder is named.
@@ -86,3 +86,13 @@ Each file says where it came from. {{chip:blue|From the app · a report photo}} 
 The list is read from Drive each time the tab opens. Nothing is copied. A file dropped into a folder by hand shows the next time anyone looks.
 
 An empty folder says what fills it. A folder not made yet says when the app makes it. A held job shows the hold's words instead of a list. If the read fails, the section says why. Press **Try again**.
+
+## The Fleet folder
+
+A machine's check photos land in a folder of the machine's own. Those folders go under the Fleet folder. The **Fleet folder** card on Documents → Where files go sets it.
+
+Tap {{button:blue|Make the Fleet folder}}. The app's own account makes a folder named PipeTooling Fleet beside the Jobs folder in its Shared Drive. A folder of that name already there is used as it is. The card then shows its name and {{button:outline|Open in Drive}}.
+
+You can paste a folder link instead. Tap {{button:outline|Check}} and the card says whether the app can write there. Then tap {{button:blue|Use this folder for the machines' folders}}.
+
+Until a Fleet folder is set, a machine's photos wait with the reason on their row. They file on the next pass once it is set.
