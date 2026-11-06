@@ -11,6 +11,7 @@
  */
 import type { PdfLibLike } from './jobContractPdf.ts'
 import { pdfSafeText } from './hoursStatementPdf.ts'
+import { APP_CALENDAR_TZ } from './appTimeZone.ts'
 
 type FontLike = { widthOfTextAtSize(text: string, size: number): number }
 type PageLike = {
@@ -65,7 +66,7 @@ const PICK_WORDS = { yes: 'Yes', no: 'No', not_here: 'Not here' } as const
 const PICK_GLYPH = { yes: 'Yes', no: 'NO', not_here: '-' } as const
 
 /** *Nov 1 · 9:14 am* in the company's calendar, or '' without a time. */
-export function pdfStampWhen(iso: string | null | undefined, timeZone = 'America/Chicago'): string {
+export function pdfStampWhen(iso: string | null | undefined, timeZone: string = APP_CALENDAR_TZ): string {
   const ms = iso ? Date.parse(iso) : NaN
   if (!Number.isFinite(ms)) return ''
   const d = new Date(ms)
