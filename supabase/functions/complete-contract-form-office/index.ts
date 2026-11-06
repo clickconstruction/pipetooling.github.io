@@ -29,6 +29,7 @@ import { buildFillPlan, hasOfficeBoxes, schemaForParty, splitFormValuesForStorag
 import { fillFormPdf, type FormPdfLibLike } from '../_shared/fillFormPdf.ts'
 import { partyRegions } from '../_shared/formParties.ts'
 import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const FORM_PDFS_BUCKET = 'contract-form-pdfs'
 const LINK_SECONDS = 900
@@ -95,6 +96,8 @@ serve(async (req) => {
     if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: me } = await admin.from('users').select('role, name').eq('id', user.id).maybeSingle()
     const role = (me as { role?: string } | null)?.role ?? ''
     if (!ALLOWED_ROLES.has(role)) return json({ error: 'Only office staff can complete a form’s office section.', code: 'forbidden' }, 403)

@@ -19,7 +19,7 @@ import { trimSignatureInk } from '../signatureInkTrim'
 import { checklistAnswerHash, type ChecklistSignatureMode, type JobStageRef, type StageChecklistAnswer, type StageChecklistPick, type StageChecklistQuestion } from './stageChecklist'
 import { PRINTED_NAME_MAX_CHARS, TAKE_BACK_WORDS, VOID_WHY_MAX_CHARS, signaturePngPath } from './stageChecklistSignature'
 import { supabaseStageCheckDispatchIo, type StageCheckDispatchIo } from './stageCheckDispatchIo'
-import { addJobItem, loadQuestionsForJob, mayAuthorOnJob, promoteJobItem, putBackQuestion, reorderJobItems, retireJobItem, skipQuestion, type AddJobItemInput, type QuestionSkip, type SkipQuestionInput } from './stageChecklistIo'
+import { addJobItem, loadQuestionsForJob, mayAuthorOnJob, promoteJobItem, putBackQuestion, reorderJobItems, retireJobItem, skipQuestion, supabaseStageChecklistCompanyIo, type AddJobItemInput, type QuestionSkip, type SkipQuestionInput, type StageChecklistCompanyIo } from './stageChecklistIo'
 import type { ChecklistRecord } from './stageChecklistRecord'
 import { amendRecord, loadJobRecords } from './stageChecklistRecordIo'
 
@@ -380,8 +380,10 @@ export interface StageChecklistSheetIo {
   amend: (recordId: string, why: string) => Promise<ChecklistRecord>
   /** Send a check to Dispatch (punch list #245): the job, the open requests and the send. The sheet draws no press without it. */
   dispatch?: StageCheckDispatchIo
+  /** The company's list written from the job's Documents tab (#237 PR 4): add, take off with a reason, reorder. The read-out draws no company press without it. */
+  company?: StageChecklistCompanyIo
 }
 
 export function supabaseStageChecklistSheetIo(): StageChecklistSheetIo {
-  return { stages: loadJobStages, questions: loadQuestionsForJob, answers: loadJobAnswers, pick: saveAnswerPick, note: saveAnswerNote, photo: attachAnswerPhoto, photoUrl: waitingPhotoUrl, sign: signAnswer, takeBack: takeBackAnswer, inkUrl: signatureInkUrl, records: loadJobRecords, amend: amendRecord, addItem: addJobItem, retireItem: retireJobItem, mayAuthor: mayAuthorOnJob, skip: skipQuestion, putBack: putBackQuestion, reorder: reorderJobItems, promote: promoteJobItem, dispatch: supabaseStageCheckDispatchIo() }
+  return { stages: loadJobStages, questions: loadQuestionsForJob, answers: loadJobAnswers, pick: saveAnswerPick, note: saveAnswerNote, photo: attachAnswerPhoto, photoUrl: waitingPhotoUrl, sign: signAnswer, takeBack: takeBackAnswer, inkUrl: signatureInkUrl, records: loadJobRecords, amend: amendRecord, addItem: addJobItem, retireItem: retireJobItem, mayAuthor: mayAuthorOnJob, skip: skipQuestion, putBack: putBackQuestion, reorder: reorderJobItems, promote: promoteJobItem, dispatch: supabaseStageCheckDispatchIo(), company: supabaseStageChecklistCompanyIo() }
 }

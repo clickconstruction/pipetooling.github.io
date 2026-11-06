@@ -4,6 +4,7 @@ import { messagesThreadHref } from '../../lib/messages/customerThread'
 import { googleLinkProblem, ratingDay, recentAnswers, REVIEWS_BLOCK_WORDS as W, reviewsMonth, starsGlyphs, type OfficeRating } from '../../lib/ratings/ratingsOffice'
 import { supabaseRatingsOfficeIo, type RatingsOfficeIo } from '../../lib/ratings/ratingsOfficeIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { techsLine } from '../../lib/ratings/ratingCredit'
 
 /**
  * Settings → What customers see → **Reviews** (v2.5946, punch list #185 PR 4): the company's Google review link the
@@ -29,6 +30,7 @@ export function SettingsReviewsBlock({ io: ioIn }: { io?: RatingsOfficeIo } = {}
   const [link, setLink] = useState('')
   const [saved, setSaved] = useState('')
   const [rows, setRows] = useState<OfficeRating[] | null>(null)
+  const [techsByJob, setTechsByJob] = useState<Map<string, string[]>>(() => new Map())
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -51,6 +53,17 @@ export function SettingsReviewsBlock({ io: ioIn }: { io?: RatingsOfficeIo } = {}
   const problem = googleLinkProblem(link)
   const month = rows ? reviewsMonth(rows) : null
   const recent = rows ? recentAnswers(rows) : []
+
+  // v2.6584 (punch list #255): the techs on each listed job, so the block says whose work each answer praises.
+  const recentJobIds = recent.map((r) => r.jobId).filter((v): v is string => Boolean(v)).join(',')
+  useEffect(() => {
+    if (!recentJobIds) return
+    let live = true
+    void io.techsOnJobs?.(recentJobIds.split(',')).then((m) => live && setTechsByJob(m), () => live && setTechsByJob(new Map()))
+    return () => {
+      live = false
+    }
+  }, [io, recentJobIds])
 
   const save = async () => {
     if (problem || busy) return
@@ -157,6 +170,7 @@ export function SettingsReviewsBlock({ io: ioIn }: { io?: RatingsOfficeIo } = {}
             <span style={MUTED}>{ratingDay(r.answeredAt)}</span>
             {r.googlePressedAt ? <span style={MUTED}>· pressed Google</span> : null}
             {r.words.trim() ? <span style={{ color: 'var(--text-700)', flexBasis: '100%' }}>“{r.words.trim()}”</span> : null}
+            {r.jobId && techsLine(techsByJob.get(r.jobId) ?? []) ? <span style={{ ...MUTED, flexBasis: '100%' }}>{techsLine(techsByJob.get(r.jobId) ?? [])}</span> : null}
           </div>
         ))}
       </div>

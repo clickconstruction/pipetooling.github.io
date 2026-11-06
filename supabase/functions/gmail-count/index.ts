@@ -36,6 +36,7 @@ import { googleServiceToken } from '../_shared/googleToken.ts'
 import { countedBoxes, findLabel, type CountedBox, type GmailLabel, type WatchRow } from '../_shared/gcKernels/lib/emailIn/countedBoxes.ts'
 import { dayRow, planSweep, SWEEP_PAGE_CAP, threadSeen, type TrendThread } from '../_shared/gcKernels/lib/emailIn/labelSweep.ts'
 import { calendarYmdInAppTzFromIso } from '../_shared/gcKernels/utils/dateUtils.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const SWITCH_KEY = 'email_count_on_v1'
 /**
@@ -247,6 +248,8 @@ serve(async (req) => {
     if (!authorization.toLowerCase().startsWith('bearer ')) return jsonResponse({ error: 'Unauthorized' }, 401)
     const caller = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authorization } } })
     const { data: u } = await caller.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (!u?.user) return jsonResponse({ error: 'Sign in to read a box again.' }, 401)
     const body = await req.json().catch(() => null)
     const watchId = typeof body?.watch_id === 'string' ? body.watch_id : ''

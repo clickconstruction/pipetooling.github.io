@@ -44,6 +44,21 @@ export async function loadPersonMatter(personId: string): Promise<PersonMatterLo
   return { matter, entries: ((e.data ?? []) as LegalEntryRow[]), documents: docs, heldWhy: null }
 }
 
+/** The matter row alone, for the fact strip's chip (v2.6582). */
+export type PersonMatterStanding = Pick<LegalMatterRow, 'id' | 'stage' | 'closed_at' | 'closed_reason' | 'handling_name'>
+
+/**
+ * The matter standing on a person, the row alone (v2.6582, punch list #269 PR 3b): what the HR file's fact strip reads
+ * for its Matter chip. Null when none stands, when the column is not pushed yet, or when the read is refused — the strip
+ * draws no chip and the Matter view says why.
+ */
+export async function loadPersonMatterStanding(personId: string): Promise<PersonMatterStanding | null> {
+  const m = await db.from('legal_matters').select('id,stage,closed_at,closed_reason,handling_name').eq('person_id', personId).maybeSingle()
+  if (m.error) return null
+  const raw = m.data as unknown
+  return (Array.isArray(raw) ? (raw[0] ?? null) : (raw ?? null)) as PersonMatterStanding | null
+}
+
 export type OpenPersonMatterOutcome = { ok: true; matterId: string; made: boolean } | { ok: false; why: string }
 
 /** Open the matter on this person, or find the one that stands (`legal_person_matter_open`, devs only). */

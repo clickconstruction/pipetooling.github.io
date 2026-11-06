@@ -24,6 +24,7 @@ import {
   type BillRead,
   type BillReadRequest,
 } from '../_shared/billRead.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * bill-read (punch list #179 PR 2, v2.6088): a supply-house bill's PDF, or a picture of the counter ticket, read into
@@ -123,6 +124,8 @@ serve(async (req) => {
     if (authError || !user) return json({ ok: false, error: 'signIn', words: BILL_READ_WORDS.signIn }, 401)
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: who } = await admin.from('users').select('id, role, read_only').match(REAL_ACCOUNT).eq('id', user.id).maybeSingle()
     const me = who as { role?: string; read_only?: boolean } | null
     const role = String(me?.role ?? '')

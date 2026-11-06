@@ -20,6 +20,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { gcMoneyMondaySubject, renderGcMoneyMondayHtml, renderGcMoneyMondayText, type GcMoneyMondayPayload } from './render.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,6 +63,8 @@ async function requireMoneyTeam(req: Request, admin: Admin): Promise<UserRow | R
     data: { user },
     error: authErr,
   } = await jwtClient.auth.getUser(token)
+  const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+  if (archivedRefusal) return archivedRefusal
   if (authErr || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
   const me = await loadUser(admin, user.id)
   if (!me || me.archived_at || !MONEY_TEAM.has(String(me.role))) return jsonResponse({ error: 'Forbidden' }, 403)

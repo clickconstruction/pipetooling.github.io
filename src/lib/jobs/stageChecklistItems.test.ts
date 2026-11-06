@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { checklistAnswerHash, type JobStageChecklist, type StageChecklistAnswer, type StageChecklistQuestion } from './stageChecklist'
-import { GROUP_WORDS, READOUT_FOOT, TAKE_OFF_WORDS, addCheckWords, addedWords, asksMayAuthor, canAuthorOnJob, canTakeOffJobItem, checklistsSummary, cleanItemWords, jobItemProblem, noJobItemsWords, rowAsksPhotoTag, rowGlyph, rowMetaWords, rowPickWords, rowSignatureTag, stageStandingChip, stripListsEmptyStage, takenOffWords } from './stageChecklistItems'
+import { GROUP_WORDS, READOUT_FOOT, TAKE_OFF_WORDS, addCheckWords, addScopeWords, addedCompanyWords, addedWords, asksMayAuthor, canAuthorOnJob, canMoveCompanyQuestions, canTakeOffCompanyQuestion, canTakeOffJobItem, canUseAsCompanyList, canWriteCompanyList, checklistsSummary, cleanItemWords, companyTakeOffProblem, companyTakeOffWords, companyTakenOffWords, jobItemProblem, nextCompanyOrder, noJobItemsWords, rowAsksPhotoTag, rowGlyph, rowMetaWords, rowPickWords, rowSignatureTag, stageStandingChip, stripListsEmptyStage, takenOffWords, companyListFromJobOutcome, companyListFromJobWords } from './stageChecklistItems'
 
 // Made-up people and checks on a made-up job.
 const company: StageChecklistQuestion = { id: 'q1', kind: 'trim_set', order: 1, words: 'Did the final water test hold?', asksPhoto: true }
@@ -116,5 +116,54 @@ describe('needs a signature on the read-out (#237 PR 2)', () => {
     const w = addCheckWords('Trim Set')
     expect(w.signature).toBe('Needs a signature')
     expect(w.signatureHint).toContain('Use it where a wrong answer costs a wall or an inspection.')
+  })
+})
+
+describe("the company's list on Documents (#237 PR 4)", () => {
+  it('the office alone writes the company’s list, moves it with two or more, and offers the whole job list with two or more checks', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller'] as const) {
+      expect(canWriteCompanyList(role)).toBe(true)
+      expect(canTakeOffCompanyQuestion(role, company)).toBe(true)
+      expect(canTakeOffCompanyQuestion(role, item)).toBe(false)
+      expect(canMoveCompanyQuestions(role, 2)).toBe(true)
+      expect(canMoveCompanyQuestions(role, 1)).toBe(false)
+      expect(canUseAsCompanyList(role, 2)).toBe(true)
+      expect(canUseAsCompanyList(role, 1)).toBe(false)
+    }
+    for (const role of ['superintendent', 'estimator', 'helpers', 'primary', null] as const) {
+      expect(canWriteCompanyList(role)).toBe(false)
+      expect(canTakeOffCompanyQuestion(role, company)).toBe(false)
+      expect(canMoveCompanyQuestions(role, 3)).toBe(false)
+      expect(canUseAsCompanyList(role, 3)).toBe(false)
+    }
+  })
+  it('names the stage in the scope pick, the take-off and the whole-list press, and counts the confirm', () => {
+    const scope = addScopeWords('Trim Set')
+    expect(scope.company).toBe('Every Trim Set in the company')
+    expect(scope.companyConfirm).toBe('Add to every Trim Set')
+    expect(scope.companyHint).toContain('A plan sheet and a why are for one job')
+    expect(addedCompanyWords('Trim Set')).toBe("Added to the company's list. Every Trim Set asks it from now on.")
+    const off = companyTakeOffWords('Trim Set')
+    expect(off.press).toBe("Take off the company's list")
+    expect(off.confirm).toBe('Take it off every Trim Set')
+    expect(companyTakeOffProblem('  ')).toBe('Say why this question comes off the company’s list.')
+    expect(companyTakeOffProblem('the inspector no longer asks')).toBeNull()
+    expect(companyTakenOffWords('Trim Set', { asked: 3, answered: 2 })).toBe("Taken off the company's list. Trim Set is now 2 of 3.")
+    const useAs = companyListFromJobWords('Trim Set', 3)
+    expect(useAs.press).toBe("Use as the company's Trim Set list")
+    expect(useAs.confirm).toBe('Add 3 checks to every Trim Set')
+    expect(companyListFromJobWords('Trim Set', 1).confirm).toBe('Add 1 check to every Trim Set')
+  })
+  it('places a new company question after the kind’s live company rows, never after a job item', () => {
+    expect(nextCompanyOrder([company, { ...company, id: 'q2', order: 4 }, { ...item, order: 9 }], 'trim_set')).toBe(5)
+    expect(nextCompanyOrder([company], 'rough_in')).toBe(1)
+  })
+  it('reads the run’s outcome in the batch shape: what took, what stayed with its reason', () => {
+    expect(companyListFromJobOutcome(3, 0)).toEqual({ line: 'Added 3 checks.', head: null, tone: 'success' })
+    expect(companyListFromJobOutcome(2, 1)).toEqual({ line: 'Added 2 checks. 1 did not add.', head: '1 check did not add. It stays here with the reason.', tone: 'warning' })
+    expect(companyListFromJobOutcome(0, 2).tone).toBe('error')
+  })
+  it('the foot says where the company’s questions are written now', () => {
+    expect(READOUT_FOOT).toContain('pick the company on the add box')
   })
 })

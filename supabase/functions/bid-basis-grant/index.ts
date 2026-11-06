@@ -16,6 +16,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { countToolingViewToken, mintViewGrant, withViewGrant } from '../_shared/viewGrant.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -76,6 +77,8 @@ serve(async (req) => {
     if (!bidId) return jsonResponse(400, { ok: false, error: 'bid_id required' })
 
     const admin = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: me, error: meErr } = await admin.from('users').select('id, name, email, role, archived_at').eq('id', user.id).maybeSingle()
     if (meErr || !me) return jsonResponse(403, { ok: false, error: 'User not found' })
     if (me.archived_at) return jsonResponse(403, { ok: false, error: 'User archived' })

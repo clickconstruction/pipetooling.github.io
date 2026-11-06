@@ -138,15 +138,18 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
     fireEvent.click(screen.getByTestId('lien-step-notice-4'))
     expect(onOpenRun).toHaveBeenCalledTimes(1)
   })
-  it('a pressed rung opens a step brief with the rung’s name and count, and Every step clears it (v2.6574; v2.6522’s Showing line and the fade are gone)', () => {
+  it('a pressed rung opens a step brief with the rung’s name, count and words on every rail, and Every step clears it (v2.6574, v2.6577)', () => {
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} />)
     expect(screen.queryByTestId('lien-step-brief')).toBeNull()
     fireEvent.click(screen.getByTestId('lien-step-notice-2'))
     const brief = screen.getByTestId('lien-step-brief')
     expect(brief.getAttribute('data-ladder')).toBe('notice')
     expect(screen.getByTestId('lien-step-brief-title').textContent).toBe('2 · Draft notice')
-    expect(screen.getByTestId('lien-step-brief-count').textContent).toBe('1 notice here')
-    // The notice rail has no brief words yet, so no strip and no four parts; the head and the sort still read.
+    expect(screen.getByTestId('lien-step-brief-count').textContent).toBe('the office’s step · 1 notice here')
+    // The notice rail's own brief (v2.6577): the four parts, no schedule strip (that is the REMINDERS rail's).
+    expect(brief.textContent).toContain('The office drafts the § 53.056 notice from the job')
+    expect(brief.textContent).toContain('Draft notice · the office presses it')
+    expect(screen.getByTestId('lien-step-brief-instead').textContent).toBe('The leader said to send it ▸ · Hold — they promised… · Hold — I’ll call first')
     expect(screen.queryByTestId('lien-schedule-strip')).toBeNull()
     expect(screen.queryByTestId('lien-step-showing')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Every step' }))
@@ -157,6 +160,9 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
     render(<LienDeskNextUp rows={rows} loading={false} isMobile onAct={() => {}} />)
     fireEvent.click(screen.getByTestId('lien-step-affidavit-1'))
     expect(screen.getByTestId('lien-step-brief-title').textContent).toBe('1 · Fix the property')
+    expect(screen.getByTestId('lien-step-brief').textContent).toContain('Fix the property · the office presses it')
+    expect(screen.getByTestId('lien-step-brief-count').textContent).toBe('the office’s step · 1 affidavit here')
+    expect(screen.getByTestId('lien-step-brief-instead').textContent).toContain('Fill in the record ›')
     expect(screen.getByTestId('lien-step-brief-clear').textContent).toBe('Every step')
   })
   it('every row wears four dots and its fraction; hovering them opens the card beside, with the ladder written out and the row’s own button', () => {

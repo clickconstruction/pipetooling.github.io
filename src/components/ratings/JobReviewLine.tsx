@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { canOpenGcProjects } from '../../lib/gc/access'
 import { jobReviewLine, newestRating, starsGlyphs, type OfficeRating } from '../../lib/ratings/ratingsOffice'
 import { supabaseRatingsOfficeIo, type RatingsOfficeIo } from '../../lib/ratings/ratingsOfficeIo'
+import { techsLine } from '../../lib/ratings/ratingCredit'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
@@ -21,6 +22,7 @@ export function JobReviewLine({ jobId, io: ioIn }: { jobId: string; io?: Ratings
   const io = useMemo(() => ioIn ?? supabaseRatingsOfficeIo(), [ioIn])
   const office = canOpenGcProjects(role)
   const [rows, setRows] = useState<OfficeRating[] | null>(null)
+  const [techs, setTechs] = useState<string[]>([])
   const [noting, setNoting] = useState(false)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -31,6 +33,8 @@ export function JobReviewLine({ jobId, io: ioIn }: { jobId: string; io?: Ratings
     io.forJob(jobId)
       .then((r) => live && setRows(r))
       .catch(() => live && setRows([]))
+    // v2.6584 (punch list #255): who was on the job, so the office reads whose work the words praise.
+    void io.techsOnJobs?.([jobId]).then((m) => live && setTechs(m.get(jobId) ?? []), () => live && setTechs([]))
     return () => {
       live = false
     }
@@ -75,6 +79,7 @@ export function JobReviewLine({ jobId, io: ioIn }: { jobId: string; io?: Ratings
         ) : null}
       </div>
       {line.words ? <div style={{ color: 'var(--text-700)', borderLeft: '3px solid var(--border-strong)', paddingLeft: 8 }}>“{line.words}”</div> : null}
+      {line.state === 'answered' && techsLine(techs) ? <div style={{ color: 'var(--text-muted)' }} data-testid="job-review-techs">{techsLine(techs)}</div> : null}
       {line.callNote ? <div style={{ color: 'var(--text-muted)' }}>The call: {line.callNote}</div> : null}
       {noting ? (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>

@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Routed drive times between consecutive scheduled jobs (Day-view travel
@@ -116,6 +117,8 @@ serve(async (req) => {
 
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   const admin = createClient(supabaseUrl, serviceKey)
+  const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+  if (archivedRefusal) return archivedRefusal
 
   // 1. Cache lookup (fetch by from-ids, filter pairs in memory — pair count is tiny).
   const results: PairOut[] = []

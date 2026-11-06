@@ -21,12 +21,17 @@ import {
   machineDays,
   machineFolderName,
   machineName,
+  EMPTY_RENTAL_DRAFT,
+  mintRentalLabel,
+  newMachineReady,
+  newMachineWords,
   rentalWords,
   todayDay,
   type LevelDef,
   type Machine,
   type MachineKind,
   type Rental,
+  type RentalDraft,
 } from '../../lib/machines/machines'
 import { addMachine, placeMachine, saveLevels, saveRental, type MachineTemplate } from '../../lib/machines/machinesIo'
 import { runAnyway } from '../../lib/machines/checksIo'
@@ -35,6 +40,7 @@ import { MachineCheckSheet } from './MachineCheckSheet'
 import { JobLookupBox } from './JobLookupBox'
 import { MachineLabelModal } from './MachineLabelModal'
 import { GaugeListEditor } from './GaugeListEditor'
+import { OursOrRental, RentalFields } from './RentalFields'
 
 const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 12, padding: '0.75rem 0.9rem', background: 'var(--surface)', display: 'grid', gap: '0.5rem' }
 const chip: CSSProperties = { display: 'inline-block', padding: '0 0.5rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 700, lineHeight: '1.3rem' }
@@ -265,8 +271,15 @@ function RentalEditor({ machine, busy, onSave, onClose }: { machine: Machine; bu
   )
 }
 
+/**
+ * A new machine on the board, from + Add a machine or from the label page for a code the board does not know: ours
+ * by the unit the crew says, or a rental by who it is from, with the agreement number free to wait for the tech's
+ * photo at pickup (punch list #271). A rental's label is minted from what is typed, *Rental 48812-3* or *Sunbelt rental*.
+ */
 export function AddMachine({ templates, onDone, code }: { templates: readonly MachineTemplate[]; onDone: (id: string) => void; code?: string }) {
+  const [ours, setOurs] = useState(true)
   const [unit, setUnit] = useState('')
+  const [rental, setRental] = useState<RentalDraft>(EMPTY_RENTAL_DRAFT)
   const [make, setMake] = useState('')
   const [model, setModel] = useState('')
   const [templateId, setTemplateId] = useState<string>(templates[0]?.id ?? '')
@@ -274,9 +287,12 @@ export function AddMachine({ templates, onDone, code }: { templates: readonly Ma
   const [failed, setFailed] = useState<string | null>(null)
   const template = templates.find((t) => t.id === templateId) ?? null
   const kind: MachineKind = template?.kind ?? 'other'
+  const ready = newMachineReady(ours, { unit, make, from: rental.from, agreementNo: rental.agreementNo })
+  const chosen: CSSProperties = { ...press, background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }
   return (
     <div style={{ ...card, marginBottom: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', alignItems: 'end' }} data-add-machine>
-      <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unit, like E-14" aria-label="Unit" style={field} />
+      <OursOrRental ours={ours} onChange={setOurs} disabled={busy} press={press} chosen={chosen} />
+      {ours ? <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Unit, like E-14" aria-label="Unit" style={field} /> : <RentalFields value={rental} onChange={setRental} disabled={busy} field={field} />}
       <input value={make} onChange={(e) => setMake(e.target.value)} placeholder="Make" aria-label="Make" style={field} />
       <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="Model" aria-label="Model" style={field} />
       <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} aria-label="Template" style={field}>
@@ -289,17 +305,22 @@ export function AddMachine({ templates, onDone, code }: { templates: readonly Ma
       <button
         type="button"
         style={{ ...press, background: '#2563eb', color: '#fff', borderColor: '#2563eb' }}
-        disabled={busy || !unit.trim() || !make.trim()}
+        disabled={busy || !ready}
         onClick={() => {
           setBusy(true)
           setFailed(null)
-          addMachine({ unitLabel: unit.trim(), make: make.trim(), model: model.trim(), templateId: templateId || null, kind, code })
+          const unitLabel = ours ? unit.trim() : mintRentalLabel(rental.from, rental.agreementNo)
+          addMachine({ unitLabel, make: make.trim(), model: model.trim(), templateId: templateId || null, kind, code })
+            .then(async (id) => {
+              if (!ours) await saveRental(id, { from: rental.from.trim(), agreementNo: rental.agreementNo.trim(), outOn: todayDay(), dueBack: rental.dueBack })
+              return id
+            })
             .then(onDone)
             .catch((e) => setFailed(formatErrorMessage(e, 'The machine was not added.')))
             .finally(() => setBusy(false))
         }}
       >
-        {busy ? 'Adding…' : `Add ${unit.trim() || 'it'}`}
+        {busy ? 'Adding…' : `Add ${newMachineWords(ours, { unit, from: rental.from })}`}
       </button>
       {failed ? <p style={{ margin: 0, gridColumn: '1 / -1', color: 'var(--text-red-700)', fontSize: '0.8125rem' }}>{failed}</p> : null}
     </div>

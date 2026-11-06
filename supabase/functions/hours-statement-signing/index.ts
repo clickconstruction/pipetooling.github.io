@@ -40,6 +40,7 @@ import {
   statedSeedValues,
   type HoursStatementSendHow,
 } from '../_shared/hoursStatementForm.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const FORM_TEMPLATES_BUCKET = 'contract-form-templates'
 const FORM_PDFS_BUCKET = 'contract-form-pdfs'
@@ -250,6 +251,8 @@ serve(async (req) => {
     } = await userClient.auth.getUser(token)
     if (authError || !user) return json({ error: 'Unauthorized' }, 401)
     const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
     const action = body.action === 'prepare' ? 'prepare' : body.action === 'file_scan' ? 'file_scan' : null

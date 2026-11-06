@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { forwardCtSeatState } from '../_shared/ctBridge.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -124,6 +125,8 @@ serve(async (req) => {
         persistSession: false,
       },
     })
+    const archivedRefusal = await refuseArchivedCaller(adminClient, authUser?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     // Bring back with the roadmap box unticked: drop the parked rows first, so the restore trigger
     // (roadmap_assignees_follow_user_archive) finds nothing to give back.

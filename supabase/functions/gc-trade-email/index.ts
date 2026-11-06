@@ -24,6 +24,7 @@ import {
   type TradeEmailErrorKey,
   type TradeMailPerson,
 } from '../_shared/gcTradeEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * gc-trade-email — GC mode, every email to a trade partner company, from one sender (P3-a of the trade partner portal,
@@ -76,6 +77,8 @@ serve(async (req) => {
     const auth = req.headers.get('Authorization') ?? ''
     const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
     const { data: u } = await anon.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (!u?.user) return refuse('signIn')
     const { data: who } = await admin.from('users').select('role, name, email, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
     if (!who || !GC_TRADE_EMAIL_ROLES.includes(String(who.role))) return refuse('officeOnly')

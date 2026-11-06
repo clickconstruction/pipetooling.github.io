@@ -6,7 +6,7 @@ keywords: stage checklist, checklist, add a check, item, job, rough in, top out,
 where: /jobs
 order: 31
 ---
-A stage checklist is a short list of questions the crew answers on the phone for one stage. The company's questions are written once on Settings. You can add a check for one job alone. The crew sees it on that job's sheet the next time the sheet opens.
+A stage checklist is a short list of questions the crew answers on the phone for one stage. The company's questions are written on a job's Documents tab. You can add a check for one job alone. The crew sees it on that job's sheet the next time the sheet opens.
 
 ## Who adds a check
 
@@ -41,7 +41,7 @@ The box stays open with its boxes empty, so you can type the next check. Press {
 
 The office adds from here on any stage, even one with no questions yet. A superintendent and an estimator have no Documents tab.
 
-Open the job window and press **Documents**. Scroll to **Stage checklists**. Each stage reads with its standing, like *Not ready · 3 of 6*. Press {{button:outline|+ Add a check for Trim Set}} under the stage. The same box opens.
+Open the job window and press **Documents**. Scroll to **Stage checklists**. Each stage reads with its standing, like *Not ready · 3 of 6*. Press {{button:outline|+ Add a check for Trim Set}} under the stage. The same box opens, with one more pick. Under **Where the check goes**, **This job** is picked. Leave it for a check on this job alone. The guide [write the questions for a stage checklist](/help/write-the-questions-for-a-stage-checklist) covers the other pick.
 
 ## Open the plan sheet a check names
 
@@ -51,7 +51,7 @@ A check that names a plan sheet wears a chip on its row, like *📐 P-201 detail
 
 The checks under **Added for this job** go in the order you put them. A new check goes last.
 
-On the Documents tab, press {{button:outline|▲}} or {{button:outline|▼}} on a check. On the sheet, tap the check to open it, then press the same arrows. The company's questions keep the order set on Settings.
+On the Documents tab, press {{button:outline|▲}} or {{button:outline|▼}} on a check. On the sheet, tap the check to open it, then press the same arrows. The office moves the company's questions with the same arrows on the Documents tab.
 
 ## Skip a company question on this job
 
@@ -75,6 +75,8 @@ The office can make one job's check a question for every job.
 3. Read what it will do. Press {{button:outline|Add to every Trim Set}}. Press **Keep it on this job** to change your mind.
 
 Every Trim Set in the company asks it from now on. A stage that read ready on another job reads not ready until the crew answers it. This job keeps its answer. The plan sheet and the why are left off, since they were written for this job.
+
+To move a job's whole list at once, press **Use as the company's Trim Set list** under the group. The guide [write the questions for a stage checklist](/help/write-the-questions-for-a-stage-checklist#make-a-job-s-checks-the-company-s-list) has the steps.
 
 ## What the crew sees
 

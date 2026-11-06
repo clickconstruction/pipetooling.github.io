@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { APP_CALENDAR_TZ } from "../_shared/appTimeZone.ts"
 import { forwardCtSeatState } from '../_shared/ctBridge.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -160,6 +161,8 @@ serve(async (req) => {
         persistSession: false,
       },
     })
+    const archivedRefusal = await refuseArchivedCaller(adminClient, authUser?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     let customerCount = 0
     if (reassign_customers_to) {

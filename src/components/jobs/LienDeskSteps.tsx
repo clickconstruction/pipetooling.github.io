@@ -174,18 +174,20 @@ export function LienReminderScheduleStrip({ marks = [], isMobile, tone = 'var(--
  * the schedule strip across the top on the REMINDERS rail — and *Every step*, which clears the rung
  * as a second press on it does. Until v2.6574 a pressed rung faded the rows off it and a line said
  * so; the brief teaches the step instead, and the list below is sorted, not dimmed. On a rail that
- * has no brief yet the head and the count still read, so the press always says what it did.
+ * had no brief yet (v2.6574) the head and the count still read; since v2.6577 every rail has one.
  */
 export function LienStepBrief({ on, brief, count, marks, isMobile, onClear, children }: { on: LienStepAt; brief: LienReminderBrief | null; count: number; marks?: ReadonlyArray<number | null | undefined>; isMobile: boolean; onClear: () => void; children?: ReactNode }) {
   const tone = LADDER_TONE[on.ladder]
   const k: CSSProperties = { fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 2 }
   const words: CSSProperties = { fontSize: '0.8125rem', lineHeight: 1.45, color: 'var(--text-700)', margin: 0 }
   const whoWords = brief ? (brief.who === 'leader' ? 'the leader’s step' : 'the office’s step') : ''
+  const paper = on.ladder === 'affidavit' ? 'affidavit' : 'notice'
+  const where = on.ladder === 'reminder' ? 'on the row or on the notice’s footer under Sent' : `on the row or on the ${paper}’s pane`
   return (
     <div data-testid="lien-step-brief" data-ladder={on.ladder} data-step={on.step} style={{ margin: isMobile ? '-4px 0 14px' : `-6px 0 14px calc(84px + 10px)`, borderLeft: `3px solid ${tone.fg}`, background: tone.tint, borderRadius: '0 10px 10px 0', padding: isMobile ? '10px 12px' : '12px 16px', display: 'grid', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
         <strong style={{ fontSize: '0.95rem' }} data-testid="lien-step-brief-title">{lienStepName(on)}</strong>
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }} data-testid="lien-step-brief-count">{whoWords ? `${whoWords} · ` : ''}{count} {count === 1 ? 'notice' : 'notices'} here</span>
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }} data-testid="lien-step-brief-count">{whoWords ? `${whoWords} · ` : ''}{count} {on.ladder === 'affidavit' ? (count === 1 ? 'affidavit' : 'affidavits') : count === 1 ? 'notice' : 'notices'} here</span>
         <button type="button" onClick={onClear} data-testid="lien-step-brief-clear" style={{ marginLeft: isMobile ? 0 : 'auto', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: `1px solid ${tone.fg}`, background: 'var(--surface)', color: tone.fg, cursor: 'pointer', minHeight: isMobile ? 32 : undefined }}>
           Every step
         </button>
@@ -202,11 +204,11 @@ export function LienStepBrief({ on, brief, count, marks, isMobile, onClear, chil
               <p style={words}>The notice reads under Sent, with no press left.</p>
             )}
           </div>
-          <div><div style={k}>Why a notice is here</div><p style={words}>{brief.why}</p></div>
+          <div><div style={k}>Why {paper === 'affidavit' ? 'an affidavit' : 'a notice'} is here</div><p style={words}>{brief.why}</p></div>
           <div>
             <div style={k}>You may instead</div>
             <p style={words} data-testid="lien-step-brief-instead">{brief.instead.map((w, i) => (<span key={w}>{i ? ' · ' : ''}<strong>{w}</strong></span>))}</p>
-            <p style={{ ...words, color: 'var(--text-muted)', marginTop: 4 }}>Each press sits on the row or on the notice’s footer under Sent.</p>
+            <p style={{ ...words, color: 'var(--text-muted)', marginTop: 4 }}>Each press sits {where}.</p>
           </div>
           {brief.closes ? <div style={{ gridColumn: isMobile ? undefined : '1 / -1' }}><div style={k}>It closes by itself when</div><p style={words}>{brief.closes[0]!.toUpperCase()}{brief.closes.slice(1)}.</p></div> : null}
         </div>

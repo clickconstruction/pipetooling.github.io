@@ -1,68 +1,36 @@
 /**
- * Settings → Jobs & billing → Stage checklists (punch list #164, PR 2): where the office keeps the company's questions
- * for Rough In, Top Out and Trim Set. The crew answers them on the phone for each stage of a job, and a stage reads not
- * ready on the Pipeline until every question is answered. The card ships with the three kinds listed and empty, by the
- * owner's call: he writes the words himself. The rules are `lib/jobs/stageChecklistEditor.ts`; the io is injected so the
- * render smoke runs over a fake.
+ * Settings → Jobs & billing → Stage checklists (punch list #164, PR 2; read-only since punch list #237, PR 4): the
+ * company's questions for Rough In, Top Out and Trim Set, read back from where they are written now, a job's Documents
+ * tab. Each kind lists its live questions in order with their asks and a source line that says which job each came from
+ * or who wrote it, and folds the questions taken off the company's list with who, when and why. Nothing here is pressed;
+ * the card points at the Documents tab and goes in a later release. The words are `lib/jobs/stageChecklistEditor.ts`;
+ * the io is injected so the render smoke runs over a fake.
  */
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { useToastContext } from '../../contexts/ToastContext'
-import { useAuth } from '../../hooks/useAuth'
-import { emptyWordsWithPress, emptyWords } from '../../lib/emptyWords'
-import { QUESTION_MAX_CHARS, STAGE_CHECKLIST_KIND_NAMES, STAGE_CHECKLIST_KINDS, type StageChecklistKind, type StageChecklistQuestion } from '../../lib/jobs/stageChecklist'
-import {
-  ADD_QUESTION,
-  EDITOR_INTRO,
-  EDITOR_RULE,
-  EDITOR_TITLE,
-  NOT_SAVED,
-  SAVE_QUESTIONS,
-  SAVED_TOAST,
-  cleanDrafts,
-  draftsOf,
-  editorProblem,
-  kindSummary,
-  moveDraft,
-  sameDrafts,
-  type QuestionDraft,
-} from '../../lib/jobs/stageChecklistEditor'
-import { supabaseStageChecklistEditorIo, type StageChecklistEditorIo } from '../../lib/jobs/stageChecklistIo'
-import { NEEDS_SIGNATURE_WORDS } from '../../lib/jobs/stageChecklistSignature'
+import { useEffect, useState, type CSSProperties } from 'react'
+import { STAGE_CHECKLIST_KIND_NAMES, STAGE_CHECKLIST_KINDS } from '../../lib/jobs/stageChecklist'
+import { EDITOR_TITLE, MIRROR_DOOR, MIRROR_INTRO, MIRROR_RULE, companyQuestionsOf, emptyKindWords, kindSummary, questionTags, sourceLineWords, takenOffLineWords, takenOffSummary, type CompanyMirror } from '../../lib/jobs/stageChecklistEditor'
+import { supabaseStageChecklistMirrorIo, type StageChecklistMirrorIo } from '../../lib/jobs/stageChecklistIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
-import { clauseButtonStyle, clauseInputStyle, clausePrimaryStyle } from '../contracts/clauseStyles'
 
-const DEFAULT_IO = supabaseStageChecklistEditorIo()
+const DEFAULT_IO = supabaseStageChecklistMirrorIo()
 
 const cardStyle: CSSProperties = { padding: '1rem', display: 'grid', gap: '0.75rem' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }
 const kindBox: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.5rem', margin: 0 }
-const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: '0.4rem 0.5rem', alignItems: 'center' }
-const smallBtn: CSSProperties = { ...clauseButtonStyle, padding: '0.25rem 0.5rem', fontSize: '0.8rem' }
+const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.15rem 0.5rem', alignItems: 'start' }
 const numStyle: CSSProperties = { fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)', fontSize: '0.85rem', minWidth: '1.4rem', textAlign: 'right' }
+const tag: CSSProperties = { display: 'inline-block', marginLeft: '0.4rem', padding: '0.05rem 0.4rem', borderRadius: 999, fontSize: '0.7rem', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', verticalAlign: 'middle' }
+const sourceLine: CSSProperties = { ...muted, fontSize: '0.8rem' }
 
-type Drafts = Record<StageChecklistKind, QuestionDraft[]>
-
-function draftsFrom(questions: readonly StageChecklistQuestion[]): Drafts {
-  return { rough_in: draftsOf(questions, 'rough_in'), top_out: draftsOf(questions, 'top_out'), trim_set: draftsOf(questions, 'trim_set') }
-}
-
-export function StageChecklistSettingsCard({ io = DEFAULT_IO }: { io?: StageChecklistEditorIo }) {
-  const { user } = useAuth()
-  const { showToast } = useToastContext()
-  const [loaded, setLoaded] = useState<StageChecklistQuestion[] | null>(null)
-  const [drafts, setDrafts] = useState<Drafts | null>(null)
+export function StageChecklistSettingsCard({ io = DEFAULT_IO }: { io?: StageChecklistMirrorIo }) {
+  const [mirror, setMirror] = useState<CompanyMirror | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     let live = true
     io.load().then(
-      (q) => {
-        if (!live) return
-        setLoaded(q)
-        setDrafts(draftsFrom(q))
-      },
+      (m) => live && setMirror(m),
       (e: unknown) => live && setProblem(formatErrorMessage(e, 'The stage checklists did not read.')),
     )
     return () => {
@@ -70,50 +38,15 @@ export function StageChecklistSettingsCard({ io = DEFAULT_IO }: { io?: StageChec
     }
   }, [io])
 
-  const saved = useMemo(() => (loaded ? draftsFrom(loaded) : null), [loaded])
-  const changedKinds = useMemo(
-    () => (drafts && saved ? STAGE_CHECKLIST_KINDS.filter((k) => !sameDrafts(cleanDrafts(drafts[k]), saved[k])) : []),
-    [drafts, saved],
-  )
-  const changed = changedKinds.length > 0
-
-  const setKind = (kind: StageChecklistKind, next: QuestionDraft[]) => setDrafts((d) => (d ? { ...d, [kind]: next } : d))
-  const setRow = (kind: StageChecklistKind, i: number, patch: Partial<QuestionDraft>) =>
-    setDrafts((d) => (d ? { ...d, [kind]: d[kind].map((q, j) => (j === i ? { ...q, ...patch } : q)) } : d))
-
-  const save = async () => {
-    if (!drafts || !loaded) return
-    for (const kind of changedKinds) {
-      const stop = editorProblem(kind, drafts[kind])
-      if (stop) {
-        setProblem(stop)
-        return
-      }
-    }
-    setSaving(true)
-    setProblem(null)
-    try {
-      for (const kind of changedKinds) await io.save(kind, loaded, cleanDrafts(drafts[kind]), user?.id ?? null)
-      const again = await io.load()
-      setLoaded(again)
-      setDrafts(draftsFrom(again))
-      showToast(SAVED_TOAST, 'success')
-    } catch (e) {
-      setProblem(`${NOT_SAVED} ${formatErrorMessage(e)}`)
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <section aria-label={EDITOR_TITLE} data-settings-stage-checklists style={cardStyle}>
-      <p style={{ margin: 0, fontSize: '0.9rem' }}>{EDITOR_INTRO}</p>
-      <p style={muted}>{EDITOR_RULE}</p>
-      {drafts ? (
+      <p style={{ margin: 0, fontSize: '0.9rem' }}>{MIRROR_INTRO}</p>
+      <p style={muted}>{MIRROR_RULE}</p>
+      {mirror ? (
         STAGE_CHECKLIST_KINDS.map((kind) => {
-          const rows = drafts[kind]
+          const rows = companyQuestionsOf(mirror.questions, kind)
+          const gone = mirror.takenOff.filter((t) => t.kind === kind)
           const name = STAGE_CHECKLIST_KIND_NAMES[kind]
-          const add = () => setKind(kind, [...rows, { id: null, words: '', asksPhoto: false, needsSignature: false }])
           return (
             <fieldset key={kind} data-settings-stage-kind={kind} style={kindBox}>
               <legend style={{ fontWeight: 600, fontSize: '0.95rem', padding: '0 0.25rem' }}>
@@ -121,49 +54,36 @@ export function StageChecklistSettingsCard({ io = DEFAULT_IO }: { io?: StageChec
                 {kindSummary(rows) ? <span style={{ ...muted, display: 'inline', marginLeft: '0.5rem', fontWeight: 400 }}>{kindSummary(rows)}</span> : null}
               </legend>
               {rows.length === 0 ? (
-                <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: `questions for ${name}`, control: ADD_QUESTION }), { onPress: add })} />
+                <EmptyState compact main={emptyKindWords(kind)} next={{ label: 'Jobs', to: '/jobs' }} tail={`is where they are written. ${MIRROR_DOOR}`} />
               ) : (
                 rows.map((q, i) => (
-                  <div key={q.id ?? `new-${i}`} data-stage-question style={rowStyle}>
+                  <div key={q.id} data-stage-question style={rowStyle}>
                     <span style={numStyle}>{i + 1}.</span>
-                    <input
-                      type="text"
-                      aria-label={`${name}: question ${i + 1}`}
-                      value={q.words}
-                      maxLength={QUESTION_MAX_CHARS}
-                      placeholder="Type the question the crew answers"
-                      disabled={saving}
-                      onChange={(e) => setRow(kind, i, { words: e.target.value })}
-                      style={{ ...clauseInputStyle, width: '100%' }}
-                    />
-                    <span style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                        <input type="checkbox" checked={q.asksPhoto} disabled={saving} onChange={(e) => setRow(kind, i, { asksPhoto: e.target.checked })} aria-label={`${name}: question ${i + 1} asks for a photo`} />
-                        Asks for a photo
-                      </label>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }} title={NEEDS_SIGNATURE_WORDS.hint}>
-                        <input type="checkbox" checked={q.needsSignature} disabled={saving} onChange={(e) => setRow(kind, i, { needsSignature: e.target.checked })} aria-label={`${name}: question ${i + 1} needs a signature`} />
-                        {NEEDS_SIGNATURE_WORDS.label}
-                      </label>
-                      <button type="button" style={smallBtn} disabled={saving || i === 0} aria-label={`${name}: move question ${i + 1} up`} onClick={() => setKind(kind, moveDraft(rows, i, -1))}>
-                        ↑
-                      </button>
-                      <button type="button" style={smallBtn} disabled={saving || i === rows.length - 1} aria-label={`${name}: move question ${i + 1} down`} onClick={() => setKind(kind, moveDraft(rows, i, 1))}>
-                        ↓
-                      </button>
-                      <button type="button" style={smallBtn} disabled={saving} aria-label={`${name}: take question ${i + 1} off`} onClick={() => setKind(kind, rows.filter((_, j) => j !== i))}>
-                        Take off
-                      </button>
-                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <span>{q.words}</span>
+                      {questionTags(q).map((t) => (
+                        <span key={t} style={tag}>
+                          {t}
+                        </span>
+                      ))}
+                      <div style={sourceLine} data-stage-question-source>
+                        {sourceLineWords(mirror.sources.get(q.id))}
+                      </div>
+                    </div>
                   </div>
                 ))
               )}
-              {rows.length > 0 ? (
-                <div>
-                  <button type="button" style={clauseButtonStyle} disabled={saving} onClick={add}>
-                    {ADD_QUESTION}
-                  </button>
-                </div>
+              {gone.length > 0 ? (
+                <details data-settings-stage-taken-off>
+                  <summary style={{ ...muted, cursor: 'pointer' }}>{takenOffSummary(gone.length)}</summary>
+                  <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.1rem', display: 'grid', gap: '0.2rem' }}>
+                    {gone.map((t) => (
+                      <li key={t.id} style={sourceLine}>
+                        {takenOffLineWords(t)}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               ) : null}
             </fieldset>
           )
@@ -171,28 +91,11 @@ export function StageChecklistSettingsCard({ io = DEFAULT_IO }: { io?: StageChec
       ) : (
         !problem && <p style={muted}>Loading the stage checklists…</p>
       )}
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => void save()} disabled={!changed || saving} style={changed && !saving ? clausePrimaryStyle : { ...clauseButtonStyle, cursor: 'default', opacity: 0.6 }}>
-          {saving ? 'Saving…' : SAVE_QUESTIONS}
-        </button>
-        {changed && !saving && saved ? (
-          <button
-            type="button"
-            onClick={() => {
-              setDrafts(saved)
-              setProblem(null)
-            }}
-            style={clauseButtonStyle}
-          >
-            Put them back
-          </button>
-        ) : null}
-        {problem ? (
-          <span role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
-            {problem}
-          </span>
-        ) : null}
-      </div>
+      {problem ? (
+        <span role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
+          {problem}
+        </span>
+      ) : null}
     </section>
   )
 }

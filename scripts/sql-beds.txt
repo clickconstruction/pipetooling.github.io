@@ -89,5 +89,6 @@ logbook-shares
 stage-check-self-close
 users-without-login
 archived-seal
+plan-sets-author
 machine-photos-path
 away-notes

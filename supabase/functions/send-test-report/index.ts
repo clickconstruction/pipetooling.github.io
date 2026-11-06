@@ -4,6 +4,7 @@ import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { TEST_REPORT_BUCKET, testReportActivityLine, testReportStoragePath } from '../_shared/testReportSend.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Send a test report to the GC (v2.3301): the PDF the browser rendered
@@ -69,6 +70,8 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await userClient.auth.getUser(token)
     if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
     const admin = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     const body = (await req.json()) as {
       sample?: boolean

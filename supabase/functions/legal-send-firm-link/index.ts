@@ -6,6 +6,7 @@ import { buildLegalWelcomeEmail } from '../_shared/legalEmails.ts'
 import { legalFirmLinkAddresses } from '../_shared/legalFirmLink.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalPortalAddress } from '../_shared/legalPortalAddress.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Send the law firm its portal link (v2.4624, punch list #85 item 21): the desk's link card →
@@ -51,6 +52,8 @@ serve(async (req) => {
     if (!firmId) return json({ error: 'Which firm?' }, 400)
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, userData?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: firmRow } = await admin.from('legal_firms').select('id, name, handling_name, email').eq('id', firmId).maybeSingle()
     const firm = firmRow as { id: string; name: string; handling_name: string; email: string } | null
     if (!firm) return json({ error: 'Firm not found.' }, 404)

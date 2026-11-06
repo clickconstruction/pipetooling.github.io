@@ -15,6 +15,7 @@ import {
 import { customerEmailFromStripeInvoice } from '../_shared/stripeInvoiceCustomerEmail.ts'
 import { STRIPE_OOB_META_PAID_ON } from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
 import { stripeInvoiceLinesDataForFixtureOrderDisplay } from '../_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -274,6 +275,8 @@ serve(async (req) => {
         }
       } else if (serviceKey) {
         const admin = createClient(supabaseUrl, serviceKey)
+        const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+        if (archivedRefusal) return archivedRefusal
         const { error: bfErr } = await admin
           .from('jobs_ledger_invoices')
           .update(backfill)

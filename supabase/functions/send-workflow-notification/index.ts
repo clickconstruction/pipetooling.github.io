@@ -7,6 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -199,6 +200,8 @@ serve(async (req) => {
     let held = 0
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const adminClient = serviceRoleKey ? createClient(supabaseUrl, serviceRoleKey) : null
+    const archivedRefusal = adminClient ? await refuseArchivedCaller(adminClient, user?.id, corsHeaders) : null
+    if (archivedRefusal) return archivedRefusal
 
     if (recipient_user_id && adminClient) {
       let workflowId: string | null = null

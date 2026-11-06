@@ -3,6 +3,7 @@ import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM, EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Send a job-account setup email to supply house contacts (v2.1605 — the Job
@@ -167,6 +168,8 @@ serve(async (req) => {
     try {
       const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       const serviceClient = createClient(supabaseUrl, serviceKey)
+      const archivedRefusal = await refuseArchivedCaller(serviceClient, user?.id, corsHeaders)
+      if (archivedRefusal) return archivedRefusal
       const rows = (labeled.length > 0 ? labeled : toEmails.map((email) => ({ label: '', email }))).map((r) => ({
         job_id: jobId,
         contact_label: r.label,

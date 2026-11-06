@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { callCtManageUser } from '../_shared/ctBridge.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 // Audit loop v2 (v2.2518): one human gesture ends the whole audit. The Audits tab
 // calls this to finish (or reopen) a robot bid's audit; the function does the PT
@@ -37,6 +38,8 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
       auth: { autoRefreshToken: false, persistSession: false },
     })
+    const archivedRefusal = await refuseArchivedCaller(admin, authUser?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: caller, error: callerErr } = await admin
       .from('users').select('role, email, is_digital_twin').eq('id', authUser.id).single()
     if (callerErr || !caller) return jsonResponse({ error: 'Forbidden - unknown user' }, 403)
