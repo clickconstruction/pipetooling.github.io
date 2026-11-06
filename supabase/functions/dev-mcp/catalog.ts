@@ -851,6 +851,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "dev_on_site_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
   "dev_person_evidence_write": [{"args":{"p":"Json","p_dry_run?":"boolean","p_files?":"Json"},"returns":"Json"}],
   "dev_person_license_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
+  "dev_theme_marks_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
   "dismiss_mercury_duplicate_pair": [{"args":{"p_id_a":"string","p_id_b":"string"},"returns":"undefined"}],
   "dismiss_person_report": [{"args":{"p_reason":"string","p_report_id":"string"},"returns":"Json"}],
   "dispatch_inbox_note_stats": [{"args":{"p_request_ids":"string[]"},"returns":"{ last_note_at: string note_count: number request_id: string }[]"}],
