@@ -5,6 +5,8 @@ import {
   stripStamp,
   type ChecklistCardEvent,
 } from '../../lib/checklistCardEvents'
+import type { LineState } from '../../lib/taskCriteria'
+import { linesWords } from '../../lib/taskProgress'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
@@ -47,6 +49,13 @@ type ChecklistInstanceCardProps = {
     /** ✓ Complete / ✓ Post & complete in the thread composer (v2.2039). */
     onComplete?: (inst: { id: string; scheduledDate: string }) => Promise<boolean>
   }
+  /**
+   * Task cards (#273, PR 2): the card's Done when… lines with their ticks on this day row. The card variant draws
+   * them under the title; the row variant folds them behind a *2 of 3 done when…* chip. A done card's boxes are
+   * read-only (reopen first), and so are they without `onTickLine`.
+   */
+  lines?: LineState[]
+  onTickLine?: (criterionId: string, ticked: boolean) => void | Promise<void>
 }
 
 /**
@@ -70,12 +79,15 @@ export function ChecklistInstanceCard({
   actions,
   variant = 'card',
   fullHistory,
+  lines,
+  onTickLine,
 }: ChecklistInstanceCardProps) {
   const [threadOpen, setThreadOpen] = useState(false)
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
   const composerRef = useRef<HTMLInputElement | null>(null)
   const [focusComposerPending, setFocusComposerPending] = useState(false)
+  const [linesOpen, setLinesOpen] = useState(false)
 
   useEffect(() => {
     if (focusComposerPending && threadOpen) {
@@ -192,6 +204,76 @@ export function ChecklistInstanceCard({
     flexShrink: 0,
   }
 
+  // Task cards (#273, PR 2): the Done when… lines. The next open line wears the amber ring the stage checklists use.
+  const hasLines = Boolean(lines && lines.length > 0)
+  const tickedCount = lines ? lines.filter((l) => l.checked).length : 0
+  const nextOpenId = lines?.find((l) => !l.checked)?.criterion.id ?? null
+  const linesReadOnly = !onTickLine || isCompleted
+  const linesBlock =
+    hasLines && lines ? (
+      <div style={{ marginTop: '0.5rem' }}>
+        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>{linesWords(tickedCount, lines.length)}</div>
+        <ul aria-label="Done when" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          {lines.map((l) => (
+            <li key={l.criterion.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem' }}>
+              <button
+                type="button"
+                onClick={() => void onTickLine?.(l.criterion.id, !l.checked)}
+                disabled={linesReadOnly}
+                aria-pressed={l.checked}
+                aria-label={`${l.checked ? 'Untick' : 'Tick'}: ${l.criterion.body}`}
+                style={{
+                  width: 28,
+                  height: 28,
+                  flexShrink: 0,
+                  borderRadius: 7,
+                  border: l.checked ? 'none' : `2px solid ${l.criterion.id === nextOpenId ? '#d97706' : 'var(--text-600)'}`,
+                  boxShadow: !l.checked && l.criterion.id === nextOpenId ? '0 0 0 2px var(--bg-amber-tint)' : 'none',
+                  background: l.checked ? '#16a34a' : 'var(--surface)',
+                  color: 'white',
+                  fontSize: '0.95rem',
+                  lineHeight: 1,
+                  cursor: linesReadOnly ? 'default' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginTop: 1,
+                }}
+              >
+                {l.checked ? '✓' : ''}
+              </button>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '0.9375rem', lineHeight: 1.35, color: l.checked ? 'var(--text-muted)' : 'var(--text-strong)' }}>{l.criterion.body}</div>
+                {l.checked ? (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {name(l.checkedBy)}
+                    {l.checkedAt ? ` · ${stripStamp(l.checkedAt)}` : ''}
+                  </div>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null
+  const linesChip =
+    hasLines && lines ? (
+      <button
+        type="button"
+        onClick={() => setLinesOpen((o) => !o)}
+        aria-expanded={linesOpen}
+        style={{
+          ...rowChipBase,
+          background: 'var(--bg-muted)',
+          color: 'var(--text-700)',
+          border: linesOpen ? '1px solid var(--text-600)' : '1px solid var(--border-strong)',
+          cursor: 'pointer',
+        }}
+      >
+        {linesWords(tickedCount, lines.length)}
+      </button>
+    ) : null
+
   /** Desktop ledger row (v2.2336): one line — checkbox, title, status chips, quiet actions. */
   const rowBody = (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minHeight: 36 }}>
@@ -272,6 +354,7 @@ export function ChecklistInstanceCard({
           Reopened · {stripStamp(status.at)}
         </span>
       ) : null}
+      {linesChip}
       {comments > 0 ? (
         <button
           type="button"
@@ -391,6 +474,7 @@ export function ChecklistInstanceCard({
           </div>
           {statusStrip}
           {reopenedCallout}
+          {linesBlock}
         </div>
         {actions ? (
           <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'flex-start' }}>{actions}</div>
@@ -453,6 +537,7 @@ export function ChecklistInstanceCard({
       </div>
       </>
       )}
+      {variant === 'row' && linesOpen ? <div style={{ padding: '0.1rem 0 0.4rem 2.2rem' }}>{linesBlock}</div> : null}
       {threadOpen && fullHistory ? (
         <div style={{ marginTop: '0.65rem' }}>
           <ChecklistItemActivity
@@ -486,6 +571,22 @@ export function ChecklistInstanceCard({
                       <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(e.actor_user_id)}</span>{' '}
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{stripStamp(e.created_at)}</span>{' '}
                       — {e.body}
+                    </div>
+                  )
+                }
+                if (e.event_type === 'criterion') {
+                  return (
+                    <div key={e.id} style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                      {e.body} · {name(e.actor_user_id)} · {stripStamp(e.created_at)}
+                    </div>
+                  )
+                }
+                if (e.event_type === 'progress') {
+                  return (
+                    <div key={e.id} style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(e.actor_user_id)}</span> ·{' '}
+                      {typeof e.percent === 'number' ? `${e.percent}%` : 'moved it'} · {stripStamp(e.created_at)}
+                      {e.body ? <> · “{e.body}”</> : null}
                     </div>
                   )
                 }

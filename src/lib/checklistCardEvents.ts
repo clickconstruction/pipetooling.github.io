@@ -17,6 +17,8 @@ export type ChecklistCardEvent = {
   actor_user_id: string | null
   body: string
   created_at: string
+  /** Task cards (#273): on a `progress` event, the percent the person set; the body holds their what-is-left words. */
+  percent?: number | null
 }
 
 export type ChecklistCardInstanceState = {

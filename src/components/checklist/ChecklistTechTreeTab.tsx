@@ -24,6 +24,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { supabase } from '../../lib/supabase'
+import { writeTaskLines } from '../../lib/taskLinesIo'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import {
   layoutTechTreeFlow,
@@ -1006,7 +1007,7 @@ export function ChecklistTechTreeTab({
   }, [treeEdges, groups, linksSearchQuery])
 
   const addTaskToGroup = useCallback(
-    async (groupId: string, title: string, assigneeUserIds: string[]): Promise<boolean> => {
+    async (groupId: string, title: string, assigneeUserIds: string[], lines: string[] = []): Promise<boolean> => {
       if (!canEditStructure || !authUserId || !title.trim()) return false
       try {
         setError(null)
@@ -1032,6 +1033,11 @@ export function ChecklistTechTreeTab({
               supabase.from('checklist_tech_tree_task_assignees').insert({ task_id: row.id, user_id: uid }),
             'insert task assignee',
           )
+        }
+        // Task cards (#273, PR 2): the Done when… lines typed on the task; the task stands even when they do not land.
+        if (lines.length > 0) {
+          const lineErr = await writeTaskLines(row.id, lines, authUserId)
+          if (lineErr) setError(`The task was added, but its Done when… lines did not save: ${lineErr}`)
         }
         await load()
         return true
@@ -2292,9 +2298,9 @@ export function ChecklistTechTreeTab({
         users={users}
         currentUserId={authUserId}
         onClose={() => setAddTaskModalGroupId(null)}
-        onSave={async (title, assigneeUserIds) => {
+        onSave={async (title, assigneeUserIds, lines) => {
           if (addTaskModalGroupId) {
-            return addTaskToGroup(addTaskModalGroupId, title, assigneeUserIds)
+            return addTaskToGroup(addTaskModalGroupId, title, assigneeUserIds, lines)
           }
           return false
         }}

@@ -13,6 +13,8 @@ import { REMINDER_PRESETS, dailyFromScope, dayBeforeApplicable, reminderSummary,
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { parseLines, type TaskCriterion } from '../lib/taskCriteria'
+import { loadItemLines, syncItemLines } from '../lib/taskLinesIo'
 
 type UserRole =
   | 'dev'
@@ -52,6 +54,8 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 type FormState = {
   title: string
   links: string[]
+  /** Task cards (#273, PR 2): the Done when… lines, one a row, as typed. */
+  lines: string
   assigned_to_user_ids: string[]
   repeat_type: 'day_of_week' | 'days_after_completion' | 'once'
   repeat_days_of_week: number[]
@@ -72,6 +76,7 @@ type FormState = {
 const initialForm: FormState = {
   title: '',
   links: [],
+  lines: '',
   assigned_to_user_ids: [],
   repeat_type: 'once',
   repeat_days_of_week: [],
@@ -94,6 +99,7 @@ function populateForm(item: ChecklistItem, assigneeIds: string[]): FormState {
   return {
     title: item.title.replace(/\n/g, ' '),
     links: item.links ?? [],
+    lines: '',
     assigned_to_user_ids: assigneeIds,
     repeat_type: item.repeat_type as FormState['repeat_type'],
     repeat_days_of_week: item.repeat_days_of_week ?? [],
@@ -128,6 +134,8 @@ export function ChecklistItemEditModal({
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  /** The card's live Done when… lines as loaded; Save diffs the typed lines against them. */
+  const [existingLines, setExistingLines] = useState<TaskCriterion[]>([])
   /** Due-change ledger for this item (v2.2371) — powers the "originally due" line. */
   const [dueChanges, setDueChanges] = useState<DueChangeRow[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
@@ -183,7 +191,8 @@ export function ChecklistItemEditModal({
       supabase.from('checklist_item_assignees').select('user_id').eq('checklist_item_id', itemId),
       // Tier-2 #19 (J30-2): assignee picker = active people (no twins); dev rows stay.
       activeUsersQuery('id, name, email', { includeDev: true, withLogin: true }),
-    ]).then(([itemRes, assigneesRes, usersRes]) => {
+      loadItemLines(itemId),
+    ]).then(([itemRes, assigneesRes, usersRes, linesRows]) => {
       const item = itemRes.data as ChecklistItem | null
       const assigneeIds = (assigneesRes.data ?? []).map((r: { user_id: string }) => r.user_id)
       const usersData = (usersRes.data ?? []) as Array<{ id: string; name: string; email: string }>
@@ -193,7 +202,8 @@ export function ChecklistItemEditModal({
         return
       }
       if (item) {
-        setForm(populateForm(item, assigneeIds))
+        setExistingLines(linesRows)
+        setForm({ ...populateForm(item, assigneeIds), lines: linesRows.map((l) => l.body).join('\n') })
         void supabase
           .from('checklist_item_due_changes')
           .select('changed_at, changed_by, from_due, to_due')
@@ -276,6 +286,9 @@ export function ChecklistItemEditModal({
         })
         .eq('id', itemId)
       if (error) throw error
+      // Task cards (#273, PR 2): the Done when… lines follow the edit; a ticked line gone is retired, never deleted.
+      const lineErr = await syncItemLines(itemId, existingLines, parseLines(form.lines))
+      if (lineErr) throw new Error(lineErr)
       await supabase.from('checklist_item_assignees').delete().eq('checklist_item_id', itemId)
       if (form.assigned_to_user_ids.length > 0) {
         const nextOrders = await getNextDisplayOrders(form.assigned_to_user_ids)
@@ -455,6 +468,19 @@ export function ChecklistItemEditModal({
                 [+ add]
               </button>
             </div>
+          </label>
+          <label style={{ display: 'block', marginTop: '0.85rem' }}>
+            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Done when…</span>
+            <textarea
+              value={form.lines}
+              onChange={(e) => setForm((f) => ({ ...f, lines: e.target.value }))}
+              rows={3}
+              placeholder="One line a row. Each becomes a box the person ticks."
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', fontSize: '1rem', fontFamily: 'inherit', lineHeight: 1.4 }}
+            />
+            <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+              The card reads its percent from the ticks. A line taken off keeps the ticks already on it.
+            </span>
           </label>
           <div style={{ marginBottom: '1rem' }}>
             {/* ── When (v2.2075): same grammar as the Add modal ── */}

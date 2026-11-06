@@ -67,6 +67,7 @@ import { ignoreWindowsInside } from '../lib/windowInsideRow'
 import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
 import { ACCURACY_MIN_COUNT, canSeeTaskCosts, estimateAccuracy, estimateAccuracyByPerson, formatMultiplier, formatWholeDollars, sumEstimateDollars } from '../lib/checklistCostEstimate'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
+import { useTaskLines } from '../hooks/useTaskLines'
 
 type UserRole =
   | 'dev'
@@ -453,6 +454,15 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
   const [eventsByInstance, setEventsByInstance] = useState<Map<string, ChecklistCardEvent[]>>(new Map())
   /** Overdue one-offs + show-until-completed items (Outstanding section, v2.1864). */
   const [outstandingInstances, setOutstandingInstances] = useState<ChecklistInstance[]>([])
+  // Task cards (#273, PR 2): the Done when… lines of today's cards and the outstanding ones, with their ticks.
+  const taskLines = useTaskLines(
+    [...todayInstances, ...outstandingInstances].map((i) => ({
+      instanceId: i.id,
+      itemId: i.checklist_item_id,
+      roadmapTaskId: i.checklist_items?.roadmap_group_task_id ?? null,
+    })),
+    authUserId,
+  )
   const [eventActorNameById, setEventActorNameById] = useState<Record<string, string>>({})
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
@@ -834,6 +844,13 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
                   currentUserId={authUserId}
                   onToggleComplete={() => void toggleComplete(inst)}
                   onPostComment={(body) => postCardComment(inst, body)}
+                  lines={taskLines.linesFor(inst.id)}
+                  onTickLine={async (criterionId, ticked) => {
+                    const r = await taskLines.tick(inst.id, criterionId, ticked)
+                    if (!r.ok && r.error) setError(r.error)
+                    // The last tick closes the card in the database; read the day again so the box and the queue agree.
+                    if (r.allTicked) await loadToday()
+                  }}
                   fullHistory={{
                     item: {
                       id: inst.checklist_item_id,

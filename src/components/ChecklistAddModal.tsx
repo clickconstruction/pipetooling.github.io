@@ -17,6 +17,8 @@ import { ymdAddDays } from '../utils/dateUtils'
 import { ChecklistCrewTagsRow } from './checklist/ChecklistCrewTagsRow'
 import { ChecklistScheduleCalendar } from './checklist/ChecklistScheduleCalendar'
 import { checklistJobLinks, composeChecklistJobTitle, type ChecklistJobPreset } from '../lib/checklistJobPreset'
+import { parseLines } from '../lib/taskCriteria'
+import { writeItemLines } from '../lib/taskLinesIo'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -86,6 +88,10 @@ export default function ChecklistAddModal({
   /** user ids among the assignees that have ≥1 push device (null = unknown/not fetched). */
   const [pushEnabledIds, setPushEnabledIds] = useState<Set<string> | null>(null)
   const [linksSectionOpen, setLinksSectionOpen] = useState(false)
+  /** Task cards (#273, PR 2): the Done when… lines, one a row; each becomes a box the person ticks. */
+  const [linesOpen, setLinesOpen] = useState(false)
+  const [linesText, setLinesText] = useState('')
+  const lineCount = parseLines(linesText).length
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -420,7 +426,21 @@ export default function ChecklistAddModal({
           }))
         )
         await generateInstances(newId, { ...form, repeat_type: effRepeatType, start_date: effStartDate, repeat_end_date: effRepeatType === 'day_of_week' ? form.repeat_end_date : '' })
+        // Task cards (#273, PR 2): the Done when… lines. The task is sent either way; a line that did not land says so
+        // and leaves the dialog open, since sending again would make a second task.
+        const lines = parseLines(linesText)
+        if (lines.length > 0) {
+          const lineErr = await writeItemLines(newId, lines, authUser.id)
+          if (lineErr) {
+            setFormError(`The task was sent, but its Done when… lines did not save: ${lineErr} Add them from Checklist → Manage → Edit.`)
+            modalContext.onSaved?.(newId)
+            window.dispatchEvent(new CustomEvent('checklist-item-saved'))
+            return
+          }
+        }
       }
+      setLinesText('')
+      setLinesOpen(false)
       modalContext.onSaved?.(newId || undefined)
       modalContext.closeModal()
       window.dispatchEvent(new CustomEvent('checklist-item-saved'))
@@ -951,6 +971,46 @@ export default function ChecklistAddModal({
                 </button>
               </div>
             )}
+            {/* Task cards (#273, PR 2): Done when…, the lines the person ticks; the card reads its percent from them. */}
+            <div style={{ marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setLinesOpen((o) => !o)}
+                aria-expanded={linesOpen}
+                aria-label={linesOpen ? 'Hide done when' : 'Show done when'}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.25rem 0',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  fontSize: '1rem',
+                  color: 'var(--text-faint)',
+                }}
+              >
+                <span aria-hidden>{linesOpen ? '▼' : '▶'}</span>
+                <span>Done when…</span>
+                {lineCount > 0 ? <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'inherit' }}>({lineCount})</span> : null}
+              </button>
+              {linesOpen && (
+                <div style={{ marginTop: '0.35rem' }}>
+                  <textarea
+                    value={linesText}
+                    onChange={(e) => setLinesText(e.target.value)}
+                    rows={3}
+                    aria-label="Done when"
+                    placeholder="One line a row. Each becomes a box the person ticks."
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', fontSize: '1rem', fontFamily: 'inherit', lineHeight: 1.4 }}
+                  />
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    The card reads its percent from the ticks. Leave this empty and the person sets the percent by hand.
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <div style={{ marginBottom: '1rem' }}>
             {/* ── When (v2.2058): scheduling is a first-class question ── */}
