@@ -71,6 +71,8 @@ export interface WhereFilesGo {
   people: WhereFilesGoPeople | null
   /** The machines' folders go under it (a machine's check photos, punch list #270), or null while none is set. */
   fleet: WhereFilesGoCompany | null
+  /** A task card's photos go under it, a folder per card (punch list #273), or null while none is set. */
+  tasks: WhereFilesGoCompany | null
   jobPattern: JobFolderPiece[]
   bidPattern: BidFolderPiece[]
   foldersMade: FoldersMade
@@ -109,6 +111,7 @@ export function whereFilesGoFromAnswer(data: unknown): WhereFilesGo {
     company?: { id?: unknown; url?: unknown; ok?: unknown; words?: unknown; folder?: unknown } | null
     people?: { id?: unknown; url?: unknown; ok?: unknown; words?: unknown; folder?: unknown } | null
     fleet?: { id?: unknown; url?: unknown; ok?: unknown; words?: unknown; folder?: unknown } | null
+    tasks?: { id?: unknown; url?: unknown; ok?: unknown; words?: unknown; folder?: unknown } | null
     job_pattern?: unknown
     bid_pattern?: unknown
     folders_made?: unknown
@@ -133,12 +136,16 @@ export function whereFilesGoFromAnswer(data: unknown): WhereFilesGo {
   const fleet = r.fleet && typeof r.fleet === 'object' && str(r.fleet.id)
     ? { id: str(r.fleet.id), url: str(r.fleet.url), ok: r.fleet.ok === true, words: str(r.fleet.words), folder: factsOf(r.fleet.folder) }
     : null
+  const tasks = r.tasks && typeof r.tasks === 'object' && str(r.tasks.id)
+    ? { id: str(r.tasks.id), url: str(r.tasks.url), ok: r.tasks.ok === true, words: str(r.tasks.words), folder: factsOf(r.tasks.folder) }
+    : null
   return {
     appEmail: str(r.app_email),
     root,
     company,
     people,
     fleet,
+    tasks,
     jobPattern: parseFolderPattern(JSON.stringify(r.job_pattern ?? null), JOB_FOLDER_PIECES, DEFAULT_JOB_FOLDER_PATTERN),
     bidPattern: parseFolderPattern(JSON.stringify(r.bid_pattern ?? null), BID_FOLDER_PIECES, DEFAULT_BID_FOLDER_PATTERN),
     foldersMade: parseFoldersMade(str(r.folders_made)),

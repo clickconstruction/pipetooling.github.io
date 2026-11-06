@@ -1,14 +1,23 @@
 /**
- * Task cards: the photos (punch list #273, PR 1, v2.6592). The pure rules over `task_photos`: where a shot waits in the
- * `task-photos` bucket, what the sweep names it in Drive, and the folder a card's photos go under in the Tasks folder
- * (*PipeTooling Tasks › 2026-11-04 · Put the plumbing tools in a neat home*, a roadmap card's under its roadmap and
- * stage). The sweep (`photo-save`, PR 4) and the screens read the same words from here.
+ * Task cards: the photos (punch list #273, PR 1, v2.6592; the names shared with the sweep since PR 4). The pure rules
+ * over `task_photos`: where a shot waits in the `task-photos` bucket, what the sweep names it in Drive, and the folder a
+ * card's photos go under in the Tasks folder (*PipeTooling Tasks › 2026-11-04 · Put the plumbing tools in a neat home*,
+ * a roadmap card's under its roadmap and stage). The names live in `supabase/functions/_shared/taskPhotoNames.ts`, one
+ * source for `photo-save` and the screens; this file re-exports them beside the app's own rules.
  */
-import { FOLDER_NAME_MAX, FOLDER_NAME_SEPARATOR, driveSafeName } from './documents/folderName'
+export {
+  TASK_NAME_MAX,
+  TASK_NAME_SEPARATOR,
+  roadmapTaskFolderPath,
+  taskFolderName,
+  taskPhotoCaption,
+  taskPhotoDriveName,
+  type RoadmapTaskFolderInput,
+  type TaskPhotoKind,
+  type TaskPhotoNameInput,
+} from '../../supabase/functions/_shared/taskPhotoNames'
 
 export const TASK_PHOTOS_BUCKET = 'task-photos'
-
-export type TaskPhotoKind = 'progress' | 'finish' | 'line'
 
 /** `<instance_id>/<photo_id>.jpg`: the bucket's gate reads the day row from the first segment. */
 export function taskPhotoPath(instanceId: string, photoId: string): string {
@@ -19,55 +28,6 @@ export function taskPhotoPath(instanceId: string, photoId: string): string {
 export function instanceIdFromPath(path: string): string | null {
   const first = path.split('/')[0] ?? ''
   return /^[0-9a-f-]{36}$/i.test(first) ? first : null
-}
-
-export type TaskPhotoNameInput = {
-  /** The day the shot was taken, YYYY-MM-DD in the app's zone. */
-  dayYmd: string
-  byName: string
-  kind: TaskPhotoKind
-  percentAt?: number | null
-  /** The Done when… line the shot proves, for a `line` shot. */
-  lineBody?: string | null
-}
-
-/** What a shot is for, as the card and the file say it: *67%*, *finish*, or the line's words. */
-export function taskPhotoCaption(a: Pick<TaskPhotoNameInput, 'kind' | 'percentAt' | 'lineBody'>): string {
-  if (a.kind === 'finish') return 'finish'
-  if (a.kind === 'line') return (a.lineBody ?? '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'line'
-  const p = typeof a.percentAt === 'number' && Number.isFinite(a.percentAt) ? Math.round(a.percentAt) : null
-  return p === null ? 'progress' : `${p}%`
-}
-
-/** *2026-11-04 Mateo · 67%.jpg*, *2026-11-05 Mateo · finish.jpg*, *2026-11-04 Mateo · pipe racked.jpg*: the sweep's name, a report photo's shape. */
-export function taskPhotoDriveName(a: TaskPhotoNameInput): string {
-  const who = driveSafeName(a.byName).trim() || 'Someone'
-  const what = driveSafeName(taskPhotoCaption(a)).trim()
-  return `${a.dayYmd} ${who}${FOLDER_NAME_SEPARATOR}${what}`.slice(0, FOLDER_NAME_MAX).trim() + '.jpg'
-}
-
-/** A one-off card's folder under the Tasks folder: *2026-11-04 · Put the plumbing tools in a neat home*. */
-export function taskFolderName(a: { dayYmd: string; title: string }): string {
-  const t = driveSafeName(a.title).replace(/\s+/g, ' ').trim() || 'Task'
-  return `${a.dayYmd}${FOLDER_NAME_SEPARATOR}${t}`.slice(0, FOLDER_NAME_MAX).trim()
-}
-
-export type RoadmapTaskFolderInput = {
-  roadmapTitle: string
-  stageNumber: number | string
-  stageTitle: string
-  taskNumber: string
-  taskTitle: string
-}
-
-/** A roadmap card's folders under the Tasks folder: *Farm 1 › 31 · Shelve the containers › 31.5 · Weld up the second set of shelves*. */
-export function roadmapTaskFolderPath(a: RoadmapTaskFolderInput): string[] {
-  const safe = (s: string, fallback: string) => (driveSafeName(s).replace(/\s+/g, ' ').trim() || fallback).slice(0, FOLDER_NAME_MAX).trim()
-  const numbered = (n: string, title: string) => {
-    const t = safe(title, '')
-    return t ? `${n}${FOLDER_NAME_SEPARATOR}${t}`.slice(0, FOLDER_NAME_MAX).trim() : n
-  }
-  return [safe(a.roadmapTitle, 'Roadmap'), numbered(String(a.stageNumber), a.stageTitle), numbered(a.taskNumber, a.taskTitle)]
 }
 
 export type TaskPhotoRowShape = {

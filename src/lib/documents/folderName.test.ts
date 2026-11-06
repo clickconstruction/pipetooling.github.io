@@ -114,6 +114,7 @@ describe('driveSettingsFromRows', () => {
       companyFolderId: null,
       peopleFolderId: null,
       fleetFolderId: null,
+      tasksFolderId: null,
     })
     expect(driveSettingsFromRows([{ key: DRIVE_COMPANY_FOLDER_ID_KEY, value_text: ' 1CCCCCCCCCCCCCCCCCCCCCCCCCCC ' }], undefined)).toMatchObject({ companyFolderId: '1CCCCCCCCCCCCCCCCCCCCCCCCCCC' })
     expect(driveSettingsFromRows([], '1EEEEEEEEEEEEEEEEEEEEEEEEEEE')).toMatchObject({ rootFolderId: '1EEEEEEEEEEEEEEEEEEEEEEEEEEE', rootFrom: 'env', jobPattern: ['number', 'name'], foldersMade: 'upfront' })

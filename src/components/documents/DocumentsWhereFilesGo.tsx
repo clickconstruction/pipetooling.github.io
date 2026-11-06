@@ -75,7 +75,7 @@ import {
   type WhereFilesGoBid,
   type WhereFilesGoJob,
 } from '../../lib/documents/whereFilesGoTab'
-import { checkDriveFolder, findWhereFilesGoJobs, loadWhereFilesGoBid, loadWhereFilesGoJobs, makeFleetFolder, readWhereFilesGo, setWhereFilesGo, tidyDriveFolders, type WhereFilesGoSet } from '../../lib/documents/whereFilesGoIo'
+import { checkDriveFolder, findWhereFilesGoJobs, loadWhereFilesGoBid, loadWhereFilesGoJobs, makeFleetFolder, makeTasksFolder, readWhereFilesGo, setWhereFilesGo, tidyDriveFolders, type WhereFilesGoSet } from '../../lib/documents/whereFilesGoIo'
 
 // --- looks -----------------------------------------------------------------------------------------------------------
 
@@ -444,6 +444,129 @@ function FleetCard({ settings, save, onMade }: { settings: WhereFilesGo; save: S
             <div>
               <button type="button" style={btnPrimary} disabled={saving} onClick={() => void use()}>
                 {saving ? 'Saving…' : 'Use this folder for the machines’ folders'}
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </section>
+  )
+}
+
+// --- the Tasks folder (Task cards, punch list #273, PR 4) ------------------------------------------------------------
+
+/** A task card's photos go under it, a folder per card named by the day and the title, a roadmap card's under its roadmap and stage. The app makes it beside the Jobs folder, or the office pastes one. */
+function TasksCard({ settings, save, onMade }: { settings: WhereFilesGo; save: Save; onMade: (next: WhereFilesGo) => void }) {
+  const [pasted, setPasted] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [checked, setChecked] = useState<{ link: string; check: FolderCheck } | null>(null)
+  const [checkProblem, setCheckProblem] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [making, setMaking] = useState(false)
+  const [madeProblem, setMadeProblem] = useState<string | null>(null)
+  const confirmDialog = useConfirmDialog()
+  const check = async () => {
+    const link = pasted.trim()
+    if (!link || checking) return
+    setChecking(true)
+    setCheckProblem(null)
+    setChecked(null)
+    try {
+      setChecked({ link, check: await checkDriveFolder(link) })
+    } catch (e) {
+      setCheckProblem(formatErrorMessage(e, 'The folder was not checked.'))
+    } finally {
+      setChecking(false)
+    }
+  }
+  const checkedId = checked ? driveFolderIdFromLinkOrId(checked.link) : null
+  const isNew = Boolean(checked?.check.ok && checkedId && checkedId !== settings.tasks?.id)
+  const use = async () => {
+    if (!checked || saving) return
+    const name = checked.check.folder?.name || 'this folder'
+    const ok = await confirmDialog({
+      title: 'Use this folder for the task cards’ photos',
+      message: `A task card’s photos will land under ${name}, in a folder per card. The files that exist stay where they are.`,
+      confirmLabel: 'Use this folder',
+    })
+    if (!ok) return
+    setSaving(true)
+    const saved = await save({ tasks: checked.link }, `The task cards’ photos now go under ${name}.`)
+    setSaving(false)
+    if (saved) {
+      setChecked(null)
+      setPasted('')
+    }
+  }
+  const make = async () => {
+    if (making) return
+    const ok = await confirmDialog({
+      title: 'Make the Tasks folder',
+      message: `The app’s account, ${settings.appEmail || 'the app'}, makes a folder named PipeTooling Tasks beside the Jobs folder in its Shared Drive, and each task card’s photos go in a folder of their own under it. A folder of that name already there is used as it is.`,
+      confirmLabel: 'Make the Tasks folder',
+    })
+    if (!ok) return
+    setMaking(true)
+    setMadeProblem(null)
+    try {
+      onMade(await makeTasksFolder())
+    } catch (e) {
+      setMadeProblem(formatErrorMessage(e, 'The Tasks folder was not made.'))
+    } finally {
+      setMaking(false)
+    }
+  }
+  const name = settings.tasks?.folder?.name || (settings.tasks ? 'The Tasks folder' : 'No Tasks folder yet')
+  const path = settings.tasks?.folder && settings.tasks.folder.path.length > 0 ? [...settings.tasks.folder.path, settings.tasks.folder.name].join(' › ') : null
+  return (
+    <section style={card} aria-label="The Tasks folder" data-testid="wfg-tasks-card">
+      <h4 style={cardH}>The Tasks folder</h4>
+      <p style={{ ...muted, margin: 0 }}>A task card’s photos land under it, a folder per card named by the day and the title, a roadmap card’s under its roadmap and stage. Let the app make it beside the Jobs folder, or paste one.</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.95rem' }}>
+        <FolderGlyph />
+        <span style={{ minWidth: 0 }}>
+          <span data-testid="wfg-tasks-name">{name}</span>
+          {path ? <span style={{ ...muted, display: 'block', fontWeight: 500 }}>{path}</span> : null}
+        </span>
+      </div>
+      {settings.tasks ? (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <CheckWords ok={settings.tasks.ok} words={settings.tasks.words} testId="wfg-tasks-check" />
+          <button type="button" style={btnQuiet} onClick={() => openInExternalBrowser(settings.tasks!.url)}>
+            Open in Drive
+          </button>
+        </div>
+      ) : (
+        <div>
+          <button type="button" style={btnPrimary} disabled={making} onClick={() => void make()} data-testid="wfg-tasks-make">
+            {making ? 'Making it…' : 'Make the Tasks folder'}
+          </button>
+        </div>
+      )}
+      {madeProblem ? <p style={warnLine}>{madeProblem}</p> : null}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <input
+          aria-label="A Drive folder link for the task cards’ photos"
+          placeholder={settings.tasks ? 'Paste a Drive folder link to move it' : 'Or paste a Drive folder link'}
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void check()
+          }}
+          style={input}
+        />
+        <button type="button" style={btn} aria-label="Check the Tasks folder link" disabled={checking || !pasted.trim()} onClick={() => void check()}>
+          {checking ? 'Checking…' : 'Check'}
+        </button>
+      </div>
+      {checkProblem ? <p style={warnLine}>{checkProblem}</p> : null}
+      {checked ? (
+        <>
+          <CheckWords ok={checked.check.ok} words={checked.check.words} testId="wfg-tasks-pasted-check" />
+          {isNew ? (
+            <div>
+              <button type="button" style={btnPrimary} disabled={saving} onClick={() => void use()}>
+                {saving ? 'Saving…' : 'Use this folder for the task cards’ photos'}
               </button>
             </div>
           ) : null}
@@ -1057,6 +1180,7 @@ export function DocumentsWhereFilesGo() {
           <CompanyCard settings={settings} save={save} />
           <PeopleCard settings={settings} save={save} />
           <FleetCard settings={settings} save={save} onMade={(next) => setSettings(next)} />
+          <TasksCard settings={settings} save={save} onMade={(next) => setSettings(next)} />
           <NameCard settings={settings} job={sample} bid={bid} save={save} />
           <TreeCard settings={settings} exampleName={sampleName} customerName={sample?.customer_name?.trim() || (sample ? NO_CUSTOMER_FOLDER_NAME : null)} save={save} />
         </div>

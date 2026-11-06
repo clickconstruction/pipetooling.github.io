@@ -31,6 +31,9 @@ describe('the Drive name', () => {
   it('keeps a backslash and a control character out of the name, as every Drive name does', () => {
     expect(taskPhotoDriveName({ dayYmd: '2026-11-04', byName: 'A\\B', kind: 'line', lineBody: 'cut\tthe 2/4' })).toBe('2026-11-04 A B · cut the 2/4.jpg')
   })
+  it('a second shot of the same name reads (2), as freeName asks', () => {
+    expect(taskPhotoDriveName({ dayYmd: '2026-11-04', byName: 'Mateo', kind: 'finish' }, 2)).toBe('2026-11-04 Mateo · finish (2).jpg')
+  })
   it('captions by kind', () => {
     expect(taskPhotoCaption({ kind: 'progress', percentAt: 50 })).toBe('50%')
     expect(taskPhotoCaption({ kind: 'progress', percentAt: null })).toBe('progress')

@@ -15,15 +15,16 @@ import {
   DRIVE_JOB_FOLDER_PATTERN_KEY,
   DRIVE_JOBS_ROOT_FOLDER_ID_KEY,
   DRIVE_PEOPLE_FOLDER_ID_KEY,
+  DRIVE_TASKS_FOLDER_ID_KEY,
   driveSettingsFromRows,
   writeCheckWords,
   type DriveSettings,
   type WriteCheckSeen,
 } from './whereFilesGo.ts'
 
-export const DRIVE_SETTINGS_KEYS = [DRIVE_JOBS_ROOT_FOLDER_ID_KEY, DRIVE_JOB_FOLDER_PATTERN_KEY, DRIVE_BID_FOLDER_PATTERN_KEY, DRIVE_FOLDERS_MADE_KEY, DRIVE_COMPANY_FOLDER_ID_KEY, DRIVE_PEOPLE_FOLDER_ID_KEY, DRIVE_FLEET_FOLDER_ID_KEY] as const
+export const DRIVE_SETTINGS_KEYS = [DRIVE_JOBS_ROOT_FOLDER_ID_KEY, DRIVE_JOB_FOLDER_PATTERN_KEY, DRIVE_BID_FOLDER_PATTERN_KEY, DRIVE_FOLDERS_MADE_KEY, DRIVE_COMPANY_FOLDER_ID_KEY, DRIVE_PEOPLE_FOLDER_ID_KEY, DRIVE_FLEET_FOLDER_ID_KEY, DRIVE_TASKS_FOLDER_ID_KEY] as const
 
-/** The seven settings, the env's root as the fallback. A read that fails reads as no rows, so the env still serves. */
+/** The eight settings, the env's root as the fallback. A read that fails reads as no rows, so the env still serves. */
 export async function readDriveSettings(admin: SupabaseClient, envRoot: string | null | undefined): Promise<DriveSettings> {
   const { data } = await admin.from('app_settings').select('key, value_text').in('key', [...DRIVE_SETTINGS_KEYS])
   return driveSettingsFromRows((data ?? []) as { key: string; value_text: string | null }[], envRoot)
