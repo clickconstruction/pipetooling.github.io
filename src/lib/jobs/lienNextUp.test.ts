@@ -310,12 +310,13 @@ describe('Signed with your code, as recorded (v2.5791)', () => {
 })
 
 describe('the REMINDERS ladder (punch list #262)', () => {
-  const courtesy = (over: Partial<CourtesyStatus> = {}): CourtesyStatus => ({ state: 'due', day: 21, words: 'day 21 · nothing since the packet', reason: '', lastSentAt: null, lienDay: '2026-11-16', records: [], ...over })
-  it('a courtesy row stands on step 1, a letter-two row after a courtesy went on step 2; with no courtesy status the rung is null and the row still reads under Reminders', () => {
+  const courtesy = (over: Partial<CourtesyStatus> = {}): CourtesyStatus => ({ state: 'due', day: 21, words: 'day 21 · nothing since the packet', reason: '', lastSentAt: null, waitingForAnswer: false, lienDay: '2026-11-16', records: [], ...over })
+  it('a courtesy row stands on step 1, the attorney’s-letter row after the one courtesy and a quiet week on step 3; with no courtesy status the rung is null and the row still reads under Reminders', () => {
     const due = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue', 'day 21 · the attorney’s letter overdue') }, courtesyByJob: { j1: courtesy() } })
     expect([due.action, due.reminder?.step, due.reminder?.state]).toEqual(['courtesy', 1, 'due'])
-    const again = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue', 'day 21 · the attorney’s letter overdue') }, courtesyByJob: { j1: courtesy({ lastSentAt: '2026-09-28T12:00:00Z', words: 'day 21 · courtesy sent Sep 28 by email · nothing since' }) } })
-    expect([again.action, again.reminder?.step, again.reminder?.state]).toEqual(['letter_two', 2, 'again'])
+    // v2.6594: after the one courtesy and a week of silence the attorney's letter leads, on step 3.
+    const quiet = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue', 'day 21 · the attorney’s letter overdue') }, courtesyByJob: { j1: courtesy({ state: 'sent', lastSentAt: '2026-09-28T12:00:00Z', words: 'day 21 · courtesy sent Sep 28 by email · nothing since · the attorney’s letter next' }) } })
+    expect([quiet.action, quiet.reminder?.step, quiet.reminder?.state]).toEqual(['letter_two', 3, 'two_due'])
     const bare = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('due') } })
     expect(bare.reminder).toBeNull()
     expect(groupLienNextUp([bare]).map((g) => g.group)).toEqual(['reminders'])
