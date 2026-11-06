@@ -2,18 +2,30 @@
 title: write the questions for a stage checklist
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: stage checklist, checklist, questions, rough in, top out, trim set, not ready, pipeline, photo, crew, settings, jobs and billing
+keywords: stage checklist, checklist, questions, rough in, top out, trim set, not ready, pipeline, photo, signature, crew, documents tab, company's list, every trim set, take off, settings, jobs and billing, mirror
+where: /jobs
 order: 63
 ---
-A stage checklist is a short list of questions the crew answers on the phone when they work a stage. There is one list for Rough In, one for Top Out and one for Trim Set. You write the questions once, for the whole company. The crew answers them on every job that has the stage.
+A stage checklist is a short list of questions the crew answers on the phone when they work a stage. There is one list for Rough In, one for Top Out and one for Trim Set. You write the company's questions once, on a job's Documents tab. The crew answers them on every job that has the stage.
 
-## Where the questions live
+## Where the questions are written
 
-Open **Settings** and press **Jobs & billing**. Under the heading **The job’s record**, press **Stage checklists**. The card opens. The card lists Rough In, Top Out and Trim Set. Each list starts empty. The stage checklists start the day you type the questions.
+The company's questions are written where their answers are read, on a job's Documents tab. Open any job with the stage. Press **Documents** and scroll to **Stage checklists**. Each stage reads with its standing, like *Not ready · 3 of 6*. The group named **The company's questions** is the company's list for that stage.
 
-## Add a question
+Settings used to hold an editor for these questions. Settings → Jobs & billing → Stage checklists now reads the lists back. Under each question it says which job the question came from. Nothing is pressed there.
 
-Press {{button:outline|Add a question}} under the stage. Type the question in the box. Keep it short, so the crew can answer it on a phone. Write it so Yes, No or Not here answers it.
+## Add a question for every job
+
+1. Under the stage, press {{button:outline|+ Add a check for Trim Set}}.
+2. Under **Where the check goes**, press **Every Trim Set in the company**. The box's title changes to say so.
+3. Type the question in the box. Keep it short, so the crew can answer it on a phone. Write it so Yes, No or Not here answers it.
+4. Tick **Asks for a photo** when the crew must take a photo with the answer.
+5. Tick **Needs a signature** when the crew must sign the answer. Use it where a wrong answer costs a wall or an inspection.
+6. Press {{button:blue|Add to every Trim Set}}.
+
+The question lands at the end of the company's list. Every Trim Set in the company asks it from now on. A stage that read ready on another job reads not ready until the crew answers it. The toast says so.
+
+The box stays open for the next question. Press {{button:outline|Done adding}} when the list is in. The box leaves **This job** picked when it opens, so check the pick before you press.
 
 :::example Questions a company might write
 1. Did the water test hold?
@@ -21,15 +33,38 @@ Press {{button:outline|Add a question}} under the stage. Type the question in th
 3. Is the cleanout capped?
 :::
 
-Tick **Asks for a photo** when the crew must take a photo with their answer. The photo saves to the customer's Google Drive folder. The crew does not need a photo when they answer Not here.
+A company question has no plan sheet and no why. Those are for a check on one job. The guide [add a check to a job's stage checklist](/help/add-a-check-to-a-jobs-stage-checklist) covers that.
 
-Tick **Needs a signature** when the crew must sign their answer. Use it where a wrong answer costs a wall or an inspection. The question is not answered until it is signed. Not here needs a signature too. The guide [sign a checklist answer](/help/sign-a-checklist-answer) says what the crew sees.
+## Make a job's checks the company's list
 
-Press the arrows to move a question up or down. Press **Take off** to remove one. Press {{button:blue|Save the questions}} when the list reads right. Press **Put them back** to undo your typing before a save.
+A superintendent often writes the checks a stage needs before the office does. You can take a job's whole list for the company.
+
+1. Find the group **Added for this job** under the stage.
+2. Press **Use as the company's Trim Set list**.
+3. Read what it will do. Press {{button:outline|Add 3 checks to every Trim Set}}. Press **Keep them on this job** to change your mind.
+
+Each check moves to the company's list, after the company's own questions. This job keeps its answers. The plan sheets and whys are left off, since they were written for this job.
+
+A check the company's list already asks stays on the job. A line under the group names it with the reason. The other checks still move. One check alone has no whole-list press. Use **Add to the company's list** on its row instead.
+
+## Put the questions in order
+
+The company's questions go in the order you put them. Press {{button:outline|▲}} or {{button:outline|▼}} on a question under **The company's questions**. Every job of the kind reads the new order. The arrows under **Added for this job** move that job's own checks alone.
+
+## Take a question off the company's list
+
+1. Find the question under **The company's questions**.
+2. Press **Take off the company's list**.
+3. Type why the question comes off. Three characters or more.
+4. Press {{button:outline|Take it off every Trim Set}}. Press **Keep it** to change your mind.
+
+Every Trim Set in the company stops asking it. The app keeps every answer the crew already gave. Settings → Stage checklists lists it under **Taken off** with your name, the time and your reason.
+
+To leave a question off one job alone, press **Skip on this job** instead. The guide [add a check to a job's stage checklist](/help/add-a-check-to-a-jobs-stage-checklist#skip-a-company-question-on-this-job) has the steps.
 
 ## What the crew sees
 
-The crew opens a stage's checklist from Job Mode or the job window. They pick Yes, No or Not here on each question. They can add a note. Where a question asks for a photo, they take one from the sheet.
+The crew opens a stage's checklist from Job Mode or the job window. They pick Yes, No or Not here on each question. They can add a note. Where a question asks for a photo, they take one from the sheet. Where a question needs a signature, they sign it. The guide [sign a checklist answer](/help/sign-a-checklist-answer) says what the crew sees.
 
 ## How it changes the Pipeline
 
@@ -37,11 +72,9 @@ A stage reads **not ready** on the Pipeline until every question is answered. On
 
 A question you take off stays on the answers the crew already gave. The crew sees the new list on the next stage they open. A check the crew sent to Dispatch on that question closes by itself.
 
-## A check for one job alone
+## Read the lists on Settings
 
-A check for one job is added on the job, not here. Open the job window and press **Documents**. The guide [add a check to a job's stage checklist](/help/add-a-check-to-a-jobs-stage-checklist) has the steps. The same tab reads every answer with the person's name and the time.
-
-The same tab can change this list in one way. Press **Add to the company's list** on a job's check, and it lands at the end of this stage's list. A job can also skip one of your questions with a reason. That leaves this list as it is.
+Open **Settings** and press **Jobs & billing**. Under the heading **The job's record**, press **Stage checklists**. The card lists Rough In, Top Out and Trim Set. Under each question a line says where it came from. A question taken from a job reads like *From Job 1042 · Riders Walk, where Pat Sample added it*. A question written for the company reads *Written by* and the name. The card goes in a later release.
 
 ## What does not count
 
