@@ -150,7 +150,7 @@
 
 <div class="picks">
   <div><b>Which cards get the ring</b>One-off cards and roadmap cards. A repeating card keeps the tick.</div>
-  <div><b>The photo</b>Offered at each new %. Required at the finish, with a <em>No photo, here is why</em> line.</div>
+  <div><b>The photo</b>Offered at each new %. Required at the finish only on a card that <em>asks for a photo</em>, a switch on the card that turns on by itself when Done when… lines are written. Revised on the second look: the first draft asked every office card for a reason.</div>
   <div><b>The Tasks folder</b>The app makes <em>PipeTooling Tasks</em> beside Jobs in its Shared Drive. One folder per card.</div>
   <div><b>% and Done when…</b>A card with lines derives its % from the ticks and loses the chips. One number.</div>
   <div><b>Who subscribes to whom</b>The office picks anyone. Everyone else gets their own week only.</div>
@@ -175,7 +175,8 @@
         <li><span class="box"></span><span>The cart is clear and the floor swept</span></li>
       </ul>
       <span class="press outline small">＋ Add a line</span>
-      <p class="note">A photo is asked at each new % and always at the finish. Nothing to set.</p>
+      <ul class="lines" style="margin-top:10px"><li><span class="box on"></span><span>Asks for a photo at the finish<small>turned on by itself when lines are written; off on a plain one-off</small></span></li></ul>
+      <p class="note">A photo is offered at each new % on every card. Only a card with this on holds its finish for one.</p>
       <p style="margin-top:12px"><span class="press go">Send</span></p>
     </div>
     <div class="frame">
@@ -237,13 +238,14 @@
         <div class="sheet">
           <h3>Where does it stand?</h3>
           <p class="meta">Clear the back half of the floor · was 50% on Tue</p>
-          <div class="chips"><span class="was">0</span><span class="was">25</span><span class="was">50</span><span class="on">75</span><span>100</span></div>
-          <p class="cap">A photo of where it stands</p>
-          <div class="tile">📷 Take a photo<br><small>goes in the card's Drive folder</small></div>
-          <p class="meta" style="margin-bottom:10px">Skip this time</p>
+          <div class="chips"><span class="was">25</span><span class="was">50</span><span class="on">75</span></div>
+          <div class="field on">What is left? Puddy and the glue, Thursday</div>
+          <div class="tile">📷 A photo of where it stands<br><small>offered, never held</small></div>
           <span class="press go wide">Set 75%</span>
+          <p class="meta" style="margin:12px 0 6px; text-align:center">or</p>
+          <span class="press green wide">✓ Done</span>
         </div>
-        <p class="note">100 takes today's done path: the completion notice, the Review queue, the next repeat. The thread gets a line, <em>Mateo · 75% · Wed 2:05 PM</em>.</p>
+        <p class="note">Two taps either way: the ring, then a chip and Set, or the ring, then Done. The thread reads <em>Mateo · 75% · Wed 2:05 PM · "puddy and the glue, Thursday"</em>, so the number has words behind it and Monday's email can say what is left. Done takes today's path: the notice, the Review queue, the next repeat.</p>
       </div>
       <div class="phone">
         <p class="cap">The finishing photo · the last line ticked</p>
@@ -254,7 +256,7 @@
           <div class="field">No photo, here is why…</div>
           <span class="press green wide">Done · 100%</span>
         </div>
-        <p class="note">Before the photo the press reads <strong>Photo first</strong> in grey; a reason typed in the line frees it. A shot with no signal waits on the phone and goes out when the signal returns.</p>
+        <p class="note">Only a card that asks for a photo gets this sheet. Before the photo its press reads <strong>Photo first</strong> in grey; a reason typed in the line frees it. A card that does not ask simply closes on the last tick. A shot with no signal waits on the phone and goes out when the signal returns.</p>
       </div>
     </div>
   </div>
@@ -278,8 +280,8 @@
           <div class="acts"><span class="press outline small">+ Note</span></div>
         </div>
         <div class="lrow">
-          <div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="0 120"/></svg><span class="pct">0</span></div>
-          <div><div class="t">One marker every mile</div><div class="s">not started · T+74</div></div>
+          <div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/></svg></div>
+          <div><div class="t">One marker every mile</div><div class="s">not started · T+74 · an untouched ring is empty, no digits</div></div>
           <div class="acts"><span class="press outline small">+ Note</span></div>
         </div>
       </div>
@@ -306,6 +308,36 @@
         <div class="sq">🗑</div>
       </div>
       <p class="note"><strong>Set the %</strong> replaces <em>○ Mark done</em>. A task with Done when… lines shows the lines instead and the bar follows the ticks. 100 marks the task done and the stage counts it, as the tick did.</p>
+    </div>
+  </div>
+</section>
+
+<section class="stop">
+  <h2><span class="num">3b</span>The office's Dashboard: your people's cards</h2>
+  <p class="why">Added on the second look. Goal 1 may also mean the person who hands out cards sees <em>their people's</em> cards on the Dashboard, not only their own. Today that lives on Checklist → Review, Outstanding by person, a tab away. This section brings it to the morning screen with the rings, and Monday's email is the same rows by mail.</p>
+  <div class="row">
+    <div class="frame">
+      <p class="cap">Dashboard · for the office roles, under My Inbox</p>
+      <h3>Your people <span class="meta" style="font-weight:600">· 3 cards done this week · 2 moved · 1 stuck</span></h3>
+      <div class="ledger" style="margin-top:8px">
+        <div class="lrow">
+          <div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="80 40"/></svg><span class="pct">67</span></div>
+          <div><div class="t">Mateo · 2 open</div><div class="s">Put the plumbing tools in a neat home · 2 of 3 · 📷 2 · 9:40 AM today</div></div>
+          <div class="acts"><span class="chip green">moved today</span></div>
+        </div>
+        <div class="lrow">
+          <div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="60 60"/></svg><span class="pct">50</span></div>
+          <div><div class="t">Darren · 1 open</div><div class="s">31.5 · Weld up the second set of shelves · 50% · "uprights done" · yesterday</div></div>
+          <div class="acts"><span class="chip grey">moved Wed</span></div>
+        </div>
+        <div class="lrow">
+          <div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/></svg></div>
+          <div><div class="t">Rosa · 3 open</div><div class="s">One marker every mile · nothing moved · oldest 32 days</div></div>
+          <div class="acts"><span class="chip red">stuck 32 days</span><span class="press outline small">🔔 Remind</span></div>
+        </div>
+      </div>
+      <p style="margin-top:10px"><span class="press outline small">Open Review</span> <span class="press outline small">✉ Get this every Monday</span></p>
+      <p class="note">One row per person, their newest-moved card as the line, every other card behind the row's tap. <em>Stuck</em> is Review's own rule, amber after a week and red after a month, so the Dashboard and Review never disagree. A question for Taunya: is this what goal 1 meant, or only the person's own cards?</p>
     </div>
   </div>
 </section>
@@ -346,12 +378,12 @@
   <div class="row">
     <div class="frame mail">
       <div class="hdr"><b>Your people's week · Nov 2 to 8</b><br>From Click Tooling · to Taunya · Monday 6:00 AM</div>
-      <p>Three people you follow. Here is what moved last week.</p>
+      <p>Three people you follow. <b>3 cards done · 2 moved · 1 stuck.</b></p>
       <div class="person">
         <h3>Mateo <small>2 cards done · 1 moved · 4 photos</small></h3>
         <div class="group"><b>Cards</b><ul>
           <li><span>Put the plumbing tools in a neat home</span><span class="mv">0 → 100</span><span class="chip green">done · 3 of 3</span><a href="#">3 photos</a></li>
-          <li><span>Clear the back half of the floor</span><span class="mv">25 → 75</span><a href="#">1 photo</a></li>
+          <li><span>Clear the back half of the floor</span><span class="mv">25 → 75</span><span class="quiet">"puddy and the glue, Thursday"</span><a href="#">1 photo</a></li>
           <li><span>Check the AAA policy</span><span class="mv">0 → 100</span><span class="chip green">done</span></li>
         </ul></div>
         <div class="group"><b>Roadmap</b><ul>
@@ -370,7 +402,7 @@
       </div>
       <div class="person">
         <h3>Rosa <small>nothing moved</small></h3>
-        <div class="group"><b>Cards</b><ul><li><span class="quiet">3 open, none moved · oldest 32 days</span></li></ul></div>
+        <div class="group"><b>Stuck</b><ul><li><span>One marker every mile</span><span class="chip red">32 days, no move</span></li><li><span class="quiet">2 more open, none moved this week</span></li></ul></div>
       </div>
       <div class="foot">You get this every Monday at 6 AM. <a href="#" style="color:var(--blue);text-decoration:none">Change who is in it</a> · <a href="#" style="color:var(--blue);text-decoration:none">Stop it</a></div>
     </div>
@@ -401,6 +433,20 @@
     <li>A photo kept only in the app. Drive holds it; the app keeps the row and the thumbnail until the sweep has filed it, as every other photo.</li>
     <li>The email to anyone outside the company, or about people a non-office role cannot see.</li>
     <li>Two numbers on one card. Lines make the %, or the hand makes it, never both.</li>
+    <li>A reason typed on an office card. A card that does not ask for a photo closes on its last tick or its Done with no question.</li>
+    <li>A 0 chip. An untouched card is an empty ring; Reopen on the thread is the way back.</li>
+  </ul>
+</section>
+
+<section class="stop">
+  <h2>The second look, 2026-11-06</h2>
+  <p class="why">Taunya asked whether this is the best we can do. Five things changed from the first draft:</p>
+  <ul class="plain">
+    <li><strong>Done stayed two taps, never three.</strong> The first sheet had 100 as a chip beside 25, 50 and 75, so finishing a plain card was ring, chip, Set. Now the sheet carries one green Done under the chips.</li>
+    <li><strong>The photo ask became the card's own switch.</strong> Requiring a photo or a reason on every finish would have asked an office card like <em>Check the AAA policy</em> to explain itself. The switch turns on by itself when lines are written, since lines mean work someone can see.</li>
+    <li><strong>A % got words.</strong> <em>What is left?</em> on the sheet, one optional line, so 75 means something on the thread and in the email.</li>
+    <li><strong>The office's Dashboard got the people.</strong> Goal 1 can be read two ways; stop 3b draws the second reading for Taunya to keep or drop.</li>
+    <li><strong>The email leads with what matters.</strong> A count line up top and a <em>Stuck</em> group per person, Review's own age rule, so the Monday read starts with who needs a nudge.</li>
   </ul>
 </section>
 </main>

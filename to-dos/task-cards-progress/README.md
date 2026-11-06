@@ -2,7 +2,7 @@
 name: "Task cards: % done instead of a tick, Done when… lines, photos filed in a Tasks folder in Drive, and the Monday email of your people's week"
 number: 273
 group: ready
-status: card and mock-up 2026-11-06 on worktree-task-cards-progress · Taunya took the six picks as recommended the same day · nothing built yet
+status: card and mock-up 2026-11-06 on worktree-task-cards-progress · Taunya took the six picks as recommended the same day · the second look that evening revised the photo pick, gave a % its words and drew the office's Dashboard section as a question for her · nothing built yet
 summary: >
   A task card is done or not done today: a tick on Checklist → Today, the Dashboard's My Inbox and
   the Roadmap's task card. Taunya wants the card to carry how far along it is, what done means, and
@@ -50,8 +50,12 @@ six picks, as the mock-up draws them:
 
 1. **Which cards get the ring.** One-off cards and roadmap cards. A repeating card keeps the tick,
    since a 40%-done *Grease the skid steer* each Sunday means nothing.
-2. **The photo: offered or required.** Offered at each new %, required at the finish (100, or the
-   last line ticked), with a *No photo, here is why* line so a card is never stuck.
+2. **The photo: offered or required.** Offered at each new % on every card. Required at the
+   finish only on a card that **asks for a photo**, a switch on the card its writer sets, on by
+   itself once Done when… lines are written and off on a plain one-off; on such a card a *No photo,
+   here is why* line frees the press, so a card is never stuck. *Revised on the second look*: the
+   first pick required a photo or a reason on every finish, which would have asked an office card
+   like *Check the AAA policy* to explain itself.
 3. **The tooling@clickplumbing folder.** The app makes *PipeTooling Tasks* beside the Jobs folder in
    its Shared Drive, the way the Fleet folder is made on Documents → Where files go (v2.6564), and
    the same card takes a pasted folder link from any Drive the app's account can write in. One
@@ -71,13 +75,37 @@ one card.
 
 ## Is this the best we can do?
 
-Three things checked against the first draft. The ring is the tick box's own 48px seat on the card,
-so the sunlight pass of v2.1854 (border weight and type size carry the card, not tints) holds and
+Taunya asked it of the first mock-up the same evening. Five things changed (the mock-up's last
+section and `before-after.html` carry them):
+
+1. **Done stayed two taps, never three.** The first % sheet put 100 as a chip beside 25, 50 and 75,
+   so finishing a plain card was ring, chip, Set. The sheet now carries one green **Done** under the
+   chips, and 0 is gone (an untouched card is an empty ring with no digits; Reopen on the thread is
+   the way back).
+2. **The photo ask became the card's own switch** (pick 2 above), the stage checklists' own
+   *Asks for a photo* pattern (v2.6077) rather than a rule for every card.
+3. **A % got words.** *What is left?* on the sheet, one optional line kept as the `progress`
+   event's body, so *75* reads *75 · "puddy and the glue, Thursday"* on the thread and in the email.
+4. **The office's Dashboard got the people.** Goal 1 reads two ways: a person sees their own cards
+   (already true), or the person who hands out cards sees their people's. Stop 3b draws the second:
+   **Your people** under My Inbox for the office roles, one row per person with their newest-moved
+   card and its ring, *moved today* / *stuck 32 days* (Review's own age rule, amber after a week and
+   red after a month), 🔔 Remind, and **✉ Get this every Monday**. **Open for Taunya**: keep it or
+   drop it.
+5. **The email leads with what matters.** A count line up top (*3 cards done · 2 moved · 1 stuck*)
+   and a **Stuck** group per person, so the Monday read starts with who needs a nudge, not with
+   arithmetic.
+
+Three things held from the first draft. The ring is the tick box's own 48px seat on the card, so
+the sunlight pass of v2.1854 (border weight and type size carry the card, not tints) holds and
 nothing on the card moves. The lines live on the item (or the roadmap task) and the ticks on the
 instance, so a repeating card's lines are asked fresh each day and a one-off's ticks are its
 history. And the photo rides the one hook every photo form already takes (`useReportPhotos`,
 v2.6453), so a shot with no signal waits on the phone through the outbox as a job photo does
 (v2.6370), with nothing new to build for the signal case.
+
+`before-after.html` beside this card draws every stop as today's screen and the change, the
+Before panels taken from the live pages.
 
 ## Where it plugs in (verified 2026-11-06 against main at v2.6576)
 
@@ -152,7 +180,9 @@ What is new:
 
 - **Migration 1** (`SET lock_timeout = '3s'`; idempotent; the four fence calls):
   `checklist_instances.percent_complete smallint NOT NULL DEFAULT 0 CHECK (0..100)` and the same on
-  `checklist_tech_tree_group_tasks`; the events' CHECK widened to `progress`, `criterion` and
+  `checklist_tech_tree_group_tasks`; `checklist_items.asks_for_photo boolean NOT NULL DEFAULT
+  false` and the same on the roadmap task (the dialogs flip it on when a line is written); the
+  events' CHECK widened to `progress` (its `body` the *what is left* words), `criterion` and
   `photo`, and the insert policy to admit those three in the actor's own name; `task_criteria`
   (`id`, `checklist_item_id` or `roadmap_task_id`, exactly one, `body`, `sort_index`, `created_by`,
   `retired_at`); `task_criteria_checks` (`criterion_id`, `instance_id`, `checked_at`, `checked_by`,
@@ -185,11 +215,17 @@ What is new:
    rather than deleting it); the lines as ticks on `ChecklistInstanceCard` (card and row) with the
    stamp under each; the derived %; the `criterion` event on the thread; render tests. Guide *give
    someone a task* (a section) and *check off my daily tasks* (a section).
-3. **PR 3 · the ring.** The ring in the tick's seat on `ChecklistInstanceCard`, the % sheet with
-   the chips, the `progress` event; the inbox card, Today and Review through
+3. **PR 3 · the ring.** The ring in the tick's seat on `ChecklistInstanceCard` (empty with no
+   digits until the card moves), the % sheet with the three chips, *What is left?* and one green
+   **Done**, the `progress` event; the inbox card, Today and Review through
    `completeChecklistInstance` at 100; the roadmap task card's **Set the %** bar, the stage's
    fractional slots and the goal bar's fractions; the Pipeline-style `batchWords` untouched. Render
    tests. Guides *check off my daily tasks* and *staff and discuss a roadmap task*.
+   **PR 3b · Your people on the Dashboard** (only if Taunya keeps stop 3b): a
+   `DashboardYourPeopleSection` for the office roles under My Inbox over a kernel
+   `src/lib/dashboardYourPeople.ts` (one row per person, the newest-moved card, Review's age rule
+   from `checklistTeamBoard.ts` / `ageState`), **Open Review** and **✉ Get this every Monday**
+   opening PR 5's sheet; a `DASHBOARD_SECTIONS_ARCHITECTURE.md` row and a dock chip.
 4. **PR 4 · photos.** Where files go's **The Tasks folder** card and `job-drive-folders` `make:
    'tasks'`; `task_photos` through `useReportPhotos` on the % sheet (offered) and the finish sheet
    (required, with the reason line); `photo-save`'s sixth source filing into `<Tasks> › <card>`;
@@ -211,13 +247,18 @@ Branch each PR from `origin/main`; PRs 2 and 3 may stack on PR 1 while its push 
 On the dev server, signed in as dev, at 1280, 768 and 375, on ZZ test cards only (every one deleted
 before the session ends):
 
-1. Send a one-off *ZZ Test · tools home* to yourself with three Done when… lines; on Today the ring
-   reads 0 and the lines are open. Tick two: the ring reads 67, the thread holds two `criterion`
-   lines with the stamp. Tick the third: the finish sheet asks for the photo, the press reads
-   *Photo first*; type a reason, the card is done, Review's sign-off row shows it.
-2. Send a one-off with no lines; tap the ring, pick 50, skip the photo: the thread reads *· 50% ·*
-   and the Dashboard row reads 50. Pick 100: the completion notice, the Review row, the next repeat
-   for a *days after done* card.
+1. Send a one-off *ZZ Test · tools home* to yourself with three Done when… lines; *Asks for a
+   photo at the finish* came on by itself. On Today the ring is empty and the lines are open. Tick
+   two: the ring reads 67, the thread holds two `criterion` lines with the stamp. Tick the third:
+   the finish sheet asks for the photo, the press reads *Photo first*; type a reason, the card is
+   done, Review's sign-off row shows it.
+2. Send a one-off with no lines; tap the ring, pick 50, type *what is left*, skip the photo: the
+   thread reads *· 50% · "…"* and the Dashboard row reads 50. Tap the ring, press **Done**: no
+   photo sheet (the switch is off), the completion notice, the Review row, the next repeat for a
+   *days after done* card.
+2b. If stop 3b is kept: as dev, the Dashboard's **Your people** section lists the ZZ assignee
+   with the card's ring and *moved today*; a card 8 days old with no move reads amber, 31 days
+   red, matching Review's chip.
 3. A weekly ZZ repeat keeps the tick box.
 4. On a ZZ roadmap, add a task with two lines; unlock its stage; the card on Today carries the
    lines; tick one; the stage's slot is half-filled and the goal bar's fraction moved.
