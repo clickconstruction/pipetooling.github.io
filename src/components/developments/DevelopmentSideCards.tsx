@@ -4,6 +4,7 @@
  * which reads the site by part; the Questions look moved to `DevelopmentQuestionsLook.tsx` (v2.6214).
  */
 import { requestIsOpen, type MemberRequest } from '../../lib/developments/overview'
+import { STAGE_CHECK_WORDS, isStageCheckRequest } from '../../lib/jobs/stageCheckDispatch'
 import { ageWords, LinkButton, shortDay } from './developmentPageBits'
 
 /**
@@ -22,6 +23,12 @@ export function QuestionRow({ request: r, names, about, askedOn }: { request: Me
         <span>
           {names.get(r.from_user_id) ?? 'someone'} → {r.lane === 'dispatch' ? 'Dispatch' : 'the estimators'}
         </span>
+        {isStageCheckRequest(r) ? (
+          // A check the crew sent from a stage checklist (#245, PR 3): the inbox row's tag, so the job's log reads the same.
+          <span data-testid="question-stage-check-tag" style={{ padding: '0.05rem 0.5rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }}>
+            {STAGE_CHECK_WORDS.tag}
+          </span>
+        ) : null}
         {about ? <LinkButton onClick={about.onOpen}>{about.label}</LinkButton> : null}
         {askedOn ? (
           <span style={{ fontStyle: 'italic' }} title="Asked on the bid this job came from" data-testid="question-asked-on">

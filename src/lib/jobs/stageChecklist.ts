@@ -209,6 +209,8 @@ export interface StageChecklistState {
   standing: StageChecklistStanding
   /** True unless the stage has a checklist with a question left. The Pipeline's one more state is `!ready`. */
   ready: boolean
+  /** The open requests on the stage's checks with Dispatch (punch list #245, PR 3), when the read carried them: the flag on the Pipeline's mark. */
+  withDispatch?: number
 }
 
 export interface StageChecklistStateInput {

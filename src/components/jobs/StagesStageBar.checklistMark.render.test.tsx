@@ -27,6 +27,7 @@ const job = {
 }
 const notReady: StageChecklistState = { kind: 'rough_in', asked: 3, answered: 2, standing: 'not_ready', ready: false }
 const filled: StageChecklistState = { kind: 'trim_set', asked: 1, answered: 1, standing: 'ready', ready: true }
+const withDispatch: StageChecklistState = { kind: 'trim_set', asked: 1, answered: 0, standing: 'not_ready', ready: false, withDispatch: 1 }
 
 afterEach(() => cleanup())
 
@@ -67,6 +68,26 @@ describe('StagesStageBar: the checklist mark', () => {
     renderWithProviders(<StagesStageBar view={view} pctComplete={20} checklist={new Map([['f1', notReady]])} />)
     expect(document.querySelector('[data-stage-checklist-press]')).toBeNull()
     expect((document.querySelector('[role="listitem"]') as HTMLElement).textContent).toContain('☐')
+  })
+
+  it('a check with Dispatch flies the flag in the box’s place and says so on the title, as words or as the press (#245, PR 3)', () => {
+    const { view } = progressPaymentForJob(job, null, '2026-10-29')
+    renderWithProviders(<StagesStageBar view={view} pctComplete={20} checklist={new Map([['f1', notReady], ['f3', withDispatch]])} />)
+    const names = Array.from(document.querySelectorAll('[role="listitem"]')) as HTMLElement[]
+    const trim = names[2]!
+    expect(trim.getAttribute('data-stage-with-dispatch')).toBe('1')
+    expect(trim.getAttribute('title')).toBe('Stage 3 · Trim · checklist 0 of 1 answered · not ready · with Dispatch')
+    expect(trim.textContent).toContain('⚑')
+    expect(trim.textContent).not.toContain('☐')
+    expect(trim.style.color).toBe('var(--text-amber-700)')
+    // The stage with a question left and nothing with Dispatch keeps the box.
+    expect(names[0]!.getAttribute('data-stage-with-dispatch')).toBeNull()
+    expect(names[0]!.textContent).toContain('☐')
+    cleanup()
+    renderWithProviders(<StagesStageBar view={view} pctComplete={20} checklist={new Map([['f3', withDispatch]])} onChecklistPress={vi.fn()} />)
+    const press = document.querySelector('[data-stage-checklist-press]') as HTMLButtonElement
+    expect(press.getAttribute('aria-label')).toBe('Checklists on Trim · checklist 0 of 1 answered · not ready · with Dispatch · press to open')
+    expect(press.textContent).toContain('⚑')
   })
 
   it('draws no mark while no question exists', () => {

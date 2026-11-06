@@ -2,7 +2,9 @@
  * A checklist per stage (punch list #164, PR 4): the board's read behind the Pipeline's not-ready mark. One read of
  * the company's live questions, one chunked read of the items added on the board's jobs (#237), one of the questions
  * skipped on them (PR 1b) and one of the answers on those jobs, as `useJobCrewPositions` reads the crew: fail-soft, so a missing table (a client ahead of the push), a refused read or any error is an empty read and
- * the row draws what it drew before. Each row turns the read into its own marks with `stageChecklistMarks`.
+ * the row draws what it drew before. Each row turns the read into its own marks with `stageChecklistMarks`. The open
+ * stage-check requests on those jobs read beside the answers (#245, PR 3), on their own fail-soft, so a refused read of
+ * the inbox never costs the board its marks.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -10,6 +12,8 @@ import { supabase } from '../lib/supabase'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { withSkips, type StageChecklistAnswer, type StageChecklistQuestion } from '../lib/jobs/stageChecklist'
 import { loadJobItems, loadJobSkips, loadQuestions } from '../lib/jobs/stageChecklistIo'
+import { loadOpenStageCheckCounts } from '../lib/jobs/stageCheckDispatchIo'
+import { NO_WITH_DISPATCH } from '../lib/jobs/stageChecklistMarks'
 
 // The tables are younger than the generated types; the types PR after the push removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -32,6 +36,8 @@ export function markAnswersFromRows(rows: readonly AnswerMarkRow[]): ReadonlyMap
 export interface StageChecklistStates {
   questions: readonly StageChecklistQuestion[]
   answersByFixture: ReadonlyMap<string, readonly StageChecklistAnswer[]>
+  /** The open stage-check requests by fixture id (#245, PR 3): the flag on the mark. */
+  withDispatchByFixture: ReadonlyMap<string, number>
   loading: boolean
   reload: () => void
 }
@@ -39,6 +45,7 @@ export interface StageChecklistStates {
 export function useStageChecklistStates(jobIds: ReadonlyArray<string>, enabled: boolean): StageChecklistStates {
   const [questions, setQuestions] = useState<readonly StageChecklistQuestion[]>([])
   const [answersByFixture, setAnswers] = useState<ReadonlyMap<string, readonly StageChecklistAnswer[]>>(NO_ANSWERS)
+  const [withDispatchByFixture, setWithDispatch] = useState<ReadonlyMap<string, number>>(NO_WITH_DISPATCH)
   const [loading, setLoading] = useState(false)
   const [tick, setTick] = useState(0)
   const seq = useRef(0)
@@ -48,6 +55,7 @@ export function useStageChecklistStates(jobIds: ReadonlyArray<string>, enabled: 
     if (!enabled || key.length === 0) {
       setQuestions([])
       setAnswers(NO_ANSWERS)
+      setWithDispatch(NO_WITH_DISPATCH)
       return
     }
     const mine = ++seq.current
@@ -67,20 +75,27 @@ export function useStageChecklistStates(jobIds: ReadonlyArray<string>, enabled: 
         if (q.length === 0) {
           setQuestions([])
           setAnswers(NO_ANSWERS)
+          setWithDispatch(NO_WITH_DISPATCH)
           return
         }
-        const rows = await fetchAllRowsChunkedIn<AnswerMarkRow, string>(
-          ids,
-          (chunk, from, to) => db.from('stage_checklist_answers').select('fixture_id, question_id, pick, photo_file_name').in('job_id', chunk).order('id').range(from, to),
-          'stageChecklistStates.answers',
-        )
+        // The answers, and beside them the checks with Dispatch (#245, PR 3); that read fails soft on its own.
+        const [rows, open] = await Promise.all([
+          fetchAllRowsChunkedIn<AnswerMarkRow, string>(
+            ids,
+            (chunk, from, to) => db.from('stage_checklist_answers').select('fixture_id, question_id, pick, photo_file_name').in('job_id', chunk).order('id').range(from, to),
+            'stageChecklistStates.answers',
+          ),
+          loadOpenStageCheckCounts([...ids]).catch(() => NO_WITH_DISPATCH),
+        ])
         if (cancelled || mine !== seq.current) return
         setQuestions(q)
         setAnswers(markAnswersFromRows(rows))
+        setWithDispatch(open)
       } catch {
         if (cancelled || mine !== seq.current) return
         setQuestions([])
         setAnswers(NO_ANSWERS)
+        setWithDispatch(NO_WITH_DISPATCH)
       } finally {
         if (!cancelled && mine === seq.current) setLoading(false)
       }
@@ -91,5 +106,5 @@ export function useStageChecklistStates(jobIds: ReadonlyArray<string>, enabled: 
   }, [key, enabled, tick])
 
   const reload = useCallback(() => setTick((t) => t + 1), [])
-  return { questions, answersByFixture, loading, reload }
+  return { questions, answersByFixture, withDispatchByFixture, loading, reload }
 }

@@ -23,6 +23,8 @@ const BID_COLUMNS_NO_MONEY = BID_COLUMNS.split(', ')
 const JOB_COLUMNS =
   'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, plan_part_id, billing_only, kind, created_at, updated_at, service_type_id, account_manager_user_id, pct_complete, collections_note'
 const REQUEST_COLUMNS = 'id, title, status, priority, created_at, closed_at, closed_note, from_user_id, bid_id, job_ledger_id, development_id, reference_summary'
+// Only the Dispatch table carries a flavour (`stage_check`, #245 PR 3); the estimators' has no such column, and naming it there refuses the read.
+const DISPATCH_REQUEST_COLUMNS = `${REQUEST_COLUMNS}, pending_action`
 
 export type DevelopmentRow = {
   id: string
@@ -141,7 +143,7 @@ async function readRequests(lane: 'estimators' | 'dispatch', bidIds: string[], j
 export async function readRequestsWhere(lane: 'estimators' | 'dispatch', filter: string): Promise<MemberRequest[]> {
   const table = lane === 'dispatch' ? 'dispatch_requests' : 'estimator_requests'
   const notesTable = lane === 'dispatch' ? 'dispatch_request_notes' : 'estimator_request_notes'
-  const res = await supabase.from(table).select(REQUEST_COLUMNS).or(filter).order('created_at', { ascending: false }).limit(200)
+  const res = await supabase.from(table).select(lane === 'dispatch' ? DISPATCH_REQUEST_COLUMNS : REQUEST_COLUMNS).or(filter).order('created_at', { ascending: false }).limit(200)
   fail(table, res.error)
   const rows = (res.data ?? []) as unknown as RawRequest[]
   if (rows.length === 0) return []

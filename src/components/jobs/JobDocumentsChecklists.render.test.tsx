@@ -215,4 +215,32 @@ describe('JobDocumentsChecklists', () => {
     renderWithProviders(<JobDocumentsChecklists job={JOB} io={lost} />)
     expect(await screen.findByRole('button', { name: /Retry/ })).toBeTruthy()
   })
+
+  it('a check with Dispatch wears the sheet’s chip on its row with Dispatch’s reply, and the chip leaves with Take off (#245, PR 3)', async () => {
+    const open = vi.fn(async () => [
+      { id: 'r1', fixtureId: 'f3', questionId: 'j1', title: 'Trim Set · “Are the carriers in units 7 and 8 set?” · need a part: the caps · J1085', createdAt: '2026-11-01T15:48:00.000Z', priority: 'normal', fromUserId: 'u-pat', reply: { body: 'Caps come Thursday.', by: 'Jo Sample', at: '2026-11-01T15:58:00.000Z' } },
+    ])
+    const io = fakeIo({ dispatch: { job: vi.fn(async () => ({ id: JOB.id })), open, send: vi.fn(async () => ({ id: 'x', pushed: true, pushError: null })) } })
+    renderWithProviders(<JobDocumentsChecklists job={JOB} io={io} />)
+    await screen.findByTestId('job-documents-checklists-summary')
+    const chip = await screen.findByText(/^With Dispatch · .* · need a part$/)
+    expect(open).toHaveBeenCalledWith(JOB.id)
+    expect(chip.getAttribute('data-checklist-with-dispatch')).toBe('j1')
+    const row = chip.closest('[data-testid="job-documents-checklist-row"]') as HTMLElement
+    expect(row.textContent).toContain('Are the carriers in units 7 and 8 set?')
+    expect(within(row).getByText(/^Dispatch: “Caps come Thursday\.” · Jo/)).toBeTruthy()
+    // The other rows carry no chip.
+    expect(document.querySelectorAll('[data-checklist-with-dispatch]')).toHaveLength(1)
+    fireEvent.click(within(row).getByRole('button', { name: 'Take off: Are the carriers in units 7 and 8 set?' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Take it off' }))
+    await waitFor(() => expect(document.querySelector('[data-checklist-with-dispatch]')).toBeNull())
+  })
+
+  it('draws no chip when the read of the checks with Dispatch is refused', async () => {
+    const io = fakeIo({ dispatch: { job: vi.fn(async () => ({ id: JOB.id })), open: vi.fn(async () => { throw new Error('refused') }), send: vi.fn(async () => ({ id: 'x', pushed: true, pushError: null })) } })
+    renderWithProviders(<JobDocumentsChecklists job={JOB} io={io} />)
+    await screen.findByTestId('job-documents-checklists-summary')
+    expect(screen.getAllByTestId('job-documents-checklist-row').length).toBeGreaterThan(0)
+    expect(document.querySelector('[data-checklist-with-dispatch]')).toBeNull()
+  })
 })
