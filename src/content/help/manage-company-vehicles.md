@@ -140,4 +140,6 @@ Each card says where the machine is. The card reads On a job or In the yard. {{b
 
 {{button:outline|Ours · make it a rental}} marks a rented machine. Enter who it is from, the agreement number and the due back day. The card turns amber the day before it is due. The card turns red once it is over. {{button:outline|Returned, it is not ours to check any more}} ends the rental.
 
+A rental is often booked before anyone has the agreement number. Leave the number blank. The card then reads that the agreement is not in yet. The tech photographs the paper at pickup on the pre-use check. See [a rented machine](/help/check-a-machine-before-you-run-it#a-rented-machine). The card then says the agreement photo is in and the number is not typed yet. An amber box shows the photo. {{button:outline|Open the photo}} opens it full size. {{button:blue|Type it off the photo}} opens the rental editor beside the picture. Type the agreement number and the due back day off the paper. Press {{button:blue|Save the rental}}. The card then reads the number and the due back day everywhere.
+
 The checks, the hours and the days on jobs fill in once the crew checks the machine on the phone.
