@@ -307,7 +307,7 @@ const HOLDS = ['Hold — they promised…', 'Hold — I’ll call first']
 export function lienStepBrief(on: LienStepAt): LienReminderBrief {
   if (on.ladder === 'reminder') return lienReminderBrief(on.step)
   const ladder = LIEN_STEP_LADDERS.find((l) => l.key === on.ladder)!
-  const title = ladder.steps[on.step - 1]
+  const title = ladder.steps[on.step - 1] ?? ''
   const paid = 'the bill is paid'
   if (on.ladder === 'affidavit') {
     switch (on.step) {
