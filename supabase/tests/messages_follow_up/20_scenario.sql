@@ -540,7 +540,7 @@ SELECT mfu.same('the new table carries the office policy and the read-only and t
   SELECT (SELECT string_agg(polname, ',' ORDER BY polname COLLATE "C") FROM pg_policy WHERE polrelid = c.oid)
     || ':' || (SELECT count(*) FROM pg_trigger WHERE tgrelid = c.oid AND tgname = 'read_only_block_stmt')
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'call_tasks'),
-  'call_tasks_select,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1');
+  'archived_fence,call_tasks_select,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1');
 SELECT mfu.same('the residential flow''s scripts are seeded',
   (SELECT string_agg(s.step_key, ',' ORDER BY s.step_key) FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = 'residential' AND s.call_script IS NOT NULL AND s.call_script_es IS NOT NULL),
   'approved,booked,estimate,review');
@@ -579,7 +579,7 @@ SELECT mfu.same('the prefs table carries the read-only and twin blocks', (
   SELECT (SELECT string_agg(polname, ',' ORDER BY polname COLLATE "C") FROM pg_policy WHERE polrelid = c.oid)
     || ':' || (SELECT count(*) FROM pg_trigger WHERE tgrelid = c.oid AND tgname = 'read_only_block_stmt')
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'tell_customer_prefs'),
-  'digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update,tell_customer_prefs_own:1');
+  'archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update,tell_customer_prefs_own:1');
 
 -- 17 · The app's own line (v2.6012, *_missed_call_reply): the text back after a missed call moves nothing. A number
 -- nobody has named calls and nobody picks up (Dee's contact was named as Greg's in 11, so a fresh one): their call
@@ -630,7 +630,7 @@ SELECT mfu.same('the claims table carries the read-only and twin blocks', (
   SELECT (SELECT string_agg(polname, ',' ORDER BY polname COLLATE "C") FROM pg_policy WHERE polrelid = c.oid)
     || ':' || (SELECT count(*) FROM pg_trigger WHERE tgrelid = c.oid AND tgname = 'read_only_block_stmt')
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'missed_call_replies'),
-  'digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,missed_call_replies_office_select,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1');
+  'archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,missed_call_replies_office_select,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1');
 
 DO $$ BEGIN RAISE NOTICE 'messages_follow_up PASSED'; END $$;
 ROLLBACK;

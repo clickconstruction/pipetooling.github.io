@@ -357,15 +357,15 @@ SELECT mfl.same('every new table carries the office policy and the read-only and
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'public' AND c.relname IN ('flows', 'flow_steps', 'flow_step_history', 'flow_removed_steps', 'flow_fact_wishes',
     'contact_step_skips', 'nudge_holds', 'nudge_offers', 'nudge_sent')),
-  'contact_step_skips:contact_step_skips_team,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
-  'flow_fact_wishes:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_fact_wishes_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
-  'flow_removed_steps:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_removed_steps_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
-  'flow_step_history:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_step_history_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
-  'flow_steps:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_steps_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
-  'flows:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flows_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
-  'nudge_holds:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,nudge_holds_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
-  'nudge_offers:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,nudge_offers_select,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
-  'nudge_sent:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,nudge_sent_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1');
+  'contact_step_skips:archived_fence,contact_step_skips_team,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
+  'flow_fact_wishes:archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_fact_wishes_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
+  'flow_removed_steps:archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_removed_steps_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
+  'flow_step_history:archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_step_history_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
+  'flow_steps:archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_steps_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
+  'flows:archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flows_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
+  'nudge_holds:archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,nudge_holds_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
+  'nudge_offers:archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,nudge_offers_select,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
+  'nudge_sent:archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,nudge_sent_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1');
 
 -- 8 · The four facts main did not keep have their columns.
 SELECT mfl.same('the four new facts'' columns', (

@@ -135,7 +135,7 @@ SELECT gcc.same('neither left a line', (SELECT count(*)::text FROM public.gc_cus
 -- else; signed out, nothing.
 SELECT gcc.same('the policies',
   (SELECT string_agg(policyname || ':' || permissive || ':' || cmd, ',' ORDER BY policyname) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'gc_customer_contacts'),
-  'digital_twin_write_fence_delete:RESTRICTIVE:DELETE,digital_twin_write_fence_insert:RESTRICTIVE:INSERT,digital_twin_write_fence_update:RESTRICTIVE:UPDATE,gc_customer_contacts_team:PERMISSIVE:ALL,read_only_users_cannot_delete:RESTRICTIVE:DELETE,read_only_users_cannot_insert:RESTRICTIVE:INSERT,read_only_users_cannot_update:RESTRICTIVE:UPDATE');
+  'archived_fence:RESTRICTIVE:ALL,digital_twin_write_fence_delete:RESTRICTIVE:DELETE,digital_twin_write_fence_insert:RESTRICTIVE:INSERT,digital_twin_write_fence_update:RESTRICTIVE:UPDATE,gc_customer_contacts_team:PERMISSIVE:ALL,read_only_users_cannot_delete:RESTRICTIVE:DELETE,read_only_users_cannot_insert:RESTRICTIVE:INSERT,read_only_users_cannot_update:RESTRICTIVE:UPDATE');
 SELECT gcc.same('the read-only statement trigger',
   (SELECT string_agg(tgname, ',') FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid WHERE c.relname = 'gc_customer_contacts' AND NOT t.tgisinternal),
   'read_only_block_stmt');
