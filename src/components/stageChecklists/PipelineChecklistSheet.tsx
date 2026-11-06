@@ -10,7 +10,7 @@
  * strip and Documents share, so a press here lands on every reader of the job at once; the board re-reads its marks
  * when the sheet closes, since its read is its own.
  */
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobStageChecklists } from '../../hooks/useJobStageChecklists'
 import { DOOR_SHEET_WORDS, doorEmptyWords, doorSheetTitle } from '../../lib/jobs/pipelineChecklistDoor'
@@ -56,12 +56,13 @@ export function PipelineChecklistSheet({ job, io, onClose, onOpenDocuments }: Pi
   const plansUrl = plansDoorUrl(job.job_plans_link)
 
   // A ready stage folds to its chip, once, when the rows first read; the stages with a question left stand open.
-  useEffect(() => {
-    if (folded || !read.rows) return
+  // Set in the render the rows arrive in, so the first frame already shows the fold: with an effect there was a frame
+  // where every stage stood open, and a press that landed on it folded the stage instead (the render test raced it in CI).
+  if (folded === null && read.rows) {
     const first: Record<string, boolean> = {}
     for (const r of stages) first[r.fixtureId] = r.state.standing === 'ready'
     setFolded(first)
-  }, [folded, read.rows, stages])
+  }
 
   const summary = checklistsSummary(stages, read.questions)
   const empty = doorEmptyWords()
@@ -102,7 +103,7 @@ export function PipelineChecklistSheet({ job, io, onClose, onOpenDocuments }: Pi
             return (
               <section key={stage.fixtureId} data-pipeline-checklist-stage={stage.fixtureId} data-standing={stage.state.standing} aria-label={`${stage.name} · ${chip.words}`}>
                 <div style={stageHead}>
-                  <button type="button" style={nameButton} aria-expanded={!isFolded} onClick={() => setFolded((f) => ({ ...(f ?? {}), [stage.fixtureId]: !isFolded }))}>
+                  <button type="button" style={nameButton} aria-expanded={!isFolded} onClick={() => setFolded((f) => ({ ...(f ?? {}), [stage.fixtureId]: !(f?.[stage.fixtureId] ?? false) }))}>
                     {stage.name}
                   </button>
                   <span style={{ ...chipBase, ...chipTone[chip.tone] }}>{chip.words}</span>
