@@ -22757,12 +22757,14 @@ export type Database = {
           in_house_at: string | null
           in_house_by: string | null
           in_house_why: string
+          kind: string
           narrative_md: string
           narrative_updated_at: string | null
           narrative_updated_by: string | null
           note_to_firm: string
           payer_key: string
           payer_name: string
+          person_id: string | null
           pulled_at: string | null
           pulled_reason: string
           ready_marked_at: string | null
@@ -22790,12 +22792,14 @@ export type Database = {
           in_house_at?: string | null
           in_house_by?: string | null
           in_house_why?: string
+          kind?: string
           narrative_md?: string
           narrative_updated_at?: string | null
           narrative_updated_by?: string | null
           note_to_firm?: string
           payer_key: string
           payer_name?: string
+          person_id?: string | null
           pulled_at?: string | null
           pulled_reason?: string
           ready_marked_at?: string | null
@@ -22823,12 +22827,14 @@ export type Database = {
           in_house_at?: string | null
           in_house_by?: string | null
           in_house_why?: string
+          kind?: string
           narrative_md?: string
           narrative_updated_at?: string | null
           narrative_updated_by?: string | null
           note_to_firm?: string
           payer_key?: string
           payer_name?: string
+          person_id?: string | null
           pulled_at?: string | null
           pulled_reason?: string
           ready_marked_at?: string | null
@@ -22876,6 +22882,13 @@ export type Database = {
             columns: ["narrative_updated_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matters_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
           {
@@ -23030,6 +23043,166 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_theme_marks: {
+        Row: {
+          author_label: string | null
+          id: string
+          kept_at: string | null
+          kept_by: string | null
+          marked_at: string
+          marked_by: string | null
+          matter_id: string | null
+          person_id: string | null
+          proposed: boolean
+          proves_by: string | null
+          removed_at: string | null
+          removed_by: string | null
+          removed_why: string
+          target_id: string
+          target_kind: string
+          theme_id: string
+          why: string
+        }
+        Insert: {
+          author_label?: string | null
+          id?: string
+          kept_at?: string | null
+          kept_by?: string | null
+          marked_at?: string
+          marked_by?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          proposed?: boolean
+          proves_by?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_why?: string
+          target_id: string
+          target_kind: string
+          theme_id: string
+          why?: string
+        }
+        Update: {
+          author_label?: string | null
+          id?: string
+          kept_at?: string | null
+          kept_by?: string | null
+          marked_at?: string
+          marked_by?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          proposed?: boolean
+          proves_by?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_why?: string
+          target_id?: string
+          target_kind?: string
+          theme_id?: string
+          why?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_theme_marks_kept_by_fkey"
+            columns: ["kept_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_theme_marks_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_theme_marks_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_theme_marks_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_theme_marks_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_theme_marks_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "legal_themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_themes: {
+        Row: {
+          counsel_words: string
+          created_at: string
+          created_by: string | null
+          id: string
+          kept_at: string | null
+          name: string
+          proposed_by_agent: boolean
+          retired_at: string | null
+          retired_by: string | null
+          updated_at: string
+          what_counts: string
+        }
+        Insert: {
+          counsel_words?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kept_at?: string | null
+          name: string
+          proposed_by_agent?: boolean
+          retired_at?: string | null
+          retired_by?: string | null
+          updated_at?: string
+          what_counts?: string
+        }
+        Update: {
+          counsel_words?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kept_at?: string | null
+          name?: string
+          proposed_by_agent?: boolean
+          retired_at?: string | null
+          retired_by?: string | null
+          updated_at?: string
+          what_counts?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_themes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_themes_retired_by_fkey"
+            columns: ["retired_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lien_owner_record_requests: {
         Row: {
           created_at: string
@@ -23156,6 +23329,349 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      machine_assignments: {
+        Row: {
+          answer: string | null
+          answered_at: string | null
+          brought_by: string
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          vehicle_id: string
+          why: string
+          work_date: string
+        }
+        Insert: {
+          answer?: string | null
+          answered_at?: string | null
+          brought_by?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          vehicle_id: string
+          why?: string
+          work_date: string
+        }
+        Update: {
+          answer?: string | null
+          answered_at?: string | null
+          brought_by?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          vehicle_id?: string
+          why?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_assignments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_assignments_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_check_photos: {
+        Row: {
+          by_user_id: string | null
+          bytes: number
+          check_id: string
+          created_at: string
+          drive_file_id: string | null
+          fail_why: string | null
+          file_name: string
+          filed_at: string | null
+          id: string
+          job_id: string | null
+          shot: string
+          storage_path: string | null
+          taken_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          by_user_id?: string | null
+          bytes?: number
+          check_id: string
+          created_at?: string
+          drive_file_id?: string | null
+          fail_why?: string | null
+          file_name: string
+          filed_at?: string | null
+          id?: string
+          job_id?: string | null
+          shot: string
+          storage_path?: string | null
+          taken_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          by_user_id?: string | null
+          bytes?: number
+          check_id?: string
+          created_at?: string
+          drive_file_id?: string | null
+          fail_why?: string | null
+          file_name?: string
+          filed_at?: string | null
+          id?: string
+          job_id?: string | null
+          shot?: string
+          storage_path?: string | null
+          taken_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_check_photos_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_check_photos_check_id_fkey"
+            columns: ["check_id"]
+            isOneToOne: false
+            referencedRelation: "machine_checks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_check_photos_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_check_photos_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_check_questions: {
+        Row: {
+          active: boolean
+          asked_on: string
+          created_at: string
+          holds_machine: boolean
+          id: string
+          sort: number
+          template_id: string | null
+          vehicle_id: string | null
+          words: string
+        }
+        Insert: {
+          active?: boolean
+          asked_on?: string
+          created_at?: string
+          holds_machine?: boolean
+          id?: string
+          sort?: number
+          template_id?: string | null
+          vehicle_id?: string | null
+          words: string
+        }
+        Update: {
+          active?: boolean
+          asked_on?: string
+          created_at?: string
+          holds_machine?: boolean
+          id?: string
+          sort?: number
+          template_id?: string | null
+          vehicle_id?: string | null
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_check_questions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "machine_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_check_questions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_checks: {
+        Row: {
+          answers: Json
+          by_name: string
+          by_user_id: string | null
+          created_at: string
+          dispatch_request_id: string | null
+          hours: number | null
+          id: string
+          job_id: string | null
+          kind: string
+          left_job_id: string | null
+          left_where: string | null
+          levels: Json
+          run_anyway_at: string | null
+          run_anyway_by_name: string | null
+          run_anyway_by_user_id: string | null
+          signed_at: string | null
+          started_at: string
+          updated_at: string
+          vehicle_id: string
+          verdict: string
+          work_date: string
+        }
+        Insert: {
+          answers?: Json
+          by_name?: string
+          by_user_id?: string | null
+          created_at?: string
+          dispatch_request_id?: string | null
+          hours?: number | null
+          id?: string
+          job_id?: string | null
+          kind?: string
+          left_job_id?: string | null
+          left_where?: string | null
+          levels?: Json
+          run_anyway_at?: string | null
+          run_anyway_by_name?: string | null
+          run_anyway_by_user_id?: string | null
+          signed_at?: string | null
+          started_at?: string
+          updated_at?: string
+          vehicle_id: string
+          verdict?: string
+          work_date: string
+        }
+        Update: {
+          answers?: Json
+          by_name?: string
+          by_user_id?: string | null
+          created_at?: string
+          dispatch_request_id?: string | null
+          hours?: number | null
+          id?: string
+          job_id?: string | null
+          kind?: string
+          left_job_id?: string | null
+          left_where?: string | null
+          levels?: Json
+          run_anyway_at?: string | null
+          run_anyway_by_name?: string | null
+          run_anyway_by_user_id?: string | null
+          signed_at?: string | null
+          started_at?: string
+          updated_at?: string
+          vehicle_id?: string
+          verdict?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_checks_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_checks_dispatch_request_id_fkey"
+            columns: ["dispatch_request_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_checks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_checks_left_job_id_fkey"
+            columns: ["left_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_checks_run_anyway_by_user_id_fkey"
+            columns: ["run_anyway_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_checks_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_templates: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          levels: Json
+          machine_kind: string
+          name: string
+          size: string | null
+          sort: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          levels?: Json
+          machine_kind: string
+          name: string
+          size?: string | null
+          sort?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          levels?: Json
+          machine_kind?: string
+          name?: string
+          size?: string | null
+          sort?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       mail_pieces: {
         Row: {
@@ -31227,7 +31743,17 @@ export type Database = {
           pick: string | null
           question_id: string
           report_photo_id: string | null
+          signed_answer_hash: string | null
+          signed_at: string | null
+          signed_by: string | null
+          signer_printed_name: string | null
+          signer_signature_mode: string | null
+          signer_signature_storage_path: string | null
           updated_at: string
+          void_why: string | null
+          voided_at: string | null
+          voided_by: string | null
+          voided_by_name: string
         }
         Insert: {
           answered_at?: string | null
@@ -31248,7 +31774,17 @@ export type Database = {
           pick?: string | null
           question_id: string
           report_photo_id?: string | null
+          signed_answer_hash?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
           updated_at?: string
+          void_why?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_by_name?: string
         }
         Update: {
           answered_at?: string | null
@@ -31269,7 +31805,17 @@ export type Database = {
           pick?: string | null
           question_id?: string
           report_photo_id?: string | null
+          signed_answer_hash?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
           updated_at?: string
+          void_why?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_by_name?: string
         }
         Relationships: [
           {
@@ -31305,6 +31851,20 @@ export type Database = {
             columns: ["report_photo_id"]
             isOneToOne: false
             referencedRelation: "report_photos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_answers_signed_by_fkey"
+            columns: ["signed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_answers_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -31393,6 +31953,7 @@ export type Database = {
           fixture_id: string | null
           id: string
           job_id: string | null
+          needs_signature: boolean
           plan_sheet: string | null
           promoted_from: string | null
           retired_at: string | null
@@ -31411,6 +31972,7 @@ export type Database = {
           fixture_id?: string | null
           id?: string
           job_id?: string | null
+          needs_signature?: boolean
           plan_sheet?: string | null
           promoted_from?: string | null
           retired_at?: string | null
@@ -31429,6 +31991,7 @@ export type Database = {
           fixture_id?: string | null
           id?: string
           job_id?: string | null
+          needs_signature?: boolean
           plan_sheet?: string | null
           promoted_from?: string | null
           retired_at?: string | null
@@ -35291,6 +35854,7 @@ export type Database = {
           created_at: string | null
           end_date: string | null
           id: string
+          job_id: string | null
           start_date: string
           user_id: string | null
           vehicle_id: string
@@ -35299,6 +35863,7 @@ export type Database = {
           created_at?: string | null
           end_date?: string | null
           id?: string
+          job_id?: string | null
           start_date: string
           user_id?: string | null
           vehicle_id: string
@@ -35307,11 +35872,19 @@ export type Database = {
           created_at?: string | null
           end_date?: string | null
           id?: string
+          job_id?: string | null
           start_date?: string
           user_id?: string | null
           vehicle_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "vehicle_possessions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vehicle_possessions_user_id_fkey"
             columns: ["user_id"]
@@ -35484,14 +36057,26 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          code: string | null
           created_at: string | null
+          google_drive_link: string | null
           id: string
+          kind: string
+          levels: Json | null
+          machine_kind: string | null
           make: string
+          meter: string
           model: string
           oil_change_interval_miles: number
           oil_require_past_due_miles: number
           oil_suggest_window_miles: number
+          rental_agreement_no: string | null
+          rental_due_back: string | null
+          rental_from: string | null
+          rental_out_on: string | null
+          template_id: string | null
           trim: string | null
+          unit_label: string | null
           updated_at: string | null
           vin: string | null
           weekly_insurance_cost: number
@@ -35499,14 +36084,26 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          code?: string | null
           created_at?: string | null
+          google_drive_link?: string | null
           id?: string
+          kind?: string
+          levels?: Json | null
+          machine_kind?: string | null
           make?: string
+          meter?: string
           model?: string
           oil_change_interval_miles?: number
           oil_require_past_due_miles?: number
           oil_suggest_window_miles?: number
+          rental_agreement_no?: string | null
+          rental_due_back?: string | null
+          rental_from?: string | null
+          rental_out_on?: string | null
+          template_id?: string | null
           trim?: string | null
+          unit_label?: string | null
           updated_at?: string | null
           vin?: string | null
           weekly_insurance_cost?: number
@@ -35514,21 +36111,41 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          code?: string | null
           created_at?: string | null
+          google_drive_link?: string | null
           id?: string
+          kind?: string
+          levels?: Json | null
+          machine_kind?: string | null
           make?: string
+          meter?: string
           model?: string
           oil_change_interval_miles?: number
           oil_require_past_due_miles?: number
           oil_suggest_window_miles?: number
+          rental_agreement_no?: string | null
+          rental_due_back?: string | null
+          rental_from?: string | null
+          rental_out_on?: string | null
+          template_id?: string | null
           trim?: string | null
+          unit_label?: string | null
           updated_at?: string | null
           vin?: string | null
           weekly_insurance_cost?: number
           weekly_registration_cost?: number
           year?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "machine_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weekly_money_email_requests: {
         Row: {
@@ -37251,18 +37868,6 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
-      evidence_is_counsel_only: {
-        Args: { p_evidence_id: string }
-        Returns: boolean
-      }
-      person_counsel_only_count: {
-        Args: { p_person_id: string }
-        Returns: number
-      }
-      request_is_dev_seat: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       dismiss_mercury_duplicate_pair: {
         Args: { p_id_a: string; p_id_b: string }
         Returns: undefined
@@ -37409,6 +38014,10 @@ export type Database = {
           note_count: number
           request_id: string
         }[]
+      }
+      evidence_is_counsel_only: {
+        Args: { p_evidence_id: string }
+        Returns: boolean
       }
       extend_estimate_good_through: {
         Args: { p_estimate_id: string; p_valid_until: string }
@@ -39019,6 +39628,10 @@ export type Database = {
         }
         Returns: Json
       }
+      legal_matter_is_person: {
+        Args: { p_matter_id: string }
+        Returns: boolean
+      }
       legal_matter_save_review: {
         Args: {
           p_customer_id: string
@@ -39048,6 +39661,10 @@ export type Database = {
         Returns: Json
       }
       legal_office_can_read: { Args: never; Returns: boolean }
+      legal_person_matter_open: {
+        Args: { p_handling_name?: string; p_person_id: string }
+        Returns: Json
+      }
       legal_plan_add: {
         Args: {
           p_body: string
@@ -40858,6 +41475,10 @@ export type Database = {
         Returns: undefined
       }
       people_phones_from_accounts: { Args: never; Returns: number }
+      person_counsel_only_count: {
+        Args: { p_person_id: string }
+        Returns: number
+      }
       person_file_summary_counts: {
         Args: { p_person_id: string }
         Returns: {
@@ -40944,6 +41565,7 @@ export type Database = {
           fixture_id: string | null
           id: string
           job_id: string | null
+          needs_signature: boolean
           plan_sheet: string | null
           promoted_from: string | null
           retired_at: string | null
@@ -41221,6 +41843,7 @@ export type Database = {
         }
         Returns: string
       }
+      request_is_dev_seat: { Args: never; Returns: boolean }
       resolve_job_ledger_id_by_number: {
         Args: { p_number: string }
         Returns: string
