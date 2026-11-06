@@ -184,6 +184,16 @@ export function PeopleUsersTab({
   useEffect(() => {
     void loadArchivedLogins()
   }, [loadArchivedLogins])
+  // v2.6550: the desk's End employment and Bring back move a row between the roster and the Archived list
+  // under it; the desk's change key reloads both, so the row leaves or returns without a page reload.
+  const deskChangeKey = personDesk?.changeKey ?? 0
+  const reloadRosterRef = useRef(reloadRoster)
+  reloadRosterRef.current = reloadRoster
+  useEffect(() => {
+    if (deskChangeKey === 0) return
+    void loadArchivedLogins()
+    reloadRosterRef.current?.()
+  }, [deskChangeKey, loadArchivedLogins])
   async function restoreLogin(u: ArchivedLogin) {
     setRestoringLoginId(u.id)
     try {

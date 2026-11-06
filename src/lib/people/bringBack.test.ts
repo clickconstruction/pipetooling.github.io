@@ -21,6 +21,7 @@ import {
   roadmapBoxDefault,
   roadmapBoxWords,
   undoEndHrLine,
+  withWageChange,
   type ArchivedPerson,
   type BringBackFacts,
 } from './bringBack'
@@ -337,5 +338,23 @@ describe('mergeArchivedRows (+ Hire, v2.6525)', () => {
     const merged = mergeArchivedRows([{ id: 'u-1', name: 'Kai Moss', email: 'kai@example.com' }], [{ id: 'p-1', name: 'Kai Moss', email: null, end_date: '2026-10-01', account_user_id: 'u-1', archived_at: null }])
     expect(merged).toEqual([{ id: 'u-1', name: 'Kai Moss', email: 'kai@example.com', leftYmd: '2026-10-01', userId: 'u-1', personId: 'p-1' }])
     expect(findArchivedMatch({ name: 'kai moss', email: '' }, merged)?.person.leftYmd).toBe('2026-10-01')
+  })
+})
+
+describe('withWageChange (v2.6550)', () => {
+  it('folds the typed wage into the pay row, set on the day back, and makes a pay row when there is none', () => {
+    const changed = withWageChange(facts(), 26, '2029-11-05')
+    expect(changed.pay).toEqual({ hourlyWage: 26, isSalary: false, setYmd: '2029-11-05' })
+    expect(byId(buildBringBackChecklist(changed), 'wage').detail).toBe('$26.00 / h, set Nov 2029')
+    const fresh = withWageChange(facts({ pay: null }), 20, '2029-11-05')
+    expect(fresh.pay).toEqual({ hourlyWage: 20, isSalary: false, setYmd: '2029-11-05' })
+    expect(byId(buildBringBackChecklist(fresh), 'wage').detail).toBe('$20.00 / h, set Nov 2029')
+  })
+  it('keeps the facts as they are after Keep, or with no usable wage', () => {
+    const f = facts()
+    expect(withWageChange(f, null, '2029-11-05')).toBe(f)
+    expect(withWageChange(f, 0, '2029-11-05')).toBe(f)
+    const salaried = withWageChange(facts({ pay: { hourlyWage: 30, isSalary: true, setYmd: null } }), 32, '2029-11-05')
+    expect(salaried.pay?.isSalary).toBe(true)
   })
 })

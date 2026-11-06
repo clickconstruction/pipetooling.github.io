@@ -20,6 +20,7 @@ import {
   type BringBackAction,
   type BringBackItem,
   type BringBackWrite,
+  withWageChange,
 } from '../../lib/people/bringBack'
 import { loadBringBackFacts, type BringBackLoad } from '../../lib/people/bringBackFacts'
 import type { PersonDeskViewer } from '../../lib/people/personDeskGates'
@@ -102,8 +103,7 @@ export function PersonDeskBringBackModal({
 
   const items = useMemo<BringBackItem[]>(() => {
     if (!load) return []
-    const facts = wageChange != null && load.facts.pay ? { ...load.facts, pay: { ...load.facts.pay, hourlyWage: wageChange, setYmd: backYmd } } : load.facts
-    return applyChecklistResolutions(buildBringBackChecklist(facts), resolutions)
+    return applyChecklistResolutions(buildBringBackChecklist(withWageChange(load.facts, wageChange, backYmd)), resolutions)
   }, [load, resolutions, wageChange, backYmd])
   const summary = useMemo(() => checklistSummary(items), [items])
   const canFinish = summary.canFinish && load != null && leftYmd != null && dateProblem == null && !viewer.readOnly && busy == null
