@@ -9,7 +9,7 @@ summary: >
   by a development is read through the developments row under the caller's own RLS, which admits the office,
   estimators, primaries, superintendents and a master's shares and never a crew. So the crew's as-built has only
   ever worked on a job outside any development. Every walk of #239 was the dev's, which is why nobody saw it.
-next: After the merge, push 20261106234500, regenerate the types and the dev-mcp catalog, walk as a helper and a subcontractor on a ZZ Test development's job, then retire the card.
+next: After the merge, push 20261106234500, regenerate the types and the dev-mcp catalog, read the part and keep an as-built as the sample helper on a ZZ Test development's job, then retire the card. The crew's own window has no Plans section to press (found on the walk; punch list #276 carries the screen).
 size: S (one migration, one bed, a walk)
 blocker: None. The write rule is ready for it (plan_set_crew_on_job, v2.6583, a definer); only the read gate is closed.
 ver: 6604
