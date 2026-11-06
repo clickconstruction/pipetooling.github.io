@@ -22757,12 +22757,14 @@ export type Database = {
           in_house_at: string | null
           in_house_by: string | null
           in_house_why: string
+          kind: string
           narrative_md: string
           narrative_updated_at: string | null
           narrative_updated_by: string | null
           note_to_firm: string
           payer_key: string
           payer_name: string
+          person_id: string | null
           pulled_at: string | null
           pulled_reason: string
           ready_marked_at: string | null
@@ -22790,12 +22792,14 @@ export type Database = {
           in_house_at?: string | null
           in_house_by?: string | null
           in_house_why?: string
+          kind?: string
           narrative_md?: string
           narrative_updated_at?: string | null
           narrative_updated_by?: string | null
           note_to_firm?: string
           payer_key: string
           payer_name?: string
+          person_id?: string | null
           pulled_at?: string | null
           pulled_reason?: string
           ready_marked_at?: string | null
@@ -22823,12 +22827,14 @@ export type Database = {
           in_house_at?: string | null
           in_house_by?: string | null
           in_house_why?: string
+          kind?: string
           narrative_md?: string
           narrative_updated_at?: string | null
           narrative_updated_by?: string | null
           note_to_firm?: string
           payer_key?: string
           payer_name?: string
+          person_id?: string | null
           pulled_at?: string | null
           pulled_reason?: string
           ready_marked_at?: string | null
@@ -22876,6 +22882,13 @@ export type Database = {
             columns: ["narrative_updated_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matters_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
           {
@@ -23029,6 +23042,166 @@ export type Database = {
           ip?: string
         }
         Relationships: []
+      }
+      legal_theme_marks: {
+        Row: {
+          author_label: string | null
+          id: string
+          kept_at: string | null
+          kept_by: string | null
+          marked_at: string
+          marked_by: string | null
+          matter_id: string | null
+          person_id: string | null
+          proposed: boolean
+          proves_by: string | null
+          removed_at: string | null
+          removed_by: string | null
+          removed_why: string
+          target_id: string
+          target_kind: string
+          theme_id: string
+          why: string
+        }
+        Insert: {
+          author_label?: string | null
+          id?: string
+          kept_at?: string | null
+          kept_by?: string | null
+          marked_at?: string
+          marked_by?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          proposed?: boolean
+          proves_by?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_why?: string
+          target_id: string
+          target_kind: string
+          theme_id: string
+          why?: string
+        }
+        Update: {
+          author_label?: string | null
+          id?: string
+          kept_at?: string | null
+          kept_by?: string | null
+          marked_at?: string
+          marked_by?: string | null
+          matter_id?: string | null
+          person_id?: string | null
+          proposed?: boolean
+          proves_by?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_why?: string
+          target_id?: string
+          target_kind?: string
+          theme_id?: string
+          why?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_theme_marks_kept_by_fkey"
+            columns: ["kept_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_theme_marks_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_theme_marks_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_theme_marks_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_theme_marks_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_theme_marks_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "legal_themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_themes: {
+        Row: {
+          counsel_words: string
+          created_at: string
+          created_by: string | null
+          id: string
+          kept_at: string | null
+          name: string
+          proposed_by_agent: boolean
+          retired_at: string | null
+          retired_by: string | null
+          updated_at: string
+          what_counts: string
+        }
+        Insert: {
+          counsel_words?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kept_at?: string | null
+          name: string
+          proposed_by_agent?: boolean
+          retired_at?: string | null
+          retired_by?: string | null
+          updated_at?: string
+          what_counts?: string
+        }
+        Update: {
+          counsel_words?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kept_at?: string | null
+          name?: string
+          proposed_by_agent?: boolean
+          retired_at?: string | null
+          retired_by?: string | null
+          updated_at?: string
+          what_counts?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_themes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_themes_retired_by_fkey"
+            columns: ["retired_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lien_owner_record_requests: {
         Row: {
@@ -35656,6 +35829,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "vehicle_possessions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "vehicle_possessions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -35667,13 +35847,6 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vehicle_possessions_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -39401,6 +39574,10 @@ export type Database = {
         }
         Returns: Json
       }
+      legal_matter_is_person: {
+        Args: { p_matter_id: string }
+        Returns: boolean
+      }
       legal_matter_save_review: {
         Args: {
           p_customer_id: string
@@ -39430,6 +39607,10 @@ export type Database = {
         Returns: Json
       }
       legal_office_can_read: { Args: never; Returns: boolean }
+      legal_person_matter_open: {
+        Args: { p_handling_name?: string; p_person_id: string }
+        Returns: Json
+      }
       legal_plan_add: {
         Args: {
           p_body: string
