@@ -701,7 +701,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   }
   if (verb === 'plan_person_evidence' || verb === 'apply_person_evidence') {
     const evidence = obj(input.evidence)
-    const shape = `${verb} needs evidence — { person_id (a people.id; get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, the day it is about, not ahead of today), title (under ${EVIDENCE_TITLE_MAX} characters), memo (what it shows and why it matters, under ${EVIDENCE_MEMO_MAX}), entry_id? (the person_file_entries.id it proves), files: [{ name (with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), mime? } | { name, drive_url (a file already in Drive, linked, never staged) }] — at least one, at most ${EVIDENCE_MAX_FILES}, each sent file under ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB }.`
+    const shape = `${verb} needs evidence — { person_id (a people.id; get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, the day it is about, not ahead of today), title (under ${EVIDENCE_TITLE_MAX} characters), memo (what it shows and why it matters, under ${EVIDENCE_MEMO_MAX}), entry_id? (the person_file_entries.id it proves), counsel_only? (true keeps the record here only: never filed in Drive, never read back by this seat or by the HR agent — a dev reads it on People → HR), files: [{ name (with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), mime? } | { name, drive_url (a file already in Drive, linked, never staged) }] — at least one, at most ${EVIDENCE_MAX_FILES}, each sent file under ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB }.`
     if (!evidence) return { ok: false, error: shape }
     const str = (k: string) => (typeof evidence[k] === 'string' ? (evidence[k] as string).trim() : '')
     const personId = str('person_id')
@@ -729,6 +729,8 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
       files.push({ name, mime, size_bytes: sizeBytes, sha256 })
     }
     const p: Json = { person_id: personId, dated_on: datedOn, title, memo, files }
+    // v2.6554: counsel-only — kept here only, never filed in Drive, never read back by this seat or the agent.
+    if (evidence.counsel_only === true) p.counsel_only = true
     const entryId = str('entry_id')
     if (entryId) {
       if (!UUID_RE.test(entryId)) return { ok: false, error: shape }

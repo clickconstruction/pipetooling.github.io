@@ -72,7 +72,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.25.0'
+const SERVER_VERSION = '0.27.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -536,7 +536,7 @@ async function sessionFor(admin: Admin, dev: { userId: string; email: string }):
 async function restGet(jwt: string, path: string, query: string): Promise<{ ok: boolean; status: number; body: unknown }> {
   const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${path}${query ? `?${query}` : ''}`, {
     method: 'GET',
-    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, Accept: 'application/json' },
+    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', Accept: 'application/json' },
   })
   const text = await res.text()
   let body: unknown = text
@@ -554,7 +554,7 @@ async function restGet(jwt: string, path: string, query: string): Promise<{ ok: 
 async function restPost(jwt: string, path: string, body: Record<string, unknown>): Promise<{ ok: boolean; status: number; body: unknown }> {
   const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${path}`, {
     method: 'POST',
-    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', Accept: 'application/json', 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
   const text = await res.text()
@@ -573,7 +573,7 @@ async function restPost(jwt: string, path: string, body: Record<string, unknown>
 async function restRows(jwt: string, method: 'POST' | 'PATCH', table: string, query: string, body: Record<string, unknown>): Promise<{ ok: boolean; status: number; body: unknown }> {
   const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${table}${query ? `?${query}` : ''}`, {
     method,
-    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, Accept: 'application/json', 'Content-Type': 'application/json', Prefer: method === 'POST' ? 'return=representation' : 'return=minimal' },
+    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', Accept: 'application/json', 'Content-Type': 'application/json', Prefer: method === 'POST' ? 'return=representation' : 'return=minimal' },
     body: JSON.stringify(body),
   })
   const text = await res.text()
@@ -613,7 +613,7 @@ async function documentBytes(args: Record<string, unknown>): Promise<DocumentFil
 async function storagePut(jwt: string, bucket: string, path: string, bytes: Uint8Array, mime: string): Promise<string | null> {
   const res = await fetch(`${env('SUPABASE_URL')}/storage/v1/object/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`, {
     method: 'POST',
-    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'Content-Type': mime, 'x-upsert': 'false' },
+    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', 'Content-Type': mime, 'x-upsert': 'false' },
     body: bytes,
   })
   if (res.ok) return null
@@ -624,7 +624,7 @@ async function storageRemove(jwt: string, bucket: string, path: string): Promise
   try {
     await fetch(`${env('SUPABASE_URL')}/storage/v1/object/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`, {
       method: 'DELETE',
-      headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}` },
+      headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp' },
     })
   } catch { /* the row failed; a leftover object is reported by the error already returned */ }
 }
@@ -632,7 +632,7 @@ async function storageRemove(jwt: string, bucket: string, path: string): Promise
 /** A function called as the dev (v2.6414): the signing functions a hours statement's send leg runs, with the dev's own session. */
 async function invokeAsDev(jwt: string, fn: string, body: Record<string, unknown>): Promise<{ ok: boolean; status: number; body: unknown }> {
   try {
-    const res = await fetch(`${env('SUPABASE_URL')}/functions/v1/${fn}`, { method: 'POST', headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const res = await fetch(`${env('SUPABASE_URL')}/functions/v1/${fn}`, { method: 'POST', headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const text = await res.text()
     let parsed: unknown = text
     try {
@@ -696,7 +696,7 @@ async function fileEvidenceToDrive(jwt: string, evidenceId: string): Promise<Rec
   try {
     const res = await fetch(`${env('SUPABASE_URL')}/functions/v1/hr-evidence-drive`, {
       method: 'POST',
-      headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+      headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', 'Content-Type': 'application/json' },
       body: JSON.stringify({ evidence_id: evidenceId }),
       signal: AbortSignal.timeout(60_000),
     })
@@ -768,7 +768,7 @@ const ROBOT_PLANS_BUCKET = 'bid-submittals'
 const ROBOT_PLANS_MAX_PAGES = 200
 const robotPlansStagePath = (bidId: string, sha256: string) => `${bidId}/robot-plans/${sha256.slice(0, 16)}.pdf`
 const stagedObjectUrl = (prefix: string, path: string) => `${env('SUPABASE_URL')}/storage/v1/object/${prefix}${ROBOT_PLANS_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`
-const stagedHeaders = (jwt: string): Record<string, string> => ({ apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}` })
+const stagedHeaders = (jwt: string): Record<string, string> => ({ apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp' })
 
 async function stagedUploadUrl(jwt: string, path: string): Promise<{ url: string } | { error: string }> {
   const res = await fetch(stagedObjectUrl('upload/sign/', path), { method: 'POST', headers: { ...stagedHeaders(jwt), 'x-upsert': 'true' } })
@@ -1554,6 +1554,9 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         // Drive after the rows, as the panel asks it: a function not deployed, a refusal or no People folder leaves the
         // record standing as not in Drive, and the cron sweep tries again while a file waits.
         const evidenceId = (reply as { evidence_id?: unknown }).evidence_id
+        // v2.6554: a counsel-only record never asks Drive, and this seat will not read it back: it is held from the header it sends.
+        const counselOnly = (built.body as { p?: { counsel_only?: unknown } }).p?.counsel_only === true
+        if (counselOnly) return ok({ ...(reply as Record<string, unknown>), drive: { asked: false, ok: true, why: null, counsel_only: true }, next: 'Kept here only, counsel-only: never filed in Drive, never read by the agent or by this seat. get_person_file names it among the held; a dev reads it on People → HR.' }, { target: typeof evidenceId === 'string' ? evidenceId : built.target })
         const drive = typeof evidenceId === 'string' ? await fileEvidenceToDrive(session, evidenceId) : { asked: false, ok: false, why: 'the RPC answered no evidence_id' }
         return ok({ ...(reply as Record<string, unknown>), drive, next: evidenceDriveNext(drive) }, { target: typeof evidenceId === 'string' ? evidenceId : built.target })
       }
