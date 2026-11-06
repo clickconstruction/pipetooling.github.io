@@ -129,11 +129,50 @@ export interface MyMailOpenOk {
   }
 }
 
-/** Tag a conversation onto a job: every mail in it so far lands as a line, and later mail follows (PR 4). */
+/**
+ * Tag a conversation onto a job: every mail in it so far lands as a line, and later mail follows (PR 4). The dev seat's
+ * door (server 0.30.0) adds `as`, the login whose box the conversation is in, and `plan`, which answers the plan
+ * (`MyMailTagPlanOk`) and writes nothing; a person's own press carries neither.
+ */
 export interface MyMailTagRequest {
   action: 'tag'
   threadId: string
   job: MyMailJobRef
+  plan?: boolean
+  as?: string
+}
+
+/** One mail of a tag plan as the seat reads it back: what the tag would do with it, and the headers that say which mail. */
+export interface MyMailTagPlanMail {
+  gmailId: string
+  /** write: a new line on the job; tie: a line the boxes hold, tied to the job (or left where it is); skip: never written. */
+  kind: 'write' | 'tie' | 'skip'
+  at: string | null
+  from: string
+  subject: string
+  /** On a tie: whether the line moves onto this job; on a skip: why. */
+  tie?: boolean
+  why?: string
+  files?: number
+}
+
+/** The plan of a tag, written nowhere: the job, the counts, each mail, and the job the conversation was on before. */
+export interface MyMailTagPlanOk {
+  ok: true
+  plan: true
+  threadId: string
+  account: string
+  job: MyMailJobChip
+  counts: MyMailTagCounts
+  mails: MyMailTagPlanMail[]
+  movingFrom: string | null
+}
+
+export interface MyMailTagCounts {
+  lines: number
+  tied: number
+  files: number
+  skipped: number
 }
 
 /**
