@@ -20,6 +20,8 @@ import {
   type ReviewQueueRow,
 } from '../../lib/checklistReviewQueue'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { useTaskPhotos } from '../../hooks/useTaskPhotos'
+import { TaskPhotoStrip } from './TaskPhotoStrip'
 
 /**
  * "Checklist review" inbox section (Phase 3 of the checklist-card redesign):
@@ -67,6 +69,8 @@ export function ChecklistReviewInboxSection({
   const [draft, setDraft] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Task cards (#273, PR 4b): the finishing photo under a row, so the office signs off on what it can see.
+  const taskPhotos = useTaskPhotos(rows.map((r) => r.instanceId))
 
   const load = useCallback(async () => {
     if (!authUser?.id) return
@@ -348,6 +352,7 @@ export function ChecklistReviewInboxSection({
                   ) : null}
                   {row.latestNoteBody ? <> · “{row.latestNoteBody}”</> : <> · no note</>}
                 </div>
+                {taskPhotos.photosFor(row.instanceId).length > 0 ? <TaskPhotoStrip photos={taskPhotos.photosFor(row.instanceId)} compact /> : null}
               </button>
               {(() => {
                 if (!canSeeCosts) return null

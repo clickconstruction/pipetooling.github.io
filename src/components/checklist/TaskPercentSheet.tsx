@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useTaskShot, type TaskShot } from '../../hooks/useTaskShot'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { PERCENT_CHIPS, WHAT_IS_LEFT_MAX_CHARS, type RingState } from '../../lib/taskProgress'
+import { TaskPhotoTile } from './TaskPhotoTile'
 
 /**
  * Task cards (#273, PR 3): the sheet a tap on the ring opens. *Where does it stand?*, the three chips (25 · 50 · 75),
@@ -20,28 +22,37 @@ export function TaskPercentSheet({
   onDone,
   onClose,
   doneWords = '✓ Done',
+  withPhoto = false,
+  error = null,
 }: {
   open: boolean
   title: string
   state: RingState
   /** *was 50% on Tue 3:12 PM*, or null when nothing has moved. */
   lastMoved?: string | null
-  /** Resolves true once the percent landed; the sheet closes then. */
-  onSet: (percent: number, words: string) => Promise<boolean>
+  /** Resolves true once the percent landed; the sheet closes then. A shot taken on the sheet rides along (PR 4b). */
+  onSet: (percent: number, words: string, shot: TaskShot | null) => Promise<boolean>
   onDone: () => void | Promise<void>
   onClose: () => void
   doneWords?: string
+  /** PR 4b: the photo tile is drawn on the sheet; off for a screen with no camera flow (the roadmap's dock). */
+  withPhoto?: boolean
+  /** A send that failed, with its reason; the sheet stays open. */
+  error?: string | null
 }) {
   const isMobile = useIsMobile()
   const [pick, setPick] = useState<number | null>(null)
   const [words, setWords] = useState('')
   const [saving, setSaving] = useState(false)
+  const shotHost = useTaskShot()
 
   useEffect(() => {
     if (!open) return
     setPick(null)
     setWords('')
     setSaving(false)
+    shotHost.clear()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   useEffect(() => {
@@ -55,12 +66,12 @@ export function TaskPercentSheet({
 
   if (!open) return null
 
-  const canSet = pick !== null && !saving && !state.derived
+  const canSet = pick !== null && !saving && !state.derived && !shotHost.shrinking
   const setPress = async () => {
     if (pick === null || !canSet) return
     setSaving(true)
     try {
-      const ok = await onSet(pick, words)
+      const ok = await onSet(pick, words, shotHost.shot)
       if (ok) onClose()
     } finally {
       setSaving(false)
@@ -147,6 +158,7 @@ export function TaskPercentSheet({
               maxLength={WHAT_IS_LEFT_MAX_CHARS}
               style={{ width: '100%', boxSizing: 'border-box', height: 46, padding: '0 0.75rem', fontSize: '1rem', border: '2px solid var(--text-600)', borderRadius: 10, marginBottom: 10 }}
             />
+            {withPhoto ? <TaskPhotoTile host={shotHost} words="A photo of where it stands" disabled={saving} /> : null}
             <button
               type="button"
               onClick={() => void setPress()}
@@ -169,6 +181,7 @@ export function TaskPercentSheet({
           </>
         )}
 
+        {error ? <div style={{ fontSize: '0.85rem', color: 'var(--text-red-700)', margin: '0 0 10px' }}>{error}</div> : null}
         {!state.done ? (
           <button
             type="button"

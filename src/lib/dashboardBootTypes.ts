@@ -50,6 +50,9 @@ export type ChecklistInstance = {
     repeat_type?: string
     /** Task cards (#273): a card the roadmap sync made carries its task's Done when… lines too. */
     roadmap_group_task_id?: string | null
+    /** Task cards (#273, PR 4): the writer's switch, on the card or on its roadmap task. */
+    asks_for_photo?: boolean | null
+    checklist_tech_tree_group_tasks?: { asks_for_photo?: boolean | null } | null
   } | null
   checklist_instance_assignees?: Array<{ user_id: string }>
 }

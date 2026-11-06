@@ -23,8 +23,9 @@ import type { ChecklistInstance } from '../../lib/dashboardBootTypes'
 import { ChecklistInstanceCard } from '../checklist/ChecklistInstanceCard'
 import { groupEventsByInstance, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { useTaskLines } from '../../hooks/useTaskLines'
-import { takesRing } from '../../lib/taskProgress'
+import { cardAsksForPhoto, takesRing } from '../../lib/taskProgress'
 import { setTaskPercent } from '../../lib/taskProgressIo'
+import { useTaskPhotos } from '../../hooks/useTaskPhotos'
 
 /**
  * Dashboard "My Inbox" group card: Due Today / Overdue checklists and the
@@ -263,7 +264,7 @@ export function DashboardMyInboxCard({
     const today = toLocalDateString(new Date())
     const { data: todayData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id, asks_for_photo, checklist_tech_tree_group_tasks(asks_for_photo)), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -276,7 +277,7 @@ export function DashboardMyInboxCard({
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id, asks_for_photo, checklist_tech_tree_group_tasks(asks_for_photo)), checklist_instance_assignees!inner(user_id)')
         .eq('checklist_instance_assignees.user_id', authUserId)
         .is('completed_at', null)
         .lt('scheduled_date', today)
@@ -295,7 +296,7 @@ export function DashboardMyInboxCard({
     setOutstandingLoading(true)
     const { data, error } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, created_by_user_id, roadmap_group_task_id, asks_for_photo, checklist_tech_tree_group_tasks(asks_for_photo)), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
@@ -608,6 +609,10 @@ export function DashboardMyInboxCard({
   }
   const ringOnCard = (inst: ChecklistInstance) =>
     takesRing({ repeatType: inst.checklist_items?.repeat_type ?? 'once', roadmapTaskId: inst.checklist_items?.roadmap_group_task_id ?? null })
+  // PR 4b: the cards' photos and the writer's switch.
+  const taskPhotos = useTaskPhotos([...todayChecklist, ...outstandingItems].map((i) => i.id))
+  const asksOnCard = (inst: ChecklistInstance) =>
+    cardAsksForPhoto({ asksForPhoto: inst.checklist_items?.asks_for_photo }, { asksForPhoto: inst.checklist_items?.checklist_tech_tree_group_tasks?.asks_for_photo })
   const setPercentOnCard = async (inst: { id: string }, percent: number, words: string, reload: () => Promise<void>): Promise<boolean> => {
     if (!authUserId) return false
     const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
@@ -699,6 +704,9 @@ export function DashboardMyInboxCard({
                   onTickLine={(criterionId, ticked) => tickLineOnCard(inst, criterionId, ticked, loadTodayChecklist)}
                   ring={ringOnCard(inst)}
                   onSetPercent={(percent, words) => setPercentOnCard(inst, percent, words, loadTodayChecklist)}
+                  asksForPhoto={asksOnCard(inst)}
+                  photos={taskPhotos.photosFor(inst.id)}
+                  onPhotoAdded={taskPhotos.add}
                   fullHistory={{
                     item: {
                       id: inst.checklist_item_id,
@@ -779,6 +787,9 @@ export function DashboardMyInboxCard({
                     onTickLine={(criterionId, ticked) => tickLineOnCard(inst, criterionId, ticked, loadOutstanding)}
                     ring={ringOnCard(inst)}
                     onSetPercent={(percent, words) => setPercentOnCard(inst, percent, words, loadOutstanding)}
+                    asksForPhoto={asksOnCard(inst)}
+                    photos={taskPhotos.photosFor(inst.id)}
+                    onPhotoAdded={taskPhotos.add}
                     onPostComment={(body) => postCardComment(inst, body)}
                     fullHistory={{
                       item: {
