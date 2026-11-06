@@ -43,7 +43,7 @@ import {
   startLetterTwo,
   noteOwnerCall,
 } from '../../lib/jobs/lienDeskIo'
-import { defaultWordNote, lienFyiStrip, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
+import { defaultWordNote, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
 import { confirmLienPenSignature, disownLienPenSignature, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload, type LienSignCodeStatus } from '../../lib/jobs/lienDeskSignIo'
 import { lienChipSigned, lienFieldsHash, lienNoticeSignatureFromRow, lienSignatureWhen, signatureColumnsOf, toFilingSignature } from '../../lib/jobs/lienNoticeSignature'
@@ -60,7 +60,7 @@ import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { LienJobHeading } from './LienJobNumber'
 import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
-import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorPill, runDoorWords } from '../../lib/jobs/lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorPill, runDoorTail, runDoorWords } from '../../lib/jobs/lienDeskRun'
 import { affidavitMonthWordFor, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
 import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
 import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords } from '../../lib/jobs/lienOwnerCall'
@@ -1472,7 +1472,6 @@ export default function LienDeskModal({
       An owner asked for records ›
     </button>
   ) : null
-  const ownerRecordsUp = !isMobile
 
   // v2.4826: the § Rules window names the picked job and its two dates, and lights its row in the clock table.
   const rulesJob = selected ? lienRulesJobFrom({ label: jobLabel(job, selected.jobId), propertyKind: selected.propertyKind, isSub: !!selected.gcCustomerId, months: selected.months, earliestDeadline: selected.earliestDeadline }, todayYmd) : null
@@ -1501,6 +1500,8 @@ export default function LienDeskModal({
   // The door as a pill (Run-5): the run's bar and who waits, read from the desk's own rows.
   const readyWaits = (data?.queue.piles.ready ?? []).filter((e) => e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned').length
   const runPill = runDoorPill({ ready: counts?.ready ?? 0, printed: counts?.printed ?? 0, retReady, waits: readyWaits }, leaderName)
+  // *Record the mailing · 7 sealed*, not *· 7  7 sealed* (v2.6569): the pill's words drop the count the door already says.
+  const runTail = runDoorTail(runDoor.count, runPill.words)
   // What a Do now row's card may say about its job (v2.4631): read from what the desk already holds, nothing new.
   const stepFactsFor = (row: LienNextUpRow): LienStepFacts => {
     const base: LienStepFacts = { readyToSend: counts?.ready ?? 0, viewerIsLeader: leader }
@@ -1521,9 +1522,6 @@ export default function LienDeskModal({
     const months = e?.item?.months?.length ? e.item.months : e?.dueMonths ?? []
     return { ...base, ownerName: rowOwner, months: months.length ? describeNoticeMonths(months) : null, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, coverNote: e?.item?.cover_note ?? false, offer: lienOfferFromItem(e?.item) }
   }
-  // The leader's FYI list (v2.5028): what reached Ready to send, the mail or Sent without his Approve — on his word, or by a
-  // GC's standing rule. In the mail counts: the printed pile (v2.4119) came after this list and had left it out.
-  const fyiSends = entries.filter((e) => (e.item?.approval_mode === 'word' || e.item?.approval_mode === 'rule') && (e.pile === 'ready' || e.pile === 'printed' || e.pile === 'sent'))
 
   // The piles with rows, in order; a title per pile sticks at `i` bars from the top once passed and `n-1-i` from the bottom while ahead (v2.4672).
   const PILE_HEAD_H = 30
@@ -3261,6 +3259,43 @@ export default function LienDeskModal({
     }
   }
 
+  // The tools (v2.6569): § Rules, ☎, ? and Share, with the owner-records door before them. On a computer they are the tool row,
+  // the title bar's steady second line (v2.4618 put them at the right; until v2.6569 they sat on the title line and fell under it
+  // when the window was narrower than about 1,250 px, with the leader's FYI sentence under that). On a phone they keep their places.
+  // Share (v2.4311) is the last of them: beside × on a phone, the end of the tool row on a computer.
+  const headerTools = (
+    <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      {isMobile ? null : rulesAndCaller}
+      {isMobile ? null : <LegendButton legend={LIEN_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />}
+      <button
+        type="button"
+        onClick={() => setShareOpen((o) => !o)}
+        disabled={!data}
+        aria-haspopup="dialog"
+        aria-expanded={shareOpen}
+        aria-label={isMobile ? 'Share where the liens stand' : undefined}
+        data-lien-desk-share
+        title="Share where the liens stand: who we are about to lien, for how much, and by when"
+        style={{
+          ...btn('plain', !data),
+          ...(isMobile ? {} : headDoor),
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          ...(isMobile ? { width: 40, height: 40, padding: 0, borderRadius: 10 } : {}),
+          ...(shareOpen ? { background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-800)' } : {}),
+        }}
+      >
+        <Share size={isMobile ? 19 : 15} aria-hidden />
+        {/* A desk narrower than 1,100 px shows the icon alone; the word stays the button's name. */}
+        {isMobile ? null : <span className="lienDeskShareWord">Share</span>}
+      </button>
+      {shareOpen && data ? (
+        <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} suppliers={suppliers.byJob} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
+      ) : null}
+    </span>
+  )
   return (
     <div
       role="dialog"
@@ -3277,7 +3312,7 @@ export default function LienDeskModal({
         data-lien-desk-panel
       >
         {/* v2.4355: the spacing between the title, the tabs and the doors is the class's column gap (no margins), so a desk narrower than 1,100 px can close it up. */}
-        <div className="lienDeskTitleBar" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: `0.7rem ${isMobile ? '1rem' : showToggle ? '6.2rem' : '2.6rem'} 0.6rem 1.25rem`, borderBottom: '1px solid var(--border)' }}>
+        <div className="lienDeskTitleBar" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: `0.7rem ${isMobile ? '1rem' : showToggle ? '6.2rem' : '2.6rem'} 0.6rem 1.25rem`, rowGap: isMobile ? undefined : '0.45rem', borderBottom: '1px solid var(--border)' }}>
           <h2
             // On a phone the title has its line to itself, its right end kept clear for Share and × (v2.4311); the rows under it get the card's width.
             style={{ margin: 0, fontSize: '1.125rem', cursor: 'help', ...(isMobile ? { flexBasis: '100%', paddingRight: '5.2rem', boxSizing: 'border-box' } : {}) }}
@@ -3304,7 +3339,7 @@ export default function LienDeskModal({
             <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), ...headDoor }} data-lien-desk-run title={runDoor.label === 'Record the mailing' ? 'The printed notices are in the mail: type each envelope’s tracking number in the run to record the mailing' : 'Every approved notice — monthly and retainage — as one packet and one tracking form'}>
               <span className="lienRunDoorBar" aria-hidden="true"><i className="lienRunDoorSealed" style={{ width: `${runPill.sealedPct}%` }} /><i className="lienRunDoorWait" style={{ width: `${runPill.waitPct}%` }} /></span>
               {runDoor.label} · {runDoor.count}
-              {runPill.words ? <span className="lienRunDoorWords" data-lien-desk-run-pill aria-hidden="true">{runPill.words}</span> : null}
+              {runTail ? <span className="lienRunDoorWords" data-lien-desk-run-pill aria-hidden="true">{runTail}</span> : null}
             </button>
           ) : null}
           {/* § Rules and ☎ sit at the right with Share on a computer (v2.4618, the owner's ask); on a phone they stay in the flow under the title. */}
@@ -3314,42 +3349,10 @@ export default function LienDeskModal({
               <LegendButton legend={LIEN_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />
             </>
           ) : null}
-          {/* Share where the liens stand (v2.4311): the same place on every tab — the end of the title line; beside × on a phone. The title bar's right padding keeps every line clear of the full-screen toggle and × (before v2.4311 it cleared × alone, and § The rules ran under the toggle at 768 px). */}
-          <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-            {ownerRecordsUp ? ownerRecordsDoor : null}
-            {isMobile ? null : rulesAndCaller}
-            {isMobile ? null : <LegendButton legend={LIEN_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />}
-            <button
-              type="button"
-              onClick={() => setShareOpen((o) => !o)}
-              disabled={!data}
-              aria-haspopup="dialog"
-              aria-expanded={shareOpen}
-              aria-label={isMobile ? 'Share where the liens stand' : undefined}
-              data-lien-desk-share
-              title="Share where the liens stand: who we are about to lien, for how much, and by when"
-              style={{
-                ...btn('plain', !data),
-                ...(isMobile ? {} : headDoor),
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                ...(isMobile ? { width: 40, height: 40, padding: 0, borderRadius: 10 } : {}),
-                ...(shareOpen ? { background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-800)' } : {}),
-              }}
-            >
-              <Share size={isMobile ? 19 : 15} aria-hidden />
-              {/* A desk narrower than 1,100 px shows the icon alone; the word stays the button's name. */}
-              {isMobile ? null : <span className="lienDeskShareWord">Share</span>}
-            </button>
-            {shareOpen && data ? (
-              <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} suppliers={suppliers.byJob} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
-            ) : null}
-          </span>
-          {legendOpen ? <DeskLegendCard legend={LIEN_DESK_LEGEND} phone={isMobile} onClose={() => setLegendOpen(false)} style={{ flexBasis: '100%', marginTop: '0.4rem' }} /> : null}
-          {/* The second line (v2.3817): on All filings the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off All filings it holds only the leader's spoken-word line, or the door on a phone. */}
-          {paperShown || (leader && fyiSends.length > 0) || (isMobile && ownerRecordsDoor) ? (
+          {isMobile ? headerTools : null}
+          {/* The second line (v2.3817): on All filings the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off All filings it holds the tool row on a computer (v2.6569), or the door on a phone. */}
+          {/* The second line is the tool row on a computer (v2.6569); on a phone it comes only with the paper tabs or the owner-records door. */}
+          {!isMobile || paperShown || ownerRecordsDoor ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}
           {paperShown ? (
@@ -3386,8 +3389,8 @@ export default function LienDeskModal({
               })
             : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, Do now doors) and the title offers *show every pile*. */}
-          {/* The right end of the second line (v2.4629): Put a GC on notice, the leader's spoken-word line, and the owner-records door when it is not on the title line, in one span pushed right. */}
-          <span data-lien-desk-right style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
+          {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
+          <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: isMobile ? 0 : showToggle ? 'calc(1.25rem - 6.2rem)' : 'calc(1.25rem - 2.6rem)', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
           {kind === 'notice' && office && onPutGcOnNotice && gcPickerOptions.length > 0 ? (
             <div style={{ position: 'relative' }}>
               <button type="button" onClick={() => setGcPickerOpen((o) => !o)} aria-haspopup="menu" aria-expanded={gcPickerOpen} style={{ ...btn('plain'), ...headDoor, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' }} title="Every owner on every job with a failing GC gets the § 53.056 notice for every unnoticed month, in one approved run">
@@ -3434,19 +3437,11 @@ export default function LienDeskModal({
               ) : null}
             </div>
           ) : null}
-          {leader && fyiSends.length > 0 ? (
-            <span data-lien-fyi style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word, and notices a GC’s standing rule sent without asking you">
-              {lienFyiStrip(
-                fyiSends.map((e) => ({
-                  jobLabel: jobLabel(data?.jobsById[e.jobId], e.jobId).split(' · ')[0] ?? e.jobId,
-                  by: e.item?.approval_mode === 'rule' ? 'rule' : 'word',
-                  gcName: e.gcCustomerId ? data?.gcsById[e.gcCustomerId]?.name : null,
-                })),
-              )}
-            </span>
-          ) : null}
-          {ownerRecordsUp ? null : ownerRecordsDoor}
+          {isMobile ? null : ownerRecordsDoor}
+          {isMobile ? null : headerTools}
+          {isMobile ? ownerRecordsDoor : null}
           </span>
+          {legendOpen ? <DeskLegendCard legend={LIEN_DESK_LEGEND} phone={isMobile} onClose={() => setLegendOpen(false)} style={{ flexBasis: '100%', marginTop: '0.4rem' }} /> : null}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' || kind === 'next' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
           {paperOpen != null && paperEntries.length > 0 ? (

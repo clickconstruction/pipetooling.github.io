@@ -262,7 +262,7 @@ Ship small; each PR is one `npm run claim` version with its release note and `do
 - **The number may not exist at send time.** Design assumes it arrives by poll. If it does arrive at send, nothing changes except fewer "coming" words.
 - **The cutoff.** A send after Docsmit's production cutoff mails the next day, and the month can be late. The strip warns before the button; the cron never runs late in the day; the counter stays as the fallback.
 - **The window.** A cover letter whose address block misses the window zone mails blank. The Tracksmit paper check is the gate for PR 4.
-- **Unattended sends.** The cron sends legal notices nobody touched that day. The digest, the Hold, the first-notice rule and Sent on your word are the four guards; the cron is PR 7, after a month of hand-pressed runs.
+- **Unattended sends.** The cron sends legal notices nobody touched that day. The digest, the Hold, the first-notice rule and the notice's own record of whose word sent it (the title bar's *Sent on your word* line left in v2.6569) are the four guards; the cron is PR 7, after a month of hand-pressed runs.
 - **Vendor lock.** The provider column, the shared kernel and the fold keep the vendor to one function; the status vocabulary is ours, not theirs.
 - **A one-line address is a guess.** The CASS pre-flight is the guard; a corrected address is shown before the send and the correction is kept on the piece, never written back to the customer without a person pressing something.
 - **Sheet limits.** A packet with many invoices can pass 47 sheets. The run holds that envelope with a reason rather than splitting it.

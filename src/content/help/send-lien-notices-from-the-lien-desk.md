@@ -140,7 +140,7 @@ The bar at the bottom shows the notice's state on the left. Most often it says t
 
 - {{button:blue|Send for approval ▸}} sends it to the master. His phone gets one line: the job, the money owed and the mail-by day. If his phone is not set up for notifications, the same line goes by email. The words beside it say why it goes to him. There may be no standing rule yet. It may be our first notice to this GC. They may have promised a date, or he held this GC before.
 - **A send rule starts with the second notice.** Even with a rule to send notices without asking, our first notice to a GC goes to the master. That first notice proves the owner, the addresses and the GC's copy on real mail. From the next month, the button reads {{button:blue|Put it in the run ▸}}, and nobody is asked.
-- {{button:outline|The leader said to send it…}} is for when he already told you in the truck. Type who said it and when, then pick phone, in person or text. It goes straight to Ready to send. He sees its job named under **Sent on your word** in the desk's title bar. On that notice's footer, **Not what I said** pulls it back while it has not gone out.
+- {{button:outline|The leader said to send it…}} is for when he already told you in the truck. Type who said it and when, then pick phone, in person or text. The notice goes straight to Ready to send. The footer reads on whose word it went. There, **Not what I said** pulls it back while it has not gone out.
 
 ### Leader here
 
@@ -169,7 +169,7 @@ A skipped or missed month stays as a row in the **Months** grid. A month skipped
 On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
 
 :::example One call, one rule
-Robert opens J650 under Awaiting approval. Loberg Contracting owes $33,500 on it. It is our first notice to them, and June closes tomorrow. He ticks **Send notices without asking** under the standing rule for Loberg Contracting. Then he presses {{button:green|Approve & next ▸}}. From now on, Loberg's months go to Ready to send by themselves. He still sees every send under **Sent on your word** in the desk's title bar. Each one reads *by Loberg Contracting’s rule*. A live promise always comes back to him.
+Robert opens J650 under Awaiting approval. Loberg Contracting owes $33,500 on it. It is our first notice to them, and June closes tomorrow. He ticks **Send notices without asking** under the standing rule for Loberg Contracting. Then he presses {{button:green|Approve & next ▸}}. From now on, Loberg's months go to Ready to send by themselves. Each one is marked as sent by Loberg Contracting's rule. A live promise always comes back to him.
 :::
 
 ## Reading the notice before it goes
