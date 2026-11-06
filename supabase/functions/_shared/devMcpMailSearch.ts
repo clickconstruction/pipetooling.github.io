@@ -6,7 +6,7 @@
  * refusals in words. Nothing here, or in the verbs, writes, labels, trashes or deletes a mail: the scope Google
  * grants the token cannot.
  */
-import type { EmailIn, GmailMessage } from './gcKernels/lib/emailIn/gmailMessage.ts'
+import type { EmailAddress, EmailIn, GmailMessage } from './gcKernels/lib/emailIn/gmailMessage.ts'
 
 /** The one scope the search asks for: Gmail refuses every write under it. The admin grants it on the Workspace. */
 export const GMAIL_READONLY_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly'
@@ -207,7 +207,7 @@ export interface MailReadReply {
   files: Array<{ name: string; mime: string; size: number }>
 }
 
-const addressWords = (a: { name: string | null; email: string }): string => (a.name ? `${a.name} <${a.email}>` : a.email)
+const addressWords = (a: EmailAddress): string => (a.name ? `${a.name} <${a.address}>` : a.address)
 
 /** The mail whole as `readGmailMessage` reads it, its words capped, its files named. */
 export function mailReadReply(account: string, email: EmailIn): MailReadReply {
