@@ -2,7 +2,7 @@
 title: check off my daily tasks and leave notes
 category: Getting Started
 roles: all
-keywords: checklist, today, tasks, complete, notes, comments, reopened, history, review
+keywords: checklist, today, tasks, complete, notes, comments, reopened, history, review, done when, lines, tick
 order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
@@ -20,6 +20,24 @@ Tap the big checkbox to mark it done. Use notes to talk about the work right on 
 Tap the checkbox. That's it. There is no save button. Want to say something about how it went, like "used the scrap ply, looks clean"? Tap **＋ Add a note** and post it. Once a task has notes, the button becomes **💬 Notes**. Open it to read the thread or add another.
 
 Tapping the checkbox again reopens the task. Every completion and reopen is remembered on the card's history, with who and when.
+
+## Tick the lines
+
+Some cards list what done looks like. The lines sit under the title as boxes. The next one wears an amber ring. Tap a box when that line is true. Your name and the time appear under it. The card reads its percent from the ticks. Two of three ticked reads 67%.
+
+:::example A card with lines
+{{button:outline|☐}} Put the plumbing tools in a neat home
+
+{{chip:gray|1 of 3 done when…}}
+
+{{button:green|✓}} Pipe is racked by size
+
+{{button:outline|☐}} Fittings are in labeled bins
+
+{{button:outline|☐}} The cart is clear and the floor swept
+:::
+
+Tap the last box and the card is done. It takes the same path as the big checkbox. Tap a ticked box to untick it. Every tick and untick is a line on the card's notes. On a computer the card shows a chip like {{chip:gray|2 of 3 done when…}}. Tap the chip to open the lines. A card that comes back starts its lines over. The notes keep who ticked what.
 
 ## Notes are a conversation
 
