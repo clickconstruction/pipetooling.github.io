@@ -9,10 +9,22 @@
 // bucket so the log reconciles against payroll hours.
 
 import { escapeCsvField } from './domTableToCsv'
-import type { LicenseHoursLogRow } from './licenseHoursLogTypes'
 import { companyWeekStartSundayContaining, ymdAddDays } from '../utils/dateUtils'
 
-export type { LicenseHoursLogRow } from './licenseHoursLogTypes'
+export type LicenseHoursLogRow = {
+  session_id: string
+  work_date: string
+  clocked_in_at: string
+  clocked_out_at: string
+  hours: number
+  job_ledger_id: string | null
+  job_number: string
+  job_name: string
+  job_address: string
+  service_type_name: string
+  bid_id: string | null
+  notes: string
+}
 
 export type LicenseHoursWeek = {
   weekStartYmd: string
