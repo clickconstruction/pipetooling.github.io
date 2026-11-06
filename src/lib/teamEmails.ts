@@ -51,6 +51,7 @@ export type TeamSampleEmailId =
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
   | 'gc_money_monday'
+  | 'people_week'
   | 'bridge_monday_sheet'
   | 'bridge_weekly_sheet'
   | 'gc_office_notice'
@@ -367,6 +368,17 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     manage: stream('gc_money_monday', 'GC projects → Money → The Monday money email'),
     reflects: ['the bills on our GC jobs', 'Money in GC projects'],
     guide: 'get-our-gc-money-by-email-each-week',
+  },
+  {
+    id: 'people_week',
+    label: 'Your people’s week',
+    when: { kind: 'weekly', label: 'On the day its reader picks, Monday as it ships', order: 35 },
+    recipients: { roles: ['dev', 'master_technician', 'assistant', 'controller', 'primary'], decidedBy: 'role', rule: 'Whoever asks for it, about the people they picked on Review or the Your people card.' },
+    sampleSubject: () => 'Your people’s week · Nov 2 to 8',
+    render: { kind: 'sample', sample: 'people_week' },
+    manage: stream('people_week', 'Checklist → Review → ✉ Email me their week'),
+    reflects: ['the task cards’ moves, lines and photos', 'the Roadmap', 'the jobs each person clocked on'],
+    guide: 'get-a-monday-email-of-your-peoples-week',
   },
   {
     id: 'bridge_monday_sheet',

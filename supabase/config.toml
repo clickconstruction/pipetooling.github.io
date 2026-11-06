@@ -986,6 +986,10 @@ verify_jwt = false
 [functions.gc-money-monday-email]
 verify_jwt = false
 
+# Your people's week (punch list #273, v2.6603): the cron sends X-Cron-Secret and no JWT; Preview and the test send check the JWT themselves.
+[functions.people-week-email]
+verify_jwt = false
+
 # The office's GC notices (GC mode, Owner Billing O10b): the cron sends X-Cron-Secret and no JWT; Preview and the test
 # send read the staff JWT themselves, like gc-money-monday-email.
 [functions.gc-office-notices]

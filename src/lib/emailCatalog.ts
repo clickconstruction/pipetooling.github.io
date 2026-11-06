@@ -542,6 +542,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'The Bridge, the week of Oct 25–31: contribution ≈ +$38k, net down $37.4k since Aug 15, cash lowest point $15.4k on Nov 2',
   },
   {
+    id: 'people_week',
+    name: 'Your people’s week (the Monday people email)',
+    group: 'digests',
+    audience: 'internal',
+    builtWhere: 'server',
+    sender: 'people-week-email',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Your people’s week · Nov 2 to 8',
+  },
+  {
     id: 'gc_money_monday',
     name: 'Our GC money (the Monday money email)',
     group: 'digests',
