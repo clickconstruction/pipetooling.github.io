@@ -13,6 +13,8 @@ The Job Mode card on your Dashboard lists the machines on your job under the sta
 
 Every machine also has a label with a QR code on it. Scan it with your phone's camera. The check opens on that machine. If the machine is not on a job yet, the check asks which job it is on first.
 
+A label the board does not know yet offers a short form instead. Choose {{button:blue|Ours}} or {{button:outline|Rental}}. A rental takes who it is from and the make. The agreement number may stay blank. Tap {{button:blue|Add the Sunbelt rental}} and the check opens. Dispatch sees the new machine on the fleet board.
+
 ## Walk around
 
 The walk asks one question at a time. Tap {{button:green|Yes}}, {{button:red|No}} or {{button:outline|Not here}}. The next question opens on its own.
