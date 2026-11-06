@@ -166,3 +166,44 @@ describe('the screen', () => {
     expect([s.letter, s.countdown, s.where, s.call]).toEqual([null, null, null, null])
   })
 })
+
+describe('the note as the database keeps it (PR 8)', () => {
+  it('reads the RPC’s answer into the screen’s model: the draft, the first name, the dates and the office out of the settings', async () => {
+    const { parseMyAwayNote, awayOfficeFromSettings, awayDraftFromRow, AWAY_NOTE_DEFAULT: dflt } = await import('./awayNote')
+    const got = parseMyAwayNote({
+      first_name: 'Corinne',
+      words: 'Come home to us.',
+      countdown_ymd: '2029-11-05',
+      show_where: true,
+      show_call: false,
+      left_ymd: '2026-11-03',
+      updated_ymd: '2026-11-03',
+      office_address: JSON.stringify({ address: '12925 FM 20, Kingsbury, TX 78638', lat: 29.65, lng: -97.81 }),
+      office_phone: '(512) 555-0142',
+    })
+    expect(got).toEqual({
+      draft: { words: 'Come home to us.', countdownYmd: '2029-11-05', showWhere: true, showCall: false, alertOnDay: false },
+      firstName: 'Corinne',
+      leftYmd: '2026-11-03',
+      updatedYmd: '2026-11-03',
+      office: { address: '12925 FM 20, Kingsbury, TX 78638', latLng: { lat: 29.65, lng: -97.81 }, phone: '(512) 555-0142' },
+    })
+    expect(parseMyAwayNote(null)).toBeNull()
+    // A setting that is not JSON reads as the address alone; no phone is no line.
+    expect(awayOfficeFromSettings('Kingsbury, TX', '')).toEqual({ address: 'Kingsbury, TX', latLng: null, phone: null })
+    expect(awayOfficeFromSettings(null, null)).toEqual({ address: null, latLng: null, phone: null })
+    // The office's row back into the window's draft; no row is the default.
+    expect(awayDraftFromRow({ user_id: 'u', words: 'Hi', countdown_ymd: '2029-11-05', show_where: false, show_call: true, alert_on_day: true, updated_at: null })).toEqual({ words: 'Hi', countdownYmd: '2029-11-05', showWhere: false, showCall: true, alertOnDay: true })
+    expect(awayDraftFromRow(null)).toEqual(dflt)
+  })
+
+  it('the window’s footer says what Save does for this person, and the chip says whether the sign-in opens', async () => {
+    const { awayNoteFootWords, awayNoteChipWords } = await import('./awayNote')
+    expect(awayNoteFootWords('Corinne', { archived: true, hasLogin: true })).toBe('Saves the note. Corinne signs in as always and sees exactly the right side, and nothing else.')
+    expect(awayNoteFootWords('Corinne', { archived: false, hasLogin: true })).toBe('Saves the note. When Corinne is archived, their sign-in opens to the right side and nothing else.')
+    expect(awayNoteFootWords(null, { archived: false, hasLogin: true })).toBe('Saves the note. When they are archived, their sign-in opens to the right side and nothing else.')
+    expect(awayNoteFootWords('Corinne', { archived: true, hasLogin: false })).toBe('Corinne has no login, so nothing opens. The note waits here for one.')
+    expect(awayNoteChipWords(true)).toBe('Away note on · sign-in opens to it')
+    expect(awayNoteChipWords(false)).toBe('Away note written · shows once archived')
+  })
+})

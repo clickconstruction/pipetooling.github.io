@@ -30,9 +30,9 @@ import { lienOfferSentence, type LienPayOffer } from './lienPayOffer'
 
 /** From this day after the packet the desk offers the press. Letter two keeps its day 10. */
 export const COURTESY_FROM_DAY = 7
-/** A second press waits this long after the last send. */
+/** The week the desk waits for an answer after the one courtesy, before the attorney’s letter leads (v2.6594: one courtesy, never a second as a step; the footer keeps the press for a resend by hand). */
 export const COURTESY_AGAIN_DAYS = 7
-/** Inside this many days of the affidavit's day the affidavit is the next press, not a reminder. */
+/** Inside this many days of the affidavit's day it is the affidavit's week (v2.6594): the desk recommends the affidavit, not a reminder; the courtesy's press stays on the footer. */
 export const COURTESY_AFFIDAVIT_MARGIN_DAYS = 7
 export const COURTESY_BUTTON = 'Send a courtesy notice'
 /** The key on the sent item's `fields`. */
@@ -95,7 +95,7 @@ export function withCourtesyRecord(fields: Record<string, unknown> | null | unde
   return { ...(fields ?? {}), [COURTESY_FIELDS_KEY]: [...prior, record] }
 }
 
-export type CourtesyState = 'none' | 'waiting' | 'due' | 'held' | 'sent' | 'closed'
+export type CourtesyState = 'none' | 'waiting' | 'due' | 'held' | 'affidavit_week' | 'sent' | 'closed'
 
 export type CourtesyStatus = {
   state: CourtesyState
@@ -107,6 +107,8 @@ export type CourtesyStatus = {
   reason: string
   /** The newest send, ISO; null when none. */
   lastSentAt: string | null
+  /** True inside the week after the one courtesy went (v2.6594): the desk waits for an answer before the attorney’s letter leads. */
+  waitingForAnswer: boolean
   /** 'YYYY-MM-DD' — the lien's day the message would name; null when none can be named. */
   lienDay: string | null
   /** Letter two's own words while it is in flight or went out (v2.6383), '' otherwise — the footer names it in place of *from day 10*. */
@@ -135,7 +137,7 @@ export type CourtesyStatusInput = {
   formatDay?: (ymd: string) => string
 }
 
-export const COURTESY_NONE: CourtesyStatus = { state: 'none', day: null, words: '', reason: '', lastSentAt: null, lienDay: null, records: [] }
+export const COURTESY_NONE: CourtesyStatus = { state: 'none', day: null, words: '', reason: '', lastSentAt: null, waitingForAnswer: false, lienDay: null, records: [] }
 
 function sentChannelsWords(r: CourtesyRecord): string {
   const went = r.to.filter((t) => t.ok)
@@ -162,7 +164,7 @@ export function courtesyStatus(input: CourtesyStatusInput): CourtesyStatus {
   const deadline = (input.affidavit?.deadline ?? '').trim()
   const lienDay = YMD.test(deadline) ? deadline : null
   const letterTwoWords = lt.state === 'sent' || lt.state === 'in_flight' ? lt.words : ''
-  const base = { day: lt.day, lastSentAt, lienDay, letterTwoWords, records }
+  const base = { day: lt.day, lastSentAt, waitingForAnswer: false, lienDay, letterTwoWords, records }
   const closed = (reason: string): CourtesyStatus => ({ ...base, state: 'closed', words: reason, reason })
   const held = (reason: string): CourtesyStatus => ({ ...base, state: 'held', words: `Courtesy held · ${reason}`, reason })
 
@@ -177,14 +179,16 @@ export function courtesyStatus(input: CourtesyStatusInput): CourtesyStatus {
   const blocked = lienLineBlockedReason({ lienFilingDeadline: lienDay ?? '', todayYmd: input.todayYmd, homestead: input.affidavit?.homestead ?? false, hasWorkMonth: input.affidavit?.hasWorkMonth ?? Boolean(lienDay) })
   if (blocked) return held(blocked)
   const left = lienDay ? daysBetweenYmd(input.todayYmd, lienDay) : null
-  if (left != null && left < COURTESY_AFFIDAVIT_MARGIN_DAYS) return held(`the affidavit is due ${fmt(lienDay!)} · file it instead`)
+  // The affidavit's week (v2.6594): a priority, not a hold — the paper takes about a week to draft, sign before a notary and file, so the desk puts it first; a courtesy may still go by hand.
+  if (left != null && left < COURTESY_AFFIDAVIT_MARGIN_DAYS) return { ...base, state: 'affidavit_week', words: `the affidavit’s week · file it by ${fmt(lienDay!)}`, reason: '' }
 
   const day = lt.day ?? 0
   if (last) {
     const since = daysBetweenYmd(calendarYmdInAppTzFromIso(last.at), input.todayYmd) ?? 0
     const sentWords = `courtesy sent ${fmt(calendarYmdInAppTzFromIso(last.at))} ${sentChannelsWords(last)}`
-    if (since < COURTESY_AGAIN_DAYS) return { ...base, state: 'sent', words: sentWords, reason: '' }
-    return { ...base, state: 'due', words: `day ${day} · ${sentWords} · nothing since`, reason: '' }
+    // One courtesy, then the attorney's letter (v2.6594): the desk never asks for a second; after the week of silence the letter leads.
+    if (since < COURTESY_AGAIN_DAYS) return { ...base, state: 'sent', waitingForAnswer: true, words: sentWords, reason: '' }
+    return { ...base, state: 'sent', words: `day ${day} · ${sentWords} · nothing since · the attorney’s letter next`, reason: '' }
   }
   if (day < COURTESY_FROM_DAY) return { ...base, state: 'waiting', words: `day ${day} · courtesy from day ${COURTESY_FROM_DAY}`, reason: '' }
   return { ...base, state: 'due', words: `day ${day} · nothing since the packet`, reason: '' }
@@ -193,6 +197,11 @@ export function courtesyStatus(input: CourtesyStatusInput): CourtesyStatus {
 /** The states the office acts on: the Do now row and the amber footer. */
 export function courtesyIsDue(s: Pick<CourtesyStatus, 'state'>): boolean {
   return s.state === 'due'
+}
+
+/** The footer keeps the press past *due* (v2.6594): a resend by hand after one went, and inside the affidavit's week; amber only while due. */
+export function courtesyMaySend(s: Pick<CourtesyStatus, 'state'>): boolean {
+  return s.state === 'due' || s.state === 'sent' || s.state === 'affidavit_week'
 }
 
 /** The footer's sentence under a sent notice, beside letter two's. */
@@ -204,8 +213,10 @@ export function courtesyFooterSentence(s: CourtesyStatus, amountWords: string, f
       return `Courtesy notice: ${s.reason}.`
     case 'held':
       return `Courtesy notice held: ${s.reason}. A reminder may not name a lien that cannot go on.`
+    case 'affidavit_week':
+      return `The affidavit’s week: the lien must be on file by ${s.lienDay ? formatDay(s.lienDay) : 'its day'}. Draft it, the leader signs it before a notary, file it at the county. A courtesy notice may still go by hand.`
     case 'sent':
-      return `${s.words[0]!.toUpperCase()}${s.words.slice(1)}. Another may go in ${COURTESY_AGAIN_DAYS} days if nothing comes; ${s.letterTwoWords ? `${s.letterTwoWords}.` : "the attorney’s letter is counsel's certified letter from day 10."}`
+      return `${s.words[0]!.toUpperCase()}${s.words.slice(1)}. One courtesy notice goes; after ${COURTESY_AGAIN_DAYS} days of silence ${s.letterTwoWords ? `${s.letterTwoWords}` : "the attorney’s letter leads, counsel's certified letter"}. Send it again by hand only when a channel bounced.`
     case 'waiting':
       return `A courtesy notice may go from day ${COURTESY_FROM_DAY}: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number.`
     case 'due':
