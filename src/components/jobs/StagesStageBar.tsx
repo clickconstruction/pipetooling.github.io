@@ -3,7 +3,7 @@ import type { ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
 import { buildJobMoneyBar, MONEY_BAR_TONE, MONEY_BAR_TRACK, stageNameLabel, type MoneyBarBillMark } from '../../lib/jobs/jobMoneyBar'
 import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 import type { StageChecklistState } from '../../lib/jobs/stageChecklist'
-import { NOT_READY_GLYPH, checklistMarkWords, stageNotReady } from '../../lib/jobs/stageChecklistMarks'
+import { checklistMarkWords, markGlyph, stageNotReady, stageWithDispatch } from '../../lib/jobs/stageChecklistMarks'
 
 /**
  * The Pipeline row's bar (v2.4351, progress bar pass 4). Each block is a line item or a
@@ -122,11 +122,15 @@ export function StagesStageBar({ view, pctComplete, compact = false, onStageClic
             const state = checklist?.get(n.key)
             const notReady = stageNotReady(state)
             const markWords = checklistMarkWords(state)
+            // A check with Dispatch (#245, PR 3): the flag in the box's place, the words on the title.
+            const withDispatch = stageWithDispatch(state)
+            const glyph = markGlyph(state)
             return (
             <span
               key={n.key}
               role="listitem"
               data-stage-checklist={state ? state.standing : undefined}
+              data-stage-with-dispatch={withDispatch ? state?.withDispatch : undefined}
               title={`Stage ${n.number} · ${n.name}${billMark?.kind === 'stage' && bold ? ` · ${billMark.title}` : n.done ? ' · done' : n.bold ? ' · the crew is on it' : ''}${markWords ? ` · ${markWords}` : ''}`}
               style={{
                 flex: `${n.widthPct} 1 0px`,
@@ -147,12 +151,12 @@ export function StagesStageBar({ view, pctComplete, compact = false, onStageClic
                   onClick={onChecklistPress}
                   style={{ all: 'unset', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
                 >
-                  <span aria-hidden>{NOT_READY_GLYPH} </span>
+                  <span aria-hidden>{glyph} </span>
                   {stageNameLabel(n, blockPx(n.widthPct))}
                 </button>
               ) : (
                 <>
-                  {notReady ? <span aria-label="checklist not ready">{NOT_READY_GLYPH} </span> : null}
+                  {notReady ? <span aria-label={withDispatch ? 'checklist not ready, a check with Dispatch' : 'checklist not ready'}>{glyph} </span> : null}
                   {stageNameLabel(n, blockPx(n.widthPct))}
                 </>
               )}

@@ -84,4 +84,6 @@ A stage can have a checklist. The office writes the questions once for Rough In,
 
 A stage with a question left reads **not ready** under the bar. Its name turns amber with a small box before it. Hold the pointer on the name to read the count, such as checklist 2 of 3 answered. The bar's fill and its tick do not change. The mark goes once every question is answered.
 
+A stage with a check with Dispatch wears a small flag instead of the box. The crew sent that check from the checklist and waits on the office. Hold the pointer on the name to read with Dispatch. See [answer a check the crew sent](/help/answer-a-check-the-crew-sent).
+
 A stage kind with no questions carries no mark. See [write the questions for a stage checklist](/help/write-the-questions-for-a-stage-checklist).

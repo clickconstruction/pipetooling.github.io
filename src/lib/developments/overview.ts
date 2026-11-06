@@ -92,6 +92,8 @@ export type MemberRequest = {
   /** The development the question is about (PR 4), beside the bid and the job: one reference per request. */
   development_id: string | null
   reference_summary: string | null
+  /** The request's flavour (`stage_check` for a check the crew sent, #245 PR 3); absent on a row an older read carried. */
+  pending_action?: string | null
   notes: Array<{ id: string; author_user_id: string; body: string; created_at: string }>
 }
 

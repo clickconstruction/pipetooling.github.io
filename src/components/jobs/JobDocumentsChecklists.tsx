@@ -54,6 +54,7 @@ import {
 } from '../../lib/jobs/stageChecklistItems'
 import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 import type { StageChecklistSheetIo } from '../../lib/jobs/stageChecklistSheetIo'
+import { dispatchReplyWords, openStageCheckFor, withDispatchWords, type OpenStageCheck } from '../../lib/jobs/stageCheckDispatch'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
@@ -68,6 +69,9 @@ const chipTone: Record<StandingTone, CSSProperties> = {
   muted: { background: 'var(--bg-subtle)', color: 'var(--text-muted)' },
 }
 const photoTag: CSSProperties = { ...documentsChip, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+// A check with Dispatch (#245, PR 3): the sheet's chip on the read-out's row, and Dispatch's reply under it.
+const withDispatchTag: CSSProperties = { ...documentsChip, marginLeft: 0, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }
+const dispatchReply: CSSProperties = { ...muted, marginTop: '0.15rem', color: 'var(--text-700)', fontStyle: 'italic' }
 const groupHead: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', margin: '0.5rem 0 0.15rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '1.25rem minmax(0, 1fr)', gap: '0.15rem 0.5rem', alignItems: 'start', padding: '0.4rem 0', borderTop: '1px solid var(--border)', fontSize: '0.875rem' }
 const pressLine: CSSProperties = { display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.2rem' }
@@ -97,6 +101,22 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
   const [skipWhy, setSkipWhy] = useState('')
   const [skipBlocked, setSkipBlocked] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  // The checks with Dispatch on this job (#245, PR 3), read once beside the rows; a refused read draws no chip.
+  const [withDispatch, setWithDispatch] = useState<OpenStageCheck[]>([])
+  const dispatchIo = read.io.dispatch ?? null
+  useEffect(() => {
+    let live = true
+    if (!dispatchIo) return
+    dispatchIo.open(job.id).then(
+      (rows) => live && setWithDispatch(rows),
+      () => live && setWithDispatch([]),
+    )
+    return () => {
+      live = false
+    }
+  }, [dispatchIo, job.id])
+  // A take off or a skip closes the request by itself (v2.6494), so the chip leaves with the row's press.
+  const dropWithDispatch = (questionId: string) => setWithDispatch((rows) => rows.filter((r) => r.questionId !== questionId))
   // A press target a thumb can hit on a phone; the desk keeps the row tight.
   const touch: CSSProperties = isMobile ? { minHeight: 44 } : {}
 
@@ -120,6 +140,7 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
     try {
       await read.io.retireItem(q.id, who)
       read.dropQuestion(q.id)
+      dropWithDispatch(q.id)
       setAsk(null)
       showToast(takenOffWords(stage.name, stateAfter(stage, read.questions.filter((x) => x.id !== q.id))), 'success')
     } catch (e) {
@@ -137,6 +158,7 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
       const made = await read.io.skip({ jobId: job.id, fixtureId: stage.fixtureId, questionId: q.id, why: skipWhy }, who)
       const next = addSkip(q, made)
       read.putQuestions([next])
+      dropWithDispatch(q.id)
       setAsk(null)
       setSkipWhy('')
       showToast(skippedToastWords(stage.name, stateAfter(stage, read.questions.map((x) => (x.id === q.id ? next : x)))), 'success')
@@ -234,6 +256,7 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
               const asking = ask?.id === q.id ? ask.kind : null
               const promoting = promoteWords(stage.name, q)
               const rowBusy = busy === q.id || busy === stage.fixtureId
+              const sent = openStageCheckFor(withDispatch, stage.fixtureId, q.id)
               return (
                 <div key={q.id} style={rowStyle} data-testid="job-documents-checklist-row" data-pick={a?.pick ?? 'open'}>
                   <span style={glyphTone(a?.pick)} aria-hidden>
@@ -253,6 +276,18 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
                       ) : null}
                     </div>
                     {metaWords ? <div style={muted}>{metaWords}</div> : null}
+                    {sent ? (
+                      <div style={{ marginTop: '0.2rem' }}>
+                        <span style={withDispatchTag} data-checklist-with-dispatch={q.id}>
+                          {withDispatchWords(sent, Date.now())}
+                        </span>
+                        {sent.reply ? (
+                          <div style={dispatchReply} data-checklist-dispatch-reply={q.id}>
+                            {dispatchReplyWords(sent.reply, Date.now())}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {asking === 'take-off' ? (
                       <div style={askLine} data-testid="job-documents-checklist-take-off">
                         <span style={muted}>{TAKE_OFF_WORDS.hint}</span>

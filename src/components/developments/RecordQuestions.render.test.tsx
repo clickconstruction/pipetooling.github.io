@@ -62,6 +62,19 @@ describe('RecordQuestions on a job', () => {
     expect(within(rows[0]!).getByText('Robert → Dispatch')).toBeTruthy()
   })
 
+  it('a check the crew sent from a stage checklist wears the Stage check tag on its row (#245, PR 3)', async () => {
+    const rows = [
+      req({ id: 'check', lane: 'dispatch', created_at: '2026-10-27T15:00:00Z', job_ledger_id: 'j1', title: 'Trim Set · “Is the pan drain run to the hub?” · need a part: the caps · J1085 Lot 14', pending_action: 'stage_check' }),
+      ...ROWS,
+    ]
+    renderWithProviders(<RecordQuestions record={{ kind: 'job', job: JOB }} role="dev" io={makeIo(rows)} />)
+    const tags = await screen.findAllByTestId('question-stage-check-tag')
+    expect(tags).toHaveLength(1)
+    expect(tags[0]!.textContent).toBe('Stage check')
+    expect(tags[0]!.closest('[data-testid="question-row-check"]')).toBeTruthy()
+    expect(within(screen.getByTestId('question-row-waiting')).queryByTestId('question-stage-check-tag')).toBeNull()
+  })
+
   it('Ask Dispatch opens the sheet on this job with the lane chosen, and the send names the job', async () => {
     const io = makeIo(ROWS)
     renderWithProviders(<RecordQuestions record={{ kind: 'job', job: JOB }} role="dev" io={io} />)

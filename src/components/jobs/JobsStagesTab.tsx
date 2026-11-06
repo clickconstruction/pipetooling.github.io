@@ -891,8 +891,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // A checklist per stage (punch list #164, PR 4): the questions and the board's answers, for the not-ready mark under a row's stages.
   const checklistStates = useStageChecklistStates(crewJobIds, active && !!authUser?.id && !jobsListLoading)
   const checklistMarksFor = useCallback(
-    (job: { fixtures?: ReadonlyArray<MarkFixture> | null }) => stageChecklistMarks(job.fixtures ?? [], checklistStates.questions, checklistStates.answersByFixture),
-    [checklistStates.questions, checklistStates.answersByFixture],
+    (job: { fixtures?: ReadonlyArray<MarkFixture> | null }) => stageChecklistMarks(job.fixtures ?? [], checklistStates.questions, checklistStates.answersByFixture, checklistStates.withDispatchByFixture),
+    [checklistStates.questions, checklistStates.answersByFixture, checklistStates.withDispatchByFixture],
   )
   const pipelineContractCoverage = useMemo(
     () =>

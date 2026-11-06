@@ -54,6 +54,8 @@ The row now wears a chip like *With Dispatch · 2 min · need a part*. The chip 
 
 One check goes to Dispatch once. If someone already sent it, the row wears the chip and the press is gone. The sheet says *Already with Dispatch* if two phones send at the same moment.
 
+The office sees it too. On the Pipeline the stage's name wears a small flag instead of the box. The job's Documents tab shows the same chip on the check's row. The job's questions list marks it as a stage check.
+
 ## Read the reply
 
 When Dispatch replies, your phone gets a push. The reply also sits under the row on the sheet.

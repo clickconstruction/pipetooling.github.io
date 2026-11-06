@@ -15,6 +15,8 @@ import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { sendAsk } from '../developments/askWrites'
 import { notifyDispatchRequestClosure } from '../dispatchRequestClosure'
+import { fetchAllRowsChunkedIn } from '../supabasePaging'
+import { withDispatchCounts } from './stageChecklistMarks'
 import { STAGE_CHECK_ACTION, type OpenStageCheck, type StageCheckJob, type StageCheckReply, type StageCheckRow } from './stageCheckDispatch'
 
 // The two columns are younger than the generated types; the types PR after the push removes this cast.
@@ -90,6 +92,19 @@ export async function loadOpenStageChecks(jobId: string): Promise<OpenStageCheck
 export async function pushSettledStageCheck(request: OpenStageCheck, who: { userId: string | null }): Promise<void> {
   if (!request.fromUserId || !who.userId || request.fromUserId === who.userId) return
   await notifyDispatchRequestClosure({ request: { id: request.id, from_user_id: request.fromUserId, title: request.title }, note: null, mode: 'closed', userId: who.userId, role: null })
+}
+
+/**
+ * The open requests on the board's jobs, counted by stage (PR 3): the flag on the Pipeline's mark. Chunked as the
+ * answers are; throws on a refused read, and the board's read fails it soft so the marks still draw.
+ */
+export async function loadOpenStageCheckCounts(jobIds: string[]): Promise<ReadonlyMap<string, number>> {
+  const rows = await fetchAllRowsChunkedIn<{ fixture_id: string | null }, string>(
+    jobIds,
+    (chunk, from, to) => db.from('dispatch_requests').select('fixture_id').in('job_ledger_id', chunk).eq('pending_action', STAGE_CHECK_ACTION).eq('status', 'open').order('id').range(from, to),
+    'stageCheckDispatch.openCounts',
+  )
+  return withDispatchCounts(rows)
 }
 
 /** The row in, the inbox refreshed, the push sent. Throws with the database's reason when the row is refused. */

@@ -22,6 +22,18 @@ From Luis Ortega · 12 min · Ref: JP1088 · ZZ TEST Riders Walk · 12925 FM 20,
 
 A **Can't do it** check sits at the top of the list. A red line over it says how long the crew has waited. The check stays off the customer waiting banner. That banner is a customer's.
 
+## Read it from the job
+
+You can see a check with Dispatch without the inbox. On the Pipeline the stage's name wears a small flag in amber. Hold the pointer on the name to read with Dispatch. On the job's Documents tab the check's row wears the chip with the age and the reason. Dispatch's last reply sits under it. Under Questions on this job the request wears the Stage check tag.
+
+:::example The Documents row
+☐ open · 1. Is the pan drain run to the hub?
+
+{{chip:yellow|With Dispatch · 8 min · need a part}}
+
+Dispatch: "Hub pours Thursday. Press Not here for now." · Jo · 2 min ago
+:::
+
 ## Open the window
 
 Press the row. A window opens with everything the crew saw when they sent it.
