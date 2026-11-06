@@ -1713,6 +1713,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "archive-user",
   "audit-finish",
   "auto-send-test-reports",
+  "away-note",
   "bid-basis-grant",
   "bill-read",
   "billed-report-email",

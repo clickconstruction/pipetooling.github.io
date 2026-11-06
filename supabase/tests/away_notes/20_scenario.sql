@@ -94,7 +94,7 @@ SELECT away.same('Ava gets her note', (
   SELECT n->>'first_name' || ' | ' || (n->>'words') || ' | ' || (n->>'countdown_ymd') || ' | ' || (n->>'show_where') || ' | ' || (n->>'show_call') || ' | ' || (n->>'left_ymd') || ' | ' || (n->>'office_phone') || ' | ' || ((n->>'office_address')::jsonb->>'address')
   FROM public.my_away_note() n
 ), 'Ava | Ava, your spot is waiting. | 2029-11-05 | true | true | 2026-11-03 | (512) 555-0142 | 12925 FM 20, Kingsbury, TX 78638');
-SELECT away.same('the updated day is today', (SELECT (public.my_away_note()->>'updated_ymd') = (now() AT TIME ZONE 'America/Chicago')::date::text), 'true');
+SELECT away.same('the updated day is today', (SELECT ((public.my_away_note()->>'updated_ymd') = (now() AT TIME ZONE 'America/Chicago')::date::text)::text), 'true');
 RESET ROLE;
 
 -- The note taken down (restore-user's hand, or away-note clear): Ava gets null.
