@@ -266,3 +266,97 @@ export function buildAwayScreen(args: { draft: AwayNoteDraft; firstName: string 
     empty: awayNoteIsEmpty(draft) ? AWAY_WORDS.empty : null,
   }
 }
+
+// ---------------------------------------------------------------------------
+// PR 8 (v2.6587): the note as the database keeps it and as the sealed page reads it.
+
+/** What `my_away_note()` answers the archived caller: the row's switches and everything else the screen draws. */
+export type MyAwayNoteRow = {
+  first_name: string | null
+  words: string | null
+  countdown_ymd: string | null
+  show_where: boolean | null
+  show_call: boolean | null
+  left_ymd: string | null
+  updated_ymd: string | null
+  /** Settings → Office address as stored: JSON with address, lat and lng. */
+  office_address: string | null
+  office_phone: string | null
+}
+
+export type MyAwayNote = {
+  draft: AwayNoteDraft
+  firstName: string | null
+  leftYmd: string | null
+  updatedYmd: string | null
+  office: AwayOffice
+}
+
+/** The office setting's JSON into the screen's office; a setting that is not JSON reads as the address alone. */
+export function awayOfficeFromSettings(addressSetting: string | null | undefined, phone: string | null | undefined): AwayOffice {
+  let address: string | null = null
+  let latLng: LatLng | null = null
+  const raw = (addressSetting ?? '').trim()
+  if (raw) {
+    try {
+      const o = JSON.parse(raw) as { address?: unknown; lat?: unknown; lng?: unknown } | null
+      if (o && typeof o === 'object') {
+        address = typeof o.address === 'string' && o.address.trim() ? o.address.trim() : null
+        if (typeof o.lat === 'number' && typeof o.lng === 'number' && Number.isFinite(o.lat) && Number.isFinite(o.lng)) latLng = { lat: o.lat, lng: o.lng }
+      }
+    } catch {
+      address = raw
+    }
+  }
+  const line = (phone ?? '').trim()
+  return { address, latLng, phone: line || null }
+}
+
+/** The RPC's answer as the screen takes it; null when the database answered null (no note, or not an archived caller). */
+export function parseMyAwayNote(value: unknown): MyAwayNote | null {
+  if (!value || typeof value !== 'object') return null
+  const r = value as MyAwayNoteRow
+  return {
+    draft: {
+      words: typeof r.words === 'string' ? r.words : '',
+      countdownYmd: typeof r.countdown_ymd === 'string' && r.countdown_ymd ? r.countdown_ymd.slice(0, 10) : null,
+      showWhere: r.show_where !== false,
+      showCall: r.show_call !== false,
+      alertOnDay: false,
+    },
+    firstName: typeof r.first_name === 'string' && r.first_name.trim() ? r.first_name.trim() : null,
+    leftYmd: typeof r.left_ymd === 'string' && r.left_ymd ? r.left_ymd.slice(0, 10) : null,
+    updatedYmd: typeof r.updated_ymd === 'string' && r.updated_ymd ? r.updated_ymd.slice(0, 10) : null,
+    office: awayOfficeFromSettings(r.office_address, r.office_phone),
+  }
+}
+
+/** The office's row of `away_notes`, as the Leave a note window reads it back. */
+export type AwayNoteRow = { user_id: string; words: string; countdown_ymd: string | null; show_where: boolean; show_call: boolean; alert_on_day: boolean; updated_at: string | null }
+
+export function awayDraftFromRow(row: AwayNoteRow | null | undefined): AwayNoteDraft {
+  if (!row) return AWAY_NOTE_DEFAULT
+  return { words: row.words ?? '', countdownYmd: row.countdown_ymd ? row.countdown_ymd.slice(0, 10) : null, showWhere: row.show_where !== false, showCall: row.show_call !== false, alertOnDay: row.alert_on_day === true }
+}
+
+/** The words the archived page shows when the database answers no note: the session outlived the note, or the ban. */
+export const AWAY_NO_NOTE_WORDS = {
+  title: 'This account is resting.',
+  sub: "There is no note for you right now. Call the office and we'll open the app back up for you.",
+} as const
+
+/**
+ * The Leave a note window's footer: what Save does for this person. An archived login opens to the screen; an
+ * active one keeps the note for the day they are archived.
+ */
+export function awayNoteFootWords(firstName: string | null | undefined, state: { archived: boolean; hasLogin: boolean }): string {
+  const who = firstName?.trim() || 'They'
+  if (!state.hasLogin) return `${who} has no login, so nothing opens. The note waits here for one.`
+  if (state.archived) return `Saves the note. ${who} signs in as always and sees exactly the right side, and nothing else.`
+  return `Saves the note. When ${who === 'They' ? 'they are' : `${who} is`} archived, their sign-in opens to the right side and nothing else.`
+}
+
+/** The chip on the desk's Status row while a note is on. */
+export function awayNoteChipWords(archived: boolean): string {
+  return archived ? 'Away note on · sign-in opens to it' : 'Away note written · shows once archived'
+}

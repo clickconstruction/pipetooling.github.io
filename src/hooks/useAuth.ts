@@ -44,12 +44,25 @@ interface UseAuthReturn {
   teamProspectsAccess: boolean
   /** Training mode (users.read_only): browsing works, all writes are blocked by RLS. */
   readOnly: boolean
+  /**
+   * The Away note (punch list #256 PR 8, v2.6587): the signed-in account is archived and the seal refused its role
+   * read (sqlstate PT403 from the pre-request gate, migration *_archived_seal). The app draws the Away page and
+   * nothing else; `my_away_note()` is the one read the gate lets through.
+   */
+  archivedCaller: boolean
   loading: boolean
   checkSession: () => Promise<boolean>
   sessionExpiresAt: number | null
 }
 
 const AuthContext = createContext<UseAuthReturn | null>(null)
+
+/** The archived pre-request gate's refusal (migration *_archived_seal): sqlstate PT403, which PostgREST answers as HTTP 403 with the code on the error. */
+export function isArchivedCallerRefusal(error: { code?: string | null; message?: string | null; status?: number | null } | null | undefined): boolean {
+  if (!error) return false
+  if ((error.code ?? '').trim() === 'PT403') return true
+  return error.status === 403 && /This account is archived/i.test(error.message ?? '')
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -58,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [estimatorProspectsAccess, setEstimatorProspectsAccess] = useState(false)
   const [teamProspectsAccess, setTeamProspectsAccess] = useState(false)
   const [readOnly, setReadOnly] = useState(false)
+  const [archivedCaller, setArchivedCaller] = useState(false)
   const [loading, setLoading] = useState(true)
   /**
    * False while a signed-in user's role row is still in flight (v2.1485). The
@@ -161,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setEstimatorProspectsAccess(false)
         setTeamProspectsAccess(false)
         setReadOnly(false)
+        setArchivedCaller(false)
       }
       const settleRole = () => {
         roleResolvedForUserIdRef.current = userId
@@ -210,6 +225,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             clearTimeout(roleGateTimer)
             settleRole()
+            // The seal's refusal is an answer, not a missing role: this account is archived and gets the Away page.
+            setArchivedCaller(isArchivedCallerRefusal(rowError ? { code: rowError.code, message: rowError.message, status } : null))
             if (rowError || !data) {
               setRole(null)
               setEstimatorProspectsAccess(false)
@@ -237,6 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setEstimatorProspectsAccess(false)
       setTeamProspectsAccess(false)
       setReadOnly(false)
+      setArchivedCaller(false)
       // Signed out: nothing to resolve — never hold the gate.
       roleResolvedForUserIdRef.current = null
       setRoleResolved(true)
@@ -368,6 +386,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     estimatorProspectsAccess,
     teamProspectsAccess,
     readOnly,
+    archivedCaller,
     // "Auth not ready" = session pending, OR a signed-in user whose role row
     // is still in flight (v2.1485) — consumers must never see user && role=null
     // during the initial round-trip.

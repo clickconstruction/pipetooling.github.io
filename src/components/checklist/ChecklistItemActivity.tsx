@@ -296,6 +296,24 @@ export function ChecklistItemActivity({
                 </div>
               )
             }
+            // Task cards (#273): a line ticked or unticked, and a percent moved, read as quiet lines.
+            if (entry.eventType === 'criterion') {
+              return (
+                <div key={entry.id} style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  {entry.body} · {name(entry.actorUserId)} · {stripStamp(entry.at)}
+                  {dayChip}
+                </div>
+              )
+            }
+            if (entry.eventType === 'progress') {
+              return (
+                <div key={entry.id} style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(entry.actorUserId)}</span> moved it · {stripStamp(entry.at)}
+                  {dayChip}
+                  {entry.body ? <> — “{entry.body}”</> : null}
+                </div>
+              )
+            }
             const label =
               entry.eventType === 'completed'
                 ? 'completed'
