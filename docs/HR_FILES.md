@@ -15,8 +15,8 @@ Per-person HR files, visible to **devs only**, maintained mostly by an AI agent 
 | Layer | Table | Mutability | What it is |
 |---|---|---|---|
 | **Raw entries** | `person_file_entries` | **Append-only** (no UPDATE/DELETE policies exist) | Dated facts: what happened, when, from where. The source of truth. |
-| **Summary** | `person_files` (`kind='summary'`) | Rewritten freely — **prior versions auto-archive** (v2.2232) | ≤1 page: trajectory, reliability, pay, watch items. Read first. |
-| **Narrative** | `person_files` (`kind='narrative'`) | Extended, occasionally consolidated — **prior versions auto-archive** (v2.2232) | The chronological story, oldest → newest. |
+| **Summary** | `person_files` (`kind='summary'`) | Rewritten freely, whole or a section at a time (`dev_person_doc_write`, v2.6608) — **prior versions auto-archive** (v2.2232) | ≤1 page: trajectory, reliability, pay, watch items. Read first. |
+| **Narrative** | `person_files` (`kind='narrative'`) | Extended, occasionally consolidated, a section at a time through `dev_person_doc_write` (v2.6608) — **prior versions auto-archive** (v2.2232) | The chronological story, oldest → newest. |
 | **Doc history** | `person_file_revisions` | Written only by trigger; dev read-only | Prior version of every summary/narrative rewrite (v2.2232). |
 | **Evidence** | `person_file_evidence` + `person_file_attachments` | **Append-only** (no UPDATE/DELETE policies; the Drive stamps are the service role's) | A piece of evidence (v2.6392): the day it is about, a title, a memo on what it shows, its files, filed in Drive under People › the person › the day and the title (v2.6393). |
 
@@ -124,6 +124,7 @@ The marks are made where the record is (v2.6546): the **theme picker** (`src/com
   It validates the person and sources, stamps `author_label`/`covered_through`, and the archive trigger versions any doc it overwrites.
 - **Corrections are still new entries** — the RPC cannot update or delete entries, by design.
 - **A second door for a dev's coding agent (v2.3722)**: `dev_hr_entry_write(p jsonb, p_dry_run boolean default true)` (migration `20260922102017`) is a dev-gated definer wrapper that calls the live `hr_agent_write` with `author_label` overwritten by the **dev's own name**, and with `p_dry_run = true` performs the write and unwinds it, returning what would be filed. dev-mcp's `plan_hr_entry` → `apply_hr_entry` are that function; apply re-runs the dry run and writes only when it still matches the plan the agent quoted ([`dev-mcp/README.md`](./dev-mcp/README.md)). The `hr_agent` contract above is unchanged.
+- **A third door, for the documents alone (v2.6608)**: `dev_person_doc_write(p jsonb, p_dry_run boolean default true)` (migration `20261107013000`; dev-mcp's `plan_person_doc` → `apply_person_doc`) rewrites the summary or the narrative whole, or edits it by section against its own headings — `replace_section` (the lines under a heading, the heading kept), `insert_after`, `append`, at most 20 ops a call, the headings read by `hr_doc_headings` as the jump list reads them. The dry run names each change with the words removed and added and commits to the row's `updated_at`; `expect_updated_at` refuses a write over a version saved since. The dev's name is `author_label`, `updated_by` is the dev, `covered_through` is now() unless given, and the archive trigger keeps the prior version. The People → HR editor saves through the same function.
 - Doc history: `select * from person_file_revisions where person_id = … order by replaced_at desc`.
 
 ### Agent connection cookbook (verified live 2026-08-24)
