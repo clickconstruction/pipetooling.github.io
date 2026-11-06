@@ -9,7 +9,7 @@
 import { formatYmdMonthDay } from './billedExpectedPay'
 import type { LienNextUpKind, LienNextUpRow } from './lienNextUp'
 import { lienOfferApprovedWords, type LienPayOffer } from './lienPayOffer'
-import { LIEN_REMINDER_SHORT, LIEN_REMINDER_STEPS, lienReminderLadderItems } from './lienReminders'
+import { LIEN_REMINDER_SHORT, LIEN_REMINDER_STEPS, lienReminderBrief, lienReminderLadderItems, type LienReminderBrief } from './lienReminders'
 
 /** The three kinds of paper, and the REMINDERS ladder a sent notice walks (punch list #262). */
 export type LienStepLadder = LienNextUpKind | 'reminder'
@@ -294,4 +294,42 @@ export function lienStepGroups(rows: ReadonlyArray<LienNextUpRow>, on: LienStepA
 export function lienStepName(on: LienStepAt): string {
   const ladder = LIEN_STEP_LADDERS.find((l) => l.key === on.ladder)!
   return `${on.step} · ${ladder.steps[on.step - 1]}`
+}
+
+const HOLDS = ['Hold — they promised…', 'Hold — I’ll call first']
+
+/**
+ * The step brief for any rail (v2.6577; the REMINDERS rail's came with v2.6574): what the step is,
+ * why a row is here, the usual press and whose it is, the other presses the row or the paper's pane
+ * already offers (named, never invented: the panes' own buttons), and what moves a paper on with
+ * no press. The words agree with the row's card (`ladderItems`) and the row's button (`BUTTON`).
+ */
+export function lienStepBrief(on: LienStepAt): LienReminderBrief {
+  if (on.ladder === 'reminder') return lienReminderBrief(on.step)
+  const ladder = LIEN_STEP_LADDERS.find((l) => l.key === on.ladder)!
+  const title = ladder.steps[on.step - 1]
+  const paid = 'the bill is paid'
+  if (on.ladder === 'affidavit') {
+    switch (on.step) {
+      case 1:
+        return { title, who: 'office', what: 'The affidavit names the property by its legal description and its owner. The property record must be complete first.', why: 'The property record is missing the owner, the legal description or the county.', usual: 'Fix the property', instead: ['Fill in the record ›', 'Send the notice first ›, when the month’s notice never went', 'Refer to the Legal desk ›'], closes: `${paid}, or the filing window closes` }
+      case 2:
+        return { title, who: 'office', what: 'The office drafts the affidavit from the notice already sent: the months, the money, the property.', why: 'The property record is complete and the affidavit’s day is coming.', usual: 'Draft affidavit', instead: ['The leader said to file it ▸', ...HOLDS, 'Refer to the Legal desk ›'], closes: paid }
+      case 3:
+        return { title, who: 'leader', what: 'The leader signs the affidavit before a notary, then approves it for filing.', why: 'The affidavit is drafted and waits on the leader.', usual: 'Approve — file it ▸', instead: ['Hold', 'Pull back to draft', 'Back to the office'], closes: paid }
+      default:
+        return { title, who: 'office', what: 'The affidavit is filed with the county clerk by its day, then served on the owner within five days.', why: 'The affidavit is approved and its day is coming, or it is filed and waits on service.', usual: 'File the affidavit', instead: ['Record service ›, once the copies went', 'Open the affidavit tab ›', 'The Legal desk ›'], closes: paid }
+    }
+  }
+  const retainage = on.ladder === 'retainage'
+  switch (on.step) {
+    case 1:
+      return { title, who: 'office', what: retainage ? 'The § 53.057 retainage notice goes to the owner and the GC within 30 days of our contract’s end. The owner must be named first.' : 'The notice goes to the owner of record and the GC. The owner must be named first, from the property record or the GC’s contract.', why: 'Nobody is named as the owner of record on the property yet.', usual: 'Find the owner', instead: retainage ? ['Property record ›', 'Set the day our contract ended ›'] : ['Property record ›', ...HOLDS], closes: `the owner is named on the property record, or ${paid}` }
+    case 2:
+      return { title, who: 'office', what: retainage ? 'The office drafts the retainage notice once our contract on the job has ended: the retainage held, the owner, the GC.' : 'The office drafts the § 53.056 notice from the job: the unpaid months, the money, the owner and the GC.', why: retainage ? 'Our contract on the job ended and the retainage is unpaid.' : 'The owner is named and a work month is unpaid with its window still open.', usual: 'Draft notice', instead: retainage ? ['The leader said to send it ▸', ...HOLDS, 'The monthly notices on this job ›'] : ['The leader said to send it ▸', ...HOLDS], closes: retainage ? paid : `${paid}, or the month’s window closes and the notice is noted missed` }
+    case 3:
+      return { title, who: 'leader', what: retainage ? 'The leader approves and signs the retainage notice as he does a monthly notice.' : 'The leader approves a notice once per notice or once per GC, and signs it with his code or by pen.', why: `The ${retainage ? 'retainage notice' : 'notice'} is drafted and waits on the leader’s approval.`, usual: 'Sign and approve ▸', instead: retainage ? ['Hold', 'Pull back to draft', 'Back to the office'] : ['Not yet, with the hold’s reason', 'Pull back to draft', 'Ask counsel to sign off…', 'Send notices without asking, the GC’s standing rule'], closes: paid }
+    default:
+      return { title, who: 'office', what: retainage ? 'The retainage notice goes out in the same packet as the monthly notices, by certified mail.' : 'Every approved notice goes out in one packet by certified mail, one tracking number per envelope, and the run records the mailing.', why: `The ${retainage ? 'retainage notice' : 'notice'} is approved and waits for the run, or is printed and waits on its tracking number.`, usual: 'Send the run', instead: ['Record the mailing, once the envelopes are in the mail', 'Back to the office'], closes: paid }
+  }
 }
