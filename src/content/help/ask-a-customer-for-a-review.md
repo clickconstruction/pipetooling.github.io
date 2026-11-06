@@ -68,6 +68,12 @@ A low answer needs a call. Read what they said, and call them the same day.
 
 After the call, open the job and press **I called** on its review line. Write what was said, if you like, and press **Save the call**. The line leaves Needs you.
 
+## The techs on the job see it
+
+A four or five star answer reaches every tech who clocked onto the job. It shows as a green strip on their home the same day, with the customer's first name and their words. See [see what a customer said about my work](/help/see-what-a-customer-said-about-my-work).
+
+Three stars or fewer stay with the office. The job window's review line and the Reviews block name who was on the job under each answer.
+
 ## Set the Google link
 
 The owner or a dev sets the company's Google review link once. In Google Business Profile, open **Read reviews**, then **Get more reviews**, and copy the link. Paste it in the Reviews block on [What customers see](/settings?tab=settings-what-customers-see) and press **Save the link**.
