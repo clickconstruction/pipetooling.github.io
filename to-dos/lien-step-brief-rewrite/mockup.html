@@ -1,0 +1,384 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Step Brief Rewrite</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: three spots, each Now (the live render) above My suggestion (drawn at the same width), then every rung's words before and after. Written for someone in their first week: plain words, real dates, counts from the notices on the step. */
+  :root {
+    --bg: #f4f4f6; --surface: #ffffff; --fg: #1c1c24; --muted: #6b6b7a; --border: #d9d9e1; --border-strong: #b9b9c6; --subtle: #f6f6f9;
+    --blue: #2563eb; --blue-tint: #dbe6fe; --blue-text: #1d4ed8; --violet: #6d28d9; --violet-tint: #efe9fb; --red: #b91c1c; --red-tint: #fde8e8; --amber-tint: #fff4d6; --amber-text: #92400e; --green: #15803d; --green-tint: #dcfce7;
+    --mark: #d97706; --mark-tint: #fff4df;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #141418; --surface: #1f1f27; --fg: #ececf1; --muted: #9a9aaa; --border: #33333f; --border-strong: #4a4a58; --subtle: #262630;
+    --blue-tint: #243764; --blue-text: #93b4ff; --violet: #b89cff; --violet-tint: #2b2340; --red: #f87171; --red-tint: #3a1f1f; --amber-tint: #3a3017; --amber-text: #fbbf24; --green: #4ade80; --green-tint: #1d3a28;
+    --mark: #f59e0b; --mark-tint: #3a2e14; color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #141418; --surface: #1f1f27; --fg: #ececf1; --muted: #9a9aaa; --border: #33333f; --border-strong: #4a4a58; --subtle: #262630;
+    --blue-tint: #243764; --blue-text: #93b4ff; --violet: #b89cff; --violet-tint: #2b2340; --red: #f87171; --red-tint: #3a1f1f; --amber-tint: #3a3017; --amber-text: #fbbf24; --green: #4ade80; --green-tint: #1d3a28;
+    --mark: #f59e0b; --mark-tint: #3a2e14; color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); line-height: 1.45; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 1.5rem 3rem; }
+  main, section, .col, .fit { min-width: 0; max-width: 100%; }
+  main { max-width: 1180px; margin: 0 auto; display: grid; gap: 2.25rem; }
+  h1 { font-size: 1.5rem; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+  h2 { font-size: 1.1rem; margin: 0; }
+  p { margin: 0; max-width: 72ch; }
+  .lede { color: var(--muted); }
+  .rec { padding: .8rem 1rem; border-radius: 10px; background: var(--mark-tint); border: 1px solid var(--mark); font-size: .95rem; max-width: none; }
+  section { display: grid; gap: .8rem; }
+  .col { display: grid; gap: .35rem; }
+  .lab { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .lab.sug { color: var(--mark); }
+  .cap { font-size: .88rem; color: var(--muted); max-width: 72ch; }
+  .fit { position: relative; overflow: hidden; }
+  .fit > .w { transform-origin: top left; }
+  .shot { display: block; border: 1px solid var(--border); border-radius: 10px; max-width: 100%; height: auto; }
+  ul.plain { margin: 0; padding-left: 1.1rem; display: grid; gap: .3rem; font-size: .92rem; max-width: 72ch; }
+  .scroll { overflow-x: auto; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: .86rem; min-width: 860px; }
+  .tbl th, .tbl td { text-align: left; padding: .5rem .6rem; border-top: 1px solid var(--border); vertical-align: top; }
+  .tbl th { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-top: none; }
+  .tbl td:first-child { white-space: nowrap; font-weight: 600; }
+  .tbl td.now { color: var(--muted); }
+  .tbl tr.rail td { background: var(--subtle); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+
+  /* the drawn brief */
+  .brief { border-left: 3px solid var(--tone); background: var(--tint); border-radius: 0 10px 10px 0; padding: 14px 18px 16px; display: grid; gap: 12px; font-family: var(--font); color: var(--fg); }
+  .brief.v { --tone: var(--violet); --tint: var(--violet-tint); }
+  .brief.r { --tone: var(--red); --tint: var(--red-tint); }
+  .brief.b { --tone: var(--blue-text); --tint: var(--blue-tint); }
+  .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .head b { font-size: 1.02rem; }
+  .who { font-size: .76rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #fcd34d; color: #1c1c24; }
+  .who.office { background: var(--surface); color: var(--fg); border: 1px solid var(--border-strong); }
+  .head .n { font-size: .82rem; color: var(--muted); }
+  .every { margin-left: auto; font-size: .78rem; font-weight: 600; padding: 3px 11px; border-radius: 999px; border: 1px solid var(--tone); color: var(--tone); background: var(--surface); }
+  .k { font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+  .plain { font-size: .92rem; line-height: 1.5; max-width: 76ch; }
+  .g2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px 26px; }
+  .words { font-size: .86rem; line-height: 1.5; color: var(--fg); }
+  .press { display: inline-flex; align-items: center; font-size: .84rem; font-weight: 600; padding: 5px 13px; border-radius: 8px; background: var(--blue); color: #fff; white-space: nowrap; }
+  .alt { display: inline-flex; align-items: center; font-size: .8rem; font-weight: 600; padding: 3px 10px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); white-space: nowrap; }
+  .alts { display: grid; gap: 6px; }
+  .alts div { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: .84rem; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: .8rem; padding: 3px 9px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border-strong); }
+  .chip b { font-weight: 700; color: var(--tone); }
+  .chip.ok { background: var(--green-tint); border-color: var(--green); }
+  .chip.bad { background: var(--red-tint); border-color: var(--red); }
+  .warn { font-size: .86rem; padding: 8px 12px; border-radius: 8px; background: var(--surface); border: 1px dashed var(--border-strong); }
+  /* the dated timeline */
+  .tl { display: grid; gap: 6px; }
+  .tl .top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: .84rem; }
+  .tl .top b { font-size: .9rem; }
+  .pick { font-size: .78rem; font-weight: 600; padding: 2px 9px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); }
+  /* The legal spine above the axis: work, notify, lien. The law's points are solid red squares; our own steps are hollow circles in the rail's tone. */
+  .phases { position: relative; height: 22px; }
+  .ph { position: absolute; top: 0; height: 18px; border-radius: 4px; font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; display: flex; align-items: center; padding: 0 8px; white-space: nowrap; box-sizing: border-box; overflow: hidden; }
+  .ph.law { background: var(--red-tint); color: var(--red); border: 1px solid var(--red); }
+  .ph.ours { background: var(--surface); color: var(--muted); border: 1px dashed var(--border-strong); }
+  .axis { position: relative; height: 118px; margin: 2px 0 0; }
+  .axis .line { position: absolute; left: 0; right: 0; top: 44px; height: 2px; background: var(--border-strong); }
+  .axis .done { position: absolute; left: 0; top: 44px; height: 2px; background: var(--tone); }
+  .pt { position: absolute; top: 38px; transform: translateX(-50%); display: grid; justify-items: center; gap: 3px; font-size: .72rem; line-height: 1.15; color: var(--muted); white-space: nowrap; }
+  .pt i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--tone); background: var(--surface); box-sizing: border-box; }
+  .pt.past i { background: var(--tone); }
+  .pt b { color: var(--fg); font-size: .76rem; }
+  .pt.law i { border-radius: 2px; border-color: var(--red); background: var(--red); }
+  .pt.law b { color: var(--red); }
+  /* every second label drops a row, so neighbours never touch */
+  .pt.dn { top: 38px; }
+  .pt.dn b { margin-top: 24px; }
+  .pt.today { top: 10px; }
+  .pt.today i { width: 0; height: 0; border: none; }
+  .pt.today .flag { background: var(--tone); color: #fff; font-weight: 700; padding: 2px 8px; border-radius: 6px; font-size: .74rem; }
+  .pt.today .stem { width: 2px; height: 14px; background: var(--tone); }
+  /* The vertical timeline: one row per event or window, top to bottom. The rail runs down the marker column; solid red squares are the law's days, hollow bars are windows we chose, the violet diamond is today. */
+  .vtl { display: grid; grid-template-columns: 9.5rem 22px minmax(0, 1fr) auto auto; column-gap: 12px; row-gap: 0; align-items: start; position: relative; font-size: .86rem; }
+  .vtl .r { display: contents; }
+  .vtl .d { text-align: right; font-weight: 700; color: var(--fg); padding: 7px 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .vtl .d small { display: block; font-weight: 500; color: var(--muted); font-size: .74rem; }
+  .vtl .m { position: relative; align-self: stretch; display: grid; justify-items: center; }
+  .vtl .m::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: var(--border-strong); }
+  .vtl .r.past .m::before { background: var(--tone); }
+  .vtl .r.first .m::before { top: 14px; }
+  .vtl .r.last .m::before { bottom: auto; height: 14px; }
+  .vtl .m i { position: relative; z-index: 1; margin-top: 10px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--tone); background: var(--surface); box-sizing: border-box; }
+  .vtl .r.law .m i { border-radius: 2px; border-color: var(--red); background: var(--red); }
+  .vtl .r.win .m i { width: 10px; height: 26px; border-radius: 5px; border: 2px dashed var(--border-strong); background: var(--surface); }
+  .vtl .r.win.firm .m i { border: 2px solid var(--tone); }
+  .vtl .w { padding: 7px 0; color: var(--fg); line-height: 1.4; }
+  .vtl .w small { display: block; color: var(--muted); font-size: .76rem; }
+  .vtl .c { padding: 8px 0; }
+  .vtl .n { padding: 7px 0; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; white-space: normal; max-width: 15rem; }
+  .vtl .n .st { white-space: nowrap; }
+  .vtl .n small { display: block; font-weight: 500; font-size: .72rem; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+  .vtl .r.late .w { color: var(--red); }
+  /* Status pills at the row's end: done, open, late, soon, deadline. */
+  .st { display: inline-flex; align-items: center; gap: 5px; font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; letter-spacing: .02em; }
+  .st.done { background: var(--green-tint); color: var(--green); }
+  .st.open { background: var(--surface); color: var(--muted); border: 1px dashed var(--border-strong); }
+  .st.late { background: var(--red); color: #fff; }
+  .st.soon { background: var(--surface); color: var(--fg); border: 1px solid var(--border-strong); }
+  .st.deadline { background: var(--red-tint); color: var(--red); border: 1px solid var(--red); }
+  .st.paying { background: var(--green-tint); color: var(--green); border: 1px solid var(--green); }
+  .st.paused { background: var(--surface); color: var(--muted); border: 1px solid var(--border-strong); text-decoration: line-through; }
+  .vtl .r.pay .m i { border-radius: 2px; border-color: var(--green); background: var(--green); }
+  .vtl .r.pay .w { color: var(--green); font-weight: 600; }
+  .vtl .r.pay .w small { color: var(--muted); font-weight: 400; }
+  .tb.calm { border-color: var(--green); }
+  .tb.calm .d, .tb.calm .here { color: var(--green); }
+  .tb.calm .m::before, .tb.calm .m i { background: var(--green); }
+  /* Today: a band across every column, the user's place on the line, with the action in it. */
+  .tb { grid-column: 1 / -1; display: grid; grid-template-columns: 9.5rem 22px minmax(0, 1fr) auto; column-gap: 12px; align-items: center; background: var(--surface); border: 2px solid var(--tone); border-radius: 10px; padding: 10px 12px 10px 0; margin: 6px 0; position: relative; }
+  .tb .d { text-align: right; font-weight: 800; color: var(--tone); font-size: .95rem; line-height: 1.2; }
+  .tb .d small { display: block; font-weight: 600; color: var(--muted); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
+  .tb .m { position: relative; align-self: stretch; display: grid; place-items: center; }
+  .tb .m::before { content: ""; position: absolute; top: -12px; bottom: -12px; left: 50%; width: 2px; margin-left: -1px; background: var(--tone); }
+  .tb .m i { position: relative; z-index: 1; width: 16px; height: 16px; border-radius: 3px; background: var(--tone); transform: rotate(45deg); box-shadow: 0 0 0 4px var(--surface); }
+  .tb .w { font-size: .9rem; color: var(--fg); line-height: 1.45; }
+  .tb .w .act { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+  .tb .w .act small { color: var(--muted); font-size: .8rem; }
+  .tb .w .or { font-size: .8rem; color: var(--muted); margin-top: 5px; }
+  .tb .w .or b { color: var(--fg); font-weight: 600; }
+  .tb .here { font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--tone); writing-mode: vertical-rl; transform: rotate(180deg); justify-self: center; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .74rem; color: var(--muted); align-items: center; }
+  .legend i { display: inline-block; width: 10px; height: 10px; box-sizing: border-box; vertical-align: -1px; margin-right: 5px; }
+  .legend .l1 i { background: var(--red); border-radius: 2px; }
+  .legend .l2 i { border: 2px solid var(--tone); border-radius: 50%; background: var(--surface); }
+  .lawchip { font-size: .7rem; font-weight: 700; padding: 1px 7px; border-radius: 4px; white-space: nowrap; }
+  .lawchip.law { background: var(--red-tint); color: var(--red); border: 1px solid var(--red); }
+  .lawchip.ours { background: var(--surface); color: var(--muted); border: 1px dashed var(--border-strong); }
+  .tl .foot { font-size: .78rem; color: var(--muted); }
+  .rows { display: grid; gap: 4px; font-size: .86rem; }
+  .rows div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 6px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); }
+  .rows .late { color: var(--red); font-weight: 600; }
+  .mark { outline: 2px solid var(--mark); outline-offset: 4px; border-radius: 10px; position: relative; }
+  .tag { position: absolute; right: 10px; top: -11px; font-size: .62rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: var(--mark); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+</style>
+
+<main>
+  <section>
+    <div class="lab">Lien desk · Do now · the step brief, third pass</div>
+    <h1>Written for someone in their first week</h1>
+    <p class="rec"><b>I recommend My suggestion.</b> Every brief gets the same six parts, in this order: what this is in plain words, this notice's own dates with today on them, why these particular ones are here as counts, what to do and what the press does, what else you may do and when, and what happens if nobody acts. The axis of day numbers goes. Day 0 is named by its date and where the date came from. Nothing a new employee has to already know is left unsaid.</p>
+    <p class="lede">Now is the app as it renders today, v2.6577. My suggestion is drawn at the same width. Counts in the "why these are here" chips are drawn as an example of the shape; the real ones come from the notices on the step.</p>
+  </section>
+
+  <section>
+    <h2>1 · Reminders, step 3 · The attorney’s letter, renamed Attorney’s letter</h2>
+    <div class="col"><div class="lab">Now</div><div class="shot" style="padding:1rem 1.1rem;color:var(--muted);font-size:.86rem;background:var(--surface)">Now: a screenshot of the live desk stood here. It is left out of this copy because the repo is public; the private board linked on the card has it. Every name on this page is made up.</div><p class="cap">Day 0 is a label, not a date. "Overdue from day 14" assumes the reader knows the schedule. The why is a rule, not these seven notices. The other moves are names with no meaning attached.</p></div>
+    <div class="col"><div class="lab sug">My suggestion</div>
+      <div class="fit" data-w="1140"><div class="w" style="width:1140px">
+        <div class="brief v mark"><span class="tag">new · six parts, real dates, counts</span>
+          <div class="head"><b>Step 3 of 4 · Attorney’s letter</b><span class="who">the leader acts</span><span class="n">7 notices are on this step</span><span class="every">Every step</span></div>
+          <div><div class="k">In plain words</div><p class="plain">We mailed the owner and the GC a lien notice and nobody paid or answered. The attorney’s letter is the stronger letter our attorney wrote for exactly this. It goes by certified mail, like the first one.</p></div>
+          <div class="tl">
+            <div class="top"><b>Job 412 · Service Visit, 140 Cedar Bend Rd</b><span class="pick">Show another ▾</span><span style="color:var(--muted)">one of the 7, with its own dates</span></div>
+            <div class="vtl">
+              <div class="r law past first"><span class="d">Oct 14<small>day 0</small></span><span class="m"><i></i></span><span class="w">The lien notice was mailed to the owner and the GC.<small>Day 0 is the day the run recorded the mailing. When the envelope's tracking knows better, it is the day USPS accepted or delivered it.</small></span><span class="c"><span class="lawchip law">legal requirement</span></span><span class="n"><span class="st done">✓ done</span><small>23 days ago · the clock started</small></span></div>
+              <div class="r win past"><span class="d">Oct 21 → Nov 9<small>day 7 to day 26</small></span><span class="m"><i></i></span><span class="w">One courtesy reminder may go: a plain email and text saying the notice stands.<small>Not required. The owner chose day 7. After it, silence means the attorney's letter, not a second reminder.</small></span><span class="c"><span class="lawchip ours">courtesy notice</span></span><span class="n"><span class="st open">open · optional</span><small>3 days left to send it · after Nov 9 the desk asks for the affidavit</small></span></div>
+              <div class="r win firm past late"><span class="d">Oct 24 → Oct 28<small>day 10 to day 14</small></span><span class="m"><i></i></span><span class="w">The attorney’s letter should go in this window.<small>Counsel's rule, 10 to 14 days after the notice. After Oct 28 it still goes, but every day later weakens it.</small></span><span class="c"><span class="lawchip ours">attorney’s letter</span></span><span class="n"><span class="st late">late · act now</span><small>9 days past the window · it still goes, weaker each day</small></span></div>
+              <div class="tb"><span class="d">Nov 6<small>today · day 23</small></span><span class="m"><i></i></span><span class="w">You are here. Nothing has been paid or answered, and the attorney’s letter has not gone.<div class="act"><span class="press">Send the attorney’s letter</span><small>the leader presses it · you pick one of the attorney's two letters, he approves, it goes in the next certified run</small></div><div class="or">Or, if that is not right: <b>Record the owner's call</b> · <b>The GC authorized direct pay</b></div></span><span class="here">action needed</span></div>
+              <div class="r win"><span class="d">Nov 9 → Nov 16<small>day 26 to day 33</small></span><span class="m"><i></i></span><span class="w">The affidavit's week: draft it, the leader signs it before a notary, file it at the county.<small>Our rule. The paper takes about a week, so from Nov 9 this notice's row offers Draft affidavit instead of a reminder. A courtesy may still be sent by hand from the footer.</small></span><span class="c"><span class="lawchip ours">our rule</span></span><span class="n"><span class="st soon">starts in 3 days</span><small>on Nov 9 the button here becomes Draft affidavit</small></span></div>
+              <div class="r law last"><span class="d">Nov 16<small>day 33</small></span><span class="m"><i></i></span><span class="w">The lien must be on file at the county by this day, or the right to it is lost.<small>§ 53.052, the 15th of the third month after the work month, rolled past the weekend. This job's own day.</small></span><span class="c"><span class="lawchip law">legal requirement</span></span><span class="n"><span class="st deadline">deadline · in 10 days</span><small>miss it and the lien is lost for good</small></span></div>
+            </div>
+            <div class="legend"><span class="l1"><i></i>legal requirement, this job's own day</span><span class="l2" style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:18px;border:2px dashed var(--border-strong);border-radius:5px"></span>a courtesy notice or the attorney's letter · optional</span><span style="color:var(--muted)">top to bottom is the order things happen · the band is today and the one action it needs</span></div>
+            <div class="foot">Between the two legal requirements everything is ours: the courtesy, the attorney’s letter, and the week we keep for the affidavit. The office may use them or skip them.</div>
+          </div>
+          <div><div class="k">Why these 7 are here</div><div class="chips"><span class="chip"><b>3</b> · inside the affidavit's week, so the desk puts the affidavit first</span><span class="chip"><b>2</b> · no approved work month yet, so the lien's day is unknown</span><span class="chip"><b>2</b> · the attorney’s letter already drafted, waiting on the leader</span></div></div>
+          <div class="g2">
+            <div><div class="k">What to do now</div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="press">Send the attorney’s letter</span><span class="words">You pick one of the attorney's two letters. The leader approves it. It goes out in the next certified run.</span></div></div>
+            <div><div class="k">If that is not right</div><div class="alts">
+              <div><span class="alt">Record the owner's call</span>the owner phoned about it; that ends the reminders</div>
+              <div><span class="alt">The GC authorized direct pay</span>the GC told the owner in writing to pay us</div>
+              <div><span class="alt">Send a courtesy notice</span>a plain email and text, once its hold has cleared</div>
+            </div></div>
+            <div><div class="k">This step ends on its own when</div><p class="words">the bill is paid, the owner's call is recorded, the GC okays direct pay, they answer, or the affidavit is filed.</p></div>
+            <div><div class="k">If nobody acts</div><p class="words">On Nov 9 (3 days) the desk starts asking for the affidavit, which takes about a week to draft, sign before a notary and file. On Nov 16 (10 days) the lien must be on file at the county or the right to it is lost.</p></div>
+          </div>
+          <div class="warn">Also on this step with no row below · 2: <b>431 · Service Visit, 88 Quarry Ln</b> and <b>436 · Ridgeway Builders- Elm Park</b>, both at day 31 with no approved work month, each with Open.</div>
+        </div>
+      </div></div>
+      <p class="cap">The timeline runs down the card, one row per thing that happens or may happen, in order. Only events get a dot; a span of days we chose is a bar. A new employee reads top to bottom: mailed Oct 14, reminders allowed, the attorney’s letter late, today, stop reminding Nov 9, file by Nov 16.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>1b · When money comes in</h2>
+    <p class="lede">Today a full payment closes the reminders and the notice stays under Sent, but a partial payment only lowers the amount: no row shows it, the clocks ignore it, and the words still say "nothing since the packet". A payment is an event, so it gets a row, and a partial payment is an answer, so it pauses the reminders. Amounts here are an example of the shape.</p>
+    <div class="col"><div class="lab sug">My suggestion · a partial payment</div>
+      <div class="fit" data-w="1140"><div class="w" style="width:1140px">
+        <div class="brief v">
+          <div class="head"><b>Step 2 of 4 · Reminder sent</b><span class="who office">the office acts</span><span class="n">paying it down</span><span class="every">Every step</span></div>
+          <div><div class="k">In plain words</div><p class="plain">We mailed the lien notice and one courtesy reminder. They have started paying. A partial payment is an answer, so the desk stops reminding and asks what they promised for the rest. The lien's last day does not move.</p></div>
+          <div class="tl">
+            <div class="top"><b>Job 412 · Service Visit, 140 Cedar Bend Rd</b><span class="pick">Show another ▾</span><span style="color:var(--muted)">example amounts</span></div>
+            <div class="vtl">
+              <div class="r law past first"><span class="d">Oct 14<small>day 0</small></span><span class="m"><i></i></span><span class="w">The lien notice was mailed to the owner and the GC for $12,045.</span><span class="c"><span class="lawchip law">legal requirement</span></span><span class="n"><span class="st done">✓ done</span><small>23 days ago · the clock started</small></span></div>
+              <div class="r win past"><span class="d">Oct 22<small>day 8</small></span><span class="m"><i></i></span><span class="w">The one courtesy reminder went, by email and text.<small>Recorded on the notice: who pressed it, both channels delivered.</small></span><span class="c"><span class="lawchip ours">courtesy notice</span></span><span class="n"><span class="st done">✓ done</span><small>15 days ago · no second one</small></span></div>
+              <div class="r pay past"><span class="d">Nov 3<small>day 20</small></span><span class="m"><i></i></span><span class="w">$4,000 paid · $8,045 still owed.<small>A check on the job, applied to the oldest bill first. The claim on every paper is now $8,045.</small></span><span class="c"><span class="lawchip ours">payment</span></span><span class="n"><span class="st paying">paying</span><small>3 days ago · reminders paused</small></span></div>
+              <div class="tb"><span class="d">Nov 6<small>today · day 23</small></span><span class="m"><i></i></span><span class="w">You are here. They are paying it down. The attorney's letter waits while they pay.<div class="act"><span class="press">Record what they promised</span><small>the office presses it · the date and amount they gave for the rest; the desk asks again on that date</small></div><div class="or">Or, if that is not right: <b>Send the attorney’s letter anyway</b>, when the payment was token · <b>Record the owner's call</b></div></span><span class="here">action needed</span></div>
+              <div class="r win"><span class="d">Nov 9 → Nov 16<small>day 26 to day 33</small></span><span class="m"><i></i></span><span class="w">The affidavit's week still comes. The lien's day does not move for a payment that is short.<small>Our rule. From Nov 9 this row offers Draft affidavit for the $8,045.</small></span><span class="c"><span class="lawchip ours">our rule</span></span><span class="n"><span class="st soon">starts in 3 days</span><small>on Nov 9 the button here becomes Draft affidavit</small></span></div>
+              <div class="r law last"><span class="d">Nov 16<small>day 33</small></span><span class="m"><i></i></span><span class="w">The lien for the $8,045 still owed must be on file at the county by this day.<small>§ 53.052. A promise does not move it; only the money does.</small></span><span class="c"><span class="lawchip law">legal requirement</span></span><span class="n"><span class="st deadline">deadline · in 10 days</span><small>miss it and the lien is lost for good</small></span></div>
+            </div>
+          </div>
+          <div class="g2">
+            <div><div class="k">This step ends on its own when</div><p class="words">the rest is paid, the GC okays direct pay, the owner's call is recorded, or the affidavit is filed.</p></div>
+            <div><div class="k">If nobody acts</div><p class="words">Nothing is sent while they pay. On Nov 9 (3 days) the desk asks for the affidavit for $8,045. On Nov 16 (10 days) it must be on file or the lien on the rest is lost.</p></div>
+          </div>
+        </div>
+      </div></div>
+      <p class="cap">The payment is a green row with the amount and the remainder. The usual move changes from a letter to a question. Every amount after the payment is the remainder, and the legal day stays where it was.</p>
+    </div>
+    <div class="col"><div class="lab sug">My suggestion · paid in full</div>
+      <div class="fit" data-w="1140"><div class="w" style="width:1140px">
+        <div class="brief v">
+          <div class="head"><b>Step 4 of 4 · Closed</b><span class="who office">nothing to do</span><span class="n">paid in full</span><span class="every">Every step</span></div>
+          <div><div class="k">In plain words</div><p class="plain">They paid everything the notice claimed. This one is over. The notice stays under Sent as a record of what we sent and when, and nothing more goes to this owner.</p></div>
+          <div class="tl">
+            <div class="top"><b>Job 427 · Service Visit, 2210 Mill Pond Rd</b><span style="color:var(--muted)">example amounts</span></div>
+            <div class="vtl">
+              <div class="r law past first"><span class="d">Oct 14<small>day 0</small></span><span class="m"><i></i></span><span class="w">The lien notice was mailed to the owner and the GC for $6,300.</span><span class="c"><span class="lawchip law">legal requirement</span></span><span class="n"><span class="st done">✓ done</span><small>23 days ago</small></span></div>
+              <div class="r pay past"><span class="d">Nov 3<small>day 20</small></span><span class="m"><i></i></span><span class="w">$6,300 paid · paid in full.<small>The claim is zero on every paper. The affidavit leaves the Affidavits list by itself.</small></span><span class="c"><span class="lawchip ours">payment</span></span><span class="n"><span class="st done">✓ paid</span><small>3 days ago · the ladder closed</small></span></div>
+              <div class="tb calm"><span class="d">Nov 6<small>today</small></span><span class="m"><i></i></span><span class="w">Closed. Nothing is owed and nothing is left to send.<div class="or">If the affidavit had already been filed when the money came, the next press is <b>Release the lien</b>, so the county's record is cleared.</div></span><span class="here">no action</span></div>
+              <div class="r last"><span class="d">Nov 16<small>day 33</small></span><span class="m"><i></i></span><span class="w">No longer a deadline for this job.<small>The law's day still exists; there is nothing left to file on it.</small></span><span class="c"><span class="lawchip ours">no longer applies</span></span><span class="n"><span class="st paused">deadline</span><small>cleared by the payment</small></span></div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <p class="cap">Paid in full reads as a closed card: a green payment row, a calm today band with no press, and the old deadline struck through with why. The one branch is a filed affidavit, which needs its release.</p>
+    </div>
+    <div class="col"><div class="lab">Two calls for the owner</div>
+      <ul class="plain">
+        <li><b>How long a partial payment pauses the reminders.</b> Until the promised date when they give one, else a week, is my suggestion. The affidavit's week and the lien's day are never paused.</li>
+        <li><b>Whether the attorney's letter ever goes to someone who is paying.</b> My suggestion: not by the desk's hand. The office may still send it when the payment was token, and the brief says so.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>2 · Affidavits, step 1 · Fix the property</h2>
+    <div class="col"><div class="lab">Now · your screenshot</div><div class="shot" style="padding:1rem 1.1rem;color:var(--muted);font-size:.86rem;background:var(--surface)">Now: a screenshot of the live desk stood here. It is left out of this copy because the repo is public; the private board linked on the card has it. Every name on this page is made up.</div><p class="cap">"The affidavit names the property by its legal description and its owner" is true and tells a new employee nothing: what an affidavit is, which job, what is missing, what happens if it stays missing.</p></div>
+    <div class="col"><div class="lab sug">My suggestion</div>
+      <div class="fit" data-w="1140"><div class="w" style="width:1140px">
+        <div class="brief r">
+          <div class="head"><b>Step 1 of 4 · Fix the property</b><span class="who office">the office acts</span><span class="n">1 affidavit is on this step</span><span class="every">Every step</span></div>
+          <div><div class="k">In plain words</div><p class="plain">An affidavit is the lien itself. It is filed at the county and it must say exactly which property and who owns it. This job's property record is missing part of that, so the affidavit cannot be written yet.</p></div>
+          <div class="tl">
+            <div class="top"><b>Job 470 · Lakeside Retail</b><span style="color:var(--muted)">the one affidavit on this step</span></div>
+            <div class="chips"><span class="chip ok">Owner · named</span><span class="chip ok">Address · 470 Lakeside Dr</span><span class="chip bad">Legal description · missing</span><span class="chip bad">County · missing</span></div>
+            <div class="vtl">
+              <div class="r law past first"><span class="d">Sep 30</span><span class="m"><i></i></span><span class="w">Our last day of work on the job.<small>Every lien date counts from the month this falls in.</small></span><span class="c"><span class="lawchip law">legal requirement</span></span><span class="n"><span class="st done">✓ done</span><small>37 days ago · every date below counts from this</small></span></div>
+              <div class="tb"><span class="d">Nov 6<small>today</small></span><span class="m"><i></i></span><span class="w">You are here. The property record is missing its legal description and county, so the affidavit cannot be written.<div class="act"><span class="press">Fix the property</span><small>the office presses it · opens the record with the two missing lines marked</small></div><div class="or">Or, if that is not right: <b>Send the notice first</b>, when no lien notice ever went for this month</div></span><span class="here">action needed</span></div>
+              <div class="r law"><span class="d">Nov 16</span><span class="m"><i></i></span><span class="w">The lien notice must be in the mail to the owner and the GC by this day.<small>§ 53.056, the 15th of the second month after the work month, rolled past the weekend.</small></span><span class="c"><span class="lawchip law">legal requirement</span></span><span class="n"><span class="st deadline">deadline · in 10 days</span><small>the September notice must be in the mail</small></span></div>
+              <div class="r law last"><span class="d">Dec 15</span><span class="m"><i></i></span><span class="w">The affidavit, the lien itself, must be on file at the county by this day.<small>§ 53.052, the 15th of the fourth month after the work month on a commercial property. The affidavit is usually drafted two weeks before.</small></span><span class="c"><span class="lawchip law">legal requirement</span></span><span class="n"><span class="st deadline">deadline · in 39 days</span><small>miss it and the lien is lost for good</small></span></div>
+            </div>
+            <div class="legend"><span class="l1"><i></i>legal requirement, this job's own days</span><span style="color:var(--muted)">On this card every date is a legal requirement: work, notify, lien. Nothing here is optional once we mean to lien.</span></div>
+          </div>
+          <div class="g2">
+            <div><div class="k">What to do now</div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="press">Fix the property</span><span class="words">Opens the property record with the two missing lines marked. Fill them in and the affidavit moves to Draft by itself.</span></div></div>
+            <div><div class="k">If that is not right</div><div class="alts">
+              <div><span class="alt">Send the notice first</span>when no lien notice ever went for this month; the affidavit needs one before it</div>
+            </div></div>
+            <div><div class="k">This step ends on its own when</div><p class="words">the bill is paid, or the filing window closes.</p></div>
+            <div><div class="k">If nobody acts</div><p class="words">On Dec 15 (39 days) the window closes and the lien is gone for good. The money becomes a collections matter.</p></div>
+          </div>
+        </div>
+      </div></div>
+      <p class="cap">The record's four lines are shown with what is there and what is missing, so "fix the property" means two things, not a mystery. The job's own dates replace the rule.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>3 · Notices, step 3 · Approve</h2>
+    <div class="col"><div class="lab">Now</div><div class="shot" style="padding:1rem 1.1rem;color:var(--muted);font-size:.86rem;background:var(--surface)">Now: a screenshot of the live desk stood here. It is left out of this copy because the repo is public; the private board linked on the card has it. Every name on this page is made up.</div><p class="cap">"Approves a notice once per notice or once per GC" is the rule from the leader's side. A new employee needs to know what a notice is, which three, how late, and why the leader and not them.</p></div>
+    <div class="col"><div class="lab sug">My suggestion</div>
+      <div class="fit" data-w="1140"><div class="w" style="width:1140px">
+        <div class="brief b">
+          <div class="head"><b>Step 3 of 4 · Approve</b><span class="who">the leader acts</span><span class="n">3 notices are on this step</span><span class="every">Every step</span></div>
+          <div><div class="k">In plain words</div><p class="plain">A lien notice is the letter the law makes us send to the owner before we can ever lien their property. The office has written three. Only the leader may approve one, because it is sent in his name.</p></div>
+          <div><div class="k">The three, and how late each one is</div><div class="rows">
+            <div><span><span class="lawchip law">legal requirement</span> <b>459 · Bluebonnet Lube- Fairview</b> · August work · the notice had to be mailed by Oct 15</span><span class="late">22 days late</span></div>
+            <div><span><span class="lawchip law">legal requirement</span> <b>440 · Granite GC- Parts Store</b> · September work · must be mailed by Nov 16</span><span>10 days left</span></div>
+            <div><span><span class="lawchip law">legal requirement</span> <b>466 · Dana Ortiz (Lee Moreno)</b> · September work · must be mailed by Nov 16</span><span>10 days left</span></div>
+          </div>
+          <div class="legend" style="margin-top:6px"><span class="l1"><i></i>legal requirement: the notice itself, in the mail by its day</span><span style="color:var(--muted)">The approval is our own gate before it.</span></div></div>
+          <div class="g2">
+            <div><div class="k">What to do now</div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="press">Sign and approve ▸</span><span class="words">Signs it with the leader's code and puts it in the next certified run. One press per notice. For a GC he trusts, ticking <b>Send notices without asking</b> approves every future month by itself.</span></div></div>
+            <div><div class="k">If that is not right</div><div class="alts">
+              <div><span class="alt">Not yet</span>holds it with a reason, they promised or I'll call first; the desk asks again</div>
+              <div><span class="alt">Pull back to draft</span>the office changes something first</div>
+              <div><span class="alt">Ask counsel to sign off…</span>the attorney reads it before it goes</div>
+            </div></div>
+            <div><div class="k">This step ends on its own when</div><p class="words">the bill is paid before the leader presses.</p></div>
+            <div><div class="k">If nobody acts</div><p class="words">Nothing is mailed. For 459 the law's day passed 22 days ago: a late notice still goes, but every day late weakens the claim. For 440 and 466, after Nov 16 (10 days) the lien right for September is lost.</p></div>
+          </div>
+        </div>
+      </div></div>
+      <p class="cap">The dates come from each notice's own clock, which the desk already holds. "Late" is said against the law's day, not a day number.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Every rung, before and after</h2>
+    <p class="lede">The first line of each brief: what it says now, and the plain-words line a new employee would read instead. The other five parts follow the same pattern as the three drawings. The second column names what kind of step it is in plain words: a legal requirement, a courtesy notice, the attorney's letter, or our own gate. The notice and the affidavit with their dates are legal requirements; the reminders are optional.</p>
+    <div class="scroll"><table class="tbl">
+      <thead><tr><th>Rung</th><th>What kind of step</th><th>Now</th><th>For a new employee</th><th>What to do, and what the press does</th></tr></thead>
+      <tbody>
+        <tr class="rail"><td colspan="5">Notices</td></tr>
+        <tr><td>1 · Find the owner</td><td><span class="lawchip law">legal requirement</span></td><td class="now">The notice goes to the owner of record and the GC. The owner must be named first, from the property record or the GC's contract.</td><td>A lien notice has to reach the person who owns the land, not only the GC we worked for. We do not know who that is yet for these jobs.</td><td><b>Find the owner</b> opens the property record with the owner line empty. Type the name from the county's record or the GC's contract.</td></tr>
+        <tr><td>2 · Draft notice</td><td><span class="lawchip law">legal requirement</span></td><td class="now">The office drafts the § 53.056 notice from the job: the unpaid months, the money, the owner and the GC.</td><td>The owner is known and a month of our work is unpaid. The desk can write the notice from the job. Each month gets its own notice.</td><td><b>Draft notice</b> fills the state's form from the job. Read it once, then send it to the leader.</td></tr>
+        <tr><td>3 · Approve</td><td><span class="lawchip ours">our gate</span></td><td class="now">The leader approves a notice once per notice or once per GC, and signs it with his code or by pen.</td><td>The notice is written and waits for the leader. Only he may approve, because it goes out in his name.</td><td><b>Sign and approve ▸</b> signs with his code and puts it in the next run.</td></tr>
+        <tr><td>4 · Send the run</td><td><span class="lawchip law">legal requirement</span></td><td class="now">Every approved notice goes out in one packet by certified mail, one tracking number per envelope, and the run records the mailing.</td><td>Approved notices wait to be printed and mailed together, by certified mail so we can prove they arrived.</td><td><b>Send the run</b> prints every approved notice and its envelope. <b>Record the mailing</b> types in each tracking number once they are at the post office.</td></tr>
+        <tr class="rail"><td colspan="5">Reminders</td></tr>
+        <tr><td>1 · Reminder due</td><td><span class="lawchip ours">courtesy notice</span></td><td class="now">The packet went, nothing came back, and it is day 7 or later.</td><td>We mailed the notice a week or more ago and heard nothing. A courtesy reminder is a plain email and text that says the notice stands. It is not a legal paper, and we send it once.</td><td><b>Send a courtesy notice</b> sends the email and the text in one press. It takes a minute.</td></tr>
+        <tr><td>2 · Reminder sent</td><td><span class="lawchip ours">courtesy notice</span></td><td class="now">A courtesy notice went. The desk waits 7 days for an answer before it offers another.</td><td>We sent the one reminder. Give them a week to answer. If nothing comes, the next step is the attorney's letter, not another reminder.</td><td>Nothing for a week. Then <b>Send the attorney’s letter</b>, the attorney's letter. The footer still lets the office resend the courtesy by hand if the first one bounced.</td></tr>
+        <tr><td>3 · Attorney’s letter</td><td><span class="lawchip ours">attorney’s letter</span></td><td class="now">Counsel's certified second letter after a notice, offered from day 10 and overdue from day 14.</td><td>Nobody paid or answered. The attorney’s letter is the stronger letter our attorney wrote for this. It goes by certified mail.</td><td><b>Send the attorney’s letter</b> lets you pick one of the attorney's two letters; the leader approves it; it goes in the next run.</td></tr>
+        <tr><td>4 · Closed</td><td><span class="lawchip ours">nothing left</span></td><td class="now">The end of the ladder. The notice reads under Sent, and no press is left.</td><td>This one is over: they paid, called, answered, the GC okayed paying us, or the lien is filed. Nothing to do.</td><td>None. <b>Open the notice</b> shows what ended it.</td></tr>
+        <tr class="rail"><td colspan="5">Affidavits</td></tr>
+        <tr><td>1 · Fix the property</td><td><span class="lawchip law">legal requirement</span></td><td class="now">The affidavit names the property by its legal description and its owner. The property record must be complete first.</td><td>An affidavit is the lien itself, filed at the county. It must say exactly which property and who owns it. This record is missing part of that.</td><td><b>Fix the property</b> opens the record with the missing lines marked.</td></tr>
+        <tr><td>2 · Draft affidavit</td><td><span class="lawchip law">legal requirement</span></td><td class="now">The office drafts the affidavit from the notice already sent: the months, the money, the property.</td><td>The record is complete and the lien's last day is coming. The desk can write the affidavit from the notice we already mailed.</td><td><b>Draft affidavit</b> writes it. The leader must sign it in front of a notary, so send it to him early.</td></tr>
+        <tr><td>3 · Approve</td><td><span class="lawchip ours">our gate</span></td><td class="now">The leader signs the affidavit before a notary, then approves it for filing.</td><td>The affidavit is written. The leader signs it in front of a notary and says it may be filed.</td><td><b>Approve — file it ▸</b> marks it signed and ready for the county.</td></tr>
+        <tr><td>4 · File it</td><td><span class="lawchip law">legal requirement</span></td><td class="now">The affidavit is filed with the county clerk by its day, then served on the owner within five days.</td><td>Take or send the signed affidavit to the county clerk before its last day. Then mail a copy to the owner within five days, which the law requires.</td><td><b>File the affidavit</b> records the filing. <b>Record service</b> records the copy you mailed.</td></tr>
+        <tr class="rail"><td colspan="5">Retainage</td></tr>
+        <tr><td>1 · Find the owner</td><td><span class="lawchip law">legal requirement</span></td><td class="now">The § 53.057 retainage notice goes to the owner and the GC within 30 days of our contract's end. The owner must be named first.</td><td>Retainage is the part of our money a GC holds back until the end. A separate notice protects it, and it must reach the owner. We do not know the owner yet.</td><td><b>Find the owner</b> opens the property record. <b>Set the day our contract ended</b> starts the 30-day clock.</td></tr>
+        <tr><td>2 · Draft notice</td><td><span class="lawchip law">legal requirement</span></td><td class="now">The office drafts the retainage notice once our contract on the job has ended: the retainage held, the owner, the GC.</td><td>Our work on the job is finished and the held-back money is unpaid. The notice must go within 30 days of the finish.</td><td><b>Draft notice</b> writes it from the job.</td></tr>
+        <tr><td>3 · Approve</td><td><span class="lawchip ours">our gate</span></td><td class="now">The leader approves and signs the retainage notice as he does a monthly notice.</td><td>Written and waiting for the leader, who signs it as he signs any notice.</td><td><b>Sign and approve ▸</b> puts it in the next run.</td></tr>
+        <tr><td>4 · Send the run</td><td><span class="lawchip law">legal requirement</span></td><td class="now">The retainage notice goes out in the same packet as the monthly notices, by certified mail.</td><td>It mails with the other notices, by certified mail.</td><td><b>Send the run</b> prints and mails everything approved.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>What changes under the hood</h2>
+    <ul class="plain">
+      <li><b>The dated timeline</b> needs each notice's day 0 and its affidavit day. Both are on the desk already: the attorney’s letter's clock says where day 0 came from, and the affidavit entry carries the § 53.052 day.</li>
+      <li><b>The counts</b> come from the notices on the step: the courtesy's hold reason, the attorney’s letter's state, the property record's gates. All read today, none written.</li>
+      <li><b>The words</b> are a rewrite of the twelve briefs plus the four Reminders ones, each with a one-line meaning for every other move. Plain words, tested like the guides.</li>
+      <li><b>The rename</b> (Grace, Nov 6): <em>letter two</em> becomes <em>the attorney’s letter</em> on every surface a person reads — the rung, the press (<em>Send the attorney’s letter</em>), the footer, the guides, § Rules. The code keeps its names. Rides in PR 1 with the words.</li>
+      <li><b>Payments on the ladder</b> (Grace, Nov 6): a payment is a row on the timeline with the amount and the remainder, from the payments already on the job under the one-payment rule. A partial payment pauses the reminders as <em>paying it down</em> and makes the usual move <em>Record what they promised</em>; every later amount is the remainder; the legal day never moves. Paid in full closes the ladder, strikes the deadline through, and points at <em>Release the lien</em> when an affidavit is on file. To check first: that the server's affidavit list drops a job whose open balance reached zero.</li>
+      <li><b>The affidavit's week, a priority not a hold</b> (Grace, Nov 6): inside the 7 days before the affidavit's day the desk's recommended action becomes the affidavit, and the courtesy's press stays on the footer for a send by hand. The legal holds, a homestead, no work month, a closed window, stay holds with their reasons. One line in the courtesy status.</li>
+      <li><b>One courtesy, then the attorney’s letter</b> (Grace, Nov 6): the desk offers one courtesy reminder, never a second, and after a week of silence offers the attorney's letter. The press stays on the notice's footer for a resend by hand. The Reminders rail keeps its four rungs: Reminder due · Reminder sent · The attorney’s letter · Closed. In § Rules the source line becomes "Day 7 is the owner's choice". One constant and rung 2's words change; the owner confirms the default.</li>
+      <li><b>Size:</b> two small PRs. The first rewrites the words and adds the meanings. The second draws the dated timeline and the counts. Neither changes a rule or a press.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+(function () {
+  function fit() {
+    document.querySelectorAll('.fit').forEach(function (f) {
+      var w = Number(f.getAttribute('data-w')); var inner = f.querySelector('.w');
+      var s = Math.min(1, f.clientWidth / w);
+      inner.style.transform = 'scale(' + s + ')';
+      f.style.height = (inner.offsetHeight * s) + 'px';
+    });
+  }
+  fit(); window.addEventListener('resize', fit); setTimeout(fit, 300); setTimeout(fit, 1200);
+})();
+</script>
+
+</body></html>
