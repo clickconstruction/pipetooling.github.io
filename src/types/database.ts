@@ -31743,7 +31743,17 @@ export type Database = {
           pick: string | null
           question_id: string
           report_photo_id: string | null
+          signed_answer_hash: string | null
+          signed_at: string | null
+          signed_by: string | null
+          signer_printed_name: string | null
+          signer_signature_mode: string | null
+          signer_signature_storage_path: string | null
           updated_at: string
+          void_why: string | null
+          voided_at: string | null
+          voided_by: string | null
+          voided_by_name: string
         }
         Insert: {
           answered_at?: string | null
@@ -31764,7 +31774,17 @@ export type Database = {
           pick?: string | null
           question_id: string
           report_photo_id?: string | null
+          signed_answer_hash?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
           updated_at?: string
+          void_why?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_by_name?: string
         }
         Update: {
           answered_at?: string | null
@@ -31785,7 +31805,17 @@ export type Database = {
           pick?: string | null
           question_id?: string
           report_photo_id?: string | null
+          signed_answer_hash?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
           updated_at?: string
+          void_why?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_by_name?: string
         }
         Relationships: [
           {
@@ -31821,6 +31851,20 @@ export type Database = {
             columns: ["report_photo_id"]
             isOneToOne: false
             referencedRelation: "report_photos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_answers_signed_by_fkey"
+            columns: ["signed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_answers_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -31909,6 +31953,7 @@ export type Database = {
           fixture_id: string | null
           id: string
           job_id: string | null
+          needs_signature: boolean
           plan_sheet: string | null
           promoted_from: string | null
           retired_at: string | null
@@ -31927,6 +31972,7 @@ export type Database = {
           fixture_id?: string | null
           id?: string
           job_id?: string | null
+          needs_signature?: boolean
           plan_sheet?: string | null
           promoted_from?: string | null
           retired_at?: string | null
@@ -31945,6 +31991,7 @@ export type Database = {
           fixture_id?: string | null
           id?: string
           job_id?: string | null
+          needs_signature?: boolean
           plan_sheet?: string | null
           promoted_from?: string | null
           retired_at?: string | null
@@ -37821,18 +37868,6 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
-      evidence_is_counsel_only: {
-        Args: { p_evidence_id: string }
-        Returns: boolean
-      }
-      person_counsel_only_count: {
-        Args: { p_person_id: string }
-        Returns: number
-      }
-      request_is_dev_seat: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       dismiss_mercury_duplicate_pair: {
         Args: { p_id_a: string; p_id_b: string }
         Returns: undefined
@@ -37979,6 +38014,10 @@ export type Database = {
           note_count: number
           request_id: string
         }[]
+      }
+      evidence_is_counsel_only: {
+        Args: { p_evidence_id: string }
+        Returns: boolean
       }
       extend_estimate_good_through: {
         Args: { p_estimate_id: string; p_valid_until: string }
@@ -41436,6 +41475,10 @@ export type Database = {
         Returns: undefined
       }
       people_phones_from_accounts: { Args: never; Returns: number }
+      person_counsel_only_count: {
+        Args: { p_person_id: string }
+        Returns: number
+      }
       person_file_summary_counts: {
         Args: { p_person_id: string }
         Returns: {
@@ -41522,6 +41565,7 @@ export type Database = {
           fixture_id: string | null
           id: string
           job_id: string | null
+          needs_signature: boolean
           plan_sheet: string | null
           promoted_from: string | null
           retired_at: string | null
@@ -41799,6 +41843,7 @@ export type Database = {
         }
         Returns: string
       }
+      request_is_dev_seat: { Args: never; Returns: boolean }
       resolve_job_ledger_id_by_number: {
         Args: { p_number: string }
         Returns: string
