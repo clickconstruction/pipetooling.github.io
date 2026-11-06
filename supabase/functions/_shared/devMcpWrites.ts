@@ -65,6 +65,10 @@ export const WRITE_VERBS = {
   // (dev_legal_gap_answer_write over legal_answer_gap / legal_clear_gap_answer).
   plan_gap_answer: { rpc: 'dev_legal_gap_answer_write', step: 'plan' },
   apply_gap_answer: { rpc: 'dev_legal_gap_answer_write', step: 'apply' },
+  // v2.6552: themes marked on the record (dev_theme_marks_write) — a theme on an HR entry, a piece of evidence, a
+  // matter document or a matter event, with why it fits and how it proves the theme, kept or proposed.
+  plan_theme_marks: { rpc: 'dev_theme_marks_write', step: 'plan' },
+  apply_theme_marks: { rpc: 'dev_theme_marks_write', step: 'apply' },
   // v2.6044 / 0.9.0: a History line on a development, kept at the time it happened, as a named robot
   // (dev_history_entry_write inserts development_history_entries with via = mcp).
   plan_history_entry: { rpc: 'dev_history_entry_write', step: 'plan' },
@@ -143,6 +147,9 @@ const DOCUMENT_STATES = ['draft', 'final', 'sent', 'received'] as const
 const DOCUMENT_SENT_HOWS = ['email', 'certified_mail', 'mail', 'hand', 'other'] as const
 const HISTORY_SOURCES = ['email', 'call', 'text', 'on_site', 'letter', 'note'] as const
 const GAP_ACTIONS = ['answer', 'clear'] as const
+/** v2.6552: what a theme mark may hang on, and how it proves the theme (the kernel's PROVES_BY). */
+const THEME_MARK_KINDS = ['hr_entry', 'hr_evidence', 'matter_document', 'matter_entry'] as const
+const THEME_MARK_PROVES = ['document', 'own_words', 'firsthand', 'relayed'] as const
 const CLOCK_OPS = ['times', 'note', 'move', 'approve'] as const
 const CLOCK_SESSION_MAX_MS = 24 * 3600 * 1000
 const CONTAINER_ACTIONS = ['add', 'move', 'retire', 'bring_back'] as const
@@ -428,6 +435,34 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const built = licenseInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc, step, body: { p: built.p, p_dry_run: step === 'plan' }, dryRunBody: { p: built.p, p_dry_run: true }, target: built.target, planHash }
+  }
+  if (verb === 'plan_theme_marks' || verb === 'apply_theme_marks') {
+    // v2.6552: 1 to 100 marks, each a theme on a thing that already exists; the database resolves the thing and the
+    // theme and says ready, already or held — the shape alone is checked here.
+    const shape = `${verb} needs marks — [ { theme_id (a legal_themes.id: read_rows on legal_themes), target_kind (hr_entry | hr_evidence | matter_document | matter_entry), target_id (the entry's, record's, document's or event's id), why? (up to 200 characters: what in it shows the theme), proves_by? (document | own_words | firsthand | relayed) } ] and stand? (kept — the default, the owner said Apply it — or proposed, dashed in the app until a dev keeps it)`
+    if (!Array.isArray(input.marks) || input.marks.length === 0 || input.marks.length > 100) return { ok: false, error: shape }
+    const stand = typeof input.stand === 'string' ? input.stand.trim().toLowerCase() : 'kept'
+    if (stand !== 'kept' && stand !== 'proposed') return { ok: false, error: shape }
+    const marks: Json[] = []
+    for (const raw of input.marks) {
+      const m = obj(raw)
+      const themeId = m && typeof m.theme_id === 'string' ? m.theme_id.trim() : ''
+      const kind = m && typeof m.target_kind === 'string' ? m.target_kind.trim().toLowerCase() : ''
+      const targetId = m && typeof m.target_id === 'string' ? m.target_id.trim() : ''
+      if (!m || !UUID_RE.test(themeId) || !UUID_RE.test(targetId) || !(THEME_MARK_KINDS as readonly string[]).includes(kind)) return { ok: false, error: shape }
+      const built: Json = { theme_id: themeId, target_kind: kind, target_id: targetId }
+      const why = typeof m.why === 'string' ? m.why.trim() : ''
+      if (why.length > 200) return { ok: false, error: shape }
+      if (why) built.why = why
+      const proves = typeof m.proves_by === 'string' ? m.proves_by.trim().toLowerCase() : ''
+      if (proves) {
+        if (!(THEME_MARK_PROVES as readonly string[]).includes(proves)) return { ok: false, error: shape }
+        built.proves_by = proves
+      }
+      marks.push(built)
+    }
+    const p: Json = { stand, marks }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${marks.length} mark${marks.length === 1 ? '' : 's'}`, planHash }
   }
   if (verb === 'plan_gap_answer' || verb === 'apply_gap_answer') {
     const gap = obj(input.gap)
@@ -882,8 +917,9 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const clock = verb === 'apply_clock_sessions'
   const report = verb === 'apply_person_report'
   const license = verb === 'apply_license'
-  const what = license ? `on this license${when}` : hours ? `on this job${when}` : clock ? `on those sessions${when}` : cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : report ? `on this report${when}` : `on this person${when}`
-  const again = license ? 'The license already reads that way; read_rows on person_licenses by person_name shows it, and the teammate\'s logbook draws it. Plan again with what you mean now.' : hours ? 'The statement is under the job’s Hours statements (read_rows on hours_statements by job_ledger_id); plan another span, or file_on_matter once it is signed.' : clock ? 'The sessions already read that way; read_rows on clock_sessions shows them. Plan again with what you mean now.' : cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : planSet ? 'The set is on the part; read_rows on plan_sets by part_id shows it, and the job\'s Plans section lists it. A second set of the same name needs a new plan with a different name, date or link.' : paper ? 'The paper is on the part; read_rows on plan_sets by part_id shows it. A new copy is a new paper (replaces_paper_id); an owed one that landed is plan_paper { action: came }.' : report ? 'The report is off the queue: get_person_file shows the entry it became, or its dismissal with the reason. A report is filed or dismissed once; one that still waits is a different report_id.' : evidence ? 'The record is on the person\'s Evidence tab; get_person_file shows it with its Drive state. A second copy needs a new plan with a different day, title or files.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const themeMarks = verb === 'apply_theme_marks'
+  const what = themeMarks ? `on those marks${when}` : license ? `on this license${when}` : hours ? `on this job${when}` : clock ? `on those sessions${when}` : cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : report ? `on this report${when}` : `on this person${when}`
+  const again = themeMarks ? 'The marks are on the record; read_rows on legal_theme_marks shows them, and the file\'s By theme view draws them. A thing already marked reads as already in a new plan.' : license ? 'The license already reads that way; read_rows on person_licenses by person_name shows it, and the teammate\'s logbook draws it. Plan again with what you mean now.' : hours ? 'The statement is under the job’s Hours statements (read_rows on hours_statements by job_ledger_id); plan another span, or file_on_matter once it is signed.' : clock ? 'The sessions already read that way; read_rows on clock_sessions shows them. Plan again with what you mean now.' : cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : planSet ? 'The set is on the part; read_rows on plan_sets by part_id shows it, and the job\'s Plans section lists it. A second set of the same name needs a new plan with a different name, date or link.' : paper ? 'The paper is on the part; read_rows on plan_sets by part_id shows it. A new copy is a new paper (replaces_paper_id); an owed one that landed is plan_paper { action: came }.' : report ? 'The report is off the queue: get_person_file shows the entry it became, or its dismissal with the reason. A report is filed or dismissed once; one that still waits is a different report_id.' : evidence ? 'The record is on the person\'s Evidence tab; get_person_file shows it with its Drive state. A second copy needs a new plan with a different day, title or files.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 
