@@ -175,6 +175,11 @@ serve(async (req) => {
       )
     }
 
+    // The Away note (#256 PR 8, v2.6587) comes down with the restore: back on the team, no one screen.
+    const { data: noteGone, error: noteError } = await adminClient.from('away_notes').delete().eq('user_id', user_id).select('user_id')
+    if (noteError) console.error('The Away note did not come down after the restore:', noteError)
+    const awayNoteTakenDown = (noteGone ?? []).length > 0
+
     // CT bridge (v2.2435): mirror the restore to CountTooling when a seat is linked.
     // Fail-soft — a CT-leg failure never blocks the restore; the audit catches drift.
     const ctBridge = await forwardCtSeatState(
@@ -188,6 +193,7 @@ serve(async (req) => {
         success: true,
         message: `User ${targetUser.email || targetUser.name} restored`,
         roadmap_tasks_discarded: roadmapDiscarded,
+        away_note_taken_down: awayNoteTakenDown,
         ct_bridge: ctBridge,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

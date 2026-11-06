@@ -89,6 +89,7 @@ when_to_read:
    - [gsa-per-diem](#gsa-per-diem)
    - [archive-user](#archive-user)
    - [restore-user](#restore-user)
+   - [away-note](#away-note)
    - [login-as-user](#login-as-user)
    - [dev-login](#dev-login)
    - [walk](#walk)
@@ -649,6 +650,8 @@ interface MergeUsersRequest {
 
 ### archive-user
 
+> **v2.6587 — the Away note (punch list #256 PR 8)**: when an `away_notes` row stands for the login being archived, the ban is skipped and the answer carries `away_note_on: true`. The seal of migration `20261106120000_archived_seal` holds that sign-in to `/rpc/my_away_note`; the app draws the Away page and nothing else. No note, the ban as before. **Redeploy** once merged, after the push.
+
 > **v2.6519 / v2.6528 (punch lists #260, #264)**: the body's `user_id` is the one handle — the lookups by `email` and `name` are gone (v2.6528), since a person with no login may have no address and two people may share a name; every caller sends it (the desk's Archive, the End employment flow, the twins' fleet archive), and `email` / `name` ride along only for the words in the answer. The ban runs only when a login stands behind the row; an archived row answers *already archived* by its id.
 
 > **v2.5397 — the ban lands, and `deno check` passes again**: the ban sent `banned_until`, which GoTrue's admin update does not take. `PUT /admin/users/{id}` reads the body into `AdminUserParams`, which has `ban_duration` and no `banned_until`, with a plain `json.Unmarshal` that drops unknown keys, so the call answered 200 and banned nobody (TS2353, confirmed by a read-only check on production). It sends `ban_duration: '876000h'` (100 years) now, and GoTrue writes `auth.users.banned_until` from it. The service-role client goes to `forwardCtSeatState` as that helper's own narrow type (TS2589, TS2345), and the outer `catch` reads `(error as Error).message` (TS18046). **Redeploy** once merged, after `restore-user`: the ban works from then on.
@@ -715,6 +718,8 @@ const response = await supabase.functions.invoke('archive-user', {
 
 ### restore-user
 
+> **v2.6587 — the Away note comes down (punch list #256 PR 8)**: after the unban the user's `away_notes` row is deleted and the answer carries `away_note_taken_down`; Bring back and Restore both run through here, so a returner never lands on the Away page. **Redeploy** once merged, after the push.
+
 > **v2.6519 (punch list #260)**: the unban runs only when a login stands behind the row (`users.login_attached_at`); restoring a person with no login touches `public.users` alone.
 
 > **v2.6481 — `restore_roadmap`** (punch list #256, Bring back): `restore_roadmap: false` deletes the user's rows in `checklist_tech_tree_task_assignees_parked` before clearing `archived_at`, so the restore trigger (`roadmap_assignees_follow_user_archive`) gives none of their old open roadmap tasks back; they stay in the Plan view's **Needs a person** lane. The answer carries `roadmap_tasks_discarded`. Absent or `true` is today's behaviour, so the Restore presses are unchanged. Bring back (v2.6523, the desk's window) sends `false` when its box is unticked, which it is by default after 90 days away. **Redeploy** once merged (`supabase functions deploy restore-user`).
@@ -758,6 +763,37 @@ const response = await supabase.functions.invoke('restore-user', {
   "roadmap_tasks_discarded": 0
 }
 ```
+
+---
+
+### away-note
+
+**Purpose**: The Away note (punch list #256 PR 8, v2.6587): the one screen a teammate who left sees when they sign in. The office writes it person by person on the archived desk (**Leave a note…**) or in End employment before the finish. This function is the one writer of `away_notes`, because a note on an archived login also opens the sign-in (the ban `archive-user` put on the login comes off with `ban_duration: 'none'`; the seal of `20261106120000_archived_seal` holds them to `/rpc/my_away_note`) and taking it down puts the ban back (`ban_duration: '876000h'`). The row's rules are the kernel's (`src/lib/people/awayNote.ts` → `awayNoteProblem`), restated in the function's `readNote`: 600 characters at most, a day back after today in the company's calendar, the alert only with a day. The person's own read is the RPC `my_away_note()`, not this function.
+
+**Endpoint**: `POST /functions/v1/away-note`
+
+**Required Role**: `dev`, `controller`, or a **pay-approved** `master_technician` (the set `archive-user` admits). The archived guard runs after the caller is read.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Authentication**: `verify_jwt = false`; the function validates the JWT and the role itself.
+
+#### Request Parameters
+
+```typescript
+{ action: 'save', user_id: string, note: { words: string; countdown_ymd: string | null; show_where: boolean; show_call: boolean; alert_on_day: boolean } }
+{ action: 'clear', user_id: string }
+```
+
+A note for the caller's own account is refused (400). An unknown `user_id` answers 404.
+
+#### Success Response
+
+```json
+{ "success": true, "sealed": true, "note": { "words": "…", "countdown_ymd": "2029-11-05", "show_where": true, "show_call": true, "alert_on_day": false } }
+```
+
+`sealed` is true when the account is archived, has a login and now opens to the note; `clear` answers `sealed: false`. A note on an active account waits for the day they are archived, when `archive-user` skips the ban for it.
 
 ---
 

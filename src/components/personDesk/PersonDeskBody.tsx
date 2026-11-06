@@ -159,7 +159,7 @@ export function PersonDeskBody({
           </>
         ) : null}
       </div>
-      {flow && flow !== 'bring_back' && key ? <PersonDeskLifecycleModal mode={flow} personKey={key} viewer={viewer} viewerUserId={viewerUserId} userEmail={user?.email ?? null} onClose={() => setFlow(null)} onChanged={onChanged} /> : null}
+      {flow && flow !== 'bring_back' && key ? <PersonDeskLifecycleModal mode={flow} personKey={key} viewer={viewer} viewerUserId={viewerUserId} userEmail={user?.email ?? null} userHasLogin={user?.login_attached_at != null} onClose={() => setFlow(null)} onChanged={onChanged} /> : null}
       {flow === 'bring_back' && key ? <PersonDeskBringBackModal personKey={key} viewer={viewer} viewerUserId={viewerUserId} onClose={() => setFlow(null)} onChanged={onChanged} /> : null}
     </>
   )
