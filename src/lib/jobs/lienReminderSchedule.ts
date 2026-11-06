@@ -67,7 +67,7 @@ export function lienScheduleWords(): string {
 /** Whose rule each day is, one line each, for § Rules. */
 export function lienScheduleSourceLines(): string[] {
   return [
-    `Day ${COURTESY_FROM_DAY}, and the ${COURTESY_AGAIN_DAYS} days between one courtesy notice and the next, are the owner’s choice.`,
+    `Day ${COURTESY_FROM_DAY} is the owner’s choice. One courtesy notice goes, never a second; after ${COURTESY_AGAIN_DAYS} days of silence the attorney’s letter leads.`,
     `Day ${LETTER_TWO_FROM_DAY} and day ${LETTER_TWO_BY_DAY} are counsel’s rule for the second letter.`,
     `The ${COURTESY_AFFIDAVIT_MARGIN_DAYS} days before the affidavit’s day are our margin, so a reminder never names a lien day the law would not allow.`,
     'The affidavit’s day is the law’s, § 53.052, and each job has its own.',

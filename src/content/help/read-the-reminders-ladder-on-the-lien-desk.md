@@ -11,7 +11,7 @@ The Lien desk's Do now draws a Reminders strip above the rows. The strip has fou
 
 Press a step on the Reminders strip. A brief opens under the strip in the step's own words. The brief says what the step is and why a notice is on it. The brief names the usual move and whose press it is. The brief also names the other moves you may take instead. Every press stays yours. The brief ends with what closes the step by itself, like a payment.
 
-The Notices, Affidavits and Retainage strips open the same kind of brief.
+The Notices, Affidavits and Retainage strips open the same kind of brief. The brief has six parts. In plain words says what the step is. Why a notice is here says the rule. What to do now names the press and what it does. The part called If that is not right lists the other presses and what each means. Then come what ends the step on its own, and what happens if nobody acts.
 
 The list below the brief sorts itself. The rows on that step come first under **On this step**. The rest follow under **On other steps**. No row fades and every button still works. Press {{button:outline|Every step}} to put the list back. A second press on the same step does the same.
 
@@ -33,7 +33,7 @@ The packet went and nothing came back. From day 7 the desk offers {{button:blue|
 
 :::card 2 Reminder sent
 
-A courtesy notice went. The desk waits a week for an answer. After a week with nothing, another may go. From day 10 the row leads with {{button:blue|Send the attorney’s letter}} instead.
+The one courtesy notice went. The desk waits a week for an answer. After a week with nothing, the row leads with {{button:blue|Send the attorney’s letter}}. The desk never asks for a second courtesy. You may still send one by hand from the footer when a channel bounced.
 
 :::
 
@@ -57,7 +57,7 @@ Two notices can both be at day 21 and both overdue for the attorney’s letter. 
 
 :::fold When the courtesy is held
 
-A reminder may never name a lien day the law would not allow. So the desk holds the courtesy in four cases. The property is a homestead. The job has no approved work month yet. The filing window closed. The affidavit is due within 7 days, so you file it instead. Counsel's letter still goes, so the row offers the attorney’s letter. The card on the row's dots names the reason.
+A reminder may never name a lien day the law would not allow. So the desk holds the courtesy in three cases. The property is a homestead. The job has no approved work month yet. The filing window closed. Counsel's letter still goes, so the row offers the attorney’s letter. The card on the row's dots names the reason. Seven days before the lien's day is the affidavit's week. Then the desk recommends the affidavit, and the courtesy button stays on the footer.
 
 :::
 
