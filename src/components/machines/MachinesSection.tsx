@@ -34,6 +34,9 @@ import {
   type Rental,
 } from '../../lib/machines/machines'
 import { addMachine, placeMachine, saveLevels, saveRental, type MachineTemplate } from '../../lib/machines/machinesIo'
+import { runAnyway } from '../../lib/machines/checksIo'
+import { useAuth } from '../../hooks/useAuth'
+import { MachineCheckSheet } from './MachineCheckSheet'
 import { JobLookupBox } from './JobLookupBox'
 import { MachineLabelModal } from './MachineLabelModal'
 import { LevelGauge } from './LevelGauge'
@@ -52,7 +55,9 @@ const row: CSSProperties = { display: 'grid', gridTemplateColumns: '7rem minmax(
 const field: CSSProperties = { minHeight: 36, padding: '0.3rem 0.5rem', borderRadius: 8, border: '1px solid var(--border-strong)', font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)', minWidth: 0 }
 
 export function MachinesSection() {
+  const { user, profileName } = useAuth()
   const { fleet, problem, reload } = useFleet()
+  const [reading, setReading] = useState<{ m: Machine; checkId: string } | null>(null)
   const today = todayDay()
   const [handing, setHanding] = useState<string | null>(null)
   const [label, setLabel] = useState<Machine | null>(null)
@@ -116,6 +121,12 @@ export function MachinesSection() {
               {held ? (
                 <div style={{ background: 'var(--bg-red-100)', color: 'var(--text-red-700)', borderRadius: 8, padding: '0.5rem 0.7rem', fontSize: '0.875rem' }}>
                   <b>Held</b> · {w.sub}
+                  {held.dispatchedAt ? ' · Dispatch has the row' : ''}
+                  <div style={{ marginTop: '0.4rem' }}>
+                    <button type="button" style={{ ...press, borderColor: '#dc2626', color: 'var(--text-red-700)' }} disabled={busy != null} onClick={() => void run('run', () => runAnyway(held.id, user?.id ?? null, profileName ?? 'Dispatch'))}>
+                      Run it anyway, in {profileName ?? 'Dispatch'}’s name
+                    </button>
+                  </div>
                 </div>
               ) : null}
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -125,6 +136,11 @@ export function MachinesSection() {
                 <button type="button" style={press} onClick={() => setLabel(m)}>
                   Print the label
                 </button>
+                {days[0]?.pre || days[0]?.post ? (
+                  <button type="button" style={press} onClick={() => { const c = days[0]?.post ?? days[0]?.pre; if (c) setReading({ m, checkId: c.id }) }}>
+                    Open the newest check
+                  </button>
+                ) : null}
                 <button type="button" style={press} onClick={() => setGauges(gauges === m.id ? null : m.id)} data-machine-gauges={m.unitLabel}>
                   Gauges · {m.levels.length}
                 </button>
@@ -171,6 +187,7 @@ export function MachinesSection() {
         })}
       </div>
       {label ? <MachineLabelModal machine={label} onClose={() => setLabel(null)} /> : null}
+      {reading && fleet ? <MachineCheckSheet machine={reading.m} questions={fleet.questions} checks={fleet.checks} checkId={reading.checkId} kind={fleet.checks.find((c) => c.id === reading.checkId)?.kind} jobId={reading.m.jobId} jobWords={reading.m.jobWords} userId={user?.id ?? null} byName={profileName ?? 'The office'} onChanged={reload} onClose={() => setReading(null)} /> : null}
     </section>
   )
 }
