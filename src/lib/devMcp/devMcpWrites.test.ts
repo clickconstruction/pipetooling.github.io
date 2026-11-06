@@ -42,7 +42,7 @@ describe('devMcpWrites — the allowlist', () => {
     const tableVerbs = Object.entries(WRITE_VERBS).filter(([, v]) => v.rpc === null).map(([k]) => k)
     expect(tableVerbs).toEqual(['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper', 'plan_person_report', 'apply_person_report']) // v2.6430: the report verbs POST the HR queue's own RPCs after the server's read of the report (devMcpPersonReport.test.ts)
     const rpcs = new Set(Object.values(WRITE_VERBS).flatMap((v) => (v.rpc === null ? [] : [v.rpc])))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_clock_session_write', 'dev_history_entry_write', 'dev_hours_statement_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_write', 'dev_person_evidence_write', 'dev_person_license_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_clock_session_write', 'dev_history_entry_write', 'dev_hours_statement_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_write', 'dev_person_evidence_write', 'dev_person_license_write', 'dev_theme_marks_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -482,7 +482,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
     expect(SERVER).toContain("const SERVER_VERSION = '0.27.0'")
-    expect(SERVER).toContain('Writes are forty-three verbs and nothing else')
+    expect(SERVER).toContain('Writes are forty-five verbs and nothing else')
   })
 })
 
@@ -706,7 +706,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
     expect(SERVER).toContain("const SERVER_VERSION = '0.27.0'")
-    expect(SERVER).toContain('Writes are forty-three verbs and nothing else')
+    expect(SERVER).toContain('Writes are forty-five verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
 })
@@ -1005,7 +1005,7 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
     }
     expect(SERVER).toContain("const SERVER_VERSION = '0.27.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
-    expect(SERVER).toContain('forty-three verbs')
+    expect(SERVER).toContain('forty-five verbs')
   })
 })
 

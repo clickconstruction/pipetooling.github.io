@@ -37247,6 +37247,9 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_theme_marks_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
       evidence_is_counsel_only: {
         Args: { p_evidence_id: string }
         Returns: boolean
