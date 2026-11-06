@@ -16,9 +16,10 @@ import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
  * so each tab and the With-the-firm panels live in files of their own.
  */
 // v2.5851: six tabs — the Record of contact lives on the Timeline as the Said lane; Fees & steps is With the firm.
-export const TABS = ['narrative', 'account', 'paper', 'evidence', 'fees_steps', 'timeline'] as const
+// v2.6599: By theme, a seventh, drawn only for the hand that may mark (a dev) on an account with a matter.
+export const TABS = ['narrative', 'account', 'paper', 'evidence', 'fees_steps', 'timeline', 'themes'] as const
 export type Tab = (typeof TABS)[number]
-export const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', evidence: 'Evidence', fees_steps: 'With the firm', timeline: 'Timeline' }
+export const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', evidence: 'Evidence', fees_steps: 'With the firm', timeline: 'Timeline', themes: 'By theme' }
 
 export const MUTED: CSSProperties = { color: 'var(--text-muted)' }
 export const NUM: CSSProperties = { fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }

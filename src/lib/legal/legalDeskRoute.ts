@@ -25,6 +25,8 @@ const TAB_BY_ADDRESS: Record<string, Tab> = {
   firm: 'fees_steps',
   fees: 'fees_steps',
   timeline: 'timeline',
+  // v2.6599: By theme, a dev's tab on an account with a matter.
+  themes: 'themes',
 }
 
 const ADDRESS_BY_TAB: Record<Tab, string> = {
@@ -34,6 +36,7 @@ const ADDRESS_BY_TAB: Record<Tab, string> = {
   evidence: 'evidence',
   fees_steps: 'firm',
   timeline: 'timeline',
+  themes: 'themes',
 }
 
 /** The tab the desk opens on when the address names none. */

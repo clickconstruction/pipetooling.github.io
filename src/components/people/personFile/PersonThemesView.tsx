@@ -20,6 +20,7 @@ import {
   type ThemeItem,
   type ThemeItemsOrder,
   type ThemeItemsShow,
+  type ThemeLine,
 } from '../../../lib/legal/legalThemes'
 import type { PersonTimelineLine } from '../../../lib/people/personTimeline'
 import { EmptyState } from '../../EmptyState'
@@ -64,25 +65,26 @@ function isoDayWords(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export type PersonThemesViewProps = {
+/** Generic over the line (v2.6599): a person's Timeline lines, or a matter's documents and events (`matterThemeLines`). */
+export type PersonThemesViewProps<L extends ThemeLine = PersonTimelineLine> = {
   personName: string
   themes: ReadonlyArray<LegalTheme>
   marks: ReadonlyArray<LegalThemeMark>
   /** The whole Timeline, every line, in the record's order. */
-  lines: ReadonlyArray<PersonTimelineLine>
+  lines: ReadonlyArray<L>
   themeId: string | null
   /** A press on a theme chip: the panel keeps the pick and the page writes it into the address. */
   onPickTheme: (id: string) => void
   canWrite: boolean
   namesById: Record<string, string>
   /** The line's file chips, drawn by the panel so a press opens the file the same way everywhere. */
-  renderFiles: (line: PersonTimelineLine) => ReactNode
+  renderFiles: (line: L) => ReactNode
   onOpenOnTimeline: (lineKey: string) => void
   onKeepMark: (markId: string) => Promise<void>
   onRemoveMark: (markId: string, why: string) => Promise<boolean>
 }
 
-export function PersonThemesView({ personName, themes, marks, lines, themeId, onPickTheme, canWrite, namesById, renderFiles, onOpenOnTimeline, onKeepMark, onRemoveMark }: PersonThemesViewProps) {
+export function PersonThemesView<L extends ThemeLine = PersonTimelineLine>({ personName, themes, marks, lines, themeId, onPickTheme, canWrite, namesById, renderFiles, onOpenOnTimeline, onKeepMark, onRemoveMark }: PersonThemesViewProps<L>) {
   const { showToast } = useToastContext()
   const [order, setOrder] = useState<ThemeItemsOrder>('oldest')
   const [show, setShow] = useState<ThemeItemsShow>('every')
@@ -377,7 +379,7 @@ export function PersonThemesView({ personName, themes, marks, lines, themeId, on
         <EmptyState compact main={show === 'every' ? `Nothing on the record carries ${picked.name} yet.` : `No item of ${picked.name} is ${THEME_ITEMS_SHOW.find((s) => s.key === show)?.label ?? ''}.`} {...(show === 'every' ? {} : { next: { label: 'every item', onPress: () => setShow('every') }, tail: 'shows the whole theme.' })} />
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} data-testid="by-theme-items">
-          {items.map((it: ThemeItem<PersonTimelineLine>, n) => (
+          {items.map((it: ThemeItem<L>, n) => (
             <li key={it.line.key} style={{ borderTop: '1px solid var(--border)' }}>
               <button
                 type="button"

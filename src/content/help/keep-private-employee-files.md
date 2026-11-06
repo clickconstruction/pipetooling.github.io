@@ -98,6 +98,8 @@ Press any item to open it in a window over the list. The window shows the whole 
 
 Press {{button:outline|Print this theme}} for paper. Press {{button:outline|Copy as a list for counsel}} to put the same words on the clipboard. The theme you picked sits in the address. Send the link and it opens the same view.
 
+A matter has the same view. Open the Matter view and press By theme. The list holds the documents and events that carry the theme. A paper opens from its chip. Open on the Timeline lands a paper on Evidence and an event on the Timeline. On the Legal desk the By theme tab sits after Timeline.
+
 ## Keeping the summary fresh
 
 When you add entries, the summary falls behind. The person's dot turns amber. The Summary view shows how many entries it has not covered. You ask the agent to bring the file current. It rewrites the summary and extends the narrative from the raw entries.

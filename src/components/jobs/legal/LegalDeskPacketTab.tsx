@@ -22,6 +22,7 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
 import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
+import { MatterThemesView } from './MatterThemesView'
 import type { LegalTheme, LegalThemeMark } from '../../../lib/legal/legalThemes'
 import LegalStatementsStrip from './LegalStatementsStrip'
 import { isStatementEntry, statementMetaOf } from '../../../lib/legal/affidavitPaper'
@@ -110,10 +111,12 @@ function withFirmWait(e: LegalEntryRow, cell: ReactNode): ReactNode {
  * (v2.6276, punch list #230 PR 5): the upload's gate on an open matter, which draws **From the job's messages…**.
  */
 export type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; canPull?: boolean; reload: () => void; /** Themes on the record (v2.6548), a dev's: the catalog for the picker, the matter's marks for the chips. */ themes?: ReadonlyArray<LegalTheme>; marks?: ReadonlyArray<LegalThemeMark>; onMarksChanged?: () => void } | null
+/** The By theme tab (v2.6599): the catalog and the matter's marks for the hand that may mark; null hides the tab. */
+export type ThemesTab = { themes: ReadonlyArray<LegalTheme>; marks: ReadonlyArray<LegalThemeMark>; reload: () => void | Promise<void>; matterName: string }
 /** The Timeline tab (v2.5800): the matter's holds (a planned step held back reads held) and the office's acts, null when read only. */
 export type PlanActs = { holds: Record<string, boolean>; holdReasons: Record<string, string>; acts: TimelinePlanActs | null }
 
-export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null, onShowOnEvidence, evidenceDoc = null, onEvidenceLanded, onStatementsChanged }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null; /** v2.6166: the Evidence tab opened on a document's row, lit. */ onShowOnEvidence?: (documentId: string) => void; /** v2.6166: the row the Evidence tab lands on, from the address. */ evidenceDoc?: string | null; /** v2.6166: the landed row was pressed. */ onEvidenceLanded?: () => void; /** v2.6413 (punch list #212 PR 4): the packet read again after a statement is asked for or put on the matter. */ onStatementsChanged?: () => void }) {
+export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null, themesTab = null, onShowOnEvidence, evidenceDoc = null, onEvidenceLanded, onStatementsChanged }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null; /** v2.6599: By theme on the matter, a dev's. */ themesTab?: ThemesTab | null; /** v2.6166: the Evidence tab opened on a document's row, lit. */ onShowOnEvidence?: (documentId: string) => void; /** v2.6166: the row the Evidence tab lands on, from the address. */ evidenceDoc?: string | null; /** v2.6166: the landed row was pressed. */ onEvidenceLanded?: () => void; /** v2.6413 (punch list #212 PR 4): the packet read again after a statement is asked for or put on the matter. */ onStatementsChanged?: () => void }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -162,11 +165,33 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
 
   // The narrative for the firm (v2.4812), after the hooks above.
   if (tab === 'narrative') return narrative ? <LegalNarrativeEditor narrative={narrative} busy={busy} /> : null
+  // v2.5800: the stream (every kind) and the documents on one line around today; the kernel splits and words them. The By theme tab (v2.6599) reads the same line.
+  const nameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
+  // v2.5842 (punch list #170): the lien clock's deadlines from the Paper tab's own timelines, read only, with Record it… to the job's Lien window.
+  const buildTimeline = () => buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office', deadlines: timelineDeadlinesFromPaper(packet.paper.timelines), said: packet.theirWord.timeline, did: packet.feesAndSteps.steps, dayOfIso: calendarYmdInAppTzFromIso })
+  if (tab === 'themes') {
+    if (!themesTab) return null
+    const namesById: Record<string, string> = {}
+    for (const u of props.users) if (u.name) namesById[u.id] = u.name
+    return (
+      <MatterThemesView
+        matterName={themesTab.matterName}
+        themes={themesTab.themes}
+        marks={themesTab.marks}
+        timeline={buildTimeline()}
+        documents={documents?.list ?? []}
+        canWrite={Boolean(documents?.canEdit)}
+        namesById={namesById}
+        onOpenOnTimeline={(line, landing) => {
+          if (landing === 'evidence' && line.documentId && onShowOnEvidence) onShowOnEvidence(line.documentId)
+          else onTab?.(landing)
+        }}
+        onMarksChanged={themesTab.reload}
+      />
+    )
+  }
   if (tab === 'timeline') {
-    // v2.5800: the stream (every kind) and the documents on one line around today; the kernel splits and words them.
-    const nameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
-    // v2.5842 (punch list #170): the lien clock's deadlines from the Paper tab's own timelines, read only, with Record it… to the job's Lien window.
-    const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office', deadlines: timelineDeadlinesFromPaper(packet.paper.timelines), said: packet.theirWord.timeline, did: packet.feesAndSteps.steps, dayOfIso: calendarYmdInAppTzFromIso })
+    const timeline = buildTimeline()
     // v2.5851: the one line — what was said (the Record of contact) and what we did (the packet's steps) fold in as lanes.
     // v2.6166: a document line's two doors — the paper itself, the way the Evidence row opens it; and the Evidence tab landed on its row.
     const openDocument = documents ? async (id: string) => {

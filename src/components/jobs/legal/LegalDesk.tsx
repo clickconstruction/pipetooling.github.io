@@ -908,7 +908,7 @@ export default function LegalDesk(props: LegalDeskProps) {
       style={stacked
         ? { display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', overflowX: 'auto', position: 'sticky', top: -12, zIndex: 1, background: 'var(--surface)', margin: '-12px -12px 10px', padding: '0 6px' }
         : { display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', overflowX: 'auto', margin: '16px 0 4px' }}>
-      {TABS.map((t) => (
+      {TABS.filter((t) => t !== 'themes' || (canMarkReady && matter)).map((t) => (
         <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => pressTab(t)}
           style={{ flex: 'none', whiteSpace: 'nowrap', border: 'none', background: 'none', padding: '8px 12px', fontSize: '0.84rem', fontWeight: tab === t ? 600 : 500, color: tab === t ? 'var(--text)' : 'var(--text-muted)', borderBottom: tab === t ? '2px solid var(--text-base)' : '2px solid transparent', cursor: 'pointer' }}>
           {TAB_LABELS[t]}
@@ -1221,6 +1221,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, setCounselRead, counselRead, moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, canPull: stored && canEditReview && !closed, reload: () => void legal?.reload(), themes: themeCatalog.themes.length > 0 ? themeCatalog.themes : undefined, marks: themeCatalog.marks, onMarksChanged: () => void reloadThemes() } : null}
+                    themesTab={canMarkReady && matter ? { themes: themeCatalog.themes, marks: themeCatalog.marks, reload: reloadThemes, matterName: selected.name } : null}
                     narrative={narrativeDesk} busy={busy} planActs={planActs} onStatementsChanged={reload} />
                 ) : null}
                 </div>

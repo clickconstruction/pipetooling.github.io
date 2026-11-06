@@ -5,12 +5,16 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateU
 import { legalRpc } from '../../../hooks/useLegalMatters'
 import { buildLegalTimeline, eventsNarrativeMarkdown, timelineDocumentsFromRows } from '../../../lib/legal/legalTimeline'
 import { openLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
+import type { LegalTheme, LegalThemeMark } from '../../../lib/legal/legalThemes'
+import { loadThemes } from '../../../lib/legal/legalThemesIo'
+import { markStands } from '../../../lib/legal/legalThemes'
 import { supabase } from '../../../lib/supabase'
 import { loadPersonMatter, openPersonMatter, type PersonMatterLoad } from '../../../lib/people/personMatterIo'
 import { PERSON_MATTER_NONE_MAIN, PERSON_MATTER_NONE_SUB, PERSON_MATTER_OPEN_LABEL, personMatterStageWords, personMatterStandingWords } from '../../../lib/people/personMatter'
 import LegalNarrativeEditor, { type NarrativeDesk } from '../../jobs/legal/LegalNarrativeEditor'
 import LegalMatterDocumentsPanel from '../../jobs/legal/LegalMatterDocumentsPanel'
 import LegalTimelinePanel, { type TimelinePlanActs } from '../../jobs/legal/LegalTimelinePanel'
+import { MatterThemesView } from '../../jobs/legal/MatterThemesView'
 import { EmptyState } from '../../EmptyState'
 
 /**
@@ -23,11 +27,13 @@ import { EmptyState } from '../../EmptyState'
  * (`legal_person_matter_open`); the legal tables' restrictive policies keep its rows to devs.
  */
 
-type SubTab = 'narrative' | 'evidence' | 'timeline'
+// v2.6599: By theme, the investigation over the matter's documents and events, beside the desk's three.
+type SubTab = 'narrative' | 'evidence' | 'timeline' | 'themes'
 const SUB_TABS: ReadonlyArray<{ key: SubTab; label: string }> = [
   { key: 'narrative', label: 'Narrative' },
   { key: 'evidence', label: 'Evidence' },
   { key: 'timeline', label: 'Timeline' },
+  { key: 'themes', label: 'By theme' },
 ]
 
 const subTab = (on: boolean): CSSProperties => ({
@@ -50,6 +56,20 @@ export function PersonMatterPanel({ personId, personName, canEdit, changeKey = 0
   const [loadError, setLoadError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [tab, setTab] = useState<SubTab>('narrative')
+  // Themes on the record (v2.6599): the catalog and this matter's marks, read once a matter stands; the By theme tab draws them.
+  const [themeCatalog, setThemeCatalog] = useState<{ themes: LegalTheme[]; marks: LegalThemeMark[] }>({ themes: [], marks: [] })
+  const matterIdForThemes = load?.matter?.id ?? null
+  const reloadThemes = useCallback(async () => {
+    if (!matterIdForThemes) {
+      setThemeCatalog({ themes: [], marks: [] })
+      return
+    }
+    const r = await loadThemes({ matterId: matterIdForThemes })
+    setThemeCatalog({ themes: r.themes, marks: r.marks })
+  }, [matterIdForThemes])
+  useEffect(() => {
+    void reloadThemes()
+  }, [reloadThemes, changeKey])
 
   const reload = useCallback(async () => {
     try {
@@ -130,6 +150,8 @@ export function PersonMatterPanel({ personId, personName, canEdit, changeKey = 0
       }
     : null
 
+  const liveMarks = themeCatalog.marks.filter(markStands).length
+
   if (loadError) return <p role="alert" style={{ color: 'var(--text-red-600)', fontSize: '0.85rem' }}>{loadError}</p>
   if (!load) return <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Reading the matter…</p>
 
@@ -159,7 +181,7 @@ export function PersonMatterPanel({ personId, personName, canEdit, changeKey = 0
         {SUB_TABS.map((t) => (
           <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} style={subTab(tab === t.key)}>
             {t.label}
-            {t.key === 'evidence' && documents.length ? ` (${documents.length})` : t.key === 'timeline' && timeline.counts.planned + timeline.counts.done ? ` (${timeline.counts.planned + timeline.counts.done})` : ''}
+            {t.key === 'evidence' && documents.length ? ` (${documents.length})` : t.key === 'timeline' && timeline.counts.planned + timeline.counts.done ? ` (${timeline.counts.planned + timeline.counts.done})` : t.key === 'themes' && liveMarks ? ` (${liveMarks})` : ''}
           </button>
         ))}
       </div>
@@ -179,6 +201,18 @@ export function PersonMatterPanel({ personId, personName, canEdit, changeKey = 0
             const row = documents.find((d) => d.id === documentId)
             if (row) await openLegalMatterDocument(supabase, row)
           }}
+        />
+      ) : null}
+      {tab === 'themes' ? (
+        <MatterThemesView
+          matterName={`The matter on ${personName}`}
+          themes={themeCatalog.themes}
+          marks={themeCatalog.marks}
+          timeline={timeline}
+          documents={documents}
+          canWrite={canEdit && !matter.closed_at}
+          onOpenOnTimeline={(_line, landing) => setTab(landing)}
+          onMarksChanged={reloadThemes}
         />
       ) : null}
     </div>
