@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Task cards with percent</title>
+<style>
+  /* Layout: one column of numbered stops, each a phone or a desk frame drawn in the app's own light look; wide stops wrap to one column on a phone. */
+  :root {
+    --bg: #f3f4f6; --surface: #ffffff; --surface-2: #f9fafb; --border: #d1d5db; --fg: #111827; --muted: #6b7280; --soft: #374151;
+    --blue: #2563eb; --blue-bg: #dbeafe; --blue-fg: #1e40af;
+    --green: #15803d; --green-fill: #16a34a; --green-bg: #f0fdf4;
+    --amber-bg: #fef3c7; --amber: #92400e; --amber-ring: #f59e0b;
+    --purple-bg: #ede9fe; --purple: #5b21b6;
+    --red-bg: #fee2e2; --red: #b91c1c;
+    --press-grey: #e5e7eb; --press-grey-fg: #374151;
+    --font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #0f172a; --surface: #1e293b; --surface-2: #273449; --border: #475569; --fg: #f1f5f9; --muted: #94a3b8; --soft: #cbd5e1;
+    --blue-bg: #1e3a8a; --blue-fg: #bfdbfe; --green: #4ade80; --green-bg: #14532d; --amber-bg: #422006; --amber: #fcd34d;
+    --purple-bg: #2e1065; --purple: #c4b5fd; --red-bg: #450a0a; --red: #fca5a5; --press-grey: #334155; --press-grey-fg: #e2e8f0;
+    color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #0f172a; --surface: #1e293b; --surface-2: #273449; --border: #475569; --fg: #f1f5f9; --muted: #94a3b8; --soft: #cbd5e1;
+    --blue-bg: #1e3a8a; --blue-fg: #bfdbfe; --green: #4ade80; --green-bg: #14532d; --amber-bg: #422006; --amber: #fcd34d;
+    --purple-bg: #2e1065; --purple: #c4b5fd; --red-bg: #450a0a; --red: #fca5a5; --press-grey: #334155; --press-grey-fg: #e2e8f0;
+    color-scheme: dark;
+  }
+  body { margin: 0; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--bg); color: var(--fg); font: 15px/1.45 var(--font); }
+  main { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; text-wrap: balance; }
+  h2 { font-size: 1.1rem; margin: 0 0 4px; text-wrap: balance; }
+  h3 { font-size: 1rem; margin: 0 0 6px; }
+  p { margin: 0 0 8px; }
+  p.lead { color: var(--muted); margin-bottom: 18px; max-width: 70ch; }
+  .picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 16px; margin: 0 0 28px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+  .picks div { min-width: 0; font-size: .9rem; }
+  .picks b { display: block; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  section.stop { margin: 0 0 36px; }
+  .stop > p.why { color: var(--soft); max-width: 72ch; margin-bottom: 14px; }
+  .num { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--fg); color: var(--bg); font-weight: 800; font-size: .85rem; margin-right: 8px; vertical-align: middle; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .row > * { min-width: 0; }
+  .frame { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .phone { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 16px 14px; max-width: 380px; }
+  .cap { font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  .meta { color: var(--muted); font-size: .85rem; }
+  .note { color: var(--soft); font-size: .85rem; margin-top: 10px; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: .72rem; font-weight: 700; line-height: 1.35rem; margin-right: 4px; white-space: nowrap; }
+  .chip.purple { background: var(--purple-bg); color: var(--purple); }
+  .chip.blue { background: var(--blue-bg); color: var(--blue-fg); }
+  .chip.amber { background: var(--amber-bg); color: var(--amber); }
+  .chip.green { background: var(--green-bg); color: var(--green); }
+  .chip.grey { background: var(--press-grey); color: var(--press-grey-fg); }
+  .chip.red { background: var(--red-bg); color: var(--red); }
+  .press { display: inline-block; border-radius: 10px; padding: 10px 14px; font-weight: 700; font-size: .95rem; border: 0; font-family: inherit; cursor: default; }
+  .press.go { background: var(--blue); color: #fff; }
+  .press.green { background: var(--green-fill); color: #fff; }
+  .press.dead { background: var(--press-grey); color: var(--press-grey-fg); }
+  .press.outline { background: var(--surface); color: var(--fg); border: 1.5px solid var(--border); }
+  .press.small { padding: 6px 10px; font-size: .8rem; }
+  .press.wide { display: block; width: 100%; text-align: center; }
+
+  /* The card as Today and the Dashboard draw it: a 48px ring on the left where the tick box was. */
+  .card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; display: grid; grid-template-columns: 48px 1fr; gap: 12px; background: var(--surface); }
+  .card.repeat { grid-template-columns: 34px 1fr; }
+  .ring { width: 48px; height: 48px; display: grid; place-items: center; position: relative; }
+  .ring svg { position: absolute; inset: 0; width: 48px; height: 48px; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 5; }
+  .ring .track { stroke: var(--border); }
+  .ring .fill { stroke: var(--blue); stroke-linecap: round; }
+  .ring.done .fill { stroke: var(--green-fill); }
+  .ring .pct { font-size: .78rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .ring.done .pct { color: var(--green); }
+  .tick { width: 30px; height: 30px; border: 2.5px solid var(--soft); border-radius: 8px; margin-top: 2px; }
+  .card .title { font-weight: 600; line-height: 1.3; margin: 0 0 4px; }
+  .card .line { font-size: .82rem; color: var(--muted); margin: 0 0 6px; }
+  .lines { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 5px; }
+  .lines li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; font-size: .9rem; }
+  .lines .box { width: 18px; height: 18px; border: 2px solid var(--soft); border-radius: 5px; margin-top: 2px; }
+  .lines .box.on { background: var(--green-fill); border-color: var(--green-fill); position: relative; }
+  .lines .box.on::after { content: "✓"; color: #fff; font-size: .75rem; font-weight: 800; position: absolute; inset: 0; display: grid; place-items: center; }
+  .lines .box.next { border-color: var(--amber-ring); box-shadow: 0 0 0 2px var(--amber-bg); }
+  .lines small { display: block; color: var(--muted); font-size: .75rem; }
+  .thumbs { display: flex; gap: 6px; margin: 4px 0 8px; }
+  .thumb { width: 56px; height: 42px; border-radius: 6px; border: 1px solid var(--border); background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, var(--border) 6px 8px); display: grid; place-items: end; font-size: .6rem; padding: 2px 3px; color: var(--muted); box-sizing: border-box; }
+  .card .foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  /* The sheets a tap opens on the phone. */
+  .sheet { border: 1px solid var(--border); border-radius: 16px 16px 12px 12px; padding: 14px; background: var(--surface-2); }
+  .chips { display: flex; gap: 6px; margin: 8px 0 12px; flex-wrap: wrap; }
+  .chips span { flex: 1 1 48px; text-align: center; border: 2px solid var(--border); border-radius: 10px; padding: 9px 0; font-weight: 800; font-variant-numeric: tabular-nums; background: var(--surface); }
+  .chips span.on { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .chips span.was { border-color: var(--border); color: var(--muted); }
+  .tile { border: 1.5px dashed var(--border); border-radius: 10px; min-height: 78px; display: grid; place-items: center; text-align: center; font-weight: 700; font-size: .85rem; color: var(--soft); padding: 8px; margin: 0 0 8px; background: var(--surface); }
+  .tile.in { border-style: solid; border-color: var(--green-fill); background: var(--green-bg); color: var(--green); }
+  .field { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: .9rem; color: var(--muted); background: var(--surface); margin: 0 0 8px; }
+  .field.on { color: var(--fg); border-color: var(--blue); }
+
+  /* The desk: one row per card on the Dashboard's My Inbox, and the Review tab's sign-off row. */
+  .ledger { display: grid; gap: 6px; }
+  .lrow { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
+  .lrow .ring, .lrow .ring svg { width: 36px; height: 36px; }
+  .lrow .ring circle { stroke-width: 4; }
+  .lrow .ring .pct { font-size: .68rem; }
+  .lrow .t { font-weight: 600; font-size: .92rem; }
+  .lrow .s { font-size: .78rem; color: var(--muted); }
+  .lrow .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: end; }
+  @media (max-width: 520px) { .lrow { grid-template-columns: 36px 1fr; } .lrow .acts { grid-column: 2; justify-content: start; } }
+
+  /* The roadmap's stage bar: one slot per task, a slot part-filled by its percent. */
+  .slots { display: flex; gap: 4px; margin: 6px 0; }
+  .slot { flex: 1; height: 12px; border-radius: 3px; border: 1.5px solid var(--border); background: linear-gradient(90deg, var(--green-fill) var(--p, 0%), transparent var(--p, 0%)); }
+  .slot.part { border-color: var(--amber-ring); background: linear-gradient(90deg, var(--blue) var(--p, 0%), transparent var(--p, 0%)); }
+  .dock { display: grid; grid-template-columns: 1fr 44px 44px; gap: 8px; margin-top: 10px; }
+  .dock .sq { border: 1.5px solid var(--border); border-radius: 10px; display: grid; place-items: center; font-size: 1.1rem; }
+  .bar { display: flex; gap: 3px; }
+  .bar span { flex: 1; height: 28px; border-radius: 6px; border: 1.5px solid var(--border); display: grid; place-items: center; font-size: .72rem; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar span.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  /* Drive and the email. */
+  .tree { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; line-height: 1.6; color: var(--soft); white-space: pre; overflow-x: auto; margin: 8px 0 0; }
+  .mail { max-width: 640px; }
+  .mail .hdr { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; font-size: .85rem; color: var(--muted); }
+  .mail .hdr b { color: var(--fg); }
+  .person { border-top: 1px solid var(--border); padding: 12px 0; }
+  .person h3 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .person h3 small { font-weight: 600; color: var(--muted); font-size: .8rem; }
+  .group { display: grid; grid-template-columns: 76px 1fr; gap: 10px; margin: 6px 0; font-size: .9rem; }
+  .group b { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+  .group ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+  .group li { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .group li .mv { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+  .group li a { color: var(--blue); text-decoration: none; font-size: .85rem; }
+  .group li .quiet { color: var(--muted); font-size: .85rem; }
+  .mail .foot { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 8px; font-size: .82rem; color: var(--muted); }
+  .people { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
+  .people span { border: 1.5px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: .85rem; font-weight: 600; background: var(--surface); }
+  .people span.on { border-color: var(--blue); background: var(--blue-bg); color: var(--blue-fg); }
+  .sched { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--surface); font-size: .88rem; }
+  ul.plain { margin: 0 0 10px 18px; padding: 0; color: var(--soft); }
+  ul.plain li { margin-bottom: 4px; }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+</style>
+<main>
+<h1>Task cards: % done, Done when…, photos in Drive, and the Monday people email (#273)</h1>
+<p class="lead">Made-up data, made-up people. One card's life in five stops: it is written with its lines, worked on a phone, read at the desk and on the Roadmap, its photos land in Drive, and Monday's email tells whoever follows the person what moved.</p>
+
+<div class="picks">
+  <div><b>Which cards get the ring</b>One-off cards and roadmap cards. A repeating card keeps the tick.</div>
+  <div><b>The photo</b>Offered at each new %. Required at the finish, with a <em>No photo, here is why</em> line.</div>
+  <div><b>The Tasks folder</b>The app makes <em>PipeTooling Tasks</em> beside Jobs in its Shared Drive. One folder per card.</div>
+  <div><b>% and Done when…</b>A card with lines derives its % from the ticks and loses the chips. One number.</div>
+  <div><b>Who subscribes to whom</b>The office picks anyone. Everyone else gets their own week only.</div>
+  <div><b>The day</b>Monday 6 AM Central, for the week just finished.</div>
+</div>
+
+<section class="stop">
+  <h2><span class="num">1</span>Writing the card: Done when…</h2>
+  <p class="why">The ＋ Task dialog and the Roadmap's Add task get one more section. Each line is something the person can tick. Lines are optional; a card with none keeps the % chips.</p>
+  <div class="row">
+    <div class="frame">
+      <p class="cap">＋ Task, on the desk</p>
+      <div class="field on">Put the plumbing tools in a neat home</div>
+      <p class="cap">People</p>
+      <div class="people"><span class="on">Mateo ✕</span><span>＋ add someone</span></div>
+      <p class="cap">When</p>
+      <div class="people"><span class="on">Today</span><span>On a date</span><span>Repeats</span></div>
+      <p class="cap">Done when…</p>
+      <ul class="lines">
+        <li><span class="box"></span><span>Pipe is racked by size</span></li>
+        <li><span class="box"></span><span>Fittings are in labeled bins</span></li>
+        <li><span class="box"></span><span>The cart is clear and the floor swept</span></li>
+      </ul>
+      <span class="press outline small">＋ Add a line</span>
+      <p class="note">A photo is asked at each new % and always at the finish. Nothing to set.</p>
+      <p style="margin-top:12px"><span class="press go">Send</span></p>
+    </div>
+    <div class="frame">
+      <p class="cap">The same section on the Roadmap's Add task</p>
+      <div class="field on">Weld up the second set of shelves</div>
+      <p class="meta">Stage 31 · Shelve the containers</p>
+      <p class="cap">Done when…</p>
+      <ul class="lines">
+        <li><span class="box"></span><span>Four uprights welded square</span></li>
+        <li><span class="box"></span><span>Shelves fit the container's width</span></li>
+      </ul>
+      <span class="press outline small">＋ Add a line</span>
+      <p class="note">When the stage unlocks and the task lands on Darren's Today, the lines come with it. Ticks on the card move the Roadmap's bar.</p>
+    </div>
+  </div>
+</section>
+
+<section class="stop">
+  <h2><span class="num">2</span>On the phone: the ring, the lines, the photo</h2>
+  <p class="why">Checklist → Today and the Dashboard's My Inbox draw the same card. The tick box becomes a ring. A tap on the ring opens the % sheet; a tap on a line ticks it. Everything saves as you go.</p>
+  <div class="row">
+    <div class="phone">
+      <p class="cap">Today · Mateo's phone</p>
+      <div class="card">
+        <div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="80 40"/></svg><span class="pct">67</span></div>
+        <div>
+          <p class="title">Put the plumbing tools in a neat home</p>
+          <p class="line">2 of 3 done when… · Mateo · 9:40 AM</p>
+          <ul class="lines">
+            <li><span class="box on"></span><span>Pipe is racked by size<small>Mateo · 9:12 AM · 📷</small></span></li>
+            <li><span class="box on"></span><span>Fittings are in labeled bins<small>Mateo · 9:40 AM</small></span></li>
+            <li><span class="box next"></span><span>The cart is clear and the floor swept<small>the last one asks for the finishing photo</small></span></li>
+          </ul>
+          <div class="thumbs"><div class="thumb">9:12</div><div class="thumb">9:40</div></div>
+          <div class="foot"><span class="press outline small">💬 Notes 1</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="60 60"/></svg><span class="pct">50</span></div>
+        <div>
+          <p class="title">Clear the back half of the floor</p>
+          <p class="line"><span class="chip purple">⛰ Workout Facility Floors</span></p>
+          <p class="line">Mateo · 50% · Tue 3:12 PM · 📷 1</p>
+          <div class="foot"><span class="press outline small">＋ Add a note</span></div>
+        </div>
+      </div>
+      <div class="card repeat">
+        <div class="tick"></div>
+        <div>
+          <p class="title">Grease the skid steer</p>
+          <p class="line">every Sunday · keeps the tick</p>
+        </div>
+      </div>
+      <p class="note">No lines on a card: the ring takes the hand %. Lines on a card: the ring is the ticks, 2 of 3 reads 67. A repeating card is a tick, as today.</p>
+    </div>
+    <div>
+      <div class="phone" style="margin-bottom:18px">
+        <p class="cap">The % sheet · a tap on the ring</p>
+        <div class="sheet">
+          <h3>Where does it stand?</h3>
+          <p class="meta">Clear the back half of the floor · was 50% on Tue</p>
+          <div class="chips"><span class="was">0</span><span class="was">25</span><span class="was">50</span><span class="on">75</span><span>100</span></div>
+          <p class="cap">A photo of where it stands</p>
+          <div class="tile">📷 Take a photo<br><small>goes in the card's Drive folder</small></div>
+          <p class="meta" style="margin-bottom:10px">Skip this time</p>
+          <span class="press go wide">Set 75%</span>
+        </div>
+        <p class="note">100 takes today's done path: the completion notice, the Review queue, the next repeat. The thread gets a line, <em>Mateo · 75% · Wed 2:05 PM</em>.</p>
+      </div>
+      <div class="phone">
+        <p class="cap">The finishing photo · the last line ticked</p>
+        <div class="sheet">
+          <h3>Every line is ticked</h3>
+          <p class="meta">Put the plumbing tools in a neat home · 3 of 3</p>
+          <div class="tile in">📷 The finishing photo<br><small>taken 10:31 AM</small></div>
+          <div class="field">No photo, here is why…</div>
+          <span class="press green wide">Done · 100%</span>
+        </div>
+        <p class="note">Before the photo the press reads <strong>Photo first</strong> in grey; a reason typed in the line frees it. A shot with no signal waits on the phone and goes out when the signal returns.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="stop">
+  <h2><span class="num">3</span>At the desk: My Inbox rows, Review's sign-off, the Roadmap</h2>
+  <p class="why">The desk reads the same numbers as compact rows. Review's sign-off row shows the finishing photo, so the office signs off on what it can see.</p>
+  <div class="row">
+    <div class="frame">
+      <p class="cap">Dashboard → My Inbox · Overdue</p>
+      <div class="ledger">
+        <div class="lrow">
+          <div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="80 40"/></svg><span class="pct">67</span></div>
+          <div><div class="t">Put the plumbing tools in a neat home</div><div class="s">2 of 3 done when… · 📷 2 · T+78</div></div>
+          <div class="acts"><span class="chip blue">in progress</span><span class="press outline small">+ Note</span></div>
+        </div>
+        <div class="lrow">
+          <div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="60 60"/></svg><span class="pct">50</span></div>
+          <div><div class="t">Clear the back half of the floor <span class="chip purple">⛰ goal</span></div><div class="s">Mateo · 50% Tue · 📷 1 · T+74</div></div>
+          <div class="acts"><span class="press outline small">+ Note</span></div>
+        </div>
+        <div class="lrow">
+          <div class="ring"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="0 120"/></svg><span class="pct">0</span></div>
+          <div><div class="t">One marker every mile</div><div class="s">not started · T+74</div></div>
+          <div class="acts"><span class="press outline small">+ Note</span></div>
+        </div>
+      </div>
+      <p class="cap" style="margin-top:16px">Checklist → Review · To sign off</p>
+      <div class="lrow">
+        <div class="ring done"><svg viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="19"/><circle class="fill" cx="24" cy="24" r="19" stroke-dasharray="120 0"/></svg><span class="pct">✓</span></div>
+        <div><div class="t">Put the plumbing tools in a neat home</div><div class="s">Mateo · done today 10:31 AM · 3 of 3 · finishing photo</div><div class="thumbs"><div class="thumb">10:31</div></div></div>
+        <div class="acts"><span class="press green small">✓ Dismiss</span><span class="press outline small">Reopen with comment</span></div>
+      </div>
+    </div>
+    <div class="frame">
+      <p class="cap">Roadmap → Plan · the stage card</p>
+      <h3>31 · Shelve the containers</h3>
+      <p class="meta">2.5 of 6 done · Darren, Micah</p>
+      <div class="slots"><span class="slot" style="--p:100%"></span><span class="slot" style="--p:100%"></span><span class="slot part" style="--p:50%"></span><span class="slot"></span><span class="slot"></span><span class="slot"></span></div>
+      <p class="note">One slot per task. A green slot is done, a part-filled one carries its %, the amber ring marks what is next. The goal's bar up top adds the fractions the same way.</p>
+      <p class="cap" style="margin-top:16px">The task card's dock</p>
+      <p class="title" style="font-weight:600;margin:0 0 6px">31.5 · Darren welds up the second set of shelves</p>
+      <div class="dock">
+        <div>
+          <div class="bar"><span class="on">0</span><span class="on">25</span><span class="on">50</span><span>75</span><span>100</span></div>
+        </div>
+        <div class="sq">☆</div>
+        <div class="sq">🗑</div>
+      </div>
+      <p class="note"><strong>Set the %</strong> replaces <em>○ Mark done</em>. A task with Done when… lines shows the lines instead and the bar follows the ticks. 100 marks the task done and the stage counts it, as the tick did.</p>
+    </div>
+  </div>
+</section>
+
+<section class="stop">
+  <h2><span class="num">4</span>Where the photos go</h2>
+  <p class="why">Documents → Where files go gets a fifth card beside Jobs, Company, People and Fleet. The sweep that files every other photo files these too, a few minutes after the shot.</p>
+  <div class="row">
+    <div class="frame">
+      <p class="cap">Documents → Where files go</p>
+      <h3>The Tasks folder</h3>
+      <p class="meta">Each card's photos go in a folder of its own under it.</p>
+      <p style="margin:10px 0"><span class="chip amber">not set yet</span></p>
+      <p><span class="press go">Make the Tasks folder</span> <span class="press outline">Paste a folder link</span></p>
+      <p class="note">The press makes <em>PipeTooling Tasks</em> beside the Jobs folder in the app's Shared Drive, as the Fleet folder is made. The paste takes a folder from any Drive the app's account can write in, tooling@clickplumbing's included.</p>
+    </div>
+    <div class="frame">
+      <p class="cap">Drive, after a week</p>
+<pre class="tree">PipeTooling Tasks
+├── 2026-11-04 · Put the plumbing tools in a neat home
+│   ├── 2026-11-04 Mateo · pipe racked.jpg
+│   ├── 2026-11-04 Mateo · 67%.jpg
+│   └── 2026-11-05 Mateo · finish.jpg
+├── 2026-11-03 · Clear the back half of the floor
+│   └── 2026-11-05 Mateo · 50%.jpg
+└── Farm 1
+    └── 31 · Shelve the containers
+        └── 31.5 · Darren welds up the second set of shelves
+            └── 2026-11-06 Darren · 50%.jpg</pre>
+      <p class="note">Named by the day, the person and what the shot is for, the way a report's photo is named. A roadmap card's folder sits under its roadmap and stage. A folder the sweep cannot make writes its reason on the card as <em>not in Drive yet</em>, and the shot is tried again every run.</p>
+    </div>
+  </div>
+</section>
+
+<section class="stop">
+  <h2><span class="num">5</span>Monday's email: your people's week</h2>
+  <p class="why">One email a person subscribes to. It names the people they picked and what each one moved: the cards, the roadmap, the jobs. Rebuilt fresh at 6 AM from the rows, never a stored copy.</p>
+  <div class="row">
+    <div class="frame mail">
+      <div class="hdr"><b>Your people's week · Nov 2 to 8</b><br>From Click Tooling · to Taunya · Monday 6:00 AM</div>
+      <p>Three people you follow. Here is what moved last week.</p>
+      <div class="person">
+        <h3>Mateo <small>2 cards done · 1 moved · 4 photos</small></h3>
+        <div class="group"><b>Cards</b><ul>
+          <li><span>Put the plumbing tools in a neat home</span><span class="mv">0 → 100</span><span class="chip green">done · 3 of 3</span><a href="#">3 photos</a></li>
+          <li><span>Clear the back half of the floor</span><span class="mv">25 → 75</span><a href="#">1 photo</a></li>
+          <li><span>Check the AAA policy</span><span class="mv">0 → 100</span><span class="chip green">done</span></li>
+        </ul></div>
+        <div class="group"><b>Roadmap</b><ul>
+          <li><span>Workout Facility Floors</span><span class="quiet">stage 7 · 2 of 5 · clear the back half moved to 75</span></li>
+        </ul></div>
+        <div class="group"><b>Jobs</b><ul>
+          <li><span>1105 · Madison Park kitchen</span><span class="mv">40 → 65</span><span class="quiet">2 field reports · Top Out ticked</span></li>
+        </ul></div>
+      </div>
+      <div class="person">
+        <h3>Darren <small>1 moved · 1 photo</small></h3>
+        <div class="group"><b>Roadmap</b><ul>
+          <li><span>31.5 · Weld up the second set of shelves</span><span class="mv">0 → 50</span><a href="#">1 photo</a><span class="quiet">stage 31 now 2.5 of 6</span></li>
+        </ul></div>
+        <div class="group"><b>Jobs</b><ul><li><span class="quiet">no job clocked this week</span></li></ul></div>
+      </div>
+      <div class="person">
+        <h3>Rosa <small>nothing moved</small></h3>
+        <div class="group"><b>Cards</b><ul><li><span class="quiet">3 open, none moved · oldest 32 days</span></li></ul></div>
+      </div>
+      <div class="foot">You get this every Monday at 6 AM. <a href="#" style="color:var(--blue);text-decoration:none">Change who is in it</a> · <a href="#" style="color:var(--blue);text-decoration:none">Stop it</a></div>
+    </div>
+    <div>
+      <div class="frame" style="margin-bottom:18px">
+        <p class="cap">Checklist → Review · ✉ Email me their week</p>
+        <h3>Who is in it?</h3>
+        <div class="people"><span class="on">Mateo ✕</span><span class="on">Darren ✕</span><span class="on">Rosa ✕</span><span>＋ add someone</span></div>
+        <p class="cap">When</p>
+        <div class="people"><span class="on">Monday 6:00 AM Central</span><span>Another day…</span></div>
+        <ul class="lines" style="margin-top:4px"><li><span class="box on"></span><span>Every week</span></li></ul>
+        <p><span class="press go">Subscribe</span> <span class="press outline">Email me a test</span></p>
+        <p class="note">The office picks anyone. A helper, a sub or a tech sees one chip, themselves, and gets their own week. A person with nothing that moved reads <em>nothing moved</em>, never a blank.</p>
+      </div>
+      <div class="frame">
+        <p class="cap">Settings → Your account → My email schedule</p>
+        <div class="sched"><div><b>Your people's week</b><br><span class="meta">Mateo, Darren, Rosa · Monday 6:00 AM · every week</span></div><span class="press outline small">Cancel</span></div>
+        <p class="note">The same row every stream gets, with a sample on Settings → What the team sees.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="stop">
+  <h2>Not built, by design</h2>
+  <ul class="plain">
+    <li>A % on a repeating card. The tick stays; a ring on <em>Grease the skid steer</em> every Sunday would mean nothing.</li>
+    <li>A photo kept only in the app. Drive holds it; the app keeps the row and the thumbnail until the sweep has filed it, as every other photo.</li>
+    <li>The email to anyone outside the company, or about people a non-office role cannot see.</li>
+    <li>Two numbers on one card. Lines make the %, or the hand makes it, never both.</li>
+  </ul>
+</section>
+</main>
+</body>
+</html>
