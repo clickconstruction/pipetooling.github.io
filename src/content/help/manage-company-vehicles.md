@@ -132,12 +132,12 @@ A machine is an excavator, a drill, a skid steer or a trencher. Machines have th
 
 {{button:outline|+ Add a machine}} adds one. Give it the name the crew says, like E-14. Add the make and the model. Pick its template, like Small excavator or Skid steer. The template gives the machine its gauges and the questions of its walk. The app mints the code for its label.
 
-Each card says where the machine is. It reads On a job or In the yard. {{button:outline|Put on a job}} moves it to a job. {{button:outline|Hand off}} moves it to another job. {{button:outline|Back to the yard}} brings it home.
+Each card says where the machine is. The card reads On a job or In the yard. {{button:outline|Put on a job}} moves it to a job. {{button:outline|Hand off}} moves it to another job. {{button:outline|Back to the yard}} brings it home.
 
 {{button:outline|Gauges}} opens the machine's own list. Each gauge says what it holds, what it looks like and where to read it. A gauge looks like a tank, a sight glass, a dipstick or a dial. The list starts from the template. Save keeps this machine's own list. Use the template's goes back to it.
 
 {{button:outline|Print the label}} prints the QR code for the machine. Stick it on the machine. The crew scans it to open the check.
 
-{{button:outline|Ours · make it a rental}} marks a rented machine. Enter who it is from, the agreement number and the due back day. The card turns amber the day before it is due. It turns red once it is over. {{button:outline|Returned, it is not ours to check any more}} ends the rental.
+{{button:outline|Ours · make it a rental}} marks a rented machine. Enter who it is from, the agreement number and the due back day. The card turns amber the day before it is due. The card turns red once it is over. {{button:outline|Returned, it is not ours to check any more}} ends the rental.
 
 The checks, the hours and the days on jobs fill in once the crew checks the machine on the phone.
