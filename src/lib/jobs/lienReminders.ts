@@ -1,4 +1,4 @@
-import { COURTESY_AGAIN_DAYS, COURTESY_FROM_DAY, type CourtesyStatus } from './lienCourtesyNotice'
+import { COURTESY_AFFIDAVIT_MARGIN_DAYS, COURTESY_AGAIN_DAYS, COURTESY_FROM_DAY, type CourtesyStatus } from './lienCourtesyNotice'
 import { LETTER_TWO_BY_DAY, LETTER_TWO_FROM_DAY, type LetterTwoStatus } from './lienLetterTwo'
 
 /**
@@ -207,8 +207,74 @@ export function lienReminderRungRule(step: LienReminderStep): LienReminderRungRu
   }
 }
 
-/** The rule as one line the list under the rail reads. */
-export function lienReminderRungRuleWords(step: LienReminderStep): string {
-  const r = lienReminderRungRule(step)
-  return `Stands here when ${r.when}. The press: ${r.press}. ${r.who === 'leader' ? 'The leader' : 'The office'} presses it. Moves on when ${r.movesOn}.`
+export type LienReminderBrief = {
+  title: string
+  /** Whose step it is: the usual move's owner. */
+  who: 'office' | 'leader'
+  /** What this step is, one or two short sentences. */
+  what: string
+  /** Why a notice stands here. */
+  why: string
+  /** The usual move's press, as the row names it; null on Closed, where nothing is left to press. */
+  usual: string | null
+  /** The other moves the office may take instead — presses the row or the notice's footer already offers, named, never invented. */
+  instead: string[]
+  /** What moves a notice off this step with no press at all; '' on Closed. */
+  closes: string
+}
+
+const CLOSERS = 'the bill is paid, the GC authorizes direct pay in writing, the owner’s call is recorded, they answer, or the affidavit is filed'
+
+/**
+ * The step brief a pressed rung opens on Do now (v2.6574, Grace's ask of 2026-11-06: the desk should
+ * guide, and the user keeps final say). It answers four questions in order — what this step is, why
+ * a notice is here, the usual move and whose it is, the other moves allowed — and says what closes
+ * the step by itself. The days are the clocks' own constants. The other moves are the presses a
+ * sent notice's footer offers: *Record the owner’s call…*, *The GC authorized direct pay…*,
+ * *Send a courtesy notice ▸* while one may go, *Send letter two ▸* while the bill is unpaid.
+ */
+export function lienReminderBrief(step: LienReminderStep): LienReminderBrief {
+  const rule = lienReminderRungRule(step)
+  switch (step) {
+    case 1:
+      return {
+        title: LIEN_REMINDER_STEPS[0],
+        who: 'office',
+        what: 'The light step after a notice. One email and one text in plain words say the notice stands, name the lien’s day and carry the pay link. Never certified mail.',
+        why: `${rule.when[0]!.toUpperCase()}${rule.when.slice(1)}.`,
+        usual: 'Send a courtesy notice',
+        instead: ['Send letter two now, without the light step', 'Record the owner’s call', 'The GC authorized direct pay'],
+        closes: CLOSERS,
+      }
+    case 2:
+      return {
+        title: LIEN_REMINDER_STEPS[1],
+        who: 'office',
+        what: `A courtesy notice went. The desk waits ${COURTESY_AGAIN_DAYS} days for an answer before it offers another.`,
+        why: `A courtesy notice went inside the last ${COURTESY_AGAIN_DAYS} days, or ${COURTESY_AGAIN_DAYS} days ago with nothing since.`,
+        usual: `Send a courtesy notice again after ${COURTESY_AGAIN_DAYS} days, or Send letter two from day ${LETTER_TWO_FROM_DAY}`,
+        instead: ['Send letter two now', 'Record the owner’s call', 'The GC authorized direct pay'],
+        closes: CLOSERS,
+      }
+    case 3:
+      return {
+        title: LIEN_REMINDER_STEPS[2],
+        who: 'leader',
+        what: `Counsel’s certified second letter after a notice, offered from day ${LETTER_TWO_FROM_DAY} and overdue from day ${LETTER_TWO_BY_DAY}. Drafted on the notice, approved and run like any notice.`,
+        why: `Letter two is due and the courtesy notice could not go: the affidavit is inside ${COURTESY_AFFIDAVIT_MARGIN_DAYS} days, the property is a homestead, no work month is approved, or the window closed. A notice is also here while a letter two is drafting, awaiting the leader, in the run or sent.`,
+        usual: 'Send letter two',
+        instead: ['Send a courtesy notice once its hold clears', 'Record the owner’s call', 'The GC authorized direct pay', 'Open the notice'],
+        closes: CLOSERS,
+      }
+    default:
+      return {
+        title: LIEN_REMINDER_STEPS[3],
+        who: 'office',
+        what: 'The end of the ladder. The notice reads under Sent, and no press is left.',
+        why: `${rule.when[0]!.toUpperCase()}${rule.when.slice(1)}.`,
+        usual: null,
+        instead: ['Open the notice under Sent', 'Not what I said, while a word or rule send has not gone out'],
+        closes: '',
+      }
+  }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { LIEN_STEP_LADDERS, lienRunRungWords, lienStepShowingWords, lienStepTiles, type LienStepAt, type LienStepCard, type LienStepCounts, type LienStepLadder, type LienStepN } from '../../lib/jobs/lienNextUpSteps'
-import { lienReminderRungWords } from '../../lib/jobs/lienReminders'
+import { LIEN_STEP_LADDERS, lienRunRungWords, lienStepName, lienStepTiles, type LienStepAt, type LienStepCard, type LienStepCounts, type LienStepLadder, type LienStepN } from '../../lib/jobs/lienNextUpSteps'
+import { lienReminderRungWords, type LienReminderBrief } from '../../lib/jobs/lienReminders'
+import { LIEN_REMINDER_SCHEDULE, LIEN_SCHEDULE_AXIS_DAYS, LIEN_SCHEDULE_TAIL, lienScheduleMarks, lienSchedulePct, lienScheduleWords } from '../../lib/jobs/lienReminderSchedule'
 
 /**
  * The Do now list's steps, drawn (v2.4631): the rail of four rungs per kind of paper above the
@@ -113,20 +114,104 @@ export function LienStepRail({
 }
 
 /**
- * The line under the rails while a rung is pressed (v2.6522): the rung's name, how many rows are
- * bright, that the rest are faded and not held, and *Show all N*, which clears the rung as a second
- * press on it does. The rows' 0.3 opacity is a filter, and on 2026-11-04 it was read as a hold.
+ * Our schedule after a notice as a strip (v2.6574): the day axis from the packet, four weeks long,
+ * with the clocks' points on it — a courtesy may go, letter two due, letter two overdue — and the
+ * tail the affidavit's day sets. `marks` are the notices' own days, one dot per day with its count,
+ * so the strip reads "you are here"; without them it is the schedule alone, as § Rules draws it.
  */
-export function LienStepShowingLine({ on, shown, total, isMobile, onClear }: { on: LienStepAt; shown: number; total: number; isMobile: boolean; onClear: () => void }) {
-  const tone = LADDER_TONE[on.ladder]
-  const w = lienStepShowingWords(on, shown, total)
+export function LienReminderScheduleStrip({ marks = [], isMobile, tone = 'var(--text-violet-700)', tint = 'var(--bg-violet-tint)' }: { marks?: ReadonlyArray<number | null | undefined>; isMobile: boolean; tone?: string; tint?: string }) {
+  const dots = lienScheduleMarks(marks)
+  const axisTicks = [0, 7, 14, 21, LIEN_SCHEDULE_AXIS_DAYS]
   return (
-    <div data-testid="lien-step-showing" data-ladder={on.ladder} data-step={on.step} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: isMobile ? '4px 10px' : '4px 12px', margin: isMobile ? '-6px 0 12px' : '-8px 0 12px calc(84px + 10px)', padding: '5px 10px', borderRadius: 8, background: tone.tint, fontSize: '0.8125rem' }}>
-      <strong style={{ color: tone.fg }}>{w.head}</strong>
-      <span style={{ color: 'var(--text-muted)' }}>{w.count}</span>
-      <button type="button" onClick={onClear} data-testid="lien-step-show-all" style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: `1px solid ${tone.fg}`, background: 'var(--surface)', color: tone.fg, cursor: 'pointer', marginLeft: isMobile ? 0 : 'auto', minHeight: isMobile ? 32 : undefined }}>
-        {w.clear}
-      </button>
+    <div data-testid="lien-schedule-strip" title={lienScheduleWords()} style={{ display: 'grid', gap: 4 }}>
+      <div style={{ position: 'relative', height: 34, marginTop: dots.length ? 14 : 0 }}>
+        <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 18, height: 2, background: 'var(--border-strong)' }} />
+        {axisTicks.map((d) => (
+          <span key={`t${d}`} aria-hidden style={{ position: 'absolute', left: `${lienSchedulePct(d)}%`, top: 14, width: 1, height: 10, background: 'var(--border-strong)', transform: 'translateX(-50%)' }} />
+        ))}
+        {LIEN_REMINDER_SCHEDULE.map((p) => (
+          <span key={p.day} data-lien-schedule-point={p.day} style={{ position: 'absolute', left: `${lienSchedulePct(p.day)}%`, top: 12, transform: p.day === 0 ? 'none' : 'translateX(-50%)', display: 'grid', justifyItems: p.day === 0 ? 'start' : 'center', gap: 2, fontSize: '0.7rem', lineHeight: 1.15, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            <i style={{ width: 10, height: 10, borderRadius: 999, border: `2px solid ${tone}`, background: 'var(--surface)', boxSizing: 'border-box' }} />
+            <strong style={{ color: 'var(--text-700)' }}>day {p.day}</strong>
+          </span>
+        ))}
+        {dots.map((m) => (
+          <span key={`m${m.day}`} data-lien-schedule-mark={m.day} title={`${m.n} ${m.n === 1 ? 'notice' : 'notices'} at day ${m.day}`} style={{ position: 'absolute', left: `${m.pct}%`, top: -12, transform: m.past ? 'translateX(-100%)' : 'translateX(-50%)', display: 'inline-flex', alignItems: 'center', gap: 3, padding: '0 6px', borderRadius: 999, background: tint, color: tone, border: `1px solid ${tone}`, fontSize: '0.68rem', fontWeight: 700, lineHeight: '14px', whiteSpace: 'nowrap' }}>
+            {m.n > 1 ? `${m.n} · ` : ''}day {m.day}{m.past ? '+' : ''}
+          </span>
+        ))}
+      </div>
+      {/* The points' words read under the axis, not beside the dots: day 7, 10 and 14 sit too close for a label each. */}
+      {isMobile ? (
+        <ul style={{ margin: 0, padding: '0 0 0 1rem', fontSize: '0.74rem', color: 'var(--text-muted)', display: 'grid', gap: 1 }}>
+          {LIEN_REMINDER_SCHEDULE.map((p) => (
+            <li key={p.day}><strong style={{ color: 'var(--text-700)' }}>day {p.day}</strong> {p.label}</li>
+          ))}
+          {LIEN_SCHEDULE_TAIL.map((t) => (
+            <li key={t.label}>{t.label}</li>
+          ))}
+        </ul>
+      ) : (
+        <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'grid', gap: 2 }}>
+          <div style={{ display: 'flex', gap: '0.35rem 0.9rem', flexWrap: 'wrap' }}>
+            {LIEN_REMINDER_SCHEDULE.map((p) => (
+              <span key={p.day}><strong style={{ color: 'var(--text-700)' }}>day {p.day}</strong> {p.label}</span>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+            <span style={{ padding: '0 6px', borderRadius: 4, background: tint, color: 'var(--text-700)' }}>then</span>
+            <span>{LIEN_SCHEDULE_TAIL.map((t) => t.label).join(' · ')}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The step brief a pressed rung opens (v2.6574, Grace's ask of 2026-11-06): what the step is, why
+ * a notice is here, the usual move and whose, the other moves allowed, what closes it by itself —
+ * the schedule strip across the top on the REMINDERS rail — and *Every step*, which clears the rung
+ * as a second press on it does. Until v2.6574 a pressed rung faded the rows off it and a line said
+ * so; the brief teaches the step instead, and the list below is sorted, not dimmed. On a rail that
+ * has no brief yet the head and the count still read, so the press always says what it did.
+ */
+export function LienStepBrief({ on, brief, count, marks, isMobile, onClear, children }: { on: LienStepAt; brief: LienReminderBrief | null; count: number; marks?: ReadonlyArray<number | null | undefined>; isMobile: boolean; onClear: () => void; children?: ReactNode }) {
+  const tone = LADDER_TONE[on.ladder]
+  const k: CSSProperties = { fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 2 }
+  const words: CSSProperties = { fontSize: '0.8125rem', lineHeight: 1.45, color: 'var(--text-700)', margin: 0 }
+  const whoWords = brief ? (brief.who === 'leader' ? 'the leader’s step' : 'the office’s step') : ''
+  return (
+    <div data-testid="lien-step-brief" data-ladder={on.ladder} data-step={on.step} style={{ margin: isMobile ? '-4px 0 14px' : `-6px 0 14px calc(84px + 10px)`, borderLeft: `3px solid ${tone.fg}`, background: tone.tint, borderRadius: '0 10px 10px 0', padding: isMobile ? '10px 12px' : '12px 16px', display: 'grid', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <strong style={{ fontSize: '0.95rem' }} data-testid="lien-step-brief-title">{lienStepName(on)}</strong>
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }} data-testid="lien-step-brief-count">{whoWords ? `${whoWords} · ` : ''}{count} {count === 1 ? 'notice' : 'notices'} here</span>
+        <button type="button" onClick={onClear} data-testid="lien-step-brief-clear" style={{ marginLeft: isMobile ? 0 : 'auto', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: `1px solid ${tone.fg}`, background: 'var(--surface)', color: tone.fg, cursor: 'pointer', minHeight: isMobile ? 32 : undefined }}>
+          Every step
+        </button>
+      </div>
+      {on.ladder === 'reminder' ? <LienReminderScheduleStrip marks={marks} isMobile={isMobile} tone={tone.fg} tint={tone.tint} /> : null}
+      {brief ? (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.1fr) minmax(0, 1fr)', gap: isMobile ? 8 : '10px 24px' }}>
+          <div><div style={k}>What this step is</div><p style={words}>{brief.what}</p></div>
+          <div>
+            <div style={k}>The usual move</div>
+            {brief.usual ? (
+              <p style={words}><strong>{brief.usual}</strong> · {brief.who === 'leader' ? 'the leader presses it' : 'the office presses it'}</p>
+            ) : (
+              <p style={words}>The notice reads under Sent, with no press left.</p>
+            )}
+          </div>
+          <div><div style={k}>Why a notice is here</div><p style={words}>{brief.why}</p></div>
+          <div>
+            <div style={k}>You may instead</div>
+            <p style={words} data-testid="lien-step-brief-instead">{brief.instead.map((w, i) => (<span key={w}>{i ? ' · ' : ''}<strong>{w}</strong></span>))}</p>
+            <p style={{ ...words, color: 'var(--text-muted)', marginTop: 4 }}>Each press sits on the row or on the notice’s footer under Sent.</p>
+          </div>
+          {brief.closes ? <div style={{ gridColumn: isMobile ? undefined : '1 / -1' }}><div style={k}>It closes by itself when</div><p style={words}>{brief.closes[0]!.toUpperCase()}{brief.closes.slice(1)}.</p></div> : null}
+        </div>
+      ) : null}
+      {children}
     </div>
   )
 }

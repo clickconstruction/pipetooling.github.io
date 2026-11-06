@@ -2,16 +2,22 @@
 title: read the reminders ladder on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: reminders, ladder, step, rung, faded rows, pale rows, lien desk, do now, courtesy notice, letter two, closed, show all
+keywords: reminders, ladder, step, rung, step brief, schedule, day 7, day 10, day 14, lien desk, do now, courtesy notice, letter two, closed, every step, on this step
 where: /jobs?tab=stages&liendesk=1
 ---
-The Lien desk's Do now draws a Reminders strip above the rows. The strip has four steps, and every sent notice stands on one of them. This guide shows what each step means and why some rows go pale when you press a step.
+The Lien desk's Do now draws a Reminders strip above the rows. The strip has four steps, and every sent notice stands on one of them. This guide shows what each step means, what a pressed step opens, and where the schedule of days lives.
 
 ## Press a step
 
-Press a step on the Reminders strip. The rows on that step stay bright. Every other row fades to a third. A line under the strip reads *Showing 3 · Letter two* with the count of bright rows. The line says the rest are faded, not held. Press {{button:outline|Show all 15}} to bring every row back. A second press on the same step does the same.
+Press a step on the Reminders strip. A brief opens under the strip in the step's own words. The brief says what the step is and why a notice is on it. The brief names the usual move and whose press it is. The brief also names the other moves you may take instead. Every press stays yours. The brief ends with what closes the step by itself, like a payment.
 
-A faded row is not blocked. The row's button still works. The row is waiting on its own press, not on the step you pressed.
+The list below the brief sorts itself. The rows on that step come first under **On this step**. The rest follow under **On other steps**. No row fades and every button still works. Press {{button:outline|Every step}} to put the list back. A second press on the same step does the same.
+
+## Our schedule after a notice
+
+The brief opens with a strip of days. Day 0 is the day the packet went. Day 7 is when a courtesy notice may go. Day 10 is when letter two is due. Day 14 is when letter two is overdue. Each notice on the step shows its own day on the strip. Past the strip come the last two points. Seven days before the affidavit's day, you file instead of reminding. Then comes the affidavit's day, which the law sets for each job.
+
+The same strip sits in {{button:outline|§ Rules}} under **Our schedule after a notice**. There it says whose rule each day is. Day 7 and the week between courtesy notices are the owner's choice. Days 10 and 14 are counsel's rule. The seven days before the affidavit are our margin. That margin keeps a reminder from naming a lien day the law would not allow.
 
 ## The four steps
 

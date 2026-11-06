@@ -56,7 +56,7 @@ export type LienNextUpTarget =
   | { open: 'lien_window'; jobId: string; tab: 'affidavit' }
 
 /** `now` / `coming` by the day; the list draws `sign` (v2.5087, his signature on an approved notice) and `mine` (only the viewer can press it) first and `waiting` (on the leader) last — punch list #101 PR 3. `reminders` (punch list #262) holds the sent notices' courtesy and letter-two rows between `now` and `coming`. */
-export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'now' | 'reminders' | 'coming' | 'waiting'
+export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'now' | 'reminders' | 'coming' | 'waiting' | 'step_on' | 'step_other'
 
 export type LienNextUpRow = {
   key: string

@@ -1,11 +1,11 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { groupLienNextUp, isLienReminderRow, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import { LIEN_REMINDER_STEPS, lienReminderRungRuleWords, type LienReminderRow, type LienReminders } from '../../lib/jobs/lienReminders'
-import { countLienSteps, lienLaddersShown, lienStepCard, lienStepOfRow, type LienStepAt, type LienStepFacts, type LienStepLadder } from '../../lib/jobs/lienNextUpSteps'
+import { lienReminderBrief, type LienReminderRow, type LienReminders } from '../../lib/jobs/lienReminders'
+import { countLienSteps, lienLaddersShown, lienStepCard, lienStepGroups, lienStepOfRow, type LienStepAt, type LienStepFacts, type LienStepLadder } from '../../lib/jobs/lienNextUpSteps'
 import { EmptyState } from '../EmptyState'
 import { LIEN_JOB_DOOR_TITLE } from './LienJobNumber'
-import { LienStepCardView, LienStepMark, LienStepRail, LienStepRow, LienStepShowingLine, useLienStepCard } from './LienDeskSteps'
+import { LienStepBrief, LienStepCardView, LienStepMark, LienStepRail, LienStepRow, useLienStepCard } from './LienDeskSteps'
 
 /**
  * The Lien desk's Do now tab (Next up until v2.4630; punch list #82, PR 2): every lien paper that asks for an act,
@@ -108,18 +108,15 @@ export default function LienDeskNextUp({
   // A run row's list of jobs (punch list #101), folded until pressed; the find opens them all.
   const [folds, setFolds] = useState<ReadonlySet<string>>(() => new Set())
   if (loading) return <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</div>
-  const groups = groupLienNextUp(rows, { waitingOn })
-  if (groups.length === 0) {
+  const byDay = groupLienNextUp(rows, { waitingOn })
+  // A pressed rung sorts the list — its rows first, the rest after, nothing faded (v2.6574, in place of v2.4631's fade).
+  const groups = on ? lienStepGroups(rows, on) : byDay
+  if (byDay.length === 0) {
     return (
       <div data-lien-next-up="empty" style={{ padding: '2rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
         Nothing needs you right now. Every lien paper is sent, filed or waiting on its day. The Deadlines tab shows what is coming.
       </div>
     )
-  }
-  const dimmed = (r: LienNextUpRow): boolean => {
-    if (!on) return false
-    const at = lienStepOfRow(r)
-    return !at || at.ladder !== on.ladder || at.step !== on.step
   }
   // The title: a text door to the job when there is one, underlined on hover (`.lienJobDoor`); the click stops here, so the row keeps its own.
   const title = (r: LienNextUpRow, style: CSSProperties) => {
@@ -254,16 +251,13 @@ export default function LienDeskNextUp({
   return (
     <div ref={card.hostRef} data-lien-next-up="list" style={{ position: 'relative', overflowY: 'auto', minHeight: 0, padding: isMobile ? '0.6rem 0.75rem 1rem' : '0.75rem 1.25rem 1.25rem' }}>
       <LienStepRail counts={counts} ladders={ladders} on={on} isMobile={isMobile} onPick={setOn} onOpenRun={onOpenRun} viewerIsLeader={viewerIsLeader} printed={printed} reminderWaiting={reminders?.waiting} />
-      {/* A pressed rung fades the rows off it; the line says so and offers the way back (v2.6522). */}
-      {on ? <LienStepShowingLine on={on} shown={rows.filter((r) => !dimmed(r)).length} total={rows.length} isMobile={isMobile} onClear={() => setOn(null)} /> : null}
-      {reminderStep ? (
-        <div data-testid="lien-reminder-step-list" data-step={reminderStep} style={{ margin: isMobile ? '-4px 0 14px' : '-6px 0 14px calc(84px + 10px)', borderLeft: '2px solid var(--text-violet-700)', padding: '4px 0 2px 12px', fontSize: '0.8125rem' }}>
+      {/* The step brief (v2.6574): what the step is, why a notice is here, the usual move, the other moves, what closes it — and the REMINDERS rail's notices with no row here. */}
+      {on ? (
+        <LienStepBrief on={on} brief={on.ladder === 'reminder' ? lienReminderBrief(on.step) : null} count={(groups[0]?.rows.length ?? 0) + reminderRows.length} marks={on.ladder === 'reminder' ? [...(groups[0]?.rows ?? []).map((r) => r.reminder?.day ?? null), ...reminderRows.map((r) => r.day)] : []} isMobile={isMobile} onClear={() => setOn(null)}>
+          {reminderStep ? (
+        <div data-testid="lien-reminder-step-list" data-step={reminderStep} style={{ borderTop: '1px solid var(--border)', paddingTop: 8, fontSize: '0.8125rem' }}>
           <div style={{ fontSize: '0.66rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-violet-700)', fontWeight: 700, marginBottom: 2 }}>
-            {LIEN_REMINDER_STEPS[reminderStep - 1]} · {reminderRows.length}{reminderOnList ? ` here · ${reminderOnList} on the list below` : ''}
-          </div>
-          {/* The rung's rule, so the ladder can be read where it is pressed (v2.6522). */}
-          <div data-testid="lien-reminder-rung-rule" style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '0 0 6px', maxWidth: '72ch' }}>
-            {lienReminderRungRuleWords(reminderStep)}
+            Also on this step, with no row on the list · {reminderRows.length}{reminderOnList ? ` · ${reminderOnList} on the list below` : ''}
           </div>
           {reminderRows.length === 0 ? (
             // A sub-list inside the window: `main` alone, its next step the rung above it (`check:empty-words`).
@@ -280,18 +274,19 @@ export default function LienDeskNextUp({
             ))
           )}
         </div>
+          ) : null}
+        </LienStepBrief>
       ) : null}
       {groups.map((g) => (
         <section key={g.group} aria-label={g.label} data-lien-next-up-group={g.group} style={{ marginBottom: '1rem' }}>
-          <h3 style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' ? 'var(--text-violet-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
+          <h3 style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'reminders' || (g.group === 'step_on' && on?.ladder === 'reminder') ? 'var(--text-violet-700)' : g.group === 'step_on' ? 'var(--text-700)' : g.group === 'mine' || g.group === 'sign' || g.group === 'pen' ? 'var(--text-link)' : 'var(--text-muted)' }}>
             {g.label} · {g.rows.length}
           </h3>
           <div style={{ display: 'grid', gap: isMobile ? 8 : 0, border: isMobile ? 'none' : '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>
             {g.rows.map((r, i) => {
               const due = lienNextUpDueWords(r)
-              const dim = dimmed(r)
               return isMobile ? (
-                <div key={r.key} data-lien-next-up-row={r.key} data-dim={dim ? 'yes' : undefined} style={{ border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.7rem', display: 'grid', gap: 6, background: 'var(--surface)', opacity: dim ? 0.3 : 1 }}>
+                <div key={r.key} data-lien-next-up-row={r.key} style={{ border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.7rem', display: 'grid', gap: 6, background: 'var(--surface)' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     {chip(r)}
                     {due ? <span style={{ fontSize: '0.78rem', fontWeight: 600, color: dueColor(r) }}>{due}</span> : null}
@@ -308,9 +303,8 @@ export default function LienDeskNextUp({
                 <div
                   key={r.key}
                   data-lien-next-up-row={r.key}
-                  data-dim={dim ? 'yes' : undefined}
                   onClick={() => onAct(r)}
-                  style={{ display: 'grid', gridTemplateColumns: '84px minmax(0, 1.2fr) 86px minmax(0, 1.4fr) 170px auto', gap: '0.75rem', alignItems: 'center', padding: '0.5rem 0.8rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', opacity: dim ? 0.3 : 1 }}
+                  style={{ display: 'grid', gridTemplateColumns: '84px minmax(0, 1.2fr) 86px minmax(0, 1.4fr) 170px auto', gap: '0.75rem', alignItems: 'center', padding: '0.5rem 0.8rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer' }}
                 >
                   <span>{chip(r)}</span>
                   {r.jobs ? (
