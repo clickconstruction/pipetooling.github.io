@@ -68,6 +68,8 @@ import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
 import { ACCURACY_MIN_COUNT, canSeeTaskCosts, estimateAccuracy, estimateAccuracyByPerson, formatMultiplier, formatWholeDollars, sumEstimateDollars } from '../lib/checklistCostEstimate'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import { useTaskLines } from '../hooks/useTaskLines'
+import { ringState, takesRing } from '../lib/taskProgress'
+import { setTaskPercent } from '../lib/taskProgressIo'
 
 type UserRole =
   | 'dev'
@@ -86,6 +88,8 @@ type ChecklistInstance = {
   checklist_item_id: string
   scheduled_date: string
   completed_at: string | null
+  /** Task cards (#273): the day row's percent; a done row reads 100 whatever is stored. */
+  percent_complete?: number | null
   notes: string | null
   completed_by_user_id: string | null
   created_at: string | null
@@ -511,7 +515,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     const today = toLocalDateString(new Date())
     const { data: todayData, error: e1 } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -527,29 +531,30 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     // client-side so the reopened check can share the same rows.
     const { data: pastData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, show_until_completed, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, show_until_completed, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .is('completed_at', null)
       .lt('scheduled_date', today)
       .order('scheduled_date', { ascending: false })
       .limit(300)
-    const pastIncomplete = (pastData ?? []) as ChecklistInstance[]
+    // The percent column is younger than the generated types (#273); the types PR after the push removes the unknown step.
+    const pastIncomplete = (pastData ?? []) as unknown as ChecklistInstance[]
     const qualifying = pastIncomplete.filter((i) => qualifiesOutstanding(i.checklist_items))
     const rest = pastIncomplete.filter((i) => !qualifiesOutstanding(i.checklist_items))
     let reopenedOnes: ChecklistInstance[] = []
     if (rest.length > 0) {
       const { data: transData } = await supabase
         .from('checklist_instance_events')
-        .select('id, instance_id, event_type, actor_user_id, body, created_at')
+        .select('id, instance_id, event_type, actor_user_id, body, created_at, percent')
         .in('instance_id', rest.map((r) => r.id))
         .in('event_type', ['completed', 'reopened'])
         .order('created_at', { ascending: true })
-      const grouped = groupEventsByInstance((transData ?? []) as ChecklistCardEvent[])
+      const grouped = groupEventsByInstance((transData ?? []) as unknown as ChecklistCardEvent[])
       reopenedOnes = rest.filter((i) => lastTransitionIsReopen(grouped.get(i.id) ?? []))
     }
     const overdueData = [...qualifying, ...reopenedOnes]
     setOutstandingInstances(sortOutstanding(overdueData))
-    const merged = [...(todayData ?? [])] as ChecklistInstance[]
+    const merged = [...(todayData ?? [])] as unknown as ChecklistInstance[]
     const mergedItemIds = [...new Set(merged.map((r) => r.checklist_item_id))]
     const orderMap = new Map<string, number>()
     if (mergedItemIds.length > 0) {
@@ -580,11 +585,11 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     }
     const { data, error: e } = await supabase
       .from('checklist_instance_events')
-      .select('id, instance_id, event_type, actor_user_id, body, created_at')
+      .select('id, instance_id, event_type, actor_user_id, body, created_at, percent')
       .in('instance_id', instanceIds)
       .order('created_at', { ascending: true })
     if (e) return
-    const events = (data ?? []) as ChecklistCardEvent[]
+    const events = (data ?? []) as unknown as ChecklistCardEvent[]
     setEventsByInstance(groupEventsByInstance(events))
     const actorIds = [...new Set(events.map((ev) => ev.actor_user_id).filter((v): v is string => !!v))]
     const missing = actorIds.filter((id) => !(id in eventActorNameById))
@@ -645,13 +650,13 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     const today = toLocalDateString(new Date())
     const { data, error: e } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .gt('scheduled_date', today)
       .order('scheduled_date', { ascending: true })
       .limit(30)
     if (e) return
-    setUpcomingInstances((data ?? []) as ChecklistInstance[])
+    setUpcomingInstances((data ?? []) as unknown as ChecklistInstance[])
   }
 
   async function toggleComplete(inst: ChecklistInstance) {
@@ -851,6 +856,17 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
                     // The last tick closes the card in the database; read the day again so the box and the queue agree.
                     if (r.allTicked) await loadToday()
                   }}
+                  ring={takesRing({ repeatType: inst.checklist_items?.repeat_type ?? 'once', roadmapTaskId: inst.checklist_items?.roadmap_group_task_id ?? null })}
+                  onSetPercent={async (percent, words) => {
+                    if (!authUserId) return false
+                    const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
+                    if (!r.ok) {
+                      setError(r.error ?? null)
+                      return false
+                    }
+                    await loadToday()
+                    return true
+                  }}
                   fullHistory={{
                     item: {
                       id: inst.checklist_item_id,
@@ -920,6 +936,29 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
         instances={outstandingInstances}
         eventsByInstance={eventsByInstance}
         currentUserId={authUserId}
+        nameById={eventActorNameById}
+        ringFor={(inst) => {
+          const it = (inst as ChecklistInstance).checklist_items
+          if (!takesRing({ repeatType: it?.repeat_type ?? 'once', roadmapTaskId: it?.roadmap_group_task_id ?? null })) return null
+          const lines = taskLines.linesFor(inst.id)
+          return ringState({ completedAt: inst.completed_at, percentComplete: (inst as ChecklistInstance).percent_complete, lines: lines.length, ticked: lines.filter((l) => l.checked).length })
+        }}
+        linesFor={(inst) => taskLines.linesFor(inst.id)}
+        onTickLine={async (inst, criterionId, ticked) => {
+          const r = await taskLines.tick(inst.id, criterionId, ticked)
+          if (!r.ok && r.error) setError(r.error)
+          if (r.allTicked) await loadToday()
+        }}
+        onSetPercent={async (inst, percent, words) => {
+          if (!authUserId) return false
+          const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
+          if (!r.ok) {
+            setError(r.error ?? null)
+            return false
+          }
+          await loadToday()
+          return true
+        }}
         todayStr={toLocalDateString(new Date())}
         titleFor={(inst) => {
           const item = (inst as ChecklistInstance).checklist_items

@@ -16,6 +16,8 @@ export type LedgerInstance = {
   scheduled_date: string
   completed_at: string | null
   completed_by_user_id: string | null
+  /** Task cards (#273): the day row's percent, for the ring on an outstanding row. */
+  percent_complete?: number | null
   checklist_items?: { title: string; links?: string[] | null; due_date?: string | null } | null
 }
 

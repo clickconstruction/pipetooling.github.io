@@ -83,7 +83,8 @@ export function useDashboardBoot({ authUserId }: UseDashboardBootInput) {
       })
       setUserNames(userNamesSet)
 
-      const checklistDataUnsorted = (checklistRes.data ?? []) as ChecklistInstance[]
+      // The percent column is younger than the generated types (#273); the types PR after the push removes the unknown step.
+      const checklistDataUnsorted = (checklistRes.data ?? []) as unknown as ChecklistInstance[]
       if (!cancelled) {
         setTodayChecklist(checklistDataUnsorted)
         setChecklistLoading(false)
