@@ -4,6 +4,7 @@ import { findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/d
 import { freeName } from '../_shared/driveJobFolder.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
 import { NO_PEOPLE_FOLDER_WORDS, driveSafeName } from '../_shared/whereFilesGo.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * The person file's evidence, into Drive (the People → Paperwork spike, 2026-11-02). A piece of evidence is a record on
@@ -134,6 +135,8 @@ serve(async (req) => {
     const auth = req.headers.get('Authorization') ?? ''
     const asUser = createClient(url, anonKey, { global: { headers: { Authorization: auth } } })
     const { data: me } = await asUser.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, me?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (!me?.user) return json({ error: 'Sign in first.' }, 401)
     const { data: isDev } = await asUser.rpc('is_dev')
     if (isDev !== true) return json({ error: 'Only a dev files evidence.' }, 403)

@@ -31,6 +31,7 @@ import {
   type CrewDayEmailPayload,
 } from './render.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -164,6 +165,8 @@ async function requireEligible(
     data: { user },
     error: authErr,
   } = await jwtClient.auth.getUser(token)
+  const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+  if (archivedRefusal) return archivedRefusal
   if (authErr || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
 
   const { data: meRow } = await admin

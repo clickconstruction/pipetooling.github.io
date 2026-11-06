@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Driven distance — and, since v2.3764, the drive time — between two points via
@@ -126,6 +127,8 @@ serve(async (req) => {
   // Cache first — a hit answers even when the Routes key is missing or the API is off.
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   const admin = serviceKey.length > 0 ? createClient(supabaseUrl, serviceKey) : null
+  const archivedRefusal = admin ? await refuseArchivedCaller(admin, user?.id, corsHeaders) : null
+  if (archivedRefusal) return archivedRefusal
   const originKey = pointKey(origin)
   const destinationKey = pointKey(destination)
   if (admin) {

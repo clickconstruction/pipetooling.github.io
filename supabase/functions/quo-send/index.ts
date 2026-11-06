@@ -8,6 +8,7 @@ import { lastOurTextAt, loadBoxes, loadSeats, quoCompany, sendText } from '../_s
 import { isJobModeSend } from '../_shared/gcKernels/lib/quo/techSend.ts'
 import { textRefusal, type OkToTextRow } from '../_shared/gcKernels/lib/prospects/textingRule.ts'
 import { jobModeSend } from '../_shared/quoTechSend.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * quo-send — Messages, cut 5: a text from the reply box's send window, out through Quo from its box's number. The
@@ -62,6 +63,8 @@ serve(async (req) => {
     const caller = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } })
 
     const { data: u } = await caller.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     if (!u?.user) return refuse('signIn', 'Sign in to send a text.', 401)
     const { data: who } = await admin
       .from('users')

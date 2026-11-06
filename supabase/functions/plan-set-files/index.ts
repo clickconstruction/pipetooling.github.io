@@ -6,6 +6,7 @@ import { driveGet } from '../_shared/driveJobFolder.ts'
 import { driveQueryTerm } from '../_shared/fileIndexKernel.ts'
 import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
 import { parsePlanSetFilesAsk, runPlanSetFiles, type MailAttachmentRow, type PlanSetFileRow, type PlanSetFilesDrive } from '../_shared/planSetFilesRun.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Plan set files (punch list #239, PR 5). One Drive subfolder per set of plans, under the job's Plans folder, and the
@@ -80,6 +81,8 @@ serve(async (req) => {
     const auth = req.headers.get('Authorization') ?? ''
     const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
     const { data: u } = await anon.auth.getUser()
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const callerId = u?.user?.id
     if (!callerId) return json({ error: 'Sign in first.' }, 401)
 

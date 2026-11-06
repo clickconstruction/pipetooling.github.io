@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { LIEN_STATUS_NOTE_MAX, lienStatusEmailHtml, lienStatusEmailText, lienStatusSubject, parseLienStatusPayload } from '../_shared/lienDeskStatus.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * Email where the liens stand (v2.4311): the Lien desk's Share → Email a teammate….
@@ -61,6 +62,8 @@ serve(async (req) => {
     if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
 
     const admin = createClient(supabaseUrl, serviceRole)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: meRow } = await admin.from('users').select('id, name, email, role, archived_at, read_only').eq('id', user.id).match(REAL_ACCOUNT).maybeSingle()
     const me = meRow as UserRow | null
     if (!me || me.archived_at || !DESK_ROLES.has(String(me.role))) return jsonResponse({ error: 'Only the people who use the Lien desk can send this.' }, 403)

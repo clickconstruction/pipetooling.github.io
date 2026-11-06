@@ -13,6 +13,7 @@ import { buildStripeInvoiceItemsFromFixtures, scopeFixturesToInvoice } from '../
 import { stripeSellerDisplayName } from '../_shared/stripeSellerDisplayName.ts'
 import { buildPipetoolingStripeInvoiceNumber } from '../_shared/pipetoolingStripeInvoiceNumber.ts'
 import { stripeInvoiceLinesDataForFixtureOrderDisplay } from '../_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -150,6 +151,8 @@ serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
 
     const { data: jobRow, error: jobErr } = await admin
       .from('jobs_ledger')

@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * bridge-sheet-email (v2.5224): mails the Bridge's Monday sheet to the person
@@ -47,6 +48,8 @@ serve(async (req) => {
     if (authErr || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
 
     const admin = createClient(supabaseUrl, serviceRole)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: me, error: meErr } = await admin.from('users').select('id, role, email, archived_at, is_sample, is_digital_twin').eq('id', user.id).maybeSingle()
     const row = me as { role?: string; email?: string | null; archived_at?: string | null; is_sample?: boolean; is_digital_twin?: boolean } | null
     if (meErr || !row) return jsonResponse({ error: 'Unauthorized' }, 401)

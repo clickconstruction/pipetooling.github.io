@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { CODE_KICKOFF, KICKOFF_CONNECTOR_PLACEHOLDER, PRICING_KICKOFF, ROUNDS_KICKOFF } from '../_shared/twinKickoffs.ts'
 import { twinMcpConnectorUrl } from '../_shared/twinConnectorUrl.ts'
 import { formatTwinMcpKey } from '../_shared/mcpKeyPrefixes.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 // twin-setup v1.1.0 — "Set up on this Mac" (Price Matrix PR 6, docs/PRICE_MATRIX_PLAN.md).
 // v1.1.0 (v2.4231): the bid robot's redeem hands back the Claude Code kickoff and says so
@@ -128,6 +129,8 @@ serve(async (req) => {
       if (!auth.startsWith('Bearer ')) return json({ error: 'Sign in first' }, 401)
       const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
       const { data: u } = await anon.auth.getUser()
+      const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+      if (archivedRefusal) return archivedRefusal
       if (!u?.user) return json({ error: 'Sign in first' }, 401)
       const { data: me } = await admin.from('users').select('id, role, name').eq('id', u.user.id).maybeSingle()
       if (!me || !STAFF_ROLES.includes(me.role as string)) return json({ error: 'Estimating staff only' }, 403)

@@ -4,6 +4,7 @@ import { DocsmitClient, DocsmitError } from '../_shared/docsmitClient.ts'
 import { loadDocsmitConfig } from '../_shared/mailConfig.ts'
 import { appendEvent, mailCassAddress, mailCassVerdict, mailClientMsgId, mailMessageTitle, mailPartyFromPiece, mailPieceUpdateFromParty, mailPrepareProblems, mailResendInput, mailResolvedWords, type MailPiecePrepareInput, type MailPieceRow } from '../_shared/mailSend.ts'
 import { PIECE_COLUMNS, loadOpenPieces, loadPiecesByIds, refreshPieces, writeTrackingToFilings, type MailDb } from '../_shared/mailDocsmitRefresh.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * mail-send-docsmit (the Docsmit train, PR 3 — docs/DOCSMIT_LIEN_RUN_PLAN.md): the office's door to
@@ -80,6 +81,8 @@ serve(async (req) => {
     if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } }) as unknown as MailDb
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: roleRow } = await admin.from('users').select('role, read_only').eq('id', user.id).maybeSingle()
     const role = String((roleRow as { role?: string } | null)?.role ?? '')
     if (!OFFICE_ROLES.has(role) || (roleRow as { read_only?: boolean } | null)?.read_only) return jsonResponse({ error: 'Not authorized' }, 403)

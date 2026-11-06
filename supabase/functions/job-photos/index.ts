@@ -4,6 +4,7 @@ import { DRIVE, driveFolderIdFromUrl, googleAccessToken } from '../_shared/drive
 import { childFolder, driveGet, driveMedia } from '../_shared/driveJobFolder.ts'
 import { DRIVE_FOLDER_MIME, driveViewUrl } from '../_shared/driveLink.ts'
 import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
  * A job's Drive photos in the app (punch list #164, PR 5; the owner, 2026-10-24: photos always live in Google Drive).
@@ -255,6 +256,8 @@ serve(async (req) => {
     const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
     if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 503)
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
+    const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const token = await googleAccessToken(saJson)
     if (ask.action === 'files') return json(await filesAnswer(admin, token, ask.jobId))
     const folders = await jobPhotoFolders(admin, token, ask.jobId)

@@ -61,6 +61,7 @@ import {
   type GcOfficeNotice,
   type GcOfficeNoticesPayload,
 } from '../_shared/gcOfficeNotices.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -88,6 +89,8 @@ async function requireMoneyTeam(req: Request, admin: Admin): Promise<Caller | Re
     data: { user },
     error,
   } = await jwtClient.auth.getUser(authHeader.replace(/^Bearer\s+/i, ''))
+  const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+  if (archivedRefusal) return archivedRefusal
   if (error || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
   const { data: me } = await admin.from('users').select('id, email, name, role, archived_at, read_only').match(REAL_ACCOUNT).eq('id', user.id).maybeSingle()
   if (!me || me.archived_at || !GC_CUSTOMER_EMAIL_ROLES.includes(String(me.role))) return jsonResponse({ error: 'Forbidden' }, 403)

@@ -29,6 +29,7 @@ import {
   companyTradeMessageRow,
   parseCompanySigningRequest,
 } from '../_shared/companySigningSend.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /** Short portal address root — mirrors `PORTAL_SHORT_ORIGIN` in src/lib/portal/portalShortOrigin.ts. */
 const PORTAL_SHORT_ORIGIN = 'https://my.clickplumbing.com/'
@@ -326,6 +327,8 @@ serve(async (req) => {
     const acceptUrl = `${origin.replace(/\/$/, '')}/contract/accept?t=${encodeURIComponent(rawToken)}`
 
     const admin = createClient(supabaseUrl, serviceKey)
+    const archivedRefusal = await refuseArchivedCaller(admin, user?.id, corsHeaders)
+    if (archivedRefusal) return archivedRefusal
     const { data: updatedRows, error: upErr } = await admin
       .from('person_contract_documents')
       .update({

@@ -11,6 +11,7 @@ import {
   stripeInvoiceMetadataForOobPayment,
   truncateStripeMetadataValue,
 } from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
+import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -156,6 +157,8 @@ serve(async (req) => {
         return jsonResponse({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY' }, 500)
       }
       const adminForRow = createClient(supabaseUrl, serviceKeyForRow)
+      const archivedRefusal = await refuseArchivedCaller(adminForRow, user?.id, corsHeaders)
+      if (archivedRefusal) return archivedRefusal
       const { data: rowData, error: rowErr } = await adminForRow
         .from('jobs_ledger_payments')
         .select('id, job_id, invoice_id, amount, paid_on, payment_type, reference_number, note, stripe_credit_note_id, mercury_transaction_id')

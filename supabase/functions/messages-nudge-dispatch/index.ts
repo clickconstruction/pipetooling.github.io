@@ -57,6 +57,7 @@ import { NO_PIPELINE_ROWS, PIPELINE_SELECTS, type PipelineRows } from '../_share
 import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import type { JobAt } from '../_shared/gcKernels/lib/quo/rows.ts'
 import { todayYmdInAppTz } from '../_shared/gcKernels/utils/dateUtils.ts'
+import { isArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -247,6 +248,7 @@ async function mayDryRun(req: Request, admin: any, supabaseUrl: string, cronOk: 
   const caller = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: auth } } })
   const { data: u } = await caller.auth.getUser()
   if (!u?.user) return false
+  if (await isArchivedCaller(admin, u.user.id)) return false
   const { data: who } = await admin.from('users').select('role, archived_at').match(REAL_ACCOUNT).eq('id', u.user.id).maybeSingle()
   return who?.role === 'dev' && !who.archived_at
 }
