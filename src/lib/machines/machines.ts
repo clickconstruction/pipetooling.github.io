@@ -289,6 +289,19 @@ export function questionsFor(questions: readonly MachineQuestion[], m: Machine, 
   return questions.filter((x) => (x.when === kind || x.when === 'both') && ((x.templateId === null && x.machineId === null) || (x.templateId !== null && x.templateId === m.templateId) || x.machineId === m.id))
 }
 
+/**
+ * The blanks a template hands the crew, for the office choosing one in the block editor: its gauges by name and how
+ * many stops each check asks (the template's own and every machine's), so the office sees the check will match.
+ */
+export function templateBlanksWords(levels: readonly LevelDef[], questions: readonly MachineQuestion[], templateId: string): string {
+  const names = levels.map((l) => l.name)
+  const gauges = names.length === 0 ? 'No gauges' : names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  const mine = questions.filter((q) => (q.templateId === null && q.machineId === null) || q.templateId === templateId)
+  const pre = mine.filter((q) => q.when !== 'post').length
+  const post = mine.filter((q) => q.when !== 'pre').length
+  return `${gauges} · ${pre} ${pre === 1 ? 'stop' : 'stops'} before it runs, ${post} when leaving`
+}
+
 /* ------------------------------------------------------------------ the plan: machines on a job's day */
 
 export function assignmentsFor(assignments: readonly MachineAssignment[], jobId: string, day: string): MachineAssignment[] {

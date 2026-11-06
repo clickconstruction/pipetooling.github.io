@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arrivalWords, assignmentClash, daysBetween, defaultLevels, machineDayWords, machineDays, machinesOnJob, placeAfterLeaving, type MachineAssignment, gaugePreset, hoursLine, isHeld, leaveState, leaveWords, levelWords, rentalWords, lineState, lineWords, nextOpen, questionsFor, verdictOf, walkProgress, type Machine, type MachineCheck, type MachineQuestion } from './machines'
+import { arrivalWords, assignmentClash, daysBetween, defaultLevels, machineDayWords, machineDays, machinesOnJob, placeAfterLeaving, type MachineAssignment, gaugePreset, hoursLine, isHeld, leaveState, leaveWords, levelWords, rentalWords, lineState, lineWords, nextOpen, questionsFor, templateBlanksWords, verdictOf, walkProgress, type Machine, type MachineCheck, type MachineQuestion } from './machines'
 
 const m: Machine = { id: 'm1', unitLabel: 'E-12', make: 'Kubota', model: 'KX040', kind: 'excavator', templateId: 't-exc', code: 'E12KX040', jobId: 'j1', jobWords: '972 · Test', heldSince: null, levels: defaultLevels('excavator'), rental: null, driveLink: null }
 const qs: MachineQuestion[] = [
@@ -96,6 +96,18 @@ describe('the leaving check, rentals and the Drive folder', () => {
     expect(rentalWords(r, '2026-11-09').words).toContain('2 days over')
     expect(rentalWords({ ...r, dueBack: '' }, '2026-11-05').words).toContain('open-ended')
     expect(daysBetween('2026-11-05', '2026-11-07')).toBe(2)
+  })
+  it('tells the office what blanks a template hands the crew: its gauges and the stops of each check', () => {
+    const qs: MachineQuestion[] = [
+      { id: 'q1', templateId: 't1', machineId: null, words: 'Tracks tight?', holdsMachine: false, when: 'pre' },
+      { id: 'q2', templateId: null, machineId: null, words: 'Leaks under it?', holdsMachine: true, when: 'both' },
+      { id: 'q3', templateId: 't2', machineId: null, words: 'Bit sharp?', holdsMachine: false, when: 'pre' },
+      { id: 'q4', templateId: null, machineId: 'm9', words: 'That one bolt?', holdsMachine: false, when: 'pre' },
+    ]
+    const levels = [gaugePreset('tank', 'Fuel'), gaugePreset('dial', 'Hydraulic oil'), gaugePreset('glass', 'Coolant')]
+    expect(templateBlanksWords(levels, qs, 't1')).toBe('Fuel, Hydraulic oil and Coolant · 2 stops before it runs, 1 when leaving')
+    expect(templateBlanksWords([levels[0]!], qs, 't2')).toBe('Fuel · 2 stops before it runs, 1 when leaving')
+    expect(templateBlanksWords([], [], 't3')).toBe('No gauges · 0 stops before it runs, 0 when leaving')
   })
 })
 

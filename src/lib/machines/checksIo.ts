@@ -83,6 +83,13 @@ export async function loadTemplates(): Promise<MachineTemplate[]> {
   return (data ?? []).map(templateFromRow)
 }
 
+/** Every check question, for the block editor's blanks line under a template: the template's and every machine's. */
+export async function loadQuestions(): Promise<MachineQuestion[]> {
+  const { data, error } = await supabase.from('machine_check_questions').select('*').order('sort', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map(questionFromRow)
+}
+
 export interface JobMachines {
   machines: Machine[]
   questions: MachineQuestion[]
