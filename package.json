@@ -50,6 +50,7 @@
     "test:pg:pay-applications": "bash scripts/pgtest-pay-applications.sh",
     "test:pg:pay-sources": "bash scripts/pgtest-pay-sources.sh",
     "test:pg:typed-hours": "bash scripts/pgtest-typed-hours.sh",
+    "test:pg:machine-photos-path": "bash scripts/pgtest-machine-photos-path.sh",
     "test:pg:payment-activity": "bash scripts/pgtest-payment-activity.sh",
     "test:pg:combined-copies": "bash scripts/pgtest-combined-copies.sh",
     "test:pg:materials-model-flip": "bash scripts/pgtest-materials-model-flip.sh",

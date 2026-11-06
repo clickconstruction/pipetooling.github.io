@@ -200,8 +200,14 @@ export async function addCheckPhoto(input: { check: MachineCheck; machine: Machi
   const path = `${input.machine.id}/${data.id}.jpg`
   const up = await supabase.storage.from(BUCKET).upload(path, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: false })
   if (up.error) throw up.error
-  const { error: kept } = await supabase.from('machine_check_photos').update({ storage_path: path }).eq('id', data.id)
-  if (kept) throw kept
+  const kept = await supabase.from('machine_check_photos').update({ storage_path: path }).eq('id', data.id).select('id')
+  if (kept.error || !kept.data?.length) {
+    // The bytes are up but the row does not say where, so the sweep would never file them: take both back and say why,
+    // rather than draw a photo that looks saved (the table had no update policy until v2.6578, and the refusal is silent).
+    await supabase.storage.from(BUCKET).remove([path])
+    await supabase.from('machine_check_photos').delete().eq('id', data.id)
+    throw kept.error ?? new Error('The photo went up, but its record was refused the path to it. Try again, and tell the office if it keeps happening.')
+  }
   return { id: data.id, shot: data.shot, fileName: data.file_name, src: URL.createObjectURL(input.blob), driveFileId: null, filedAt: null, failWhy: null }
 }
 
