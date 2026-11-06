@@ -19,7 +19,7 @@ describe('lienStepOfRow (v2.4631)', () => {
     for (const action of ['note_missed', 'add_tracking', 'letter_two', 'review_hold', 'record_service'] as const) expect(lienStepOfRow(row({ action }))).toBeNull()
   })
   it('a courtesy or letter-two row stands on the REMINDERS ladder when the desk read its rung (punch list #262), and nowhere without it', () => {
-    const reminder = { step: 2 as const, state: 'again' as const, words: 'day 16 · courtesy sent Nov 2 by email · nothing since', day: 16, counted: true }
+    const reminder = { step: 2 as const, state: 'sent' as const, words: 'day 16 · courtesy sent Nov 2 by email · nothing since', day: 16, counted: true }
     expect(lienStepOfRow(row({ action: 'courtesy', reminder: { ...reminder, step: 1, state: 'due' } }))).toEqual({ ladder: 'reminder', step: 1 })
     expect(lienStepOfRow(row({ action: 'letter_two', reminder }))).toEqual({ ladder: 'reminder', step: 2 })
     expect(lienStepOfRow(row({ action: 'courtesy' }))).toBeNull()

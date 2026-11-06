@@ -100,7 +100,7 @@ describe('the rung’s words, whose press each rung is, and the card', () => {
     expect([1, 2, 3, 4].map((n) => lienReminderStepWho(n as 1 | 2 | 3 | 4))).toEqual(['office', 'office', 'leader', 'office'])
   })
   it('writes the ladder out for the card: done, now, to come', () => {
-    const items = lienReminderLadderItems({ step: 2, state: 'again', words: 'day 16 · courtesy sent Nov 2 by email · nothing since', day: 16, counted: true })
+    const items = lienReminderLadderItems({ step: 2, state: 'sent', words: 'day 16 · courtesy sent Nov 2 by email · nothing since', day: 16, counted: true })
     expect(items.map((i) => `${i.state} ${i.title}`)).toEqual(['done Reminder went', 'now Reminder sent', 'todo Attorney’s letter', 'todo Closed'])
     expect(items[1]!.detail).toBe('day 16 · courtesy sent Nov 2 by email · nothing since. One courtesy goes; after a week of silence the attorney’s letter leads.')
     expect(items[2]!.detail).toBe('Counsel’s certified second letter, from day 10.')
