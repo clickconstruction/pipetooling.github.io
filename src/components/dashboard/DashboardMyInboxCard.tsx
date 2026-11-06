@@ -23,6 +23,8 @@ import type { ChecklistInstance } from '../../lib/dashboardBootTypes'
 import { ChecklistInstanceCard } from '../checklist/ChecklistInstanceCard'
 import { groupEventsByInstance, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { useTaskLines } from '../../hooks/useTaskLines'
+import { takesRing } from '../../lib/taskProgress'
+import { setTaskPercent } from '../../lib/taskProgressIo'
 
 /**
  * Dashboard "My Inbox" group card: Due Today / Overdue checklists and the
@@ -261,7 +263,7 @@ export function DashboardMyInboxCard({
     const today = toLocalDateString(new Date())
     const { data: todayData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -274,17 +276,18 @@ export function DashboardMyInboxCard({
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
         .eq('checklist_instance_assignees.user_id', authUserId)
         .is('completed_at', null)
         .lt('scheduled_date', today)
         .in('checklist_item_id', itemIds)
         .order('scheduled_date', { ascending: true })
-      overdueData = (data ?? []) as ChecklistInstance[]
+      // The percent column is younger than the generated types (#273); the types PR after the push removes the unknown step.
+      overdueData = (data ?? []) as unknown as ChecklistInstance[]
     }
-    const merged = [...overdueData, ...(todayData ?? [])]
+    const merged = [...overdueData, ...((todayData ?? []) as unknown as ChecklistInstance[])]
     merged.sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
-    setTodayChecklist(merged as ChecklistInstance[])
+    setTodayChecklist(merged)
   }
 
   async function loadOutstanding() {
@@ -292,7 +295,7 @@ export function DashboardMyInboxCard({
     setOutstandingLoading(true)
     const { data, error } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, created_by_user_id, roadmap_group_task_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
@@ -300,7 +303,7 @@ export function DashboardMyInboxCard({
       setOutstandingLoading(false)
       return
     }
-    const raw = (data ?? []) as Array<{
+    const raw = (data ?? []) as unknown as Array<{
       id: string
       checklist_item_id: string
       scheduled_date: string
@@ -345,11 +348,11 @@ export function DashboardMyInboxCard({
     }
     const { data, error: e } = await supabase
       .from('checklist_instance_events')
-      .select('id, instance_id, event_type, actor_user_id, body, created_at')
+      .select('id, instance_id, event_type, actor_user_id, body, created_at, percent')
       .in('instance_id', instanceIds)
       .order('created_at', { ascending: true })
     if (e) return
-    const events = (data ?? []) as ChecklistCardEvent[]
+    const events = (data ?? []) as unknown as ChecklistCardEvent[]
     setEventsByInstance(groupEventsByInstance(events))
     const actorIds = [...new Set(events.map((ev) => ev.actor_user_id).filter((v): v is string => !!v))]
     const missing = actorIds.filter((id) => !(id in eventActorNameById))
@@ -603,6 +606,18 @@ export function DashboardMyInboxCard({
     // The last tick closes the card in the database; read the list again so the tick box and the queue agree.
     if (r.allTicked) await reload()
   }
+  const ringOnCard = (inst: ChecklistInstance) =>
+    takesRing({ repeatType: inst.checklist_items?.repeat_type ?? 'once', roadmapTaskId: inst.checklist_items?.roadmap_group_task_id ?? null })
+  const setPercentOnCard = async (inst: { id: string }, percent: number, words: string, reload: () => Promise<void>): Promise<boolean> => {
+    if (!authUserId) return false
+    const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
+    if (!r.ok) {
+      setUserError(r.error ?? null)
+      return false
+    }
+    await reload()
+    return true
+  }
   const showChecklist = checklistLoading || todayChecklist.length > 0
   /** Recently Completed only earns its corner link when something was actually completed (dev-only feature). */
   const showRecentlyCompleted = isDev && completedItems.length > 0
@@ -682,6 +697,8 @@ export function DashboardMyInboxCard({
                   onPostComment={(body) => postCardComment(inst, body)}
                   lines={taskLines.linesFor(inst.id)}
                   onTickLine={(criterionId, ticked) => tickLineOnCard(inst, criterionId, ticked, loadTodayChecklist)}
+                  ring={ringOnCard(inst)}
+                  onSetPercent={(percent, words) => setPercentOnCard(inst, percent, words, loadTodayChecklist)}
                   fullHistory={{
                     item: {
                       id: inst.checklist_item_id,
@@ -760,6 +777,8 @@ export function DashboardMyInboxCard({
                     onToggleComplete={() => void toggleOutstandingComplete(inst)}
                     lines={taskLines.linesFor(inst.id)}
                     onTickLine={(criterionId, ticked) => tickLineOnCard(inst, criterionId, ticked, loadOutstanding)}
+                    ring={ringOnCard(inst)}
+                    onSetPercent={(percent, words) => setPercentOnCard(inst, percent, words, loadOutstanding)}
                     onPostComment={(body) => postCardComment(inst, body)}
                     fullHistory={{
                       item: {

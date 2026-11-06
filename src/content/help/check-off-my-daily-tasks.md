@@ -21,6 +21,24 @@ Tap the checkbox. That's it. There is no save button. Want to say something abou
 
 Tapping the checkbox again reopens the task. Every completion and reopen is remembered on the card's history, with who and when.
 
+## Say how far along it is
+
+A card that happens once shows a ring where the box was. An empty ring means nothing has moved yet. Tap the ring to say where it stands. Pick **25**, **50** or **75**. Type what is left if you want. Tap the blue **Set** press. The ring fills to your number. The card's notes keep each move with your words.
+
+:::example The sheet
+Where does it stand?
+
+{{button:outline|25}} {{button:outline|50}} {{button:blue|75}}
+
+What is left? Puddy and the glue, Thursday
+
+{{button:blue|Set 75%}}
+
+{{button:green|✓ Done}}
+:::
+
+Tap **✓ Done** on the same sheet when the work is finished. It takes the same path as the big checkbox. Tap a green ring to reopen the card. A card that repeats keeps its box. A card with lines reads its ring from the ticks.
+
 ## Tick the lines
 
 Some cards list what done looks like. The lines sit under the title as boxes. The next one wears an amber ring. Tap a box when that line is true. Your name and the time appear under it. The card reads its percent from the ticks. Two of three ticked reads 67%.
