@@ -70,7 +70,7 @@ function tidyAddressLine(s: string): string {
     .trim()
 }
 
-/** A roll field, with the word Null — how some districts spell a blank situs or mailing line — read as '' (v2.6537). */
+/** A roll field, with the word Null — how some districts spell a blank — read as '' (v2.6537 on the situs and mailing lines, v2.6570 on every field). */
 function rollText(v: unknown): string {
   const s = str(v)
   return /^null$/i.test(s) ? '' : s
@@ -106,20 +106,27 @@ function composeSitus(a: Record<string, unknown>): string {
 
 function recordFromAttributes(a: Record<string, unknown>): ParcelRecord {
   return {
-    propId: str(a.PROP_ID ?? a.prop_id),
-    ownerName: str(a.OWNER_NAME ?? a.owner_name).replace(/\s+/g, ' '),
-    nameCare: str(a.NAME_CARE ?? a.name_care).replace(/\s+/g, ' '),
-    legalDescription: str(a.LEGAL_DESC ?? a.legal_desc).replace(/\s+/g, ' '),
+    propId: rollText(a.PROP_ID ?? a.prop_id),
+    ownerName: rollText(a.OWNER_NAME ?? a.owner_name).replace(/\s+/g, ' '),
+    nameCare: rollText(a.NAME_CARE ?? a.name_care).replace(/\s+/g, ' '),
+    legalDescription: rollText(a.LEGAL_DESC ?? a.legal_desc).replace(/\s+/g, ' '),
     situsAddress: composeSitus(a),
     mailingAddress: composeMailing(a),
-    county: normalizeCountyName(str(a.COUNTY ?? a.county)),
-    source: titleCaseUpperWords(str(a.SOURCE ?? a.source)),
-    taxYear: str(a.TAX_YEAR ?? a.tax_year),
+    county: normalizeCountyName(rollText(a.COUNTY ?? a.county)),
+    source: titleCaseUpperWords(rollText(a.SOURCE ?? a.source)),
+    taxYear: rollText(a.TAX_YEAR ?? a.tax_year),
   }
 }
 
+/**
+ * A parcel the lien papers can use names an owner or a legal description. A
+ * polygon with a prop id alone — a placeholder whose fields the roll spells
+ * `Null` (seen 2026-11-06 on Bastrop and Frio pins) — is nothing under the
+ * pin, so the next result on a boundary, the county rung and the paste box get
+ * their turn (v2.6570; before it a prop id alone counted).
+ */
 function hasSubstance(r: ParcelRecord): boolean {
-  return Boolean(r.ownerName || r.legalDescription || r.propId)
+  return Boolean(r.ownerName || r.legalDescription)
 }
 
 /**

@@ -135,6 +135,15 @@ describe('parseTxParcelIdentify', () => {
     expect(p?.mailingAddress).toBe('')
     expect(p?.ownerName).toBe('WHITFIELD DANA & MARCUS')
   })
+
+  it('reads a placeholder parcel — owner and legal spelled Null — as nothing under the pin, and takes the next result with substance (v2.6570)', () => {
+    const a = IDENTIFY_HIT.results[0]!.attributes
+    const placeholder = { ...a, PROP_ID: '35975', OWNER_NAME: 'Null', NAME_CARE: 'Null', LEGAL_DESC: 'Null', SITUS_ADDR: 'Null', MAIL_ADDR: 'Null', MAIL_LINE1: 'Null', MAIL_LINE2: 'Null', MAIL_CITY: 'Null', MAIL_STAT: 'Null', MAIL_ZIP: 'Null' }
+    expect(parseTxParcelIdentify({ results: [{ attributes: placeholder }] })).toBeNull()
+    const p = parseTxParcelIdentify({ results: [{ attributes: placeholder }, { attributes: a }] })
+    expect(p?.propId).toBe('178402')
+    expect(p?.ownerName).toBe('WHITFIELD DANA & MARCUS')
+  })
 })
 
 describe('county names', () => {
