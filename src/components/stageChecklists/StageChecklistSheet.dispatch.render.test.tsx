@@ -56,6 +56,8 @@ function fakeIo(dispatch: StageCheckDispatchIo | undefined, answers: JobAnswer[]
     sign: vi.fn(async () => { throw new Error('not here') }),
     takeBack: vi.fn(async () => { throw new Error('not here') }),
     inkUrl: vi.fn(async () => null),
+    records: vi.fn(async () => []),
+    amend: vi.fn(async () => { throw new Error('not here') }),
     addItem: vi.fn(async () => { throw new Error('not here') }),
     retireItem: vi.fn(async () => undefined),
     mayAuthor: vi.fn(async () => false),

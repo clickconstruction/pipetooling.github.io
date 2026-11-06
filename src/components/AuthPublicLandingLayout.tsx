@@ -34,7 +34,7 @@ export default function AuthPublicLandingLayout({
     // pinned light so customers never see the viewer-side dark theme.
     <div className={compact ? 'auth-public-landing auth-public-landing--compact' : 'auth-public-landing'} data-theme="light">
       <div className="container">
-        <div className="letter-header">
+        <div className={heroTagline ? 'letter-header letter-header--plate' : 'letter-header'}>
           <h1>
             <a
               href="https://clickplumbing.com"

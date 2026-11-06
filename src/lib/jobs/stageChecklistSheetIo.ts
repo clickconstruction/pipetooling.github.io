@@ -20,6 +20,8 @@ import { checklistAnswerHash, type ChecklistSignatureMode, type JobStageRef, typ
 import { PRINTED_NAME_MAX_CHARS, TAKE_BACK_WORDS, VOID_WHY_MAX_CHARS, signaturePngPath } from './stageChecklistSignature'
 import { supabaseStageCheckDispatchIo, type StageCheckDispatchIo } from './stageCheckDispatchIo'
 import { addJobItem, loadQuestionsForJob, mayAuthorOnJob, promoteJobItem, putBackQuestion, reorderJobItems, retireJobItem, skipQuestion, type AddJobItemInput, type QuestionSkip, type SkipQuestionInput } from './stageChecklistIo'
+import type { ChecklistRecord } from './stageChecklistRecord'
+import { amendRecord, loadJobRecords } from './stageChecklistRecordIo'
 
 // The tables are younger than the generated types; the types PR after the push removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -372,10 +374,14 @@ export interface StageChecklistSheetIo {
   reorder: (fixtureId: string, ids: readonly string[]) => Promise<void>
   /** One job item added to the company's list; returns the company's row. */
   promote: (itemId: string) => Promise<StageChecklistQuestion>
+  /** The job's filed records, every version (#237 PR 3); the database files one by itself at the last answer. */
+  records: (jobId: string) => Promise<ChecklistRecord[]>
+  /** The office's Amend: the filed record reads amended with its reason, and the stage is open again. */
+  amend: (recordId: string, why: string) => Promise<ChecklistRecord>
   /** Send a check to Dispatch (punch list #245): the job, the open requests and the send. The sheet draws no press without it. */
   dispatch?: StageCheckDispatchIo
 }
 
 export function supabaseStageChecklistSheetIo(): StageChecklistSheetIo {
-  return { stages: loadJobStages, questions: loadQuestionsForJob, answers: loadJobAnswers, pick: saveAnswerPick, note: saveAnswerNote, photo: attachAnswerPhoto, photoUrl: waitingPhotoUrl, sign: signAnswer, takeBack: takeBackAnswer, inkUrl: signatureInkUrl, addItem: addJobItem, retireItem: retireJobItem, mayAuthor: mayAuthorOnJob, skip: skipQuestion, putBack: putBackQuestion, reorder: reorderJobItems, promote: promoteJobItem, dispatch: supabaseStageCheckDispatchIo() }
+  return { stages: loadJobStages, questions: loadQuestionsForJob, answers: loadJobAnswers, pick: saveAnswerPick, note: saveAnswerNote, photo: attachAnswerPhoto, photoUrl: waitingPhotoUrl, sign: signAnswer, takeBack: takeBackAnswer, inkUrl: signatureInkUrl, records: loadJobRecords, amend: amendRecord, addItem: addJobItem, retireItem: retireJobItem, mayAuthor: mayAuthorOnJob, skip: skipQuestion, putBack: putBackQuestion, reorder: reorderJobItems, promote: promoteJobItem, dispatch: supabaseStageCheckDispatchIo() }
 }

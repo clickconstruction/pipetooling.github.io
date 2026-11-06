@@ -7,11 +7,14 @@
  * company's and the items added on this job (#237), and an item added, skipped, moved or taken off lands the same way
  * (PR 1b). The job window holds two readers at once, the strip above its tabs and the Documents section inside them, so
  * a press that lands on one lands on every reader of the same job. Whether this person authors on the job is asked apart
- * from the read, only for the roles it can answer yes for, so no one's list waits on it.
+ * from the read, only for the roles it can answer yes for, so no one's list waits on it. The job's filed records (#237
+ * PR 3) come in with the rest, and since the database files a record by itself at the last answer, every answer that
+ * lands reads the records again, so the sheet turns to paper and the read-out's chip reads *Filed* with the press.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { jobStageChecklists, type JobStageChecklist, type JobStageRef, type StageChecklistQuestion } from '../lib/jobs/stageChecklist'
 import { supabaseStageChecklistSheetIo, type JobAnswer, type StageChecklistSheetIo } from '../lib/jobs/stageChecklistSheetIo'
+import type { ChecklistRecord } from '../lib/jobs/stageChecklistRecord'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import { OUTBOX_LANDED_EVENT, type OutboxLandedDetail } from './useOutboxReplay'
 
@@ -21,6 +24,8 @@ export interface JobStageChecklistsRead {
   stages: JobStageRef[]
   questions: StageChecklistQuestion[]
   answersByFixture: ReadonlyMap<string, JobAnswer[]>
+  /** The job's filed records, every version (#237 PR 3). */
+  records: ChecklistRecord[]
   loading: boolean
   error: string | null
   /** The failure with its kind, for a retry panel on a surface that shows one (the Documents read-out, #237). */
@@ -35,6 +40,9 @@ export interface JobStageChecklistsRead {
   dropQuestion: (questionId: string) => void
   /** A job item now on the company's list: the company's row replaces it, and its answer follows (PR 1b). */
   promoteQuestion: (fromId: string, company: StageChecklistQuestion) => void
+  /** The job's records read again (after a press the database may have filed on), or one put in place (an amend). */
+  putRecords: (records: readonly ChecklistRecord[]) => void
+  refreshRecords: () => void
   /** The database's answer to who authors on this job; false until it answers, and for anyone it was not asked for. */
   mayAuthor: boolean
   reload: () => void
@@ -44,13 +52,17 @@ export interface JobStageChecklistsRead {
 
 const EMPTY: ReadonlyMap<string, JobAnswer[]> = new Map()
 
-type Loaded = { jobId: string; stages: JobStageRef[]; questions: StageChecklistQuestion[]; answers: JobAnswer[] }
+type Loaded = { jobId: string; stages: JobStageRef[]; questions: StageChecklistQuestion[]; answers: JobAnswer[]; records: ChecklistRecord[] }
 
 /** A press that landed on a job's checklists. */
-type ChecklistChange = { answer: JobAnswer } | { questions: readonly StageChecklistQuestion[] } | { droppedId: string } | { promotedFromId: string; company: StageChecklistQuestion }
+type ChecklistChange = { answer: JobAnswer } | { questions: readonly StageChecklistQuestion[] } | { droppedId: string } | { promotedFromId: string; company: StageChecklistQuestion } | { records: readonly ChecklistRecord[] }
 
 function withChange(loaded: Loaded, change: ChecklistChange): Loaded {
   if ('answer' in change) return { ...loaded, answers: [...loaded.answers.filter((a) => a.id !== change.answer.id), change.answer] }
+  if ('records' in change) {
+    const landed = new Set(change.records.map((r) => r.id))
+    return { ...loaded, records: [...loaded.records.filter((r) => !landed.has(r.id)), ...change.records] }
+  }
   if ('questions' in change) {
     const landed = new Set(change.questions.map((q) => q.id))
     return { ...loaded, questions: [...loaded.questions.filter((q) => !landed.has(q.id)), ...change.questions] }
@@ -84,10 +96,10 @@ export function useJobStageChecklists(jobId: string | null | undefined, io?: Sta
     }
     setLoading(true)
     setFailure(null)
-    Promise.all([sheetIo.stages(jobId), sheetIo.questions(jobId), sheetIo.answers(jobId)]).then(
-      ([stages, questions, answers]) => {
+    Promise.all([sheetIo.stages(jobId), sheetIo.questions(jobId), sheetIo.answers(jobId), sheetIo.records(jobId)]).then(
+      ([stages, questions, answers, records]) => {
         if (!live) return
-        setLoaded({ jobId, stages, questions, answers })
+        setLoaded({ jobId, stages, questions, answers, records })
         setLoading(false)
       },
       (e: unknown) => {
@@ -145,11 +157,51 @@ export function useJobStageChecklists(jobId: string | null | undefined, io?: Sta
     },
     [jobId],
   )
-  const putAnswer = useCallback((answer: JobAnswer) => announce({ answer }), [announce])
-  const putQuestion = useCallback((question: StageChecklistQuestion) => announce({ questions: [question] }), [announce])
-  const putQuestions = useCallback((questions: readonly StageChecklistQuestion[]) => announce({ questions }), [announce])
-  const dropQuestion = useCallback((questionId: string) => announce({ droppedId: questionId }), [announce])
-  const promoteQuestion = useCallback((fromId: string, company: StageChecklistQuestion) => announce({ promotedFromId: fromId, company }), [announce])
+  const putRecords = useCallback((records: readonly ChecklistRecord[]) => announce({ records }), [announce])
+  // The database may have filed the stage on this very press, or amended a filed one: the records read again, best effort.
+  const refreshRecords = useCallback(() => {
+    if (!jobId) return
+    sheetIo.records(jobId).then(
+      (records) => announce({ records }),
+      () => undefined,
+    )
+  }, [jobId, sheetIo, announce])
+  const putAnswer = useCallback(
+    (answer: JobAnswer) => {
+      announce({ answer })
+      refreshRecords()
+    },
+    [announce, refreshRecords],
+  )
+  // A check added, skipped, moved, taken off or promoted can amend a filed record, so these read the records again too.
+  const putQuestion = useCallback(
+    (question: StageChecklistQuestion) => {
+      announce({ questions: [question] })
+      refreshRecords()
+    },
+    [announce, refreshRecords],
+  )
+  const putQuestions = useCallback(
+    (questions: readonly StageChecklistQuestion[]) => {
+      announce({ questions })
+      refreshRecords()
+    },
+    [announce, refreshRecords],
+  )
+  const dropQuestion = useCallback(
+    (questionId: string) => {
+      announce({ droppedId: questionId })
+      refreshRecords()
+    },
+    [announce, refreshRecords],
+  )
+  const promoteQuestion = useCallback(
+    (fromId: string, company: StageChecklistQuestion) => {
+      announce({ promotedFromId: fromId, company })
+      refreshRecords()
+    },
+    [announce, refreshRecords],
+  )
   const reload = useCallback(() => setTick((t) => t + 1), [])
 
   // A signed answer that waited on the phone landed (#237 PR 2): the job's readers read again, so the row reads signed.
@@ -163,5 +215,5 @@ export function useJobStageChecklists(jobId: string | null | undefined, io?: Sta
     return () => window.removeEventListener(OUTBOX_LANDED_EVENT, onLanded)
   }, [jobId, reload])
 
-  return { rows, stages: current?.stages ?? [], questions: current?.questions ?? [], answersByFixture, loading, error: failure?.message ?? null, failure, putAnswer, putQuestion, putQuestions, dropQuestion, promoteQuestion, mayAuthor, reload, io: sheetIo }
+  return { rows, stages: current?.stages ?? [], questions: current?.questions ?? [], answersByFixture, records: current?.records ?? [], loading, error: failure?.message ?? null, failure, putAnswer, putQuestion, putQuestions, dropQuestion, promoteQuestion, putRecords, refreshRecords, mayAuthor, reload, io: sheetIo }
 }

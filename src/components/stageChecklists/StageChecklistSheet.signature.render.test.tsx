@@ -45,6 +45,8 @@ function fakeIo(over: Partial<StageChecklistSheetIo> = {}, answers: JobAnswer[] 
     sign: vi.fn(async (input, who) => answer({ pick: input.pick, note: input.note, answeredBy: who.name, answeredAt: input.signedAt ?? '2026-11-05T16:00:00.000Z', signature: { mode: input.mode, printedName: input.printedName, storagePath: null, signedAt: input.signedAt ?? '2026-11-05T16:00:00.000Z', signedById: who.userId, hash: checklistAnswerHash({ questionWords: input.questionWords, pick: input.pick, note: input.note }) } })),
     takeBack: vi.fn(async (id, why, who) => ({ ...SIGNED, id, voided: { at: '2026-11-05T16:20:00.000Z', by: who.name, byId: who.userId, why } })),
     inkUrl: vi.fn(async () => null),
+    records: vi.fn(async () => []),
+    amend: vi.fn(async () => { throw new Error('not here') }),
     addItem: vi.fn(async (input, who) => ({ id: 'j-new', kind: input.kind, order: input.order ?? 0, words: input.words, asksPhoto: input.asksPhoto, needsSignature: input.needsSignature === true, fixtureId: input.fixtureId, addedById: who.userId, addedBy: who.name, addedAt: '2026-11-05T16:00:00.000Z' })),
     retireItem: vi.fn(async () => undefined),
     mayAuthor: vi.fn(async () => true),

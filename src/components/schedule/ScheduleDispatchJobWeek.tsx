@@ -1077,6 +1077,7 @@ export function ScheduleDispatchJobWeek() {
         open={blockModalState != null}
         mode={blockModalState?.kind === 'edit' ? 'edit' : 'add'}
         jobTitle={blockModalJobTitleForModal}
+        jobId={jobId}
         personLabel={blockModalPersonLabel}
         workDate={blockModalWorkDate}
         timeStart={addTimeStart}

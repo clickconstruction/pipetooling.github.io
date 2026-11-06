@@ -48,6 +48,8 @@ A signed answer can be wrong. You signed the wrong row. The unit changed after y
 
 The question opens again with its three presses. The old answer stays under the question as a line that reads *Taken back*. The line keeps the old pick, the old mark, who took it back, when and why. Nothing is erased. Anyone who can answer the question can take an answer back.
 
+A filed stage opens again when an answer is taken back. The filed version stays as a record. The guide [read a filed stage checklist](/help/read-a-filed-stage-checklist) says how a record works.
+
 ## What the office reads
 
 On the job's Documents tab a signed row wears a green *signed* tag. The mark sits beside the name and the time. A row with a pick but no signature reads like *Yes, not signed yet*. An answer taken back reads under its question as a *Taken back* line with the old mark kept.

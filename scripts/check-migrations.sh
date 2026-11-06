@@ -16,6 +16,10 @@
 #      raises "function does not exist" on first call (v2.1400, v2.2672, v2.3812).
 #   5. Migrations versioned after 20261010022000 must not name the dropped Team leads
 #      list, its tables or helpers outside a comment (the same gotcha as 4, v2.5088).
+#   6. Migrations versioned after 20261106120000 that CREATE TABLE must end with the four
+#      fence calls (apply_read_only_write_blocks, apply_read_only_stmt_blocks,
+#      apply_digital_twin_write_blocks, apply_archived_read_blocks): miss one and the new
+#      table is open to read-only users, twins or an archived caller (CLAUDE.md, v2.6572).
 #
 # It does NOT check remote drift (that needs the linked access token). For that,
 # run `supabase migration list` locally; see AGENTS.md "Migration history drift".
@@ -95,6 +99,28 @@ done
 if [ -n "${team_refs//[$'\n']/}" ]; then
   echo "::error::The Team leads list and its helpers were dropped by $TEAM_LEADS_DROPPED_VERSION; a body that names them compiles but fails on first call. Start from the live body (pg_get_functiondef), not an older migration's. Offenders:"
   printf '%s' "$team_refs" | sed 's/^/  /'
+  fail=1
+fi
+
+# 6. The four fence calls after CREATE TABLE (migrations after the seal, v2.6572)
+FENCE_CUTOFF="20261106120000"
+FENCES='apply_read_only_write_blocks apply_read_only_stmt_blocks apply_digital_twin_write_blocks apply_archived_read_blocks'
+fence_refs=""
+for f in $names; do
+  ver="${f%%_*}"
+  [ "$ver" \> "$FENCE_CUTOFF" ] || continue
+  stripped="$(sed 's/--.*$//' "$MIG_DIR/$f")"
+  grep -qiE 'create +table' <<<"$stripped" || continue
+  missing=""
+  for fence in $FENCES; do
+    grep -qE "select +public\.$fence\(\)" <<<"$stripped" || missing="$missing $fence"
+  done
+  [ -z "$missing" ] || fence_refs="$fence_refs$f:$missing"$'\n'
+done
+if [ -n "${fence_refs//[$'\n']/}" ]; then
+  echo "::error::A migration that creates a table ends with the four fence calls, so the new table is closed to read-only users, digital twins and archived callers. Missing:"
+  printf '%s' "$fence_refs" | sed 's/^/  /'
+  echo "  Add at the end: SELECT public.apply_read_only_write_blocks(); SELECT public.apply_read_only_stmt_blocks(); SELECT public.apply_digital_twin_write_blocks(); SELECT public.apply_archived_read_blocks();"
   fail=1
 fi
 

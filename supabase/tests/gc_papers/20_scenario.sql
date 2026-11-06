@@ -151,7 +151,7 @@ SELECT gpt.refused_code('moving a company''s paper to a person''s name', $q$UPDA
 -- 5 · Who reads and writes: gc_paper_sends carries its dev policy and the read-only and twin blocks.
 SELECT gpt.same('gc_paper_sends carries its policy and blocks', (
   SELECT string_agg(polname, ',' ORDER BY polname) FROM pg_policy WHERE polrelid = 'public.gc_paper_sends'::regclass),
-  'digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,gc_paper_sends_dev,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update');
+  'archived_fence,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,gc_paper_sends_dev,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update');
 SELECT gpt.same('the person trigger fires on the company too', (
   SELECT pg_get_triggerdef(oid) LIKE '%UPDATE OF person_name, company_id%' FROM pg_trigger WHERE tgname = 'set_person_id_on_write' AND tgrelid = 'public.person_contract_documents'::regclass)::text, 'true');
 

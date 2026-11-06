@@ -226,7 +226,7 @@ SELECT pcp.same('photos on, the rest off',
 -- languages and nothing else; signed out, nothing.
 SELECT pcp.same('the policies',
   (SELECT string_agg(policyname || ':' || permissive || ':' || cmd, ',' ORDER BY policyname) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'customer_page_words'),
-  'customer_page_words_team:PERMISSIVE:ALL,digital_twin_write_fence_delete:RESTRICTIVE:DELETE,digital_twin_write_fence_insert:RESTRICTIVE:INSERT,digital_twin_write_fence_update:RESTRICTIVE:UPDATE,read_only_users_cannot_delete:RESTRICTIVE:DELETE,read_only_users_cannot_insert:RESTRICTIVE:INSERT,read_only_users_cannot_update:RESTRICTIVE:UPDATE');
+  'archived_fence:RESTRICTIVE:ALL,customer_page_words_team:PERMISSIVE:ALL,digital_twin_write_fence_delete:RESTRICTIVE:DELETE,digital_twin_write_fence_insert:RESTRICTIVE:INSERT,digital_twin_write_fence_update:RESTRICTIVE:UPDATE,read_only_users_cannot_delete:RESTRICTIVE:DELETE,read_only_users_cannot_insert:RESTRICTIVE:INSERT,read_only_users_cannot_update:RESTRICTIVE:UPDATE');
 SELECT pcp.same('the triggers',
   (SELECT string_agg(tgname, ',' ORDER BY tgname) FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid WHERE c.relname = 'customer_page_words' AND NOT t.tgisinternal),
   'customer_page_words_edit,read_only_block_stmt');

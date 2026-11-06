@@ -290,6 +290,8 @@ Tap {{button:outline|+ Add a machine}}. The list shows every machine on the flee
 
 Type who brings it in the **Who brings it** box. The crew sees that name on their phone in the morning. {{button:outline|Remove}} takes a machine off the day.
 
+A machine that is not on the board yet can join from here. Tap {{button:outline|+ A machine not on the board yet}} at the foot of the list. Pick its template first. The line under it names the gauges and counts the stops the crew will fill in. Choose {{button:blue|Ours}} or {{button:outline|Rental}}. Ours takes the unit, make and model. A rental takes who it is from, the agreement number, make, model and the due-back day. Tap {{button:blue|Add E-14 to this job}}. The machine joins the fleet board with that template and the job for that day in one press. See [set up machine templates](/help/set-up-machine-templates) for what each template asks.
+
 The block wears a chip per machine on the board. The chip reads red with the other job's number when the machine is on two jobs that day.
 
 In the morning the crew's phone asks **Is E-12 here?**. Here opens the walk. Not coming tells you why. The crew checks the machine before it runs. See [check a machine before you run it](/help/check-a-machine-before-you-run-it).
