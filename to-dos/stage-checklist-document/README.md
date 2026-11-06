@@ -2,7 +2,7 @@
 name: "Stage checklists as documents on the job: items anyone on the job can add, a stamp on every answer, a signature where the author asks for one, and a record that files itself"
 number: 237
 group: ready
-status: PR 1 shipped v2.6328 (#6797) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · PR 1b shipped v2.6347 (#6798, migration 20261102084500): the named groups on Documents, Skip on this job, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼, the add box staying open, the estimator as author · PR 2 shipped v2.6563 (#7109, migration 20261106040000, pushed 2026-11-05): the Needs a signature toggle, the signature sheet, the lock, Take it back, the outbox ride, the guide · PR 3 built on claude/237-record-pr3 (v2.6571, migration 20261106050000): stage_checklist_records filed by trigger at the last answer, the sheet as paper, the PDF by the photo-save sweep, Amend, Print the checklists, the guide; the migration and the photo-save deploy wait on the merge · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
+status: PR 1 shipped v2.6328 (#6797) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · PR 1b shipped v2.6347 (#6798, migration 20261102084500): the named groups on Documents, Skip on this job, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼, the add box staying open, the estimator as author · PR 2 shipped v2.6563 (#7109, migration 20261106040000, pushed 2026-11-05): the Needs a signature toggle, the signature sheet, the lock, Take it back, the outbox ride, the guide · PR 3 shipped v2.6571 (#7117, migration 20261106050000, pushed 2026-11-06, photo-save deployed): stage_checklist_records filed by trigger at the last answer, the sheet as paper, the PDF by the photo-save sweep, Amend, Print the checklists, the guide · PR 4 built on claude/237-authoring-pr4 (v2.6581, migration 20261106130000): the add box's company pick, Use as the company's list, Take off the company's list with a reason, ▲ ▼ on the company's order, Settings as a read-only mirror with the source line, the guide rewritten; the migration is pushed right after the merge · PR 5 shipped under #242 as v2.6330 and v2.6335: the superintendent's line reads the checklist count as its proof (projectPace's checklistCountOf) · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
 summary: >
   The stage checklists of punch list #164 live in Settings, hold only the company's questions,
   and show the office nothing per job. The owner wants them moved onto the job's Documents tab as
@@ -12,10 +12,10 @@ summary: >
   with a number and a PDF in the job's Drive folder. The company's standard lists are made in the
   same place and promoted from a job, so Settings becomes a read-only mirror. The superintendent's
   line of #234 reads the same count as its proof.
-next: PR 4, authoring on Documents.
+next: merge PR 4, push its migration, walk the take-off with its reason on prod, then retire the card.
 size: L as a train of six (M · M · M · M · S · S); four migrations; no edge function beyond the PDF renderer the hours statement already has
-blocker: none for PR 1b and PR 4. PR 2 takes "Not here signs" and PR 3 takes "files itself at the last answer" as the owner's defaults; he can change either before they build.
-ver: v2.6571 · 6563 · 6420 · 6350 · 6347 · 6329 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
+blocker: none. PR 2 took "Not here signs" and PR 3 "files itself at the last answer" as the owner's defaults; he can still change either.
+ver: v2.6581 · 6571 · 6563 · 6420 · 6350 · 6347 · 6329 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
 opinion: now — the office has typed no questions yet because there was nowhere good to read the answers; this gives them the place, and the signature is what makes a checklist worth more than a report
 mockup: to-dos/stage-checklist-document/mockup-document-and-signature.html
 ---
@@ -293,6 +293,18 @@ with v1 still filed; press *Use as the company's list* and read the Settings car
 Delete every ZZ Test row after.
 
 ## Where it stands
+
+2026-11-06, later: PR 3 merged as #7117, its migration pushed and `photo-save` deployed (the types regenerated in #7123). PR 4 built
+on `claude/237-authoring-pr4` (v2.6581, migration `20261106130000`, `docs/recent-features/v2.6581.md`): the office's add box on
+Documents asks *Where the check goes*, **This job** or **Every Trim Set in the company**; **Use as the company's Trim Set list**
+under *Added for this job* runs the per-item promote past a refusal and names the check the company already asks; **Take off the
+company's list** asks a reason, kept in `retired_why` with `retired_by_name` (the one migration the card did not count: the row's
+`why` is the author's reason for asking, so the reason for stopping needed a column); the company's questions take the same ▲ ▼;
+Settings → Stage checklists is the read-only mirror with the source line (*From Job 1042 · Riders Walk, where Pat Sample added it*)
+and a *Taken off* fold, for one release. The sheet's add box stays job-only: the superintendent's and the estimator's authoring is
+their job's. PR 5 needed no PR of its own: #242's board kernel (`projectPace`, v2.6330) sums the checklist's answered of asked into
+the superintendent's line as its proof, and the phone card (v2.6335) reads it. Left after PR 4 merges: push the migration, walk
+the take-off with its reason against prod (the columns are not there until the push), and retire the card.
 
 2026-11-06: PR 3 built on `claude/237-record-pr3` (v2.6571, migration `20261106050000`,
 `docs/recent-features/v2.6571.md`): `stage_checklist_records` filed by the database at the last answer

@@ -16,9 +16,16 @@
  * the next one. Who authors on a job is the database's one answer, `stage_checklist_may_author`; the role only says who
  * may ever ask.
  *
+ * Authoring on Documents (PR 4, v2.6581). The company's questions are written here too, by the office alone: the add box
+ * takes a scope, this job or every stage of the kind in the company; a company question comes off the company's list with
+ * a reason and goes up or down the company's order with the same arrows; and *Use as the company's list* adds a job's
+ * whole list at once, doing what is ready and naming what it held. Settings → Stage checklists reads the list back and
+ * says which job each question came from (`stageChecklistEditor.ts`).
+ *
  * Pure; the io is `stageChecklistIo.ts`.
  */
 import type { UserRole } from '../../hooks/useAuth'
+import { batchOutcomeWords, countedLabel } from '../batchWords'
 import { jobDocumentFolderLinks } from './jobDocumentsTab'
 import { QUESTION_MAX_CHARS, addedByWords, answerStampWords, isJobItem, questionWaitsOn, signatureStands, skipOn, stampWords, type JobStageChecklist, type QuestionAsks, type StageChecklistAnswer, type StageChecklistQuestion, type StageChecklistSkip, type StageChecklistState } from './stageChecklist'
 import { NEEDS_SIGNATURE_WORDS } from './stageChecklistSignature'
@@ -317,5 +324,94 @@ export function rowMetaWords(a: StageChecklistAnswer | null | undefined): string
   return parts.join(' · ')
 }
 
-/** The foot under the read-out: what the words mean. */
-export const READOUT_FOOT = 'A No or a Not here is an answer. Open is what holds a stage. The company’s questions are written once on Settings, under Jobs and billing.'
+/** The foot under the read-out: what the words mean, and where the company's questions are written now (PR 4). */
+export const READOUT_FOOT = 'A No or a Not here is an answer. Open is what holds a stage. The company’s questions are written here too: pick the company on the add box. Settings → Jobs & billing → Stage checklists reads them back.'
+
+// ── The company's list on Documents (PR 4) ──────────────────────────────────
+
+/** Where a new check goes: this job's stage, or the company's list for every stage of the kind. */
+export type AddScope = 'job' | 'company'
+
+/** True when this person writes the company's list from a job: the office alone, whatever the job says. */
+export function canWriteCompanyList(role: UserRole | null | undefined): boolean {
+  return role != null && OFFICE.has(role)
+}
+
+/** The add box's scope pick: the two labels and what the company one does. */
+export function addScopeWords(stageName: string): { label: string; job: string; company: string; companyHint: string; companyConfirm: string } {
+  return {
+    label: 'Where the check goes',
+    job: 'This job',
+    company: `Every ${stageName} in the company`,
+    companyHint: `Every ${stageName} in the company asks it from now on. A stage that read ready on another job reads not ready until the crew answers it. A plan sheet and a why are for one job, so the box does not ask for them.`,
+    companyConfirm: `Add to every ${stageName}`,
+  }
+}
+
+/** The toast once a company question is added from a job: *Added to the company's list. Every Trim Set asks it from now on.* */
+export function addedCompanyWords(stageName: string): string {
+  return `Added to the company's list. Every ${stageName} asks it from now on.`
+}
+
+/** A new company question's place: after every live company question of its kind. */
+export function nextCompanyOrder(questions: ReadonlyArray<Pick<StageChecklistQuestion, 'kind' | 'fixtureId' | 'order'>>, kind: StageChecklistQuestion['kind']): number {
+  return questions.reduce((most, q) => (q.kind === kind && !isJobItem(q) ? Math.max(most, q.order) : most), 0) + 1
+}
+
+/** True when this person may take this question off the company's list here: the office, on a company question. */
+export function canTakeOffCompanyQuestion(role: UserRole | null | undefined, q: Pick<StageChecklistQuestion, 'fixtureId'>): boolean {
+  return canWriteCompanyList(role) && !isJobItem(q)
+}
+
+/** The shortest and the longest reason a company take-off keeps, in characters (the migration's check). */
+export const COMPANY_TAKE_OFF_WHY_MIN_CHARS = 3
+export const COMPANY_TAKE_OFF_WHY_MAX_CHARS = 200
+
+/** What stops a company take-off, in words, or null: it needs its reason. */
+export function companyTakeOffProblem(why: string): string | null {
+  return why.trim().length < COMPANY_TAKE_OFF_WHY_MIN_CHARS ? 'Say why this question comes off the company’s list.' : null
+}
+
+/** The two-press take-off of a company question, in the stage's name, and what a write the database refused says. */
+export function companyTakeOffWords(stageName: string): { press: string; hint: string; label: string; placeholder: string; confirm: string; keep: string; refused: string } {
+  return {
+    press: "Take off the company's list",
+    hint: `Every ${stageName} in the company stops asking it. The app keeps every answer it already has. Say why.`,
+    label: 'Why this question comes off the company’s list',
+    placeholder: 'Why, like the inspector no longer asks for it',
+    confirm: `Take it off every ${stageName}`,
+    keep: 'Keep it',
+    refused: 'Only the office takes a question off the company’s list.',
+  }
+}
+
+/** The toast once a company question is taken off: *Taken off the company's list. Trim Set is now 2 of 3.* */
+export function companyTakenOffWords(stageName: string, state: Pick<StageChecklistState, 'asked' | 'answered'>): string {
+  return `Taken off the company's list. ${countWords(stageName, state)}`
+}
+
+/** True when this person moves the company's questions with the arrows: the office, on a list with two or more. */
+export function canMoveCompanyQuestions(role: UserRole | null | undefined, companyCount: number): boolean {
+  return canWriteCompanyList(role) && companyCount > 1
+}
+
+/** True when the group head offers the whole list to the company: the office, with two or more of the job's own checks (one has its own press). */
+export function canUseAsCompanyList(role: UserRole | null | undefined, jobItemCount: number): boolean {
+  return canWriteCompanyList(role) && jobItemCount > 1
+}
+
+/** *Use as the company's list*: the press, the hint and the counted confirm, in the stage's name. */
+export function companyListFromJobWords(stageName: string, jobItemCount: number): { press: string; hint: string; confirm: string; keep: string } {
+  return {
+    press: `Use as the company's ${stageName} list`,
+    hint: `Every ${stageName} in the company asks these ${jobItemCount} checks from now on, after the company's own questions. This job keeps its answers. Plan sheets and whys are left off, since they were written for this job. A check the company's list already asks stays on this job and is named.`,
+    confirm: `${countedLabel('Add', jobItemCount, 'check')} to every ${stageName}`,
+    keep: 'Keep them on this job',
+  }
+}
+
+/** After *Use as the company's list* ran past its refusals: the toast, and the line over the checks that stayed, in `batchOutcomeWords`' shape. */
+export function companyListFromJobOutcome(done: number, failed: number): { line: string; head: string | null; tone: 'success' | 'warning' | 'error' } {
+  return batchOutcomeWords({ verb: 'add', past: 'Added', done, failed, noun: 'check' })
+}
+
