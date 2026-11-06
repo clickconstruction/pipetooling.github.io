@@ -351,6 +351,57 @@ export type Database = {
           },
         ]
       }
+      away_notes: {
+        Row: {
+          alert_on_day: boolean
+          countdown_ymd: string | null
+          created_at: string
+          created_by: string | null
+          show_call: boolean
+          show_where: boolean
+          updated_at: string
+          user_id: string
+          words: string
+        }
+        Insert: {
+          alert_on_day?: boolean
+          countdown_ymd?: string | null
+          created_at?: string
+          created_by?: string | null
+          show_call?: boolean
+          show_where?: boolean
+          updated_at?: string
+          user_id: string
+          words?: string
+        }
+        Update: {
+          alert_on_day?: boolean
+          countdown_ymd?: string | null
+          created_at?: string
+          created_by?: string | null
+          show_call?: boolean
+          show_where?: boolean
+          updated_at?: string
+          user_id?: string
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "away_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "away_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       banking_attributors: {
         Row: {
           auto_role_grant: boolean
@@ -41757,6 +41808,7 @@ export type Database = {
         Args: { p_payment_id: string; p_reason?: string; p_to_job_id: string }
         Returns: string
       }
+      my_away_note: { Args: never; Returns: Json }
       my_customer_words: { Args: never; Returns: Json }
       my_logbook: { Args: never; Returns: Json }
       my_mail_set: {
@@ -41975,6 +42027,7 @@ export type Database = {
       }
       plan_part_can_see: { Args: { p_part_id: string }; Returns: boolean }
       plan_part_can_write: { Args: { p_part_id: string }; Returns: boolean }
+      plan_part_crew_can_see: { Args: { p_part_id: string }; Returns: boolean }
       plan_part_mirror_job_links: {
         Args: { p_part_id: string }
         Returns: undefined
