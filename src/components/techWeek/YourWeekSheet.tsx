@@ -13,7 +13,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
  * itself when the office has picked no signal. Remembered on this device so it deals once a week.
  */
 
-const BACKDROP: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1150, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 env(safe-area-inset-bottom)' }
+const BACKDROP: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1150, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 'var(--app-top-chrome, 0px) 0 env(safe-area-inset-bottom)' }
 const SHEET: CSSProperties = { width: 'min(520px, 100%)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: '14px 14px 0 0', padding: '1rem 1.1rem 1.1rem', display: 'grid', gap: 10, boxShadow: '0 -8px 30px rgba(0,0,0,0.25)' }
 const MUTED: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)' }
 const BIG: CSSProperties = { fontSize: '1.9rem', fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }
