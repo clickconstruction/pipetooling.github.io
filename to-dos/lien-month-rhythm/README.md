@@ -2,7 +2,7 @@
 name: "The lien month: five zones across the top of the Lien desk"
 number: 235
 group: ready
-status: in hand 2026-11-07 on claude/235-lien-month-clock (PR 4) — the owner's refinement taken (below); PR 1 the rule and the kernel landed as v2.6645 (#7235) · PR 2 the bar on the desk (#7239) · PR 3 the Dashboard card (#7245) · PR 4 the courtesy clock and the guides (#7248) open, stacked on main now
+status: in hand 2026-11-07 on claude/235-lien-month-clock — the owner's refinement taken (below); PR 1 the rule and the kernel (v2.6645, #7235), PR 2 the bar on the desk (v2.6648, #7239) and PR 3 the Dashboard card (v2.6650, #7245) landed; PR 4 the courtesy clock and the guides (#7248) open
 summary: >
   The owner set an office rhythm for lien work: reminders in the first days of the month, notices
   next, liens by the 15th, nothing from the 16th on. It is a policy, not an app rule, and the ask is
@@ -15,9 +15,9 @@ summary: >
   in the Rules sheet; and the courtesy notice's clock moved from day 7 after the packet to reminders
   week of the affidavit's month. Nothing in it sends or files by itself.
 next: >
-  Merge #7239 and #7245, then #7248 (on #7239), each armed after the one under it lands; then the owner's look at the bar in reminders week (Dec 1 to 5) and this folder retires.
+  Merge #7248; then the owner's look at the bar in reminders week (Dec 1 to 5) and this folder retires.
 size: M (four PRs: S the rule and the kernel · M the bar on the desk · S the Dashboard card and the phone rows · S the reminder's clock and the guides; no migration unless the rule's days are stored on the server, then one small one)
-blocker: none — the three PRs wait on the merge queue; nothing else.
+blocker: none — #7248 waits on the merge queue; nothing else.
 opinion: build, after the refinement — the counts already exist on the desk, so the bar is mostly reading, and it turns a policy that lives in someone's head into something the whole office sees every morning
 ---
 
