@@ -2,7 +2,7 @@
 title: write the questions for a stage checklist
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: stage checklist, checklist, questions, rough in, top out, trim set, not ready, pipeline, photo, signature, crew, documents tab, company's list, every trim set, take off, settings, jobs and billing, mirror
+keywords: stage checklist, checklist, questions, rough in, top out, trim set, not ready, pipeline, photo, signature, crew, documents tab, company's list, every trim set, take off, settings, jobs, bills and liens, mirror
 where: /jobs
 order: 63
 ---
@@ -12,7 +12,7 @@ A stage checklist is a short list of questions the crew answers on the phone whe
 
 The company's questions are written where their answers are read, on a job's Documents tab. Open any job with the stage. Press **Documents** and scroll to **Stage checklists**. Each stage reads with its standing, like *Not ready · 3 of 6*. The group named **The company's questions** is the company's list for that stage.
 
-Settings used to hold an editor for these questions. Settings → Jobs & billing → Stage checklists now reads the lists back. Under each question it says which job the question came from. Nothing is pressed there.
+Settings used to hold an editor for these questions. Settings → Jobs, bills and liens → Stage checklists now reads the lists back. Under each question it says which job the question came from. Nothing is pressed there.
 
 ## Add a question for every job
 
@@ -74,7 +74,7 @@ A question you take off stays on the answers the crew already gave. The crew see
 
 ## Read the lists on Settings
 
-Open **Settings** and press **Jobs & billing**. Under the heading **The job's record**, press **Stage checklists**. The card lists Rough In, Top Out and Trim Set. Under each question a line says where it came from. A question taken from a job reads like *From Job 1042 · Riders Walk, where Pat Sample added it*. A question written for the company reads *Written by* and the name. The card goes in a later release.
+Open **Settings** and press **Jobs, bills and liens**. Under the heading **The job's record**, press **Stage checklists**. The card lists Rough In, Top Out and Trim Set. Under each question a line says where it came from. A question taken from a job reads like *From Job 1042 · Riders Walk, where Pat Sample added it*. A question written for the company reads *Written by* and the name. The card goes in a later release.
 
 ## What does not count
 

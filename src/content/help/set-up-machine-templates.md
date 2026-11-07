@@ -7,7 +7,7 @@ keywords: machine templates, excavator, small, medium, large, skid steer, direct
 
 A machine template is a kind of machine at a size. Small excavator, Medium excavator, Skid steer and Directional drill are templates. Each one carries two things. The gauges the crew reads on the check sheet. The questions the crew answers on the walk. A machine on the fleet board picks a template and reads these.
 
-The card sits at Settings → Jobs & billing → **Machine templates**. It ships with nine templates filled in. Change the words to match the machines in the yard.
+The card sits at Settings → Jobs, bills and liens → **Machine templates**. It ships with nine templates filled in. Change the words to match the machines in the yard.
 
 ## Pick a list
 

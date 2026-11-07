@@ -164,7 +164,7 @@ export function bidLienReleaseHistory<R extends BidLienReleaseRow>(rows: readonl
 
 /**
  * The leader the code door names (v2.5958): the one the Signed by box names, else the company's signer
- * from Settings → Jobs & billing, else the first leader on the list (masters before devs). Names match
+ * from Settings → Jobs, bills and liens, else the first leader on the list (masters before devs). Names match
  * whole and without regard to case.
  */
 export function bidLienWaiverLeader(leaders: readonly LienWaiverSigner[], signedByName: string, companySignerName: string | null | undefined): LienWaiverSigner | null {

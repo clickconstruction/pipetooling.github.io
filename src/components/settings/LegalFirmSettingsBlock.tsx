@@ -38,7 +38,7 @@ import LegalCountyHeldSheet from './LegalCountyHeldSheet'
 const db = supabase as unknown as SupabaseClient
 
 /**
- * Settings → Jobs & billing → **Collections law firms** (Legal portal PR 2, v2.3313; plural
+ * Settings → Jobs, bills and liens → **Collections law firms** (Legal portal PR 2, v2.3313; plural
  * since v2.5756, punch list #144 PR 1). Dev-only (RLS). A card per active firm on the left,
  * the Texas county map on the right: press a card to pick its firm, click counties to color
  * them for it, click again to clear; a county another firm holds asks before it moves.

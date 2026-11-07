@@ -33,13 +33,13 @@ Never charged to a customer. Office work, estimating, or a sub on their own shee
 
 The dev picks one and it saves at once. A person with nothing picked counts as not charged. The app never prices them by accident.
 
-To set everyone at once, a dev opens **Settings**, then **Jobs & billing**, then **Rates charged by crew**. Under the rates, **Who counts as what** lists every person with the same four choices. The dev's pick saves at once. People who left sit at the foot, because their past days still price by it.
+To set everyone at once, a dev opens **Settings**, then **Jobs, bills and liens**, then **Rates charged by crew**. Under the rates, **Who counts as what** lists every person with the same four choices. The dev's pick saves at once. People who left sit at the foot, because their past days still price by it.
 
 A day prices at nothing until someone out counts as a master, a tech or a helper. When that happens, the Charges window names who counts as nobody. It counts only the days a standing would fix. A dev sees a link to each desk and to the list. Anyone else sees the names and asks a dev. The Statement of charges window and the charged hours paper's window name them too.
 
 ## Set the rates
 
-Open **Settings** and go to **Jobs & billing**. Open **Rates charged by crew**. The table has one row for each crew.
+Open **Settings** and go to **Jobs, bills and liens**. Open **Rates charged by crew**. The table has one row for each crew.
 
 :::example The rows
 

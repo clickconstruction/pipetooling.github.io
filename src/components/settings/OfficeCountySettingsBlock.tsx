@@ -6,7 +6,7 @@ import { APP_SETTINGS_KEY_OFFICE_COUNTY } from '../../lib/appSettingsKeys'
 import { OFFICE_COUNTY_DEFAULT } from '../../lib/legal/affidavitPaper'
 
 /**
- * Settings → Company, beside the office address (off Jobs & billing since punch list #261 PR 2): the office’s county for the venue line of a sworn statement made on the Legal desk
+ * Settings → Company, beside the office address (off Jobs, bills and liens since punch list #261 PR 2): the office’s county for the venue line of a sworn statement made on the Legal desk
  * (punch list #220, v2.6210). One row, `app_settings.office_county`, seeded *Guadalupe* by the migration; the office
  * roles may change it (a key-scoped policy), and a refusal reads its reason.
  */

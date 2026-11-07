@@ -66,7 +66,7 @@ export type SampleEmailSender = { name: string; email: string; phone: string }
 
 export type SampleEmailContext = {
   rows: AppSettingRow[]
-  /** Settings → Jobs & billing → Test reports, when loaded (v2.3511); the test-report email waits for it. */
+  /** Settings → Jobs, bills and liens → Test reports, when loaded (v2.3511); the test-report email waits for it. */
   testReportSettings?: Parameters<typeof testReportSampleEmail>[1] | null
   /** The app origin the links and brand image point at. */
   origin: string
