@@ -30,7 +30,10 @@
  *     before the address is placed, so nothing flips their done thread back to waiting.
  * - The sender's address finds its contact or makes the Who is this? row (`email_place_address`).
  * - The subject's job number, or a job's name among the sender's own, ties the line (`jobInSubject.ts`). Else the
- *   person's star does, and with no star the line sits on the person.
+ *   person's star does, and with no star the line sits on the person. Since v2.6647 the star never takes a new
+ *   invitation or a solicitation (`starTakes`): a known GC's new bid request sits on the person, so the New lane asks
+ *   *Bid it?* with the GC known, instead of landing on their old bid in silence. An addendum or a pre-bid notice
+ *   still goes to the star.
  * - Each file up to 25 MB is copied into the private `message-attachments` bucket. A bigger one, or one that would
  *   not copy, stays in Gmail. A file host's link stays a link. A trade partner's W-9 or certificate is guessed for the
  *   thread's offer (`emailLine.ts`).
@@ -72,7 +75,7 @@ import { jobInSubject } from '../_shared/gcKernels/lib/emailIn/jobInSubject.ts'
 import { bulkByBody, leftOut, outsideInbox } from '../_shared/gcKernels/lib/emailIn/leftOut.ts'
 import { bidInSubject, type LiveBid } from '../_shared/gcKernels/lib/emailIn/bidInSubject.ts'
 import { leftOutSenders, type LeftOutSenderMatch, type LeftOutSenderRow } from '../_shared/gcKernels/lib/emailIn/leftOutSenders.ts'
-import { invitation } from '../_shared/gcKernels/lib/emailIn/invitation.ts'
+import { invitation, starTakes } from '../_shared/gcKernels/lib/emailIn/invitation.ts'
 import { ASSIGN_RULE_KEY, parseAssignSeats, type AssignRuleSeats } from '../_shared/gcKernels/lib/followUp/assignSeats.ts'
 import { subjectJobs, subjectNumbers, type SubjectBidRow, type SubjectPipelineRow, type SubjectProjectRow } from '../_shared/gcKernels/lib/emailIn/subjectJobs.ts'
 import { buildLedgerPrefixMap, type LedgerPrefixMap } from '../_shared/gcKernels/lib/ledgerDisplayPrefixes.ts'
@@ -222,13 +225,16 @@ async function rows<T>(query: Promise<{ data: T[] | null; error: { message: stri
   return data ?? []
 }
 
-/** The job a line ties to: the one its subject names, else the person's star, else none. */
-async function jobFor(ctx: Ctx, contactId: string, subject: string): Promise<string | null> {
+/**
+ * The job a line ties to: the one its subject names, else the person's star when it may take the line (`starMayTake`,
+ * v2.6647: false for a new invitation or a solicitation, which sit on the person for *Bid it?*), else none.
+ */
+async function jobFor(ctx: Ctx, contactId: string, subject: string, starMayTake = true): Promise<string | null> {
   const ties = await rows<{ bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null; is_default: boolean }>(
     ctx.admin.from('contact_jobs').select('bid_id, project_id, jobs_ledger_id, is_default').eq('contact_id', contactId),
     "the person's jobs",
   )
-  const star = keyOf(ties.find((t) => t.is_default) ?? { bid_id: null, project_id: null, jobs_ledger_id: null })
+  const star = starMayTake ? keyOf(ties.find((t) => t.is_default) ?? { bid_id: null, project_id: null, jobs_ledger_id: null }) : null
   const mine = new Set(ties.map(keyOf).filter((k): k is string => k !== null))
   const nums = subjectNumbers(subject)
   if (!subject.trim() || (nums.length === 0 && mine.size === 0)) return star
@@ -320,7 +326,11 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
 
   const by = fwd ? ctx.member(fwd.by.address) : null
   const line = emailLine(email, fwd, party, ctx.mailbox, by?.name ?? null)
-  const jobKey = await jobFor(ctx, contactId, line.subject ?? '')
+  // An invitation to bid (punch list #223 PR 3, v2.6222): what the line's subject, words and links say, kept on the
+  // line so the New lane asks *Bid it?* and the card never reads the body again. Null on every other line. Read before
+  // the job, since v2.6647: a new invitation or a solicitation is never handed to the sender's star.
+  const invite = line.direction === 'in' ? invitation({ subject: line.subject ?? '', text: line.body, links: email.links, at: line.at ?? email.at ?? nowIso() }) : null
+  const jobKey = await jobFor(ctx, contactId, line.subject ?? '', starTakes(invite))
 
   const files: Record<string, unknown>[] = []
   for (const f of emailFileRows(email, placed.data.placed_kind as string)) {
@@ -349,9 +359,6 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
 
   // Our line going out: the forwarded copy's first sender, or the teammate who copied the box (v2.5722).
   const ourSender = party.direction === 'out' ? ctx.member((fwd ? fwd.from : email.from)?.address ?? '') : null
-  // An invitation to bid (punch list #223 PR 3, v2.6222): what the line's subject, words and links say, kept on the
-  // line so the New lane asks *Bid it?* and the card never reads the body again. Null on every other line.
-  const invite = line.direction === 'in' ? invitation({ subject: line.subject ?? '', text: line.body, links: email.links, at: line.at ?? email.at ?? nowIso() }) : null
   const row = {
     invitation: invite,
     contact_id: contactId,
