@@ -70,16 +70,16 @@ function Zone({ zone, on, isMobile, isToday, onPick }: { zone: LienMonthZone; on
           {lienMonthSpanWords(zone.key, zone.span)}
         </span>
       </span>
-      <span data-testid={`lien-month-zone-head-${zone.key}`} style={{ fontSize: '0.8rem', fontWeight: line.tone === 'quiet' || line.tone === 'ahead' ? 500 : 700, color: line.tone === 'slipped' ? RED : line.tone === 'done' ? GREEN : 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <span data-testid={`lien-month-zone-head-${zone.key}`} style={{ fontSize: '0.8rem', fontWeight: line.tone === 'quiet' || line.tone === 'ahead' ? 500 : 700, color: line.tone === 'slipped' ? RED : line.tone === 'done' ? GREEN : 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}>
         {line.head}
       </span>
       {line.sub ? (
-        <span style={{ ...muted, whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} data-testid={`lien-month-zone-sub-${zone.key}`}>
+        <span style={{ ...muted, overflowWrap: 'anywhere' }} data-testid={`lien-month-zone-sub-${zone.key}`}>
           {line.sub}
         </span>
       ) : null}
       {press ? (
-        <span style={{ fontSize: '0.74rem', fontWeight: 600, color: tone.fg, marginTop: 2, whiteSpace: 'nowrap' }} data-testid={`lien-month-zone-press-${zone.key}`}>
+        <span style={{ fontSize: '0.74rem', fontWeight: 600, color: tone.fg, marginTop: 2 }} data-testid={`lien-month-zone-press-${zone.key}`}>
           {on ? 'Show all ›' : `${press} ›`}
         </span>
       ) : null}
@@ -118,7 +118,8 @@ export function LienMonthBar({
   total?: number
 }) {
   const onZone = on ? month.zones.find((z) => z.key === on) ?? null : null
-  const columns = month.zones.map((z) => `${Math.max(1, z.days)}fr`).join(' ')
+  // Each zone as wide as its days, but never so narrow its words crush (the desk at 800 px put Catch-up at 40 px).
+  const columns = month.zones.map((z) => `minmax(${z.key === 'catch_up' ? 104 : 120}px, ${Math.max(1, z.days)}fr)`).join(' ')
   return (
     <div data-testid="lien-month-bar" title={lienMonthWords(month)} style={{ display: 'grid', gap: 6, padding: isMobile ? '0.6rem 0.75rem 0.2rem' : '0.7rem 1.25rem 0.2rem' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>

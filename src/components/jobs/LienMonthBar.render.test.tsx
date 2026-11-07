@@ -43,7 +43,7 @@ describe('LienMonthBar', () => {
     expect(bar.textContent).toContain('The lien month')
     expect(bar.textContent).toContain('November 2026 · day 3')
     const group = screen.getByRole('group', { name: 'The lien month’s five zones' })
-    expect(group.style.gridTemplateColumns).toBe('5fr 4fr 4fr 2fr 15fr')
+    expect(group.style.gridTemplateColumns).toBe('minmax(120px, 5fr) minmax(120px, 4fr) minmax(120px, 4fr) minmax(104px, 2fr) minmax(120px, 15fr)')
     expect(screen.getByTestId('lien-month-today').style.left).toBe('8.3%')
     expect(['reminders', 'notices', 'liens', 'catch_up', 'quiet'].map((k) => screen.getByTestId(`lien-month-zone-${k}`).getAttribute('data-state'))).toEqual(['now', 'ahead', 'ahead', 'ahead', 'ahead'])
     expect(screen.getByTestId('lien-month-zone-head-reminders').textContent).toBe('1 to send · 1 sent')
