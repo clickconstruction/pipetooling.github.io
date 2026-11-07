@@ -2,7 +2,7 @@
 title: give a project its hours baseline at award
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: hours baseline, award, baseline at award, labor book, assumed hours, typed baseline, bid hours, costs tab, frozen, projects with no baseline, quickfill, fill them in, superintendent
+keywords: hours baseline, award, baseline at award, labor book, assumed hours, typed baseline, bid hours, costs tab, frozen, projects with no baseline, quickfill, fill them in, superintendent, planned finish, rough schedule, days ahead
 order: 13
 ---
 Every project leaves award with one number for the hours it should take. The app writes it the moment you create the job and says where it came from. The Costs tab, the Projects board and the superintendent's line read that one number.
@@ -34,6 +34,16 @@ Create Job freezes 480 h from the bid
 :::
 
 When nothing is usable, the line says so. Type hours, or let the job go. The Quickfill deck catches it later.
+
+## The planned finish
+
+Under the hours sits **Planned finish**. It freezes with the hours, so the superintendent's line can say days ahead or behind. The app tries three sources in order.
+
+- **◆ From the rough schedule.** The GC project's own plan, when its weeks were kept with the bid or at award.
+- **≈ Assumed from the hours.** The hours baseline at 24 crew hours a day, in working days, from the start the bid assumed. A guess, read as one.
+- **✎ Typed.** A day you know.
+
+The line at the bottom names both, such as *Create Job freezes 480 h from the bid · planned finish Nov 14 from the rough schedule*. On the Costs tab the frozen line ends with the plan. A project with a baseline and no plan offers a date box there. Press **Freeze the planned finish** and the line reads days from then on.
 
 ## Read it on the Costs tab
 

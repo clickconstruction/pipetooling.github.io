@@ -68,6 +68,8 @@ import { jobFormAutosaveAggregate, jobFormFooterShowsDelete, type JobFormCloseFl
 import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
 import { AwardBaselineBlock } from './AwardBaselineBlock'
 import { awardBaselineOptions, awardBaselinePick, awardBaselineRpcArgs, awardNotNowSource, type AwardBaselineSource, type AwardBidBreakdown } from '../../lib/jobs/awardBaseline'
+import { plannedFinishOptions, plannedFinishPayload, plannedFinishPick, type PlannedFinishSource, type RoughForPlan } from '../../lib/jobs/plannedFinish'
+import { loadRough } from '../../lib/gc/scheduleIo'
 import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import { baselineReading } from '../../lib/bids/bidBaselineRates'
 import { useJobBaselineRates } from '../../hooks/useJobBaselineRates'
@@ -473,6 +475,11 @@ export default function JobFormModal({
   const [awardTypedHours, setAwardTypedHours] = useState('')
   const [awardNote, setAwardNote] = useState('')
   const [awardBreakdown, setAwardBreakdown] = useState<{ bidId: string; breakdown: AwardBidBreakdown | null } | null>(null)
+  // The planned finish (PR 2): the pick, the typed day, the GC project's kept rough and the start the bid assumed.
+  const [planPick, setPlanPick] = useState<PlannedFinishSource | null>(null)
+  const [planTyped, setPlanTyped] = useState('')
+  const [planRough, setPlanRough] = useState<{ projectId: string; rough: RoughForPlan | null } | null>(null)
+  const [planBidStart, setPlanBidStart] = useState<{ bidId: string; start: string | null } | null>(null)
   const [linkedBidSummary, setLinkedBidSummary] = useState<{
     project_name: string | null
     bid_number: string | null
@@ -640,10 +647,50 @@ export default function JobFormModal({
       typedHours: Number.isFinite(typed) && typed > 0 ? typed : null,
     }
   }, [bidId, awardBreakdown, awardTypedHours, linkedBidSummary, bookRates.rates, jobTotalWithRidersDollars, lineBudgetSettings.rateUsd])
+  useEffect(() => {
+    if (!awardOn || !projectId) {
+      setPlanRough(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await loadRough(projectId)
+        const rough: RoughForPlan | null = r?.kept ? { start: r.start, finish: r.kept.finish, weeks: r.kept.weeks, keptAt: r.kept.at, keptOn: r.kept.on } : null
+        if (!cancelled) setPlanRough({ projectId, rough })
+      } catch {
+        if (!cancelled) setPlanRough({ projectId, rough: null })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [awardOn, projectId])
+  useEffect(() => {
+    if (!awardOn || !bidId) {
+      setPlanBidStart(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('bids').select('estimated_job_start_date').eq('id', bidId).maybeSingle()
+      if (!cancelled) setPlanBidStart({ bidId, start: (data as { estimated_job_start_date?: string | null } | null)?.estimated_job_start_date ?? null })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [awardOn, bidId])
   const awardOptions = useMemo(() => awardBaselineOptions(awardInput), [awardInput])
   // The pick: the office's when it chose one that can still be written, else the first usable source.
   const awardPickEffective: AwardBaselineSource = awardPick && awardOptions.find((o) => o.source === awardPick)?.usable ? awardPick : awardPick === 'typed' ? 'typed' : awardBaselinePick(awardOptions)
   const awardLoading = awardOn && ((!!bidId && awardBreakdown?.bidId !== bidId) || bookRates.loading)
+  const planInput = useMemo(() => {
+    const picked = awardOptions.find((o) => o.source === awardPickEffective)
+    const hours = picked?.usable ? picked.hours : (awardOptions.find((o) => o.source === 'book')?.hours ?? null)
+    return { rough: projectId && planRough?.projectId === projectId ? planRough.rough : null, bidStartYmd: bidId && planBidStart?.bidId === bidId ? planBidStart.start : null, todayYmd: todayYmdInAppTz(), hours, typedFinishYmd: planTyped || null }
+  }, [awardOptions, awardPickEffective, projectId, planRough, bidId, planBidStart, planTyped])
+  const planOptions = useMemo(() => plannedFinishOptions(planInput), [planInput])
+  const planPickEffective: PlannedFinishSource = planPick && planOptions.find((o) => o.source === planPick)?.usable ? planPick : planPick === 'typed' ? 'typed' : plannedFinishPick(planOptions)
   const onKindPress = useCallback(
     async (k: JobKind) => {
       if (k === kindPress) return
@@ -2452,6 +2499,8 @@ export default function JobFormModal({
           const source = awardOptions.find((o) => o.source === awardPickEffective)?.usable ? awardPickEffective : notNow
           const args = source ? awardBaselineRpcArgs(awardInput, awardOptions, source, jobId, bidId, awardNote) : null
           if (args) {
+            // The plan rides the award (PR 2): the pick when it can be written, else the assumed one, else none.
+            args.p_planned = plannedFinishPayload(planInput, planOptions, planPickEffective) ?? plannedFinishPayload(planInput, planOptions, 'assumed')
             const { error: awardErr } = await supabase.rpc('award_job_baseline' as never, args as never)
             if (awardErr) showToast(`Job saved, but its hours baseline could not be written: ${formatErrorMessage(awardErr)}`, 'info')
             else window.dispatchEvent(new Event(JOB_BUDGET_CHANGED_EVENT))
@@ -2707,7 +2756,7 @@ export default function JobFormModal({
           onCarryBidBudgetChange={mode === 'new' && !awardOn ? setCarryBidBudget : undefined}
         />
         <JobFormSourceEstimateBanner jobId={editing?.id ?? null} onOverlayOpenChange={setBannerOverlayOpen} />
-        {awardOn ? <AwardBaselineBlock options={awardOptions} pick={awardPickEffective} onPick={setAwardPick} typedHours={awardTypedHours} onTypedHours={setAwardTypedHours} note={awardNote} onNote={setAwardNote} loading={awardLoading} /> : null}
+        {awardOn ? <AwardBaselineBlock options={awardOptions} pick={awardPickEffective} onPick={setAwardPick} typedHours={awardTypedHours} onTypedHours={setAwardTypedHours} note={awardNote} onNote={setAwardNote} loading={awardLoading} planned={{ options: planOptions, pick: planPickEffective, onPick: setPlanPick, typedFinish: planTyped, onTypedFinish: setPlanTyped }} /> : null}
         </div>
         {error && (
           <p

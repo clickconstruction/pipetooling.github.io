@@ -64,6 +64,7 @@ const stripTone: Record<'bid' | 'book' | 'typed', { border: string }> = { bid: {
 export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpenBidCounts, doorway, kept, jobFinished, onPrint = null, currentUserId = null, bookNow = null, bookRateUsd = null, isProject = false, onOpenBidLabor = null }: Props) {
   const [sectionsOpen, setSectionsOpen] = useState(false)
   const [doorOpen, setDoorOpen] = useState(false)
+  const [planDay, setPlanDay] = useState('')
   const tl = timeLeftWords(v.timeLeft, usd0)
   const margin = v.trueMargin ?? v.directMargin
   const marginIsTrue = v.trueMargin != null
@@ -184,6 +185,13 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
             {baselineScoreWords(b)}
           </div>
           {doorOpen ? <div>{doorway}</div> : null}
+          {canWrite && isProject && !b.planned ? (
+            <div style={{ display: 'flex', gap: '0.5rem 0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="baseline-plan-ask">
+              <span>No planned finish on this project yet. The superintendent's line reads hours alone until one is frozen.</span>
+              <input type="date" value={planDay} aria-label="Planned finish" onChange={(e) => setPlanDay(e.target.value)} style={{ border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.2rem 0.4rem', font: 'inherit', fontSize: '0.78rem', background: 'var(--surface)', color: 'inherit' }} />
+              <button type="button" disabled={!planDay || budget.busy} onClick={() => void budget.setPlanned({ source: 'typed', start: null, finish: planDay })} style={btn(!!planDay)} title="Freeze this day as the planned finish; the line reads days against it">Freeze the planned finish</button>
+            </div>
+          ) : null}
           <div style={{ display: 'flex', gap: '0.5rem 0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             <span>{kept.row ? baselineKeptWords(kept.row) : jobFinished ? 'No baseline kept — the job had no recorded hours when it billed.' : 'Kept for the labor book when the job bills.'}</span>
             {canWrite && !kept.row && !jobFinished ? <button type="button" onClick={() => void kept.keepNow()} disabled={kept.busy} style={btn()} title="Keep what the job has taken so far as its baseline now">Keep now</button> : null}

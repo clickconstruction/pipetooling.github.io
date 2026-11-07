@@ -13,6 +13,7 @@ import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { withLiveJobFormValues, type JobCostsLiveValues } from '../../lib/jobs/jobCostsLiveInputs'
 import { budgetForBurn, resolveJobBudget, spendByComponent, type JobBudgetAwardColumns, type JobBudgetRowLike } from '../../lib/jobs/jobBudget'
 import { jobKindOfRow } from '../../lib/jobs/jobKind'
+import type { JobPlannedColumns } from '../../lib/jobs/plannedFinish'
 import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import { baselineReading } from '../../lib/bids/bidBaselineRates'
 import { baselineKeptWords, buildCostsVerdict, pctDoneWords } from '../../lib/jobs/jobCostsVerdict'
@@ -141,7 +142,7 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
     // office's hand-set is newer (v2.3372) so the verdict reads "(set on the job)".
     const newest = newestPercentEvent(inputs.valueEvents)
     const latestReportYmd = newest && newest.kind !== 'manual' ? newest.dateKey : null
-    const verdict = buildCostsVerdict({ burn, priceUsd, spend: spendByComponent(inputs.chargeEvents), teamHours: inputs.teamHours, teamPeople, resolved, bidLabel: job.linkedBid?.bid_number ?? null, latestReportYmd, jobPct: inputs.fallbackPercent ?? resolveJobCurrentPercentFallback(job), jobFinished: finished, todayYmd: todayYmdInAppTz(), priced, budgetRow: budget.row as (JobBudgetRowLike & JobBudgetAwardColumns) | null })
+    const verdict = buildCostsVerdict({ burn, priceUsd, spend: spendByComponent(inputs.chargeEvents), teamHours: inputs.teamHours, teamPeople, resolved, bidLabel: job.linkedBid?.bid_number ?? null, latestReportYmd, jobPct: inputs.fallbackPercent ?? resolveJobCurrentPercentFallback(job), jobFinished: finished, todayYmd: todayYmdInAppTz(), priced, budgetRow: budget.row as (JobBudgetRowLike & JobBudgetAwardColumns & JobPlannedColumns) | null })
     return { burn, verdict }
   }, [inputs, overheadState.overhead, resolved, priceUsd, teamPeople, job, finished, priced, budget.row])
   const verdict = built?.verdict ?? null
