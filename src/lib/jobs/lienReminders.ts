@@ -1,5 +1,6 @@
 import { COURTESY_AFFIDAVIT_MARGIN_DAYS, COURTESY_AGAIN_DAYS, COURTESY_FROM_DAY, PROMISE_BUTTON, type CourtesyStatus } from './lienCourtesyNotice'
 import { LETTER_TWO_BY_DAY, LETTER_TWO_FROM_DAY, type LetterTwoStatus } from './lienLetterTwo'
+import { LIEN_MONTH_RULE } from './lienMonthRhythm'
 
 /**
  * The REMINDERS strip on the Lien desk's Do now (punch list #262, Grace's ask of 2026-11-04): a
@@ -27,6 +28,8 @@ export type LienReminderState =
   | 'due'
   /** Step 1, not counted: before day 7. */
   | 'waiting'
+  /** Step 1, not counted: past day 7, waiting for reminders week of the lien's month (punch list #235, PR 4). */
+  | 'scheduled'
   /** Step 2: the one courtesy went; the desk waits a week for an answer, then the attorney’s letter leads (v2.6594: never a second courtesy). */
   | 'sent'
   /** Step 2: they are paying it down (PR 3 of #274) — a payment since the packet pauses the reminders until the promised day or a week; the row asks what they promised for the rest. */
@@ -111,7 +114,7 @@ export function lienReminderAt(courtesy: CourtesyStatus | null | undefined, two:
     return at(2, 'sent', courtesy.words)
   }
   if (courtesy.state === 'due') return at(1, 'due', courtesy.words)
-  return at(1, 'waiting', courtesy.words, false)
+  return at(1, (courtesy.day ?? 0) >= COURTESY_FROM_DAY && courtesy.reminderWindow ? 'scheduled' : 'waiting', courtesy.words, false)
 }
 
 export type LienReminderRow = LienReminderAt & { jobId: string; title: string; /** Why this notice is on its rung, in the courtesy's or the letter's own words (PR 2 of #274): the step brief counts the step's notices by it. */ why?: string }
@@ -129,9 +132,11 @@ export type LienReminders = {
   counts: [number, number, number, number]
   /** Sent notices before day 7 — on step 1 but not in its count. */
   waiting: number
+  /** Sent notices past day 7 waiting for reminders week of the lien's month (punch list #235, PR 4) — on step 1, not in its count. */
+  scheduled: number
 }
 
-export const LIEN_REMINDERS_EMPTY: LienReminders = { rows: [], counts: [0, 0, 0, 0], waiting: 0 }
+export const LIEN_REMINDERS_EMPTY: LienReminders = { rows: [], counts: [0, 0, 0, 0], waiting: 0, scheduled: 0 }
 
 /** Why a notice stands on its rung, short enough for a chip: the hold's reason, the letter's state, the courtesy's. */
 export function lienReminderWhy(courtesy: CourtesyStatus, two: LetterTwoStatus | null | undefined, at: LienReminderAt): string {
@@ -143,6 +148,7 @@ export function lienReminderWhy(courtesy: CourtesyStatus, two: LetterTwoStatus |
   if (two && two.state === 'sent') return 'the attorney’s letter went'
   if (at.step === 3) return 'the courtesy went and a week passed'
   if (courtesy.state === 'sent') return courtesy.waitingForAnswer ? 'the courtesy went this week' : 'the courtesy went, nothing since'
+  if (at.state === 'scheduled') return 'waits for reminders week'
   if (courtesy.state === 'waiting') return 'before day 7'
   return 'nothing since the packet'
 }
@@ -157,17 +163,20 @@ export function buildLienReminders(input: LienRemindersInput): LienReminders {
   rows.sort((a, b) => a.step - b.step || (b.day ?? -1) - (a.day ?? -1) || a.title.localeCompare(b.title))
   const counts: [number, number, number, number] = [0, 0, 0, 0]
   let waiting = 0
+  let scheduled = 0
   for (const r of rows) {
     if (r.counted) counts[r.step - 1] = (counts[r.step - 1] ?? 0) + 1
+    else if (r.state === 'scheduled') scheduled += 1
     else waiting += 1
   }
-  return { rows, counts, waiting }
+  return { rows, counts, waiting, scheduled }
 }
 
-/** The grey words after a rung's count: step 1's uncounted notices before day 7. */
-export function lienReminderRungWords(step: LienReminderStep, waiting: number): string {
-  if (step !== 1 || waiting <= 0) return ''
-  return ` · ${waiting} before day ${COURTESY_FROM_DAY}`
+/** The grey words after a rung's count: step 1's uncounted notices before day 7, and the ones waiting for reminders week (punch list #235, PR 4). */
+export function lienReminderRungWords(step: LienReminderStep, waiting: number, scheduled = 0): string {
+  if (step !== 1) return ''
+  const parts = [waiting > 0 ? `${waiting} before day ${COURTESY_FROM_DAY}` : '', scheduled > 0 ? `${scheduled} ${scheduled === 1 ? 'waits' : 'wait'} for reminders week` : ''].filter(Boolean)
+  return parts.length ? ` · ${parts.join(' · ')}` : ''
 }
 
 /** Whose press the rung is — every rung of this ladder is the office's; the leader approves letter two as he approves any notice. */
@@ -190,6 +199,8 @@ export function lienReminderLadderItems(at: LienReminderAt): LienReminderCardIte
           ? 'A courtesy notice went by email and text.'
           : at.state === 'waiting'
             ? `${at.words}. The desk offers the press from day ${COURTESY_FROM_DAY} after the packet.`
+            : at.state === 'scheduled'
+              ? `${at.words}. The one reminder goes in reminders week of the lien’s month, days ${LIEN_MONTH_RULE.reminders.from} to ${LIEN_MONTH_RULE.reminders.to}; the footer sends it earlier by hand.`
             : `${at.words}. One press sends the email and the text: the notice stands, the lien's day, the pay link, your number.`,
     },
     {
@@ -227,7 +238,7 @@ export type LienReminderRungRule = { when: string; press: string; who: 'office' 
 export function lienReminderRungRule(step: LienReminderStep): LienReminderRungRule {
   switch (step) {
     case 1:
-      return { when: `the packet went, nothing came back, and it is day ${COURTESY_FROM_DAY} or later`, press: 'Send a courtesy notice, one email and one text from the notice’s own facts, never certified mail', who: 'office', movesOn: 'the courtesy goes' }
+      return { when: `the packet went, nothing came back, it is day ${COURTESY_FROM_DAY} or later, and reminders week of the lien’s month (days ${LIEN_MONTH_RULE.reminders.from} to ${LIEN_MONTH_RULE.reminders.to}) has opened`, press: 'Send a courtesy notice, one email and one text from the notice’s own facts, never certified mail', who: 'office', movesOn: 'the courtesy goes' }
     case 2:
       return { when: 'the one courtesy notice went, or a payment came in after the packet and money is still owed', press: `none for ${COURTESY_AGAIN_DAYS} days; then Send the attorney’s letter. While they pay, ${PROMISE_BUTTON}`, who: 'office', movesOn: 'the attorney’s letter is drafted, the promised day passes, or something closes it' }
     case 3:
@@ -291,7 +302,7 @@ export function lienReminderBrief(step: LienReminderStep, state?: LienReminderSt
         title: LIEN_REMINDER_STEPS[0],
         who: 'office',
         plain: `We mailed the lien notice a week or more ago and heard nothing. A courtesy reminder is a plain email and text that says the notice stands. It is not a legal paper, and we send it once.`,
-        why: `The packet went, nothing came back, and it is day ${COURTESY_FROM_DAY} or later.`,
+        why: `The packet went, nothing came back, it is day ${COURTESY_FROM_DAY} or later, and reminders week of the lien’s month has opened (days ${LIEN_MONTH_RULE.reminders.from} to ${LIEN_MONTH_RULE.reminders.to}).`,
         usual: { press: 'Send a courtesy notice', means: 'sends the email and the text in one press; it takes a minute' },
         instead: [{ press: 'Send the attorney’s letter', means: 'skip the light step; counsel’s certified letter goes now' }, OWNER_CALL, GC_OKAY],
         closes: CLOSERS,

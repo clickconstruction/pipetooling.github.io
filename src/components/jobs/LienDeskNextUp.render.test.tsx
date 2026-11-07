@@ -285,6 +285,7 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
   const reminders = {
     counts: [2, 1, 1, 2] as [number, number, number, number],
     waiting: 1,
+    scheduled: 0,
     rows: [
       { jobId: 'j1', title: '744 · Castell', step: 1 as const, state: 'due' as const, words: 'day 21 · nothing since the packet', day: 21, counted: true },
       { jobId: 'j5', title: '752 · Pecan Grove', step: 1 as const, state: 'due' as const, words: 'day 29 · nothing since the packet', day: 29, counted: true },
@@ -328,7 +329,7 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(screen.getByTestId('lien-step-brief-count').textContent).toBe('the office’s step · 3 notices here')
     expect(Array.from(brief.querySelectorAll('[data-lien-schedule-point]')).map((el) => el.getAttribute('data-lien-schedule-point'))).toEqual(['0', '7', '10', '14'])
     expect(Array.from(brief.querySelectorAll('[data-lien-schedule-mark]')).map((el) => el.textContent)).toEqual(['day 4', 'day 21', 'day 29+'])
-    expect(brief.textContent).toContain('The packet went, nothing came back, and it is day 7 or later.')
+    expect(brief.textContent).toContain('The packet went, nothing came back, it is day 7 or later, and reminders week of the lien’s month has opened (days 1 to 5).')
     expect(screen.getByTestId('lien-step-brief-usual').textContent).toContain('Send a courtesy notice · the office presses it · sends the email and the text in one press')
     expect(Array.from(screen.getByTestId('lien-step-brief-instead').querySelectorAll('strong')).map((el) => el.textContent)).toEqual(['Send the attorney’s letter', 'Record the owner’s call', 'The GC authorized direct pay'])
     expect(Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)).toEqual(['On this step · 2', 'On other steps · 1'])

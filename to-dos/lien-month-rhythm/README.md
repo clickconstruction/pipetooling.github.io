@@ -2,7 +2,7 @@
 name: "The lien month: five zones across the top of the Lien desk"
 number: 235
 group: gated
-status: claude/235-lien-month-zones-e2643f · the owner refined the five calls 2026-11-07 (below) · PR 1 the rule and the kernel in flight
+status: all four PRs open 2026-11-07 (#7235 the rule and the kernel · #7239 the bar on the desk · #7245 the Dashboard card · PR 4 the courtesy clock and the guides), the last three stacked on #7235; the owner refined the five calls the same day (below)
 summary: >
   The owner set an office rhythm for lien work: reminders in the first days of the month, notices
   next, liens by the 15th, nothing from the 16th on. It is a policy, not an app rule, and the ask is
@@ -15,10 +15,10 @@ summary: >
   in the Rules sheet; and the courtesy notice's clock moved from day 7 after the packet to reminders
   week of the affidavit's month. Nothing in it sends or files by itself.
 next: >
-  PR 1, the rule and the kernel (`lienMonthRhythm.ts`, the days under § Rules); then PR 2 the bar
-  on the desk, PR 3 the Dashboard card, PR 4 the courtesy clock on the rule and the guides.
+  Merge the four in order (#7235, then #7239 and #7245, then PR 4), each armed after the one under
+  it lands; then the owner's look at the bar in reminders week (Dec 1 to 5) and this folder retires.
 size: M (four PRs: S the rule and the kernel · M the bar on the desk · S the Dashboard card and the phone rows · S the reminder's clock and the guides; no migration unless the rule's days are stored on the server, then one small one)
-blocker: none — the owner answered the five calls 2026-11-07; the courtesy notice (#231) is on main.
+blocker: none — the four PRs wait on the merge queue; nothing else.
 opinion: build, after the refinement — the counts already exist on the desk, so the bar is mostly reading, and it turns a policy that lives in someone's head into something the whole office sees every morning
 ---
 
