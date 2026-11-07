@@ -53,7 +53,8 @@ describe('EMAIL_CATALOG', () => {
     // +1 (v2.5224): the Bridge's Monday sheet, to the dev who pressed Email me this sheet (bridge-sheet-email).
     // +1 (Messages, cut 3): an email from the reply box in a person's thread (messages-email).
     // 57 since v2.6607: Your week's Monday email (your-week-email).
-    expect(EMAIL_CATALOG).toHaveLength(57)
+    // 58 since v2.6603: Your people's week, the Monday email about the people a reader picks (people-week-email).
+    expect(EMAIL_CATALOG).toHaveLength(58)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)
