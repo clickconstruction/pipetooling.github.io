@@ -22,6 +22,13 @@ import {
   type TallyTeamQueueReads,
 } from '../../lib/tally/fetchTallyTeamQueue'
 import { buildTallyTeamQueue, type TallyQueueCard } from '../../lib/tally/tallyTeamQueue'
+import {
+  parseTallyDayStripStored,
+  tallyDayStripFromCard,
+  tallyDayStripStorageKey,
+  type TallyDayStrip,
+  type TallyDayStripScheduled,
+} from '../../lib/tally/tallyDayStrip'
 import { mercuryTxRowFromStaffListRow, staffListRowFromSorted, type StaleStaffRow } from '../../lib/tally/teamPurchaseRows'
 import { assignChargeToOfficeAsStaff, backchargeDraftForCharge } from '../../lib/tally/tallyBackcharge'
 import { tallyUndoLineFromSortedRow, tallyUndoRpcArgs, tallyUndoToast, type TallyUndoLine } from '../../lib/tally/tallyUndoLine'
@@ -38,8 +45,9 @@ import { MercuryTransactionAllocationsModal } from '../MercuryTransactionAllocat
 import MercuryTransactionInvoiceLinkModal from '../MercuryTransactionInvoiceLinkModal'
 import { TeamPurchasesSortedList } from '../TeamPurchasesSortedList'
 import { PersonOffsetFormModal, type PersonOffsetInitialDraft } from '../pay/PersonOffsetFormModal'
-import { TallyTeamDayCard } from './TallyTeamDayCard'
+import { TallyTeamDayCard, type TallyTeamDayCardProps } from './TallyTeamDayCard'
 import { TallyPayBar } from './TallyPayBar'
+import { SideBySide, useShapeView } from '../prototypes/SideBySide'
 
 /**
  * Job Parts Tally → Transactions → Team (punch list #72, PR 2a): the office's queue of the team's
@@ -52,6 +60,10 @@ import { TallyPayBar } from './TallyPayBar'
  * sends and marks them payroll through `set_tally_payroll_flag`, shown only when `canMarkPayroll`
  * (dev, controller, a pay-approved master); it marks and does not widen a rule (rules are dev-only).
  * The Dashboard and Quickfill *Team purchases* window keeps working beside it until PR 2b.
+ * The *Day strip* switch (punch list #217, jobs-money-3, a prototype the owner asked to see first)
+ * draws each card's day as a strip; off by default and remembered per person on the device, so the
+ * queue reads exactly as before until someone turns it on. A dev who opens the page with `?sbs=1`
+ * sees each card twice, today's look over the card with the strip, to compare on the same live day.
  */
 
 const EMPTY_JOB_LABEL_BY_ID: Record<string, string> = {}
@@ -75,6 +87,7 @@ function chargesWords(n: number): string {
 
 export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: boolean }) {
   const { user: authUser } = useAuth()
+  const sideBySide = useShapeView('day-strip')
   const { showToast, showActionToast } = useToastContext()
   const prefixMap = useLedgerPrefixMap()
   const officeJobId = useOverheadOfficeJobId(true)
@@ -104,6 +117,30 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
   const [backchargeBusyId, setBackchargeBusyId] = useState<string | null>(null)
   const [offsetDraft, setOffsetDraft] = useState<PersonOffsetInitialDraft | null>(null)
   const [offsetNames, setOffsetNames] = useState<string[] | null>(null)
+  const [dayStrip, setDayStrip] = useState(false)
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    try {
+      setDayStrip(parseTallyDayStripStored(localStorage.getItem(tallyDayStripStorageKey(authUser.id))))
+    } catch {
+      setDayStrip(false)
+    }
+  }, [authUser?.id])
+
+  const toggleDayStrip = useCallback(() => {
+    setDayStrip((cur) => {
+      const next = !cur
+      if (authUser?.id) {
+        try {
+          localStorage.setItem(tallyDayStripStorageKey(authUser.id), next ? '1' : '0')
+        } catch {
+          // A device that keeps nothing still shows the strip for this visit.
+        }
+      }
+      return next
+    })
+  }, [authUser?.id])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -380,6 +417,31 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
     [canMarkPayroll, days],
   )
 
+  /** Each holder-day's schedule blocks with their times, for the strip's hollow bars. */
+  const scheduleSpans = useMemo(() => {
+    const out = new Map<string, TallyDayStripScheduled[]>()
+    for (const b of reads?.schedule ?? []) {
+      if (!b.job_id) continue
+      const key = `${b.assignee_user_id}|${b.work_date}`
+      const list = out.get(key) ?? []
+      list.push({ jobId: b.job_id, timeStart: b.time_start ?? null, timeEnd: b.time_end ?? null })
+      out.set(key, list)
+    }
+    return out
+  }, [reads?.schedule])
+
+  const strips = useMemo(() => {
+    const out = new Map<string, TallyDayStrip>()
+    if (!(dayStrip || sideBySide) || !queue) return out
+    for (const day of queue.days) {
+      for (const card of day.cards) {
+        const key = `${card.holderId}|${card.ymd}`
+        out.set(key, tallyDayStripFromCard(card, scheduleSpans.get(key) ?? [], loadedAt))
+      }
+    }
+    return out
+  }, [dayStrip, sideBySide, queue, scheduleSpans, loadedAt])
+
   return (
     <div data-testid="tally-team-queue" style={{ padding: '0.5rem 0 1rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.6rem' }} role="group" aria-label="Show">
@@ -388,6 +450,16 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
         </button>
         <button type="button" aria-pressed={view === 'sorted'} style={segmentStyle(view === 'sorted')} onClick={() => setView('sorted')}>
           {sortedRows ? `Sorted (${sortedRows.length})` : 'Sorted'}
+        </button>
+        <button
+          type="button"
+          data-testid="tally-team-day-strip-toggle"
+          aria-pressed={dayStrip}
+          title="Draw each card’s day as a strip of hours"
+          style={{ ...segmentStyle(dayStrip), marginLeft: 'auto' }}
+          onClick={toggleDayStrip}
+        >
+          Day strip
         </button>
       </div>
 
@@ -460,26 +532,37 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
               <h3 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-muted)', margin: '0.75rem 0 0.4rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {formatWorkDateYmdWeekdayShortFriendly(day.ymd)}
               </h3>
-              {day.cards.map((card) => (
-                <TallyTeamDayCard
-                  key={`${card.holderId}|${card.ymd}`}
-                  card={card}
-                  label={label}
-                  selections={selections}
-                  lineErrors={lineErrors}
-                  busy={busyCard === `${card.holderId}|${card.ymd}`}
-                  backchargeBusyId={backchargeBusyId}
-                  undoBusyIds={undoBusyIds}
-                  onPickDay={(chip) => pickDay(card, chip)}
-                  onPickLine={pickLine}
-                  onToggleByHours={toggleByHours}
-                  onSortDay={() => void sortDay(card)}
-                  onAnotherJob={setAllocRow}
-                  onInvoices={setInvoiceRow}
-                  onBackcharge={(row) => void backcharge(row)}
-                  onUndo={(line) => void undoLines([line])}
-                />
-              ))}
+              {day.cards.map((card) => {
+                const key = `${card.holderId}|${card.ymd}`
+                const cardProps: TallyTeamDayCardProps = {
+                  card,
+                  label,
+                  selections,
+                  lineErrors,
+                  busy: busyCard === key,
+                  backchargeBusyId,
+                  undoBusyIds,
+                  onPickDay: (chip) => pickDay(card, chip),
+                  onPickLine: pickLine,
+                  onToggleByHours: toggleByHours,
+                  onSortDay: () => void sortDay(card),
+                  onAnotherJob: setAllocRow,
+                  onInvoices: setInvoiceRow,
+                  onBackcharge: (row) => void backcharge(row),
+                  onUndo: (line) => void undoLines([line]),
+                }
+                const strip = strips.get(key) ?? null
+                return sideBySide ? (
+                  <SideBySide
+                    key={key}
+                    shapeLabel="With the strip"
+                    today={<TallyTeamDayCard {...cardProps} strip={null} />}
+                    shape={<TallyTeamDayCard {...cardProps} strip={strip} lineIdSuffix="strip" />}
+                  />
+                ) : (
+                  <TallyTeamDayCard key={key} {...cardProps} strip={dayStrip ? strip : null} />
+                )
+              })}
             </div>
           ))}
         </>

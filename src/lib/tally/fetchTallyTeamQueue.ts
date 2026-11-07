@@ -75,7 +75,7 @@ export async function fetchTallyTeamQueue(): Promise<TallyTeamQueueReads> {
       (chunk, from, to) =>
         supabase
           .from('job_schedule_blocks')
-          .select('assignee_user_id, work_date, job_id, time_start')
+          .select('assignee_user_id, work_date, job_id, time_start, time_end')
           .in('assignee_user_id', chunk)
           .gte('work_date', workFrom)
           .lte('work_date', workTo)

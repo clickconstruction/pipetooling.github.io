@@ -27,11 +27,14 @@ export type TallyQueueSessionRow = {
   clocked_out_at: string | null
 }
 
-/** One schedule block as read for the queue's holders. */
+/** One schedule block as read for the queue's holders; the times draw the day strip's hollow bars (v2.6142). */
 export type TallyQueueScheduleRow = {
   assignee_user_id: string
   work_date: string
   job_id: string | null
+  /** Postgres times of day ("07:00:00"); older readers leave them out. */
+  time_start?: string | null
+  time_end?: string | null
 }
 
 export type TallyTeamQueueInput = {

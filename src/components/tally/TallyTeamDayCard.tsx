@@ -1,5 +1,12 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { formatDenverTimeOnly } from '../../utils/dateUtils'
+import {
+  tallyJobShortName,
+  tallyStripLeadJobId,
+  tallyTeamLineDomId,
+  tallyTickPlaceWords,
+  type TallyDayStrip as TallyDayStripModel,
+} from '../../lib/tally/tallyDayStrip'
 import { tallyHistoryMadeAt, type TallyQueueCard } from '../../lib/tally/tallyTeamQueue'
 import type { StaleStaffRow } from '../../lib/tally/teamPurchaseRows'
 import { tallyUndoLineFromWindowRow, type TallyUndoLine } from '../../lib/tally/tallyUndoLine'
@@ -17,6 +24,7 @@ import {
   tallySuggestionWhy,
   type TallyJobLabel,
 } from '../../lib/tally/tallySuggestionWords'
+import { TallyDayStrip } from './TallyDayStrip'
 
 export type TallyTeamDayCardProps = {
   card: TallyQueueCard
@@ -36,7 +44,18 @@ export type TallyTeamDayCardProps = {
   onBackcharge: (row: StaleStaffRow) => void
   /** Put a sorted line that went to jobs back on the card to sort. */
   onUndo: (line: TallyUndoLine) => void
+  /**
+   * The holder's day as a strip (punch list #217, a prototype): drawn at the top when the Team
+   * queue's *Day strip* switch is on, with each line's place against the day and its picker led
+   * by the session its swipe sits in. Null or absent draws the card as before.
+   */
+  strip?: TallyDayStripModel | null
+  /** Tells this drawing's line ids apart when the same card is drawn twice on one page (the dev side-by-side). */
+  lineIdSuffix?: string
 }
+
+/** How long a line stays lit after a tick's press. */
+const LINE_FLASH_MS = 1500
 
 const money = (n: number) =>
   Math.abs(n).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -80,6 +99,20 @@ const linkButton: CSSProperties = {
   textDecoration: 'underline',
   cursor: 'pointer',
   fontFamily: 'inherit',
+}
+
+/** A tick's place that leads nowhere: a gap, a day off the clock. Said, not pressed. */
+const placeTag: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  minHeight: 24,
+  padding: '0 0.5rem',
+  borderRadius: 999,
+  border: '1px solid var(--border-amber-soft)',
+  background: 'var(--bg-amber-100)',
+  color: 'var(--text-amber-800)',
+  fontSize: '0.75rem',
+  fontWeight: 600,
 }
 
 function LikelyTag() {
@@ -155,11 +188,34 @@ export function TallyTeamDayCard({
   onInvoices,
   onBackcharge,
   onUndo,
+  strip = null,
+  lineIdSuffix = '',
 }: TallyTeamDayCardProps) {
   const selectedCount = card.charges.filter((c) => selections.has(c.charge.id)).length
   const lineById = new Map(card.suggestion.lines.map((l) => [l.chargeId, l]))
   const chipPressed = (chip: TallySuggestion) => dayChipPressed(selections, card, chip)
   const n = card.charges.length
+  const tickByCharge = new Map(strip ? strip.ticks.map((t) => [t.chargeId, t]) : [])
+  const shortName = (jobId: string) => tallyJobShortName(label(jobId))
+
+  // A tick's press scrolls to its line and lights it for a moment.
+  const [litLine, setLitLine] = useState<string | null>(null)
+  const litTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (litTimer.current) clearTimeout(litTimer.current)
+    },
+    [],
+  )
+  const goToLine = (chargeId: string) => {
+    const el = document.getElementById(tallyTeamLineDomId(chargeId, lineIdSuffix))
+    if (!el) return
+    if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    el.focus({ preventScroll: true })
+    setLitLine(chargeId)
+    if (litTimer.current) clearTimeout(litTimer.current)
+    litTimer.current = setTimeout(() => setLitLine(null), LINE_FLASH_MS)
+  }
 
   return (
     <section
@@ -183,6 +239,8 @@ export function TallyTeamDayCard({
         </div>
         <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{money(card.total)}</div>
       </div>
+
+      {strip ? <TallyDayStrip strip={strip} holderName={card.holderName} name={shortName} onPressTick={goToLine} /> : null}
 
       <p data-testid="tally-team-evidence" style={{ margin: '0.35rem 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-slate-500)', lineHeight: 1.45 }}>
         {tallyDayEvidenceWords(card.suggestion, label)}
@@ -209,11 +267,29 @@ export function TallyTeamDayCard({
             seen.add(k)
             return true
           })
+          // With the strip on, the picker leads with the session or schedule block the swipe sits in.
+          const tick = tickByCharge.get(charge.id)
+          const lead = tick ? tallyStripLeadJobId(tick.place) : null
+          const pickerChoices: TallyChoice[] = uniqueOptions.map((o) => o.choice)
+          if (lead) {
+            const i = pickerChoices.findIndex((c) => c.kind === 'job' && c.jobId === lead)
+            if (i >= 0) pickerChoices.splice(i, 1)
+            pickerChoices.unshift({ kind: 'job', jobId: lead })
+          }
+          const leadPressed = lead != null && sel?.choice.kind === 'job' && sel.choice.jobId === lead
           return (
             <div
               key={charge.id}
+              id={tallyTeamLineDomId(charge.id, lineIdSuffix)}
+              tabIndex={-1}
               data-testid="tally-team-line"
-              style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}
+              style={{
+                borderTop: '1px solid var(--border)',
+                paddingTop: '0.5rem',
+                outline: 'none',
+                boxShadow: litLine === charge.id ? '0 0 0 2px var(--border-blue)' : undefined,
+                borderRadius: litLine === charge.id ? 6 : undefined,
+              }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8125rem' }}>
                 <div>
@@ -228,9 +304,26 @@ export function TallyTeamDayCard({
                 </div>
               </div>
 
-              {line && line.own.length > 0 ? (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem' }}>
-                  {line.own.map((o) => (
+              {tick || (line && line.own.length > 0) ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem', marginTop: '0.35rem' }}>
+                  {tick && lead ? (
+                    <button
+                      type="button"
+                      data-testid="tally-team-place"
+                      data-place={tick.place.kind}
+                      aria-pressed={leadPressed}
+                      onClick={() => onPickLine(charge.id, { kind: 'job', jobId: lead })}
+                      style={chipStyle(leadPressed)}
+                    >
+                      <span>{label(lead)}</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>{tallyTickPlaceWords(tick.place, shortName)}</span>
+                    </button>
+                  ) : tick ? (
+                    <span data-testid="tally-team-place" data-place={tick.place.kind} style={placeTag}>
+                      {tallyTickPlaceWords(tick.place, shortName)}
+                    </span>
+                  ) : null}
+                  {(line?.own ?? []).map((o) => (
                     <SuggestionChip
                       key={choiceKey(o.choice)}
                       s={o}
@@ -247,15 +340,15 @@ export function TallyTeamDayCard({
                   aria-label={`Job for ${charge.counterparty || 'this charge'}`}
                   value={sel ? choiceKey(sel.choice) : ''}
                   onChange={(e) => {
-                    const picked = uniqueOptions.find((o) => choiceKey(o.choice) === e.target.value)
-                    onPickLine(charge.id, picked ? picked.choice : null)
+                    const picked = pickerChoices.find((c) => choiceKey(c) === e.target.value)
+                    onPickLine(charge.id, picked ?? null)
                   }}
                   style={{ ...smallButton, maxWidth: '100%' }}
                 >
                   <option value="">Pick a job</option>
-                  {uniqueOptions.map((o) => (
-                    <option key={choiceKey(o.choice)} value={choiceKey(o.choice)}>
-                      {tallyChoiceWords(o.choice, label)}
+                  {pickerChoices.map((c) => (
+                    <option key={choiceKey(c)} value={choiceKey(c)}>
+                      {tallyChoiceWords(c, label)}
                     </option>
                   ))}
                 </select>
