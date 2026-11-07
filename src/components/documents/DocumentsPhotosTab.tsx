@@ -3,8 +3,9 @@
  * reader may see. A search box and two rows of chips (the source, and where the photo is) are asked of the server;
  * the rows group by day, each with its thumbnail, its caption, its job and customer, its source and person and time,
  * and the Drive line in the row's own words with the press that goes with it. A thumbnail opens the viewer; the
- * job's name opens the job window; the source chip opens the report's card, the Tally's On site tab on that box, or
- * the Messages thread. The rules are `lib/photos/uploadedPhotos.ts`; the reads `uploadedPhotosIo.ts`.
+ * job's name opens the job window; the source chip opens the report's card, the Tally's On site tab on that box, the
+ * Messages thread, or Checklist → Today for a task card's shot (punch list #273, v2.6635), whose second line reads
+ * where the card stood instead of a job. The rules are `lib/photos/uploadedPhotos.ts`; the reads `uploadedPhotosIo.ts`.
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -24,10 +25,12 @@ import ReportViewModal, { type ReportForView } from '../ReportViewModal'
 import {
   PHOTOS_FOOT,
   PHOTOS_PAGE,
+  TASK_CHECKLIST_PATH,
+  WHERE_FILES_GO_PATH,
+  aboutWords,
   captionWords,
   dayGroups,
   jobWindowPath,
-  jobWords,
   photosEmptyWords,
   photosNarrowed,
   sizeWords,
@@ -150,6 +153,7 @@ export function DocumentsPhotosTab({ io: givenIo, loadReport = loadReportForView
         return () => navigate(to)
       }
       if ((row.source === 'checklist' || row.source === 'job') && row.job_id) return () => openJob(row)
+      if (row.source === 'task') return () => navigate(TASK_CHECKLIST_PATH)
       if (row.source === 'message') {
         const to = threadPath(row)
         return to ? () => navigate(to) : null
@@ -182,6 +186,13 @@ export function DocumentsPhotosTab({ io: givenIo, loadReport = loadReportForView
           the thread
         </Link>
       ) : null
+    }
+    if (w.press === 'tasks-folder') {
+      return (
+        <Link to={WHERE_FILES_GO_PATH} style={{ color: 'var(--text-link)' }}>
+          Set the Tasks folder
+        </Link>
+      )
     }
     return null
   }
@@ -263,10 +274,10 @@ export function DocumentsPhotosTab({ io: givenIo, loadReport = loadReportForView
                       <div style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                         {row.job_id ? (
                           <button type="button" style={{ ...linkBtn, fontSize: '0.8125rem', color: 'var(--text-700)', textDecoration: 'underline', textDecorationColor: 'var(--border-strong)' }} onClick={() => openJob(row)}>
-                            {jobWords(row)}
+                            {aboutWords(row)}
                           </button>
                         ) : (
-                          jobWords(row)
+                          aboutWords(row)
                         )}
                       </div>
                       <div style={{ ...muted, display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
