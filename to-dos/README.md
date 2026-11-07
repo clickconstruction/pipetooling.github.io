@@ -45,6 +45,11 @@ PR like any other.
    `/to-dos/` pages are public.
    **Flag a row to the top** with `flagged: true` in its front matter (v2.4196): the board lifts it out
    of its group into a ⚑ Flagged section above every group. Delete the line to unflag.
+   **The board opens with a Shortlist** (v2.6618): every open row by group, smallest first, read
+   from the `size` field's own letters — a train's whole letter when it names one, else the biggest
+   part, a *left:* clause winning, a size with no letter last as unsized — so write the letter the
+   whole card costs first (`L as a train of six (M · M · S …)`) and name what is left once most of
+   it shipped (`…; left: PR 7 (S)`). `npm run shortlist` prints the same list as markdown for a chat.
 3. **Check** — `npm run check:todos` says whether every to-do parses, cites shipped versions
    only, carries a number no other to-do carries, and renders. It runs in CI on every PR and on
    the merge queue's build, where a second PR's card meets the first's: two to-dos on one number

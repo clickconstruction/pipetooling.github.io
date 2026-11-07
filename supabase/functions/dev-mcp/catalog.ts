@@ -1830,6 +1830,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "paid-job-email",
   "pay-link",
   "payment-forecast-email-dispatch",
+  "people-week-email",
   "photo-save",
   "plan-fetch",
   "plan-set-files",

@@ -6,6 +6,7 @@ import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_share
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { getPersonFile } from '../_shared/devMcpPersonFile.ts'
+import { getCaseBrief } from '../_shared/devMcpCaseBrief.ts'
 import { getDocumentHistory } from '../_shared/devMcpDocHistory.ts'
 import { PERSON_REPORT_SELECT, personReportAppliedWords, personReportDryRun, personReportRpc, type PersonReportPayload, type PersonReportRow } from '../_shared/devMcpPersonReport.ts'
 import { PERSON_MATTER_PERSON_SELECT, PERSON_MATTER_STANDING_SELECT, personMatterAppliedWords, personMatterDryRun, personMatterRpc, type PersonMatterPayload, type PersonMatterPersonRow, type PersonMatterStandingRow } from '../_shared/devMcpPersonMatter.ts'
@@ -391,6 +392,9 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { development_id: { type: 'string', description: 'a developments.id (read_rows on developments by name)' }, job_id: { type: 'string' }, bid_id: { type: 'string' }, since: { type: 'string', description: 'an ISO timestamp: only lines at or after it' }, limit: { type: 'number' } }, required: ['development_id'] },
   },
   {
+    name: 'get_case_brief',
+    description: "One page that says what is where on a person's case (v2.6619, punch list #278) — the brief to read before anything else, the way a folder's README is read: your own Agent notes document first (a named document so titled, kept through plan_person_doc), the summary whole, the narrative's section index, the named documents with their section indexes and counsel marks, the entries' count and newest ten, the evidence index, the matter's narrative sections, steps and documents, the theme counts, and the developments the person's jobs sit in with their History's newest lines — every item with its id for a drill-in, the text never carried whole except the summary. Dev-only like the HR file: another role gets the person and held: dev only. read_next says which verb reads each thing further.",
+    inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' } }, required: ['person'] },
     name: 'get_document_history',
     description: "What moved on a document on a person's HR file (v2.6622, punch list #278): the revisions of a named document (doc_id) or of the summary or narrative (kind) — when each was replaced, by whom, how big it was — with the text as it stands as now; with from (an older revision's id) and to (a newer one, or left out for the text as it stands), the difference between the two as hunks of removed and added lines, each named by its first line in the older text, exact when the changed middle is under 600 lines a side and capped at 400 lines. Dev-only. get_person_file's documents list takes since (YYYY-MM-DD) and marks each changed_since.",
     inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' }, doc_id: { type: 'string', description: 'a named document (person_documents.id)' }, kind: { type: 'string', description: 'summary | narrative, instead of doc_id' }, from: { type: 'string', description: 'a revision id from the list, the older one' }, to: { type: 'string', description: 'a newer revision id; the text as it stands when left out' } }, required: ['person'] },
@@ -1260,6 +1264,12 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       return ok(redactSecrets(res.body), { target: developmentId, rowCount: typeof body?.count === 'number' ? body.count : undefined })
     }
 
+    case 'get_case_brief': {
+      // v2.6619 (punch list #278 PR 1): the orientation read — composed from the seat's own reads as `who` under RLS, each
+      // fail-soft into `held` (devMcpCaseBrief.ts); the section indexes come from the two index views, never the text.
+      const out = await getCaseBrief(readerAs(await jwt()), { person: String(args.person ?? '') }, { role: who.role, todayYmd: todayYmdInAppTz() })
+      if ('refused' in out) return refused(out.refused, { target: 'people' })
+      return ok(out, { target: out.person.id, rowCount: out.entries.count })
     case 'get_document_history': {
       // v2.6622 (punch list #278 PR 4): one GET of dev_doc_history as the dev; the two texts are diffed here and only the
       // difference goes on (devMcpDocHistory.ts); another role is refused in words.
