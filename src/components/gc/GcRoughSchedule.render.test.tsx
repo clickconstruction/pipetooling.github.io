@@ -10,7 +10,9 @@ import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react'
 import { GcRoughSchedule } from './GcRoughSchedule'
+import { templateRows } from '../../lib/gc/schedule/builder'
 import { initialGcState } from '../../lib/gc/schedule/testState'
+import { quickLubeTemplate } from '../../lib/gc/schedule/testTemplate'
 import type { RoughSchedule } from '../../lib/gc/schedule/types'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { plainWordsFailures } from '../../lib/plainWords'
@@ -66,6 +68,23 @@ describe('a rough schedule while we bid (PR 12b, G-45)', () => {
     expect(await within(card()).findByText('15 weeks to build')).toBeTruthy()
     expect(onDraw).toHaveBeenLastCalledWith(expect.objectContaining({ days: { structure: 25 } }))
     expect((within(card()).getByLabelText('Structure days') as HTMLInputElement).value).toBe('25')
+  })
+
+  it('draws from a template made on the Templates page (#210): the pick says D3’s lines, and the rough keeps the rows copy', async () => {
+    const quick = quickLubeTemplate()
+    const state: GcState = { ...s, scheduleTemplates: [quick] }
+    const onDraw = vi.fn(async () => {})
+    render(<GcRoughSchedule state={state} project={boerne} by="Robert" onDraw={onDraw} />)
+    fireEvent.change(within(card()).getByLabelText('If work starts'), { target: { value: '2026-11-02' } })
+    fireEvent.change(within(card()).getByLabelText('Start from a template'), { target: { value: quick.id } })
+    expect(card().querySelector('[data-rows-fit]')).toBeTruthy()
+    expect(within(card()).getByText(/^52 rows in 8 phases land on this job\./)).toBeTruthy()
+    fireEvent.click(within(card()).getByRole('button', { name: 'Draw a rough schedule' }))
+    await waitFor(() => expect(onDraw).toHaveBeenCalledTimes(1))
+    const rough = onDraw.mock.calls[0]![0] as RoughSchedule
+    expect(rough.template).toEqual({ id: quick.id, name: quick.name, on: s.today })
+    expect(rough.rows).toEqual(templateRows(quick))
+    expect(rough.like).toEqual([])
   })
 
   it('locks once our bid went in: no boxes, no Redraw, and the weeks read as they went', () => {

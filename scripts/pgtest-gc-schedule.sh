@@ -16,7 +16,8 @@
 # The team door (50_team_door.sql) then proves who the 23 tables let in, on its own
 # fixture, ending "gc_schedule team door PASSED". Since #204's PR 2 the builder's migration is applied a
 # second time too, and 60_builder.sql plays the phases on a draft and a template saved as a new row and a
-# new version, ending "gc_schedule builder PASSED".
+# new version, ending "gc_schedule builder PASSED". Since punch list #210 (v2.6651) the own-work phase migration is
+# applied a second time too, and 60_builder.sql's section 13 plays the job's own work in a phase.
 # PGTEST_KEEP=1 leaves the container up. Never touches prod.
 #
 # Two ways to get the Postgres:
@@ -37,6 +38,7 @@ TELLS="$(ls supabase/migrations/*_gc_schedule_tells.sql)"
 TRADE_WRITES="$(ls supabase/migrations/*_gc_schedule_trade_writes.sql)"
 DOOR="$(ls supabase/migrations/*_gc_schedule_team_door.sql)"
 BUILDER="$(ls supabase/migrations/*_gc_schedule_builder.sql)"
+OWN_PHASE="$(ls supabase/migrations/*_gc_schedule_own_work_phase_and_rough_rows.sql)"
 # psql's errors go to this run's own file: a fixed /tmp name may belong to another user on a shared Mac.
 ERR="$(mktemp "${TMPDIR:-/tmp}/$NAME.XXXXXX")"
 
@@ -77,7 +79,7 @@ fi
 # A second run must change nothing: every function is replaced as it was, and the guard's DO block
 # makes no second trigger. The later migrations that replace a function go after the earlier ones, in
 # order, so the bed runs on the functions as prod has them.
-for again in "$WRITES" "$TELLS" "$TRADE_WRITES" "$DOOR" "$BUILDER"; do
+for again in "$WRITES" "$TELLS" "$TRADE_WRITES" "$DOOR" "$BUILDER" "$OWN_PHASE"; do
   apply "$again" | psql_as postgres -f - >/dev/null 2>"$ERR" || { echo "FAILED re-applying $again"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done
 out="$(psql_as postgres -f - < supabase/tests/gc_schedule/20_scenario.sql 2>&1 || true)"

@@ -1127,7 +1127,7 @@ function DraftCard({
   const [start, setStart] = useState(() => draftStart(project, today))
   const rough = roughFirstDraftWords(project)
   // From a template (G-44): the one the rough was drawn from, until another is picked.
-  const own = project.rough?.template && project.rough.like ? { use: project.rough.template, lines: project.rough.like } : undefined
+  const own = project.rough?.template && project.rough.like ? { use: project.rough.template, lines: project.rough.like, ...(project.rough.rows ? { rows: project.rough.rows } : {}) } : undefined
   const [templateId, setTemplateId] = useState(own?.use.id ?? '')
   return (
     <Card>
