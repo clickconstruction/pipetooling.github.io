@@ -179,6 +179,8 @@ You press {{button:blue|Bill Customer}}. The modal opens on **Stripe bill**. It 
 
 A job needs a linked customer before it can be billed. For Stripe the customer needs an email. The modal guides you if something is missing.
 
+**Show the bars** is a try-out switch beside the window's title. You press {{button:outline|Show the bars}} to see where the RTB amount comes from. The job's money bar sits under the header. Green is paid, blue is the open bills, and the next segment is this bill. The bid is the whole frame. Under the bar the sum reads as rows. Bid, less what is paid, less the open bills, equals this bill. Each row has a door to where that money is kept. The doors open in a new tab, so the window stays as it is. The switch is yours alone and stays set on this device. You press {{button:outline|Show today’s look}} to go back.
+
 Sometimes checks from the payer came back this past year. Then the modal says so. It reads {{chip:yellow|2 checks came back · Apr}} and suggests a card or a bank transfer. It never stops the bill.
 
 **Opening Bill Customer changes nothing.** The RTB amount you see is worked out on the spot. It comes from the job total, payments made and the invoices already on the job. The bill row itself is written only when you press a send button. Those are {{button:blue|Create Stripe invoice}}, {{button:blue|Save}} on HouseCall Pro, or {{button:blue|Send invoice}} on Physical. You press {{button:outline|Cancel}} and the job is exactly as you found it. No draft appears and no draft resizes.

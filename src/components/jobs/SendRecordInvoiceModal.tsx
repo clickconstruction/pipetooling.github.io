@@ -112,6 +112,9 @@ import {
 import { buildCopyEmails, defaultCopyContactIds, defaultCopyOtherParty, type BillCopyContact } from '../../lib/jobs/billCopyRecipients'
 import { defaultShowOtherParty, otherPartyOf, type ShownToParty } from '../../lib/jobs/billVisibility'
 import { planPrimaryRtbForBillCustomer } from '../../lib/billing/proposedPrimaryRtbAmount'
+import { rtbParts } from '../../lib/billing/rtbParts'
+import { ShapeSwitch, SideBySide, useShapeView } from '../prototypes/SideBySide'
+import { BillCustomerRtbParts } from './BillCustomerRtbParts'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
 import { linkHazmatFeeIncidentToInvoice } from '../../lib/hazmatFeeEdit'
@@ -409,6 +412,9 @@ type CreateStripeInvoiceFnResponse = {
   invoice_preview?: unknown
 }
 
+/** The per-person switch's key (punch list #217, jobs-pipeline-4): `pt-shape-view:bill-customer-rtb-parts:<userId>`. */
+export const BILL_CUSTOMER_RTB_SHAPE_KEY = 'bill-customer-rtb-parts'
+
 /** Bill Customer — Stripe hosted invoice, or HouseCall Pro / Physical invoice (external send). */
 export default function SendRecordInvoiceModal({
   payload,
@@ -444,6 +450,8 @@ export default function SendRecordInvoiceModal({
   onDiscountAppliedRef.current = onDiscountApplied
 
   const { user: authUser, role: authRole } = useAuth()
+  // Punch list #217 (jobs-pipeline-4): the RTB as the row's bar and rows, behind a per-person switch; a dev with `?sbs=1` sees both.
+  const rtbView = useShapeView(BILL_CUSTOMER_RTB_SHAPE_KEY)
   const { showToast } = useToastContext()
 
   const [tab, setTab] = useState<BillCustomerMainTab>('stripe')
@@ -788,6 +796,25 @@ export default function SendRecordInvoiceModal({
     setEmailOverride(email)
   }
   const invoice = payload?.kind === 'invoice' ? payload.invoice : null
+  /** The RTB as the row's bar and rows (punch list #217): the row's own bill, else the planned primary once the plan is in. */
+  const rtbModel = useMemo(() => {
+    if (!(rtbView.on || rtbView.sideBySide) || !job || !billCustomerJobDetails || billCustomerJobDetails.id !== job.id) return null
+    const thisBill = invoice
+      ? { amount: Number(invoice.amount), invoiceId: invoice.id }
+      : ensuredInvoice && !ensureLoading && !ensureError
+        ? { amount: ensuredInvoice.amount, invoiceId: ensuredInvoice.id }
+        : null
+    if (!thisBill) return null
+    return rtbParts({
+      jobId: job.id,
+      revenue: billCustomerJobDetails.revenue,
+      paymentsMade: billCustomerJobDetails.payments_made,
+      invoices: billCustomerJobDetails.invoices ?? [],
+      payments: billCustomerJobDetails.payments ?? [],
+      thisBill,
+      todayYmd: todayIsoDate(),
+    })
+  }, [rtbView.on, rtbView.sideBySide, job, billCustomerJobDetails, invoice, ensuredInvoice, ensureLoading, ensureError])
   /** The bill the waiver tick is drawn for: only an open on one bill names it. */
   const waiverInvoiceId = kind === 'invoice' ? invoice?.id ?? null : null
   /** v2.4603: the waiver follows the bill only when the tick was drawn and left on. */
@@ -2403,15 +2430,33 @@ export default function SendRecordInvoiceModal({
           }}
         >
           <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-            <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Bill Customer</h2>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · {job.job_name ?? '—'}
-              {invoice
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '0 0 0.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Bill Customer</h2>
+              <ShapeSwitch view={rtbView} words={{ off: 'Show the bars', on: 'Show today’s look' }} />
+            </div>
+            {(() => {
+              const jobWords = `${effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · ${job.job_name ?? '—'}`
+              const rtbWords = invoice
                 ? ` · RTB $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                 : kind === 'job' && ensuredInvoice && !ensureLoading && !ensureError
                   ? ` · RTB $${Number(ensuredInvoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-                  : ''}
-            </p>
+                  : ''
+              const todayLine = (
+                <p data-bill-customer-header-today style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  {jobWords}
+                  {rtbWords}
+                </p>
+              )
+              if (!rtbModel) return todayLine
+              const shape = (
+                <>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>{jobWords}</p>
+                  <BillCustomerRtbParts parts={rtbModel} jobId={job.id} />
+                </>
+              )
+              if (rtbView.sideBySide) return <SideBySide today={todayLine} shape={shape} label="With the bars" testId="bill-customer-side-by-side" />
+              return shape
+            })()}
           </div>
           {tab === 'stripe' && !stripeResult && !stripeSuccessInvoice && authRole === 'dev' && (
             <div
