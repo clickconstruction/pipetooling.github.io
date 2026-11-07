@@ -13,7 +13,7 @@ summary: >
   on that record as its history. The plan: one column on bids, a page at /developments/<id> with the
   Customer Hub as its precedent, and the questions riding the two request lanes the app already has
   (the Estimator inbox and the Dispatch inbox) with a development as a third kind of reference.
-next: Left from the owner's walk of 2026-10-30: his Put the 34 in press for the pieces at the address not in the development, on prod. The spike's stack merges in order, each PR retargeted to main and armed after the one under it. Two reads the spike left for later are in `SPIKE_GUNDOG.md`: a pay-speed RPC by customer, a slimmer history-entries read. Then delete the folder, the fragments carry the record.
+next: Left from the owner's walk of 2026-10-30: his Put the 34 in press for the pieces at the address not in the development, on prod. The spike's five PRs merged 2026-11-03. Two reads the spike left for later are in `SPIKE_GUNDOG.md`: a pay-speed RPC by customer, a slimmer history-entries read. Then delete the folder, the fragments carry the record.
 size: S (PR 1 the column and picker) + M (PR 2 the page) + S (PR 3 not in it yet) + M (PR 4 questions) + M (PR 5 what changed, plans) + S (PR 6 the estimator's door, types)
 blocker: None. The owner's one press.
 ver: v2.6019 · 6040 · 6042 · 6044 · 6046 · 6047 · 6048 · 6051 · 6052 · 6053 · 6178 · 6179 · 6182 · 6199 · 6324 · 6377 · 6378 · 6379 · 6381 · 6416

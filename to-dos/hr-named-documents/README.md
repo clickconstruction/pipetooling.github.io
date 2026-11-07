@@ -2,7 +2,7 @@
 name: "Named documents on the HR file: any number of titled markdown documents beside the summary and narrative, edited in the app or by the seat a section at a time, with a counsel-only mark and a file door for the long ones"
 number: 277
 group: ready
-status: planned 2026-11-07 · nothing built · replaces #275 (one fixed History kind) after v2.6608 and v2.6610 put the editor and the seat's section ops on the two fixed documents
+status: planned 2026-11-07 · PR 1 built as v2.6613 and PR 2 as v2.6614 the same day · replaces #275 (one fixed History kind) after v2.6608 and v2.6610 put the editor and the seat's section ops on the two fixed documents
 summary: >
   A person's HR file keeps two documents the agent writes from the entries, a one-page summary
   and the chronological narrative, and since v2.6610 a dev edits either in the app while the seat
@@ -15,7 +15,7 @@ summary: >
   mark, and a door that takes a .md or .txt file off the desk so a long document never rides
   through an agent's context. The view the two fixed documents share becomes Documents, with
   Summary and Narrative pinned at the top as the two the agent keeps.
-next: PR 1 the table, its revisions and fences, and the seat's door by document id; PR 2 the Documents view with Add a document (write it, from a file, paste); PR 3 a document's sections as doors from the Timeline's citations (#275's third PR, kept).
+next: PR 3 a document's sections as doors from the Timeline's citations (#275's third PR, kept); PR 1 the table, its revisions and fences, and the seat's door by document id shipped as v2.6613, PR 2 the Documents view with Add a document (write it, from a file, paste) as v2.6614.
 size: M + M + S
 blocker: None.
 mockup: mockup.html — the Documents view with the two pinned documents and the named list, Add a document's three doors, one document open with its section index and Edit the document, the counsel-only mark, and the seat's plan reply by document id

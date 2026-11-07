@@ -2,7 +2,7 @@
 name: "Dev MCP: put documents and past events on a Legal desk matter"
 number: 169
 group: gated
-status: proposed 2026-10-24 · rank 4 of 10 from the review of the Burd matter (job 891) · not built
+status: proposed 2026-10-24 · rank 4 of 10 from the review of the Burd matter (job 891) · the document verbs built as v2.6004 (#6355, 2026-10-27: plan_matter_document → apply_matter_document, the file sent as content_base64) · the event verbs not built
 summary: >
   The dev MCP writes a matter's narrative and its planned steps but cannot add a document or
   record an event, so a Claude session filing a case has to drive the desk in a browser, and a
@@ -10,10 +10,10 @@ summary: >
   goes up through a signed upload URL and is checked before its row is written, and an event is
   the office's new entry from #167.
 next: >
-  The owner picks Do, Later or Drop. #167 decides the event's kind before the event verbs.
-size: M (two definer RPCs, the upload path, four verbs, the docs)
+  The owner picks Do, Later or Drop on the event verbs; #167 shipped as v2.5836, so the event's kind is settled.
+size: S (the two event verbs and their docs; the document verbs shipped as v2.6004)
 blocker: >
-  The owner's pick, and #167 for the event verbs.
+  The owner's pick.
 opinion: build — filing job 891 took a session in the browser pane plus the owner picking seven PDFs by hand
 mockup: not required — MCP verbs; the desk already shows what they write
 ---

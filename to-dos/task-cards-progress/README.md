@@ -2,7 +2,7 @@
 name: "Task cards: % done instead of a tick, Done when… lines, photos filed in a Tasks folder in Drive, and the Monday email of your people's week"
 number: 273
 group: ready
-status: card and mock-up 2026-11-06 on worktree-task-cards-progress · Taunya took the six picks as recommended the same day · the second look that evening revised the photo pick, gave a % its words and drew the office's Dashboard section as a question for her · nothing built yet
+status: card and mock-up 2026-11-06 on worktree-task-cards-progress · Taunya took the six picks as recommended the same day · the second look that evening revised the photo pick, gave a % its words and drew the office's Dashboard section as a question for her · PRs 1 to 3 and the first half of PR 4 built 2026-11-06: v2.6592 the ground, v2.6595 Done when…, v2.6597 the ring, v2.6598 the Roadmap's fractions, v2.6600 Your people on the Dashboard, v2.6601 the Tasks folder and the finish photo
 summary: >
   A task card is done or not done today: a tick on Checklist → Today, the Dashboard's My Inbox and
   the Roadmap's task card. Taunya wants the card to carry how far along it is, what done means, and
@@ -13,7 +13,7 @@ summary: >
   its Shared Drive, one folder per card; and a Monday email a person subscribes to lists the people
   they picked and what each moved that week, the cards, the roadmap and the jobs. Two migrations,
   three function deploys, a train of six.
-next: PR 1, the ground (one migration, the kernels, pushed right after the merge); then criteria, the ring, photos, the email, guides
+next: the rest of PR 4 (the photo offered on the % sheet, the strip on the card and Review's row, the outbox for a shot with no signal), then PR 5 the Monday email, then PR 6 the docs and this card deleted
 size: L as a train of six (M · M · M · M · L · S)
 blocker: none · the six picks are taken (2026-11-06)
 opinion: build PRs 1 to 3 in one sitting, since one migration carries all three and the card reads wrong with a percent column and no ring; the photos and the email each stand alone after that
