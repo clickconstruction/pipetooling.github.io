@@ -19,7 +19,7 @@ describe('courtesyByJobFrom — the desk’s courtesy status per job', () => {
   it('names the affidavit’s day from the notice’s last month when the desk’s affidavit list does not reach the job', () => {
     const out = courtesyByJobFrom(base)
     // September on a commercial job: the 15th of the fourth month after, January 15 2027.
-    expect(out.j1!).toMatchObject({ state: 'due', lienDay: '2027-01-15', words: 'day 9 · nothing since the packet' })
+    expect(out.j1!).toMatchObject({ state: 'waiting', lienDay: '2027-01-15', words: 'day 9 · reminder goes Jan 1 to 5' })
   })
 
   it('takes the desk’s affidavit entry first, and its homestead gate', () => {
@@ -27,7 +27,7 @@ describe('courtesyByJobFrom — the desk’s courtesy status per job', () => {
     expect(out.j1!.state).toBe('held')
     expect(out.j1!.reason).toMatch(/homestead/)
     const fine = courtesyByJobFrom({ ...base, affidavits: [{ jobId: 'j1', deadline: '2026-12-15', propertyKind: 'non_residential', lastMonthFromCreation: false, gates: [{ key: 'homestead', ok: true }] }] })
-    expect(fine.j1!).toMatchObject({ state: 'due', lienDay: '2026-12-15' })
+    expect(fine.j1!).toMatchObject({ state: 'waiting', lienDay: '2026-12-15', words: 'day 9 · reminder goes Dec 1 to 5' })
   })
 
   it('reads the property record’s homestead flag, a filed affidavit, the balance and the records on the first packet', () => {
@@ -47,7 +47,7 @@ describe('courtesyByJobFrom — the desk’s courtesy status per job', () => {
     const onNotice = courtesyByJobFrom({ ...base, jobsById: { j1: { revenue: 4850, payments_made: 2000, customer_address_id: 'a1' } }, paymentsByJob: { j1: [{ amount: 2000, paidOn: '2026-10-30' }] }, items: [{ id: 'first', months: ['2026-08'], fields: { promise: { at: '2026-11-01T15:00:00Z', by: 'Grace', ymd: '2026-11-18', amount: 2850, note: 'the 15th' } } }] })
     expect(onNotice.j1!.paying).toMatchObject({ until: '2026-11-18', promise: { by: 'Grace', amount: 2850 } })
     // A reader without the payments (the AR chips in light mode) reads the clocks as before.
-    expect(courtesyByJobFrom({ ...base, jobsById: { j1: { revenue: 4850, payments_made: 2000, customer_address_id: 'a1' } } }).j1!.state).toBe('due')
+    expect(courtesyByJobFrom({ ...base, jobsById: { j1: { revenue: 4850, payments_made: 2000, customer_address_id: 'a1' } } }).j1!.state).toBe('waiting')
   })
 
   it('a job with no approved month reads held, as the demand letter does; a job without a sent notice is not listed', () => {
