@@ -933,6 +933,8 @@ const response = await supabase.functions.invoke('login-as-user', {
 
 ### dev-login
 
+> **v2.6639 — a dev or a digital twin, no one else**: the door took any address, and a link it minted as a teammate was never on `user_imitations`, so Messages → My email (v2.6290) would have read that teammate's Gmail in it. `_shared/devLoginGate.ts` (`devLoginMayMint`, held by `src/lib/devLoginGate.test.ts`) admits `users.role = 'dev'` and `is_digital_twin = true`; anyone else answers 403 with the words that name View as, which records the imitation. A read of the account that fails answers 500 and mints nothing. **Redeploy** once merged.
+
 > **v2.5724 — every page of accounts** (punch list #142 PR 0): the lookup read `listUsers()` with no page, the first 50 accounts, and prod held exactly 50; the 51st account (the walk kit's tester, a new hire) would have hidden any account past the page, the dev-login identity included, and every session's sign-in would have answered *User not found*. `findAuthUserByEmail` in [`_shared/authUserByEmail.ts`](../supabase/functions/_shared/authUserByEmail.ts) reads 1,000 a page until the address is found (trimmed, case-insensitive) or the last page is read; `login-as-user` had the same read and takes the same helper. **Redeploy both** once merged.
 
 > **v2.5401 — `deno check` passes again**: the outer `catch` read `error?.message` off an `unknown`, which the optional chain narrows to `{}` (TS2339). It reads `(error as Error)?.message` now, as `merge-users` does. What its `try` can throw is an `Error`: a body that is not JSON. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
