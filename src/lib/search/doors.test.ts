@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { appRoutePathsFromSource, pathMatchesRoute } from '../twins/appDirectoryCheck'
 import { getZonedSettingsGroups } from '../settingsGroups'
 import { SETTINGS_HASH_ANCHOR_TO_TAB } from '../settingsDeepLink'
+import { movedSettingsCardAnchorNow } from '../settings/settingsFoldCards'
 import { DEV_DOORS } from '../settings/devDoors'
 import { ROLES } from '../userRoles'
 import { isPathAllowedForRole } from '../layoutRouteAccess'
@@ -183,8 +184,10 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
     const groups = new Set(ROLES.flatMap((r) => getZonedSettingsGroups(r).map((g) => g.id)))
     const missingGroups = [...groups].filter((id) => !doors.some((d) => d.to === `/settings?tab=${id}`))
     expect(missingGroups).toEqual([])
-    // `settings-time-off` is a legacy bookmark: the section moved to the Dashboard in v2.1544.
-    const anchors = Object.keys(SETTINGS_HASH_ANCHOR_TO_TAB).filter((a) => a !== 'settings-time-off')
+    // `settings-time-off` is a legacy bookmark: the section moved to the Dashboard in v2.1544. The anchors a card had
+    // before it moved tabs (punch list #261 PR 2) are aliases of its door, not doors of their own.
+    const moved = new Set(Object.keys(movedSettingsCardAnchorNow()))
+    const anchors = Object.keys(SETTINGS_HASH_ANCHOR_TO_TAB).filter((a) => a !== 'settings-time-off' && !moved.has(a))
     const missingAnchors = anchors.filter((a) => !doors.some((d) => d.to.endsWith(`#${a}`)))
     expect(missingAnchors).toEqual([])
   })

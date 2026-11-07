@@ -81,8 +81,7 @@ export default function GcOfficeNoticesSettingsBlock() {
 
   const on = since !== null
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }} data-testid="gc-office-notices-block">
-      <h3 style={{ margin: '0 0 0.6rem', fontSize: '1rem' }}>GC jobs · the office’s notices</h3>
+    <div style={{ padding: '1rem' }} data-testid="gc-office-notices-block">
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: loaded ? 'pointer' : 'default' }}>
         <input type="checkbox" checked={on} disabled={!loaded || saving} onChange={(e) => void toggle(e.target.checked)} style={{ marginTop: 3 }} aria-label="Email the office’s GC notices" />
         <span>
