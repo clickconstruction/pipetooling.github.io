@@ -9,3 +9,5 @@ Signed hours statement (punch list #212, the dev MCP's charged and sheet papers)
 The dry run's `after` names all four. `mark_sent` and `file_on_matter` are the earlier body unchanged. Devs only; `CREATE OR REPLACE`, idempotent; no table is created, so no read-only fence is owed.
 
 Apply from the main checkout after the PR merges (`supabase db push`), then `supabase functions deploy dev-mcp`. Before the push the old body ignores the new keys: an `apply_hours_statement` on the charged basis would land a row reading `paid` with no charge columns, so push before the seat is used for one. `src/types/database.ts` and the catalog do not change (no column is added).
+
+**Applied** to prod on 2026-11-07 after #7246 merged, from a clean checkout of main with `supabase db push --linked` (20261107160000 rode along); `npm run check:migration-drift` read 1153 local files and 1153 remote versions, fully applied. `dev-mcp` deployed the same hour at 0.39.0.
