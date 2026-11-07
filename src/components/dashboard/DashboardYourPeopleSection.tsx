@@ -6,6 +6,7 @@ import { useDashboardYourPeople } from '../../hooks/useDashboardYourPeople'
 import { reminderBody, type YourPersonRow } from '../../lib/dashboardYourPeople'
 import { DashboardGroupCard } from './DashboardGroupCard'
 import { TaskRing } from '../checklist/TaskRing'
+import { PeopleWeekSheet } from '../checklist/PeopleWeekSheet'
 
 /**
  * Your people (punch list #273, PR 3c): the office's morning read of the people's open one-off cards, under My Inbox.
@@ -18,6 +19,7 @@ export function DashboardYourPeopleSection({ authUserId, enabled, onVisibleChang
   const { rows, headline, loading, error, titlesFor } = useDashboardYourPeople(authUserId, enabled)
   const { showToast } = useToastContext()
   const [remindingId, setRemindingId] = useState<string | null>(null)
+  const [weekOpen, setWeekOpen] = useState(false)
   const visible = enabled && (loading || rows.length > 0)
   useEffect(() => {
     onVisibleChange?.(visible)
@@ -59,11 +61,21 @@ export function DashboardYourPeopleSection({ authUserId, enabled, onVisibleChang
       id="dash-your-people"
       title="Your people"
       headerRight={
-        <Link to="/checklist?tab=review" style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
-          Open Review →
-        </Link>
+        <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={() => setWeekOpen(true)}
+            style={{ fontSize: '0.8rem', fontWeight: 600, padding: '3px 9px', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+          >
+            ✉ Get this every Monday
+          </button>
+          <Link to="/checklist?tab=review" style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
+            Open Review →
+          </Link>
+        </span>
       }
     >
+      <PeopleWeekSheet open={weekOpen} onClose={() => setWeekOpen(false)} meId={authUserId} canPickOthers suggested={rows.map((r) => r.userId)} />
       {headline ? <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }} data-testid="your-people-headline">{headline}</div> : null}
       {error ? <div style={{ fontSize: '0.875rem', color: 'var(--text-red-700)', marginBottom: '0.5rem' }}>{error}</div> : null}
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>

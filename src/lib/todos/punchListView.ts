@@ -140,6 +140,18 @@ export function flaggedRows(items: readonly BoardItem[]): BoardItem[] {
   return items.filter((i) => i.flagged)
 }
 
+/**
+ * The group swatches (the row's stripe, the Shortlist's dot): the same token family the app's
+ * chips use, so they read on both themes. Status colours stay saturated tokens.
+ */
+export const GROUP_COLOR: Record<BoardGroup, string> = {
+  ready: 'var(--text-green-700)',
+  close: 'var(--text-muted)',
+  gated: 'var(--text-amber-800)',
+  waiting: 'var(--text-sky-700)',
+  residual: 'var(--text-violet-700)',
+}
+
 export const FLAGGED_BLURB = 'The owner put these at the top. Each still names its group on the stripe; unflag one by deleting its flagged line.'
 
 /** Toggle: picking the current pick again clears it. */

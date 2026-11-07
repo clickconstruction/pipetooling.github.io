@@ -746,7 +746,7 @@ WHERE proname IN (
 
 #### `public.checklist_items` (key fields)
 - **Purpose**: Recurring checklist task definitions. See `checklist_item_assignees` for assignees.
-- **Key Fields**: `title`, `links` (text[], URLs for placeholders [1], [2], etc. in title; links[0]=[1], links[1]=[2])
+- **Key Fields**: `title`, `links` (text[], URLs for placeholders [1], [2], etc. in title; links[0]=[1], links[1]=[2]); since v2.6592 (punch list #273) `asks_for_photo` (a photo required at the card's finish; `checklist_tech_tree_group_tasks` carries the same), and on `checklist_instances` `percent_complete` (0 to 100, kept in step with `completed_at` by `a_task_percent_keeps_done` and recounted from the ticks by `task_criteria_checks_recount_aiud`; mirrored onto the roadmap task by `sync_roadmap_task_from_instance`)
 
 #### `public.checklist_item_assignees`
 - **Purpose**: Junction table for checklist item assignees (many-to-many). Replaces legacy single `assigned_to_user_id` on checklist_items.
@@ -764,6 +764,15 @@ WHERE proname IN (
 - **Primary Key**: `(checklist_instance_id, user_id)`
 - **RLS**: Dev/master/assistant/primary can manage; users can read rows where they are assigned
 - **Usage**: Dashboard, Checklist, People fetch instances via `checklist_instance_assignees!inner(user_id)`; Today/History filter by assignee
+
+#### `public.task_criteria` · `public.task_criteria_checks` · `public.task_photos`
+- **Purpose**: A task card's Done when… lines, their ticks and its photos (punch list #273, v2.6592, `docs/migrations/20261106230000_task_cards_progress.md`). A line sits on the card's definition (`checklist_item_id`) or its roadmap task (`roadmap_group_task_id`), one of the two; a tick is one line on one day row (`checklist_instance_id`, `criterion_id`, who, when); a photo is one shot on a day row (`kind` progress · finish · line, its `percent` or `criterion_id`, the taker, the sizes, `filed_at` and the Drive ids once `photo-save` has filed it under **PipeTooling Tasks**).
+- **Storage**: the private bucket `task-photos`, `<instance_id>/<photo_id>.jpg`, 2 MB, images.
+- **RLS**: `can_see_checklist_instance(uuid)` and `can_work_checklist_instance(uuid)` (the office, an assignee or the card's writer) gate the ticks and the photos; `can_write_task_criteria(item, task)` gates the lines ([ACCESS_CONTROL.md](./ACCESS_CONTROL.md) → *Task cards: lines, ticks and photos*).
+
+#### `public.people_week_email_requests`
+- **Purpose**: A scheduled send of Your people's week, the Monday email (punch list #273, v2.6603, `docs/migrations/20261106233000_people_week_email.md`; the `people_week` stream in [REPORT_SUBSCRIPTIONS.md](./REPORT_SUBSCRIPTIONS.md)): `requested_by` = `recipient_user_id`, `people_user_ids` (1 to 50), `send_at`, `repeat_weekly`, `sent_at`, `error`, `attempts`. The service-role payload is `get_people_week_payload(recipient, people, week_start)`; the cron `people-week-email` drains due rows.
+- **RLS**: insert in one's own name, as one's own recipient, by the office (`is_dev_or_master_or_assistant()`) or with a list of exactly oneself; read requester, recipient or dev; delete a pending row's requester or recipient, or dev.
 
 #### `public.user_checklist_item_mute_preferences`
 - **Purpose**: Per-task mute: user mutes completed-task push notifications for a specific checklist item
@@ -1816,6 +1825,8 @@ A GC project gets no plumbing workflow: `ensureWorkflow` (`useWorkflowStepsEngin
 `Calendar.tsx` — month grid of the signed-in user's assigned stages, bids, prospect callbacks and promised bid calls (call-again days, v2.4426), planned dispatch blocks, recorded clock time, and salaried-workday / time-off layers, plus the My Day single-day card. All times Central. Tables read: `project_workflow_steps` (+ `project_workflows`, `projects` for names), `bids`, `prospect_callbacks`, `job_schedule_blocks`, `clock_sessions`, `attendance_incidents`, `users`, `people_pay_config`, `user_time_off`, `salary_work_schedule_templates`, `salary_work_schedule_day_overrides`. Depth: [CLOCK_SURFACES_ARCHITECTURE.md](./CLOCK_SURFACES_ARCHITECTURE.md), [SALARY_CLOCK_SESSIONS.md](./SALARY_CLOCK_SESSIONS.md); history: grep RECENT_FEATURES.md (v2.558 wave).
 
 ### 8. Dashboard
+`dashboard/DashboardYourPeopleSection.tsx` — **Your people** (punch list #273, PR 3c, v2.6600): under My Inbox for the office roles (`useDashboardYourPeople` over `lib/dashboardYourPeople.ts`), one row per person with an open one-off card, the ring on their newest-moved card (`TaskRing`), *moved today* / *moved Wed* / *stuck 32 days* on Review's own age rule (`ONE_OFF_TASK_AGE`), **🔔 Remind** through `send-checklist-notification` and **Open Review**; since v2.6603 **✉ Get this every Monday** opens `checklist/PeopleWeekSheet.tsx`, the Monday email of their week with the rows' people picked (`docs/DASHBOARD_SECTIONS_ARCHITECTURE.md` row 6b).
+
 `dashboard/DashboardProjectsStrip.tsx` — Projects on the leader's Dashboard (punch list #242, PR 6, v2.6352): under Money in in `DashboardFinancialsSection`, for `dev` and `master_technician`, a closed line in Money in's frame (the counts from `paceCounts`, the worst project from `worstWords`) pressed open to the board's `ProjectCard`s over the same `useProjectsBoard` read, which asks for a day's dollars only while open; the choice is kept per device (`dashboard-projects-open`).
 
 `jobMode/SuperintendentCard.tsx` — the superintendent's line on Job Mode (punch list #242, PR 4, v2.6335): for a superintendent whose current or next job is a project, his project's pace above the job's details — the headline, the pace strip (`jobMode/PaceStrip.tsx`) with the real days and the stages, the target the office set, the money when it leads, the proof and the one move with **Set the %** (the Dashboard's stepper) and **Open the checklist** (the next stage with a question left, `StageChecklistSheet`) — from `list_project_board` and `projectPace` (`lib/jobs/projectsBoard.ts`), the same read and assembly the Projects board stands on; a tapped day opens in hours, since that read carries no wages. Mounted in `DashboardJobModeCard` beside `JobModeDetailsSection`.
