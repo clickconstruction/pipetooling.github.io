@@ -34,6 +34,7 @@ import type {
   TemplateLine,
   TemplatePhase,
   TemplateRow,
+  TemplateRowsShape,
   TemplateUse,
   WaitKind,
   WhatIfBase,
@@ -141,6 +142,8 @@ export interface ScheduleRows {
     template_name: string | null
     template_used_on: string | null
     template_lines: unknown
+    /** The copy of a rows template (#210, migration 20261107160000), read when the row carries it. */
+    template_rows?: unknown
   } | null
 }
 
@@ -496,7 +499,17 @@ export function roughFromRow(r: ScheduleRows['rough'], names: PeopleNames): Roug
       : {}),
     ...(r.template_name && r.template_used_on ? { template: { id: r.template_id ?? '', name: r.template_name, on: r.template_used_on } } : {}),
     ...(Array.isArray(r.template_lines) ? { like: r.template_lines as TemplateLine[] } : {}),
+    // The copy of the rows (#210) counts only beside its template: a rough drawn back to the stage days alone leaves the column as it was.
+    ...(r.template_name && r.template_used_on && rowsCopyOf(r.template_rows) ? { rows: rowsCopyOf(r.template_rows)! } : {}),
   }
+}
+
+/** The rough's copy of a rows template (#210) when the column holds one: phases and rows as arrays, else nothing. */
+function rowsCopyOf(v: unknown): TemplateRowsShape | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const o = v as { phases?: unknown; rows?: unknown; workingDays?: unknown }
+  if (!Array.isArray(o.phases) || !Array.isArray(o.rows)) return null
+  return { phases: o.phases as TemplatePhase[], rows: o.rows as TemplateRow[], workingDays: o.workingDays === true }
 }
 
 /** The job's schedule fields as the kernels keep them on `GcProject`. A field with nothing in it is left unset. */

@@ -23,8 +23,9 @@ import { initialGcState } from './testState'
 import { SCHEDULE_STAGES } from './draft'
 import { templateShape } from './templates'
 import { rowsDraft, templateRows } from './builder'
+import { drawWeeks } from './schedule'
 import { QUICK_LUBE_PHASES, quickLubeTemplate } from './testTemplate'
-import { roughWeeks } from './rough'
+import { roughDraw, roughWeeks } from './rough'
 import { importLines, importedSchedule } from './import'
 import { theirDatesLogWords, withTheirDates } from './theirDates'
 import type { ScheduleImport } from './types'
@@ -241,6 +242,12 @@ describe('the job’s own work and a failed inspection (PR 9a)', () => {
 
   it('puts nothing on the chart with no name, nobody’s, or a finish before its start', () => {
     const base = { label: 'Slab cure', who: 'Cure time', start: '2026-10-05', finish: '2026-10-14', after: [], holdsUp: [] }
+    // Its phase (#210): one the schedule was drawn with lands on the bar; another, or none, lands it under Not in a phase.
+    const phased = { ...fairOaks, schedule: { ...fairOaks.schedule!, phases: ['Sitework and utilities', 'Closeout'] } }
+    expect(ownWorkPress(phased, { ...base, phase: 'Closeout' }, 'Robert')!.activities.find((a) => a.added)?.phase).toBe('Closeout')
+    expect(ownWorkPress(phased, { ...base, phase: 'Paving' }, 'Robert')!.activities.find((a) => a.added)?.phase).toBeUndefined()
+    expect(ownWorkPress(phased, base, 'Robert')!.activities.find((a) => a.added)?.phase).toBeUndefined()
+    expect(ownWorkPress(fairOaks, { ...base, phase: 'Closeout' }, 'Robert')!.activities.find((a) => a.added)?.phase).toBeUndefined()
     expect(ownWorkPress(fairOaks, { ...base, label: ' ' }, 'Robert')).toBeNull()
     expect(ownWorkPress(fairOaks, { ...base, who: '' }, 'Robert')).toBeNull()
     expect(ownWorkPress(fairOaks, { ...base, finish: '2026-10-01' }, 'Robert')).toBeNull()
@@ -386,6 +393,19 @@ describe('a first draft from a template (PR 12a, G-44)', () => {
     expect(r.schedule.activities).toEqual(draftSchedule({ ...helotes, rough }, start, {}, template.lines).activities)
   })
 
+  it('from the rough’s own copy of a rows template (#210): every row lands as the template would have, even once it changed', () => {
+    const quick = quickLubeTemplate()
+    const rows = templateRows(quick)
+    const rough = { start, days: {}, by: 'Robert Douglas', on: '2026-10-01', template: { id: quick.id, name: quick.name, on: '2026-10-01' }, like: quick.lines, rows }
+    const changed: GcState = { ...st, scheduleTemplates: [{ ...quick, rows: quick.rows!.slice(0, 3), phases: quick.phases!.slice(0, 1) }] }
+    const r = templateDraftPress(changed, { ...helotes, rough }, start, quick.id)
+    if (!('schedule' in r)) throw new Error(r.problem)
+    expect(r.schedule.template).toEqual({ id: quick.id, name: quick.name, on: st.today })
+    expect(r.schedule.activities).toEqual(rowsDraft({ ...helotes, rough }, start, rows, {}).activities)
+    expect(r.schedule.phases).toEqual(QUICK_LUBE_PHASES.map((p) => p.name))
+    expect(r.words).toMatch(/ 52 rows in 8 phases landed\.$/)
+  })
+
   it('takes the rough’s stage days when we bid one (G-45)', () => {
     const first = SCHEDULE_STAGES[0]!
     const rough = { start, days: { [first.key]: first.days + 5 }, by: 'Robert Douglas', on: '2026-10-01' }
@@ -434,6 +454,28 @@ describe('the rough while we bid (PR 12b, G-45)', () => {
     const plain = drawn(roughPress(st, { ...boerne, rough: fromTemplate }, { start, days: {}, templateId: null }, 'Robert Douglas'))
     expect(plain.template).toBeUndefined()
     expect(roughPress(aside, boerne, { start, days: {}, templateId: 'tpl-fair' }, 'Robert Douglas')).toEqual({ problem: TEMPLATE_GONE })
+  })
+
+  it('copies a rows template’s phases and rows too (#210), draws them as the first draft does, and keeps the copy on a redraw', () => {
+    const quick = quickLubeTemplate()
+    const withQuick: GcState = { ...st, scheduleTemplates: [template, quick] }
+    const rough = drawn(roughPress(withQuick, boerne, { start, days: {}, templateId: quick.id }, 'Robert Douglas'))
+    expect(rough.template).toEqual({ id: quick.id, name: quick.name, on: st.today })
+    expect(rough.like).toEqual(quick.lines)
+    expect(rough.rows).toEqual(templateRows(quick))
+    // The rough's draw is the rows draw, so its weeks follow the rows, not the stage days.
+    const bidding = { ...boerne, rough }
+    expect(roughDraw(bidding)).toEqual(rowsDraft(bidding, start, templateRows(quick), {}))
+    expect(roughWeeks(bidding)?.weeks).toBe(drawWeeks(rowsDraft(bidding, start, templateRows(quick), {}))?.weeks)
+    expect(roughWeeks(bidding)?.weeks).not.toBe(14)
+    // The template changed since: a redraw with no pick keeps the rough's own copy of the rows.
+    const changed: GcState = { ...st, scheduleTemplates: [{ ...quick, rows: quick.rows!.slice(0, 3), asideOn: '2026-10-05' }] }
+    const redrawn = drawn(roughPress(changed, bidding, { start: '2026-11-09', days: {} }, 'Robert Douglas'))
+    expect([redrawn.start, redrawn.template, redrawn.rows]).toEqual(['2026-11-09', rough.template, templateRows(quick)])
+    // A template with lines alone, saved before the builder, keeps no rows copy; a job-saved one carries its rows (`templateShape`).
+    const linesOnly: GcState = { ...st, scheduleTemplates: [{ ...template, rows: undefined, phases: undefined, workingDays: undefined }] }
+    expect(drawn(roughPress(linesOnly, boerne, { start, days: {}, templateId: 'tpl-fair' }, 'Robert Douglas')).rows).toBeUndefined()
+    expect(drawn(roughPress(st, boerne, { start, days: {}, templateId: 'tpl-fair' }, 'Robert Douglas')).rows).toEqual(templateRows(template))
   })
 
   it('is refused on a lost job, once our bid went in, past bidding and with no start, in words', () => {
