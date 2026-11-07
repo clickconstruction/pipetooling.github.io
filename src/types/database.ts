@@ -28373,6 +28373,138 @@ export type Database = {
           },
         ]
       }
+      person_document_revisions: {
+        Row: {
+          author_label: string | null
+          content: string
+          counsel_only: boolean
+          document_id: string
+          id: string
+          person_id: string
+          replaced_at: string
+          replaced_by: string | null
+          replaced_by_label: string | null
+          title: string
+        }
+        Insert: {
+          author_label?: string | null
+          content: string
+          counsel_only?: boolean
+          document_id: string
+          id?: string
+          person_id: string
+          replaced_at?: string
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+          title: string
+        }
+        Update: {
+          author_label?: string | null
+          content?: string
+          counsel_only?: boolean
+          document_id?: string
+          id?: string
+          person_id?: string
+          replaced_at?: string
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "person_document_index"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "person_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_document_revisions_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_documents: {
+        Row: {
+          archived_at: string | null
+          author_label: string | null
+          content: string
+          counsel_only: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          person_id: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          author_label?: string | null
+          content?: string
+          counsel_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_id: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          author_label?: string | null
+          content?: string
+          counsel_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_file_attachments: {
         Row: {
           author_label: string | null
@@ -37180,6 +37312,73 @@ export type Database = {
         }
         Relationships: []
       }
+      person_document_index: {
+        Row: {
+          archived_at: string | null
+          author_label: string | null
+          chars: number | null
+          counsel_only: boolean | null
+          created_at: string | null
+          created_by: string | null
+          id: string | null
+          person_id: string | null
+          sections: number | null
+          title: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          author_label?: string | null
+          chars?: never
+          counsel_only?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string | null
+          person_id?: string | null
+          sections?: never
+          title?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          author_label?: string | null
+          chars?: never
+          counsel_only?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string | null
+          person_id?: string | null
+          sections?: never
+          title?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roster_people: {
         Row: {
           account_kind: string | null
@@ -43553,6 +43752,7 @@ export type Database = {
         }
         Returns: Json
       }
+      week_card_data: { Args: { p_user_id: string }; Returns: Json }
       write_down: {
         Args: { p_kind: string; p_message_id: string; p_writes?: string }
         Returns: undefined
