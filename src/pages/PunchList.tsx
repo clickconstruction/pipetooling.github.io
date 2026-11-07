@@ -7,6 +7,7 @@ import { canOpenPunchList } from '../lib/todos/punchListAccess'
 import {
   FLAGGED_BLURB,
   GROUP_BLURBS,
+  GROUP_COLOR,
   PUNCH_FILTERS,
   byLine,
   countPicks,
@@ -27,6 +28,7 @@ import {
   type PunchPick,
 } from '../lib/todos/punchListView'
 import { parseOpinion, type BoardGroup, type BoardItem, type OpinionVerdict } from '../lib/todos/todoBoard'
+import { PunchListShortlist } from '../components/punchList/PunchListShortlist'
 import board from 'virtual:punch-list'
 
 /**
@@ -199,6 +201,9 @@ export default function PunchList() {
         </button>
       </div>
 
+      {/* v2.6618 · the Shortlist: every open row by group, smallest first, from the cards' own size words. */}
+      <PunchListShortlist items={board.items} visible={(it) => rowVisible(it, picks, filter, waitingOnly)} />
+
       {/* v2.4196 · the owner's flagged rows, above every group. */}
       {(() => {
         const visible = flagged.filter((it) => rowVisible(it, picks, filter, waitingOnly))
@@ -253,7 +258,7 @@ export default function PunchList() {
       <footer style={{ marginTop: '2.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '72ch' }}>
         Every row opens with its number — say “#16” and everyone knows which one; a number is given once, when the to-do is
         written, and never reused. Sizes are a working estimate: XS is under an hour, S a sitting, M a day of PRs, L a
-        multi-day train. “Next” names the smallest shippable step from the to-do’s own plan. Each row links to its file on
+        multi-day train; the Shortlist at the top sorts each group by them. “Next” names the smallest shippable step from the to-do’s own plan. Each row links to its file on
         main; the mock-ups open as pages.
       </footer>
     </div>
@@ -469,15 +474,6 @@ function Tile({ n, label }: { n: number; label: string }) {
 const FILTER_LABEL: Record<PunchFilter, string> = { all: 'All', unsorted: 'Unsorted', do: 'Do', later: 'Later', drop: 'Drop' }
 const PICK_LABEL: Record<PunchPick, string> = { do: 'Do', later: 'Later', drop: 'Drop' }
 
-// Status colors stay saturated tokens; the group swatches are the same family the app uses
-// for chips, so they read on both themes.
-const GROUP_COLOR: Record<BoardGroup, string> = {
-  ready: 'var(--text-green-700)',
-  close: 'var(--text-muted)',
-  gated: 'var(--text-amber-800)',
-  waiting: 'var(--text-sky-700)',
-  residual: 'var(--text-violet-700)',
-}
 const OPINION_STYLE: Record<OpinionVerdict, { color: string; background: string; border: string }> = {
   build: { color: 'var(--text-green-800)', background: 'var(--bg-green-100)', border: 'var(--border-green)' },
   later: { color: 'var(--text-amber-900)', background: 'var(--bg-amber-100)', border: 'var(--border-amber)' },

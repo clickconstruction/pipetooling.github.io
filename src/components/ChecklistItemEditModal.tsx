@@ -476,7 +476,9 @@ export function ChecklistItemEditModal({
             </div>
           </label>
           <label style={{ display: 'block', marginTop: '0.85rem' }}>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Done when…</span>
+            <span style={{ display: 'block', marginBottom: '0.25rem' }}>
+              Done when… <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }}>what done means, one line each, ticked off on the card</span>
+            </span>
             <textarea
               value={form.lines}
               onChange={(e) => setForm((f) => ({ ...f, lines: e.target.value }))}

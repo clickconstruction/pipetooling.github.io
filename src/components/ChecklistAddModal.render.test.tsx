@@ -116,6 +116,34 @@ describe('ChecklistAddModal "Go to checklist" button', () => {
   })
 })
 
+describe('ChecklistAddModal Done when… and the ring (v2.6617)', () => {
+  it('says what the closed fold is for, shows the photo switch beside it, and names what the card carries', async () => {
+    await renderOpenModal()
+    expect(screen.getByTestId('done-when-hint').textContent).toBe('what done means, one line each, ticked off on the card')
+    const photo = screen.getByLabelText('Asks for a photo at the finish') as HTMLInputElement
+    expect(photo.checked).toBe(false)
+    expect(screen.queryByLabelText('Done when')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show done when' }))
+    expect(screen.queryByTestId('done-when-hint')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Done when'), { target: { value: 'Pipe is racked by size\nFittings are in labeled bins' } })
+    expect((screen.getByLabelText('Asks for a photo at the finish') as HTMLInputElement).checked).toBe(true)
+    expect(screen.getByText(/stays until completed, 2 Done when… lines, a photo at the finish\./)).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Asks for a photo at the finish'))
+    expect(screen.getByText(/stays until completed, 2 Done when… lines\./)).toBeTruthy()
+    cleanup()
+  })
+
+  it('says on Repeats that a repeating task keeps its tick', async () => {
+    await renderOpenModal()
+    expect(screen.queryByTestId('repeat-ring-hint')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Repeats' }))
+    expect(screen.getByTestId('repeat-ring-hint').textContent).toBe('A repeating task keeps its tick. A one-off gets the % ring.')
+    fireEvent.click(screen.getByRole('button', { name: 'Today' }))
+    expect(screen.queryByTestId('repeat-ring-hint')).toBeNull()
+    cleanup()
+  })
+})
+
 describe('ChecklistAddModal Send buttons', () => {
   it('shows a header Send only once a title is typed, beside the footer Send', async () => {
     const title = await renderOpenModal()
