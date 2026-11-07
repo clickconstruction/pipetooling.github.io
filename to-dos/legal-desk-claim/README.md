@@ -10,10 +10,10 @@ summary: >
   each with an amount, its basis (a statute or a contract clause) and the document behind it. The
   open bills and the retainage held fill in on their own. *How much?* shows the claim with the
   balance inside it, and the floor can be set against either.
-next: The owner's look at the mock-up (mockup.html beside this file, 2026-10-26) — Do, Later or Drop; on Do, PR 1 is the claim table, after #165 picks the one source for the retainage row.
+next: The owner's look at the mock-up (mockup.html beside this file, 2026-10-26) — Do, Later or Drop; on Do, PR 1 is the claim table; #165 picked the one source for the retainage row (v2.6010 to v2.6027).
 size: M (a table, the tile, the floor, the packet's print)
 blocker: >
-  The owner's pick, and #165's one source for the retainage held.
+  The owner's pick.
 opinion: your call — it matters most once a firm takes a case; on job 891 the claim lived only in the letters
 ---
 

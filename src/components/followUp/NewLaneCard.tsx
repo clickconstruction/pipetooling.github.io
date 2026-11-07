@@ -20,6 +20,9 @@ import { TRADE_TEMPLATES } from '../../lib/gc/plans'
 import { Btn, input } from '../gc/gcUi'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { DESK_BAND } from '../../lib/messages/deskMarks'
+import { deskRead } from '../../lib/messages/rowDesk'
+import { DeskBand } from './DeskBand'
 
 /** The trades a new trade partner can do, as the GC plans name them. */
 const TRADE_NAMES: readonly string[] = [...new Set(TRADE_TEMPLATES.map((t) => t.trade))].sort((a, b) => a.localeCompare(b))
@@ -371,13 +374,16 @@ export function NewLaneCard({ row, channels, guesses, roster = [], jobs = [], pe
       else if (lead.kind === 'job') onTie(lead.jobId)
       else onSomeoneElse()
     }
+    // The desk band (PR 2 of #258, v2.6616): the folded card wears the same strip the lane's row did, so the desk is read in the thread too; the open card has the room to say it in words.
+    const band = deskRead(row)
     return (
       <section
         aria-label={`Sort: ${head}`}
         data-new-lane-card={row.sort}
         data-new-lane-fold="folded"
-        style={{ margin: '0.5rem 0.9rem 0', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-blue-tint)', padding: '0.4rem 0.6rem 0.4rem 0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.5rem', alignItems: 'center' }}
+        style={{ margin: '0.5rem 0.9rem 0', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-blue-tint)', padding: `0.4rem 0.6rem 0.4rem ${band ? `calc(0.75rem + ${DESK_BAND.phone.width}px)` : '0.75rem'}`, display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.5rem', alignItems: 'center', ...(band ? { position: 'relative' } : {}) }}
       >
+        {band && <DeskBand read={band} phone radius={9} />}
         {/* On a phone the head takes its own line over the presses (v2.6482); at a desk they share one. */}
         <h3 title={title} style={{ margin: 0, fontSize: '0.9rem', flex: '1 1 14rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {title}

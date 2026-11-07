@@ -7,7 +7,10 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateU
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { derivePersonFileFreshness } from '../../../lib/people/personFileFreshness'
 import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../../lib/people/hrDocMarkdown'
-import { hrDocDraftWords, hrDocSaveFailureWords, hrDocSavePayload, type HrDocKind } from '../../../lib/people/hrDocEditor'
+import { hrDocDraftWords, hrDocSaveFailureWords, hrDocSavePayload, type HrDocTarget } from '../../../lib/people/hrDocEditor'
+import { checkDocumentFile, cleanDocumentTitle, documentKeptByWords, documentSizeWords, documentsTabCount, type PersonDocumentIndexRow, type PersonDocumentRow } from '../../../lib/people/personDocuments'
+import { loadPersonDocument, loadPersonDocuments, savePersonDocument } from '../../../lib/people/personDocumentsIo'
+import { citationsBySection, citedByWords, headingNumber, sectionByNumber, splitByCitations } from '../../../lib/people/hrDocCitations'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import {
   buildPersonTimeline,
@@ -260,8 +263,18 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const hrDocRef = useRef<HTMLDivElement>(null)
   // v2.6609: the summary or the narrative under edit — the draft, the text it started from, and the updated_at loaded,
   // which the save quotes so a version kept since (the seat's apply_person_doc, another dev) refuses it.
-  const [docEdit, setDocEdit] = useState<{ kind: HrDocKind; draft: string; original: string; loadedUpdatedAt: string | null } | null>(null)
+  const [docEdit, setDocEdit] = useState<{ kind: HrDocTarget; docId?: string; title?: string; draft: string; original: string; loadedUpdatedAt: string | null } | null>(null)
   const [docSaving, setDocSaving] = useState(false)
+  // v2.6614 (punch list #277): the named documents — the list, the one open, and the Add a document form.
+  const [documents, setDocuments] = useState<PersonDocumentIndexRow[]>([])
+  const [documentsHeld, setDocumentsHeld] = useState<string | null>(null)
+  const [openDoc, setOpenDoc] = useState<PersonDocumentRow | null>(null)
+  const [addDoc, setAddDoc] = useState<{ how: 'write' | 'file' | 'paste'; title: string; text: string; counselOnly: boolean; fileName: string | null; why: string | null; saving: boolean } | null>(null)
+  const namedDocRef = useRef<HTMLDivElement>(null)
+  // v2.6615 (punch list #277 PR 3): a citation pressed on a line asks for a section of the narrative; the Jump to list
+  // opens the entries that cite a section.
+  const [pendingSection, setPendingSection] = useState<number | null>(null)
+  const [citedOpen, setCitedOpen] = useState<number | null>(null)
   /** Themes on the record (v2.6546): the catalog and this person's marks, the pickers' drafts, the Timeline's theme filter, the ticked lines and the bulk bar. */
   const [themes, setThemes] = useState<LegalTheme[]>([])
   const [marks, setMarks] = useState<LegalThemeMark[]>([])
@@ -332,6 +345,34 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     void reloadMatter()
   }, [reloadMatter, changeKey])
 
+  const reloadDocuments = useCallback(async () => {
+    if (!viewer.isDev || !personId) {
+      setDocuments([])
+      setDocumentsHeld(null)
+      return
+    }
+    const r = await loadPersonDocuments(personId)
+    setDocuments(r.documents)
+    setDocumentsHeld(r.heldWhy)
+  }, [viewer.isDev, personId])
+
+  useEffect(() => {
+    void reloadDocuments()
+  }, [reloadDocuments, changeKey])
+
+  const openDocument = useCallback(
+    async (id: string) => {
+      const r = await loadPersonDocument(id)
+      if (!r.document) {
+        showToast(`Could not open the document: ${r.why ?? 'it was not found'}`, 'error')
+        return
+      }
+      setDocEdit(null)
+      setOpenDoc(r.document)
+    },
+    [showToast],
+  )
+
   useEffect(() => {
     setTicked(new Set())
     setThemeFilter(null)
@@ -357,6 +398,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     return m
   }, [sources])
   const evidenceRecords = useMemo(() => sortEvidenceNewestFirst(sources?.evidence ?? []), [sources])
+  /** v2.6615: the entries that cite each section of the narrative (`N§16` in their words). */
+  const citesBySection = useMemo(() => citationsBySection(lines.filter((l) => l.ref.table === 'person_file_entries').map((l) => ({ key: l.key, ymd: l.ymd, what: l.what }))), [lines])
   const lineByEntryId = useMemo(() => {
     const m = new Map<string, PersonTimelineLine>()
     for (const l of lines) if (l.ref.table === 'person_file_entries') m.set(l.ref.id, l)
@@ -720,6 +763,35 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     }, 50)
   }
 
+  /** A citation on a line (v2.6615): the Documents view on the narrative, scrolled to that section and lit for a moment. */
+  const openNarrativeSection = (n: number) => {
+    setOpenDoc(null)
+    setDocEdit(null)
+    setAddDoc(null)
+    setView('narrative')
+    setPendingSection(n)
+  }
+  useEffect(() => {
+    if (pendingSection === null || view !== 'narrative' || !sources?.docs.narrative) return
+    const target = sectionByNumber(extractHrDocHeadings(sources.docs.narrative.content), pendingSection)
+    setPendingSection(null)
+    if (!target) {
+      showToast(`The narrative has no section ${pendingSection}.`, 'error')
+      return
+    }
+    window.setTimeout(() => {
+      // The slug is letters, digits and dashes (hrDocMarkdown's slugify), so an attribute selector needs no escaping.
+      const el = hrDocRef.current?.querySelector<HTMLElement>(`[id="${target.slug}"]`)
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      el.style.transition = 'background 1.2s'
+      el.style.background = 'var(--bg-blue-tint)'
+      window.setTimeout(() => {
+        el.style.background = ''
+      }, 1400)
+    }, 50)
+  }, [pendingSection, view, sources, showToast])
+
   const removeMarkFromWindow = async (id: string, why: string) => {
     const r = await removeMark(id, why, authUser?.id ?? null)
     if (!r.ok) {
@@ -866,7 +938,26 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
               </a>
             ) : null}
           </span>
-          <span style={{ display: 'block', fontSize: '0.87rem', color: 'var(--text-base)', marginTop: '0.25rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{line.what}</span>
+          <span style={{ display: 'block', fontSize: '0.87rem', color: 'var(--text-base)', marginTop: '0.25rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+            {line.ref.table === 'person_file_entries' && viewer.isDev
+              ? splitByCitations(line.what).map((part, i) =>
+                  part.kind === 'text' ? (
+                    <span key={i}>{part.text}</span>
+                  ) : (
+                    <button
+                      key={i}
+                      type="button"
+                      aria-label={`Open section ${part.section} of the narrative`}
+                      title={`Section ${part.section} of the narrative`}
+                      onClick={() => openNarrativeSection(part.section)}
+                      style={{ font: 'inherit', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline dotted' }}
+                    >
+                      {part.raw}
+                    </button>
+                  ),
+                )
+              : line.what}
+          </span>
           {line.notes ? <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{line.notes}</span> : null}
           {chips.length > 0 ? <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.35rem' }}>{chips}</span> : null}
           {themeBits(line)}
@@ -1262,6 +1353,20 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     if (!docEdit || !personId) return
     setDocSaving(true)
     try {
+      if (docEdit.kind === 'document') {
+        // A named document (v2.6614): the same function, by its id; the list and the open document read again after.
+        const out = await savePersonDocument({ personId, docId: docEdit.docId ?? null, title: docEdit.title ?? null, markdown: docEdit.draft, expectUpdatedAt: docEdit.loadedUpdatedAt })
+        if (!out.ok) {
+          showToast(hrDocSaveFailureWords('document', out.why), 'error')
+          return
+        }
+        showToast('The document is saved. The prior version is in its history.', 'success')
+        setDocEdit(null)
+        await reloadDocuments()
+        if (docEdit.docId) await openDocument(docEdit.docId)
+        onChanged?.()
+        return
+      }
       // The same function the dev seat writes through (dev_person_doc_write, 20261107013000): the whole text, with the
       // updated_at this editor loaded; the prior version is archived by the table's trigger.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1282,7 +1387,47 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     } finally {
       setDocSaving(false)
     }
-  }, [docEdit, personId, showToast, load, onChanged])
+  }, [docEdit, personId, showToast, load, onChanged, reloadDocuments, openDocument])
+
+  /** The edit box (v2.6610), for one of the fixed two or, since v2.6614, a named document. */
+  const renderEditor = (kind: HrDocTarget) => {
+    if (!docEdit) return null
+    const state = hrDocDraftWords(kind, docEdit.draft, docEdit.original)
+    const live = state.changed && !docSaving
+    return (
+      <div style={{ ...CARD, maxWidth: '70ch', padding: '0.75rem 0.9rem' }} data-testid={`hr-doc-editor-${kind}`}>
+        <textarea
+          aria-label={`The ${kind}`}
+          value={docEdit.draft}
+          onChange={(e) => setDocEdit({ ...docEdit, draft: e.target.value })}
+          rows={kind === 'summary' ? 14 : 28}
+          autoFocus
+          style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 7, fontSize: '0.82rem', lineHeight: 1.45, background: 'var(--bg-page)', color: 'var(--text-base)', resize: 'vertical', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+        />
+        <p style={{ margin: '0.5rem 0', fontSize: '0.76rem', color: 'var(--text-muted)' }}>Markdown, as the agent writes it. {state.words}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => void saveDoc()}
+            disabled={!live}
+            style={{ padding: '0.4rem 0.9rem', borderRadius: 7, fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: live ? 'pointer' : 'default', background: live ? '#2563eb' : DEAD_PRESS_FILL, color: live ? '#fff' : DEAD_PRESS_TEXT }}
+          >
+            {docSaving ? 'Saving…' : `Save the ${kind}`}
+          </button>
+          <button type="button" onClick={() => setDocEdit(null)} disabled={docSaving} style={{ padding: '0.4rem 0.7rem', borderRadius: 7, fontSize: '0.82rem', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+            Cancel
+          </button>
+        </div>
+        {docEdit.draft.trim() !== '' ? (
+          <details style={{ marginTop: '0.6rem' }}>
+            <summary style={{ cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-muted)' }}>How it will read</summary>
+            {/* The draft, rendered the way the saved text is: marked and the contract sanitizer. */}
+            <div className="hr-doc-body" style={{ ...CARD, marginTop: '0.5rem', padding: '1rem 1.2rem', fontSize: '0.9rem' }} dangerouslySetInnerHTML={{ __html: hrDocMarkdownToSafeHtml(docEdit.draft) }} />
+          </details>
+        ) : null}
+      </div>
+    )
+  }
 
   const renderDoc = (doc: PersonFileDoc | undefined, kind: 'summary' | 'narrative') => {
     const fr = freshness
@@ -1303,43 +1448,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
             </button>
           ) : null}
         </div>
-        {docEdit?.kind === kind ? (() => {
-          const state = hrDocDraftWords(kind, docEdit.draft, docEdit.original)
-          const live = state.changed && !docSaving
-          return (
-            <div style={{ ...CARD, maxWidth: '70ch', padding: '0.75rem 0.9rem' }} data-testid={`hr-doc-editor-${kind}`}>
-              <textarea
-                aria-label={`The ${kind}`}
-                value={docEdit.draft}
-                onChange={(e) => setDocEdit({ ...docEdit, draft: e.target.value })}
-                rows={kind === 'summary' ? 14 : 28}
-                autoFocus
-                style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 7, fontSize: '0.82rem', lineHeight: 1.45, background: 'var(--bg-page)', color: 'var(--text-base)', resize: 'vertical', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
-              />
-              <p style={{ margin: '0.5rem 0', fontSize: '0.76rem', color: 'var(--text-muted)' }}>Markdown, as the agent writes it. {state.words}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => void saveDoc()}
-                  disabled={!live}
-                  style={{ padding: '0.4rem 0.9rem', borderRadius: 7, fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: live ? 'pointer' : 'default', background: live ? '#2563eb' : DEAD_PRESS_FILL, color: live ? '#fff' : DEAD_PRESS_TEXT }}
-                >
-                  {docSaving ? 'Saving…' : `Save the ${kind}`}
-                </button>
-                <button type="button" onClick={() => setDocEdit(null)} disabled={docSaving} style={{ padding: '0.4rem 0.7rem', borderRadius: 7, fontSize: '0.82rem', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                  Cancel
-                </button>
-              </div>
-              {docEdit.draft.trim() !== '' ? (
-                <details style={{ marginTop: '0.6rem' }}>
-                  <summary style={{ cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-muted)' }}>How it will read</summary>
-                  {/* The draft, rendered the way the saved text is: marked and the contract sanitizer. */}
-                  <div className="hr-doc-body" style={{ ...CARD, marginTop: '0.5rem', padding: '1rem 1.2rem', fontSize: '0.9rem' }} dangerouslySetInnerHTML={{ __html: hrDocMarkdownToSafeHtml(docEdit.draft) }} />
-                </details>
-              ) : null}
-            </div>
-          )
-        })() : doc ? (
+        {docEdit?.kind === kind ? renderEditor(kind) : doc ? (
           <>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.9rem', fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
               <span>Kept by {doc.author_label ?? 'the agent'}</span>
@@ -1364,9 +1473,12 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
               <nav aria-label="Jump to section" style={{ background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.8rem', marginBottom: '0.8rem', maxWidth: '70ch', fontSize: '0.8rem' }}>
                 <div style={{ textTransform: 'uppercase', fontSize: '0.64rem', letterSpacing: '0.07em', color: 'var(--text-faint)', fontWeight: 700, marginBottom: '0.35rem' }}>Jump to</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.15rem 0.9rem' }}>
-                  {headings.map((h) => (
+                  {headings.map((h) => {
+                    const n = kind === 'narrative' ? headingNumber(h.text) : null
+                    const cited = n !== null ? (citesBySection.get(n)?.length ?? 0) : 0
+                    return (
+                    <span key={h.slug} style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem' }}>
                     <a
-                      key={h.slug}
                       href={`#${h.slug}`}
                       onClick={(ev) => {
                         ev.preventDefault()
@@ -1376,8 +1488,27 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                     >
                       {h.text}
                     </a>
-                  ))}
+                    {cited > 0 && n !== null ? (
+                      <button type="button" aria-label={`Section ${n}: ${citedByWords(cited)}`} aria-expanded={citedOpen === n} onClick={() => setCitedOpen((prev) => (prev === n ? null : n))} style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 700, color: citedOpen === n ? 'var(--text-link)' : 'var(--text-muted)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, padding: '0 0.4rem', cursor: 'pointer', lineHeight: 1.5 }}>
+                        {cited}
+                      </button>
+                    ) : null}
+                    </span>
+                    )
+                  })}
                 </div>
+                {kind === 'narrative' && citedOpen !== null && (citesBySection.get(citedOpen)?.length ?? 0) > 0 ? (
+                  <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }} data-testid="hr-doc-cited-by">
+                    <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Section {citedOpen} · {citedByWords(citesBySection.get(citedOpen)?.length ?? 0)}. Press one to open the Timeline on it.</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                      {(citesBySection.get(citedOpen) ?? []).map((l) => (
+                        <button key={l.key} type="button" onClick={() => openOnTimeline(l.key)} style={chip(FACT_TONE.gray, { cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, lineHeight: 'inherit' })}>
+                          {dayWords(l.ymd)} · {(l.what.split('\n')[0] ?? '').slice(0, 48)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </nav>
             )}
             {doc.content.trim() === '' ? (
@@ -1403,13 +1534,211 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     )
   }
 
-  const narrativeView = viewer.isDev ? (
-    <div>
-      {renderDoc(sources?.docs.summary, 'summary')}
-      {renderDoc(sources?.docs.narrative, 'narrative')}
-    </div>
+  // ─── Documents (v2.6614, punch list #277): the two the agent keeps, then the named ones, then the doors to add one ───
+  const OUTLINE_PRESS: CSSProperties = { padding: '0.3rem 0.75rem', borderRadius: 7, fontSize: '0.8rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }
+  const QUIET_PRESS: CSSProperties = { padding: '0.3rem 0.7rem', borderRadius: 7, fontSize: '0.8rem', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }
+  const COUNSEL_CHIP: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.1rem 0.55rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+  const FIELD: CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 7, fontSize: '0.84rem', background: 'var(--bg-page)', color: 'var(--text-base)' }
+
+  const startAdd = (how: 'write' | 'file' | 'paste') => {
+    setOpenDoc(null)
+    setDocEdit(null)
+    setAddDoc({ how, title: '', text: '', counselOnly: false, fileName: null, why: null, saving: false })
+  }
+
+  const pickDocumentFile = (files: FileList | null) => {
+    const f = files?.[0]
+    if (!f || !addDoc) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result : ''
+      const check = checkDocumentFile(f.name, text)
+      setAddDoc((prev) => {
+        if (!prev) return prev
+        if (!check.ok) return { ...prev, why: check.why, fileName: null, text: '' }
+        return { ...prev, why: null, fileName: f.name, text: check.text, title: prev.title.trim() ? prev.title : check.title }
+      })
+    }
+    reader.onerror = () => setAddDoc((prev) => (prev ? { ...prev, why: `${f.name} could not be read.`, fileName: null, text: '' } : prev))
+    reader.readAsText(f)
+  }
+
+  const submitAdd = async () => {
+    if (!addDoc || !personId) return
+    const title = cleanDocumentTitle(addDoc.title)
+    if (!title || addDoc.text.trim() === '') return
+    setAddDoc({ ...addDoc, saving: true })
+    const out = await savePersonDocument({ personId, docId: null, title, markdown: addDoc.text, expectUpdatedAt: null, counselOnly: addDoc.counselOnly })
+    if (!out.ok) {
+      showToast(`Could not add the document: ${out.why}`, 'error')
+      setAddDoc({ ...addDoc, saving: false })
+      return
+    }
+    showToast(`${title} is on the file.`, 'success')
+    setAddDoc(null)
+    await reloadDocuments()
+    if (out.docId) await openDocument(out.docId)
+    onChanged?.()
+  }
+
+  const renderAddDocument = () => {
+    if (!addDoc) return null
+    const ready = cleanDocumentTitle(addDoc.title) !== '' && addDoc.text.trim() !== '' && !addDoc.saving
+    return (
+      <div style={{ ...CARD, maxWidth: '70ch', padding: '0.75rem 0.9rem' }} data-testid="hr-doc-add">
+        <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>{addDoc.how === 'file' ? 'Add a document from a file' : addDoc.how === 'paste' ? 'Add a document from pasted text' : 'Write a document'}</div>
+        <input type="text" aria-label="Document title" value={addDoc.title} maxLength={160} placeholder="Its title" onChange={(e) => setAddDoc({ ...addDoc, title: e.target.value })} style={FIELD} />
+        {addDoc.how === 'file' ? (
+          <div style={{ margin: '0.5rem 0', display: 'grid', gap: '0.35rem' }}>
+            <input type="file" accept=".md,.markdown,.txt,text/plain,text/markdown" aria-label="The file" onChange={(e) => { pickDocumentFile(e.target.files); e.target.value = '' }} style={{ fontSize: '0.82rem' }} />
+            {addDoc.fileName ? <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{addDoc.fileName} · {addDoc.text.length.toLocaleString('en-US')} characters, read in the browser; nothing leaves it until Add.</div> : null}
+            {addDoc.why ? <div role="alert" style={{ fontSize: '0.8rem', color: 'var(--text-red-600)' }}>{addDoc.why}</div> : null}
+          </div>
+        ) : (
+          <textarea aria-label="The document" value={addDoc.text} rows={16} placeholder={addDoc.how === 'paste' ? 'Paste the text here' : 'Markdown or plain text'} onChange={(e) => setAddDoc({ ...addDoc, text: e.target.value })} style={{ ...FIELD, margin: '0.5rem 0', resize: 'vertical', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '0.82rem', lineHeight: 1.45 }} />
+        )}
+        <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.8rem', margin: '0.4rem 0 0.6rem', color: 'var(--text-muted)' }}>
+          <input type="checkbox" checked={addDoc.counselOnly} onChange={(e) => setAddDoc({ ...addDoc, counselOnly: e.target.checked })} data-testid="hr-doc-add-counsel" />
+          Counsel-only: kept inside the circle, left out of Copy as text
+        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap' }}>
+          <button type="button" onClick={() => void submitAdd()} disabled={!ready} style={{ padding: '0.4rem 0.9rem', borderRadius: 7, fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: ready ? 'pointer' : 'default', background: ready ? '#2563eb' : DEAD_PRESS_FILL, color: ready ? '#fff' : DEAD_PRESS_TEXT }}>
+            {addDoc.saving ? 'Adding…' : 'Add the document'}
+          </button>
+          <button type="button" onClick={() => setAddDoc(null)} disabled={addDoc.saving} style={QUIET_PRESS}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const renderOpenDocument = (d: PersonDocumentRow) => {
+    const headings = extractHrDocHeadings(d.content)
+    const html = hrDocMarkdownToSafeHtml(d.content)
+    const editing = docEdit?.kind === 'document' && docEdit.docId === d.id
+    const copy = () => {
+      navigator.clipboard.writeText(d.content).then(
+        () => showToast('Copied the text.', 'success'),
+        () => showToast('Could not copy: the clipboard refused.', 'error'),
+      )
+    }
+    return (
+      <section aria-label={d.title} data-testid="hr-doc-open">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <button type="button" onClick={() => { setOpenDoc(null); setDocEdit(null) }} style={QUIET_PRESS}>
+            ‹ Documents
+          </button>
+          <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{d.title}</h3>
+          {d.counsel_only ? <span style={COUNSEL_CHIP} data-testid="hr-doc-counsel-chip">🔒 Counsel-only</span> : null}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center', fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+          <span>{documentKeptByWords(d)}</span>
+          <span>saved {formatIsoDate(d.updated_at)}</span>
+          <span>{documentSizeWords({ chars: d.content.length, sections: headings.length })}</span>
+          {!editing ? (
+            <>
+              <button type="button" onClick={() => setDocEdit({ kind: 'document', docId: d.id, title: d.title, draft: d.content, original: d.content, loadedUpdatedAt: d.updated_at })} style={OUTLINE_PRESS}>
+                Edit the document
+              </button>
+              {!d.counsel_only ? (
+                <button type="button" onClick={copy} style={QUIET_PRESS}>
+                  Copy as text
+                </button>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+        {editing ? (
+          renderEditor('document')
+        ) : (
+          <>
+            {headings.length > 2 && (
+              <nav aria-label="Jump to section" style={{ background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.8rem', marginBottom: '0.8rem', maxWidth: '70ch', fontSize: '0.8rem' }}>
+                <div style={{ textTransform: 'uppercase', fontSize: '0.64rem', letterSpacing: '0.07em', color: 'var(--text-faint)', fontWeight: 700, marginBottom: '0.35rem' }}>Jump to</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.15rem 0.9rem' }}>
+                  {headings.map((h) => (
+                    <a
+                      key={h.slug}
+                      href={`#${h.slug}`}
+                      onClick={(ev) => {
+                        ev.preventDefault()
+                        namedDocRef.current?.querySelector(`#${CSS.escape(h.slug)}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      }}
+                      style={{ color: 'var(--text-link)', textDecoration: 'none', paddingLeft: `${(h.level - 1) * 0.7}rem`, whiteSpace: 'nowrap' }}
+                    >
+                      {h.text}
+                    </a>
+                  ))}
+                </div>
+              </nav>
+            )}
+            <div
+              ref={namedDocRef}
+              className="hr-doc-body"
+              style={{ ...CARD, padding: '1rem 1.2rem', fontSize: '0.9rem', maxWidth: '70ch' }}
+              // The document's markdown, rendered through marked and the contract sanitizer, as the narrative is.
+              dangerouslySetInnerHTML={{ __html: injectHeadingIds(html, headings) }}
+            />
+          </>
+        )}
+      </section>
+    )
+  }
+
+  const documentsTab = documentsTabCount({ hasSummary: Boolean(sources?.docs.summary), hasNarrative: Boolean(sources?.docs.narrative), named: documents.length })
+  const documentsView = viewer.isDev ? (
+    openDoc ? (
+      renderOpenDocument(openDoc)
+    ) : (
+      <div>
+        {renderDoc(sources?.docs.summary, 'summary')}
+        {renderDoc(sources?.docs.narrative, 'narrative')}
+        <section aria-label="Named documents" style={{ marginBottom: '1.1rem' }}>
+          <h4 style={{ margin: '0 0 0.4rem', fontSize: '0.7rem', letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 700 }}>Named documents</h4>
+          {documentsHeld ? (
+            <p role="alert" style={{ fontSize: '0.8rem', color: 'var(--text-red-600)', margin: '0 0 0.5rem' }}>The documents could not be read: {documentsHeld}</p>
+          ) : null}
+          {documents.length > 0 ? (
+            <ul style={{ listStyle: 'none', margin: '0 0 0.7rem', padding: 0, display: 'grid', gap: '0.5rem', maxWidth: '70ch' }}>
+              {documents.map((r) => (
+                <li key={r.id} style={{ ...CARD, display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'center' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600 }}>{r.title}</span>
+                      {r.counsel_only ? <span style={COUNSEL_CHIP}>🔒 Counsel-only</span> : null}
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                      {documentKeptByWords(r)} · {formatIsoDate(r.updated_at)} · {documentSizeWords(r)}
+                    </div>
+                  </div>
+                  <button type="button" aria-label={`Open ${r.title}`} onClick={() => void openDocument(r.id)} style={OUTLINE_PRESS}>
+                    Open
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {addDoc ? (
+            renderAddDocument()
+          ) : (
+            <div style={{ ...CARD, maxWidth: '70ch', borderStyle: 'dashed', display: 'grid', gap: '0.5rem' }}>
+              <div>
+                <strong>Add a document</strong> <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>· a title and markdown or plain text; the prior version of every save stays in its history</span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => startAdd('write')} style={OUTLINE_PRESS}>Write it</button>
+                <button type="button" onClick={() => startAdd('file')} style={OUTLINE_PRESS}>From a file (.md or .txt)</button>
+                <button type="button" onClick={() => startAdd('paste')} style={OUTLINE_PRESS}>Paste text</button>
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>From a file reads the file in the browser and saves it as it is, so a long document lands in one press.</div>
+            </div>
+          )}
+        </section>
+      </div>
+    )
   ) : (
-    <div style={{ color: 'var(--text-muted)', fontSize: '0.86rem' }}>The summary and the narrative are kept by the dev.</div>
+    <div style={{ color: 'var(--text-muted)', fontSize: '0.86rem' }}>The summary, the narrative and the documents are kept by the dev.</div>
   )
 
   // ─── the frame ─────────────────────────────────────────────────────────────
@@ -1465,7 +1794,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
           Evidence{(sources ? sources.evidence.length + sources.attachments.length : 0) > 0 ? ` (${(sources?.evidence.length ?? 0) + (sources?.attachments.length ?? 0)})` : ''}
         </button>
         <button type="button" role="tab" aria-selected={view === 'narrative'} onClick={() => setView('narrative')} style={viewTab(view === 'narrative')}>
-          Summary &amp; narrative
+          Documents{documentsTab > 0 ? ` (${documentsTab})` : ''}
         </button>
         {viewer.isDev && themes.length > 0 ? (
           <button type="button" role="tab" aria-selected={view === 'themes'} onClick={() => setView('themes')} style={viewTab(view === 'themes')} data-testid="person-file-tab-themes">
@@ -1485,7 +1814,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Reading the file…</p>
       ) : (
         <>
-          {view === 'timeline' ? timelineView : view === 'evidence' ? evidenceView : view === 'themes' ? themesView : view === 'matter' ? (personId ? <PersonMatterPanel personId={personId} personName={personName} canEdit={viewer.isDev} changeKey={changeKey} onChanged={() => { void reloadMatter(); onChanged?.() }} namesById={sources?.input.namesById ?? {}} /> : <EmptyState compact main="A matter hangs on a person row, and this login has none yet." />) : narrativeView}
+          {view === 'timeline' ? timelineView : view === 'evidence' ? evidenceView : view === 'themes' ? themesView : view === 'matter' ? (personId ? <PersonMatterPanel personId={personId} personName={personName} canEdit={viewer.isDev} changeKey={changeKey} onChanged={() => { void reloadMatter(); onChanged?.() }} namesById={sources?.input.namesById ?? {}} /> : <EmptyState compact main="A matter hangs on a person row, and this login has none yet." />) : documentsView}
           {heldWords.length > 0 ? (
             <p style={{ margin: '1rem 0 0', fontSize: '0.72rem', color: 'var(--text-faint)' }}>Not read here: {heldWords.join(' · ')}.</p>
           ) : null}
