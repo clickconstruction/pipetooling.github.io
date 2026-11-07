@@ -354,12 +354,62 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(screen.queryByTestId('lien-reminder-step-list')).toBeNull()
     expect(screen.queryByTestId('lien-step-brief')).toBeNull()
   })
+  it('with the desk’s facts the brief draws the picked notice’s dated timeline, the today band with the usual press, Show another, and why these are here as counts (PR 2 of #274)', () => {
+    const rowsFor = (jobId: string) => [
+      { key: 'mailed', kind: 'law' as const, from: '2026-10-14', dayFrom: 0, title: `The lien notice was mailed to the owner and the GC (${jobId}).`, detail: 'Day 0 counts from the day the run recorded it, Oct 14.', chip: 'legal requirement', status: 'done' as const, statusWords: '✓ done', next: '23 days ago · the clock started' },
+      { key: 'letter', kind: 'letter' as const, from: '2026-10-24', to: '2026-10-28', dayFrom: 10, dayTo: 14, title: 'The attorney’s letter should go in this window: the stronger letter our attorney wrote.', detail: 'Counsel’s rule, 10 to 14 days after the notice.', chip: 'attorney’s letter', status: 'late' as const, statusWords: 'late · act now', next: '9 days past the window · it still goes, weaker each day' },
+      { key: 'today', kind: 'today' as const, from: '2026-11-06', dayFrom: 23, title: 'You are here. Nothing has been paid or answered, and the attorney’s letter has not gone.', detail: '', chip: '', status: 'now' as const, statusWords: 'now', next: '' },
+      { key: 'lien', kind: 'law' as const, from: '2026-11-16', dayFrom: 33, title: 'The lien must be on file at the county by this day, or the right to it is lost.', detail: '§ 53.052.', chip: 'legal requirement', status: 'deadline' as const, statusWords: 'deadline · in 10 days', next: 'miss it and the lien is lost for good' },
+    ]
+    const withWhy = { ...reminders, rows: reminders.rows.map((r) => ({ ...r, why: r.step === 1 ? (r.counted ? 'nothing since the packet' : 'before day 7') : r.words })) }
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} reminders={withWhy} timelineFor={rowsFor} />)
+    fireEvent.click(screen.getByTestId('lien-step-reminder-1'))
+    const tl = screen.getByTestId('lien-notice-timeline')
+    expect(screen.queryByTestId('lien-schedule-strip')).toBeNull()
+    expect(Array.from(tl.querySelectorAll('[data-lien-timeline-row]')).map((el) => `${el.getAttribute('data-lien-timeline-row')}:${el.getAttribute('data-status') ?? 'now'}`)).toEqual(['mailed:done', 'letter:late', 'today:now', 'lien:deadline'])
+    expect(tl.textContent).toContain('Oct 24 → Oct 28')
+    expect(tl.textContent).toContain('day 10 to day 14')
+    expect(tl.textContent).toContain('late · act now')
+    expect(tl.textContent).toContain('9 days past the window · it still goes, weaker each day')
+    // The today band carries the brief's usual press and the first two fallbacks, and says the press is on the row.
+    expect(screen.getByTestId('lien-notice-timeline-action').textContent).toContain('Send a courtesy notice · the office presses it · sends the email and the text in one press; it takes a minute · the press is on the row below')
+    // The picker lists the step's notices, the first picked; picking another asks the desk for its rows.
+    const pick = screen.getByTestId('lien-notice-timeline-pick') as HTMLSelectElement
+    expect(Array.from(pick.options).map((o) => o.textContent)).toEqual(['744 · Castell', '752 · Pecan Grove', '760 · Harlan Homes'])
+    expect(tl.textContent).toContain('(j1)')
+    fireEvent.change(pick, { target: { value: 'j5' } })
+    expect(screen.getByTestId('lien-notice-timeline').textContent).toContain('(j5)')
+    // Why these are here, as counts of the step's own notices.
+    expect(screen.getByTestId('lien-step-brief-why').textContent).toBe('2 · nothing since the packet')
+  })
   it('without a desk door the Open press opens the notice under Sent through onAct', () => {
     const onAct = vi.fn()
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} reminders={reminders} />)
     fireEvent.click(screen.getByTestId('lien-step-reminder-3'))
     fireEvent.click(screen.getByRole('button', { name: 'Open' }))
     expect(onAct.mock.calls[0]![0].target).toEqual({ open: 'notices', jobId: 'j8', pile: 'sent' })
+  })
+  it('a notice paying it down (PR 3 of #274): its row asks what they promised, and the pressed step 2 brief reads the payment’s words with the press on the today band', () => {
+    const paying = { jobId: 'j7', title: '741 · Ridgeway', step: 2 as const, state: 'paying' as const, words: 'paying it down · $4,000 paid Nov 3 · $8,045 still owed', day: 20, counted: true, why: 'paying it down' }
+    const withPaying = { ...reminders, rows: reminders.rows.map((r) => (r.jobId === 'j7' ? paying : r)) }
+    const promiseRow = row({ key: 'promise:j7', jobId: 'j7', title: '741 · Ridgeway', action: 'promise', button: 'Record what they promised', sub: paying.words, dueOn: null, daysLeft: null, severity: 'amber', target: { open: 'notices', jobId: 'j7', pile: 'sent' }, reminder: paying })
+    const rowsFor = () => [
+      { key: 'mailed', kind: 'law' as const, from: '2026-10-14', dayFrom: 0, title: 'The lien notice was mailed to the owner and the GC.', detail: '', chip: 'legal requirement', status: 'done' as const, statusWords: '✓ done', next: '23 days ago · the clock started' },
+      { key: 'pay:2026-11-03:0', kind: 'payment' as const, from: '2026-11-03', dayFrom: 20, title: '$4,000 paid · $8,045 still owed.', detail: '', chip: 'payment', status: 'paying' as const, statusWords: 'paying', next: '3 days ago · reminders paused until Nov 10' },
+      { key: 'today', kind: 'today' as const, from: '2026-11-06', dayFrom: 23, title: 'You are here. They are paying it down. The attorney’s letter waits while they pay.', detail: '', chip: '', status: 'now' as const, statusWords: 'now', next: '' },
+    ]
+    const onAct = vi.fn()
+    render(<LienDeskNextUp rows={[...rows, promiseRow]} loading={false} isMobile={false} onAct={onAct} reminders={withPaying} timelineFor={rowsFor} />)
+    const group = screen.getByRole('region', { name: 'Reminders' })
+    fireEvent.click(within(group).getByRole('button', { name: 'Record what they promised' }))
+    expect(onAct.mock.calls[0]![0]).toMatchObject({ action: 'promise', jobId: 'j7' })
+    fireEvent.click(screen.getByTestId('lien-step-reminder-2'))
+    expect(screen.getByTestId('lien-step-brief-usual').textContent).toContain('Record what they promised · the office presses it · the date and the amount they gave for the rest; the desk asks again on that date')
+    expect(screen.getByTestId('lien-step-brief').textContent).toContain('A partial payment is an answer')
+    expect(Array.from(screen.getByTestId('lien-step-brief-instead').querySelectorAll('strong')).map((el) => el.textContent)).toEqual(['Send the attorney’s letter', 'Record the owner’s call', 'The GC authorized direct pay'])
+    expect(screen.getByTestId('lien-notice-timeline-action').textContent).toContain('Record what they promised')
+    expect(screen.getByTestId('lien-notice-timeline').textContent).toContain('reminders paused until Nov 10')
+    expect(screen.getByTestId('lien-step-brief-why').textContent).toBe('1 · paying it down')
   })
   it('at 375 wide the rail stacks, a courtesy card wears the four reminder tiles in violet, and the step’s list is one column with a full-width Open', () => {
     render(<LienDeskNextUp rows={rows} loading={false} isMobile onAct={() => {}} reminders={reminders} />)

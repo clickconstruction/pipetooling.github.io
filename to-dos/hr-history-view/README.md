@@ -1,8 +1,8 @@
 ---
 name: "The HR file's History view: a long account of a person read by section, with the sections the entries cite, a held section named, and the seat's door for the long documents"
 number: 275
-group: ready
-status: planned 2026-11-06 · nothing built · follows #269, whose load left the company history on the owner's desk waiting for a view
+group: residual
+status: superseded 2026-11-07 by #277, named documents on the HR file — one fixed History kind would hold one document; the section index and the citation doors designed here carry over to a named document unchanged
 summary: >
   A case folder on a former teammate carries a 250 KB company history in thirty-six dated sections,
   the account the owners dictated and polished over three months. The HR file has a one-page summary
@@ -13,7 +13,7 @@ summary: >
   dated index, each section naming the entries that cite it and opening the Timeline on its month,
   a counsel-held section shown as held with nothing of it on the page, and the seat's plan then apply
   door for the long documents so the agent files them the way it files everything else.
-next: the owner's two calls (History beside Narrative or in its place; the view read-only in the app with the seat as its one writer); then PR 1 the kind and the view, PR 2 the seat's door, PR 3 the citations as doors.
+next: nothing here — #277 carries the work; its PR 3 is this card's citation doors.
 size: M + S + S
 blocker: None.
 mockup: history-mockup.html — the History tab beside the file's others, the dated section index with a held section, the reading pane with the entries that cite the section and the door to the Timeline, and the seat's plan reply

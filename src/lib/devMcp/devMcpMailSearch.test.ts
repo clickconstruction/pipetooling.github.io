@@ -134,7 +134,7 @@ describe('read_mail', () => {
 
 describe('the server and the docs', () => {
   it('declares both verbs over the read-only scope, with the Workspace read off the reader’s address, and says so in its instructions', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.31.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.33.0'")
     for (const verb of ['search_mail', 'read_mail']) {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)

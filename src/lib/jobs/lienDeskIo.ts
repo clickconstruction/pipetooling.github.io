@@ -5,6 +5,7 @@ import type { LienDeskItemRow, LienNoticePolicy, LienSubmitOutcome } from './lie
 import type { LienWordChannel } from './lienWord'
 import { canTakeBackItem, fieldsWithTakeBack } from './lienRunTakeBack'
 import { LIEN_DESK_SIGNATURE_CLEAR } from './lienNoticeSignature'
+import { withPromiseRecord, type CourtesyPromise } from './lienCourtesyNotice'
 import { earliestSendDay, sentAtForTypedDay } from './lienSentAt'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
@@ -197,6 +198,12 @@ export async function noteLienWindowMissed(input: { jobId: string; months: strin
 export async function noteGcAuthorizedDirectPay(item: Pick<LienDeskItemRow, 'id' | 'fields'>, who: { name: string; note: string }): Promise<void> {
   const fields = { ...((item.fields ?? {}) as Json), gcAuthorizedDirectPay: { at: new Date().toISOString(), name: who.name.trim(), note: who.note.trim() } }
   await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update({ fields } as never).eq('id', item.id), 'lien desk: note the GC’s okay')
+}
+
+/** What they promised for the rest (punch list #274, PR 3), recorded on the first packet's sent item; the day also goes on the job through `addJobPaymentPromise`, so every board reads one promise. A later promise overwrites. */
+export async function notePromiseOnNotice(item: Pick<LienDeskItemRow, 'id' | 'fields'>, promise: CourtesyPromise): Promise<void> {
+  const fields = withPromiseRecord((item.fields ?? {}) as Json, promise)
+  await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update({ fields } as never).eq('id', item.id), 'lien desk: record what they promised')
 }
 
 /** The owner's call (v2.3767): the three answers, recorded on the first packet's sent item — read by the desk, the affidavit piles and the grid. A later call overwrites. */

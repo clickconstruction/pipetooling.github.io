@@ -87,6 +87,8 @@ export const NEEDS_YOU_ITEM_ACTOR: Record<NeedsYouItem['key'], NeedsYouActor> = 
   // A dev's.
   'roadmap-needs-person': 'dev',
   'hr-reports-pending': 'dev',
+  // The day back (punch list #256 PR 9): Bring back is the owner's press, or the controller's; the owner's line.
+  'away-back-day': 'owner',
   'robot-backlog': 'dev',
   // The viewer's own, whoever they are: their card purchases, and the conversations the whole office answers.
   'tally-self': 'anyone',
