@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChecklistCrewTagsRow } from './ChecklistCrewTagsRow'
 import { parseLines } from '../../lib/taskCriteria'
+import { asksForPhotoDefault } from '../../lib/taskProgress'
 import {
   matchesPersonQuery,
   singleEnterTarget,
@@ -23,8 +24,8 @@ type Props = {
   /** When set and present in `users`, that row is shown first. */
   currentUserId: string | null
   onClose: () => void
-  /** Task cards (#273, PR 2): the Done when… lines typed on a new task ride along, one a row, already parsed. */
-  onSave: (title: string, assigneeUserIds: string[], lines: string[]) => Promise<boolean>
+  /** Task cards (#273, PR 2): the Done when… lines typed on a new task ride along, one a row, already parsed; PR 4: the photo switch. */
+  onSave: (title: string, assigneeUserIds: string[], lines: string[], asksForPhoto: boolean) => Promise<boolean>
   /** e.g. roadmap canvas in Fullscreen API — modals must mount inside the fullscreen element */
   portalContainer?: HTMLElement | null
   /** When set, modal is in edit mode (title + assignees pre-filled). */
@@ -55,6 +56,7 @@ export function ChecklistTechTreeAddTaskModal({
 }: Props) {
   const [title, setTitle] = useState('')
   const [linesText, setLinesText] = useState('')
+  const [asksForPhotoPick, setAsksForPhotoPick] = useState<boolean | null>(null)
   const [assignees, setAssignees] = useState<Record<string, boolean>>({})
   const [personQuery, setPersonQuery] = useState('')
   const [saving, setSaving] = useState(false)
@@ -97,9 +99,11 @@ export function ChecklistTechTreeAddTaskModal({
       const assigneeUserIds = Object.entries(assignees)
         .filter(([, v]) => v)
         .map(([k]) => k)
-      const ok = await onSave(trimmed, assigneeUserIds, editingTaskId ? [] : parseLines(linesText))
+      const lines = editingTaskId ? [] : parseLines(linesText)
+      const ok = await onSave(trimmed, assigneeUserIds, lines, asksForPhotoPick ?? asksForPhotoDefault(lines.length))
       if (ok) {
         setLinesText('')
+        setAsksForPhotoPick(null)
         onClose()
       }
     } finally {
@@ -186,6 +190,10 @@ export function ChecklistTechTreeAddTaskModal({
               style={{ width: '100%', padding: '8px 10px', marginBottom: 12, boxSizing: 'border-box', fontFamily: 'inherit', fontSize: 14 }}
               disabled={saving}
             />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 14 }}>
+              <input type="checkbox" checked={asksForPhotoPick ?? asksForPhotoDefault(parseLines(linesText).length)} onChange={(e) => setAsksForPhotoPick(e.target.checked)} disabled={saving} />
+              <span>Asks for a photo at the finish</span>
+            </label>
           </>
         ) : null}
         <div style={{ fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }}>Assignees (optional)</div>

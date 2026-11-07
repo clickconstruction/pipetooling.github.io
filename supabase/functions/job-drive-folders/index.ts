@@ -8,6 +8,7 @@ import {
   DRIVE_BID_FOLDER_PATTERN_KEY,
   DRIVE_COMPANY_FOLDER_ID_KEY,
   DRIVE_FLEET_FOLDER_ID_KEY,
+  DRIVE_TASKS_FOLDER_ID_KEY,
   DRIVE_PEOPLE_FOLDER_ID_KEY,
   PEOPLE_IN_JOBS_DRIVE_WORDS,
   DRIVE_FOLDERS_MADE_KEY,
@@ -92,6 +93,8 @@ function json(body: unknown, status = 200): Response {
 
 /** The folder the app makes for the machines' folders, beside the Jobs folder (punch list #270). */
 const FLEET_FOLDER_NAME = 'PipeTooling Fleet'
+/** The Tasks folder the app makes beside the Jobs folder (punch list #273): a task card's photos go under it, a folder per card. */
+const TASKS_FOLDER_NAME = 'PipeTooling Tasks'
 const OFFICE_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator']
 /** Who sets where files go: the office, not the estimators. */
 const SETTINGS_ROLES = ['dev', 'master_technician', 'assistant', 'controller']
@@ -106,6 +109,8 @@ async function settingsAnswer(token: string, appEmail: string, settings: DriveSe
   const peopleCheck = people ? await checkFolderWrite(token, people, appEmail) : null
   const fleet = settings.fleetFolderId
   const fleetCheck = fleet ? await checkFolderWrite(token, fleet, appEmail) : null
+  const tasks = settings.tasksFolderId
+  const tasksCheck = tasks ? await checkFolderWrite(token, tasks, appEmail) : null
   return {
     success: true,
     app_email: appEmail,
@@ -115,6 +120,8 @@ async function settingsAnswer(token: string, appEmail: string, settings: DriveSe
     people: people ? { id: people, url: folderUrl(people), ok: peopleCheck?.ok ?? false, words: peopleCheck?.words ?? '', folder: peopleCheck?.folder ?? null } : null,
     // The machines' folders (a machine's check photos, photo-save; punch list #270): made by the app beside the Jobs folder, or pasted.
     fleet: fleet ? { id: fleet, url: folderUrl(fleet), ok: fleetCheck?.ok ?? false, words: fleetCheck?.words ?? '', folder: fleetCheck?.folder ?? null } : null,
+    // A task card's photos (photo-save's eighth source; punch list #273): made by the app beside the Jobs folder, or pasted.
+    tasks: tasks ? { id: tasks, url: folderUrl(tasks), ok: tasksCheck?.ok ?? false, words: tasksCheck?.words ?? '', folder: tasksCheck?.folder ?? null } : null,
     job_pattern: settings.jobPattern,
     bid_pattern: settings.bidPattern,
     folders_made: settings.foldersMade,
@@ -138,9 +145,9 @@ serve(async (req) => {
       job_id?: string
       check?: { folder?: string }
       settings?: boolean
-      set?: { root?: string | null; company?: string | null; people?: string | null; fleet?: string | null; job_pattern?: unknown; bid_pattern?: unknown; folders_made?: unknown }
-      /** The app makes a folder itself: `fleet` finds or makes PipeTooling Fleet beside the Jobs folder and writes the setting (v2.6564). */
-      make?: 'fleet'
+      set?: { root?: string | null; company?: string | null; people?: string | null; fleet?: string | null; tasks?: string | null; job_pattern?: unknown; bid_pattern?: unknown; folders_made?: unknown }
+      /** The app makes a folder itself: `fleet` finds or makes PipeTooling Fleet beside the Jobs folder and writes the setting (v2.6564); `tasks` the same for PipeTooling Tasks (punch list #273). */
+      make?: 'fleet' | 'tasks'
       sweep?: { limit?: unknown; all?: unknown; offset?: unknown }
     }
 
@@ -193,6 +200,23 @@ serve(async (req) => {
       return json({ ...answer, saved: [DRIVE_FLEET_FOLDER_ID_KEY], made: made.created })
     }
 
+    // --- the app makes the Tasks folder itself (punch list #273, PR 4): beside the Jobs folder, as the Fleet folder is made ---
+    if (body.make === 'tasks') {
+      if (!who || !SETTINGS_ROLES.includes(String(who.role))) return json({ error: 'The office sets where files go.' }, 403)
+      const root = settings.rootFolderId
+      if (!root) return json({ error: NO_ROOT_WORDS, why: 'no_root' }, 409)
+      const meta = await driveFolderMeta(token, root)
+      if (meta.status !== 200) return json({ error: 'The jobs root did not read from Drive.', why: 'root_unreadable' }, 409)
+      if (!meta.body.driveId) return json({ error: 'The jobs root sits in a My Drive, where the app cannot own a file. Move it into a Shared Drive first, or paste a folder from one.', why: 'tasks_needs_shared_drive' }, 409)
+      const parent = meta.body.parents?.[0] ?? root
+      const made = await findOrCreateFolder(token, parent, TASKS_FOLDER_NAME)
+      const { error } = await admin.from('app_settings').upsert([{ key: DRIVE_TASKS_FOLDER_ID_KEY, value_text: made.id }], { onConflict: 'key' })
+      if (error) return json({ error: `The setting was not saved: ${error.message}` }, 500)
+      const after = await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID'))
+      const answer = await settingsAnswer(token, appEmail, after)
+      return json({ ...answer, saved: [DRIVE_TASKS_FOLDER_ID_KEY], made: made.created })
+    }
+
     // --- the tab's write: the root only once the app can write there ---
     if (body.set) {
       if (!who || !SETTINGS_ROLES.includes(String(who.role))) return json({ error: 'The office sets where files go.' }, 403)
@@ -234,6 +258,14 @@ serve(async (req) => {
         const r = await checkFolderWrite(token, id, appEmail)
         if (!r.ok) return json({ error: r.words, why: 'fleet_unwritable', app_email: appEmail, folder: r.folder }, 409)
         rows.push({ key: DRIVE_FLEET_FOLDER_ID_KEY, value_text: id })
+      }
+      if (body.set.tasks !== undefined) {
+        // A task card's photos: checked the same way, so a shot never finds out the app cannot write there.
+        const id = driveFolderIdFromLinkOrId(body.set.tasks)
+        if (!id) return json({ error: 'Paste the link of a Drive folder to hold the task cards’ photos.', why: 'not_a_folder' }, 400)
+        const r = await checkFolderWrite(token, id, appEmail)
+        if (!r.ok) return json({ error: r.words, why: 'tasks_unwritable', app_email: appEmail, folder: r.folder }, 409)
+        rows.push({ key: DRIVE_TASKS_FOLDER_ID_KEY, value_text: id })
       }
       if (body.set.job_pattern !== undefined) {
         const pattern = parseFolderPattern(JSON.stringify(body.set.job_pattern), JOB_FOLDER_PIECES, [])

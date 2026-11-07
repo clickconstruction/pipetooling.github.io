@@ -19,6 +19,7 @@ import { ChecklistScheduleCalendar } from './checklist/ChecklistScheduleCalendar
 import { checklistJobLinks, composeChecklistJobTitle, type ChecklistJobPreset } from '../lib/checklistJobPreset'
 import { parseLines } from '../lib/taskCriteria'
 import { writeItemLines } from '../lib/taskLinesIo'
+import { asksForPhotoDefault } from '../lib/taskProgress'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -92,6 +93,9 @@ export default function ChecklistAddModal({
   const [linesOpen, setLinesOpen] = useState(false)
   const [linesText, setLinesText] = useState('')
   const lineCount = parseLines(linesText).length
+  /** The writer's switch (PR 4): on by itself once a line is written, off on a plain one-off, until the writer touches it. */
+  const [asksForPhotoPick, setAsksForPhotoPick] = useState<boolean | null>(null)
+  const asksForPhoto = asksForPhotoPick ?? asksForPhotoDefault(lineCount)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -396,6 +400,8 @@ export default function ChecklistAddModal({
           ...reminderCols,
           title: storedTitle,
           links: storedLinks,
+          // Task cards (#273, PR 4): the writer's switch; the column is younger than the generated types.
+          ...({ asks_for_photo: asksForPhoto } as Record<string, boolean>),
           created_by_user_id: authUser.id,
           repeat_type: effRepeatType,
           repeat_days_of_week: effRepeatType === 'day_of_week' && form.repeat_days_of_week.length ? form.repeat_days_of_week : null,
@@ -441,6 +447,7 @@ export default function ChecklistAddModal({
       }
       setLinesText('')
       setLinesOpen(false)
+      setAsksForPhotoPick(null)
       modalContext.onSaved?.(newId || undefined)
       modalContext.closeModal()
       window.dispatchEvent(new CustomEvent('checklist-item-saved'))
@@ -1008,6 +1015,15 @@ export default function ChecklistAddModal({
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                     The card reads its percent from the ticks. Leave this empty and the person sets the percent by hand.
                   </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.9375rem' }}>
+                    <input type="checkbox" checked={asksForPhoto} onChange={(e) => setAsksForPhotoPick(e.target.checked)} />
+                    <span>
+                      Asks for a photo at the finish
+                      <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                        A photo is offered at each new percent on every card. With this on, the finish holds until a photo is in or a reason is typed.
+                      </span>
+                    </span>
+                  </label>
                 </div>
               )}
             </div>
