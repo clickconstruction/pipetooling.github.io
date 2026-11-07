@@ -71,6 +71,8 @@ export function HoursStatementsSection({
   const maker = { role, canAccessPay: canAccessPayGiven ?? access.canAccessPay }
   const [rows, setRows] = useState<HoursStatementRecordRow[] | null>(null)
   const [count, setCount] = useState<number | null>(null)
+  // Subs on the job's sheets (v2.6636): named in the press, since they never clocked.
+  const [onSheets, setOnSheets] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [opening, setOpening] = useState<HoursStatementRecordRow | null>(null)
@@ -93,9 +95,11 @@ export function HoursStatementsSection({
         setRows([])
         setError(formatErrorMessage(e, 'The hours statements could not be read.'))
       })
-    void (scope.kind === 'job' ? listHoursStatementPeople(scope.job.id).then((p) => p.length) : listHoursStatementJobs(scope.userId).then((j) => j.length))
+    void (scope.kind === 'job' ? listHoursStatementPeople(scope.job.id).then((p) => ({ count: p.length, onSheets: p.filter((x) => x.kind === 'sheet').length })) : listHoursStatementJobs(scope.userId).then((j) => ({ count: j.length, onSheets: j.filter((x) => x.kind === 'sheet').length })))
       .then((who) => {
-        if (!cancelled) setCount(who)
+        if (cancelled) return
+        setCount(who.count)
+        setOnSheets(who.onSheets)
       })
       .catch((e: unknown) => {
         if (cancelled) return
@@ -112,7 +116,7 @@ export function HoursStatementsSection({
 
   if (!allowed) return null
 
-  const press = hoursStatementPressWords(count, scope.kind)
+  const press = hoursStatementPressWords(count, scope.kind, { onSheets })
   const empty = hoursStatementEmptyWords(count, scope.kind === 'job' ? { kind: 'job' } : { kind: 'person', name: scope.name })
   const openWindow = (on: HoursStatementRecordRow | null) => {
     setOpening(on)
