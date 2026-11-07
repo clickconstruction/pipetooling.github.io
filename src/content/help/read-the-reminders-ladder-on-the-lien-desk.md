@@ -23,6 +23,8 @@ Each row's right side says what happens next. The courtesy window says how many 
 
 The same days sit in {{button:outline|§ Rules}} under **Our schedule after a notice**. There it says whose rule each day is. Day 7 is the owner's choice. Days 10 and 14 are counsel's rule. The seven days before the affidavit are our margin.
 
+Under it, **The lien month** names the office's rhythm across each month. Reminders go on days 1 to 5. Notices go on days 6 to 9. Liens are filed on days 10 to 13. The 14th and 15th catch what slipped. Nothing is scheduled from the 16th. The days are the owner's choice.
+
 ## The four steps
 
 :::cards
