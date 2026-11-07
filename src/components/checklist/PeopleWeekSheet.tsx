@@ -96,7 +96,9 @@ export function PeopleWeekSheet({
         setDays(cur.weekdays)
         setTime(cur.timeHm)
       } else {
-        setPicked(canPickOthers ? shown.slice(0, PEOPLE_WEEK_PEOPLE_MAX) : me ? [me] : [])
+        // Only the screen's people the picker can show: a subcontractor on the board is not picked out of sight.
+        const pickable = new Set(who.map((p) => p.id))
+        setPicked(canPickOthers ? shown.filter((id) => pickable.has(id)).slice(0, PEOPLE_WEEK_PEOPLE_MAX) : me ? [me] : [])
         setDays([PEOPLE_WEEK_DEFAULT_WEEKDAY])
         setTime(PEOPLE_WEEK_DEFAULT_TIME)
       }

@@ -46,7 +46,7 @@ You press {{button:outline|Emails}} beside the firm's name on the Legal desk hea
 The **Mark attorney ready** sheet shows who will hear about that release, by their rules: *Email now*, *In their digest*, *Not confirmed*, *Not emailed*.
 
 :::example Before anyone is on the list
-Until the firm adds its people on the portal, nobody is emailed — the matter still appears on their portal, and the Mark attorney ready sheet says so. The contact email on Settings → Jobs & billing → Collections law firm is a contact for the office, not a subscription. Send the firm their link; they take it from there.
+Until the firm adds its people on the portal, nobody is emailed — the matter still appears on their portal, and the Mark attorney ready sheet says so. The contact email on Settings → Jobs, bills and liens → Collections law firm is a contact for the office, not a subscription. Send the firm their link; they take it from there.
 :::
 
 ## Wording

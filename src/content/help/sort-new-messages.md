@@ -59,6 +59,7 @@ A general contractor's bid platform or a public agency sends us an invitation to
 
 - The **Bid** box holds the bid's name. It starts with what the email said. Fix it if the subject read wrong.
 - Press **Start a bid on** a customer under **A customer we know**. The app makes the bid on them with the name, the platform's link and the due day. The thread lands on the bid. The Bid Board opens on it.
+- A contractor we already bid for sends a new invitation. The email does not go to their starred bid. The row asks **Bid it?** and **Start a bid on** them is ready. Their addendum or pre-bid notice still goes to their starred bid.
 - Is the contractor new? Type the company in the **Customer** box. Press **Make the customer and start the bid**. The company becomes the customer. The sender stays the person on the thread.
 - Type why under **Not for us, because**, then press **Not for us**. The thread keeps the reason in a grey line. The row closes. Their next invitation shows again.
 - Press **Keep it with** the sender to leave the bid for later. The row then asks who they are, or who has it.

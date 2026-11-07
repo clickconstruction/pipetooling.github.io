@@ -30,7 +30,8 @@ function makeIo(rows: PeopleWeekRequestRow[] = []): PeopleWeekIo {
 describe('PeopleWeekSheet', () => {
   it('opens with the screen’s people picked and starts a Monday chain carrying them', async () => {
     const io = makeIo()
-    render(<PeopleWeekSheet open onClose={() => {}} meId="me" canPickOthers suggested={['a', 'b']} io={io} />)
+    // 'sub-co' is a subcontractor on the board: the picker does not list it, so it is never picked out of sight (v2.6644).
+    render(<PeopleWeekSheet open onClose={() => {}} meId="me" canPickOthers suggested={['a', 'b', 'sub-co']} io={io} />)
     expect(screen.getByRole('dialog', { name: 'Your people’s week' })).toBeTruthy()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Mateo' })).toBeTruthy())
     await waitFor(() => expect(screen.getByRole('button', { name: 'Mateo' }).getAttribute('aria-pressed')).toBe('true'))

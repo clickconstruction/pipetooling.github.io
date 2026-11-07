@@ -87,7 +87,7 @@ A photo already on the report stays. Take one back in the job's Drive folder.
 
 ## The size the office picks
 
-The office picks the size once in Settings → Jobs & billing → **Photos**. Small is 1200 px, Medium 1600 px and Large 2400 px on the long edge. Medium is the default. It reads fine on a desktop and goes up on one bar of signal. The app refuses any photo over 2 MB.
+The office picks the size once in Settings → Jobs, bills and liens → **Photos**. Small is 1200 px, Medium 1600 px and Large 2400 px on the long edge. Medium is the default. It reads fine on a desktop and goes up on one bar of signal. The app refuses any photo over 2 MB.
 
 :::example A rough in, two shots
 You press Leave report. The camera opens. You shoot the drain lines in bath 2. The tile says *4.2 MB → 310 KB*. You tap **Rough In** under it. You press Take another and shoot the water heater. You tap **Water heater**. You move Rough In to 45 and the water heater to Done. Save reads *Save · job 56% · 2 photos*. Four minutes later both files are in the customer's Photos folder.

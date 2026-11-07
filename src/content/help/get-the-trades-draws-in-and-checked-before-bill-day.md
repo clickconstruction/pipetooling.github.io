@@ -78,4 +78,4 @@ The checked gate's button asks the job's superintendent to walk the claims. The 
 
 When every gate is clear on bill day, press {{button:blue|Send pay application 4}}. The button opens Bill the customer. See [bill the customer on a GC job](/help/bill-the-customer-on-a-gc-job).
 
-The trades' pay applications are due 6 days before bill day, the cut-off, on every job. The money team changes it in Settings, under **Jobs & billing**, from 2 to 20 days.
+The trades' pay applications are due 6 days before bill day, the cut-off, on every job. The money team changes it in Settings, under **Jobs, bills and liens**, from 2 to 20 days.

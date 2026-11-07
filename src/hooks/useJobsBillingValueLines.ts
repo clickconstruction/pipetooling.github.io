@@ -1,5 +1,5 @@
 /**
- * The live values on Settings → Jobs & billing's folded Billing and money cards (punch list #261, PR 3). One select of
+ * The live values on Settings → Jobs, bills and liens’ folded Billing and money cards (punch list #261, PR 3). One select of
  * the `app_settings` keys the role's cards read, and the Job Book's line count when the role sees that card, turned
  * into one line each by `lib/settings/jobsBillingValueLines.ts`. Reads on mount and again on `refresh`, which the page
  * wires to a card's fold, so the value saved inside a card is on its row the moment the card closes. A read that fails

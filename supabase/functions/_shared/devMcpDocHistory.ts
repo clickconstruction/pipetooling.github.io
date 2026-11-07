@@ -12,6 +12,12 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export const DIFF_LCS_LINES = 600
 /** Lines of removed and added text a reply carries at most. */
 export const DIFF_LINES_CAP = 400
+/**
+ * Characters of removed and added text a reply carries at most (v2.6642). The door cuts any reply at 80,000 characters,
+ * mid-text, so the JSON no longer parses; a narrative whose lines are whole paragraphs put 400 lines at 180,000. A
+ * line longer than what is left is cut to it with an ellipsis, and the hunks stop there.
+ */
+export const DIFF_CHARS_CAP = 40_000
 
 export function docHistoryInput(ask: DocHistoryAsk): { ok: true; docId: string | null; kind: 'summary' | 'narrative' | null; from: string | null; to: string | null } | { ok: false; refused: string } {
   const docId = typeof ask.doc_id === 'string' ? ask.doc_id.trim().toLowerCase() : ''
@@ -72,16 +78,31 @@ export function lineDiff(before: string, after: string): LineDiff {
     exact = false
     hunks.push({ from_line: head + 1, removed: ma, added: mb })
   }
-  let budget = DIFF_LINES_CAP
+  let lines = DIFF_LINES_CAP
+  let chars = DIFF_CHARS_CAP
   let cut = false
-  const capped = hunks.map((h) => {
-    const r = h.removed.slice(0, Math.max(0, budget))
-    budget -= r.length
-    const d = h.added.slice(0, Math.max(0, budget))
-    budget -= d.length
-    if (r.length < h.removed.length || d.length < h.added.length) cut = true
-    return { from_line: h.from_line, removed: r, added: d }
-  })
+  // Take lines while both the line and the character budgets last; a line longer than the characters left is cut to fit.
+  const take = (src: string[]): string[] => {
+    const out: string[] = []
+    for (const l of src) {
+      if (lines <= 0 || chars <= 0) {
+        cut = true
+        break
+      }
+      if (l.length > chars) {
+        out.push(`${l.slice(0, Math.max(0, chars - 1))}…`)
+        chars = 0
+        lines -= 1
+        cut = true
+        break
+      }
+      out.push(l)
+      chars -= l.length + 1
+      lines -= 1
+    }
+    return out
+  }
+  const capped = hunks.map((h) => ({ from_line: h.from_line, removed: take(h.removed), added: take(h.added) }))
   return { same: false, removed_lines: ma.length, added_lines: mb.length, hunks: capped.filter((h) => h.removed.length || h.added.length), cut, exact }
 }
 
