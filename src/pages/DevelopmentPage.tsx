@@ -71,7 +71,7 @@ import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, plansAskOnRecord, type PlanCarrier } from '../lib/developments/plans'
 import { buildSitePlansView, sitePlansCountWords, sitePlansNeedWords } from '../lib/plans/sitePlans'
 import { supabaseJobPlansIo, type SitePlansRead } from '../lib/plans/planSetsIo'
-import { papersFromRows, type Paper } from '../lib/papers/papers'
+import { moveLineForPaper, papersFromRows, type Paper } from '../lib/papers/papers'
 import { canSeeSiteCosts } from '../lib/developments/siteCosts'
 import { useSiteCosts } from '../hooks/useSiteCosts'
 import { readIncludeAddress, readLastLooked, readNotThese, writeIncludeAddress, writeLastLooked, writeNotThese } from '../lib/developments/sinceYouLooked'
@@ -289,6 +289,22 @@ export default function DevelopmentPage() {
       addSet: (partId, draft, makeCurrent, replacesSetId) => after('The set did not save.')(() => siteIo.addSet({ partId, draft, makeCurrent, replacesSetId, marksUpSetId: null, jobId: null, userId: authUser?.id ?? null })),
       buildFrom: (partId, setId) => after('The set did not switch.')(() => siteIo.makeCurrent(partId, setId, authUser?.id ?? null)),
       removeSet: (setId) => after('The set did not come off.')(() => siteIo.removeSet(setId)),
+      removePaper: (setId) => after('The paper did not come off.')(() => siteIo.removeSet(setId)),
+      // A paper onto another part (v2.6632): the row moves, then the site's History gets the line the trigger would not write.
+      movePaper: async (paper, toPartId) => {
+        const partName = (id: string) => siteRead?.parts.find((p) => p.id === id)?.name ?? 'a part'
+        const ok = await after('The paper did not move.')(() => siteIo.movePaper(paper.id, toPartId))
+        if (!ok) return false
+        if (authUser?.id) {
+          try {
+            const entry = await keepHistoryEntry({ about: { kind: 'site' }, happenedAt: new Date().toISOString(), source: 'note', body: moveLineForPaper(paper, partName(paper.part_id), partName(toPartId)) }, developmentIdForParts, { userId: authUser.id, name: data?.names.get(authUser.id) ?? null })
+            setKept((prev) => [entry, ...prev])
+          } catch (e) {
+            showToast(`The paper moved; its History line did not keep: ${formatErrorMessage(e)}`, 'error', 6000)
+          }
+        }
+        return true
+      },
       writeChanges: (setId, changes) => after('What changed did not save.')(() => siteIo.updateChanges(setId, changes)),
       // Many jobs onto one part (the Gun Dog spike, 2026-11-02): one write per job, the ones that will not take it named afterwards, the page read again.
       putJobsOnPart: async (partId, jobIds) => {
@@ -301,7 +317,7 @@ export default function DevelopmentPage() {
         return failed.length < jobIds.length
       },
     }
-  }, [canWritePlans, developmentIdForParts, siteIo, siteRead?.parts.length, authUser?.id, showToast, load, labelOfJobId])
+  }, [canWritePlans, developmentIdForParts, siteIo, siteRead?.parts, authUser?.id, showToast, load, labelOfJobId, data?.names])
   // The jobs' costs for the Jobs & bids table (v2.6215): dev and controller read them, one batched read for the site.
   const shownJobIds = useMemo(() => (shown ? shown.jobs.map((j) => j.id) : []), [shown])
   const costsByJobId = useSiteCosts(shownJobIds, canSeeSiteCosts(role))

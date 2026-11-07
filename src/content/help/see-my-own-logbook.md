@@ -29,6 +29,8 @@ Each trade you hold a license in gets a card. The card names the next license an
 
 The card also names who signs your hours for the board.
 
+Hours you worked before the clock started count too, once the office puts them in. The card then says **Includes 1,200 hours before the clock started** and names where they came from.
+
 Below the cards is the log. Each week lists the jobs you worked and the hours on each.
 
 ## How an hour counts

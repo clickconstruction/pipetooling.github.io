@@ -39,8 +39,7 @@ export default function OwnerAutoConfirmSettingsBlock() {
   }
 
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }} data-testid="owner-auto-confirm-block">
-      <h3 style={{ margin: '0 0 0.6rem', fontSize: '1rem' }}>Liens · owner of record</h3>
+    <div style={{ padding: '1rem' }} data-testid="owner-auto-confirm-block">
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: loaded ? 'pointer' : 'default' }}>
         <input type="checkbox" checked={on} disabled={!loaded || saving} onChange={(e) => void toggle(e.target.checked)} style={{ marginTop: 3 }} aria-label="Save owners from the appraisal roll automatically" />
         <span>

@@ -26,10 +26,10 @@ Office roles see **Jobs & billing** in the Company group. The tab holds the comp
 
 **Billing and money**
 ▶ **Job Book** the Collect Payment line items
-▼ **GC jobs · pay by card** the Pay by card switch on certified bills
+▶ **GC jobs · pay by card** the Pay by card switch on certified bills
 :::
 
-A strip of the headings stays at the top while you scroll. Press a heading on the strip to jump to it. A card that is a form is folded to its name and one line. Press the name to open it. A card that is a switch stays open, so you read On or Off at a glance. A link to a card opens the card for you. Pick **Stage checklists** in the search box, and the tab opens with that card open.
+A strip of the headings stays at the top while you scroll. Press a heading on the strip to jump to it. Every card is folded to its name and one line. Press the name to open it. A link to a card opens the card for you. Pick **Stage checklists** in the search box, and the tab opens with that card open.
 
 ## Your profile
 

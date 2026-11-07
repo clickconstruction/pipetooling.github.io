@@ -4,6 +4,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useTaskShot } from '../../hooks/useTaskShot'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { finishRule } from '../../lib/taskProgress'
+import { sheetOutcome, type SheetPressOutcome } from '../../lib/taskSheetPress'
 import { TaskPhotoTile } from './TaskPhotoTile'
 import type { TaskShot } from '../../hooks/useTaskShot'
 
@@ -12,8 +13,10 @@ import type { TaskShot } from '../../hooks/useTaskShot'
  * line is ticked or when Done is pressed on the % sheet: *Every line is ticked* or *Finishing*, the photo tile
  * (required), one *No photo, here is why* line, and **Done · 100%**, which reads **Photo first** and holds until a photo
  * is in or a reason is typed (`finishRule`). The press sends the photo, posts the reason when there is one, then
- * finishes the card the way the tick did.
+ * finishes the card the way the tick did. A shot the press could not send for want of signal comes back `shotKept`
+ * (v2.6628): the tile reads *Kept on the phone* and a second press sends it no more.
  */
+
 export function TaskFinishSheet({
   open,
   title,
@@ -26,8 +29,8 @@ export function TaskFinishSheet({
   title: string
   /** *3 of 3* when the last line brought the sheet, null when Done did. */
   lines: { ticked: number; total: number } | null
-  /** Resolves true once the card is finished; the sheet closes then. */
-  onDone: (shot: TaskShot | null, reason: string) => Promise<boolean>
+  /** Resolves `ok` once the card is finished; the sheet closes then. `shotKept` marks the tile. */
+  onDone: (shot: TaskShot | null, reason: string) => Promise<boolean | SheetPressOutcome>
   onClose: () => void
   /** A send that failed, with its reason; the sheet stays open. */
   error?: string | null
@@ -62,8 +65,10 @@ export function TaskFinishSheet({
     if (!canGo) return
     setSaving(true)
     try {
-      const ok = await onDone(shotHost.shot, reason.trim())
-      if (ok) onClose()
+      // A shot already kept on the phone rides its own press; the finish goes without it.
+      const out = sheetOutcome(await onDone(shotHost.kept ? null : shotHost.shot, reason.trim()))
+      if (out.shotKept) shotHost.markKept()
+      if (out.ok) onClose()
     } finally {
       setSaving(false)
     }

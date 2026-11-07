@@ -62,7 +62,7 @@ Every sub's pay lives on **sheets**. A sheet holds line items, payments, and bac
 - A payment you **Move…** to another sheet or **Remove** leaves a crossed-out line on the sub's portal where it was. The line reads *Moved to #922 by the office* or *Removed by the office*, never your reason. So nobody phones about money that vanished. The destination sheet lists the payment itself.
 - Each sheet's {{chip:blue|Shown on the sub's portal}} box answers their only real question, *when*. It holds a status chip, a **payable after** date, and a plain-words reason. Blank fields make no promises.
 
-## 5 · Set the pay rhythm once: Settings → Jobs & billing
+## 5 · Set the pay rhythm once: Settings → People & teams
 
 ***Sub portal · pay schedule*** holds the company **pay-run day** and the **"How pay works here"** wording. The pay-run day drives *queued for Friday's pay run* on every portal. Write it once, honestly. It is the paragraph that stops the where's-my-money calls.
 

@@ -20,7 +20,7 @@ If you have no card, the office has not picked your signal yet. Ask them.
 
 The office picks one of three.
 
-**License hours** is for an apprentice. The big number is your approved hours toward the next license. Hours waiting for approval show hatched beside them. A short bar runs to the next 500 hour mark.
+**License hours** is for an apprentice. The big number is your approved hours toward the next license. Hours waiting for approval show hatched beside them. A short bar runs to the next 500 hour mark. Hours you worked before the clock started count too, once the office puts them in.
 
 **Jobs without a callback** is for a tech. It is a rolling count, like 29 of your last 30 jobs. One callback costs one job. It never wipes out a year.
 

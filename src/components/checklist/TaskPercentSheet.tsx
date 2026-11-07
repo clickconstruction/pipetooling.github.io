@@ -4,6 +4,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useTaskShot, type TaskShot } from '../../hooks/useTaskShot'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { PERCENT_CHIPS, WHAT_IS_LEFT_MAX_CHARS, type RingState } from '../../lib/taskProgress'
+import { sheetOutcome, type SheetPressOutcome } from '../../lib/taskSheetPress'
 import { TaskPhotoTile } from './TaskPhotoTile'
 
 /**
@@ -30,8 +31,8 @@ export function TaskPercentSheet({
   state: RingState
   /** *was 50% on Tue 3:12 PM*, or null when nothing has moved. */
   lastMoved?: string | null
-  /** Resolves true once the percent landed; the sheet closes then. A shot taken on the sheet rides along (PR 4b). */
-  onSet: (percent: number, words: string, shot: TaskShot | null) => Promise<boolean>
+  /** Resolves `ok` once the percent landed; the sheet closes then. A shot taken on the sheet rides along (PR 4b); `shotKept` marks the tile (v2.6628). */
+  onSet: (percent: number, words: string, shot: TaskShot | null) => Promise<boolean | SheetPressOutcome>
   onDone: () => void | Promise<void>
   onClose: () => void
   doneWords?: string
@@ -71,8 +72,10 @@ export function TaskPercentSheet({
     if (pick === null || !canSet) return
     setSaving(true)
     try {
-      const ok = await onSet(pick, words, shotHost.shot)
-      if (ok) onClose()
+      // A shot already kept on the phone rides its own press; the percent goes without it.
+      const out = sheetOutcome(await onSet(pick, words, shotHost.kept ? null : shotHost.shot))
+      if (out.shotKept) shotHost.markKept()
+      if (out.ok) onClose()
     } finally {
       setSaving(false)
     }
