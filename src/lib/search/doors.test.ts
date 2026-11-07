@@ -303,9 +303,12 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
     expect(bill.find((g) => g.key === 'guide')?.doors[0]?.to).toBe('/help?g=bill-a-customer-and-get-paid')
     const lien = searchDoors('lien', dev)
     expect(lien.find((g) => g.key === 'guide')?.doors[0]?.to).toBe('/help?g=send-lien-notices-from-the-lien-desk')
-    expect(lien.find((g) => g.key === 'settings')?.doors.some((d) => d.to === '/settings#settings-lien-sign-code')).toBe(true)
+    // Since v2.6637 the tab is *Jobs, bills and liens*: its Liens heading leads the Settings group and the tab follows; the
+    // signing code is still a Settings door for "lien", past the group's first three.
+    expect(lien.find((g) => g.key === 'settings')?.doors[0]?.to).toBe('/settings?tab=settings-jobs#settings-jobs-group-liens')
+    expect(searchDoors('lien', dev, { only: 'settings' })[0]?.doors.some((d) => d.to === '/settings#settings-lien-sign-code')).toBe(true)
     const assistant = doorsFor(plainViewer('assistant'), sources)
-    expect(searchDoors('lien', assistant).find((g) => g.key === 'settings')?.doors.some((d) => d.to === '/settings#settings-lien-sign-code') ?? false).toBe(false)
+    expect(searchDoors('lien', assistant, { only: 'settings' })[0]?.doors.some((d) => d.to === '/settings#settings-lien-sign-code') ?? false).toBe(false)
     expect(searchDoors('# quick', dev).map((g) => [g.key, g.doors.map((d) => d.id)])).toEqual([['todo', ['todo:126']]])
     expect(searchDoors('# quick', assistant)).toEqual([])
   })

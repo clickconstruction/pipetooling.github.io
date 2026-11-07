@@ -2,7 +2,7 @@
 name: "The lien month: five zones across the top of the Lien desk"
 number: 235
 group: gated
-status: thought through and drawn 2026-11-01, the same day the owner set the policy · the owner's word: "a great idea and I do want to incorporate it", but "it needs more refinement" first · nothing built
+status: claude/235-lien-month-zones-e2643f · the owner refined the five calls 2026-11-07 (below) · PR 1 the rule and the kernel in flight
 summary: >
   The owner set an office rhythm for lien work: reminders in the first days of the month, notices
   next, liens by the 15th, nothing from the 16th on. It is a policy, not an app rule, and the ask is
@@ -15,12 +15,10 @@ summary: >
   in the Rules sheet; and the courtesy notice's clock moved from day 7 after the packet to reminders
   week of the affidavit's month. Nothing in it sends or files by itself.
 next: >
-  The owner's refinement: the exact days of the five zones, whether the reminder goes once in the
-  affidavit's month or every month the notice stands, whether notices wait for their deadline month
-  or go as soon as the window opens, and who sees the Dashboard card. Then PR 1, the rule and the
-  kernel.
+  PR 1, the rule and the kernel (`lienMonthRhythm.ts`, the days under § Rules); then PR 2 the bar
+  on the desk, PR 3 the Dashboard card, PR 4 the courtesy clock on the rule and the guides.
 size: M (four PRs: S the rule and the kernel · M the bar on the desk · S the Dashboard card and the phone rows · S the reminder's clock and the guides; no migration unless the rule's days are stored on the server, then one small one)
-blocker: The owner's refinement of the days and the reminder's cadence; the courtesy notice (#231) on main, since the reminders zone counts its presses.
+blocker: none — the owner answered the five calls 2026-11-07; the courtesy notice (#231) is on main.
 opinion: build, after the refinement — the counts already exist on the desk, so the bar is mostly reading, and it turns a policy that lives in someone's head into something the whole office sees every morning
 ---
 
@@ -84,7 +82,19 @@ One bar, five zones, drawn in `mockup.html` beside this card four ways: on the L
 4. **The bar** on the desk (`LienMonthBar.tsx`), the card on the Dashboard, the phone rows; each zone's press opens Do now filtered to that work.
 5. **The guides.** `send-lien-notices-from-the-lien-desk` gains *The lien month* section; `send-a-courtesy-notice-before-a-lien` says when the press appears; the Rules sheet's guide names the days.
 
-## Open calls for the owner (the refinement)
+## The owner's refinement (2026-11-07)
+
+Todd answered the five open calls in chat, one at a time, each with the card's recommendation beside it.
+
+1. **The days:** the card's — 1 to 5 reminders · 6 to 9 notices · 10 to 13 liens · 14 to 15 catch-up · 16 to the end nothing scheduled. Two days of slack before every 15th.
+2. **The reminder's cadence:** once, in reminders week of the affidavit's month, the day-7 floor after the packet kept. v2.6594's one-courtesy default and v2.6611's pause on a partial payment both stand.
+3. **Notices week:** this month's deadline only. A notice whose deadline is a later 15th waits for its own month and shows in the quiet zone's queue meanwhile.
+4. **Who sees the Dashboard card:** everyone who can open the Lien desk (`isLienOffice`: dev, master, assistant, controller). No new permission.
+5. **The quiet zone:** next month's queue — the reminders, notices and liens already waiting — greyed, with no press.
+
+The days live as the rule's constants in `lienMonthRhythm.ts` and are drawn under § Rules beside *Our schedule after a notice*, the way v2.6574 keeps the reminder schedule's days: no server row, no migration. Making the days the owner's to change from a screen is the same later card as the reminder schedule's days (`to-dos/owner-decisions-pending.md`, 2026-11-06).
+
+## Open calls for the owner (the refinement, answered above)
 
 1. **The days.** The owner's 1 to 5 · 6 to 10 · 10 to 15, or the recommended 1 to 5 · 6 to 9 · 10 to 13 with 14 to 15 as catch-up. Recommended: the latter, for the two days of slack before the 15th.
 2. **The reminder's cadence.** Once, in reminders week of the affidavit's month; or every month's reminders week while the notice stands and the lien is not filed. Recommended: once, since the lien goes in that same month and letter two covers the rest.

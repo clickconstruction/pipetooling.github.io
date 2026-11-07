@@ -6,7 +6,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { CHARGE_STANDINGS, CHARGE_STANDING_HINTS, CHARGE_STANDING_WORDS, chargeStandingSavedWords, parseChargeStanding, type ChargeStanding } from '../../lib/charges/rateCard'
 
 /**
- * Settings → Jobs & billing → Rates charged by crew → Who counts as what (punch list #254, the live pass of 2026-11-03):
+ * Settings → Jobs, bills and liens → Rates charged by crew → Who counts as what (punch list #254, the live pass of 2026-11-03):
  * every person with their *Charged as* in one list (those no longer here after them, since their past days still price
  * by it), so the office sets the standings that price a crew-day here instead of on each desk. Until someone out on a
  * day counts as a master, a tech or a helper, that day prices at nothing, and on the day the train went live nobody did.

@@ -57,7 +57,7 @@ Drafts pile up under **Needs you** as "3 test reports are ready to send" (office
 
 ## Letting PASS reports send themselves
 
-**Settings → Jobs & billing → Test reports → Sending** has two choices. *A person sends every report* is the default. It is everything above. *Send PASS reports automatically* means a hydrostatic PASS the tech filed goes to the GC on its own fifteen minutes later. It sends the PDF, the pay link and the standing cc. The job's activity reads "Sent automatically". It only fires when the job has a Stripe bill and a GC with an email on file. FAIL results, pinpoint and gas tests, and anything missing those keep waiting on the Dashboard for you. Open and send a draft yourself inside the fifteen minutes and it is never sent twice.
+**Settings → Jobs, bills and liens → Test reports → Sending** has two choices. *A person sends every report* is the default. It is everything above. *Send PASS reports automatically* means a hydrostatic PASS the tech filed goes to the GC on its own fifteen minutes later. It sends the PDF, the pay link and the standing cc. The job's activity reads "Sent automatically". It only fires when the job has a Stripe bill and a GC with an email on file. FAIL results, pinpoint and gas tests, and anything missing those keep waiting on the Dashboard for you. Open and send a draft yourself inside the fifteen minutes and it is never sent twice.
 
 ## What the customer sees
 
@@ -69,7 +69,7 @@ Once a report is sent it shows on the customer's or the GC's portal statement. I
 
 ## The wording
 
-Every sentence on the paper lives on **Settings → Jobs & billing → Test reports**. That is the system tested, the method, the pressure, the PASS and FAIL conclusions and the three certifications. The certifier's name and license live there too. Change them once and every future report follows. A report already sent keeps the certifier it was sent with. For one report only, open *System, method, pressure, conclusion* under the notes and change the wording there.
+Every sentence on the paper lives on **Settings → Jobs, bills and liens → Test reports**. That is the system tested, the method, the pressure, the PASS and FAIL conclusions and the three certifications. The certifier's name and license live there too. Change them once and every future report follows. A report already sent keeps the certifier it was sent with. For one report only, open *System, method, pressure, conclusion* under the notes and change the wording there.
 
 ## Notes
 
