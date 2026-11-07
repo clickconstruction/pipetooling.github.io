@@ -27,6 +27,8 @@ export type ManageTimelineEntry =
       body: string
       /** The owning instance's scheduled day — context for repeating items. */
       scheduledDate: string | null
+      /** Task cards (#273): a progress event's percent. */
+      percent?: number | null
     }
 
 /**
@@ -59,6 +61,7 @@ export function buildManageTimeline(
       actorUserId: e.actor_user_id,
       body: e.body,
       scheduledDate: dayByInstance.get(e.instance_id) ?? null,
+      percent: e.percent ?? null,
     })
   }
   // ISO timestamps sort lexicographically; `created` wins ties so the card's

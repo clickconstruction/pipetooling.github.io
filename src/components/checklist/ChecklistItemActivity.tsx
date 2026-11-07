@@ -118,14 +118,14 @@ export function ChecklistItemActivity({
         if (insts.length > 0) {
           const { data: evData, error: evErr } = await supabase
             .from('checklist_instance_events')
-            .select('id, instance_id, event_type, actor_user_id, body, created_at')
+            .select('id, instance_id, event_type, actor_user_id, body, created_at, percent')
             .in('instance_id', insts.map((i) => i.id))
             .order('created_at', { ascending: true })
           if (evErr) {
             setError(evErr.message)
             return
           }
-          evs = (evData ?? []) as ChecklistCardEvent[]
+          evs = (evData ?? []) as unknown as ChecklistCardEvent[]
         }
         // Due-change ledger (v2.2371): "pushed the due date …" spine lines.
         const { data: pushData } = await supabase
@@ -308,7 +308,7 @@ export function ChecklistItemActivity({
             if (entry.eventType === 'progress') {
               return (
                 <div key={entry.id} style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(entry.actorUserId)}</span> moved it · {stripStamp(entry.at)}
+                  <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(entry.actorUserId)}</span> · {typeof entry.percent === 'number' ? `${entry.percent}%` : 'moved it'} · {stripStamp(entry.at)}
                   {dayChip}
                   {entry.body ? <> — “{entry.body}”</> : null}
                 </div>

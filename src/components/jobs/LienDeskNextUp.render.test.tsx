@@ -354,6 +354,34 @@ describe('LienDeskNextUp · the REMINDERS strip (punch list #262)', () => {
     expect(screen.queryByTestId('lien-reminder-step-list')).toBeNull()
     expect(screen.queryByTestId('lien-step-brief')).toBeNull()
   })
+  it('with the desk’s facts the brief draws the picked notice’s dated timeline, the today band with the usual press, Show another, and why these are here as counts (PR 2 of #274)', () => {
+    const rowsFor = (jobId: string) => [
+      { key: 'mailed', kind: 'law' as const, from: '2026-10-14', dayFrom: 0, title: `The lien notice was mailed to the owner and the GC (${jobId}).`, detail: 'Day 0 counts from the day the run recorded it, Oct 14.', chip: 'legal requirement', status: 'done' as const, statusWords: '✓ done', next: '23 days ago · the clock started' },
+      { key: 'letter', kind: 'letter' as const, from: '2026-10-24', to: '2026-10-28', dayFrom: 10, dayTo: 14, title: 'The attorney’s letter should go in this window: the stronger letter our attorney wrote.', detail: 'Counsel’s rule, 10 to 14 days after the notice.', chip: 'attorney’s letter', status: 'late' as const, statusWords: 'late · act now', next: '9 days past the window · it still goes, weaker each day' },
+      { key: 'today', kind: 'today' as const, from: '2026-11-06', dayFrom: 23, title: 'You are here. Nothing has been paid or answered, and the attorney’s letter has not gone.', detail: '', chip: '', status: 'now' as const, statusWords: 'now', next: '' },
+      { key: 'lien', kind: 'law' as const, from: '2026-11-16', dayFrom: 33, title: 'The lien must be on file at the county by this day, or the right to it is lost.', detail: '§ 53.052.', chip: 'legal requirement', status: 'deadline' as const, statusWords: 'deadline · in 10 days', next: 'miss it and the lien is lost for good' },
+    ]
+    const withWhy = { ...reminders, rows: reminders.rows.map((r) => ({ ...r, why: r.step === 1 ? (r.counted ? 'nothing since the packet' : 'before day 7') : r.words })) }
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} reminders={withWhy} timelineFor={rowsFor} />)
+    fireEvent.click(screen.getByTestId('lien-step-reminder-1'))
+    const tl = screen.getByTestId('lien-notice-timeline')
+    expect(screen.queryByTestId('lien-schedule-strip')).toBeNull()
+    expect(Array.from(tl.querySelectorAll('[data-lien-timeline-row]')).map((el) => `${el.getAttribute('data-lien-timeline-row')}:${el.getAttribute('data-status') ?? 'now'}`)).toEqual(['mailed:done', 'letter:late', 'today:now', 'lien:deadline'])
+    expect(tl.textContent).toContain('Oct 24 → Oct 28')
+    expect(tl.textContent).toContain('day 10 to day 14')
+    expect(tl.textContent).toContain('late · act now')
+    expect(tl.textContent).toContain('9 days past the window · it still goes, weaker each day')
+    // The today band carries the brief's usual press and the first two fallbacks, and says the press is on the row.
+    expect(screen.getByTestId('lien-notice-timeline-action').textContent).toContain('Send a courtesy notice · the office presses it · sends the email and the text in one press; it takes a minute · the press is on the row below')
+    // The picker lists the step's notices, the first picked; picking another asks the desk for its rows.
+    const pick = screen.getByTestId('lien-notice-timeline-pick') as HTMLSelectElement
+    expect(Array.from(pick.options).map((o) => o.textContent)).toEqual(['744 · Castell', '752 · Pecan Grove', '760 · Harlan Homes'])
+    expect(tl.textContent).toContain('(j1)')
+    fireEvent.change(pick, { target: { value: 'j5' } })
+    expect(screen.getByTestId('lien-notice-timeline').textContent).toContain('(j5)')
+    // Why these are here, as counts of the step's own notices.
+    expect(screen.getByTestId('lien-step-brief-why').textContent).toBe('2 · nothing since the packet')
+  })
   it('without a desk door the Open press opens the notice under Sent through onAct', () => {
     const onAct = vi.fn()
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} reminders={reminders} />)

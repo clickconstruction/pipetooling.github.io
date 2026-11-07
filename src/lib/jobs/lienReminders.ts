@@ -110,7 +110,7 @@ export function lienReminderAt(courtesy: CourtesyStatus | null | undefined, two:
   return at(1, 'waiting', courtesy.words, false)
 }
 
-export type LienReminderRow = LienReminderAt & { jobId: string; title: string }
+export type LienReminderRow = LienReminderAt & { jobId: string; title: string; /** Why this notice is on its rung, in the courtesy's or the letter's own words (PR 2 of #274): the step brief counts the step's notices by it. */ why?: string }
 
 export type LienRemindersInput = {
   courtesyByJob: Readonly<Record<string, CourtesyStatus>>
@@ -129,11 +129,25 @@ export type LienReminders = {
 
 export const LIEN_REMINDERS_EMPTY: LienReminders = { rows: [], counts: [0, 0, 0, 0], waiting: 0 }
 
+/** Why a notice stands on its rung, short enough for a chip: the hold's reason, the letter's state, the courtesy's. */
+export function lienReminderWhy(courtesy: CourtesyStatus, two: LetterTwoStatus | null | undefined, at: LienReminderAt): string {
+  if (courtesy.state === 'closed') return courtesy.reason || 'closed'
+  if (courtesy.state === 'held') return courtesy.reason.replace(/\s—.*$/, '')
+  if (courtesy.state === 'affidavit_week') return 'the affidavit’s week'
+  if (two && two.state === 'in_flight') return 'the attorney’s letter is drafted'
+  if (two && two.state === 'sent') return 'the attorney’s letter went'
+  if (at.step === 3) return 'the courtesy went and a week passed'
+  if (courtesy.state === 'sent') return courtesy.waitingForAnswer ? 'the courtesy went this week' : 'the courtesy went, nothing since'
+  if (courtesy.state === 'waiting') return 'before day 7'
+  return 'nothing since the packet'
+}
+
 export function buildLienReminders(input: LienRemindersInput): LienReminders {
   const rows: LienReminderRow[] = []
   for (const [jobId, courtesy] of Object.entries(input.courtesyByJob)) {
-    const at = lienReminderAt(courtesy, input.letterTwoByJob[jobId])
-    if (at) rows.push({ ...at, jobId, title: input.jobTitle(jobId) })
+    const two = input.letterTwoByJob[jobId]
+    const at = lienReminderAt(courtesy, two)
+    if (at) rows.push({ ...at, jobId, title: input.jobTitle(jobId), why: lienReminderWhy(courtesy, two, at) })
   }
   rows.sort((a, b) => a.step - b.step || (b.day ?? -1) - (a.day ?? -1) || a.title.localeCompare(b.title))
   const counts: [number, number, number, number] = [0, 0, 0, 0]

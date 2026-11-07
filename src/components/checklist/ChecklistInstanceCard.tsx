@@ -6,7 +6,10 @@ import {
   type ChecklistCardEvent,
 } from '../../lib/checklistCardEvents'
 import type { LineState } from '../../lib/taskCriteria'
-import { linesWords } from '../../lib/taskProgress'
+import { linesWords, ringState } from '../../lib/taskProgress'
+import { TaskLinesList } from './TaskLinesList'
+import { TaskRing } from './TaskRing'
+import { TaskPercentSheet } from './TaskPercentSheet'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
@@ -14,6 +17,8 @@ export type ChecklistInstanceCardInstance = {
   id: string
   completed_at: string | null
   reviewed_at: string | null
+  /** Task cards (#273): the day row's percent; a done row reads 100 whatever is stored. */
+  percent_complete?: number | null
 }
 
 type ChecklistInstanceCardProps = {
@@ -56,6 +61,12 @@ type ChecklistInstanceCardProps = {
    */
   lines?: LineState[]
   onTickLine?: (criterionId: string, ticked: boolean) => void | Promise<void>
+  /**
+   * Task cards (#273, PR 3): the ring in the tick's seat on a one-off or roadmap card (`takesRing`). A press opens the
+   * % sheet; its Set lands through `onSetPercent` and its Done through `onToggleComplete`. A done ring reopens on a press.
+   */
+  ring?: boolean
+  onSetPercent?: (percent: number, words: string) => Promise<boolean>
 }
 
 /**
@@ -81,6 +92,8 @@ export function ChecklistInstanceCard({
   fullHistory,
   lines,
   onTickLine,
+  ring = false,
+  onSetPercent,
 }: ChecklistInstanceCardProps) {
   const [threadOpen, setThreadOpen] = useState(false)
   const [draft, setDraft] = useState('')
@@ -88,6 +101,7 @@ export function ChecklistInstanceCard({
   const composerRef = useRef<HTMLInputElement | null>(null)
   const [focusComposerPending, setFocusComposerPending] = useState(false)
   const [linesOpen, setLinesOpen] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   useEffect(() => {
     if (focusComposerPending && threadOpen) {
@@ -204,58 +218,38 @@ export function ChecklistInstanceCard({
     flexShrink: 0,
   }
 
-  // Task cards (#273, PR 2): the Done when… lines. The next open line wears the amber ring the stage checklists use.
+  // Task cards (#273, PR 2): the Done when… lines; PR 3: the ring in the tick's seat, reading the one number.
   const hasLines = Boolean(lines && lines.length > 0)
   const tickedCount = lines ? lines.filter((l) => l.checked).length : 0
-  const nextOpenId = lines?.find((l) => !l.checked)?.criterion.id ?? null
-  const linesReadOnly = !onTickLine || isCompleted
-  const linesBlock =
-    hasLines && lines ? (
-      <div style={{ marginTop: '0.5rem' }}>
-        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>{linesWords(tickedCount, lines.length)}</div>
-        <ul aria-label="Done when" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          {lines.map((l) => (
-            <li key={l.criterion.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem' }}>
-              <button
-                type="button"
-                onClick={() => void onTickLine?.(l.criterion.id, !l.checked)}
-                disabled={linesReadOnly}
-                aria-pressed={l.checked}
-                aria-label={`${l.checked ? 'Untick' : 'Tick'}: ${l.criterion.body}`}
-                style={{
-                  width: 28,
-                  height: 28,
-                  flexShrink: 0,
-                  borderRadius: 7,
-                  border: l.checked ? 'none' : `2px solid ${l.criterion.id === nextOpenId ? '#d97706' : 'var(--text-600)'}`,
-                  boxShadow: !l.checked && l.criterion.id === nextOpenId ? '0 0 0 2px var(--bg-amber-tint)' : 'none',
-                  background: l.checked ? '#16a34a' : 'var(--surface)',
-                  color: 'white',
-                  fontSize: '0.95rem',
-                  lineHeight: 1,
-                  cursor: linesReadOnly ? 'default' : 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginTop: 1,
-                }}
-              >
-                {l.checked ? '✓' : ''}
-              </button>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: '0.9375rem', lineHeight: 1.35, color: l.checked ? 'var(--text-muted)' : 'var(--text-strong)' }}>{l.criterion.body}</div>
-                {l.checked ? (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {name(l.checkedBy)}
-                    {l.checkedAt ? ` · ${stripStamp(l.checkedAt)}` : ''}
-                  </div>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    ) : null
+  const linesBlock = hasLines && lines ? <TaskLinesList lines={lines} onTick={onTickLine} readOnly={!onTickLine || isCompleted} nameOf={name} /> : null
+  const ringSt = ringState({ completedAt: instance.completed_at, percentComplete: instance.percent_complete, lines: lines?.length ?? 0, ticked: tickedCount })
+  const titleText = fullHistory?.item.title ?? (typeof title === 'string' ? title : '')
+  const lastProgress = (() => {
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i]
+      if (e && e.event_type === 'progress') return e
+    }
+    return null
+  })()
+  const lastMoved = lastProgress && typeof lastProgress.percent === 'number' ? `was ${lastProgress.percent}% ${stripStamp(lastProgress.created_at)}` : null
+  const ringPress = () => {
+    if (isCompleted) {
+      onToggleComplete()
+      return
+    }
+    setSheetOpen(true)
+  }
+  const ringSheet = ring ? (
+    <TaskPercentSheet
+      open={sheetOpen}
+      title={titleText}
+      state={ringSt}
+      lastMoved={lastMoved}
+      onSet={async (p, w) => (onSetPercent ? onSetPercent(p, w) : false)}
+      onDone={() => onToggleComplete()}
+      onClose={() => setSheetOpen(false)}
+    />
+  ) : null
   const linesChip =
     hasLines && lines ? (
       <button
@@ -277,6 +271,9 @@ export function ChecklistInstanceCard({
   /** Desktop ledger row (v2.2336): one line — checkbox, title, status chips, quiet actions. */
   const rowBody = (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minHeight: 36 }}>
+      {ring ? (
+        <TaskRing state={ringSt} size={30} onPress={ringPress} title={titleText} />
+      ) : (
       <button
         type="button"
         onClick={onToggleComplete}
@@ -300,6 +297,7 @@ export function ChecklistInstanceCard({
       >
         {isCompleted ? '✓' : ''}
       </button>
+      )}
       <div
         {...(fullHistory
           ? {
@@ -417,6 +415,9 @@ export function ChecklistInstanceCard({
       ) : (
       <>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+        {ring ? (
+          <TaskRing state={ringSt} size={48} onPress={ringPress} title={titleText} />
+        ) : (
         <button
           type="button"
           onClick={onToggleComplete}
@@ -440,6 +441,7 @@ export function ChecklistInstanceCard({
         >
           {isCompleted ? '✓' : ''}
         </button>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             {...(fullHistory
@@ -538,6 +540,7 @@ export function ChecklistInstanceCard({
       </>
       )}
       {variant === 'row' && linesOpen ? <div style={{ padding: '0.1rem 0 0.4rem 2.2rem' }}>{linesBlock}</div> : null}
+      {ringSheet}
       {threadOpen && fullHistory ? (
         <div style={{ marginTop: '0.65rem' }}>
           <ChecklistItemActivity

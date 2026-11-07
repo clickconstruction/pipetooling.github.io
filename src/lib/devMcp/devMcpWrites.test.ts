@@ -10,6 +10,7 @@ const NARRATIVE_MIGRATION = readFileSync('supabase/migrations/20261007235000_dev
 const PLAN_MIGRATION = readFileSync('supabase/migrations/20261023195135_legal_plan_items.sql', 'utf8')
 const DOCUMENT_MIGRATION = readFileSync('supabase/migrations/20261028010000_dev_legal_document_write.sql', 'utf8')
 const GAP_MIGRATION = readFileSync('supabase/migrations/20261028120000_dev_legal_gap_answer_write.sql', 'utf8')
+const DOC_MIGRATION = readFileSync('supabase/migrations/20261107013000_dev_person_doc_write.sql', 'utf8')
 const HISTORY_MIGRATION = readFileSync('supabase/migrations/20261029130000_dev_history_entry_write.sql', 'utf8')
 const BID_MIGRATION = readFileSync('supabase/migrations/20261030210000_dev_bid_write.sql', 'utf8')
 const STATEMENT_MIGRATION = readFileSync('supabase/migrations/20261031190000_dev_legal_statement_write.sql', 'utf8')
@@ -42,7 +43,7 @@ describe('devMcpWrites — the allowlist', () => {
     const tableVerbs = Object.entries(WRITE_VERBS).filter(([, v]) => v.rpc === null).map(([k]) => k)
     expect(tableVerbs).toEqual(['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper', 'plan_person_report', 'apply_person_report', 'plan_matter_open_person', 'apply_matter_open_person']) // v2.6430: the report verbs POST the HR queue's own RPCs after the server's read of the report (devMcpPersonReport.test.ts); v2.6582: the person-matter verbs POST the HR file's own legal_person_matter_open (devMcpPersonMatter.test.ts)
     const rpcs = new Set(Object.values(WRITE_VERBS).flatMap((v) => (v.rpc === null ? [] : [v.rpc])))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_clock_session_write', 'dev_history_entry_write', 'dev_hours_statement_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_write', 'dev_person_evidence_write', 'dev_person_license_write', 'dev_theme_marks_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_clock_session_write', 'dev_history_entry_write', 'dev_hours_statement_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_write', 'dev_person_doc_write', 'dev_person_evidence_write', 'dev_person_license_write', 'dev_theme_marks_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -268,7 +269,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.31.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -327,12 +328,12 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("name: 'plan_matter_document'")
     expect(SERVER).toContain("case 'apply_matter_document':")
     // v2.6414: the hours statement's labels sit in the chain before v2.6426's evidence labels, which close it.
-    expect(SERVER).toContain("case 'plan_hours_statement':\n    case 'apply_hours_statement':\n    case 'plan_person_evidence':")
+    expect(SERVER).toContain("case 'plan_hours_statement':\n    case 'apply_hours_statement':\n    case 'plan_person_doc':\n    case 'apply_person_doc':\n    case 'plan_person_evidence':") // v2.6608: the person-document labels sit between them
     expect(SERVER).toContain('let file = isDocument ? await documentBytes(args) : null')
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.31.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
   })
 })
 
@@ -432,7 +433,7 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
     expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
     expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
-    expect(SERVER).toContain("const SERVER_VERSION = '0.31.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
   })
 })
 
@@ -481,8 +482,8 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.31.0'")
-    expect(SERVER).toContain('Writes are forty-seven verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
+    expect(SERVER).toContain('Writes are forty-nine verbs and nothing else')
   })
 })
 
@@ -705,8 +706,8 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.31.0'")
-    expect(SERVER).toContain('Writes are forty-seven verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
+    expect(SERVER).toContain('Writes are forty-nine verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
 })
@@ -1003,9 +1004,9 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.31.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
-    expect(SERVER).toContain('forty-seven verbs')
+    expect(SERVER).toContain('forty-nine verbs')
   })
 })
 
@@ -1087,7 +1088,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.31.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')
@@ -1155,5 +1156,55 @@ describe('the license verbs (punch list #255)', () => {
     expect(SERVER).toContain("name: 'check_license'")
     expect(SERVER).toContain("case 'plan_license':")
     expect(SERVER).toContain("case 'check_license':")
+  })
+})
+
+describe("the person document verbs (v2.6608)", () => {
+  const PERSON = 'a1b2c3d4-0000-4000-8000-000000000091'
+  it('are on the allowlist, plan before apply, and POST { p, p_dry_run } to dev_person_doc_write with the whole text or the ops', () => {
+    expect(isWriteVerb('plan_person_doc')).toBe(true)
+    expect(planVerbFor('apply_person_doc')).toBe('plan_person_doc')
+    expect(WRITE_VERBS.plan_person_doc.rpc).toBe('dev_person_doc_write')
+    const text = '## Trajectory\n\nSteady.'
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary', markdown: text } })).toEqual({
+      ok: true, rpc: 'dev_person_doc_write', step: 'plan',
+      body: { p: { person_id: PERSON, kind: 'summary', markdown: text }, p_dry_run: true },
+      dryRunBody: { p: { person_id: PERSON, kind: 'summary', markdown: text }, p_dry_run: true },
+      target: PERSON, planHash: null,
+    })
+    const ops = [{ op: 'replace_section', heading: 'Pay', markdown: 'Paid weekly.' }, { op: 'append', markdown: '## Watch items\n\nNone.' }]
+    expect(writeRpcBody('apply_person_doc', { doc: { person_id: PERSON, kind: 'narrative', ops, expect_updated_at: '2026-11-06T22:00:00Z' }, plan_hash: 'b'.repeat(64) })).toMatchObject({
+      ok: true, step: 'apply', target: PERSON, planHash: 'b'.repeat(64),
+      body: { p: { person_id: PERSON, kind: 'narrative', ops, expect_updated_at: '2026-11-06T22:00:00Z' }, p_dry_run: false },
+    })
+  })
+
+  it('refuses a missing plan_hash, a bad person, a kind outside summary | narrative, both or neither of markdown and ops, and more than 20 ops', () => {
+    expect(writeRpcBody('apply_person_doc', { doc: { person_id: PERSON, kind: 'summary', markdown: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: 'nope', kind: 'summary', markdown: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('person_id') })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'history', markdown: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('summary | narrative') })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary', markdown: 'x', ops: [{ op: 'append', markdown: 'y' }] } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary', ops: [] } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary', ops: Array.from({ length: 21 }, () => ({ op: 'append', markdown: 'x' })) } })).toMatchObject({ ok: false })
+  })
+
+  it('the plan reply points at apply_person_doc, and a repeat apply says the document already reads that way', () => {
+    expect(String(planReply('plan_person_doc', { person: { id: PERSON } }, 'a'.repeat(64)).next)).toContain('apply_person_doc')
+    expect(alreadyApplied('apply_person_doc', { target: PERSON, at: '2026-11-06T22:00:00Z' })).toContain('already reads that way')
+  })
+
+  it('the migration: devs only, one of markdown or ops, the three ops against the headings, the updated_at guard, the no-change refusal and the upsert the archive trigger watches', () => {
+    expect(DOC_MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
+    expect(DOC_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.hr_doc_headings(md text)')
+    expect(DOC_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_person_doc_write(p jsonb, p_dry_run boolean DEFAULT true)')
+    expect(DOC_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(DOC_MIGRATION).toContain("IF (p ? 'markdown') = (p ? 'ops') THEN")
+    expect(DOC_MIGRATION).toContain("IF v_opname NOT IN ('replace_section', 'insert_after', 'append') THEN")
+    expect(DOC_MIGRATION).toContain('IF abs(extract(epoch FROM (v_row.updated_at - v_expect))) > 0.001 THEN')
+    expect(DOC_MIGRATION).toContain('IF v_after = v_before THEN')
+    expect(DOC_MIGRATION).toContain('ON CONFLICT (person_id, kind) DO UPDATE')
+    expect(DOC_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_person_doc_write(jsonb, boolean) FROM PUBLIC, anon;')
+    expect(DOC_MIGRATION).not.toContain('CREATE TABLE')
   })
 })

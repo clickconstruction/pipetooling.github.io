@@ -2,7 +2,7 @@
 name: "The crew's job window has no Plans section, so Add our as-built never reaches a helper or a subcontractor"
 number: 276
 group: ready
-status: found 2026-11-06 on the walk of v2.6604 (punch list #272); not started
+status: found 2026-11-06 on the walk of v2.6604 (punch list #272) · building 2026-11-06 as v2.6609 (DetailJobModalPlans mounts JobPlansSection in the read-only window; the Open plans row stays for a job with no part); the walk and the card's retirement follow the merge
 summary: >
   Punch list #239 built the Plans section with Add our as-built into the job window's Documents tab
   (v2.6298, v2.6345) and wrote that everyone on the job has the press. The job window a helper or a
@@ -15,7 +15,7 @@ summary: >
 next: Mount the crew's view of the Plans section (Building from with Open, Our as-builts, Add our as-built with Photos or a PDF) in the read-only window where the Open plans row sits, for the roles that window serves, and walk it as the sample helper on a ZZ Test development's job.
 size: S (one component mounted in a second window, its render smoke, the guide's words)
 blocker: None in the code. Which roles the read-only window serves is a product fact to keep; nothing opens that the database does not already allow.
-ver: —
+ver: 6609
 opinion: mount JobPlansSection with canWrite false in DetailJobModal's files row for every role that window serves; the section already draws the crew's presses and the office's apart, and the database (plan_set_crew_on_job, plan_part_crew_can_see) holds the crew to their own as-builts on their own jobs
 ---
 

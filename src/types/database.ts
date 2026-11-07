@@ -16,6 +16,55 @@ export type Database = {
     Tables: {
       [_ in never]: never
     }
+      job_callbacks: {
+        Row: {
+          decided_at: string
+          decided_by: string | null
+          decided_by_name: string
+          first_job_id: string
+          second_job_id: string
+          verdict: string
+        }
+        Insert: {
+          decided_at?: string
+          decided_by?: string | null
+          decided_by_name?: string
+          first_job_id: string
+          second_job_id: string
+          verdict: string
+        }
+        Update: {
+          decided_at?: string
+          decided_by?: string | null
+          decided_by_name?: string
+          first_job_id?: string
+          second_job_id?: string
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_callbacks_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_callbacks_first_job_id_fkey"
+            columns: ["first_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_callbacks_second_job_id_fkey"
+            columns: ["second_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     Views: {
       [_ in never]: never
     }
@@ -30,6 +79,11 @@ export type Database = {
         Returns: Json
       }
     }
+      my_week: { Args: never; Returns: Json }
+      set_week_signal: {
+        Args: { p_signal: string; p_user_id: string }
+        Returns: Json
+      }
     Enums: {
       [_ in never]: never
     }
