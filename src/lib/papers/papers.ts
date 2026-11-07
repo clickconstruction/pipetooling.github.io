@@ -175,3 +175,16 @@ export function kindGuess(subject: string): PaperKind {
 export function nameFromSubject(subject: string): string {
   return subject.replace(/^((re|fwd?|fw):\s*)+/i, '').trim().slice(0, 200)
 }
+
+/** The parts a paper may move to (v2.6632): every other part of the site, in the look's order. */
+export function partsToMoveTo(parts: ReadonlyArray<{ id: string; name: string }>, partId: string): Array<{ id: string; name: string }> {
+  return parts.filter((p) => p.id !== partId)
+}
+
+/**
+ * The History line a move writes (v2.6632), the app's own since the trigger writes only on a keep: the paper, the part
+ * it was on and the part it is on now. The set it went with stays on the old part, so the paper goes on the new part itself.
+ */
+export function moveLineForPaper(p: { kind: string; name: string }, fromPart: string, toPart: string): string {
+  return `Moved ${kindLabel(p.kind).toLowerCase()} ${p.name} from ${fromPart} to ${toPart}; it goes on ${toPart} itself now.`
+}

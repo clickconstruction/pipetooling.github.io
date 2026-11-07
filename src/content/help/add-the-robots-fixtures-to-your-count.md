@@ -13,11 +13,15 @@ On the Counts tab, press {{button:blue|Robot fixtures · 23}}. The button shows 
 
 The top line says which set the robot read and when. It also says how many fixtures it found and how many it is sure of. The last figure is what they come to at the robot's prices.
 
+{{gif:add-the-robots-fixtures-to-your-count-1-open.gif|Press Robot fixtures on the Counts tab. The window lists every fixture the robot found, sure rows ticked}}
+
 ## Read a row before you take it
 
 Each row shows the tag, the fixture, the count, the sheets it was counted on, and the robot's price. A {{chip:green|sure}} row agrees with the schedule, the drawings and the riser. A {{chip:yellow|want a look}} row does not. A row the plans give to others wears {{chip:gray|by others}} and starts unticked.
 
 Press {{button:outline|▸ text}} on any row. You see the schedule row as printed, every note that names the tag, and the callouts on each sheet. Press {{button:outline|Open sheet}} to see the sheet itself.
+
+{{gif:add-the-robots-fixtures-to-your-count-2-text.gif|Press ▸ text on a row. The robot's check, the schedule row, the notes and the callouts open under it}}
 
 ## Add the ones you want
 
@@ -27,6 +31,12 @@ A fixture already on your count sits under *On your count*. Tick it to take the 
 
 Press {{button:blue|Add 14 fixtures}}. The rows land on your count, shaded, with a Robot pill. Your own rows stay as they are. The toast offers Undo for ten seconds.
 
+{{gif:add-the-robots-fixtures-to-your-count-3-add.gif|Tick the rows you want and press Add. They land on your count shaded, each with a Robot pill}}
+
+Undo takes back only that press. Rows from an earlier press stay on your count.
+
+{{gif:add-the-robots-fixtures-to-your-count-6-undo.gif|Press Undo on the toast. Only the row from that press comes back off. The earlier rows stay}}
+
 ## The price
 
 Your price book prices a robot row by name, the way it prices any row. Where your book has no entry, the robot's price lands as the row's custom price, marked. The robot's price shows in grey beside yours on every robot row.
@@ -35,7 +45,11 @@ Your price book prices a robot row by name, the way it prices any row. Where you
 
 A shaded row has no delete. Its trash can reads {{button:outline|Set aside}}. The row leaves your count and waits in the robot's list with your reason. Press {{button:outline|Put back}} to return it.
 
+{{gif:add-the-robots-fixtures-to-your-count-5-set-aside.gif|Set aside a row with a reason. It waits in the robot's list. Put back returns it to your count}}
+
 If you change a shaded row's count, the pill reads *Robot 2 → yours 3*. The row stays shaded. You can see what the robot counted and what you made it.
+
+{{gif:add-the-robots-fixtures-to-your-count-4-count.gif|Change a robot row's count. The pill reads Robot 5 → yours 6 and the row stays shaded}}
 
 :::example A bid with six rows already counted
 The robot found 23 fixtures. 21 were sure. You took 14 and set two aside, one because the plans gave it to others. The Counts tab now reads *Robot · 14 of 23 fixtures on your count*.

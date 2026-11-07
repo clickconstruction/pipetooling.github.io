@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { findAuthUserByEmail } from '../_shared/authUserByEmail.ts'
+import { DEV_LOGIN_NOT_FOR_THEM, devLoginMayMint } from '../_shared/devLoginGate.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -81,6 +82,26 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'User not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // A dev or a digital twin and no one else (v2.6639): this door records no imitation, so a link minted as a teammate
+    // would read their Gmail through My email (`_shared/devLoginGate.ts`). A read of the account that fails opens nothing.
+    const { data: account, error: accountError } = await adminClient
+      .from('users')
+      .select('role, is_digital_twin')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (accountError) {
+      return new Response(
+        JSON.stringify({ error: `The account did not read, so no link was made: ${accountError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    if (!devLoginMayMint(account)) {
+      return new Response(
+        JSON.stringify({ error: DEV_LOGIN_NOT_FOR_THEM }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

@@ -160,6 +160,18 @@ describe('A notice, not a person (punch list #223 PR 1, v2.6202)', () => {
     await waitFor(() => expect(io.markNotice).toHaveBeenCalledWith('dale', 'domain'))
   })
 
+  it('leads the card with the notice block, marked as the suggestion, when someone at the company was marked before (v2.6641)', async () => {
+    const io = fakeIo({ loadKnown: vi.fn(async () => ({ customers: [{ id: 'alvarez', name: 'Alvarez Family Dental' }], noticed: [{ value: 'news@ridgeway.example', kind: 'address' as const }] })) })
+    renderSlot(DALE, io)
+    expect(await screen.findByText(/news@ridgeway.example was marked a notice before, so this is likely one too\./)).toBeTruthy()
+    const who = card('Who is this?')
+    const address = who.getByRole('button', { name: /Mark dale@ridgeway.example a notice/ })
+    expect(address.closest('[data-notice]')?.hasAttribute('data-suggested')).toBe(true)
+    const heads = who.getAllByText(/^(A notice, not a person|A new customer|Or)$/).map((el) => el.textContent)
+    expect(heads[0]).toBe('A notice, not a person')
+    expect(heads).toContain('A new customer')
+  })
+
   it('offers no notice press for a number', async () => {
     renderSlot(KEVIN)
     await screen.findByText('Kevin Alvarez at Alvarez Family Dental')

@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { loadTaskPhotos, taskPhotoPreviewUrls, type TaskPhotoRow } from '../lib/photos/taskPhotosIo'
 import { sortTaskPhotos } from '../lib/taskPhotos'
+import { TASK_PHOTO_ADDED_EVENT } from '../lib/taskPhotos'
 
 export type TaskPhotoView = TaskPhotoRow & { previewUrl: string | null }
 
@@ -15,7 +16,8 @@ export type TaskPhotosHost = {
   reload: () => Promise<void>
 }
 
-export const TASK_PHOTO_ADDED_EVENT = 'task-photo-added'
+/** The event name lives in the kernel since v2.6628, so the outbox's replay can fire it without this hook. */
+export { TASK_PHOTO_ADDED_EVENT } from '../lib/taskPhotos'
 
 export function useTaskPhotos(instanceIds: ReadonlyArray<string>): TaskPhotosHost {
   const [rows, setRows] = useState<TaskPhotoRow[]>([])

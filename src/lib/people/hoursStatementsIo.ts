@@ -47,6 +47,9 @@ export type HoursStatementRecordRow = {
   contract_document_id: string | null
   matter_document_id: string | null
   state: HoursStatementState
+  /** The signed PDF's copy in the job's Team only → Sent by us folder (v2.6634); absent until migration 20261107130000 is pushed, null until the office puts it there. */
+  drive_file_id?: string | null
+  drive_filed_at?: string | null
   created_at: string
   updated_at: string
   worker: { name: string | null } | null
@@ -55,8 +58,8 @@ export type HoursStatementRecordRow = {
 }
 
 const TABLE = 'hours_statements' as never
-const COLUMNS =
-  'id, record_id, job_ledger_id, person_id, user_id, labor_company, period_start, period_end, with_pay, basis, charge_rate, charge_words, kind, stated_days, gap_from, gap_to, snapshot, prepared_by, prepared_at, contract_document_id, matter_document_id, state, created_at, updated_at, worker:users!hours_statements_user_id_fkey(name), prepared_by_user:users!hours_statements_prepared_by_fkey(name), job:jobs_ledger!hours_statements_job_ledger_id_fkey(hcp_number, click_number, job_name)'
+// Every column, so a column a pending migration adds (drive_file_id, v2.6634) is simply absent before the push instead of refusing the read.
+const COLUMNS = '*, worker:users!hours_statements_user_id_fkey(name), prepared_by_user:users!hours_statements_prepared_by_fkey(name), job:jobs_ledger!hours_statements_job_ledger_id_fkey(hcp_number, click_number, job_name)'
 
 /** Every statement on the job, newest first. */
 export async function listHoursStatementsForJob(jobId: string): Promise<HoursStatementRecordRow[]> {
@@ -147,4 +150,10 @@ export async function saveHoursStatement(args: HoursStatementSave): Promise<Hour
 /** The statement's copy on a legal matter's Evidence tab (v2.6413, punch list #212 PR 4): the row it was filed as, or null to untie. */
 export async function setHoursStatementMatterDocument(id: string, matterDocumentId: string | null): Promise<void> {
   await withSupabaseRetry(() => supabase.from(TABLE).update({ matter_document_id: matterDocumentId, updated_at: new Date().toISOString() } as never).eq('id', id).select('id').single(), 'tie the statement to the matter')
+}
+
+/** The signed PDF's copy in the job's Team only → Sent by us folder (v2.6634): the Drive file id, and when. */
+export async function setHoursStatementDriveCopy(id: string, driveFileId: string): Promise<void> {
+  const now = new Date().toISOString()
+  await withSupabaseRetry(() => supabase.from(TABLE).update({ drive_file_id: driveFileId, drive_filed_at: now, updated_at: now } as never).eq('id', id).select('id').single(), 'keep the Drive copy on the statement')
 }

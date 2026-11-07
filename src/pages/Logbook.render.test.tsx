@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { installDomShims } from '../test/renderSmokeMocks'
 
 const state = vi.hoisted(() => ({ canAccessLicenses: true, tables: {} as Record<string, unknown>, rpc: [] as unknown, writes: [] as string[] }))
 
@@ -58,6 +59,10 @@ function mount(path = '/logbook/u1') {
   )
 }
 
+beforeAll(() => {
+  installDomShims()
+})
+
 beforeEach(() => {
   state.canAccessLicenses = true
   state.tables = {
@@ -84,6 +89,18 @@ describe('Logbook page', () => {
     expect(screen.queryByText('Gone Master')).toBeNull()
     expect(screen.getByTestId('logbook-unlicensed-trade').textContent).toContain('6 hours of electrical work count toward no license.')
     expect(screen.getByText(/Office, not counted/)).toBeTruthy()
+  })
+
+  it('reads the office’s goal and the hours before the clock, and offers Edit the goal', async () => {
+    state.tables.license_targets = [{ trade: 'plumbing', target_class: 'journeyman', target_amount: 7000, opening_amount: 1200, opening_source: 'Hours at Rio Plumbing' }]
+    mount()
+    expect(await screen.findByText('Jordan’s logbook')).toBeTruthy()
+    expect(screen.getByTestId('logbook-goal').textContent).toContain('Working toward journeyman plumberset by the office')
+    expect(screen.getByTestId('logbook-opening').textContent).toBe('Includes 1,200 hours before the clock started: Hours at Rio Plumbing.')
+    expect(screen.getByText(/of 7,000 hours/)).toBeTruthy()
+    fireEvent.click(screen.getByTestId('logbook-edit-goal'))
+    expect(await screen.findByText('Jordan’s plumbing goal')).toBeTruthy()
+    expect((screen.getByTestId('license-target-class') as HTMLSelectElement).value).toBe('journeyman')
   })
 
   it('prints the summary sheet with the teammate named', async () => {
@@ -120,11 +137,15 @@ describe('My logbook (own)', () => {
       hours: [hours('2026-10-27', 40, 'Plumbing')],
       licenses: [{ id: 'l1', license_type: 'Plumber Apprentice #191717', date_of_expiry: '2099-08-31' }],
       signers: [{ person_name: 'Ana Ruiz', license_type: 'Master Plumber #41130', date_of_expiry: '2099-05-31' }],
+      targets: [{ trade: 'plumbing', target_class: null, target_amount: null, opening_amount: 1200, opening_source: 'Hours at Rio Plumbing' }],
       office_job_id: null,
     }
     mount('/my-logbook')
     expect(await screen.findByText('Your logbook')).toBeTruthy()
     expect(screen.getByText('Working toward journeyman plumber')).toBeTruthy()
+    expect(screen.getByTestId('logbook-opening').textContent).toBe('Includes 1,200 hours before the clock started: Hours at Rio Plumbing.')
+    expect(screen.getByText(/1,240/)).toBeTruthy()
+    expect(screen.queryByTestId('logbook-edit-goal')).toBeNull()
     expect(screen.getByText('Ana Ruiz')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Print summary sheet' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Add a license' })).toBeNull()

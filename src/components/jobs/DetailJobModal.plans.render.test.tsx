@@ -45,6 +45,7 @@ vi.mock('../../lib/plans/planSetsIo', async () => {
     addSet: never,
     makeCurrent: never,
     removeSet: never,
+    movePaper: never,
     updateMemo: never,
     updateChanges: never,
   }
