@@ -4,7 +4,7 @@ last_updated: 2026-10-23
 
 # The Texas county map
 
-The Legal desk's county map draws real county lines from one static file, `public/geo/tx-counties.json` (68 KB, 254 counties, GeoJSON, WGS84 longitude/latitude). Settings → Jobs & billing → **Collections law firms** uses it to color counties for a firm (punch list #144, PR 1, v2.5756); the mock-up beside `to-dos/legal-firms-by-county/`, the desk's Map lens (PR 3) and the firm portal's Who covers what (PR 4) draw the same file, so the picker and the lens can never disagree on a line.
+The Legal desk's county map draws real county lines from one static file, `public/geo/tx-counties.json` (68 KB, 254 counties, GeoJSON, WGS84 longitude/latitude). Settings → Jobs, bills and liens → **Collections law firms** uses it to color counties for a firm (punch list #144, PR 1, v2.5756); the mock-up beside `to-dos/legal-firms-by-county/`, the desk's Map lens (PR 3) and the firm portal's Who covers what (PR 4) draw the same file, so the picker and the lens can never disagree on a line.
 
 ## Source and license
 

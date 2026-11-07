@@ -5,7 +5,7 @@ import { OFFICE_COUNTY_DEFAULT } from '../lib/legal/affidavitPaper'
 
 /**
  * The office's county for a sworn statement's venue line (punch list #220, v2.6210): `app_settings.office_county`,
- * seeded *Guadalupe* by migration 20261031040000 and changed under Settings → Jobs & billing. The default stands in
+ * seeded *Guadalupe* by migration 20261031040000 and changed under Settings → Jobs, bills and liens. The default stands in
  * until the row answers, and when it cannot (a read that fails is a county, not a stop).
  */
 export function useOfficeCounty(enabled = true): string {

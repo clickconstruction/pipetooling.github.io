@@ -1,9 +1,9 @@
 /**
  * A Settings card that folds to its name and one line (punch list #261): the shape every
- * card on Jobs & billing has, and since PR 2 (v2.6631) the three cards the owner moved to
+ * card on Jobs, bills and liens has, and since PR 2 (v2.6631) the three cards the owner moved to
  * other tabs — HCP reconcile to Data & recovery, Sub portal · pay schedule to People & teams,
  * The office's county to Company beside the office address. A moved card keeps answering to
- * the anchor it had on Jobs & billing, so every link, door and guide that named the old anchor
+ * the anchor it had on Jobs, bills and liens, so every link, door and guide that named the old anchor
  * still lands on the card and opens it: the deep links map the old anchor to the new tab and
  * rewrite it to the new one before the page looks for the element.
  */
@@ -41,7 +41,7 @@ export interface MovedSettingsCard extends SettingsFoldCardSpec {
   movedFrom: readonly string[]
 }
 
-/** The three cards the owner moved off Jobs & billing (call 2, answered 2026-11-07), each on its new tab with its old anchor. */
+/** The three cards the owner moved off Jobs, bills and liens (call 2, answered 2026-11-07), each on its new tab with its old anchor. */
 export const MOVED_SETTINGS_CARDS: Readonly<Record<MovedSettingsCardSlug, MovedSettingsCard>> = {
   'hcp-reconcile': {
     slug: 'hcp-reconcile',

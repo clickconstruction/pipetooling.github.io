@@ -1,6 +1,6 @@
 /**
  * Legal firms by county (punch list #144, PR 1, v2.5756): the rules behind the county
- * picker on Settings → Jobs & billing → Collections law firms, and the shared reads the
+ * picker on Settings → Jobs, bills and liens → Collections law firms, and the shared reads the
  * desk's Map lens (PR 3) and the portal's Who covers what (PR 4) use.
  *
  * Since v2.6227 (punch list #222, PR 3) several firms may cover one county, and one of them is

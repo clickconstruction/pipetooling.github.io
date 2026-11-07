@@ -1,5 +1,5 @@
 /**
- * Settings → Jobs & billing → Stage checklists (punch list #164, PR 2; read-only since punch list #237, PR 4): the
+ * Settings → Jobs, bills and liens → Stage checklists (punch list #164, PR 2; read-only since punch list #237, PR 4): the
  * company's questions for Rough In, Top Out and Trim Set, read back from where they are written now, a job's Documents
  * tab. Each kind lists its live questions in order with their asks and a source line that says which job each came from
  * or who wrote it, and folds the questions taken off the company's list with who, when and why. Nothing here is pressed;

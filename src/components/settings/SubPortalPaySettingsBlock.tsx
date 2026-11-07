@@ -7,7 +7,7 @@ import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
- * Settings → People & teams (off Jobs & billing since punch list #261 PR 2): the sub portal’s pay schedule (sub-portal
+ * Settings → People & teams (off Jobs, bills and liens since punch list #261 PR 2): the sub portal’s pay schedule (sub-portal
  * train). Two app_settings keys, written once, shown to every sub:
  * sub_pay_run_day powers the "queued for the Friday pay run" math on the
  * portal, sub_pay_explainer is the "How pay works here" band. Self-contained

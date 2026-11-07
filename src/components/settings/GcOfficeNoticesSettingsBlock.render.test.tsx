@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Settings → Jobs & billing → the office's GC notices (O10): it loads off and says turning it on keeps today as its
+ * Settings → Jobs, bills and liens → the office's GC notices (O10): it loads off and says turning it on keeps today as its
  * day; on, it says since when; Preview lists today's notices as they would go; Email me a test says how many went.
  * O10c: both read as if the notices went on the day in *Count pay applications sent since*, which starts at the
  * switch's day while on and today while off, and refuses a later day.

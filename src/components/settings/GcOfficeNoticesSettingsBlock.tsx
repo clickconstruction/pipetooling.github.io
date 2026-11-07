@@ -8,7 +8,7 @@ import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
- * Settings → Jobs & billing → "Email the office's GC notices" (GC mode, Owner Billing's O10): bill day in two days to
+ * Settings → Jobs, bills and liens → "Email the office's GC notices" (GC mode, Owner Billing's O10): bill day in two days to
  * the project manager, a pay application still with the architect after 3 days and after 5. Off on day one; the owner
  * turns it on once the live walk is done. Turning it on keeps the day it went on, and only pay applications sent from
  * that day get notices, so nothing old goes out. Dev and the owner. **Preview** shows today's as they would go and

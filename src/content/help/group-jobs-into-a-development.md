@@ -52,7 +52,7 @@ In **Jobs → Pipeline → Billed Awaiting Payment**, open {{button:outline|GC R
 
 ## Rename, archive, or delete a development
 
-Admins manage the list under {{icon:gear}} **Settings → Jobs & billing → Manage developments**:
+Admins manage the list under {{icon:gear}} **Settings → Jobs, bills and liens → Manage developments**:
 
 - **Rename**: click the name, type, press Enter. Every linked bid and job follows automatically.
 - **Default GC/Builder**: pick the GC that development belongs to. This is informational for now.

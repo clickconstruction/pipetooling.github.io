@@ -1003,7 +1003,7 @@ export default function ChecklistAddModal({
                   }}
                 >
                   <span aria-hidden>{linesOpen ? '▼' : '▶'}</span>
-                  <span>Done when…</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>Done when…</span>
                   {lineCount > 0 ? <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'inherit' }}>({lineCount})</span> : null}
                   {!linesOpen ? (
                     <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }} data-testid="done-when-hint">
