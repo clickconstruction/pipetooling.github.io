@@ -133,7 +133,7 @@ describe('PeopleHrTab · the person file', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep the evidence' }))
     expect(await within(dialog).findByRole('alert')).toHaveProperty('textContent', 'Give it a title.')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
-    fireEvent.click(screen.getByRole('tab', { name: 'Summary & narrative' }))
+    fireEvent.click(screen.getByRole('tab', { name: /^Documents/ }))
     expect(await screen.findByText(/rough-in/)).toBeTruthy()
     expect(screen.getByText(/1 newer entry since this was rewritten/)).toBeTruthy()
     expect(screen.getByText('Started as a helper.')).toBeTruthy()
