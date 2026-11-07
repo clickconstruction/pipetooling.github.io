@@ -22,7 +22,7 @@ const hour = (work_date: string, hours: number, approved = true, service_type_na
 
 const job = (p: Partial<MyWeekJob> = {}): MyWeekJob => ({ jobId: 'j1', number: '1184', name: 'Water heater', finishedYmd: '2026-11-03', expectedHours: null, budgetHours: 40, crewHours: 36, myFirstYmd: '2026-11-02', ...p })
 
-const my = (p: Partial<MyWeek> = {}): MyWeek => ({ signal: 'jobs_without_callback', name: 'Marcus Lee', role: 'primary', hours: [], licenses: [], officeJobId: null, jobs: [], callbackJobIds: [], ...p })
+const my = (p: Partial<MyWeek> = {}): MyWeek => ({ signal: 'jobs_without_callback', name: 'Marcus Lee', role: 'primary', hours: [], licenses: [], targets: [], officeJobId: null, jobs: [], callbackJobIds: [], ...p })
 
 describe('the signal', () => {
   it('parses the three signals and guesses one by role', () => {
@@ -71,6 +71,13 @@ describe('license hours', () => {
     expect(w.sub).toBe('Approved · 8 h waiting for approval')
     expect(w.move).toEqual({ tone: 'up', text: '▲ 16 h this week' })
     expect(w.mark).toBe('Next mark 3,500 h. You are 92 hours away.')
+  })
+
+  it('adds the hours before the clock the office set, and takes the office’s class and number', () => {
+    const r = licenseHoursRead(my({ ...apprentice, targets: [{ trade: 'plumbing', targetClass: 'journeyman', targetAmount: 7000, openingAmount: 1200, openingSource: 'Hours at Rio Plumbing' }] }), WEEK, TODAY)!
+    expect(r).toMatchObject({ done: 4608, need: 7000, waiting: 8, thisWeek: 16 })
+    expect(r.nextMark).toEqual({ at: 5000, away: 392 })
+    expect(licenseHoursWords(r).head).toBe('4,608 of 7,000')
   })
 
   it('reads a flat week and nothing for a person with no ladder', () => {
