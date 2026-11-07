@@ -8,7 +8,7 @@ GC mode, Owner Billing's O8c: Pay by card's switch becomes an `app_settings` row
 
 1. **The row**: `app_settings.gc_card_bill_on_v1` = `'false'`, inserted once (`ON CONFLICT DO NOTHING`). Only `'true'` is on (`gcCardBillOn` in `_shared/gcCardBill.ts`), and a missing row reads off.
 2. **Who flips it**: the policy `master_or_dev_update_gc_card_bill_on`, `FOR UPDATE TO authenticated`, on this key only, for `is_master_or_dev()` (the owner, `master_technician`, and dev). Dev already manages every row ("Devs can manage app settings"). It is the `owner_auto_confirm_from_roll_v1` pattern (`20260914270000`). The read-only and digital-twin fences already on `app_settings` stop a training account and a twin.
-3. **Who reads it**: everyone signed in, through the table's existing read policy: Bill the customer's hint (`fetchGcCardBillOn`, `src/lib/gc/cardBillSetting.ts`) and Settings → Jobs & billing's toggle (`GcCardBillSettingsBlock`). `gc-card-bill`, `customer-portal` and `gc-customer-email` read it as the service role.
+3. **Who reads it**: everyone signed in, through the table's existing read policy: Bill the customer's hint (`fetchGcCardBillOn`, `src/lib/gc/cardBillSetting.ts`) and Settings → Jobs, bills and liens’ toggle (`GcCardBillSettingsBlock`). `gc-card-bill`, `customer-portal` and `gc-customer-email` read it as the service role.
 
 No table is created, so no `apply_*` calls.
 

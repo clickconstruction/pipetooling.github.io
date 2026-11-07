@@ -21,7 +21,7 @@ import type { LegalFirmRow, LegalMatterRow, LegalRecipientRow } from '../../../l
 
 const db = supabase as unknown as SupabaseClient
 
-/** Where Settings keeps the firm: the Jobs & billing tab, at the block's anchor. */
+/** Where Settings keeps the firm: the Jobs, bills and liens tab, at the block's anchor. */
 export const LEGAL_FIRM_SETTINGS_HREF = '/settings?tab=settings-jobs#settings-legal-firm'
 
 /**

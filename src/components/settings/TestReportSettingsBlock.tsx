@@ -5,7 +5,7 @@ import { DEFAULT_TEST_REPORT_SETTINGS, TEST_REPORT_AUTO_SEND_GRACE_MINUTES, type
 import { cachedTestReportSettings, fetchTestReportSettings, saveTestReportSettings } from '../../lib/jobs/testReportSettings'
 
 /**
- * Settings → Jobs & billing → "Test reports" (v2.3298): the certifier and the
+ * Settings → Jobs, bills and liens → "Test reports" (v2.3298): the certifier and the
  * paper's text, org-wide. Everything the external app hard-coded lives here
  * now; a blank field falls back to the seeded default at render time.
  */

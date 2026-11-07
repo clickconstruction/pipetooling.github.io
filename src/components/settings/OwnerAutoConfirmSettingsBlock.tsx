@@ -4,7 +4,7 @@ import { fetchOwnerAutoConfirmFromRoll, setOwnerAutoConfirmFromRoll } from '../.
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
- * Settings → Jobs & billing → "Save owners from the appraisal roll
+ * Settings → Jobs, bills and liens → "Save owners from the appraisal roll
  * automatically" (owner of record, decision 5 — v2.3450). Off on day one;
  * the owner turns it on after the first sitting shows the roll is right.
  * Master + dev. Self-contained like HideHcpFieldSettingsBlock: loads its own

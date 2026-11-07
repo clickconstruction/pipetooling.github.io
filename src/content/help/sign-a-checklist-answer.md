@@ -56,4 +56,4 @@ On the job's Documents tab a signed row wears a green *signed* tag. The mark sit
 
 ## Mark a question as needing a signature
 
-The person who adds a question decides which ones need a signature. Tick **Needs a signature** beside **Asks for a photo** on the add box. The tick is on the add box on the job's Documents tab. Settings, under Jobs and billing, only shows *needs a signature* beside such a question. Use it where a wrong answer costs a wall or an inspection. The guide [add a check to a job's stage checklist](/help/add-a-check-to-a-jobs-stage-checklist) has the add box's steps.
+The person who adds a question decides which ones need a signature. Tick **Needs a signature** beside **Asks for a photo** on the add box. The tick is on the add box on the job's Documents tab. Settings, under Jobs, bills and liens, only shows *needs a signature* beside such a question. Use it where a wrong answer costs a wall or an inspection. The guide [add a check to a job's stage checklist](/help/add-a-check-to-a-jobs-stage-checklist) has the add box's steps.

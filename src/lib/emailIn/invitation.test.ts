@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { CUE_LINES, dayIn, dueIn, dueWords, invitation, invitationFacts, invitationOf, openInvitation, portalLink, projectFromSubject, timeIn } from './invitation'
+import { CUE_LINES, dayIn, dueIn, dueWords, invitation, invitationFacts, invitationOf, openInvitation, portalLink, projectFromSubject, starTakes, timeIn } from './invitation'
 
 const AT = '2026-10-29T14:02:00Z'
 
@@ -129,6 +129,26 @@ describe('invitation', () => {
     expect(openInvitation({ direction: 'in', channel: 'email', invitation: inv, jobId: 'bid:b1' })).toBeNull()
     expect(openInvitation({ direction: 'in', channel: 'email', invitation: inv, jobId: 'pipeline:j1' })).toBe(inv)
     expect(openInvitation({ direction: 'in', channel: 'email', invitation: null })).toBeNull()
+  })
+
+  it('lets the star take a plain mail, an addendum and a pre-bid notice, never a new invitation or a solicitation', () => {
+    // v2.6647: a known GC's new bid request landed on their starred bid and asked nothing. A new job sits on the person.
+    expect(starTakes(null)).toBe(true)
+    expect(starTakes(undefined)).toBe(true)
+    expect(starTakes({ kind: 'addendum' })).toBe(true)
+    expect(starTakes({ kind: 'prebid' })).toBe(true)
+    expect(starTakes({ kind: 'invitation' })).toBe(false)
+    expect(starTakes({ kind: 'solicitation' })).toBe(false)
+    // Rusty's real mail: the subject's cue wins over the body's "addenda" in passing, so it is a new invitation, not an addendum.
+    const tpwd = invitation({ subject: 'Bid Request: TPWD Colorado Bend SP - New Public Water System', text: 'Please find the plans attached.\nAll addenda will be posted to the plan room.\nBids are due December 1 at 2:00 PM.', at: AT })!
+    expect(tpwd.kind).toBe('invitation')
+    expect(tpwd.project).toBe('TPWD Colorado Bend SP - New Public Water System')
+    expect(tpwd.due).toEqual({ date: '2026-12-01', time: '14:00' })
+    expect(starTakes(tpwd)).toBe(false)
+    expect(starTakes(invitation({ subject: 'Solicitation Notice: RFP 27-031 Lift Station 4', text: '', at: AT }))).toBe(false)
+    expect(starTakes(invitation({ subject: 'Addendum 2 - City of Bastrop Restrooms', text: '', at: AT }))).toBe(true)
+    // A line the star never took sits on the person, so the lane still asks.
+    expect(openInvitation({ direction: 'in', channel: 'email', invitation: invitation(PLATFORM)!, jobId: null })).not.toBeNull()
   })
 
   it('reads a row’s jsonb back, and nothing else as one', () => {

@@ -1,5 +1,5 @@
 /**
- * Settings → Jobs & billing → Stage checklists (punch list #164, PR 2; read-only since punch list #237, PR 4). The card
+ * Settings → Jobs, bills and liens → Stage checklists (punch list #164, PR 2; read-only since punch list #237, PR 4). The card
  * was the office's editor for the company's questions, three lists the office typed in order. Since PR 4 the questions
  * are written on a job's Documents tab, where the answers are read, and this card is a mirror: the company's live
  * questions per kind, each with its photo and signature asks and a source line that says which job it came from
