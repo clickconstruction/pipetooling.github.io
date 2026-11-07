@@ -2,7 +2,7 @@
 name: "Settings → Jobs & billing: the 28 cards under six headings, the rare ones folded, a jump strip"
 number: 261
 group: ready
-status: claude/261-settings-jobs-billing-pr2-b46e80 · proposed 2026-11-04 from Grace’s look at Settings → Jobs & billing · PR 1 (v2.6516) built on the recommended defaults · the owner’s look and PR 2 in hand 2026-11-07
+status: claude/jovial-pasteur-804e17 · proposed 2026-11-04 from Grace’s look at Settings → Jobs & billing · PR 1 (v2.6516) built on the recommended defaults · the owner’s look, PR 2 and PR 3 in hand 2026-11-07
 summary: >
   Jobs & billing draws 28 cards for a dev in one long column, in the order they were added over a
   year: a switch about HCP numbers first, the law firms' map third, the rate card eleventh, the
@@ -14,10 +14,10 @@ summary: >
   an anchor so Go anywhere, the Settings search and the guides land on the card itself, which opens
   when it is the target. The usage ledger holds no per-card count, so the folds follow a rule and
   the fold presses start counting.
-next: PR 2 (v2.6631) merges and is walked. Then the rename sweep (call 3, Jobs, bills and liens, its own PR cut from fresh main) and PR 3 (call 4, the live value on each Billing and money card's folded row).
+next: PR 3 (v2.6638) and the rename sweep (call 3, Jobs, bills and liens, v2.6637, its own PR cut from fresh main) merge and are walked. Once both are live and walked, the card is retired by deleting this folder in a docs(to-dos) PR.
 size: S (the card) + M (PR 1: the groups kernel, the fold wrapper, the anchors and doors, the strip, the smoke, the docs and guides) + S (PR 2, three cards to other tabs, if wanted)
 blocker: Nothing. The owner answered the seven calls 2026-11-07; the table below holds his answers.
-ver: v2.6516 (PR 1) · v2.6631 (PR 2)
+ver: v2.6516 (PR 1) · v2.6631 (PR 2) · v2.6638 (PR 3)
 opinion: build — the tab is the company's money and paper settings, the office cannot find a card without reading all 28, and the fix is headings, a fold shape and anchors, nothing that changes what a card does
 mockup: to-dos/settings-jobs-billing-tidy/mockup.html
 ---
@@ -198,7 +198,7 @@ answered.
    server as the dev and as a master at 1,280 and 375 wide in both themes.
 2. **PR 2 (v2.6631)**: the three cards to their tabs, the old anchors mapped; every card folds (call 1).
 3. **The rename sweep (call 3)**: *Jobs & billing* → *Jobs, bills and liens* across the tab, the guides, the doors and the docs, a script-driven PR cut from fresh main.
-4. **PR 3 (call 4)**: the live value line on each Billing and money card's folded row.
+4. **PR 3 (call 4, v2.6638)**: the live value line on each Billing and money card's folded row.
 
 ## How to verify
 
@@ -217,4 +217,4 @@ answered.
 
 ## Where it stands
 
-Proposed 2026-11-04. PR 1 (v2.6516) built the recommended defaults the same day: the six headings, the fold wrapper on every form, the anchors and doors, the strip, the counted fold presses. The owner looked at the live tab and answered the seven calls 2026-11-07 (the table above): every card folds, all three cards move, the tab becomes *Jobs, bills and liens*, the money cards get their live value, the rest as built. PR 2 (v2.6631) built calls 1 and 2 the same day: the switches fold, HCP reconcile sits under Data & recovery, Sub portal · pay schedule under People & teams, the office's county under Company beside the office address, every old anchor still landing (`src/lib/settings/settingsFoldCards.ts`). Left: the rename sweep and PR 3.
+Proposed 2026-11-04. PR 1 (v2.6516) built the recommended defaults the same day: the six headings, the fold wrapper on every form, the anchors and doors, the strip, the counted fold presses. The owner looked at the live tab and answered the seven calls 2026-11-07 (the table above): every card folds, all three cards move, the tab becomes *Jobs, bills and liens*, the money cards get their live value, the rest as built. PR 2 (v2.6631) built calls 1 and 2 the same day: the switches fold, HCP reconcile sits under Data & recovery, Sub portal · pay schedule under People & teams, the office's county under Company beside the office address, every old anchor still landing (`src/lib/settings/settingsFoldCards.ts`). PR 3 (v2.6638) built call 4 the same day: each Billing and money card's folded row reads its live value (`src/lib/settings/jobsBillingValueLines.ts`, one line per card from the same `app_settings` keys the card reads and the Job Book's line count; `useJobsBillingValueLines` reads once and again when a card folds), the static line standing while the card is open or until the value is read. Left: the rename sweep (v2.6637, its own PR) merges; both walked, the card is retired by deleting this folder in a docs(to-dos) PR.
