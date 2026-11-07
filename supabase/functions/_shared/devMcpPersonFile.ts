@@ -84,7 +84,7 @@ export function personFileFilter(ask: PersonFileAsk): { ok: true; lane: PersonTi
 }
 
 /** The person the ask names: a people.id, a login's users.id, or a name that matches exactly one. */
-async function resolvePerson(reader: Reader, ref: string): Promise<{ person: PeopleRow } | { refused: string }> {
+export async function resolvePerson(reader: Reader, ref: string): Promise<{ person: PeopleRow } | { refused: string }> {
   const select = 'id,name,kind,start_date,end_date,archived_at,account_user_id'
   const key = ref.trim()
   if (!key) return { refused: 'get_person_file needs person — a people.id, a users.id (find_person) or a name that matches exactly one person.' }
@@ -275,7 +275,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const documents = documentRows
     .filter((d) => !d.archived_at)
     .sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0))
-    .map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, sections: d.sections }))
+    .map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, sections: d.sections, ...(filter.since ? { changed_since: d.updated_at.slice(0, 10) >= filter.since } : {}) }))
 
   const filtered = Boolean(filter.lane || filter.source || filter.since)
   return {
