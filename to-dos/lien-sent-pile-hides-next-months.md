@@ -2,15 +2,15 @@
 name: "Lien desk: a sent notice hides the next months to draft, and its gates judge a notice that already went"
 number: 248
 group: ready
-status: proposed 2026-11-02 from the sweep after Taunya's report on job 890 (PRs #6845 and #6850) · two faces of one rule, each waiting on the owner's call
+status: claude/248-lien-sent-pile-c5c64d · the owner picked A for both faces 2026-11-07 · PR 1 (the pile and Do now) and PR 2 (the gates fold) in flight
 summary: >
   The desk's queue puts a job in Sent · 30d whenever a notice went out inside thirty days, before it
   asks whether new months are due. Job 650 on 2026-11-02: Aug + Sep due in 14 days, the path says
   "Draft the Aug + Sep notice", the row sits in Sent with letter two's doors and no draft door, and
   the Dashboard's draft count leaves it out. The same entry's gates judge a notice that already went.
-next: The owner picks the rule for a sent job with new months due. Then one PR for the pile and Do now, one for the gates' words on a sent notice.
+next: Both PRs merge, a ZZ Test walk, then delete this card.
 size: M for the pile (the kernel's pile order, Do now's rows, the pane's footer carrying both the draft door and letter two's) · S for the gates
-blocker: The owner's call on the rule, since it moves rows between piles Taunya reads every morning.
+blocker: None — the owner's call is in (A and A).
 ver: v2.3405 · 4583 · 6261
 opinion: build the pile change — a month's notice is a statutory deadline and the courtesy and letter two can ride on the To draft row; the gates on a sent notice can fold to one line.
 mockup: not required — the rows and the gates exist; the change is which pile a row sits in and the words on the gates
