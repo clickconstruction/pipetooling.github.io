@@ -1,6 +1,7 @@
 /**
  * Every photo uploaded, one list (punch list #232): the rules of Documents → Photos, pure. The `uploaded_photos` view
- * (`20261101084330_uploaded_photos_view.sql`) reads the four photo tables as one shape, newest first; this file says
+ * (`20261101084330_uploaded_photos_view.sql`, the job branch `20261102171500`, the task branch `20261107093000`) reads
+ * the six photo tables as one shape, newest first; this file says
  * which chips a role sees, what the server is asked, how a row reads (its source, who took it, its job, where it is),
  * how the rows group by day, and where a thumbnail's bytes come from. The reads are `uploadedPhotosIo.ts`; the screen
  * is `components/documents/DocumentsPhotosTab.tsx`.
@@ -9,8 +10,13 @@ import { calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdWeekd
 import { bytesWords } from './shrink'
 import { senderOf } from './photoRows'
 
-/** `job` (punch list #244): a photo added to the job with a description from the Job photos window, `job_photo_notes`. */
-export type UploadedPhotoSource = 'report' | 'box' | 'checklist' | 'job' | 'message'
+/**
+ * `job` (punch list #244): a photo added to the job with a description from the Job photos window, `job_photo_notes`.
+ * `task` (punch list #273, v2.6635): a photo taken on a task card, `task_photos`; the card has no job, so the row's
+ * `caption` is the card's title, its `stage_name` the shot's own caption (*75%*, *finish*, a line's words) and its
+ * `status` the shot's kind (`progress`, `finish`, `line`).
+ */
+export type UploadedPhotoSource = 'report' | 'box' | 'checklist' | 'job' | 'task' | 'message'
 
 /** One row of the view. */
 export interface UploadedPhotoRow {
@@ -41,7 +47,7 @@ export interface UploadedPhotoRow {
   drive_file_id: string | null
   filed_at: string | null
   fail_why: string | null
-  /** A box photo's `sending` · `on-phone` · `filed` · `shared`; a message picture's `too_big` · `not_copied` · `quo_not_copied`. */
+  /** A box photo's `sending` · `on-phone` · `filed` · `shared`; a message picture's `too_big` · `not_copied` · `quo_not_copied`; a task photo's kind, `progress` · `finish` · `line`. */
   status: string | null
   job_hcp_number: string | null
   job_click_number: string | null
@@ -72,6 +78,7 @@ export function sourceChips(role: string | null | undefined): ReadonlyArray<{ ke
     { key: 'box', label: 'Tally boxes' },
     { key: 'checklist', label: 'Checklists' },
     { key: 'job', label: 'Job photos' },
+    { key: 'task', label: 'Task cards' },
   ]
   if (canSeeMessagePhotos(role)) base.push({ key: 'message', label: 'Texts & email' })
   return base
@@ -118,9 +125,39 @@ export function sourceWords(row: Pick<UploadedPhotoRow, 'source' | 'channel' | '
       return 'Checklist'
     case 'job':
       return 'Job photo'
+    case 'task':
+      return 'Task card'
     case 'message':
       return row.channel === 'email' ? 'Email' : row.channel === 'text' || row.channel === 'sms' ? 'Text' : 'Message'
   }
+}
+
+/**
+ * Where a task card's shot stands (punch list #273): *At 75%*, *The finishing photo*, *Done when… Pipe is racked by
+ * size*; *A photo on the card* when the row carries neither. The kind rides `status`, the shot's own caption `stage_name`.
+ */
+export function taskStandWords(row: Pick<UploadedPhotoRow, 'status' | 'stage_name'>): string {
+  const words = row.stage_name.trim()
+  if (row.status === 'finish') return 'The finishing photo'
+  if (row.status === 'line') return words ? `Done when… ${words}` : 'A Done when… line'
+  if (words && words !== 'progress') return `At ${words}`
+  return 'A photo on the card'
+}
+
+/** The row's second line: the job (or the bid) a photo is on; for a task card's shot, where the card stood (`taskStandWords`). */
+export function aboutWords(row: Pick<UploadedPhotoRow, 'source' | 'status' | 'stage_name' | 'job_id' | 'bid_id' | 'job_hcp_number' | 'job_click_number' | 'job_name' | 'customer_name' | 'bid_number'>): string {
+  return row.source === 'task' ? taskStandWords(row) : jobWords(row)
+}
+
+/** Where a task card's shot opens: Checklist → Today, where the cards are. */
+export const TASK_CHECKLIST_PATH = '/checklist?tab=today'
+
+/** Where the office sets the Tasks folder, for a task shot the sweep could not file for want of it. */
+export const WHERE_FILES_GO_PATH = '/documents?tab=where-files-go'
+
+/** Whether a task shot's reason is the unset Tasks folder (`NO_TASKS_FOLDER_WORDS` in the sweep): the press is Where files go. */
+export function waitsOnTasksFolder(row: Pick<UploadedPhotoRow, 'source' | 'fail_why'>): boolean {
+  return row.source === 'task' && /tasks folder/i.test(row.fail_why ?? '')
 }
 
 /** The first name of *Mateo Ruiz*; the whole name when it is one word. */
@@ -163,7 +200,8 @@ export function captionWords(row: Pick<UploadedPhotoRow, 'source' | 'caption' | 
 }
 
 export type WhereTone = 'filed' | 'waiting' | 'held'
-export type WherePress = 'drive' | 'folders' | 'thread' | null
+/** `tasks-folder` (punch list #273): a task shot waiting for the Tasks folder; the press opens Documents → Where files go. */
+export type WherePress = 'drive' | 'folders' | 'thread' | 'tasks-folder' | null
 
 /** Where the photo is, in the row's own words, with the press that goes with it. */
 export function whereWords(row: Pick<UploadedPhotoRow, 'source' | 'by_name' | 'storage_path' | 'drive_file_id' | 'filed_at' | 'fail_why' | 'status'>): { text: string; sub: string; tone: WhereTone; press: WherePress } {
@@ -183,6 +221,7 @@ export function whereWords(row: Pick<UploadedPhotoRow, 'source' | 'by_name' | 's
     return { text: 'Our copy, not in Drive', sub: 'Save to Drive on the thread files it', tone: 'waiting', press: 'thread' }
   }
   if (row.fail_why) {
+    if (waitsOnTasksFolder(row)) return { text: 'Not in Drive yet', sub: row.fail_why, tone: 'held', press: 'tasks-folder' }
     const noFolder = /no drive folder/i.test(row.fail_why)
     return { text: 'Not in Drive yet', sub: row.fail_why, tone: 'held', press: noFolder ? 'folders' : null }
   }
@@ -237,10 +276,11 @@ export type ThumbSource = { kind: 'bucket'; bucket: string; path: string } | { k
  * Where a thumbnail's bytes come from: a shot still in a bucket through a signed URL on it; a filed one through the
  * `job-photos` function on its Drive id, which answers only for a file inside a Pipeline job's two photo folders; a
  * text's picture whose copy we keep from its bucket even once filed, since a bid's or a project's folder is outside
- * the function's reach; nothing for a photo with no copy anywhere we can read.
+ * the function's reach; a task card's shot from its bucket the same way, since the Tasks folder is outside it too and
+ * the sweep leaves the bucket copy; nothing for a photo with no copy anywhere we can read.
  */
 export function thumbSource(row: Pick<UploadedPhotoRow, 'source' | 'job_id' | 'bucket' | 'storage_path' | 'drive_file_id'>): ThumbSource {
-  if (row.source === 'message') {
+  if (row.source === 'message' || row.source === 'task') {
     return row.storage_path ? { kind: 'bucket', bucket: row.bucket, path: row.storage_path } : { kind: 'none' }
   }
   if (row.drive_file_id && row.job_id) return { kind: 'drive', jobId: row.job_id, fileId: row.drive_file_id }
@@ -248,10 +288,10 @@ export function thumbSource(row: Pick<UploadedPhotoRow, 'source' | 'job_id' | 'b
   return { kind: 'none' }
 }
 
-/** The viewer's title: the caption, then the job. */
+/** The viewer's title: the caption, then the job (for a task card's shot, where the card stood). */
 export function viewerTitle(row: UploadedPhotoRow): string {
-  const job = jobWords(row)
-  return job === 'No job tied' ? captionWords(row) : `${captionWords(row)} · ${job}`
+  const about = aboutWords(row)
+  return about === 'No job tied' ? captionWords(row) : `${captionWords(row)} · ${about}`
 }
 
 /** The source press's words on the viewer: what the photo came with. */
@@ -264,6 +304,8 @@ export function sourceDoorWords(row: Pick<UploadedPhotoRow, 'source'>): string {
     case 'checklist':
     case 'job':
       return 'Open the job'
+    case 'task':
+      return 'Open the checklist'
     case 'message':
       return 'Open the thread'
   }
@@ -293,7 +335,7 @@ export function jobWindowPath(jobId: string): string {
 export function photosEmptyWords(narrowed: boolean): { main: string; tail: string } {
   return narrowed
     ? { main: 'No photo matches.', tail: 'Try another source, another place or fewer words.' }
-    : { main: 'Nothing uploaded yet.', tail: 'A photo taken on a report, a box or a checklist, or added to a job, shows here within a minute.' }
+    : { main: 'Nothing uploaded yet.', tail: 'A photo taken on a report, a box, a checklist or a task card, or added to a job, shows here within a minute.' }
 }
 
 /** The line under the list. */

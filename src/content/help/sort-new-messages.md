@@ -110,6 +110,8 @@ The thread goes to Done with a grey line, *Marked a notice*. Nothing in Gmail ch
 
 Pressed it by mistake? Open the thread. The strip at the top reads *Marked a notice*. Press **Not a notice after all**. The address comes off the list and the row is back in New.
 
+Did the office mark someone at the same company before? Then the block sits first on the card. Its words say who was marked. The two presses are the same, and nothing is marked until you press.
+
 ## Notices set aside
 
 The app sets a notice aside on its own in two cases. The sender is marked a notice. Or the mail says unsubscribe at its foot. It writes each one down. Under the rows in New a fold counts them. It reads *3 notices set aside this week*. Press it to see each sender and subject. Hover a row to read why.
