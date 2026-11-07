@@ -39,57 +39,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      away_notes: {
-        Row: {
-          alert_on_day: boolean
-          countdown_ymd: string | null
-          created_at: string
-          created_by: string | null
-          show_call: boolean
-          show_where: boolean
-          updated_at: string
-          user_id: string
-          words: string
-        }
-        Insert: {
-          alert_on_day?: boolean
-          countdown_ymd?: string | null
-          created_at?: string
-          created_by?: string | null
-          show_call?: boolean
-          show_where?: boolean
-          updated_at?: string
-          user_id: string
-          words?: string
-        }
-        Update: {
-          alert_on_day?: boolean
-          countdown_ymd?: string | null
-          created_at?: string
-          created_by?: string | null
-          show_call?: boolean
-          show_where?: boolean
-          updated_at?: string
-          user_id?: string
-          words?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "away_notes_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "away_notes_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       address_geocodes: {
         Row: {
           address_normalized: string
@@ -37306,7 +37255,6 @@ export type Database = {
       }
     }
     Functions: {
-      my_away_note: { Args: never; Returns: Json }
       _ar_close_label_undo: {
         Args: { p_mercury_transaction_id: string }
         Returns: string
