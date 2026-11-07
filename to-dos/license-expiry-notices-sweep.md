@@ -2,7 +2,7 @@
 name: Sweep the licenses for the expiry notices a save never sent
 number: 253
 group: ready
-status: proposed 2026-11-02 beside the Licenses tab's Expired section (v2.6424) · nothing built
+status: claude/253-license-expiry-sweep-e892e1 · the owner's three calls made 2026-11-07 (server, the portal's sender, no notice for a lapsed license) · sweep PR open
 summary: >
   The dispatch notice for a license about to expire is asked for only when someone saves the
   license on People → Licenses. The licenses imported in March were never saved there, so no
