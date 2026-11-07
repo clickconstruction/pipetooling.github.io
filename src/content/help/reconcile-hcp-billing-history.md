@@ -6,7 +6,7 @@ keywords: housecall pro, hcp, import, reconcile, backfill, bill dates, payment d
 ---
 Jobs that came over from HouseCall Pro often have payments with no bill and dates that mean the wrong thing. The HCP reconcile tool fixes that from HCP's own exports.
 
-Those wrong dates starve the pay-speed math behind the Payment forecast. You open **{{icon:gear}} Settings → Jobs & billing → HCP reconcile**. It is safe to re-run any time. It previews everything first. A second run of the same files finds nothing left to do.
+Those wrong dates starve the pay-speed math behind the Payment forecast. You open **{{icon:gear}} Settings → Data & recovery → HCP reconcile**. It is safe to re-run any time. It previews everything first. A second run of the same files finds nothing left to do.
 
 ## Lane 1: bill dates & links
 

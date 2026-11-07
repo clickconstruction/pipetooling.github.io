@@ -6,8 +6,8 @@
  * only by hand in Drive, or through Messages' Save to Drive once it had been emailed.
  */
 
-/** Where a `put` from the Documents tab lands, by the Job folders row pressed. */
-export type AddFileWhere = 'top' | 'plans' | 'pictures'
+/** Where a `put` from the Documents tab lands, by the Job folders row pressed; `sent` is Team only → Sent by us, where the Hours statements section puts a signed PDF (v2.6634). */
+export type AddFileWhere = 'top' | 'plans' | 'pictures' | 'sent'
 
 /** The destination a Job folders row stands for, by the label `jobDocumentFolderLinks` gives it; null for a row the press does not serve. */
 export function addFileWhereFor(label: string): AddFileWhere | null {
@@ -40,6 +40,7 @@ export const ADD_FILE_WORDS = {
     top: 'It goes into the job’s folder itself, beside Plans, Customer Pictures and Team only.',
     plans: 'It goes into Plans. Anyone with the folder’s link reads it, so trades see it with the plans.',
     pictures: 'It goes into Customer Pictures with the job’s photos.',
+    sent: 'It goes into Team only → Sent by us, where the office keeps what it sent.',
   } satisfies Record<AddFileWhere, string>,
   tooBig: 'Over 10 MB. Put it in the folder in Drive instead.',
   notNow: 'Not now',

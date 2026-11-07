@@ -47,11 +47,15 @@ describe('the press and the empty section', () => {
     expect(hoursStatementPressWords(4, 'person')).toEqual({ label: 'Hours statement… · 4 jobs clocked', dead: false })
     expect(hoursStatementPressWords(0, 'job')).toEqual({ label: 'Hours statement…', dead: true })
     expect(hoursStatementPressWords(null, 'person')).toEqual({ label: 'Hours statement…', dead: true })
+    // A sub is on the sheets, never the clock (v2.6636).
+    expect(hoursStatementPressWords(3, 'job', { onSheets: 1 })).toEqual({ label: 'Hours statement… · 3 people here, 1 on the sheets', dead: false })
+    expect(hoursStatementPressWords(4, 'person', { onSheets: 2 })).toEqual({ label: 'Hours statement… · 4 jobs, 2 on the sheets', dead: false })
+    expect(hoursStatementPressWords(3, 'job', { onSheets: 0 })).toEqual({ label: 'Hours statement… · 3 people clocked here', dead: false })
   })
 
   it('an empty section names the press, or says why there is no one to make a statement for', () => {
-    expect(hoursStatementEmptyWords(3, { kind: 'job' })).toEqual({ main: 'No hours statements are saved on this job yet.', withPress: true, tail: 'makes one from the clock and the pay reports.' })
-    expect(hoursStatementEmptyWords(2, { kind: 'person', name: 'Marcus Reyes' })).toEqual({ main: 'No hours statements are saved for Marcus Reyes yet.', withPress: true, tail: 'makes one from the clock and the pay reports.' })
+    expect(hoursStatementEmptyWords(3, { kind: 'job' })).toEqual({ main: 'No hours statements are saved on this job yet.', withPress: true, tail: 'makes one from the clock, the sheets and the pay reports.' })
+    expect(hoursStatementEmptyWords(2, { kind: 'person', name: 'Marcus Reyes' })).toEqual({ main: 'No hours statements are saved for Marcus Reyes yet.', withPress: true, tail: 'makes one from the clock, the sheets and the pay reports.' })
     expect(hoursStatementEmptyWords(0, { kind: 'job' })).toEqual({ main: 'Nothing is clocked on this job yet, so there is no one to make a statement for.', withPress: false, tail: '' })
     expect(hoursStatementEmptyWords(0, { kind: 'person', name: 'Marcus Reyes' }).main).toBe('Marcus Reyes has no counted session on a job yet, so there is nothing to make a statement from.')
     // Before the count is read, the sentence stands and the press waits.
@@ -89,5 +93,13 @@ describe('the charged paper on the list (punch list #251, PR 2)', () => {
     expect(hoursStatementRowWords({ ...base, basis: 'charged' }).kind).toBe('hours charged')
     expect(hoursStatementRowWords({ ...base, basis: 'paid' }).kind).toBe('hours only')
     expect(hoursStatementRowWords({ ...base, withPay: true }).kind).toBe('hours and pay')
+  })
+})
+
+describe("a sub's sheets on the window's line (v2.6636)", () => {
+  it('counts the lines and the sheets, never the clock, and holds nothing', () => {
+    expect(hoursStatementSpanWords({ approved: 4, pending: 0, typedDays: 0, quickAddsLeftOff: 0, sheets: 2 })).toEqual({ has: 'The app has 4 lines on 2 sheets for this sub on this job in this span.', held: null })
+    expect(hoursStatementSpanWords({ approved: 1, pending: 0, typedDays: 0, quickAddsLeftOff: 0, sheets: 1 }, { isOfficeJob: true })).toEqual({ has: 'The app has 1 line on 1 sheet for this sub on the Office job in this span.', held: null })
+    expect(hoursStatementSpanWords({ approved: 0, pending: 0, typedDays: 0, quickAddsLeftOff: 0, sheets: 0 })).toEqual({ has: 'The app has no sheet for this sub on this job in this span.', held: null })
   })
 })

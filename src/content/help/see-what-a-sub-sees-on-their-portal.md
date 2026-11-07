@@ -13,7 +13,7 @@ The portal shows work you already do, and adds no new chores:
 - **Jobs & line items** come from their Sub Labor sheets.
 - **Payments and backcharges** come from the payment modals, the pop-ups where you record them. A backcharge is money taken off a sub's pay. **Memos are shown to the sub**, so write them like they'll read them. The Edit Payment modal has a *hide this memo* checkbox for the rare office-internal note. The amount always shows.
 - **"When do I get paid"** comes from the sheet's **stage**, described below. The answer also comes from the {{chip:blue|Shown on the sub's portal}} box in the sheet editor. That box holds a *payable after* date and a plain-words reason, like *Builder's inspection — scheduled Sep 9*. Leave those blank and the stage sentence speaks for itself.
-- The company-wide **pay-run day**, the weekday we pay subs, lives at ***Settings → Jobs & billing → Sub portal · pay schedule***. So does the "How pay works here" wording.
+- The company-wide **pay-run day**, the weekday we pay subs, lives at ***Settings → People & teams → Sub portal · pay schedule***. So does the "How pay works here" wording.
 - **Paperwork status** comes from People → Contracts. The status shows signed dates and expirations. A {{button:amber|Sign now}} button opens the same signing page your contracts use.
 
 ## "How do I get paid?" — the guide at the bottom

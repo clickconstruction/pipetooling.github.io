@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PlanSetRow } from '../plans/planSets'
-import { askChipWords, askFromRequest, buildPapersView, emptyPaperDraft, fromGuess, historyLineForPaper, isPaperKind, kindGuess, nameFromSubject, paperChipWords, paperDraftProblem, paperLineWords, papersFromRows, type PaperRequest } from './papers'
+import { askChipWords, askFromRequest, buildPapersView, emptyPaperDraft, fromGuess, historyLineForPaper, isPaperKind, kindGuess, moveLineForPaper, nameFromSubject, paperChipWords, paperDraftProblem, paperLineWords, papersFromRows, partsToMoveTo, type PaperRequest } from './papers'
 
 function row(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
   return {
@@ -78,5 +78,16 @@ describe('papers among the sets', () => {
     expect(kindGuess('Submittals for HVAC')).toBe('submittal')
     expect(kindGuess('Hello')).toBe('other')
     expect(nameFromSubject('Fwd: Re: Task list items from the owner')).toBe('Task list items from the owner')
+  })
+
+  it('names the parts a paper may move to and writes the move line (v2.6632)', () => {
+    const parts = [
+      { id: 'p1', name: 'Lodge' },
+      { id: 'p2', name: 'Bunker' },
+      { id: 'p3', name: 'Site' },
+    ]
+    expect(partsToMoveTo(parts, 'p2').map((p) => p.name)).toEqual(['Lodge', 'Site'])
+    expect(partsToMoveTo(parts.slice(1, 2), 'p2')).toEqual([])
+    expect(moveLineForPaper({ kind: 'change_order', name: 'gun dog change order 3' }, 'Bunker', 'Lodge')).toBe('Moved change order gun dog change order 3 from Bunker to Lodge; it goes on Lodge itself now.')
   })
 })

@@ -107,11 +107,12 @@ function WhoBody({ guesses, busy, onName, onSomeoneElse, onTeam }: { guesses: re
   const nodes: ReactNode[] = []
   guesses.forEach((g, i) => {
     if (i === firstKnown) nodes.push(<BlockHead key="known">A customer we know</BlockHead>)
-    // A notice, not a person (v2.6202): the fourth block, under the people, the address's press then the domain's.
+    // A notice, not a person (v2.6202): the fourth block, under the people, the address's press then the domain's; first
+    // on the card, as the robot's suggestion, when a mark at the sender's company came before (v2.6641).
     if (i === firstNotice) nodes.push(<BlockHead key="notice">{NOTICE_BLOCK}</BlockHead>)
     if (g.notice) {
       nodes.push(
-        <div key={i} data-notice={g.notice.scope}>
+        <div key={i} data-notice={g.notice.scope} data-suggested={g.suggested ? '' : undefined}>
           <Option label={g.label} words={g.words} onPress={() => onName(g)} disabled={busy} />
         </div>,
       )

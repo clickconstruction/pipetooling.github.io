@@ -275,7 +275,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const documents = documentRows
     .filter((d) => !d.archived_at)
     .sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0))
-    .map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, sections: d.sections }))
+    .map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, sections: d.sections, ...(filter.since ? { changed_since: d.updated_at.slice(0, 10) >= filter.since } : {}) }))
 
   const filtered = Boolean(filter.lane || filter.source || filter.since)
   return {

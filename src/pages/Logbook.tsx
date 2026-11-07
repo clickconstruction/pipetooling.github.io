@@ -25,12 +25,15 @@ import {
   fmtNum,
   goalsFor,
   logWeeks,
+  openingsFrom,
+  parseLicenseTargets,
   parseLicenseType,
   progressFor,
   supervisorCandidates,
   totalsOf,
   withOfficeJob,
   type Goal,
+  type LicenseTarget,
   type ParsedLicense,
   type Progress,
   type Supervisor,
@@ -38,6 +41,7 @@ import {
 } from '../lib/logbook/logbook'
 import LogbookPrint, { type PrintFace } from '../components/logbook/LogbookPrint'
 import LicenseEditWindow, { type LicenseEditTarget } from '../components/logbook/LicenseEditWindow'
+import LicenseTargetWindow from '../components/logbook/LicenseTargetWindow'
 import { parseMyLogbook, shareStripWords, type LogbookShare } from '../lib/logbook/logbookShare'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 
@@ -73,6 +77,9 @@ export default function Logbook({ own = false }: { own?: boolean } = {}) {
 
   const [person, setPerson] = useState<{ id: string; name: string } | null>(null)
   const [licenses, setLicenses] = useState<LicenseRow[]>([])
+  // The office's goal a trade (v2.6626): the class, the board's number, the hours before the clock.
+  const [targets, setTargets] = useState<LicenseTarget[]>([])
+  const [editingTarget, setEditingTarget] = useState<Trade | null>(null)
   const [gone, setGone] = useState<Set<string>>(() => new Set())
   const [rows, setRows] = useState<LicenseHoursLogRow[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -108,10 +115,11 @@ export default function Logbook({ own = false }: { own?: boolean } = {}) {
             ...mine.signers.map((s, i) => ({ id: `signer-${i}`, person_name: s.person_name, license_type: s.license_type, date_of_expiry: s.date_of_expiry, note: null })),
           ])
           setGone(new Set())
+          setTargets(mine.targets)
           setRows(withOfficeJob(mine.hours, mine.officeJobId))
           return
         }
-        const [u, l, users, people, r, office, shared] = await Promise.all([
+        const [u, l, users, people, r, office, shared, t] = await Promise.all([
           supabase.from('users').select('id,name').eq('id', userId).maybeSingle(),
           supabase.from('person_licenses').select('id,person_name,license_type,date_of_expiry,note'),
           supabase.from('users').select('name,archived_at'),
@@ -119,9 +127,10 @@ export default function Logbook({ own = false }: { own?: boolean } = {}) {
           supabase.rpc('list_user_license_hours_log', { p_user_id: userId }),
           supabase.from('app_settings').select('value_text').eq('key', 'overhead_office_job_ledger_id_v1').maybeSingle(),
           supabase.from('logbook_shares' as never).select('user_id,shown_by,shown_at').eq('user_id', userId).maybeSingle(),
+          supabase.from('license_targets' as never).select('trade,target_class,target_amount,opening_amount,opening_source').eq('user_id', userId),
         ])
         // The share read is the strip's alone: a failure there names its reason on the strip, never blanks the logbook.
-        for (const res of [u, l, users, people, r]) if (res.error) throw res.error
+        for (const res of [u, l, users, people, r, t]) if (res.error) throw res.error
         if (cancelled) return
         // A name whose account or roster row is archived has left: they sign for nobody.
         const left = new Set<string>()
@@ -130,6 +139,7 @@ export default function Logbook({ own = false }: { own?: boolean } = {}) {
         }
         setPerson(u.data ? { id: u.data.id, name: u.data.name ?? '' } : null)
         setLicenses((l.data ?? []) as LicenseRow[])
+        setTargets(parseLicenseTargets(t.data))
         setGone(left)
         setRows(withOfficeJob((r.data ?? []) as LicenseHoursLogRow[], office.data?.value_text?.trim() || null))
         setShareError(shared.error ? formatErrorMessage(shared.error) : null)
@@ -193,8 +203,11 @@ export default function Logbook({ own = false }: { own?: boolean } = {}) {
         .map((l) => ({ personName: l.person_name, license: parseLicenseType(l.license_type, l.date_of_expiry) })),
     [licenses, gone, today],
   )
-  const { goals, topOfLadder, noRuleYet } = useMemo(() => goalsFor(held), [held])
-  const progress = useMemo(() => goals.map((g) => progressFor(g, rows, [], today)), [goals, rows, today])
+  const { goals, topOfLadder, noRuleYet } = useMemo(() => goalsFor(held, targets), [held, targets])
+  const openings = useMemo(() => openingsFrom(targets), [targets])
+  const progress = useMemo(() => goals.map((g) => progressFor(g, rows, openings, today)), [goals, rows, openings, today])
+  /** The highest license held in a trade, the rung a goal climbs from. */
+  const topHeld = (trade: Trade): ParsedLicense | null => goals.find((g) => g.requirement.trade === trade)?.holds ?? noRuleYet.find((n) => n.holds.trade === trade)?.holds ?? held.find((l) => l.trade === trade && l.cls) ?? null
   const weeks = useMemo(() => logWeeks(rows), [rows])
   const totals = useMemo(() => totalsOf(rows), [rows])
 
@@ -275,7 +288,18 @@ export default function Logbook({ own = false }: { own?: boolean } = {}) {
         <section style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))' }}>
           {goals.map((g, i) => {
             const pr = progress[i]
-            return pr ? <GoalCard key={g.requirement.toName} goal={g} progress={pr} supervisor={supervisorFor(g.requirement.trade, g.requirement.supervisorClass)} today={today} own={own} /> : null
+            return pr ? (
+              <GoalCard
+                key={g.requirement.toName}
+                goal={g}
+                progress={pr}
+                supervisor={supervisorFor(g.requirement.trade, g.requirement.supervisorClass)}
+                today={today}
+                own={own}
+                openingSource={targets.find((t) => t.trade === g.requirement.trade)?.openingSource ?? ''}
+                onEditGoal={own ? undefined : () => setEditingTarget(g.requirement.trade)}
+              />
+            ) : null
           })}
         </section>
       ) : !loading ? (
@@ -348,6 +372,11 @@ export default function Logbook({ own = false }: { own?: boolean } = {}) {
                     .map((n) => (
                       <span key={n.next.level} style={RUNG_NOTE} data-testid="logbook-no-rule-yet">
                         {n.next.name} next. Its rule is not seeded yet.
+                        {own || !n.holds.trade ? null : (
+                          <button type="button" style={{ ...btn, marginLeft: 6, padding: '0.1rem 0.5rem', fontSize: '0.75rem' }} onClick={() => setEditingTarget(n.holds.trade)} data-testid="logbook-set-goal">
+                            Set the goal
+                          </button>
+                        )}
                       </span>
                     ))}
                 </td>
@@ -449,6 +478,21 @@ export default function Logbook({ own = false }: { own?: boolean } = {}) {
         />
       ) : null}
 
+      {editingTarget && userId ? (
+        <LicenseTargetWindow
+          personName={name}
+          userId={userId}
+          trade={editingTarget}
+          holds={topHeld(editingTarget)}
+          current={targets.find((t) => t.trade === editingTarget) ?? null}
+          onClose={() => setEditingTarget(null)}
+          onSaved={(saved) => {
+            setEditingTarget(null)
+            setTargets((prev) => [...prev.filter((t) => t.trade !== saved.trade), saved])
+          }}
+        />
+      ) : null}
+
       {printFace ? (
         <LogbookPrint
           face={printFace}
@@ -463,7 +507,7 @@ export default function Logbook({ own = false }: { own?: boolean } = {}) {
           supervisorFor={supervisorFor}
           weeks={weeks}
           totals={totals}
-          openings={[]}
+          openings={openings}
           todayYmd={today}
         />
       ) : null}
@@ -475,16 +519,49 @@ function TradeChip({ trade }: { trade: Trade }) {
   return <span style={{ display: 'inline-block', fontSize: '0.72rem', fontWeight: 700, padding: '1px 8px', borderRadius: 999, color: '#fff', background: TRADE_COLOR[trade] }}>{TRADE_LABEL[trade]}</span>
 }
 
-function GoalCard({ goal, progress: p, supervisor, today, own }: { goal: Goal; progress: Progress; supervisor: Supervisor | null; today: string; own: boolean }) {
+function GoalCard({
+  goal,
+  progress: p,
+  supervisor,
+  today,
+  own,
+  openingSource,
+  onEditGoal,
+}: {
+  goal: Goal
+  progress: Progress
+  supervisor: Supervisor | null
+  today: string
+  own: boolean
+  /** Where the hours before the clock came from, when the office put some in. */
+  openingSource: string
+  /** The office's press to set the class, the number and the hours before the clock; none on the teammate's own page. */
+  onEditGoal?: () => void
+}) {
   const r = goal.requirement
   const color = TRADE_COLOR[r.trade]
   return (
     <div style={{ ...card, borderTop: `4px solid ${color}` }} data-testid="logbook-goal">
-      <div style={eyebrow}>
-        {TRADE_LABEL[r.trade]} · from {goal.holds.name}
-        {goal.holds.number ? ` #${goal.holds.number}` : ''}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+        <div style={eyebrow}>
+          {TRADE_LABEL[r.trade]} · from {goal.holds.name}
+          {goal.holds.number ? ` #${goal.holds.number}` : ''}
+        </div>
+        {onEditGoal ? (
+          <button type="button" style={{ ...btn, padding: '0.15rem 0.6rem', fontSize: '0.75rem' }} onClick={onEditGoal} data-testid="logbook-edit-goal">
+            Edit the goal
+          </button>
+        ) : null}
       </div>
-      <div style={{ marginTop: 4, fontSize: '0.9rem', fontWeight: 600 }}>Working toward {r.toName.toLowerCase()}</div>
+      <div style={{ marginTop: 4, fontSize: '0.9rem', fontWeight: 600 }}>
+        Working toward {r.toName.toLowerCase()}
+        {goal.fromOffice ? <span style={RUNG_NOTE}>set by the office</span> : null}
+      </div>
+      {p.opening > 0 ? (
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }} data-testid="logbook-opening">
+          Includes {fmtNum(p.opening)} {p.unit} before the clock started{openingSource ? `: ${openingSource}` : ''}.
+        </div>
+      ) : null}
       {goal.holds.expiryYmd && goal.holds.expiryYmd < today ? (
         <div style={{ marginTop: 6, padding: '6px 8px', borderRadius: 6, background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', fontSize: '0.8rem' }}>
           The Licenses tab says this {goal.holds.name.toLowerCase()} registration expired {shortDate(goal.holds.expiryYmd)}, {goal.holds.expiryYmd.slice(0, 4)}. The board counts hours worked while it is current. Renew it, {own ? 'then give the office the new date.' : 'or press Edit on the license to put in the new date.'}

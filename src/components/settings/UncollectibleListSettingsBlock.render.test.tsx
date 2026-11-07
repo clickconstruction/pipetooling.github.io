@@ -8,7 +8,7 @@ import { jobsBillingCardBySlug } from '../../lib/settings/jobsBillingGroups'
 
 /** The card as Jobs & billing draws it since punch list #261: in its fold, closed until its header is pressed. */
 const folded = () => (
-  <SettingsFoldCard card={jobsBillingCardBySlug('uncollectible')}>
+  <SettingsFoldCard card={jobsBillingCardBySlug('uncollectible')} track="settings-jobs">
     <UncollectibleListSettingsBlock />
   </SettingsFoldCard>
 )

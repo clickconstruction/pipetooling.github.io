@@ -6,6 +6,7 @@
  * Pure: the strip's words on the office's logbook, and the parse of `my_logbook()`'s answer.
  */
 import type { LicenseHoursLogRow } from '../licenseHoursLog'
+import { parseLicenseTargets, type LicenseTarget } from './logbook'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type LogbookShare = { userId: string; shownBy: string | null; shownAt: string }
@@ -43,6 +44,8 @@ export type MyLogbook = {
   hours: LicenseHoursLogRow[]
   licenses: MyLogbookLicense[]
   signers: MyLogbookSigner[]
+  /** The office's targets for the teammate: the class, the board's number, the hours before the clock (v2.6626). */
+  targets: LicenseTarget[]
   officeJobId: string | null
 }
 
@@ -72,6 +75,7 @@ export function parseMyLogbook(raw: unknown): MyLogbook | null {
     })),
     licenses: arr(o.licenses).map((l) => ({ id: str(l.id), license_type: str(l.license_type), date_of_expiry: strOrNull(l.date_of_expiry) })),
     signers: arr(o.signers).map((s) => ({ person_name: str(s.person_name), license_type: str(s.license_type), date_of_expiry: strOrNull(s.date_of_expiry) })),
+    targets: parseLicenseTargets(o.targets),
     officeJobId: strOrNull(o.office_job_id),
   }
 }

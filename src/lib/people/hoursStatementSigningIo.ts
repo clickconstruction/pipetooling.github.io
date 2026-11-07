@@ -62,8 +62,8 @@ async function callFunction<T>(name: string, body: unknown): Promise<T & { error
 }
 
 const STATEMENTS = 'hours_statements' as never
-const COLUMNS =
-  'id, record_id, job_ledger_id, person_id, user_id, labor_company, period_start, period_end, with_pay, kind, stated_days, gap_from, gap_to, snapshot, prepared_by, prepared_at, contract_document_id, matter_document_id, state, created_at, updated_at, worker:users!hours_statements_user_id_fkey(name), prepared_by_user:users!hours_statements_prepared_by_fkey(name), job:jobs_ledger!hours_statements_job_ledger_id_fkey(hcp_number, click_number, job_name)'
+// Every column, as hoursStatementsIo reads them, so a column a pending migration adds is absent before the push instead of refusing the read.
+const COLUMNS = '*, worker:users!hours_statements_user_id_fkey(name), prepared_by_user:users!hours_statements_prepared_by_fkey(name), job:jobs_ledger!hours_statements_job_ledger_id_fkey(hcp_number, click_number, job_name)'
 
 export const supabaseHoursStatementSigningIo: HoursStatementSigningIo = {
   async prepare(statementId, how) {

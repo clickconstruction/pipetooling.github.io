@@ -1,0 +1,121 @@
+/**
+ * A sub's sheet lines as the signed hours statement's rows (punch list #212, residual D, v2.6636): the kernel's `sheet`
+ * kind had no reader until now, so a sub's paper was made by hand. A sheet is a `people_labor_jobs` row — its day
+ * (`job_date`, else the day it was made), its rate — with lines in `people_labor_job_items` (a fixture, a count, hours a
+ * unit, a line's own rate, or a flat amount) and payments in `people_labor_job_payments`. A sub never punches: the hours
+ * are the agreed units (`count × hrs_per_unit`, or the hours alone on a fixed line), the amount is the line's cost as the
+ * Sub Labor screens price it (`lineLaborCost`), and a sheet is one group on the paper and one line under Paid. Pure; the
+ * read (`hoursStatementRead.ts`) shapes the rows and hands them here.
+ */
+import { lineLaborCost } from '../../../supabase/functions/_shared/peopleLaborJobItemLineCost'
+import { hoursStatementLongDate, hoursStatementRoundHours, type HoursStatementPayGroup, type HoursStatementRow } from './hoursStatement'
+
+export type HoursStatementSheet = {
+  id: string
+  /** `YYYY-MM-DD`, the sheet's job date; null when none was set. */
+  jobDate: string | null
+  /** `YYYY-MM-DD`, the day the sheet was made, for a sheet with no job date. */
+  createdYmd: string | null
+  laborRate: number | null
+}
+
+export type HoursStatementSheetLine = {
+  sheetId: string
+  fixture: string
+  count: number
+  hrsPerUnit: number
+  isFixed: boolean
+  laborRate: number | null
+  directLaborAmount: number | null
+  /** The sheet's own order of its lines. */
+  order: number
+}
+
+export type HoursStatementSheetPayment = {
+  sheetId: string
+  amount: number
+  /** `YYYY-MM-DD`, or null when the payment carries no day (then the sheet's day stands in). */
+  on: string | null
+  memo: string | null
+}
+
+const cents = (n: number) => Math.round(n * 100) / 100
+
+/** The day a sheet's lines count on: its job date, else the day it was made. */
+export function hoursStatementSheetDay(s: Pick<HoursStatementSheet, 'jobDate' | 'createdYmd'>): string {
+  return s.jobDate ?? s.createdYmd ?? ''
+}
+
+/** `Sheet 2 · March 11, 2026`: the sheets numbered in day order on the job for this sub, the day beside. */
+export function hoursStatementSheetLabel(n: number, day: string): string {
+  return day ? `Sheet ${n} · ${hoursStatementLongDate(day)}` : `Sheet ${n}`
+}
+
+/** The sheets with a day inside the span, oldest first, each with its number among this sub's sheets on the job. */
+export function hoursStatementSheetsInSpan(sheets: ReadonlyArray<HoursStatementSheet>, span: { from: string; to: string }): Array<{ sheet: HoursStatementSheet; n: number; day: string; label: string }> {
+  const ordered = sheets
+    .map((sheet) => ({ sheet, day: hoursStatementSheetDay(sheet) }))
+    .filter((x) => x.day)
+    .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : a.sheet.id < b.sheet.id ? -1 : 1))
+  return ordered.map((x, i) => ({ ...x, n: i + 1, label: hoursStatementSheetLabel(i + 1, x.day) })).filter((x) => x.day >= span.from && x.day <= span.to)
+}
+
+/** A line's hours: the agreed units, or the hours alone on a fixed line; a flat amount has none. */
+export function hoursStatementSheetLineHours(l: Pick<HoursStatementSheetLine, 'count' | 'hrsPerUnit' | 'isFixed'>): number {
+  const hrs = Number(l.hrsPerUnit) || 0
+  return hoursStatementRoundHours(l.isFixed ? hrs : (Number(l.count) || 0) * hrs)
+}
+
+/** What a line was for, as the paper's note: the fixture, with the count when it is more than one. */
+export function hoursStatementSheetLineNote(l: Pick<HoursStatementSheetLine, 'fixture' | 'count'>): string {
+  const fixture = (l.fixture ?? '').trim() || 'a line'
+  return l.count > 1 ? `${fixture} × ${l.count}` : fixture
+}
+
+/** The sheets' lines in the span as the kernel's rows, grouped by sheet. */
+export function hoursStatementSheetRows(sheets: ReadonlyArray<HoursStatementSheet>, lines: ReadonlyArray<HoursStatementSheetLine>, span: { from: string; to: string }): HoursStatementRow[] {
+  const out: HoursStatementRow[] = []
+  for (const s of hoursStatementSheetsInSpan(sheets, span)) {
+    const mine = lines.filter((l) => l.sheetId === s.sheet.id).slice().sort((a, b) => a.order - b.order)
+    for (const l of mine) {
+      const rate = l.laborRate ?? s.sheet.laborRate
+      out.push({
+        day: s.day,
+        hours: hoursStatementSheetLineHours(l),
+        note: hoursStatementSheetLineNote(l),
+        inLabel: null,
+        outLabel: null,
+        rate: typeof rate === 'number' && rate > 0 ? cents(rate) : null,
+        amount: cents(lineLaborCost({ count: l.count, hrs_per_unit: l.hrsPerUnit, is_fixed: l.isFixed, labor_rate: l.laborRate, direct_labor_amount: l.directLaborAmount }, s.sheet.laborRate ?? 0)),
+        group: { key: s.sheet.id, label: s.label },
+      })
+    }
+  }
+  return out
+}
+
+/** One pay group a sheet: the sheet's total as the due, its payments on their days (a payment with no day on the sheet's). */
+export function hoursStatementSheetPayGroups(sheets: ReadonlyArray<HoursStatementSheet>, lines: ReadonlyArray<HoursStatementSheetLine>, payments: ReadonlyArray<HoursStatementSheetPayment>, span: { from: string; to: string }): HoursStatementPayGroup[] {
+  return hoursStatementSheetsInSpan(sheets, span).map((s) => {
+    const mine = lines.filter((l) => l.sheetId === s.sheet.id)
+    const due = cents(mine.reduce((sum, l) => sum + lineLaborCost({ count: l.count, hrs_per_unit: l.hrsPerUnit, is_fixed: l.isFixed, labor_rate: l.laborRate, direct_labor_amount: l.directLaborAmount }, s.sheet.laborRate ?? 0), 0))
+    return {
+      key: s.sheet.id,
+      label: s.label,
+      from: s.day,
+      to: s.day,
+      due: mine.length ? due : null,
+      payments: payments
+        .filter((p) => p.sheetId === s.sheet.id)
+        .map((p) => ({ on: p.on ?? s.day, amount: cents(p.amount), memo: p.memo, sourceKind: null, sourceId: null }))
+        .sort((a, b) => (a.on < b.on ? -1 : a.on > b.on ? 1 : 0)),
+    }
+  })
+}
+
+/** What the window's line says the span holds for a sub: the sheets and their lines. */
+export function hoursStatementSheetCounts(sheets: ReadonlyArray<HoursStatementSheet>, lines: ReadonlyArray<HoursStatementSheetLine>, span: { from: string; to: string }): { sheets: number; lines: number } {
+  const inSpan = hoursStatementSheetsInSpan(sheets, span)
+  const ids = new Set(inSpan.map((s) => s.sheet.id))
+  return { sheets: inSpan.length, lines: lines.filter((l) => ids.has(l.sheetId)).length }
+}

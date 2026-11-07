@@ -6,7 +6,8 @@
  * name the sender (`customerLink.ts`), each read failing soft. The presses are the spine's `name_contact` and
  * `tie_message`, cut 2's `take_it` and `hand_to`, *A new customer*'s `makeCustomer`, and since v2.6202 (punch list #223
  * PR 1) *A notice, not a person*'s `mark_notice` and its undo `unmark_notice`, the card reading the thread's row on
- * `email_left_out_senders` so the undo can show. One interface, so a smoke fakes it.
+ * `email_left_out_senders` so the undo can show, and since v2.6641 the list's rows at the sender's company so the block
+ * can lead the card. One interface, so a smoke fakes it.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { APP_SETTINGS_KEY_MESSAGES_ASSIGN_RULE_V1 } from '../appSettingsKeys'
@@ -208,7 +209,7 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
       const jobCols = 'id, job_name, hcp_number, click_number, status, customer_id, customer_email, customer_phone, customers(name)'
       // The customers and the people at them: by the address, by the number's last four (settled in the kernel), by the
       // name's last word and by the company's domain; the bids and jobs that name the address, the number or the name.
-      const [byAddress, byNumber, byLast, byDomain, peopleByAddress, peopleByNumber, peopleByLast, peopleByDomain, bidsByAddress, bidsByNumber, bidsByName, jobsByAddress, jobsByNumber, trades, roster] = await Promise.all([
+      const [byAddress, byNumber, byLast, byDomain, peopleByAddress, peopleByNumber, peopleByLast, peopleByDomain, bidsByAddress, bidsByNumber, bidsByName, jobsByAddress, jobsByNumber, trades, roster, noticed] = await Promise.all([
         address ? soft<CustomerRow>(db.from('customers').select(customerCols).ilike('contact_info->>email', address).limit(8)) : [],
         number ? soft<CustomerRow>(db.from('customers').select(customerCols).ilike('contact_info->>phone', `%${last4(number)}%`).limit(20)) : [],
         last.length >= 3 ? soft<CustomerRow>(db.from('customers').select(customerCols).ilike('name', `%${last}%`).limit(8)) : [],
@@ -225,6 +226,15 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
         domain ? db.from('gc_companies').select('id, name, contact_name, email').ilike('email', `%@${domain}`).limit(8) : none,
         // Everyone on the roster but the subs, for *One of our own team* (v2.5546).
         db.from('people').select('id, name, kind, phone').neq('kind', 'sub').is('archived_at', null).order('name').limit(80),
+        // The marks at the sender's company (v2.6641): the whole domain or any address there; the address itself on an
+        // open mail service. Soft: a role the table refuses still gets its card, with the block last as before.
+        address
+          ? soft<NoticeRow>(
+              domain
+                ? db.from('email_left_out_senders').select('value, kind').or(`value.eq.${domain},value.ilike.%@${domain}`).limit(8)
+                : db.from('email_left_out_senders').select('value, kind').eq('value', address).limit(1),
+            )
+          : [],
       ])
       checkSupabaseError(trades, 'look for the trade partner')
       checkSupabaseError(roster, 'load the roster')
@@ -294,6 +304,7 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
           // The asks a trade partner is on come with Sort all (mockup C).
           openAsk: null,
         })),
+        noticed,
       }
     },
     async name(contactId, guess) {
