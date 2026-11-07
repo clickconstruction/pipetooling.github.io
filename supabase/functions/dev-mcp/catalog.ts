@@ -1889,4 +1889,5 @@ export const EDGE_FUNCTIONS: string[] = [
   "walk",
   "weekly-money-email-dispatch",
   "weekly-movement-email-dispatch",
+  "your-week-email",
 ]

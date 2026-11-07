@@ -37,6 +37,7 @@ const NOT_OUTSIDE: Readonly<Record<string, string>> = {
   'gc-money-monday-email': 'a digest to our own money team',
   'bridge-sheet-email': "the Bridge's Monday sheet, mailed to the dev who pressed Email me this sheet",
   'bridge-weekly-sheet': "the Bridge's Monday sheet, mailed to every dev on Monday morning (v2.5883)",
+  'your-week-email': "Your week's Monday email, mailed to each of our own people the office picked a signal for (v2.6607)",
   'gc-word-ask': 'a question to our own leader',
   'notify-lien-approval': 'a lien notice waiting on our own leader',
   'invite-user': 'an account invitation, not a paper',
