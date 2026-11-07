@@ -67,6 +67,8 @@ export interface JobPlansIo {
   addSet(args: AddSetArgs): Promise<PlanSetRow>
   makeCurrent(partId: string, setId: string, userId: string | null): Promise<void>
   removeSet(setId: string): Promise<void>
+  /** A paper onto another part of the site (v2.6632): the set it went with stays behind, so it goes on the new part itself. */
+  movePaper(setId: string, partId: string): Promise<void>
   updateMemo(setId: string, memo: string): Promise<void>
   /** What changed from the set before it, written or rewritten on a set already on the part (v2.6356). */
   updateChanges(setId: string, changes: string): Promise<void>
@@ -252,6 +254,10 @@ export function supabaseJobPlansIo(): JobPlansIo {
     },
     async removeSet(setId) {
       const r = await supabase.from('plan_sets').delete().eq('id', setId)
+      if (r.error) throw r.error
+    },
+    async movePaper(setId, partId) {
+      const r = await supabase.from('plan_sets').update({ part_id: partId, marks_up_set_id: null }).eq('id', setId)
       if (r.error) throw r.error
     },
     async updateMemo(setId, memo) {

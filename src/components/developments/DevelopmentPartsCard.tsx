@@ -21,7 +21,7 @@ import { PlanSetChangesLine } from '../plans/PlanSetChangesLine'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
 import { countedLabel } from '../../lib/batchWords'
-import { buildPapersView, kindLabel, paperChipWords, paperLineWords, type Paper } from '../../lib/papers/papers'
+import { buildPapersView, kindLabel, paperChipWords, paperLineWords, partsToMoveTo, type Paper } from '../../lib/papers/papers'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { DEVELOPMENT_PHONE_QUERY } from './DevelopmentJumpStrip'
 
@@ -34,6 +34,10 @@ export type SitePlansWrites = {
   writeChanges: (setId: string, changes: string) => Promise<boolean>
   /** Many jobs onto one part in one press (the Gun Dog spike, 2026-11-02); true when any took it. */
   putJobsOnPart: (partId: string, jobIds: string[]) => Promise<boolean>
+  /** A paper onto another part of the site (v2.6632): the set it went with stays behind, and the History gets the line. */
+  movePaper: (paper: Paper, toPartId: string) => Promise<boolean>
+  /** A paper off its part (v2.6632), as the job's Papers section takes one off. */
+  removePaper: (setId: string) => Promise<boolean>
 }
 
 const th: CSSProperties = { textAlign: 'left', padding: '4px 8px', fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-faint)', borderBottom: '1px solid var(--border)' }
@@ -72,6 +76,8 @@ export function DevelopmentPartsCard({
   const [problem, setProblem] = useState<string | null>(null)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
   const [openPapers, setOpenPapers] = useState<Record<string, boolean>>({})
+  // The paper being moved to another part (v2.6632) and the part picked for it.
+  const [moving, setMoving] = useState<{ paperId: string; toPartId: string } | null>(null)
   // The papers on the site's parts (the papers train): the column draws only when the page hands them in.
   const hasPapers = papers !== undefined
   const phone = useMatchMedia(DEVELOPMENT_PHONE_QUERY)
@@ -91,6 +97,7 @@ export function DevelopmentPartsCard({
       setForm(null)
       setPartName(null)
       setPendingRemove(null)
+      setMoving(null)
     }
   }
   const saveChanges = async (setId: string, changes: string): Promise<boolean> => {
@@ -143,6 +150,63 @@ export function DevelopmentPartsCard({
     ) : (
       <span style={muted}>link still to come</span>
     )
+  // A paper kept on the wrong part (v2.6632): **Move to…** names another part of the site and moves the paper there, the set it
+  // went with left behind; **×** takes it off, as the job's Papers section does. The one door when no job names the part.
+  const paperPresses = (p: Paper, row: SitePartRow): ReactNode => {
+    if (!canWrite || !writes) return null
+    const others = partsToMoveTo(view.parts.map((r) => r.part), row.part.id)
+    if (moving?.paperId === p.id) {
+      const to = moving.toPartId
+      return (
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }} data-testid={`site-paper-move-${p.id}`}>
+          <select aria-label={`Move ${p.name} to`} value={to} onChange={(e) => setMoving({ paperId: p.id, toPartId: e.target.value })} disabled={busy} style={{ ...input, minWidth: '9rem' }}>
+            <option value="">on which part…</option>
+            {others.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+          <SmallButton onClick={() => void run(() => writes.movePaper(p, to))} disabled={busy || !to} primary>
+            Move it
+          </SmallButton>
+          <LinkButton onClick={() => setMoving(null)} nowrap>
+            Leave it
+          </LinkButton>
+        </span>
+      )
+    }
+    if (pendingRemove === p.id) {
+      return (
+        <>
+          <LinkButton onClick={() => void run(() => writes.removePaper(p.id))} nowrap>
+            Remove
+          </LinkButton>
+          <LinkButton onClick={() => setPendingRemove(null)} nowrap>
+            Keep
+          </LinkButton>
+        </>
+      )
+    }
+    return (
+      <>
+        {others.length ? (
+          <LinkButton
+            onClick={() => {
+              setProblem(null)
+              setMoving({ paperId: p.id, toPartId: '' })
+            }}
+            nowrap
+          >
+            Move to…
+          </LinkButton>
+        ) : null}
+        <button type="button" aria-label={`Remove ${p.name}`} disabled={busy} onClick={() => setPendingRemove(p.id)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-muted)', font: 'inherit' }}>
+          ×
+        </button>
+      </>
+    )
+  }
   const removePress = (s: PlanSetRow) =>
     canWrite && writes ? (
       pendingRemove === s.id ? (
@@ -308,7 +372,8 @@ export function DevelopmentPartsCard({
                             <LinkButton onClick={() => openInExternalBrowser(p.link)} nowrap>
                               Open ↗
                             </LinkButton>
-                          ) : null}
+                          ) : null}{' '}
+                          {paperPresses(p, row)}
                         </div>
                       ))}
                     </div>
