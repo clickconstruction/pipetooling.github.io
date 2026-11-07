@@ -1041,7 +1041,7 @@ export default function Settings() {
   const appliedDeepLinkRef = useRef<string | null>(null)
   /** `?focus=issuer.companyName` (v2.3697): the Lien desk's door to the claimant's name and address. */
   const settingsFocus = settingsFocusParam(location.search)
-  // Jobs & billing's cards (punch list #261): one element per card, placed under its heading by the kernel's order
+  // Jobs, bills and liens’ cards (punch list #261): one element per card, placed under its heading by the kernel's order
   // and gate (`lib/settings/jobsBillingGroups.ts`); the dev-only cards are built for a dev alone, as the page's own
   // gates had it. The company owner account and the labor rate keep their state in this page (`useSettingsJobsAdmin`).
   const jobsDevCards = settingsJobsDevCards({
@@ -1338,7 +1338,7 @@ export default function Settings() {
           {myRole === 'dev' || myRole === 'master_technician' ? <SettingsOrgDefaultsSection /> : null}
           {myRole === 'dev' || myRole === 'master_technician' ? <BankTransferDetailsSettingsBlock /> : null}
           {myRole === 'dev' && <OfficeAddressSettingsBlock />}
-          {/* Punch list #261 PR 2: the office's county beside the office address, off Jobs & billing; its old anchor still lands here. */}
+          {/* Punch list #261 PR 2: the office's county beside the office address, off Jobs, bills and liens; its old anchor still lands here. */}
           {myRole === 'dev' && (
             <SettingsFoldCard card={MOVED_SETTINGS_CARDS['office-county']} track="settings-company">
               <OfficeCountySettingsBlock />
@@ -1540,7 +1540,7 @@ export default function Settings() {
 
       {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
       {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
-      {/* Punch list #261 PR 2: the subs' pay schedule under People & teams, off Jobs & billing; its old anchor still lands here. */}
+      {/* Punch list #261 PR 2: the subs' pay schedule under People & teams, off Jobs, bills and liens; its old anchor still lands here. */}
       {myRole === 'dev' && (
         <SettingsFoldCard card={MOVED_SETTINGS_CARDS['sub-pay']} track="settings-people">
           <SubPortalPaySettingsBlock />
@@ -1677,7 +1677,7 @@ export default function Settings() {
           exportAllLoading={exportAllLoading}
         />
       )}
-      {/* Punch list #261 PR 2: HCP reconcile under Data & recovery, off Jobs & billing; its old anchor still lands here. */}
+      {/* Punch list #261 PR 2: HCP reconcile under Data & recovery, off Jobs, bills and liens; its old anchor still lands here. */}
       {myRole === 'dev' && (
         <SettingsFoldCard card={MOVED_SETTINGS_CARDS['hcp-reconcile']} track="settings-data">
           <SettingsHcpReconcileSection />
@@ -1685,7 +1685,7 @@ export default function Settings() {
       )}
       </SettingsGroup>
 
-      <SettingsGroup id="settings-jobs" hidden={activeSettingsTab !== 'settings-jobs'} title={settingsGroupTitle('settings-jobs', 'Jobs & billing')} description={settingsGroupHint('settings-jobs')}>
+      <SettingsGroup id="settings-jobs" hidden={activeSettingsTab !== 'settings-jobs'} title={settingsGroupTitle('settings-jobs', 'Jobs, bills and liens')} description={settingsGroupHint('settings-jobs')}>
       {/* Punch list #261: six headings by the question a person brings, every card under its anchor, the forms folded
           and the switches open, a strip of the headings pinned while the page scrolls. The kernel gates each card by
           role, so a card built above for a role that is not shown it is never mounted. `?focus=issuer.…` opens the

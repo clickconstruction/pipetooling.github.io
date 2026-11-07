@@ -2,7 +2,7 @@
 name: "Walk kit — a session runs the Messages loop on prod end to end, on the company's own inbox and number, reads what landed where, and cleans up"
 number: 142
 group: close
-status: DONE — PRs 0 to 8 merged and deployed 2026-10-22; the first full walk ran green on 2026-10-23 (`npm run walk -- --owner-presses --keep`): the estimate email and text on the owner's presses, the open from bids@, the email reply through the team box, the text reply with its ✓ delivered, STOP and START, the office's view, the stray check, and cleanup of every row; the one held step was the walk's own accounting of a press made before a restart; the four paper cuts that walk found in the driver fixed in v2.6030 (2026-10-28), the fixed driver's live walk still to run
+status: claude/142-walk-kit-live-run-413e7e — the close: PRs 0 to 8 merged and deployed 2026-10-22; the first full walk ran green on 2026-10-23 on the owner's presses; the four paper cuts fixed in v2.6030; the fixed driver's live run on 2026-11-07 found three defects in the way (the driver could not start from a worktree, a lost signal on its first call ended the run with a green report, and dev-login refused the tester since v2.6639 that morning), all fixed with the nightly schedule in v2.6652; prod clean (cleanup removed the kit's five rows, then answered nothing to clean)
 summary: >
   Today the live walk of Messages needs the owner's press on every send, sample accounts cannot
   text, and the readers leave out (or make a Who is this? of) the company's own addresses and
@@ -12,10 +12,10 @@ summary: >
   text from the bids number to the company number, sends STOP and START, then reads the thread,
   the queues, Went out and the 7-day strip through the app's own code, prints what landed where
   with times, and deletes its rows. One command, run by any session.
-next: run the fixed driver live once with the owner's word (`npm run walk -- --owner-presses --keep`, then `npm run walk -- --cleanup-only`); then a walk on a schedule
+next: deploy `dev-login` (v2.6652), add the `VITE_DEV_LOGIN_SECRET` repository secret, then one `npm run walk` with no flag from any checkout: the tester presses, nobody else; green, and the card retires
 size: L as a train of nine (S M S+migration M M+migration M S L M); two migrations, one new edge function, eight functions changed, and about thirty redeployed once for the shared real-account rule
-blocker: none — bids@ left the two test records on 2026-10-23 (their two empty `contact_channels` rows deleted over the pooler with the owner's word); the GC test company's `email` column still reads bids@, so a save of that record could re-make a channel
-ver: v2.5724 to v2.5740, v2.6030 (punch list #142)
+blocker: the `dev-login` redeploy and the one repository secret, both the owner's hand (a Claude session in auto mode is refused a prod deploy, a secret-store write and the owner-presses run); the three test records that carry bids@ in their own columns (the GC test trade company's `email`, GC Test Architects' `contact_info.email`, GC Test Owner LLC's `billing_email`) are retyped by the SQL in the 2026-11-07 session notes, dry-run clean, committed only by the owner — no channel carries bids@, so `walk_setup` passes
+ver: v2.5724 to v2.5740, v2.6030, v2.6652 (punch list #142)
 opinion: build — every Messages train so far has ended on a walk only the owner could press; this one ends on a walk any session can run in about ten minutes after any deploy, touching only the company's own inbox and number, with nothing left behind in the app.
 mockup: not required — a test harness; the one screen change is a read-only line on the existing Digital twins & samples page, in its own row shape
 ---
@@ -240,7 +240,7 @@ same unknown. The report says what Quo did.
 - **Log a call, Answer all, Take it on, Nudge, Book a visit** as the tester: they write through
   RPCs that refuse a training account. Each can be fenced like the sends, one PR each, when a walk
   needs it.
-- **A walk on a schedule** (nightly, or after each deploy): after the first runs are green.
+- **A walk on a schedule**: nightly from GitHub Actions since v2.6652 (`docs/WALK_KIT.md` § On a schedule); after each deploy is not carried.
 - **Deleting the kit's mail in Gmail or texts in Quo**: the reader's rule is that nothing in Gmail
   is deleted, and Quo keeps its history.
 - **The estimate email's Reply-To** (found item 3): its own PR, the owner's call.

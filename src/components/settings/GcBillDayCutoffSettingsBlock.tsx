@@ -4,7 +4,7 @@ import { loadBillDayCutoff, setBillDayCutoff } from '../../lib/gc/billDay/billDa
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
- * Settings → Jobs & billing → the trades' cut-off for GC bill day (Messages cut 9): how many days before bill day the
+ * Settings → Jobs, bills and liens → the trades' cut-off for GC bill day (Messages cut 9): how many days before bill day the
  * trades' pay applications are due, one setting for every job, 2 to 20 (`app_settings.gc_bill_day_cutoff_days`, 6).
  * The money team sets it (dev, the owner and the controller, the policy's audience). Self-contained like
  * GcCardBillSettingsBlock: loads its own value, saves on Save.

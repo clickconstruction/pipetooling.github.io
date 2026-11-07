@@ -142,7 +142,7 @@ describe('the words a first-timer reads', () => {
   it('the sheet’s foot, the empty kind and the waits', () => {
     expect(sheetFootWords('Rough In', notReady)).toBe('Rough In reads not ready on the Pipeline until every question is answered.')
     expect(sheetFootWords('Rough In', ready)).toBe('Rough In reads ready on the Pipeline.')
-    expect(noQuestionsWords('Top Out')).toBe('No questions for Top Out yet. The office writes them on Settings, under Jobs and billing.')
+    expect(noQuestionsWords('Top Out')).toBe('No questions for Top Out yet. The office writes them on Settings, under Jobs, bills and liens.')
     expect(noQuestionsWords('Permit')).toBe('Permit has no checklist. Checklists are for Rough In, Top Out and Trim Set.')
     expect(waitsOnWords('pick')).toBe('Pick Yes, No or Not here.')
     expect(waitsOnWords('photo')).toBe('Take the photo this one asks for.')
