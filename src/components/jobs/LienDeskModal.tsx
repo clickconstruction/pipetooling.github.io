@@ -123,7 +123,7 @@ import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
-import LienDeskGates from './LienDeskGates'
+import LienDeskGates, { LienGatesSentFold } from './LienDeskGates'
 import LienDeskFindBox, { LienFindHits, LienFindMarked } from './LienDeskFindBox'
 import { LegendButton } from '../help/LegendButton'
 import { DeskLegendCard } from '../help/LegendCard'
@@ -141,7 +141,7 @@ import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
 import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
-import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, lienFootBlockedSentence, lienGateShortWords } from '../../lib/jobs/lienDeskGates'
+import { buildLienDeskGates, lienSentGatesFold, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, lienFootBlockedSentence, lienGateShortWords } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCountyLookup'
@@ -1883,6 +1883,11 @@ export default function LienDeskModal({
     sentBills: claimBills.length,
   })
   const gateByKey = Object.fromEntries(gates.map((g) => [g.key, g])) as Record<LienGateKey, LienGate>
+  // A sent notice with nothing due (v2.6625, punch list #248 face two, the owner's rule A): no next notice is about to go, so the
+  // gates judge nothing — they fold to one line, the day it went and the owner, the GC, the kind and the months as the paper went
+  // (890 read *Can't go out yet · 3 blockers* and *No month picked* over an empty grid). A Sent row with months still due keeps the four.
+  const sentForFold = selected?.pile === 'sent' && selected.dueMonths.length === 0 && selected.item?.status === 'sent' ? selected.item : null
+  const gatesFold = sentForFold ? lienSentGatesFold({ sentOn: sentForFold.sent_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(sentForFold.sent_at)) : '', gates, noticeMonths: sentForFold.months ?? [], monthShort: workMonthShort }) : null
 
   // A book row opens the job on the pane its next step belongs to; a job the desk does not list yet opens its Lien window (v2.3768).
   const openBookRow = (row: LienTimelineBookRow) => {
@@ -1929,7 +1934,7 @@ export default function LienDeskModal({
     const filings = data.filingsByJob[jobId] ?? []
     const filedWords = (verb: string, ymd: string | null, iso: string) => `${verb} ${formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))}`
     const envelope = `To ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'} by certified mail${gc?.email ? ` · courtesy PDF to ${gc.email}` : ''}`
-    const before = gates.filter((g) => g.tone !== 'ok').map((g) => ({ key: g.key, words: `${g.label}: ${g.value}` }))
+    const before = gatesFold ? [] : gates.filter((g) => g.tone !== 'ok').map((g) => ({ key: g.key, words: `${g.label}: ${g.value}` }))
     const go = (k: 'affidavit' | 'retainage', label: string) => ({ label, onPress: () => { setStopOpen(null); setKind(k) } })
     const jobNo = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''
     // A stop that went out shows the paper as it went out — the filing's own snapshot — and its stored document.
@@ -1981,7 +1986,7 @@ export default function LienDeskModal({
   const paneHeads = selected
     ? lienPaneSections({
         nextWords: timeline?.next.words ?? null,
-        gates: { ready: gateVerdict.ready, headline: gateVerdict.headline, summary: gateVerdict.summary },
+        gates: gatesFold ? { sentOn: gatesFold.sentOn } : { ready: gateVerdict.ready, headline: gateVerdict.headline, summary: gateVerdict.summary },
         houses: supplierJob ? { count: supplierJob.houses.length, housesOwed: supplierJob.housesOwed, owed: supplierJob.owed, paid: supplierJob.paid, asOf: formatYmdMonthDay(todayYmd) } : null,
         months: monthsList,
         claimWords: claimBills.length ? `${formatUsdNoCents(claimed.claim)} · ${lienBillsCountWords(claimBills.filter((b) => b.owed > 0).length, claimBills.length)}` : formatUsdNoCents(claimed.claim),
@@ -2060,12 +2065,18 @@ export default function LienDeskModal({
           style={{ position: 'sticky', top: 0, zIndex: 2, margin: '0 -1.1rem', padding: '0.45rem 1.1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)', boxShadow: '0 8px 14px -12px rgba(0,0,0,0.35)', display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.7rem', alignItems: 'center', fontSize: '0.8125rem' }}
         >
           <strong>{jobLabel(job, selected.jobId)}</strong>
-          <span style={chip(gateVerdict.ready ? 'var(--bg-green-tint)' : 'var(--bg-red-tint)', gateVerdict.ready ? 'var(--text-green-800)' : 'var(--text-red-600)')}>{gateVerdict.ready ? '✓' : '✗'} {gateVerdict.headline}</span>
-          {gates.filter((g) => g.tone !== 'ok').map((g) => (
-            <span key={g.key} style={chip(g.tone === 'blocker' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', g.tone === 'blocker' ? 'var(--text-red-600)' : 'var(--text-amber-800)')} title={g.title}>
-              {g.n} · {g.label}: {g.value}
-            </span>
-          ))}
+          {gatesFold ? (
+            <span style={chip('var(--bg-subtle)', 'var(--text-700)')} data-lien-strip-sent>{gatesFold.head}</span>
+          ) : (
+            <>
+              <span style={chip(gateVerdict.ready ? 'var(--bg-green-tint)' : 'var(--bg-red-tint)', gateVerdict.ready ? 'var(--text-green-800)' : 'var(--text-red-600)')}>{gateVerdict.ready ? '✓' : '✗'} {gateVerdict.headline}</span>
+              {gates.filter((g) => g.tone !== 'ok').map((g) => (
+                <span key={g.key} style={chip(g.tone === 'blocker' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', g.tone === 'blocker' ? 'var(--text-red-600)' : 'var(--text-amber-800)')} title={g.title}>
+                  {g.n} · {g.label}: {g.value}
+                </span>
+              ))}
+            </>
+          )}
           <span style={{ color: 'var(--text-muted)' }}>{monthsList.length ? monthsList.map(workMonthShort).join(' + ') : 'no months'}</span>
           {timeline ? (
             <span data-lien-desk-strip-next style={chip(timeline.next.tone === 'red' ? 'var(--bg-red-tint)' : timeline.next.tone === 'amber' ? 'var(--bg-amber-tint)' : timeline.next.tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)', timeline.next.tone === 'red' ? 'var(--text-red-600)' : timeline.next.tone === 'amber' ? 'var(--text-amber-800)' : timeline.next.tone === 'green' ? 'var(--text-green-800)' : 'var(--text-700)')} title="Next on the path">
@@ -2194,6 +2205,9 @@ export default function LienDeskModal({
 
       {paneHead('gates')}
       <div data-lien-pane-body="gates">
+      {gatesFold ? (
+        <LienGatesSentFold fold={gatesFold} />
+      ) : (
       <LienDeskGates
         headless
         gates={gates}
@@ -2376,6 +2390,7 @@ export default function LienDeskModal({
           ),
         }}
       />
+      )}
       </div>
 
       {/* Supply houses on this job (v2.4404): a second claim can ride the same property. Not drawn when the job bought nothing. */}

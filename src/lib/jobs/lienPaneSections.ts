@@ -25,7 +25,8 @@ export type LienPaneSection = {
 export type LienPaneSectionsInput = {
   /** The timeline's next step, "Draft the Jul + Aug notice — 9 days."; null with no timeline. */
   nextWords: string | null
-  gates: { ready: boolean; headline: string; summary: string } | null
+  /** The verdict; or, on a sent notice with nothing due (v2.6625), the day it went — the head reads *Sent Oct 14* and judges nothing. */
+  gates: { ready: boolean; headline: string; summary: string } | { sentOn: string } | null
   /** The job's houses; null when it bought nothing (the section is not drawn). */
   houses: { count: number; housesOwed: number; owed: number; paid: number; asOf: string } | null
   /** 'YYYY-MM', the months on this notice. */
@@ -51,8 +52,8 @@ export function lienPaneSections(i: LienPaneSectionsInput): LienPaneSection[] {
   out.push({
     key: 'gates',
     label: 'The four gates',
-    fact: i.gates ? `${i.gates.ready ? '✓' : '✗'} ${i.gates.headline}` : '—',
-    tail: i.gates?.summary ?? '',
+    fact: !i.gates ? '—' : 'sentOn' in i.gates ? `Sent ${i.gates.sentOn}` : `${i.gates.ready ? '✓' : '✗'} ${i.gates.headline}`,
+    tail: !i.gates ? '' : 'sentOn' in i.gates ? 'as the notice went' : i.gates.summary,
   })
   if (i.houses) {
     const h = i.houses
