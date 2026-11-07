@@ -149,7 +149,7 @@ export type HoursStatementReadCounts = { approved: number; pending: number; type
 
 export type HoursStatementDevRead = {
   input: HoursStatementInput
-  worker: { name: string; standing: string }
+  worker: { name: string; standing: string; company?: string | null }
   approvedBy: string | null
   isOfficeJob: boolean
   personId: string | null
@@ -457,7 +457,7 @@ export async function listStatementsMade(reader: Reader, parties: Pick<HoursStat
 /** The window's read as a saved row keeps it (`HoursStatementSnapshot`); `asOf` is stamped by the server at apply. */
 export type HoursStatementDevSnapshot = {
   input: HoursStatementInput
-  worker: { name: string; standing: string }
+  worker: { name: string; standing: string; company?: string | null }
   job: { number: string; name: string; customer: string | null; site: string; isOfficeJob: boolean }
   approvedBy: string | null
   preparedBy: string
@@ -534,7 +534,7 @@ export type HoursStatementPrepareIo = {
   sha256: (bytes: Uint8Array) => Promise<string>
 }
 
-export const HOURS_STATEMENT_SHAPE = "plan_hours_statement needs statement — { action: make | file_on_matter (make when left out); make: job (a jobs_ledger.id, or what find_job resolves), person (a users.id, or what find_person resolves), from, to (YYYY-MM-DD, not ahead of today), with_pay? (true when left out), basis? (paid when left out; charged prices every counted hour at the rate the customer is charged, as the crew it was part of, and carries no pay), kind? (clock | sheet; left out, a sub on the job's sheets reads the sheets, always as paid), add_stated_block?, stated_days? ([{ day, hours?, note?, source? }], the days the office states from outside records, each marked as stated by you), send? ({ how: email | link }: once the row lands, the form is drawn and the link emailed to the worker, or handed back to you); file_on_matter: statement_id (an hours_statements.id, signed), matter_id (a legal_matters.id), title?, shows? }. Plan first; apply re-reads the clock and refuses when it moved."
+export const HOURS_STATEMENT_SHAPE = "plan_hours_statement needs statement — { action: make | file_on_matter (make when left out); make: job (a jobs_ledger.id, or what find_job resolves), person (a users.id, or what find_person resolves), from, to (YYYY-MM-DD, not ahead of today), with_pay? (true when left out), basis? (paid when left out; charged prices every counted hour at the rate the customer is charged, as the crew it was part of, and carries no pay), kind? (clock | sheet; left out, a sub on the job's sheets reads the sheets, always as paid), labor_company? (a sub's company on the attestation, with a sheet paper alone, at most 160 characters), add_stated_block?, stated_days? ([{ day, hours?, note?, source? }], the days the office states from outside records, each marked as stated by you), send? ({ how: email | link }: once the row lands, the form is drawn and the link emailed to the worker, or handed back to you); file_on_matter: statement_id (an hours_statements.id, signed), matter_id (a legal_matters.id), title?, shows? }. Plan first; apply re-reads the clock and refuses when it moved."
 
 /**
  * The agent's `statement` into the RPC's `p`: for `make`, the job and the worker resolved and the clock read into a
@@ -577,6 +577,13 @@ export async function prepareHoursStatementWrite(io: HoursStatementPrepareIo, ar
     if ('refused' in parties) return { error: parties.refused }
     const read = await readHoursStatement(io.reader, parties, ask, statedDays)
     if ('refused' in read) return { error: `plan_hours_statement: ${read.refused}` }
+    // A sub's company on the attestation (the card's last residual): with a sheet paper alone, as the window offers it.
+    const laborCompany = str(st.labor_company).trim().slice(0, 160) || null
+    if (laborCompany && read.source !== 'sheet') return { error: `plan_hours_statement: labor_company names a sub’s company on a sheet paper; ${parties.user.name} reads the clock here, so leave it off.` }
+    if (laborCompany) {
+      read.input.worker = { ...read.input.worker, company: laborCompany }
+      read.worker = { ...read.worker, company: laborCompany }
+    }
     const snapshot = hoursStatementSnapshot(read, parties, who.name ?? '', todayYmd)
     const gap = hoursStatementGap(ask.from, ask.to, read.firstRecordedDay)
     const p: Record<string, unknown> = {
@@ -591,6 +598,7 @@ export async function prepareHoursStatementWrite(io: HoursStatementPrepareIo, ar
       basis: read.input.basis ?? 'paid',
       charge_rate: read.charge?.rate ?? null,
       charge_words: read.charge?.words ?? null,
+      labor_company: laborCompany,
       kind: read.input.kind,
       stated_days: statedDays,
       gap_from: gap?.from ?? null,

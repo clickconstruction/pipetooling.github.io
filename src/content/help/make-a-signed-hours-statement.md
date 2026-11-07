@@ -109,7 +109,7 @@ A signed row under **Hours statements** carries {{button:outline|Open the signed
 
 ## A sub's sheet lines
 
-A sub never punches the clock. Their work is on the job's sheets. The **Who** list names each sub on the job's sheets, with the count of sheets. Pick one and the paper reads the sheets' lines. Each sheet is one group. Each line shows the fixture, the agreed hours, the rate and the amount. Paid reads per sheet, with the payments recorded against it. The charged switch is held for a sub. A sub's paper is always as paid.
+A sub never punches the clock. Their work is on the job's sheets. The **Who** list names each sub on the job's sheets, with the count of sheets. Pick one and the paper reads the sheets' lines. Each sheet is one group. Each line shows the fixture, the agreed hours, the rate and the amount. Paid reads per sheet, with the payments recorded against it. The charged switch is held for a sub. A sub's paper is always as paid. Type the sub's company in **Company** when the paper should name it. The attestation then reads that the sub signs for the company. Leave it blank to name the sub alone.
 
 ## Putting the signed PDF in the job's Drive folder
 
