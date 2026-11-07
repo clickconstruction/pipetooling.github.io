@@ -18,6 +18,7 @@ export function supabaseHoursStatementDriveIo(signing: HoursStatementSigningIo):
       return await res.blob()
     },
     putInSentByUs: async (jobId, file) => ({ driveFileId: (await putJobFolderFile(jobId, 'sent', file)).driveFileId }),
-    markFiled: setHoursStatementDriveCopy,
+    // Called on the press, not at render: a smoke that mocks hoursStatementsIo without this export must still draw the section.
+    markFiled: (statementId, driveFileId) => setHoursStatementDriveCopy(statementId, driveFileId),
   }
 }
