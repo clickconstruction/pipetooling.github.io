@@ -271,7 +271,9 @@ PR 3 waits on neither. PR 4 waits on PR 1 and PR 3.
   a notice yet and nothing set aside, so the fold and the left-out list are still empty; the bids
   reader hit Gmail's rate limit on the morning of 11-07 and retried on its own. One gap seen: a known
   GC's new bid request landed on their starred bid (the star wins when the subject names no live bid),
-  so no *Bid it?* row asked about the new job. That is a follow-up of its own, not this card's. The
+  so no *Bid it?* row asked about the new job. That is a follow-up of its own, not this card's, built
+  the same day as v2.6647 (the star never takes a new invitation or a solicitation; `gmail-sync`
+  redeploy after the merge). The
   walk kit sends an estimate email and its reply, not an invitation or a newsletter, so the presses
   in How to verify wait on Todd's choice of how to send the test mail.
 - 2026-11-07, the walk: on Todd's pick the presses were made on real rows in New, in his signed-in

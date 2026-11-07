@@ -474,7 +474,7 @@ export default function TestReportModal({
           </div>
 
           <div style={{ ...field, fontSize: 12.5, color: 'var(--text-muted)' }}>
-            Certified by <strong style={{ color: 'var(--text-strong)' }}>{settings.certifierName}</strong> {settings.certifierLicense ? `(${settings.certifierLicense})` : ''} · change on Settings → Jobs &amp; billing → Test reports
+            Certified by <strong style={{ color: 'var(--text-strong)' }}>{settings.certifierName}</strong> {settings.certifierLicense ? `(${settings.certifierLicense})` : ''} · change on Settings → Jobs, bills and liens → Test reports
           </div>
 
           {hydro ? (

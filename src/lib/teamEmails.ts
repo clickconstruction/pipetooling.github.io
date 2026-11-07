@@ -310,7 +310,7 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     recipients: { roles: ['dev', 'master_technician', 'controller'], decidedBy: 'event', rule: 'The GC job’s project manager when they are on the money team, else the company’s owner.' },
     sampleSubject: () => 'Bill day for Sample Retail Shell is Oct 25',
     render: { kind: 'sample', sample: 'gc_office_notice' },
-    manage: { tabId: 'settings-jobs', anchorId: 'settings-jobs-gc-office-notices', label: 'Jobs & billing → Email the office’s GC notices' },
+    manage: { tabId: 'settings-jobs', anchorId: 'settings-jobs-gc-office-notices', label: 'Jobs, bills and liens → Email the office’s GC notices' },
     reflects: ['the GC job’s pay applications', 'its trades’ waivers'],
     guide: 'bill-the-customer-on-a-gc-job',
   },

@@ -148,7 +148,7 @@
     "sessions": "vite-node scripts/sessions-status.ts",
     "test": "vitest run",
     "e2e": "playwright test",
-    "walk": "vite-node scripts/walk/run.ts",
+    "walk": "vite-node scripts/walk/start.ts",
     "walk:bids": "node scripts/bids-live-walk.mjs",
     "lint": "eslint src --cache --cache-location .cache/eslint/ --cache-strategy content",
     "lint:fix": "eslint src --fix --cache --cache-location .cache/eslint/ --cache-strategy content",

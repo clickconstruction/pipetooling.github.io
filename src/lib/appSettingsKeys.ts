@@ -95,7 +95,7 @@ export const APP_SETTINGS_KEY_PHYSICAL_INVOICE_ISSUER_V1 = 'physical_invoice_iss
 
 /**
  * JSON in `value_text`: `TestReportSettings` (v2.3298) — the certifier, the letterhead lines and the
- * paper's text for hydrostatic / pinpoint / gas test reports. Office edits on Settings → Jobs & billing;
+ * paper's text for hydrostatic / pinpoint / gas test reports. Office edits on Settings → Jobs, bills and liens;
  * every field falls back to the kernel default (`_shared/testReport.ts`).
  */
 export const APP_SETTINGS_KEY_TEST_REPORT_SETTINGS_V1 = 'test_report_settings_v1' as const
