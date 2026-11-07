@@ -74,7 +74,7 @@ Scroll on the map to zoom. Drag it to move. Press {{button:outline|Central Texas
 
 A worker can sign a paper on what they did on the job and what the company paid for it. See [make a signed hours statement](/help/make-a-signed-hours-statement). On the **Evidence** tab, each job in **Proof the work happened** has a **Signed statements** line under it. It lists every statement made for the job. Only a dev and the controller see the statements and the presses. Everyone else sees the line say that only a dev or the controller can read them. Each shows its record, the worker, the period, the hours and where it stands.
 
-Press **Ask <name>…** to ask a worker who clocked on the job. The Hours statement window opens on that job with the worker picked. Send it for a signature from there.
+Press **Ask <name>…** to ask a worker who clocked on the job. A sub on the job's sheets is listed too, marked **on the sheets**. The Hours statement window opens on that job with the worker picked. A sub's paper reads their sheets' lines. Send it for a signature from there.
 
 Press {{button:outline|Add to evidence}} on a signed statement. The signed PDF is copied onto the matter under **Documents for the firm**. The copy is titled with its record and dated the day it was signed. One line says who signed for how many hours, where and when. The statement then shows {{button:outline|Show on Evidence ↗}}, which lands on the copy. The firm reads it with the other documents. **What goes to the firm** letters the signed statements as their own exhibit under field evidence.
 
