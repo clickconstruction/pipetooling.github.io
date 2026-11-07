@@ -46,6 +46,7 @@ export type NeedsYouSource =
   | 'unpricedWorkOrders'
   | 'jobKindGaps'
   | 'baselineGaps'
+  | 'lineBudgetsReview'
   | 'jobFollowups'
   | 'staleOpen'
   | 'capacityUnder'
@@ -98,6 +99,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'unpricedWorkOrders',
   'jobKindGaps',
   'baselineGaps',
+  'lineBudgetsReview',
   'jobFollowups',
   'staleOpen',
   'capacityUnder',
@@ -220,6 +222,7 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
       return canAccessBanking(role)
     case 'lienWaiversToSign':
     case 'robotSilence':
+    case 'lineBudgetsReview':
       return role === 'dev' || role === 'master_technician'
     case 'vehicleRecordGaps':
       return role === 'dev' || isAssistantLike(role)

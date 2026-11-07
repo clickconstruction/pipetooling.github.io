@@ -442,6 +442,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | 714–741 | `contract-missing`, `contract-stale` | `contractNudgeEnabled` | amber |
 | 743–755 | `work-orders-unpriced` | `unpricedWorkOrdersEnabled` | amber |
 | v2.6346 | `jobs-no-kind` | `jobKindGapsEnabled`, `jobKindGaps.count` (`useJobKindGaps` → `jobsWithNoKind`) | gray |
+| v2.6662 | `line-budgets-review` | `lineBudgetsReviewEnabled`, `lineBudgetsReview` (`useLineBudgetsReview` → `lineBudgetsReview`; the assumed, unstamped lines on the projects awarded in the last seven days, the owner's; its window `LineBudgetsReviewWindow`, punch list #234 PR 1c) | gray |
 | v2.6646 | `projects-no-baseline` | `baselineGapsEnabled`, `baselineGaps.count` (`useBaselineGaps` → `projectsWithNoBaseline`; the working projects with no `job_budgets` row carrying hours, punch list #234 PR 1a) | gray |
 | 757–771 | `jobs-stale-open` | `staleOpenEnabled`, `staleOpen` (`useJobFollowupNudge().idle`, the Follow-ups deck's idle cards, v2.5512; opens `?followups=idle`; Dashboard only since v2.6093, Quickfill's Job follow-ups station carrying it as its Idle lane) | amber |
 | 773–792 | `capacity-under` | `capacityUnderEnabled` | amber |

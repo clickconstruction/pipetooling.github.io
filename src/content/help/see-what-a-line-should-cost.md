@@ -42,6 +42,16 @@ A job often has several assumed lines that should read alike. Tune one, then car
 
 **Undo** sits beside the words until you close the panel. It puts the other lines back on the company split. A workbench line or a line you already tuned is never brushed.
 
+## Review the week's guesses
+
+Once a week the Needs You card on your Dashboard counts the assumed lines on the projects awarded that week. The line reads *4 assumed lines on 2 projects awarded this week*.
+
+1. Press {{button:outline|Review}}. A window lists each line with its job, its price and the split it reads.
+2. Press {{button:blue|Looks right · stamp 4 lines}}. Each is stamped reviewed with your name and stays on the company split.
+3. Or press **Tune** to open the first project and move the sliders.
+
+A stamped line never asks again. A line you tune is off the list by itself.
+
 ## The company's splits and the cost rate
 
 Open Settings → **Jobs & billing** → **Line budgets**. Only the owner changes it.
