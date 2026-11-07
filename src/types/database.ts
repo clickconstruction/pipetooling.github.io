@@ -16,6 +16,55 @@ export type Database = {
     Tables: {
       [_ in never]: never
     }
+      job_callbacks: {
+        Row: {
+          decided_at: string
+          decided_by: string | null
+          decided_by_name: string
+          first_job_id: string
+          second_job_id: string
+          verdict: string
+        }
+        Insert: {
+          decided_at?: string
+          decided_by?: string | null
+          decided_by_name?: string
+          first_job_id: string
+          second_job_id: string
+          verdict: string
+        }
+        Update: {
+          decided_at?: string
+          decided_by?: string | null
+          decided_by_name?: string
+          first_job_id?: string
+          second_job_id?: string
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_callbacks_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_callbacks_first_job_id_fkey"
+            columns: ["first_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_callbacks_second_job_id_fkey"
+            columns: ["second_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     Views: {
       [_ in never]: never
     }
@@ -30,6 +79,11 @@ export type Database = {
         Returns: Json
       }
     }
+      my_week: { Args: never; Returns: Json }
+      set_week_signal: {
+        Args: { p_signal: string; p_user_id: string }
+        Returns: Json
+      }
     Enums: {
       [_ in never]: never
     }
@@ -5465,7 +5519,6 @@ export type Database = {
           event_type: string
           id: string
           instance_id: string
-          percent: number | null
         }
         Insert: {
           actor_user_id?: string | null
@@ -5474,7 +5527,6 @@ export type Database = {
           event_type: string
           id?: string
           instance_id: string
-          percent?: number | null
         }
         Update: {
           actor_user_id?: string | null
@@ -5483,7 +5535,6 @@ export type Database = {
           event_type?: string
           id?: string
           instance_id?: string
-          percent?: number | null
         }
         Relationships: [
           {
@@ -5510,7 +5561,6 @@ export type Database = {
           created_at: string | null
           id: string
           notes: string | null
-          percent_complete: number
           reviewed_at: string | null
           reviewed_by: string | null
           scheduled_date: string
@@ -5522,7 +5572,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           notes?: string | null
-          percent_complete?: number
           reviewed_at?: string | null
           reviewed_by?: string | null
           scheduled_date: string
@@ -5534,7 +5583,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           notes?: string | null
-          percent_complete?: number
           reviewed_at?: string | null
           reviewed_by?: string | null
           scheduled_date?: string
@@ -5701,7 +5749,6 @@ export type Database = {
       }
       checklist_items: {
         Row: {
-          asks_for_photo: boolean
           created_at: string | null
           created_by_user_id: string
           due_date: string | null
@@ -5724,7 +5771,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          asks_for_photo?: boolean
           created_at?: string | null
           created_by_user_id: string
           due_date?: string | null
@@ -5747,7 +5793,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          asks_for_photo?: boolean
           created_at?: string | null
           created_by_user_id?: string
           due_date?: string | null
@@ -5831,40 +5876,34 @@ export type Database = {
       }
       checklist_tech_tree_group_tasks: {
         Row: {
-          asks_for_photo: boolean
           completed_at: string | null
           completed_by_user_id: string | null
           created_at: string
           estimated_days: number | null
           group_id: string
           id: string
-          percent_complete: number
           pinned_at: string | null
           sort_index: number
           title: string
         }
         Insert: {
-          asks_for_photo?: boolean
           completed_at?: string | null
           completed_by_user_id?: string | null
           created_at?: string
           estimated_days?: number | null
           group_id: string
           id?: string
-          percent_complete?: number
           pinned_at?: string | null
           sort_index?: number
           title: string
         }
         Update: {
-          asks_for_photo?: boolean
           completed_at?: string | null
           completed_by_user_id?: string | null
           created_at?: string
           estimated_days?: number | null
           group_id?: string
           id?: string
-          percent_complete?: number
           pinned_at?: string | null
           sort_index?: number
           title?: string
@@ -18272,55 +18311,6 @@ export type Database = {
             columns: ["taken_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      job_callbacks: {
-        Row: {
-          decided_at: string
-          decided_by: string | null
-          decided_by_name: string
-          first_job_id: string
-          second_job_id: string
-          verdict: string
-        }
-        Insert: {
-          decided_at?: string
-          decided_by?: string | null
-          decided_by_name?: string
-          first_job_id: string
-          second_job_id: string
-          verdict: string
-        }
-        Update: {
-          decided_at?: string
-          decided_by?: string | null
-          decided_by_name?: string
-          first_job_id?: string
-          second_job_id?: string
-          verdict?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_callbacks_decided_by_fkey"
-            columns: ["decided_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "job_callbacks_first_job_id_fkey"
-            columns: ["first_job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "job_callbacks_second_job_id_fkey"
-            columns: ["second_job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -33495,202 +33485,6 @@ export type Database = {
           },
         ]
       }
-      task_criteria: {
-        Row: {
-          body: string
-          checklist_item_id: string | null
-          created_at: string
-          created_by: string | null
-          id: string
-          retired_at: string | null
-          roadmap_task_id: string | null
-          sort_index: number
-        }
-        Insert: {
-          body: string
-          checklist_item_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          retired_at?: string | null
-          roadmap_task_id?: string | null
-          sort_index?: number
-        }
-        Update: {
-          body?: string
-          checklist_item_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          retired_at?: string | null
-          roadmap_task_id?: string | null
-          sort_index?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_criteria_checklist_item_id_fkey"
-            columns: ["checklist_item_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_criteria_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_criteria_roadmap_task_id_fkey"
-            columns: ["roadmap_task_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_tech_tree_group_tasks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      task_criteria_checks: {
-        Row: {
-          checked_at: string
-          checked_by: string | null
-          criterion_id: string
-          id: string
-          instance_id: string
-          photo_id: string | null
-        }
-        Insert: {
-          checked_at?: string
-          checked_by?: string | null
-          criterion_id: string
-          id?: string
-          instance_id: string
-          photo_id?: string | null
-        }
-        Update: {
-          checked_at?: string
-          checked_by?: string | null
-          criterion_id?: string
-          id?: string
-          instance_id?: string
-          photo_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_criteria_checks_checked_by_fkey"
-            columns: ["checked_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_criteria_checks_criterion_id_fkey"
-            columns: ["criterion_id"]
-            isOneToOne: false
-            referencedRelation: "task_criteria"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_criteria_checks_instance_id_fkey"
-            columns: ["instance_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_instances"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_criteria_checks_photo_id_fkey"
-            columns: ["photo_id"]
-            isOneToOne: false
-            referencedRelation: "task_photos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      task_photos: {
-        Row: {
-          by_name: string
-          by_user_id: string | null
-          bytes: number
-          caption: string
-          created_at: string
-          criterion_id: string | null
-          drive_file_id: string | null
-          fail_why: string | null
-          filed_at: string | null
-          height: number
-          id: string
-          instance_id: string
-          kind: string
-          original_bytes: number
-          percent_at: number | null
-          storage_path: string | null
-          taken_at: string
-          width: number
-        }
-        Insert: {
-          by_name?: string
-          by_user_id?: string | null
-          bytes?: number
-          caption?: string
-          created_at?: string
-          criterion_id?: string | null
-          drive_file_id?: string | null
-          fail_why?: string | null
-          filed_at?: string | null
-          height?: number
-          id?: string
-          instance_id: string
-          kind?: string
-          original_bytes?: number
-          percent_at?: number | null
-          storage_path?: string | null
-          taken_at?: string
-          width?: number
-        }
-        Update: {
-          by_name?: string
-          by_user_id?: string | null
-          bytes?: number
-          caption?: string
-          created_at?: string
-          criterion_id?: string | null
-          drive_file_id?: string | null
-          fail_why?: string | null
-          filed_at?: string | null
-          height?: number
-          id?: string
-          instance_id?: string
-          kind?: string
-          original_bytes?: number
-          percent_at?: number | null
-          storage_path?: string | null
-          taken_at?: string
-          width?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_photos_by_user_id_fkey"
-            columns: ["by_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_photos_criterion_id_fkey"
-            columns: ["criterion_id"]
-            isOneToOne: false
-            referencedRelation: "task_criteria"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_photos_instance_id_fkey"
-            columns: ["instance_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_instances"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       team_board_acks: {
         Row: {
           acked_at: string
@@ -37747,10 +37541,6 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: boolean
       }
-      can_see_checklist_instance: {
-        Args: { p_instance_id: string }
-        Returns: boolean
-      }
       can_see_sharing_master: {
         Args: { sharing_master_id: string }
         Returns: boolean
@@ -37765,17 +37555,9 @@ export type Database = {
         Returns: boolean
       }
       can_view_inspection_portal_credentials: { Args: never; Returns: boolean }
-      can_work_checklist_instance: {
-        Args: { p_instance_id: string }
-        Returns: boolean
-      }
       can_write_bid_custom_costs: { Args: never; Returns: boolean }
       can_write_job_budget: { Args: { p_job_id: string }; Returns: boolean }
       can_write_payment_promises: { Args: never; Returns: boolean }
-      can_write_task_criteria: {
-        Args: { p_item_id: string; p_task_id: string }
-        Returns: boolean
-      }
       charge_standings: {
         Args: never
         Returns: {
@@ -41768,7 +41550,6 @@ export type Database = {
       }
       my_partner_partnership_id: { Args: never; Returns: string }
       my_sub_portal_address: { Args: never; Returns: Json }
-      my_week: { Args: never; Returns: Json }
       name_contact: {
         Args: {
           p_contact_id: string
@@ -41975,7 +41756,6 @@ export type Database = {
       }
       plan_part_can_see: { Args: { p_part_id: string }; Returns: boolean }
       plan_part_can_write: { Args: { p_part_id: string }; Returns: boolean }
-      plan_part_crew_can_see: { Args: { p_part_id: string }; Returns: boolean }
       plan_part_mirror_job_links: {
         Args: { p_part_id: string }
         Returns: undefined
@@ -42922,10 +42702,6 @@ export type Database = {
           p_other_usd?: number
           p_subs_usd: number
         }
-        Returns: Json
-      }
-      set_week_signal: {
-        Args: { p_signal: string; p_user_id: string }
         Returns: Json
       }
       settle_step_commitment: {
