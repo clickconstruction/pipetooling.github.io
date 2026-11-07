@@ -61,7 +61,7 @@ BEGIN
   END IF;
 
   -- Today through thirty days out. A license already past its expiry gets no notice; the Expired section is its place.
-  IF v_row.date_of_expiry < CURRENT_DATE OR v_row.date_of_expiry > (CURRENT_DATE + 30) THEN
+  IF v_row.date_of_expiry < public.app_today() OR v_row.date_of_expiry > (public.app_today() + 30) THEN
     RETURN NULL;
   END IF;
 
@@ -168,8 +168,8 @@ BEGIN
     SELECT l.id
     FROM public.person_licenses l
     WHERE l.expiry_dispatch_notified_at IS NULL
-      AND l.date_of_expiry >= CURRENT_DATE
-      AND l.date_of_expiry <= (CURRENT_DATE + 30)
+      AND l.date_of_expiry >= public.app_today()
+      AND l.date_of_expiry <= (public.app_today() + 30)
     ORDER BY l.date_of_expiry, l.person_name, l.id
   LOOP
     v_dr := public.file_license_expiry_notice(v_lic.id, v_from, v_link);
