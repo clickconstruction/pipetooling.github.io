@@ -78,6 +78,18 @@ function byJobs(row: DeskFacts, kind: 'customer' | 'lead' | 'sub'): { desk: Desk
   return { desk: 'dispatch', why: ON_THE_LINE[kind] }
 }
 
+/**
+ * The same read for a row that is not the New lane's (PR 2 of #258, v2.6616): a Needs a reply row and the thread's
+ * folded sort card hold the sender and the line they wrote on, not a sort, so the facts are gathered from the contact
+ * (the kind, the jobs) and the line (the box, and what a reader read from an invitation when the line carries it).
+ * The rule itself is unchanged: an invitation is Estimating's, an unnamed sender nobody's, the rest by kind and jobs.
+ */
+export function deskReadOf(contact: { kind: DeskFacts['kind']; jobIds?: ReadonlyArray<string> | null }, line: { mailbox?: DeskFacts['mailbox']; invitation?: unknown } | null | undefined): { desk: Desk; why: string } | null {
+  const raw = line?.invitation
+  const invitation = raw && typeof raw === 'object' && typeof (raw as { kind?: unknown }).kind === 'string' && (raw as { kind: string }).kind in INVITATION_WHY ? (raw as NonNullable<DeskFacts['invitation']>) : null
+  return deskRead({ sort: invitation ? 'bid' : 'has', kind: contact.kind, jobIds: [...(contact.jobIds ?? [])], mailbox: line?.mailbox ?? null, invitation })
+}
+
 /** The band's hover: the desk's word, then why: "Estimating · An invitation to bid." */
 export function deskTitle(read: { desk: Desk; why: string }): string {
   return `${DESK_WORDS[read.desk].word} · ${read.why}`

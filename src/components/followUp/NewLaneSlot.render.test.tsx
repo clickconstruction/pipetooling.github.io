@@ -525,6 +525,18 @@ describe('over the lines the card folds to one row (v2.6476, every screen since 
     await waitFor(() => expect(io.startBid).toHaveBeenCalledWith('m-invite', expect.objectContaining({ customerId: 'c-ridgeway', projectName: 'Oak Hill Clinic, Boerne' })))
   })
 
+  it('the folded card wears the desk band on its left, 18 wide with the card’s corner, and the open card does not (PR 2 of #258, v2.6616)', async () => {
+    renderShort(SENDER, fakeIo({ loadKnown: vi.fn(async () => ({ customers: [{ id: 'c-ridgeway', name: 'Ridgeway Builders', emails: ['dale@ridgeway.example'] }] })) }, ROWS_INVITE))
+    const bid = await screen.findByRole('region', { name: 'Sort: Bid it?' })
+    const band = within(bid).getByRole('img', { name: 'Estimating · An invitation to bid.' })
+    expect(band.dataset.deskBand).toBe('estimating')
+    expect(band.style.width).toBe('18px')
+    expect(band.style.borderRadius).toBe('9px 0 0 9px')
+    expect(bid.style.paddingLeft).toBe('calc(18px + 0.75rem)')
+    fireEvent.click(await within(bid).findByRole('button', { name: 'Other ways ▾' }))
+    expect(within(screen.getByRole('region', { name: 'Sort: Bid it?' })).queryByRole('img', { name: /Estimating/ })).toBeNull()
+  })
+
   it('Other ways opens the whole card in place, and Fold takes it back to one row', async () => {
     renderShort(SENDER, fakeIo({ loadKnown: vi.fn(async () => ({ customers: [{ id: 'c-ridgeway', name: 'Ridgeway Builders', emails: ['dale@ridgeway.example'] }] })) }, ROWS_INVITE))
     fireEvent.click(await screen.findByRole('button', { name: 'Other ways ▾' }))
