@@ -21,6 +21,10 @@ import {
   type SubPortalStringKey,
 } from '../lib/subPortal/subPortalI18n'
 import { isSubPortalSheetQueued, subPortalRailStep } from '../lib/subPortal/subPortalRail'
+import { SUB_OWED_SHAPE_PARAM, subOwedBands, subOwedChip, subOwedDayWords, type SubOwedView } from '../lib/subPortal/subOwedBands'
+import { SubOwedBandsHead } from '../components/subPortal/SubOwedBandsHead'
+import { SideBySide, sideBySideRequested } from '../components/prototypes/SideBySide'
+import { useOptionalAuth } from '../hooks/useAuth'
 import { SUB_PORTAL_FOCUS_PARAM, isSubPortalFocused, parseSubPortalFocus, subPortalFocusDomId, type SubPortalFocus } from '../lib/subPortal/subPortalFocus'
 import { PlansPill, SubPortalGuideButton, SubPortalGuideSheet } from '../components/subPortal/SubPortalGuide'
 import { SubPortalDatePicker } from '../components/subPortal/SubPortalDatePicker'
@@ -142,6 +146,11 @@ export default function SubPortal() {
   const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
   // "Show me on their portal" from the office's sheet story: scroll to the card and pulse a halo.
   const focus = useMemo(() => parseSubPortalFocus(params.get(SUB_PORTAL_FOCUS_PARAM)), [params])
+  // Punch list #217 (field-2): `?shape=1` draws Owed to you as its rows for anyone with the link; `?sbs=1` draws
+  // today's head over the rows, on the sample token or for a signed-in dev.
+  const auth = useOptionalAuth()
+  const owedView: SubOwedView =
+    sideBySideRequested(params.toString()) && (sample != null || auth?.role === 'dev') ? 'both' : params.get(SUB_OWED_SHAPE_PARAM) === '1' ? 'shape' : 'today'
   const [lang, setLang] = useState<SubPortalLang>('en')
   const [state, setState] = useState<PageState>({ kind: 'loading' })
   /** Bumped by Try again: the statement reads again. */
@@ -308,7 +317,7 @@ export default function SubPortal() {
         )}
 
         {state.kind === 'ready' && (
-          <SubPortalStatement payload={state.payload} lang={lang} t={t} submitToken={submitToken} focus={focus} />
+          <SubPortalStatement payload={state.payload} lang={lang} t={t} submitToken={submitToken} focus={focus} owedView={owedView} />
         )}
       </div>
     </div>
@@ -347,14 +356,18 @@ function SubPortalStatement({
   t,
   submitToken,
   focus,
+  owedView,
 }: {
   payload: SubPortalPayload
   lang: SubPortalLang
   t: T
   submitToken: string
   focus: SubPortalFocus | null
+  /** Punch list #217 (field-2): the head as today, as its rows under two bands, or both one above the other. */
+  owedView: SubOwedView
 }) {
   const payRunDayLabel = formatPayRunDay(payload.payRun.day, lang)
+  const owedBands = useMemo(() => subOwedBands(payload.sheets, payload.payRun.nextRun, payload.totals.open, t('workOrder')), [payload, t])
   // "How do I get paid?" (v2.2922): the guide at the very bottom, a sheet on phones and a dialog on desktop.
   const [guideOpen, setGuideOpen] = useState(false)
   const queuedNow = useMemo(() => {
@@ -374,26 +387,39 @@ function SubPortalStatement({
           <div style={{ fontSize: 14.5, marginTop: 3 }}>{payload.subName}</div>
           <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{t('currentAsOfToday')}</div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: MUTED }}>
-            {t('owedToYou')}
-          </div>
-          <div style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
-            {money(payload.totals.open)}
-          </div>
-          <div style={{ height: 3, background: COPPER, marginTop: 5 }} />
-          {queuedNow > 0 && payRunDayLabel && payload.payRun.nextRun ? (
-            <div style={{ fontSize: 12, color: PAPER_GREEN, fontWeight: 700, marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>
-              {money(queuedNow)} — {t('queuedForRun', { day: payRunDayLabel })}
+        {(() => {
+          const todayHead = (
+            <div data-sub-owed-today style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: MUTED }}>
+                {t('owedToYou')}
+              </div>
+              <div style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
+                {money(payload.totals.open)}
+              </div>
+              <div style={{ height: 3, background: COPPER, marginTop: 5 }} />
+              {queuedNow > 0 && payRunDayLabel && payload.payRun.nextRun ? (
+                <div style={{ fontSize: 12, color: PAPER_GREEN, fontWeight: 700, marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>
+                  {money(queuedNow)} — {t('queuedForRun', { day: payRunDayLabel })}
+                </div>
+              ) : null}
+              {laterAmount > 0 && queuedNow > 0 ? (
+                <div style={{ fontSize: 12, color: MUTED, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                  {money(laterAmount)} —{' '}
+                  {lang === 'es' ? 'después (vea cada trabajo abajo)' : 'later (see each job below)'}
+                </div>
+              ) : null}
             </div>
-          ) : null}
-          {laterAmount > 0 && queuedNow > 0 ? (
-            <div style={{ fontSize: 12, color: MUTED, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-              {money(laterAmount)} —{' '}
-              {lang === 'es' ? 'después (vea cada trabajo abajo)' : 'later (see each job below)'}
+          )
+          // Punch list #217 (field-2): the head as its rows under two bands, for anyone with `?shape=1`; a dev or the sample token with `?sbs=1` sees both.
+          if (owedView === 'today') return todayHead
+          const bandsHead = <SubOwedBandsHead bands={owedBands} lang={lang} t={t} payRunDayLabel={payRunDayLabel} />
+          // The rows need room: the block takes the rest of the line, and the whole line on a phone.
+          return (
+            <div data-sub-owed-shape-frame style={{ flex: '1 1 300px', minWidth: 0, maxWidth: 460 }}>
+              {owedView === 'shape' ? bandsHead : <SideBySide today={todayHead} shape={bandsHead} label={lang === 'es' ? 'Con las bandas' : 'With the bands'} testId="sub-owed-side-by-side" />}
             </div>
-          ) : null}
-        </div>
+          )
+        })()}
       </div>
 
       <div data-screen-only style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginTop: 16 }}>
@@ -445,6 +471,7 @@ function SubPortalStatement({
             submitToken={submitToken}
             preparedOn={payload.preparedOn}
             payRunDayLabel={payRunDayLabel}
+            nextRun={payload.payRun.nextRun}
             focused={isSubPortalFocused(focus, 'sheet', sheet.id)}
             phone={payload.company.phone || null}
           />
@@ -709,6 +736,7 @@ function SheetCard({
   submitToken,
   preparedOn,
   payRunDayLabel,
+  nextRun,
   focused,
   phone,
 }: {
@@ -718,6 +746,8 @@ function SheetCard({
   submitToken: string
   preparedOn: string
   payRunDayLabel: string | null
+  /** The next pay run's day, for the chip's own rule (punch list #217). */
+  nextRun: string | null
   focused: boolean
   /** The office's number, offered beside a refusal. */
   phone: string | null
@@ -823,7 +853,15 @@ function SheetCard({
   const queued = isSubPortalSheetQueued({ stage, payableAfter: sheet.payableAfter })
   const stageIndex = subPortalRailStep({ stage, payableAfter: sheet.payableAfter })
   const railLabels = [t('railWork'), t('railWalk'), t('railCustomer'), t('railPaid')]
-  const chip = queued
+  // Punch list #217 (field-2): the chip follows the money's place, by the same rule as the head's bands — the run's own
+  // day for money in the next run (*Queued for Fri Oct 30*), the sheet's own day for money later (*Queued for Dec 15*),
+  // and the stage's chip when there is no date. The rail and the sentence keep the work's stage.
+  const moneyChip = subOwedChip({ open: sheet.open, payableAfter: sheet.payableAfter }, nextRun)
+  const chip = moneyChip
+    ? moneyChip.kind === 'next_run'
+      ? { label: t('chipQueued', { day: subOwedDayWords(moneyChip.ymd, lang, { weekday: true }) }), bg: '#e8f3ea', fg: PAPER_GREEN }
+      : { label: t('chipQueued', { day: subOwedDayWords(moneyChip.ymd, lang) }), bg: NOTE_BAND, fg: MUTED }
+    : queued
     ? { label: payRunDayLabel ? t('chipQueued', { day: payRunDayLabel }) : t('chipQueuedNoDay'), bg: '#e8f3ea', fg: PAPER_GREEN }
     : stage === 'working'
       ? { label: t('inProgress'), bg: '#e7effa', fg: '#1d4e89' }
