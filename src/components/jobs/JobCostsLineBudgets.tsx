@@ -1,6 +1,7 @@
 import { useMemo, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { calcLineBudget, DEFAULT_LINE_BUDGET_SETTINGS, lineBudgetEntryOf, lineBudgetFor, sumLineBudgets, LINE_BUDGET_GLYPH } from '../../lib/jobs/lineBudgets'
+import { calcLineBudget, lineBudgetEntryOf, lineBudgetFor, sumLineBudgets, LINE_BUDGET_GLYPH } from '../../lib/jobs/lineBudgets'
+import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import type { Database } from '../../types/database'
 
 /**
@@ -10,7 +11,6 @@ import type { Database } from '../../types/database'
  * read from the line's own columns and its own percent. Spent per line waits on
  * the stage attribution (PR 1b); until then spent reads once, for the job.
  */
-const settings = DEFAULT_LINE_BUDGET_SETTINGS
 type Fixture = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
 
 const usd0 = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
@@ -43,6 +43,7 @@ type Props = {
 }
 
 export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jobId = null, isProject }: Props) {
+  const { settings } = useLineBudgetSettings()
   const lines = useMemo(
     () =>
       fixtures
@@ -53,9 +54,9 @@ export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jo
           // A line's own percent only (the superintendent's line card, #234 PR 3); the job's is never borrowed per line.
           return { id: f.id, name: f.name, priceUsd, entry, pctDone: f.progress_pct != null ? Number(f.progress_pct) : null, calc: calcLineBudget(priceUsd, entry, settings) }
         }),
-    [fixtures],
+    [fixtures, settings],
   )
-  const sums = useMemo(() => sumLineBudgets(lines, settings), [lines])
+  const sums = useMemo(() => sumLineBudgets(lines, settings), [lines, settings])
   // Only a project carries budgets (#238's kind, punch list #234 PR 1a); a caller that does not know the kind leaves an ordered stage to stand in.
   const project = isProject ?? fixtures.some((f) => f.stage_kind === 'order')
   if (lines.length === 0 || !project) return null

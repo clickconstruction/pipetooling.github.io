@@ -13,7 +13,7 @@ import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { withLiveJobFormValues, type JobCostsLiveValues } from '../../lib/jobs/jobCostsLiveInputs'
 import { budgetForBurn, resolveJobBudget, spendByComponent, type JobBudgetAwardColumns, type JobBudgetRowLike } from '../../lib/jobs/jobBudget'
 import { jobKindOfRow } from '../../lib/jobs/jobKind'
-import { DEFAULT_LINE_BUDGET_SETTINGS } from '../../lib/jobs/lineBudgets'
+import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import { baselineReading } from '../../lib/bids/bidBaselineRates'
 import { baselineKeptWords, buildCostsVerdict, pctDoneWords } from '../../lib/jobs/jobCostsVerdict'
 import { buildMoneyRows } from '../../lib/jobs/jobMoneyTable'
@@ -102,6 +102,7 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
   // The budgets at award (punch list #234 PR 1a): the job's kind, and the book's reading at its price today.
   const isProject = jobKindOfRow({ ...job, fixtures: (job.fixtures ?? []).map((f, i) => ({ id: f.id, name: f.name, count: f.count, line_unit_price: f.line_unit_price, sequence_order: f.sequence_order ?? i, stage_kind: f.stage_kind })) }).kind === 'project'
   const bookRates = useJobBaselineRates(includeTeamLabor && isProject)
+  const { settings: lineBudgetSettings } = useLineBudgetSettings()
   const kept = useJobBaseline(job.id, includeTeamLabor)
   const { crewRate } = useBidCrewRate(includeTeamLabor)
   // v2.5043: the margin the linked bid was priced at, beside the direct margin at completion.
@@ -232,7 +233,7 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
     <>
       {includeTeamLabor ? (
         verdict ? (
-          <JobCostsVerdict verdict={verdict} canWrite={canWrite} budget={budget} linkedBid={linkedBid} onOpenBidCounts={linkedBid ? () => navigate(`/bids?tab=counts&bidId=${encodeURIComponent(linkedBid.id)}`) : null} onOpenBidLabor={linkedBid ? () => navigate(`/bids?tab=labor&bidId=${encodeURIComponent(linkedBid.id)}`) : null} doorway={doorway} kept={kept} jobFinished={finished} onPrint={packet ? printPacket : null} currentUserId={user?.id ?? null} bookNow={bookNow} bookRateUsd={crewRate?.companyRate ?? DEFAULT_LINE_BUDGET_SETTINGS.rateUsd} isProject={isProject} />
+          <JobCostsVerdict verdict={verdict} canWrite={canWrite} budget={budget} linkedBid={linkedBid} onOpenBidCounts={linkedBid ? () => navigate(`/bids?tab=counts&bidId=${encodeURIComponent(linkedBid.id)}`) : null} onOpenBidLabor={linkedBid ? () => navigate(`/bids?tab=labor&bidId=${encodeURIComponent(linkedBid.id)}`) : null} doorway={doorway} kept={kept} jobFinished={finished} onPrint={packet ? printPacket : null} currentUserId={user?.id ?? null} bookNow={bookNow} bookRateUsd={crewRate?.companyRate ?? lineBudgetSettings.rateUsd} isProject={isProject} />
         ) : (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>{inputsState.kind === 'error' ? 'Could not load the job’s costs.' : 'Loading…'}</p>
         )

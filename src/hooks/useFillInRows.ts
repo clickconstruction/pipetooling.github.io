@@ -22,7 +22,7 @@ import { compareJobKindRows, jobKindFillInRows, type JobKindFillInRow } from '..
 import { jobKindFillInIo, type JobKindFillInIo } from '../lib/needsYou/fillInJobKindsIo'
 import { baselineFillInRows, compareBaselineRows, type BaselineFillInRow } from '../lib/needsYou/fillInBaselines'
 import { baselineFillInIo, type BaselineFillInIo } from '../lib/needsYou/fillInBaselinesIo'
-import { DEFAULT_LINE_BUDGET_SETTINGS } from '../lib/jobs/lineBudgets'
+import { readLineBudgetSettings } from '../lib/jobs/lineBudgetSettingsStore'
 
 /** The rows the deck can fill, every kind built so far. */
 export type FillInRow = LostBidFillInRow | VehicleFillInRow | JobAccountFillInRow | ContractFillInRow | ContractMissingFillInRow | PurchaseFillInRow | MoveWindowFillInRow | WorkOrderFillInRow | JobKindFillInRow | BaselineFillInRow
@@ -165,7 +165,7 @@ export function useFillInRows(role: UserRole | null, enabled: boolean, io: FillI
         baselinesOn
           ? (io.baselines ?? baselineFillInIo)
               .fetchSources()
-              .then((s) => baselineFillInRows(s, DEFAULT_LINE_BUDGET_SETTINGS.rateUsd))
+              .then((s) => baselineFillInRows(s, readLineBudgetSettings().rateUsd))
               .catch(() => [] as BaselineFillInRow[])
           : Promise.resolve([] as BaselineFillInRow[]),
       ])

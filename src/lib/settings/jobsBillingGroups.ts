@@ -28,6 +28,7 @@ export type JobsBillingSlug =
   | 'job-book'
   | 'gc-card'
   | 'gc-cutoff'
+  | 'line-budgets'
   | 'stage-checklists'
   | 'machine-templates'
   | 'photos'
@@ -87,6 +88,7 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
       card('job-book', 'Job Book', 'the Collect Payment line items', 'dev-master-office'),
       card('gc-card', 'GC jobs · pay by card', 'the Pay by card switch on certified bills', 'dev-master'),
       card('gc-cutoff', 'GC jobs · the trades’ cut-off', 'days before bill day', 'money-team'),
+      card('line-budgets', 'Line budgets', 'the split a typed line gets until the owner tunes it, and the cost rate the hours use', 'dev-master'),
     ],
   },
   {

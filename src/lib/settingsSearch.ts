@@ -109,6 +109,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Job address city line breaks', keywords: ['city names', 'address parser', 'localities'], tabId: 'settings-jobs', anchorId: 'settings-jobs-city-lines' },
   { label: 'Property county suggestions', keywords: ['county suggestions', 'city county pairs'], tabId: 'settings-jobs', anchorId: 'settings-jobs-county-suggestions' },
   { label: 'Owner of record from the roll', keywords: ['owner of record', 'appraisal roll', 'save owners'], tabId: 'settings-jobs', anchorId: 'settings-jobs-owner-of-record' },
+  { label: 'Line budgets', keywords: ['line budget', 'labor split', 'materials split', 'cost rate', 'burdened rate', 'target margin', 'assumed split'], tabId: 'settings-jobs', anchorId: 'settings-jobs-line-budgets' },
   { label: 'Office county for sworn statements', keywords: ['office county', 'venue', 'sworn statement county', 'notary'], tabId: 'settings-company', anchorId: 'settings-company-office-county' },
   { label: 'Uncollectible list', keywords: ['uncollectible', 'given up on', 'accountant', 'write off'], tabId: 'settings-jobs', anchorId: 'settings-jobs-uncollectible' },
   { label: 'GC office notices', keywords: ['office notices', 'project manager notice', 'architect reminder'], tabId: 'settings-jobs', anchorId: 'settings-jobs-gc-office-notices' },
