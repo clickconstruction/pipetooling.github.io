@@ -42,7 +42,9 @@ import {
   noteGcAuthorizedDirectPay,
   startLetterTwo,
   noteOwnerCall,
+  notePromiseOnNotice,
 } from '../../lib/jobs/lienDeskIo'
+import { addJobPaymentPromise } from '../../lib/jobs/paymentChaseIo'
 import { defaultWordNote, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
 import { confirmLienPenSignature, disownLienPenSignature, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload, type LienSignCodeStatus } from '../../lib/jobs/lienDeskSignIo'
@@ -68,7 +70,7 @@ import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
 import LienOwnerCallDialog from './LienOwnerCallDialog'
 import LienCourtesyWindow from './LienCourtesyWindow'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { COURTESY_BUTTON, COURTESY_FROM_DAY, courtesyFooterSentence, courtesyMaySend, courtesyOutcomeWords, type CourtesyFacts } from '../../lib/jobs/lienCourtesyNotice'
+import { COURTESY_BUTTON, COURTESY_FROM_DAY, PROMISE_BUTTON, courtesyFooterSentence, courtesyMaySend, courtesyOutcomeWords, type CourtesyFacts, type CourtesyPromise } from '../../lib/jobs/lienCourtesyNotice'
 import { courtesyByJobFrom } from '../../lib/jobs/lienCourtesyDesk'
 import { buildLienReminders, LIEN_REMINDERS_EMPTY } from '../../lib/jobs/lienReminders'
 import { lienNoticeTimeline, lienTimelineTodayWords, type LienTimelineRow } from '../../lib/jobs/lienNoticeTimeline'
@@ -504,6 +506,11 @@ export default function LienDeskModal({
   const [letterTwoMenu, setLetterTwoMenu] = useState(false)
   const [gcOkayOpen, setGcOkayOpen] = useState(false)
   const [gcOkayNote, setGcOkayNote] = useState('')
+  // What they promised for the rest (punch list #274, PR 3): the footer's inline form while they are paying it down.
+  const [promiseOpen, setPromiseOpen] = useState(false)
+  const [promiseYmd, setPromiseYmd] = useState('')
+  const [promiseAmount, setPromiseAmount] = useState('')
+  const [promiseNote, setPromiseNote] = useState('')
   // The owner's call (v2.3767): the three questions, recorded on the first packet.
   const [ownerCallOpen, setOwnerCallOpen] = useState(false)
   // The courtesy notice (punch list #231): the window over the sent footer, with the facts it was opened on, and the addresses it finds.
@@ -651,7 +658,7 @@ export default function LienDeskModal({
     return findOnDesk(find, sentIndex).sent.filter((h) => !shown.has(h.jobId))
   }, [finding, find, sentIndex, visible])
   // The courtesy notice per job with a sent notice (punch list #231): one kernel with the Accounts Receivable chips (`lienCourtesyDesk.ts`), so the row and the chip agree. No read of its own.
-  const courtesyByJob = useMemo(() => (data ? courtesyByJobFrom({ todayYmd, letterTwoByJob: data.letterTwoByJob, items: data.items, entries: data.queue.entries, jobsById: data.jobsById, addressesById: data.addressesById, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob }) : {}), [data, todayYmd])
+  const courtesyByJob = useMemo(() => (data ? courtesyByJobFrom({ todayYmd, letterTwoByJob: data.letterTwoByJob, items: data.items, entries: data.queue.entries, jobsById: data.jobsById, addressesById: data.addressesById, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob, paymentsByJob: data.paymentsByJob, promisesByJob: data.promisesByJob }) : {}), [data, todayYmd])
   // Do now (punch list #82; Next up until v2.4630): the queues this desk already holds, folded into one ordered list. No read of its own.
   // The REMINDERS strip (punch list #262): every sent notice's rung from the two statuses above; the Do now rail draws its counts, a rung pressed lists its names. No read of its own.
   const reminders = useMemo(() => (data ? buildLienReminders({ courtesyByJob, letterTwoByJob: data.letterTwoByJob, jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId) }) : LIEN_REMINDERS_EMPTY), [data, courtesyByJob])
@@ -681,6 +688,10 @@ export default function LienDeskModal({
         claim: null,
         affidavitFiled: aff?.pile === 'filed',
         todayWords: lienTimelineTodayWords({ courtesyState: courtesy?.state ?? 'none', courtesyReason: courtesy?.reason, letterState: two.state, paidInFull, waitingForAnswer: courtesy?.waitingForAnswer }),
+        // Paying it down (PR 3 of #274): the pause's end and their promise, from the courtesy's own reading.
+        pauseUntil: courtesy?.paying?.until ?? null,
+        promisedYmd: courtesy?.paying?.promisedYmd ?? null,
+        promisedAmount: courtesy?.paying?.promise?.amount ?? null,
       })
     },
     [data, courtesyByJob, todayYmd],
@@ -865,6 +876,13 @@ export default function LienDeskModal({
       setPile(t.pile)
       setCalendarJobFilter(null)
       setSelectedJobId(t.jobId)
+      // Record what they promised (PR 3 of #274): the row's press opens the footer's form on the notice it selects.
+      if (row.action === 'promise') {
+        setPromiseYmd('')
+        setPromiseAmount('')
+        setPromiseNote('')
+        setPromiseOpen(true)
+      }
     }
   }
   const pickKind = async (next: PropertyKind) => {
@@ -3208,6 +3226,29 @@ export default function LienDeskModal({
           }
         })
       }
+      // Record what they promised (punch list #274, PR 3): the day goes on the job, as the Stages board's promise does, so every board reads one; the amount and their words stay on the notice.
+      const promiseDay = /^\d{4}-\d{2}-\d{2}$/.test(promiseYmd) ? promiseYmd : null
+      const promiseAmountN = promiseAmount.replace(/[$,\s]/g, '') === '' ? null : Number(promiseAmount.replace(/[$,\s]/g, ''))
+      const promiseAmountBad = promiseAmountN != null && (!Number.isFinite(promiseAmountN) || promiseAmountN <= 0)
+      const recordPromise = () => {
+        if (!first || promiseAmountBad) return
+        const record: CourtesyPromise = { at: new Date().toISOString(), by: authName, ymd: promiseDay, amount: promiseAmountN, note: promiseNote.trim() }
+        void run(
+          PROMISE_BUTTON,
+          async () => {
+            if (promiseDay) await addJobPaymentPromise({ jobId: selected.jobId, ymd: promiseDay, saidBy: null, channel: null, note: promiseNote.trim() || null })
+            await notePromiseOnNotice(first, record)
+          },
+          promiseDay ? `Recorded — the desk asks again ${formatYmdMonthDay(promiseDay)}.` : 'Recorded — the desk asks again a week after the payment.',
+        ).then((ok) => {
+          if (ok) {
+            setPromiseOpen(false)
+            setPromiseYmd('')
+            setPromiseAmount('')
+            setPromiseNote('')
+          }
+        })
+      }
       footer = (
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-lien-since-sent>
@@ -3232,8 +3273,19 @@ export default function LienDeskModal({
             {signoff ? <span data-lien-counsel-signoff style={signoff.state === 'signed_off' ? { color: 'var(--text-green-800)' } : signoff.state === 'declined' ? { color: 'var(--text-red-600)' } : undefined}>Counsel: <strong style={{ color: 'inherit' }}>{signoffLine || 'not asked'}</strong></span> : null}
             <span data-lien-owner-called>Owner called: <strong style={{ color: 'var(--text-700)' }}>{call ? ownerCallWords(call, formatYmdMonthDay, formatUsdNoCents) : 'not yet'}</strong>{call && affidavitPileFor(call) ? <span style={{ ...chip('var(--bg-green-tint)', 'var(--text-green-800)'), marginLeft: 6 }}>Pile {affidavitPileFor(call)}</span> : null}</span>
             {courtesy && courtesy.state !== 'none' ? <span data-lien-courtesy-state={courtesy.state}>Courtesy notice: <strong style={{ color: courtesy.state === 'held' ? 'var(--text-red-600)' : 'var(--text-700)' }}>{courtesy.state === 'due' ? (courtesy.lastSentAt ? courtesy.words : 'not yet') : courtesy.state === 'waiting' ? `from day ${COURTESY_FROM_DAY}` : courtesy.state === 'held' ? courtesy.reason : courtesy.words}</strong></span> : null}
+            {courtesy?.paying?.promise ? <span data-lien-promise>They promised: <strong style={{ color: 'var(--text-700)' }}>{[courtesy.paying.promise.amount ? formatUsdNoCents(courtesy.paying.promise.amount) : '', courtesy.paying.promise.ymd ? `by ${formatYmdMonthDay(courtesy.paying.promise.ymd)}` : '', courtesy.paying.promise.note ? `“${courtesy.paying.promise.note}”` : ''].filter(Boolean).join(' · ') || 'recorded'}{courtesy.paying.promise.by ? ` · ${courtesy.paying.promise.by}` : ''}</strong></span> : null}
           </div>
-          {gcOkayOpen ? (
+          {promiseOpen && courtesy?.state === 'paying' ? (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }} data-lien-promise-form>
+              <span>What they promised for the rest ({formatUsdNoCents(courtesy.paying?.stillOwed ?? jobBalance)} still owed):</span>
+              <input type="date" value={promiseYmd} onChange={(ev) => setPromiseYmd(ev.target.value)} aria-label="The day they promised" style={{ padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
+              <input value={promiseAmount} onChange={(ev) => setPromiseAmount(ev.target.value)} placeholder={formatUsdNoCents(courtesy.paying?.stillOwed ?? jobBalance)} aria-label="The amount they promised" inputMode="decimal" style={{ width: 110, padding: '4px 8px', border: `1px solid ${promiseAmountBad ? 'var(--text-red-600)' : 'var(--border-strong)'}`, borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
+              <input value={promiseNote} onChange={(ev) => setPromiseNote(ev.target.value)} placeholder="their words, who said it" aria-label="Their words" style={{ flex: '1 1 180px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
+              <button type="button" onClick={recordPromise} disabled={busy || promiseAmountBad || (!promiseDay && !promiseAmountN && !promiseNote.trim())} style={btn('green', busy || promiseAmountBad || (!promiseDay && !promiseAmountN && !promiseNote.trim()))} data-lien-promise-record>Record it ▸</button>
+              <button type="button" onClick={() => setPromiseOpen(false)} style={btn('plain')}>Cancel</button>
+              <span style={{ flexBasis: '100%', color: 'var(--text-muted)' }}>{promiseDay ? `The desk asks again ${formatYmdMonthDay(promiseDay)}. The Stages board reads the same day.` : `With no day the desk asks again ${courtesy.paying ? formatYmdMonthDay(courtesy.paying.until) : 'a week after the payment'}.`} The lien’s day does not move.</span>
+            </div>
+          ) : gcOkayOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
               <span>The GC's written okay for the owner to pay us — where it is and when:</span>
               <input value={gcOkayNote} onChange={(ev) => setGcOkayNote(ev.target.value)} placeholder="email from Harborline, Sep 15" aria-label="The GC's okay — where and when" style={{ flex: '1 1 200px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
@@ -3250,16 +3302,17 @@ export default function LienDeskModal({
           ) : (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               <span>
-                {courtesy && (courtesy.state === 'due' || courtesy.state === 'sent' || courtesy.state === 'affidavit_week') ? courtesyFooterSentence(courtesy, demandMoney(String(courtesyClaim))) : lt?.state === 'sent' ? 'The attorney’s letter went out. The next step is the affidavit, on its own date.' : lt?.state === 'gc_authorized' ? 'The GC said the owner may pay us — take the check against a release; no second letter.' : lt?.state === 'paid' || jobBalance <= 0.005 ? 'Paid — nothing more to send.' : lt && letterTwoIsDue(lt) ? `The attorney’s letter goes 10–14 days after the packet when the GC has neither paid nor authorized a direct payment — day ${lt.day}${lt.state === 'overdue' ? ', past the 14' : ''}. Same form, same two recipients, the GC copied by the same mail.` : `The attorney’s letter goes 10–14 days after the packet if the GC has neither paid nor authorized a direct payment${lt?.day != null ? ` — day ${lt.day} today` : ''}.`}
+                {courtesy && (courtesy.state === 'due' || courtesy.state === 'sent' || courtesy.state === 'affidavit_week' || courtesy.state === 'paying') ? courtesyFooterSentence(courtesy, demandMoney(String(courtesyClaim))) : lt?.state === 'sent' ? 'The attorney’s letter went out. The next step is the affidavit, on its own date.' : lt?.state === 'gc_authorized' ? 'The GC said the owner may pay us — take the check against a release; no second letter.' : lt?.state === 'paid' || jobBalance <= 0.005 ? 'Paid — nothing more to send.' : lt && letterTwoIsDue(lt) ? `The attorney’s letter goes 10–14 days after the packet when the GC has neither paid nor authorized a direct payment — day ${lt.day}${lt.state === 'overdue' ? ', past the 14' : ''}. Same form, same two recipients, the GC copied by the same mail.` : `The attorney’s letter goes 10–14 days after the packet if the GC has neither paid nor authorized a direct payment${lt?.day != null ? ` — day ${lt.day} today` : ''}.`}
               </span>
               <span style={{ flex: 1 }} />
               {office && first && signoff && signoff.state !== 'asked' && jobBalance > 0.005 ? <button type="button" onClick={() => { setSignoffText(defaultSignoffAsk({ gcName: gc?.name ?? '', amount: `$${Math.round(jobBalance).toLocaleString('en-US')}` })); setSignoffOpen(true) }} disabled={busy} style={btn('plain', busy)} data-lien-desk-ask-signoff title="The owner wants to pay Click direct while the GC is silent — counsel signs off per job before the office takes the check (counsel's memo)">Ask counsel to sign off…</button> : null}
               {office && first ? <button type="button" onClick={() => setOwnerCallOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-owner-call-door>{call ? 'The owner called again…' : 'Record the owner’s call…'}</button> : null}
+              {office && first && courtesy?.state === 'paying' ? <button type="button" onClick={() => setPromiseOpen(true)} disabled={busy} style={btn(courtesy.paying?.promise ? 'plain' : 'amber', busy)} data-lien-promise-door title="They are paying it down. Record the day and the amount they gave for the rest; the desk asks again on that day. The day also reads on the Stages board.">{courtesy.paying?.promise ? 'They promised again…' : `${PROMISE_BUTTON}…`}</button> : null}
               {office && first && !lt?.gcAuthorized && jobBalance > 0.005 && lt?.state !== 'sent' ? <button type="button" onClick={() => setGcOkayOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-gc-okay>The GC authorized direct pay…</button> : null}
               {office && first && courtesy && courtesyMaySend(courtesy) && courtesyFacts ? <button type="button" onClick={openCourtesy} disabled={busy} style={btn(courtesy.state === 'due' ? 'amber' : 'plain', busy)} data-lien-courtesy-door data-courtesy-state={courtesy.state} title={courtesy.state === 'sent' ? 'One courtesy went. Send it again by hand only when a channel bounced; the desk does not ask for a second.' : courtesy.state === 'affidavit_week' ? 'The affidavit comes first this week; a courtesy may still go by hand.' : 'A plain reminder by email and text: the notice stands, the day the lien goes on unless it is paid, the pay link, your number. Not a statutory paper, never certified mail.'}>{courtesy.state === 'sent' ? 'Send a courtesy notice again' : COURTESY_BUTTON} ▸</button> : null}
               {office && first && jobBalance > 0.005 && lt?.state !== 'sent' && lt?.state !== 'in_flight' ? (
                 <span style={{ position: 'relative' }}>
-                  <button type="button" onClick={() => setLetterTwoMenu((o) => !o)} disabled={busy} aria-haspopup="menu" aria-expanded={letterTwoMenu} style={lt && letterTwoIsDue(lt) ? { ...btn('amber', busy) } : btn('plain', busy)} data-lien-letter-two-door>Send the attorney’s letter ▸</button>
+                  <button type="button" onClick={() => setLetterTwoMenu((o) => !o)} disabled={busy} aria-haspopup="menu" aria-expanded={letterTwoMenu} style={lt && letterTwoIsDue(lt) && courtesy?.state !== 'paying' ? { ...btn('amber', busy) } : btn('plain', busy)} data-lien-letter-two-door data-letter-waits={courtesy?.state === 'paying' ? 'paying' : undefined} title={courtesy?.state === 'paying' ? 'They are paying it down, so the desk does not ask for the attorney’s letter. The office may still send it when the payment was token.' : undefined}>Send the attorney’s letter ▸</button>
                   {letterTwoMenu ? (
                     <>
                       <div onClick={() => setLetterTwoMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 5 }} />

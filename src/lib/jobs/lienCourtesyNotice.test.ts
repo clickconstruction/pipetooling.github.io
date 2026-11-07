@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   COURTESY_BUTTON,
   COURTESY_FROM_DAY,
+  PROMISE_BUTTON,
+  addDaysYmd,
+  courtesyPause,
+  parsePromiseRecord,
+  withPromiseRecord,
   courtesyCounts,
   courtesyEmailText,
   courtesyFooterSentence,
@@ -271,5 +276,59 @@ describe('after the attorney’s letter went out (v2.6383)', () => {
     expect(courtesyFooterSentence(s, '$4,850.00')).toMatch(/your number\. The attorney’s letter sent Oct 24 · unresponsive\.$/)
     const afterOne = courtesyStatus({ letterTwo: sentTwo as never, records: [{ at: '2026-11-01T15:00:00Z', by: 'Taunya', lienDay: '2026-11-16', claim: 4850, to: [] }], openBalance: 4850, todayYmd: '2026-11-02', affidavit })
     expect(courtesyFooterSentence(afterOne, '$4,850.00')).toMatch(/after 7 days of silence the attorney’s letter sent Oct 24 · unresponsive\. Send it again by hand only when a channel bounced\.$/)
+  })
+})
+
+describe('paying it down (punch list #274, PR 3)', () => {
+  // The packet's day 0 is Oct 24 (the clock); today is Nov 2.
+  const paid = [{ ymd: '2026-10-30', amount: 2000 }]
+  it('a payment since the packet that leaves money owed pauses the reminders for a week: paying, not due, the press kept off the footer', () => {
+    const s = courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [], openBalance: 2850, todayYmd: TODAY, affidavit, payments: paid, formatDay: (d) => d })
+    expect(s).toMatchObject({ state: 'paying', words: 'paying it down · $2,000 paid 2026-10-30 · $2,850 still owed', reason: '' })
+    expect(s.paying).toEqual({ lastPaidYmd: '2026-10-30', lastAmount: 2000, stillOwed: 2850, until: '2026-11-06', promisedYmd: null, promise: null })
+    expect(courtesyIsDue(s)).toBe(false)
+    expect(courtesyMaySend(s)).toBe(false)
+    // After one courtesy went, the payment still pauses it.
+    expect(courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [record], openBalance: 2850, todayYmd: TODAY, affidavit, payments: paid }).state).toBe('paying')
+  })
+  it('a payment before the packet is not an answer; the week over, the clocks run again; paid in full closes it; the affidavit’s week still wins', () => {
+    expect(courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [], openBalance: 2850, todayYmd: TODAY, affidavit, payments: [{ ymd: '2026-10-20', amount: 2000 }] }).state).toBe('due')
+    expect(courtesyStatus({ letterTwo: letterTwo({ day: 13 }), records: [], openBalance: 2850, todayYmd: '2026-11-06', affidavit, payments: paid }).state).toBe('due')
+    expect(courtesyStatus({ letterTwo: letterTwo({ day: 13 }), records: [record], openBalance: 2850, todayYmd: '2026-11-06', affidavit, payments: paid }).state).toBe('sent')
+    expect(courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [], openBalance: 0, todayYmd: TODAY, affidavit, payments: [{ ymd: '2026-10-30', amount: 4850 }] })).toMatchObject({ state: 'closed', reason: 'paid' })
+    expect(courtesyStatus({ letterTwo: letterTwo({ day: 19 }), records: [], openBalance: 2850, todayYmd: '2026-11-12', affidavit, payments: [{ ymd: '2026-11-10', amount: 2000 }] }).state).toBe('affidavit_week')
+  })
+  it('a promised day after the payment ends the pause on that day, from the job or from the notice; one before the payment is not for the rest', () => {
+    const job = courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [], openBalance: 2850, todayYmd: TODAY, affidavit, payments: paid, promisedYmd: '2026-11-20', formatDay: (d) => d })
+    expect(job).toMatchObject({ state: 'paying', words: 'paying it down · $2,000 paid 2026-10-30 · $2,850 still owed · the rest promised by 2026-11-20' })
+    expect(job.paying).toMatchObject({ until: '2026-11-20', promisedYmd: '2026-11-20' })
+    // Past the week but before the promised day: still paying.
+    expect(courtesyStatus({ letterTwo: letterTwo({ day: 16 }), records: [], openBalance: 2850, todayYmd: '2026-11-09', affidavit, payments: paid, promisedYmd: '2026-11-20' }).state).toBe('paying')
+    // On the promised day the desk asks again.
+    expect(courtesyStatus({ letterTwo: letterTwo({ day: 27 }), records: [], openBalance: 2850, todayYmd: '2026-11-20', affidavit: { ...affidavit, deadline: '2026-12-15' }, payments: paid, promisedYmd: '2026-11-20' }).state).toBe('due')
+    const promise = { at: '2026-11-01T15:00:00Z', by: 'Grace', ymd: '2026-11-18', amount: 2850, note: 'Dana said the check goes out the 15th' }
+    const notice = courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [], openBalance: 2850, todayYmd: TODAY, affidavit, payments: paid, promise })
+    expect(notice.paying).toMatchObject({ until: '2026-11-18', promisedYmd: '2026-11-18', promise })
+    expect(courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [], openBalance: 2850, todayYmd: TODAY, affidavit, payments: paid, promisedYmd: '2026-10-28' }).paying).toMatchObject({ until: '2026-11-06', promisedYmd: null })
+    // The newest payment restarts the week.
+    expect(courtesyPause({ payments: [...paid, { ymd: '2026-11-01', amount: 500 }], todayYmd: TODAY, openBalance: 2350 }, '2026-10-24')).toMatchObject({ lastPaidYmd: '2026-11-01', lastAmount: 500, until: '2026-11-08' })
+    expect(courtesyPause({ payments: [], todayYmd: TODAY, openBalance: 2850 }, '2026-10-24')).toBeNull()
+  })
+  it('the footer says they are paying, when the desk asks again, and that the attorney’s letter waits', () => {
+    const week = courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [], openBalance: 2850, todayYmd: TODAY, affidavit, payments: paid })
+    expect(courtesyFooterSentence(week, '$2,850.00')).toBe('They are paying it down: $2,000 paid Oct 30, $2,850 still owed. A partial payment is an answer, so no reminder goes. The desk asks again Nov 6, a week after the payment, unless you record what they promised. The attorney’s letter waits while they pay; the office may still send it when the payment was token. The lien’s day does not move.')
+    const promised = courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [], openBalance: 2850, todayYmd: TODAY, affidavit, payments: paid, promisedYmd: '2026-11-20' })
+    expect(courtesyFooterSentence(promised, '$2,850.00')).toContain('They promised the rest by Nov 20; the desk asks again that day.')
+    expect(PROMISE_BUTTON).toBe('Record what they promised')
+  })
+  it('keeps the promise on the sent item and reads it back, dropping the malformed', () => {
+    const promise = { at: '2026-11-01T15:00:00Z', by: 'Grace', ymd: '2026-11-18', amount: 2850, note: 'the 15th' }
+    const fields = withPromiseRecord({ courtesy: [], notice: {} }, promise)
+    expect(fields).toEqual({ courtesy: [], notice: {}, promise })
+    expect(parsePromiseRecord(fields.promise)).toEqual(promise)
+    expect(parsePromiseRecord({ at: '2026-11-01T15:00:00Z', ymd: 'soon', amount: -4 })).toEqual({ at: '2026-11-01T15:00:00Z', by: '', ymd: null, amount: null, note: '' })
+    expect(parsePromiseRecord(null)).toBeNull()
+    expect(parsePromiseRecord({ by: 'Grace' })).toBeNull()
+    expect(addDaysYmd('2026-10-28', 7)).toBe('2026-11-04')
   })
 })

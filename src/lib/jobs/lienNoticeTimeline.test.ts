@@ -85,4 +85,18 @@ describe('lienTimelineTodayWords — the today row', () => {
     expect(lienTimelineTodayWords({ courtesyState: 'sent', letterState: 'waiting', paidInFull: false, waitingForAnswer: true })).toContain('waits a week')
     expect(lienTimelineTodayWords({ courtesyState: 'closed', letterState: 'paid', paidInFull: true })).toBe('Closed. Nothing is owed and nothing is left to send.')
   })
+  it('paying it down (PR 3 of #274): the payment row names the pause’s end, the letter’s window waits, their promise is a row, and today says the letter waits', () => {
+    const rows = lienNoticeTimeline(facts({ payments: [{ ymd: '2026-11-03', amount: 4000 }], openBalance: 8045, pauseUntil: '2026-11-10', todayWords: 'You are here. They are paying it down. The attorney’s letter waits while they pay.' }))
+    expect(rows.find((r) => r.kind === 'payment')).toMatchObject({ title: '$4,000 paid · $8,045 still owed.', status: 'paying', next: '3 days ago · reminders paused until Nov 10' })
+    expect(rows.find((r) => r.key === 'letter')).toMatchObject({ status: 'open', statusWords: 'waits', next: 'the attorney’s letter waits while they pay · the office may still send it when the payment was token' })
+    expect(rows.map((r) => r.key)).toEqual(['mailed', 'courtesy', 'letter', 'pay:2026-11-03:0', 'today', 'week', 'lien'])
+    const promised = lienNoticeTimeline(facts({ payments: [{ ymd: '2026-11-03', amount: 4000 }], openBalance: 8045, pauseUntil: '2026-11-13', promisedYmd: '2026-11-13', promisedAmount: 8045 }))
+    expect(promised.find((r) => r.key === 'promise')).toMatchObject({ kind: 'ours', from: '2026-11-13', dayFrom: 30, title: 'They promised the rest, $8,045, by this day.', chip: 'their promise', status: 'soon', statusWords: 'promised · in 7 days', next: 'on Nov 13 the desk asks again' })
+    expect(promised.map((r) => r.key)).toEqual(['mailed', 'courtesy', 'letter', 'pay:2026-11-03:0', 'today', 'week', 'promise', 'lien'])
+    // The promised day passed with money still owed: the pause is over and the row says so.
+    const passed = lienNoticeTimeline(facts({ payments: [{ ymd: '2026-10-28', amount: 4000 }], openBalance: 8045, pauseUntil: null, promisedYmd: '2026-11-04' }))
+    expect(passed.find((r) => r.key === 'promise')).toMatchObject({ status: 'late', statusWords: 'promise passed', next: '2 days past their word · the reminders run again' })
+    expect(passed.find((r) => r.key === 'letter')!.status).toBe('late')
+    expect(lienTimelineTodayWords({ courtesyState: 'paying', letterState: 'overdue', paidInFull: false })).toBe('You are here. They are paying it down. The attorney’s letter waits while they pay.')
+  })
 })

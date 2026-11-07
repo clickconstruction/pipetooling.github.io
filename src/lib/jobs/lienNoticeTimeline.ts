@@ -1,6 +1,8 @@
-import { COURTESY_AFFIDAVIT_MARGIN_DAYS, COURTESY_FROM_DAY } from './lienCourtesyNotice'
+import { COURTESY_AFFIDAVIT_MARGIN_DAYS, COURTESY_FROM_DAY, addDaysYmd } from './lienCourtesyNotice'
 import { LETTER_TWO_BY_DAY, LETTER_TWO_FROM_DAY } from './lienLetterTwo'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
+
+export { addDaysYmd }
 
 /**
  * One sent notice's timeline, top to bottom (punch list #274, PR 2; Grace's board of 2026-11-06):
@@ -57,12 +59,12 @@ export type LienNoticeTimelineFacts = {
   affidavitFiled: boolean
   /** The words for today's row: what is true now, from the courtesy's and the letter's own words. */
   todayWords: string
-}
-
-export function addDaysYmd(ymd: string, n: number): string {
-  const [y, m, d] = ymd.split('-').map(Number)
-  const t = new Date(Date.UTC(y!, (m ?? 1) - 1, (d ?? 1) + n))
-  return t.toISOString().slice(0, 10)
+  /** Paying it down (PR 3 of #274): the day the reminders' pause ends, 'YYYY-MM-DD'; null or absent when they are not paying. */
+  pauseUntil?: string | null
+  /** The day they promised the rest by, when one is on record; null or absent when none. */
+  promisedYmd?: string | null
+  /** The amount they promised for the rest; null or absent when they gave none. */
+  promisedAmount?: number | null
 }
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
@@ -78,6 +80,8 @@ export function lienNoticeTimeline(f: LienNoticeTimelineFacts): LienTimelineRow[
   const todayDay = dayOf(today)
   const rows: LienTimelineRow[] = []
   const paidInFull = f.openBalance <= 0.005 && f.payments.length > 0
+  // Paying it down (PR 3 of #274): while the pause runs, the letter's window waits and the payment row names the day the desk asks again.
+  const paying = !paidInFull && Boolean(f.pauseUntil && today < f.pauseUntil)
 
   rows.push({
     key: 'mailed', kind: 'law', from: day0, dayFrom: 0,
@@ -110,6 +114,7 @@ export function lienNoticeTimeline(f: LienNoticeTimelineFacts): LienTimelineRow[
     const title = 'The attorney’s letter should go in this window: the stronger letter our attorney wrote.'
     const detail = `Counsel’s rule, ${LETTER_TWO_FROM_DAY} to ${LETTER_TWO_BY_DAY} days after the notice. After ${fmt(lTo)} it still goes, but every day later weakens it.`
     if (f.letter.state === 'in_flight') rows.push({ ...letterBase, title, detail, status: 'open', statusWords: 'in hand', next: f.letter.inFlightWords ?? 'drafted on the notice, waiting to go out' })
+    else if (paying) rows.push({ ...letterBase, title, detail, status: 'open', statusWords: 'waits', next: 'the attorney’s letter waits while they pay · the office may still send it when the payment was token' })
     else if (today < lFrom) rows.push({ ...letterBase, title, detail, status: 'soon', statusWords: `due in ${plural(between(today, lFrom), 'day')}`, next: `from ${fmt(lFrom)} the row offers Send the attorney’s letter` })
     else if (today <= lTo) rows.push({ ...letterBase, title, detail, status: 'open', statusWords: 'due now', next: `${plural(between(today, lTo), 'day')} left in the window` })
     else rows.push({ ...letterBase, title, detail, status: 'late', statusWords: 'late · act now', next: `${plural(between(lTo, today), 'day')} past the window · it still goes, weaker each day` })
@@ -124,9 +129,22 @@ export function lienNoticeTimeline(f: LienNoticeTimelineFacts): LienTimelineRow[
       title: `${usd(p.amount)} paid${full ? ' · paid in full.' : last ? ` · ${usd(f.openBalance)} still owed.` : '.'}`,
       detail: full ? 'The claim is zero on every paper. The affidavit leaves the Affidavits list by itself.' : 'A payment on the job, applied to the oldest bill first. Every paper now claims the remainder.',
       chip: 'payment', status: full ? 'paid' : 'paying', statusWords: full ? '✓ paid' : 'paying',
-      next: `${plural(between(p.ymd, today), 'day')} ago${full ? ' · the ladder closed' : last ? ' · the remainder is the claim' : ''}`,
+      next: `${plural(between(p.ymd, today), 'day')} ago${full ? ' · the ladder closed' : last && paying ? ` · reminders paused until ${fmt(f.pauseUntil!)}` : last ? ' · the remainder is the claim' : ''}`,
     })
   })
+
+  // What they promised for the rest (PR 3 of #274): their word is a row with its day; the desk asks again on it, and the lien's day does not move for it.
+  if (f.promisedYmd && !paidInFull) {
+    const n = between(today, f.promisedYmd)
+    rows.push({
+      key: 'promise', kind: 'ours', from: f.promisedYmd, dayFrom: dayOf(f.promisedYmd),
+      title: `They promised the rest${f.promisedAmount ? `, ${usd(f.promisedAmount)},` : ''} by this day.`,
+      detail: 'Their word, recorded on the notice. A promise moves no legal day; only the money does.',
+      chip: 'their promise',
+      status: n >= 0 ? 'soon' : 'late', statusWords: n >= 0 ? `promised · in ${plural(n, 'day')}` : 'promise passed',
+      next: n >= 0 ? `on ${fmt(f.promisedYmd)} the desk asks again` : `${plural(-n, 'day')} past their word · the reminders run again`,
+    })
+  }
 
   rows.push({ key: 'today', kind: 'today', from: today, dayFrom: todayDay, title: f.todayWords, detail: '', chip: '', status: 'now', statusWords: 'now', next: '' })
 
@@ -165,6 +183,7 @@ export function lienTimelineTodayWords(input: { courtesyState: string; courtesyR
   if (input.paidInFull) return 'Closed. Nothing is owed and nothing is left to send.'
   if (input.letterState === 'sent') return 'You are here. The attorney’s letter went; the affidavit is next.'
   if (input.letterState === 'in_flight') return 'You are here. The attorney’s letter is drafted and waiting to go out.'
+  if (input.courtesyState === 'paying') return 'You are here. They are paying it down. The attorney’s letter waits while they pay.'
   if (input.courtesyState === 'affidavit_week') return 'You are here. It is the affidavit’s week: draft it, the leader signs it before a notary, file it.'
   if (input.courtesyState === 'held') return `You are here. The courtesy is held: ${input.courtesyReason || 'the lien cannot go on yet'}.`
   if (input.courtesyState === 'sent' && input.waitingForAnswer) return 'You are here. The courtesy went; the desk waits a week for an answer.'
