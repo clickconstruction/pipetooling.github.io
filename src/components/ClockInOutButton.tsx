@@ -49,6 +49,9 @@ import OfflineRetryPanel from './OfflineRetryPanel'
 import { ClockOutMachinesStop } from './machines/MachineStops'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import CrewReviewDeck from './team-feedback/CrewReviewDeck'
+import { YourWeekSheet, weekSheetAlreadyDealt } from './techWeek/YourWeekSheet'
+import { isLastClockOutOfWeek } from '../lib/techWeek/weekSheet'
+import { payWeekContaining } from '../lib/payWeekAnchor'
 import TrialVerdictPrompt from './team-feedback/TrialVerdictPrompt'
 import QuickTimeAddSheet from './clock/QuickTimeAddSheet'
 import { QUICK_ADD_ROLES, canUseQuickAdd } from '../lib/clock/quickTimeAdd'
@@ -201,6 +204,24 @@ type Props = {
   oneLine?: boolean
 }
 
+/**
+ * Is this the week's last clock-out (v2.6606, punch list #255)? The person's schedule blocks inside the pay week, read
+ * under their own policy; no block after today means the week is done. Dealt once a week on this device. A failed
+ * read deals nothing.
+ */
+async function weekSheetDue(userId: string): Promise<boolean> {
+  try {
+    const todayYmd = todayYmdInAppTz()
+    const week = payWeekContaining(todayYmd)
+    if (weekSheetAlreadyDealt(userId, week.start)) return false
+    const { data, error } = await supabase.from('job_schedule_blocks').select('work_date').eq('assignee_user_id', userId).gte('work_date', week.start).lte('work_date', week.end).limit(200)
+    if (error) return false
+    return isLastClockOutOfWeek({ todayYmd, week, blockDays: ((data ?? []) as Array<{ work_date: string }>).map((b) => b.work_date) })
+  } catch {
+    return false
+  }
+}
+
 export default function ClockInOutButton({
   userId,
   userName,
@@ -310,6 +331,8 @@ export default function ClockInOutButton({
   /** Try-out loop: trial helpers this person led today, dealt at their own clock-out before the crew deck. */
   const [trialVerdictCards, setTrialVerdictCards] = useState<TrialVerdictCard[]>([])
   const [crewDeckAfterTrial, setCrewDeckAfterTrial] = useState(false)
+  // Your week's sheet (v2.6606, punch list #255): dealt once after the week's last clock-out, on a day the crew deck does not deal.
+  const [weekSheet, setWeekSheet] = useState<{ clockedOutIso: string } | null>(null)
   const [salaryUiActive, setSalaryUiActive] = useState(false)
   /** Leave report overlay from Review before clock out (scheduled jobs missing a report today). */
   const [clockOutLeaveReportJob, setClockOutLeaveReportJob] = useState<ClockOutLeaveReportJobPick | null>(null)
@@ -1240,17 +1263,20 @@ export default function ClockInOutButton({
         showToast(KEPT_ON_PHONE_WORDS, 'success')
         return
       }
-      const [, elig, trialRows] = await Promise.all([
+      const [, elig, trialRows, lastOfWeek] = await Promise.all([
         fetchSessions(),
         getTeamFeedbackEligibility(userId),
         // The leader's day with a trial helper is over even if the helper is still clocked in.
         canEverLeadTrialHelper(role) ? fetchTrialVerdictFeed(true).catch(() => []) : Promise.resolve([]),
+        weekSheetDue(userId),
       ])
       const trialPending = pendingTrialCards(buildTrialVerdictCards(trialRows, { todayYmd: todayYmdInAppTz(), prefixMap }))
       if (trialPending.length > 0) {
         setTrialVerdictCards(trialPending)
         setCrewDeckAfterTrial(elig.eligible)
       } else if (elig.eligible) setTeamFeedbackOpen(true)
+      // The sheet skips a day the crew deck deals and a day with a trial verdict waiting.
+      else if (lastOfWeek) setWeekSheet({ clockedOutIso: new Date().toISOString() })
     } catch (e) {
       // Timeout: the request wasn't cancelled — the punch may still land when
       // the server recovers, so say so instead of implying failure.
@@ -2689,6 +2715,7 @@ export default function ClockInOutButton({
       userId={userId}
       source="clock_out_prompt"
     />
+    {weekSheet && userId ? <YourWeekSheet open userId={userId} clockedOutIso={weekSheet.clockedOutIso} onClose={() => setWeekSheet(null)} /> : null}
     </>
   )
 }

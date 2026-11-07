@@ -46,6 +46,14 @@ A callback counts only after the office confirms it. The office reads the return
 
 Everyone clocked on the first job shares the callback, not the lead alone.
 
+## After your last clock-out of the week
+
+Your last clock-out of the week brings up one sheet. It says when you clocked out and your hours this week. Under that it says your signal and how far it moved. The customer's words of the week sit there too.
+
+Press {{button:blue|Have a good weekend}} to close it.
+
+The app knows it is your last clock-out when nothing is on your schedule for the rest of the week. With no schedule at all, it is Friday's clock-out. On a day the crew review deck deals, the sheet stays away.
+
 ## The customer's words
 
 When a customer gives your job four or five stars this week, their words sit on the card. See [see what a customer said about my work](/help/see-what-a-customer-said-about-my-work).
