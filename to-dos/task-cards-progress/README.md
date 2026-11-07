@@ -2,7 +2,7 @@
 name: "Task cards: % done instead of a tick, Done when… lines, photos filed in a Tasks folder in Drive, and the Monday email of your people's week"
 number: 273
 group: close
-status: card and mock-up 2026-11-06 on worktree-task-cards-progress · Taunya took the six picks as recommended the same day · the second look that evening revised the photo pick, gave a % its words and drew the office's Dashboard section as a question for her · on her "Build it all" the whole train was built the same day on one branch, PR 1 the ground (v2.6592, #7144, merged, its migration pushed), then v2.6595 the Done when… lines, v2.6597 the ring, v2.6598 the Roadmap's fractions, v2.6600 Your people on the Dashboard, v2.6601 the Tasks folder in Drive, v2.6602 the photos on a card, v2.6603 the Monday email of your people's week (its migration pushed and `people-week-email`, `photo-save` and `job-drive-folders` deployed right after their merges) and v2.6605 the docs · one piece left, the outbox for a shot with no signal
+status: card and mock-up 2026-11-06 on worktree-task-cards-progress · Taunya took the six picks as recommended the same day · the second look that evening revised the photo pick, gave a % its words and drew the office's Dashboard section as a question for her · on her "Build it all" the whole train was built the same day on one branch, PR 1 the ground (v2.6592, #7144, merged, its migration pushed), then v2.6595 the Done when… lines, v2.6597 the ring, v2.6598 the Roadmap's fractions, v2.6600 Your people on the Dashboard, v2.6601 the Tasks folder in Drive, v2.6602 the photos on a card, v2.6603 the Monday email of your people's week (its migration pushed and `people-week-email`, `photo-save` and `job-drive-folders` deployed right after their merges) and v2.6605 the docs · one piece left, the outbox for a shot with no signal, carried by #279
 summary: >
   A task card is done or not done today: a tick on Checklist → Today, the Dashboard's My Inbox and
   the Roadmap's task card. Taunya wants the card to carry how far along it is, what done means, and
@@ -13,7 +13,7 @@ summary: >
   its Shared Drive, one folder per card; and a Monday email a person subscribes to lists the people
   they picked and what each moved that week, the cards, the roadmap and the jobs. Two migrations,
   three function deploys, a train of six.
-next: one piece of PR 4b left, a shot taken with no signal waiting on the phone through the outbox as a job photo does (v2.6370's pattern; today the tile says the phone has no signal and the person takes it again) · Taunya's first week with the ring, the photos and the Monday email says what else it missed
+next: one piece of PR 4b left, now its own card #279 (a task photo taken with no signal waits on the phone through the outbox as a job photo does) · Taunya's first week with the ring, the photos and the Monday email says what else it missed
 size: L as a train of six (M · M · M · M · L · S), built as nine PRs
 blocker: none · shipped 2026-11-06
 opinion: build PRs 1 to 3 in one sitting, since one migration carries all three and the card reads wrong with a percent column and no ring; the photos and the email each stand alone after that
