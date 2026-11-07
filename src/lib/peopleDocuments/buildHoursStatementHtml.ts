@@ -17,7 +17,10 @@
  */
 
 import { PAY_REPORT_ADDRESS, PAY_REPORT_EIN, PAY_REPORT_EMPLOYER_NAME } from '../../constants/payReportEmployerHeader'
-import { hoursStatementMoney, hoursStatementRoundHours, type HoursStatement, type HoursStatementDay } from '../people/hoursStatement'
+import { HOURS_STATEMENT_NOTE_FITS, HOURS_STATEMENT_NOTE_FITS_WITH_RATE, hoursStatementHours2, hoursStatementMoney, hoursStatementUniformRate, type HoursStatement, type HoursStatementDay } from '../people/hoursStatement'
+
+// The paper's shape lives in the kernel since v2.6629, so the signed PDF draws the same one; re-exported for this file's readers.
+export { HOURS_STATEMENT_NOTE_FITS, HOURS_STATEMENT_NOTE_FITS_WITH_RATE, hoursStatementHours2, hoursStatementUniformRate }
 
 export type HoursStatementHtmlContext = {
   statement: HoursStatement
@@ -34,38 +37,12 @@ export type HoursStatementHtmlContext = {
   company?: { name: string; ein: string | null; address: string }
 }
 
-/** Characters of a note that sit on one line in the note column; past it the note takes its own line under the day. */
-export const HOURS_STATEMENT_NOTE_FITS = 68
-/** The same with the Rate column drawn, which narrows the note column. */
-export const HOURS_STATEMENT_NOTE_FITS_WITH_RATE = 58
-
 const esc = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 const money = (n: number | null) => (n == null ? '' : hoursStatementMoney(n))
 
-/** `8.00`, `2.17`, `26.17`: hours on the paper, always to two decimals. */
-export const hoursStatementHours2 = (h: number): string => hoursStatementRoundHours(h).toFixed(2)
-
 export function hoursStatementDocumentTitle(ctx: Pick<HoursStatementHtmlContext, 'worker' | 'job' | 'statement'>): string {
   return `Statement of hours worked · ${ctx.worker.name} · Job ${ctx.job.number} · ${ctx.statement.periodLabel}`
-}
-
-/** The rate every counted row shares, or null when the rows carry none or differ (then the Rate column is drawn). */
-export function hoursStatementUniformRate(statement: HoursStatement): number | null {
-  if (!statement.withPay || statement.kind === 'schedule') return null
-  let rate: number | null = null
-  let any = false
-  for (const g of statement.groups) {
-    for (const d of g.days) {
-      if (d.pending) continue
-      if (d.rate == null) return null
-      if (!any) {
-        rate = d.rate
-        any = true
-      } else if (d.rate !== rate) return null
-    }
-  }
-  return any ? rate : null
 }
 
 export function buildHoursStatementHtml(ctx: HoursStatementHtmlContext): string {

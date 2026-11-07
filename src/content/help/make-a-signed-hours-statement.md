@@ -93,7 +93,7 @@ A channel with nothing to reach the worker by cannot be pressed. It says what to
 
 ## What the worker sees
 
-The worker reads the paper as a form. The signature box, the printed name and the date sit at the bottom. If the paper has a stated block, each row is three boxes to type in. The worker types the day, the hours and what they were working on. The office's rows come filled in and can be changed. The worker signs with a finger or a typed name and presses Sign.
+The worker reads the paper as a form. It is the same paper the office printed, with the same facts band, table and bands. The signature box, the printed name and the date sit at the bottom. If the paper has a stated block, each row is three boxes to type in. The worker types the day, the hours and what they were working on. The office's rows come filled in and can be changed. The worker signs with a finger or a typed name and presses Sign.
 
 The signed PDF files itself on the job and on the worker's desk. The statement's chip reads {{chip:green|Signed}}. The days the worker typed are kept on the statement.
 
