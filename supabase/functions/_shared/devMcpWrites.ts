@@ -53,6 +53,7 @@ export const WRITE_VERBS = {
   apply_person_evidence: { rpc: 'dev_person_evidence_write', step: 'apply' },
   // v2.6608: a person's HR document — the summary or the narrative — the whole text or section ops against its own
   // headings (dev_person_doc_write). The plan commits to the row's updated_at, so a save by anyone since refuses the apply.
+  // v2.6613 (punch list #277): the same door takes doc_id (a named document) or title (a new one), counsel_only and archive.
   plan_person_doc: { rpc: 'dev_person_doc_write', step: 'plan' },
   apply_person_doc: { rpc: 'dev_person_doc_write', step: 'apply' },
   // v2.4814: the narrative for the firm on a legal matter (dev_legal_narrative_write over legal_set_narrative).
@@ -264,17 +265,35 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const doc = obj(input.doc)
     const personId = doc && typeof doc.person_id === 'string' ? doc.person_id.trim() : ''
     const kind = doc && typeof doc.kind === 'string' ? doc.kind.trim() : ''
-    const shape = `${verb} needs doc — { person_id (a people.id: find_person), kind: summary | narrative, markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20, one of the two), expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? }.`
-    if (!doc || !UUID_RE.test(personId) || (kind !== 'summary' && kind !== 'narrative')) return { ok: false, error: shape }
+    const docId = doc && typeof doc.doc_id === 'string' ? doc.doc_id.trim() : ''
+    const title = doc && typeof doc.title === 'string' ? doc.title.trim() : ''
+    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20); for a named document also counsel_only? (true | false, the mark) and archive? (true retires it, false brings it back), either alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
+    if (!doc || !UUID_RE.test(personId)) return { ok: false, error: shape }
+    const targets = [kind !== '', docId !== '', title !== ''].filter(Boolean).length
+    if (targets !== 1) return { ok: false, error: shape }
+    if (kind && kind !== 'summary' && kind !== 'narrative') return { ok: false, error: shape }
+    if (docId && !UUID_RE.test(docId)) return { ok: false, error: shape }
+    if (title.length > 160) return { ok: false, error: shape }
     const hasMarkdown = typeof doc.markdown === 'string'
     const ops = Array.isArray(doc.ops) ? doc.ops : null
-    if (hasMarkdown === Boolean(ops) || (ops && (ops.length === 0 || ops.length > 20))) return { ok: false, error: shape }
-    const p: Json = { person_id: personId, kind }
+    if (hasMarkdown && ops) return { ok: false, error: shape }
+    if (ops && (ops.length === 0 || ops.length > 20)) return { ok: false, error: shape }
+    const counselOnly = typeof doc.counsel_only === 'boolean' ? doc.counsel_only : null
+    const archive = typeof doc.archive === 'boolean' ? doc.archive : null
+    if ((counselOnly !== null || archive !== null) && !docId && !(title && counselOnly !== null && archive === null)) return { ok: false, error: shape }
+    // A named document may take the mark or the archive alone; the fixed two and a new title need the text.
+    if (!hasMarkdown && !ops && !(docId && (counselOnly !== null || archive !== null))) return { ok: false, error: shape }
+    const p: Json = { person_id: personId }
+    if (kind) p.kind = kind
+    if (docId) p.doc_id = docId
+    if (title) p.title = title
     if (hasMarkdown) p.markdown = doc.markdown
-    else p.ops = ops
+    if (ops) p.ops = ops
+    if (counselOnly !== null) p.counsel_only = counselOnly
+    if (archive !== null) p.archive = archive
     if (typeof doc.expect_updated_at === 'string' && doc.expect_updated_at.trim()) p.expect_updated_at = doc.expect_updated_at.trim()
     if (typeof doc.covered_through === 'string' && doc.covered_through.trim()) p.covered_through = doc.covered_through.trim()
-    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: personId, planHash }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: docId || personId, planHash }
   }
   if (verb === 'plan_matter_narrative' || verb === 'apply_matter_narrative') {
     const narrative = obj(input.narrative)

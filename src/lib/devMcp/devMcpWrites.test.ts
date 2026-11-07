@@ -11,6 +11,7 @@ const PLAN_MIGRATION = readFileSync('supabase/migrations/20261023195135_legal_pl
 const DOCUMENT_MIGRATION = readFileSync('supabase/migrations/20261028010000_dev_legal_document_write.sql', 'utf8')
 const GAP_MIGRATION = readFileSync('supabase/migrations/20261028120000_dev_legal_gap_answer_write.sql', 'utf8')
 const DOC_MIGRATION = readFileSync('supabase/migrations/20261107013000_dev_person_doc_write.sql', 'utf8')
+const NAMED_DOCS_MIGRATION = readFileSync('supabase/migrations/20261107040000_person_documents.sql', 'utf8')
 const HISTORY_MIGRATION = readFileSync('supabase/migrations/20261029130000_dev_history_entry_write.sql', 'utf8')
 const BID_MIGRATION = readFileSync('supabase/migrations/20261030210000_dev_bid_write.sql', 'utf8')
 const STATEMENT_MIGRATION = readFileSync('supabase/migrations/20261031190000_dev_legal_statement_write.sql', 'utf8')
@@ -269,7 +270,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.33.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -333,7 +334,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.33.0'")
   })
 })
 
@@ -433,7 +434,7 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
     expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
     expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
-    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.33.0'")
   })
 })
 
@@ -482,7 +483,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.33.0'")
     expect(SERVER).toContain('Writes are forty-nine verbs and nothing else')
   })
 })
@@ -706,7 +707,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.33.0'")
     expect(SERVER).toContain('Writes are forty-nine verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
@@ -1004,7 +1005,7 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.33.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
     expect(SERVER).toContain('forty-nine verbs')
   })
@@ -1088,7 +1089,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.32.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.33.0'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')
@@ -1206,5 +1207,48 @@ describe("the person document verbs (v2.6608)", () => {
     expect(DOC_MIGRATION).toContain('ON CONFLICT (person_id, kind) DO UPDATE')
     expect(DOC_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_person_doc_write(jsonb, boolean) FROM PUBLIC, anon;')
     expect(DOC_MIGRATION).not.toContain('CREATE TABLE')
+  })
+})
+
+describe('named documents on the HR file (v2.6613, punch list #277)', () => {
+  const PERSON = 'a1b2c3d4-0000-4000-8000-000000000091'
+  const DOC = 'd1d2c3d4-0000-4000-8000-000000000012'
+  it('a named document by doc_id, with ops, the mark or the archive alone; a new one by title with its text and mark', () => {
+    const ops = [{ op: 'replace_section', heading: 'The training course', markdown: 'Rebooked for the autumn.' }]
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: DOC, ops, expect_updated_at: '2026-11-07T20:00:00Z' } })).toMatchObject({
+      ok: true, target: DOC, body: { p: { person_id: PERSON, doc_id: DOC, ops, expect_updated_at: '2026-11-07T20:00:00Z' }, p_dry_run: true },
+    })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: DOC, counsel_only: true } })).toMatchObject({ ok: true, body: { p: { person_id: PERSON, doc_id: DOC, counsel_only: true } } })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: DOC, archive: true } })).toMatchObject({ ok: true, body: { p: { person_id: PERSON, doc_id: DOC, archive: true } } })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, title: ' Interview guide ', markdown: '## Before the call', counsel_only: true } })).toMatchObject({
+      ok: true, target: PERSON, body: { p: { person_id: PERSON, title: 'Interview guide', markdown: '## Before the call', counsel_only: true } } })
+  })
+
+  it('refuses two targets or none, a bad doc_id, a title over 160, a new title with no text or with archive, and the mark or archive on the fixed two', () => {
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary', doc_id: DOC, markdown: 'x' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, markdown: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('one target') })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: 'nope', markdown: 'x' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, title: 't'.repeat(161), markdown: 'x' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, title: 'New' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, title: 'New', markdown: 'x', archive: true } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary', markdown: 'x', counsel_only: true } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: DOC } })).toMatchObject({ ok: false })
+  })
+
+  it('the migration: the two tables with their trigger and dev-only policies, the index view, the function taking doc_id or title, and the four fences', () => {
+    expect(NAMED_DOCS_MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
+    expect(NAMED_DOCS_MIGRATION).toContain('CREATE TABLE IF NOT EXISTS public.person_documents (')
+    expect(NAMED_DOCS_MIGRATION).toContain('CREATE TABLE IF NOT EXISTS public.person_document_revisions (')
+    expect(NAMED_DOCS_MIGRATION).toContain('CREATE TRIGGER person_documents_archive_revision')
+    expect(NAMED_DOCS_MIGRATION).toContain('ALTER TABLE public.person_documents ENABLE ROW LEVEL SECURITY;')
+    expect(NAMED_DOCS_MIGRATION).toContain('ALTER TABLE public.person_document_revisions ENABLE ROW LEVEL SECURITY;')
+    expect(NAMED_DOCS_MIGRATION).toContain('FOR SELECT USING (public.is_dev());')
+    expect(NAMED_DOCS_MIGRATION).not.toMatch(/FOR DELETE/)
+    expect(NAMED_DOCS_MIGRATION).toContain('CREATE OR REPLACE VIEW public.person_document_index\nWITH (security_invoker = true) AS')
+    expect(NAMED_DOCS_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_person_doc_write(p jsonb, p_dry_run boolean DEFAULT true)')
+    expect(NAMED_DOCS_MIGRATION).toContain("name the target — kind (summary | narrative), doc_id (a named document) or title (a new named document), one of the three")
+    expect(NAMED_DOCS_MIGRATION).toContain("IF NOT v_named AND (v_archive IS NOT NULL OR v_counsel IS NOT NULL) THEN")
+    expect(NAMED_DOCS_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_person_doc_write(jsonb, boolean) FROM PUBLIC, anon;')
+    for (const fence of ['apply_read_only_write_blocks', 'apply_read_only_stmt_blocks', 'apply_digital_twin_write_blocks', 'apply_archived_read_blocks']) expect(NAMED_DOCS_MIGRATION).toContain(`SELECT public.${fence}();`)
   })
 })
