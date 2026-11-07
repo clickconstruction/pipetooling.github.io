@@ -65,6 +65,25 @@ export interface ThreadMessage {
    * viewer's row reads it through `invitationOf` (v2.6509). Null on every other line, unset on a read that leaves it out.
    */
   invitation?: unknown
+  /**
+   * The teammate this text introduced (`messages.introduces_user_id`, v2.5590): the bio the office wrote, sent as the
+   * second text after a tech's first On my way to this customer. The line wears a small *bio* mark (v2.6659, punch
+   * list #282) so the office reads it as the app's intro, not words the tech typed. Null on every other line.
+   */
+  introducesUserId?: string | null
+}
+
+/** The small mark on a bio line (v2.6659): the word and its hover words, naming the tech when the roster knows them. */
+export interface BioMark {
+  words: 'bio'
+  title: string
+}
+
+export function bioMark(m: Pick<ThreadMessage, 'introducesUserId'>, userNames: Readonly<Record<string, string>> = {}): BioMark | null {
+  if (!m.introducesUserId) return null
+  const name = (userNames[m.introducesUserId] ?? '').trim()
+  const who = name ? `${name}'s` : 'the tech’s'
+  return { words: 'bio', title: `${who} bio, as the office wrote it. The app sent it after their first On my way to this customer.` }
 }
 
 export type QuoDeliveryWord = 'delivered' | 'undelivered' | 'failed'
