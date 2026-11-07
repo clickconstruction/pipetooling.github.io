@@ -5,12 +5,15 @@
  * says which cards the role sees and in what order, so a card the role is not shown is never
  * mounted. The strip is the Pipeline's stage bar over the headings (as Messages reuses it):
  * the heading being scrolled through lit, a press landing on the heading, one wrapping line
- * on a phone. It sets `--settings-jobs-jump-offset` so a heading or a card lands under it.
+ * on a phone. It sets `--settings-jobs-jump-offset` so a heading or a card lands under it. Since
+ * PR 3 the page hands in each Billing and money card's live value as one line (`valueLines`), drawn
+ * on the folded row, and hears each fold (`onCardFold`) to read the values again.
  */
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { JOBS_BILLING_STRIP_MIN_GROUPS, JOBS_BILLING_TAB, jobsBillingActiveGroup, jobsBillingGroupsFor, type JobsBillingGroup, type JobsBillingGroupId, type JobsBillingSlug } from '../../lib/settings/jobsBillingGroups'
 import type { UserRole } from '../../hooks/useAuth'
+import type { JobsBillingValueLines } from '../../lib/settings/jobsBillingValueLines'
 import { SettingsFoldCard } from './SettingsFoldCard'
 
 /** Room between the pinned strip and the heading a jump lands on. */
@@ -24,12 +27,16 @@ const HEADING_LINE: CSSProperties = { margin: '0.1rem 0 0', fontSize: '0.8rem', 
 
 export type JobsBillingCardElements = Partial<Record<JobsBillingSlug, ReactNode>>
 
-export function SettingsJobsBillingGroups({ role, cards, forceOpen }: {
+export function SettingsJobsBillingGroups({ role, cards, forceOpen, valueLines, onCardFold }: {
   role: UserRole | null
   /** One element per card; a card with none is not drawn (a dev-only card the page did not build for this role). */
   cards: JobsBillingCardElements
   /** Cards the address opens whatever their fold (`?focus=issuer.…` opens the company block). */
   forceOpen?: Partial<Record<JobsBillingSlug, boolean>>
+  /** Each money card's live value in one line, on its folded row; a card with none keeps its static line. */
+  valueLines?: JobsBillingValueLines
+  /** A card folded by its header press, so the values are read again. */
+  onCardFold?: (slug: JobsBillingSlug) => void
 }) {
   const groups = jobsBillingGroupsFor(role)
   return (
@@ -45,7 +52,7 @@ export function SettingsJobsBillingGroups({ role, cards, forceOpen }: {
             const el = cards[c.slug]
             if (el == null) return null
             return (
-              <SettingsFoldCard key={c.slug} card={c} track={JOBS_BILLING_TAB} forceOpen={forceOpen?.[c.slug] ?? false}>
+              <SettingsFoldCard key={c.slug} card={c} track={JOBS_BILLING_TAB} forceOpen={forceOpen?.[c.slug] ?? false} valueLine={valueLines?.[c.slug]} onFold={onCardFold ? () => onCardFold(c.slug) : undefined}>
                 {el}
               </SettingsFoldCard>
             )

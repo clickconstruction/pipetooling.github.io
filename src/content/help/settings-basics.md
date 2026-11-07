@@ -25,11 +25,14 @@ Office roles see **Jobs & billing** in the Company group. The tab holds the comp
 {{chip:blue|Money 3}} {{chip:gray|The job’s record 3}} {{chip:gray|Liens and papers 1}} {{chip:gray|Notices 2}}
 
 **Billing and money**
-▶ **Job Book** the Collect Payment line items
-▶ **GC jobs · pay by card** the Pay by card switch on certified bills
+▶ **Job Book** 14 line items
+▶ **GC jobs · pay by card** On
+▶ **GC jobs · the trades’ cut-off** 6 days before bill day
 :::
 
 A strip of the headings stays at the top while you scroll. Press a heading on the strip to jump to it. Every card is folded to its name and one line. Press the name to open it. A link to a card opens the card for you. Pick **Stage checklists** in the search box, and the tab opens with that card open.
+
+A card under **Billing and money** shows its value on its folded row. The rate card reads its two main rates. The markup reads its percent. Pay by card reads On or Off. Open the card to change the value. Fold it again and the row reads the new value.
 
 ## Your profile
 

@@ -3,9 +3,10 @@
  * Render smoke for Settings → Jobs & billing drawn by heading (punch list #261): the headings in order for the
  * role, the strip at two headings or more, every card folded (the switches too since PR 2), and every anchor landing:
  * announcing a card's anchor (what the deep-link effect and the search pick do) opens the card and the id holds
- * its element; a child anchor opens the card that holds it; the fold header is a counted press.
+ * its element; a child anchor opens the card that holds it; the fold header is a counted press. Since PR 3 a money
+ * card's live value stands on its folded row, the static line comes back while it is open, and a fold reads again.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SettingsJobsBillingGroups, type JobsBillingCardElements } from './SettingsJobsBillingGroups'
@@ -96,5 +97,30 @@ describe('SettingsJobsBillingGroups (punch list #261)', () => {
     const { container } = renderWithProviders(<SettingsJobsBillingGroups role="dev" cards={cards} />)
     expect(document.getElementById('settings-jobs-rates')).toBeNull()
     expect(container.querySelectorAll('[data-settings-card]')).toHaveLength(25)
+  })
+
+  it('a money card draws its live value on the folded row, the static line while open or until the value is read, and a fold reads again (PR 3)', () => {
+    const onCardFold = vi.fn()
+    renderWithProviders(
+      <SettingsJobsBillingGroups role="dev" cards={stubs()} valueLines={{ rates: '$285 master with a helper · $185 a tech alone', 'gc-card': 'On' }} onCardFold={onCardFold} />,
+    )
+    const rates = screen.getByRole('button', { name: /^Rates charged by crew/ })
+    const ratesLine = rates.querySelector('[data-fold-line]')!
+    expect(ratesLine.getAttribute('data-fold-line')).toBe('value')
+    expect(ratesLine.textContent).toBe('$285 master with a helper · $185 a tech alone')
+    expect(screen.getByRole('button', { name: /^GC jobs · pay by card/ }).querySelector('[data-fold-line]')?.textContent).toBe('On')
+    // A card whose value is not in hand keeps its static line.
+    const markup = screen.getByRole('button', { name: /^Markup on materials/ })
+    expect(markup.querySelector('[data-fold-line]')?.getAttribute('data-fold-line')).toBe('static')
+    expect(markup.querySelector('[data-fold-line]')?.textContent).toBe('percent over cost')
+    // Open: the static line again, and no read; fold: the value again, and one read naming the card.
+    fireEvent.click(rates)
+    expect(ratesLine.getAttribute('data-fold-line')).toBe('static')
+    expect(ratesLine.textContent).toBe('the rate card by who was out, and who counts as what')
+    expect(onCardFold).not.toHaveBeenCalled()
+    fireEvent.click(rates)
+    expect(ratesLine.getAttribute('data-fold-line')).toBe('value')
+    expect(onCardFold).toHaveBeenCalledTimes(1)
+    expect(onCardFold).toHaveBeenCalledWith('rates')
   })
 })
