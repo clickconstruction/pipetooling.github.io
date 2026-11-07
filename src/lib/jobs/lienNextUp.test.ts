@@ -309,6 +309,27 @@ describe('Signed with your code, as recorded (v2.5791)', () => {
   })
 })
 
+describe('a sent job with new months due (v2.6624, punch list #248)', () => {
+  const sentItem = { id: 'sent1', status: 'sent', sent_at: '2026-09-23T12:00:00Z', months: ['2026-07'], fields: {} } as unknown as LienDeskEntry['item']
+  it('Do now shows the draft row and the attorney’s-letter row for one job, the reminder opening the To draft pane', () => {
+    const rows = build({ notices: [notice('j1', 'to_draft', { sentItem })], letterTwoByJob: { j1: two('overdue', 'day 21 · the attorney’s letter overdue') } })
+    expect(rows.map((r) => [r.key, r.action])).toEqual([
+      ['letter-two:j1', 'letter_two'],
+      ['notice:j1', 'draft'],
+    ])
+    expect(rows[0]!.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'to_draft' })
+    expect(rows[1]!.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'to_draft' })
+    // Ten days out the draft row is Coming up; the reminder keeps its own heading between.
+    expect(groupLienNextUp(rows).map((g) => [g.group, g.rows.map((r) => r.key)])).toEqual([
+      ['reminders', ['letter-two:j1']],
+      ['coming', ['notice:j1']],
+    ])
+  })
+  it('a To draft row with no sent notice has the draft row alone, as before', () => {
+    expect(build({ notices: [notice('j1', 'to_draft')], letterTwoByJob: { j1: two('overdue') } }).map((r) => r.key)).toEqual(['notice:j1'])
+  })
+})
+
 describe('the REMINDERS ladder (punch list #262)', () => {
   const courtesy = (over: Partial<CourtesyStatus> = {}): CourtesyStatus => ({ state: 'due', day: 21, words: 'day 21 · nothing since the packet', reason: '', lastSentAt: null, waitingForAnswer: false, lienDay: '2026-11-16', records: [], ...over })
   it('a courtesy row stands on step 1, the attorney’s-letter row after the one courtesy and a quiet week on step 3; with no courtesy status the rung is null and the row still reads under Reminders', () => {

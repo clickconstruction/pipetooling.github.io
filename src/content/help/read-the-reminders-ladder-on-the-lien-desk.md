@@ -47,7 +47,7 @@ The attorney’s letter is counsel's certified second letter. The desk offers it
 
 :::card 4 Closed
 
-The bill is paid. Or the GC authorized direct pay in writing. Or the owner called, or they answered, or the affidavit is filed. Or no reminder may go at all. Nothing is left to press. The notice reads under Sent.
+The bill is paid. Or the GC authorized direct pay in writing. Or the owner called, or they answered, or the affidavit is filed. Or no reminder may go at all. Nothing is left to press. The notice reads under Sent, or under To draft when a new month is due.
 
 :::
 
@@ -69,4 +69,4 @@ A reminder may never name a lien day the law would not allow. So the desk holds 
 
 ## See the names behind a count
 
-Press a step on the Reminders strip. The notices on that step with no row on the list read under the strip. Each notice has {{button:outline|Open}}, which opens the notice under Sent. The step's rule reads there too, in one line. Read [send a courtesy notice before a lien](/help/send-a-courtesy-notice-before-a-lien) for the courtesy itself.
+Press a step on the Reminders strip. The notices on that step with no row on the list read under the strip. Each notice has {{button:outline|Open}}, which opens the notice on its own pile. That is Sent, or To draft when a new month is due. The step's rule reads there too, in one line. Read [send a courtesy notice before a lien](/help/send-a-courtesy-notice-before-a-lien) for the courtesy itself.

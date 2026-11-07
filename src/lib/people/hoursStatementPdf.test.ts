@@ -156,6 +156,50 @@ describe('the statement as a PDF (punch list #212, PR 3)', () => {
     expect(sheet.pageCount).toBe(1)
   })
 
+  it('draws the print’s columns (v2.6629): In – Out as one cell, the Rate column only when the rate changes, Amount with the pay', async () => {
+    const changing = await buildHoursStatementPdf(lib, ctxFor(baseInput))
+    expect(changing.title).toBe('Statement of hours worked and paid')
+    expect(changing.columns).toEqual(['Day', 'In – Out', 'Hours', 'What they were working on', 'Rate', 'Amount'])
+    expect(changing.facts.map((f) => f[0])).toEqual(['Worker', 'Period', 'Job', 'Customer', 'Approved by', 'Site'])
+    const uniform = await buildHoursStatementPdf(lib, ctxFor({ ...baseInput, dayRates: { '2026-06-01': 24, '2026-06-02': 24, '2026-06-08': 24 } }))
+    expect(uniform.columns).toEqual(['Day', 'In – Out', 'Hours', 'What they were working on', 'Amount'])
+    expect(uniform.facts).toContainEqual(['Rate', '$24.00 an hour'])
+    const hoursOnly = await buildHoursStatementPdf(lib, ctxFor({ ...baseInput, withPay: false }))
+    expect(hoursOnly.title).toBe('Statement of hours worked')
+    expect(hoursOnly.columns).toEqual(['Day', 'In – Out', 'Hours', 'What they were working on'])
+    expect(hoursOnly.facts.some((f) => f[0] === 'Rate')).toBe(false)
+  })
+
+  it('a sheet draws Day · Line · Hours · Amount, the sheet’s one rate in the band', async () => {
+    const sheet = await buildHoursStatementPdf(lib, ctxFor({ ...baseInput, kind: 'sheet', rows: [{ day: '2026-06-01', hours: 6, note: 'Set 3 lavatories', rate: 40, amount: 240, group: { key: 'sh-1', label: 'Sheet 1042-A · agreed May 4' }, inLabel: null, outLabel: null }], worker: { name: 'Rosa Pérez', company: 'Pérez Plumbing' } }))
+    expect(sheet.columns).toEqual(['Day', 'Line', 'Hours', 'Amount'])
+    expect(sheet.facts).toContainEqual(['Rate', '$40.00 an hour'])
+  })
+
+  it('the charged paper signs as a statement of hours charged with the Rate and Amount columns, as the print draws it', async () => {
+    const input: HoursStatementInput = {
+      kind: 'clock',
+      periodStart: '2026-04-20',
+      periodEnd: '2026-04-26',
+      basis: 'charged',
+      chargeWords: 'master with a helper throughout · $285.00 the crew’s hour',
+      rows: [
+        { day: '2026-04-20', hours: 9.93, note: 'with Zed · master with a helper · the job’s rule', inLabel: '8:00 am', outLabel: '5:00 pm', chargeRate: 285 },
+        { day: '2026-04-25', hours: 9.44, note: 'alone · a tech alone · adjusted', inLabel: '8:00 am', outLabel: '5:26 pm', chargeRate: 185 },
+      ],
+      withPay: true,
+      worker: { name: 'Marcus Reyes' },
+    }
+    const out = await buildHoursStatementPdf(lib, ctxFor(input))
+    expect(out.title).toBe('Statement of hours charged')
+    expect(out.columns).toEqual(['Day', 'In – Out', 'Hours', 'What they were working on', 'Rate', 'Amount'])
+    expect((await textOf(out.bytes)).title).toBe('Statement of hours charged · Marcus Reyes · Job 1042 · April 20 – April 26, 2026')
+    expect(out.pageCount).toBe(1)
+    expect(validateFormSchema(out.schema)).toEqual([])
+    // The signature block still closes the form.
+    expect(out.schema.boxes.map((b) => b.key).sort()).toEqual([HS_FORM_KEYS.printedName, HS_FORM_KEYS.signature, HS_FORM_KEYS.signedOn].sort())
+  })
+
   it('drops what Helvetica cannot encode instead of throwing', () => {
     expect(pdfSafeText('Week of June 1 · $756.00 earned – paid ’in full’')).toBe('Week of June 1 · $756.00 earned – paid ’in full’')
     expect(pdfSafeText('a ≥ b ✓ 中')).toBe('a  b  ')

@@ -1,5 +1,38 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { lienGateMark, type LienGate, type LienGateKey, type LienGateVerdict } from '../../lib/jobs/lienDeskGates'
+import { lienGateMark, type LienGate, type LienGateKey, type LienGateVerdict, type LienSentGatesFold } from '../../lib/jobs/lienDeskGates'
+
+/**
+ * The gates folded to one line on a sent notice with nothing due (v2.6625, punch list #248): the day it went and the four
+ * facts as the paper went, no verdict and no tone — nothing is about to go out. *Details ∨* opens the four as plain rows.
+ */
+export function LienGatesSentFold({ fold }: { fold: LienSentGatesFold }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="lienGates" data-lien-gates-sent data-open={open ? 'yes' : 'no'}>
+      <div className="lienGatesHead" style={{ gap: '0.4rem 0.8rem' }}>
+        <span data-lien-gates-sent-line style={{ minWidth: 0, fontSize: '0.8125rem' }}>
+          <strong>{fold.head}</strong>
+          <span style={{ color: 'var(--text-muted)' }}>{fold.line.slice(fold.head.length)}</span>
+        </span>
+        <span style={{ flex: 1 }} />
+        <button type="button" className="lienGatesFoldBtn" data-lien-gates-sent-fold={open ? 'close' : 'open'} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Fold the details ∧' : 'Details ∨'}
+        </button>
+      </div>
+      {open ? (
+        <div className="lienGatesGrid" data-count={0}>
+          {fold.rows.map((r) => (
+            <div key={r.key} className="lienGateDetail" data-tone="ok" data-lien-gates-sent-row={r.key}>
+              <span className="lienGateRowNum" aria-hidden="true">{r.n}</span>
+              <span className="lienGateRowLabel">{r.label}</span>
+              <div className="lienGateRowBody">{r.value}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 /**
  * The Lien desk's gates as four numbered steps (v2.3657): a verdict headline, then
