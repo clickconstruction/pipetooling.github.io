@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienFootBlockedSentence, buildLienDeskGates, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienDeskGatesInput, lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords, lienGateShortWords } from './lienDeskGates'
+import { lienFootBlockedSentence, buildLienDeskGates, lienSentGatesFold, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienDeskGatesInput, lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords, lienGateShortWords } from './lienDeskGates'
 
 const clear: LienDeskGatesInput = {
   ownerName: 'Sabra Texas Holdings Lp',
@@ -158,5 +158,27 @@ describe('gate 4 on a job with no month at all (v2.6384, job 890 after its windo
     expect(buildLienDeskGates({ ...clear, monthLabels: ['Jul'], pickedMonthsCount: 0, monthsOnJob: 1, datedFromCreation: true }).gates[3]).toMatchObject({ value: 'No month picked', label: 'Dated from creation' })
     expect(buildLienDeskGates({ ...clear, monthLabels: [], pickedMonthsCount: 0 }).gates[3]).toMatchObject({ value: 'No month picked' })
     expect(lienGateShortWords({ key: 'months', value: 'No month picked', label: 'Approved hours' })).toBe('no month picked')
+  })
+})
+
+describe('lienSentGatesFold — the gates as one line on a sent notice (v2.6625, punch list #248)', () => {
+  const monthShort = (k: string) => ({ '2026-07': 'Jul', '2026-08': 'Aug' })[k] ?? k
+  it('reads the day it went, then the owner, the GC, the kind and the months the notice named, with no verdict', () => {
+    const { gates } = buildLienDeskGates({ ...clear, ownerName: 'Khan Umar', gcName: 'RMC- Dudley Mason', propertyKind: 'residential', county: 'Bexar', monthLabels: [], pickedMonthsCount: 0, monthsOnJob: 0 })
+    const fold = lienSentGatesFold({ sentOn: 'Oct 14', gates, noticeMonths: ['2026-07', '2026-08'], monthShort })
+    expect(fold.head).toBe('Sent Oct 14')
+    expect(fold.line).toBe('Sent Oct 14 · Khan Umar · RMC- Dudley Mason · Residential · Bexar · Jul + Aug')
+    expect(fold.rows.map((r) => [r.n, r.label, r.value])).toEqual([
+      [1, 'Owner of record', 'Khan Umar'],
+      [2, 'Original contractor', 'RMC- Dudley Mason'],
+      [3, 'Property kind', 'Residential · Bexar'],
+      [4, 'Months the notice named', 'Jul + Aug'],
+    ])
+  })
+  it('a gate that is not clear reads in plain words, never as a blocker: the paper already went', () => {
+    const { gates } = buildLienDeskGates({ ...clear, ownerName: '', ownerMailingAddress: '', gcName: '', propertyKind: '', monthLabels: [], pickedMonthsCount: 0, monthsOnJob: 0 })
+    const fold = lienSentGatesFold({ sentOn: 'Oct 14', gates, noticeMonths: [], monthShort })
+    expect(fold.line).toBe('Sent Oct 14 · owner not on file · no GC on the job · kind unknown · no month named')
+    expect(lienSentGatesFold({ sentOn: 'Oct 14', gates: buildLienDeskGates({ ...clear, ownerMailingAddress: '' }).gates, noticeMonths: ['2026-07'], monthShort }).rows[0]!.value).toBe('no mailing address')
   })
 })

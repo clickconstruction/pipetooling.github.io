@@ -26,6 +26,11 @@ describe('the notice pane’s stacked heads (v2.4733)', () => {
     ])
   })
 
+  it('on a sent notice with nothing due the gates head reads the day it went, with no verdict (v2.6625, punch list #248)', () => {
+    const heads = lienPaneSections({ nextWords: null, gates: { sentOn: 'Oct 14' }, houses: null, months: [], claimWords: '$285', pages: 1, gcEmail: false, monthShort, money })
+    expect(heads[1]).toEqual({ key: 'gates', label: 'The four gates', fact: 'Sent Oct 14', tail: 'as the notice went' })
+  })
+
   it('leaves the houses out when the job bought nothing, says all paid when it did and paid, and reads the gaps', () => {
     const base = { nextWords: null, gates: { ready: false, headline: 'Not ready', summary: '2 to fix' }, months: [], claimWords: '$0', pages: 1, gcEmail: false, monthShort, money }
     const none = lienPaneSections({ ...base, houses: null })
