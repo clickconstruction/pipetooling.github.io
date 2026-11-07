@@ -336,25 +336,37 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
     const liveIdx = floor === -1 ? -1 : hasStageReport ? Math.max(planLiveIdx, floor) : floor
     const shares = segs.map((s) => s.sharePct)
     const doneShare = segs.reduce((acc, _s, i) => (liveIdx !== -1 && i < liveIdx ? acc + shares[i]! : liveIdx === -1 ? acc + shares[i]! : acc), 0)
+    const stateOf = (i: number): ProgressPaymentSegment['state'] => (liveIdx === -1 || i < liveIdx ? 'done' : i === liveIdx ? 'live' : 'later')
+    // The work channel: a done stage full; the live stage its own report, else the job's percent
+    // past the done stages spread over its share; a later stage empty.
+    const fills = segs.map((s, i) => {
+      const state = stateOf(i)
+      if (state === 'done') return 100
+      if (state !== 'live') return 0
+      let fill = 0
+      if (s.workSource === 'stage' && s.workPct > 0) fill = s.workPct
+      else if (percent && !stale && shares[i]! > 0) fill = clampPct(((percent.pct - doneShare) / shares[i]!) * 100)
+      return Math.round(fill)
+    })
+    // v2.6663: once a stage carries the crew's own number, the amber on each block is that stage's
+    // drawn fill past what is paid or billed on it (a done stage full, a later stage none), the way
+    // v2.6653 reads the lines; a job whose stages have no report pours its pool down them as before.
+    const ownDone = hasStageReport ? new Map(segs.map((s, i) => [s.fixtureId, fills[i]! / 100])) : null
     const pour = pourMoney(
       segs.map((s) => ({ key: s.fixtureId, amount: s.amount, invoiceId: fixtureById.get(s.fixtureId)?.invoice_id ?? null })),
       money,
       pourInvoices,
+      ownDone,
     )
     // v2.3459: the live chip no longer carries the crew's name (the row's Crew &
     // Dates column lists them); "today" stays — it says the crew is here now.
     const liveSuffix = crew?.onSiteToday ? 'today' : null
     const segments: ProgressPaymentSegment[] = segs.map((s, i) => {
-      const state: ProgressPaymentSegment['state'] = liveIdx === -1 || i < liveIdx ? 'done' : i === liveIdx ? 'live' : 'later'
-      let fill = 0
+      const state = stateOf(i)
+      const fill = fills[i]!
       let label: string | null = null
-      if (state === 'done') {
-        fill = 100
-        label = '✓'
-      } else if (state === 'live') {
-        if (s.workSource === 'stage' && s.workPct > 0) fill = s.workPct
-        else if (percent && !stale && shares[i]! > 0) fill = clampPct(((percent.pct - doneShare) / shares[i]!) * 100)
-        fill = Math.round(fill)
+      if (state === 'done') label = '✓'
+      else if (state === 'live') {
         if (fill > 0) label = `${fill}%`
         else if (crew?.lastWorkYmd) label = crew.onSiteToday ? `${crew.lastDayPeople.length || ''} on site today`.trim() : `on site ${dayWord(crew.lastWorkYmd, todayYmd)}`
       }
