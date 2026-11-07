@@ -4,6 +4,8 @@
  * Three footings, ranked by truth:
  *   ◆ bid      a snapshot of the linked bid's direct cost (job_budgets.kind = 'bid')
  *   ✎ typed    hours · materials · subs typed by the person who scoped the job
+ *   ≈ book     the labor book's assumed hours at award (kind = 'book', punch list #234 PR 1a):
+ *              hours per $1k from similar projects × the price, labor only, a guess read as one
  *   ≈ assumed  price × (1 − target margin) — today's behavior, when there is no row
  *
  * Direct cost = labor hours × rate + materials + subs + other (equipment · permits ·
@@ -21,10 +23,47 @@
 import { JOB_BURN_DEFAULT_TARGET_MARGIN_PCT } from './jobBurn'
 import type { JobChargeEvent } from '../jobChargesTimeline'
 
-export type JobBudgetSource = 'bid' | 'typed' | 'assumed'
+export type JobBudgetSource = 'bid' | 'typed' | 'book' | 'assumed'
 
-export const JOB_BUDGET_GLYPH: Record<JobBudgetSource, string> = { bid: '◆', typed: '✎', assumed: '≈' }
-export const JOB_BUDGET_SOURCE_WORDS: Record<JobBudgetSource, string> = { bid: 'from the bid', typed: 'typed', assumed: 'assumed' }
+export const JOB_BUDGET_GLYPH: Record<JobBudgetSource, string> = { bid: '◆', typed: '✎', book: '≈', assumed: '≈' }
+export const JOB_BUDGET_SOURCE_WORDS: Record<JobBudgetSource, string> = { bid: 'from the bid', typed: 'typed', book: 'assumed from the book', assumed: 'assumed' }
+
+/** The kinds a `job_budgets` row carries (the no-row assumption is not one). */
+export type JobBudgetRowKind = 'bid' | 'typed' | 'book'
+export const isJobBudgetRowKind = (k: unknown): k is JobBudgetRowKind => k === 'bid' || k === 'typed' || k === 'book'
+
+/** The award snapshot's columns (punch list #234 PR 1a), read through a cast until the types carry them. */
+export type JobBudgetAwardColumns = {
+  awarded_at?: string | null
+  awarded_by?: string | null
+  awarded_kind?: string | null
+  awarded_labor_hours?: number | string | null
+  awarded_labor_usd?: number | string | null
+  awarded_materials_usd?: number | string | null
+  awarded_total_direct_usd?: number | string | null
+  awarded_detail?: unknown
+}
+
+export type JobBudgetAward = { at: string; by: string | null; kind: JobBudgetRowKind; laborHours: number; laborUsd: number; materialsUsd: number; totalDirectUsd: number; detail: Record<string, unknown> }
+
+/** The frozen award on a row, or null when the row was never awarded (a job from before PR 1a, or no row). */
+export function jobBudgetAwardOf(row: (JobBudgetAwardColumns & { kind?: string }) | null | undefined): JobBudgetAward | null {
+  if (!row || !row.awarded_at || !isJobBudgetRowKind(row.awarded_kind)) return null
+  const detail = row.awarded_detail && typeof row.awarded_detail === 'object' ? (row.awarded_detail as Record<string, unknown>) : {}
+  return { at: row.awarded_at, by: row.awarded_by ?? null, kind: row.awarded_kind, laborHours: n(row.awarded_labor_hours), laborUsd: n(row.awarded_labor_usd), materialsUsd: n(row.awarded_materials_usd), totalDirectUsd: n(row.awarded_total_direct_usd), detail }
+}
+
+/** `completeness.book` on a book row: what the guess was computed from. */
+export type JobBudgetBookDetail = { hoursPerThousand: number | null; n: number; priceUsd: number | null; scope: 'similar' | 'all' | null }
+export function jobBudgetBookDetailOf(completeness: unknown): JobBudgetBookDetail | null {
+  if (!completeness || typeof completeness !== 'object') return null
+  const book = (completeness as Record<string, unknown>).book
+  if (!book || typeof book !== 'object') return null
+  const b = book as Record<string, unknown>
+  const hpt = n(b.hours_per_thousand)
+  const price = n(b.price_usd)
+  return { hoursPerThousand: hpt > 0 ? hpt : null, n: n(b.n), priceUsd: price > 0 ? price : null, scope: b.scope === 'similar' || b.scope === 'all' ? b.scope : null }
+}
 
 /** `job_budgets.completeness` as the RPC writes it. */
 export type JobBudgetCompleteness = {
@@ -105,7 +144,7 @@ export function budgetCompletenessUsable(c: Pick<JobBudgetCompleteness, 'rows_to
 
 export function resolveJobBudget(args: { row: JobBudgetRowLike | null | undefined; priceUsd: number | null; targetMarginPct: number | null }): ResolvedJobBudget {
   const row = args.row
-  if (row && (row.kind === 'bid' || row.kind === 'typed')) {
+  if (row && isJobBudgetRowKind(row.kind)) {
     const components: JobBudgetComponents = {
       laborHours: n(row.labor_hours),
       laborRate: row.labor_rate != null && n(row.labor_rate) > 0 ? n(row.labor_rate) : null,

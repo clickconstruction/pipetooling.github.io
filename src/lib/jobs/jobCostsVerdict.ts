@@ -16,7 +16,7 @@
  * pretending.
  */
 import type { JobBurnModel } from './jobBurn'
-import { componentBurn, type ResolvedJobBudget, type SpendByComponent } from './jobBudget'
+import { componentBurn, jobBudgetAwardOf, jobBudgetBookDetailOf, type JobBudgetAward, type JobBudgetAwardColumns, type JobBudgetBookDetail, type JobBudgetRowLike, type ResolvedJobBudget, type SpendByComponent } from './jobBudget'
 import { pricedMarginPartialWords, pricedMarginPctWords, pricedVsDirectWords, type BidPricedMargin } from '../bids/pricedMargin'
 
 export type VerdictMoney = { usd: number; pct: number | null }
@@ -75,9 +75,21 @@ export type CostsVerdict = {
 }
 
 export type CostsBaseline = {
-  /** 'bid' when the bid carried hours (compare); 'none' when it did not (collect). */
-  kind: 'bid' | 'none'
+  /**
+   * The footing the hours read against (punch list #234 PR 1a): 'bid' the bid's Labor rows, 'book'
+   * the labor book's assumed hours at award (a guess, read as one), 'typed' a figure with a name on
+   * it; 'none' when the job has no hours baseline (collect).
+   */
+  kind: 'bid' | 'book' | 'typed' | 'none'
   bidLabel: string | null
+  /** When and by whom the live row was taken (the typed and book rows say so). */
+  takenAt: string | null
+  takenBy: string | null
+  note: string | null
+  /** What a book row was computed from. */
+  book: JobBudgetBookDetail | null
+  /** The frozen award, when the job was awarded with one; the score reads this, never the live row. */
+  award: JobBudgetAward | null
   teamHours: number
   people: number | null
   hoursPerThousand: number | null
@@ -112,6 +124,8 @@ export function buildCostsVerdict(args: {
   todayYmd: string
   /** The linked bid's priced-margin stamp (v2.5043); null / omitted with none. */
   priced?: BidPricedMargin | null
+  /** The raw `job_budgets` row (punch list #234 PR 1a): the award snapshot and a book row's reading come off it. */
+  budgetRow?: (JobBudgetRowLike & JobBudgetAwardColumns) | null
 }): CostsVerdict {
   const { burn: m, priceUsd, spend, resolved: r } = args
   const c = r.components
@@ -119,8 +133,8 @@ export function buildCostsVerdict(args: {
   const emptySnapshot = c != null && c.laborHours <= 0 && c.laborUsd <= 0 && c.materialsUsd <= 0 && c.subsUsd <= 0 && c.otherUsd <= 0
   const fromBid = r.source !== 'assumed' && c != null && !emptySnapshot
   const bidTag = args.bidLabel ? `B${args.bidLabel}` : 'the bid'
-  const budgetLabel = fromBid && r.source === 'bid' ? `◆ from ${bidTag}` : fromBid && r.source === 'typed' ? '✎ typed' : args.bidLabel ? `no figures on ${bidTag}` : 'no bid linked'
-  const words = (has: boolean, noun: string): string => (fromBid ? (has ? (r.source === 'bid' ? `◆ ${bidTag}` : '✎ typed') : `no ${noun} on ${bidTag}`) : args.bidLabel ? `no ${noun} on ${bidTag}` : '—')
+  const budgetLabel = fromBid && r.source === 'bid' ? `◆ from ${bidTag}` : fromBid && r.source === 'typed' ? '✎ typed' : fromBid && r.source === 'book' ? '≈ from the book' : args.bidLabel ? `no figures on ${bidTag}` : 'no bid linked'
+  const words = (has: boolean, noun: string): string => (fromBid ? (has ? (r.source === 'bid' ? `◆ ${bidTag}` : r.source === 'book' ? '≈ the book' : '✎ typed') : `no ${noun} on ${bidTag}`) : args.bidLabel ? `no ${noun} on ${bidTag}` : '—')
 
   const section = (key: VerdictSection['key'], label: string, sub: string, spentUsd: number, hours: number | null, budgetUsd: number | null, budgetHours: number | null, noun: string): VerdictSection => {
     const b = componentBurn({ usedUsd: spentUsd, budgetUsd, pctDone: m.percentDone })
@@ -169,8 +183,13 @@ export function buildCostsVerdict(args: {
     assumedDirectUsd: m.budget?.source === 'target_margin' ? m.budget.usd : null,
     targetMarginPct: m.budget?.source === 'target_margin' ? m.budget.targetMarginPct : r.targetMarginPct,
     baseline: {
-      kind: bidHours != null ? 'bid' : 'none',
+      kind: bidHours != null && (r.source === 'bid' || r.source === 'book' || r.source === 'typed') ? r.source : 'none',
       bidLabel: args.bidLabel ? `B${args.bidLabel}` : null,
+      takenAt: r.takenAt,
+      takenBy: r.takenBy,
+      note: r.note,
+      book: r.source === 'book' ? jobBudgetBookDetailOf(args.budgetRow?.completeness) : null,
+      award: jobBudgetAwardOf(args.budgetRow),
       teamHours: args.teamHours,
       people: args.teamPeople,
       hoursPerThousand: priceUsd != null && priceUsd > 0 && args.teamHours > 0 ? args.teamHours / (priceUsd / 1000) : null,
@@ -205,13 +224,64 @@ export function timeLeftWords(t: CostsVerdict['timeLeft'], fmtUsd: (n: number) =
   return { big: `≈ ${days} working ${days === 1 ? 'day' : 'days'}`, sub: [rate, spend].filter(Boolean).join(' · ') }
 }
 
-/** The baseline strip's read on a costed bid: "17% of the bid's hours at 50% done · the book was heavy here". */
+/**
+ * The baseline strip's read on a job with hours to read against: "17% of the bid's hours at 50%
+ * done · the book was heavy here". A book or typed baseline reads "of the baseline's hours" and
+ * judges the baseline, not the book.
+ */
 export function baselineReadWords(b: CostsBaseline, pctDone: number | null): string {
-  if (b.kind !== 'bid' || b.hoursShare == null) return ''
-  const share = `${Math.round(b.hoursShare * 100)}% of the bid's hours`
+  if (b.kind === 'none' || b.hoursShare == null) return ''
+  const share = `${Math.round(b.hoursShare * 100)}% of the ${b.kind === 'bid' ? "bid's" : "baseline's"} hours`
   const at = pctDone != null ? ` at ${Math.round(pctDone)}% done` : ''
-  const verdict = b.read === 'over' ? 'the book was light here' : b.read === 'under' ? 'the book was heavy here' : 'on the book'
+  const verdict = b.kind === 'bid' ? (b.read === 'over' ? 'the book was light here' : b.read === 'under' ? 'the book was heavy here' : 'on the book') : b.read === 'over' ? 'the baseline was light' : b.read === 'under' ? 'the baseline was heavy' : 'on the baseline'
   return `${share}${at} · ${verdict}`
+}
+
+const h0 = (n: number): string => `${Math.round(n).toLocaleString('en-US')} h`
+const usd0 = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`
+
+/**
+ * The strip's head by source (punch list #234 PR 1a): "◆ Baseline from B874 at award · 480 h",
+ * "≈ Baseline assumed from the book at award · 471 h", "✎ Baseline typed at award · 220 h" (by you
+ * when it was). "at award" only when the award snapshot was taken with this kind.
+ */
+export function baselineHeadWords(b: CostsBaseline, currentUserId: string | null = null): string {
+  if (b.kind === 'none' || b.bidHours == null) return ''
+  const atAward = b.award && b.award.kind === b.kind ? ' at award' : ''
+  const by = b.kind === 'typed' && currentUserId && b.takenBy === currentUserId ? ' by you' : ''
+  const head = b.kind === 'bid' ? `◆ Baseline from ${b.bidLabel ?? 'the bid'}${atAward}` : b.kind === 'book' ? `≈ Baseline assumed from the book${atAward}` : `✎ Baseline typed${atAward}${by}`
+  return `${head} · ${h0(b.bidHours)}`
+}
+
+/**
+ * The strip's second line: when it was frozen and what it was computed from, then what the line
+ * and the score do with it. `bookNowHours` is the book's reading today, drawn beside a typed figure.
+ */
+export function baselineFrozenWords(b: CostsBaseline, fmtDay: (iso: string) => string, bookNowHours: number | null = null): string {
+  if (b.kind === 'none') return ''
+  const parts: string[] = []
+  const awardedAsThis = !!b.award && b.award.kind === b.kind
+  const frozenAt = awardedAsThis ? b.award!.at : b.takenAt
+  if (frozenAt) parts.push(`${awardedAsThis ? 'Frozen' : 'Taken'} ${fmtDay(frozenAt)}`)
+  if (b.kind === 'book') {
+    if (b.book?.hoursPerThousand != null && b.book.priceUsd != null) parts.push(`${b.book.hoursPerThousand.toFixed(1)} h per $1k × ${usd0(b.book.priceUsd)}`)
+    if (b.book && b.book.n > 0) parts.push(`${b.book.n} ${b.book.scope === 'similar' ? 'similar projects' : 'projects'}`)
+    parts.push('a guess, read as one')
+  } else if (b.kind === 'typed') {
+    if (b.note) parts.push(`"${b.note}"`)
+    if (bookNowHours != null && bookNowHours > 0) parts.push(`the book says ${h0(bookNowHours)}`)
+  } else if (b.award && b.award.kind !== 'bid') {
+    parts.push(`awarded on ${b.award.kind === 'book' ? "the book's" : 'a typed'} ${h0(b.award.laborHours)}, the score keeps that`)
+  }
+  return parts.join(' · ')
+}
+
+/** What the superintendent's line and the score do with this footing. */
+export function baselineScoreWords(b: CostsBaseline): string {
+  if (b.kind === 'book') return "The superintendent's line draws grey. The score skips this job until a bid or typed baseline replaces it."
+  if (b.kind === 'typed') return 'Scores like a bid baseline. The name on it is the point.'
+  if (b.kind === 'bid') return 'This is the one that scores.'
+  return ''
 }
 
 /** The kept baseline's line under the strip: "Baseline kept Sep 12 on billing · per $1k"; '' with none kept. */

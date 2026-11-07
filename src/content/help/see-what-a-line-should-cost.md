@@ -9,13 +9,13 @@ On a project, every line item carries what the company thinks it will cost. You 
 
 ## The quiet line under each price
 
-Open the job from Jobs → Pipeline → {{button:outline|Edit}} → **Bill**. Find **① Line Items**. A job with a line **In order** is a project. Under each line's name sits one small grey line.
+Open the job from Jobs → Pipeline → {{button:outline|Edit}} → **Bill**. Find **① Line Items**. A job priced before the work is a project. Under each line's name sits one small grey line.
 
 :::example Under Rough In, $24,000
 ≈ ▬▬▬▬ 240 h · $10,800 labor · $8,400 mat. · assumed
 :::
 
-The first mark says where the split came from. **≈ assumed** means the line reads the company's split for its kind. **✎ tuned** means the owner moved it. **◆ workbench** means the bid priced the line from these hours and parts. The bar is labor in blue and materials in orange. The words are the hours, the labor dollars and the materials dollars. The hours are the labor dollars at the company's cost rate.
+The first mark says where the split came from. **≈ assumed** means the line reads the company's split for its kind. **✎ tuned** means the owner moved it. **◆ workbench** means the bid priced the line from these hours and parts. The line that carries a bid's price gets it at award. The bar is labor in blue and materials in orange. The words are the hours, the labor dollars and the materials dollars. The hours are the labor dollars at the company's cost rate.
 
 Nothing here reaches a customer. A bill and a Stripe line show the price alone.
 
@@ -52,3 +52,4 @@ A line with no percent of its own says so. It never borrows the job's percent.
 
 - To set a line In order or Any time, see *split a job into stages and bill stage by stage*.
 - To read the rest of the Costs tab, see *read the cost and value timeline on a job*.
+- To give the whole project its hours baseline, see [give a project its hours baseline at award](/help/give-a-project-its-hours-baseline).

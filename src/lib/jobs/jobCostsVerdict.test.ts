@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { baselineReadWords, buildCostsVerdict, pctDoneWords, timeLeftWords } from './jobCostsVerdict'
+import { baselineFrozenWords, baselineHeadWords, baselineReadWords, baselineScoreWords, buildCostsVerdict, pctDoneWords, timeLeftWords } from './jobCostsVerdict'
 import type { JobBurnModel } from './jobBurn'
 import type { ResolvedJobBudget } from './jobBudget'
 
@@ -62,6 +62,36 @@ describe('buildCostsVerdict', () => {
     expect(w.baseline).toMatchObject({ kind: 'bid', bidHours: 36, read: 'under' })
     expect(w.baseline.hoursShare).toBeCloseTo(6 / 36, 6)
     expect(baselineReadWords(w.baseline, 50)).toBe("17% of the bid's hours at 50% done · the book was heavy here")
+  })
+  it('a book baseline at award reads as a guess with what it was computed from (punch list #234 PR 1a)', () => {
+    const book: ResolvedJobBudget = { ...assumed, source: 'book', glyph: '≈', directUsd: 21_168, components: { laborHours: 470.4, laborRate: 45, laborUsd: 21_168, materialsUsd: 0, subsUsd: 0, otherUsd: 0 }, targetMarginPct: null, takenAt: '2026-11-01T15:00:00Z', takenBy: 'u1', partial: { labor: true, materials: false, subs: false } }
+    const row = { kind: 'book', labor_hours: 470.4, labor_usd: 21_168, materials_usd: 0, subs_usd: 0, other_usd: 0, total_direct_usd: 21_168, completeness: { usable: false, book: { hours_per_thousand: 4.2, n: 12, price_usd: 112_000, scope: 'similar' } }, awarded_at: '2026-11-01T15:00:00Z', awarded_by: 'u1', awarded_kind: 'book', awarded_labor_hours: 470.4, awarded_labor_usd: 21_168, awarded_materials_usd: 0, awarded_total_direct_usd: 21_168, awarded_detail: {} }
+    const w = buildCostsVerdict({ ...base, burn: { ...burn, percentDone: 50 }, priceUsd: 112_000, teamHours: 212, resolved: book, bidLabel: '917', budgetRow: row })
+    expect(w.baseline).toMatchObject({ kind: 'book', bidHours: 470.4, read: 'near', book: { hoursPerThousand: 4.2, n: 12, priceUsd: 112_000, scope: 'similar' } })
+    expect(w.baseline.award).toMatchObject({ kind: 'book', laborHours: 470.4, at: '2026-11-01T15:00:00Z' })
+    expect(w.budgetLabel).toBe('≈ from the book')
+    expect(w.sections.find((s) => s.key === 'labor')!.budgetWords).toBe('≈ the book')
+    expect(baselineHeadWords(w.baseline)).toBe('≈ Baseline assumed from the book at award · 470 h')
+    expect(baselineFrozenWords(w.baseline, (iso) => iso.slice(0, 10))).toBe('Frozen 2026-11-01 · 4.2 h per $1k × $112,000 · 12 similar projects · a guess, read as one')
+    expect(baselineReadWords(w.baseline, 50)).toBe("45% of the baseline's hours at 50% done · on the baseline")
+    expect(baselineScoreWords(w.baseline)).toBe("The superintendent's line draws grey. The score skips this job until a bid or typed baseline replaces it.")
+  })
+  it('a typed baseline names its note and the book beside it; one taken after the award says what the award keeps', () => {
+    const typed: ResolvedJobBudget = { ...assumed, source: 'typed', glyph: '✎', directUsd: 9_900, components: { laborHours: 220, laborRate: 45, laborUsd: 9_900, materialsUsd: 0, subsUsd: 0, otherUsd: 0 }, targetMarginPct: null, takenAt: '2026-10-20T15:00:00Z', takenBy: 'me', note: 'Repeat of the Lakeside building, same crew', partial: { labor: true, materials: false, subs: false } }
+    const awardedTyped = { kind: 'typed', labor_hours: 220, labor_usd: 9_900, materials_usd: 0, subs_usd: 0, other_usd: 0, total_direct_usd: 9_900, awarded_at: '2026-10-20T15:00:00Z', awarded_kind: 'typed', awarded_labor_hours: 220, awarded_labor_usd: 9_900 }
+    const w = buildCostsVerdict({ ...base, resolved: typed, budgetRow: awardedTyped })
+    expect(w.baseline.kind).toBe('typed')
+    expect(baselineHeadWords(w.baseline, 'me')).toBe('✎ Baseline typed at award by you · 220 h')
+    expect(baselineFrozenWords(w.baseline, (iso) => iso.slice(0, 10), 262)).toBe('Frozen 2026-10-20 · "Repeat of the Lakeside building, same crew" · the book says 262 h')
+    expect(baselineScoreWords(w.baseline)).toBe('Scores like a bid baseline. The name on it is the point.')
+    // Refresh from bid after a book award: the live row is the bid's, the award stays the book's.
+    const bidNow: ResolvedJobBudget = { ...typed, source: 'bid', glyph: '◆', note: null, takenAt: '2026-11-05T15:00:00Z' }
+    const refreshed = buildCostsVerdict({ ...base, resolved: bidNow, bidLabel: '917', budgetRow: { ...awardedTyped, kind: 'bid', awarded_kind: 'book', awarded_labor_hours: 470 } })
+    expect(baselineHeadWords(refreshed.baseline)).toBe('◆ Baseline from B917 · 220 h')
+    expect(baselineFrozenWords(refreshed.baseline, (iso) => iso.slice(0, 10))).toBe("Taken 2026-11-05 · awarded on the book's 470 h, the score keeps that")
+    // No row at all: no head, no frozen line.
+    expect(baselineHeadWords(v.baseline)).toBe('')
+    expect(baselineFrozenWords(v.baseline, (iso) => iso)).toBe('')
   })
   it('words the edges: done, early, idle, no bid', () => {
     expect(timeLeftWords({ ...burn, workLeftFieldDays: 0, early: false, idle: false, fieldDays: 12, progressPerFieldDay: 2, burnPerFieldDayUsd: 10 } as never, (n) => `$${n}`)).toEqual({ big: 'done', sub: 'the job reads 100%' })
