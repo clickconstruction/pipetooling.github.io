@@ -72,7 +72,7 @@ Scroll on the map to zoom. Drag it to move. Press {{button:outline|Central Texas
 
 ## Signed hours statements on the matter
 
-A worker can sign a paper on what they did on the job and what the company paid for it. See [make a signed hours statement](/help/make-a-signed-hours-statement). On the **Evidence** tab, each job in **Proof the work happened** has a **Signed statements** line under it. It lists every statement made for the job. Only a dev and the controller see the statements and the presses. Everyone else sees the line with nothing under it. Each shows its record, the worker, the period, the hours and where it stands.
+A worker can sign a paper on what they did on the job and what the company paid for it. See [make a signed hours statement](/help/make-a-signed-hours-statement). On the **Evidence** tab, each job in **Proof the work happened** has a **Signed statements** line under it. It lists every statement made for the job. Only a dev and the controller see the statements and the presses. Everyone else sees the line say that only a dev or the controller can read them. Each shows its record, the worker, the period, the hours and where it stands.
 
 Press **Ask <name>…** to ask a worker who clocked on the job. The Hours statement window opens on that job with the worker picked. Send it for a signature from there.
 

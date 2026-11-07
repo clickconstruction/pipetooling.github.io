@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { DatabaseError, OperationTimeoutError } from '../../utils/errorHandling'
 import { newPress } from './outbox'
-import { RPC_KIND, landJobPhotos, outcomeOfFailure, rpcPayload } from './landFieldPress'
+import { RPC_KIND, landJobPhotos, landTaskPhoto, outcomeOfFailure, rpcPayload } from './landFieldPress'
 
 const T = 1_780_000_000_000
 
 describe('landFieldPress · the press as the RPC reads it', () => {
   it('names the kinds in the database’s words', () => {
-    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos', 'checklist-sign': 'checklist_sign' })
+    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos', 'checklist-sign': 'checklist_sign', 'task-photo': 'task_photo' })
   })
 
   it('maps each payload to snake case, every column the RPC reads', () => {
@@ -79,6 +79,36 @@ describe('landJobPhotos', () => {
     const failed = await landJobPhotos(press, { land: async () => Promise.reject(new TypeError('Failed to fetch')) })
     expect(failed.kind).toBe('failed')
     const refused = await landJobPhotos(press, { land: async () => Promise.reject(new DatabaseError('Failed to add photos: The job is not one you can see.', '42501', undefined, { kind: 'server', status: 403, operationName: 'add photos', serverMessage: 'The job is not one you can see.' })) })
+    expect(refused.kind).toBe('refused')
+  })
+})
+
+// Punch list #273, v2.6628: a task photo press lands without the RPC; a finishing shot is tied to its line.
+describe('landTaskPhoto', () => {
+  const shot = (id: string, sent: boolean, criterionId: string | null) => ({ id, sent, kind: 'finish' as const, percentAt: null, criterionId, lineBody: criterionId ? 'Fittings are in labeled bins' : null, takenAt: '2026-11-07T20:41:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: 'Mateo Ruiz' })
+
+  it('names the card and the ids for the record, and writes a sent proving shot onto its line’s tick', async () => {
+    const press = newPress({ id: 'tp', seq: 1, kind: 'task-photo', userId: 'u', pressedAt: T, payload: { instanceId: 'inst-1', photos: [shot('a', true, 'c2')] } })
+    expect(rpcPayload(press)).toEqual({ instance_id: 'inst-1', photo_ids: ['a'] })
+    const attached: string[] = []
+    const out = await landTaskPhoto(press, { attach: async (instanceId, criterionId, photoId) => void attached.push(`${instanceId}/${criterionId}/${photoId}`) })
+    expect(out).toEqual({ kind: 'landed', result: { instance_id: 'inst-1', photo_ids: ['a'] } })
+    expect(attached).toEqual(['inst-1/c2/a'])
+  })
+
+  it('a progress shot, or a finish on no line, lands with nothing to attach; an unsent shot is never attached', async () => {
+    const press = newPress({ id: 'tp2', seq: 1, kind: 'task-photo', userId: 'u', pressedAt: T, payload: { instanceId: 'inst-1', photos: [{ ...shot('a', true, null), kind: 'progress', percentAt: 50 }, shot('b', false, 'c2')] } })
+    const attached: string[] = []
+    const out = await landTaskPhoto(press, { attach: async (...args) => void attached.push(args.join('/')) })
+    expect(out).toEqual({ kind: 'landed', result: { instance_id: 'inst-1', photo_ids: ['a'] } })
+    expect(attached).toEqual([])
+  })
+
+  it('a lost signal fails and waits; a refusal keeps the server’s reason', async () => {
+    const press = newPress({ id: 'tp3', seq: 1, kind: 'task-photo', userId: 'u', pressedAt: T, payload: { instanceId: 'inst-1', photos: [shot('a', true, 'c2')] } })
+    const failed = await landTaskPhoto(press, { attach: async () => Promise.reject(new TypeError('Failed to fetch')) })
+    expect(failed.kind).toBe('failed')
+    const refused = await landTaskPhoto(press, { attach: async () => Promise.reject(new DatabaseError('Failed to add the photo: Not your card.', '42501', undefined, { kind: 'server', status: 403, operationName: 'add the photo', serverMessage: 'Not your card.' })) })
     expect(refused.kind).toBe('refused')
   })
 })

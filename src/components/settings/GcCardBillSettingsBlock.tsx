@@ -37,8 +37,7 @@ export default function GcCardBillSettingsBlock() {
   }
 
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }} data-testid="gc-card-bill-block">
-      <h3 style={{ margin: '0 0 0.6rem', fontSize: '1rem' }}>GC jobs · pay by card</h3>
+    <div style={{ padding: '1rem' }} data-testid="gc-card-bill-block">
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: loaded ? 'pointer' : 'default' }}>
         <input type="checkbox" checked={on} disabled={!loaded || saving} onChange={(e) => void toggle(e.target.checked)} style={{ marginTop: 3 }} aria-label="Let GC customers pay a certified bill by card" />
         <span>

@@ -200,6 +200,63 @@ describe('buildLienDeskQueue · a job the RPC no longer lists keeps the job’s 
   })
 })
 
+describe('buildLienDeskQueue · months due outrank a notice that went (v2.6624, punch list #248)', () => {
+  // Job 650 on 2026-11-02: the Jul notice went Oct 14; Aug (window closes Nov 16) and Sep (Dec 15) are due. Until v2.6624 the
+  // sent item's thirty days put the row in Sent with letter two's doors and no draft door, and the Dashboard's draft count left it out.
+  const sentOct14 = item({ job_id: 'j650', status: 'sent', sent_at: '2026-10-14T16:00:00Z', months: ['2026-07'] })
+  const due = [
+    row({ job_id: 'j650', work_month: '2026-07', deadline: '2026-10-15', noticed: true, open_balance: 1000 }),
+    row({ job_id: 'j650', work_month: '2026-08', deadline: '2026-11-16', open_balance: 1000 }),
+    row({ job_id: 'j650', work_month: '2026-09', deadline: '2026-12-15', open_balance: 1000 }),
+  ]
+
+  it('a sent job with new months due sits in To draft, judged by the next deadline, with the sent notice on sentItem and no item', () => {
+    const q = buildLienDeskQueue(due, [sentOct14], {}, '2026-11-02')
+    const e = q.entries[0]!
+    expect(e.pile).toBe('to_draft')
+    expect(e.dueMonths).toEqual(['2026-08', '2026-09'])
+    expect(e.earliestDeadline).toBe('2026-11-16')
+    expect(e.daysLeft).toBe(14)
+    expect(e.severity).toBe('amber')
+    expect(e.item).toBeNull()
+    expect(e.sentItem?.id).toBe(sentOct14.id)
+    expect(q.counts.to_draft).toBe(1)
+    expect(q.counts.sent).toBe(0)
+    // The Dashboard's draft count now names it.
+    expect(summarizeLienDeskForNeedsYou(q).office).toMatchObject({ jobs: 1, months: 2, dollars: 1000, earliestDeadline: '2026-11-16' })
+  })
+
+  it('without the owner of record it goes to Needs the owner the same way', () => {
+    const q = buildLienDeskQueue(due.map((r) => ({ ...r, has_owner: false })), [sentOct14], {}, '2026-11-02')
+    expect(q.entries[0]!.pile).toBe('needs_owner')
+    expect(q.entries[0]!.sentItem?.id).toBe(sentOct14.id)
+  })
+
+  it('a sent job with nothing due stays in Sent, its item the sent notice as before, quiet', () => {
+    const q = buildLienDeskQueue([due[0]!], [sentOct14], {}, '2026-11-02')
+    const e = q.entries[0]!
+    expect(e.pile).toBe('sent')
+    expect(e.item?.id).toBe(sentOct14.id)
+    expect(e.sentItem?.id).toBe(sentOct14.id)
+    expect(e.severity).toBe('quiet')
+  })
+
+  it('a live draft still decides the pile, and carries the sent notice beside it', () => {
+    const draft = item({ job_id: 'j650', id: 'it-draft', status: 'awaiting_approval', months: ['2026-08'], created_at: '2026-11-01T14:00:00Z' })
+    const q = buildLienDeskQueue(due, [sentOct14, draft], {}, '2026-11-02')
+    const e = q.entries[0]!
+    expect(e.pile).toBe('awaiting')
+    expect(e.item?.id).toBe('it-draft')
+    expect(e.sentItem?.id).toBe(sentOct14.id)
+  })
+
+  it('once the sent notice ages past thirty days the row reads as any To draft row', () => {
+    const q = buildLienDeskQueue(due, [sentOct14], {}, '2026-11-14')
+    expect(q.entries[0]!.pile).toBe('to_draft')
+    expect(q.entries[0]!.sentItem).toBeNull()
+  })
+})
+
 describe('the leader’s decision', () => {
   const entry = { policy: 'ask' as const, earliestDeadline: '2026-09-15' }
   it('a standing "send" rule approves on submit; a live promise always comes back to the leader', () => {

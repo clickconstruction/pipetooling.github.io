@@ -31,11 +31,12 @@ import type { DatabaseErrorKind } from '../../utils/errorHandling'
 /**
  * `job-photos` (punch list #244, PR 5): photos added to a job with their words from the Job photos window, kept on the
  * phone with no signal. `checklist-sign` (punch list #237, PR 2): a signed checklist answer, the mark a small PNG in the
- * payload, so a signature on one bar of signal still lands.
+ * payload, so a signature on one bar of signal still lands. `task-photo` (punch list #273, v2.6628): one shot taken on
+ * a task card's sheet with no signal, kept on the phone as a job photo is and sent to the card when the signal is back.
  */
-export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos' | 'checklist-sign'
+export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos' | 'checklist-sign' | 'task-photo'
 
-export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign']
+export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo']
 
 export function isOutboxKind(value: unknown): value is OutboxKind {
   return typeof value === 'string' && (OUTBOX_KINDS as readonly string[]).includes(value)
@@ -49,6 +50,7 @@ export const OUTBOX_KIND_WORDS: Record<OutboxKind, string> = {
   'field-report': 'Field report',
   'job-photos': 'Job photos',
   'checklist-sign': 'Signed checklist answer',
+  'task-photo': 'Task photo',
 }
 
 /**
@@ -118,24 +120,28 @@ export interface MovedLineStamp {
 }
 
 /**
- * A photo riding with a kept report (punch list #229, PR 6): its row's facts, and whether the shot is already in
- * the bucket with its row (`sent`, so only the attach is left) or waits on the phone (`keptPhotos.ts` holds the
- * bytes by this id). The replay sends the unsent ones first, then the report, then ties them to it.
+ * A shot kept on the phone for a press (punch list #229, PR 6; the base every kind shares since v2.6628): its row's
+ * facts, and whether the shot is already in the bucket with its row (`sent`, so only the landing is left) or waits on
+ * the phone (`keptPhotos.ts` holds the bytes by this id). The replay sends the unsent ones first, then lands the press.
  */
-export interface KeptReportPhoto {
+export interface KeptShot {
   id: string
   sent: boolean
-  fixtureId: string | null
-  stageName: string | null
-  caption: string
-  questionId: string | null
-  questionWords: string | null
   takenAt: string
   bytes: number
   originalBytes: number
   width: number
   height: number
   byName: string
+}
+
+/** A photo riding with a kept report (punch list #229, PR 6): the report ties it to its stage and its checklist question once it lands. */
+export interface KeptReportPhoto extends KeptShot {
+  fixtureId: string | null
+  stageName: string | null
+  caption: string
+  questionId: string | null
+  questionWords: string | null
 }
 
 export interface FieldReportPayload {
@@ -164,6 +170,24 @@ export interface KeptJobPhoto extends KeptReportPhoto {
 export interface JobPhotosPayload {
   jobLedgerId: string
   photos: KeptJobPhoto[]
+}
+
+/**
+ * A photo taken on a task card's sheet with no signal (punch list #273, v2.6628): the `task_photos` row's facts as
+ * `sendTaskPhoto` writes them, so the replay sends the same row under the same id. `criterionId` names the Done when…
+ * line a finishing shot proves; the landing writes the photo onto that line's tick (`attachPhotoToTick`).
+ */
+export interface KeptTaskPhoto extends KeptShot {
+  kind: 'progress' | 'finish' | 'line'
+  percentAt: number | null
+  criterionId: string | null
+  lineBody: string | null
+}
+
+export interface TaskPhotoPayload {
+  instanceId: string
+  /** One shot a press; a list so the kept-photo helpers read every kind alike. */
+  photos: KeptTaskPhoto[]
 }
 
 /**
@@ -197,7 +221,9 @@ export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
         ? JobPhotosPayload
         : K extends 'checklist-sign'
           ? ChecklistSignPayload
-          : FieldReportPayload
+          : K extends 'task-photo'
+            ? TaskPhotoPayload
+            : FieldReportPayload
 
 export interface OutboxPress<K extends OutboxKind = OutboxKind> {
   /** Minted on the phone when pressed; the server counts a send that lands twice once by it. */
@@ -636,12 +662,12 @@ export function outboxHoldsEverything(presses: readonly OutboxPress[], now: numb
   return holding && !presses.some((p) => needsAPerson(p, now))
 }
 
-/** The photos riding with the presses that wait (punch list #229, PR 6): every photo of a waiting or sending field report, and since #244 of a job photos press. */
+/** The photos riding with the presses that wait (punch list #229, PR 6): every photo of a waiting or sending field report, since #244 of a job photos press, and since #273 of a task photo press. */
 export function keptPhotoCount(presses: readonly OutboxPress[]): number {
   let n = 0
   for (const p of presses) {
-    if ((p.kind !== 'field-report' && p.kind !== 'job-photos') || (p.state !== 'waiting' && p.state !== 'sending')) continue
-    n += ((p.payload as FieldReportPayload | JobPhotosPayload).photos ?? []).length
+    if ((p.kind !== 'field-report' && p.kind !== 'job-photos' && p.kind !== 'task-photo') || (p.state !== 'waiting' && p.state !== 'sending')) continue
+    n += ((p.payload as FieldReportPayload | JobPhotosPayload | TaskPhotoPayload).photos ?? []).length
   }
   return n
 }

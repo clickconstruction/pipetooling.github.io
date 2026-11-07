@@ -184,6 +184,23 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
   for (const e of input.notices) {
     const base = { kind: 'notice' as const, jobId: e.jobId, gcId: e.gcCustomerId, title: input.jobTitle(e.jobId), dueOn: e.earliestDeadline, daysLeft: e.daysLeft, severity: e.severity }
     const pane = (pile: LienDeskPile): LienNextUpTarget => ({ open: 'notices', jobId: e.jobId, pile })
+    // A notice that went inside thirty days (v2.6624, punch list #248): its courtesy, letter-two and promise rows ride on the
+    // row's own pile — Sent while nothing is due, To draft once new months are — so one job's draft row and its reminder row
+    // stand together on Do now, and the press opens the pane whose footer carries the door.
+    if (e.pile === 'sent' || e.sentItem) {
+      const two = input.letterTwoByJob[e.jobId]
+      const courtesy = input.courtesyByJob?.[e.jobId]
+      const courtesyDue = Boolean(courtesy && courtesyIsDue(courtesy))
+      const twoDue = Boolean(two && letterTwoIsDue(two))
+      // The rung on the REMINDERS ladder (punch list #262): the row's dots and the strip's narrowing read it; it changes no rule of when a row appears.
+      const reminder = lienReminderAt(courtesy, two)
+      const target = pane(e.pile)
+      // Paying it down (PR 3 of #274): a payment since the packet is an answer, so no reminder leads; the row asks what they promised for the rest, quiet once a promise is on record.
+      if (courtesy?.state === 'paying') push({ ...base, key: `promise:${e.jobId}`, sub: courtesy.words, dueOn: null, daysLeft: null, severity: courtesy.paying?.promisedYmd ? 'quiet' : 'amber', action: 'promise', button: office ? BUTTON.promise : null, target, reminder })
+      // The courtesy notice (punch list #231) is the light step, so it leads while none has gone, even past day 10; once one went, letter two leads from day 10 with the courtesy's state in its words.
+      else if (courtesyDue && (!twoDue || !courtesy!.lastSentAt)) push({ ...base, key: `courtesy:${e.jobId}`, sub: courtesy!.words, dueOn: null, daysLeft: null, severity: two?.state === 'overdue' ? 'red' : 'amber', action: 'courtesy', button: office ? BUTTON.courtesy : null, target, reminder })
+      else if (two && twoDue) push({ ...base, key: `letter-two:${e.jobId}`, sub: `${two.words || 'The attorney’s letter is due'}${courtesy?.lastSentAt ? ` · ${courtesy.words}` : ''}`, dueOn: null, daysLeft: null, severity: two.state === 'overdue' ? 'red' : 'amber', action: 'letter_two', button: office ? BUTTON.letter_two : null, target, reminder })
+    }
     switch (e.pile) {
       case 'needs_owner':
         push({ ...base, key: `notice:${e.jobId}`, sub: 'Needs the owner of record', action: 'find_owner', target: pane('needs_owner') })
@@ -231,27 +248,9 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       case 'held':
         push({ ...base, key: `notice:${e.jobId}`, sub: 'Held', action: 'review_hold', target: pane('held') })
         break
-      case 'sent': {
-        const two = input.letterTwoByJob[e.jobId]
-        const courtesy = input.courtesyByJob?.[e.jobId]
-        const courtesyDue = Boolean(courtesy && courtesyIsDue(courtesy))
-        const twoDue = Boolean(two && letterTwoIsDue(two))
-        // The rung on the REMINDERS ladder (punch list #262): the row's dots and the strip's narrowing read it; it changes no rule of when a row appears.
-        const reminder = lienReminderAt(courtesy, two)
-        // Paying it down (PR 3 of #274): a payment since the packet is an answer, so no reminder leads; the row asks what they promised for the rest, quiet once a promise is on record.
-        if (courtesy?.state === 'paying') {
-          push({ ...base, key: `promise:${e.jobId}`, sub: courtesy.words, dueOn: null, daysLeft: null, severity: courtesy.paying?.promisedYmd ? 'quiet' : 'amber', action: 'promise', button: office ? BUTTON.promise : null, target: pane('sent'), reminder })
-          break
-        }
-        // The courtesy notice (punch list #231) is the light step, so it leads while none has gone, even past day 10; once one went, letter two leads from day 10 with the courtesy's state in its words.
-        if (courtesyDue && (!twoDue || !courtesy!.lastSentAt)) {
-          push({ ...base, key: `courtesy:${e.jobId}`, sub: courtesy!.words, dueOn: null, daysLeft: null, severity: two?.state === 'overdue' ? 'red' : 'amber', action: 'courtesy', button: office ? BUTTON.courtesy : null, target: pane('sent'), reminder })
-          break
-        }
-        if (!two || !twoDue) break
-        push({ ...base, key: `letter-two:${e.jobId}`, sub: `${two.words || 'The attorney’s letter is due'}${courtesy?.lastSentAt ? ` · ${courtesy.words}` : ''}`, dueOn: null, daysLeft: null, severity: two.state === 'overdue' ? 'red' : 'amber', action: 'letter_two', button: office ? BUTTON.letter_two : null, target: pane('sent'), reminder })
+      case 'sent':
+        // Its rows are the reminders above (v2.6624); a Sent row has no notice of its own to draft.
         break
-      }
       case 'missed':
         // Months still open are drafted as on any other row; a closed window nobody wrote down is noted.
         if (e.dueMonths.length > 0) push({ ...base, key: `notice:${e.jobId}`, sub: 'Notice to draft · a window closed', action: 'draft', target: pane('missed') })
@@ -374,7 +373,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
 
   // An envelope the provider mailed that came back or went unclaimed (the Docsmit train, 6b): the office's row, under Needs you now, opening the notice under Sent whose footer has the doors.
   for (const m of input.mailNeedsYou ?? []) {
-    rows.push({ key: `mail:${m.pieceId}`, kind: 'notice', jobId: m.jobId, gcId: null, title: input.jobTitle(m.jobId), sub: `Docsmit · ${m.who.toLowerCase()} · ${m.words}`, dueOn: null, daysLeft: null, severity: 'red', group: 'now', action: 'mail_needs_you', button: office ? BUTTON.mail_needs_you : null, target: { open: 'notices', jobId: m.jobId, pile: 'sent' } })
+    rows.push({ key: `mail:${m.pieceId}`, kind: 'notice', jobId: m.jobId, gcId: null, title: input.jobTitle(m.jobId), sub: `Docsmit · ${m.who.toLowerCase()} · ${m.words}`, dueOn: null, daysLeft: null, severity: 'red', group: 'now', action: 'mail_needs_you', button: office ? BUTTON.mail_needs_you : null, target: { open: 'notices', jobId: m.jobId, pile: input.notices.find((e) => e.jobId === m.jobId)?.pile ?? 'sent' } })
   }
 
   return rows.sort(compareRows)

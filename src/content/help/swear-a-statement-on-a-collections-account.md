@@ -41,7 +41,7 @@ Press **Edit** on the row to change the words. Press **Not signed…** when nobo
 
 ## The office's county
 
-The office sets the county under **Settings**, then **Jobs & billing**. Under **Liens, collections and papers**, press **The office’s county for sworn statements**. The card opens. The window starts its venue line there. The venue line names where the notary watches the signing, not where the job is.
+The office sets the county under **Settings**, then **Company**. Under the office address, press **The office’s county for sworn statements**. The card opens. The window starts its venue line there. The venue line names where the notary watches the signing, not where the job is.
 
 ## Print the paper
 

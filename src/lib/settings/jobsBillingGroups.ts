@@ -1,18 +1,19 @@
 /**
  * Settings → Jobs & billing, drawn by the question a person brings (punch list #261): six
- * headings in order, each card's anchor, name, one-line of what it sets, who sees it and
- * whether it folds. The page draws the headings from here, the strip reads them, the deep
+ * headings in order, each card's anchor, name, one-line of what it sets and who sees it.
+ * The page draws the headings from here, the strip reads them, the deep
  * links register every anchor from here and the doors test holds a door for each. A card is
  * mounted only for a role that sees it, as the page's own gates did before.
  *
- * The fold rule is the card's call 1: a switch stays open, since its On or Off is the one
- * fact it holds; a form folds to its name and line. The usage ledger holds no per-card count
- * yet (no Settings card wrote a press until this), so the rule decides and the fold header
- * counts from now on.
+ * Every card folds to its name and line (call 1, the owner's answer 2026-11-07: the switches
+ * too, which PR 1 had kept open). The usage ledger holds no per-card count yet (no Settings
+ * card wrote a press until PR 1), so the fold header counts from now on. The three cards the
+ * owner moved off the tab (call 2) live in `settingsFoldCards.ts` with their old anchors.
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { canSeeGcMoney } from '../gc/access'
 import { isAssistantLike } from '../subcontractorLikeRole'
+import { SETTINGS_CARD_CHILD_ANCHORS, settingsCardIsTarget, type SettingsFoldCardSpec } from './settingsFoldCards'
 
 export const JOBS_BILLING_TAB = 'settings-jobs'
 
@@ -27,7 +28,6 @@ export type JobsBillingSlug =
   | 'job-book'
   | 'gc-card'
   | 'gc-cutoff'
-  | 'sub-pay'
   | 'stage-checklists'
   | 'machine-templates'
   | 'photos'
@@ -41,27 +41,20 @@ export type JobsBillingSlug =
   | 'bill-memo'
   | 'owner-of-record'
   | 'legal-firm'
-  | 'office-county'
   | 'uncollectible'
   | 'docsmit'
   | 'gc-office-notices'
   | 'gc-customer-notice'
   | 'company-owner'
   | 'hide-hcp'
-  | 'hcp-reconcile'
 
 export type JobsBillingGroupId = 'money' | 'record' | 'bill' | 'liens' | 'notices' | 'repairs'
 
-export interface JobsBillingCard {
+export interface JobsBillingCard extends SettingsFoldCardSpec {
   slug: JobsBillingSlug
   /** The element id a link lands on; `settings-jobs-<slug>`, but the law firms keep the anchor the Legal desk has linked since v2.4711. */
   anchor: string
-  title: string
-  /** One line of what the card sets, under its name on the fold header. */
-  line: string
   who: JobsBillingWho
-  /** A form folds; a switch stays open and draws no header of its own. */
-  fold: boolean
 }
 
 export interface JobsBillingGroup {
@@ -75,8 +68,8 @@ export interface JobsBillingGroup {
   cards: readonly JobsBillingCard[]
 }
 
-function card(slug: JobsBillingSlug, title: string, line: string, who: JobsBillingWho, fold = true): JobsBillingCard {
-  return { slug, anchor: slug === 'legal-firm' ? 'settings-legal-firm' : `settings-jobs-${slug}`, title, line, who, fold }
+function card(slug: JobsBillingSlug, title: string, line: string, who: JobsBillingWho): JobsBillingCard {
+  return { slug, anchor: slug === 'legal-firm' ? 'settings-legal-firm' : `settings-jobs-${slug}`, title, line, who }
 }
 
 export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
@@ -92,9 +85,8 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
       card('trip-charges', 'Turnaway Trip Charges', 'the amount per turnaway reason', 'dev'),
       card('labor-rate', 'Default labor rate', 'what a new labor job starts at, in dollars an hour', 'dev'),
       card('job-book', 'Job Book', 'the Collect Payment line items', 'dev-master-office'),
-      card('gc-card', 'GC jobs · pay by card', 'the Pay by card switch on certified bills', 'dev-master', false),
-      card('gc-cutoff', 'GC jobs · the trades’ cut-off', 'days before bill day', 'money-team', false),
-      card('sub-pay', 'Sub portal · pay schedule', 'the pay-run weekday and the words on the subs’ portal', 'dev'),
+      card('gc-card', 'GC jobs · pay by card', 'the Pay by card switch on certified bills', 'dev-master'),
+      card('gc-cutoff', 'GC jobs · the trades’ cut-off', 'days before bill day', 'money-team'),
     ],
   },
   {
@@ -106,7 +98,7 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
     cards: [
       card('stage-checklists', 'Stage checklists', 'the company’s questions for Rough In, Top Out and Trim Set, and which job each came from', 'dev-master-office'),
       card('machine-templates', 'Machine templates', 'the gauges and the walk for small, medium and large excavators, skid steers and drills', 'dev-master-office'),
-      card('photos', 'Photos', 'the size a report photo is shrunk to', 'dev-master-office', false),
+      card('photos', 'Photos', 'the size a report photo is shrunk to', 'dev-master-office'),
       card('test-reports', 'Test reports', 'who certifies, the words on the paper, who sends', 'dev-master-office'),
       card('developments', 'Manage developments', 'the list: rename, the default GC, archive', 'dev'),
       card('city-lines', 'Job address city line breaks', 'extra city names the address reader knows', 'dev'),
@@ -133,9 +125,8 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
     short: 'Liens and papers',
     line: 'Owners of record, the law firms, the county and certified mail.',
     cards: [
-      card('owner-of-record', 'Liens · owner of record', 'the nightly save-from-the-roll switch', 'dev-master', false),
+      card('owner-of-record', 'Liens · owner of record', 'the nightly save-from-the-roll switch', 'dev-master'),
       card('legal-firm', '⚖ Collections law firms', 'each firm, its people, its fee model and the counties it covers', 'dev'),
-      card('office-county', 'The office’s county for sworn statements', 'where a sworn statement opens its venue line', 'dev'),
       card('uncollectible', "Uncollectible: the accountant's list", 'the bills the office gave up on, by year, with a CSV for the books', 'dev'),
       card('docsmit', 'Docsmit · certified mail from the app', 'the service’s secrets and switches, and a test of the connection', 'dev'),
     ],
@@ -147,8 +138,8 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
     short: 'Notices',
     line: 'The emails the app sends on its own about GC bills.',
     cards: [
-      card('gc-office-notices', 'GC jobs · the office’s notices', 'the project manager and the architect, before bill day', 'dev-master', false),
-      card('gc-customer-notice', 'GC jobs · the customer’s notice before a bill is due', '3 days before a bill is due', 'dev-master', false),
+      card('gc-office-notices', 'GC jobs · the office’s notices', 'the project manager and the architect, before bill day', 'dev-master'),
+      card('gc-customer-notice', 'GC jobs · the customer’s notice before a bill is due', '3 days before a bill is due', 'dev-master'),
     ],
   },
   {
@@ -159,8 +150,7 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
     line: 'One-time fixes and what is left of HouseCall Pro.',
     cards: [
       card('company-owner', 'Company owner account', 'the account company rows are filed under, and re-assign jobs', 'dev'),
-      card('hide-hcp', 'Hide the HCP field on New/Edit Job', 'the empty HCP box off the job form', 'dev', false),
-      card('hcp-reconcile', 'HCP reconcile', 'import billing history from HouseCall Pro exports, previewed before anything is written', 'dev'),
+      card('hide-hcp', 'Hide the HCP field on New/Edit Job', 'the empty HCP box off the job form', 'dev'),
     ],
   },
 ]
@@ -168,9 +158,7 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
 export const JOBS_BILLING_CARDS: readonly JobsBillingCard[] = JOBS_BILLING_GROUPS.flatMap((g) => g.cards)
 
 /** An anchor inside a card that a link may name instead of the card's own: the rate card's Who counts as what list. */
-export const JOBS_BILLING_CHILD_ANCHORS: Readonly<Record<string, string>> = {
-  'who-counts-as-what': 'settings-jobs-rates',
-}
+export const JOBS_BILLING_CHILD_ANCHORS = SETTINGS_CARD_CHILD_ANCHORS
 
 /** Pure: whether the role is mounted the card. */
 export function jobsBillingCardVisible(c: JobsBillingCard, role: UserRole | null | undefined): boolean {
@@ -210,8 +198,7 @@ export function jobsBillingAnchorToTab(): Record<string, string> {
 
 /** Pure: whether an announced id is this card, or a child anchor inside it. */
 export function jobsBillingCardIsTarget(c: JobsBillingCard, id: string): boolean {
-  if (!id) return false
-  return id === c.anchor || JOBS_BILLING_CHILD_ANCHORS[id] === c.anchor
+  return settingsCardIsTarget(c, id)
 }
 
 /** Pure: the heading being scrolled through, the last whose top is above the line; null before the first. */

@@ -20,7 +20,7 @@ export const TRADE_LABEL: Record<Trade, string> = { plumbing: 'Plumbing', electr
 export type LicenseClass = 'apprentice' | 'tradesman' | 'registered_tech' | 'certified_tech' | 'journeyman' | 'master' | 'contractor'
 
 /** Lowest to highest within a trade. */
-const CLASS_RANK: Record<LicenseClass, number> = {
+export const CLASS_RANK: Record<LicenseClass, number> = {
   apprentice: 0,
   registered_tech: 0,
   tradesman: 1,
@@ -157,10 +157,91 @@ export type OpeningBalance = {
   source: string
 }
 
+/**
+ * What the office set for a person and trade on the Licenses tab (`license_targets`, v2.6626): the license worked
+ * toward and the number the board asks for, or null for the ladder's seeded rule; and the hours (HVAC: months)
+ * worked before the clock started, with where they came from.
+ */
+export type LicenseTarget = {
+  trade: Trade
+  targetClass: LicenseClass | null
+  targetAmount: number | null
+  openingAmount: number
+  openingSource: string
+}
+
+/** Plumbing and electrical count hours; HVAC counts months. */
+export function unitOfTrade(trade: Trade): 'hours' | 'months' {
+  return trade === 'hvac' ? 'months' : 'hours'
+}
+
+const TRADE_SET = new Set<string>(TRADES)
+const CLASS_SET = new Set<string>(Object.keys(CLASS_RANK))
+
+/** The `targets` array of `my_week()`, `week_card_data()` and `my_logbook()`, or the table's rows: typed, the unknown dropped. */
+export function parseLicenseTargets(raw: unknown): LicenseTarget[] {
+  if (!Array.isArray(raw)) return []
+  const out: LicenseTarget[] = []
+  for (const x of raw) {
+    if (!x || typeof x !== 'object') continue
+    const o = x as Record<string, unknown>
+    const trade = typeof o.trade === 'string' && TRADE_SET.has(o.trade) ? (o.trade as Trade) : null
+    if (!trade) continue
+    const cls = typeof o.target_class === 'string' && CLASS_SET.has(o.target_class) ? (o.target_class as LicenseClass) : null
+    const amount = o.target_amount == null || o.target_amount === '' ? null : Number(o.target_amount)
+    const opening = Number(o.opening_amount)
+    out.push({
+      trade,
+      targetClass: cls && amount != null && Number.isFinite(amount) && amount > 0 ? cls : null,
+      targetAmount: cls && amount != null && Number.isFinite(amount) && amount > 0 ? amount : null,
+      openingAmount: Number.isFinite(opening) && opening > 0 ? opening : 0,
+      openingSource: typeof o.opening_source === 'string' ? o.opening_source.trim() : '',
+    })
+  }
+  return out
+}
+
+/** The opening balances `progressFor` adds: one a trade with hours before the clock, in the trade's unit. */
+export function openingsFrom(targets: readonly LicenseTarget[]): OpeningBalance[] {
+  return targets.filter((t) => t.openingAmount > 0).map((t) => ({ trade: t.trade, amount: t.openingAmount, unit: unitOfTrade(t.trade), source: t.openingSource }))
+}
+
+/** "Journeyman plumber", "AC contractor": the Licenses tab's name for the class, in sentence case. */
+export function goalName(trade: Trade, cls: LicenseClass): string {
+  const name = LICENSE_LEVELS[trade].find((l) => l.level === cls)?.name ?? cls
+  return name
+    .split(' ')
+    .map((w, i) => (i === 0 || w === w.toUpperCase() ? w : w.toLowerCase()))
+    .join(' ')
+}
+
+/**
+ * The requirement a target names: the board's seeded rule toward that class where one exists (its unit, signer,
+ * board and form), with the office's number in place of the seeded one; otherwise the trade's defaults. The office
+ * typed the board's own number, so the seeded caveat does not apply.
+ */
+export function requirementToward(trade: Trade, from: LicenseClass, to: LicenseClass, need: number): Requirement {
+  const seeded = REQUIREMENTS.find((r) => r.trade === trade && r.to === to) ?? REQUIREMENTS.find((r) => r.trade === trade)
+  return {
+    trade,
+    from,
+    to,
+    toName: seeded?.to === to ? seeded.toName : goalName(trade, to),
+    unit: unitOfTrade(trade),
+    need,
+    windowMonths: seeded?.to === to ? seeded.windowMonths : undefined,
+    supervisorClass: seeded?.supervisorClass ?? (trade === 'hvac' ? 'contractor' : 'master'),
+    board: seeded?.board ?? (trade === 'plumbing' ? 'TSBPE' : 'TDLR'),
+    proofForm: seeded?.proofForm ?? (trade === 'plumbing' ? 'Employer Certification Form' : 'Experience Verification Form'),
+  }
+}
+
 export type Goal = {
   requirement: Requirement
   /** The license held now in the trade, the rung the goal climbs from. */
   holds: ParsedLicense
+  /** True when the office set the class or the number on the Licenses tab. */
+  fromOffice?: boolean
 }
 
 /** A license held whose trade has a rung above it, but no requirement seeded from it yet. */
@@ -175,8 +256,12 @@ export type NoRuleYet = {
  * its ladder only when the trade offers nothing above it; a rung with a level above it and no
  * requirement seeded from it (a journeyman electrician, whose master rule is not in) is `noRuleYet`,
  * never `topOfLadder`.
+ *
+ * The office's target for the trade (v2.6626) wins over the seeded rule: its class and its number name the goal,
+ * and it resolves a `noRuleYet` rung. A target at or below the rung held is ignored, so a license added later
+ * never strands a goal below it.
  */
-export function goalsFor(held: readonly ParsedLicense[]): { goals: Goal[]; topOfLadder: ParsedLicense[]; noRuleYet: NoRuleYet[] } {
+export function goalsFor(held: readonly ParsedLicense[], targets: readonly LicenseTarget[] = []): { goals: Goal[]; topOfLadder: ParsedLicense[]; noRuleYet: NoRuleYet[] } {
   const goals: Goal[] = []
   const topOfLadder: ParsedLicense[] = []
   const noRuleYet: NoRuleYet[] = []
@@ -184,6 +269,11 @@ export function goalsFor(held: readonly ParsedLicense[]): { goals: Goal[]; topOf
     const inTrade = held.filter((l) => l.trade === trade && l.cls)
     if (inTrade.length === 0) continue
     const top = inTrade.reduce((a, b) => (CLASS_RANK[b.cls!] > CLASS_RANK[a.cls!] ? b : a))
+    const target = targets.find((t) => t.trade === trade)
+    if (target?.targetClass && target.targetAmount != null && CLASS_RANK[target.targetClass] > CLASS_RANK[top.cls!]) {
+      goals.push({ requirement: requirementToward(trade, top.cls!, target.targetClass, target.targetAmount), holds: top, fromOffice: true })
+      continue
+    }
     const req = REQUIREMENTS.find((r) => r.trade === trade && r.from === top.cls)
     if (req) {
       goals.push({ requirement: req, holds: top })

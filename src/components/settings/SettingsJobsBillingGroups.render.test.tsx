@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Render smoke for Settings → Jobs & billing drawn by heading (punch list #261): the headings in order for the
- * role, the strip at two headings or more, every form folded and every switch open, and every anchor landing:
+ * role, the strip at two headings or more, every card folded (the switches too since PR 2), and every anchor landing:
  * announcing a card's anchor (what the deep-link effect and the search pick do) opens the card and the id holds
  * its element; a child anchor opens the card that holds it; the fold header is a counted press.
  */
@@ -26,7 +26,7 @@ function stubs(): JobsBillingCardElements {
 }
 
 describe('SettingsJobsBillingGroups (punch list #261)', () => {
-  it('draws the six headings for a dev with the strip, every form folded, every switch open', () => {
+  it('draws the six headings for a dev with the strip, every card folded', () => {
     const { container } = renderWithProviders(<SettingsJobsBillingGroups role="dev" cards={stubs()} />)
     const headings = [...container.querySelectorAll('[data-settings-jobs-group]')].map((el) => el.getAttribute('data-settings-jobs-group'))
     expect(headings).toEqual(['money', 'record', 'bill', 'liens', 'notices', 'repairs'])
@@ -35,24 +35,20 @@ describe('SettingsJobsBillingGroups (punch list #261)', () => {
     for (const c of JOBS_BILLING_CARDS) {
       const el = document.getElementById(c.anchor)
       expect(el, c.anchor).toBeTruthy()
-      if (c.fold) {
-        expect(el?.getAttribute('data-open')).toBe('no')
-        expect(container.querySelector(`[data-stub="${c.slug}"]`)).toBeNull()
-      } else {
-        expect(container.querySelector(`[data-stub="${c.slug}"]`)).toBeTruthy()
-      }
+      expect(el?.getAttribute('data-open')).toBe('no')
+      expect(container.querySelector(`[data-stub="${c.slug}"]`)).toBeNull()
     }
-    expect(container.querySelectorAll('[data-stub]')).toHaveLength(7)
+    expect(container.querySelectorAll('[data-stub]')).toHaveLength(0)
   })
 
   it('every anchor lands: announcing a card opens it; a child anchor opens the card that holds it', () => {
     const { container } = renderWithProviders(<SettingsJobsBillingGroups role="dev" cards={stubs()} />)
-    for (const c of JOBS_BILLING_CARDS.filter((x) => x.fold)) {
+    for (const c of JOBS_BILLING_CARDS) {
       act(() => announceSettingsTarget(c.anchor))
       expect(document.getElementById(c.anchor)?.getAttribute('data-open'), c.anchor).toBe('yes')
       expect(container.querySelector(`[data-stub="${c.slug}"]`), c.anchor).toBeTruthy()
     }
-    expect(container.querySelectorAll('[data-stub]')).toHaveLength(29)
+    expect(container.querySelectorAll('[data-stub]')).toHaveLength(26)
   })
 
   it('a child anchor opens its card alone', () => {
@@ -62,7 +58,7 @@ describe('SettingsJobsBillingGroups (punch list #261)', () => {
       expect(document.getElementById(anchor)?.getAttribute('data-open')).toBe('yes')
       expect(document.getElementById(child)).toBeTruthy()
     }
-    expect(container.querySelectorAll('[data-stub]')).toHaveLength(7 + Object.keys(JOBS_BILLING_CHILD_ANCHORS).length)
+    expect(container.querySelectorAll('[data-stub]')).toHaveLength(Object.keys(JOBS_BILLING_CHILD_ANCHORS).length)
   })
 
   it('a card the address opens stays open whatever its fold, and a fold header is a counted press', () => {
@@ -99,6 +95,6 @@ describe('SettingsJobsBillingGroups (punch list #261)', () => {
     delete cards.rates
     const { container } = renderWithProviders(<SettingsJobsBillingGroups role="dev" cards={cards} />)
     expect(document.getElementById('settings-jobs-rates')).toBeNull()
-    expect(container.querySelectorAll('[data-settings-card]')).toHaveLength(28)
+    expect(container.querySelectorAll('[data-settings-card]')).toHaveLength(25)
   })
 })

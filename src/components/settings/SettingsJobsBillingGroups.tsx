@@ -9,7 +9,7 @@
  */
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { JOBS_BILLING_STRIP_MIN_GROUPS, jobsBillingActiveGroup, jobsBillingGroupsFor, type JobsBillingGroup, type JobsBillingGroupId, type JobsBillingSlug } from '../../lib/settings/jobsBillingGroups'
+import { JOBS_BILLING_STRIP_MIN_GROUPS, JOBS_BILLING_TAB, jobsBillingActiveGroup, jobsBillingGroupsFor, type JobsBillingGroup, type JobsBillingGroupId, type JobsBillingSlug } from '../../lib/settings/jobsBillingGroups'
 import type { UserRole } from '../../hooks/useAuth'
 import { SettingsFoldCard } from './SettingsFoldCard'
 
@@ -45,7 +45,7 @@ export function SettingsJobsBillingGroups({ role, cards, forceOpen }: {
             const el = cards[c.slug]
             if (el == null) return null
             return (
-              <SettingsFoldCard key={c.slug} card={c} forceOpen={forceOpen?.[c.slug] ?? false}>
+              <SettingsFoldCard key={c.slug} card={c} track={JOBS_BILLING_TAB} forceOpen={forceOpen?.[c.slug] ?? false}>
                 {el}
               </SettingsFoldCard>
             )

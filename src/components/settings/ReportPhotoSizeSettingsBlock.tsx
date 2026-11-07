@@ -38,8 +38,7 @@ export default function ReportPhotoSizeSettingsBlock({ canSet }: { canSet: boole
   }
 
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }} data-testid="report-photo-size-block">
-      <h3 style={{ margin: '0 0 0.35rem', fontSize: '1rem' }}>Photos</h3>
+    <div style={{ padding: '1rem' }} data-testid="report-photo-size-block">
       <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
         A report photo is shrunk on the phone before it leaves, to this long edge. The full size shot never leaves the phone. Drive gets the small copy.
       </p>
