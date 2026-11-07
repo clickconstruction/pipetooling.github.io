@@ -27,6 +27,8 @@ Each person's file has three layers:
 
 Stick to facts with dates. If it is an impression, say whose: "my read after the call was…".
 
+Write N§16 in an entry to point at section 16 of the narrative. On the Timeline it becomes a press that opens the narrative there. In the narrative's Jump to list, a cited section shows how many entries cite it. Press the count to see them.
+
 ## Entries can't be edited or deleted
 
 That is deliberate. The raw log is trustworthy because nothing in it can be quietly rewritten. Made a mistake? You add a new entry: "Correction to the Aug 19 entry: …".

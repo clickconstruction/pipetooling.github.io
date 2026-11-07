@@ -10,6 +10,7 @@ import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../../lib/peop
 import { hrDocDraftWords, hrDocSaveFailureWords, hrDocSavePayload, type HrDocTarget } from '../../../lib/people/hrDocEditor'
 import { checkDocumentFile, cleanDocumentTitle, documentKeptByWords, documentSizeWords, documentsTabCount, type PersonDocumentIndexRow, type PersonDocumentRow } from '../../../lib/people/personDocuments'
 import { loadPersonDocument, loadPersonDocuments, savePersonDocument } from '../../../lib/people/personDocumentsIo'
+import { citationsBySection, citedByWords, headingNumber, sectionByNumber, splitByCitations } from '../../../lib/people/hrDocCitations'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import {
   buildPersonTimeline,
@@ -270,6 +271,10 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [openDoc, setOpenDoc] = useState<PersonDocumentRow | null>(null)
   const [addDoc, setAddDoc] = useState<{ how: 'write' | 'file' | 'paste'; title: string; text: string; counselOnly: boolean; fileName: string | null; why: string | null; saving: boolean } | null>(null)
   const namedDocRef = useRef<HTMLDivElement>(null)
+  // v2.6615 (punch list #277 PR 3): a citation pressed on a line asks for a section of the narrative; the Jump to list
+  // opens the entries that cite a section.
+  const [pendingSection, setPendingSection] = useState<number | null>(null)
+  const [citedOpen, setCitedOpen] = useState<number | null>(null)
   /** Themes on the record (v2.6546): the catalog and this person's marks, the pickers' drafts, the Timeline's theme filter, the ticked lines and the bulk bar. */
   const [themes, setThemes] = useState<LegalTheme[]>([])
   const [marks, setMarks] = useState<LegalThemeMark[]>([])
@@ -393,6 +398,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     return m
   }, [sources])
   const evidenceRecords = useMemo(() => sortEvidenceNewestFirst(sources?.evidence ?? []), [sources])
+  /** v2.6615: the entries that cite each section of the narrative (`N§16` in their words). */
+  const citesBySection = useMemo(() => citationsBySection(lines.filter((l) => l.ref.table === 'person_file_entries').map((l) => ({ key: l.key, ymd: l.ymd, what: l.what }))), [lines])
   const lineByEntryId = useMemo(() => {
     const m = new Map<string, PersonTimelineLine>()
     for (const l of lines) if (l.ref.table === 'person_file_entries') m.set(l.ref.id, l)
@@ -756,6 +763,35 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     }, 50)
   }
 
+  /** A citation on a line (v2.6615): the Documents view on the narrative, scrolled to that section and lit for a moment. */
+  const openNarrativeSection = (n: number) => {
+    setOpenDoc(null)
+    setDocEdit(null)
+    setAddDoc(null)
+    setView('narrative')
+    setPendingSection(n)
+  }
+  useEffect(() => {
+    if (pendingSection === null || view !== 'narrative' || !sources?.docs.narrative) return
+    const target = sectionByNumber(extractHrDocHeadings(sources.docs.narrative.content), pendingSection)
+    setPendingSection(null)
+    if (!target) {
+      showToast(`The narrative has no section ${pendingSection}.`, 'error')
+      return
+    }
+    window.setTimeout(() => {
+      // The slug is letters, digits and dashes (hrDocMarkdown's slugify), so an attribute selector needs no escaping.
+      const el = hrDocRef.current?.querySelector<HTMLElement>(`[id="${target.slug}"]`)
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      el.style.transition = 'background 1.2s'
+      el.style.background = 'var(--bg-blue-tint)'
+      window.setTimeout(() => {
+        el.style.background = ''
+      }, 1400)
+    }, 50)
+  }, [pendingSection, view, sources, showToast])
+
   const removeMarkFromWindow = async (id: string, why: string) => {
     const r = await removeMark(id, why, authUser?.id ?? null)
     if (!r.ok) {
@@ -902,7 +938,26 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
               </a>
             ) : null}
           </span>
-          <span style={{ display: 'block', fontSize: '0.87rem', color: 'var(--text-base)', marginTop: '0.25rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{line.what}</span>
+          <span style={{ display: 'block', fontSize: '0.87rem', color: 'var(--text-base)', marginTop: '0.25rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+            {line.ref.table === 'person_file_entries' && viewer.isDev
+              ? splitByCitations(line.what).map((part, i) =>
+                  part.kind === 'text' ? (
+                    <span key={i}>{part.text}</span>
+                  ) : (
+                    <button
+                      key={i}
+                      type="button"
+                      aria-label={`Open section ${part.section} of the narrative`}
+                      title={`Section ${part.section} of the narrative`}
+                      onClick={() => openNarrativeSection(part.section)}
+                      style={{ font: 'inherit', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline dotted' }}
+                    >
+                      {part.raw}
+                    </button>
+                  ),
+                )
+              : line.what}
+          </span>
           {line.notes ? <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{line.notes}</span> : null}
           {chips.length > 0 ? <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.35rem' }}>{chips}</span> : null}
           {themeBits(line)}
@@ -1418,9 +1473,12 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
               <nav aria-label="Jump to section" style={{ background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.8rem', marginBottom: '0.8rem', maxWidth: '70ch', fontSize: '0.8rem' }}>
                 <div style={{ textTransform: 'uppercase', fontSize: '0.64rem', letterSpacing: '0.07em', color: 'var(--text-faint)', fontWeight: 700, marginBottom: '0.35rem' }}>Jump to</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.15rem 0.9rem' }}>
-                  {headings.map((h) => (
+                  {headings.map((h) => {
+                    const n = kind === 'narrative' ? headingNumber(h.text) : null
+                    const cited = n !== null ? (citesBySection.get(n)?.length ?? 0) : 0
+                    return (
+                    <span key={h.slug} style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem' }}>
                     <a
-                      key={h.slug}
                       href={`#${h.slug}`}
                       onClick={(ev) => {
                         ev.preventDefault()
@@ -1430,8 +1488,27 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                     >
                       {h.text}
                     </a>
-                  ))}
+                    {cited > 0 && n !== null ? (
+                      <button type="button" aria-label={`Section ${n}: ${citedByWords(cited)}`} aria-expanded={citedOpen === n} onClick={() => setCitedOpen((prev) => (prev === n ? null : n))} style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 700, color: citedOpen === n ? 'var(--text-link)' : 'var(--text-muted)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, padding: '0 0.4rem', cursor: 'pointer', lineHeight: 1.5 }}>
+                        {cited}
+                      </button>
+                    ) : null}
+                    </span>
+                    )
+                  })}
                 </div>
+                {kind === 'narrative' && citedOpen !== null && (citesBySection.get(citedOpen)?.length ?? 0) > 0 ? (
+                  <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }} data-testid="hr-doc-cited-by">
+                    <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Section {citedOpen} · {citedByWords(citesBySection.get(citedOpen)?.length ?? 0)}. Press one to open the Timeline on it.</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                      {(citesBySection.get(citedOpen) ?? []).map((l) => (
+                        <button key={l.key} type="button" onClick={() => openOnTimeline(l.key)} style={chip(FACT_TONE.gray, { cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, lineHeight: 'inherit' })}>
+                          {dayWords(l.ymd)} · {(l.what.split('\n')[0] ?? '').slice(0, 48)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </nav>
             )}
             {doc.content.trim() === '' ? (
