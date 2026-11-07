@@ -50,6 +50,9 @@ import { jobKindTrailWords, type JobKindFillInRow } from '../../lib/needsYou/fil
 import { jobKindFillInIo } from '../../lib/needsYou/fillInJobKindsIo'
 import type { JobKind } from '../../lib/jobs/jobKind'
 import { JobKindPresses } from './JobKindPresses'
+import { baselineRowRpcArgs, baselineTrailWords, type BaselineFillInRow } from '../../lib/needsYou/fillInBaselines'
+import { baselineFillInIo } from '../../lib/needsYou/fillInBaselinesIo'
+import { BaselinePresses } from './BaselinePresses'
 import { suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { FillInIo, FillInRow } from '../../hooks/useFillInRows'
@@ -451,6 +454,33 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     })()
   }
 
+  /** The baseline kind (punch list #234, PR 1a): one press writes the project's baseline and moves on. */
+  const pressBaseline = (row: BaselineFillInRow, source: 'bid' | 'book') => {
+    if (busy || !userId) return
+    const args = baselineRowRpcArgs(row, source)
+    const hours = row.options.find((o) => o.source === source)?.hours ?? 0
+    if (!args) return
+    setBusy(true)
+    void (async () => {
+      try {
+        const baselinesIo = io.baselines ?? baselineFillInIo
+        await baselinesIo.save(args)
+        recordNavClick(userId, role, 'needs-you', `#fill-save-baseline-${source}`)
+        const undo = async () => {
+          await baselinesIo.undo(row.jobId)
+        }
+        setHandled((t) => pushHandled(t, { row, how: 'saved', words: baselineTrailWords(source, hours), undo }))
+        setSavedKeys((k) => [...k, row.key])
+        setRevisitKey(null)
+        onRowSaved(row)
+      } catch (e) {
+        showToast(formatErrorMessage(e, "Could not write the project's baseline"), 'error')
+      } finally {
+        setBusy(false)
+      }
+    })()
+  }
+
   const undo = (h: Handled) => {
     if (busy || !h.undo) return
     setBusy(true)
@@ -493,7 +523,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     body = <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '0.5rem 0' }}>Reading the rows…</div>
   } else if (!current) {
     const savedOf = (kind: FillInKind) => handled.filter((h) => h.how === 'saved' && h.row.kind === kind).length
-    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract'), 'contract-missing': savedOf('contract-missing'), purchase: savedOf('purchase'), 'move-window': savedOf('move-window'), 'work-order': savedOf('work-order'), 'job-kind': savedOf('job-kind') }, skipped)
+    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract'), 'contract-missing': savedOf('contract-missing'), purchase: savedOf('purchase'), 'move-window': savedOf('move-window'), 'work-order': savedOf('work-order'), 'job-kind': savedOf('job-kind'), baseline: savedOf('baseline') }, skipped)
     body = (
       <div data-fill-in-done style={{ ...NEEDS_YOU_WALK_TINT.blue, borderRadius: 10, padding: '1.1rem 1.2rem', marginBottom: '0.75rem' }}>
         <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Fill them in</div>
@@ -546,6 +576,8 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.9rem' }}>
             {current.kind === 'job-kind' ? (
               <JobKindPresses lean={current.lean} disabled={busy} onPress={(kind) => pressJobKind(current, kind)} />
+            ) : current.kind === 'baseline' ? (
+              <BaselinePresses row={current} disabled={busy} onPress={(source) => pressBaseline(current, source)} />
             ) : (
               <button
                 type="button"

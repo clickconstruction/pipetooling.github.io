@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { formatErrorMessage } from '../utils/errorHandling'
+import type { AwardBaselineRpcArgs } from '../lib/jobs/awardBaseline'
+
+/** A baseline landed on some job (punch list #234 PR 1a): the Needs you line's count reads again. */
+export const JOB_BUDGET_CHANGED_EVENT = 'job-budget-changed'
 
 /**
  * One job's budget (Burn against the bid, PR 2 — v2.3299): the `job_budgets`
@@ -58,6 +62,10 @@ export type JobBudgetState = {
   linkedBreakdown: BidEstimateBreakdown | null
   reload: () => Promise<void>
   linkAndSnapshot: (bidId: string) => Promise<boolean>
+  /** The book's assumed hours as the budget, kind book (punch list #234 PR 1a). */
+  setBook: (args: { laborHours: number; laborRate: number | null; book: Record<string, unknown> }) => Promise<boolean>
+  /** The award press: the live row by its source, then the award stamped once (`award_job_baseline`). */
+  award: (args: AwardBaselineRpcArgs) => Promise<boolean>
   setTyped: (args: { laborHours: number; laborRate: number | null; materialsUsd: number; subsUsd: number; otherUsd?: number; note?: string | null }) => Promise<boolean>
   clear: () => Promise<boolean>
 }
@@ -145,6 +153,25 @@ export function useJobBudget(jobId: string | null, linkedBidId: string | null, e
     [run, jobId],
   )
   const clear = useCallback(() => run(() => supabase.rpc('clear_job_budget', { p_job_id: jobId! }), 'Could not clear the budget'), [run, jobId])
+  // The two PR 1a functions are called through a cast until the types carry them.
+  const setBook = useCallback(
+    (args: { laborHours: number; laborRate: number | null; book: Record<string, unknown> }) =>
+      run(async () => {
+        const res = await supabase.rpc('set_book_job_budget' as never, { p_job_id: jobId!, p_labor_hours: args.laborHours, p_labor_rate: args.laborRate ?? 0, p_book: args.book } as never)
+        if (!res.error) window.dispatchEvent(new Event(JOB_BUDGET_CHANGED_EVENT))
+        return res
+      }, "Could not write the book's hours as the budget"),
+    [run, jobId],
+  )
+  const award = useCallback(
+    (args: AwardBaselineRpcArgs) =>
+      run(async () => {
+        const res = await supabase.rpc('award_job_baseline' as never, { ...args, p_job_id: jobId! } as never)
+        if (!res.error) window.dispatchEvent(new Event(JOB_BUDGET_CHANGED_EVENT))
+        return res
+      }, 'Could not write the baseline'),
+    [run, jobId],
+  )
 
-  return { loading, busy, error, row, candidates, linkedBreakdown, reload, linkAndSnapshot, setTyped, clear }
+  return { loading, busy, error, row, candidates, linkedBreakdown, reload, linkAndSnapshot, setTyped, clear, setBook, award }
 }
