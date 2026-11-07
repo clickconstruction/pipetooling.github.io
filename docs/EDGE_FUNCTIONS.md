@@ -116,6 +116,7 @@ when_to_read:
    - [messages-email](#messages-email)
    - [gc-card-bill](#gc-card-bill)
    - [gc-money-monday-email](#gc-money-monday-email)
+   - [people-week-email](#people-week-email)
    - [bridge-sheet-email](#bridge-sheet-email)
    - [bridge-weekly-sheet](#bridge-weekly-sheet)
    - [your-week-email](#your-week-email)
@@ -1059,6 +1060,7 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 > **v2.6044 (server 0.9.0) — a History line on a development, and the whole of it read back**: `plan_history_entry(line)` / `apply_history_entry(line, plan_hash)` POST `dev_history_entry_write` (migration [`20261029130000`](./migrations/20261029130000_dev_history_entry_write.md)): `line = { development_id, happened_at (an ISO timestamp with its offset, the email's time), source (email | call | text | on_site | letter | note), body (whole, under 20,000), agent_label (the robot's name as the line shows it), job_id? | bid_id? | customer_id? (at most one), link_url? }`; the row lands with `via = 'mcp'` and the robot's name, so the Development page draws it with the *via MCP* mark and the robot in the mark's title. `get_history(development_id, job_id?, bid_id?, since?, limit?)` reads a site's history as people wrote it through `dev_history_read` as the reader (RLS applies): the kept lines and the job's and the bid's thread notes, newest first, every body whole. `WRITE_VERBS` is fifteen verbs over eight RPCs. **Deploy after the migration is pushed.**
 
+> **v2.6619 (server 0.34.0) — one page on a person's case** (punch list #278 PR 1): `get_case_brief(person)` composes the seat's own reads (`_shared/devMcpCaseBrief.ts` over the injected Reader, fail-soft into `held`) into the brief an agent reads first — the Agent notes document, the summary, the section indexes of the narrative and the named documents from the views `person_file_index` / `person_document_index` (migration `20261107060000`), the entries, the evidence, the matter, the themes and the developments' History headlines — every item with its id.
 > **v2.6621 (server 0.36.0) — a document a piece at a time** (punch list #278 PR 3): `get_person_document(person, doc_id? | kind?, section?)` GETs `dev_doc_read` (migration `20261107080000`) as the dev through `_shared/devMcpDocRead.ts` — the section index, or one section by number or heading with its neighbours — and names the `plan_person_doc` op that changes it.
 
 > **v2.6613 (server 0.33.0) — named documents on a person's HR file** (punch list #277 PR 1): `plan_person_doc` / `apply_person_doc` take `doc_id` (a `person_documents` row) or `title` (a new one) beside `kind`, with `counsel_only` and `archive` on a named document, through the replaced `dev_person_doc_write` (migration `20261107040000`, which adds the two tables, the revision trigger, the policies, the fences and the view `person_document_index`); `get_person_file` replies `documents` from that view, quiet until the catalog knows it.
@@ -1714,6 +1716,20 @@ The payment itself comes through `stripe-webhook` as on any Stripe bill (`metada
 The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on sample data): *Customers owe us $X on N bills*, then **Late**, **Waiting on the architect** and **Coming in**, each bill in OwedRow's words, then **Last week** and **Open Money**. It goes from `EMAIL_FROM` through `sendEmailViaResend`, Reply-To the member who asked, logged as `gc_money_monday`. It is internal, so there is no sent copy.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (the Open Money link; clicktooling.com when unset). **Deploy**: `supabase functions deploy gc-money-monday-email --no-verify-jwt` after migration `20261009233000_gc_money_monday_email.sql`, which makes the requests table, the payload and the cron.
+
+### people-week-email
+
+**Purpose**: Your people's week (v2.6603, punch list #273 PR 5): the `people_week` Report Subscriptions stream ([REPORT_SUBSCRIPTIONS.md](./REPORT_SUBSCRIPTIONS.md)). A reader asks for it on Checklist → Review or the Dashboard's Your people card, about the people they pick, on the weekdays and at the Central time they pick. The email says, for each person, the task cards that finished or moved in the week just finished (Monday to Sunday), the lines ticked and the photos taken, their roadmap tasks, the jobs they clocked on and the cards stuck past a month, with **Open Review** (`/checklist?tab=review`).
+
+**Endpoint**: `POST /functions/v1/people-week-email` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret`, or the caller's JWT checked in-body for the two modes.
+
+- `{ mode: 'preview', people_user_ids? }`: any live account; the office (`OFFICE`: dev, master_technician, assistant, controller, primary, as `is_dev_or_master_or_assistant()`) gets the people it names, everyone else their own week whatever the list says. Answers `{ subject, html }`: the email as it would go now. **See the email as it would go now** calls it.
+- `{ mode: 'test_send', people_user_ids? }`: the same gate; a `[TEST]` copy to the caller's own address only. **Email me a test** calls it.
+- No mode: the cron (`2-57/5`, the :02 lane). It drains due `people_week_email_requests` rows, ten at a time and five tries each, and reads `get_people_week_payload(recipient, people, week_start)` once a row, the week being the previous Monday of the send's Central day. A recipient who is archived or has no email is stamped and skipped. A good send stamps `sent_at` and re-inserts a weekly row +7 days, once.
+
+The email (`_shared/peopleWeekEmail.ts`, which What the team sees renders on sample data): *Your people’s week · Nov 2 to 8*, the headline (*3 people · 2 cards done · 2 moved · 1 stuck*), then each person's part: **Cards**, **Roadmap**, **Jobs**, **Stuck**, and **Open Review**. It goes from `EMAIL_FROM` through `sendEmailViaResend`, logged as `people_week`. It is internal, so there is no sent copy.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (the Open Review link; clicktooling.com when unset). **Deploy**: `supabase functions deploy people-week-email --no-verify-jwt` after migration `20261106233000_people_week_email.sql`, which makes the requests table, the payload and the cron.
 
 ### bridge-sheet-email
 

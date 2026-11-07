@@ -22,13 +22,15 @@ The **＋ Task button** is the checkmark icon. Tap {{button:blue|Send}}. The tas
 
 ## When it happens
 
-**Today** is the default. **On a date** schedules it. **Repeats** makes it weekly-on-days or "N days after it's done". *Stays on the list until done* keeps an unfinished task visible past its day.
+**Today** is the default. **On a date** schedules it. **Repeats** makes it weekly-on-days or "N days after it's done". *Stays on the list until done* keeps an unfinished task visible past its day. A repeating task keeps its tick. A one-off gets the % ring, so the person can say how far along it is.
 
 Reminders, notify-on-complete, and links to app pages live in the same dialog. Set them and Send. To see or edit everything you've handed out, open **Checklist → Manage**.
 
 ## Say what done looks like
 
-Open **Done when…** under Links. Type one line a row. Each line is one thing that has to be true. The card shows each line as a box the person ticks. The card reads its percent from the ticks. Two of three ticked reads 67%. Leave the box empty and the person sets the percent by hand.
+Open **Done when…** under Links. The closed row says what it is for. Type one line a row. Each line is one thing that has to be true. The card shows each line as a box the person ticks. The card reads its percent from the ticks. Two of three ticked reads 67%. Leave the box empty and the person sets the percent by hand.
+
+Beside the row sits **Asks for a photo at the finish**. It turns on by itself once you write a line. Tick it on a plain task too when you want a photo before the card closes. The green sentence under When says what the card will carry, the lines and the photo.
 
 :::example Lines on a card
 Put the plumbing tools in a neat home

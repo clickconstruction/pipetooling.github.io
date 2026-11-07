@@ -14,6 +14,13 @@ const base: ScheduleSummaryInput = {
 }
 
 describe('checklistScheduleSummary', () => {
+  it('the Done when… lines and the photo switch ride the sentence (v2.6617)', () => {
+    expect(checklistScheduleSummary({ ...base, lineCount: 3, asksForPhoto: true })).toBe("One task on Robert's list today — stays until completed, 3 Done when… lines, a photo at the finish.")
+    expect(checklistScheduleSummary({ ...base, lineCount: 1 })).toBe("One task on Robert's list today — stays until completed, 1 Done when… line.")
+    expect(checklistScheduleSummary({ ...base, asksForPhoto: true })).toBe("One task on Robert's list today — stays until completed, a photo at the finish.")
+    expect(checklistScheduleSummary({ ...base, lineCount: 0, asksForPhoto: false })).toBe("One task on Robert's list today — stays until completed.")
+    expect(checklistScheduleSummary({ ...base, when: 'repeat', repeatMode: 'weekly', daysOfWeek: [1], lineCount: 2 })).toContain("a missed day doesn't carry over, 2 Done when… lines.")
+  })
   it('today one-off, stays', () => {
     expect(checklistScheduleSummary(base)).toBe("One task on Robert's list today — stays until completed.")
   })
