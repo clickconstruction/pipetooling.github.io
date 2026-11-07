@@ -1,11 +1,12 @@
 import { useRef } from 'react'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import type { TaskShotHost } from '../../hooks/useTaskShot'
+import { TASK_SHOT_KEPT_WORDS, type TaskShotHost } from '../../hooks/useTaskShot'
 
 /**
  * Task cards (#273, PR 4b): the photo tile on a sheet. Dashed and empty it reads its ask (*A photo of where it stands*,
  * *The finishing photo*); a tap opens the camera on a phone (the file picker at a desk); picked, it shows the shot with
- * *Take another* and *Remove*. The one hidden file input lives inside.
+ * *Take another* and *Remove*. A shot kept on the phone for want of signal (v2.6628) shows with *Kept on the phone* and
+ * no presses: it rides its own outbox press now. The one hidden file input lives inside.
  */
 export function TaskPhotoTile({ host, words, required = false, disabled = false }: { host: TaskShotHost; words: string; required?: boolean; disabled?: boolean }) {
   const isMobile = useIsMobile()
@@ -31,7 +32,15 @@ export function TaskPhotoTile({ host, words, required = false, disabled = false 
           if (f) void host.pick(f)
         }}
       />
-      {host.shot ? (
+      {host.shot && host.kept ? (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }} data-testid="task-photo-kept">
+          <img src={host.shot.previewUrl} alt="The photo you took" style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 8, border: '1.5px solid #d97706' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-700)' }}>{TASK_SHOT_KEPT_WORDS.lead}</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{TASK_SHOT_KEPT_WORDS.tail}</span>
+          </div>
+        </div>
+      ) : host.shot ? (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <img src={host.shot.previewUrl} alt="The photo you took" style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 8, border: '1.5px solid #16a34a' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

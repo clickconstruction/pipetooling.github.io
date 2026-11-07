@@ -67,4 +67,12 @@ describe('the Signed statements band (punch list #212, PR 4)', () => {
     expect(container.querySelectorAll('button[aria-label^="Add "]')).toHaveLength(0)
     expect(container.textContent).toContain('HS-717-0001')
   })
+
+  it('a viewer the policy answers nothing reads who can see the statements, not Nothing signed here yet (v2.6633)', () => {
+    const { container } = render(<LegalEvidenceStatementsBand job={{ ...job, statements: [] }} firstRecordedDay="2026-03-12" matter={{ id: 'm1', canEdit: true }} canAsk={false} acts={null} />)
+    expect(container.textContent).toContain('Only a dev or the controller can read the signed statements here.')
+    expect(container.textContent).not.toContain('Nothing signed here yet.')
+    const { container: empty } = render(<LegalEvidenceStatementsBand job={{ ...job, jobId: 'job-c', statements: [] }} firstRecordedDay="2026-03-12" matter={{ id: 'm1', canEdit: true }} canAsk acts={acts()} />)
+    expect(empty.textContent).toContain('Nothing signed here yet.')
+  })
 })

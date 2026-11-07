@@ -392,7 +392,8 @@ describe('LienDeskModal', () => {
 
   it('a Docsmit envelope that came back is a Do now row opening the notice under Sent, whose head has the Deliveries filter and whose footer has the cost (the Docsmit train, 6b-2)', async () => {
     const sent = { id: 'r2', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'sent', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: 'f1', sent_at: '2026-09-14T16:00:00Z', printed_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T16:00:00Z', voided_at: null } as unknown as LienDeskItemRow
-    const d = data(J650.map((r) => ({ ...r, has_owner: true })), [sent], true)
+    // Every month noticed (v2.6624): a job with a month still due sits in To draft now, and this test is about the Sent pile's filter.
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sent], true)
     d.filingsByJob = { j650: [{ id: 'f1', job_id: 'j650', kind: 'notice', sends: [], voided_at: null } as never] }
     d.mailPiecesByFiling = { f1: [{ id: 'p2', kind: 'lien_notice_53_056', recipient: 'original_contractor', status: 'returned', usps_tracking: '9407 1118', mailed_at: '2026-09-15T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'Return to Sender', source_ids: ['f1'], price: 9.85 }] }
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} initialKind="next" />)
@@ -1385,6 +1386,25 @@ describe('LienDeskModal the attorney’s letter (v2.3760)', () => {
     return d
   }
 
+  it('a sent job with a new month due sits in To draft, its row saying when the notice went, its footer carrying the attorney’s letter door beside Send for approval (v2.6624, punch list #248)', async () => {
+    // June and July noticed by the Sep 2 packet; August's window is still open, so the next notice drafts while letter two's clock runs.
+    const d = data([row('j650', '2026-06', '2026-09-15', { has_owner: true, noticed: true }), row('j650', '2026-07', '2026-10-15', { has_owner: true, noticed: true }), row('j650', '2026-08', '2026-11-16', { has_owner: true })], [sentPacket], true)
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
+    await settle()
+    expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
+    expect(document.querySelector('[data-lien-pile-rows="sent"]')).toBeNull()
+    const row650 = document.querySelector('[data-lien-pile-rows="to_draft"]') as HTMLElement
+    expect((row650.querySelector('[data-lien-desk-sent-words]') as HTMLElement).textContent).toBe('· sent Sep 2')
+    expect((row650.querySelector('[data-lien-letter-two]') as HTMLElement).textContent).toBe('day 12 · the attorney’s letter')
+    const doors = document.querySelector('[data-lien-desk-sent-doors]') as HTMLElement
+    expect(doors.textContent).toContain('Sent')
+    expect(doors.textContent).toContain('day 12 · the attorney’s letter')
+    expect(doors.querySelector('[data-lien-letter-two-door]')).toBeTruthy()
+    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(false)
+    expect(document.querySelector('[data-lien-since-sent]')).toBeNull()
+  })
+
   it('the sent row and footer count the days, and Send the attorney’s letter drafts counsel’s paid-out letter on the job', async () => {
     startTwoMock.mockReset()
     startTwoMock.mockResolvedValue('two1')
@@ -1404,6 +1424,18 @@ describe('LienDeskModal the attorney’s letter (v2.3760)', () => {
     expect(input.fields.coverLetter).toContain('reason to believe you may already have paid Loberg Contracting in full')
     expect(input.fields.notice.claimAmount).toBe('33500.00')
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
+  })
+
+  it('a sent notice with nothing due folds its gates to one line with no verdict, and its head reads the day it went (v2.6625, punch list #248)', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={sentDesk()} />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-gates]')).toBeNull()
+    const fold = document.querySelector('[data-lien-gates-sent]') as HTMLElement
+    expect((fold.querySelector('[data-lien-gates-sent-line]') as HTMLElement).textContent).toBe('Sent Sep 2 · Elbel Holdings LLC · Loberg Contracting · Commercial · Guadalupe · Jun + Jul')
+    expect(fold.textContent).not.toContain('go out')
+    expect((document.querySelector('[data-lien-pane-head="gates"] [data-lien-pane-head-fact]') as HTMLElement).textContent).toContain('Sent Sep 2')
+    fireEvent.click(fold.querySelector('[data-lien-gates-sent-fold="open"]') as HTMLElement)
+    expect(fold.querySelectorAll('[data-lien-gates-sent-row]')).toHaveLength(4)
   })
 
   it('the GC’s written okay is recorded on the first packet and turns the attorney’s letter off', async () => {

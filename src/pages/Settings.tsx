@@ -22,6 +22,9 @@ import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
 import SettingsDataTab from '../components/settings/SettingsDataTab'
 import { settingsJobsDevCards } from '../components/settings/SettingsJobsTab'
 import { SettingsJobsBillingGroups, type JobsBillingCardElements } from '../components/settings/SettingsJobsBillingGroups'
+import { useJobsBillingValueLines } from '../hooks/useJobsBillingValueLines'
+import { SettingsFoldCard } from '../components/settings/SettingsFoldCard'
+import { MOVED_SETTINGS_CARDS } from '../lib/settings/settingsFoldCards'
 import HideHcpFieldSettingsBlock from '../components/settings/HideHcpFieldSettingsBlock'
 import SubPortalPaySettingsBlock from '../components/settings/SubPortalPaySettingsBlock'
 import LegalFirmSettingsBlock from '../components/settings/LegalFirmSettingsBlock'
@@ -1063,6 +1066,8 @@ export default function Settings() {
     defaultLaborRateSaving,
   })
   const issuerFocus = settingsFocus?.startsWith('issuer.') ? settingsFocus.slice('issuer.'.length) : null
+  // PR 3 (v2.6638): each Billing and money card's live value on its folded row, read again when a card folds.
+  const jobsBillingValues = useJobsBillingValueLines(myRole)
   const jobsBillingCards: JobsBillingCardElements = {
     ...(myRole === 'dev'
       ? {
@@ -1070,7 +1075,6 @@ export default function Settings() {
           rates: <RatesChargedByCrewSettingsBlock />,
           markup: <MaterialsMarkupSettingsBlock />,
           'trip-charges': <TripChargeAmountsSettingsBlock />,
-          'sub-pay': <SubPortalPaySettingsBlock />,
           developments: <DevelopmentsSettingsBlock />,
           'city-lines': <JobAddressCityListSettingsBlock />,
           'county-suggestions': <TxCountyMapSettingsBlock />,
@@ -1079,11 +1083,9 @@ export default function Settings() {
           'stripe-footer': <StripeInvoiceFooterDevSettingsBlock />,
           'bill-memo': <BillCustomerMemoDevSettingsBlock />,
           'legal-firm': <LegalFirmSettingsBlock />,
-          'office-county': <OfficeCountySettingsBlock />,
           uncollectible: <UncollectibleListSettingsBlock />,
           docsmit: <DocsmitDevSettingsBlock />,
           'hide-hcp': <HideHcpFieldSettingsBlock />,
-          'hcp-reconcile': <SettingsHcpReconcileSection />,
         }
       : {}),
     'job-book': <JobBookSettingsSection onDbError={(msg) => setError(msg)} />,
@@ -1334,6 +1336,12 @@ export default function Settings() {
           {myRole === 'dev' || myRole === 'master_technician' ? <SettingsOrgDefaultsSection /> : null}
           {myRole === 'dev' || myRole === 'master_technician' ? <BankTransferDetailsSettingsBlock /> : null}
           {myRole === 'dev' && <OfficeAddressSettingsBlock />}
+          {/* Punch list #261 PR 2: the office's county beside the office address, off Jobs & billing; its old anchor still lands here. */}
+          {myRole === 'dev' && (
+            <SettingsFoldCard card={MOVED_SETTINGS_CARDS['office-county']} track="settings-company">
+              <OfficeCountySettingsBlock />
+            </SettingsFoldCard>
+          )}
           {myRole === 'dev' && <MapDefaultViewSettingsBlock />}
         </SettingsGroup>
       )}
@@ -1530,6 +1538,12 @@ export default function Settings() {
 
       {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
       {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
+      {/* Punch list #261 PR 2: the subs' pay schedule under People & teams, off Jobs & billing; its old anchor still lands here. */}
+      {myRole === 'dev' && (
+        <SettingsFoldCard card={MOVED_SETTINGS_CARDS['sub-pay']} track="settings-people">
+          <SubPortalPaySettingsBlock />
+        </SettingsFoldCard>
+      )}
 
       {/* v2.6545: the catalog of themes on the record, a dev's like the HR file. */}
       {myRole === 'dev' && <LegalThemesSettingsBlock />}
@@ -1661,6 +1675,12 @@ export default function Settings() {
           exportAllLoading={exportAllLoading}
         />
       )}
+      {/* Punch list #261 PR 2: HCP reconcile under Data & recovery, off Jobs & billing; its old anchor still lands here. */}
+      {myRole === 'dev' && (
+        <SettingsFoldCard card={MOVED_SETTINGS_CARDS['hcp-reconcile']} track="settings-data">
+          <SettingsHcpReconcileSection />
+        </SettingsFoldCard>
+      )}
       </SettingsGroup>
 
       <SettingsGroup id="settings-jobs" hidden={activeSettingsTab !== 'settings-jobs'} title={settingsGroupTitle('settings-jobs', 'Jobs & billing')} description={settingsGroupHint('settings-jobs')}>
@@ -1668,7 +1688,7 @@ export default function Settings() {
           and the switches open, a strip of the headings pinned while the page scrolls. The kernel gates each card by
           role, so a card built above for a role that is not shown it is never mounted. `?focus=issuer.…` opens the
           company block whatever its fold (the Lien desk's and the waiver window's door, v2.3697). */}
-      <SettingsJobsBillingGroups role={myRole} cards={jobsBillingCards} forceOpen={{ 'invoice-issuer': issuerFocus != null }} />
+      <SettingsJobsBillingGroups role={myRole} cards={jobsBillingCards} forceOpen={{ 'invoice-issuer': issuerFocus != null }} valueLines={jobsBillingValues.lines} onCardFold={jobsBillingValues.refresh} />
       {myRole === 'dev' ? jobsDevCards.modal : null}
       </SettingsGroup>
 

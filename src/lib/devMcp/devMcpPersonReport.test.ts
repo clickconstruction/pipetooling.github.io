@@ -112,7 +112,7 @@ describe('the field-report verbs (file or dismiss a waiting report from the dev 
     expect(SERVER).toContain('personReportDryRun(p, report, person, calendarYmdInAppTzFromIso)')
     expect(SERVER).toContain('const call = personReportRpc(p)')
     expect(SERVER).toContain('await restPost(session, `rpc/${call.rpc}`, call.body)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.34.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.38.1'")
     expect(README).toContain('`plan_person_report(report)` · `apply_person_report(report, plan_hash)`')
   })
 })

@@ -4,7 +4,8 @@
  * signed one not yet on the matter (the signed PDF copied into `legal_matter_documents`, the statement tied to it),
  * **Show on Evidence ↗** once it is, and **Ask <name>…** per worker who clocked here, which opens the Hours statement
  * window on the job with that worker picked. A gap job — nothing clocked and the work before the app's first day —
- * says so and asks no one: a statement there would be the worker's own. Words and the orchestration are
+ * says so and asks no one: a statement there would be the worker's own. A viewer the statements' policy answers nothing
+ * (not a dev or the controller) reads who can see them, not *Nothing signed here yet* (v2.6633). Words and the orchestration are
  * `lib/legal/hoursStatementEvidence.ts` and `legalPacket.ts`; the band draws and the tab does the calls.
  */
 import type { CSSProperties } from 'react'
@@ -34,7 +35,7 @@ export function LegalEvidenceStatementsBand({ job, firstRecordedDay, matter, can
     <div data-legal-statements={job.jobId} style={{ display: 'grid', gap: 6, padding: '4px 0 6px' }}>
       <div style={row}>
         <b>Signed statements</b>
-        <span style={MUTED}>{job.beforeTheApp ? legalGapJobWords(firstRecordedDay) : legalStatementsWords(job.statements)}</span>
+        <span style={MUTED}>{job.beforeTheApp ? legalGapJobWords(firstRecordedDay) : legalStatementsWords(job.statements, { canRead: canAsk })}</span>
       </div>
       {job.statements.map((s) => {
         const state = isHoursStatementState(s.state) ? hoursStatementStateWords(s.state) : hoursStatementStateWords('draft')

@@ -178,5 +178,16 @@ SELECT mts.refused('a tech at the office''s door', $q$SELECT public.contact_for_
 SELECT mts.refused('the find-or-make body, called straight', $q$SELECT public.contact_find_or_make('00000000-0000-0000-0000-0000000085c1')$q$, 'permission denied');
 RESET ROLE;
 
+-- 7 · The hold ends with the holder (v2.6640): a thread held for Luis until his hour takes a second line out, and
+-- afterwards nobody holds it and no hour stands. Before the fix the trigger cleared the holder and left the hour, and
+-- contacts_has_until_held refused the write after Quo had already sent the text.
+UPDATE public.contacts SET has_user_id = '00000000-0000-0000-0000-0000000085d1', has_since = now(), has_how = 'rule', has_until = now() + interval '4 hours'
+  WHERE id = (SELECT id FROM mts.got WHERE label = 'dana');
+INSERT INTO public.messages (contact_id, channel, direction, who_user_id, at, body)
+  SELECT id, 'text', 'out', '00000000-0000-0000-0000-0000000085d1', now(), 'A little about Luis: he has been a plumber for twelve years.' FROM mts.got WHERE label = 'dana';
+SELECT mts.same('a second line out inside the hold lands, and the hold is gone with the holder',
+  (SELECT concat_ws('|', state, coalesce(has_user_id::text, '-'), coalesce(has_how, '-'), coalesce(has_until::text, '-')) FROM public.contacts WHERE id = (SELECT id FROM mts.got WHERE label = 'dana')),
+  'done|-|-|-');
+
 DO $$ BEGIN RAISE NOTICE 'messages_tech_send PASSED'; END $$;
 ROLLBACK;

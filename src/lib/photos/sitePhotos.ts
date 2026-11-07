@@ -87,9 +87,12 @@ export function totalWords(census: Pick<SitePhotoCensus, 'total' | 'capped'>): s
  */
 export const CREWS_PHOTOS_FOR_THE_OFFICE = 'the crews’ photos are for the office'
 
-/** The source chips the look offers: the Photos tab's for the office; none for an estimator, whose only source is a text or an email. */
+/**
+ * The source chips the look offers: the Photos tab's for the office, less the task cards' (a task card's photo is on no
+ * job, so a site never holds one; v2.6635); none for an estimator, whose only source is a text or an email.
+ */
 export function siteSourceChips(role: string | null | undefined, door: DevelopmentDoor = 'office'): ReadonlyArray<{ key: SourcePick; label: string }> {
-  return door === 'office' ? sourceChips(role) : []
+  return door === 'office' ? sourceChips(role).filter((c) => c.key !== 'task') : []
 }
 
 /** The strip's sixth look: *312 · 9 this week*, *312*, *none yet*, or *…* while the census reads; an estimator with none reads *the office reads them*. Nothing in it needs the leader, so no amber. */

@@ -17578,6 +17578,8 @@ export type Database = {
           charge_words: string | null
           contract_document_id: string | null
           created_at: string
+          drive_file_id: string | null
+          drive_filed_at: string | null
           gap_from: string | null
           gap_to: string | null
           id: string
@@ -17604,6 +17606,8 @@ export type Database = {
           charge_words?: string | null
           contract_document_id?: string | null
           created_at?: string
+          drive_file_id?: string | null
+          drive_filed_at?: string | null
           gap_from?: string | null
           gap_to?: string | null
           id?: string
@@ -17630,6 +17634,8 @@ export type Database = {
           charge_words?: string | null
           contract_document_id?: string | null
           created_at?: string
+          drive_file_id?: string | null
+          drive_filed_at?: string | null
           gap_from?: string | null
           gap_to?: string | null
           id?: string
@@ -23318,6 +23324,54 @@ export type Database = {
           },
         ]
       }
+      license_targets: {
+        Row: {
+          opening_amount: number
+          opening_source: string
+          target_amount: number | null
+          target_class: string | null
+          trade: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          opening_amount?: number
+          opening_source?: string
+          target_amount?: number | null
+          target_class?: string | null
+          trade: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          opening_amount?: number
+          opening_source?: string
+          target_amount?: number | null
+          target_class?: string | null
+          trade?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_targets_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "license_targets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lien_owner_record_requests: {
         Row: {
           created_at: string
@@ -28098,6 +28152,60 @@ export type Database = {
           sequence_order?: number
         }
         Relationships: []
+      }
+      people_week_email_requests: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          id: string
+          people_user_ids: string[]
+          recipient_user_id: string
+          repeat_weekly: boolean
+          requested_by: string
+          send_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          people_user_ids: string[]
+          recipient_user_id: string
+          repeat_weekly?: boolean
+          requested_by: string
+          send_at: string
+          sent_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          people_user_ids?: string[]
+          recipient_user_id?: string
+          repeat_weekly?: boolean
+          requested_by?: string
+          send_at?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_week_email_requests_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_week_email_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       person_availability: {
         Row: {
@@ -37320,6 +37428,7 @@ export type Database = {
           counsel_only: boolean | null
           created_at: string | null
           created_by: string | null
+          headings: Json | null
           id: string | null
           person_id: string | null
           sections: number | null
@@ -37334,6 +37443,7 @@ export type Database = {
           counsel_only?: boolean | null
           created_at?: string | null
           created_by?: string | null
+          headings?: never
           id?: string | null
           person_id?: string | null
           sections?: never
@@ -37348,6 +37458,7 @@ export type Database = {
           counsel_only?: boolean | null
           created_at?: string | null
           created_by?: string | null
+          headings?: never
           id?: string | null
           person_id?: string | null
           sections?: never
@@ -37372,6 +37483,60 @@ export type Database = {
           },
           {
             foreignKeyName: "person_documents_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_file_index: {
+        Row: {
+          author_label: string | null
+          chars: number | null
+          covered_through: string | null
+          headings: Json | null
+          id: string | null
+          kind: string | null
+          person_id: string | null
+          sections: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          author_label?: string | null
+          chars?: never
+          covered_through?: string | null
+          headings?: never
+          id?: string | null
+          kind?: string | null
+          person_id?: string | null
+          sections?: never
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          author_label?: string | null
+          chars?: never
+          covered_through?: string | null
+          headings?: never
+          id?: string | null
+          kind?: string | null
+          person_id?: string | null
+          sections?: never
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_files_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_files_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
@@ -38487,9 +38652,37 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean; p_link?: Json }
         Returns: Json
       }
+      dev_case_search: {
+        Args: {
+          p_in?: string
+          p_limit?: number
+          p_person_id: string
+          p_q: string
+        }
+        Returns: Json
+      }
       dev_clock_session_image: { Args: { p_session_id: string }; Returns: Json }
       dev_clock_session_write: {
         Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
+      dev_doc_history: {
+        Args: {
+          p_doc_id?: string
+          p_from?: string
+          p_kind?: string
+          p_person_id: string
+          p_to?: string
+        }
+        Returns: Json
+      }
+      dev_doc_read: {
+        Args: {
+          p_doc_id?: string
+          p_kind?: string
+          p_person_id: string
+          p_section?: string
+        }
         Returns: Json
       }
       dev_file_index_status: { Args: never; Returns: Json }
@@ -38761,6 +38954,10 @@ export type Database = {
           name: string
           text: string
         }[]
+      }
+      file_license_expiry_notice: {
+        Args: { p_from_user_id: string; p_license_id: string; p_link: string }
+        Returns: string
       }
       file_person_report: {
         Args: { p_content?: string; p_report_id: string; p_source?: string }
@@ -39988,6 +40185,10 @@ export type Database = {
         Args: { p_payment_ids: string[] }
         Returns: Json
       }
+      get_people_week_payload: {
+        Args: { p_people: string[]; p_recipient: string; p_week_start: string }
+        Returns: Json
+      }
       get_projects_by_ids: {
         Args: { p_ids: string[] }
         Returns: {
@@ -40058,12 +40259,26 @@ export type Database = {
       }
       holds_vehicle: { Args: { p_vehicle_id: string }; Returns: boolean }
       hr_agent_write: { Args: { p: Json }; Returns: Json }
+      hr_doc_apply_ops: {
+        Args: { p_ops: Json; p_text: string; p_what?: string }
+        Returns: Json
+      }
+      hr_doc_heading_index: { Args: { md: string }; Returns: Json }
       hr_doc_headings: {
         Args: { md: string }
         Returns: {
           heading: string
           level: number
           line_no: number
+        }[]
+      }
+      hr_doc_sections: {
+        Args: { md: string }
+        Returns: {
+          body: string
+          heading: string
+          line_no: number
+          n: number
         }[]
       }
       humanize_job_status: { Args: { p: string }; Returns: string }
@@ -40575,6 +40790,7 @@ export type Database = {
         Args: { p_entry_id: string; p_reason: string }
         Returns: Json
       }
+      license_expiry_notices_sweep: { Args: never; Returns: Json }
       lien_billed_open: {
         Args: {
           p_job_id: string

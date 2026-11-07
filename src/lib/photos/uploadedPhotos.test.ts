@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  TASK_CHECKLIST_PATH,
+  WHERE_FILES_GO_PATH,
+  aboutWords,
   canSeeMessagePhotos,
   captionWords,
   dayGroups,
@@ -10,15 +13,23 @@ import {
   sizeWords,
   sourceChips,
   sourceDoorOpensJob,
+  sourceDoorWords,
   sourceWords,
+  taskStandWords,
   threadPath,
   thumbSource,
   viewerTitle,
   whereChips,
   whereWords,
+  waitsOnTasksFolder,
   whoWords,
   type UploadedPhotoRow,
 } from './uploadedPhotos'
+
+/** A task card's shot as the view's sixth branch lists it (punch list #273): no job, the title as the caption, the shot's caption as the stage, its kind as the status. */
+function taskRow(over: Partial<UploadedPhotoRow> = {}): UploadedPhotoRow {
+  return row({ source: 'task', id: 'tp1', job_id: null, report_id: null, caption: 'Put the plumbing tools in a neat home', stage_name: '75%', status: 'progress', bucket: 'task-photos', storage_path: 'inst-1/tp1.jpg', job_hcp_number: null, job_name: null, customer_name: null, ...over })
+}
 
 function row(over: Partial<UploadedPhotoRow> = {}): UploadedPhotoRow {
   return {
@@ -61,8 +72,8 @@ describe('who sees what', () => {
     expect(canSeeMessagePhotos('assistant')).toBe(true)
     expect(canSeeMessagePhotos('estimator')).toBe(true)
     expect(canSeeMessagePhotos('primary')).toBe(false)
-    expect(sourceChips('primary').map((c) => c.key)).toEqual(['all', 'report', 'box', 'checklist', 'job'])
-    expect(sourceChips('dev').map((c) => c.key)).toEqual(['all', 'report', 'box', 'checklist', 'job', 'message'])
+    expect(sourceChips('primary').map((c) => c.key)).toEqual(['all', 'report', 'box', 'checklist', 'job', 'task'])
+    expect(sourceChips('dev').map((c) => c.key)).toEqual(['all', 'report', 'box', 'checklist', 'job', 'task', 'message'])
   })
 
   it('counts the waiting chip', () => {
@@ -94,6 +105,7 @@ describe('a row’s words', () => {
     expect(sourceWords(row())).toBe('Report')
     expect(sourceWords(row({ source: 'box' }))).toBe('Tally box')
     expect(sourceWords(row({ source: 'checklist' }))).toBe('Checklist')
+    expect(sourceWords(taskRow())).toBe('Task card')
     expect(sourceWords(row({ source: 'message', channel: 'text' }))).toBe('Text')
     expect(sourceWords(row({ source: 'message', channel: 'email' }))).toBe('Email')
   })
@@ -171,6 +183,44 @@ describe('the thumbnail’s bytes', () => {
     expect(thumbSource(row({ drive_file_id: 'd1', storage_path: null }))).toEqual({ kind: 'drive', jobId: 'j1', fileId: 'd1' })
     expect(thumbSource(row({ source: 'message', bucket: 'message-attachments', storage_path: 'g/1-a.jpg', drive_file_id: 'd1' }))).toEqual({ kind: 'bucket', bucket: 'message-attachments', path: 'g/1-a.jpg' })
     expect(thumbSource(row({ source: 'box', storage_path: null, status: 'shared' }))).toEqual({ kind: 'none' })
+  })
+
+  it('a task card’s shot comes from its bucket while the copy is there, never through the job, and from nowhere without it', () => {
+    expect(thumbSource(taskRow())).toEqual({ kind: 'bucket', bucket: 'task-photos', path: 'inst-1/tp1.jpg' })
+    expect(thumbSource(taskRow({ drive_file_id: 'd9' }))).toEqual({ kind: 'bucket', bucket: 'task-photos', path: 'inst-1/tp1.jpg' })
+    expect(thumbSource(taskRow({ storage_path: null, drive_file_id: 'd9' }))).toEqual({ kind: 'none' })
+  })
+})
+
+// Punch list #273, v2.6635: a task card's shot on the list.
+describe('a task card’s shot', () => {
+  it('reads where the card stood instead of a job, in the row and in the viewer’s title', () => {
+    expect(taskStandWords(taskRow())).toBe('At 75%')
+    expect(taskStandWords(taskRow({ status: 'finish', stage_name: 'finish' }))).toBe('The finishing photo')
+    expect(taskStandWords(taskRow({ status: 'line', stage_name: 'Pipe is racked by size' }))).toBe('Done when… Pipe is racked by size')
+    expect(taskStandWords(taskRow({ status: 'line', stage_name: '' }))).toBe('A Done when… line')
+    expect(taskStandWords(taskRow({ status: 'progress', stage_name: 'progress' }))).toBe('A photo on the card')
+    expect(aboutWords(taskRow())).toBe('At 75%')
+    expect(aboutWords(row())).toBe('J1042 · Oak Hollow Apartments Building C · Ridgeway Builders')
+    expect(captionWords(taskRow())).toBe('Put the plumbing tools in a neat home')
+    expect(viewerTitle(taskRow())).toBe('Put the plumbing tools in a neat home · At 75%')
+  })
+
+  it('opens the checklist, never a job, and is drawn as waiting or filed as any row is', () => {
+    expect(sourceDoorWords(taskRow())).toBe('Open the checklist')
+    expect(sourceDoorOpensJob(taskRow())).toBe(false)
+    expect(TASK_CHECKLIST_PATH).toBe('/checklist?tab=today')
+    expect(whereWords(taskRow())).toMatchObject({ text: 'On its way to Drive', tone: 'waiting', press: null })
+    expect(whereWords(taskRow({ drive_file_id: 'd9', filed_at: '2026-11-07T20:20:00Z' }))).toMatchObject({ text: 'In Drive', tone: 'filed', press: 'drive' })
+  })
+
+  it('a shot waiting on the Tasks folder presses Where files go; any other reason reads as it is', () => {
+    const waiting = taskRow({ fail_why: 'The Tasks folder is not set yet. Set it on Documents → Where files go.' })
+    expect(waitsOnTasksFolder(waiting)).toBe(true)
+    expect(whereWords(waiting)).toEqual({ text: 'Not in Drive yet', sub: waiting.fail_why, tone: 'held', press: 'tasks-folder' })
+    expect(WHERE_FILES_GO_PATH).toBe('/documents?tab=where-files-go')
+    expect(waitsOnTasksFolder(row({ fail_why: 'The Tasks folder is not set yet.' }))).toBe(false)
+    expect(whereWords(taskRow({ fail_why: 'Drive did not let the app in: 403' }))).toMatchObject({ text: 'Not in Drive yet', press: null })
   })
 })
 

@@ -57,7 +57,7 @@ const bids = [{ id: 'b1', label: 'BP340', plans_link: 'https://drive.google.com/
 const view = buildSitePlansView({ parts, sets, jobs, bids })
 
 function writes(over: Partial<SitePlansWrites> = {}): SitePlansWrites {
-  return { addPart: vi.fn(async () => true), addSet: vi.fn(async () => true), buildFrom: vi.fn(async () => true), removeSet: vi.fn(async () => true), writeChanges: vi.fn(async () => true), putJobsOnPart: vi.fn(async () => true), ...over }
+  return { addPart: vi.fn(async () => true), addSet: vi.fn(async () => true), buildFrom: vi.fn(async () => true), removeSet: vi.fn(async () => true), writeChanges: vi.fn(async () => true), putJobsOnPart: vi.fn(async () => true), movePaper: vi.fn(async () => true), removePaper: vi.fn(async () => true), ...over }
 }
 
 describe('DevelopmentPartsCard', () => {
@@ -246,6 +246,38 @@ describe('DevelopmentPartsCard', () => {
     expect(within(phoneCard).getByText('Papers')).toBeTruthy()
     fireEvent.click(within(phoneCard).getByTestId('site-papers-p2'))
     expect(within(phoneCard).getByTestId('site-papers-list-p2').textContent).toContain('Finishes sheet')
+  })
+
+  it('a writer moves a paper to another part or takes it off, from the site look (v2.6632)', async () => {
+    const papers = papersFromRows([set({ id: 'pa', part_id: 'p2', name: 'Finishes sheet', kind: 'spec', source: 'gc', marks_up_set_id: 's2' })], [])
+    const w = writes()
+    renderWithProviders(<DevelopmentPartsCard view={view} papers={papers} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
+    fireEvent.click(screen.getByTestId('site-papers-p2'))
+    const list = screen.getByTestId('site-papers-list-p2')
+    // Move to… opens the picker of the other parts; Move it is dead until one is picked, then moves the paper there.
+    fireEvent.click(within(list).getByText('Move to…'))
+    const picker = within(list).getByLabelText('Move Finishes sheet to') as HTMLSelectElement
+    expect([...picker.options].map((o) => o.textContent)).toEqual(['on which part…', 'Lodge', 'ATV building'])
+    const move = within(list).getByText('Move it').closest('button')!
+    expect(move.hasAttribute('disabled')).toBe(true)
+    fireEvent.change(picker, { target: { value: 'p1' } })
+    expect(move.hasAttribute('disabled')).toBe(false)
+    fireEvent.click(move)
+    await waitFor(() => expect(w.movePaper).toHaveBeenCalledWith(expect.objectContaining({ id: 'pa' }), 'p1'))
+    // × asks first; Remove takes it off through the paper write, never the set's.
+    fireEvent.click(within(list).getByRole('button', { name: 'Remove Finishes sheet' }))
+    fireEvent.click(within(list).getByText('Remove'))
+    await waitFor(() => expect(w.removePaper).toHaveBeenCalledWith('pa'))
+    expect(w.removeSet).not.toHaveBeenCalled()
+  })
+
+  it('a reader sees no Move to… and no × on a paper', () => {
+    const papers = papersFromRows([set({ id: 'pa', part_id: 'p2', name: 'Finishes sheet', kind: 'spec', source: 'gc', marks_up_set_id: 's2' })], [])
+    renderWithProviders(<DevelopmentPartsCard view={view} papers={papers} names={{}} canWrite={false} openCarrier={() => {}} askAbout={() => {}} />)
+    fireEvent.click(screen.getByTestId('site-papers-p2'))
+    const list = screen.getByTestId('site-papers-list-p2')
+    expect(within(list).queryByText('Move to…')).toBeNull()
+    expect(within(list).queryByRole('button', { name: 'Remove Finishes sheet' })).toBeNull()
   })
 
   it('draws no Papers column when the page hands no papers in', () => {

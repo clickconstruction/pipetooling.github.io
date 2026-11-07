@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createKeptPhotos, keptPhotosOf, sendKeptPhotos, unsentKeptPhotos, withPhoto } from './keptPhotos'
-import { newPress, type KeptJobPhoto, type KeptReportPhoto, type OutboxPress } from './outbox'
+import { newPress, type KeptJobPhoto, type KeptReportPhoto, type KeptTaskPhoto, type OutboxPress } from './outbox'
 import { createOutboxState } from './outboxState'
 
 const T = 1_780_000_000_000
@@ -104,5 +104,39 @@ describe('keptPhotos', () => {
     expect(sent).toEqual(['j1/b/Luis Ortega'])
     expect(unsentKeptPhotos(s.presses()[0]!)).toEqual([])
     expect(withPhoto(press, 'b', { lost: true }).payload).toMatchObject({ jobLedgerId: 'j1', photos: [{ id: 'a' }] })
+  })
+
+  // Punch list #273, v2.6628: a task photo press carries one shot and sends it to the card's own io, every fact kept.
+  it('a task photo press carries its shot, and the replay sends it to the card under the kept id with its kind and line', async () => {
+    const tp: KeptTaskPhoto = { id: 'tp-1', sent: false, kind: 'finish', percentAt: null, criterionId: 'c2', lineBody: 'Fittings are in labeled bins', takenAt: '2026-11-07T13:00:00Z', bytes: 310_000, originalBytes: 4_200_000, width: 1600, height: 1200, byName: 'Mateo Ruiz' }
+    const press = newPress({ id: 'p-tp', seq: 1, kind: 'task-photo', userId: 'u1', pressedAt: T, payload: { instanceId: 'inst-1', photos: [tp] } })
+    expect(keptPhotosOf(press).map((p) => p.id)).toEqual(['tp-1'])
+    expect(unsentKeptPhotos(press).map((p) => p.id)).toEqual(['tp-1'])
+    const bytes = memory()
+    const blob = new Blob([new Uint8Array(3)], { type: 'image/jpeg' })
+    await bytes.keep('tp-1', blob, T)
+    const s = store([press])
+    const sent: unknown[] = []
+    const jobSends: string[] = []
+    const out = await sendKeptPhotos(press, s, { bytes, send: async (input) => void jobSends.push(input.id), sendTask: async (input) => void sent.push(input) })
+    expect(out).toEqual({ ok: true })
+    expect(jobSends).toEqual([])
+    expect(sent).toEqual([{ id: 'tp-1', instanceId: 'inst-1', blob, byUserId: 'u1', byName: 'Mateo Ruiz', takenAt: '2026-11-07T13:00:00Z', originalBytes: 4_200_000, width: 1600, height: 1200, kind: 'finish', percentAt: null, criterionId: 'c2', lineBody: 'Fittings are in labeled bins' }])
+    expect(unsentKeptPhotos(s.presses()[0]!)).toEqual([])
+    expect(await bytes.read('tp-1')).toBeNull()
+  })
+
+  it('a task shot whose bytes are gone is taken off its press, and a send that fails leaves it unsent', async () => {
+    const tp: KeptTaskPhoto = { id: 'tp-2', sent: false, kind: 'progress', percentAt: 50, criterionId: null, lineBody: null, takenAt: '2026-11-07T13:00:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: '' }
+    const press = newPress({ id: 'p-tp2', seq: 1, kind: 'task-photo', userId: 'u1', pressedAt: T, payload: { instanceId: 'inst-1', photos: [tp] } })
+    const gone = store([press])
+    expect(await sendKeptPhotos(press, gone, { bytes: memory(), sendTask: async () => undefined })).toEqual({ ok: true })
+    expect(keptPhotosOf(gone.presses()[0]!)).toEqual([])
+    const bytes = memory()
+    await bytes.keep('tp-2', new Blob([new Uint8Array(1)]), T)
+    const s = store([press])
+    const out = await sendKeptPhotos(press, s, { bytes, sendTask: async () => Promise.reject(new TypeError('Failed to fetch')) })
+    expect(out.ok).toBe(false)
+    expect(unsentKeptPhotos(s.presses()[0]!).map((p) => p.id)).toEqual(['tp-2'])
   })
 })

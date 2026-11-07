@@ -75,6 +75,28 @@ For an electrical or HVAC license, press {{button:outline|Check TDLR}}. The wind
 
 Plumbing licenses live with TSBPE. The window links to its search. That search asks you to prove you are not a robot, so a person looks it up.
 
+## Set the goal and the hours before the clock
+
+Each goal card starts from the ladder's rule. For a plumber apprentice that is journeyman plumber, 8,000 hours.
+
+The office can change it. Press {{button:outline|Edit the goal}} on the card. On the Licenses tab, the **Goals** block under a teammate's licenses has the same press.
+
+1. Pick **Working toward**. The list holds the licenses above the one held. The first choice keeps the ladder's rule.
+2. Type the **Hours the board asks for**. The seeded number fills in when the board has one.
+3. Type the **Hours before the clock started**. These are hours worked before this app, here or at another shop.
+4. Say **Where they came from**. Name the shop and where the signed form is.
+5. Check the line at the bottom. Then press {{button:blue|Save the goal}}.
+
+:::example The line at the bottom
+Saves as working toward journeyman plumber, 7,000 hours, with 1,200 hours before the clock.
+:::
+
+The card now says **Includes 1,200 hours before the clock started** and names the source. The bar, Your week and the Monday email count them from then on.
+
+A journeyman electrician's card says the next rule is not seeded yet. Press {{button:outline|Set the goal}} beside it. Pick master electrician and type the board's hours, and the card appears.
+
+HVAC counts months. The same window asks for months instead of hours.
+
 ## Show a teammate their logbook
 
 The office can let a teammate see their own logbook. A strip under the logbook's name says whether they can.

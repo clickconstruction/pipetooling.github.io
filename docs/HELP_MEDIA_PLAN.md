@@ -2,7 +2,7 @@
 
 > The five screen recordings worth adding to `/help` guides, with capture scripts and the exact `{{gif:}}` lines to paste once each file lands in `public/help/`. Also the standing conventions for any future recording. Static screenshots are deliberately NOT used in guides — see Conventions for why.
 
-last_updated: 2026-10-01
+last_updated: 2026-11-07
 
 ## Conventions (apply to every recording)
 
@@ -63,6 +63,7 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 | Stage Plan — the Bill tab sets the stage: the kind selector under a row (three-way when recorded; two-way In order / Any time since v2.3696), the badge and the strip follow, Still to bill (`split-a-job-into-stages.gif`, desktop light, Playwright video → ffmpeg 8 fps on a throwaway job as dev, deleted after). **Retired v2.4329:** v2.4307 replaced the strip and Still to bill with the ② money card, and the owner chose drawn `:::example` panels over a re-take (a re-take needs a throwaway job on prod; the panels never go stale) — three panels in *split a job into stages* and *schedule a sub across every surface*, the gif file removed | ✖ retired (v2.4329) | — |
 | Stage Plan — Edit Job → Stages: the eye, See it as the customer, the drawer (`show-a-gc-the-stages-you-plan.gif`, same recipe) | ✅ 2026-09-08 | ✅ |
 | Stage Plan — the GC portal's Where the job is card on the sample GC (`show-a-gc-the-stages-you-plan-portal.gif`, `/portal?t=sample-gc`, no writes) | ✅ 2026-09-08 | ✅ |
+| Robot fixtures, the estimator's guide: six clips on a ZZ test bid seeded for the day and deleted after (`add-the-robots-fixtures-to-your-count-1-open` … `-6-undo.gif`: the Counts tab button and the window, ▸ text on a row, tick and Add with the shaded rows and the Robot pill, a count change to *Robot 5 → yours 6*, Set aside with a reason then Put back, Undo on the toast taking back one press; desktop 1400×900 light, Playwright video with a drawn cursor → ffmpeg 6–8 fps, cropped to the window or the count sheet, 0.6–2.9 MB each; punch list #227) | ✅ 2026-11-07 | ✅ |
 
 | Schedule Dispatch phone moves: grip tap → day chip → "Moved to Fri 9/4." → press-and-hold → Move sheet → back to Thu (`schedule-dispatch-move-by-thumb.gif`, phone width, 500×1000, ~0.5 MB, 8 keyframes via Playwright + ffmpeg as dev on Isiah's J878 — the block was moved to Friday and back on camera, ending where it started) | ✅ 2026-09-03 | ✅ |
 

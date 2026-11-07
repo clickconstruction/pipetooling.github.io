@@ -7,6 +7,9 @@ import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { getPersonFile } from '../_shared/devMcpPersonFile.ts'
 import { getCaseBrief } from '../_shared/devMcpCaseBrief.ts'
+import { getDocumentHistory } from '../_shared/devMcpDocHistory.ts'
+import { getPersonDocument } from '../_shared/devMcpDocRead.ts'
+import { searchCase } from '../_shared/devMcpCaseSearch.ts'
 import { PERSON_REPORT_SELECT, personReportAppliedWords, personReportDryRun, personReportRpc, type PersonReportPayload, type PersonReportRow } from '../_shared/devMcpPersonReport.ts'
 import { PERSON_MATTER_PERSON_SELECT, PERSON_MATTER_STANDING_SELECT, personMatterAppliedWords, personMatterDryRun, personMatterRpc, type PersonMatterPayload, type PersonMatterPersonRow, type PersonMatterStandingRow } from '../_shared/devMcpPersonMatter.ts'
 import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, stateGuarded, writeRpcBody } from '../_shared/devMcpWrites.ts'
@@ -84,7 +87,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.34.0'
+const SERVER_VERSION = '0.38.1'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -317,8 +320,8 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_matter_narrative',
-    description: "Dry-run the narrative for the firm on a legal matter (v2.4814): the office's account in markdown, read by the law firm as the first tab of its portal and the first section of its printed packet. Replies with the matter, the narrative's length before and after, whether the firm reads it now, and a plan_hash. Nothing is written. The text replaces what is there; an empty markdown clears it. Write facts the record shows, and name each document by its title under Evidence.",
-    inputSchema: { type: 'object', properties: { narrative: { type: 'object', description: '{ matter_id (legal_matters.id — read_rows on legal_matters by payer_name), markdown (the whole text, at most 40,000 characters) }' } }, required: ['narrative'] },
+    description: "Dry-run the narrative for the firm on a legal matter (v2.4814): the office's account in markdown, read by the law firm as the first tab of its portal and the first section of its printed packet. Send the whole text (markdown; '' clears it) or, since v2.6623, ops against the narrative's own headings — replace_section (the lines under a heading, the heading kept), insert_after, append — so one section travels, not the whole account; expect_updated_at (the narrative_updated_at you read) refuses the plan when the narrative was saved since. Replies with the matter, the length before and after, each change with the words removed and added, the headings after, whether the firm reads it now, and a plan_hash. Nothing is written. Write facts the record shows, and name each document by its title under Evidence.",
+    inputSchema: { type: 'object', properties: { narrative: { type: 'object', description: "{ matter_id (legal_matters.id — read_rows on legal_matters by payer_name), markdown (the whole text, at most 40,000 characters) — or — ops: [{ op: 'replace_section', heading, markdown } | { op: 'insert_after', heading, markdown } | { op: 'append', markdown }] (at most 20), expect_updated_at? }" } }, required: ['narrative'] },
   },
   {
     name: 'apply_matter_narrative',
@@ -394,6 +397,21 @@ const TOOLS: McpTool[] = [
     name: 'get_case_brief',
     description: "One page that says what is where on a person's case (v2.6619, punch list #278) — the brief to read before anything else, the way a folder's README is read: your own Agent notes document first (a named document so titled, kept through plan_person_doc), the summary whole, the narrative's section index, the named documents with their section indexes and counsel marks, the entries' count and newest ten, the evidence index, the matter's narrative sections, steps and documents, the theme counts, and the developments the person's jobs sit in with their History's newest lines — every item with its id for a drill-in, the text never carried whole except the summary. Dev-only like the HR file: another role gets the person and held: dev only. read_next says which verb reads each thing further.",
     inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' } }, required: ['person'] },
+  },
+  {
+    name: 'get_document_history',
+    description: "What moved on a document on a person's HR file (v2.6622, punch list #278): the revisions of a named document (doc_id) or of the summary or narrative (kind) — when each was replaced, by whom, how big it was — with the text as it stands as now; with from (an older revision's id) and to (a newer one, or left out for the text as it stands), the difference between the two as hunks of removed and added lines, each named by its first line in the older text, exact when the changed middle is under 600 lines a side and capped at 400 lines and 40,000 characters (a long line cut to fit), so the reply stays whole. Dev-only. get_person_file's documents list takes since (YYYY-MM-DD) and marks each changed_since.",
+    inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' }, doc_id: { type: 'string', description: 'a named document (person_documents.id)' }, kind: { type: 'string', description: 'summary | narrative, instead of doc_id' }, from: { type: 'string', description: 'a revision id from the list, the older one' }, to: { type: 'string', description: 'a newer revision id; the text as it stands when left out' } }, required: ['person'] },
+  },
+  {
+    name: 'get_person_document',
+    description: "A document on a person's HR file a piece at a time (v2.6621, punch list #278): without section, the index — every heading with its number, level, line and size — of a named document (doc_id, from get_case_brief) or of the summary or narrative (kind); with section (a number as the heading carries it, or a heading's text), that section's text alone with the sections before and after named, so a 300 KB document never crosses the door whole. The sections are cut as plan_person_doc's ops name them, and read_next gives the op that changes what you read. Dev-only.",
+    inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' }, doc_id: { type: 'string', description: 'a named document (person_documents.id)' }, kind: { type: 'string', description: 'summary | narrative, instead of doc_id' }, section: { type: 'string', description: 'a section number or heading; the index alone when left out' } }, required: ['person'] },
+  },
+  {
+    name: 'search_case',
+    description: "One full-text search across a person's case (v2.6620, punch list #278) — the grep an agent has over a folder: the HR entries, the evidence titles and memos, the named documents and the summary and narrative a section at a time (a hit names the section it sits in), and the matter standing on the person — its narrative by section, its entries' words, its documents' titles and what-it-shows lines (not their files). Each hit: the source, the id, the section and its number, the day, a snippet with the match marked « », the counsel-only mark (marked, never hidden from a dev), and read_next. Websearch syntax: words, \"a phrase\", -not. Dev-only.",
+    inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' }, q: { type: 'string', description: 'the words to find — websearch syntax' }, in: { type: 'string', description: 'one source: entries | evidence | documents | summary | narrative | matter; every source when left out' }, limit: { type: 'number', description: 'hits to return, 1 to 100; 40 when left out' } }, required: ['person', 'q'] },
   },
   {
     name: 'get_person_file',
@@ -1266,6 +1284,28 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const out = await getCaseBrief(readerAs(await jwt()), { person: String(args.person ?? '') }, { role: who.role, todayYmd: todayYmdInAppTz() })
       if ('refused' in out) return refused(out.refused, { target: 'people' })
       return ok(out, { target: out.person.id, rowCount: out.entries.count })
+    }
+
+    case 'get_document_history': {
+      // v2.6622 (punch list #278 PR 4): one GET of dev_doc_history as the dev; the two texts are diffed here and only the
+      // difference goes on (devMcpDocHistory.ts); another role is refused in words.
+      const out = await getDocumentHistory(readerAs(await jwt()), { person: String(args.person ?? ''), doc_id: args.doc_id, kind: args.kind, from: args.from, to: args.to }, { role: who.role })
+      if ('refused' in out) return refused(out.refused, { target: 'people' })
+      return ok(out, { target: out.person.id, rowCount: out.revision_count })
+    }
+
+    case 'get_person_document': {
+      // v2.6621 (punch list #278 PR 3): one GET of dev_doc_read as the dev (devMcpDocRead.ts); another role is refused in words.
+      const out = await getPersonDocument(readerAs(await jwt()), { person: String(args.person ?? ''), doc_id: args.doc_id, kind: args.kind, section: args.section }, { role: who.role })
+      if ('refused' in out) return refused(out.refused, { target: 'people' })
+      return ok(out, { target: out.person.id, rowCount: out.section ? 1 : out.sections.length })
+    }
+
+    case 'search_case': {
+      // v2.6620 (punch list #278 PR 2): one GET of dev_case_search as the dev (devMcpCaseSearch.ts); another role is refused in words.
+      const out = await searchCase(readerAs(await jwt()), { person: String(args.person ?? ''), q: args.q, in: args.in, limit: args.limit }, { role: who.role })
+      if ('refused' in out) return refused(out.refused, { target: 'people' })
+      return ok(out, { target: out.person.id, rowCount: out.shown })
     }
 
     case 'get_person_file': {

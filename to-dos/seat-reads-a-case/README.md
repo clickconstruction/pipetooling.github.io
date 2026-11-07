@@ -2,7 +2,7 @@
 name: "The seat reads a case the way an agent reads a folder: one brief, a search across the record, a document by section, a document's history, and section ops on the matter's narrative"
 number: 278
 group: ready
-status: built 2026-11-07 as five PRs, each cut from main alone, none merged yet — PR 1 the brief (#7192), PR 2 the search (#7193), PR 3 a document by section (#7194), PR 4 the history and changed_since (#7195), PR 5 the matter narrative's ops (#7197) · the five share the seat's version line and the two docs lines, so they land one at a time, each merged over main after the one before · left: the merges, the five migrations' push, the dev-mcp deploy, the catalog regen, the walk · follows #277, whose documents gave the record a place for its long texts
+status: BUILT 2026-11-07 · the five PRs merged the same day in order — v2.6619 the brief (#7192), v2.6620 the search (#7193), v2.6621 a document by section (#7194), v2.6622 the history and changed_since (#7195), v2.6623 the matter narrative's ops (#7197) · left: the last two migrations' push (20261107090000, 20261107100000; the first three are on prod), the dev-mcp deploy (the live seat still answers 0.33.0), the catalog regen, the walk
 summary: >
   An agent given a case folder reads one page that says what is where, greps for a word, opens a
   long document at the section it needs, and keeps its own notes beside the record for the next
@@ -13,18 +13,18 @@ summary: >
   close that, in order of value: get_case_brief, search_case, get_person_document by section,
   get_document_history with a since on the list, and the matter narrative's section ops. No screen
   changes; a convention for the agent's notes rides on named documents.
-next: Merge in order, #7192 then #7193, #7194, #7195, #7197, merging main into each after the one before lands and keeping the later version line (0.34.0 to 0.38.0) and both docs lines; then supabase db push (20261107060000 through 20261107100000), supabase functions deploy dev-mcp, regenerate the catalog; then the walk below on a made-up person, reading only, and delete this folder. The two follow-ups below stay as cards or rows.
-size: L as a train of five (M · M · S · S · S), all five open; left: the merges, the push and the deploy (XS)
+next: supabase db push (20261107090000_doc_history and 20261107100000_matter_narrative_ops; 060000 to 080000 are applied), supabase functions deploy dev-mcp (0.38.0), regenerate the catalog; then the walk below on a made-up person, reading only, and delete this folder. The two follow-ups below stay as cards or rows.
+size: L as a train of five (M · M · S · S · S), merged; left: the push, the deploy and the walk (XS)
 blocker: None.
 mockup: not required — verbs on the seat, no screen changes; the brief's shape is written below as the reply it returns
-opinion: built — land the five in order and push the migrations the same day, since every verb reads a view or function only its migration creates or widens.
+opinion: built and merged — push the two migrations and deploy the seat the same day, since get_document_history and the narrative's ops call a function only their migration creates or widens.
 ---
 
 # The seat reads a case the way an agent reads a folder (#278)
 
 ## Where it stands
 
-Five PRs opened 2026-11-07, each from `main` alone (not stacked), each with its migration, its kernel over the injected `Reader` with unit tests, the catalog lines, the two docs lines, a release note and a fragment, and the seat's `SERVER_VERSION` bumped:
+Five PRs opened 2026-11-07, each from `main` alone (not stacked), all five merged the same day in order, each with its migration, its kernel over the injected `Reader` with unit tests, the catalog lines, the two docs lines, a release note and a fragment, and the seat's `SERVER_VERSION` bumped:
 
 | PR | Verb | Version | Server | Migration | Branch |
 | --- | --- | --- | --- | --- | --- |
@@ -36,7 +36,7 @@ Five PRs opened 2026-11-07, each from `main` alone (not stacked), each with its 
 
 What the plan above called "the narrative the same way" in PR 3 is in PR 3 by `kind: narrative` (the summary too); the `since` of PR 4 landed as `changed_since` on the documents list, read from the ask's existing `since`. No table is created, so no fence appliers; `SET lock_timeout` opens every migration.
 
-**The merge order matters.** All five change the same `SERVER_VERSION` line and the same pinned test lines (from 0.33.0), and all five add their line at the same spot of `docs/dev-mcp/README.md` and `docs/EDGE_FUNCTIONS.md`, so the first merge makes the other four conflicting (no CI on a conflicting PR). After each lands, merge `main` into the next, keep the later version line and both docs lines, push, and re-arm. The docs catch-up PR #7196 edits the same two docs files and meets the same conflicts. Then the four manual steps: `supabase db push` for the five migrations (every verb reads a view or function only its migration creates or widens, so push right after each merge), `supabase functions deploy dev-mcp`, regenerate the catalog, and the walk.
+**The merges.** All five changed the same `SERVER_VERSION` line, the same pinned test lines and the same spot of `docs/dev-mcp/README.md` and `docs/EDGE_FUNCTIONS.md`, so after #7192 landed each next PR had `main` merged into it (the later version line kept, every seat line kept, a blank line between the seat's blockquotes), tests and `check:edge-bundles` run, and was queued alone: #7193, then #7194, #7195, #7197. Three of the five migrations reached prod with other sessions' pushes the same day (`20261107060000`, `070000`, `080000`); `20261107090000_doc_history` and `20261107100000_matter_narrative_ops` are pending, and the live seat still answers 0.33.0 until `supabase functions deploy dev-mcp`. Then regenerate the catalog and walk.
 
 Not built: the two follow-ups below; a matter document's file body in `search_case` (its title and what-it-shows line are searched; the body joins when the write keeps a text column).
 
