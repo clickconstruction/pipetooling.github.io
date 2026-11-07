@@ -2956,6 +2956,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-estimate-to-customer
 
+> **v2.6658 — the thread keeps the email** (punch list #139's close-out walk): after Resend accepts the letter, in every mode, [`writeEstimateSentEmailLine`](../supabase/functions/_shared/estimateSentEmailLine.ts) inserts one `messages` row on the customer's own thread (`findPageContact`) — `channel: 'email'`, `direction: 'out'`, the subject, the letter's plain text, the sender's name, `estimate_id` and the job — so `/messages`' Went out lane (v2.5707) and the thread show the estimate email; before it they showed none. Best effort: logged, never thrown.
+
 > **v2.5729 — a real account sends** (punch list #142 PR 5; README found item 4): the function checked no account, so a View-as sample, a twin or a training account that could read a draft could send it to a real customer. Now the caller's `users` row is read first: a sample or a twin is refused (403 `not_a_real_account`), a training account is refused (403 `read_only`), but for the walk kit's tester, which sends only the kit's estimate at the kit's address (`kitDoorVerdict`, 403 `walkTesterOnly` elsewhere). The letterhead's sender comes from the same row. **Deploy after PR 2's push.** `src/lib/walk/sendEstimateDoor.run.test.ts`.
 
 > **v2.5681 — a first-send refusal names itself** (punch list #133): `mode: "send"` on a non-draft row answers 400 with a `code` — `already_sent` with the row's `sent_at` when `status = sent` (the Tell sheet then offers **Send the link again**, its resend), else `not_draft` with `estimate_status`, which the client words through `canResendEstimateLink`. **Redeploy required.**
