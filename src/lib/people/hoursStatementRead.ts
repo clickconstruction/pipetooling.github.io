@@ -6,13 +6,16 @@
  * pay tables answer only the payroll roles, so `withPay` is false for anyone else. Since PR 2 (v2.6097) the read also
  * counts what the span holds for the window's line (approved sessions, typed days, quick adds left off), hands back the
  * roster id and the pay name the saved row needs, and `listHoursStatementJobs` lists the jobs a person clocked on, for
- * the window opened from the person's desk.
+ * the window opened from the person's desk. Since v2.6636 both lists carry a sub's sheets too (`kind: 'sheet'`, the
+ * sheets counted in `sessions`), and `loadHoursStatementInputs({ kind: 'sheet' })` reads a sub's sheet lines on the job
+ * through `hoursStatementSheets.ts` — the kernel's `sheet` kind at last has a reader.
  */
 
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../overheadOfficeJobSettings'
-import { formatDenverTimeOnly } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatDenverTimeOnly } from '../../utils/dateUtils'
+import { hoursStatementSheetCounts, hoursStatementSheetPayGroups, hoursStatementSheetRows, type HoursStatementSheet, type HoursStatementSheetLine, type HoursStatementSheetPayment } from './hoursStatementSheets'
 import { stubNetPay } from '../payStubDeductions'
 import { hoursStatementRoundHours, hoursStatementStanding, hoursStatementWeekLabel, type HoursStatementInput, type HoursStatementPayGroup, type HoursStatementRow } from './hoursStatement'
 import { buildCrewDays, jobChargeRuleFrom, jobChargeRuleWords, type CrewUncharged } from '../charges/crewDays'
@@ -25,17 +28,30 @@ export function hoursStatementJobNumber(job: { id: string; hcp_number: string | 
   return (job.hcp_number ?? '').trim() || (job.click_number ?? '').trim() || job.id.slice(0, 8)
 }
 
-/** A person who clocked on the job, with the span of their days there. */
-export type HoursStatementPerson = { userId: string; name: string; role: string; firstDay: string; lastDay: string; sessions: number }
+/** Where a person's rows come from (v2.6636): the clock, or a sub's sheets (`sessions` then counts the sheets). */
+export type HoursStatementSource = 'clock' | 'sheet'
+
+/** A person who clocked on the job, or a sub on its sheets, with the span of their days there. */
+export type HoursStatementPerson = { userId: string; name: string; role: string; firstDay: string; lastDay: string; sessions: number; kind?: HoursStatementSource }
 
 type SessionPersonRow = { user_id: string; work_date: string; users: { name: string; role: string } | null }
+type SheetPeopleRow = { id: string; job_date: string | null; created_at: string | null; people_labor_job_assignees: Array<{ person_id: string; people: { id: string; name: string; kind: string; account_user_id: string | null } | null }> | null }
 
-/** Everyone with a counted session on the job (not rejected, not revoked), first day first. */
+/** A sheet's day: its job date, else the day it was made. */
+function sheetDayOf(s: { job_date: string | null; created_at: string | null }): string {
+  return s.job_date ?? (s.created_at ? calendarYmdInAppTzFromIso(s.created_at) : '')
+}
+
+/** Everyone with a counted session on the job (not rejected, not revoked), then every sub on the job's sheets who has a login (v2.6636), first day first. */
 export async function listHoursStatementPeople(jobId: string): Promise<HoursStatementPerson[]> {
-  const rows = await withSupabaseRetry(
-    () => supabase.from('clock_sessions').select('user_id, work_date, users!clock_sessions_user_id_fkey(name, role)').eq('job_ledger_id', jobId).is('rejected_at', null).is('revoked_at', null).not('clocked_out_at', 'is', null).order('work_date', { ascending: true }),
-    'list the people who clocked on the job',
-  )
+  const [rows, sheets] = await Promise.all([
+    withSupabaseRetry(
+      () => supabase.from('clock_sessions').select('user_id, work_date, users!clock_sessions_user_id_fkey(name, role)').eq('job_ledger_id', jobId).is('rejected_at', null).is('revoked_at', null).not('clocked_out_at', 'is', null).order('work_date', { ascending: true }),
+      'list the people who clocked on the job',
+    ),
+    // A sub never punches: the sheets name them. A sub with no login is left off, since a statement is saved on the login.
+    withSupabaseRetry(() => supabase.from('people_labor_jobs').select('id, job_date, created_at, people_labor_job_assignees(person_id, people(id, name, kind, account_user_id))').eq('job_ledger_id', jobId), 'list the subs on the job’s sheets').catch(() => [] as SheetPeopleRow[]),
+  ])
   const byUser = new Map<string, HoursStatementPerson>()
   for (const r of (rows ?? []) as unknown as SessionPersonRow[]) {
     const cur = byUser.get(r.user_id)
@@ -43,31 +59,82 @@ export async function listHoursStatementPeople(jobId: string): Promise<HoursStat
       cur.sessions += 1
       if (r.work_date < cur.firstDay) cur.firstDay = r.work_date
       if (r.work_date > cur.lastDay) cur.lastDay = r.work_date
-    } else byUser.set(r.user_id, { userId: r.user_id, name: r.users?.name ?? 'Unnamed', role: r.users?.role ?? '', firstDay: r.work_date, lastDay: r.work_date, sessions: 1 })
+    } else byUser.set(r.user_id, { userId: r.user_id, name: r.users?.name ?? 'Unnamed', role: r.users?.role ?? '', firstDay: r.work_date, lastDay: r.work_date, sessions: 1, kind: 'clock' })
+  }
+  for (const s of (sheets ?? []) as unknown as SheetPeopleRow[]) {
+    const day = sheetDayOf(s)
+    if (!day) continue
+    for (const a of s.people_labor_job_assignees ?? []) {
+      const p = a.people
+      if (!p || p.kind !== 'sub' || !p.account_user_id) continue
+      const cur = byUser.get(p.account_user_id)
+      if (cur) {
+        if (cur.kind !== 'sheet') continue
+        cur.sessions += 1
+        if (day < cur.firstDay) cur.firstDay = day
+        if (day > cur.lastDay) cur.lastDay = day
+      } else byUser.set(p.account_user_id, { userId: p.account_user_id, name: p.name, role: 'subcontractor', firstDay: day, lastDay: day, sessions: 1, kind: 'sheet' })
+    }
   }
   return Array.from(byUser.values()).sort((a, b) => (a.firstDay < b.firstDay ? -1 : a.firstDay > b.firstDay ? 1 : a.name.localeCompare(b.name)))
 }
 
-/** A job the person clocked on, with the span of their days there and the facts the paper prints. */
-export type HoursStatementJob = { jobId: string; number: string; name: string; customer: string | null; site: string; firstDay: string; lastDay: string; sessions: number }
+/** A job the person clocked on, or a sub's job on the sheets (v2.6636), with the span of their days there and the facts the paper prints. */
+export type HoursStatementJob = { jobId: string; number: string; name: string; customer: string | null; site: string; firstDay: string; lastDay: string; sessions: number; kind?: HoursStatementSource }
 
-type SessionJobRow = { job_ledger_id: string; work_date: string; job: { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null; customer_name: string | null } | null }
+type JobFacts = { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null; customer_name: string | null }
+type SessionJobRow = { job_ledger_id: string; work_date: string; job: JobFacts | null }
+type SheetJobRow = { id: string; job_ledger_id: string | null; job_date: string | null; created_at: string | null; job: JobFacts | null }
 
-/** Every job with a counted session by the person (not rejected, not revoked), latest day first. */
+/** The roster rows behind a login (a person may have more than one). */
+async function personIdsOf(userId: string): Promise<string[]> {
+  const rows = (await withSupabaseRetry(() => supabase.from('people').select('id').eq('account_user_id', userId), 'read the roster rows').catch(() => [])) as Array<{ id: string }> | null
+  return (rows ?? []).map((r) => r.id)
+}
+
+/** The sheets a sub's roster rows are assigned to, with the job's facts; none when they have no sheets. */
+async function sheetsOf(personIds: string[], jobId: string | null): Promise<SheetJobRow[]> {
+  if (personIds.length === 0) return []
+  const links = (await withSupabaseRetry(() => supabase.from('people_labor_job_assignees').select('labor_job_id').in('person_id', personIds), 'read the sub’s sheets').catch(() => [])) as Array<{ labor_job_id: string }> | null
+  const ids = Array.from(new Set((links ?? []).map((l) => l.labor_job_id)))
+  if (ids.length === 0) return []
+  const q = supabase.from('people_labor_jobs').select('id, job_ledger_id, job_date, created_at, job:jobs_ledger!job_ledger_id(id, hcp_number, click_number, job_name, job_address, customer_name)').in('id', ids)
+  const rows = (await withSupabaseRetry(() => (jobId ? q.eq('job_ledger_id', jobId) : q.not('job_ledger_id', 'is', null)), 'read the sub’s sheets').catch(() => [])) as unknown as SheetJobRow[] | null
+  return rows ?? []
+}
+
+function jobFactsOf(jobId: string, j: JobFacts | null, day: string, kind: HoursStatementSource): HoursStatementJob {
+  return {
+    jobId,
+    number: j ? hoursStatementJobNumber({ id: j.id, hcp_number: j.hcp_number, click_number: j.click_number }) : jobId.slice(0, 8),
+    name: (j?.job_name ?? '').trim() || 'Unnamed job',
+    customer: j?.customer_name ?? null,
+    site: (j?.job_address ?? '').trim(),
+    firstDay: day,
+    lastDay: day,
+    sessions: 1,
+    kind,
+  }
+}
+
+/** Every job with a counted session by the person (not rejected, not revoked), and every job on a sub's sheets (v2.6636), latest day first. */
 export async function listHoursStatementJobs(userId: string): Promise<HoursStatementJob[]> {
-  const rows = await withSupabaseRetry(
-    () =>
-      supabase
-        .from('clock_sessions')
-        .select('job_ledger_id, work_date, job:jobs_ledger!clock_sessions_job_ledger_id_fkey(id, hcp_number, click_number, job_name, job_address, customer_name)')
-        .eq('user_id', userId)
-        .not('job_ledger_id', 'is', null)
-        .is('rejected_at', null)
-        .is('revoked_at', null)
-        .not('clocked_out_at', 'is', null)
-        .order('work_date', { ascending: true }),
-    'list the jobs the person clocked on',
-  )
+  const [rows, sheets] = await Promise.all([
+    withSupabaseRetry(
+      () =>
+        supabase
+          .from('clock_sessions')
+          .select('job_ledger_id, work_date, job:jobs_ledger!clock_sessions_job_ledger_id_fkey(id, hcp_number, click_number, job_name, job_address, customer_name)')
+          .eq('user_id', userId)
+          .not('job_ledger_id', 'is', null)
+          .is('rejected_at', null)
+          .is('revoked_at', null)
+          .not('clocked_out_at', 'is', null)
+          .order('work_date', { ascending: true }),
+      'list the jobs the person clocked on',
+    ),
+    personIdsOf(userId).then((ids) => sheetsOf(ids, null)),
+  ])
   const byJob = new Map<string, HoursStatementJob>()
   for (const r of (rows ?? []) as unknown as SessionJobRow[]) {
     if (!r.job_ledger_id) continue
@@ -76,19 +143,18 @@ export async function listHoursStatementJobs(userId: string): Promise<HoursState
       cur.sessions += 1
       if (r.work_date < cur.firstDay) cur.firstDay = r.work_date
       if (r.work_date > cur.lastDay) cur.lastDay = r.work_date
-    } else {
-      const j = r.job
-      byJob.set(r.job_ledger_id, {
-        jobId: r.job_ledger_id,
-        number: j ? hoursStatementJobNumber({ id: j.id, hcp_number: j.hcp_number, click_number: j.click_number }) : r.job_ledger_id.slice(0, 8),
-        name: (j?.job_name ?? '').trim() || 'Unnamed job',
-        customer: j?.customer_name ?? null,
-        site: (j?.job_address ?? '').trim(),
-        firstDay: r.work_date,
-        lastDay: r.work_date,
-        sessions: 1,
-      })
-    }
+    } else byJob.set(r.job_ledger_id, jobFactsOf(r.job_ledger_id, r.job, r.work_date, 'clock'))
+  }
+  for (const s of sheets) {
+    const day = sheetDayOf(s)
+    if (!s.job_ledger_id || !day) continue
+    const cur = byJob.get(s.job_ledger_id)
+    if (cur) {
+      if (cur.kind !== 'sheet') continue
+      cur.sessions += 1
+      if (day < cur.firstDay) cur.firstDay = day
+      if (day > cur.lastDay) cur.lastDay = day
+    } else byJob.set(s.job_ledger_id, jobFactsOf(s.job_ledger_id, s.job, day, 'sheet'))
   }
   return Array.from(byJob.values()).sort((a, b) => (a.lastDay > b.lastDay ? -1 : a.lastDay < b.lastDay ? 1 : a.name.localeCompare(b.name)))
 }
@@ -114,6 +180,8 @@ export type HoursStatementReadArgs = {
   addStatedBlock?: boolean
   /** Punch list #251: `charged` prices the person's days as the crew-days they were part of, at the rate card or the job's rule; missing = paid. */
   basis?: 'paid' | 'charged'
+  /** Where the rows come from (v2.6636): a sub's sheet lines (`sheet`), else the clock. A sheet paper is always on the paid basis. */
+  kind?: HoursStatementSource
 }
 
 /** What the charged paper was priced by, for the window's line and the saved row. */
@@ -134,7 +202,7 @@ export type HoursStatementChargeFacts = {
 }
 
 /** What the read found in the span, for the window's line: see `hoursStatementSpanWords`. */
-export type HoursStatementReadCounts = { approved: number; pending: number; typedDays: number; quickAddsLeftOff: number }
+export type HoursStatementReadCounts = { approved: number; pending: number; typedDays: number; quickAddsLeftOff: number; /** A sub's paper: the sheets in the span (`approved` is then the lines). */ sheets?: number }
 
 export type HoursStatementRead = {
   input: HoursStatementInput
@@ -154,8 +222,9 @@ function clockLabel(iso: string): string {
   return formatDenverTimeOnly(new Date(iso).getTime()).toLowerCase()
 }
 
-/** Read everything the kernel needs for one person on one job. */
+/** Read everything the kernel needs for one person on one job: a sub's sheet lines, or the clock. */
 export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Promise<HoursStatementRead> {
+  if (args.kind === 'sheet') return await loadSheetInputs(args)
   const { jobId, userId, periodStart, periodEnd } = args
   const [sessions, user, person, officeJobId, firstRow, typedRows] = await Promise.all([
     withSupabaseRetry(
@@ -327,4 +396,68 @@ export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Pr
     worker: { name: workerName },
   }
   return { input, worker: { name: workerName, standing: hoursStatementStanding(user?.role ?? '', salaried) }, approvedBy, isOfficeJob, personId: person?.id ?? null, payName, counts, charge }
+}
+
+type SheetItemRow = { id: string; job_id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed: boolean | null; labor_rate: number | null; direct_labor_amount: number | null; sequence_order: number | null }
+type SheetPaymentRow = { job_id: string; amount: number; payment_date: string | null; created_at: string | null; memo: string | null }
+type SheetRow = { id: string; job_date: string | null; created_at: string | null; labor_rate: number | null }
+
+/**
+ * A sub's paper (v2.6636): the sheets on the job the sub's roster rows are assigned to, their lines and their payments,
+ * through `hoursStatementSheets.ts`. The pay switch keeps the lines' rates and amounts and the per-sheet Paid lines; the
+ * charged basis does not apply (a sheet is agreed work), so the paper is always paid. The first recorded day is the
+ * earlier of the clock's and the sheets', since a sheet may predate the first punch (2026-03-11 on the live data).
+ */
+async function loadSheetInputs(args: HoursStatementReadArgs): Promise<HoursStatementRead> {
+  const { jobId, userId, periodStart, periodEnd } = args
+  const [user, personIds, officeJobId, firstClock, firstSheet] = await Promise.all([
+    withSupabaseRetry(() => supabase.from('users').select('id, name, role').eq('id', userId).maybeSingle(), 'read the worker') as Promise<UserRow | null>,
+    personIdsOf(userId),
+    fetchOverheadOfficeJobLedgerIdFromAppSettings().catch(() => null),
+    withSupabaseRetry(() => supabase.from('clock_sessions').select('work_date').is('rejected_at', null).is('revoked_at', null).order('work_date', { ascending: true }).limit(1), 'read the first recorded day').catch(() => []),
+    withSupabaseRetry(() => supabase.from('people_labor_jobs').select('job_date').not('job_date', 'is', null).order('job_date', { ascending: true }).limit(1), 'read the first sheet').catch(() => []),
+  ])
+  const linked = await sheetsOf(personIds, jobId)
+  const sheetIds = linked.map((s) => s.id)
+  const [itemRows, paymentRows] = sheetIds.length
+    ? await Promise.all([
+        withSupabaseRetry(() => supabase.from('people_labor_job_items').select('id, job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount, sequence_order').in('job_id', sheetIds).order('sequence_order', { ascending: true }), 'read the sheets’ lines'),
+        withSupabaseRetry(() => supabase.from('people_labor_job_payments').select('job_id, amount, payment_date, created_at, memo').in('job_id', sheetIds).order('payment_date', { ascending: true }), 'read the sheets’ payments').catch(() => []),
+      ])
+    : [[], []]
+  // The sheets' own rates travel with the lines; the day and the rate are read again here since sheetsOf keeps the job's facts, not the sheet's.
+  const sheetFacts = sheetIds.length ? ((await withSupabaseRetry(() => supabase.from('people_labor_jobs').select('id, job_date, created_at, labor_rate').in('id', sheetIds), 'read the sheets')) as unknown as SheetRow[] | null) ?? [] : []
+  const sheets: HoursStatementSheet[] = sheetFacts.map((s) => ({ id: s.id, jobDate: s.job_date, createdYmd: s.created_at ? calendarYmdInAppTzFromIso(s.created_at) : null, laborRate: typeof s.labor_rate === 'number' ? s.labor_rate : null }))
+  const lines: HoursStatementSheetLine[] = ((itemRows ?? []) as unknown as SheetItemRow[]).map((i, idx) => ({ sheetId: i.job_id, fixture: i.fixture, count: Number(i.count) || 0, hrsPerUnit: Number(i.hrs_per_unit) || 0, isFixed: i.is_fixed === true, laborRate: typeof i.labor_rate === 'number' ? i.labor_rate : null, directLaborAmount: typeof i.direct_labor_amount === 'number' ? i.direct_labor_amount : null, order: i.sequence_order ?? idx }))
+  const payments: HoursStatementSheetPayment[] = ((paymentRows ?? []) as unknown as SheetPaymentRow[]).map((p) => ({ sheetId: p.job_id, amount: Number(p.amount) || 0, on: p.payment_date ?? (p.created_at ? calendarYmdInAppTzFromIso(p.created_at) : null), memo: p.memo }))
+  const span = { from: periodStart, to: periodEnd }
+  const isOfficeJob = officeJobId != null && officeJobId === jobId
+  const workerName = (user?.name ?? '').trim() || 'Unnamed'
+  const firstClockDay = ((firstClock ?? []) as Array<{ work_date: string }>)[0]?.work_date ?? null
+  const firstSheetDay = ((firstSheet ?? []) as Array<{ job_date: string }>)[0]?.job_date ?? null
+  const firstRecordedDay = [firstClockDay, firstSheetDay].filter((d): d is string => Boolean(d)).sort()[0] ?? null
+  const counts = hoursStatementSheetCounts(sheets, lines, span)
+  const input: HoursStatementInput = {
+    kind: 'sheet',
+    periodStart,
+    periodEnd,
+    rows: hoursStatementSheetRows(sheets, lines, span),
+    withPay: args.withPay,
+    basis: 'paid',
+    payGroups: args.withPay ? hoursStatementSheetPayGroups(sheets, lines, payments, span) : [],
+    firstRecordedDay,
+    addStatedBlock: args.addStatedBlock === true,
+    isOfficeJob,
+    worker: { name: workerName },
+  }
+  return {
+    input,
+    worker: { name: workerName, standing: hoursStatementStanding(user?.role ?? 'subcontractor', false) },
+    approvedBy: null,
+    isOfficeJob,
+    personId: personIds[0] ?? null,
+    payName: workerName,
+    counts: { approved: counts.lines, pending: 0, typedDays: 0, quickAddsLeftOff: 0, sheets: counts.sheets },
+    charge: null,
+  }
 }

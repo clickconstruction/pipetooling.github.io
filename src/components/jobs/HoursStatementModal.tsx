@@ -5,7 +5,8 @@
  * *Show the rate, the amount and what was paid* (on for whoever sees the window: a dev and the controller, Diane's call of 2026-11-02)
  * and *Add days the app did not record* (the stated block, call 5). A line says what the app has in the span and a held
  * line names a session still waiting for approval, which the paper says under its day instead of counting. The preview
- * is the paper itself.
+ * is the paper itself. A sub on the job's sheets is in the Who list too (v2.6636, `kind: 'sheet'`): their paper reads the
+ * sheets' lines through `hoursStatementSheets.ts`, always on the paid basis, since a sheet is agreed work.
  *
  * Presses: **Save a draft** writes the `hours_statements` row with the read as its snapshot and mints the record id
  * (`HS-<job>-<n>`); **Print** saves the same way (a draft becomes printed), stamps the record id on the paper and files
@@ -173,6 +174,9 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
   const userId = scope.kind === 'job' ? pick : scope.userId
   const jobId = scope.kind === 'job' ? scope.job.id : pick
   const pickedJob = useMemo(() => (scope.kind === 'person' ? (jobs?.find((j) => j.jobId === pick) ?? null) : null), [scope.kind, jobs, pick])
+  // Where the rows come from (v2.6636): a sub's sheets when the pick is one, the clock otherwise; a saved row keeps its kind.
+  const pickedSource: 'clock' | 'sheet' = (scope.kind === 'job' ? people?.find((p) => p.userId === pick)?.kind : pickedJob?.kind) ?? (existing?.kind === 'sheet' ? 'sheet' : 'clock')
+  const isSheet = pickedSource === 'sheet'
   // The job's facts on the paper: the scope's job, the picked job, or the saved statement's own.
   const jobFacts = useMemo(() => {
     if (scope.kind === 'job') return scope.job
@@ -196,7 +200,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
     const t = setTimeout(() => {
       void (async () => {
         try {
-          const r = await loadHoursStatementInputs({ jobId, userId, periodStart: from, periodEnd: to, withPay: !charged && withPay && payAllowed, basis: charged ? 'charged' : 'paid', addStatedBlock: stated })
+          const r = await loadHoursStatementInputs({ jobId, userId, periodStart: from, periodEnd: to, withPay: (isSheet || !charged) && withPay && payAllowed, basis: charged && !isSheet ? 'charged' : 'paid', addStatedBlock: stated, kind: isSheet ? 'sheet' : 'clock' })
           if (token.current !== mine) return
           setRead({ read: r, asOf: formatDenverDateTimeShort(Date.now()) })
         } catch (e: unknown) {
@@ -207,7 +211,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
       })()
     }, 250)
     return () => clearTimeout(t)
-  }, [spanOk, jobId, userId, from, to, withPay, payAllowed, stated, charged])
+  }, [spanOk, jobId, userId, from, to, withPay, payAllowed, stated, charged, isSheet])
 
   const snapshot = useMemo<HoursStatementSnapshot | null>(() => {
     if (!read || !jobFacts) return null
@@ -470,7 +474,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
                   {people == null ? <option value="">Reading who clocked here…</option> : null}
                   {people?.map((p) => (
                     <option key={p.userId} value={p.userId}>
-                      {p.name} · {p.sessions} {p.sessions === 1 ? 'session' : 'sessions'}
+                      {p.name} · {p.sessions} {p.kind === 'sheet' ? (p.sessions === 1 ? 'sheet' : 'sheets') : p.sessions === 1 ? 'session' : 'sessions'}
                     </option>
                   ))}
                   {existing && people != null && !people.some((p) => p.userId === existing.user_id) ? <option value={existing.user_id}>{existing.worker?.name ?? 'The worker'}</option> : null}
@@ -490,7 +494,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
                   {jobs == null ? <option value="">Reading the jobs…</option> : null}
                   {jobs?.map((j) => (
                     <option key={j.jobId} value={j.jobId}>
-                      {j.number} · {j.name} · {j.sessions} {j.sessions === 1 ? 'session' : 'sessions'}
+                      {j.number} · {j.name} · {j.sessions} {j.kind === 'sheet' ? (j.sessions === 1 ? 'sheet' : 'sheets') : j.sessions === 1 ? 'session' : 'sessions'}
                     </option>
                   ))}
                   {existing && jobs != null && !jobs.some((j) => j.jobId === existing.job_ledger_id) ? <option value={existing.job_ledger_id}>{existing.snapshot?.job.number ?? ''} · {existing.snapshot?.job.name ?? 'The job'}</option> : null}
@@ -510,10 +514,10 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
             </div>
             {from && to && from > to ? <p style={{ ...quiet, color: 'var(--text-red-600)' }}>From is after To. Pick a span that starts first.</p> : null}
             <label style={toggle}>
-              <input type="checkbox" checked={charged} disabled={!rowOpen} onChange={(e) => setCharged(e.target.checked)} style={{ marginTop: 3 }} data-testid="hours-statement-charged" />
+              <input type="checkbox" checked={charged && !isSheet} disabled={!rowOpen || isSheet} onChange={(e) => setCharged(e.target.checked)} style={{ marginTop: 3 }} data-testid="hours-statement-charged" />
               <span>
                 Charged to the customer, not paid to the worker
-                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Each day as the crew it was part of, at the rate card or the job’s rule. Nothing on the paper is what the worker was paid.</span>
+                {isSheet ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="hours-statement-sheet-note">A sub’s sheet is agreed work, so the paper reads the sheet’s lines as paid.</span> : <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Each day as the crew it was part of, at the rate card or the job’s rule. Nothing on the paper is what the worker was paid.</span>}
                 {charged && read?.read.charge ? (
                   <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-base)' }} data-testid="hours-statement-charge-words">
                     {read.read.charge.words}
@@ -528,11 +532,11 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
               </span>
             </label>
             {charged && read?.read.charge?.uncharged.length ? <UnchargedCallout people={read.read.charge.uncharged} unchargedDays={read.read.charge.unchargedDays} role={role} onNavigate={onClose} margin="0" /> : null}
-            <label style={{ ...toggle, cursor: payAllowed && !charged ? 'pointer' : 'not-allowed' }}>
-              <input type="checkbox" checked={!charged && withPay && payAllowed} disabled={!payAllowed || !rowOpen || charged} onChange={(e) => setWithPay(e.target.checked)} style={{ marginTop: 3 }} />
+            <label style={{ ...toggle, cursor: payAllowed && (!charged || isSheet) ? 'pointer' : 'not-allowed' }}>
+              <input type="checkbox" checked={(isSheet || !charged) && withPay && payAllowed} disabled={!payAllowed || !rowOpen || (charged && !isSheet)} onChange={(e) => setWithPay(e.target.checked)} style={{ marginTop: 3 }} />
               <span>
                 Show the rate, the amount and what was paid
-                {charged ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Off while the paper is charged to the customer.</span> : null}
+                {charged && !isSheet ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Off while the paper is charged to the customer.</span> : null}
               </span>
             </label>
             <label style={toggle}>

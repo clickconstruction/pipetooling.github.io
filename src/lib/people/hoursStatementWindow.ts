@@ -17,6 +17,8 @@ export type HoursStatementSpanCounts = {
   typedDays: number
   /** Quick adds still waiting for approval: left off the paper until they are approved. */
   quickAddsLeftOff: number
+  /** A sub's paper (v2.6636): the sheets in the span whose lines the paper carries; `approved` is then the lines. Missing on a clock paper. */
+  sheets?: number
 }
 
 const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
@@ -29,6 +31,11 @@ const n = (count: number, one: string, many: string) => `${count} ${count === 1 
 export function hoursStatementSpanWords(c: HoursStatementSpanCounts, opts: { isOfficeJob?: boolean } = {}): { has: string; held: string | null } {
   const where = opts.isOfficeJob ? 'on the Office job' : 'on this job'
   const parts: string[] = []
+  // A sub's paper reads the sheets, never the clock: *The app has 4 lines on 2 sheets for this sub on this job in this span.*
+  if (c.sheets != null) {
+    const has = c.sheets === 0 ? `The app has no sheet for this sub ${where} in this span.` : `The app has ${n(c.approved, 'line', 'lines')} on ${n(c.sheets, 'sheet', 'sheets')} for this sub ${where} in this span.`
+    return { has, held: null }
+  }
   if (c.approved === 0 && c.pending === 0) parts.push(`The app has nothing recorded ${where} in this span.`)
   else parts.push(`The app has ${n(c.approved, 'approved session', 'approved sessions')} ${where} in this span.`)
   if (c.typedDays > 0) parts.push(`${n(c.typedDays, 'day was', 'days were')} typed by hand.`)
@@ -47,10 +54,13 @@ export function hoursStatementSpanWords(c: HoursStatementSpanCounts, opts: { isO
  * clocked here* on a job, *Hours statement… · 4 jobs clocked* on a person's desk. At zero it reads the bare press and
  * is dead: a statement needs at least one counted session.
  */
-export function hoursStatementPressWords(count: number | null, scope: 'job' | 'person'): { label: string; dead: boolean } {
+export function hoursStatementPressWords(count: number | null, scope: 'job' | 'person', opts: { onSheets?: number } = {}): { label: string; dead: boolean } {
   if (count == null) return { label: 'Hours statement…', dead: true }
   if (count <= 0) return { label: 'Hours statement…', dead: true }
   const noun = scope === 'job' ? pluralNoun(['person', 'people'], count) : pluralNoun('job', count)
+  const onSheets = opts.onSheets ?? 0
+  // A sub is on the sheets, never the clock (v2.6636): *3 people here, 1 on the sheets* · *4 jobs, 2 on the sheets*.
+  if (onSheets > 0) return { label: `Hours statement… · ${count} ${noun} ${scope === 'job' ? 'here' : ''}${scope === 'job' ? '' : ''}, ${onSheets} on the sheets`.replace(' ,', ','), dead: false }
   return { label: `Hours statement… · ${count} ${noun} ${scope === 'job' ? 'clocked here' : 'clocked'}`, dead: false }
 }
 
@@ -64,7 +74,7 @@ export function hoursStatementEmptyWords(count: number | null, scope: { kind: 'j
       tail: '',
     }
   }
-  return { main: `No hours statements are saved ${who} yet.`, withPress: count != null && count > 0, tail: 'makes one from the clock and the pay reports.' }
+  return { main: `No hours statements are saved ${who} yet.`, withPress: count != null && count > 0, tail: 'makes one from the clock, the sheets and the pay reports.' }
 }
 
 /** A saved statement as the list draws it. */
