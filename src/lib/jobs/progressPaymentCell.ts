@@ -206,6 +206,12 @@ function pourMoney(
   amounts: ReadonlyArray<{ key: string; amount: number; invoiceId: string | null }>,
   money: StagesMoneyBarModel,
   invoices: ReadonlyMap<string, PourInvoice>,
+  /**
+   * Report by line (v2.6653): each line's own done fraction (0–1) by key. When given, a line's
+   * done-not-billed money is its own number's worth past what is paid or billed on it, not a share
+   * of the job's pool poured left to right — the board's blocks then read the crew's numbers.
+   */
+  ownDone: ReadonlyMap<string, number> | null = null,
 ): Map<string, MoneyChannel> {
   const pool: Pool = { paid: Math.max(0, money.paid), billed: Math.max(0, money.billedUnpaid), unbilled: Math.max(0, money.doneNotBilled ?? 0) }
   const alloc = new Map<string, Pool>()
@@ -241,9 +247,17 @@ function pourMoney(
   // 2. The rest pours in order: paid, then billed, then done-not-billed.
   for (const kind of ['paid', 'billed', 'unbilled'] as const) {
     for (const a of amounts) {
-      if (pool[kind] <= 0) break
       const slot = alloc.get(a.key)!
       const room = a.amount - slot.paid - slot.billed - slot.unbilled
+      if (kind === 'unbilled' && ownDone) {
+        // The line's own number says what is done on it; the amber is that, less what is already paid or billed.
+        if (room <= 0) continue
+        const done = Math.max(0, Math.min(1, ownDone.get(a.key) ?? 0)) * a.amount
+        const take = Math.min(room, Math.max(0, done - slot.paid - slot.billed))
+        if (take > 0) slot.unbilled += take
+        continue
+      }
+      if (pool[kind] <= 0) break
       if (room <= 0) continue
       const take = Math.min(room, pool[kind])
       slot[kind] += take
@@ -394,7 +408,10 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
     const t = lines.reduce((s, l) => s + Math.max(0, l.amount), 0)
     return lines.map((l) => (t > 0 ? (Math.max(0, l.amount) / t) * 100 : 100 / lines.length))
   })()
-  const pour = pourMoney(lines, money, pourInvoices)
+  // v2.6653: with own numbers the amber on each block is that line's number, not the job's pour (the
+  // board draws the money, v2.4351, so the fill alone never reached it).
+  const ownDone = ownNumbers ? new Map(lines.map((l) => [l.key, clampPct(l.progressPct ?? 0) / 100])) : null
+  const pour = pourMoney(lines, money, pourInvoices, ownDone)
   const pct = percent && !stale ? percent.pct : null
   let poured = 0
   const segments: ProgressPaymentSegment[] = lines.map((l, i) => {
