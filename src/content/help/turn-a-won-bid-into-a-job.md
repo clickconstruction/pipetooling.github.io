@@ -32,7 +32,7 @@ If the letter carried two options, Edit Bid asks on Won: **Which option did they
 
 The bid may carry a figure: its agreed value, or what the winning GC was sent. Then New Job asks one question before filling anything: **Start the job at $48,200?** {{button:blue|Carry $48,200 over}} puts it on the job as the first line item, *Bid price*. If the bid had no agreed value yet, the figure is recorded there too. {{button:outline|Start at $0}} leaves the Job Total empty. That choice writes nothing on the job or the bid. Either way you can change the number on the job any time.
 
-What does **not** come over: the bid's own line items, schedule blocks, crew, dates. The bid's Cost Estimate can become the job's budget. The box *carry the bid's estimate as the budget* does that, and it starts ticked.
+What does **not** come over: the bid's own line items, schedule blocks, crew, dates. The job gets its hours baseline at award. The **Hours baseline at award** block under the header picks the bid's Labor rows when they carry hours. Otherwise it offers the book's assumed hours or a typed figure. See [give a project its hours baseline at award](/help/give-a-project-its-hours-baseline). On a service call from a bid, the box *carry the bid's estimate as the budget* stands in, and it starts ticked.
 
 ## Or hand it to Dispatch
 

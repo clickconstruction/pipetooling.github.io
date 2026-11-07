@@ -175,7 +175,7 @@ Render regions in JSX order (all line ranges @ `a05cef4c4`). Status legend: `ext
 
 - **`applyPrefillFromBid(bidRowId, forcedGc?, opts?)`**: fetches the bid (+ `agreed_value`, embedded customer); first pass checks `jobs_ledger` for jobs already on this `bid_id` and asks through `confirmDialog` (`secondConversionMessage`) — Cancel → `cancelBidImport`; builds GC packets from `bid_versions` + `bid_version_sends` + `bid_gc_recipients` (+ `customers` names) → `resolveWinningPacket` (silent single winner, else `PickWinningGcModal` via `winningGcPick`, carrying `closeOnCancel`); asks "Start the job at $X?" for the bid's `agreed_value` when set, else the sent value (forced/picked packet → auto winner → lone packet) — Yes replaces the line items with one "Bid price" line and back-fills `bids.agreed_value` only when null (`.is('agreed_value', null)`), No writes nothing; sets bid link, name, address, `linkedBidSummary`, `linkedBidGc`, the bid's GC through `pickGcCustomerId`; applies the trade only if the role-filtered list allows it; fills drive/plans links only when blank. `handleWinningGcPick` (2148–2186) records the win through `setGcPacketOutcome` then re-enters with `forcedGc`.
 - **`applyPrefillFromEstimate(estimateId)`**: refuses an estimate already on a job; clears the bid link; line items via `normalizeEstimateLineItemsFromJson` + `fixturesPayloadForCreateJobFromEstimate`; applies the customer (fetching an uncached/archived row).
-- **`createJob` tail** (3734–3748, after the child inserts 3722–3733): `onCreatedJobIdRef`, `recordNavClick('job_created', jobCreatedTelemetryTarget(...))`, `JOB_CREATED_FROM_BID_EVENT`, `snapshot_job_budget_from_bid` when `carryBidBudget` (best-effort toast), `closeOpenJobFromBidRequests`, and the bid-outcome toast.
+- **`createJob` tail** (3734–3748, after the child inserts 3722–3733): `onCreatedJobIdRef`, `recordNavClick('job_created', jobCreatedTelemetryTarget(...))`, `JOB_CREATED_FROM_BID_EVENT`, the hours baseline (since v2.6646, punch list #234 PR 1a: on a project `award_job_baseline` with the block's pick or what Not now writes, else `snapshot_job_budget_from_bid` when `carryBidBudget`; best-effort toast either way), `closeOpenJobFromBidRequests`, and the bid-outcome toast.
 
 ### Highlight / focus doors
 
@@ -248,7 +248,7 @@ Edit mode has **no Save button** (v2.1080): four `useJobFormAutosaveSlice` insta
 
 ### 1–2. Header row + source-estimate banner — extracted
 
-- `JobFormHeaderRow` (v2.1094): title, HCP/C# help popover, Import (new) / Job Detail (edit — `closeForm()` then `jobDetailOpenerBridge.requestOpenJobDetail`), "Link to: Bid | Project" openers, and the new-mode **carry the bid's estimate as budget** toggle (`carryBidBudget`, v2.3302). Import/link modals + their open flags stay shell.
+- `JobFormHeaderRow` (v2.1094): title, HCP/C# help popover, Import (new) / Job Detail (edit — `closeForm()` then `jobDetailOpenerBridge.requestOpenJobDetail`), "Link to: Bid | Project" openers, and the new-mode **carry the bid's estimate as budget** toggle (`carryBidBudget`, v2.3302; since v2.6646 only when the form's kind read is not project — a project draws `AwardBaselineBlock` under the banner instead, punch list #234 PR 1a). Import/link modals + their open flags stay shell.
 - `JobFormSourceEstimateBanner` (v2.1090): owns its estimate lookup and the acceptance-record modal; reports `onOverlayOpenChange` → `bannerOverlayOpen` for the Esc gate.
 
 ### 3. Identity fields — extracted

@@ -31,6 +31,20 @@ Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do n
 
 When nothing needs anyone, the tab says so and points you at the Deadlines.
 
+## The lien month
+
+A bar across the top of **Do now** shows the lien month. The month is the office's rhythm for lien work, set by the owner. The bar has five zones, each as wide as its days. A mark shows today.
+
+- **Reminders**, days 1 to 5. The courtesy notice goes for every lien due this month.
+- **Notices**, days 6 to 9. The § 53.056 notices due this 15th go out.
+- **Liens**, days 10 to 13. The affidavits due this 15th are filed.
+- **Catch-up**, the 14th and 15th. Whatever slipped is done here. The affidavit's copies to the owner and the GC go out here too.
+- **Nothing scheduled**, the 16th to the end. The zone shows what is already queuing for next month.
+
+Each zone reads its counts. The zone today is in says how many are left and how many went, like *12 to send · 4 sent*. A zone ahead says how many are coming. A zone behind reads green with a tick when everything went. A zone behind reads red when something slipped, and names the first job. The slip carries into Catch-up.
+
+Press a zone and the list under the bar shows only that zone's rows. The bar says how many it is showing. Press the zone again or {{button:outline|Show all}} to see every row. The bar never sends, files or moves anything. A window closing with work unsent is a red count in Catch-up, and that is the whole nudge. The days sit in {{button:outline|§ Rules}} under **The lien month**.
+
 ## The three views
 
 The top of the desk has three tabs.

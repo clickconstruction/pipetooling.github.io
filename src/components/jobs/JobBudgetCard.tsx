@@ -69,7 +69,7 @@ export type JobBudgetCardProps = {
   linkedBid: { id: string; bid_number: string | null; project_name: string | null } | null
 }
 
-type Row = { key: string; label: string; sub: string; usedUsd: number; usedHours?: number; budgetUsd: number | null; budgetHours?: number | null; footing: 'bid' | 'typed' | 'assumed' | 'none' }
+type Row = { key: string; label: string; sub: string; usedUsd: number; usedHours?: number; budgetUsd: number | null; budgetHours?: number | null; footing: 'bid' | 'typed' | 'book' | 'assumed' | 'none' }
 
 export function JobBudgetCard(p: JobBudgetCardProps) {
   const [typedOpen, setTypedOpen] = useState(false)
@@ -174,14 +174,14 @@ export function JobBudgetCard(p: JobBudgetCardProps) {
       <div style={card} data-testid="job-budget-card">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem 0.6rem', flexWrap: 'wrap' }}>
           <b style={{ fontSize: '0.9375rem' }}>
-            {r.glyph} {r.source === 'bid' ? `Budget from bid${bd?.bid_number ? ` B${bd.bid_number}` : ''}` : 'Typed budget'}
+            {r.glyph} {r.source === 'bid' ? `Budget from bid${bd?.bid_number ? ` B${bd.bid_number}` : ''}` : r.source === 'book' ? 'Budget assumed from the book' : 'Typed budget'}
           </b>
           {r.source === 'bid' && bidValue != null ? (
             <span style={chip(priceMatch === false ? 'warn' : 'ok')}>
               bid {usd0(bidValue)} {priceMatch === true ? '= job price' : priceMatch === false ? `≠ job price ${p.priceUsd != null ? usd0(p.priceUsd) : '—'}` : ''}
             </span>
           ) : null}
-          {taken ? <span style={chip('muted')}>{r.source === 'bid' ? 'estimate taken' : 'typed'} {taken}{p.currentUserId && r.takenBy === p.currentUserId ? ' · by you' : ''}</span> : null}
+          {taken ? <span style={chip('muted')}>{r.source === 'bid' ? 'estimate taken' : r.source === 'book' ? 'assumed' : 'typed'} {taken}{p.currentUserId && r.takenBy === p.currentUserId ? ' · by you' : ''}</span> : null}
           {r.source === 'bid' && comp ? (
             comp.usable ? (
               <span style={chip('ok')}>estimate complete</span>
@@ -201,9 +201,9 @@ export function JobBudgetCard(p: JobBudgetCardProps) {
                 Refresh from bid ↻
               </button>
             ) : null}
-            {p.canWrite && r.source === 'typed' ? (
+            {p.canWrite && (r.source === 'typed' || r.source === 'book') ? (
               <button type="button" onClick={() => { setHours(c ? String(c.laborHours || '') : ''); setMaterials(c ? String(c.materialsUsd || '') : ''); setSubs(c ? String(c.subsUsd || '') : ''); setTypedOpen((v) => !v) }} style={btn()}>
-                Edit
+                {r.source === 'book' ? 'Type a baseline' : 'Edit'}
               </button>
             ) : null}
             {p.canWrite ? (

@@ -66,6 +66,12 @@ import {
 } from '../../lib/jobs/jobFormUndo'
 import { jobFormAutosaveAggregate, jobFormFooterShowsDelete, type JobFormCloseFlushState } from '../../lib/jobs/jobFormFooter'
 import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
+import { AwardBaselineBlock } from './AwardBaselineBlock'
+import { awardBaselineOptions, awardBaselinePick, awardBaselineRpcArgs, awardNotNowSource, type AwardBaselineSource, type AwardBidBreakdown } from '../../lib/jobs/awardBaseline'
+import { DEFAULT_LINE_BUDGET_SETTINGS } from '../../lib/jobs/lineBudgets'
+import { baselineReading } from '../../lib/bids/bidBaselineRates'
+import { useJobBaselineRates } from '../../hooks/useJobBaselineRates'
+import { JOB_BUDGET_CHANGED_EVENT } from '../../hooks/useJobBudget'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload, resolveGcCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
@@ -460,6 +466,13 @@ export default function JobFormModal({
   const [bidId, setBidId] = useState<string | null>(null)
   /** New job from a bid (v2.3302): snapshot the bid's estimate as the job's budget on save. On by default. */
   const [carryBidBudget, setCarryBidBudget] = useState(true)
+  // The budgets at award (punch list #234 PR 1a): on a new project the form writes one hours baseline
+  // with its source. The pick (null = the first usable), the typed box, its note, and the linked bid's
+  // breakdown read when the bid is linked.
+  const [awardPick, setAwardPick] = useState<AwardBaselineSource | null>(null)
+  const [awardTypedHours, setAwardTypedHours] = useState('')
+  const [awardNote, setAwardNote] = useState('')
+  const [awardBreakdown, setAwardBreakdown] = useState<{ bidId: string; breakdown: AwardBidBreakdown | null } | null>(null)
   const [linkedBidSummary, setLinkedBidSummary] = useState<{
     project_name: string | null
     bid_number: string | null
@@ -597,6 +610,39 @@ export default function JobFormModal({
     [kindPress, hcpNumber, clickNumber, bidId, projectId, linkedBidSummary, fixtures, jobTotalWithRidersDollars, editing],
   )
   const kindRead = useMemo(() => jobKind(kindFacts), [kindFacts])
+  const awardOn = mode === 'new' && !editing && kindRead.kind === 'project'
+  const bookRates = useJobBaselineRates(awardOn)
+  useEffect(() => {
+    if (!awardOn || !bidId) {
+      setAwardBreakdown(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const { data, error } = await supabase.rpc('bid_estimate_breakdown', { p_bid_id: bidId })
+      if (!cancelled) setAwardBreakdown({ bidId, breakdown: error ? null : ((data as unknown as AwardBidBreakdown | null) ?? null) })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [awardOn, bidId])
+  const awardInput = useMemo(() => {
+    const breakdown = bidId && awardBreakdown?.bidId === bidId ? awardBreakdown.breakdown : null
+    const rate = Number(breakdown?.labor_rate) > 0 ? Number(breakdown!.labor_rate) : DEFAULT_LINE_BUDGET_SETTINGS.rateUsd
+    const typed = parseFloat(awardTypedHours)
+    return {
+      breakdown,
+      bidLabel: linkedBidSummary?.bid_number ? `B${linkedBidSummary.bid_number}` : null,
+      book: bookRates.rates.length > 0 ? baselineReading(bookRates.rates, jobTotalWithRidersDollars > 0 ? jobTotalWithRidersDollars : null) : null,
+      priceUsd: jobTotalWithRidersDollars > 0 ? jobTotalWithRidersDollars : null,
+      rateUsd: rate,
+      typedHours: Number.isFinite(typed) && typed > 0 ? typed : null,
+    }
+  }, [bidId, awardBreakdown, awardTypedHours, linkedBidSummary, bookRates.rates, jobTotalWithRidersDollars])
+  const awardOptions = useMemo(() => awardBaselineOptions(awardInput), [awardInput])
+  // The pick: the office's when it chose one that can still be written, else the first usable source.
+  const awardPickEffective: AwardBaselineSource = awardPick && awardOptions.find((o) => o.source === awardPick)?.usable ? awardPick : awardPick === 'typed' ? 'typed' : awardBaselinePick(awardOptions)
+  const awardLoading = awardOn && ((!!bidId && awardBreakdown?.bidId !== bidId) || bookRates.loading)
   const onKindPress = useCallback(
     async (k: JobKind) => {
       if (k === kindPress) return
@@ -2397,8 +2443,20 @@ export default function JobFormModal({
         // tell the bid surfaces so the "J#### opened from this bid" chip appears without a reload.
         recordNavClick(authUser?.id, authRole, 'job_created', jobCreatedTelemetryTarget({ bidId, projectId }))
         if (bidId) window.dispatchEvent(new CustomEvent<JobCreatedFromBidDetail>(JOB_CREATED_FROM_BID_EVENT, { detail: { bidId, jobId } }))
-        // v2.3302: the bid's estimate becomes the job's budget (Burn against the bid) — best effort, the job is already saved.
-        if (bidId && carryBidBudget) {
+        // The budgets at award (punch list #234 PR 1a): a project leaves award with one hours baseline and
+        // its source — the pick, else what Not now writes (the book's number) — frozen by award_job_baseline.
+        // Best effort, the job is already saved; a refusal says so. A service call keeps v2.3302's carry.
+        if (awardOn) {
+          const notNow = awardNotNowSource(awardOptions)
+          const source = awardOptions.find((o) => o.source === awardPickEffective)?.usable ? awardPickEffective : notNow
+          const args = source ? awardBaselineRpcArgs(awardInput, awardOptions, source, jobId, bidId, awardNote) : null
+          if (args) {
+            const { error: awardErr } = await supabase.rpc('award_job_baseline' as never, args as never)
+            if (awardErr) showToast(`Job saved, but its hours baseline could not be written: ${formatErrorMessage(awardErr)}`, 'info')
+            else window.dispatchEvent(new Event(JOB_BUDGET_CHANGED_EVENT))
+          }
+        } else if (bidId && carryBidBudget) {
+          // v2.3302: the bid's estimate becomes the job's budget (Burn against the bid) — best effort, the job is already saved.
           const { error: budgetErr } = await supabase.rpc('snapshot_job_budget_from_bid', { p_job_id: jobId, p_bid_id: bidId })
           if (budgetErr) showToast(`Job saved, but the bid's estimate could not be carried as its budget: ${budgetErr.message}`, 'info')
         }
@@ -2644,10 +2702,11 @@ export default function JobFormModal({
           onOpenBidLinkChoice={() => setJobBidLinkChoiceOpen(true)}
           onOpenProjectLinkChoice={() => setJobProjectLinkChoiceOpen(true)}
           nestedOverlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
-          carryBidBudget={mode === 'new' ? carryBidBudget : undefined}
-          onCarryBidBudgetChange={mode === 'new' ? setCarryBidBudget : undefined}
+          carryBidBudget={mode === 'new' && !awardOn ? carryBidBudget : undefined}
+          onCarryBidBudgetChange={mode === 'new' && !awardOn ? setCarryBidBudget : undefined}
         />
         <JobFormSourceEstimateBanner jobId={editing?.id ?? null} onOverlayOpenChange={setBannerOverlayOpen} />
+        {awardOn ? <AwardBaselineBlock options={awardOptions} pick={awardPickEffective} onPick={setAwardPick} typedHours={awardTypedHours} onTypedHours={setAwardTypedHours} note={awardNote} onNote={setAwardNote} loading={awardLoading} /> : null}
         </div>
         {error && (
           <p
@@ -2950,6 +3009,7 @@ export default function JobFormModal({
             jobTotalDollars={jobTotalBidDollars}
             plan={stagePlan}
             payerTags={billToParty === 'split' ? { customerName: customerName.trim() || null, gcName: gcNameForPayerTags } : null}
+            isProject={kindRead.kind === 'project'}
           />
           {/* Job window (v2.1687): no divider and no "Billing" title — the Bill
               tab reads as ONE section from Line Items down. The standalone/New
