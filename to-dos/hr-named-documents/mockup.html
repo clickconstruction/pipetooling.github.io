@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HR Named Documents</title>
+<style>
+  /* Layout: one column of mock screens, each a card the width of the HR panel; the open document is a two-column reading view. */
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f0f2f5; --border: #dfe3e8; --border-strong: #aab2bd;
+    --text: #15181d; --muted: #5f6873; --faint: #8e97a3; --link: #1d4ed8;
+    --blue: #2563eb; --blue-tint: #e8f0fe; --blue-700: #1e40af;
+    --amber-tint: #fdf4e3; --amber-700: #9a5b00; --amber-800: #7a4700;
+    --green-600: #15803d; --red-700: #b91c1c;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #0f1216; --surface: #171b21; --surface-2: #1e232b; --border: #2a303a; --border-strong: #3d4552;
+    --text: #e8ebef; --muted: #a6afbb; --faint: #717b88; --link: #8ab4ff;
+    --blue: #2563eb; --blue-tint: #172a4d; --blue-700: #9cc0ff;
+    --amber-tint: #2b2311; --amber-700: #e0a63c; --amber-800: #f1c069;
+    --green-600: #4ade80; --red-700: #f87171; color-scheme: dark } }
+  :root[data-theme="dark"] {
+    --bg: #0f1216; --surface: #171b21; --surface-2: #1e232b; --border: #2a303a; --border-strong: #3d4552;
+    --text: #e8ebef; --muted: #a6afbb; --faint: #717b88; --link: #8ab4ff;
+    --blue: #2563eb; --blue-tint: #172a4d; --blue-700: #9cc0ff;
+    --amber-tint: #2b2311; --amber-700: #e0a63c; --amber-800: #f1c069;
+    --green-600: #4ade80; --red-700: #f87171; color-scheme: dark }
+  * { box-sizing: border-box }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans);
+         padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+  main { max-width: 1040px; margin: 0 auto; display: grid; gap: 36px }
+  h1 { font-size: 22px; margin: 0 0 4px; text-wrap: balance }
+  .lede { color: var(--muted); margin: 0; max-width: 72ch }
+  h2 { font-size: 15px; margin: 0 0 8px }
+  .note { color: var(--muted); font-size: 13px; margin: 0 0 10px; max-width: 72ch }
+  .screen { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; min-width: 0 }
+  .crumb { color: var(--faint); font-size: 12px; margin-bottom: 8px }
+  .strip { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 10px }
+  .name { font-size: 18px; font-weight: 700; margin-right: 4px }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); white-space: nowrap }
+  .chip.amber { background: var(--amber-tint); color: var(--amber-700); border-color: transparent }
+  .chip.lock { background: var(--amber-tint); color: var(--amber-800); border-color: transparent }
+  .chip.green { color: var(--green-600) }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin: 10px 0 14px; overflow-x: auto }
+  .tab { padding: 7px 12px 9px; font-size: 13.5px; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap }
+  .tab.on { color: var(--link); font-weight: 600; border-bottom-color: var(--blue) }
+  .label { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; margin: 14px 0 6px }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); min-width: 0 }
+  .row + .row { margin-top: 8px }
+  .row .t { font-weight: 600 }
+  .row .m { color: var(--muted); font-size: 12.5px; margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap }
+  .btn { display: inline-block; font: inherit; font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); white-space: nowrap }
+  .btn.blue { background: #2563eb; color: #fff; border-color: transparent }
+  .btn.quiet { border-color: var(--border); color: var(--muted) }
+  .btn.dead { background: var(--surface-2); color: var(--faint); border-color: transparent }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center }
+  .add { margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--border-strong); border-radius: 9px; display: grid; gap: 8px }
+  .add .how { color: var(--muted); font-size: 12.5px }
+  .two { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px }
+  @media (max-width: 720px) { .two { grid-template-columns: 1fr } }
+  .index { border-right: 1px solid var(--border); padding-right: 12px; max-height: 460px; overflow: auto; min-width: 0 }
+  @media (max-width: 720px) { .index { border-right: 0; padding-right: 0; max-height: none } }
+  .sec { display: grid; grid-template-columns: 30px 1fr; gap: 8px; padding: 6px 6px; border-radius: 6px; font-size: 13px }
+  .sec.on { background: var(--blue-tint) }
+  .sec .n { color: var(--faint); font-variant-numeric: tabular-nums }
+  .sec .s { color: var(--muted); font-size: 12px }
+  .sec.held .t { color: var(--amber-700) }
+  .pane { min-width: 0 }
+  .pane h3 { margin: 0 0 2px; font-size: 16px }
+  .pane .meta { color: var(--muted); font-size: 12px; margin-bottom: 10px }
+  .pane p { margin: 0 0 10px; max-width: 68ch }
+  .ctag { font-weight: 700; color: var(--amber-800); background: var(--amber-tint); padding: 0 5px; border-radius: 4px; font-size: 12px }
+  .cite { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 10px; font-size: 13px }
+  .cite .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px }
+  .hold { border: 1px dashed var(--amber-700); background: var(--amber-tint); border-radius: 8px; padding: 10px 12px; color: var(--amber-800); font-size: 13px }
+  pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font: 12px/1.45 var(--mono); overflow-x: auto; margin: 0 }
+  .later { border-left: 3px solid var(--border-strong); padding: 2px 12px; color: var(--muted); font-size: 13px }
+  .small { font-size: 12.5px } .muted { color: var(--muted) }
+  .editor { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-2); padding: 10px 12px; font: 12.5px/1.5 var(--mono); color: var(--text); white-space: pre-wrap; max-height: 150px; overflow: hidden }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Named documents on the HR file</h1>
+    <p class="lede">Punch list #277. Any number of titled documents beside the summary and narrative, edited in the app or by the seat a section at a time. The person and the words below are made up.</p>
+  </header>
+
+  <section>
+    <h2>1. The Documents view</h2>
+    <p class="note">The tab named <em>Summary &amp; narrative</em> becomes <em>Documents</em>. The two the agent keeps stay pinned at the top with their freshness; the named ones follow, newest first; the three doors to add one sit last.</p>
+    <div class="screen">
+      <div class="crumb">People › Paperwork › HR</div>
+      <div class="strip"><span class="name">Jordan Vale</span><span class="chip">Primaries</span><span class="chip amber">2 papers owed</span><span class="chip">118 HR entries</span><span class="chip">31 pieces of evidence</span></div>
+      <div class="tabs"><span class="tab">Timeline (118)</span><span class="tab">Evidence (31)</span><span class="tab on">Documents (6)</span><span class="tab">By theme (40)</span><span class="tab">Matter</span></div>
+
+      <div class="label">Kept by the agent</div>
+      <div class="row"><div><div class="t">Summary</div><div class="m"><span>Kept by HR agent</span><span>rewritten Oct 28</span><span>96 of 118 entries</span><span class="chip amber">22 newer entries</span></div></div><div class="btns"><span class="btn">Edit the summary</span><span class="btn quiet">Open</span></div></div>
+      <div class="row"><div><div class="t">Narrative</div><div class="m"><span>Kept by Dana</span><span>last extended Nov 6</span><span>29 sections · 104 KB</span></div></div><div class="btns"><span class="btn">Edit the narrative</span><span class="btn quiet">Open</span></div></div>
+
+      <div class="label">Named documents</div>
+      <div class="row"><div><div class="t">Company history, polished narrative</div><div class="m"><span>Kept by Dana</span><span>Nov 7</span><span>36 sections · 247 KB</span><span class="chip">14 passages tagged [C]</span></div></div><div class="btns"><span class="btn quiet">Open</span></div></div>
+      <div class="row"><div><div class="t">Employment and legal knowledge base</div><div class="m"><span>Kept by Dana</span><span>Nov 7</span><span>13 sections · 343 KB</span><span class="chip">39 passages tagged [C]</span></div></div><div class="btns"><span class="btn quiet">Open</span></div></div>
+      <div class="row"><div><div class="t">Counsel intake memo</div><div class="m"><span>Kept by Dana</span><span>Oct 20</span><span>6 sections · 18 KB</span><span class="chip lock">🔒 Counsel-only</span></div></div><div class="btns"><span class="btn quiet">Open</span></div></div>
+      <div class="row"><div><div class="t">Interview guide for the witnesses</div><div class="m"><span>Kept by HR agent</span><span>Sep 14</span><span>2 sections · 4 KB</span></div></div><div class="btns"><span class="btn quiet">Open</span></div></div>
+
+      <div class="add">
+        <div><strong>Add a document</strong> <span class="how">· a title and markdown or plain text; the prior version of every save stays in its history</span></div>
+        <div class="btns"><span class="btn">Write it</span><span class="btn">From a file (.md or .txt)</span><span class="btn">Paste text</span></div>
+        <div class="how">From a file reads the file in the browser and saves it as it is. A 350 KB document lands in one press and never passes through an agent.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. A document open</h2>
+    <p class="note">The list gives way to the document, with a door back. The section index on the left is the narrative's jump list; the reading pane draws one section at a time for a long document and the whole text for a short one.</p>
+    <div class="screen">
+      <div class="strip"><span class="btn quiet">‹ Documents</span><span class="name" style="font-size:16px">Company history, polished narrative</span></div>
+      <div class="small muted" style="margin-bottom:10px">Kept by Dana · saved Nov 7, 2:14 pm · 36 sections · 247 KB · 14 passages tagged [C] · <span class="btn">Edit the document</span> <span class="btn quiet">Copy as text</span></div>
+      <div class="two">
+        <div class="index">
+          <div class="label" style="margin-top:0">Sections</div>
+          <div class="sec"><span class="n">1</span><span><span class="t">Background and the first job</span><br><span class="s">2010 – 2012</span></span></div>
+          <div class="sec"><span class="n">2</span><span><span class="t">The second company</span><br><span class="s">2013 – 2018</span></span></div>
+          <div class="sec"><span class="n">3</span><span><span class="t">Joining the team</span><br><span class="s">March 2025</span></span></div>
+          <div class="sec on"><span class="n">12</span><span><span class="t">The spring trips</span><br><span class="s">March – May 2026</span></span></div>
+          <div class="sec"><span class="n">13</span><span><span class="t">The estimate review and the fees</span><br><span class="s">June 2026</span></span></div>
+          <div class="sec held"><span class="n">21</span><span><span class="t">The house on Pine Street</span><br><span class="s">counsel-only passages</span></span></div>
+          <div class="sec"><span class="n">25</span><span><span class="t">August 4 and the departure</span><br><span class="s">August 2026</span></span></div>
+          <div class="sec"><span class="n">36</span><span><span class="t">October: the lift stations</span><br><span class="s">October 2026</span></span></div>
+        </div>
+        <div class="pane">
+          <h3>12. The spring trips</h3>
+          <div class="meta">March – May 2026 · 1,840 words · cited by 7 entries</div>
+          <p>Five trips were charged to the company between the end of March and the middle of May. One was the rough-in the client had asked for. The office told him after the second trip that no further trip was authorized without a written ask from the client.</p>
+          <p><span class="ctag">[C] COUNSEL-ONLY</span> On the third trip he told the office he was taking double doses of a prescription and having palpitations. Dana told him to see his doctor. This passage stays inside the circle.</p>
+          <p>The fourth and fifth trips are reconstructed from the card statements and the hotel anchors; the dates are in the ledger entry of May 24.</p>
+          <div class="cite"><strong>Cited by 7 entries</strong> <span class="muted">(PR 3: a chip opens the Timeline on the entry)</span>
+            <div class="chips"><span class="chip">Mar 30 · trip charge</span><span class="chip">Apr 15 · told to stop</span><span class="chip">Apr 22 · card statement</span><span class="chip">May 2 · hotel</span><span class="chip">May 24 · ledger</span><span class="chip">+2</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Edit the document, and what a counsel-only document shows</h2>
+    <p class="note">The same box as the summary and narrative since v2.6610: the words under it say what Save will do, Save carries the version the editor loaded, and a save by anyone since is refused with the way out.</p>
+    <div class="screen">
+      <div class="label" style="margin-top:0">Company history, polished narrative · editing</div>
+      <div class="editor">## 12. The spring trips
+
+Five trips were charged to the company between the end of March and the middle of May. One was the rough-in the client had asked for. The office told him after the second trip that no further trip was authorized without a written ask from the client.
+
+**[C] COUNSEL-ONLY** On the third trip he told the office …</div>
+      <div class="small muted" style="margin:8px 0">Markdown, as the agent writes it. Save keeps 247,312 characters, 41 more than before. The prior version stays in its history.</div>
+      <div class="btns"><span class="btn blue">Save the document</span><span class="btn quiet">Cancel</span><span class="small muted">▸ How it will read</span></div>
+      <div class="label">A counsel-only document, opened</div>
+      <div class="hold">🔒 <strong>Counsel-only.</strong> Kept here only. Left out of Copy as text and of any print; the seat's reads name it as held. The office reads it in this view.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>4. The seat's door, by document id</h2>
+    <p class="note"><code>plan_person_doc</code> takes <code>doc_id</code> for a named document, or <code>title</code> to make one, beside <code>kind</code> for the two fixed ones. The same section ops, the same dry run, the same stale refusal (v2.6608).</p>
+    <pre>plan_person_doc { doc: { person_id: "…", doc_id: "d-history", ops: [
+  { op: "replace_section", heading: "12. The spring trips", markdown: "…the five trips, with the ledger dates…" } ] } }
+
+→ { plan_hash: "7c1e…", document: { id: "d-history", title: "Company history, polished narrative", counsel_only: false },
+    before: { chars: 247271, lines: 362, updated_at: "2026-11-07T20:14:03Z", author_label: "Dana" },
+    after:  { chars: 247312, lines: 362 },
+    changes: [ { op: "replace_section", heading: "12. The spring trips", from_line: 141, to_line: 149,
+                 removed_lines: 8, added_lines: 8, removed: "…", added: "…" } ],
+    sections: [ { line: 3, level: 2, heading: "1. Background and the first job" }, … 36 ] }
+
+plan_person_doc { doc: { person_id: "…", title: "Interview guide for the witnesses", markdown: "## Before the call\n…" } }
+→ a new document; apply writes it as you.</pre>
+  </section>
+
+  <section>
+    <h2>5. Not in this build</h2>
+    <div class="later">Search across a person's documents · print or export for a third party beyond Copy as text · a matter's own text documents in the same table (the person table is shaped so they can join later: a plain owner id, no kind column).</div>
+  </section>
+</main>
+</body>
+</html>
