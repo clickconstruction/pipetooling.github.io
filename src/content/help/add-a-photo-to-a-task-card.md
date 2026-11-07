@@ -2,7 +2,7 @@
 title: add a photo to a task card
 category: Getting Started
 roles: all
-keywords: task, card, photo, camera, percent, done when, finish, finishing photo, Drive, Tasks folder
+keywords: task, card, photo, camera, percent, done when, finish, finishing photo, Drive, Tasks folder, no signal, kept on the phone, outbox
 order: 41
 ---
 A task card takes photos of the work. A photo is offered each time you set a percent. Some cards ask for a photo at the finish. Every photo files in Drive under the Tasks folder.
@@ -33,7 +33,12 @@ The card shows its photos as a strip under the lines. The strip says *on its way
 
 The photos land in the Tasks folder in Drive. Each card has a folder of its own. It is named by the day and the title. A roadmap card's folder sits under its roadmap and stage. Each photo is named by the day, who took it and what it shows. The office sets the Tasks folder on Documents → Where files go. Until it is set, photos wait with the reason on the card.
 
+## With no signal
+
+A photo taken with no signal stays on the phone. The tile reads **Kept on the phone**. The line at the top of the screen counts it, as in *Task photo from 3:12 PM · waiting to send*. The photo goes to the card when the signal is back. You do not take it again.
+
+The percent or the finish still needs the signal. When it does not land, the sheet stays open and says so. Press **Set** or **Done** again once the signal is back. The kept photo does not send twice. Read [keep working when the signal drops](/help/keep-working-when-the-signal-drops) for the line at the top.
+
 ## Good to know
 
-- A photo on a card with no signal does not send yet. Take it again once the signal is back.
 - Review's sign-off row shows the finishing photo. The office signs off on what it can see.

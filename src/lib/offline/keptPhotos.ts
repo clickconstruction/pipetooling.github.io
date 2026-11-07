@@ -1,4 +1,4 @@
-import type { FieldReportPayload, JobPhotosPayload, KeptReportPhoto, OutboxPress } from './outbox'
+import type { FieldReportPayload, JobPhotosPayload, KeptShot, KeptTaskPhoto, OutboxPress, TaskPhotoPayload } from './outbox'
 import type { OutboxStateStore } from './outboxState'
 import { KEPT_PHOTOS_STORE_NAME, openOutboxDb } from './outboxStore'
 
@@ -122,15 +122,16 @@ export function createKeptPhotos(io: { open?: () => Promise<IDBDatabase | null> 
 /** The app's one store of kept bytes. */
 export const keptPhotos: KeptPhotosStore = createKeptPhotos()
 
-/** The photos riding with a press: a field report's, or a job photos press's (punch list #244); none for any other kind. */
-export function keptPhotosOf(press: OutboxPress): KeptReportPhoto[] {
+/** The photos riding with a press: a field report's, a job photos press's (punch list #244) or a task photo press's (punch list #273); none for any other kind. */
+export function keptPhotosOf(press: OutboxPress): KeptShot[] {
   if (press.kind === 'field-report') return (press.payload as FieldReportPayload).photos ?? []
   if (press.kind === 'job-photos') return (press.payload as JobPhotosPayload).photos ?? []
+  if (press.kind === 'task-photo') return (press.payload as TaskPhotoPayload).photos ?? []
   return []
 }
 
 /** The ones still on the phone: the replay sends them before the report. */
-export function unsentKeptPhotos(press: OutboxPress): KeptReportPhoto[] {
+export function unsentKeptPhotos(press: OutboxPress): KeptShot[] {
   return keptPhotosOf(press).filter((p) => !p.sent)
 }
 
@@ -138,14 +139,18 @@ export function unsentKeptPhotos(press: OutboxPress): KeptReportPhoto[] {
 export function withPhoto(press: OutboxPress, id: string, change: { sent: true } | { lost: true }): OutboxPress {
   const photos = keptPhotosOf(press)
   const next = 'lost' in change ? photos.filter((p) => p.id !== id) : photos.map((p) => (p.id === id ? { ...p, sent: true } : p))
-  return { ...press, payload: { ...(press.payload as FieldReportPayload | JobPhotosPayload), photos: next } } as OutboxPress
+  return { ...press, payload: { ...(press.payload as FieldReportPayload | JobPhotosPayload | TaskPhotoPayload), photos: next } } as OutboxPress
 }
 
 export type SendKeptPhoto = (input: { id: string; jobId: string; blob: Blob; byUserId: string; byName: string; takenAt: string; originalBytes: number; width: number; height: number }) => Promise<unknown>
 
+/** A task card's shot (punch list #273): the same row `sendTaskPhoto` writes live, under the kept id. */
+export type SendKeptTaskPhoto = (input: Omit<KeptTaskPhoto, 'sent' | 'bytes'> & { instanceId: string; blob: Blob; byUserId: string }) => Promise<unknown>
+
 export interface SendKeptIo {
   bytes?: KeptPhotosStore
   send?: SendKeptPhoto
+  sendTask?: SendKeptTaskPhoto
 }
 
 /**
@@ -156,10 +161,12 @@ export interface SendKeptIo {
  */
 export async function sendKeptPhotos(press: OutboxPress, store: OutboxStateStore, io: SendKeptIo = {}): Promise<{ ok: true } | { ok: false; error: unknown }> {
   const bytes = io.bytes ?? keptPhotos
-  const jobId = (press.payload as FieldReportPayload | JobPhotosPayload).jobLedgerId
+  const task = press.kind === 'task-photo'
+  // What the shot belongs to: a task photo's card (punch list #273), else the job of a report or a job photos press.
+  const owner = task ? (press.payload as TaskPhotoPayload).instanceId : (press.payload as FieldReportPayload | JobPhotosPayload).jobLedgerId
   let current = press
   for (const photo of unsentKeptPhotos(press)) {
-    if (!jobId) {
+    if (!owner) {
       current = withPhoto(current, photo.id, { lost: true })
       store.put(current)
       continue
@@ -171,9 +178,17 @@ export async function sendKeptPhotos(press: OutboxPress, store: OutboxStateStore
       continue
     }
     try {
-      // A job photo goes to its own bucket and table (punch list #244); a report's as before.
-      const send = io.send ?? (press.kind === 'job-photos' ? (await import('../photos/jobPhotoNotesIo')).sendJobPhotoNote : (await import('../photos/reportPhotosIo')).sendReportPhoto)
-      await send({ id: photo.id, jobId, blob, byUserId: press.userId, byName: photo.byName, takenAt: photo.takenAt, originalBytes: photo.originalBytes, width: photo.width, height: photo.height })
+      const facts = { id: photo.id, blob, byUserId: press.userId, byName: photo.byName, takenAt: photo.takenAt, originalBytes: photo.originalBytes, width: photo.width, height: photo.height }
+      if (task) {
+        // A task card's shot goes to the task-photos bucket and its own row (punch list #273), the line it proves on the row.
+        const t = photo as KeptTaskPhoto
+        const sendTask = io.sendTask ?? (await import('../photos/taskPhotosIo')).sendTaskPhoto
+        await sendTask({ ...facts, instanceId: owner, kind: t.kind, percentAt: t.percentAt, criterionId: t.criterionId, lineBody: t.lineBody })
+      } else {
+        // A job photo goes to its own bucket and table (punch list #244); a report's as before.
+        const send = io.send ?? (press.kind === 'job-photos' ? (await import('../photos/jobPhotoNotesIo')).sendJobPhotoNote : (await import('../photos/reportPhotosIo')).sendReportPhoto)
+        await send({ ...facts, jobId: owner })
+      }
     } catch (error) {
       return { ok: false, error }
     }
