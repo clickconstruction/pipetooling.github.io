@@ -522,6 +522,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Weekly money movement — week of {{week_start}}',
   },
   {
+    id: 'your_week_email',
+    name: 'Your week, the Monday email (to each person with a signal)',
+    group: 'digests',
+    audience: 'internal',
+    builtWhere: 'server',
+    sender: 'your-week-email',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Your week, Nov 1 to Nov 7: 29 of your last 30 jobs',
+  },
+  {
     id: 'bridge_monday_sheet',
     name: 'The Bridge, the Monday sheet (to yourself)',
     group: 'digests',

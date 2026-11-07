@@ -9,7 +9,7 @@
 import { formatYmdMonthDay } from './billedExpectedPay'
 import type { LienNextUpKind, LienNextUpRow } from './lienNextUp'
 import { lienOfferApprovedWords, type LienPayOffer } from './lienPayOffer'
-import { LIEN_REMINDER_SHORT, LIEN_REMINDER_STEPS, lienReminderBrief, lienReminderLadderItems, type LienBriefMove, type LienReminderBrief } from './lienReminders'
+import { LIEN_REMINDER_SHORT, LIEN_REMINDER_STEPS, lienReminderBrief, lienReminderLadderItems, type LienBriefMove, type LienReminderBrief, type LienReminderState } from './lienReminders'
 
 /** The three kinds of paper, and the REMINDERS ladder a sent notice walks (punch list #262). */
 export type LienStepLadder = LienNextUpKind | 'reminder'
@@ -30,6 +30,7 @@ export function lienStepOfRow(row: Pick<LienNextUpRow, 'kind' | 'action' | 'remi
   switch (row.action) {
     case 'courtesy':
     case 'letter_two':
+    case 'promise':
       return row.reminder ? { ladder: 'reminder', step: row.reminder.step } : null
     case 'find_owner':
     case 'fix_property':
@@ -203,6 +204,14 @@ function besideItems(row: Pick<LienNextUpRow, 'action' | 'sub'>): { items: LienS
         ],
         foot: 'After step 4 · courtesy notice',
       }
+    case 'promise':
+      return {
+        items: [
+          { state: 'done', title: 'Notice sent', detail: 'The packet went out and a payment came in after it.' },
+          { state: 'now', title: 'Record what they promised', detail: `${row.sub}. The date and the amount they gave for the rest; the desk asks again on that date. The lien’s day does not move.` },
+        ],
+        foot: 'After step 4 · paying it down',
+      }
     case 'record_service':
       return {
         items: [
@@ -306,10 +315,11 @@ const PAID = 'the bill is paid first'
  * The step brief for any rail (v2.6577; rewritten v2.6594 for a first-week employee, punch list #274):
  * in plain words, why a row is here, the usual press and what it does, the other presses the paper's
  * own pane offers with what each means, what ends the step on its own, and what happens if nobody acts.
- * The words agree with the row's card (`ladderItems`) and the row's button (`BUTTON`).
+ * The words agree with the row's card (`ladderItems`) and the row's button (`BUTTON`). `state` (PR 3 of
+ * #274) is the picked notice's rung state on the REMINDERS rail, so a paying notice reads its own brief.
  */
-export function lienStepBrief(on: LienStepAt): LienReminderBrief {
-  if (on.ladder === 'reminder') return lienReminderBrief(on.step)
+export function lienStepBrief(on: LienStepAt, state?: LienReminderState | null): LienReminderBrief {
+  if (on.ladder === 'reminder') return lienReminderBrief(on.step, state)
   const ladder = LIEN_STEP_LADDERS.find((l) => l.key === on.ladder)!
   const title = ladder.steps[on.step - 1] ?? ''
   if (on.ladder === 'affidavit') {

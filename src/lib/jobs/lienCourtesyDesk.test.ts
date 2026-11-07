@@ -38,6 +38,18 @@ describe('courtesyByJobFrom — the desk’s courtesy status per job', () => {
     expect(sent.j1!).toMatchObject({ state: 'sent', lastSentAt: '2026-10-31T14:00:00Z' })
   })
 
+  it('paying it down (PR 3 of #274): the job’s payments since the packet, its promised day and the promise on the first packet flow into the status', () => {
+    const paying = courtesyByJobFrom({ ...base, jobsById: { j1: { revenue: 4850, payments_made: 2000, customer_address_id: 'a1' } }, paymentsByJob: { j1: [{ amount: 2000, paidOn: '2026-10-30' }] } })
+    expect(paying.j1!).toMatchObject({ state: 'paying', words: 'paying it down · $2,000 paid Oct 30 · $2,850 still owed' })
+    expect(paying.j1!.paying).toMatchObject({ until: '2026-11-06', promisedYmd: null })
+    const promised = courtesyByJobFrom({ ...base, jobsById: { j1: { revenue: 4850, payments_made: 2000, customer_address_id: 'a1' } }, paymentsByJob: { j1: [{ amount: 2000, paidOn: '2026-10-30' }] }, promisesByJob: { j1: { promisedYmd: '2026-11-20' } } })
+    expect(promised.j1!.paying).toMatchObject({ until: '2026-11-20', promisedYmd: '2026-11-20' })
+    const onNotice = courtesyByJobFrom({ ...base, jobsById: { j1: { revenue: 4850, payments_made: 2000, customer_address_id: 'a1' } }, paymentsByJob: { j1: [{ amount: 2000, paidOn: '2026-10-30' }] }, items: [{ id: 'first', months: ['2026-08'], fields: { promise: { at: '2026-11-01T15:00:00Z', by: 'Grace', ymd: '2026-11-18', amount: 2850, note: 'the 15th' } } }] })
+    expect(onNotice.j1!.paying).toMatchObject({ until: '2026-11-18', promise: { by: 'Grace', amount: 2850 } })
+    // A reader without the payments (the AR chips in light mode) reads the clocks as before.
+    expect(courtesyByJobFrom({ ...base, jobsById: { j1: { revenue: 4850, payments_made: 2000, customer_address_id: 'a1' } } }).j1!.state).toBe('due')
+  })
+
   it('a job with no approved month reads held, as the demand letter does; a job without a sent notice is not listed', () => {
     const creation = courtesyByJobFrom({ ...base, entries: [{ jobId: 'j1', months: [{ key: '2026-10' }] as never, propertyKind: '', datedFromCreation: true }] })
     expect(creation.j1!).toMatchObject({ state: 'held', reason: 'no approved work month on the job yet — the filing window cannot be computed' })

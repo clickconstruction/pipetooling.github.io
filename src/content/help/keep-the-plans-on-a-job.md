@@ -1,12 +1,14 @@
 ---
 title: keep the plans on a job
 category: Jobs & Scheduling
-roles: dev, master_technician, assistant, controller, estimator
+roles: dev, master_technician, assistant, controller, estimator, subcontractor, helpers
 keywords: plans, plan set, papers, spec, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans, pipeline, plans icon, picker, history, job from bid, priced on
 where: /jobs
 order: 60
 ---
 A job keeps every set of plans it has seen, and says which one it builds from today. Open the job and press the **Documents** tab. The **Plans** section is there.
+
+A helper or a subcontractor opens the job from the Dashboard card or from Job Mode's **Job detail**. Their **Plans** section sits under the job's status.
 
 An updated set often comes in halfway through a job. The crew also marks up the drawings as it builds. Both have a place here.
 
@@ -52,6 +54,8 @@ To switch later, press {{button:outline|Build from this set}} on any older set.
 Each set shows its change line under its memo. The line names the set before it. An older set with no line shows {{button:outline|Write what changed}} to the office. Press it, write what moved from the set before, and press {{button:blue|Save what changed}}. The site's **Plans** look shows the same line between its sets.
 
 ## Save the crew's as-built
+
+The crew finds this press on their own job window, under the job's status.
 
 1. Press {{button:outline|Add our as-built}}.
 2. Keep the name or change it.
