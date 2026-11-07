@@ -1,4 +1,4 @@
-# 20261107170000_line_budget_settings.sql (2026-11-07, v2.6656)
+# 20261107210000_line_budget_settings.sql (2026-11-07, v2.6656)
 
 **What it does**: one `app_settings` row for the company's line budget settings (punch list #234 PR 1b), so Settings → Jobs & billing → Line budgets has something to save and every reader of the line budgets reads the same numbers.
 
