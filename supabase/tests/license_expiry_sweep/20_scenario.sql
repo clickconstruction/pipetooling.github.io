@@ -61,6 +61,13 @@ CREATE FUNCTION les.stamped() RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
   FROM public.person_licenses WHERE person_name LIKE 'ZZ Test %'
 $$;
 CREATE FUNCTION les.sweep() RETURNS jsonb LANGUAGE sql AS $$ SELECT public.license_expiry_notices_sweep() $$;
+-- The gate as the signed-in person sees it, and a request's sender read behind RLS.
+CREATE FUNCTION les.gate() RETURNS text LANGUAGE sql AS $$
+  SELECT 'uid ' || COALESCE(right(auth.uid()::text, 2), '-') || ' / dev ' || public.is_dev()::text || ' / master ' || public.is_pay_approved_master()::text || ' / assistant ' || public.is_assistant()::text
+$$;
+CREATE FUNCTION les.sender_of(p_id uuid) RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT right(from_user_id::text, 2) FROM public.dispatch_requests WHERE id = p_id
+$$;
 GRANT USAGE ON SCHEMA les TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA les TO authenticated;
 
@@ -101,8 +108,11 @@ INSERT INTO public.person_licenses (id, person_name, license_type, date_of_expir
   ('00000000-0000-0000-0000-00000253b008', 'ZZ Test Eight', 'Journeyman Plumber J-1008', public.app_today() + 8, NULL);
 SELECT les.as_user('00000000-0000-0000-0000-00000253a0a3');
 SET LOCAL ROLE authenticated;
--- The call sits in a scalar subquery so it runs once; in a WHERE it would run per row and the stamp would answer null.
-SELECT les.same('Ann''s Save files a row under her name', (SELECT right(from_user_id::text, 2) FROM public.dispatch_requests WHERE id = (SELECT public.notify_dispatch_license_expiry_if_needed('00000000-0000-0000-0000-00000253b008', 'https://clicktooling.com/people?tab=licenses'))), 'a3');
+SELECT les.same('Ann is seen as an assistant at the gate', les.gate(), 'uid a3 / dev false / master false / assistant true');
+-- The answer is kept once; a volatile call in a WHERE would run per row and the stamp would answer null the second time.
+CREATE TEMP TABLE ann_save AS SELECT public.notify_dispatch_license_expiry_if_needed('00000000-0000-0000-0000-00000253b008', 'https://clicktooling.com/people?tab=licenses') AS id;
+SELECT les.same('Ann''s Save answers a request id', (SELECT CASE WHEN id IS NULL THEN 'null' ELSE 'an id' END FROM ann_save), 'an id');
+SELECT les.same('Ann''s Save files a row under her name', les.sender_of((SELECT id FROM ann_save)), 'a3');
 SELECT les.same('a second Save files nothing', COALESCE(public.notify_dispatch_license_expiry_if_needed('00000000-0000-0000-0000-00000253b008', 'https://clicktooling.com/people?tab=licenses')::text, 'null'), 'null');
 SELECT les.same('the lapsed license is never asked about', COALESCE(public.notify_dispatch_license_expiry_if_needed('00000000-0000-0000-0000-00000253b004', 'https://clicktooling.com/people?tab=licenses')::text, 'null'), 'null');
 RESET ROLE;
