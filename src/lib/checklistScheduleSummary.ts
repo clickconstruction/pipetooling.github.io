@@ -18,6 +18,26 @@ export type ScheduleSummaryInput = {
   assigneeNames: string[]
   /** Optional deadline (v2.2351, one-offs only) — folds "due Fri, Sep 4" into the sentence. */
   dueDate?: string | null
+  /** Task cards (#273, v2.6617): the Done when… lines written so far ride the sentence, *3 Done when… lines*. */
+  lineCount?: number
+  /** The writer's photo switch, *a photo at the finish*. */
+  asksForPhoto?: boolean
+}
+
+/** *, 3 Done when… lines, a photo at the finish*: what the card will carry, after the schedule's words. */
+function cardTail(input: ScheduleSummaryInput): string {
+  const parts: string[] = []
+  const n = input.lineCount ?? 0
+  if (n > 0) parts.push(`${n} Done when… line${n === 1 ? '' : 's'}`)
+  if (input.asksForPhoto) parts.push('a photo at the finish')
+  return parts.length ? `, ${parts.join(', ')}` : ''
+}
+
+/** The sentence with the card's tail before its full stop. */
+function withTail(sentence: string, input: ScheduleSummaryInput): string {
+  const tail = cardTail(input)
+  if (!tail) return sentence
+  return sentence.endsWith('.') ? `${sentence.slice(0, -1)}${tail}.` : `${sentence}${tail}`
 }
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -44,6 +64,10 @@ function joinDays(days: number[]): string {
 export function checklistScheduleSummary(input: ScheduleSummaryInput): string {
   const names = joinNames(input.assigneeNames)
   if (!names) return 'Pick at least one person.'
+  return withTail(scheduleWords(input, names), input)
+}
+
+function scheduleWords(input: ScheduleSummaryInput, names: string): string {
   const list = `${names}'s list`
   if (input.when === 'today' || input.when === 'date') {
     const dateStr = input.when === 'today' ? input.todayStr : input.startDate
