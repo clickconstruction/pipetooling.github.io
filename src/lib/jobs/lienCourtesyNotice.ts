@@ -37,6 +37,17 @@ export const COURTESY_AFFIDAVIT_MARGIN_DAYS = 7
 export const COURTESY_BUTTON = 'Send a courtesy notice'
 /** The key on the sent item's `fields`. */
 export const COURTESY_FIELDS_KEY = 'courtesy'
+/** The key on the sent item's `fields` for what they promised for the rest (punch list #274, PR 3). */
+export const PROMISE_FIELDS_KEY = 'promise'
+/** The press while they are paying it down (punch list #274, PR 3): the date and the amount they gave for the rest. */
+export const PROMISE_BUTTON = 'Record what they promised'
+
+/** Adds whole days to a 'YYYY-MM-DD' day, across a month's end. */
+export function addDaysYmd(ymd: string, n: number): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const t = new Date(Date.UTC(y!, (m ?? 1) - 1, (d ?? 1) + n))
+  return t.toISOString().slice(0, 10)
+}
 
 export type CourtesyWho = 'original_contractor' | 'owner'
 export type CourtesyChannel = 'email' | 'text'
@@ -95,7 +106,55 @@ export function withCourtesyRecord(fields: Record<string, unknown> | null | unde
   return { ...(fields ?? {}), [COURTESY_FIELDS_KEY]: [...prior, record] }
 }
 
-export type CourtesyState = 'none' | 'waiting' | 'due' | 'held' | 'affidavit_week' | 'sent' | 'closed'
+/** A payment on the job since the packet, as the pause reads it (PR 3 of #274). */
+export type CourtesyPayment = { ymd: string; amount: number }
+
+/**
+ * What they promised for the rest (PR 3 of #274), as `fields.promise` keeps it on the sent item. The
+ * day also goes on the job through `set_job_promised_pay_date`, so the Stages board, the forecast and
+ * the desk's pre-send hold read the same promise; the amount and their words live only here.
+ */
+export type CourtesyPromise = {
+  /** ISO — when it was recorded. */
+  at: string
+  /** Who recorded it. */
+  by: string
+  /** 'YYYY-MM-DD' — the day they said; null when they gave none. */
+  ymd: string | null
+  /** The amount they said they would pay; null when they gave none. */
+  amount: number | null
+  /** Their words, as the office heard them; '' when none. */
+  note: string
+}
+
+/** The promise on a sent item's `fields.promise`; null when none or malformed. */
+export function parsePromiseRecord(raw: unknown): CourtesyPromise | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if (typeof r.at !== 'string' || !r.at) return null
+  return { at: r.at, by: str(r.by), ymd: YMD.test(str(r.ymd)) ? str(r.ymd) : null, amount: typeof r.amount === 'number' && Number.isFinite(r.amount) && r.amount > 0 ? r.amount : null, note: str(r.note) }
+}
+
+/** The sent item's `fields` with the promise on it, for the write. A later promise overwrites. */
+export function withPromiseRecord(fields: Record<string, unknown> | null | undefined, record: CourtesyPromise): Record<string, unknown> {
+  return { ...(fields ?? {}), [PROMISE_FIELDS_KEY]: { ...record } }
+}
+
+/** While they are paying it down (PR 3 of #274): the last payment, what is still owed, the day the pause ends, and the promise that set it when one did. */
+export type CourtesyPaying = {
+  /** 'YYYY-MM-DD' — the newest payment since the packet. */
+  lastPaidYmd: string
+  lastAmount: number
+  stillOwed: number
+  /** 'YYYY-MM-DD' — the day the desk asks again: the promised day, else a week after the payment. */
+  until: string
+  /** 'YYYY-MM-DD' — the promised day that set `until`; null when the week did. */
+  promisedYmd: string | null
+  /** The promise recorded on the sent item; null when none. */
+  promise: CourtesyPromise | null
+}
+
+export type CourtesyState = 'none' | 'waiting' | 'due' | 'held' | 'affidavit_week' | 'paying' | 'sent' | 'closed'
 
 export type CourtesyStatus = {
   state: CourtesyState
@@ -113,6 +172,8 @@ export type CourtesyStatus = {
   lienDay: string | null
   /** Letter two's own words while it is in flight or went out (v2.6383), '' otherwise — the footer names it in place of *from day 10*. */
   letterTwoWords?: string
+  /** While `paying` (PR 3 of #274): the payment, the remainder, the day the pause ends; null or absent otherwise. */
+  paying?: CourtesyPaying | null
   records: CourtesyRecord[]
 }
 
@@ -134,7 +195,32 @@ export type CourtesyStatusInput = {
   affidavit: CourtesyAffidavitFacts | null
   /** A line back from either recipient after the last send (a Messages reply), ISO; null when none. */
   repliedAt?: string | null
+  /** The job's payments since the packet (PR 3 of #274), any order; absent on a reader that does not load them. */
+  payments?: ReadonlyArray<CourtesyPayment>
+  /** The job's promised pay date, 'YYYY-MM-DD' (`list_job_promised_pay_dates`); null or absent when none. */
+  promisedYmd?: string | null
+  /** What they promised for the rest, as the sent item keeps it; null or absent when none. */
+  promise?: CourtesyPromise | null
   formatDay?: (ymd: string) => string
+}
+
+const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
+
+/**
+ * Paying it down (PR 3 of #274; Grace's board of 2026-11-06, section 1b): a payment on or after day 0
+ * that leaves money owed is an answer, so the reminders pause. The pause ends on the day they promised
+ * for the rest when one is on record and falls after the payment, else `COURTESY_AGAIN_DAYS` after the
+ * newest payment; on that day the desk asks again. The job's promised date (the Stages board's) and the
+ * one on the sent item are read alike. Null when no payment since the packet, or the pause has ended.
+ */
+export function courtesyPause(input: Pick<CourtesyStatusInput, 'payments' | 'promisedYmd' | 'promise' | 'todayYmd' | 'openBalance'>, day0Ymd: string): CourtesyPaying | null {
+  const since = (input.payments ?? []).filter((p) => YMD.test(p.ymd) && p.ymd >= day0Ymd && p.amount > 0.005).sort((a, b) => a.ymd.localeCompare(b.ymd))
+  const last = since[since.length - 1]
+  if (!last) return null
+  const promisedYmd = [input.promisedYmd ?? null, input.promise?.ymd ?? null].find((d): d is string => Boolean(d && YMD.test(d) && d > last.ymd)) ?? null
+  const until = promisedYmd ?? addDaysYmd(last.ymd, COURTESY_AGAIN_DAYS)
+  if (input.todayYmd >= until) return null
+  return { lastPaidYmd: last.ymd, lastAmount: last.amount, stillOwed: Math.max(0, input.openBalance), until, promisedYmd, promise: input.promise ?? null }
 }
 
 export const COURTESY_NONE: CourtesyStatus = { state: 'none', day: null, words: '', reason: '', lastSentAt: null, waitingForAnswer: false, lienDay: null, records: [] }
@@ -152,7 +238,8 @@ function sentChannelsWords(r: CourtesyRecord): string {
 /**
  * Where the courtesy notice stands on one sent notice. Read in this order: nothing out; closed by
  * a payment, the GC's written okay, the owner's call, the filed affidavit or a reply; held by the
- * affidavit's gate or its nearness; sent inside the last week; waiting before day 7; due.
+ * affidavit's gate or its nearness; paying it down after a payment since the packet (PR 3 of #274);
+ * sent inside the last week; waiting before day 7; due.
  */
 export function courtesyStatus(input: CourtesyStatusInput): CourtesyStatus {
   const fmt = input.formatDay ?? ((d) => formatYmdMonthDay(d))
@@ -181,6 +268,9 @@ export function courtesyStatus(input: CourtesyStatusInput): CourtesyStatus {
   const left = lienDay ? daysBetweenYmd(input.todayYmd, lienDay) : null
   // The affidavit's week (v2.6594): a priority, not a hold — the paper takes about a week to draft, sign before a notary and file, so the desk puts it first; a courtesy may still go by hand.
   if (left != null && left < COURTESY_AFFIDAVIT_MARGIN_DAYS) return { ...base, state: 'affidavit_week', words: `the affidavit’s week · file it by ${fmt(lienDay!)}`, reason: '' }
+  // Paying it down (PR 3 of #274): a payment since the packet is an answer — no reminder leads until the promised day or a week after it; the legal day never moves, so the affidavit's week above still wins.
+  const paying = courtesyPause(input, calendarYmdInAppTzFromIso(lt.clock?.at ?? lt.firstSentAt))
+  if (paying) return { ...base, state: 'paying', paying, words: `paying it down · ${usd(paying.lastAmount)} paid ${fmt(paying.lastPaidYmd)} · ${usd(paying.stillOwed)} still owed${paying.promisedYmd ? ` · the rest promised by ${fmt(paying.promisedYmd)}` : ''}`, reason: '' }
 
   const day = lt.day ?? 0
   if (last) {
@@ -215,6 +305,13 @@ export function courtesyFooterSentence(s: CourtesyStatus, amountWords: string, f
       return `Courtesy notice held: ${s.reason}. A reminder may not name a lien that cannot go on.`
     case 'affidavit_week':
       return `The affidavit’s week: the lien must be on file by ${s.lienDay ? formatDay(s.lienDay) : 'its day'}. Draft it, the leader signs it before a notary, file it at the county. A courtesy notice may still go by hand.`
+    case 'paying': {
+      // PR 3 of #274: a partial payment is an answer; the pause names its end and the attorney's letter waits, by the desk's hand.
+      const p = s.paying
+      if (!p) return 'They are paying it down. No reminder goes while they pay.'
+      const again = p.promisedYmd ? `They promised the rest by ${formatDay(p.promisedYmd)}; the desk asks again that day.` : `The desk asks again ${formatDay(p.until)}, a week after the payment, unless you record what they promised.`
+      return `They are paying it down: ${usd(p.lastAmount)} paid ${formatDay(p.lastPaidYmd)}, ${usd(p.stillOwed)} still owed. A partial payment is an answer, so no reminder goes. ${again} The attorney’s letter waits while they pay; the office may still send it when the payment was token. The lien’s day does not move.`
+    }
     case 'sent':
       return `${s.words[0]!.toUpperCase()}${s.words.slice(1)}. One courtesy notice goes; after ${COURTESY_AGAIN_DAYS} days of silence ${s.letterTwoWords ? `${s.letterTwoWords}` : "the attorney’s letter leads, counsel's certified letter"}. Send it again by hand only when a channel bounced.`
     case 'waiting':

@@ -83,7 +83,7 @@ describe('PersonFilePanel · the Matter chip', () => {
   it('draws no chip for a viewer who is not a dev, since the legal tables are not read', async () => {
     TABLE_ROWS.legal_matters = [MATTER]
     renderWithProviders(<PersonFilePanel personId="p-marcus" userId="u-marcus" personName="Marcus Reed" viewer={{ isDev: false, canAccessContracts: true, canAccessLicenses: true }} />)
-    await screen.findByRole('tab', { name: 'Narrative' })
+    await screen.findByRole('tab', { name: 'Summary & narrative' })
     expect(screen.queryByTestId('person-file-matter-chip')).toBeNull()
   })
 })

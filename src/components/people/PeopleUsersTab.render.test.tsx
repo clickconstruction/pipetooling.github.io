@@ -148,6 +148,8 @@ describe('PeopleUsersTab', () => {
     const menu = await screen.findByRole('menu')
     expect(within(menu).getByText('Edit')).toBeTruthy()
     expect(within(menu).queryByText('Invite as user') !== null).toBe(isDev)
+    // v2.6612: a dev's menu also opens the person's HR file.
+    expect(within(menu).queryByText('Open their HR file') !== null).toBe(isDev)
   })
 
   // Empty states (punch list #184, sweep C): each one names its press, and the press works.

@@ -8,7 +8,7 @@
  * Pure: the signal's options and the role's guess, the parse of `my_week()`, each signal's read and its words, the
  * eight-week dots, the three-line rule.
  */
-import type { LicenseHoursLogRow } from '../licenseHoursLog'
+import type { LicenseHoursLogRow } from '../licenseHoursLogTypes'
 import { goalsFor, parseLicenseType, progressFor, rowCounts, withOfficeJob, type Goal } from '../logbook/logbook'
 import { payWeekContaining, type PayWeek } from '../payWeekAnchor'
 import { crewAgainstTarget, crewTargetWords, lastWeeks, targetOf, type TargetJob } from './crewTarget'

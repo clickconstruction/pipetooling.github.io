@@ -64,6 +64,8 @@ export type NeedsYouSource =
   | 'customerWaiting'
   | 'dispatchAged'
   | 'whileOff'
+  // The day back (punch list #256 PR 9, v2.6590): an Away note's countdown has ended and the office asked to be told.
+  | 'awayBackDay'
   // v2.6098 (punch list #178): the Customers line and Today's sends, sources of their own so the Messages station can carry them.
   | 'customerMessages'
   | 'todaysSends'
@@ -113,6 +115,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'customerWaiting',
   'dispatchAged',
   'whileOff',
+  'awayBackDay',
   'customerMessages',
   'todaysSends',
 ]
@@ -198,6 +201,9 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'whileOff':
       // While you were off (v2.6060, punch list #141 PR 4): the person's own held pushes, whoever they are.
       return role != null
+    case 'awayBackDay':
+      // The day back (punch list #256 PR 9): the office set; `away_notes` reads empty for a master who is not pay-approved.
+      return office
     case 'robotAudits':
     case 'robotBlocked':
       return canWorkRobotAudits(role)

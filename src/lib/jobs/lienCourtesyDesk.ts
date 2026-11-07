@@ -1,5 +1,5 @@
 import { formatYmdMonthDay } from './billedExpectedPay'
-import { courtesyStatus, parseCourtesyRecords, type CourtesyStatus } from './lienCourtesyNotice'
+import { courtesyStatus, parseCourtesyRecords, parsePromiseRecord, type CourtesyStatus } from './lienCourtesyNotice'
 import { filingDeadlineForMonth } from './lienDeadlines'
 import type { LienDeskEntry, LienDeskItemRow } from './lienDesk'
 import type { LetterTwoStatus } from './lienLetterTwo'
@@ -26,6 +26,10 @@ export type CourtesyDeskSource = {
   addressesById: Readonly<Record<string, { property_kind?: string | null; homestead?: boolean | null } | undefined>>
   affidavits: ReadonlyArray<{ jobId: string; deadline: string; propertyKind: string; lastMonthFromCreation: boolean; lastMonthByHand?: boolean; gates: ReadonlyArray<{ key: string; ok: boolean }> }>
   filingsByJob: Readonly<Record<string, ReadonlyArray<{ kind: string; filed_at: string | null; voided_at: string | null }> | undefined>>
+  /** The payments behind every sent notice (PR 2 of #274), for the pause (PR 3); absent on a reader that does not load them. */
+  paymentsByJob?: Readonly<Record<string, ReadonlyArray<{ amount: number; paidOn: string | null }> | undefined>>
+  /** The jobs' promised pay dates (`list_job_promised_pay_dates`), for the pause's end; absent on a reader that does not load them. */
+  promisesByJob?: Readonly<Record<string, { promisedYmd: string } | undefined>>
 }
 
 export function courtesyByJobFrom(src: CourtesyDeskSource): Record<string, CourtesyStatus> {
@@ -44,6 +48,10 @@ export function courtesyByJobFrom(src: CourtesyDeskSource): Record<string, Court
       records: parseCourtesyRecords((first?.fields as { courtesy?: unknown } | null)?.courtesy),
       openBalance: Math.max(0, Number(job?.revenue ?? 0) - Number(job?.payments_made ?? 0)),
       todayYmd: src.todayYmd,
+      // Paying it down (PR 3 of #274): the job's payments and its promised day, and the promise the sent item keeps.
+      payments: (src.paymentsByJob?.[jobId] ?? []).filter((p) => p.paidOn).map((p) => ({ ymd: String(p.paidOn).slice(0, 10), amount: p.amount })),
+      promisedYmd: src.promisesByJob?.[jobId]?.promisedYmd ?? null,
+      promise: parsePromiseRecord((first?.fields as { promise?: unknown } | null)?.promise),
       affidavit: {
         deadline: aff?.deadline || (lastMonth ? filingDeadlineForMonth(`${lastMonth}-15`, kind) : ''),
         filedAt: filed?.filed_at ?? null,
