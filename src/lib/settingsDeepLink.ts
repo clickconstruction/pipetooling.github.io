@@ -26,6 +26,7 @@
  */
 
 import { JOBS_BILLING_CHILD_ANCHORS, JOBS_BILLING_TAB, jobsBillingAnchorToTab } from './settings/jobsBillingGroups'
+import { movedSettingsCardAnchorNow, movedSettingsCardAnchorToTab } from './settings/settingsFoldCards'
 
 /** Section anchor id → the settings tab/group that renders it. */
 export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
@@ -40,6 +41,8 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-claim-code': 'settings-advanced-tools',
   // Jobs & billing (punch list #261): every card and heading, from the kernel; the Legal desk's firm window has opened `settings-legal-firm` since v2.4711.
   ...jobsBillingAnchorToTab(),
+  // The three cards that left Jobs & billing (punch list #261 PR 2): each on its new tab, by its new anchor and its old one.
+  ...movedSettingsCardAnchorToTab(),
   // The editors Settings → Contracts & terms opens.
   'settings-estimate-public-terms': 'settings-catalogs',
   'settings-estimate-cx-defaults': 'settings-catalogs',
@@ -57,6 +60,9 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-phone-texts-missed-calls': 'settings-phone-texts',
   'settings-phone-texts-reminders': 'settings-phone-texts',
 }
+
+/** An anchor a card had before it moved tabs → the anchor it carries now, so the page looks for an element that exists. */
+const ANCHOR_NOW: Readonly<Record<string, string>> = movedSettingsCardAnchorNow()
 
 /** `#settings-contract-<entry id>`: one card on Contracts & terms (the prefix the catalog's anchors carry). */
 const CONTRACT_CARD_ANCHOR = /^settings-contract-[a-z][a-z0-9-]*$/
@@ -88,9 +94,11 @@ export type SettingsDeepLink = {
 export function resolveSettingsDeepLink(search: string, hash: string): SettingsDeepLink {
   const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
   const tabParam = (params.get('tab') ?? '').trim()
-  const rawHash = (hash.startsWith('#') ? hash.slice(1) : hash).trim()
+  const hashId = (hash.startsWith('#') ? hash.slice(1) : hash).trim()
+  const rawHash = ANCHOR_NOW[hashId] ?? hashId
 
-  let tabId: string | null = tabParam.startsWith('settings-') ? tabParam : null
+  // A link to a card that moved tabs names the card, so the card's tab wins over the `?tab=` the link carried from before the move.
+  let tabId: string | null = ANCHOR_NOW[hashId] ? (SETTINGS_HASH_ANCHOR_TO_TAB[rawHash] ?? null) : tabParam.startsWith('settings-') ? tabParam : null
   let anchorId: string | null = null
 
   if (rawHash && JOBS_BILLING_CHILD_ANCHORS[rawHash]) {

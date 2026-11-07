@@ -112,7 +112,7 @@ describe('the doors and the docs', () => {
   })
 
   it('the seat declares both verbs, plans through gmail-mine as the dev, asks the log before a second apply, and keeps view_as off them', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.34.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.38.0'")
     for (const verb of ['plan_mail_tag', 'apply_mail_tag']) {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)

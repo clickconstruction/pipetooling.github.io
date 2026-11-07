@@ -485,3 +485,36 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
 
   return { kind, basis, periodStart, periodEnd, periodLabel: hoursStatementPeriodLabel(periodStart, periodEnd), withPay, groups, totals, pay, charged, preparedWords, gap, stated, attestation }
 }
+
+// ---------------------------------------------------------------------------
+// The paper's shape, shared by the print (`buildHoursStatementHtml`) and the signed PDF (`hoursStatementPdf.ts`) since
+// v2.6629, so the paper a worker signs is the paper the office printed.
+// ---------------------------------------------------------------------------
+
+/** Characters of a note that sit on one line in the note column; past it the note takes its own line under the day. */
+export const HOURS_STATEMENT_NOTE_FITS = 68
+/** The same with the Rate column drawn, which narrows the note column. */
+export const HOURS_STATEMENT_NOTE_FITS_WITH_RATE = 58
+
+/** `8.00`, `2.17`, `26.17`: hours on the paper, always to two decimals. */
+export function hoursStatementHours2(h: number): string {
+  return hoursStatementRoundHours(h).toFixed(2)
+}
+
+/** The rate every counted row shares, or null when the rows carry none or differ (then the Rate column is drawn). */
+export function hoursStatementUniformRate(statement: Pick<HoursStatement, 'withPay' | 'kind' | 'groups'>): number | null {
+  if (!statement.withPay || statement.kind === 'schedule') return null
+  let rate: number | null = null
+  let any = false
+  for (const g of statement.groups) {
+    for (const d of g.days) {
+      if (d.pending) continue
+      if (d.rate == null) return null
+      if (!any) {
+        rate = d.rate
+        any = true
+      } else if (d.rate !== rate) return null
+    }
+  }
+  return any ? rate : null
+}

@@ -93,7 +93,7 @@ A channel with nothing to reach the worker by cannot be pressed. It says what to
 
 ## What the worker sees
 
-The worker reads the paper as a form. The signature box, the printed name and the date sit at the bottom. If the paper has a stated block, each row is three boxes to type in. The worker types the day, the hours and what they were working on. The office's rows come filled in and can be changed. The worker signs with a finger or a typed name and presses Sign.
+The worker reads the paper as a form. It is the same paper the office printed, with the same facts band, table and bands. The signature box, the printed name and the date sit at the bottom. If the paper has a stated block, each row is three boxes to type in. The worker types the day, the hours and what they were working on. The office's rows come filled in and can be changed. The worker signs with a finger or a typed name and presses Sign.
 
 The signed PDF files itself on the job and on the worker's desk. The statement's chip reads {{chip:green|Signed}}. The days the worker typed are kept on the statement.
 
@@ -106,6 +106,14 @@ The statement reads {{chip:green|Signed}}. The signature stays on the scan. The 
 ## Opening the signed PDF
 
 A signed row under **Hours statements** carries {{button:outline|Open the signed PDF}}. The same press sits on the window. The PDF opens in a new tab for five minutes. Each open is logged. Only a dev and the controller can open it.
+
+## A sub's sheet lines
+
+A sub never punches the clock. Their work is on the job's sheets. The **Who** list names each sub on the job's sheets, with the count of sheets. Pick one and the paper reads the sheets' lines. Each sheet is one group. Each line shows the fixture, the agreed hours, the rate and the amount. Paid reads per sheet, with the payments recorded against it. The charged switch is held for a sub. A sub's paper is always as paid.
+
+## Putting the signed PDF in the job's Drive folder
+
+A signed row under **Hours statements** also carries {{button:outline|Put in Sent by us}}. Press it once. The signed PDF is copied into the job's Drive folder, under Team only and then Sent by us. The row then reads {{button:outline|Open in Drive ↗}}, which opens the copy. The Legal desk's copy is separate. See the next section.
 
 ## Putting it on a legal matter
 

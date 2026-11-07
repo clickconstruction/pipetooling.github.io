@@ -9,6 +9,9 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { LICENSES_EXPIRED_EMPTY, LICENSES_EXPIRING_EMPTY, personLicensesEmptyWords } from '../../lib/people/peopleEmptyWords'
 import { expiredLicensesHeading, lapsedWords, licenseExpiryBuckets, type ExpiredLicense, type ExpiringLicense } from '../../lib/people/licenseExpiry'
+import { CLASS_RANK, TRADE_LABEL, parseLicenseTargets, parseLicenseType, type LicenseTarget, type Trade } from '../../lib/logbook/logbook'
+import { targetLines } from '../../lib/logbook/licenseTarget'
+import LicenseTargetWindow from '../../components/logbook/LicenseTargetWindow'
 
 type PersonLicenseCostLine = { id: string; person_license_id: string; amount: number; note: string | null; date: string; created_at: string | null }
 type PersonLicense = {
@@ -33,6 +36,8 @@ export type PeopleLicensesTabProps = {
   people: Person[]
   users: UserRow[]
 }
+
+const rankOf = (l: { cls: string | null }) => (l.cls ? CLASS_RANK[l.cls as keyof typeof CLASS_RANK] : -1)
 
 const stripThStyle = { padding: '0.5rem', textAlign: 'left' as const, borderBottom: '1px solid var(--border)' }
 
@@ -114,11 +119,22 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
   const [hoursLogPersonName, setHoursLogPersonName] = useState<string | null>(null)
   // Teammates the office has shown their own logbook (v2.6483); a failed read just leaves the note off.
   const [logbookShown, setLogbookShown] = useState<Set<string>>(() => new Set())
+  // Each person's goals by trade (v2.6626): the class, the board's number, the hours before the clock, by user id.
+  const [targetsByUser, setTargetsByUser] = useState<Record<string, LicenseTarget[]>>({})
+  const [targetEditing, setTargetEditing] = useState<{ userId: string; personName: string; trade: Trade } | null>(null)
   useEffect(() => {
     let cancelled = false
     void (async () => {
       const { data, error } = await supabase.from('logbook_shares' as never).select('user_id')
       if (!cancelled && !error) setLogbookShown(new Set(((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)))
+      const t = await supabase.from('license_targets' as never).select('user_id,trade,target_class,target_amount,opening_amount,opening_source')
+      if (cancelled || t.error) return
+      const by: Record<string, LicenseTarget[]> = {}
+      for (const row of (t.data ?? []) as Array<{ user_id: string }>) {
+        const parsed = parseLicenseTargets([row])[0]
+        if (parsed) (by[row.user_id] ??= []).push(parsed)
+      }
+      setTargetsByUser(by)
     })()
     return () => {
       cancelled = true
@@ -503,6 +519,35 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                       </table>
                                     )}
                                   </div>
+                                  {(() => {
+                                    const goalUserId = users.find((u) => u.name === personName)?.id
+                                    if (!goalUserId || personLicenses.length === 0) return null
+                                    const held = personLicenses.map((l) => parseLicenseType(l.license_type, l.date_of_expiry))
+                                    const lines = targetLines(held, targetsByUser[goalUserId] ?? [])
+                                    if (lines.length === 0) return null
+                                    return (
+                                      <div data-testid="licenses-goals" style={{ display: 'grid', gap: 6, fontSize: '0.8125rem' }}>
+                                        <div style={{ fontWeight: 600 }}>Goals</div>
+                                        {lines.map((line) => (
+                                          <div key={line.trade} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }} data-testid={`licenses-goal-${line.trade}`}>
+                                            <span style={{ fontWeight: 600, minWidth: 72 }}>{TRADE_LABEL[line.trade]}</span>
+                                            <span>{line.toward}</span>
+                                            <span style={{ color: 'var(--text-muted)' }}>· {line.before}</span>
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                setTargetEditing({ userId: goalUserId, personName, trade: line.trade })
+                                              }}
+                                              style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem' }}
+                                            >
+                                              {line.button}
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
                               </td>
                             </tr>
@@ -517,6 +562,25 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
           </>
         )}
       </div>
+
+      {targetEditing ? (
+        <LicenseTargetWindow
+          personName={targetEditing.personName}
+          userId={targetEditing.userId}
+          trade={targetEditing.trade}
+          holds={(() => {
+            const inTrade = licenses.filter((l) => l.person_name === targetEditing.personName).map((l) => parseLicenseType(l.license_type, l.date_of_expiry)).filter((l) => l.trade === targetEditing.trade && l.cls)
+            return inTrade.length ? inTrade.reduce((a, b) => (rankOf(b) > rankOf(a) ? b : a)) : null
+          })()}
+          current={(targetsByUser[targetEditing.userId] ?? []).find((t) => t.trade === targetEditing.trade) ?? null}
+          onClose={() => setTargetEditing(null)}
+          onSaved={(saved) => {
+            const id = targetEditing.userId
+            setTargetEditing(null)
+            setTargetsByUser((prev) => ({ ...prev, [id]: [...(prev[id] ?? []).filter((t) => t.trade !== saved.trade), saved] }))
+          }}
+        />
+      ) : null}
 
       {hoursLogPersonName && (
         <PersonLicenseHoursLogModal

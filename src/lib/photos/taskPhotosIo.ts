@@ -7,8 +7,9 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { errorKindOf, formatErrorMessage } from '../../utils/errorHandling'
 import { TASK_PHOTOS_BUCKET, taskPhotoCaption, taskPhotoPath, type TaskPhotoKind, type TaskPhotoRowShape } from '../taskPhotos'
+import { PhotoSendError } from './jobPhotoNotesIo'
 import { newPhotoId } from './reportPhotos'
 
 const db = supabase as unknown as SupabaseClient
@@ -25,6 +26,8 @@ export type TaskPhotoRow = TaskPhotoRowShape & {
 export const TASK_PHOTO_SELECT = 'id, instance_id, kind, percent_at, criterion_id, caption, by_user_id, by_name, taken_at, bytes, width, height, storage_path, drive_file_id, filed_at, fail_why'
 
 export type SendTaskPhotoInput = {
+  /** The shot's id when the phone minted it already (a shot kept with no signal, v2.6628): the same row on every try. */
+  id?: string
   instanceId: string
   blob: Blob
   kind: TaskPhotoKind
@@ -40,13 +43,17 @@ export type SendTaskPhotoInput = {
   height: number
 }
 
-/** The bytes to the bucket, then the row. Throws with the reason when the phone has no signal or the bucket refuses. */
+/**
+ * The bytes to the bucket, then the row. Throws a `PhotoSendError` with the reason and its class: a `network` one is
+ * the phone with no signal, and the sheet keeps the shot for the outbox (v2.6628); any other shows as it is. A shot
+ * sent again under its kept id lands on the same row (an upsert), so a resend counts once.
+ */
 export async function sendTaskPhoto(input: SendTaskPhotoInput): Promise<TaskPhotoRow> {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('The phone has no signal.')
-  const id = newPhotoId()
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new PhotoSendError('The phone has no signal.', 'network')
+  const id = input.id ?? newPhotoId()
   const storagePath = taskPhotoPath(input.instanceId, id)
   const { error } = await db.storage.from(TASK_PHOTOS_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: true })
-  if (error) throw new Error(formatErrorMessage(error, 'The photo did not send.'))
+  if (error) throw new PhotoSendError(formatErrorMessage(error, 'The photo did not send.'), errorKindOf(error))
   const row = {
     id,
     instance_id: input.instanceId,
@@ -63,11 +70,11 @@ export async function sendTaskPhoto(input: SendTaskPhotoInput): Promise<TaskPhot
     height: input.height,
     storage_path: storagePath,
   }
-  const { data, error: rowError } = await db.from('task_photos').insert(row).select(TASK_PHOTO_SELECT).single()
+  const { data, error: rowError } = await db.from('task_photos').upsert(row, { onConflict: 'id' }).select(TASK_PHOTO_SELECT).single()
   if (rowError) {
     // The bytes without a row would wait forever; take them back.
     await db.storage.from(TASK_PHOTOS_BUCKET).remove([storagePath]).catch(() => undefined)
-    throw new Error(formatErrorMessage(rowError, 'The photo did not send.'))
+    throw new PhotoSendError(formatErrorMessage(rowError, 'The photo did not send.'), errorKindOf(rowError))
   }
   return data as TaskPhotoRow
 }

@@ -1,5 +1,8 @@
 // notify-dispatch-request: the dispatch group's push when a request is filed, the requester's when it is answered,
 // reopened, or replied to on a stage check (punch list #245 PR 2b, v2.6495).
+// The cron door (punch list #253, v2.6630): a POST carrying X-Cron-Secret equal to CRON_SECRET is an internal caller
+// like the service key, for the 'created' fan-out alone — the morning license-expiry sweep files its rows in SQL under
+// pg_cron, where no session exists, and posts each one here so the Dispatch group hears it as it does after a Save.
 // A person's hours (punch list #141 PR 5, v2.6217): every push goes through _shared/pushHoursSend.ts, which pushes
 // the people on and holds a person outside their Push me hours, writing the row as `held` and sending nothing; the
 // dispatchers on still hear, and the requester sees the answer on Job Mode's strip.
@@ -13,7 +16,7 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 }
 
 const MAX_PUSH_BODY_LEN = 220
@@ -67,6 +70,15 @@ function truncateTitle(title: string, maxLen: number): string {
 }
 
 type AnswerMode = 'closed' | 'reopened' | 'replied'
+
+/** The cron door (v2.6630): the header is the secret, both present and equal; an unset secret opens to nobody. */
+export function isCronCaller(header: string | null, secret: string | undefined): boolean {
+  if (!secret || !header) return false
+  if (header.length !== secret.length) return false
+  let diff = 0
+  for (let i = 0; i < secret.length; i++) diff |= header.charCodeAt(i) ^ secret.charCodeAt(i)
+  return diff === 0
+}
 
 /** Mirrors `composeDispatchClosurePush` in src/lib/dispatchRequestClosure.ts — keep the wording in step. */
 function composeClosurePush(title: string, note: string | null, mode: AnswerMode): { title: string; body: string } {
@@ -164,16 +176,19 @@ serve(async (req) => {
   }
 
   try {
+    // The cron door (v2.6630): pg_cron has no session, so the license-expiry sweep presents the cron secret instead.
+    const cronCaller = isCronCaller(req.headers.get('X-Cron-Secret') ?? req.headers.get('x-cron-secret'), Deno.env.get('CRON_SECRET'))
+
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
+    if (!authHeader && !cronCaller) {
       return new Response(JSON.stringify({ error: 'Unauthorized - No authorization header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const token = authHeader.replace(/^Bearer\s+/i, '')
-    if (!token) {
+    const token = (authHeader ?? '').replace(/^Bearer\s+/i, '')
+    if (!token && !cronCaller) {
       return new Response(JSON.stringify({ error: 'Unauthorized - Invalid authorization format' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -191,10 +206,11 @@ serve(async (req) => {
     // Trusted internal caller (v2.3246): submit-portal-request has no user
     // session — the customer is not signed in — so it presents the service key.
     // Only the 'created' fan-out is open to it; closes/reopens stay user-only.
-    const serviceCaller = token === serviceRoleKey
+    // The cron secret (v2.6630) opens the same door for the license-expiry sweep.
+    const serviceCaller = cronCaller || (token.length > 0 && token === serviceRoleKey)
 
     const userClient = createClient(supabaseUrl, supabaseAnon, {
-      global: { headers: { Authorization: authHeader } },
+      global: { headers: authHeader ? { Authorization: authHeader } : {} },
     })
 
     let user: { id: string } | null = null

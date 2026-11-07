@@ -75,6 +75,7 @@ function fakeIo(read: Partial<JobPlansRead> = {}, over: Partial<JobPlansIo> = {}
     addSet: vi.fn(async (a) => set({ id: 's-new', name: a.draft.name, link: a.draft.link })),
     makeCurrent: vi.fn(async () => undefined),
     removeSet: vi.fn(async () => undefined),
+    movePaper: vi.fn(async () => undefined),
     updateMemo: vi.fn(async () => undefined),
     updateChanges: vi.fn(async () => undefined),
     ...over,

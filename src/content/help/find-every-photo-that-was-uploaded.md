@@ -2,7 +2,7 @@
 title: find every photo that was uploaded
 category: Office
 roles: dev, master_technician, assistant, controller, estimator, primary, superintendent
-keywords: photos, pictures, uploaded, newest, who took it, where saved, google drive, not in drive, documents, photos tab, report photo, box photo, checklist photo, text photo
+keywords: photos, pictures, uploaded, newest, who took it, where saved, google drive, not in drive, documents, photos tab, report photo, box photo, checklist photo, job photo, task card photo, text photo
 where: /documents?tab=photos
 order: 47
 ---
@@ -14,7 +14,9 @@ Open **Documents** from the gear menu. Press the **Photos** tab. The newest phot
 
 ## Read a row
 
-Each row shows a small picture, its caption, the job and the customer. Under them you see where the photo came from and who took it. A chip names the source. It reads **Report**, **Tally box**, **Checklist**, **Job photo**, **Text** or **Email**.
+Each row shows a small picture, its caption, the job and the customer. Under the caption you see where the photo came from and who took it. A chip names the source. The chip reads **Report**, **Tally box**, **Checklist**, **Job photo**, **Task card**, **Text** or **Email**.
+
+A task card's photo has no job. The row shows the card's title and where the card stood, as in *At 75%* or *The finishing photo*. Read [add a photo to a task card](/help/add-a-photo-to-a-task-card) for how those photos are taken.
 
 The time is the moment the camera fired. A photo kept on a phone with no signal and sent the next morning keeps its own time.
 
@@ -32,14 +34,14 @@ Type in the box at the top. You can type a job, a customer, a person or a stage.
 Press a source chip to see one kind of photo. Press **In Drive** or **Not in Drive yet** to see photos by where they are.
 
 :::tryit
-Press **Not in Drive yet**. Every photo the app could not file is on this list with its reason. A job with no Drive folder is the usual reason. Press **Make the job's Drive folders** to fix it.
+Press **Not in Drive yet**. Every photo the app could not file is on this list with its reason. A job with no Drive folder is the usual reason. Press **Make the job's Drive folders** to fix it. A task card's photo waits when the Tasks folder is not set. Press **Set the Tasks folder** to open Where files go.
 :::
 
 ## See a photo
 
 Press the small picture. The viewer opens with the photo at full size. Its facts sit under it. Press {{button:outline|Next ›}} to move to the next photo on the list.
 
-The viewer has doors too. Press {{button:blue|Open in Drive}} to see the file there. Press **Open the report**, **Open the box** or **Open the thread** to see what the photo came with. Press **Open the job** for the job window. Press **Only Mateo's photos** to see one person's photos alone.
+The viewer has doors too. Press {{button:blue|Open in Drive}} to see the file there. Press **Open the report**, **Open the box** or **Open the thread** to see what the photo came with. Press **Open the checklist** for a task card's photo. Press **Open the job** for the job window. Press **Only Mateo's photos** to see one person's photos alone.
 
 ## Photos put in Drive by hand
 

@@ -130,6 +130,45 @@ export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate
 }
 
 /** The mark a gate carries beside its value: ✓ clear, ✗ stops the send, ! worth a look. */
+/**
+ * The gates folded to one line on a sent notice with nothing due (v2.6625, punch list #248 face two, the owner's rule A):
+ * the paper went, so no verdict judges it — the day it went, then the owner, the GC, the kind and the months the notice
+ * named, each in plain words with no tone (a missing owner reads *not on file*, not a blocker). `rows` are the same four
+ * as rows for *Details ∨*. A Sent row with months still due keeps the four gates on the next notice instead.
+ */
+export type LienSentGatesFold = {
+  /** "Oct 14" — the day the notice went, for the pane's head and the strip. */
+  sentOn: string
+  /** "Sent Oct 14" */
+  head: string
+  /** "Sent Oct 14 · Khan Umar · RMC- Dudley Mason · Residential · Bexar · Jul + Aug" */
+  line: string
+  rows: Array<{ n: 1 | 2 | 3 | 4; key: Exclude<LienGateKey, 'billed'>; label: string; value: string }>
+}
+
+export function lienSentGatesFold(input: { sentOn: string; gates: ReadonlyArray<Pick<LienGate, 'key' | 'tone' | 'value'>>; noticeMonths: ReadonlyArray<string>; monthShort: (key: string) => string }): LienSentGatesFold {
+  const by = (k: LienGateKey) => input.gates.find((g) => g.key === k) ?? null
+  const owner = by('owner')
+  const gc = by('gc')
+  const kind = by('kind')
+  const ownerWords = !owner ? '—' : owner.tone === 'ok' ? owner.value : owner.value === 'Missing' ? 'owner not on file' : owner.value.toLowerCase()
+  const gcWords = !gc ? '—' : gc.tone === 'ok' ? gc.value : 'no GC on the job'
+  const kindWords = !kind ? '—' : kind.tone === 'ok' ? kind.value : 'kind unknown'
+  const months = input.noticeMonths.map(input.monthShort).join(' + ') || 'no month named'
+  const head = `Sent ${input.sentOn}`.trim()
+  return {
+    sentOn: input.sentOn,
+    head,
+    line: [head, ownerWords, gcWords, kindWords, months].join(' · '),
+    rows: [
+      { n: 1, key: 'owner', label: 'Owner of record', value: ownerWords },
+      { n: 2, key: 'gc', label: 'Original contractor', value: gcWords },
+      { n: 3, key: 'kind', label: 'Property kind', value: kindWords },
+      { n: 4, key: 'months', label: 'Months the notice named', value: months },
+    ],
+  }
+}
+
 export function lienGateMark(tone: LienGateTone): string {
   return tone === 'ok' ? '✓' : tone === 'blocker' ? '✗' : '!'
 }

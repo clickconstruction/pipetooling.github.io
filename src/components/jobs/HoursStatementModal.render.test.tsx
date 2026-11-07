@@ -24,6 +24,8 @@ vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u-office'
 const people: HoursStatementPerson[] = [
   { userId: 'u-marcus', name: 'Marcus Reyes', role: 'helpers', firstDay: '2026-06-01', lastDay: '2026-06-13', sessions: 3 },
   { userId: 'u-lena', name: 'Lena Ortiz', role: 'helpers', firstDay: '2026-06-08', lastDay: '2026-06-09', sessions: 1 },
+  // A sub on the job's sheets (v2.6636): never clocked, so the sheets are the count.
+  { userId: 'u-dale', name: 'Dale Whitfield', role: 'subcontractor', firstDay: '2026-05-04', lastDay: '2026-05-18', sessions: 2, kind: 'sheet' },
 ]
 const jobs: HoursStatementJob[] = [
   { jobId: 'job-1', number: '1042', name: 'Ridgeway Lofts', customer: 'Ridgeway Builders', site: '12 Elm St', firstDay: '2026-06-01', lastDay: '2026-06-13', sessions: 3 },
@@ -155,6 +157,23 @@ describe('the Hours statement window (punch list #212, PR 2)', () => {
     expect(paper()).toContain('Statement of hours worked and paid')
     expect(screen.getByTestId('hours-statement-span').textContent).toContain('The app has 2 approved sessions on this job in this span. 1 day was typed by hand.')
     expect(screen.getByTestId('hours-statement-span').textContent).toContain('1 session is still waiting for approval.')
+  })
+
+  it('a sub on the sheets is in the Who list by their sheets; picking them reads the sheet kind and holds the charged switch (v2.6636)', async () => {
+    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={payroll} onClose={() => undefined} />)
+    await screen.findByTestId('hours-statement-paper')
+    const who = screen.getByLabelText('Who') as HTMLSelectElement
+    expect(Array.from(who.options).map((o) => o.textContent)).toEqual(['Marcus Reyes · 3 sessions', 'Lena Ortiz · 1 session', 'Dale Whitfield · 2 sheets'])
+    loadSpy.mockClear()
+    fireEvent.change(who, { target: { value: 'u-dale' } })
+    await waitFor(() => expect(loadSpy).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u-dale', periodStart: '2026-05-04', periodEnd: '2026-05-18', kind: 'sheet', basis: 'paid' })))
+    const charged = screen.getByTestId('hours-statement-charged') as HTMLInputElement
+    expect(charged.disabled).toBe(true)
+    expect(screen.getByTestId('hours-statement-sheet-note').textContent).toBe('A sub’s sheet is agreed work, so the paper reads the sheet’s lines as paid.')
+    // Back to a clock person: the switch is theirs again.
+    fireEvent.change(who, { target: { value: 'u-lena' } })
+    await waitFor(() => expect(loadSpy).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u-lena', kind: 'clock' })))
+    expect((screen.getByTestId('hours-statement-charged') as HTMLInputElement).disabled).toBe(false)
   })
 
   it('Save a draft writes the row with the read as its snapshot and mints the record id; the paper then carries it', async () => {

@@ -56,7 +56,8 @@ export const WRITE_VERBS = {
   // v2.6613 (punch list #277): the same door takes doc_id (a named document) or title (a new one), counsel_only and archive.
   plan_person_doc: { rpc: 'dev_person_doc_write', step: 'plan' },
   apply_person_doc: { rpc: 'dev_person_doc_write', step: 'apply' },
-  // v2.4814: the narrative for the firm on a legal matter (dev_legal_narrative_write over legal_set_narrative).
+  // v2.4814: the narrative for the firm on a legal matter (dev_legal_narrative_write over legal_set_narrative);
+  // v2.6623 (punch list #278): the whole text or section ops, and expect_updated_at, the HR documents' grammar.
   plan_matter_narrative: { rpc: 'dev_legal_narrative_write', step: 'plan' },
   apply_matter_narrative: { rpc: 'dev_legal_narrative_write', step: 'apply' },
   // v2.5800: a planned step on a legal matter's timeline (dev_legal_plan_write over legal_plan_add / _update / _mark_done).
@@ -298,10 +299,15 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (verb === 'plan_matter_narrative' || verb === 'apply_matter_narrative') {
     const narrative = obj(input.narrative)
     const matterId = narrative && typeof narrative.matter_id === 'string' ? narrative.matter_id.trim() : ''
-    if (!narrative || !UUID_RE.test(matterId) || typeof narrative.markdown !== 'string') {
-      return { ok: false, error: `${verb} needs narrative — { matter_id (a legal_matters.id: read_rows on legal_matters by payer_name), markdown } — the whole text, which replaces what is there. An empty markdown clears it.` }
-    }
-    const p = { matter_id: matterId, markdown: narrative.markdown }
+    const shape = `${verb} needs narrative — { matter_id (a legal_matters.id: read_rows on legal_matters by payer_name), markdown (the whole text, which replaces what is there; '' clears it) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20, one of the two; v2.6623), expect_updated_at? (the narrative_updated_at you read; refused when the narrative was saved since) }.`
+    if (!narrative || !UUID_RE.test(matterId)) return { ok: false, error: shape }
+    const hasMarkdown = typeof narrative.markdown === 'string'
+    const ops = Array.isArray(narrative.ops) ? narrative.ops : null
+    if (hasMarkdown === Boolean(ops) || (ops && (ops.length === 0 || ops.length > 20))) return { ok: false, error: shape }
+    const p: Json = { matter_id: matterId }
+    if (hasMarkdown) p.markdown = narrative.markdown
+    else p.ops = ops
+    if (typeof narrative.expect_updated_at === 'string' && narrative.expect_updated_at.trim()) p.expect_updated_at = narrative.expect_updated_at.trim()
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: matterId, planHash }
   }
   if (verb === 'plan_matter_plan_item' || verb === 'apply_matter_plan_item') {

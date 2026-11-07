@@ -9,7 +9,7 @@
  * eight-week dots, the three-line rule.
  */
 import type { LicenseHoursLogRow } from '../licenseHoursLogTypes'
-import { goalsFor, parseLicenseType, progressFor, rowCounts, withOfficeJob, type Goal } from '../logbook/logbook'
+import { goalsFor, openingsFrom, parseLicenseTargets, parseLicenseType, progressFor, rowCounts, withOfficeJob, type Goal, type LicenseTarget } from '../logbook/logbook'
 import { payWeekContaining, type PayWeek } from '../payWeekAnchor'
 import { crewAgainstTarget, crewTargetWords, lastWeeks, targetOf, type TargetJob } from './crewTarget'
 
@@ -74,6 +74,8 @@ export type MyWeek = {
   role: string
   hours: MyWeekHour[]
   licenses: Array<{ license_type: string; date_of_expiry: string | null }>
+  /** What the office set on the Licenses tab: the class worked toward, the board's number, the hours before the clock (v2.6626). */
+  targets: LicenseTarget[]
   officeJobId: string | null
   jobs: MyWeekJob[]
   /** The first jobs of the pairs the office pressed It was a callback on. */
@@ -109,6 +111,7 @@ export function parseMyWeek(raw: unknown): MyWeek | null {
       approved: Boolean(h.approved),
     })),
     licenses: arr(o.licenses).map((l) => ({ license_type: str(l.license_type), date_of_expiry: strOrNull(l.date_of_expiry) })),
+    targets: parseLicenseTargets(o.targets),
     officeJobId: strOrNull(o.office_job_id),
     jobs: arr(o.jobs).map((j) => ({
       jobId: str(j.job_id),
@@ -138,7 +141,7 @@ export type LicenseHoursRead = {
   goal: Goal | null
   /** "Hours toward journeyman plumber" */
   title: string
-  /** Approved, from the clock plus the opening balance. */
+  /** Approved, from the clock plus the opening balance the office set on the Licenses tab. */
   done: number
   need: number
   /** Closed hours waiting for approval, in the goal's trade. */
@@ -152,11 +155,11 @@ export type LicenseHoursRead = {
 
 export function licenseHoursRead(my: MyWeek, week: PayWeek, todayYmd: string): LicenseHoursRead | null {
   const held = my.licenses.map((l) => parseLicenseType(l.license_type, l.date_of_expiry))
-  const goal = goalsFor(held).goals[0] ?? null
+  const goal = goalsFor(held, my.targets).goals[0] ?? null
   if (!goal) return null
   const rows = withOfficeJob(my.hours, my.officeJobId)
   const approved = rows.filter((r) => r.approved)
-  const progress = progressFor(goal, approved, [], todayYmd)
+  const progress = progressFor(goal, approved, openingsFrom(my.targets), todayYmd)
   const inTrade = (r: MyWeekHour) => rowCounts(r).trade === goal.requirement.trade
   const waiting = round1(rows.filter((r) => !r.approved && inTrade(r)).reduce((s, r) => s + r.hours, 0))
   const thisWeek = round1(rows.filter((r) => inTrade(r) && inWeek(r.work_date, week)).reduce((s, r) => s + r.hours, 0))
@@ -240,7 +243,7 @@ export function weekDots(my: MyWeek, signal: WeekSignal, todayYmd: string, n = 8
     })
   }
   const held = my.licenses.map((l) => parseLicenseType(l.license_type, l.date_of_expiry))
-  const goal = goalsFor(held).goals[0] ?? null
+  const goal = goalsFor(held, my.targets).goals[0] ?? null
   const rows = withOfficeJob(my.hours, my.officeJobId)
   return weeks.map((week) => ({ week, value: round1(rows.filter((r) => (!goal || rowCounts(r).trade === goal.requirement.trade) && inWeek(r.work_date, week)).reduce((s, r) => s + r.hours, 0)) }))
 }

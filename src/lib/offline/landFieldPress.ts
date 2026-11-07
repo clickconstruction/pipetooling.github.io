@@ -1,5 +1,5 @@
 import { DatabaseError, databaseErrorFromResult, errorKindOf, formatErrorMessage, OperationTimeoutError, withOperationTimeout, type SupabaseResultError } from '../../utils/errorHandling'
-import { failureQueues, type ChecklistSignPayload, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OutboxKind, type OutboxPress, type OutboxRefusal } from './outbox'
+import { failureQueues, type ChecklistSignPayload, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OutboxKind, type OutboxPress, type OutboxRefusal, type TaskPhotoPayload } from './outbox'
 
 /**
  * The send (punch list #163 PR 2): one press to the `land_field_press` RPC, which takes the
@@ -25,6 +25,8 @@ export const RPC_KIND: Record<OutboxKind, string> = {
   'job-photos': 'job_photos',
   /** Never sent to the RPC either: a signed checklist answer lands through the table's own policies and lock (`landChecklistSign`). */
   'checklist-sign': 'checklist_sign',
+  /** Never sent to the RPC: the replay sent the row itself, and landing ties a finishing shot to its line (`landTaskPhoto`). */
+  'task-photo': 'task_photo',
 }
 
 /** The press's payload as the RPC reads it. */
@@ -54,6 +56,36 @@ export function rpcPayload(press: OutboxPress): Record<string, unknown> {
       const p = press.payload as ChecklistSignPayload
       return { job_id: p.jobId, fixture_id: p.fixtureId, question_id: p.questionId, pick: p.pick }
     }
+    case 'task-photo': {
+      const p = press.payload as TaskPhotoPayload
+      return { instance_id: p.instanceId, photo_ids: p.photos.map((ph) => ph.id) }
+    }
+  }
+}
+
+export type LandTaskPhotoIo = {
+  attach?: (instanceId: string, criterionId: string, photoId: string) => Promise<unknown>
+}
+
+/**
+ * A task photo press lands without the RPC (punch list #273, v2.6628): its row already exists under the phone-minted
+ * id (the replay sent the shot's bytes and row first, `sendKeptPhotos`, the same upsert every try), so what is left is
+ * what the sheet does live after the send: a finishing shot that proves a Done when… line is written onto that line's
+ * tick (`attachPhotoToTick`, the same update twice is the same row). A progress shot or a finish with no line needs
+ * nothing more. The outcome is classed as any press's: a lost signal or a timeout fails and waits, a refusal keeps the
+ * server's reason.
+ */
+export async function landTaskPhoto(press: OutboxPress, io: LandTaskPhotoIo = {}): Promise<LandOutcome> {
+  try {
+    const p = press.payload as TaskPhotoPayload
+    const proving = p.photos.filter((ph) => ph.sent && ph.criterionId)
+    if (proving.length > 0) {
+      const attach = io.attach ?? (await import('../photos/taskPhotosIo')).attachPhotoToTick
+      await withOperationTimeout(Promise.all(proving.map((ph) => attach(p.instanceId, ph.criterionId!, ph.id))), LAND_TIMEOUT_MS, 'Add the photo')
+    }
+    return { kind: 'landed', result: { instance_id: p.instanceId, photo_ids: p.photos.filter((ph) => ph.sent).map((ph) => ph.id) } }
+  } catch (e) {
+    return outcomeOfFailure(e)
   }
 }
 
@@ -118,6 +150,7 @@ export function outcomeOfFailure(error: unknown): LandOutcome {
 export async function landFieldPress(press: OutboxPress): Promise<LandOutcome> {
   if (press.kind === 'job-photos') return landJobPhotos(press)
   if (press.kind === 'checklist-sign') return landChecklistSign(press)
+  if (press.kind === 'task-photo') return landTaskPhoto(press)
   try {
     // The client is read here, not at import, so the kernels that take this send as a default load without it (a test, a worker).
     const { supabase } = await import('../supabase')

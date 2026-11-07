@@ -25,6 +25,15 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('', '#who-counts-as-what')).toEqual({ tabId: 'settings-jobs', anchorId: 'who-counts-as-what' })
   })
 
+  it('a card that left Jobs & billing (punch list #261 PR 2) answers on its new tab by its new anchor and its old one', () => {
+    expect(resolveSettingsDeepLink('', '#settings-data-hcp-reconcile')).toEqual({ tabId: 'settings-data', anchorId: 'settings-data-hcp-reconcile' })
+    expect(resolveSettingsDeepLink('', '#settings-jobs-hcp-reconcile')).toEqual({ tabId: 'settings-data', anchorId: 'settings-data-hcp-reconcile' })
+    // The dev door and the guides carried `?tab=settings-jobs` before the move: the card's tab wins.
+    expect(resolveSettingsDeepLink('?tab=settings-jobs', '#settings-jobs-hcp-reconcile')).toEqual({ tabId: 'settings-data', anchorId: 'settings-data-hcp-reconcile' })
+    expect(resolveSettingsDeepLink('', '#settings-jobs-sub-pay')).toEqual({ tabId: 'settings-people', anchorId: 'settings-people-sub-pay' })
+    expect(resolveSettingsDeepLink('', '#settings-jobs-office-county')).toEqual({ tabId: 'settings-company', anchorId: 'settings-company-office-county' })
+  })
+
   it('lands the Dev MCP keys anchor on Your account', () => {
     expect(resolveSettingsDeepLink('', '#settings-dev-mcp-keys')).toEqual({ tabId: 'settings-account', anchorId: 'settings-dev-mcp-keys' })
   })
