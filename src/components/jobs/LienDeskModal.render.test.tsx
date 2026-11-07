@@ -1385,6 +1385,18 @@ describe('LienDeskModal the attorney’s letter (v2.3760)', () => {
     return d
   }
 
+  it('a sent notice with nothing due folds its gates to one line with no verdict, and its head reads the day it went (v2.6625, punch list #248)', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={sentDesk()} />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-gates]')).toBeNull()
+    const fold = document.querySelector('[data-lien-gates-sent]') as HTMLElement
+    expect((fold.querySelector('[data-lien-gates-sent-line]') as HTMLElement).textContent).toBe('Sent Sep 2 · Elbel Holdings LLC · Loberg Contracting · Commercial · Guadalupe · Jun + Jul')
+    expect(fold.textContent).not.toContain('go out')
+    expect((document.querySelector('[data-lien-pane-head="gates"] [data-lien-pane-head-fact]') as HTMLElement).textContent).toContain('Sent Sep 2')
+    fireEvent.click(fold.querySelector('[data-lien-gates-sent-fold="open"]') as HTMLElement)
+    expect(fold.querySelectorAll('[data-lien-gates-sent-row]')).toHaveLength(4)
+  })
+
   it('the sent row and footer count the days, and Send the attorney’s letter drafts counsel’s paid-out letter on the job', async () => {
     startTwoMock.mockReset()
     startTwoMock.mockResolvedValue('two1')
