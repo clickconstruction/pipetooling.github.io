@@ -219,6 +219,10 @@ describe('buildLegalPacket', () => {
     expect(a.beforeTheApp).toBe(false)
     expect(legalStatementsWords(a.statements)).toBe('1 signed · 1 waiting for a signature')
     expect(legalStatementsWords([])).toBe('Nothing signed here yet.')
+    // A role the policy answers nothing is told the gate, not an empty job (v2.6633); with rows it reads them as anyone.
+    expect(legalStatementsWords([], { canRead: false })).toBe('Only a dev or the controller can read the signed statements here.')
+    expect(legalStatementsWords(a.statements, { canRead: false })).toBe('1 signed · 1 waiting for a signature')
+    expect(legalStatementsWords([], { canRead: true })).toBe('Nothing signed here yet.')
     const titles = p.exhibits.map((e) => e.title)
     expect(titles.indexOf('Signed hours statements')).toBe(titles.indexOf('Field reports and clock sessions') + 1)
     expect(p.exhibits.find((e) => e.title === 'Signed hours statements')?.count).toBe(1)
