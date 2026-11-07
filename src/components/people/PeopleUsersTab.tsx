@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import type { PersonDeskSectionId } from '../../lib/people/personDeskSections'
 import { USERS_TAB_LENSES, lensForcesNoLoginOpen, resolveUsersTabLens, usersTabLensesFor, type UsersTabLens } from '../../lib/people/usersTabLens'
@@ -144,6 +144,7 @@ export function PeopleUsersTab({
   const [filter, setFilter] = useState<UsersTabFilter>('all')
   // v2.3702 lenses: `?lens=contact|account|pay` — a column set over the same rows; the Payroll tab deep-links to pay.
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [workdayFor, setWorkdayFor] = useState<{ userId: string; payName: string } | null>(null)
   // Link-to-account modal (external roster rows → app account).
   const [linkTarget, setLinkTarget] = useState<Person | null>(null)
@@ -333,6 +334,11 @@ export function PeopleUsersTab({
     const out: UsersTabRowMenuAction[] = []
     if (personDesk?.canOpen) {
       out.push({ key: 'desk', label: 'Open desk', onClick: () => personDesk.open(item.source === 'user' ? { userId: item.id, displayName: item.name } : { personId: item.id, displayName: item.name }) })
+    }
+    if (isDev) {
+      // v2.6612: the HR file from where a dev already is — the same deep link the Person Desk's Records section carries.
+      const hrPersonId = item.source === 'people' ? item.id : (people.find((p) => p.account_user_id === item.id)?.id ?? resolvePersonIdForUsersRow(item, sectionKind === 'dev' ? null : sectionKind))
+      if (hrPersonId) out.push({ key: 'hr', label: 'Open their HR file', title: 'People → Paperwork → HR, on their file', onClick: () => navigate(`/people?tab=hr&person=${hrPersonId}`) })
     }
     if (item.source === 'user') {
       if (canEditUserNotes) {
