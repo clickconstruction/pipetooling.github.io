@@ -134,6 +134,9 @@ export function useChecklistTechTreeData(
             created_at: string
             pinned_at: string | null
             estimated_days: number | null
+            // 20261106230000 (punch list #273): a row read before the push carries neither, so each takes its column default.
+            percent_complete?: number | null
+            asks_for_photo?: boolean | null
             checklist_tech_tree_task_assignees: { user_id: string }[] | null
           }
           const assigneeIds = (r.checklist_tech_tree_task_assignees ?? []).map((a) => a.user_id)
@@ -147,6 +150,8 @@ export function useChecklistTechTreeData(
             created_at: r.created_at,
             pinned_at: r.pinned_at,
             estimated_days: r.estimated_days,
+            percent_complete: r.percent_complete ?? 0,
+            asks_for_photo: r.asks_for_photo ?? false,
             assigneeIds,
           }
         }),
