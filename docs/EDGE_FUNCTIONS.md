@@ -3854,6 +3854,8 @@ Both send nothing, and answer `{ "success": true, "off": true, … }`, while the
 
 ### notify-dispatch-request
 
+> **v2.6630 — the cron door** (punch list #253): a POST carrying `X-Cron-Secret` equal to `CRON_SECRET` is an internal caller like the service key, for the `created` fan-out alone (`isCronCaller`, a constant-time compare; an unset secret opens to nobody). The morning license-expiry sweep (`license_expiry_notices_sweep()`, migration [`20261107120000`](./migrations/20261107120000_license_expiry_notices_sweep.md)) files its rows in SQL under pg_cron, where no session exists, and posts each one here so the Dispatch group hears it as it does after a Save. `x-cron-secret` joins the CORS allow-list. **Redeploy required**, before the migration is pushed.
+
 > **v2.6495 — `mode: 'replied'`** (punch list #245 PR 2b): a note Dispatch writes on an open stage check pushes the **requester** *Dispatch replied* with the words first, `<note> — <title>` (220-char cap, mirrored by `composeDispatchClosurePush`), `template_type` `dispatch_request_replied`, `tag: dispatch-<id>-replied`, through their Push me hours like a close; `note` is required (400 without it); the caller is a dispatch group member or a dev. `useDispatchInbox.submitDispatchNote` sends it for a note on an open stage check alone; a note on any other open request pushes nobody, as before. **Redeploy** once merged.
 
 > **v2.6217 — through each person's hours** (punch list #141 PR 5): both modes' pushes go through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the dispatchers on are pushed through `_shared/webPushSend.ts`, a member outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, and a held requester has that row in place of the `push` row the answer always wrote. The answers gain `held`. **Redeploy** once merged.
@@ -3864,7 +3866,7 @@ Both send nothing, and answer `{ "success": true, "off": true, … }`, while the
 
 **Endpoint**: `POST /functions/v1/notify-dispatch-request`
 
-**Internal caller** (v2.3246): a request whose bearer **is the service-role key** is trusted as an internal caller. `submit-portal-request` uses it, since the customer has no session, and so does `submit-sub-portal` since v2.5042, for a sub's dispatch notes. Internal callers may only run the `created` fan-out (the row is read with the service role and the author check is skipped); `closed` / `reopened` / `replied` stay user-only. **Redeploy required.**
+**Internal caller** (v2.3246): a request whose bearer **is the service-role key** is trusted as an internal caller, and so is one carrying `X-Cron-Secret` equal to `CRON_SECRET` since v2.6630 (the license-expiry sweep's door). `submit-portal-request` uses the service key, since the customer has no session, and so does `submit-sub-portal` since v2.5042, for a sub's dispatch notes. Internal callers may only run the `created` fan-out (the row is read with the service role and the author check is skipped); `closed` / `reopened` / `replied` stay user-only. **Redeploy required.**
 
 **Required Role**: `mode` omitted / `'created'`: authenticated user who is the request author (`from_user_id` on the row). `mode: 'closed' | 'reopened' | 'replied'`: a dispatch group member, a dev, or the row's `closed_by_user_id` (checked with the service role after the RLS-scoped row read); the sheet's settle push (v2.6495) rides on the closer's right, since the self-close trigger names the settler as the closer.
 
