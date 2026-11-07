@@ -2,7 +2,7 @@
  * The office's GC notices' switch (GC mode, Owner Billing's O10): the app_settings row `gc_office_notices_on_v1`,
  * inserted 'false' by migration 20261010060000. On, it holds the day it went on, an ISO date: only a pay application
  * sent since then gets notices, so turning it on never sends a backlog. Anything that is not a real day reads off
- * (`gcOfficeNoticesSince`). The owner turns it on in Settings → Jobs & billing; dev and the owner write it (a key-scoped
+ * (`gcOfficeNoticesSince`). The owner turns it on in Settings → Jobs, bills and liens; dev and the owner write it (a key-scoped
  * UPDATE policy). `gc-office-notices` reads the same row. The customer's notice 3 days before a bill is due (O12) has a
  * switch of its own in the same shape (`GC_CUSTOMER_DUE_NOTICES_SETTING_KEY`, migration 20261010130000): pass its key.
  */

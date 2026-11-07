@@ -39,9 +39,9 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-recently-deleted': 'settings-data',
   'settings-page-pins': 'settings-dashboard',
   'settings-claim-code': 'settings-advanced-tools',
-  // Jobs & billing (punch list #261): every card and heading, from the kernel; the Legal desk's firm window has opened `settings-legal-firm` since v2.4711.
+  // Jobs, bills and liens (punch list #261): every card and heading, from the kernel; the Legal desk's firm window has opened `settings-legal-firm` since v2.4711.
   ...jobsBillingAnchorToTab(),
-  // The three cards that left Jobs & billing (punch list #261 PR 2): each on its new tab, by its new anchor and its old one.
+  // The three cards that left Jobs, bills and liens (punch list #261 PR 2): each on its new tab, by its new anchor and its old one.
   ...movedSettingsCardAnchorToTab(),
   // The editors Settings → Contracts & terms opens.
   'settings-estimate-public-terms': 'settings-catalogs',
@@ -102,7 +102,7 @@ export function resolveSettingsDeepLink(search: string, hash: string): SettingsD
   let anchorId: string | null = null
 
   if (rawHash && JOBS_BILLING_CHILD_ANCHORS[rawHash]) {
-    // An anchor inside a Jobs & billing card (`#who-counts-as-what`): the card opens for it and the page lands on it.
+    // An anchor inside a Jobs, bills and liens card (`#who-counts-as-what`): the card opens for it and the page lands on it.
     anchorId = rawHash
     if (!tabId) tabId = JOBS_BILLING_TAB
   } else if (rawHash.startsWith('settings-')) {

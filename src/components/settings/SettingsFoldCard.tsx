@@ -1,6 +1,6 @@
 /**
  * One folding card on Settings (punch list #261): the header row with the ▶, the card's name
- * and one line of what it sets, and the body under it when open. Every card on Jobs & billing
+ * and one line of what it sets, and the body under it when open. Every card on Jobs, bills and liens
  * is one, and so are the three cards that moved to other tabs in PR 2. The section carries the
  * card's anchor, so a link lands on it, and the header is a counted press (`<tab> · #<slug>` in
  * Settings → Usage), so the next look at a tab can rank its cards by use.

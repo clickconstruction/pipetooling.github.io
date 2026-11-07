@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smokes for Settings → Jobs & billing → Markup on materials (punch list #254, PR 1; the pair and its bar,
+ * Render smokes for Settings → Jobs, bills and liens → Markup on materials (punch list #254, PR 1; the pair and its bar,
  * v2.6538): the percent reads from its app_settings row, the margin box beside it follows, the bar under the pair shows
  * $1,000 of materials as cost and markup, Save is dead, saying the markup is saved as shown, until the percent changes,
  * and Save writes one row, null when cleared.

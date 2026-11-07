@@ -1,5 +1,5 @@
 /**
- * Settings → Jobs & billing drawn by heading (punch list #261): the strip of headings pinned
+ * Settings → Jobs, bills and liens drawn by heading (punch list #261): the strip of headings pinned
  * under the tab's title, then each heading with its line and its cards, every card in a
  * `SettingsFoldCard` with its anchor. The page hands in one element per card; the kernel
  * says which cards the role sees and in what order, so a card the role is not shown is never
@@ -100,7 +100,7 @@ export function SettingsJobsBillingStrip({ groups }: { groups: readonly JobsBill
 
   return (
     <div ref={barRef} className={`stagesStageBar settingsJumpStrip${phone ? ' isLine' : ''}`} data-settings-jobs-strip style={{ top: 0 }}>
-      <nav aria-label="Jobs and billing headings" className="stagesStageSegs">
+      <nav aria-label="Jobs, bills and liens headings" className="stagesStageSegs">
         {groups.map((g, index) => {
           const on = g.id === active
           return (
