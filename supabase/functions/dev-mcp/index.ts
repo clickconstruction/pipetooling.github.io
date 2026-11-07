@@ -6,6 +6,7 @@ import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_share
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { getPersonFile } from '../_shared/devMcpPersonFile.ts'
+import { searchCase } from '../_shared/devMcpCaseSearch.ts'
 import { PERSON_REPORT_SELECT, personReportAppliedWords, personReportDryRun, personReportRpc, type PersonReportPayload, type PersonReportRow } from '../_shared/devMcpPersonReport.ts'
 import { PERSON_MATTER_PERSON_SELECT, PERSON_MATTER_STANDING_SELECT, personMatterAppliedWords, personMatterDryRun, personMatterRpc, type PersonMatterPayload, type PersonMatterPersonRow, type PersonMatterStandingRow } from '../_shared/devMcpPersonMatter.ts'
 import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, stateGuarded, writeRpcBody } from '../_shared/devMcpWrites.ts'
@@ -83,7 +84,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.33.0'
+const SERVER_VERSION = '0.35.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -388,6 +389,11 @@ const TOOLS: McpTool[] = [
     name: 'get_history',
     description: "A development's history as people wrote it, every body whole (v2.6044): the lines kept in History (what happened: an email, a call, a visit, a letter, a note, each at the time it happened, by a person or a robot), the job's thread notes and the bid's thread notes, newest first, with who wrote each. The records' own lines (sends, stage moves, bills, payments) are read_rows on their tables. Narrow to one job or one bid, or to lines since a moment; 200 at most by default, 500 at most.",
     inputSchema: { type: 'object', properties: { development_id: { type: 'string', description: 'a developments.id (read_rows on developments by name)' }, job_id: { type: 'string' }, bid_id: { type: 'string' }, since: { type: 'string', description: 'an ISO timestamp: only lines at or after it' }, limit: { type: 'number' } }, required: ['development_id'] },
+  },
+  {
+    name: 'search_case',
+    description: "One full-text search across a person's case (v2.6620, punch list #278) — the grep an agent has over a folder: the HR entries, the evidence titles and memos, the named documents and the summary and narrative a section at a time (a hit names the section it sits in), and the matter standing on the person — its narrative by section, its entries' words, its documents' titles and what-it-shows lines (not their files). Each hit: the source, the id, the section and its number, the day, a snippet with the match marked « », the counsel-only mark (marked, never hidden from a dev), and read_next. Websearch syntax: words, \"a phrase\", -not. Dev-only.",
+    inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' }, q: { type: 'string', description: 'the words to find — websearch syntax' }, in: { type: 'string', description: 'one source: entries | evidence | documents | summary | narrative | matter; every source when left out' }, limit: { type: 'number', description: 'hits to return, 1 to 100; 40 when left out' } }, required: ['person', 'q'] },
   },
   {
     name: 'get_person_file',
@@ -1252,6 +1258,13 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       }
       const body = res.body as { count?: number } | null
       return ok(redactSecrets(res.body), { target: developmentId, rowCount: typeof body?.count === 'number' ? body.count : undefined })
+    }
+
+    case 'search_case': {
+      // v2.6620 (punch list #278 PR 2): one GET of dev_case_search as the dev (devMcpCaseSearch.ts); another role is refused in words.
+      const out = await searchCase(readerAs(await jwt()), { person: String(args.person ?? ''), q: args.q, in: args.in, limit: args.limit }, { role: who.role })
+      if ('refused' in out) return refused(out.refused, { target: 'people' })
+      return ok(out, { target: out.person.id, rowCount: out.shown })
     }
 
     case 'get_person_file': {
