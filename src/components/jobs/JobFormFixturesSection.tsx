@@ -86,6 +86,8 @@ type JobFormFixturesSectionProps = {
    * one draft per payer. Null hides the toggle.
    */
   payerTags?: { customerName: string | null; gcName: string | null } | null
+  /** The job reads as a project (#238's kind, punch list #234 PR 1a); undefined = the caller has no read, so an ordered stage stands in. */
+  isProject?: boolean
 }
 
 /**
@@ -122,6 +124,7 @@ export function JobFormFixturesSection({
   riderFeesDollars = 0,
   plan = null,
   payerTags = null,
+  isProject,
 }: JobFormFixturesSectionProps) {
   // Phone (v2.4312): under 640 px every line item stacks. The name takes the
   // row beside its badge and ▲▼, and the ×/$ boxes and the trash sit on a line
@@ -130,11 +133,11 @@ export function JobFormFixturesSection({
   // On touch every control in the row is 44 px (`.jobLineItems--stacked` in
   // index.css).
   const narrowViewport = useNarrowViewport640()
-  // Line budgets (design spike, punch list #234): only a project carries them — a job
-  // priced before the work. Until #238's kind lands, a Stage Plan with an ordered stage
-  // stands in for it; a service call's single line shows nothing.
+  // Line budgets (punch list #234): only a project carries them — a job priced before the
+  // work, #238's kind as the form reads it (PR 1a). A caller with no read leaves a Stage Plan
+  // with an ordered stage to stand in; a service call's single line shows nothing.
   const { openId: lineBudgetOpenId } = useLineBudgets()
-  const lineBudgetsOn = fixtures.some((r) => r.stage_kind === 'order')
+  const lineBudgetsOn = isProject ?? fixtures.some((r) => r.stage_kind === 'order')
   // The stacked ×/$ boxes are as wide as the longest value, the same on every
   // row so they line up down the list. commitOnType on the price input means
   // the box widens live as the user types; the caps keep a runaway number in

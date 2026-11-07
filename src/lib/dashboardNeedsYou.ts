@@ -141,6 +141,7 @@ export type NeedsYouItem = {
     | 'contract-stale'
     | 'work-orders-unpriced'
     | 'jobs-no-kind'
+    | 'projects-no-baseline'
     | 'jobs-stale-open'
     | 'capacity-under'
     | 'dispatch-requests-aged'
@@ -255,6 +256,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'work-orders-unpriced': 40,
   // Hygiene tier: a fact to settle, and the readers that gate on a project wait on it (punch list #238, PR 2).
   'jobs-no-kind': 60,
+  // A project with no hours baseline: the Costs tab, the Projects board and the superintendent's line read nothing (punch list #234, PR 1a).
+  'projects-no-baseline': 60,
   'jobs-stale-open': 40,
   // People/planning tier: a crew running light for three weeks is a scheduling question, not a bill.
   'capacity-under': 50,
@@ -435,6 +438,9 @@ export type NeedsYouInputs = {
   /** Working jobs `jobKind` reads as not set (punch list #238, PR 2). */
   jobKindGapsEnabled?: boolean
   jobKindGaps?: { count: number } | null
+  /** Working projects with no hours baseline (punch list #234, PR 1a). */
+  baselineGapsEnabled?: boolean
+  baselineGaps?: { count: number } | null
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
   /**
@@ -1004,6 +1010,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       kicker: 'Jobs',
       title: n === 1 ? 'A job working has no kind' : `${n} jobs working have no kind`,
       detail: 'No price before the work, no bid and no stages, so the app cannot read it. Say whether each is a service call or a project.',
+      figure: String(n),
+      actionLabel: n === 1 ? 'See it' : 'See them',
+    })
+  }
+
+  if (inputs.baselineGapsEnabled && (inputs.baselineGaps?.count ?? 0) > 0) {
+    const n = inputs.baselineGaps!.count
+    items.push({
+      key: 'projects-no-baseline',
+      severity: 'gray',
+      kicker: 'Projects',
+      title: n === 1 ? 'A project is working with no hours baseline' : `${n} projects working with no hours baseline`,
+      detail: "Made before baselines were written at award. Take the bid's estimate or freeze the book's hours, so the Costs tab, the Projects board and the superintendent's line have a number to read against.",
       figure: String(n),
       actionLabel: n === 1 ? 'See it' : 'See them',
     })
