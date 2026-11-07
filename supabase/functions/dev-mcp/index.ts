@@ -87,7 +87,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.37.0'
+const SERVER_VERSION = '0.38.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -320,8 +320,8 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_matter_narrative',
-    description: "Dry-run the narrative for the firm on a legal matter (v2.4814): the office's account in markdown, read by the law firm as the first tab of its portal and the first section of its printed packet. Replies with the matter, the narrative's length before and after, whether the firm reads it now, and a plan_hash. Nothing is written. The text replaces what is there; an empty markdown clears it. Write facts the record shows, and name each document by its title under Evidence.",
-    inputSchema: { type: 'object', properties: { narrative: { type: 'object', description: '{ matter_id (legal_matters.id — read_rows on legal_matters by payer_name), markdown (the whole text, at most 40,000 characters) }' } }, required: ['narrative'] },
+    description: "Dry-run the narrative for the firm on a legal matter (v2.4814): the office's account in markdown, read by the law firm as the first tab of its portal and the first section of its printed packet. Send the whole text (markdown; '' clears it) or, since v2.6623, ops against the narrative's own headings — replace_section (the lines under a heading, the heading kept), insert_after, append — so one section travels, not the whole account; expect_updated_at (the narrative_updated_at you read) refuses the plan when the narrative was saved since. Replies with the matter, the length before and after, each change with the words removed and added, the headings after, whether the firm reads it now, and a plan_hash. Nothing is written. Write facts the record shows, and name each document by its title under Evidence.",
+    inputSchema: { type: 'object', properties: { narrative: { type: 'object', description: "{ matter_id (legal_matters.id — read_rows on legal_matters by payer_name), markdown (the whole text, at most 40,000 characters) — or — ops: [{ op: 'replace_section', heading, markdown } | { op: 'insert_after', heading, markdown } | { op: 'append', markdown }] (at most 20), expect_updated_at? }" } }, required: ['narrative'] },
   },
   {
     name: 'apply_matter_narrative',
