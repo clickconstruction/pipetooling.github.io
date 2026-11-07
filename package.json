@@ -140,6 +140,7 @@
     "test:pg:archived-seal": "bash scripts/pgtest-archived-seal.sh",
     "test:pg:away-notes": "bash scripts/pgtest-away-notes.sh",
     "test:pg:plan-sets-author": "bash scripts/pgtest-plan-sets-author.sh",
+    "test:pg:license-expiry-sweep": "bash scripts/pgtest-license-expiry-sweep.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",

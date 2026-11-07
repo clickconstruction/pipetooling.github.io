@@ -22,6 +22,7 @@ import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
 import SettingsDataTab from '../components/settings/SettingsDataTab'
 import { settingsJobsDevCards } from '../components/settings/SettingsJobsTab'
 import { SettingsJobsBillingGroups, type JobsBillingCardElements } from '../components/settings/SettingsJobsBillingGroups'
+import { useJobsBillingValueLines } from '../hooks/useJobsBillingValueLines'
 import { SettingsFoldCard } from '../components/settings/SettingsFoldCard'
 import { MOVED_SETTINGS_CARDS } from '../lib/settings/settingsFoldCards'
 import HideHcpFieldSettingsBlock from '../components/settings/HideHcpFieldSettingsBlock'
@@ -1065,6 +1066,8 @@ export default function Settings() {
     defaultLaborRateSaving,
   })
   const issuerFocus = settingsFocus?.startsWith('issuer.') ? settingsFocus.slice('issuer.'.length) : null
+  // PR 3 (v2.6638): each Billing and money card's live value on its folded row, read again when a card folds.
+  const jobsBillingValues = useJobsBillingValueLines(myRole)
   const jobsBillingCards: JobsBillingCardElements = {
     ...(myRole === 'dev'
       ? {
@@ -1685,7 +1688,7 @@ export default function Settings() {
           and the switches open, a strip of the headings pinned while the page scrolls. The kernel gates each card by
           role, so a card built above for a role that is not shown it is never mounted. `?focus=issuer.…` opens the
           company block whatever its fold (the Lien desk's and the waiver window's door, v2.3697). */}
-      <SettingsJobsBillingGroups role={myRole} cards={jobsBillingCards} forceOpen={{ 'invoice-issuer': issuerFocus != null }} />
+      <SettingsJobsBillingGroups role={myRole} cards={jobsBillingCards} forceOpen={{ 'invoice-issuer': issuerFocus != null }} valueLines={jobsBillingValues.lines} onCardFold={jobsBillingValues.refresh} />
       {myRole === 'dev' ? jobsDevCards.modal : null}
       </SettingsGroup>
 

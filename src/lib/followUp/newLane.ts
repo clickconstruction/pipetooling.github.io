@@ -13,6 +13,8 @@
  *   one on an open ask, then a new trade partner, then a supply house. A candidate and someone else close both, and an
  *   email's card ends with **A notice, not a person** (punch list #223 PR 1, v2.6202): the address, and the company's
  *   whole domain when it is its own, marked so the thread goes done and the reader leaves the sender out from then on.
+ *   Since v2.6641 (call 5's other half) the block leads the card, with who was marked, when the sender's address, their
+ *   company's domain or another address there is on the list already (`noticedBefore`): the robot suggests, a person presses.
  * - **Which job?** Two or more active jobs, and their newest line sits on the default job because the default took it,
  *   not a person. A check, since the line is already on a job.
  * - **Who has it?** A new line from them that nobody has answered, and nobody on the conversation. The has rule's pick
@@ -329,6 +331,8 @@ export interface WhoGuess {
   makesRecord?: NewRecordMake
   /** A notice, not a person (v2.6202): the press marks this address, or everything from this domain, and closes the thread. */
   notice?: NoticeMark
+  /** The robot's suggestion (v2.6641): a mark at the sender's company came before, so the notice block leads the card. */
+  suggested?: boolean
 }
 
 /** What *A notice, not a person* marks: the address alone, or the company's whole domain. */
@@ -376,6 +380,14 @@ export interface WhoKnown {
   trades?: ReadonlyArray<{ id: string; company: string; contactName: string | null; emails: readonly string[]; openAsk: string | null }>
   /** The roster, subs left out and nobody archived, for *One of our own team* (v2.5546). */
   roster?: readonly RosterPerson[]
+  /** The rows on `email_left_out_senders` at the sender's company, or the address itself (v2.6641): one puts the notice block first. */
+  noticed?: readonly NoticedSender[]
+}
+
+/** A sender the office marked a notice before, as the list keeps it: an address, or a company's whole domain. */
+export interface NoticedSender {
+  value: string
+  kind: 'address' | 'domain'
 }
 
 /** Someone on the roster who is not a sub, as *Which of ours?* lists them. */
@@ -632,16 +644,39 @@ export const NOTICE_BLOCK = 'A notice, not a person'
  * sender out from then on; search still finds the thread. Nothing for a number: a text is a person until Texts has its
  * own rule.
  */
-export function noticeGuesses(sender: Pick<SenderFacts, 'address' | 'domain' | 'name'>): WhoGuess[] {
+export function noticeGuesses(sender: Pick<SenderFacts, 'address' | 'domain' | 'name'>, before: NoticedSender | null = null): WhoGuess[] {
   if (!sender.address) return []
-  const base = { kind: 'notice' as const, record: null, newPerson: false, name: sender.name }
+  const base = { kind: 'notice' as const, record: null, newPerson: false, name: sender.name, ...(before ? { suggested: true } : {}) }
   const out: WhoGuess[] = [
-    { ...base, label: `Mark ${sender.address} a notice`, words: 'Closes the row and leaves this address out from now on. Search still finds the thread.', notice: { scope: 'address', value: sender.address } },
+    { ...base, label: `Mark ${sender.address} a notice`, words: before ? noticedBeforeWords(before) : 'Closes the row and leaves this address out from now on. Search still finds the thread.', notice: { scope: 'address', value: sender.address } },
   ]
   if (sender.domain) {
     out.push({ ...base, label: `And everything from ${sender.domain}`, words: 'Every address at the company. Their next mail stays in Gmail with no label.', notice: { scope: 'domain', value: sender.domain } })
   }
   return out
+}
+
+/**
+ * The mark that puts the notice block first (punch list #223 call 5's other half, v2.6641): the sender's own address on
+ * the list (a row from before the mark), their company's whole domain, or another address at that domain. Nothing for
+ * an open mail service: a mark on deals@gmail.com says nothing about the next gmail.com sender. The robot suggests and
+ * never marks; the presses are v2.6202's two.
+ */
+export function noticedBefore(sender: Pick<SenderFacts, 'address' | 'domain'>, noticed: readonly NoticedSender[] | undefined): NoticedSender | null {
+  if (!sender.address || !noticed?.length) return null
+  const rows = noticed.map((n) => ({ kind: n.kind, value: n.value.trim().toLowerCase() }))
+  const own = rows.find((n) => n.kind === 'address' && n.value === sender.address)
+  if (own) return own
+  if (!sender.domain) return null
+  const whole = rows.find((n) => n.kind === 'domain' && n.value === sender.domain)
+  if (whole) return whole
+  return rows.find((n) => n.kind === 'address' && n.value.slice(n.value.lastIndexOf('@') + 1) === sender.domain) ?? null
+}
+
+/** The first press's words when a mark came before: who was marked, and that this one is likely a notice too. */
+export function noticedBeforeWords(before: NoticedSender): string {
+  const who = before.kind === 'domain' ? `Everything from ${before.value}` : before.value
+  return `${who} was marked a notice before, so this is likely one too. Closes the row and leaves this address out from now on.`
 }
 
 /** Trade partners whose own domain matches the sender's, those on an open ask first, each with a new person after it. */
@@ -681,23 +716,28 @@ function tradeGuesses(sender: SenderFacts, known: WhoKnown): WhoGuess[] {
  * too. The team line then: a new lead on Prospects, since someone texting for service is a lead until they book, then
  * **A new customer** as one live press. bids@: the new customer, then a trade partner whose domain matches, those on an
  * open ask first, then a new trade partner, then a supply house. Both end with a candidate, one of our own team and
- * someone else, and for an address the two notice presses (v2.6202). No box reads as the team line. The contact's channels, when passed, give the address or the number
- * behind a name.
+ * someone else, and for an address the two notice presses (v2.6202), which lead the card instead when a mark at the
+ * sender's company came before (`noticedBefore`, v2.6641). No box reads as the team line. The contact's channels, when
+ * passed, give the address or the number behind a name.
  */
 export function whoGuesses(row: Pick<NewLaneRow, 'who' | 'body'> & { channels?: ReadonlyArray<{ kind: ChannelKind; value: string }> }, box: Mailbox | null, known: WhoKnown = {}): WhoGuess[] {
   const sender = senderFacts(row)
   const name = sender.name
+  const before = noticedBefore(sender, known.noticed)
+  const notices = noticeGuesses(sender, before)
+  const first: WhoGuess[] = before ? notices : []
   const end: WhoGuess[] = [
     candidateGuess(sender),
     { ...TEAM, name },
     { ...SOMEONE_ELSE, name },
-    ...noticeGuesses(sender),
+    ...(before ? [] : notices),
   ]
   const customers = customerMatches(sender, known)
   if (box === 'bids') {
-    return [...customers, newCustomerGuess(sender, box), ...tradeGuesses(sender, known), newTradeGuess(sender), newSupplyHouseGuess(sender), ...end]
+    return [...first, ...customers, newCustomerGuess(sender, box), ...tradeGuesses(sender, known), newTradeGuess(sender), newSupplyHouseGuess(sender), ...end]
   }
   return [
+    ...first,
     ...customers,
     {
       kind: 'lead',

@@ -23,6 +23,7 @@ vi.mock('../../lib/people/hoursStatementsIo', () => ({
   listHoursStatementsForJob: () => Promise.resolve(rows),
   listHoursStatementsForUser: () => Promise.resolve(rows),
   saveHoursStatement: () => Promise.reject(new Error('not here')),
+  setHoursStatementDriveCopy: () => Promise.reject(new Error('not here')),
 }))
 let peopleCount = 2
 let jobsCount = 3
@@ -137,6 +138,36 @@ describe('the Hours statements section (punch list #212, PR 2)', () => {
     fireEvent.click(within(list[0]!).getByRole('button', { name: 'Open the signed PDF HS-1042-0003' }))
     await waitFor(() => expect(pdfSpy).toHaveBeenCalledWith('doc-3'))
     await waitFor(() => expect(openSpy).toHaveBeenCalledWith('https://files.example.com/doc-3', '_blank', 'noopener'))
+    openSpy.mockRestore()
+  })
+
+  it('a signed row offers Put in Sent by us, which copies the PDF into the job’s Drive folder and then reads Open in Drive (v2.6634)', async () => {
+    rows = [row({ id: 'hs-5', record_id: 'HS-1042-0005', state: 'signed', contract_document_id: 'doc-5' }), row({ id: 'hs-6', record_id: 'HS-1042-0006', state: 'signed', contract_document_id: 'doc-6', drive_file_id: 'drive-6' })]
+    const calls: string[] = []
+    const driveIo = {
+      signedPdfUrl: async (id: string) => `https://files.example.com/${id}`,
+      fetchBytes: async (url: string) => {
+        calls.push(`fetch:${url}`)
+        return new Blob(['%PDF-'], { type: 'application/pdf' })
+      },
+      putInSentByUs: async (jobId: string, file: File) => {
+        calls.push(`put:${jobId}:${file.name}`)
+        return { driveFileId: 'drive-5' }
+      },
+      markFiled: async (statementId: string, driveFileId: string) => {
+        calls.push(`mark:${statementId}:${driveFileId}`)
+      },
+    }
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => ({}) as Window)
+    renderWithProviders(<HoursStatementsSection scope={jobScope} signingIo={signingIo} driveIo={driveIo} />)
+    const list = await screen.findAllByTestId('hours-statement-row')
+    expect(within(list[1]!).queryByRole('button', { name: /in Sent by us/ })).toBeNull()
+    fireEvent.click(within(list[1]!).getByRole('button', { name: 'Open HS-1042-0006 in Drive' }))
+    expect(openSpy).toHaveBeenCalledWith('https://drive.google.com/file/d/drive-6/view', '_blank', 'noopener')
+    fireEvent.click(within(list[0]!).getByRole('button', { name: 'Put HS-1042-0005 in Sent by us' }))
+    await waitFor(() => expect(calls).toEqual(['fetch:https://files.example.com/doc-5', 'put:job-1:HS-1042-0005 signed.pdf', 'mark:hs-5:drive-5']))
+    await within(list[0]!).findByRole('button', { name: 'Open HS-1042-0005 in Drive' })
+    expect(within(list[0]!).queryByRole('button', { name: /in Sent by us/ })).toBeNull()
     openSpy.mockRestore()
   })
 

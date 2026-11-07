@@ -30,6 +30,7 @@ function fakeIo(over: Partial<JobPlansIo> = {}): JobPlansIo {
     addSet: vi.fn(),
     makeCurrent: vi.fn(),
     removeSet: vi.fn(),
+    movePaper: vi.fn(),
     updateMemo: vi.fn(),
     readPapers: vi.fn(async () => ({ rows: [], requests: [] })),
     keepPaper: vi.fn(async () => ({}) as never),

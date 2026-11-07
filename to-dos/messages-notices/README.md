@@ -2,7 +2,7 @@
 name: "Messages: an invitation is a bid lead and a notice is not a person — New stops asking Who is this? of mail nobody wrote to us"
 number: 223
 group: close
-status: proposed 2026-10-30 from Taunya's look at New on the Messages page · built 2026-10-31 and 11-01 as v2.6200, v2.6202, v2.6222 and v2.6231, with v2.6228 beside it · three migrations pushed, gmail-sync and messages-notify deployed · calls 1, 2, 4, 5 and 6 taken as recommended, call 3 built as recommended and waiting on Wendi's word
+status: proposed 2026-10-30 from Taunya's look at New on the Messages page · built 2026-10-31 and 11-01 as v2.6200, v2.6202, v2.6222 and v2.6231, with v2.6228 beside it · three migrations pushed, gmail-sync and messages-notify deployed · calls 1, 2, 4, 5 and 6 taken as recommended, call 3 built as recommended and waiting on Wendi's word · closing 2026-11-07 on claude/223-messages-notices-close-a88bf6: call 5's other half v2.6641, the question to Wendi, the prod walk
 summary: >
   On 2026-10-30 New held thirteen rows and eleven of them were mail nobody wrote to us: nine
   invitations to bid and agency procurement notices, one newsletter, one bid platform's own
@@ -20,7 +20,7 @@ summary: >
 next: Wendi's word on call 3, what Start a bid makes. A walk on prod, by How to verify below. Then call 5's other half, the notice press as the card's first guess for a domain marked before. Then delete this folder.
 size: M+S+L+M (PR 1 a notice, with one small migration and a gmail-sync redeploy; PR 2 the reader's body cue; PR 3 Bid it?; PR 4 the addendum tie and the robot's fold)
 blocker: Nothing in the code. Call 3 waits on Wendi's word, and the walk on a real invitation and a real newsletter reaching bids@.
-ver: v2.6200 · v2.6202 · v2.6222 · v2.6228 · v2.6231 (PRs #6604, #6608, #6628, #6632, #6638), built on v2.5354 · 5494 · 5546 · 5559 · 5711 · 5716 · 5722 · 5793 · 5795 · 5798 · 5811 · 5814 · 5982 · 6179 · 6191 (PR #6595, the row these pieces build on; this card is PR #6601)
+ver: v2.6200 · v2.6202 · v2.6222 · v2.6228 · v2.6231 · v2.6641 (PRs #6604, #6608, #6628, #6632, #6638, and the call 5 PR), built on v2.5354 · 5494 · 5546 · 5559 · 5711 · 5716 · 5722 · 5793 · 5795 · 5798 · 5811 · 5814 · 5982 · 6179 · 6191 (PR #6595, the row these pieces build on; this card is PR #6601)
 opinion: build — every door exists (the reader's left-out rule, the sort card's record-making presses, the bid's ITB links, the line-to-job tie by subject, the Sort all desk); what is missing is two more answers to the sort's question and a list the reader remembers
 mockup: to-dos/messages-notices/mockup.html
 ---
@@ -185,7 +185,7 @@ Each row holds the recommendation the mock-up draws. Each is answered in one lin
 | 2 | Where a notice's thread goes | Done and off Follow up, search still finds it. Gone from every list on Messages. A Notices kind pill. | Done and off Follow up; search and the *Who is this?* pill still find it. A Notices pill only if the fold's count asks for one. | Taken as recommended, v2.6202. |
 | 3 | What Start a bid makes (**Wendi's word**) | A bid on the GC with the name, the ITB link and the due date, undecided. Only the GC named, New Bid left to the estimator. The bid plus the plans filed for the robots (#221). | The first. Filing plans for the robots stays a press on the bid. | Built as recommended, v2.6222: a Plumbing bid on the GC with the rule's estimator, undecided. Waiting on Wendi's word. |
 | 4 | What Not for us leaves behind | No bid; a grey line with the reason; the sender stays a customer. A bid made and archived with the reason, so the Development page holds it. | No bid. The thread holds the reason; the next invitation from them still shows. | Taken as recommended, v2.6222. |
-| 5 | How far the robot goes | Marks notices itself for a marked domain or a body cue, folded with Put back. Only suggests; a person presses. Off until the office has pressed the notice press ten times. | Marks itself for a marked domain or a body cue; suggests for the rest. | Taken as recommended. The marking is built, v2.6231. The suggesting is not built yet. |
+| 5 | How far the robot goes | Marks notices itself for a marked domain or a body cue, folded with Put back. Only suggests; a person presses. Off until the office has pressed the notice press ten times. | Marks itself for a marked domain or a body cue; suggests for the rest. | Taken as recommended. The marking is built, v2.6231. The suggesting, v2.6641: the notice block leads the card, with who was marked, when the sender's company was marked before. |
 | 6 | Who holds a Bid it? row | The office, under Everyone. The estimator the *Who gets a new message* rule picks, so Mine shows it to them. | The rule's estimator. | Taken as recommended, v2.6222: the trade seat holds the row. |
 
 ## Where it plugs in
@@ -263,3 +263,14 @@ PR 3 waits on neither. PR 4 waits on PR 1 and PR 3.
   were taken as recommended, and call 3 was built as recommended. All three migrations are pushed,
   and the live gmail-sync runs main's code. Left: Wendi's word on call 3, the walk by How to verify,
   and call 5's other half. Then delete this folder.
+- 2026-11-07: the closing session. The question on call 3 went to Wendi through Todd, with the built
+  answer and the two alternatives. Call 5's other half built as v2.6641: the notice block leads the
+  *Who is this?* card, with who was marked, when the sender's company was marked before. The week's
+  real mail read on prod through the dev seat: since 11-02 the reader kept the facts on eleven lines
+  (six invitations, five addenda, each with its cue and most with a due day and time); nothing marked
+  a notice yet and nothing set aside, so the fold and the left-out list are still empty; the bids
+  reader hit Gmail's rate limit on the morning of 11-07 and retried on its own. One gap seen: a known
+  GC's new bid request landed on their starred bid (the star wins when the subject names no live bid),
+  so no *Bid it?* row asked about the new job. That is a follow-up of its own, not this card's. The
+  walk kit sends an estimate email and its reply, not an invitation or a newsletter, so the presses
+  in How to verify wait on Todd's choice of how to send the test mail.

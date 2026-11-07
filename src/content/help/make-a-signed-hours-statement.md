@@ -107,6 +107,14 @@ The statement reads {{chip:green|Signed}}. The signature stays on the scan. The 
 
 A signed row under **Hours statements** carries {{button:outline|Open the signed PDF}}. The same press sits on the window. The PDF opens in a new tab for five minutes. Each open is logged. Only a dev and the controller can open it.
 
+## A sub's sheet lines
+
+A sub never punches the clock. Their work is on the job's sheets. The **Who** list names each sub on the job's sheets, with the count of sheets. Pick one and the paper reads the sheets' lines. Each sheet is one group. Each line shows the fixture, the agreed hours, the rate and the amount. Paid reads per sheet, with the payments recorded against it. The charged switch is held for a sub. A sub's paper is always as paid.
+
+## Putting the signed PDF in the job's Drive folder
+
+A signed row under **Hours statements** also carries {{button:outline|Put in Sent by us}}. Press it once. The signed PDF is copied into the job's Drive folder, under Team only and then Sent by us. The row then reads {{button:outline|Open in Drive ↗}}, which opens the copy. The Legal desk's copy is separate. See the next section.
+
 ## Putting it on a legal matter
 
 A signed statement can go on the account's legal matter. Open the Legal desk and pick the account. On the **Evidence** tab, each job lists its **Signed statements**. Press {{button:outline|Add to evidence}} on a signed one. The signed PDF is copied onto the matter for the firm. See [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney#signed-hours-statements-on-the-matter).

@@ -92,3 +92,4 @@ archived-seal
 plan-sets-author
 machine-photos-path
 away-notes
+license-expiry-sweep

@@ -5,7 +5,8 @@
  * window, as the title, then its record id and where it stands, its period and kind, and who saved it, each with
  * **Print** (the paper again from its snapshot, with its record id) and **Open** (the window on it), and on a signed one
  * **Open the signed PDF** (PR 3, v2.6411: the flattened Contract Form through `open-contract-form-pdf`'s gate, the open
- * logged), at the right of the title or across the card's foot on a phone (`.hsCard` in `index.css`); and the press
+ * logged) and, since v2.6634, **Put in Sent by us** (the signed PDF copied into the job's Drive folder, Team only → Sent by
+ * us, through `drive-link`'s `put` — `hoursStatementDrive.ts`) or **Open in Drive ↗** once it is there, at the right of the title or across the card's foot on a phone (`.hsCard` in `index.css`); and the press
  * **Hours statement…** with its count — the people who clocked on the job, or the jobs the person clocked on — dead
  * when there is no one to make a statement for. An empty section names the press. Shown to a dev and the controller
  * alone (`canMakeHoursStatement`: the paper is payroll data, Diane's call of 2026-11-02) and to no one else — nothing,
@@ -25,6 +26,8 @@ import { listHoursStatementsForJob, listHoursStatementsForUser, type HoursStatem
 import { buildHoursStatementPaper, printHoursStatementPaper } from '../../lib/people/hoursStatementPrint'
 import { hoursStatementEmptyWords, hoursStatementPressWords, hoursStatementRowWords } from '../../lib/people/hoursStatementWindow'
 import { supabaseHoursStatementSigningIo, type HoursStatementSigningIo } from '../../lib/people/hoursStatementSigningIo'
+import { HOURS_STATEMENT_DRIVE_WORDS, hoursStatementDriveProblem, hoursStatementDriveUrl, hoursStatementInDriveWords, putHoursStatementInSentByUs, type HoursStatementDriveIo } from '../../lib/people/hoursStatementDrive'
+import { supabaseHoursStatementDriveIo } from '../../lib/people/hoursStatementDriveIo'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { EmptyState } from '../EmptyState'
 import { documentsChip, documentsHeading, documentsQuietButton } from './jobDocumentsStyles'
@@ -53,6 +56,7 @@ export function HoursStatementsSection({
   canAccessPay: canAccessPayGiven,
   desk = false,
   signingIo = supabaseHoursStatementSigningIo,
+  driveIo,
 }: {
   scope: HoursStatementsSectionScope
   /** The window's layer: above the job window by default; the desk passes its editor layer. */
@@ -64,6 +68,8 @@ export function HoursStatementsSection({
   desk?: boolean
   /** The signing's calls (the signed PDF's door); the smoke hands a fake. */
   signingIo?: HoursStatementSigningIo
+  /** Put in Sent by us's calls (v2.6634); the smoke hands a fake. Built from `signingIo` when not given. */
+  driveIo?: HoursStatementDriveIo
 }) {
   const { user, role } = useAuth()
   const { showToast } = useToastContext()
@@ -71,10 +77,13 @@ export function HoursStatementsSection({
   const maker = { role, canAccessPay: canAccessPayGiven ?? access.canAccessPay }
   const [rows, setRows] = useState<HoursStatementRecordRow[] | null>(null)
   const [count, setCount] = useState<number | null>(null)
+  // Subs on the job's sheets (v2.6636): named in the press, since they never clocked.
+  const [onSheets, setOnSheets] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [opening, setOpening] = useState<HoursStatementRecordRow | null>(null)
   const [pdfBusy, setPdfBusy] = useState<string | null>(null)
+  const [driveBusy, setDriveBusy] = useState<string | null>(null)
   const allowed = canMakeHoursStatement(maker)
   const scopeKey = scope.kind === 'job' ? `job:${scope.job.id}` : `person:${scope.userId}`
 
@@ -93,9 +102,11 @@ export function HoursStatementsSection({
         setRows([])
         setError(formatErrorMessage(e, 'The hours statements could not be read.'))
       })
-    void (scope.kind === 'job' ? listHoursStatementPeople(scope.job.id).then((p) => p.length) : listHoursStatementJobs(scope.userId).then((j) => j.length))
+    void (scope.kind === 'job' ? listHoursStatementPeople(scope.job.id).then((p) => ({ count: p.length, onSheets: p.filter((x) => x.kind === 'sheet').length })) : listHoursStatementJobs(scope.userId).then((j) => ({ count: j.length, onSheets: j.filter((x) => x.kind === 'sheet').length })))
       .then((who) => {
-        if (!cancelled) setCount(who)
+        if (cancelled) return
+        setCount(who.count)
+        setOnSheets(who.onSheets)
       })
       .catch((e: unknown) => {
         if (cancelled) return
@@ -112,7 +123,7 @@ export function HoursStatementsSection({
 
   if (!allowed) return null
 
-  const press = hoursStatementPressWords(count, scope.kind)
+  const press = hoursStatementPressWords(count, scope.kind, { onSheets })
   const empty = hoursStatementEmptyWords(count, scope.kind === 'job' ? { kind: 'job' } : { kind: 'person', name: scope.name })
   const openWindow = (on: HoursStatementRecordRow | null) => {
     setOpening(on)
@@ -146,6 +157,24 @@ export function HoursStatementsSection({
     } finally {
       setPdfBusy(null)
     }
+  }
+  const drive = driveIo ?? supabaseHoursStatementDriveIo(signingIo)
+  const putInSentByUs = async (r: HoursStatementRecordRow) => {
+    if (!r.contract_document_id || driveBusy) return
+    setDriveBusy(r.id)
+    try {
+      const { driveFileId } = await putHoursStatementInSentByUs(drive, { statementId: r.id, recordId: r.record_id, jobId: r.job_ledger_id, contractDocumentId: r.contract_document_id })
+      setRows((cur) => (cur ?? []).map((x) => (x.id === r.id ? { ...x, drive_file_id: driveFileId, drive_filed_at: new Date().toISOString() } : x)))
+      showToast(hoursStatementInDriveWords(r.record_id), 'success')
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, HOURS_STATEMENT_DRIVE_WORDS.failed), 'error')
+    } finally {
+      setDriveBusy(null)
+    }
+  }
+  const openInDrive = (r: HoursStatementRecordRow) => {
+    if (!r.drive_file_id) return
+    if (!window.open(hoursStatementDriveUrl(r.drive_file_id), '_blank', 'noopener')) showToast('The window was blocked. Allow pop-ups for this site and press Open in Drive again.', 'error')
   }
   const modalScope: HoursStatementScope =
     scope.kind === 'job'
@@ -211,6 +240,17 @@ export function HoursStatementsSection({
                     <button type="button" style={documentsQuietButton} disabled={pdfBusy === r.id} onClick={() => void openSignedPdf(r)} aria-label={`Open the signed PDF ${r.record_id}`}>
                       {pdfBusy === r.id ? 'Opening…' : 'Open the signed PDF'}
                     </button>
+                  ) : null}
+                  {r.state === 'signed' && r.contract_document_id ? (
+                    r.drive_file_id ? (
+                      <button type="button" style={documentsQuietButton} onClick={() => openInDrive(r)} title={HOURS_STATEMENT_DRIVE_WORDS.openTitle} aria-label={`Open ${r.record_id} in Drive`}>
+                        {HOURS_STATEMENT_DRIVE_WORDS.open}
+                      </button>
+                    ) : (
+                      <button type="button" style={driveBusy ? { ...documentsQuietButton, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, border: '1px solid transparent', cursor: 'not-allowed' } : documentsQuietButton} disabled={Boolean(driveBusy) || Boolean(hoursStatementDriveProblem(r))} title={hoursStatementDriveProblem(r) ?? HOURS_STATEMENT_DRIVE_WORDS.putTitle} onClick={() => void putInSentByUs(r)} aria-label={`Put ${r.record_id} in Sent by us`}>
+                        {driveBusy === r.id ? HOURS_STATEMENT_DRIVE_WORDS.putting : HOURS_STATEMENT_DRIVE_WORDS.put}
+                      </button>
+                    )
                   ) : null}
                   <button type="button" style={documentsQuietButton} onClick={() => printRow(r)} aria-label={`Print ${r.record_id}`}>
                     Print
