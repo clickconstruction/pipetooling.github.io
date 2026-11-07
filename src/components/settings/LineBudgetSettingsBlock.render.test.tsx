@@ -47,7 +47,7 @@ const slider = (name: string) => screen.getByLabelText(name) as HTMLInputElement
 describe('LineBudgetSettingsBlock', () => {
   it('draws the four kinds read out on the picked line size, the rate with the roster beside it, and nothing to save', async () => {
     render(<LineBudgetSettingsBlock />)
-    await waitFor(() => expect(screen.getByTestId('line-budget-saved-words').textContent).toBe('Nothing changed yet.'))
+    await waitFor(() => expect(screen.getByTestId('line-budget-saved-words').textContent).toBe('Every line still assumed reads these.'))
     expect(screen.getByTestId('line-budget-readout-rough_in').textContent).toBe('$4,500 labor · 100 h · $3,500 materials · $2,000 margin')
     fireEvent.click(screen.getByRole('button', { name: '$4,000' }))
     expect(screen.getByTestId('line-budget-readout-trim_set').textContent).toBe('$1,600 labor · 36 h · $1,600 materials · $800 margin')
@@ -58,7 +58,7 @@ describe('LineBudgetSettingsBlock', () => {
 
   it('a drag moves one kind with materials giving way; Save names what it writes and the store takes it', async () => {
     render(<LineBudgetSettingsBlock />)
-    await waitFor(() => expect(screen.getByTestId('line-budget-saved-words').textContent).toBe('Nothing changed yet.'))
+    await waitFor(() => expect(screen.getByTestId('line-budget-saved-words').textContent).toBe('Every line still assumed reads these.'))
     fireEvent.change(slider('Any line labor percent'), { target: { value: '70' } })
     expect(slider('Any line materials percent').value).toBe('30')
     fireEvent.click(screen.getByRole('button', { name: 'Use the roster’s rate' }))
