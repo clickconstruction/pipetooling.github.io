@@ -140,6 +140,12 @@ export type LienDeskEntry = {
   daysLeft: number | null
   severity: LienDeskSeverity
   item: LienDeskItemRow | null
+  /**
+   * The latest notice sent inside LIEN_DESK_SENT_DAYS, on whatever pile the row sits (v2.6624, punch list #248): the Sent
+   * pile's own `item`, and the sent facts a To draft row with new months due still carries — its row's *sent Oct 14*, the
+   * letter-two chip, the courtesy's and the attorney's letter's doors on its footer. Null when nothing went inside the window.
+   */
+  sentItem?: LienDeskItemRow | null
   policy: LienNoticePolicy
   pile: LienDeskPile
 }
@@ -213,7 +219,8 @@ export type LienDeskQueueJob = { customer_id?: string | null; gc_customer_id?: s
  * Fold the RPC rows and the stored items into one entry per job. Jobs whose
  * every month is already noticed and that have no live item are left out —
  * nothing to do. `items` may include sent rows: those stay for
- * LIEN_DESK_SENT_DAYS after `sent_at`.
+ * LIEN_DESK_SENT_DAYS after `sent_at` — on the Sent pile while nothing is due, else as
+ * `sentItem` on the drafting row (v2.6624).
  *
  * `jobs` (v2.6376): the jobs' own rows by id. A job the RPC no longer lists — every
  * window closed more than a week ago, nothing billed, or the balance paid — stays on
@@ -277,7 +284,8 @@ export function buildLienDeskQueue(
     const dueMonths = months.filter((m) => !m.noticed && m.daysLeft >= 0).map((m) => m.key)
     const missedMonths = months.filter((m) => !m.noticed && m.daysLeft < 0).map((m) => m.key)
     const missedUnrecorded = missedMonths.filter((m) => !recordedClosedByJob.get(jobId)?.has(m))
-    const item = itemByJob.get(jobId) ?? sentByJob.get(jobId) ?? null
+    const live = itemByJob.get(jobId) ?? null
+    const sentItem = sentByJob.get(jobId) ?? null
     const hasOwner = first?.has_owner ?? false
     const job = jobs?.[jobId]
     const customerId = first?.customer_id ?? job?.customer_id ?? null
@@ -285,16 +293,23 @@ export function buildLienDeskQueue(
     const policy = parseLienNoticePolicy(gcCustomerId ? policyByCustomer[gcCustomerId] : undefined)
     // The deadline the entry is judged by: the item's months when it has
     // them (a draft names its months), else what a new notice would name.
-    const named = item && itemIsLive(item) && item.months.length > 0 ? item.months : dueMonths
+    const named = live && live.months.length > 0 ? live.months : dueMonths
     const deadlines = months.filter((m) => named.includes(m.key)).map((m) => m.deadline)
     const earliestDeadline = deadlines.length ? deadlines.slice().sort()[0]! : null
     const daysLeft = earliestDeadline ? daysBetweenYmd(todayYmd, earliestDeadline) : null
+    // Months due outrank a notice that went (v2.6624, punch list #248): a sent notice's thirty days used to hide the next
+    // months to draft — job 650 on 2026-11-02, Aug + Sep due in 14 days, sat in Sent with letter two's doors and no draft door
+    // until the sent item aged out three days before Aug's window closed. A month's notice is a statutory deadline; the
+    // courtesy and the attorney's letter ride on the To draft row through `sentItem`.
     let pile: LienDeskPile
-    if (item && itemIsLive(item)) pile = pileForItem(item, hasOwner)
-    else if (item && item.status === 'sent') pile = 'sent'
+    if (live) pile = pileForItem(live, hasOwner)
     else if (dueMonths.length > 0) pile = hasOwner ? 'to_draft' : 'needs_owner'
+    else if (sentItem) pile = 'sent'
     else if (missedMonths.length > 0) pile = 'missed'
     else continue
+    // `item` is the live one, else the sent one on the Sent pile alone: a drafting row's readers expect a draft or nothing,
+    // so a To draft row with a sent notice starts its new notice from the job and keeps the sent facts on `sentItem`.
+    const item = live ?? (pile === 'sent' ? sentItem : null)
     entries.push({
       jobId,
       customerId,
@@ -312,6 +327,7 @@ export function buildLienDeskQueue(
       daysLeft,
       severity: pile === 'sent' ? 'quiet' : severityForDaysLeft(daysLeft),
       item,
+      sentItem,
       policy,
       pile,
     })

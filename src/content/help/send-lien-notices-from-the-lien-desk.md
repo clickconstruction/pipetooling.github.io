@@ -75,7 +75,8 @@ The **Notices** tab lists each job with a GC and an unpaid month whose window cl
 - {{chip:blue|Awaiting approval}} is with the master. When he is beside you, {{button:blue|Leader here, Approve ▸}} on the footer ends the wait. On his phone the notice is one screen. It shows the money owed, the mail-by day and the four steps by name. {{button:green|Approve ▸}} sends it. {{button:outline|Not yet}} offers the hold reasons. **Details** unfolds the rest.
 - {{chip:green|Ready to send}} is approved. It goes out with the run, or one at a time from the Lien window.
 - {{chip:gray|Held}} means the master is waiting on a promise or a call. The desk asks him again three days before the deadline.
-- {{chip:gray|Sent · 30d}} and {{chip:red|Missed}} keep the record in sight.
+- {{chip:gray|Sent · 30d}} and {{chip:red|Missed}} keep the record in sight. Sent holds only the jobs with nothing left to notice.
+- A sent job with a new month due sits under To draft, not under Sent. Its row says when the notice went. Its footer keeps {{button:outline|Send a courtesy notice ▸}} and {{button:outline|Send the attorney’s letter ▸}}. They sit on a line above {{button:blue|Send for approval ▸}}. The next notice drafts below that line.
 
 **Missed** is a lens as well as a pile. A job with open months and one closed month sits under To draft. It also counts under Missed. Its row says which window closed, until someone notes it.
 
@@ -377,7 +378,7 @@ A sent notice still needs watching. The notice's footer counts the days since th
 
 ## Attorney’s letter
 
-The footer also says whether the GC has paid, and whether the GC told the owner to pay us. Counsel's rule is a second owner letter 10 to 14 days after the first packet, when neither has happened. From day 10 the row under Sent wears {{chip:yellow|day 12 · the attorney’s letter}}. It turns red on day 14, and the Dashboard's lien card counts them. While no courtesy notice has gone, the row leads with the courtesy press instead.
+The footer also says whether the GC has paid, and whether the GC told the owner to pay us. Counsel's rule is a second owner letter 10 to 14 days after the first packet, when neither has happened. From day 10 the job's row wears {{chip:yellow|day 12 · the attorney’s letter}}. The row sits under Sent, or under To draft when a new month is due. It turns red on day 14, and the Dashboard's lien card counts them. While no courtesy notice has gone, the row leads with the courtesy press instead.
 
 - {{button:blue|Send the attorney’s letter ▸}} asks which letter to send.
   - **We believe the owner paid the GC out** is the paid out letter. It names the 10 percent the owner had to reserve and the affidavit date. It asks the owner three questions to answer by phone.
