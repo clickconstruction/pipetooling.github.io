@@ -84,7 +84,7 @@ export function personFileFilter(ask: PersonFileAsk): { ok: true; lane: PersonTi
 }
 
 /** The person the ask names: a people.id, a login's users.id, or a name that matches exactly one. */
-async function resolvePerson(reader: Reader, ref: string): Promise<{ person: PeopleRow } | { refused: string }> {
+export async function resolvePerson(reader: Reader, ref: string): Promise<{ person: PeopleRow } | { refused: string }> {
   const select = 'id,name,kind,start_date,end_date,archived_at,account_user_id'
   const key = ref.trim()
   if (!key) return { refused: 'get_person_file needs person — a people.id, a users.id (find_person) or a name that matches exactly one person.' }
