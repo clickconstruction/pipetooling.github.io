@@ -9,7 +9,7 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import * as S from '../jobMode/sheetStyles'
 import { formatDenverCalendarDayWithYear } from '../../utils/dateUtils'
 import { driveFileUrl } from '../../lib/photos/reportPhotos'
-import { captionWords, jobWords, sizeWords, sourceDoorOpensJob, sourceDoorWords, sourceWords, timeWords, viewerTitle, whereWords, whoWords, firstName, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
+import { aboutWords, captionWords, sizeWords, sourceDoorOpensJob, sourceDoorWords, sourceWords, timeWords, viewerTitle, whereWords, whoWords, firstName, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
 import type { UploadedPhotosIo } from '../../lib/photos/uploadedPhotosIo'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 
@@ -135,8 +135,8 @@ export function UploadedPhotoViewer({
             <span style={v}>{[captionWords(row), sizeWords(row)].filter(Boolean).join(' · ')}</span>
           </li>
           <li>
-            <span style={k}>Job</span>
-            <span style={v}>{jobWords(row)}</span>
+            <span style={k}>{row.source === 'task' ? 'Card' : 'Job'}</span>
+            <span style={v}>{aboutWords(row)}</span>
           </li>
           <li>
             <span style={k}>Taken</span>
