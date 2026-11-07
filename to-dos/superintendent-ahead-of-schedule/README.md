@@ -2,7 +2,7 @@
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
 group: gated
-status: thought through 2026-11-01 with the owner, read against the Costs tab, the Labor tab, the Build desk and People → Review; later the same day his four turns folded in (the kind by when the price is known, a labor budget in dollars beside the hours, budgets born on each line, the owner tuning what the assistant never types), with three more boards and the Line Budgets Walk; seven mock-up files; a design spike in the real app the same evening proved the sliders in place and settled that the budget is columns on the line row, and carries the owner's two grid asks (the badge as the press, small cents) into PR 1; PR 1 merged 2026-11-02 as v2.6300 and is live with its migration pushed, and the superintendent's line moved to #242's build; three decisions are the owner's and he is not ready to make them
+status: thought through 2026-11-01 with the owner and mocked up in seven boards; PR 1 merged 2026-11-02 as v2.6300 and is live with its migration pushed, the superintendent's line moved to #242's build; the owner's three calls made 2026-11-07 (the office's sign-off counts as certified, the bonus is on hours saved, a sub-performed stage counts on the sub's sheet hours), so nothing gates the train now; PR 1a building on claude/234-pr1a-budgets-at-award
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
@@ -19,11 +19,11 @@ summary: >
   what the bid's workbench priced it from, assumed by a company split when the line was typed,
   tuned only by the owner, frozen at award as the sum of the lines; and the gate became #238's
   kind, a job priced before the work.
-next: PR 1a, the budgets at award: the workbench writes ◆ on the lines it priced, the award window writes one baseline with its source, the Costs strip's states, the Quickfill deck line. Useful on its own; the owner's three calls gate only the reward.
+next: PR 1a, the budgets at award: the workbench writes ◆ on the lines it priced, the award window writes one baseline with its source, the Costs strip's states, the Quickfill deck line. Then PR 1b, PR 2 and PR 4 in the card's order, each with the owner's three calls built in.
 size: L as a train of six (M · M · S · S · M · M), PR 1 shipped; two migrations, the line budgets (pushed with PR 1) and the planned dates; no edge function
-blocker: The owner's three calls. He said on 2026-11-01 he is not ready to answer them yet; the card holds the thinking until he is.
+blocker: None. The owner's three calls were made 2026-11-07 and are written under Open questions.
 ver: v2.6300 · 3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837
-opinion: later — PR 1 shipped and PR 1a is safe to build before the calls, but the reward is the point and the reward waits on what counts as certified
+opinion: build — the three calls are made and PR 1 is live; the train runs from PR 1a to the scoreboard
 mockup: to-dos/superintendent-ahead-of-schedule/mockup-phone.html
 ---
 
@@ -211,16 +211,24 @@ baseline. That is what makes the Bridge's Build link (v2.5216, v2.5244) a readin
 
 ## Open questions
 
-The owner's, and he said on 2026-11-01 he is not ready to answer them:
+The owner's three, put to him on 2026-11-07 with the card's recommendation beside each, and his
+answers:
 
 1. **What counts as certified?** The GC's certified pay application, a passed inspection, or the
-   office's sign-off. The pay app is the recommendation: it is the GC's word and the moment the bill
-   goes out.
+   office's sign-off. The card recommended the pay app. **His call: the office's sign-off.** The
+   scored percent is the one the office confirms on the job; the crew's own percent stays
+   provisional until the office signs it. The plan reads a GC's certified pay app, when there is
+   one, as the office's sign-off too, so a GC job settles at the pay app without a second press.
 2. **Hours saved or days ahead?** Hours saved against the baseline at the job's labor rate, paid as a
-   share; or days ahead of the planned finish at a day rate. Hours saved is the recommendation: it
-   needs only leg one and two, and it is the number the book learns from.
+   share; or days ahead of the planned finish at a day rate. **His call: hours saved**, the card's
+   recommendation. The bonus is a share of labor kept (the labor budget earned at the certified
+   percent minus the actual labor cost at burdened rates), with hours under baseline beside it; days
+   ahead stays its own figure on the row and on the phone once PR 2 lands, never paid on.
 3. **Does a stage a sub performs count?** Sub labor sheets carry no clock hours. Count it on the sub's
-   sheet hours, or leave it out of the score.
+   sheet hours, or leave it out of the score. The card recommended leaving it out. **His call: it
+   counts, on the sub's sheet hours.** A sub-performed stage's actual labor is the sub labor sheet's
+   hours at the sheet's rate (the sub's dollars already land as sub labor on the Costs tab), so a
+   superintendent who runs subs well is rewarded with the rest.
 
 Four more from the budgets, each drawn one way in the boards and his to flip:
 
@@ -313,6 +321,10 @@ line as the Superintendent sample through View as; certify a ZZ Test pay app and
 row. Delete every ZZ Test row after.
 
 ## Where it stands
+
+2026-11-07: the owner made the three calls (above). PR 1a is next, then PR 1b, PR 2 and PR 4; PR 3
+builds on #242 from the same kernel. The ground for PR 4 is settled: the certified percent is the
+office's sign-off, the bonus is a share of labor kept, and sub stages count on their sheet hours.
 
 2026-11-01: thought through with the owner and mocked up; nothing built. The owner asked to keep the
 canvas and the thinking here and to continue the discussion before any PR. PR 1 is safe to build

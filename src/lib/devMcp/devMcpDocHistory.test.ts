@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { DIFF_LCS_LINES, DIFF_LINES_CAP, docHistoryInput, getDocumentHistory, lineDiff } from '../../../supabase/functions/_shared/devMcpDocHistory'
+import { DIFF_CHARS_CAP, DIFF_LCS_LINES, DIFF_LINES_CAP, docHistoryInput, getDocumentHistory, lineDiff } from '../../../supabase/functions/_shared/devMcpDocHistory'
 import type { Reader, Row } from '../../../supabase/functions/_shared/devMcpComposites'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
@@ -45,6 +45,23 @@ describe('get_document_history (what moved on a document, v2.6622)', () => {
     expect(bigDiff.hunks).toHaveLength(1)
     expect(bigDiff.cut).toBe(true)
     expect(bigDiff.hunks[0]!.removed.length + bigDiff.hunks[0]!.added.length).toBe(DIFF_LINES_CAP)
+  })
+
+  it('v2.6642: the hunks stop at the character cap too, a long line cut to fit with an ellipsis, so the reply stays under the door\'s 80,000', () => {
+    // Paragraph-long lines: 400 of them would be far over the door's cap.
+    const para = (tag: string, i: number) => `${tag} ${i} ` + 'w'.repeat(900)
+    const before = Array.from({ length: 300 }, (_, i) => para('old', i)).join('\n')
+    const after = Array.from({ length: 300 }, (_, i) => para('new', i)).join('\n')
+    const d = lineDiff(before, after)
+    const sent = d.hunks.reduce((n, h) => n + [...h.removed, ...h.added].reduce((m, l) => m + l.length + 1, 0), 0)
+    expect(d.cut).toBe(true)
+    expect(sent).toBeLessThanOrEqual(DIFF_CHARS_CAP + 1)
+    expect(JSON.stringify(d).length).toBeLessThan(80_000)
+    const last = d.hunks[d.hunks.length - 1]!
+    const lastLine = [...last.removed, ...last.added].pop()!
+    expect(lastLine.endsWith('…') || sent < DIFF_CHARS_CAP).toBe(true)
+    // A small change in short lines is untouched by the cap.
+    expect(lineDiff('a\nb', 'a\nc')).toMatchObject({ cut: false, hunks: [{ from_line: 2, removed: ['b'], added: ['c'] }] })
   })
 
   it('shapes the ask: doc_id or kind; from a revision id; to needs from', () => {

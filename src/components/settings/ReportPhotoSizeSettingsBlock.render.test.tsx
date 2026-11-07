@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-/** Settings → Jobs & billing → Photos (punch list #189, PR 5b): the three sizes, the office's pick read and saved. */
+/** Settings → Jobs, bills and liens → Photos (punch list #189, PR 5b): the three sizes, the office's pick read and saved. */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 

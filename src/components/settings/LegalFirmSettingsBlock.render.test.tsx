@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Settings → Jobs & billing → Collections law firms (punch list #144, PR 1 v2.5756 and PR 1b
+ * Settings → Jobs, bills and liens → Collections law firms (punch list #144, PR 1 v2.5756 and PR 1b
  * v2.5758): two active firms as cards with their counties, the county map, a click that colors a
  * free county for the picked firm, a click on the other firm's county that asks before it moves;
  * today's cases as dots, the contents card under the firms on the hovered county, a dot click that

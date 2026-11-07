@@ -99,7 +99,7 @@ describe('getZonedSettingsGroups', () => {
     }
   })
 
-  it('estimator gets Bids & materials + Company but not Jobs & billing or People', () => {
+  it('estimator gets Bids & materials + Company but not Jobs, bills and liens or People', () => {
     const ids = getZonedSettingsGroups('estimator').map((g) => g.id)
     expect(ids).toContain('settings-catalogs')
     expect(ids).toContain('settings-company')
@@ -107,7 +107,7 @@ describe('getZonedSettingsGroups', () => {
     expect(ids).not.toContain('settings-people')
   })
 
-  it('assistants keep Jobs & billing (Job Book kept its pre-reorg reach)', () => {
+  it('assistants keep Jobs, bills and liens (Job Book kept its pre-reorg reach)', () => {
     for (const role of ['master_technician', 'assistant', 'controller'] as const) {
       expect(getZonedSettingsGroups(role).map((g) => g.id)).toContain('settings-jobs')
     }

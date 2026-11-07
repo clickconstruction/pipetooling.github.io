@@ -12,7 +12,7 @@ You press {{button:blue|+ Add customer}} on **Customers** to open the Add custom
 - **Started as a prospect?** Use this when the company is already in Prospects. Type a few letters of the company, contact, phone or address and pick them. The form prefills, and a {{chip:gray|From prospect: Acme Plumbing — Dana}} chip shows the link. Not from a prospect? Skip the field, or click **✕** on the chip.
 - **Name** is the only required field. Address, phone, email and **Date Met** are optional. You can fill them in later from the customer's profile.
 - **Paste Fill** takes a tab-separated line copied from a spreadsheet, in the order Name, Address, Email, Phone, Date. Paste it and click {{button:blue|Fill Fields}} instead of typing.
-- **No owner to pick.** Every customer belongs to the company. It is filed under the company owner account, which a dev sets in Settings → Jobs & billing. That account decides nothing about who can see the customer.
+- **No owner to pick.** Every customer belongs to the company. It is filed under the company owner account, which a dev sets in Settings → Jobs, bills and liens. That account decides nothing about who can see the customer.
 
 Press {{button:blue|Save}}. {{button:outline|Cancel}} throws the form away and changes nothing. The prospect is not changed either.
 

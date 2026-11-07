@@ -4,7 +4,7 @@ import { fetchGcCardBillOn, setGcCardBillOn } from '../../lib/gc/cardBillSetting
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
- * Settings → Jobs & billing → "Let GC customers pay a certified bill by card" (GC mode, Owner Billing's O8c). Off on
+ * Settings → Jobs, bills and liens → "Let GC customers pay a certified bill by card" (GC mode, Owner Billing's O8c). Off on
  * day one; the owner turns it on once the live walk is done. Dev and the owner. Self-contained like
  * OwnerAutoConfirmSettingsBlock: loads its own value, saves on toggle.
  */

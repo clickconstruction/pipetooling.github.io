@@ -27,7 +27,7 @@ function ratesDirty(values: Record<string, string>, saved: Record<string, string
 }
 
 /**
- * Settings → Jobs & billing → Rates charged by crew (punch list #254, PR 1): what the customer is charged for one
+ * Settings → Jobs, bills and liens → Rates charged by crew (punch list #254, PR 1): what the customer is charged for one
  * hour of a crew's time, by who was out that day. Self-contained (loads and saves its own app_settings rows) like the
  * trip charge amounts. The master-with-a-helper row is the v2.6431 rate's own key. A blank row is a rate the owner
  * has not set; the kernels name it instead of pricing. Never the wage anyone is paid.

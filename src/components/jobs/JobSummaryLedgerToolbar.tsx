@@ -275,7 +275,7 @@ export default function JobSummaryLedgerToolbar({
       {prefs.view !== 'jobs' ? null : (
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
         {showMoney && chargesChip ? (
-          <span style={chipMuted} data-testid="job-summary-charges-chip" title="What the Charges column prices at. Settings → Jobs & billing → Rates charged by crew and Markup on materials.">
+          <span style={chipMuted} data-testid="job-summary-charges-chip" title="What the Charges column prices at. Settings → Jobs, bills and liens → Rates charged by crew and Markup on materials.">
             {chargesChip}
           </span>
         ) : null}

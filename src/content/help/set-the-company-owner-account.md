@@ -2,7 +2,7 @@
 title: set the company owner account
 category: Office
 roles: dev
-keywords: company owner, master_user_id, one company, job owner, customer owner, settings, jobs and billing, adoption
+keywords: company owner, master_user_id, one company, job owner, customer owner, settings, jobs, bills and liens, adoption
 ---
 
 ## One company, one account
@@ -13,7 +13,7 @@ That means leaders, assistants and controllers all see everything. Assistants ar
 
 ## Set it
 
-1. Open **Settings → Jobs & billing**. Under **Repairs and old records**, press {{button:outline|Company owner account}}.
+1. Open **Settings → Jobs, bills and liens**. Under **Repairs and old records**, press {{button:outline|Company owner account}}.
 2. Pick the account in the select. Leaders and devs are offered. Leave it on **Not set** to fall back to the single leader account, else the creator.
 3. Tap {{button:blue|Save company owner account}}.
 
