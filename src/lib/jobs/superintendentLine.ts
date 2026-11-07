@@ -28,7 +28,7 @@ export type SuperintendentLineInput = {
   /** The hours budget the Costs tab stands on: the bid's hours, the typed hours, else the assumed line budgets' sum. */
   hoursBudget: number
   /** Where that budget came from — the same word the Costs strip wears, or the leader's open target. */
-  budgetSource: 'bid' | 'typed' | 'assumed' | 'target'
+  budgetSource: 'bid' | 'typed' | 'book' | 'assumed' | 'target'
   /** When the budget is the leader's target: who set it, when, from what and why, so the card says so. */
   target?: { by: string; at: string; from: number | null; why: string } | null
   /** The money reading the Pipeline's burning card makes: direct spend against the direct-cost budget; null while not loaded. */
@@ -79,7 +79,7 @@ export type SuperintendentLine = {
   move: { kind: 'set-pct' | 'open-checklist'; why: string } | null
 }
 
-export const BUDGET_SOURCE_WORDS: Record<SuperintendentLineInput['budgetSource'], string> = { bid: '◆ from the bid', typed: '✎ typed by the office', assumed: '≈ assumed', target: '🎯 expected' }
+export const BUDGET_SOURCE_WORDS: Record<SuperintendentLineInput['budgetSource'], string> = { bid: '◆ from the bid', typed: '✎ typed by the office', book: '≈ assumed from the book', assumed: '≈ assumed', target: '🎯 expected' }
 
 /** The target's own line on the card: who moved the number, from what, and why. The day is the company's calendar day. */
 export function targetWords(t: NonNullable<SuperintendentLineInput['target']>, hours: number): string {

@@ -6,7 +6,7 @@ import { marginFromMarkup, markupBar, pairFromMarkup, pairTyped, type MarkupPair
  * either and the other follows, so a person enters the number the way they think of it and sees both. Under the
  * boxes a bar shows the cost and the markup as parts of what the customer pays, from the job's own materials cost
  * where the door has it and from $1,000 of materials where it does not, so the control shows the number instead of
- * telling it. Every door that takes a markup on materials draws this one control: Settings → Jobs & billing, the
+ * telling it. Every door that takes a markup on materials draws this one control: Settings → Jobs, bills and liens, the
  * Charges window, and Edit Job → Charging the customer. What is stored is still the markup; the pair reads and writes
  * it through `markupMargin.ts`. A margin of 100% or more, or a markup below 0, is refused in words under the boxes.
  *

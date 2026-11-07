@@ -16,8 +16,10 @@ const job: Pick<LegalEvidenceJob, 'jobId' | 'jobLabel' | 'statements' | 'workers
   jobLabel: '717',
   beforeTheApp: false,
   workers: [
-    { userId: 'u-marcus', name: 'Marcus Reyes', sessions: 12 },
-    { userId: 'u-lena', name: 'Lena Ortiz', sessions: 3 },
+    { userId: 'u-marcus', name: 'Marcus Reyes', sessions: 12, kind: 'clock', sheets: 0 },
+    { userId: 'u-lena', name: 'Lena Ortiz', sessions: 3, kind: 'clock', sheets: 0 },
+    // v2.6660: a sub on the job's sheets, asked from their sheets.
+    { userId: 'u-dale', name: 'Dale Whitfield', sessions: 0, kind: 'sheet', sheets: 2 },
   ],
   statements: [
     { id: 'hs-1', recordId: 'HS-717-0001', workerName: 'Marcus Reyes', state: 'signed', signed: true, periodLabel: 'April 1 – April 30, 2026', hours: 118.5, withPay: true, statedDays: 0, signedOn: '2026-05-02', contractDocumentId: 'doc-1', matterDocumentId: null },
@@ -45,6 +47,11 @@ describe('the Signed statements band (punch list #212, PR 4)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ask Lena Ortiz for a signed statement' }))
     expect(a.ask).toHaveBeenCalledWith('job-a', 'u-lena')
     expect(screen.getByRole('button', { name: 'Ask Marcus Reyes for a signed statement' }).textContent).toBe('Ask Marcus Reyes…')
+    const dale = screen.getByRole('button', { name: 'Ask Dale Whitfield for a signed statement' })
+    expect(dale.textContent).toBe('Ask Dale Whitfield… on the sheets')
+    expect(dale.title).toBe('Opens the Hours statement window on 717 with Dale Whitfield picked: 2 sheets here, read as the sheets’ lines')
+    fireEvent.click(dale)
+    expect(a.ask).toHaveBeenLastCalledWith('job-a', 'u-dale')
   })
 
   it('with no matter, Add to evidence is dead with its reason; while one is in flight it reads Adding…', () => {

@@ -9,7 +9,7 @@ import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
- * Settings → Jobs & billing → "Email GC customers 3 days before a bill is due" (GC mode, Owner Billing's O12): the
+ * Settings → Jobs, bills and liens → "Email GC customers 3 days before a bill is due" (GC mode, Owner Billing's O12): the
  * customer hears once for each certified bill, from 3 days before its due day, on the due day Bill the customer shows.
  * Not a bill on card. Off on day one; the owner turns it on after a test copy. Turning it on keeps the day it went
  * on, and only bills certified from that day get the notice, so nothing old goes out. Dev and the owner. **Preview**

@@ -104,6 +104,8 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return href('/jobs?tab=subs&wof=drafts')
     case 'jobs-no-kind':
       return href('/jobs?tab=stages&kind=unset')
+    case 'projects-no-baseline':
+      return href('/jobs?tab=stages&kind=project')
     case 'jobs-stale-open':
       return href('/jobs?tab=stages&followups=idle')
     case 'capacity-under':

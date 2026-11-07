@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smokes for Settings → Jobs & billing → Rates charged by crew (punch list #254, PR 1; the live pass of
+ * Render smokes for Settings → Jobs, bills and liens → Rates charged by crew (punch list #254, PR 1; the live pass of
  * 2026-11-03): the seven rows read from app_settings with a blank where the owner has not set a rate; Save the rates is
  * dead, saying every rate is saved as shown, until a row changes, then writes one row per key, null for a blank; Who counts as what
  * lists every person with their Charged as, hides samples, twins and walk testers, lists people no longer here apart

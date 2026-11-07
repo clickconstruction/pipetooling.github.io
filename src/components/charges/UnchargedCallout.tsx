@@ -6,7 +6,7 @@ import { unchargedWords, type CrewUncharged } from '../../lib/charges/crewDays'
  * 2026-11-03): a day with nobody charged prices at nothing, and nothing else on the window said why or where to fix it.
  * Names each person, and counts only the days a standing would fix (`unchargedDays`, v2.6484), never a day unpriced
  * for a missing rate-card row or a flat rate not set. A dev gets a door to each desk's *Charged as* and to the one place
- * that sets everyone at once; anyone else gets the words to ask a dev, since the Jobs & billing tab and the desk's
+ * that sets everyone at once; anyone else gets the words to ask a dev, since the Jobs, bills and liens tab and the desk's
  * Charged as row open for a dev alone. Office screens only; a customer's paper keeps its neutral reason.
  */
 export function UnchargedCallout({ people, unchargedDays, role, onNavigate, margin = '0 1rem 0.5rem' }: { people: ReadonlyArray<CrewUncharged>; unchargedDays: number; role: string | null | undefined; onNavigate?: () => void; margin?: string }) {

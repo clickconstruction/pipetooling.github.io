@@ -92,7 +92,7 @@ The same answer meets you in two more places, so no notice is ever blocked on a 
 - **Bill Customer** is one. Billing a GC job is a last chance to catch a missing owner before the notice is due. When the job has no confirmed owner, the Send-to block shows one green line on every bill. It reads *Owner of record for 5498 Cibolo Valley Dr: Schertz Station Ltd (Guadalupe Appraisal District 2025) — not yet on the job.* Then {{button:green|Use}} *it so the lien notice can be mailed when it is due.* It never holds up the bill. A roll miss reads *No owner of record on file — paste the county's page…* and opens the paste box right there.
 - **The Lien desk** is the other. An item in *Needs the owner* shows *Found at:* with the district and year, the chips, the CAD link and {{button:blue|Use this owner}}. {{button:outline|Find the owner ›}} stays as the fallback. Once Use this owner is pressed the row moves to *To draft* on its own.
 
-:::example Save owners from the appraisal roll automatically (Settings → Jobs & billing, master and dev)
+:::example Save owners from the appraisal roll automatically (Settings → Jobs, bills and liens, master and dev)
 Off on day one. When it is on, every night the app looks up every open GC job with **no owner at all**, hours or not, and saves the roll's answer as *from the roll · unconfirmed* — the property record fills in with its provenance, but nobody has looked at it yet. The Lien desk drafts on it and says so — *Owner from the roll (2025) · unconfirmed · confirm on Guadalupe CAD ↗* {{button:blue|Confirm}} — and **Record the run refuses** until a person presses Confirm on every notice in the run. Owners someone typed or pressed Use on are never touched. Turn it on after the first sitting shows the roll is right.
 :::
 

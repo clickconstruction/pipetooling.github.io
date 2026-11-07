@@ -67,14 +67,14 @@ Each county wears the color of the law firm that covers it. A gray county has no
 
 **Who covers what** lists each firm with its counties, its cases and what they owe. Tap a county to list its cases on the card under it. Tap a dot to pick one case out. Press **Open on the desk ›** on a case and the desk opens on that account under **Accounts**.
 
-Scroll on the map to zoom. Drag it to move. Press {{button:outline|Central Texas}} or {{button:outline|All of Texas}} to reset the view. A dev colors the counties on **Settings**, then **Jobs & billing**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
+Scroll on the map to zoom. Drag it to move. Press {{button:outline|Central Texas}} or {{button:outline|All of Texas}} to reset the view. A dev colors the counties on **Settings**, then **Jobs, bills and liens**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
 
 
 ## Signed hours statements on the matter
 
 A worker can sign a paper on what they did on the job and what the company paid for it. See [make a signed hours statement](/help/make-a-signed-hours-statement). On the **Evidence** tab, each job in **Proof the work happened** has a **Signed statements** line under it. It lists every statement made for the job. Only a dev and the controller see the statements and the presses. Everyone else sees the line say that only a dev or the controller can read them. Each shows its record, the worker, the period, the hours and where it stands.
 
-Press **Ask <name>…** to ask a worker who clocked on the job. The Hours statement window opens on that job with the worker picked. Send it for a signature from there.
+Press **Ask <name>…** to ask a worker who clocked on the job. A sub on the job's sheets is listed too, marked **on the sheets**. The Hours statement window opens on that job with the worker picked. A sub's paper reads their sheets' lines. Send it for a signature from there.
 
 Press {{button:outline|Add to evidence}} on a signed statement. The signed PDF is copied onto the matter under **Documents for the firm**. The copy is titled with its record and dated the day it was signed. One line says who signed for how many hours, where and when. The statement then shows {{button:outline|Show on Evidence ↗}}, which lands on the copy. The firm reads it with the other documents. **What goes to the firm** letters the signed statements as their own exhibit under field evidence.
 
@@ -168,7 +168,7 @@ Two firms can share a county. One of them is its first call, and the desk picks 
 
 Press the firm's name to read its details. The window opens on where the firm covers. The firm's counties show in color on the map, and the other firms' counties show faint. Each county it covers is a row with its cases and what they owe. A county the firm shares says also, and names the first call. Press **Show on the desk map** to see those counties lit on the Map. When no county is colored yet, the window says the firm takes every account by default. A dev presses **Color counties** there, or **Extend coverage** under the list. Pressing a county on the map then adds it for the firm. Pressing it again takes it off. **Add by area** colors a whole metro in one press. Nothing changes until you press **Save**. The first save ends the default, and the window names any account it leaves with no firm. A dev presses **Hand off counties** to move some of the firm's counties to another firm. The firm you pick becomes first call there. Accounts already with the firm stay with it. **Retire this firm** waits until the firm covers no county and holds no account. Under the map, the window holds the firm's name, the handling person, and a contact email and phone. Press **Edit details** to change them. The window also holds the fee model behind **What's left for us?**. The fee model is the contingency % and the filing cost. The contingency % is the firm's share of what is recovered. The contact email is not a subscription. The firm's own people and their email rules come from the portal's Notifications page. Nobody is emailed until they are on that list and confirmed.
 
-A dev presses {{button:outline|Firms…}} at the top right. It adds a firm and colors the counties it covers without leaving the desk. The same block lives on **Settings**, then **Jobs & billing**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
+A dev presses {{button:outline|Firms…}} at the top right. It adds a firm and colors the counties it covers without leaving the desk. The same block lives on **Settings**, then **Jobs, bills and liens**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
 
 ## When the firm acts
 

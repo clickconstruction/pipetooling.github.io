@@ -1,4 +1,4 @@
-/** Settings → Jobs & billing, the dev's cards whose state lives in the page (punch list #261): the company owner
+/** Settings → Jobs, bills and liens, the dev's cards whose state lives in the page (punch list #261): the company owner
  * account with its re-assign table and confirm window, and the default labor rate. `settingsJobsDevCards` hands
  * each back by its slug for `SettingsJobsBillingGroups` to place under its heading, and the confirm window apart,
  * since it is drawn over the page. The self-contained dev cards (the rate card, the trip charges, the law firms…)

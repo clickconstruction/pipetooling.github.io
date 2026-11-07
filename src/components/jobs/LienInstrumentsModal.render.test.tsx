@@ -113,6 +113,8 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     // Our schedule after a notice (v2.6574): the strip and whose rule each day is, under the job's dates.
     expect(screen.getByTestId('lien-rules-schedule').textContent).toContain('day 10 the attorney’s letter is due')
     expect(screen.getByTestId('lien-rules-schedule-sources').textContent).toContain('counsel’s rule')
+    // The lien month (punch list #235, PR 1): the owner's days under the schedule.
+    expect(screen.getByTestId('lien-rules-month-lines').textContent).toContain('reminders on days 1 to 5, notices on days 6 to 9, liens on days 10 to 13, catch-up on the 14th and 15th, nothing scheduled from the 16th')
     expect(strip.textContent).toContain('Sub job')
     // The job's property kind is not set: the residential dates, a month earlier than commercial (v2.5031).
     expect(screen.getByTestId('lien-rules-job-notice').textContent).toBe('Sep 15')
