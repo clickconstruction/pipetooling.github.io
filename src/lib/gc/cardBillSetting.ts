@@ -1,6 +1,6 @@
 /**
  * Pay by card's switch (GC mode, Owner Billing's O8c): the app_settings row `gc_card_bill_on_v1`, 'true' or 'false',
- * inserted 'false' by migration 20261010042000. The owner turns it on in Settings → Jobs & billing; dev and the owner
+ * inserted 'false' by migration 20261010042000. The owner turns it on in Settings → Jobs, bills and liens; dev and the owner
  * write it (a key-scoped UPDATE policy), everyone signed in reads it. `gc-card-bill`, `customer-portal`'s offer and
  * `gc-customer-email`'s card lines read the same row, and Bill the customer's hint reads it here. It replaced O8b's
  * env value `GC_CARD_BILL_ON`.

@@ -1,5 +1,5 @@
 /**
- * Settings → Jobs & billing → Machine templates (punch list #270, PR 6): where the office keeps a kind of machine at
+ * Settings → Jobs, bills and liens → Machine templates (punch list #270, PR 6): where the office keeps a kind of machine at
  * a size, Small excavator, Skid steer, Directional drill, with the gauges its check sheet draws and the questions its
  * walk asks, plus the questions every machine gets and the short leaving check. A machine on the fleet board picks a
  * template and reads these until it keeps its own gauges. The io is injected so the render smoke runs over a fake.

@@ -14,10 +14,10 @@ summary: >
   an anchor so Go anywhere, the Settings search and the guides land on the card itself, which opens
   when it is the target. The usage ledger holds no per-card count, so the folds follow a rule and
   the fold presses start counting.
-next: PR 2 (v2.6631) merges and is walked. Then the rename sweep (call 3, Jobs, bills and liens, its own PR cut from fresh main) and PR 3 (call 4, the live value on each Billing and money card's folded row).
+next: PR 2 (v2.6631) and the rename (v2.6637) merge and are walked. Then PR 3 (call 4, the live value on each Billing and money card's folded row), and the card is retired.
 size: S (the card) + M (PR 1: the groups kernel, the fold wrapper, the anchors and doors, the strip, the smoke, the docs and guides) + S (PR 2, three cards to other tabs, if wanted)
 blocker: Nothing. The owner answered the seven calls 2026-11-07; the table below holds his answers.
-ver: v2.6516 (PR 1) · v2.6631 (PR 2)
+ver: v2.6516 (PR 1) · v2.6631 (PR 2) · v2.6637 (the rename)
 opinion: build — the tab is the company's money and paper settings, the office cannot find a card without reading all 28, and the fix is headings, a fold shape and anchors, nothing that changes what a card does
 mockup: to-dos/settings-jobs-billing-tidy/mockup.html
 ---
@@ -163,7 +163,7 @@ answered.
 |---|---|---|---|---|
 | 1 | Which cards fold by default? | Every card. Every form, switches stay open. Only the cards that fold today. | A switch stays open, a form folds. Open: Hide the HCP field, Photos, Liens · owner of record, GC pay by card, the two GC notices, the trades' cut-off. The other 21 fold. The ledger cannot rank them yet. | **Every card** (2026-11-07). PR 2. |
 | 2 | Does any card leave the tab? | None. Three go: HCP reconcile → Data & recovery, Sub portal · pay schedule → People & teams, The office's county → Company beside the office address. | None in PR 1. PR 2 moves the three if yes, each old anchor mapped to its new tab so every link still lands. | **All three go** (2026-11-07). PR 2. |
-| 3 | Does the tab's name change? | Jobs & billing. Jobs, bills and liens. Money and papers. | Jobs & billing stays: twenty-one guides and every door name it, and the headings now carry the other words. | **Jobs, bills and liens** (2026-11-07). Its own sweep PR after PR 2: the name sits in twenty-nine guides and some seventy source files. |
+| 3 | Does the tab's name change? | Jobs & billing. Jobs, bills and liens. Money and papers. | Jobs & billing stays: twenty-one guides and every door name it, and the headings now carry the other words. | **Jobs, bills and liens** (2026-11-07). The sweep v2.6637, `scripts/codemods/rename-jobs-billing.py`. |
 | 4 | Does a folded card show its live value on its row? | Not yet. Yes, every card. Yes, the money cards only. | Later, PR 3: the row reads *$260 master with a helper · $170 a tech alone*, *Medium, 1600 px*, *Friday*. Each card then exposes its value line; PR 1 draws the static line of what the card sets. | **Yes, the money cards** (2026-11-07). PR 3. |
 | 5 | Should a fold's press count in Usage? | No. Yes, the fold presses. Yes, every press on the tab. | Yes, the fold presses, in PR 1, so the next look at this tab reads the ledger instead of a rule. | **Yes, the fold presses** (2026-11-07). As built. |
 | 6 | Does the page remember which cards were opened? | No, each visit starts folded. Yes, per device. | No. The tab is opened a few times a month; a remembered open state hides the headings' work, and a link opens its card anyway. | **No** (2026-11-07). As built. |
@@ -197,7 +197,7 @@ answered.
    open, `doors.test.ts` and the search tests green, the docs and the guides. Walked on the dev
    server as the dev and as a master at 1,280 and 375 wide in both themes.
 2. **PR 2 (v2.6631)**: the three cards to their tabs, the old anchors mapped; every card folds (call 1).
-3. **The rename sweep (call 3)**: *Jobs & billing* → *Jobs, bills and liens* across the tab, the guides, the doors and the docs, a script-driven PR cut from fresh main.
+3. **The rename sweep (call 3, v2.6637)**: *Jobs & billing* → *Jobs, bills and liens* across the tab, the guides, the doors and the docs, `scripts/codemods/rename-jobs-billing.py` cut from fresh main.
 4. **PR 3 (call 4)**: the live value line on each Billing and money card's folded row.
 
 ## How to verify
@@ -217,4 +217,4 @@ answered.
 
 ## Where it stands
 
-Proposed 2026-11-04. PR 1 (v2.6516) built the recommended defaults the same day: the six headings, the fold wrapper on every form, the anchors and doors, the strip, the counted fold presses. The owner looked at the live tab and answered the seven calls 2026-11-07 (the table above): every card folds, all three cards move, the tab becomes *Jobs, bills and liens*, the money cards get their live value, the rest as built. PR 2 (v2.6631) built calls 1 and 2 the same day: the switches fold, HCP reconcile sits under Data & recovery, Sub portal · pay schedule under People & teams, the office's county under Company beside the office address, every old anchor still landing (`src/lib/settings/settingsFoldCards.ts`). Left: the rename sweep and PR 3.
+Proposed 2026-11-04. PR 1 (v2.6516) built the recommended defaults the same day: the six headings, the fold wrapper on every form, the anchors and doors, the strip, the counted fold presses. The owner looked at the live tab and answered the seven calls 2026-11-07 (the table above): every card folds, all three cards move, the tab becomes *Jobs, bills and liens*, the money cards get their live value, the rest as built. PR 2 (v2.6631) built calls 1 and 2 the same day: the switches fold, HCP reconcile sits under Data & recovery, Sub portal · pay schedule under People & teams, the office's county under Company beside the office address, every old anchor still landing (`src/lib/settings/settingsFoldCards.ts`). The rename (v2.6637) swept the name the same day with `scripts/codemods/rename-jobs-billing.py`. Left: PR 3.

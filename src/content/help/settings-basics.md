@@ -2,7 +2,7 @@
 title: set up my profile and notifications
 category: Getting Started
 roles: all
-keywords: profile, name, phone, push notifications, pinned pages, tabs, my way, ask me first, jobs and billing, headings, jump strip
+keywords: profile, name, phone, push notifications, pinned pages, tabs, my way, ask me first, jobs and billing, jobs bills and liens, headings, jump strip
 order: 2
 ---
 Settings is where you manage your own profile and notifications. On a desktop, its pages sit in a list down the left side.
@@ -17,11 +17,11 @@ Here's the whole flow in 20 seconds. The recording shows the gear menu → Setti
 
 {{gif:settings-basics.gif|Gear menu → Settings → Your account (profile, push notifications) → Your dashboard (report notifications)}}
 
-## Jobs & billing
+## Jobs, bills and liens
 
-Office roles see **Jobs & billing** in the Company group. The tab holds the company's money and paper settings. The cards sit under six headings. Each heading names the question it answers. **Billing and money** holds what an hour, a part and a trip cost the customer. **The job's record** holds the stage checklists, photos and test reports. **What a bill says** holds the words that print on a bill. **Liens, collections and papers** holds the owners of record and the law firms. **Notices the app sends** holds the GC notices. **Repairs and old records** holds one-time fixes. You see only the headings your role has cards under.
+Office roles see **Jobs, bills and liens** in the Company group. The tab holds the company's money and paper settings. The cards sit under six headings. Each heading names the question it answers. **Billing and money** holds what an hour, a part and a trip cost the customer. **The job's record** holds the stage checklists, photos and test reports. **What a bill says** holds the words that print on a bill. **Liens, collections and papers** holds the owners of record and the law firms. **Notices the app sends** holds the GC notices. **Repairs and old records** holds one-time fixes. You see only the headings your role has cards under.
 
-:::example Jobs & billing, as a master
+:::example Jobs, bills and liens, as a master
 {{chip:blue|Money 3}} {{chip:gray|The job’s record 3}} {{chip:gray|Liens and papers 1}} {{chip:gray|Notices 2}}
 
 **Billing and money**

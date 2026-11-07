@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Settings → Jobs & billing → the customer's notice before a bill is due (O12): its own switch, read and written by
+ * Settings → Jobs, bills and liens → the customer's notice before a bill is due (O12): its own switch, read and written by
  * its own key; it loads off and says turning it on keeps today as its day; on, it says since when; Preview lists the
  * customers who would hear today, and both presses ask for the customer's notices from the day in *Count bills
  * certified since*, which starts at the switch's day while on and today while off, and refuses a later day.
