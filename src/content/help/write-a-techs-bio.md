@@ -51,3 +51,5 @@ A tech can turn off any line in Settings. The line shows crossed out with the te
 ## When the bio goes
 
 The bio goes as a second text the first time a tech presses On my way to a customer. It never goes to that customer again. A different tech gets their own first time. See [clock in and out with Job Mode](/help/job-mode-clocking).
+
+In Messages the bio line wears a small **bio** mark beside the tech's name. The mark says the app sent it. Hover the mark to see whose bio it is.
