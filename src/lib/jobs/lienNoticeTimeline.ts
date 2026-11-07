@@ -1,4 +1,4 @@
-import { COURTESY_AFFIDAVIT_MARGIN_DAYS, COURTESY_FROM_DAY, addDaysYmd } from './lienCourtesyNotice'
+import { COURTESY_AFFIDAVIT_MARGIN_DAYS, COURTESY_FROM_DAY, addDaysYmd, courtesyReminderWindow } from './lienCourtesyNotice'
 import { LETTER_TWO_BY_DAY, LETTER_TWO_FROM_DAY } from './lienLetterTwo'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
 
@@ -91,13 +91,14 @@ export function lienNoticeTimeline(f: LienNoticeTimelineFacts): LienTimelineRow[
   })
 
   const weekStart = f.lienDay ? addDaysYmd(f.lienDay, -COURTESY_AFFIDAVIT_MARGIN_DAYS) : null
-  // The one courtesy: a window from day 7 to the affidavit's week.
-  const cFrom = d(COURTESY_FROM_DAY)
+  // The one courtesy: a window from day 7, or from reminders week of the lien's month when that is later (punch list #235, PR 4), to the affidavit's week.
+  const reminderWeek = courtesyReminderWindow(f.lienDay)
+  const cFrom = reminderWeek && reminderWeek.from > d(COURTESY_FROM_DAY) ? reminderWeek.from : d(COURTESY_FROM_DAY)
   const cTo = weekStart && weekStart > cFrom ? weekStart : cFrom
   if (f.courtesySentYmd) {
     rows.push({ key: 'courtesy', kind: 'courtesy', from: f.courtesySentYmd, dayFrom: dayOf(f.courtesySentYmd), title: 'The one courtesy reminder went, by email and text.', detail: 'A plain reminder that the notice stands. We send it once; after a week of silence the attorney’s letter leads.', chip: 'courtesy notice', status: 'done', statusWords: '✓ done', next: `${plural(between(f.courtesySentYmd, today), 'day')} ago · no second one` })
   } else if (!paidInFull) {
-    const base = { key: 'courtesy', kind: 'courtesy' as const, from: cFrom, to: cTo, dayFrom: COURTESY_FROM_DAY, dayTo: dayOf(cTo), title: 'One courtesy reminder may go: a plain email and text saying the notice stands.', detail: `Not required. The owner chose day ${COURTESY_FROM_DAY}. After it, silence means the attorney’s letter, not a second reminder.`, chip: 'courtesy notice' }
+    const base = { key: 'courtesy', kind: 'courtesy' as const, from: cFrom, to: cTo, dayFrom: dayOf(cFrom), dayTo: dayOf(cTo), title: 'One courtesy reminder may go: a plain email and text saying the notice stands.', detail: `Not required. The owner chose day ${COURTESY_FROM_DAY}. After it, silence means the attorney’s letter, not a second reminder.`, chip: 'courtesy notice' }
     if (f.courtesyHeld) rows.push({ ...base, status: 'skipped', statusWords: 'held', next: `${f.courtesyHeld} · the attorney’s letter still goes` })
     else if (today < cFrom) rows.push({ ...base, status: 'soon', statusWords: `opens in ${plural(between(today, cFrom), 'day')}`, next: `from ${fmt(cFrom)} the row offers Send a courtesy notice` })
     else if (today <= cTo) rows.push({ ...base, status: 'open', statusWords: 'open · optional', next: `${plural(between(today, cTo), 'day')} left to send it · after ${fmt(cTo)} the desk asks for the affidavit` })

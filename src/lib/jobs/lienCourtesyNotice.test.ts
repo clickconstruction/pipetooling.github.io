@@ -11,7 +11,8 @@ import {
   courtesyEmailText,
   courtesyFooterSentence,
   courtesyGreeting,
-  courtesyIsDue, courtesyMaySend,
+  courtesyIsDue,
+  courtesyMaySend,
   courtesyOutcomeWords,
   courtesyOwnerSubject,
   courtesyPayLine,
@@ -25,7 +26,9 @@ import {
   withCourtesyRecord,
   type CourtesyFacts,
   type CourtesyRecord,
+  courtesyReminderWindow,
 } from './lienCourtesyNotice'
+import { LIEN_MONTH_RULE } from './lienMonthRhythm'
 import type { LetterTwoStatus } from './lienLetterTwo'
 
 const TODAY = '2026-11-02'
@@ -71,6 +74,14 @@ describe('the courtesy notice — where it stands on a sent notice', () => {
     const early = courtesyStatus({ letterTwo: letterTwo({ day: 4 }), records: [], openBalance: 4850, todayYmd: TODAY, affidavit })
     expect(early).toMatchObject({ state: 'waiting', day: 4, words: `day 4 · courtesy from day ${COURTESY_FROM_DAY}`, lienDay: '2026-11-16' })
     const due = courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [], openBalance: 4850, todayYmd: TODAY, affidavit })
+    // The lien month (punch list #235, PR 4): past day 7 the reminder waits for reminders week of the lien's month, days 1 to 5, and is due from its first day; past the week it stays due.
+    const later = courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [], openBalance: 4850, todayYmd: TODAY, affidavit: { ...affidavit, deadline: '2026-12-15' } })
+    expect(later).toMatchObject({ state: 'waiting', day: 9, words: 'day 9 · reminder goes Dec 1 to 5', reminderWindow: { from: '2026-12-01', to: '2026-12-05' } })
+    expect(courtesyMaySend(later)).toBe(true)
+    expect(courtesyFooterSentence(later, '$4,850.00')).toMatch(/^The reminder goes Dec 1 to 5, reminders week of the lien’s month/)
+    expect(courtesyStatus({ letterTwo: letterTwo({ day: 16 }), records: [], openBalance: 4850, todayYmd: '2026-11-08', affidavit })).toMatchObject({ state: 'due', words: 'day 16 · nothing since the packet' })
+    expect(courtesyReminderWindow(null)).toBeNull()
+    expect(courtesyReminderWindow('2026-12-15', { ...LIEN_MONTH_RULE, reminders: { from: 2, to: 6 } })).toEqual({ from: '2026-12-02', to: '2026-12-06' })
     expect(due).toMatchObject({ state: 'due', day: 9, words: 'day 9 · nothing since the packet' })
     expect(courtesyIsDue(due)).toBe(true)
     expect(courtesyIsDue(early)).toBe(false)
@@ -305,7 +316,7 @@ describe('paying it down (punch list #274, PR 3)', () => {
     // Past the week but before the promised day: still paying.
     expect(courtesyStatus({ letterTwo: letterTwo({ day: 16 }), records: [], openBalance: 2850, todayYmd: '2026-11-09', affidavit, payments: paid, promisedYmd: '2026-11-20' }).state).toBe('paying')
     // On the promised day the desk asks again.
-    expect(courtesyStatus({ letterTwo: letterTwo({ day: 27 }), records: [], openBalance: 2850, todayYmd: '2026-11-20', affidavit: { ...affidavit, deadline: '2026-12-15' }, payments: paid, promisedYmd: '2026-11-20' }).state).toBe('due')
+    expect(courtesyStatus({ letterTwo: letterTwo({ day: 27 }), records: [], openBalance: 2850, todayYmd: '2026-11-20', affidavit: { ...affidavit, deadline: '2026-12-15' }, payments: paid, promisedYmd: '2026-11-20' }).state).toBe('waiting')  // the pause ended; the reminder itself waits for Dec 1 to 5, reminders week of the lien's month (punch list #235, PR 4)
     const promise = { at: '2026-11-01T15:00:00Z', by: 'Grace', ymd: '2026-11-18', amount: 2850, note: 'Dana said the check goes out the 15th' }
     const notice = courtesyStatus({ letterTwo: letterTwo({ day: 9 }), records: [], openBalance: 2850, todayYmd: TODAY, affidavit, payments: paid, promise })
     expect(notice.paying).toMatchObject({ until: '2026-11-18', promisedYmd: '2026-11-18', promise })

@@ -17,6 +17,14 @@ describe('lienReminderAt — the rung a sent notice stands on (punch list #262)'
     const w = lienReminderAt(courtesy({ state: 'waiting', day: 4, words: 'day 4 · courtesy from day 7' }), two())
     expect(w).toEqual({ step: 1, state: 'waiting', words: 'day 4 · courtesy from day 7', day: 4, counted: false })
   })
+  it('step 1 uncounted while the reminder waits for reminders week of the lien’s month (punch list #235, PR 4), told apart from before day 7', () => {
+    const scheduled = courtesy({ state: 'waiting', day: 12, words: 'day 12 · reminder goes Dec 1 to 5', lienDay: '2026-12-15', reminderWindow: { from: '2026-12-01', to: '2026-12-05' } })
+    expect(lienReminderAt(scheduled, two({ day: 12 }))).toEqual({ step: 1, state: 'scheduled', words: 'day 12 · reminder goes Dec 1 to 5', day: 12, counted: false })
+    const r = buildLienReminders({ courtesyByJob: { a: scheduled, b: courtesy({ state: 'waiting', day: 4, words: 'day 4 · courtesy from day 7' }) }, letterTwoByJob: {}, jobTitle: (id) => id })
+    expect([r.counts[0], r.waiting, r.scheduled]).toEqual([0, 1, 1])
+    expect(r.rows.find((x) => x.jobId === 'a')?.why).toBe('waits for reminders week')
+    expect(lienReminderLadderItems(lienReminderAt(scheduled, two({ day: 12 }))!)[0]!.detail).toContain('reminders week of the lien’s month, days 1 to 5')
+  })
   it('step 2 once the one courtesy went: sent inside the week; after it the attorney’s letter leads on step 3 (v2.6594, never a second courtesy)', () => {
     const sent = courtesy({ state: 'sent', day: 9, words: 'courtesy sent Nov 2 by email and text', lastSentAt: '2026-11-02T16:00:00Z', waitingForAnswer: true })
     expect(lienReminderAt(sent, two({ day: 9 }))).toMatchObject({ step: 2, state: 'sent', counted: true })
@@ -86,13 +94,15 @@ describe('buildLienReminders — the strip’s counts and the names behind them'
     expect(r.rows.map((x) => `${x.step} ${x.title} ${x.state}`)).toEqual(['1 273 · Dudley (Lennox) due', '1 663 · Knight Contracting due', '1 912 · Harlan Homes waiting', '2 741 · Ridgeway Builders sent', '3 733 · Castell two_drafting', '4 729 · Pecan Grove paid'])
   })
   it('is empty with no sent notice', () => {
-    expect(buildLienReminders({ courtesyByJob: {}, letterTwoByJob: {}, jobTitle: (id) => id })).toEqual({ rows: [], counts: [0, 0, 0, 0], waiting: 0 })
+    expect(buildLienReminders({ courtesyByJob: {}, letterTwoByJob: {}, jobTitle: (id) => id })).toEqual({ rows: [], counts: [0, 0, 0, 0], waiting: 0, scheduled: 0 })
   })
 })
 
 describe('the rung’s words, whose press each rung is, and the card', () => {
   it('names the uncounted notices beside step 1 only', () => {
     expect(lienReminderRungWords(1, 2)).toBe(' · 2 before day 7')
+    expect(lienReminderRungWords(1, 2, 3)).toBe(' · 2 before day 7 · 3 wait for reminders week')
+    expect(lienReminderRungWords(1, 0, 1)).toBe(' · 1 waits for reminders week')
     expect(lienReminderRungWords(1, 0)).toBe('')
     expect(lienReminderRungWords(2, 2)).toBe('')
   })
@@ -115,7 +125,7 @@ describe('the rung’s words, whose press each rung is, and the card', () => {
 describe('lienReminderRungRule — a rung’s rule in words (v2.6522)', () => {
   it('names when a notice stands on each rung, the press, whose it is and what moves it on, with the clocks’ own days', () => {
     expect(lienReminderRungRule(1)).toMatchObject({ who: 'office', movesOn: 'the courtesy goes' })
-    expect(lienReminderRungRule(1).when).toBe('the packet went, nothing came back, and it is day 7 or later')
+    expect(lienReminderRungRule(1).when).toBe('the packet went, nothing came back, it is day 7 or later, and reminders week of the lien’s month (days 1 to 5) has opened')
     expect(lienReminderRungRule(2).press).toBe('none for 7 days; then Send the attorney’s letter. While they pay, Record what they promised')
     expect(lienReminderRungRule(3)).toMatchObject({ who: 'leader' })
     expect(lienReminderRungRule(3).when).toContain('due from day 10 and overdue from day 14 while the courtesy is held')
@@ -128,7 +138,7 @@ describe('lienReminderBrief — the step brief a pressed rung opens (v2.6574; pl
     const one = lienReminderBrief(1)
     expect(one).toMatchObject({ title: 'Reminder due', who: 'office' })
     expect(one.plain).toContain('we send it once')
-    expect(one.why).toBe('The packet went, nothing came back, and it is day 7 or later.')
+    expect(one.why).toBe('The packet went, nothing came back, it is day 7 or later, and reminders week of the lien’s month has opened (days 1 to 5).')
     expect(one.usual).toEqual({ press: 'Send a courtesy notice', means: 'sends the email and the text in one press; it takes a minute' })
     expect(one.instead.map((m) => m.press)).toEqual(['Send the attorney’s letter', 'Record the owner’s call', 'The GC authorized direct pay'])
     expect(one.ifNobody).toContain('From day 10 the attorney’s letter is due')

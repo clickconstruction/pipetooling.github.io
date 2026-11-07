@@ -11,9 +11,11 @@ Supply houses send this letter before they lien, and it gets bills paid. Ours go
 
 ## When the desk offers it
 
-Open the Lien desk and go to **Do now**. A sent notice with nothing paid shows a row from day 7 after the packet. The row sits under the **Reminders** heading. The row's button reads {{button:blue|Send a courtesy notice}}. The same button sits on the notice's footer under **Sent**. The Reminders rail above the rows counts these notices on its first step, Reminder due. The rail's other steps count the reminders sent, the second letters and the notices closed.
+Open the Lien desk and go to **Do now**. A sent notice with nothing paid shows a row in reminders week of the lien's month. Reminders week is days 1 to 5 of the month the lien is due in. The row never shows before day 7 after the packet. The row sits under the **Reminders** heading. The row's button reads {{button:blue|Send a courtesy notice}}. The same button sits on the notice's footer under **Sent**. The Reminders rail above the rows counts these notices on its first step, Reminder due. The rail's other steps count the reminders sent, the second letters and the notices closed.
 
 - Day 7 is counted the way the attorney’s letter counts it. The desk uses the delivery day when the mail piece knows it.
+- Before reminders week the footer says when the reminder goes, like *The reminder goes Dec 1 to 5*. The rail's first step counts these notices as waiting for reminders week. The footer still sends one earlier by hand.
+- Past reminders week an unsent reminder stays due until the affidavit's week. The lien month bar counts it as slipped.
 - The attorney’s letter keeps its own day. From day 10 the desk offers counsel's certified second letter beside the courtesy notice.
 - The desk sends one courtesy notice. After a week of silence it offers the attorney's letter. The footer still lets you send the courtesy again by hand when an email or a text bounced.
 

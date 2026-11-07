@@ -102,6 +102,26 @@ describe('the job’s own work (G-38)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add an activity' })).toBeTruthy())
   })
 
+  it('offers the phase on a schedule drawn with phases (#210), and the bar lands in the one picked', async () => {
+    const phased = { ...fairOaks, schedule: { ...fairOaks.schedule!, phases: ['Sitework and utilities', 'Closeout'] } }
+    const onAdd = vi.fn((_activities: ScheduleActivity[], _words: string) => Promise.resolve())
+    render(<GcAddOwnWork project={phased} items={items} today={s.today} by="Robert" onAdd={onAdd} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add an activity' }))
+    const pick = screen.getByLabelText('The phase it is in') as HTMLSelectElement
+    expect([...pick.options].map((o) => o.textContent)).toEqual(['Not in a phase', 'Sitework and utilities', 'Closeout'])
+    fireEvent.change(screen.getByLabelText('What it is'), { target: { value: 'Slab cure' } })
+    fireEvent.change(pick, { target: { value: 'Closeout' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Put it on the schedule' }))
+    await waitFor(() => expect(onAdd).toHaveBeenCalledTimes(1))
+    expect(onAdd.mock.calls[0]![0].find((a) => a.added)).toMatchObject({ phase: 'Closeout', added: { label: 'Slab cure' } })
+  })
+
+  it('offers no phase on a schedule drawn without them', () => {
+    render(<GcAddOwnWork project={fairOaks} items={items} today={s.today} by="Robert" onAdd={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add an activity' }))
+    expect(screen.queryByLabelText('The phase it is in')).toBeNull()
+  })
+
   it('says its problem and puts nothing on the schedule with no name', () => {
     const onAdd = vi.fn()
     render(<GcAddOwnWork project={fairOaks} items={items} today={s.today} by="Robert" onAdd={onAdd} />)

@@ -97,6 +97,8 @@ interface FakeOpts {
   failSetupFirst?: boolean
   /** Every `walk text` throws a fetch failure, outside any wait (v2.6652). */
   textThrows?: boolean
+  /** Every `walk open` answers a refusal with words: Gmail's rate limit on bids@. */
+  openRefused?: boolean
 }
 const fetchFailed = () => Object.assign(new TypeError('fetch failed'), { cause: new Error('ECONNRESET') })
 
@@ -177,6 +179,7 @@ function fake(opts: FakeOpts = {}): Fake {
           return { status: 200, body: { ok: true, id: 'm-seed', at: new Date(clock - 3 * 86_400_000).toISOString() } }
         case 'open':
           opens += 1
+          if (opts.openRefused) return { status: 500, body: { ok: false, error: 'failed', words: 'Gmail /messages failed (429): User-rate limit exceeded.  Retry after 2026-10-22T14:20:00.000Z' } }
           if (opts.failOpenFirst && opens === 1) throw fetchFailed()
           if (!f.arrives || opens < (opts.failOpenFirst ? 3 : 2)) return { status: 200, body: { ok: true, arrived: false, checked: 0 } }
           f.thread.push(line({ id: 'm-eye', channel: 'event', direction: 'out', quo_id: 'estimate:e-walk:opened', body: '👀 ZZ opened estimate #7.', mailbox: null }))
@@ -370,6 +373,21 @@ describe('npm run walk (punch list #142 PR 8)', () => {
     const report = await runWalk(flagsOf({ keep: true }), io)
     expect(report.steps.map((s) => `${s.key}:${s.ok}`)).toEqual(['setup:false', 'cleanup:null'])
     expect(report.steps[0]).toMatchObject({ held: 'the walk function could not be reached', waitedFor: '1 m', saw: 'the last poll failed: TypeError: fetch failed (ECONNRESET)' })
+    expect(report.ok).toBe(false)
+  })
+
+  it('a refused open holds the step with the function’s words, not as a mail that never came', async () => {
+    const f = fake({ openRefused: true })
+    const report = await runWalk(flagsOf(), f.io)
+    expect(report.steps.find((s) => s.key === 'open')).toMatchObject({
+      ok: false,
+      held: 'the estimate email never arrived in the bids inbox',
+      waitedFor: '3 m',
+      saw: 'bids@ had no email from the app’s sender for this estimate; the last poll failed: Gmail /messages failed (429): User-rate limit exceeded.  Retry after 2026-10-22T14:20:00.000Z',
+    })
+    expect(f.printed).toContain('  poll 1 failed, trying again on the next: Gmail /messages failed (429): User-rate limit exceeded.  Retry after 2026-10-22T14:20:00.000Z')
+    expect(report.steps.find((s) => s.key === 'replyEmail')).toMatchObject({ ok: null, held: 'the open held' })
+    expect(report.steps.find((s) => s.key === 'replyText')).toMatchObject({ ok: true })
     expect(report.ok).toBe(false)
   })
 

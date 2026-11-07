@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DEMO_MESSAGES, DEMO_NOW } from './messagesDemo'
 import {
   agoWords,
+  bioMark,
   callLength,
   channelWord,
   clockTime,
@@ -195,5 +196,23 @@ describe('the thread’s rows (the loop in renderMessages)', () => {
   it('a job’s filter keeps only the lines tied to it', () => {
     expect(threadOf(DEMO_MESSAGES, 'elena', 'fairoaks').map((m) => m.id)).toEqual(['7', '15'])
     expect(threadOf(DEMO_MESSAGES, 'elena').map((m) => m.id)).toEqual(['5', '7', '15', '6'])
+  })
+})
+
+describe('bioMark: the small mark on the bio line (v2.6659, punch list #282)', () => {
+  it('marks a text that introduced a teammate, naming them when the roster knows them', () => {
+    const mark = bioMark({ introducesUserId: 'u-luis' }, { 'u-luis': 'Luis' })
+    expect(mark?.words).toBe('bio')
+    expect(mark?.title).toBe("Luis's bio, as the office wrote it. The app sent it after their first On my way to this customer.")
+  })
+
+  it('says the tech’s bio when the roster has no name for them', () => {
+    expect(bioMark({ introducesUserId: 'u-gone' })?.title).toMatch(/^the tech’s bio, as the office wrote it\./)
+    expect(bioMark({ introducesUserId: 'u-blank' }, { 'u-blank': '  ' })?.title).toMatch(/^the tech’s bio/)
+  })
+
+  it('draws nothing on every other line', () => {
+    expect(bioMark({ introducesUserId: null })).toBeNull()
+    expect(bioMark({})).toBeNull()
   })
 })

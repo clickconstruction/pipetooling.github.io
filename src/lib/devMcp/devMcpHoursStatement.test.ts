@@ -324,7 +324,14 @@ describe('plan_hours_statement: the shaping before the write', () => {
     expect(paid.args.statement).toMatchObject({ basis: 'paid', charge_rate: null, charge_words: null, with_pay: true })
     const sheet = await prepareHoursStatementWrite(io({ reader: catalogReader(sheetData) }), { statement: { job: JOB, person: SUB, from: '2026-06-01', to: '2026-06-13' } }, who, '2026-11-07')
     if ('error' in sheet) throw new Error(sheet.error)
-    expect(sheet.args.statement).toMatchObject({ kind: 'sheet', basis: 'paid', with_pay: true, person_id: SUB_PERSON })
+    expect(sheet.args.statement).toMatchObject({ kind: 'sheet', basis: 'paid', with_pay: true, person_id: SUB_PERSON, labor_company: null })
+    // The sub's company on the attestation goes with a sheet paper alone (the card's last residual).
+    const named = await prepareHoursStatementWrite(io({ reader: catalogReader(sheetData) }), { statement: { job: JOB, person: SUB, from: '2026-06-01', to: '2026-06-13', labor_company: ' Whitfield Plumbing LLC ' } }, who, '2026-11-07')
+    if ('error' in named) throw new Error(named.error)
+    expect(named.args.statement).toMatchObject({ kind: 'sheet', labor_company: 'Whitfield Plumbing LLC' })
+    expect(named.snapshot).toMatchObject({ worker: { name: 'Dale Whitfield', standing: 'subcontractor', company: 'Whitfield Plumbing LLC' }, input: { worker: { name: 'Dale Whitfield', company: 'Whitfield Plumbing LLC' } } })
+    expect(buildHoursStatement((named.snapshot as { input: Parameters<typeof buildHoursStatement>[0] }).input).attestation).toContain('for Whitfield Plumbing LLC')
+    expect(await prepareHoursStatementWrite(io(), { statement: { job: JOB, person: USER, from: '2026-06-01', to: '2026-06-13', labor_company: 'Whitfield Plumbing LLC' } }, who, '2026-11-03')).toMatchObject({ error: expect.stringContaining('labor_company names a sub’s company on a sheet paper') })
     expect(await prepareHoursStatementWrite(io({ reader: catalogReader(sheetData) }), { statement: { job: JOB, person: SUB, from: '2026-06-01', to: '2026-06-13', basis: 'charged' } }, who, '2026-11-07')).toEqual({ error: `plan_hours_statement: Dale Whitfield is on this job’s sheets: ${HS_SHEET_NOT_CHARGED}` })
   })
 

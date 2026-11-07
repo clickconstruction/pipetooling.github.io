@@ -51,3 +51,34 @@ describe('ThreadLine: a web address in the words is one press (v2.6508)', () => 
     document.removeEventListener('click', stop)
   })
 })
+
+describe('ThreadLine: the bio line wears a small bio mark (v2.6659, punch list #282)', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  const bio: ThreadMessage = {
+    id: 'm-luis-bio',
+    contactId: 'c-dana',
+    jobId: 'j-1',
+    channel: 'text',
+    direction: 'out',
+    at: '2026-11-07T16:41:30.000Z',
+    who: 'Luis',
+    body: 'A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license.',
+    introducesUserId: 'u-luis',
+  }
+
+  it('draws the mark beside who, with the tech named on hover', () => {
+    renderWithProviders(<ThreadLine message={bio} tile={undefined} job="none" showAll marked={false} tying={null} userNames={{ 'u-luis': 'Luis' }} onOpen={vi.fn()} onTie={vi.fn()} onJob={vi.fn()} />)
+    const mark = document.querySelector('[data-thread-line="m-luis-bio"] [data-thread-bio="u-luis"]') as HTMLElement
+    expect(mark.textContent).toBe('bio')
+    expect(mark.getAttribute('title')).toContain("Luis's bio, as the office wrote it")
+  })
+
+  it('draws no mark on the On my way line before it', () => {
+    renderWithProviders(<ThreadLine message={{ ...bio, id: 'm-luis-line', body: 'Dana, this is Luis with Click Plumbing. I am on my way, about 20 minutes out.', introducesUserId: null }} tile={undefined} job="none" showAll marked={false} tying={null} onOpen={vi.fn()} onTie={vi.fn()} onJob={vi.fn()} />)
+    expect(document.querySelector('[data-thread-bio]')).toBeNull()
+  })
+})

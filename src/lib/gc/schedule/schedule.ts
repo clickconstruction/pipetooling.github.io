@@ -74,6 +74,17 @@ export interface ScheduleRow extends ScheduleItem {
   pkg: TradePackage
 }
 
+/** A draw's length: its first day of work to substantial completion (else its last day), rounded up to whole weeks. Null: nothing drawn. */
+export function drawWeeks(schedule: ProjectSchedule): { weeks: number; days: number; start: string; finish: string } | null {
+  const first = schedule.activities[0]
+  if (!first) return null
+  const start = schedule.activities.reduce((m, a) => (a.start < m ? a.start : m), first.start)
+  const last = schedule.activities.reduce((m, a) => (a.finish > m ? a.finish : m), first.finish)
+  const finish = schedule.milestones.find((m) => /substantial completion/i.test(m.label))?.planned ?? last
+  const days = daysBetween(start, finish) + 1
+  return { weeks: Math.ceil(days / 7), days, start, finish }
+}
+
 /** An activity in a sentence: "Plumbing · Trim", or an inspection by its own name. */
 export function activityName(item: ScheduleItem): string {
   return item.activity.inspection ? item.label : `${item.trade} · ${item.label}`
