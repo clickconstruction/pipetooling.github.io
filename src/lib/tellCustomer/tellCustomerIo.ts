@@ -16,6 +16,7 @@ import { customerLang } from '../messages/customerLang'
 import { contactForCustomer } from '../messages/messagesIo'
 import { jobKey } from '../messages/jobKeys'
 import { supabaseReplyIo } from '../messages/replyIo'
+import { supabaseEstimateLinkIo } from '../messages/estimateLinkIo'
 import { supabaseOffersIo } from '../offers/offersIo'
 import { supabaseCallTasksIo, type CallTaskAdd } from '../calls/callTasksIo'
 import { supabaseMyWayIo } from './myWayIo'
@@ -74,6 +75,12 @@ export interface TellCustomerIo {
   isFirstVisit(jobId: string, groupId: string | null, blockId?: string | null): Promise<boolean>
   /** Resolves to the text's line id. */
   send(input: TellSend): Promise<string>
+  /**
+   * The short link for the estimate text (v2.6657, punch list #281): a share link to the accept page through
+   * `share_estimate_link`, 32 characters of token against the email's 64, the same powers for the same 14 days. The
+   * sheet falls back to the email's own link when this throws (`estimateTextLink.ts`).
+   */
+  shareEstimateLink(estimateId: string): Promise<string>
   /** Send in the morning (v2.5595): the text waits on Today's sends and the morning run sends it on its day. Resolves to the offer's id. */
   makeOffer(input: TellOffer): Promise<string>
   /** The step's call script and whether the receipt suggests the call at all (v2.5596); null before the push or on a step with no row. */
@@ -178,6 +185,7 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
     },
     addCall: (input) => supabaseCallTasksIo(db).add(input),
     loadMyWay: (userId) => supabaseMyWayIo(db).load(userId),
+    shareEstimateLink: (estimateId) => supabaseEstimateLinkIo(db).share(estimateId),
     async saveOfficeLine(input) {
       const lines = supabaseQuickRepliesIo(client)
       const tags = { for: 'customer' as const, stepId: input.stepKey }
