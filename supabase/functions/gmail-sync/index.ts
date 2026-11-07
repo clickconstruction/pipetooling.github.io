@@ -38,6 +38,13 @@
  *   at the last record taken whole and writes `last_error`, and the next run starts there; what was taken is passed
  *   over by its label. The run's health is on `gmail_sync_state` (`last_run_at`, `last_ok_at`, `last_error`,
  *   `last_taken`).
+ * - The label's id is the row's `label_id` (v2.6649): found by name once, made when the box has none, and found again
+ *   only when a label press answers that Gmail no longer has the id (someone took the label off the box). Before, every
+ *   run opened with `/labels`.
+ * - A box whose last run stopped on Gmail's 429 (*User-rate limit exceeded. Retry after …*) is held (v2.6649,
+ *   `readerHold`): the run writes nothing and asks Gmail nothing until Google's own time has passed, since every request
+ *   inside the window moved the time forward and a minute's cron never got out (bids@, 2026-11-06 20:44Z, twenty hours).
+ *   The other box reads as before.
  *
  *
  * Two boxes since R6's reader (v2.5494, `src/lib/emailIn/readerBoxes.ts`): bids@ as above, and the team box once
@@ -67,6 +74,7 @@ import { kitCarries, type WalkKit } from '../_shared/gcKernels/lib/walk/kit.ts'
 import { loadWalkKit } from '../_shared/walkKit.ts'
 import { readForwarded } from '../_shared/gcKernels/lib/emailIn/forwarded.ts'
 import { walkHistory, type HistoryWalk, type Took } from '../_shared/gcKernels/lib/emailIn/historyWalk.ts'
+import { readerHold } from '../_shared/gcKernels/lib/emailIn/readerHold.ts'
 import { base64UrlBytes, parseAddress, readGmailMessage, type EmailIn } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
 import { jobInSubject } from '../_shared/gcKernels/lib/emailIn/jobInSubject.ts'
 import { bulkByBody, leftOut, outsideInbox } from '../_shared/gcKernels/lib/emailIn/leftOut.ts'
@@ -97,6 +105,7 @@ interface TeamMember {
 interface Ctx {
   admin: Admin
   token: string
+  /** The label's id, the row's `label_id`; `putLabel` finds it again when Gmail says it is gone. */
   labelId: string
   /** The box it reads, which each line carries in `messages.mailbox`. */
   box: Mailbox
@@ -274,6 +283,21 @@ async function heldLine(ctx: Ctx, rfc: string | null): Promise<boolean> {
   return (data ?? []).length > 0
 }
 
+/**
+ * The label onto a message (v2.6649). Gmail answers 400 (*Invalid label*) or 404 to an id the box no longer has, when
+ * someone took the label off the box: it is found or made again by its name, kept for the run, and the press tried once
+ * more. Any other refusal is the message's own and is thrown as before.
+ */
+async function putLabel(ctx: Ctx, messageId: string): Promise<void> {
+  try {
+    await gmailAddLabel(ctx.token, messageId, ctx.labelId)
+  } catch (e) {
+    if (!(e instanceof GmailError && (e.status === 400 || e.status === 404))) throw e
+    ctx.labelId = await gmailLabelId(ctx.token, LABEL_NAME)
+    await gmailAddLabel(ctx.token, messageId, ctx.labelId)
+  }
+}
+
 /** One message: read, placed, tied, its files copied, written once, then labelled. */
 async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
   let m
@@ -303,7 +327,7 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
   }
   // The same mail, read first in the other box: no address placed, no file copied, no line. Only this box's label.
   if (await heldLine(ctx, rfcMessageId(email))) {
-    await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
+    await putLabel(ctx, email.gmailId)
     return 'already'
   }
 
@@ -380,20 +404,24 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
     const held = await ctx.admin.from('contacts').update({ has_user_id: ctx.seats.trade, has_how: 'rule', has_since: nowIso(), has_until: null }).eq('id', contactId).is('has_user_id', null)
     if (held.error) console.warn(`gmail-sync: ${email.gmailId}'s invitation was not handed to the estimator's seat: ${held.error.message}`)
   }
-  await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
+  await putLabel(ctx, email.gmailId)
   return written ? 'taken' : 'already'
 }
 
 /** One box's run: its token, its row, its label, and its walk. A failure here is this box's alone. */
 async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, prefixes: LedgerPrefixMap, notices: readonly LeftOutSenderRow[], seats: AssignRuleSeats, liveBids: readonly LiveBid[]): Promise<Record<string, unknown>> {
-  const startedAt = nowIso()
-  await saveState(admin, b.mailbox, { last_run_at: startedAt })
   try {
-    const token = await googleServiceToken(saJson, GMAIL_SCOPES, b.address)
-    const { data: state, error } = await admin.from('gmail_sync_state').select('history_id').eq('mailbox', b.mailbox).maybeSingle()
+    const { data: state, error } = await admin.from('gmail_sync_state').select('history_id, label_id, last_error, updated_at').eq('mailbox', b.mailbox).maybeSingle()
     if (error) throw new Error(`Reading the ${b.mailbox} reader's state failed: ${error.message}`)
-    // Found by its name each run, and made again if someone took it off the box.
-    const labelId = await gmailLabelId(token, LABEL_NAME)
+    // Inside Google's retry window after a 429 (v2.6649): nothing written, nothing asked of Gmail, so the window closes.
+    // The row keeps the 429's words and its time, which Settings' health line reads as before.
+    const until = readerHold(state, nowIso())
+    if (until) return { ok: true, held: true, until }
+    await saveState(admin, b.mailbox, { last_run_at: nowIso() })
+    const token = await googleServiceToken(saJson, GMAIL_SCOPES, b.address)
+    // The label by the id the row keeps (v2.6649); found by its name, and made when the box has none, only when the row
+    // holds none yet. A label press that finds the id gone finds it again (`putLabel`).
+    const labelId = (state?.label_id as string | null | undefined) || (await gmailLabelId(token, LABEL_NAME))
 
     // The first run: keep the box's history point and read nothing older.
     if (!state?.history_id) {
@@ -428,10 +456,10 @@ async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, pr
     if (walk.error) {
       // A message failed: keep the point at the last record taken whole, and say why. The next run starts there.
       const message = walk.error instanceof Error ? walk.error.message : String(walk.error)
-      await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: labelId, last_error: message.slice(0, 1000), last_taken: walk.counts.taken })
+      await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: ctx.labelId, last_error: message.slice(0, 1000), last_taken: walk.counts.taken })
       throw walk.error
     }
-    await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: labelId, last_ok_at: nowIso(), last_error: null, last_taken: walk.counts.taken })
+    await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: ctx.labelId, last_ok_at: nowIso(), last_error: null, last_taken: walk.counts.taken })
     return { ok: true, full: walk.full, ...walk.counts }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
