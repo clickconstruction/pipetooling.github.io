@@ -118,6 +118,7 @@ when_to_read:
    - [gc-money-monday-email](#gc-money-monday-email)
    - [bridge-sheet-email](#bridge-sheet-email)
    - [bridge-weekly-sheet](#bridge-weekly-sheet)
+   - [your-week-email](#your-week-email)
    - [gc-office-notices](#gc-office-notices)
    - [gmail-sync](#gmail-sync)
    - [gmail-count](#gmail-count)
@@ -1733,6 +1734,22 @@ The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on 
 **What it reads**, as the service role: everything `loadMondaySheetReads` reads (the Bridge data, the Dashboard's financials, the people, the eight weeks, the build pace, the bill pile, the asks and the bids, the calls, the Collect desk's three reads — the copy's `loadBuildPace`, `loadDemandPace` and `collectPayers` reading a stored instant's day in `APP_CALENDAR_TZ` since v2.5956 / v2.5978, so the mail's Build, Sales and Collect figures put an evening percent, report, estimate or touch on its own day), `users` for the devs, the two `app_settings` rows, and the ZZ test jobs. Five RPCs the sheet reads let the service role through their gate since `20261026121000_bridge_sheet_rpcs_service_role.sql` (the pay speeds, the promises, the chase touches, the tally parts, the unattributed count), so the sheet reads each bill at its payer's pace with its promises and touches, as the page does; `count_unlinked_mercury_transactions_for_tally` counts the caller's own cards and stays refused, read as "not read".
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (a dev's dry run), `RESEND_API_KEY`, `CRON_SECRET`, `MERCURY_API_KEY` (without it the typed figure stands in and the sheet says the bank was not read), `APP_ORIGIN` (the sheet's link to the full Bridge; clicktooling.com when unset). **Deploy**: `supabase functions deploy bridge-weekly-sheet --no-verify-jwt` after the merge, with `get-mercury-account-balances` (the shared read) and the copy's index importers `check:edge-drift` names, then `supabase db push` for the two migrations, so the cron never finds the function missing; then the dry run as a dev. The switch is the owner's to turn on.
+
+---
+
+### your-week-email
+
+**Purpose**: The Monday email of Your week (v2.6607, punch list #255, the train's PR 7). On Monday at 6 AM Central it reads each person the office picked a signal for (`users.week_signal`, a real account with an address, not archived; `weekEmailRecipients`), builds last week's card for them (`week_card_data(user)`, the read `my_week()` makes, as the service role; `weekEmailFor` over `yourWeekCard` from the copy of the kernels, read as of the previous complete pay week's Saturday) and mails it to their own address (`buildWeekEmail`: the subject *Your week, Nov 1 to Nov 7: 29 of your last 30 jobs*, the text and the html, the link to the home). A person with no card is skipped and named in the run's `gaps`.
+
+**Endpoint**: `POST /functions/v1/your-week-email` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret`, or a signed-in real account for a dry run or a test.
+
+- **The cron** (no body, or `{}`): `your-week-email` fires at 11:00 and 12:00 UTC on Mondays (`20261107010000_your_week_email.sql`) and posts only while `app_settings` `your_week_email_on_v1` reads `'true'`; the function checks the switch again, runs only the tick that is 6 AM Central (`weeklySendTickNow`, `src/lib/bridge/weeklySend.ts`), and sends nothing twice on one day (`alreadySentToday`, from the last run it keeps in `your_week_email_last_run_v1`).
+- **`{ "dry": true }`**: the cron secret, or a signed-in real account. Any hour, switch on or off. Answers `{ on, week, mine, to, lastRun }`: the caller's own email for last week (`mine`, null with no card) and, for a dev or the cron, the recipients; sends nothing and writes nothing. **Preview mine** on the card calls it.
+- **`{ "test": true }`**: a signed-in real account. Sends the caller their own last week's card, `[TEST]` before the subject, logged as `your_week_email_test`; the switch is not read and no run is kept. **Email me a test** calls it.
+
+**The switch** is on Settings → What the team sees, the **Monday email** card at the top (`YourWeekEmailCard.tsx`, `weekEmailIo.ts`): On after a confirm, Off at once, with the last run's line; `'false'` as it ships. Only a dev may change it (`dev_update_your_week_email_on`).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (the signed-in modes), `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (the card's link to the home; clicktooling.com when unset). **Deploy**: `supabase functions deploy your-week-email --use-api` before the migration is pushed, so the cron never posts to a function that is not there; it imports the copy of the kernels, so a change there redeploys it (`check:edge-drift`).
 
 ---
 

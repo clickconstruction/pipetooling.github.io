@@ -9,7 +9,7 @@
  *
  * Pure. The rows are `list_user_license_hours_log`'s (approved, clocked out, not rejected or revoked).
  */
-import type { LicenseHoursLogRow } from '../licenseHoursLog'
+import type { LicenseHoursLogRow } from '../licenseHoursLogTypes'
 import { companyWeekStartSundayContaining, ymdAddDays } from '../../utils/dateUtils'
 import { LICENSE_LEVELS } from './licenseText'
 

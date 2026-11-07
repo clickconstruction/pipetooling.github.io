@@ -71,6 +71,7 @@ export const IMPORTERS = [
   'send-workflow-notification',
   'stripe-webhook',
   'walk',
+  'your-week-email',
 ]
 
 /** Each entry (from `src/`) and what the copy's index exports of it. */
@@ -209,6 +210,9 @@ export const ENTRIES = {
   'lib/bridge/mercuryCash.ts': { values: ['parseMercuryCash'], types: ['MercuryCash'] },
   'lib/jobs/zzTestJobReads.ts': { values: ['readZzTestJobRows'], types: [] },
   // The weekly send (v2.5883): the switch, the tick, the last run and who hears it.
+  // Your week's Monday email (punch list #255, v2.6607): each person's card for last week, as the home draws it.
+  'lib/techWeek/weekEmail.ts': { values: ['YOUR_WEEK_EMAIL_LAST_RUN_KEY', 'YOUR_WEEK_EMAIL_ON_KEY', 'YOUR_WEEK_EMAIL_TYPE', 'weekEmailFor', 'weekEmailRecipients'], types: ['WeekEmail', 'WeekEmailRecipientRow'] },
+  'lib/payWeekAnchor.ts': { values: ['previousCompletePayWeek', 'payWeekContaining'], types: ['PayWeek'] },
   'lib/bridge/weeklySend.ts': { values: ['WEEKLY_SHEET_LAST_RUN_KEY', 'WEEKLY_SHEET_ON_KEY', 'alreadySentToday', 'parseWeeklySendRun', 'weeklySendRecipients', 'weeklySendTickNow', 'weeklySheetIsOn'], types: ['WeeklySendRun'] },
   // The review ask's one rule (v2.6007): the {rate} blank, its link, and a job answered never asked again, which the
   // morning run's mint (`_shared/ratingMint.ts`) keeps as the press on Today's sends does.
