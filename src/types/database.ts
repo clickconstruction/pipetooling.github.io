@@ -38666,6 +38666,16 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_doc_history: {
+        Args: {
+          p_doc_id?: string
+          p_from?: string
+          p_kind?: string
+          p_person_id: string
+          p_to?: string
+        }
+        Returns: Json
+      }
       dev_doc_read: {
         Args: {
           p_doc_id?: string
@@ -40249,6 +40259,10 @@ export type Database = {
       }
       holds_vehicle: { Args: { p_vehicle_id: string }; Returns: boolean }
       hr_agent_write: { Args: { p: Json }; Returns: Json }
+      hr_doc_apply_ops: {
+        Args: { p_ops: Json; p_text: string; p_what?: string }
+        Returns: Json
+      }
       hr_doc_heading_index: { Args: { md: string }; Returns: Json }
       hr_doc_headings: {
         Args: { md: string }
