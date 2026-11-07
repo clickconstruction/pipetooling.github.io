@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { usePublicShapeView } from '../../hooks/usePublicShapeView'
 import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
 import {
@@ -444,6 +445,10 @@ export default function SendRecordInvoiceModal({
   onDiscountAppliedRef.current = onDiscountApplied
 
   const { user: authUser, role: authRole } = useAuth()
+
+  // Punch list #217, outside-1 (a prototype): `?shape=1` on the page draws the contract line beside each scaled share; `?sbs=1` for a dev draws today's table over it.
+
+  const progressBillShape = usePublicShapeView('outside-1')
   const { showToast } = useToastContext()
 
   const [tab, setTab] = useState<BillCustomerMainTab>('stripe')
@@ -3135,6 +3140,7 @@ export default function SendRecordInvoiceModal({
             {physicalDocPreview ? (
               <PhysicalInvoicePreview
                 document={physicalDocPreview}
+                shape={progressBillShape}
                 hideIssuerContact
                 emphasizeLowercaseLeadingDescriptions
                 detailedServiceLineDescriptionClick={

@@ -16,6 +16,7 @@ import {
   type PhysicalInvoicePaymentInput,
   type PhysicalInvoiceServiceLine,
 } from './physicalInvoiceLineItems'
+import { contractLineWords, SHARE_EXPLAINER, SHARE_SUM_LABEL, shareColumnHeads, shareHeadline, type ProgressBillShare } from './physicalInvoiceShare'
 import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../utils/dateUtils'
 
 export type {
@@ -84,6 +85,8 @@ export type PhysicalInvoiceDocument = {
   layout: 'simple' | 'detailed'
   /** True when job fixture+material totals matched the bill amount (else one synthetic service line). */
   breakdownMatches: boolean
+  /** Punch list #217, outside-1 (a prototype): the contract line beside each scaled service line, when the bill is a share of the job. */
+  share?: ProgressBillShare | null
   issuer: PhysicalInvoiceIssuer
   customerName: string
   customerEmail: string
@@ -177,6 +180,7 @@ export function buildPhysicalInvoiceDocument(opts: {
 
   let layout: PhysicalInvoiceDocument['layout'] = 'simple'
   let breakdownMatches = false
+  let share: ProgressBillShare | null = null
   let serviceLines: PhysicalInvoiceServiceLine[] = []
   let materialLines: PhysicalInvoiceMaterialLine[] = []
   let paymentHistory: PhysicalInvoicePaymentHistoryRow[] = []
@@ -203,6 +207,7 @@ export function buildPhysicalInvoiceDocument(opts: {
       detailFromJob.allFixtures,
     )
     breakdownMatches = resolved.breakdownMatches
+    share = resolved.share ?? null
     serviceLines = [
       ...resolved.serviceLines,
       ...feeLines.map((l) => ({ description: l.description, qty: 1, unitPrice: l.amountDollars, amount: l.amountDollars })),
@@ -227,6 +232,7 @@ export function buildPhysicalInvoiceDocument(opts: {
   return {
     layout,
     breakdownMatches,
+    share,
     issuer,
     customerName,
     customerEmail,
@@ -339,7 +345,48 @@ function paymentHistoryTextLines(doc: PhysicalInvoiceDocument): string[] {
   return out
 }
 
-export function buildPhysicalInvoiceEmailBodies(doc: PhysicalInvoiceDocument): { text: string; html: string } {
+/** The share's lines for the text part: the headline, each line with its contract line and this bill's share, the two sums. */
+function shareTableText(share: ProgressBillShare): string[] {
+  const heads = shareColumnHeads(share)
+  return [
+    '',
+    shareHeadline(share),
+    SHARE_EXPLAINER,
+    `Services | ${heads.contract} | ${heads.bill}`,
+    '---',
+    ...share.rows.map((r) => `${r.description.split('\n').join(' ')} | ${contractLineWords(r)} | ${formatUsd(r.share)}`),
+    `${SHARE_SUM_LABEL} | ${formatUsd(share.contract)} | ${formatUsd(share.bill)}`,
+  ]
+}
+
+/** The share's table for the email's HTML, in the Services table's own frame: the line, the contract line with its count, this bill's share. */
+function shareTableHtml(share: ProgressBillShare): string {
+  const heads = shareColumnHeads(share)
+  const th = (text: string, right: boolean) => `<th style="text-align:${right ? 'right' : 'left'};padding:6px 8px;border-bottom:1px solid #e5e7eb">${escapeHtml(text)}</th>`
+  const td = (text: string, right: boolean, strong = false) => `<td style="text-align:${right ? 'right' : 'left'};padding:6px 8px;border-bottom:1px solid #f3f4f6;white-space:${right ? 'nowrap' : 'pre-wrap'}${strong ? ';font-weight:600;border-top:1px solid #9ca3af' : ''}">${escapeHtml(text)}</td>`
+  return (
+    `<p style="font-family:system-ui,sans-serif;font-size:14px;font-weight:600;color:#374151;margin:16px 0 4px">${escapeHtml(shareHeadline(share))}</p>` +
+    `<p style="font-family:system-ui,sans-serif;font-size:13px;color:#6b7280;margin:0 0 8px">${escapeHtml(SHARE_EXPLAINER)}</p>` +
+    `<table style="border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;font-size:13px;border:1px solid #e5e7eb"><thead><tr style="background:#f9fafb">${th('Services', false)}${th(heads.contract, true)}${th(heads.bill, true)}</tr></thead><tbody>` +
+    share.rows.map((r) => `<tr>${td(r.description, false)}${td(contractLineWords(r), true)}${td(formatUsd(r.share), true)}</tr>`).join('') +
+    `<tr>${td(SHARE_SUM_LABEL, false, true)}${td(formatUsd(share.contract), true, true)}${td(formatUsd(share.bill), true, true)}</tr>` +
+    `</tbody></table>`
+  )
+}
+
+/**
+ * Today's email body over the shape's, one light document with a caption on each, for What customers see's *Side by
+ * side* (punch list #217, outside-1). Null when the bill is not a share of the job: there is nothing to compare.
+ */
+export function buildPhysicalInvoiceEmailSideBySideHtml(doc: PhysicalInvoiceDocument): string | null {
+  if (!doc.share) return null
+  const cap = (text: string, color: string) => `<p style="font-family:system-ui,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${color};margin:0 0 6px">${escapeHtml(text)}</p>`
+  const frame = (inner: string) => `<div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:0 0 14px">${inner}</div>`
+  return `<!doctype html><html><head><meta charset="utf-8" /><title>Side by side</title></head><body style="margin:0;background:#f3f4f6;padding:12px">${cap('Today', '#6b7280')}${frame(buildPhysicalInvoiceEmailBodies(doc).html)}${cap('With the contract line beside each share', '#1d4ed8')}${frame(buildPhysicalInvoiceEmailBodies(doc, { shape: true }).html)}</body></html>`
+}
+
+export function buildPhysicalInvoiceEmailBodies(doc: PhysicalInvoiceDocument, opts: { /** Punch list #217, outside-1: draw the Services table with the contract line beside each share, when the bill is one. */ shape?: boolean } = {}): { text: string; html: string } {
+  const shape = opts.shape === true && !!doc.share ? doc.share : null
   const tagline = (doc.issuer.tagline ?? '').trim()
   const taglineHtml = tagline
     ? `<p style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#111827;white-space:pre-wrap;margin:0 0 12px"><strong>${escapeHtml(
@@ -366,7 +413,7 @@ export function buildPhysicalInvoiceEmailBodies(doc: PhysicalInvoiceDocument): {
       textLines.push('Scope:', doc.narrativeTitle)
     }
     textLines.push(
-      ...linesTableText('Services', doc.serviceLines),
+      ...(shape ? shareTableText(shape) : linesTableText('Services', doc.serviceLines)),
       ...linesTableText('Materials', doc.materialLines),
       '',
       `Subtotal: ${doc.subtotalFormatted}`,
@@ -426,7 +473,7 @@ export function buildPhysicalInvoiceEmailBodies(doc: PhysicalInvoiceDocument): {
       'Payment terms',
       doc.paymentTerms,
     )}</table>
-${scopeHtml}${lineRowsHtml('Services', doc.serviceLines)}${lineRowsHtml('Materials', doc.materialLines)}
+${scopeHtml}${shape ? shareTableHtml(shape) : lineRowsHtml('Services', doc.serviceLines)}${lineRowsHtml('Materials', doc.materialLines)}
 <p style="font-family:system-ui,sans-serif;font-size:14px;margin:12px 0 0"><strong>Subtotal:</strong> ${escapeHtml(
       doc.subtotalFormatted,
     )}</p>${

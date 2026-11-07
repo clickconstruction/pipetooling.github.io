@@ -504,6 +504,8 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
       ? { state: 'sent', headline: `Sent ${dayWord(tr.sent_at, now)}`, detail: [plural(sentReports, 'report'), tr.test_type ?? ''].filter(Boolean).join(' · '), at: tr.sent_at, link: null, action: jobAction(tr.job_id, 'Open the job') }
       : na(rows.testReports.length ? `${plural(rows.testReports.length, 'draft')} not sent` : 'None')
     steps['gc-portal'] = portalStep
+    // Punch list #217, outside-1: a progress bill is a bill by email on a job billed in parts, read on that step.
+    steps['gc-progress-bill'] = steps['bill-by-email'] ?? na('Read on Bill by email')
     const st = latestBy(rows.gcStatements, (s) => s.sent_at)
     steps['gc-statement-email'] = st
       ? { state: 'sent', headline: `Sent ${dayWord(st.sent_at, now)}`, detail: [plural(rows.gcStatements.length, 'statement'), st.total != null ? `$${Math.round(st.total).toLocaleString('en-US')}` : ''].filter(Boolean).join(' · '), at: st.sent_at, link: null, action: { label: 'GC Review', to: '/jobs?tab=pipeline' } }
