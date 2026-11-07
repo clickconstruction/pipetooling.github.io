@@ -2,7 +2,7 @@
 title: see which paid jobs still owe my supply houses
 category: Billing & Money
 roles: assistant, controller, master_technician
-keywords: held for suppliers, job accounts, supply house, invoices, owed, held, paid, materials, payables, float, allocate, make payment, on job account, owner, lien, notice, paid in full, they told us
+keywords: held for suppliers, job accounts, supply house, invoices, owed, held, paid, materials, payables, float, allocate, make payment, on job account, owner, lien, notice, paid in full, they told us, window strip, notice window, guessed, they said, show the window strips
 where: /materials?tab=job-accounts
 ---
 Held for suppliers lines up each job's money in both directions. It shows what the customer has paid you. It shows what you have paid your supply houses, and what you still owe them.
@@ -61,6 +61,17 @@ Open a job's row to see its houses. Under each house that is owed, one line give
 - *its notice goes out Oct 14* is the day the house itself gave.
 
 The house keeps its own calendar. Call the house to be sure.
+
+## See each house's window as a bar
+
+The tab can draw the dates instead of saying them. Press {{button:outline|Show the window strips}} above the list. Open a job's row. Under its houses, each owed house gets one row on a calendar.
+
+- A bar is the house's notice window, by our count. It runs from the first day its notice can go out to the date we expect it by. The days already gone are hatched.
+- A black tick is an unpaid invoice, on its day. The bar is counted from these.
+- A diamond is the day the house itself gave.
+- The blue line is today.
+
+Under the rows, one mark per house says where its date came from. A dashed mark reads *guessed from the invoice months*. A solid mark reads *they said*, then who said it and when it was written down. Press the arrow on a guessed mark to open **They told us…** for that house. The job's red line reads as chips with the strips on. They read *paid in full* and *2 houses can still notice*. Hover a row to read the house in one sentence. Press {{button:outline|Show today's look}} to go back. The choice is yours alone and the app remembers it on this device.
 
 ## Write down what the house told you
 
