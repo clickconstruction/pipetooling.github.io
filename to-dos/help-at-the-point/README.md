@@ -14,8 +14,8 @@ summary: >
   with a guide per family of error, and argues against each part before changing the plan.
 next: On 2027-01-25, read Settings → Usage → Guides and Errors shown. Apply PR 7's rule to the guides nobody opened, and give the error families people meet most their toasts' door.
 size: M, as seven PRs, XS XS S S S M XS
-blocker: The owner's three picks, for PRs 3 to 7. PR 1 and PR 2 have none.
-ver: proposed
+blocker: None until the read of 2027-01-25; the owner's picks carried PRs 3 to 6, and PR 7 waits on the counts.
+ver: v2.5897 · 5903 · 5908 · 5917 · 5918 · 5919 · 5939
 opinion: build PR 1 and PR 2 today, then the ? on the four Pipeline windows first, the error door as a card in place and never a page, and delete no guide until the counts are 90 days old
 mockup: to-dos/help-at-the-point/mockup.html
 ---
