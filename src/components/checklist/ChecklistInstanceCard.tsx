@@ -6,10 +6,13 @@ import {
   type ChecklistCardEvent,
 } from '../../lib/checklistCardEvents'
 import type { LineState } from '../../lib/taskCriteria'
-import { linesWords, ringState } from '../../lib/taskProgress'
+import { linesWords } from '../../lib/taskProgress'
 import { TaskLinesList } from './TaskLinesList'
 import { TaskRing } from './TaskRing'
-import { TaskPercentSheet } from './TaskPercentSheet'
+import { TaskPhotoStrip } from './TaskPhotoStrip'
+import { useTaskCardSheets } from '../../hooks/useTaskCardSheets'
+import type { TaskPhotoView } from '../../hooks/useTaskPhotos'
+import type { TaskPhotoRow } from '../../lib/photos/taskPhotosIo'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
@@ -67,6 +70,13 @@ type ChecklistInstanceCardProps = {
    */
   ring?: boolean
   onSetPercent?: (percent: number, words: string) => Promise<boolean>
+  /**
+   * Task cards (#273, PR 4b): the writer's switch, the card's photos as a strip, and the word that a shot just sent
+   * landed. With the switch on, the last line's tick and the sheet's Done open the finishing sheet first.
+   */
+  asksForPhoto?: boolean
+  photos?: TaskPhotoView[]
+  onPhotoAdded?: (row: TaskPhotoRow) => void
 }
 
 /**
@@ -94,6 +104,9 @@ export function ChecklistInstanceCard({
   onTickLine,
   ring = false,
   onSetPercent,
+  asksForPhoto = false,
+  photos,
+  onPhotoAdded,
 }: ChecklistInstanceCardProps) {
   const [threadOpen, setThreadOpen] = useState(false)
   const [draft, setDraft] = useState('')
@@ -101,7 +114,6 @@ export function ChecklistInstanceCard({
   const composerRef = useRef<HTMLInputElement | null>(null)
   const [focusComposerPending, setFocusComposerPending] = useState(false)
   const [linesOpen, setLinesOpen] = useState(false)
-  const [sheetOpen, setSheetOpen] = useState(false)
 
   useEffect(() => {
     if (focusComposerPending && threadOpen) {
@@ -218,11 +230,9 @@ export function ChecklistInstanceCard({
     flexShrink: 0,
   }
 
-  // Task cards (#273, PR 2): the Done when… lines; PR 3: the ring in the tick's seat, reading the one number.
+  // Task cards (#273, PR 2): the Done when… lines; PR 3: the ring in the tick's seat; PR 4b: the sheets and the photos.
   const hasLines = Boolean(lines && lines.length > 0)
   const tickedCount = lines ? lines.filter((l) => l.checked).length : 0
-  const linesBlock = hasLines && lines ? <TaskLinesList lines={lines} onTick={onTickLine} readOnly={!onTickLine || isCompleted} nameOf={name} /> : null
-  const ringSt = ringState({ completedAt: instance.completed_at, percentComplete: instance.percent_complete, lines: lines?.length ?? 0, ticked: tickedCount })
   const titleText = fullHistory?.item.title ?? (typeof title === 'string' ? title : '')
   const lastProgress = (() => {
     for (let i = events.length - 1; i >= 0; i--) {
@@ -232,24 +242,26 @@ export function ChecklistInstanceCard({
     return null
   })()
   const lastMoved = lastProgress && typeof lastProgress.percent === 'number' ? `was ${lastProgress.percent}% ${stripStamp(lastProgress.created_at)}` : null
-  const ringPress = () => {
-    if (isCompleted) {
-      onToggleComplete()
-      return
-    }
-    setSheetOpen(true)
-  }
-  const ringSheet = ring ? (
-    <TaskPercentSheet
-      open={sheetOpen}
-      title={titleText}
-      state={ringSt}
-      lastMoved={lastMoved}
-      onSet={async (p, w) => (onSetPercent ? onSetPercent(p, w) : false)}
-      onDone={() => onToggleComplete()}
-      onClose={() => setSheetOpen(false)}
-    />
-  ) : null
+  const cardSheets = useTaskCardSheets({
+    instanceId: instance.id,
+    title: titleText,
+    lines: lines ?? [],
+    asksForPhoto,
+    isCompleted,
+    percentComplete: instance.percent_complete,
+    lastMoved,
+    currentUserId,
+    onTickLine,
+    onToggleComplete,
+    onSetPercent,
+    onPostComment,
+    onPhotoAdded,
+  })
+  const ringSt = cardSheets.ring
+  const ringPress = cardSheets.ringPress
+  const linesBlock = hasLines && lines ? <TaskLinesList lines={lines} onTick={onTickLine ? cardSheets.tickLine : undefined} readOnly={!onTickLine || isCompleted} nameOf={name} /> : null
+  const photoStrip = photos && photos.length > 0 ? <TaskPhotoStrip photos={photos} compact={variant === 'row'} /> : null
+  const ringSheet = ring || asksForPhoto ? cardSheets.sheets : null
   const linesChip =
     hasLines && lines ? (
       <button
@@ -477,6 +489,7 @@ export function ChecklistInstanceCard({
           {statusStrip}
           {reopenedCallout}
           {linesBlock}
+          {photoStrip}
         </div>
         {actions ? (
           <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'flex-start' }}>{actions}</div>
@@ -539,7 +552,7 @@ export function ChecklistInstanceCard({
       </div>
       </>
       )}
-      {variant === 'row' && linesOpen ? <div style={{ padding: '0.1rem 0 0.4rem 2.2rem' }}>{linesBlock}</div> : null}
+      {variant === 'row' && linesOpen ? <div style={{ padding: '0.1rem 0 0.4rem 2.2rem' }}>{linesBlock}{photoStrip}</div> : null}
       {ringSheet}
       {threadOpen && fullHistory ? (
         <div style={{ marginTop: '0.65rem' }}>

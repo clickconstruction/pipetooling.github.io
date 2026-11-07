@@ -3,10 +3,12 @@ import { type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { dueChipLabel } from '../../lib/checklistDueDates'
 import { overdueAgeLabel, type LedgerInstance } from '../../lib/checklistHistoryLedger'
 import type { LineState } from '../../lib/taskCriteria'
-import type { RingState } from '../../lib/taskProgress'
+import { useTaskCardSheets } from '../../hooks/useTaskCardSheets'
+import type { TaskPhotoView } from '../../hooks/useTaskPhotos'
+import type { TaskPhotoRow } from '../../lib/photos/taskPhotosIo'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 import { TaskLinesList } from './TaskLinesList'
-import { TaskPercentSheet } from './TaskPercentSheet'
+import { TaskPhotoStrip } from './TaskPhotoStrip'
 import { TaskRing } from './TaskRing'
 
 /**
@@ -18,8 +20,9 @@ import { TaskRing } from './TaskRing'
  * new notes still land on THIS overdue occurrence via `commentInstanceId`.
  * Renders nothing when the list is empty.
  *
- * Task cards (#273, PR 3): a one-off's box gives way to the ring (`ringFor`), whose press opens the % sheet; the open
- * panel draws the card's Done when… lines above the activity (`linesFor`, `onTickLine`).
+ * Task cards (#273, PR 3): a one-off's box gives way to the ring (`takesRingFor`), whose press opens the % sheet; the
+ * open panel draws the card's Done when… lines above the activity (`linesFor`, `onTickLine`). PR 4b: each row is its own
+ * component so the shared sheets (`useTaskCardSheets`) can hold the photo flow, and the photos draw as a strip.
  */
 export function ChecklistOutstandingSection({
   instances,
@@ -33,10 +36,14 @@ export function ChecklistOutstandingSection({
   onCompleteForActivity,
   setError,
   nameById,
-  ringFor,
+  takesRingFor,
   linesFor,
   onTickLine,
   onSetPercent,
+  asksForPhotoFor,
+  photosFor,
+  onPhotoAdded,
+  onPostComment,
 }: {
   instances: LedgerInstance[]
   eventsByInstance: Map<string, ChecklistCardEvent[]>
@@ -50,14 +57,17 @@ export function ChecklistOutstandingSection({
   onCompleteForActivity?: (inst: LedgerInstance) => Promise<boolean>
   setError: (s: string | null) => void
   nameById?: Record<string, string>
-  /** The ring's state for a row that takes the ring, null for one that keeps the box. */
-  ringFor?: (inst: LedgerInstance) => RingState | null
+  /** True for a row that takes the ring (a one-off or a roadmap card); a row that keeps the box answers false. */
+  takesRingFor?: (inst: LedgerInstance) => boolean
   linesFor?: (inst: LedgerInstance) => LineState[]
   onTickLine?: (inst: LedgerInstance, criterionId: string, ticked: boolean) => void | Promise<void>
   onSetPercent?: (inst: LedgerInstance, percent: number, words: string) => Promise<boolean>
+  asksForPhotoFor?: (inst: LedgerInstance) => boolean
+  photosFor?: (inst: LedgerInstance) => TaskPhotoView[]
+  onPhotoAdded?: (row: TaskPhotoRow) => void
+  onPostComment?: (inst: LedgerInstance, body: string) => Promise<boolean>
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [sheetInst, setSheetInst] = useState<LedgerInstance | null>(null)
 
   if (instances.length === 0) return null
 
@@ -66,8 +76,6 @@ export function ChecklistOutstandingSection({
     if (id === currentUserId) return 'You'
     return nameById?.[id] ?? 'Someone'
   }
-  const sheetState = sheetInst ? ringFor?.(sheetInst) ?? null : null
-  const sheetTitle = sheetInst ? sheetInst.checklist_items?.title ?? '' : ''
 
   return (
     <section style={{ marginBottom: '2rem' }}>
@@ -97,109 +105,186 @@ export function ChecklistOutstandingSection({
           overflow: 'hidden',
         }}
       >
-        {instances.map((inst) => {
-          const events = eventsByInstance.get(inst.id) ?? []
-          const notes = events.filter((e) => e.event_type === 'comment').length
-          const expanded = expandedId === inst.id
-          const activity = activityFor(inst)
-          const ring = ringFor?.(inst) ?? null
-          const lines = linesFor?.(inst) ?? []
-          return (
-            <li key={inst.id} style={{ borderBottom: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.75rem' }}>
-                {ring ? (
-                  <TaskRing state={ring} size={36} title={inst.checklist_items?.title ?? ''} onPress={() => (ring.done ? onToggleComplete(inst) : setSheetInst(inst))} />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onToggleComplete(inst)}
-                    aria-label="Mark done"
-                    style={{
-                      width: 30,
-                      height: 30,
-                      flexShrink: 0,
-                      borderRadius: 8,
-                      border: '2.5px solid var(--text-600)',
-                      background: 'var(--surface)',
-                      cursor: 'pointer',
-                    }}
-                  />
-                )}
-                <button
-                  type="button"
-                  onClick={() => setExpandedId(expanded ? null : inst.id)}
-                  aria-expanded={expanded}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    textAlign: 'left',
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    cursor: 'pointer',
-                    color: 'var(--text-strong)',
-                  }}
-                >
-                  <span style={{ display: 'block', fontSize: '0.9375rem' }}>{titleFor(inst)}</span>
-                  {(() => {
-                    // Due-aware line (v2.2351): red means LATE — a task inside
-                    // its start→due window is calm, amber on the due day.
-                    const due = inst.checklist_items?.due_date ?? null
-                    const label = due ? dueChipLabel(due, todayStr) : overdueAgeLabel(inst.scheduled_date, todayStr)
-                    const color = !due || label.includes('late')
-                      ? 'var(--text-red-700)'
-                      : label === 'due today'
-                        ? 'var(--text-amber-800)'
-                        : 'var(--text-muted)'
-                    return (
-                      <span style={{ display: 'block', fontSize: '0.78rem', color, marginTop: 2 }}>
-                        {label}
-                        {lines.length > 0 ? (
-                          <span style={{ color: 'var(--text-muted)' }}> · {lines.filter((l) => l.checked).length} of {lines.length} done when…</span>
-                        ) : null}
-                        {notes > 0 ? (
-                          <span style={{ color: 'var(--text-muted)' }}> · 💬 {notes} {notes === 1 ? 'note' : 'notes'}</span>
-                        ) : null}
-                      </span>
-                    )
-                  })()}
-                </button>
-                <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  {expanded ? '▾' : '▸'}
-                </span>
-              </div>
-              {expanded ? (
-                <div style={{ padding: '0 0.75rem 0.7rem 3.1rem' }}>
-                  {lines.length > 0 ? (
-                    <div style={{ marginBottom: '0.6rem' }}>
-                      <TaskLinesList lines={lines} onTick={onTickLine ? (criterionId, ticked) => onTickLine(inst, criterionId, ticked) : undefined} readOnly={Boolean(inst.completed_at)} nameOf={nameOf} />
-                    </div>
-                  ) : null}
-                  <ChecklistItemActivity
-                    item={activity.item}
-                    authUserId={currentUserId}
-                    showInstanceDays={activity.showInstanceDays}
-                    setError={setError}
-                    commentInstanceId={inst.id}
-                    onPosted={onPosted}
-                    onComplete={onCompleteForActivity ? () => onCompleteForActivity(inst) : undefined}
-                  />
-                </div>
-              ) : null}
-            </li>
-          )
-        })}
+        {instances.map((inst) => (
+          <OutstandingRow
+            key={inst.id}
+            inst={inst}
+            events={eventsByInstance.get(inst.id) ?? []}
+            expanded={expandedId === inst.id}
+            onExpand={() => setExpandedId(expandedId === inst.id ? null : inst.id)}
+            currentUserId={currentUserId}
+            todayStr={todayStr}
+            title={titleFor(inst)}
+            activity={activityFor(inst)}
+            onToggleComplete={() => onToggleComplete(inst)}
+            onPosted={onPosted}
+            onCompleteForActivity={onCompleteForActivity ? () => onCompleteForActivity(inst) : undefined}
+            setError={setError}
+            nameOf={nameOf}
+            ring={takesRingFor?.(inst) ?? false}
+            lines={linesFor?.(inst) ?? []}
+            onTickLine={onTickLine ? (criterionId, ticked) => onTickLine(inst, criterionId, ticked) : undefined}
+            onSetPercent={onSetPercent ? (percent, words) => onSetPercent(inst, percent, words) : undefined}
+            asksForPhoto={asksForPhotoFor?.(inst) ?? false}
+            photos={photosFor?.(inst) ?? []}
+            onPhotoAdded={onPhotoAdded}
+            onPostComment={onPostComment ? (body) => onPostComment(inst, body) : undefined}
+          />
+        ))}
       </ul>
-      {sheetInst && sheetState ? (
-        <TaskPercentSheet
-          open
-          title={sheetTitle}
-          state={sheetState}
-          onSet={async (p, w) => (onSetPercent ? onSetPercent(sheetInst, p, w) : false)}
-          onDone={() => onToggleComplete(sheetInst)}
-          onClose={() => setSheetInst(null)}
-        />
-      ) : null}
     </section>
+  )
+}
+
+function OutstandingRow({
+  inst,
+  events,
+  expanded,
+  onExpand,
+  currentUserId,
+  todayStr,
+  title,
+  activity,
+  onToggleComplete,
+  onPosted,
+  onCompleteForActivity,
+  setError,
+  nameOf,
+  ring,
+  lines,
+  onTickLine,
+  onSetPercent,
+  asksForPhoto,
+  photos,
+  onPhotoAdded,
+  onPostComment,
+}: {
+  inst: LedgerInstance
+  events: ChecklistCardEvent[]
+  expanded: boolean
+  onExpand: () => void
+  currentUserId: string | null
+  todayStr: string
+  title: ReactNode
+  activity: { item: ChecklistItemActivityItem; showInstanceDays: boolean }
+  onToggleComplete: () => void
+  onPosted?: (instanceId: string, body: string) => void
+  onCompleteForActivity?: () => Promise<boolean>
+  setError: (s: string | null) => void
+  nameOf: (id: string | null | undefined) => string
+  ring: boolean
+  lines: LineState[]
+  onTickLine?: (criterionId: string, ticked: boolean) => void | Promise<void>
+  onSetPercent?: (percent: number, words: string) => Promise<boolean>
+  asksForPhoto: boolean
+  photos: TaskPhotoView[]
+  onPhotoAdded?: (row: TaskPhotoRow) => void
+  onPostComment?: (body: string) => Promise<boolean>
+}) {
+  const notes = events.filter((e) => e.event_type === 'comment').length
+  const sheets = useTaskCardSheets({
+    instanceId: inst.id,
+    title: inst.checklist_items?.title ?? '',
+    lines,
+    asksForPhoto,
+    isCompleted: Boolean(inst.completed_at),
+    percentComplete: inst.percent_complete,
+    currentUserId,
+    onTickLine,
+    onToggleComplete,
+    onSetPercent,
+    onPostComment,
+    onPhotoAdded,
+  })
+  return (
+    <li style={{ borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.75rem' }}>
+        {ring ? (
+          <TaskRing state={sheets.ring} size={36} title={inst.checklist_items?.title ?? ''} onPress={sheets.ringPress} />
+        ) : (
+          <button
+            type="button"
+            onClick={onToggleComplete}
+            aria-label="Mark done"
+            style={{
+              width: 30,
+              height: 30,
+              flexShrink: 0,
+              borderRadius: 8,
+              border: '2.5px solid var(--text-600)',
+              background: 'var(--surface)',
+              cursor: 'pointer',
+            }}
+          />
+        )}
+        <button
+          type="button"
+          onClick={onExpand}
+          aria-expanded={expanded}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            textAlign: 'left',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            color: 'var(--text-strong)',
+          }}
+        >
+          <span style={{ display: 'block', fontSize: '0.9375rem' }}>{title}</span>
+          {(() => {
+            // Due-aware line (v2.2351): red means LATE — a task inside
+            // its start→due window is calm, amber on the due day.
+            const due = inst.checklist_items?.due_date ?? null
+            const label = due ? dueChipLabel(due, todayStr) : overdueAgeLabel(inst.scheduled_date, todayStr)
+            const color = !due || label.includes('late')
+              ? 'var(--text-red-700)'
+              : label === 'due today'
+                ? 'var(--text-amber-800)'
+                : 'var(--text-muted)'
+            return (
+              <span style={{ display: 'block', fontSize: '0.78rem', color, marginTop: 2 }}>
+                {label}
+                {lines.length > 0 ? (
+                  <span style={{ color: 'var(--text-muted)' }}> · {lines.filter((l) => l.checked).length} of {lines.length} done when…</span>
+                ) : null}
+                {photos.length > 0 ? <span style={{ color: 'var(--text-muted)' }}> · 📷 {photos.length}</span> : null}
+                {notes > 0 ? (
+                  <span style={{ color: 'var(--text-muted)' }}> · 💬 {notes} {notes === 1 ? 'note' : 'notes'}</span>
+                ) : null}
+              </span>
+            )
+          })()}
+        </button>
+        <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+          {expanded ? '▾' : '▸'}
+        </span>
+      </div>
+      {expanded ? (
+        <div style={{ padding: '0 0.75rem 0.7rem 3.1rem' }}>
+          {lines.length > 0 ? (
+            <div style={{ marginBottom: '0.6rem' }}>
+              <TaskLinesList lines={lines} onTick={onTickLine ? sheets.tickLine : undefined} readOnly={Boolean(inst.completed_at)} nameOf={nameOf} />
+            </div>
+          ) : null}
+          {photos.length > 0 ? (
+            <div style={{ marginBottom: '0.6rem' }}>
+              <TaskPhotoStrip photos={photos} />
+            </div>
+          ) : null}
+          <ChecklistItemActivity
+            item={activity.item}
+            authUserId={currentUserId}
+            showInstanceDays={activity.showInstanceDays}
+            setError={setError}
+            commentInstanceId={inst.id}
+            onPosted={onPosted}
+            onComplete={onCompleteForActivity}
+          />
+        </div>
+      ) : null}
+      {ring || asksForPhoto ? sheets.sheets : null}
+    </li>
   )
 }

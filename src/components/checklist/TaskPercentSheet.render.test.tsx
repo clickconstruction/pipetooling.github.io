@@ -39,7 +39,7 @@ describe('TaskPercentSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: '75' }))
     fireEvent.change(screen.getByLabelText('What is left'), { target: { value: 'puddy and the glue' } })
     fireEvent.click(screen.getByRole('button', { name: 'Set 75%' }))
-    await waitFor(() => expect(onSet).toHaveBeenCalledWith(75, 'puddy and the glue'))
+    await waitFor(() => expect(onSet).toHaveBeenCalledWith(75, 'puddy and the glue', null))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 

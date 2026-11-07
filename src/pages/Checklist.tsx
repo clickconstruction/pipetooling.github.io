@@ -68,8 +68,9 @@ import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
 import { ACCURACY_MIN_COUNT, canSeeTaskCosts, estimateAccuracy, estimateAccuracyByPerson, formatMultiplier, formatWholeDollars, sumEstimateDollars } from '../lib/checklistCostEstimate'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import { useTaskLines } from '../hooks/useTaskLines'
-import { ringState, takesRing } from '../lib/taskProgress'
+import { cardAsksForPhoto, takesRing } from '../lib/taskProgress'
 import { setTaskPercent } from '../lib/taskProgressIo'
+import { useTaskPhotos } from '../hooks/useTaskPhotos'
 
 type UserRole =
   | 'dev'
@@ -106,12 +107,16 @@ type ChecklistInstance = {
     due_date?: string | null
     repeat_type?: string | null
     roadmap_group_task_id?: string | null
+    /** Task cards (#273): the writer's switch; the finish holds for a photo. */
+    asks_for_photo?: boolean | null
     checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null
   } | null
 }
 
 type RoadmapTaskEmbed = {
   group_id?: string
+  /** Task cards (#273): the roadmap task's own switch; a card made from it reads it too. */
+  asks_for_photo?: boolean | null
   checklist_tech_tree_groups?: {
     title?: string | null
     roadmap_id?: string
@@ -467,6 +472,8 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     })),
     authUserId,
   )
+  // PR 4b: the cards' photos, one read for the day's cards and the outstanding ones.
+  const taskPhotos = useTaskPhotos([...todayInstances, ...outstandingInstances].map((i) => i.id))
   const [eventActorNameById, setEventActorNameById] = useState<Record<string, string>>({})
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
@@ -515,7 +522,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     const today = toLocalDateString(new Date())
     const { data: todayData, error: e1 } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, asks_for_photo, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, asks_for_photo, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -531,7 +538,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     // client-side so the reopened check can share the same rows.
     const { data: pastData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, show_until_completed, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, asks_for_photo, show_until_completed, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, asks_for_photo, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .is('completed_at', null)
       .lt('scheduled_date', today)
@@ -857,6 +864,9 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
                     if (r.allTicked) await loadToday()
                   }}
                   ring={takesRing({ repeatType: inst.checklist_items?.repeat_type ?? 'once', roadmapTaskId: inst.checklist_items?.roadmap_group_task_id ?? null })}
+                  asksForPhoto={cardAsksForPhoto({ asksForPhoto: inst.checklist_items?.asks_for_photo }, { asksForPhoto: inst.checklist_items?.checklist_tech_tree_group_tasks?.asks_for_photo })}
+                  photos={taskPhotos.photosFor(inst.id)}
+                  onPhotoAdded={taskPhotos.add}
                   onSetPercent={async (percent, words) => {
                     if (!authUserId) return false
                     const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
@@ -937,13 +947,18 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
         eventsByInstance={eventsByInstance}
         currentUserId={authUserId}
         nameById={eventActorNameById}
-        ringFor={(inst) => {
+        takesRingFor={(inst) => {
           const it = (inst as ChecklistInstance).checklist_items
-          if (!takesRing({ repeatType: it?.repeat_type ?? 'once', roadmapTaskId: it?.roadmap_group_task_id ?? null })) return null
-          const lines = taskLines.linesFor(inst.id)
-          return ringState({ completedAt: inst.completed_at, percentComplete: (inst as ChecklistInstance).percent_complete, lines: lines.length, ticked: lines.filter((l) => l.checked).length })
+          return takesRing({ repeatType: it?.repeat_type ?? 'once', roadmapTaskId: it?.roadmap_group_task_id ?? null })
         }}
         linesFor={(inst) => taskLines.linesFor(inst.id)}
+        asksForPhotoFor={(inst) => {
+          const it = (inst as ChecklistInstance).checklist_items
+          return cardAsksForPhoto({ asksForPhoto: it?.asks_for_photo }, { asksForPhoto: it?.checklist_tech_tree_group_tasks?.asks_for_photo })
+        }}
+        photosFor={(inst) => taskPhotos.photosFor(inst.id)}
+        onPhotoAdded={taskPhotos.add}
+        onPostComment={(inst, body) => postCardComment(inst as ChecklistInstance, body)}
         onTickLine={async (inst, criterionId, ticked) => {
           const r = await taskLines.tick(inst.id, criterionId, ticked)
           if (!r.ok && r.error) setError(r.error)
