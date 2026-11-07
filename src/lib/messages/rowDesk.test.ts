@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import type { Invitation } from '../emailIn/invitation'
-import { DESK_WORDS, deskRead, deskTitle, rowDesk, type DeskFacts } from './rowDesk'
+import { DESK_WORDS, deskRead, deskReadOf, deskTitle, rowDesk, type DeskFacts } from './rowDesk'
 
 // Every person here is made up. The facts are the New lane's own: the sort, the sender's kind, the active jobs by key,
 // the box the line came in on, and what the reader read from an invitation.
@@ -74,5 +74,20 @@ describe('rowDesk: which desk finishes a New row', () => {
       ...Object.values(DESK_WORDS).map((w) => w.does),
     ]
     for (const words of whys) expect(plainWordsFailures(words), words).toEqual([])
+  })
+})
+
+describe('deskReadOf — the same rule from a sender and a line, for Needs a reply and the folded card (PR 2 of #258)', () => {
+  it('reads the kind and the jobs from the contact and the box from the line, and an invitation only when the line carries one', () => {
+    expect(deskReadOf({ kind: 'customer', jobIds: [] }, { mailbox: 'team' })).toEqual({ desk: 'dispatch', why: 'A customer on the team line. Dispatch books the visit.' })
+    expect(deskReadOf({ kind: 'customer', jobIds: ['pipeline:j1312'] }, { mailbox: 'bids' })).toEqual({ desk: 'dispatch', why: 'Their job is on the Pipeline.' })
+    expect(deskReadOf({ kind: 'lead' }, { mailbox: 'bids' })).toEqual({ desk: 'estimating', why: 'They wrote to bids@.' })
+    expect(deskReadOf({ kind: 'trade' }, null)).toEqual({ desk: 'estimating', why: 'A trade partner writes about a bid or a quote.' })
+    expect(deskReadOf({ kind: 'unknown' }, { mailbox: 'bids' })).toBeNull()
+    expect(deskReadOf({ kind: 'team' }, { mailbox: 'team' })).toBeNull()
+    expect(deskReadOf({ kind: 'unknown' }, { mailbox: 'bids', invitation: invite('addendum') })).toEqual({ desk: 'estimating', why: 'An addendum to a bid.' })
+    // A malformed invitation on the line is no invitation.
+    expect(deskReadOf({ kind: 'unknown' }, { mailbox: 'bids', invitation: { kind: 'party' } })).toBeNull()
+    expect(deskReadOf({ kind: 'customer', jobIds: null }, undefined)).toEqual({ desk: 'dispatch', why: 'A customer on the team line. Dispatch books the visit.' })
   })
 })

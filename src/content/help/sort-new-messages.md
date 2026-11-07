@@ -37,6 +37,8 @@ A row can carry a narrow band on its left edge. The band says which desk finishe
 
 A row with no band is one the app cannot place yet. **Who is this?** has none until the sender is named. Hover the band to read why it is there. It reads *Estimating · An invitation to bid.* The band is not a press. It changes nothing about who has the row.
 
+The rows under **Needs a reply** carry the same band. The app reads it from the sender and the line they wrote on. A customer who texted the team number gets Dispatch. A trade partner gets Estimating. The thread's folded sort card carries the band too, on its left edge. Press **Other ways** and the open card says the desk in words instead.
+
 ## Sort one
 
 Press the person's row in **New**, or the blue question before their name. The address or the number they wrote from sits after the name. Their thread opens with the sort card at the top. The card's heading says who it asks about. An email reads *Who is Dale Ferris, dale@ridgeway.example?*. A text with no name reads *Who is 512-555-0142?*.

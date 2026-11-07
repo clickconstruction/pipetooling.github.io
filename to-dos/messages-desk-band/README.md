@@ -2,7 +2,7 @@
 name: "Messages: a band on each New row says which desk finishes it, Dispatch or Estimating"
 number: 258
 group: ready
-status: proposed 2026-11-04 from Grace's look at New on the Messages page · PR 1 built 2026-11-04 as v2.6507 (PR #7022) on the recommended defaults, merged; the owner's look at New with the band on and his word on the six calls next
+status: proposed 2026-11-04 from Grace's look at New on the Messages page · PR 1 built 2026-11-04 as v2.6507 (PR #7022) on the recommended defaults, merged · PR 2 built 2026-11-07 as v2.6616 (PR #7184) on call 3's recommendation, Needs a reply and the thread's folded sort card; the six calls stand on their defaults, each a line for Micah to change
 summary: >
   New on Messages → Follow up draws every row the same way but for the color of the sort's
   question, so a customer asking for a visit and a trade partner sending a quote read alike until
@@ -13,7 +13,7 @@ summary: >
   sender's kind, the jobs they are on, the box the line came in on, and guesses nothing from the
   words; a row it cannot place gets no band. The header's two pairs move into one kernel the band
   reads too, so the two cannot drift.
-next: The owner's look at New with the band on, and his word on the six calls. Then PR 2 on Needs a reply if call 3 is a yes.
+next: retire the card once #7184 merges and is walked; Micah's word on any of the six calls changes one line.
 size: S (PR 1 the rule, the kernel the header and the band share, the band on New's rows, the guide) + S (PR 2 Needs a reply and the folded sort card, if wanted)
 blocker: Nothing in the code. The calls below have recommendations; PR 1 takes them.
 ver: v2.6507
