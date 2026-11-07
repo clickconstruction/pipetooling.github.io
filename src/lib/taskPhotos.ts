@@ -59,3 +59,14 @@ export const TASK_PHOTO_STANDING_WORDS: Record<ReturnType<typeof taskPhotoStandi
 export function sortTaskPhotos<T extends Pick<TaskPhotoRowShape, 'taken_at' | 'kind'>>(rows: T[]): T[] {
   return [...rows].sort((a, b) => b.taken_at.localeCompare(a.taken_at) || (a.kind === 'finish' ? -1 : 0) - (b.kind === 'finish' ? -1 : 0))
 }
+
+/**
+ * The event a card's strip listens for (`useTaskPhotos`): a photo landed on a card, live from the sheet or from the
+ * outbox's replay (v2.6628). `detail` is the photo ids; the strip reads its cards again whatever they are.
+ */
+export const TASK_PHOTO_ADDED_EVENT = 'task-photo-added'
+
+export function announceTaskPhotos(ids: ReadonlyArray<string>): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(TASK_PHOTO_ADDED_EVENT, { detail: ids.length === 1 ? ids[0] : [...ids] }))
+}

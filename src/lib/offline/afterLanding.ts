@@ -1,4 +1,5 @@
-import type { FieldReportPayload, JobPhotosPayload, KeptReportPhoto, MovedLineStamp, OutboxPress } from './outbox'
+import type { FieldReportPayload, JobPhotosPayload, KeptReportPhoto, MovedLineStamp, OutboxPress, TaskPhotoPayload } from './outbox'
+import { announceTaskPhotos } from '../taskPhotos'
 import { checklistAnswerWrites, type ChecklistAnswerWrite } from '../photos/reportPhotoChecklist'
 import { threadLineWords } from '../photos/jobPhotoNotes'
 import { keptPhotos } from './keptPhotos'
@@ -27,6 +28,8 @@ export interface AfterLandingIo {
   dropKeptPhotos?: (ids: ReadonlyArray<string>) => Promise<void>
   /** A job photos press (punch list #244, PR 5): the one line on the job's thread after it lands, best effort. */
   postThreadLine?: (jobId: string, userId: string, body: string) => Promise<boolean>
+  /** A task photo press (punch list #273, v2.6628): the card's strips hear the landed photos and read again. */
+  announceTaskPhotos?: (ids: ReadonlyArray<string>) => void
 }
 
 async function defaultIo(): Promise<AfterLandingIo> {
@@ -46,6 +49,7 @@ async function defaultIo(): Promise<AfterLandingIo> {
     answerQuestions: (writes, who) => answerQuestionsWithReportPhotos(writes, who),
     dropKeptPhotos: (ids) => keptPhotos.drop(ids),
     postThreadLine: (jobId, userId, body) => postJobThreadNoteBody(jobId, userId, body),
+    announceTaskPhotos: (ids) => announceTaskPhotos(ids),
   }
 }
 
@@ -62,6 +66,22 @@ export function reportIdOf(result: unknown): string | null {
 }
 
 export async function afterLanding(press: OutboxPress, result: unknown, io?: AfterLandingIo): Promise<void> {
+  if (press.kind === 'task-photo') {
+    // The replay wrote the row and the landing tied it to its line; the bytes go, and the card's strip hears it. Best effort.
+    const payload = press.payload as TaskPhotoPayload
+    const run = io ?? (await defaultIo().catch(() => null))
+    if (!run) return
+    const sent = (payload.photos ?? []).filter((p) => p.sent).map((p) => p.id)
+    if (run.dropKeptPhotos && sent.length > 0) await run.dropKeptPhotos(sent).catch(() => undefined)
+    if (run.announceTaskPhotos && sent.length > 0) {
+      try {
+        run.announceTaskPhotos(sent)
+      } catch {
+        // a strip that is not mounted hears nothing, and loses nothing: it reads on its next open
+      }
+    }
+    return
+  }
   if (press.kind === 'job-photos') {
     // The press landed the words on the rows; the bytes go and the thread gets its one line. Best effort.
     const payload = press.payload as JobPhotosPayload
