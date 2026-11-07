@@ -300,7 +300,7 @@ kernel and card; the Schedule column and the bonus setting; the certified-percen
    `docs/recent-features/v2.6646.md`: the Pricing tab's quiet line (its workbench rows already
    read labor, materials and margin per line, and the cover letter carries none of it).
 3. **PR 1b · the owner tunes** (S), open 2026-11-07 as v2.6656 with its migration
-   (`20261107170000_line_budget_settings.sql`: one `app_settings` row and the owner's write policy).
+   (`20261107210000_line_budget_settings.sql`: one `app_settings` row and the owner's write policy).
    Settings → Jobs & billing → Line budgets with two sliders per kind, the burdened cost rate with
    the roster's beside it, the target margin, the read-out on a chosen line size, Save naming what
    it writes and moving only lines still assumed, the learning line on its kind's row; every reader

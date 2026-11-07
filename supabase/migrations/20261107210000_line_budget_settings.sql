@@ -12,7 +12,7 @@ SET lock_timeout = '3s';
 --   Written by the owner (dev · master technician) through a key-scoped UPDATE policy, the way the owner-
 --   of-record switch is (20260914270000); every signed-in role reads it (the table's existing SELECT).
 --
--- Additive, idempotent. docs/migrations/20261107170000_line_budget_settings.md.
+-- Additive, idempotent. docs/migrations/20261107210000_line_budget_settings.md.
 
 INSERT INTO public.app_settings (key, value_text)
 VALUES ('line_budget_settings_v1', '{"rateUsd":45,"targetMarginPct":20,"splits":{"rough_in":[45,35],"top_out":[45,35],"trim_set":[40,40],"any":[45,35]}}')
