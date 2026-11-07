@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -79,11 +79,27 @@ export function PeopleWeekSheet({
   const [note, setNote] = useState<string | null>(null)
   const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null)
 
+  // The screen's people and the caller ride a ref, so a re-render with a new array never re-reads the rows.
+  const openingRef = useRef({ suggested, meId })
+  openingRef.current = { suggested, meId }
+
+  /** Reads the rows and the people, and sets the picks from them in the same paint: the chain as it stands, or the screen's people on Monday at 6 for a first one. */
   const load = useCallback(async () => {
     try {
       const [list, who] = await Promise.all([io.list(), canPickOthers ? io.people() : Promise.resolve([] as { id: string; name: string }[])])
+      const cur = peopleWeekChains(list)[0] ?? null
+      const { suggested: shown, meId: me } = openingRef.current
       setRows(list)
       setPeople(who)
+      if (cur) {
+        setPicked(cur.peopleUserIds)
+        setDays(cur.weekdays)
+        setTime(cur.timeHm)
+      } else {
+        setPicked(canPickOthers ? shown.slice(0, PEOPLE_WEEK_PEOPLE_MAX) : me ? [me] : [])
+        setDays([PEOPLE_WEEK_DEFAULT_WEEKDAY])
+        setTime(PEOPLE_WEEK_DEFAULT_TIME)
+      }
     } catch (e) {
       setProblem(formatErrorMessage(e, 'The Monday emails did not load.'))
       setRows([])
@@ -104,21 +120,6 @@ export function PeopleWeekSheet({
 
   const chains = useMemo(() => peopleWeekChains(rows ?? []), [rows])
   const current: PeopleWeekChain | null = chains[0] ?? null
-
-  // Opening shows the chain as it stands, or the screen's people on Monday at 6 for a first one.
-  useEffect(() => {
-    if (!open || rows === null) return
-    if (current) {
-      setPicked(current.peopleUserIds)
-      setDays(current.weekdays)
-      setTime(current.timeHm)
-    } else {
-      setPicked(canPickOthers ? suggested.slice(0, PEOPLE_WEEK_PEOPLE_MAX) : meId ? [meId] : [])
-      setDays([PEOPLE_WEEK_DEFAULT_WEEKDAY])
-      setTime(PEOPLE_WEEK_DEFAULT_TIME)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, rows, current])
 
   useEffect(() => {
     if (!open) return
