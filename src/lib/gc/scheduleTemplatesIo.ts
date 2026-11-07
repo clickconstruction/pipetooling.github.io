@@ -4,8 +4,8 @@
  * Templates card and the pick). A save goes through `gc_schedule_template_save` (migration 20261028180000), one
  * press that writes a new row or a new version and marks the one it replaced.
  */
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TemplatesIo } from '../../components/gc/GcTemplatesPage'
+import type { Json } from '../../types/database'
 import { supabase } from '../supabase'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
 import { templateDraftOf, templateSaveBody, type TemplateSaveBody } from './schedule/templateEditor'
@@ -48,13 +48,11 @@ export async function loadScheduleTemplates(): Promise<ScheduleTemplate[]> {
   return templatesFromRows(rows, new Map(named.map((u) => [u.id, u.name ?? ''])))
 }
 
-/** A template saved as a new row, or a new version of `versionOf` (call 2). Returns the new id. */
+/** A template saved as a new row, or a new version of `versionOf` (call 2). Returns the new id. Typed since #210: the generated types carry the function. */
 export async function saveTemplateBody(body: TemplateSaveBody, versionOf: string | null): Promise<string> {
-  // Untyped until the types are regenerated after the migration's push (the types PR that follows #204 PR 2).
-  const client = supabase as unknown as SupabaseClient
-  const result = await client.rpc('gc_schedule_template_save', { p_template: body, p_version_of: versionOf })
+  const result = await supabase.rpc('gc_schedule_template_save', { p_template: body as unknown as Json, ...(versionOf ? { p_version_of: versionOf } : {}) })
   if (nameTaken(result.error)) throw new Error(TEMPLATE_NAME_TAKEN)
-  const id: unknown = taken(result, 'save the template')
+  const id = taken(result, 'save the template')
   if (typeof id !== 'string') throw new Error('The template did not save.')
   return id
 }

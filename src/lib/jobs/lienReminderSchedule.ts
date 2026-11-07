@@ -1,5 +1,6 @@
 import { COURTESY_AFFIDAVIT_MARGIN_DAYS, COURTESY_AGAIN_DAYS, COURTESY_FROM_DAY } from './lienCourtesyNotice'
 import { LETTER_TWO_BY_DAY, LETTER_TWO_FROM_DAY } from './lienLetterTwo'
+import { LIEN_MONTH_RULE } from './lienMonthRhythm'
 
 /**
  * Our schedule after a notice (v2.6574, Grace's ask of 2026-11-06: "it is not inherent for someone
@@ -67,7 +68,7 @@ export function lienScheduleWords(): string {
 /** Whose rule each day is, one line each, for § Rules. */
 export function lienScheduleSourceLines(): string[] {
   return [
-    `Day ${COURTESY_FROM_DAY} is the owner’s choice. One courtesy notice goes, never a second; after ${COURTESY_AGAIN_DAYS} days of silence the attorney’s letter leads.`,
+    `Day ${COURTESY_FROM_DAY} is the owner’s choice, and so is reminders week: the one courtesy notice goes on days ${LIEN_MONTH_RULE.reminders.from} to ${LIEN_MONTH_RULE.reminders.to} of the lien’s month, never before day ${COURTESY_FROM_DAY}, never a second; after ${COURTESY_AGAIN_DAYS} days of silence the attorney’s letter leads.`,
     `Day ${LETTER_TWO_FROM_DAY} and day ${LETTER_TWO_BY_DAY} are counsel’s rule for the second letter.`,
     `The ${COURTESY_AFFIDAVIT_MARGIN_DAYS} days before the affidavit’s day are our margin, so a reminder never names a lien day the law would not allow.`,
     'The affidavit’s day is the law’s, § 53.052, and each job has its own.',

@@ -75,7 +75,8 @@ export function templateDraftPress(state: GcState, project: GcProject, start: st
   const template = templateId && !own ? templatesOffered(state).find((t) => t.id === templateId) : undefined
   if (templateId && !own && !template) return { problem: TEMPLATE_GONE }
   const use: TemplateUse | null = own?.template ? { ...own.template, on: state.today } : template ? { id: template.id, name: template.name, on: state.today } : null
-  const rows = template?.rows ? templateRows(template) : null
+  // The rough's own copy of a rows template (#210) draws as the template would have, even once it is set aside or changed.
+  const rows = own?.rows ?? (template?.rows ? templateRows(template) : null)
   const drawn = rows ? rowsDraft(project, start, rows, project.rough?.days) : draftSchedule(project, start, project.rough?.days, own?.like ?? template?.lines)
   const schedule = use ? { ...drawn, template: use } : drawn
   const landed = rows ? ` ${rows.rows.length} ${rows.rows.length === 1 ? 'row' : 'rows'} in ${rows.phases.length} ${rows.phases.length === 1 ? 'phase' : 'phases'} landed.` : ''
@@ -97,9 +98,9 @@ export function roughRefusal(project: Pick<GcProject, 'stage' | 'lostOn' | 'ourB
 /**
  * The rough drawn or redrawn, as the prototype's reducer drew it (`setRough`): from a start day and the stage days that
  * differ from the usual ones (a length under one day, or not a number, is dropped). A template picked copies its lines,
- * so no later edit to the template reaches the rough; `null` goes back to the stage days alone; left out, a redraw keeps
- * the rough's own copy. Refused while the job may not take one (`roughRefusal`), with no start, and for a template no
- * longer offered.
+ * so no later edit to the template reaches the rough, and a template with rows copies its phases and rows beside them
+ * (#210); `null` goes back to the stage days alone; left out, a redraw keeps the rough's own copy. Refused while the job
+ * may not take one (`roughRefusal`), with no start, and for a template no longer offered.
  */
 export function roughPress(
   state: GcState,
@@ -116,7 +117,9 @@ export function roughPress(
   const kept = input.templateId === undefined ? project.rough : undefined
   const use = template ? { id: template.id, name: template.name, on: state.today } : kept?.template
   const lines = template ? template.lines : kept?.like
-  return { rough: { start: input.start, days, by, on: state.today, ...(use && lines ? { template: use, like: lines } : {}) } }
+  // A template with rows (#210): the rough keeps a copy of its phases and rows too, and draws them as the first draft does.
+  const rows = template ? (template.rows ? templateRows(template) : undefined) : kept?.rows
+  return { rough: { start: input.start, days, by, on: state.today, ...(use && lines ? { template: use, like: lines, ...(rows ? { rows } : {}) } : {}) } }
 }
 
 /**
@@ -250,13 +253,13 @@ export function partMovePress(
 
 /**
  * The job's own work put on the chart (G-38), as the prototype's reducer does it (`addScheduleActivity`): a bar that is
- * no trade's line, what it waits on, the bars that wait on it from now on, and what that pushes. The bars come back as
- * the push leaves them, for `addScheduleActivity`'s io, with the reducer's line in the log. Null: its problem
- * (`addedActivityProblem`) or no schedule.
+ * no trade's line, what it waits on, the bars that wait on it from now on, and what that pushes, in the phase picked when
+ * the schedule was drawn with phases (#210). The bars come back as the push leaves them, for `addScheduleActivity`'s io,
+ * with the reducer's line in the log. Null: its problem (`addedActivityProblem`) or no schedule.
  */
 export function ownWorkPress(
   project: GcProject,
-  input: { label: string; who: string; start: string; finish: string; after: string[]; holdsUp: string[] },
+  input: { label: string; who: string; start: string; finish: string; after: string[]; holdsUp: string[]; phase?: string },
   by: string,
 ): { activities: ScheduleActivity[]; words: string } | null {
   const schedule = project.schedule
@@ -267,7 +270,10 @@ export function ownWorkPress(
   const lineId = nextOwnId(project)
   const after = [...new Set(input.after)].filter((id) => ids.has(id))
   const holdsUp = new Set([...new Set(input.holdsUp)].filter((id) => ids.has(id) && !after.includes(id)))
-  const activity: ScheduleActivity = { lineId, packageId: '', start: input.start, finish: input.finish, after, added: { label, who, doneOn: null } }
+  // Its phase (#210): one the schedule was drawn with, else none, and it lands under Not in a phase.
+  const phase = input.phase?.trim()
+  const inPhase = phase && schedule.phases?.includes(phase) ? phase : undefined
+  const activity: ScheduleActivity = { lineId, packageId: '', start: input.start, finish: input.finish, after, added: { label, who, doneOn: null }, ...(inPhase ? { phase: inPhase } : {}) }
   // The lines that wait on it from now on, then what that pushes (the owner, 2026-10-04: what comes after moves out).
   const pushed = pushAfter(project, [...schedule.activities.map((a) => (holdsUp.has(a.lineId) ? { ...a, after: [...a.after, lineId] } : a)), activity], lineId)
   return {

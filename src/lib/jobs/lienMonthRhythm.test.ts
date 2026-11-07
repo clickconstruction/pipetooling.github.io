@@ -163,6 +163,16 @@ describe('buildLienMonth — the five zones over the desk’s book', () => {
     expect(lienMonthZoneLine(buildLienMonth({ todayYmd: '2026-11-20', notices: [], affidavits: [], courtesyByJob: {}, jobTitle }).zones[0]!)).toEqual({ head: 'nothing to send', sub: '', tone: 'done' })
   })
 
+  it('a drafting row that keeps the notice that went this month (v2.6624) counts that send as done beside what is left', () => {
+    const m = buildLienMonth({ todayYmd: '2026-11-08', notices: [notice({ jobId: 'a', pile: 'to_draft', sentItem: item({ sent_at: '2026-11-06T16:00:00Z' }) })], affidavits: [], courtesyByJob: {}, jobTitle })
+    const not = m.zones[1]!
+    expect(not.jobs.map((j) => [j.state, j.words])).toEqual([
+      ['left', 'to draft'],
+      ['done', 'sent Nov 6'],
+    ])
+    expect(lienMonthZoneLine(not)).toEqual({ head: '1 to send · 1 sent', sub: '1 to draft', tone: 'now' })
+  })
+
   it('a missed month whose deadline fell this month is a slip; a notice due a later month is nobody’s this month', () => {
     const m = buildLienMonth({
       todayYmd: '2026-11-17',

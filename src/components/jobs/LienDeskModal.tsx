@@ -89,6 +89,8 @@ import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { buildLienMonth, lienMonthZoneHasRow, type LienMonthZoneKey } from '../../lib/jobs/lienMonthRhythm'
+import { LienMonthBar } from './LienMonthBar'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { LienStepRow } from './LienDeskSteps'
 import { freshHtml, gapToken, lienPaperFilledSince, lienPaperFixWindow, lienPaperGaps, paintGaps, withFreshMarks, withGapTokens, type LienPaperFacts, type LienPaperFixWindow, type LienPaperGap } from '../../lib/jobs/lienPaperGaps'
@@ -696,12 +698,19 @@ export default function LienDeskModal({
     },
     [data, courtesyByJob, todayYmd],
   )
+  // Filed affidavits not yet served (§ 53.055): Do now's record-service rows, and the lien month's copies to mail.
+  const serveDue = useMemo(
+    () =>
+      data
+        ? Object.values(data.filingsByJob)
+            .flat()
+            .filter((f) => f.kind === 'affidavit' && f.filed_at && !f.served_at && !f.voided_at && f.serve_due)
+            .map((f) => ({ jobId: f.job_id, serveDue: f.serve_due as string }))
+        : [],
+    [data],
+  )
   const nextUpRows = useMemo(() => {
     if (!data) return []
-    const serveDue = Object.values(data.filingsByJob)
-      .flat()
-      .filter((f) => f.kind === 'affidavit' && f.filed_at && !f.served_at && !f.voided_at && f.serve_due)
-      .map((f) => ({ jobId: f.job_id, serveDue: f.serve_due as string }))
     return buildLienNextUp({
       notices: data.queue.entries,
       affidavits: data.affidavits.entries,
@@ -717,7 +726,10 @@ export default function LienDeskModal({
       userName: (userId) => leaderNameFor?.(userId)?.trim() || null,
       mailNeedsYou: mailNeedsYouRows(data.filingsByJob, data.mailPiecesByFiling ?? {}, formatYmdMonthDay),
     })
-  }, [data, authRole, todayYmd, leaderNameFor, courtesyByJob])
+  }, [data, authRole, todayYmd, leaderNameFor, courtesyByJob, serveDue])
+  // The lien month (punch list #235, PR 2): the five zones over the same book Do now reads, drawn as the bar above the list; a pressed zone narrows the list to its work.
+  const lienMonth = useMemo(() => (data ? buildLienMonth({ todayYmd, notices: data.queue.entries, affidavits: data.affidavits.entries, courtesyByJob, serveDue, jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId) }) : null), [data, todayYmd, courtesyByJob, serveDue])
+  const [monthZone, setMonthZone] = useState<LienMonthZoneKey | null>(null)
   // The office's waiting rows (punch list #101 PR 3) close the list under the leader's name when they share one.
   const nextUpWaitingOn = useMemo(() => {
     if (!data || !leaderNameFor) return null
@@ -752,6 +764,10 @@ export default function LienDeskModal({
         : nextUpRows,
     [nextUpRows, finding, findWords, findFactsFor],
   )
+  const nextUpRowsShown = useMemo(() => {
+    const zone = monthZone && lienMonth ? lienMonth.zones.find((z) => z.key === monthZone) : null
+    return zone ? nextUpRowsFound.filter((r) => lienMonthZoneHasRow(zone, r)) : nextUpRowsFound
+  }, [nextUpRowsFound, monthZone, lienMonth])
   const paperFactsFor = (row: LienNextUpRow): LienPaperFacts | null => {
     if (!data || !row.jobId) return null
     const rowJob = data.jobsById[row.jobId]
@@ -3621,9 +3637,10 @@ export default function LienDeskModal({
             return <LienPaperPropertyWindow job={fixJob} address={fixAddress} ownerOnJob={resolveLienProperty(fixAddress, data.ownerByJob[fixJob.id] ?? null).owner.source === 'job_override'} focus={paperFix.gap.key} onClose={done} />
           })() : null}
           {kind === 'next' ? (
-            <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }}>
-            <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsFound.length} isMobile={isMobile} />
-            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
+            <div style={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }}>
+            {lienMonth ? <LienMonthBar month={lienMonth} on={monthZone} onPick={setMonthZone} isMobile={isMobile} shown={nextUpRowsShown.length} total={nextUpRowsFound.length} /> : <div />}
+            <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
+            <LienDeskNextUp rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab

@@ -2,7 +2,7 @@
 name: "A courtesy notice between the § 53.056 notice and the lien"
 number: 231
 group: close
-status: built 2026-11-01 in four PRs, v2.6259 (#6686), v2.6261 (#6704), v2.6269 (#6713) and v2.6271 · send-lien-filing-email redeployed the same day · migration 20261101092703 pushed, customer-portal, legal-portal and messages-notify redeployed · the owner kept the press live on 2026-11-01 · two defects its live test found are on their own card (#243) · left: counsel's read of the words, then delete the folder
+status: built 2026-11-01 in four PRs, v2.6259 (#6686), v2.6261 (#6704), v2.6269 (#6713) and v2.6271 · send-lien-filing-email redeployed the same day · migration 20261101092703 pushed, customer-portal, legal-portal and messages-notify redeployed · the owner kept the press live on 2026-11-01 · two defects its live test found are on their own card (#243) · since v2.6594 (punch list #274) one courtesy goes, never a second, and the affidavit's week is a priority, not a hold; since v2.6611 a partial payment pauses the reminders and the footer asks what they promised · left: counsel's read of the words, then delete the folder
 summary: >
   Supply houses send a plain letter a week or two before they lien: we already sent you the notice,
   nothing has come, here is the day the lien goes on unless it is paid, here is where to pay, here is

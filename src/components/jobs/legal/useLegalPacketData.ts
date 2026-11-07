@@ -15,8 +15,7 @@ import {
   type LegalHoursStatementLike,
   type LegalPacket,
   type LegalReportLike,
-  type LegalThreadNoteLike,
-} from '../../../lib/legal/legalPacket'
+  type LegalThreadNoteLike, type LegalSheetSubLike } from '../../../lib/legal/legalPacket'
 import { classifyPromises, parsePaymentPromisesRpc, parsePromiseRecordsRpc } from '../../../lib/jobs/paymentPromises'
 import { parseChaseTouchesRpc } from '../../../lib/jobs/paymentChase'
 import { JOB_CONTRACT_COVERAGE_COLUMNS, type JobContractRowLike, type SignedEstimateLike } from '../../../lib/jobs/jobContractCoverage'
@@ -45,6 +44,7 @@ export type LegalPacketData = {
 
 type ClockSessionRow = { job_ledger_id: string | null; work_date: string; clocked_in_at: string; clocked_out_at: string | null; clock_in_lat: number | null; approved_at: string | null; rejected_at: string | null; revoked_at: string | null; user_id: string | null; worker: { name: string | null } | Array<{ name: string | null }> | null }
 /** `hours_statements` as the Evidence tab reads it (v2.6413, punch list #212 PR 4); the snapshot carries the kernel's input for the hours. */
+type SheetSubRow = { id: string; job_ledger_id: string | null; people_labor_job_assignees: Array<{ person_id: string; people: { id: string; name: string | null; kind: string; account_user_id: string | null } | Array<{ id: string; name: string | null; kind: string; account_user_id: string | null }> | null }> | null }
 type HoursStatementRow = { id: string; job_ledger_id: string; user_id: string; record_id: string; state: string; period_start: string; period_end: string; with_pay: boolean; stated_days: unknown; snapshot: { input?: HoursStatementInput } | null; updated_at: string; contract_document_id: string | null; matter_document_id: string | null; worker: { name: string | null } | Array<{ name: string | null }> | null }
 type ReportRow = { created_at: string; created_by_name: string | null; template_name: string | null; reported_at_lat: number | null }
 type ThreadNoteRow = { job_id: string; body: string; created_at: string; author: { name: string | null } | Array<{ name: string | null }> | null }
@@ -234,7 +234,7 @@ export function useLegalPacketData(
       }, [])
       // v2.6413 (punch list #212 PR 4): the signed hours statements on the jobs, and the app's first clock day for the gap jobs.
       // The statements' policy is a dev's and the controller's (v2.6450); anyone else reads none, and the tab says so by showing none.
-      const [hoursStatements, firstRecordedDay] = await Promise.all([
+      const [hoursStatements, firstRecordedDay, sheetSubs] = await Promise.all([
         src<LegalHoursStatementLike[]>('signed hours statements', async () => {
           const rows = (await withSupabaseRetry<HoursStatementRow[]>(
             () => db.from('hours_statements').select('id, job_ledger_id, user_id, record_id, state, period_start, period_end, with_pay, stated_days, snapshot, updated_at, contract_document_id, matter_document_id, worker:users!hours_statements_user_id_fkey(name)').in('job_ledger_id', jobIds).order('record_id', { ascending: false }).limit(ROW_CAP),
@@ -269,6 +269,23 @@ export function useLegalPacketData(
           const rows = (await withSupabaseRetry<Array<{ work_date: string }>>(() => db.from('clock_sessions').select('work_date').is('rejected_at', null).is('revoked_at', null).order('work_date', { ascending: true }).limit(1), 'load the first recorded day')) ?? []
           return rows[0]?.work_date ?? null
         }, null),
+        // v2.6660 (punch list #212): the subs on the jobs' sheets with a login, so the Evidence tab asks them too. A sub never punches.
+        src<LegalSheetSubLike[]>('subs on the sheets', async () => {
+          const rows = (await withSupabaseRetry<SheetSubRow[]>(
+            () => db.from('people_labor_jobs').select('id, job_ledger_id, people_labor_job_assignees(person_id, people(id, name, kind, account_user_id))').in('job_ledger_id', jobIds).limit(ROW_CAP),
+            'load legal packet subs on the sheets',
+          )) ?? []
+          const out: LegalSheetSubLike[] = []
+          for (const r of rows) {
+            if (!r.job_ledger_id) continue
+            for (const a of r.people_labor_job_assignees ?? []) {
+              const person = Array.isArray(a.people) ? (a.people[0] ?? null) : a.people
+              if (!person || person.kind !== 'sub' || !person.account_user_id) continue
+              out.push({ jobId: r.job_ledger_id, userId: person.account_user_id, name: (person.name ?? '').trim() || 'Unnamed', sheetId: r.id })
+            }
+          }
+          return out
+        }, []),
       ])
       const jobAddressIds = [...new Set(links.map((l) => l.customer_address_id).filter((v): v is string => Boolean(v)))]
       const [jobAddresses, jobOwners] = await Promise.all([
@@ -307,6 +324,7 @@ export function useLegalPacketData(
           threadNotes: notes,
           hoursStatements,
           firstRecordedDay,
+          sheetSubs,
           users,
           holdOverrides: holdOverrides ?? {},
           fee,

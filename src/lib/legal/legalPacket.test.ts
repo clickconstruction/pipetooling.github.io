@@ -4,7 +4,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { CustomerAddressRow } from '../jobs/lienProperty'
 import type { JobDemandLetterRow } from '../jobs/demandLetterTracking'
 import type { JobContractRowLike } from '../jobs/jobContractCoverage'
-import {
+import { legalAskWorkerTitle,
   legalLargestOpenLine,
   legalLienClockWords,
   buildLegalPacket,
@@ -209,9 +209,21 @@ describe('buildLegalPacket', () => {
       { id: 'hs-1', jobId: 'job-a', userId: 'u-marcus', workerName: 'Marcus Reyes', recordId: 'HS-717-0001', state: 'signed', periodStart: '2026-04-01', periodEnd: '2026-04-30', withPay: true, hours: 118.5, statedDays: 0, signedOn: '2026-05-02', contractDocumentId: 'doc-1', matterDocumentId: null },
       { id: 'hs-2', jobId: 'job-a', userId: 'u-lena', workerName: 'Lena Ortiz', recordId: 'HS-717-0002', state: 'sent', periodStart: '2025-09-15', periodEnd: '2026-04-30', withPay: false, hours: 40, statedDays: 2, signedOn: null, contractDocumentId: 'doc-2', matterDocumentId: null },
     ]
-    const p = buildLegalPacket(baseInput(account, { ...withEvidence, clockSessions: sessions, hoursStatements: statements, firstRecordedDay: '2026-03-12' }))
+    // v2.6660: a sub on the job's sheets is asked too, after who clocked, by their sheets; Lena, who also clocked, stays a clock worker.
+    const sheetSubs = [
+      { jobId: 'job-a', userId: 'u-dale', name: 'Dale Whitfield', sheetId: 'sh-1' },
+      { jobId: 'job-a', userId: 'u-dale', name: 'Dale Whitfield', sheetId: 'sh-2' },
+      { jobId: 'job-a', userId: 'u-lena', name: 'Lena Ortiz', sheetId: 'sh-3' },
+    ]
+    const p = buildLegalPacket(baseInput(account, { ...withEvidence, clockSessions: sessions, hoursStatements: statements, firstRecordedDay: '2026-03-12', sheetSubs }))
     const a = p.evidence.find((e) => e.jobId === 'job-a')!
-    expect(a.workers).toEqual([{ userId: 'u-marcus', name: 'Marcus Reyes', sessions: 2 }, { userId: 'u-lena', name: 'Lena Ortiz', sessions: 1 }])
+    expect(a.workers).toEqual([
+      { userId: 'u-marcus', name: 'Marcus Reyes', sessions: 2, kind: 'clock', sheets: 0 },
+      { userId: 'u-lena', name: 'Lena Ortiz', sessions: 1, kind: 'clock', sheets: 0 },
+      { userId: 'u-dale', name: 'Dale Whitfield', sessions: 0, kind: 'sheet', sheets: 2 },
+    ])
+    expect(legalAskWorkerTitle('717', a.workers[2]!)).toBe('Opens the Hours statement window on 717 with Dale Whitfield picked: 2 sheets here, read as the sheets’ lines')
+    expect(legalAskWorkerTitle('717', a.workers[1]!)).toBe('Opens the Hours statement window on 717 with Lena Ortiz picked: 1 approved session here')
     expect(a.statements.map((x) => [x.recordId, x.signed, x.periodLabel])).toEqual([
       ['HS-717-0002', false, 'September 15, 2025 – April 30, 2026'],
       ['HS-717-0001', true, 'April 1 – April 30, 2026'],

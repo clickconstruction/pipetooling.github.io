@@ -172,7 +172,7 @@ describe('the press always answers (v2.5681, punch list #133)', () => {
     const p = tellProblem({ ok: false, kind: 'already-went', why: 'This estimate already went to the customer.', sentAtMs: SENT_AT }, 'Dana')
     expect(p.kind).toBe('already-went')
     expect(p.title).toBe('This estimate already went to Dana. It went Tue, Oct 20 at 1:31 PM.')
-    expect(p.detail).toBe('Send the link again makes a fresh link and emails it. The old link stops working. The text carries the fresh link.')
+    expect(p.detail).toBe('Send the link again makes a fresh link and emails it. The old emailed link stops working. The text carries a short link of its own.')
     expect(clockDay(SENT_AT)).toBe('Tue, Oct 20')
     const unknown = tellProblem({ ok: false, kind: 'already-went', why: 'x', sentAtMs: null }, null)
     expect(unknown.title).toBe('This estimate already went to the customer.')
