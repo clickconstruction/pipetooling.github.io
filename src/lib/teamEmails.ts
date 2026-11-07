@@ -30,7 +30,7 @@ export const TEAM_EMAIL_WHEN_LABELS: Record<TeamEmailWhenKind, { title: string; 
 export const TEAM_EMAIL_WHEN_ORDER: readonly TeamEmailWhenKind[] = ['morning', 'event', 'weekly', 'once']
 
 /** The digests whose edge function has a `preview` mode the browser can call (and a `test_send`). */
-export type TeamRealPreviewStream = 'crew_day' | 'money_waiting' | 'payment_forecast' | 'billed_awaiting'
+export type TeamRealPreviewStream = 'crew_day' | 'money_waiting' | 'payment_forecast' | 'billed_awaiting' | 'your_week'
 
 export type TeamSampleEmailId =
   | 'money_waiting'
@@ -316,6 +316,16 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
   },
 
   // ---- Every week ----
+  {
+    id: 'your_week_email',
+    label: 'Your week',
+    when: { kind: 'weekly', label: 'Mondays at 6 AM', order: 29 },
+    recipients: { roles: ['primary', 'helpers', 'superintendent', 'master_technician'], decidedBy: 'event', rule: 'Each person the office picked a week signal for on their People desk, at their own address. Off until a dev turns the Monday email on.' },
+    sampleSubject: (c) => `Your week, ${c.weekStartLabel} to ${c.weekEndLabel}: 29 of your last 30 jobs`,
+    render: { kind: 'real', stream: 'your_week' },
+    manage: { tabId: 'settings-what-the-team-sees', label: 'What the team sees → The Monday email' },
+    reflects: ['the Your week card on the home (punch list #255)'],
+  },
   {
     id: 'weekly_money',
     label: 'Weekly money movement',

@@ -61,6 +61,8 @@ export type PersonFileHeld = { source: PersonTimelineSource; reason: string }
 type PeopleRow = { id: string; name: string; kind: string | null; start_date: string | null; end_date: string | null; archived_at: string | null; account_user_id: string | null }
 type AttachmentRow = PersonEvidenceFile & { entry_id: string | null }
 type DocRow = { kind: string; content: string; updated_at: string; covered_through: string | null; author_label: string | null }
+/** One row of person_document_index (v2.6613): a named document without its text. */
+type DocIndexRow = { id: string; title: string; counsel_only: boolean; author_label: string | null; created_at: string; updated_at: string; archived_at: string | null; chars: number; sections: number }
 type EvidenceRow = { id: string; person_id: string; entry_id: string | null; dated_on: string; title: string; memo: string; created_by: string | null; author_label: string | null; created_at: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null }
 type WriteupRow = { id: string; template_id: string; status: string; disclosure: string | null; submitted_at: string | null; created_at: string; filled_by_user_id: string | null }
 type ExcuseRow = { id: string; work_date: string; note: string; created_at: string; author: unknown }
@@ -267,6 +269,13 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
 
   const docs: Record<string, DocRow> = {}
   for (const d of docRows) if (d.kind === 'summary' || d.kind === 'narrative') docs[d.kind] = d
+  // v2.6613 (punch list #277): the named documents, from the index view — the list without the text; read one whole with
+  // read_rows on person_documents by id. Quiet until the catalog knows the view (regenerated after the migration's push).
+  const documentRows = isDev ? ((await quiet(() => reader.rows('person_document_index', { select: 'id,title,counsel_only,author_label,created_at,updated_at,archived_at,chars,sections', filters: eq('person_id', personId), limit: PERSON_FILE_READ_CAP }))) as unknown as DocIndexRow[]) : []
+  const documents = documentRows
+    .filter((d) => !d.archived_at)
+    .sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0))
+    .map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, sections: d.sections }))
 
   const filtered = Boolean(filter.lane || filter.source || filter.since)
   return {
@@ -289,5 +298,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     }),
     files_before_records: attachments.filter((a) => !a.evidence_id).map((f) => ({ id: f.id, entry_id: f.entry_id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, created_at: f.created_at })),
     docs: filter.docs ? { summary: docs.summary ?? null, narrative: docs.narrative ?? null } : 'left out (docs: false)',
+    documents,
+    documents_note: isDev ? 'The named documents on the file (v2.6613), newest first, without their text: read one with read_rows on person_documents (select content) by id; change one with plan_person_doc { doc_id }; archived ones are left out.' : 'dev only',
   }
 }

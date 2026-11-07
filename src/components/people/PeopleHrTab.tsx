@@ -246,7 +246,7 @@ export default function PeopleHrTab() {
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', background: 'var(--bg-amber-tint)', border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-800)', borderRadius: 8, padding: '0.5rem 0.85rem', fontSize: '0.8rem', marginBottom: '1rem' }}>
         <span aria-hidden>🔒</span>
         <span>
-          <strong>Dev-only.</strong> Entries append and never change. The agent keeps each summary and narrative.
+          <strong>Dev-only.</strong> Entries append and never change. The summary and the narrative can be edited here, and the agent keeps them too.
         </span>
       </div>
 

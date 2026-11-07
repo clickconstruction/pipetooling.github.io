@@ -93,6 +93,7 @@ const MOVE_WORDS: Record<LienNextUpAction, string> = {
   review_hold: 'Held',
   letter_two: 'Attorney’s letter',
   courtesy: 'Courtesy notice',
+  promise: 'Paying it down',
   note_missed: 'Window closed',
   fix_property: 'Affidavit · fix the property',
   send_notice: 'Affidavit · notice first',
@@ -172,7 +173,8 @@ function doorFor(row: LienNextUpRow, jobId: string): LienArDoor {
 
 function paperOf(row: LienNextUpRow): LienArPaper {
   if (row.action === 'letter_two') return 'letter_two'
-  if (row.action === 'courtesy') return 'courtesy'
+  // The promise press while they pay it down (PR 3 of #274) rides the courtesy's paper: the same sent notice, the same door.
+  if (row.action === 'courtesy' || row.action === 'promise') return 'courtesy'
   return row.kind
 }
 

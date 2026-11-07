@@ -115,6 +115,8 @@ describe('the walk tester hides wherever a sample does', () => {
       'src/lib/peopleWeekIo.ts',
       'src/lib/quo/seatsCardIo.ts',
       'src/lib/scheduleDispatchHub.ts',
+      // + Your week's Monday email (v2.6607): the recipients' filter names both flags.
+      'src/lib/techWeek/weekEmail.ts',
     ])
   })
 })

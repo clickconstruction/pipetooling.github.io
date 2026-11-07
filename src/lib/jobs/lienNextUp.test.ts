@@ -321,4 +321,14 @@ describe('the REMINDERS ladder (punch list #262)', () => {
     expect(bare.reminder).toBeNull()
     expect(groupLienNextUp([bare]).map((g) => g.group)).toEqual(['reminders'])
   })
+  it('paying it down (PR 3 of #274): no reminder leads; the row asks what they promised, amber until a promise is on record, under Reminders on step 2', () => {
+    const paying = courtesy({ state: 'paying', words: 'paying it down · $4,000 paid Nov 3 · $8,045 still owed', paying: { lastPaidYmd: '2026-11-03', lastAmount: 4000, stillOwed: 8045, until: '2026-11-10', promisedYmd: null, promise: null } })
+    const row = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue', 'day 21 · the attorney’s letter overdue') }, courtesyByJob: { j1: paying } })
+    expect([row.key, row.action, row.button, row.sub, row.severity, row.reminder?.step, row.reminder?.state]).toEqual(['promise:j1', 'promise', 'Record what they promised', paying.words, 'amber', 2, 'paying'])
+    expect(groupLienNextUp([row]).map((g) => g.group)).toEqual(['reminders'])
+    const promised = one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue') }, courtesyByJob: { j1: courtesy({ ...paying, paying: { ...paying.paying!, until: '2026-11-20', promisedYmd: '2026-11-20' } }) } })
+    expect(promised.severity).toBe('quiet')
+    // A role that is neither office nor leader sees the row and no button.
+    expect(one({ role: 'technician', notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue') }, courtesyByJob: { j1: paying } }).button).toBeNull()
+  })
 })
