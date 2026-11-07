@@ -1270,6 +1270,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const out = await getCaseBrief(readerAs(await jwt()), { person: String(args.person ?? '') }, { role: who.role, todayYmd: todayYmdInAppTz() })
       if ('refused' in out) return refused(out.refused, { target: 'people' })
       return ok(out, { target: out.person.id, rowCount: out.entries.count })
+    }
+
     case 'get_document_history': {
       // v2.6622 (punch list #278 PR 4): one GET of dev_doc_history as the dev; the two texts are diffed here and only the
       // difference goes on (devMcpDocHistory.ts); another role is refused in words.
