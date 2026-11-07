@@ -51,6 +51,10 @@ export const WRITE_VERBS = {
   // matter document's does; the server stages the files in hr-files at apply before the rows, then asks hr-evidence-drive.
   plan_person_evidence: { rpc: 'dev_person_evidence_write', step: 'plan' },
   apply_person_evidence: { rpc: 'dev_person_evidence_write', step: 'apply' },
+  // v2.6608: a person's HR document — the summary or the narrative — the whole text or section ops against its own
+  // headings (dev_person_doc_write). The plan commits to the row's updated_at, so a save by anyone since refuses the apply.
+  plan_person_doc: { rpc: 'dev_person_doc_write', step: 'plan' },
+  apply_person_doc: { rpc: 'dev_person_doc_write', step: 'apply' },
   // v2.4814: the narrative for the firm on a legal matter (dev_legal_narrative_write over legal_set_narrative).
   plan_matter_narrative: { rpc: 'dev_legal_narrative_write', step: 'plan' },
   apply_matter_narrative: { rpc: 'dev_legal_narrative_write', step: 'apply' },
@@ -255,6 +259,22 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     const label = typeof batch.label === 'string' ? batch.label.trim() : ''
     return { ok: true, rpc, step, body: { p: batch, p_dry_run: step === 'plan' }, dryRunBody: { p: batch, p_dry_run: true }, target: label || null, planHash }
+  }
+  if (verb === 'plan_person_doc' || verb === 'apply_person_doc') {
+    const doc = obj(input.doc)
+    const personId = doc && typeof doc.person_id === 'string' ? doc.person_id.trim() : ''
+    const kind = doc && typeof doc.kind === 'string' ? doc.kind.trim() : ''
+    const shape = `${verb} needs doc — { person_id (a people.id: find_person), kind: summary | narrative, markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20, one of the two), expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? }.`
+    if (!doc || !UUID_RE.test(personId) || (kind !== 'summary' && kind !== 'narrative')) return { ok: false, error: shape }
+    const hasMarkdown = typeof doc.markdown === 'string'
+    const ops = Array.isArray(doc.ops) ? doc.ops : null
+    if (hasMarkdown === Boolean(ops) || (ops && (ops.length === 0 || ops.length > 20))) return { ok: false, error: shape }
+    const p: Json = { person_id: personId, kind }
+    if (hasMarkdown) p.markdown = doc.markdown
+    else p.ops = ops
+    if (typeof doc.expect_updated_at === 'string' && doc.expect_updated_at.trim()) p.expect_updated_at = doc.expect_updated_at.trim()
+    if (typeof doc.covered_through === 'string' && doc.covered_through.trim()) p.covered_through = doc.covered_through.trim()
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: personId, planHash }
   }
   if (verb === 'plan_matter_narrative' || verb === 'apply_matter_narrative') {
     const narrative = obj(input.narrative)
@@ -937,6 +957,8 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const license = verb === 'apply_license'
   const themeMarks = verb === 'apply_theme_marks'
   const personMatter = verb === 'apply_matter_open_person'
+  const personDoc = verb === 'apply_person_doc'
+  if (personDoc) return `Nothing written: this plan was already applied on this person${when}. The document already reads that way: get_person_file (docs: true) shows it. A plan commits to the document's updated_at, so a further change needs a new plan from the fresh text.`
   if (personMatter) return `Nothing written: this plan was already applied on this person${when}. The matter stands: get_person_file and read_rows on legal_matters by person_id show it, and the HR file's Matter view draws it. Write on its matter_id instead.`
   const what = themeMarks ? `on those marks${when}` : license ? `on this license${when}` : hours ? `on this job${when}` : clock ? `on those sessions${when}` : cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : report ? `on this report${when}` : `on this person${when}`
   const again = themeMarks ? 'The marks are on the record; read_rows on legal_theme_marks shows them, and the file\'s By theme view draws them. A thing already marked reads as already in a new plan.' : license ? 'The license already reads that way; read_rows on person_licenses by person_name shows it, and the teammate\'s logbook draws it. Plan again with what you mean now.' : hours ? 'The statement is under the job’s Hours statements (read_rows on hours_statements by job_ledger_id); plan another span, or file_on_matter once it is signed.' : clock ? 'The sessions already read that way; read_rows on clock_sessions shows them. Plan again with what you mean now.' : cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : planSet ? 'The set is on the part; read_rows on plan_sets by part_id shows it, and the job\'s Plans section lists it. A second set of the same name needs a new plan with a different name, date or link.' : paper ? 'The paper is on the part; read_rows on plan_sets by part_id shows it. A new copy is a new paper (replaces_paper_id); an owed one that landed is plan_paper { action: came }.' : report ? 'The report is off the queue: get_person_file shows the entry it became, or its dismissal with the reason. A report is filed or dismissed once; one that still waits is a different report_id.' : evidence ? 'The record is on the person\'s Evidence tab; get_person_file shows it with its Drive state. A second copy needs a new plan with a different day, title or files.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'

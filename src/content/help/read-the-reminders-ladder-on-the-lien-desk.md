@@ -17,9 +17,11 @@ The list below the brief sorts itself. The rows on that step come first under **
 
 ## Our schedule after a notice
 
-The brief opens with a strip of days. Day 0 is the day the packet went. Day 7 is when a courtesy notice may go. Day 10 is when the attorney’s letter is due. Day 14 is when the attorney’s letter is overdue. Each notice on the step shows its own day on the strip. Past the strip come the last two points. Seven days before the affidavit's day, you file instead of reminding. Then comes the affidavit's day, which the law sets for each job.
+The brief draws one notice's timeline down the card. Each row is one thing that happened or may happen, in date order. The row shows the date, what it is in plain words, what kind of thing it is, and its status. A red square is a legal requirement, like the day the notice was mailed and the lien's last day. A dashed bar is a window we chose, like the courtesy reminder or the attorney's letter. A green square is a payment, with the amount and what is still owed. Today is a band across the card. The band says you are here, and names the one press to make.
 
-The same strip sits in {{button:outline|§ Rules}} under **Our schedule after a notice**. There it says whose rule each day is. Day 7 and the week between courtesy notices are the owner's choice. Days 10 and 14 are counsel's rule. The seven days before the affidavit are our margin. That margin keeps a reminder from naming a lien day the law would not allow.
+Each row's right side says what happens next. The courtesy window says how many days are left to send it. The attorney's letter says how many days past its window it is. The lien's day says how many days are left and what is lost if it passes. Press **Show another** to draw a different notice on the step.
+
+The same days sit in {{button:outline|§ Rules}} under **Our schedule after a notice**. There it says whose rule each day is. Day 7 is the owner's choice. Days 10 and 14 are counsel's rule. The seven days before the affidavit are our margin.
 
 ## The four steps
 

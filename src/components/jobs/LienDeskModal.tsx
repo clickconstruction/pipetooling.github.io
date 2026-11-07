@@ -71,6 +71,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { COURTESY_BUTTON, COURTESY_FROM_DAY, courtesyFooterSentence, courtesyMaySend, courtesyOutcomeWords, type CourtesyFacts } from '../../lib/jobs/lienCourtesyNotice'
 import { courtesyByJobFrom } from '../../lib/jobs/lienCourtesyDesk'
 import { buildLienReminders, LIEN_REMINDERS_EMPTY } from '../../lib/jobs/lienReminders'
+import { lienNoticeTimeline, lienTimelineTodayWords, type LienTimelineRow } from '../../lib/jobs/lienNoticeTimeline'
 import { loadCourtesyRecipients, sendCourtesyNotice, type CourtesyRecipient } from '../../lib/jobs/lienCourtesyIo'
 import { payLinkDisplay } from '../../lib/billing/payLink'
 import type { LienDeskItemRow } from '../../lib/jobs/lienDesk'
@@ -654,6 +655,36 @@ export default function LienDeskModal({
   // Do now (punch list #82; Next up until v2.4630): the queues this desk already holds, folded into one ordered list. No read of its own.
   // The REMINDERS strip (punch list #262): every sent notice's rung from the two statuses above; the Do now rail draws its counts, a rung pressed lists its names. No read of its own.
   const reminders = useMemo(() => (data ? buildLienReminders({ courtesyByJob, letterTwoByJob: data.letterTwoByJob, jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId) }) : LIEN_REMINDERS_EMPTY), [data, courtesyByJob])
+  // One sent notice's dated timeline for the step brief (PR 2 of #274): day 0 from the letter's clock, the affidavit's day, the one courtesy, the letter, the payments since the notice, today. Nothing read here.
+  const timelineFor = useCallback(
+    (jobId: string): ReadonlyArray<LienTimelineRow> | null => {
+      if (!data) return null
+      const two = data.letterTwoByJob[jobId]
+      if (!two || !two.clock) return null
+      const courtesy = courtesyByJob[jobId]
+      const aff = data.affidavits.entries.find((e) => e.jobId === jobId)
+      const entry = data.queue.entries.find((e) => e.jobId === jobId)
+      const day0 = calendarYmdInAppTzFromIso(two.clock.at)
+      const openBalance = entry?.openBalance ?? aff?.openBalance ?? 0
+      const payments = (data.paymentsByJob?.[jobId] ?? []).filter((p) => p.paidOn && p.paidOn >= day0).map((p) => ({ ymd: p.paidOn as string, amount: p.amount }))
+      const paidInFull = openBalance <= 0.005 && payments.length > 0
+      return lienNoticeTimeline({
+        todayYmd,
+        day0: { ymd: day0, why: two.clock.why },
+        lienDay: courtesy?.lienDay ?? aff?.deadline ?? null,
+        courtesySentYmd: courtesy?.lastSentAt ? calendarYmdInAppTzFromIso(courtesy.lastSentAt) : null,
+        courtesyHeld: courtesy?.state === 'held' ? courtesy.reason.replace(/\s—.*$/, '') : null,
+        letter: { state: two.state === 'paid' || two.state === 'gc_authorized' || two.state === 'owner_called' ? 'closed' : two.state, sentYmd: two.letterTwo?.sentAt ? calendarYmdInAppTzFromIso(two.letterTwo.sentAt) : null, inFlightWords: two.state === 'in_flight' ? two.words : undefined },
+        payments,
+        openBalance,
+        // The notice's own claim at mailing is not on the desk's rows; the mailed row names no amount rather than today's remainder.
+        claim: null,
+        affidavitFiled: aff?.pile === 'filed',
+        todayWords: lienTimelineTodayWords({ courtesyState: courtesy?.state ?? 'none', courtesyReason: courtesy?.reason, letterState: two.state, paidInFull, waitingForAnswer: courtesy?.waitingForAnswer }),
+      })
+    },
+    [data, courtesyByJob, todayYmd],
+  )
   const nextUpRows = useMemo(() => {
     if (!data) return []
     const serveDue = Object.values(data.filingsByJob)
@@ -3503,7 +3534,7 @@ export default function LienDeskModal({
           {kind === 'next' ? (
             <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }}>
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsFound.length} isMobile={isMobile} />
-            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
+            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
