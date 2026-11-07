@@ -19,3 +19,5 @@ Idempotent: `CREATE OR REPLACE`, `DROP POLICY IF EXISTS` and `CREATE POLICY` by 
 ## After the push
 
 Regenerate `src/types/database.ts` and the dev-mcp catalog for the new function (`supabase gen types`, `npm run gen:dev-mcp-catalog`), then `supabase functions deploy dev-mcp`. The live check: on the dev server, Settings → View as a helper and a subcontractor on a ZZ Test development's job, the job window's Documents → Plans reads *Building from* and *Add our as-built* lands; delete the rows after; `npm run check:migration-drift`.
+
+**Applied** to prod by 2026-11-07, read on 2026-11-07: types regenerated from prod through #7174 (`chore(types)` after `20261107013000`, 2026-11-07) with this file already on `main` — the repo's evidence that it was pushed; the dev seat's `check_migration_ledger` was not read in this pass (the connector was not available in the docs worktree), and `check:edge-drift` on 2026-11-07 found every function deployed, 15 of them on `_shared` code older than `main` after #7159 / #7166 (a redeploy owed, not a migration matter).

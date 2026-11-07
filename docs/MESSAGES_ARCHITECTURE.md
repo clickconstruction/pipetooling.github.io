@@ -5,7 +5,7 @@ file: docs/MESSAGES_ARCHITECTURE.md
 type: Engineering / Architecture
 purpose: One page for a developer new to Messages — the contact spine, the thread and its slots, Follow up, the flows and the morning run, the channels (Quo texts, email in and out, the portals, push), who sees what, the switches and crons, how to test it live, how it deploys, and what is still open. Everything here is a pointer into code and the per-version record; nothing is repeated that a kernel's header or a fragment already says.
 audience: Developers, AI Agents
-last_updated: 2026-11-05
+last_updated: 2026-11-07
 ---
 
 ## What it is, in one paragraph
@@ -191,7 +191,7 @@ seat holder on a phone, the first press opens a sheet with the two ways, Quo's o
 `gc-customer-email`, `gc-architect-email`) and the notify and send functions already keep every copy in
 `sent_documents`, which the thread reads back as lines. **Email in** is `gmail-sync` (cut 6): the bids@ reader, under a
 service account's delegation, every minute (v2.5719) while **Read bids@** is on (`gmail_sync_on_v1`, `gmail_sync_state`; since v2.6649 a box whose last run stopped on Gmail's 429 is held until Google's retry time, `emailIn/readerHold.ts`, and the label's id is the row's `label_id`),
-and since v2.6275 (punch list #230) `gmail-mine`, which reads a person's own Inbox and Sent live for the My email tab under the same delegation and writes a Gmail conversation's lines (`mailbox` `mine`, the `.eml` beside each) only when they tag it onto a job, and since v2.6279 the later mail of a tagged conversation by itself (its `follow`, the cron `gmail-mine-follow`), never a mail under a label the person leaves out (`users.my_mail_hidden_labels`), and an untag keeps every line holding a promise, a highlight or what we owe (v2.6292);
+and since v2.6275 (punch list #230) `gmail-mine`, which reads a person's own Inbox and Sent live for the My email tab under the same delegation and writes a Gmail conversation's lines (`mailbox` `mine`, the `.eml` beside each) only when they tag it onto a job (or, since v2.6568, when the dev seat's `plan_mail_tag` / `apply_mail_tag` tags it as that login through the function's seat door, the same planner and the same lines), and since v2.6279 the later mail of a tagged conversation by itself (its `follow`, the cron `gmail-mine-follow`), never a mail under a label the person leaves out (`users.my_mail_hidden_labels`), and an untag keeps every line holding a promise, a highlight or what we owe (v2.6292);
 each email lands in its sender's thread with its files as `message_attachments` (a copy one of us forwards, on its first sender's, with the forwarder's note as a team note and the job from the forwarded mail's own subject, not the forward's: `emailIn/forwarded.ts`, taught since v2.6257 by the guide *tag an email onto a job from Gmail*), and a file that reads as a trade
 partner's paper is offered under its line (`PaperOffers.tsx`) until someone answers it. A teammate's mail lands too
 since v2.5722: on their Our team thread, or, copied to the box on a mail to a customer, on the customer's thread as
