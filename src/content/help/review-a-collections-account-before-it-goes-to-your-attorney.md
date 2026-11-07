@@ -67,7 +67,7 @@ Each county wears the color of the law firm that covers it. A gray county has no
 
 **Who covers what** lists each firm with its counties, its cases and what they owe. Tap a county to list its cases on the card under it. Tap a dot to pick one case out. Press **Open on the desk ›** on a case and the desk opens on that account under **Accounts**.
 
-Scroll on the map to zoom. Drag it to move. Press {{button:outline|Central Texas}} or {{button:outline|All of Texas}} to reset the view. A dev colors the counties on **Settings**, then **Jobs & billing**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
+Scroll on the map to zoom. Drag it to move. Press {{button:outline|Central Texas}} or {{button:outline|All of Texas}} to reset the view. A dev colors the counties on **Settings**, then **Jobs, bills and liens**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
 
 
 ## Signed hours statements on the matter
@@ -168,7 +168,7 @@ Two firms can share a county. One of them is its first call, and the desk picks 
 
 Press the firm's name to read its details. The window opens on where the firm covers. The firm's counties show in color on the map, and the other firms' counties show faint. Each county it covers is a row with its cases and what they owe. A county the firm shares says also, and names the first call. Press **Show on the desk map** to see those counties lit on the Map. When no county is colored yet, the window says the firm takes every account by default. A dev presses **Color counties** there, or **Extend coverage** under the list. Pressing a county on the map then adds it for the firm. Pressing it again takes it off. **Add by area** colors a whole metro in one press. Nothing changes until you press **Save**. The first save ends the default, and the window names any account it leaves with no firm. A dev presses **Hand off counties** to move some of the firm's counties to another firm. The firm you pick becomes first call there. Accounts already with the firm stay with it. **Retire this firm** waits until the firm covers no county and holds no account. Under the map, the window holds the firm's name, the handling person, and a contact email and phone. Press **Edit details** to change them. The window also holds the fee model behind **What's left for us?**. The fee model is the contingency % and the filing cost. The contingency % is the firm's share of what is recovered. The contact email is not a subscription. The firm's own people and their email rules come from the portal's Notifications page. Nobody is emailed until they are on that list and confirmed.
 
-A dev presses {{button:outline|Firms…}} at the top right. It adds a firm and colors the counties it covers without leaving the desk. The same block lives on **Settings**, then **Jobs & billing**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
+A dev presses {{button:outline|Firms…}} at the top right. It adds a firm and colors the counties it covers without leaving the desk. The same block lives on **Settings**, then **Jobs, bills and liens**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
 
 ## When the firm acts
 

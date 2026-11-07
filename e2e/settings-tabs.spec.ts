@@ -30,7 +30,7 @@ import { test, expect } from '@playwright/test'
 const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> = [
   { label: 'Your account', marker: 'My Profile' },
   { label: 'Your dashboard', marker: 'Dashboard buttons' },
-  { label: 'Jobs & billing', marker: 'Collections law firm' },
+  { label: 'Jobs, bills and liens', marker: 'Collections law firm' },
   { label: 'Bids & materials', marker: 'Manage Parts' },
   { label: 'People & teams', marker: 'Additional People' },
   { label: 'Training', marker: 'Every course the app ships' },

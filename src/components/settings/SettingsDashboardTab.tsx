@@ -1091,7 +1091,7 @@ export default function SettingsDashboardTab({
         </div>
       )}
 
-      {/* v2.2088: Job Book moved to Settings → Jobs & billing. */}
+      {/* v2.2088: Job Book moved to Settings → Jobs, bills and liens. */}
 
       {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>

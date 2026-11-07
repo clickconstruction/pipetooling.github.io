@@ -425,7 +425,7 @@ export function sheetFootWords(stageName: string, state: StageChecklistState): s
 export function noQuestionsWords(stageName: string): string {
   const kind = stageChecklistKindOf(stageName)
   if (!kind) return `${stageName} has no checklist. Checklists are for Rough In, Top Out and Trim Set.`
-  return `No questions for ${STAGE_CHECKLIST_KIND_NAMES[kind]} yet. The office writes them on Settings, under Jobs and billing.`
+  return `No questions for ${STAGE_CHECKLIST_KIND_NAMES[kind]} yet. The office writes them on Settings, under Jobs, bills and liens.`
 }
 
 /** What a question row says it still waits on. */
