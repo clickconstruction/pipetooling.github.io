@@ -1,12 +1,15 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
-import { googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { freeName, photoFolderOrWhy } from '../_shared/driveJobFolder.ts'
+import { readDriveSettings } from '../_shared/driveSettings.ts'
+import { calendarYmdInAppTzFromIso } from '../_shared/appTimeZone.ts'
+import { roadmapTaskFolderPath, taskFolderName, taskPhotoDriveName, type TaskPhotoKind } from '../_shared/taskPhotoNames.ts'
 import type { PdfLibLike } from '../_shared/jobContractPdf.ts'
 import { buildStageChecklistPdf, recordPdfFileName, type RecordPdfRow } from '../_shared/stageChecklistPdf.ts'
 import { machineFolderOrWhy } from '../_shared/driveMachineFolder.ts'
-import { driveFailWords } from '../_shared/whereFilesGo.ts'
+import { NO_TASKS_FOLDER_WORDS, driveFailWords } from '../_shared/whereFilesGo.ts'
 import type { JobRef } from '../_shared/driveLink.ts'
 import {
   PHOTO_ROWS_SELECT,
@@ -53,6 +56,14 @@ import {
  * row (photo_file_name, photo_storage_path); the sweep files it in the same photo folder, keeps photo_drive_file_id and
  * photo_filed_at on the row, clears photo_fail_why, and deletes the bucket copy, the box photo's rules to the letter
  * (`sweepWaiting`).
+ *
+ * Task cards (punch list #273, PR 4): an eighth source after the records. A photo taken on a task card, at a percent, at
+ * the finish or on a Done when… line, waits in the task-photos bucket with a `task_photos` row; the sweep files it under
+ * the office's Tasks folder (`app_settings` `drive_tasks_folder_id`, Documents → Where files go), in a folder per card
+ * named by the day and the title (`taskFolderName`), a roadmap card's under its roadmap and stage
+ * (`roadmapTaskFolderPath`), as *2026-11-04 Mateo · 67%.jpg* (`taskPhotoDriveName`, `_shared/taskPhotoNames.ts`), keeps
+ * drive_file_id and filed_at on the row and clears fail_why. The bucket copy stays, the app's own thumbnail (the
+ * hr-evidence-drive rule). No Tasks folder set answers NO_TASKS_FOLDER_WORDS on every row until the office sets one.
  *
  * The cron calls only while one of these waits: each source is a clause of its WHERE, so a migration that adds a
  * source re-schedules it with every clause (20261030070000_photo_save_cron_all_sources.sql holds all four).
@@ -609,6 +620,148 @@ async function sweepRecords(admin: SupabaseClient): Promise<{ saved: number; fai
   return { saved, failed }
 }
 
+/* ------------------------------------------------------------------ an eighth source: a task card's photos */
+
+type TaskPhotoRow = {
+  id: string
+  instance_id: string
+  kind: TaskPhotoKind
+  percent_at: number | null
+  criterion_id: string | null
+  by_name: string
+  taken_at: string
+  storage_path: string
+  checklist_instances: {
+    scheduled_date: string
+    checklist_items: { title: string; start_date: string | null; roadmap_group_task_id: string | null } | null
+  } | null
+}
+
+const TASK_PHOTO_BATCH = 20
+
+/** The folders under the Tasks folder for one card: `<day> · <title>`, or `<roadmap> › <n · stage> › <n.m · task>` for a roadmap card. */
+async function taskFolderPath(admin: SupabaseClient, r: TaskPhotoRow): Promise<string[]> {
+  const inst = r.checklist_instances
+  const item = inst?.checklist_items
+  const roadmapTaskId = item?.roadmap_group_task_id ?? null
+  if (roadmapTaskId) {
+    const { data: task } = await admin.from('checklist_tech_tree_group_tasks').select('id, title, sort_index, group_id').eq('id', roadmapTaskId).maybeSingle()
+    const t = task as { id: string; title: string; sort_index: number; group_id: string } | null
+    if (t) {
+      const { data: group } = await admin.from('checklist_tech_tree_groups').select('id, title, sort_index, roadmap_id').eq('id', t.group_id).maybeSingle()
+      const g = group as { id: string; title: string; sort_index: number; roadmap_id: string } | null
+      if (g) {
+        const [{ data: roadmap }, { data: groups }, { data: tasks }] = await Promise.all([
+          admin.from('checklist_tech_tree_roadmaps').select('title').eq('id', g.roadmap_id).maybeSingle(),
+          admin.from('checklist_tech_tree_groups').select('id, sort_index').eq('roadmap_id', g.roadmap_id),
+          admin.from('checklist_tech_tree_group_tasks').select('id, sort_index').eq('group_id', g.id),
+        ])
+        const byIndex = (rows: unknown, id: string) => {
+          const list = ((rows ?? []) as Array<{ id: string; sort_index: number }>).sort((a, b) => a.sort_index - b.sort_index || a.id.localeCompare(b.id))
+          const i = list.findIndex((x) => x.id === id)
+          return i < 0 ? list.length + 1 : i + 1
+        }
+        const stageNumber = byIndex(groups, g.id)
+        const taskNumber = `${stageNumber}.${byIndex(tasks, t.id)}`
+        return roadmapTaskFolderPath({ roadmapTitle: (roadmap as { title?: string } | null)?.title ?? '', stageNumber, stageTitle: g.title, taskNumber, taskTitle: t.title })
+      }
+    }
+  }
+  const day = item?.start_date ?? inst?.scheduled_date ?? calendarYmdInAppTzFromIso(r.taken_at)
+  return [taskFolderName({ dayYmd: day, title: item?.title ?? 'Task' })]
+}
+
+/**
+ * Task cards (punch list #273, PR 4): up to twenty `task_photos` rows with a `storage_path` and no `filed_at`, oldest
+ * first. Each is copied from the task-photos bucket into its card's folder under the office's Tasks folder, named by the
+ * day, the person and what the shot is for, *(2)* when the folder holds the name; the row keeps drive_file_id and
+ * filed_at, fail_why is cleared, and the bucket copy stays as the app's thumbnail. A failure writes fail_why and the row
+ * is tried again next run; no Tasks folder set writes NO_TASKS_FOLDER_WORDS on every row.
+ */
+async function sweepTaskPhotos(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
+  const { data, error } = await admin
+    .from('task_photos')
+    .select('id, instance_id, kind, percent_at, criterion_id, by_name, taken_at, storage_path, checklist_instances!inner(scheduled_date, checklist_items!inner(title, start_date, roadmap_group_task_id))')
+    .is('filed_at', null)
+    .not('storage_path', 'is', null)
+    .order('taken_at', { ascending: true })
+    .limit(TASK_PHOTO_BATCH)
+  if (error) return { saved: 0, failed: [{ id: '', why: `the task photos did not read: ${error.message}` }] }
+  const rows = (data ?? []) as unknown as TaskPhotoRow[]
+  if (rows.length === 0) return { saved: 0, failed: [] }
+  let saved = 0
+  const failed: { id: string; why: string }[] = []
+  const fail = async (r: TaskPhotoRow, why: string) => {
+    failed.push({ id: r.id, why })
+    await admin.from('task_photos').update({ fail_why: why.slice(0, 300) }).eq('id', r.id).is('filed_at', null)
+  }
+  const settings = await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID'))
+  const tasksRoot = settings.tasksFolderId
+  if (!tasksRoot) {
+    for (const r of rows) await fail(r, NO_TASKS_FOLDER_WORDS)
+    return { saved, failed }
+  }
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  if (!saJson) {
+    for (const r of rows) await fail(r, 'Drive is not set up here yet.')
+    return { saved, failed }
+  }
+  let google: string
+  try {
+    google = await googleAccessToken(saJson)
+  } catch (e) {
+    for (const r of rows) await fail(r, `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`)
+    return { saved, failed }
+  }
+  const folders = new Map<string, string>()
+  for (const r of rows) {
+    try {
+      const path = await taskFolderPath(admin, r)
+      const key = path.join('/')
+      let into = folders.get(key)
+      if (!into) {
+        let parent = tasksRoot
+        for (const name of path) parent = (await findOrCreateFolder(google, parent, name)).id
+        into = parent
+        folders.set(key, into)
+      }
+      const { data: blob, error: dl } = await admin.storage.from('task-photos').download(r.storage_path)
+      if (dl || !blob) {
+        await fail(r, 'Our copy of that photo did not read.')
+        continue
+      }
+      const mime = blob.type || 'image/jpeg'
+      let lineBody: string | null = null
+      if (r.kind === 'line' && r.criterion_id) {
+        const { data: crit } = await admin.from('task_criteria').select('body').eq('id', r.criterion_id).maybeSingle()
+        lineBody = (crit as { body?: string } | null)?.body ?? null
+      }
+      const nameInput = { dayYmd: calendarYmdInAppTzFromIso(r.taken_at), byName: r.by_name, kind: r.kind, percentAt: r.percent_at, lineBody }
+      const name = await freeName(google, into, (taken) => {
+        let n = 1
+        let candidate = taskPhotoDriveName(nameInput, n)
+        while (taken.has(candidate) && n < 50) candidate = taskPhotoDriveName(nameInput, ++n)
+        return candidate
+      })
+      const put = await uploadBytes(google, into, new Uint8Array(await blob.arrayBuffer()), name, mime)
+      const { error: kept } = await admin
+        .from('task_photos')
+        .update({ drive_file_id: put.id, filed_at: new Date().toISOString(), fail_why: null })
+        .eq('id', r.id)
+        .is('drive_file_id', null)
+      if (kept) {
+        await fail(r, 'Saved to Drive, but the row did not keep it.')
+        continue
+      }
+      saved += 1
+    } catch (e) {
+      await fail(r, driveFailWords(e instanceof Error ? e.message : String(e)))
+    }
+  }
+  if (failed.length) console.warn('photo-save: some task photos were not filed', failed)
+  return { saved, failed }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405)
@@ -624,8 +777,9 @@ serve(async (req) => {
     const jobPhotos = await sweepNamedPhotos(admin, JOB_PHOTO_SOURCE)
     const machines = await sweepMachinePhotos(admin)
     const records = await sweepRecords(admin)
+    const taskPhotos = await sweepTaskPhotos(admin)
     const body = (await messages.json()) as Record<string, unknown>
-    return json({ ...body, boxes, reports, checklists, jobPhotos, machines, records }, messages.status)
+    return json({ ...body, boxes, reports, checklists, jobPhotos, machines, records, taskPhotos }, messages.status)
   } catch (e) {
     console.error('photo-save', e)
     return json({ error: e instanceof Error ? e.message : 'The sweep failed.' }, 500)

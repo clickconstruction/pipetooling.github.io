@@ -1009,7 +1009,7 @@ export function ChecklistTechTreeTab({
   }, [treeEdges, groups, linksSearchQuery])
 
   const addTaskToGroup = useCallback(
-    async (groupId: string, title: string, assigneeUserIds: string[], lines: string[] = []): Promise<boolean> => {
+    async (groupId: string, title: string, assigneeUserIds: string[], lines: string[] = [], asksForPhoto = false): Promise<boolean> => {
       if (!canEditStructure || !authUserId || !title.trim()) return false
       try {
         setError(null)
@@ -1023,6 +1023,8 @@ export function ChecklistTechTreeTab({
                 group_id: groupId,
                 title: title.trim(),
                 sort_index: max + 1,
+                // Task cards (#273, PR 4): the writer's switch; the column is younger than the generated types.
+                ...({ asks_for_photo: asksForPhoto } as Record<string, boolean>),
               })
               .select('id')
               .single(),
@@ -2300,9 +2302,9 @@ export function ChecklistTechTreeTab({
         users={users}
         currentUserId={authUserId}
         onClose={() => setAddTaskModalGroupId(null)}
-        onSave={async (title, assigneeUserIds, lines) => {
+        onSave={async (title, assigneeUserIds, lines, asksForPhoto) => {
           if (addTaskModalGroupId) {
-            return addTaskToGroup(addTaskModalGroupId, title, assigneeUserIds, lines)
+            return addTaskToGroup(addTaskModalGroupId, title, assigneeUserIds, lines, asksForPhoto)
           }
           return false
         }}

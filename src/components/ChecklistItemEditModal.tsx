@@ -56,6 +56,8 @@ type FormState = {
   links: string[]
   /** Task cards (#273, PR 2): the Done when… lines, one a row, as typed. */
   lines: string
+  /** The writer's switch (PR 4): the finish holds for a photo. */
+  asks_for_photo: boolean
   assigned_to_user_ids: string[]
   repeat_type: 'day_of_week' | 'days_after_completion' | 'once'
   repeat_days_of_week: number[]
@@ -77,6 +79,7 @@ const initialForm: FormState = {
   title: '',
   links: [],
   lines: '',
+  asks_for_photo: false,
   assigned_to_user_ids: [],
   repeat_type: 'once',
   repeat_days_of_week: [],
@@ -100,6 +103,7 @@ function populateForm(item: ChecklistItem, assigneeIds: string[]): FormState {
     title: item.title.replace(/\n/g, ' '),
     links: item.links ?? [],
     lines: '',
+    asks_for_photo: Boolean((item as { asks_for_photo?: boolean | null }).asks_for_photo),
     assigned_to_user_ids: assigneeIds,
     repeat_type: item.repeat_type as FormState['repeat_type'],
     repeat_days_of_week: item.repeat_days_of_week ?? [],
@@ -185,7 +189,7 @@ export function ChecklistItemEditModal({
     Promise.all([
       supabase
         .from('checklist_items')
-        .select('id, title, links, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, due_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, remind_day_before, escalate_after_days, created_at, updated_at')
+        .select('id, title, links, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, due_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, remind_day_before, escalate_after_days, created_at, updated_at, asks_for_photo')
         .eq('id', itemId)
         .single(),
       supabase.from('checklist_item_assignees').select('user_id').eq('checklist_item_id', itemId),
@@ -271,6 +275,8 @@ export function ChecklistItemEditModal({
           ...reminderCols,
           title: form.title,
           links: form.links.filter(Boolean).length ? form.links.filter(Boolean) : [],
+          // Task cards (#273, PR 4): the writer's switch; the column is younger than the generated types.
+          ...({ asks_for_photo: form.asks_for_photo } as Record<string, boolean>),
           repeat_type: effRepeatType,
           repeat_days_of_week: effRepeatType === 'day_of_week' ? (form.repeat_days_of_week.length ? form.repeat_days_of_week : null) : null,
           repeat_days_after: effRepeatType === 'days_after_completion' ? form.repeat_days_after : null,
@@ -480,6 +486,13 @@ export function ChecklistItemEditModal({
             />
             <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
               The card reads its percent from the ticks. A line taken off keeps the ticks already on it.
+            </span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.6rem', fontSize: '0.9375rem' }}>
+            <input type="checkbox" checked={form.asks_for_photo} onChange={(e) => setForm((f) => ({ ...f, asks_for_photo: e.target.checked }))} />
+            <span>
+              Asks for a photo at the finish
+              <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>With this on, the finish holds until a photo is in or a reason is typed.</span>
             </span>
           </label>
           <div style={{ marginBottom: '1rem' }}>

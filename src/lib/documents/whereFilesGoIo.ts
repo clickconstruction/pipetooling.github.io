@@ -51,6 +51,8 @@ export interface WhereFilesGoSet {
   people?: string
   /** The machines' folders' link or id (a machine's check photos land under it, punch list #270); refused as `fleet_unwritable`. */
   fleet?: string
+  /** The Tasks folder's link or id (a task card's photos land under it, punch list #273); refused as `tasks_unwritable`. */
+  tasks?: string
   job_pattern?: readonly JobFolderPiece[]
   bid_pattern?: readonly BidFolderPiece[]
   folders_made?: FoldersMade
@@ -68,6 +70,14 @@ export async function setWhereFilesGo(set: WhereFilesGoSet): Promise<WhereFilesG
 export async function makeFleetFolder(): Promise<WhereFilesGo> {
   const r = (await supabase.functions.invoke('job-drive-folders', { body: { make: 'fleet' } })) as FnResult
   const problem = await fnProblem(r, 'The Fleet folder was not made.')
+  if (problem) throw new WhereFilesGoRefused(problem, await fnWhy(r))
+  return whereFilesGoFromAnswer(r.data)
+}
+
+/** The app makes the Tasks folder itself, beside the Jobs folder in its Shared Drive (punch list #273). */
+export async function makeTasksFolder(): Promise<WhereFilesGo> {
+  const r = (await supabase.functions.invoke('job-drive-folders', { body: { make: 'tasks' } })) as FnResult
+  const problem = await fnProblem(r, 'The Tasks folder was not made.')
   if (problem) throw new WhereFilesGoRefused(problem, await fnWhy(r))
   return whereFilesGoFromAnswer(r.data)
 }

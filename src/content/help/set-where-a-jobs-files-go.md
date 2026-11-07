@@ -96,3 +96,13 @@ Tap {{button:blue|Make the Fleet folder}}. The app's own account makes a folder 
 You can paste a folder link instead. Tap {{button:outline|Check}} and the card says whether the app can write there. Then tap {{button:blue|Use this folder for the machines' folders}}.
 
 Until a Fleet folder is set, a machine's photos wait with the reason on their row. They file on the next pass once it is set.
+
+## The Tasks folder
+
+A photo taken on a task card lands in a folder of the card's own. Those folders go under the Tasks folder. The **Tasks folder** card on Documents → Where files go sets it.
+
+Tap {{button:blue|Make the Tasks folder}}. The app's own account makes a folder named PipeTooling Tasks beside the Jobs folder in its Shared Drive. A folder of that name already there is used as it is. The card then shows its name and {{button:outline|Open in Drive}}.
+
+You can paste a folder link instead. Tap {{button:outline|Check}} and the card says whether the app can write there. Then tap {{button:blue|Use this folder for the task cards' photos}}.
+
+A card's folder is named by the day and the title. A roadmap card's folder sits under its roadmap and its stage. Each photo is named by the day, the person and what it shows. Until a Tasks folder is set, a card's photos wait with the reason on their row. They file on the next pass once it is set.
