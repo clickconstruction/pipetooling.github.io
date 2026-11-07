@@ -147,14 +147,14 @@ Commas appear as you type, so 17777.51 shows as 17,777.51. Leaving the box adds 
 
 A dev does this once. It fills the signer and his title on every waiver.
 
-1. Open [Settings, Jobs & billing](/settings?tab=settings-jobs&focus=issuer.signerName). For a dev, the link lands on the right line.
+1. Open [Settings, Jobs, bills and liens](/settings?tab=settings-jobs&focus=issuer.signerName). For a dev, the link lands on the right line.
 2. The **Physical invoice** block is open. Find the line **Signs for the company**. Type the leader's name.
 3. Type his title in **His title**. For example, Owner. Or Responsible Master Plumber.
 4. Click {{button:blue|Save}}.
 
 The Release of Lien window now opens on him. His name and title print under the signature.
 
-{{gif:send-a-gc-our-lien-waiver-settings.gif|Settings, Jobs & billing: the Physical invoice block with Signs for the company and His title}}
+{{gif:send-a-gc-our-lien-waiver-settings.gif|Settings, Jobs, bills and liens: the Physical invoice block with Signs for the company and His title}}
 
 ## Get the leader to sign
 

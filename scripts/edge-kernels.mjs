@@ -106,6 +106,8 @@ export const ENTRIES = {
   'lib/emailIn/jobInSubject.ts': { values: ['jobInSubject'], types: ['SubjectJob'] },
   'lib/emailIn/subjectJobs.ts': { values: ['subjectJobs', 'subjectNumbers'], types: ['SubjectJobRows'] },
   'lib/emailIn/historyWalk.ts': { values: ['walkHistory'], types: ['HistoryWalk', 'Took'] },
+  // v2.6649: a run inside Google's retry window after a 429 waits instead of asking Gmail again.
+  'lib/emailIn/readerHold.ts': { values: ['readerHold', 'isRateLimited', 'retryAfterIn', 'RETRY_AFTER_DEFAULT_MS', 'RETRY_AFTER_CAP_MS'], types: ['ReaderHoldState'] },
   // Residential R6, the reader's PR: bids@ and, once Settings holds its address, the team box.
   'lib/emailIn/readerBoxes.ts': { values: ['boxWords', 'readerBoxes'], types: ['ReaderBox'] },
   // Quickfill's Email station (punch list #159, v2.5820): the boxes the counter reads and one sweep's pure part.

@@ -38,7 +38,7 @@ Their newest day is the day the bill is due. A day they missed stays on the reco
 
 ## A bill they pay by card
 
-A customer can turn a certified bill into a card bill in their portal. The card adds a 3% card fee. Only the customer does this, never us, and only on a bill with nothing paid on it. The owner turns the offer on in Settings, under Jobs & billing.
+A customer can turn a certified bill into a card bill in their portal. The card adds a 3% card fee. Only the customer does this, never us, and only on a bill with nothing paid on it. The owner turns the offer on in Settings, under Jobs, bills and liens.
 
 :::example A bill on card
 {{chip:blue|on card}} They chose card in their portal on Oct 10. Stripe asks $297,545.37 with the $8,666.37 card fee. Their card page {{button:outline|Back to a check bill}}

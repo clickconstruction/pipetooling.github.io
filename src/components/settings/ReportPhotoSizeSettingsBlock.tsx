@@ -7,7 +7,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 const ORDER: ReportPhotoSize[] = ['small', 'medium', 'large']
 
 /**
- * Settings → Jobs & billing → Photos (punch list #189, PR 5b; the mock-up's section 6, frame 4): the long edge the
+ * Settings → Jobs, bills and liens → Photos (punch list #189, PR 5b; the mock-up's section 6, frame 4): the long edge the
  * phone shrinks a report photo to before it leaves. Small 1200 px, Medium 1600 (the default), Large 2400. One row of
  * `app_settings` (`report_photo_size`), set by a master or a dev, read by every phone when a report opens. Saves on
  * the pick; self-contained like the other blocks on the tab.

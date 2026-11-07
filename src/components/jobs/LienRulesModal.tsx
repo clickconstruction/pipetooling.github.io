@@ -46,6 +46,7 @@ const smallBtn: CSSProperties = { font: 'inherit', fontSize: '0.78rem', fontWeig
 
 import { LienReminderScheduleStrip } from './LienDeskSteps'
 import { lienScheduleSourceLines } from '../../lib/jobs/lienReminderSchedule'
+import { lienMonthRuleLines } from '../../lib/jobs/lienMonthRhythm'
 
 export default function LienRulesModal({ cite, onClose, job = null, todayYmd }: Props) {
   const isMobile = useIsMobile()
@@ -308,6 +309,15 @@ export default function LienRulesModal({ cite, onClose, job = null, todayYmd }: 
           <LienReminderScheduleStrip isMobile={isMobile} />
           <ul data-testid="lien-rules-schedule-sources" style={{ margin: 0, padding: '0 0 0 1rem', fontSize: '0.76rem', color: 'var(--text-muted)', display: 'grid', gap: 1 }}>
             {lienScheduleSourceLines().map((l) => (
+              <li key={l}>{l}</li>
+            ))}
+          </ul>
+        </div>
+        {/* The lien month (punch list #235, PR 1): the office's rhythm across the month — the owner's days of 2026-11-07, read from `LIEN_MONTH_RULE`, the one home the bar and the courtesy clock read. */}
+        <div data-testid="lien-rules-month" style={{ padding: isMobile ? '0.5rem 0.75rem 0.6rem' : '0.55rem 1.25rem 0.7rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: 6 }}>
+          <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-amber-800)' }}>The lien month</div>
+          <ul data-testid="lien-rules-month-lines" style={{ margin: 0, padding: '0 0 0 1rem', fontSize: '0.76rem', color: 'var(--text-muted)', display: 'grid', gap: 1 }}>
+            {lienMonthRuleLines().map((l) => (
               <li key={l}>{l}</li>
             ))}
           </ul>
