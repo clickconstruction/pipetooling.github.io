@@ -1297,9 +1297,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
               type="button"
               aria-label={`${doc ? 'Edit' : 'Write'} the ${kind}`}
               onClick={() => setDocEdit({ kind, draft: doc?.content ?? '', original: doc?.content ?? '', loadedUpdatedAt: doc?.updated_at ?? null })}
-              style={{ padding: '0.2rem 0.6rem', borderRadius: 6, fontSize: '0.74rem', fontWeight: 600, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
+              style={{ padding: '0.3rem 0.75rem', borderRadius: 7, fontSize: '0.8rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }}
             >
-              {doc ? 'Edit' : 'Write'}
+              {doc ? 'Edit' : 'Write'} the {kind}
             </button>
           ) : null}
         </div>
@@ -1357,7 +1357,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
             {kind === 'summary' && fr?.state === 'stale' && (
               <div style={{ background: 'var(--bg-amber-tint)', border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-800)', borderRadius: 8, padding: '0.5rem 0.75rem', fontSize: '0.8rem', marginBottom: '0.6rem', maxWidth: '70ch' }}>
                 {fr.entryCount - fr.coveredCount} newer {fr.entryCount - fr.coveredCount === 1 ? 'entry' : 'entries'} since this was rewritten
-                {fr.staleDays > 0 ? `, ${fr.staleDays} days behind` : ''}. Ask the agent to bring it current.
+                {fr.staleDays > 0 ? `, ${fr.staleDays} days behind` : ''}. Ask the agent to bring it current, or press Edit the summary.
               </div>
             )}
             {headings.length > 2 && (
@@ -1465,7 +1465,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
           Evidence{(sources ? sources.evidence.length + sources.attachments.length : 0) > 0 ? ` (${(sources?.evidence.length ?? 0) + (sources?.attachments.length ?? 0)})` : ''}
         </button>
         <button type="button" role="tab" aria-selected={view === 'narrative'} onClick={() => setView('narrative')} style={viewTab(view === 'narrative')}>
-          Narrative
+          Summary &amp; narrative
         </button>
         {viewer.isDev && themes.length > 0 ? (
           <button type="button" role="tab" aria-selected={view === 'themes'} onClick={() => setView('themes')} style={viewTab(view === 'themes')} data-testid="person-file-tab-themes">
