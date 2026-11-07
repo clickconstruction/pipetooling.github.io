@@ -2,7 +2,7 @@
 name: "Lien desk: the step brief rewritten for a first-week employee — the attorney's letter, one courtesy, the affidavit's week, a dated timeline with payments"
 number: 274
 group: waiting
-status: decided 2026-11-06 with Grace over five passes of one board · PR 1a the rename sweep (v2.6591, #7142) · PR 1b the words and the two policy changes (v2.6594, #7145) · PR 2 the dated timeline with payments (v2.6596, #7146) · PR 3 the paying-it-down pause waits on the owner's calls below
+status: decided 2026-11-06 with Grace over five passes of one board · PR 1a the rename sweep (v2.6591, #7142) · PR 1b the words and the two policy changes (v2.6594, #7145) · PR 2 the dated timeline with payments (v2.6596, #7146) · PR 3 the paying-it-down pause on the card's two defaults (v2.6611, #7175), Taunya's word on either still welcome
 summary: >
   v2.6574 and v2.6577 gave a pressed rung on Do now a step brief and sorted the list instead of
   fading it. Reading the briefs as a new employee would, Grace found them telling rather than
@@ -13,9 +13,9 @@ summary: >
   way four policy calls fell out: letter two is renamed the attorney's letter on every surface; one
   courtesy reminder, never a second; the seven days before the affidavit's day are the affidavit's
   week, a priority and not a hold; a partial payment pauses the reminders as paying it down.
-next: PR 1a merges alone (a mechanical rename, cut from main); PR 1b and PR 2 follow on fresh main. Taunya confirms the three defaults below.
-size: S (1a) · M (1b) · M (2)
-blocker: none for 1a; 1b and 2 want Taunya's word on the defaults, and build on hers if she changes one
+next: every PR is on main once #7175 merges; retire the card after the walk. Taunya may still change either of PR 3's two defaults, one line each.
+size: S (1a) · M (1b) · M (2) · M (3)
+blocker: none; PR 3 built the defaults and names them in its release note
 ver: v2.6591
 opinion: build — every piece reads data the desk already holds; nothing is sent, held or approved differently until she says so
 ---
@@ -60,7 +60,7 @@ Earlier boards: the explainer for the owner https://claude.ai/artifact/R9TCeLBJT
 | 1a · v2.6591 | The rename sweep: `scripts/codemods/attorneys-letter-rename.mjs` over `src/**/*.ts{,x}` and `src/content/help/*.md` (strings, JSX text, guide prose; never identifiers, comments, release notes or fragments); the tests' expected words; `docs/GLOSSARY.md` amended. | Mechanical; merges alone from fresh main before 1b. |
 | 1b | `lienStepBrief` / `lienReminderBrief` rewritten to the board's words with `instead` as `{ press, means }`; `LienStepBrief` gains *In plain words* and *If nobody acts*; one courtesy (`courtesyStatus` never `due` again after a send; rung 2 words); the affidavit's week as a priority (`courtesyStatus` returns a new `affidavit_week` state, not `held`; the Do now row recommends the affidavit; the footer keeps the press); *Refer to the Legal desk* out; guides; `lienReminderSchedule` source lines (*Day 7 is the owner's choice*). | Fresh main after 1a. |
 | 2 · v2.6596 | `LienReminderScheduleStrip` → a vertical `LienNoticeTimeline` per notice: day 0 from letter two's clock (`clock.why`), the affidavit's day from the desk's affidavit entry, today, the windows, payments from the job's payments under `attributeJobPayments` with the remainder, *paying it down* (a payment after the packet pauses `courtesyStatus` / `letterTwoStatus` until the promised date or a week), the status pills, *Show another*, the counts chips from `courtesy.reason` grouping; § Rules keeps a schedule strip with no marks. Verify first that the server's affidavit list drops a job at zero balance. | Stacked on 1b. **Shipped without the pause:** the payment rows and remainders are in; *paying it down* / *Record what they promised* moved to PR 3. |
-| 3 | *Paying it down*: a payment after the packet pauses `courtesyStatus` / `letterTwoStatus` until the promised date or a week; the usual move becomes *Record what they promised* (a promise record on the sent notice); the attorney's letter waits unless the office sends it by hand. Needs Taunya's two answers below. | After 2, with the owner's word. |
+| 3 · v2.6611 | *Paying it down*: a payment on or after day 0 that leaves money owed puts `courtesyStatus` in `paying` until the promised day or a week (`courtesyPause`); the usual move becomes *Record what they promised* (the day on the job through the promise RPC, the amount and their words on the sent notice as `fields.promise`); the attorney's letter waits by the desk's hand, the footer's door plain with a title; the timeline names the pause's end and their promise. | #7175, on the card's two defaults; no answer from Taunya was on record. |
 
 ## Where it was built
 
@@ -77,7 +77,7 @@ Copies of the four boards above, kept here so the card stands without the chat l
 
 ## Picking up PR 3 (hand-off, 2026-11-06)
 
-**Where it stopped.** A session read the kernels on top of PR 2's branch and was stopped before writing code, on Grace's word, so this card could carry it. Nothing of PR 3 is committed. No answer from Taunya on the two calls is recorded anywhere: build the defaults in the table above and name both in the release note so she can change either.
+**Where it stopped.** A session read the kernels on top of PR 2's branch and was stopped before writing code, on Grace's word, so this card could carry it. **Built 2026-11-06 as v2.6611 (#7175)** from fresh main, on the defaults in the table above, both named in the release note; Grace's session was not reachable and no answer from Taunya on the two calls was on record. The design decision below went the first way: the promised day through `set_job_promised_pay_date` (by `addJobPaymentPromise`), the amount and their words on `fields.promise`. The rest of this section stays as the brief it was.
 
 **Start** from fresh `main` once PR 1b (#7145) and PR 2 (#7146) have landed; claim the version with `npm run claim`. Read PR 2's fragment first: its timeline already draws the payment rows and the remainder.
 

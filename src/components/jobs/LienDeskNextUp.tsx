@@ -258,6 +258,8 @@ export default function LienDeskNextUp({
   const timelineRows = picked && timelineFor ? timelineFor(picked) : null
   const timeline = picked && timelineRows && timelineRows.length ? { rows: timelineRows, options: stepNotices, picked, onPick: setPickedJobId } : null
   const whyChips = on?.ladder === 'reminder' && reminders ? lienTimelineWhyChips(reminders.rows.filter((r) => r.step === on.step && r.counted).map((r) => r.why ?? '')) : undefined
+  // The picked notice's own rung state (PR 3 of #274): a notice paying it down reads the payment's brief on step 2.
+  const pickedState = on?.ladder === 'reminder' && picked ? ((groups[0]?.rows ?? []).find((r) => r.jobId === picked)?.reminder?.state ?? reminderRows.find((r) => r.jobId === picked)?.state ?? null) : null
   const openCard = card.open
   const cardButton = openCard ? openRow : null
   return (
@@ -265,7 +267,7 @@ export default function LienDeskNextUp({
       <LienStepRail counts={counts} ladders={ladders} on={on} isMobile={isMobile} onPick={setOn} onOpenRun={onOpenRun} viewerIsLeader={viewerIsLeader} printed={printed} reminderWaiting={reminders?.waiting} />
       {/* The step brief (v2.6574; every rail since v2.6577): what the step is, why a row is here, the usual move, the other moves, what closes it — and the REMINDERS rail's notices with no row here. */}
       {on ? (
-        <LienStepBrief on={on} brief={lienStepBrief(on)} count={(groups[0]?.rows.length ?? 0) + reminderRows.length} marks={on.ladder === 'reminder' ? [...(groups[0]?.rows ?? []).map((r) => r.reminder?.day ?? null), ...reminderRows.map((r) => r.day)] : []} timeline={timeline} whyChips={whyChips} isMobile={isMobile} onClear={() => setOn(null)}>
+        <LienStepBrief on={on} brief={lienStepBrief(on, pickedState)} count={(groups[0]?.rows.length ?? 0) + reminderRows.length} marks={on.ladder === 'reminder' ? [...(groups[0]?.rows ?? []).map((r) => r.reminder?.day ?? null), ...reminderRows.map((r) => r.day)] : []} timeline={timeline} whyChips={whyChips} isMobile={isMobile} onClear={() => setOn(null)}>
           {reminderStep ? (
         <div data-testid="lien-reminder-step-list" data-step={reminderStep} style={{ borderTop: '1px solid var(--border)', paddingTop: 8, fontSize: '0.8125rem' }}>
           <div style={{ fontSize: '0.66rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-violet-700)', fontWeight: 700, marginBottom: 2 }}>

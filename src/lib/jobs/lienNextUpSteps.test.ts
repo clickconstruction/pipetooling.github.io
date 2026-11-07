@@ -24,6 +24,16 @@ describe('lienStepOfRow (v2.4631)', () => {
     expect(lienStepOfRow(row({ action: 'letter_two', reminder }))).toEqual({ ladder: 'reminder', step: 2 })
     expect(lienStepOfRow(row({ action: 'courtesy' }))).toBeNull()
   })
+  it('a promise row while they pay it down (PR 3 of #274) stands on its rung too, and its card asks what they promised', () => {
+    const reminder = { step: 2 as const, state: 'paying' as const, words: 'paying it down · $4,000 paid Nov 3 · $8,045 still owed', day: 20, counted: true }
+    expect(lienStepOfRow(row({ action: 'promise', reminder }))).toEqual({ ladder: 'reminder', step: 2 })
+    const card = lienStepCard(row({ action: 'promise', sub: reminder.words, button: 'Record what they promised', dueOn: null, daysLeft: null }))
+    expect(card.items.map((i) => [i.state, i.title])).toEqual([['done', 'Notice sent'], ['now', 'Record what they promised']])
+    expect(card.items[1]!.detail).toContain('the desk asks again on that date')
+    expect(card.foot).toBe('After step 4 · paying it down')
+    expect(lienStepBrief({ ladder: 'reminder', step: 2 }, 'paying').usual?.press).toBe('Record what they promised')
+    expect(lienStepBrief({ ladder: 'reminder', step: 2 }, 'sent').usual?.press).toBe('Send the attorney’s letter')
+  })
 })
 
 describe('countLienSteps + lienLaddersShown', () => {

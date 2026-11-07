@@ -56,6 +56,12 @@ The owner's copy adds the pay page's rule. The owner pays us only with the GC's 
 
 The message never names interest, fees, theft of service or a default. The message never mentions the GC's other jobs.
 
+## When they pay part of it
+
+A payment after the notice is an answer. The desk stops asking for a reminder while they pay. The row reads *paying it down* with the amount paid and what is still owed. The row's button reads {{button:blue|Record what they promised}}. The same button sits on the notice's footer under **Sent**. Type the day they gave and the amount for the rest. The desk asks again on that day. With no day the desk asks again a week after the payment. The day you type also shows on the Stages board as the job's promise.
+
+The attorney's letter waits while they pay. The office may still send it by hand when the payment was token. The lien's day never moves for a payment that is short.
+
 ## What closes it
 
 The button leaves the row once any of these happens.
