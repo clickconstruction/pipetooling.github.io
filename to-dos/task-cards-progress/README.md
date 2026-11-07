@@ -2,7 +2,7 @@
 name: "Task cards: % done instead of a tick, Done when… lines, photos filed in a Tasks folder in Drive, and the Monday email of your people's week"
 number: 273
 group: ready
-status: card and mock-up 2026-11-06 on worktree-task-cards-progress · Taunya took the six picks as recommended the same day · the second look that evening revised the photo pick, gave a % its words and drew the office's Dashboard section as a question for her · PRs 1 to 3 and the first half of PR 4 built 2026-11-06: v2.6592 the ground, v2.6595 Done when…, v2.6597 the ring, v2.6598 the Roadmap's fractions, v2.6600 Your people on the Dashboard, v2.6601 the Tasks folder and the finish photo
+status: card and mock-up 2026-11-06 on worktree-task-cards-progress · Taunya took the six picks as recommended the same day · the second look that evening revised the photo pick, gave a % its words and drew the office's Dashboard section as a question for her · PRs 1 to 3 and the first half of PR 4 built 2026-11-06: v2.6592 the ground, v2.6595 Done when…, v2.6597 the ring, v2.6598 the Roadmap's fractions, v2.6600 Your people on the Dashboard, v2.6601 the Tasks folder and the finish photo · PR 4b v2.6602 the photo on the card (the tile on the % sheet, the finishing sheet, the strip) and PR 7 v2.6617 the Task window's words, 2026-11-07 · left: PR 5 the Monday email and PR 6 the docs, open as #7161 and #7162
 summary: >
   A task card is done or not done today: a tick on Checklist → Today, the Dashboard's My Inbox and
   the Roadmap's task card. Taunya wants the card to carry how far along it is, what done means, and
@@ -13,7 +13,7 @@ summary: >
   its Shared Drive, one folder per card; and a Monday email a person subscribes to lists the people
   they picked and what each moved that week, the cards, the roadmap and the jobs. Two migrations,
   three function deploys, a train of six.
-next: the rest of PR 4 (the photo offered on the % sheet, the strip on the card and Review's row, the outbox for a shot with no signal), then PR 5 the Monday email, then PR 6 the docs and this card deleted
+next: PR 5 the Monday email (open as #7161) and PR 6 the docs and this card deleted (open as #7162); after them the two small PRs v2.6602 left behind, a shot with no signal waiting in the outbox and task photos in the Documents → Photos gallery
 size: L as a train of six (M · M · M · M · L · S)
 blocker: none · the six picks are taken (2026-11-06)
 opinion: build PRs 1 to 3 in one sitting, since one migration carries all three and the card reads wrong with a percent column and no ring; the photos and the email each stand alone after that
@@ -278,3 +278,7 @@ calls only while a source waits, so a quiet run answers nothing.
 ## Where it stands
 
 2026-11-06: the brief, the six picks and this card with its mock-up. Nothing built.
+
+2026-11-06, the same day: PRs 1 to 4a shipped and pushed — v2.6592 the ground (migration `20261106230000_task_cards_progress`, `taskProgress.ts`, `taskCriteria.ts`, `taskPhotos.ts`), v2.6595 the Done when… lines and ticks (`taskLinesIo.ts`, `useTaskLines`, the three dialogs' fold), v2.6597 the ring and the % sheet (`TaskRing`, `TaskPercentSheet`, `taskProgressIo.ts`; Today, Today's Outstanding and My Inbox), v2.6598 the Roadmap's Set the % and the stages' fractions (`doneFraction`, `fractionWords`), v2.6600 Your people on the Dashboard (`DashboardYourPeopleSection`, row 6b of the Dashboard map) and v2.6601 the Tasks folder, the sweep's eighth source and the Asks for a photo switch (`job-drive-folders` `make: 'tasks'`, `photo-save`'s `sweepTaskPhotos`). The train split as it shipped: PR 3 became 3a (the ring), 3b (the Roadmap) and 3c (Your people), PR 4 became 4a (the folder and the switch) and 4b (the camera on the sheets); the sweep's source is the eighth, not the sixth the plan named. 
+
+2026-11-07: PR 4b shipped as v2.6602 (`taskPhotosIo.ts`, `useTaskPhotos`, `useTaskShot`, `TaskPhotoTile`, `TaskFinishSheet`, `TaskPhotoStrip`, the tile on `TaskPercentSheet`, `useTaskCardSheets`; the guide *add a photo to a task card*) and PR 7, Taunya's look at the live Task window, as v2.6617 (the Done when… hint, the photo switch beside the fold, the summary's tail, the Repeats words). Left: PR 5 the Monday email (`people-week-email`, open as #7161), PR 6 the docs (open as #7162), and the two small PRs v2.6602 named: a shot with no signal waiting in the outbox, and task photos in the Documents → Photos gallery.

@@ -10,7 +10,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-20
+last_updated: 2026-11-07
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -4581,13 +4581,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
    DROP POLICY IF EXISTS my_policy ON my_table;  -- before re-creating it
    ```
 
-4. **CREATE TABLE migrations must end with all three sweep calls** (no CI check; reviewers look for them):
+4. **CREATE TABLE migrations must end with all four sweep calls** (CI-checked since v2.6572: `scripts/check-migrations.sh` rule 6 fails a migration after `20261106120000` that creates a table and skips any of them):
    ```sql
    SELECT public.apply_read_only_write_blocks();
    SELECT public.apply_read_only_stmt_blocks();
    SELECT public.apply_digital_twin_write_blocks();
+   SELECT public.apply_archived_read_blocks();
    ```
-   Miss one and the new table is writable by read-only (training-mode) users or by digital twins. All three create only what is missing (the stmt trigger since `20260814185815`, the twin fence since `20261005222937`), so the call locks just the new table. The flip side: a plain rerun never rebuilds what exists. To change a twin-fence allowance (including an existing table gaining a `bid_id` or `cost_estimate_id` column) or the stmt trigger, ship a one-off migration that drops the affected policies or triggers first, then calls the helper.
+   Miss one and the new table is writable by read-only (training-mode) users or by digital twins, or readable by an archived caller (the seal behind the Away note, v2.6572, `20261106120000_archived_seal.sql`: one restrictive `archived_fence` policy for every command, on `storage.objects` too). All four create only what is missing (the stmt trigger since `20260814185815`, the twin fence since `20261005222937`, the archived fence from its first run), so the call locks just the new table. The flip side: a plain rerun never rebuilds what exists. To change a twin-fence allowance (including an existing table gaining a `bid_id` or `cost_estimate_id` column) or the stmt trigger, ship a one-off migration that drops the affected policies or triggers first, then calls the helper.
 
 5. **Check dependencies and existing data**: verify foreign keys/constraints, and handle existing rows when altering populated columns.
 

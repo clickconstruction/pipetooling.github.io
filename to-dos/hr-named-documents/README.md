@@ -1,8 +1,8 @@
 ---
 name: "Named documents on the HR file: any number of titled markdown documents beside the summary and narrative, edited in the app or by the seat a section at a time, with a counsel-only mark and a file door for the long ones"
 number: 277
-group: ready
-status: planned 2026-11-07 · PR 1 built as v2.6613 and PR 2 as v2.6614 the same day · replaces #275 (one fixed History kind) after v2.6608 and v2.6610 put the editor and the seat's section ops on the two fixed documents
+group: close
+status: planned 2026-11-07 · PR 1 built as v2.6613 and PR 2 as v2.6614 the same day, PR 3 as v2.6615 the next morning · all three PRs shipped · replaces #275 (one fixed History kind) after v2.6608 and v2.6610 put the editor and the seat's section ops on the two fixed documents
 summary: >
   A person's HR file keeps two documents the agent writes from the entries, a one-page summary
   and the chronological narrative, and since v2.6610 a dev edits either in the app while the seat
@@ -15,7 +15,7 @@ summary: >
   mark, and a door that takes a .md or .txt file off the desk so a long document never rides
   through an agent's context. The view the two fixed documents share becomes Documents, with
   Summary and Narrative pinned at the top as the two the agent keeps.
-next: PR 3 a document's sections as doors from the Timeline's citations (#275's third PR, kept); PR 1 the table, its revisions and fences, and the seat's door by document id shipped as v2.6613, PR 2 the Documents view with Add a document (write it, from a file, paste) as v2.6614.
+next: nothing left of the three PRs — PR 1 the table, its revisions and fences, and the seat's door by document id shipped as v2.6613, PR 2 the Documents view with Add a document (write it, from a file, paste) as v2.6614, PR 3 a document's sections as doors from the Timeline's citations (#275's third PR, kept) as v2.6615; the two case-folder documents land through From a file, the two open calls (archiving in the app, retiring the Drive-linked evidence records) get their answer, then this folder goes.
 size: M + M + S
 blocker: None.
 mockup: mockup.html — the Documents view with the two pinned documents and the named list, Add a document's three doors, one document open with its section index and Edit the document, the counsel-only mark, and the seat's plan reply by document id
@@ -62,8 +62,8 @@ Two things this plan does not do, on purpose. It does not search across document
 
 | PR | What | Size |
 |---|---|---|
-| 1 | Migration: `person_documents` and `person_document_revisions`, the archive trigger, dev-only policies, the four fence appliers; `dev_person_doc_write` takes `doc_id` (an existing document) or `title` (a new one) beside `kind`, with `counsel_only?`; `hr_doc_headings` unchanged. `plan_person_doc` / `apply_person_doc` carry the new fields; `get_person_file` lists documents and reads one by id; the writes test, `docs/dev-mcp/README.md`, `docs/HR_FILES.md`, `docs/migrations/`. | M |
-| 2 | The Documents view in `PersonFilePanel.tsx`: the tab, the pinned pair, the named list with the lock chip, *Add a document* (write it, from a file, paste), the open document with its section index, *Edit the document* through the v2.6610 editor by id, *Copy as text*; `personTimelineIo` loads the list; `hrDocEditor.ts` grows the file reader (size and type checks, the words); render smokes; the help guide *keep private employee files* gains *Keep a named document*. Then the two case-folder documents land through *From a file*. | M |
+| 1 | Migration: `person_documents` and `person_document_revisions`, the archive trigger, dev-only policies, the four fence appliers; `dev_person_doc_write` takes `doc_id` (an existing document) or `title` (a new one) beside `kind`, with `counsel_only?`; `hr_doc_headings` unchanged. `plan_person_doc` / `apply_person_doc` carry the new fields; `get_person_file` lists documents and reads one by id; the writes test, `docs/dev-mcp/README.md`, `docs/HR_FILES.md`, `docs/migrations/` (shipped v2.6613). | M |
+| 2 | The Documents view in `PersonFilePanel.tsx`: the tab, the pinned pair, the named list with the lock chip, *Add a document* (write it, from a file, paste), the open document with its section index, *Edit the document* through the v2.6610 editor by id, *Copy as text*; `personTimelineIo` loads the list; `hrDocEditor.ts` grows the file reader (size and type checks, the words); render smokes; the help guide *keep private employee files* gains *Keep a named document*. Then the two case-folder documents land through *From a file* (shipped v2.6614; as built the list and the save are `personDocumentsIo.ts` and the file checks `personDocuments.ts`, `hrDocEditor.ts` only widening its target to a document). | M |
 | 3 | #275's third PR, kept: an entry's `N§16` becomes a press to that section of the named document it cites, and a section shows *cited by n entries* as chips that open the Timeline on the entry. | S |
 
 PR 2 calls the RPC shape PR 1 creates, so PR 1's migration is pushed right after its merge, before PR 2 deploys.

@@ -11,3 +11,5 @@ PR 2 of punch list #269: a piece of evidence the office keeps for counsel alone,
 **The limit**, said in `docs/HR_FILES.md` too: the seat identifies itself by a header. A dev signed in as themself, or any client that runs the seat's code without the header, reads the row. The flag binds the agent as deployed and Drive; it is not a second password.
 
 No table is created, so no fence is owed. Deploy order: push, then deploy `hr-evidence-drive` and `dev-mcp` (server 0.27.0).
+
+**Applied** to prod by 2026-11-06, read on 2026-11-07: types regenerated from prod through #7112 (`chore(types)` after `20261106040000`, 2026-11-06) with this file already on `main` — the repo's evidence that it was pushed; the dev seat's `check_migration_ledger` was not read in this pass (the connector was not available in the docs worktree), and `check:edge-drift` on 2026-11-07 found every function deployed, 15 of them on `_shared` code older than `main` after #7159 / #7166 (a redeploy owed, not a migration matter).
