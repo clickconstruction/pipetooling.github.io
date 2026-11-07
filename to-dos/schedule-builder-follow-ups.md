@@ -2,7 +2,7 @@
 name: "GC mode: the schedule builder's three follow-ups, and the owner's look"
 number: 210
 group: close
-status: building 2026-11-07 on claude/210-schedule-builder-pieces-af5a19 (v2.6651, migration 20261107160000) · the three pieces as one PR on the card's drawn words, the owner's look skipped on his word of 2026-11-07 · saved 2026-10-28 from the close of #204 (v2.5995, v2.6020, v2.6022 to v2.6025)
+status: saved 2026-10-28 from the close of #204, whose six PRs shipped the same day (v2.5995, v2.6020, v2.6022 to v2.6025) and whose folder retired with its Closed line in to-dos/README.md · nothing built here yet · the owner has not looked at the builder
 summary: >
   The schedule builder shipped as planned: a template is phases and rows with no dates, made on
   the Templates page or pasted from a spreadsheet, saved as a new version on each save, put on a

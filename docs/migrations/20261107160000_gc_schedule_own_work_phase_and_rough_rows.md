@@ -36,4 +36,4 @@ Not yet. Pushed with `supabase db push` by the owner after the PR merges; the ty
 
 ## Status
 
-- 2026-11-07: cut from main at v2.6643 by the #210 session. The bed run is recorded in the fragment.
+- 2026-11-07: cut from main at v2.6643 by the #210 session, PR #7251. The bed ran on GitHub's *SQL beds* workflow of the PR (the local Postgres 15 lacks `vector` for a later migration, and Docker did not come up); the fragment records the walk.
