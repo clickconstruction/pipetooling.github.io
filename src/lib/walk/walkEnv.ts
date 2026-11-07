@@ -1,8 +1,9 @@
 /**
  * The walk's keys (punch list #142, v2.6030; `docs/WALK_KIT.md` § Found on the first walks, item 1). The driver reads
  * the main checkout's `.env` and lays `.env.local` over it, as Vite does for the app, so the two keys a checkout keeps
- * in `.env` need no copying by hand; and a key that is still missing names itself and the files that were read. Pure:
- * the driver hands in each file's text, or null for a file that is not there.
+ * in `.env` need no copying by hand; the process environment is laid over both (v2.6652), so a scheduled run with no
+ * files, or a worktree, hands the keys in as variables; and a key that is still missing names itself and the files
+ * that were read. Pure: the driver hands in each file's text, or null for a file that is not there, and the environment.
  */
 
 /** The three keys the walk needs, in the order the error names them. */
@@ -21,11 +22,14 @@ export interface EnvFile {
 
 export interface LayeredEnv {
   env: Record<string, string>
-  /** The files that were there, in the order laid. */
+  /** The files that were there, in the order laid, then `the environment` when a key came from it. */
   read: string[]
   /** The files that were not. */
   notFound: string[]
 }
+
+/** The name the environment reads under in `read` and in the missing-key words. */
+export const PROCESS_ENV_NAME = 'the environment'
 
 /** `KEY=value` lines, the quotes around a value dropped; a comment, a blank line or an empty value sets nothing. */
 export function parseEnvText(text: string): Record<string, string> {
@@ -55,6 +59,24 @@ export function layerEnv(files: readonly EnvFile[]): LayeredEnv {
   return { env, read, notFound }
 }
 
+/**
+ * The process environment laid over the files, for the keys the walk needs alone: a variable with a value wins over the
+ * files (a scheduled run has no files; a worktree has no `.env` of its own), an empty or unset one changes nothing,
+ * and `read` names the environment once any key came from it.
+ */
+export function layerProcessEnv(layered: LayeredEnv, processEnv: Readonly<Record<string, string | undefined>>, keys: readonly string[] = WALK_ENV_KEYS): LayeredEnv {
+  const env = { ...layered.env }
+  let took = false
+  for (const k of keys) {
+    const v = processEnv[k]?.trim()
+    if (v) {
+      env[k] = v
+      took = true
+    }
+  }
+  return { env, read: took ? [...layered.read, PROCESS_ENV_NAME] : [...layered.read], notFound: [...layered.notFound] }
+}
+
 /** The keys with no value, in the order asked. */
 export function missingKeys(env: Readonly<Record<string, string>>, keys: readonly string[] = WALK_ENV_KEYS): string[] {
   return keys.filter((k) => !env[k])
@@ -72,5 +94,5 @@ export function missingKeyWords(layered: LayeredEnv, keys: readonly string[] = W
   const files = [layered.read.length ? `read ${list(layered.read)}` : null, layered.notFound.length ? `${list(layered.notFound)} not found` : null]
     .filter((b): b is string => b !== null)
     .join('; ')
-  return `${list(missing)} ${missing.length === 1 ? 'is' : 'are'} missing (${files}). The walk needs ${list(keys)}, in the main checkout’s ${list([...WALK_ENV_FILES]).replace(' and ', ' or ')}.`
+  return `${list(missing)} ${missing.length === 1 ? 'is' : 'are'} missing (${files}). The walk needs ${list(keys)}, in the main checkout’s ${list([...WALK_ENV_FILES]).replace(' and ', ' or ')}, or in ${PROCESS_ENV_NAME}.`
 }

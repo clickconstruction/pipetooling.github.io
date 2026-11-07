@@ -67,6 +67,8 @@ export const STOP_WAIT_MS = 2 * 60_000
 export const OWNER_WAIT_MS = 15 * 60_000
 /** The read of the kit's thread before seeding (found item 4): short, two more looks on a lost signal. */
 export const SEED_READ_WAIT_MS = 30_000
+/** How long setup is tried for: a `walk setup` call that throws (a lost signal) is tried again on the next poll (v2.6652). */
+export const SETUP_WAIT_MS = 60_000
 
 export type StepKey =
   | 'setup'
@@ -413,11 +415,13 @@ export interface WalkReport {
   cleanup: Record<string, unknown> | null
   /** Every step that held, in words. */
   held: string[]
+  /** A call that threw outside a wait and ended the run early, in words; null when the run reached its end (v2.6652). */
+  endedEarly: string | null
   ok: boolean
 }
 
 export function emptyReport(startedAt: string, flags: WalkFlags): WalkReport {
-  return { startedAt, finishedAt: null, flags, kit: null, tester: null, steps: [], lanes: null, strip: null, strays: null, strayNote: null, quo: [], cleanup: null, held: [], ok: false }
+  return { startedAt, finishedAt: null, flags, kit: null, tester: null, steps: [], lanes: null, strip: null, strays: null, strayNote: null, quo: [], cleanup: null, held: [], endedEarly: null, ok: false }
 }
 
 /** The kit as the report names it: ids alone, never the address or number (they are the company's own, but the report is pasted around). */
@@ -425,13 +429,18 @@ export function reportKit(kit: WalkKit): WalkReport['kit'] {
   return { customerId: kit.customerId, contactId: kit.contactId, estimateId: kit.estimateId, emailChannelId: kit.emailChannelId, phoneChannelId: kit.phoneChannelId, sharedPhone: kit.sharedPhone }
 }
 
-/** A walk is green when every step that ran went, no stray contact was made, and cleanup answered counts or was kept off. */
+/**
+ * A walk is green when at least one step went and every step that ran went, the run reached its end, no stray contact
+ * was made, and cleanup answered counts or was kept off. A run that ended early, or ran no step at all (its setup call
+ * threw, v2.6652), is not green however empty its held list.
+ */
 export function finishReport(report: WalkReport, finishedAt: string): WalkReport {
   const held = report.steps.filter((s) => s.ok === false).map((s) => `${s.name}: ${s.held ?? 'held'}`)
+  const went = report.steps.some((s) => s.ok === true)
   const strays = report.strays?.length ?? 0
   // Nothing to clean is clean too: a walk whose setup refused made no rows, and --cleanup-only after a clean walk finds none.
   const cleanupOk = report.flags.keep || (report.cleanup !== null && (report.cleanup.cleaned === true || report.cleanup.nothing === true))
-  return { ...report, finishedAt, held, ok: held.length === 0 && strays === 0 && cleanupOk }
+  return { ...report, finishedAt, held, ok: went && held.length === 0 && report.endedEarly === null && strays === 0 && cleanupOk }
 }
 
 const t = (iso: string | null) => (iso ? iso.replace('T', ' ').slice(0, 19) : '—')
@@ -454,6 +463,7 @@ export function reportLines(report: WalkReport): string[] {
     if (s.held) bits.push(s.ok === null ? `not run: ${s.held}` : `held: ${s.held}`)
     out.push(`  ${bits.join(' · ')}`)
   }
+  if (report.endedEarly) out.push(`  ✗ The run ended early · ${report.endedEarly}`)
   if (report.lanes) {
     out.push('')
     out.push('The office’s view')
