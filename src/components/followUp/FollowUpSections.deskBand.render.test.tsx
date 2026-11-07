@@ -3,13 +3,14 @@
  * The band on a New row (punch list #258, v2.6507): three rows in the lane, an invitation to bid wearing the Estimating
  * band, a customer's text on the team line the Dispatch band, and a sender nobody has named none; the band's label is
  * the desk's word then why; at 1400 the band is 22 wide and the row's padding moves right by it, at 375 it is 18; and a
- * press on the band opens the thread as the row does. Every person is made up.
+ * press on the band opens the thread as the row does. Since v2.6616 (PR 2) the same band on Needs a reply's rows, read
+ * from the sender and the line they wrote on. Every person is made up.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, within } from '@testing-library/react'
 import { newLane, type NewLaneContact, type NewLaneMessage } from '../../lib/followUp/newLane'
-import type { FollowUpContact } from '../../lib/followUp/followUpRows'
-import type { FollowUpQueue } from '../../lib/followUp/queue'
+import type { FollowUpContact, FollowUpLine } from '../../lib/followUp/followUpRows'
+import type { FollowUpQueue, NeedsReplyRow } from '../../lib/followUp/queue'
 import { DESK_BAND, DESK_MARKS } from '../../lib/messages/deskMarks'
 import { FollowUpSections, type FollowUpSectionActions } from './FollowUpSections'
 import type { Teammate } from './WhoHasItPill'
@@ -119,6 +120,33 @@ describe('the band on a New row', () => {
     const acts = draw(1400)
     fireEvent.click(within(rowOf('priya')).getByRole('img', { name: /Dispatch/ }))
     expect(acts.openThread).toHaveBeenCalledWith('priya', 'm-priya')
+  })
+})
+
+describe('the band on a Needs a reply row (PR 2 of #258, v2.6616)', () => {
+  const ridge: NewLaneContact = { id: 'ridge', kind: 'trade', name: 'Ridgeway Builders', company: 'Ridgeway Builders', jobIds: [], defaultJobId: null, has: null, channels: [{ kind: 'email', value: 'bids@ridgeway.example' }] }
+  const lineOf = (id: string, contactId: string, channel: 'email' | 'text', mailbox: 'team' | 'bids'): FollowUpLine =>
+    ({ id, contactId, channel, direction: 'in', at: '2026-11-03T14:00:00Z', body: 'Still waiting to hear back.', backOn: null, backBy: null, subject: channel === 'email' ? 'Oak Hill Clinic' : null, who: null, jobId: null, mailbox, tiedByHand: false, auto: false }) as unknown as FollowUpLine
+  const replyRow = (contactId: string, landOnId: string): NeedsReplyRow => ({ contactId, landOnId, waitingSince: '2026-11-03T14:00:00Z', callBack: false, offers: [], acts: ['Reply', 'No reply needed'] })
+  function drawReplies(px: number) {
+    atWidth(px)
+    const queue: FollowUpQueue = { newLane: newLane([], [], new Set(), NOW), needsYou: [], clauses: [], needsReply: [replyRow('priya', 'm-priya'), replyRow('ridge', 'm-ridge'), replyRow('jesse', 'm-jesse')], weOwe: [], calls: [], nudges: [], onPortal: () => false, count: 3 }
+    const lines = new Map<string, FollowUpLine>([['m-priya', lineOf('m-priya', 'priya', 'text', 'team')], ['m-ridge', lineOf('m-ridge', 'ridge', 'email', 'bids')], ['m-jesse', lineOf('m-jesse', 'jesse', 'email', 'bids')]])
+    render(<FollowUpSections queue={queue} contacts={[...CONTACTS, ridge].map(followUpContact)} lines={lines} me={ME} team={[ME]} todayYmd="2026-11-04" nowIso={NOW} actions={actions()} />)
+  }
+  it('at 1400: a customer on the team line wears Dispatch, a trade partner Estimating, an unnamed sender none, read from the sender and the line', () => {
+    drawReplies(1400)
+    const priya = within(rowOf('priya')).getByRole('img', { name: 'Dispatch · A customer on the team line. Dispatch books the visit.' })
+    expect(priya.dataset.deskBand).toBe('dispatch')
+    expect(rowOf('priya').style.paddingLeft).toBe(`calc(${DESK_BAND.desk.width}px + 0.8rem)`)
+    const ridgeBand = within(rowOf('ridge')).getByRole('img', { name: 'Estimating · A trade partner writes about a bid or a quote.' })
+    expect(ridgeBand.style.background).toBe(hexToRgb(DESK_MARKS.estimating.fill))
+    expect(within(rowOf('jesse')).queryByRole('img')).toBeNull()
+    expect(document.querySelectorAll('[data-desk-band]')).toHaveLength(2)
+  })
+  it('at 375: the band narrows to 18 on a Needs a reply row too', () => {
+    drawReplies(375)
+    expect(within(rowOf('ridge')).getByRole('img', { name: /Estimating/ }).style.width).toBe(`${DESK_BAND.phone.width}px`)
   })
 })
 

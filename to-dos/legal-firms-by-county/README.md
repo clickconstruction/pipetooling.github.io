@@ -15,7 +15,7 @@ summary: >
 next: Widening Who covers what past counts, once counsel answers the confidentiality call; PR 4 shipped counts-only as v2.5862, PRs 1–3 as v2.5756–v2.5792.
 size: L as a train of four (M+migration, M, L, M+edge); one migration, the legal-portal function changed, no new function
 blocker: counsel's confidentiality call — what one firm may see of another's cases — before the page widens past counts
-ver: proposed
+ver: v2.5756 · 5758 · 5784 · 5792 · 5862
 opinion: build — the second firm is signed or close, and without this the desk would send Austin's cases to the San Antonio firm
 mockup: required — the county picker on Settings and the Map lens on the desk; the desk's header change is small
 ---

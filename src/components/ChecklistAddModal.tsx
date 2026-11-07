@@ -978,30 +978,48 @@ export default function ChecklistAddModal({
                 </button>
               </div>
             )}
-            {/* Task cards (#273, PR 2): Done when…, the lines the person ticks; the card reads its percent from them. */}
+            {/* Task cards (#273, PR 2): Done when…, the lines the person ticks; the card reads its percent from them. Since v2.6617
+                the fold says what it is while closed, and the photo switch sits beside it where a writer sees it on a plain task too. */}
             <div style={{ marginTop: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => setLinesOpen((o) => !o)}
-                aria-expanded={linesOpen}
-                aria-label={linesOpen ? 'Hide done when' : 'Show done when'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  padding: '0.25rem 0',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  fontSize: '1rem',
-                  color: 'var(--text-faint)',
-                }}
-              >
-                <span aria-hidden>{linesOpen ? '▼' : '▶'}</span>
-                <span>Done when…</span>
-                {lineCount > 0 ? <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'inherit' }}>({lineCount})</span> : null}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem 1rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setLinesOpen((o) => !o)}
+                  aria-expanded={linesOpen}
+                  aria-label={linesOpen ? 'Hide done when' : 'Show done when'}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: '0.35rem',
+                    padding: '0.25rem 0',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    fontSize: '1rem',
+                    color: 'var(--text-faint)',
+                    textAlign: 'left',
+                    minWidth: 0,
+                  }}
+                >
+                  <span aria-hidden>{linesOpen ? '▼' : '▶'}</span>
+                  <span>Done when…</span>
+                  {lineCount > 0 ? <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'inherit' }}>({lineCount})</span> : null}
+                  {!linesOpen ? (
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }} data-testid="done-when-hint">
+                      what done means, one line each, ticked off on the card
+                    </span>
+                  ) : null}
+                </button>
+                <label
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', color: 'var(--text-700)', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                  title="A photo is offered at each new percent on every card. With this on, the finish holds until a photo is in or a reason is typed."
+                >
+                  <input type="checkbox" checked={asksForPhoto} onChange={(e) => setAsksForPhotoPick(e.target.checked)} aria-label="Asks for a photo at the finish" />
+                  <span aria-hidden>📷</span>
+                  <span>Asks for a photo at the finish</span>
+                </label>
+              </div>
               {linesOpen && (
                 <div style={{ marginTop: '0.35rem' }}>
                   <textarea
@@ -1013,17 +1031,8 @@ export default function ChecklistAddModal({
                     style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', fontSize: '1rem', fontFamily: 'inherit', lineHeight: 1.4 }}
                   />
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    The card reads its percent from the ticks. Leave this empty and the person sets the percent by hand.
+                    The card reads its percent from the ticks. Leave this empty and the person sets the percent by hand. A photo is offered at each new percent on every card; with the switch on, the finish holds until a photo is in or a reason is typed.
                   </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.9375rem' }}>
-                    <input type="checkbox" checked={asksForPhoto} onChange={(e) => setAsksForPhotoPick(e.target.checked)} />
-                    <span>
-                      Asks for a photo at the finish
-                      <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                        A photo is offered at each new percent on every card. With this on, the finish holds until a photo is in or a reason is typed.
-                      </span>
-                    </span>
-                  </label>
                 </div>
               )}
             </div>
@@ -1051,6 +1060,12 @@ export default function ChecklistAddModal({
                   </button>
                 ))}
               </div>
+              {when === 'repeat' ? (
+                // Task cards (#273, v2.6617): the one thing a writer decides here without knowing it.
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.35rem' }} data-testid="repeat-ring-hint">
+                  A repeating task keeps its tick. A one-off gets the % ring.
+                </div>
+              ) : null}
               {when === 'date' ? (
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem' }}>
                   <span>Do on</span>
@@ -1229,6 +1244,8 @@ export default function ChecklistAddModal({
                 }}
               >
                 {checklistScheduleSummary({
+                  lineCount,
+                  asksForPhoto,
                   when,
                   repeatMode,
                   startDate: form.start_date,

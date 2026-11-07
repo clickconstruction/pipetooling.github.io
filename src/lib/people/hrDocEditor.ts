@@ -5,6 +5,8 @@
  * specially — the document saved by someone else since it was opened. Pure: no io.
  */
 export type HrDocKind = 'summary' | 'narrative'
+/** What the editor is on: one of the fixed two, or a named document (v2.6614, punch list #277). */
+export type HrDocTarget = HrDocKind | 'document'
 
 export type HrDocSavePayload = {
   person_id: string
@@ -30,7 +32,7 @@ export type HrDocDraftState = {
 }
 
 /** What Save would do, in words: nothing yet, an emptied document, or the size and how it moved. */
-export function hrDocDraftWords(kind: HrDocKind, draft: string, original: string): HrDocDraftState {
+export function hrDocDraftWords(kind: HrDocTarget, draft: string, original: string): HrDocDraftState {
   if (draft === original) return { changed: false, words: 'Nothing changed yet.' }
   if (draft.trim() === '') return { changed: true, words: `Save empties the ${kind}. The prior version stays in its history.` }
   const n = draft.length
@@ -45,7 +47,7 @@ export function hrDocSaveWasStale(message: string): boolean {
 }
 
 /** The toast after a refusal: the reason, and for a stale save the one way out. */
-export function hrDocSaveFailureWords(kind: HrDocKind, reason: string): string {
+export function hrDocSaveFailureWords(kind: HrDocTarget, reason: string): string {
   const base = `Could not save the ${kind}: ${reason}`
   return hrDocSaveWasStale(reason) ? `${base} Copy your words, press Cancel, open it again and bring them over.` : base
 }

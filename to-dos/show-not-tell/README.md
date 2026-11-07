@@ -2,7 +2,7 @@
 name: "Show it, don't say it: seven shapes for the 131 places the app still tells"
 number: 217
 group: gated
-status: scanned and drawn 2026-10-30 · eight read-only scans of main at 9e8f233, 131 findings, drawn as seven shapes with 67 before/after pairs and a second pass on each (shapes 1 and 2 drawn whole on the owner's asks the same day; Draft Payroll, the Pricing tab and the Project Board drawn on the pages they land on, on her notes) · waiting on the owner's picks on shapes 3 to 7 · twenty-one PRs from her picks on 1 and 2 (four shipped, seventeen prototypes on nineteen places), each on its pair with the one command that opens it on any machine (`npm run proto -- <id>`)
+status: scanned and drawn 2026-10-30 · eight read-only scans of main at 9e8f233, 131 findings, drawn as seven shapes with 67 before/after pairs and a second pass on each (shapes 1 and 2 drawn whole on the owner's asks the same day; Draft Payroll, the Pricing tab and the Project Board drawn on the pages they land on, on her notes) · waiting on the owner's picks on shapes 3 to 7 · twenty-one PRs from her picks on 1 and 2 (five shipped, v2.6140, v2.6145, v2.6154, v2.6155 and v2.6158; the rest prototypes on their places), each on its pair with the one command that opens it on any machine (`npm run proto -- <id>`)
 mockup: to-dos/show-not-tell/mockup.html
 summary: >
   Taunya asked for a scan of the whole app for the places it tells instead of shows, so a reader sees

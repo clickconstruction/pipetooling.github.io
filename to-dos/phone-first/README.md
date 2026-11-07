@@ -2,7 +2,7 @@
 name: "Phone first: the five screens a tech touches, with one thumb and a camera"
 number: 189
 group: gated
-status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · the picks of 2026-10-29 on the review canvas (sections 3, 4, 6 and 8 as redrawn, Leaving opens the On my way sheet, a home screen web app, the clock-out note filled from the day's reports, a photo with no folder kept and marked, the typed plan stays) · built the same day as five PRs, PR 5a v2.6076, PR 5b v2.6083, PR 3 v2.6089, the Leaving PR v2.6091 and PR 8 v2.6092, run live on the ZZ test jobs at 375 px before the queue took them, all five live by the 05:55Z deploy on 2026-10-30 · the report photos migration on prod since the push of 2026-10-30, and photo-save redeployed with the report sweep at 14:13Z the same day; the camera's live run passed on the ZZ Test job at 15:00Z the same day, and its one finding was fixed as v2.6126 · PR 6, a photo answers a checklist question, built 2026-10-31 as v2.6219 with one additive migration, the `report_photo_id` column and its two mirror triggers, merged as #6625 at 11:16Z and live since the 11:32Z deploy the same day; the migration pushed the same day with the drift check fully applied, in the types and the dev-mcp catalog since #6646
+status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · the picks of 2026-10-29 on the review canvas (sections 3, 4, 6 and 8 as redrawn, Leaving opens the On my way sheet, a home screen web app, the clock-out note filled from the day's reports, a photo with no folder kept and marked, the typed plan stays) · built the same day as five PRs, PR 5a v2.6076, PR 5b v2.6083, PR 3 v2.6089, the Leaving PR v2.6091 and PR 8 v2.6092, run live on the ZZ test jobs at 375 px before the queue took them, all five live by the 05:55Z deploy on 2026-10-30 · the report photos migration on prod since the push of 2026-10-30, and photo-save redeployed with the report sweep at 14:13Z the same day; the camera's live run passed on the ZZ Test job at 15:00Z the same day, and its one finding was fixed as v2.6126 · PR 6, a photo answers a checklist question, built 2026-10-31 as v2.6219 with one additive migration, the `report_photo_id` column and its two mirror triggers, merged as #6625 at 11:16Z and live since the 11:32Z deploy the same day; the migration pushed the same day with the drift check fully applied, in the types and the dev-mcp catalog since #6646 · PR 7, the field report through the queue, built as v2.6265 (#6695, 2026-11-01, with #229's PR 6) once #163's PR 3 landed as v2.6100
 summary: >
   A tech's day on the phone is five screens: the Job Mode card with the day's press, the On my
   way sheet, the field report, My Schedule with its percent stepper, and the job window. Walked
@@ -15,10 +15,10 @@ summary: >
   under the status bar on every screen and #164's gallery under the address. The position on
   native: stay a home screen web app, with three named triggers for revisiting it.
 next: run PR 6 live on a ZZ job once the office types a stage checklist question that asks for a photo; prod has none yet, and no ZZ job has a Rough In, Top Out or Trim Set line, so the run needs a ZZ job with two such lines. PR 7 waits on #163's PR 3, the field report through the queue.
-size: L as a train of nine (S · XS · S · M · M · S · S · S, and the Leaving PR at XS), eight built; two migrations, the report photos table and the answer's report photo column; left: PR 7 (S)
-blocker: PR 7 waits on #163's PR 3.
-ver: v2.5905 · 5910 · 6076 · 6083 · 6089 · 6091 · 6092 · 6126 · 6219
-opinion: every PR the owner's picks unlocked is built and live; PR 6 waits on a live run once a photo question exists; PR 7 after #163's PR 3; stay a home screen web app until one of the three triggers fires
+size: L as a train of nine (S · XS · S · M · M · S · S · S, and the Leaving PR at XS), all nine built; two migrations, the report photos table and the answer's report photo column; left: the live run of PR 6 (XS)
+blocker: None; PR 6's live run needs a stage checklist question that asks for a photo on a ZZ job.
+ver: v2.5905 · 5910 · 6076 · 6083 · 6089 · 6091 · 6092 · 6126 · 6219 · 6265
+opinion: every PR the owner's picks unlocked is built and live; PR 6 waits on a live run once a photo question exists; PR 7 shipped as v2.6265; stay a home screen web app until one of the three triggers fires
 mockup: to-dos/phone-first/mockup.html
 ---
 
@@ -211,7 +211,7 @@ the five screens.
 
 PRs 2, 3, 4, 5a and 8 need no migration. PR 5b carries the report photos migration and follows 5a.
 PR 6 carries a second, the answer row's `report_photo_id` and its mirror triggers, because #164's
-answer table had no way to name a report photo (its fragment says why). PR 7 waits on #163's PR 3.
+answer table had no way to name a report photo (its fragment says why). PR 7 shipped as v2.6265.
 
 ## Is this the best we can do?
 

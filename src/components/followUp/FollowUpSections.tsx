@@ -29,7 +29,7 @@ import { markedByWords } from '../../lib/messages/owed'
 import { agoWords, channelWord, lineWhen, snippetOf } from '../../lib/messages/thread'
 import { Btn, Card, Chip } from '../gc/gcUi'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { deskRead, type Desk } from '../../lib/messages/rowDesk'
+import { deskRead, deskReadOf, type Desk } from '../../lib/messages/rowDesk'
 import { DESK_BAND } from '../../lib/messages/deskMarks'
 import { DeskBand } from './DeskBand'
 import { WhoHasItPill, type Teammate } from './WhoHasItPill'
@@ -456,6 +456,8 @@ function ReplyRowView<C, N extends { contactId: string }>({ row, contact, ...pro
     <Row
       contact={contact}
       landOn={row.landOnId}
+      // The desk band (PR 2 of #258, v2.6616): the same rule as New's rows, read from the sender and the line they wrote on.
+      band={deskReadOf(contact, line ?? null)}
       pill={
         row.waitingSince ? (
           <Chip tone="amber" title="Their word was last, so the next move is ours. It counts from their last message.">
