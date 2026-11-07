@@ -18,10 +18,10 @@ import { calendarYmdInAppTzFromIso, formatDenverTimeOnly } from '../../utils/dat
 import { hoursStatementSheetCounts, hoursStatementSheetPayGroups, hoursStatementSheetRows, type HoursStatementSheet, type HoursStatementSheetLine, type HoursStatementSheetPayment } from './hoursStatementSheets'
 import { stubNetPay } from '../payStubDeductions'
 import { hoursStatementRoundHours, hoursStatementStanding, hoursStatementWeekLabel, type HoursStatementInput, type HoursStatementPayGroup, type HoursStatementRow } from './hoursStatement'
-import { buildCrewDays, jobChargeRuleFrom, jobChargeRuleWords, type CrewUncharged } from '../charges/crewDays'
+import { jobChargeRuleFrom } from '../charges/crewDays'
 import { loadChargeAdjustments, loadCrewSessions, loadRateCard } from '../charges/jobChargesRead'
-import { indexAdjustments } from '../charges/adjustments'
-import { crewRateWords, parseCrewShape } from '../charges/rateCard'
+import { parseCrewShape } from '../charges/rateCard'
+import { hoursStatementChargedRows, type HoursStatementChargeFacts } from './hoursStatementCharged'
 
 /** The job's number as the papers print it: the HCP number, else the click number, else the id's first eight. */
 export function hoursStatementJobNumber(job: { id: string; hcp_number: string | null; click_number: string | null }): string {
@@ -184,22 +184,8 @@ export type HoursStatementReadArgs = {
   kind?: HoursStatementSource
 }
 
-/** What the charged paper was priced by, for the window's line and the saved row. */
-export type HoursStatementChargeFacts = {
-  /** The headline rate: the job's shape or flat rate, else the master-with-a-helper row; null when the card has none. */
-  rate: number | null
-  /** `master with a helper throughout · $285.00 the crew’s hour`, or `the crew on each day, from the rate card`. */
-  words: string
-  /** Days in the span the person was part of that could not be priced, with the reason once each. */
-  unpriced: string[]
-  crewDays: number
-  /**
-   * Who counts as nobody on this person's days that priced at nothing because nobody out counted (the live pass), most
-   * such days first, and how many such days. The office window names them; the paper keeps its neutral reason.
-   */
-  uncharged: CrewUncharged[]
-  unchargedDays: number
-}
+/** What the charged paper was priced by, for the window's line and the saved row: the pricing kernel's facts (`hoursStatementCharged.ts`). */
+export type { HoursStatementChargeFacts }
 
 /** What the read found in the span, for the window's line: see `hoursStatementSpanWords`. */
 export type HoursStatementReadCounts = { approved: number; pending: number; typedDays: number; quickAddsLeftOff: number; /** A sub's paper: the sheets in the span (`approved` is then the lines). */ sheets?: number }
@@ -326,8 +312,7 @@ export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Pr
   const firstRecordedDay = ((firstRow ?? []) as Array<{ work_date: string }>)[0]?.work_date ?? null
 
   // The charged basis (punch list #251 over #254's crew-days): the person's counted days become the crew-days they were
-  // part of — the people out on the job that day, the crew's hours, the shape and its rate — so two papers never sell the
-  // same hour twice. Pending rows stay pending; a day the card cannot price is listed with no amount and named.
+  // part of, priced by `hoursStatementChargedRows` — the one kernel the dev MCP's charged paper reads too (punch list #212).
   let charge: HoursStatementChargeFacts | null = null
   let chargedRows: HoursStatementRow[] | null = null
   if (args.basis === 'charged') {
@@ -339,45 +324,9 @@ export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Pr
       loadChargeAdjustments(jobId).catch(() => []),
     ])
     const rule = jobChargeRuleFrom((jobRow ?? {}) as { charge_rule?: unknown; charge_shape?: unknown; hourly_charge_rate?: unknown }, parseCrewShape)
-    const applied = indexAdjustments(adjustments)
-    const dayShape = new Map(Array.from(applied.dayShape.entries()).map(([day, o]) => [day, o.shape] as const))
-    const days = buildCrewDays(crew.filter((s) => s.workDate >= periodStart && s.workDate <= periodEnd), card, rule, { dayShape, dayOff: applied.dayOff })
-    const mine = new Map(rows.filter((r) => !r.pending).map((r) => [r.day, r] as const))
-    const out: HoursStatementRow[] = []
-    const unpriced = new Set<string>()
-    const unchargedBy = new Map<string, CrewUncharged>()
-    let unchargedDays = 0
-    let crewDays = 0
-    for (const d of days.days) {
-      const own = mine.get(d.workDate)
-      if (!own || !d.people.some((p) => p.userId === userId)) continue
-      crewDays += 1
-      if (d.shape == null) {
-        unchargedDays += 1
-        for (const p of d.people) {
-          if (p.standing !== 'none') continue
-          const u = unchargedBy.get(p.userId) ?? { userId: p.userId, name: p.name, days: 0 }
-          u.days += 1
-          unchargedBy.set(p.userId, u)
-        }
-      }
-      const others = d.people.filter((p) => p.userId !== userId).map((p) => p.name)
-      const note = `${others.length ? `with ${others.join(', ')}` : 'alone'} · ${d.shapeWords}${d.why ? ` · ${d.why}` : ''}`
-      if (d.why) unpriced.add(d.why)
-      // The crew's hours, or the person's own when nobody out that day is charged, so an unpriced day still shows its hours.
-      out.push({ day: d.workDate, hours: d.crewHours > 0 ? d.crewHours : own.hours, note, inLabel: own.inLabel, outLabel: own.outLabel, pending: false, chargeRate: d.rate })
-    }
-    for (const r of rows) if (r.pending) out.push(r)
-    chargedRows = out
-    const headline = rule.kind === 'flat' ? rule.rate : rule.kind === 'shape' ? (card.rates[rule.shape] ?? null) : (card.rates.master_helper ?? null)
-    charge = {
-      rate: headline,
-      words: `${jobChargeRuleWords(rule)}${headline != null ? ` · ${crewRateWords({ rate: headline, why: null })}` : ''}`,
-      unpriced: Array.from(unpriced),
-      crewDays,
-      uncharged: Array.from(unchargedBy.values()).sort((a, b) => b.days - a.days || a.name.localeCompare(b.name)),
-      unchargedDays,
-    }
+    const priced = hoursStatementChargedRows({ rows, userId, crew, card, rule, adjustments, span: { from: periodStart, to: periodEnd } })
+    chargedRows = priced.rows
+    charge = priced.charge
   }
   const input: HoursStatementInput = {
     kind: salaried ? 'schedule' : 'clock',
