@@ -68,6 +68,6 @@ describe('parseMyLogbook', () => {
   })
 
   it('reads missing lists as empty', () => {
-    expect(parseMyLogbook({ name: 'X' })).toEqual({ name: 'X', hours: [], licenses: [], signers: [], officeJobId: null })
+    expect(parseMyLogbook({ name: 'X' })).toEqual({ name: 'X', hours: [], licenses: [], signers: [], targets: [], officeJobId: null })
   })
 })
