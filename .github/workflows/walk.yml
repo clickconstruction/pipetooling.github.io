@@ -1,0 +1,59 @@
+name: Walk
+
+# The walk kit on a schedule (punch list #142, docs/WALK_KIT.md): `npm run walk` runs the Messages loop on prod end to
+# end, on the company's own inbox and number, as the hidden walk tester, prints what landed where and cleans up after
+# itself. Deliberately NON-GATING: it never runs on a pull request and blocks no merge. It runs nightly at a quiet hour
+# and on demand; a red run means a leg of the loop held on prod (the report says which and what it saw), never that a
+# PR is wrong. The report is uploaded on every run. One walk at a time: two kits cannot stand on the one bids inbox.
+#
+# Needs three repository secrets: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (the deploy's) and
+# VITE_DEV_LOGIN_SECRET (the dev-login door's shared secret, the same value as DEV_LOGIN_SECRET on the function).
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily at 09:00 UTC (3–4 AM Texas), before the office and after the night's readers: the kit's customer sits in
+    # Needs a reply for the few minutes of a walk, and the 9 AM morning run skips it either way.
+    - cron: '0 9 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: walk
+  cancel-in-progress: false
+
+jobs:
+  walk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Check the three keys are set
+        run: |
+          for key in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY VITE_DEV_LOGIN_SECRET; do
+            if [ -z "${!key}" ]; then echo "::error::$key is not set in the repository's secrets"; exit 1; fi
+          done
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_DEV_LOGIN_SECRET: ${{ secrets.VITE_DEV_LOGIN_SECRET }}
+      - name: Walk the Messages loop on prod
+        run: npm run walk
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_DEV_LOGIN_SECRET: ${{ secrets.VITE_DEV_LOGIN_SECRET }}
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: walk-report
+          path: tmp/walk/
+          retention-days: 30
+          if-no-files-found: ignore

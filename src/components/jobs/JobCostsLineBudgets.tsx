@@ -38,9 +38,11 @@ type Props = {
   jobPctDone: number | null
   /** The job, for the door to its card on the Projects board (punch list #242, PR 5); none, no door. */
   jobId?: string | null
+  /** The job reads as a project (#238's kind); undefined = not known here, so an ordered stage stands in. */
+  isProject?: boolean
 }
 
-export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jobId = null }: Props) {
+export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jobId = null, isProject }: Props) {
   const lines = useMemo(
     () =>
       fixtures
@@ -54,9 +56,9 @@ export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jo
     [fixtures],
   )
   const sums = useMemo(() => sumLineBudgets(lines, settings), [lines])
-  // Only a project carries budgets; until #238's kind lands, an ordered stage stands in for it.
-  const isProject = fixtures.some((f) => f.stage_kind === 'order')
-  if (lines.length === 0 || !isProject) return null
+  // Only a project carries budgets (#238's kind, punch list #234 PR 1a); a caller that does not know the kind leaves an ordered stage to stand in.
+  const project = isProject ?? fixtures.some((f) => f.stage_kind === 'order')
+  if (lines.length === 0 || !project) return null
   // Where we are against the whole budget, from what the job already knows at any moment:
   // team and sub labor dollars against the labor budget, parts against materials.
   const laborSpent = spend ? spend.teamUsd + spend.subUsd : null

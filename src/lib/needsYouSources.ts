@@ -45,6 +45,7 @@ export type NeedsYouSource =
   | 'contracts'
   | 'unpricedWorkOrders'
   | 'jobKindGaps'
+  | 'baselineGaps'
   | 'jobFollowups'
   | 'staleOpen'
   | 'capacityUnder'
@@ -96,6 +97,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'contracts',
   'unpricedWorkOrders',
   'jobKindGaps',
+  'baselineGaps',
   'jobFollowups',
   'staleOpen',
   'capacityUnder',
@@ -169,6 +171,7 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'contracts':
     case 'unpricedWorkOrders':
     case 'jobKindGaps':
+    case 'baselineGaps':
     case 'jobFollowups':
     case 'staleOpen':
     case 'capacityUnder':
