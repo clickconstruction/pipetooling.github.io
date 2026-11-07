@@ -38,7 +38,7 @@ export default function HideHcpFieldSettingsBlock() {
   }
 
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
+    <div style={{ padding: '1rem' }}>
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: loaded ? 'pointer' : 'default' }}>
         <input
           type="checkbox"
