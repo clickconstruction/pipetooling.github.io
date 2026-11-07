@@ -93,6 +93,10 @@ interface FakeOpts {
   failOpenFirst?: boolean
   /** Every read of the channel throws a fetch failure. */
   channelThrows?: boolean
+  /** The first `walk setup` throws a fetch failure (v2.6652). */
+  failSetupFirst?: boolean
+  /** Every `walk text` throws a fetch failure, outside any wait (v2.6652). */
+  textThrows?: boolean
 }
 const fetchFailed = () => Object.assign(new TypeError('fetch failed'), { cause: new Error('ECONNRESET') })
 
@@ -114,6 +118,7 @@ function fake(opts: FakeOpts = {}): Fake {
     f.thread.push(line({ id: 'm-text-out', channel: 'text', direction: 'out', at: new Date(START - 10 * 60_000).toISOString(), body: 'Your estimate', quo_id: 'quo-1', who_text: 'Robert' }))
   }
   let opens = 0
+  let setups = 0
   const reads: WalkReads = {
     thread: async () => f.thread.map((l) => ({ ...l })),
     channel: async () => {
@@ -164,6 +169,8 @@ function fake(opts: FakeOpts = {}): Fake {
       if (name !== 'walk') return { status: 404, body: { error: `unexpected ${name}` } }
       switch (b.action) {
         case 'setup':
+          setups += 1
+          if (opts.failSetupFirst && setups === 1) throw fetchFailed()
           return { status: 200, body: { ok: true, kit: opts.kept ? { ...KIT, made: false, madeAt: new Date(START - 30 * 60_000).toISOString() } : { ...KIT, made: true }, tester: { id: 'u-tester', email: 'walk-tester@walk.pipetooling.local', made: false } } }
         case 'seed-old':
           f.thread.push(line({ id: 'm-seed', channel: 'text', direction: 'out', at: new Date(clock - 3 * 86_400_000).toISOString(), who_text: 'ZZ walk seed', delivery: 'delivered' }))
@@ -178,6 +185,7 @@ function fake(opts: FakeOpts = {}): Fake {
           f.thread.push(line({ id: 'm-email-in', channel: 'email', direction: 'in', channel_id: 'ch-walk-email' }))
           return { status: 200, body: { ok: true, gmailId: 'gm-1' } }
         case 'text': {
+          if (opts.textThrows) throw fetchFailed()
           if (b.words === TEXT_WORDS) {
             f.thread.push(line({ id: 'm-text-in', channel: 'text', direction: 'in', body: TEXT_WORDS }))
             const out = f.thread.find((l) => l.id === 'm-text-out')
@@ -331,6 +339,38 @@ describe('npm run walk (punch list #142 PR 8)', () => {
     expect(report.steps.find((s) => s.key === 'replyText')?.where).toContain('the estimate text reads ✓ delivered')
     expect(f.printed.some((l) => l.endsWith('A press made before this restart is read as well.'))).toBe(true)
     expect(report.ok).toBe(true)
+  })
+
+  it('a setup call that throws is tried again on the next poll, and the walk goes on (v2.6652)', async () => {
+    const f = fake({ failSetupFirst: true })
+    const report = await runWalk(flagsOf(), f.io)
+    expect(f.calls.filter((c) => c.name === 'walk' && c.body.action === 'setup')).toHaveLength(2)
+    expect(report.steps.find((s) => s.key === 'setup')).toMatchObject({ ok: true })
+    expect(f.printed).toContain('  poll 1 failed, trying again on the next: TypeError: fetch failed (ECONNRESET)')
+    expect(report.endedEarly).toBeNull()
+    expect(report.ok).toBe(true)
+  })
+
+  it('a call that throws outside a wait ends the run early with the reason on the report, not green, and still cleans up (v2.6652)', async () => {
+    const f = fake({ textThrows: true })
+    const report = await runWalk(flagsOf(), f.io)
+    expect(report.endedEarly).toBe('TypeError: fetch failed (ECONNRESET)')
+    expect(report.steps.map((s) => s.key)).toEqual(['setup', 'signIn', 'seedOld', 'estimateEmail', 'estimateText', 'open', 'replyEmail', 'cleanup'])
+    expect(report.held).toEqual([])
+    expect(report.ok).toBe(false)
+    expect(f.calls[f.calls.length - 1]).toMatchObject({ name: 'walk', body: { action: 'cleanup' } })
+    expect(f.printed).toContain('✗ The run ended early — TypeError: fetch failed (ECONNRESET)')
+    expect(f.printed).toContain('  ✗ The run ended early · TypeError: fetch failed (ECONNRESET)')
+    expect(f.printed).toContain('Not green yet. See the held steps below.')
+  })
+
+  it('a report with no step that went is not green, however empty its held list (v2.6652)', async () => {
+    const f = fake()
+    const io: WalkIo = { ...f.io, call: async (name, body, auth) => (name === 'walk' && (body as { action: string }).action === 'setup' ? Promise.reject(fetchFailed()) : f.io.call(name, body, auth)) }
+    const report = await runWalk(flagsOf({ keep: true }), io)
+    expect(report.steps.map((s) => `${s.key}:${s.ok}`)).toEqual(['setup:false', 'cleanup:null'])
+    expect(report.steps[0]).toMatchObject({ held: 'the walk function could not be reached', waitedFor: '1 m', saw: 'the last poll failed: TypeError: fetch failed (ECONNRESET)' })
+    expect(report.ok).toBe(false)
   })
 
   it('a refused setup ends the walk with the refusal and nothing else pressed, then cleanup', async () => {

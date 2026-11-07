@@ -2,7 +2,7 @@
 name: "Report by line: how far along each line is, not the job"
 number: 130
 group: close
-status: SHIPPED 2026-10-20 — the owner took the defaults and said build it all; the five PRs landed the same day (v2.5661, v2.5663, v2.5664, v2.5665 inside #5900's squash, v2.5666); what is left is the live walk and the count
+status: SHIPPED 2026-10-20 and WALKED 2026-11-07 — the five PRs landed 2026-10-20 (v2.5661, v2.5663, v2.5664, v2.5665 inside #5900's squash, v2.5666); the live walk as a helper passed 2026-11-07 and found the Pipeline bar still pouring, fixed in v2.6653; what is left is the count's second reading
 summary: >
   A field report asks "How complete is the job?" and a tech who just finished the rough-in types
   50, meaning the piece they stood in, so the job reads 50% everywhere money is counted. The
@@ -12,12 +12,12 @@ summary: >
   multi-line job: the lines in plan order, each with its own percent, no amounts and no shares
   on the rows, the job's percent derived by the server the way it already is, and the same list
   behind the My Schedule stepper so the fast door stops minting whole-job fifties.
-next: A live walk as a helper on a ZZ job with four priced lines and no Order row (the recipe under How to verify; the deployed app's pane login signs in as the dev only, so the walk runs on the dev server as a twin helper or on a helper's phone); the count's first reading is below, the second a month on; then delete the folder.
+next: The count's second reading, on or after 2026-12-07 (a month after the first line reports): the share of `job_pct_events` whose percent is exactly 25, 50 or 75, before and after, plus the two counts named under Where it stands; then delete the folder.
 size: XS
-blocker: A live walk as a helper. The count's first reading was taken 2026-11-05 from the dev seat.
+blocker: Time. The walk passed 2026-11-07; the count's second reading waits a month (the first reading was 2026-11-05, the first line reports 2026-11-07).
 opinion: your call — the code is done; the walk and the count are yours
 mockup: to-dos/report-by-line/mockup.html
-ver: v2.3192 · v2.5661 · v2.5663 · v2.5664 · v2.5665 · v2.5666
+ver: v2.3192 · v2.5661 · v2.5663 · v2.5664 · v2.5665 · v2.5666 · v2.6653
 ---
 
 # Report by line (#130)
@@ -253,15 +253,46 @@ tab's draw rules.
 Proposed and built 2026-10-20 (the owner: "take the defaults, build it all"); the five PRs are on
 main, D1 to D5 as the defaults. Two things are left, both the owner's:
 
-- **The live walk** (How to verify above). The session could not seed a ZZ job on prod (a write)
-  and the deploy landed after the build; any real job with two or more priced lines shows the
-  list on Leave Report and on Update % done now.
+- **The live walk — passed 2026-11-07**, on the dev server as BOBBY D (the helper test account,
+  through Settings → View as…; the dev sign-in door opens only a dev or a digital twin since
+  v2.6639, and the only twins are estimators, so View as is the helper's door). The session made
+  JP1113 *ZZ Test report by line* on the customer Robert Test with four Any lines (Water heater
+  $1,000 · Gas line $500 · Slab leak repair $1,500 · Fixture set $1,000), BOBBY D on the team,
+  and the helper put it on his own day through My Schedule's **+ Add job** (the Job Mode card's
+  Leave Report is dead until a job is started). What the helper saw:
+  - **Leave Report** on the My Schedule row: *How far along is each stage?* over the four rows,
+    the first open by itself with 25 · 50 · 75 · Done ✓ and the ±5 stepper, no amount and no
+    share on any row; Water heater → 50 and Slab leak repair → 25 read *— → 50%* and *— → 25%*
+    in green, the job line read **Job 0% → 22%** with **how?** unfolding the four shares as
+    percentages; the saved report's *Stage progress* read *Water heater — → 50% · Slab leak
+    repair — → 25% · job 0% → 22%*, *How complete is the job?* 22, the job's activity drew the
+    sentence and *22% complete — from field report*, `jobs_ledger.pct_complete` 22, one
+    `job_pct_events` row (pct 22, `source` **manual** — the field writes `manual`; `service` is the
+    service role's only, so the count cannot tell a line report from a typed one by `source`),
+    and the two lines stamped with the report's id on `jobs_ledger_fixtures.progress_*`.
+  - **Update % done** on the same row: the same list in a sheet, seeded with 50 · — · 25 · — and
+    *Job 22% nothing moved yet*; Gas line → Done ✓ read **Job 22% → 34%**, *Save · job 34%* filed
+    a second Status Report (*Gas line — → 100% · job 22% → 34%*), the row read *34% done ▲ 34
+    today*, a second event at 34, the Gas line stamped with the second report's id.
+  - **A one-line job** (JP1111, no priced lines): Update % done still opens *How done is this
+    job?* with the ± stepper.
+  - **The Pipeline cell failed the recipe**: the row read *34% typed Nov 7* with the tick at 34,
+    but the blocks drew the Water heater full and the Gas line at 72% — the job's 34% poured
+    down the lines — with the Slab leak repair grey at its own 25. v2.5665 set a per-line fill
+    that nothing on the board has drawn since v2.4351 made the bar the money bar. Fixed in
+    **v2.6653**: the amber on each block is now the line's own number once any line has one.
+  - Cleaned: JP1113 deleted through its Edit window's **Delete** (its two reports, two events,
+    four lines and the helper's schedule block went with it; nothing of it reads on prod).
 - **The count.** The first reading, 2026-11-05, from the dev seat over `job_pct_events` since
   2026-07-08 (the 120 days): 178 manual percent events, 8 of them exactly 25, 50 or 75 (4.5%),
   and no event from a line report yet (`source` reads `manual` or `seed` only), so the before
   number is 4.5%. Read it again a month on, after the first line reports: the share of events
   whose job percent is exactly 25, 50 or 75, before and after, is the number that says whether
   this worked. The other two counts (Working jobs with two or more priced lines and no stage
-  plan; line rows that ever got a `progress_pct`) wait on that second reading.
+  plan; line rows that ever got a `progress_pct`) wait on that second reading. The first line
+  reports on prod were the walk's own, 2026-11-07, and left with the ZZ job; a real crew's first
+  line report is the clock's start, so read on or after 2026-12-07 and count events from
+  `jobs_ledger_fixtures.progress_report_id` reports apart (the event's `source` is `manual` either
+  way).
 
-Delete the folder when both are done; the release notes and the fragments carry the record.
+Delete the folder when the second reading is taken; the release notes and the fragments carry the record.

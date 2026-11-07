@@ -1314,7 +1314,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [customerPreviewTab, setCustomerPreviewTab] = useState<'email' | 'page' | 'thankyou'>('email')
   const [lastAcceptUrl, setLastAcceptUrl] = useState<string | null>(null)
   /** Tell the customer (v2.5594): a normal estimate's send goes through the sheet — the email, the text with the link, the receipt with the call. */
-  const [tellEstimate, setTellEstimate] = useState<{ customerId: string; customerName: string | null; email: string; totalCents: number; number: number; title: string; jobId: string | null } | null>(null)
+  const [tellEstimate, setTellEstimate] = useState<{ estimateId: string; customerId: string; customerName: string | null; email: string; totalCents: number; number: number; title: string; jobId: string | null } | null>(null)
   // Resend link (v2.2856, J17-F2/N3): the fresh URL is shown once, in the tab that asked for it.
   const [resending, setResending] = useState(false)
   const [resentInfo, setResentInfo] = useState<{ email: string; emailed: boolean; url: string } | null>(null)
@@ -2854,7 +2854,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     recordNavClick(user.id, role, 'discard_guard_shown', 'estimate_send')
     // Tell the customer (v2.5594): a normal estimate's send goes through the sheet, which emails it, texts the link, and shows the receipt with the call.
     if (!isCO && totalCents > 0 && role && GC_OFFICE_TEAM.includes(role)) {
-      setTellEstimate({ customerId: sel.id, customerName: sel.name ?? null, email: payloadEmail, totalCents, number: row.estimate_number, title: (row.status === 'draft' ? title : row.title) ?? '', jobId: row.job_ledger_id ?? null })
+      setTellEstimate({ estimateId: row.id, customerId: sel.id, customerName: sel.name ?? null, email: payloadEmail, totalCents, number: row.estimate_number, title: (row.status === 'draft' ? title : row.title) ?? '', jobId: row.job_ledger_id ?? null })
       return
     }
     const zeroNote = totalCents === 0 ? (isCO ? ' The net change to contract is $0.00.' : ' The total is $0.00.') : ''
@@ -3126,6 +3126,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         jobId={tellEstimate.jobId}
         jobLabel={`Estimate #${tellEstimate.number}${tellEstimate.title ? ` · ${tellEstimate.title}` : ''}`}
         estimate={{
+          estimateId: tellEstimate.estimateId,
           customerId: tellEstimate.customerId,
           email: tellEstimate.email,
           amount: `$${formatCurrency(tellEstimate.totalCents / 100)}`,

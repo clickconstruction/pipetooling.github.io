@@ -257,6 +257,8 @@ export function buildLienMonth(input: LienMonthInput): LienMonth {
   const notices: LienMonthJob[] = []
   let queueNotices = 0
   for (const e of input.notices) {
+    // A row drafting its next months keeps the notice that went (`sentItem`, v2.6624): that send counts as done this month beside what is left.
+    if (e.sentItem?.sent_at && monthOfIso(e.sentItem.sent_at) === month) notices.push({ jobId: e.jobId, title: title(e.jobId), state: 'done', words: `sent ${shortDay(calendarYmdInAppTzFromIso(e.sentItem.sent_at))}` })
     if (e.pile === 'held') continue
     if (e.pile === 'sent') {
       if (monthOfIso(e.item?.sent_at) === month) notices.push({ jobId: e.jobId, title: title(e.jobId), state: 'done', words: `sent ${shortDay(calendarYmdInAppTzFromIso(e.item!.sent_at!))}` })

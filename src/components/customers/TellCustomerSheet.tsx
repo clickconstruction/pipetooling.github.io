@@ -12,7 +12,8 @@
  * page built it, or the text as it lands with a sample link (`TellCustomerPreview.tsx`, `lib/tellCustomer/preview.ts`).
  * Under the receipt's script (v2.5796) a line says whose words they are, with **Change the script in Settings** for
  * anyone who edits flows: Settings → Flows, the residential flow, landed on the step with its Call script open; the
- * Call button draws a white phone glyph, the same on every device.
+ * Call button draws a white phone glyph, the same on every device. The text's link is the short share link to the same
+ * accept page (v2.6657, punch list #281), minted after the email goes; the email's own link fills in when the mint fails.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
@@ -55,10 +56,13 @@ import {
   type TellSendEmailAnswer,
 } from '../../lib/tellCustomer/tellCustomer'
 import { supabaseTellCustomerIo, type TellCallScript, type TellContact, type TellCustomerIo, type TellJob } from '../../lib/tellCustomer/tellCustomerIo'
+import { estimateTextLink } from '../../lib/tellCustomer/estimateTextLink'
 import { PREVIEW_WORDS, type PreviewEmail, type PreviewKind } from '../../lib/tellCustomer/preview'
 
 /** The estimate the sheet sends (v2.5594): its facts, and the page's own email send, which answers the link the text carries. */
 export interface TellEstimate {
+  /** The estimate's row, for the text's own short link (v2.6657). */
+  estimateId: string
   customerId: string
   email: string
   /** "$1,850.00" */
@@ -214,9 +218,10 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   }
 
   /**
-   * The press: on a booking the text; on an estimate the email first, then the text with the link it came back with.
-   * A no answers in the sheet (v2.5681): the band says why and the press to make; `again` is Send the link again, the
-   * page's resend after an already-went band.
+   * The press: on a booking the text; on an estimate the email first, then the text with a short share link to the
+   * page the email's link opens (v2.6657), or the email's own link when the share cannot be made. A no answers in the
+   * sheet (v2.5681): the band says why and the press to make; `again` is Send the link again, the page's resend after
+   * an already-went band.
    */
   const go = async (withText: boolean, again = false) => {
     if (!canSend) return
@@ -236,7 +241,8 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
         if (withText && textCanGo) {
           if (r.acceptUrl) {
             try {
-              sentText = await sendText(fillLine(text.trim(), { link: r.acceptUrl }).text)
+              const link = await estimateTextLink(r.acceptUrl, () => io.shareEstimateLink(estimate.estimateId))
+              sentText = await sendText(fillLine(text.trim(), { link: link.link }).text)
               showToast(TELL_WORDS.bothSentToast(first), 'success')
             } catch (e) {
               note = formatErrorMessage(e, TELL_WORDS.textFailed)
