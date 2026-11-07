@@ -1,8 +1,8 @@
 ---
 name: "The seat reads a case the way an agent reads a folder: one brief, a search across the record, a document by section, a document's history, and section ops on the matter's narrative"
 number: 278
-group: ready
-status: BUILT 2026-11-07 · the five PRs merged the same day in order — v2.6619 the brief (#7192), v2.6620 the search (#7193), v2.6621 a document by section (#7194), v2.6622 the history and changed_since (#7195), v2.6623 the matter narrative's ops (#7197) · left: the last two migrations' push (20261107090000, 20261107100000; the first three are on prod), the dev-mcp deploy (the live seat still answers 0.33.0), the catalog regen, the walk
+group: residual
+status: LANDED 2026-11-07 · the five PRs merged (v2.6619–v2.6623), all five migrations pushed, dev-mcp deployed, types and catalog regenerated (#7225), and walked on prod on a real person's file reading only: the brief (nothing held), the search (hits named by section), a section read, the history and a narrative dry run all answer. The walk found the history's diff of a long narrative overrunning the door's 80,000-character cut; fixed as v2.6642 (#7227, dev-mcp 0.38.1: a 40,000-character cap beside the 400 lines) and walked again whole.
 summary: >
   An agent given a case folder reads one page that says what is where, greps for a word, opens a
   long document at the section it needs, and keeps its own notes beside the record for the next
@@ -13,8 +13,8 @@ summary: >
   close that, in order of value: get_case_brief, search_case, get_person_document by section,
   get_document_history with a since on the list, and the matter narrative's section ops. No screen
   changes; a convention for the agent's notes rides on named documents.
-next: supabase db push (20261107090000_doc_history and 20261107100000_matter_narrative_ops; 060000 to 080000 are applied), supabase functions deploy dev-mcp (0.38.0), regenerate the catalog; then the walk below on a made-up person, reading only, and delete this folder. The two follow-ups below stay as cards or rows.
-size: L as a train of five (M · M · S · S · S), merged; left: the push, the deploy and the walk (XS)
+next: Two follow-ups only, neither started: a reference form from an HR entry to a development's day (the way N§16 reaches a narrative section), and the brief as a page in the app. Delete this card when both are built or dropped.
+size: S + S (the two follow-ups)
 blocker: None.
 mockup: not required — verbs on the seat, no screen changes; the brief's shape is written below as the reply it returns
 opinion: built and merged — push the two migrations and deploy the seat the same day, since get_document_history and the narrative's ops call a function only their migration creates or widens.
