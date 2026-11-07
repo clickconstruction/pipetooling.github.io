@@ -87,6 +87,7 @@ import { DashboardPersonReportCard } from '../components/dashboard/DashboardPers
 import { DashboardPartnerLedgerSection } from '../components/dashboard/DashboardPartnerLedgerSection'
 import { DashboardPartnerJobsSection } from '../components/dashboard/DashboardPartnerJobsSection'
 import { DashboardMyInboxCard } from '../components/dashboard/DashboardMyInboxCard'
+import { DashboardYourPeopleSection } from '../components/dashboard/DashboardYourPeopleSection'
 import { type JobBillingContext } from '../lib/jobBillingContext'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
 import { denverCalendarDayKey, getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
@@ -366,6 +367,8 @@ export default function Dashboard() {
   } = useDashboardBoot({ authUserId: authUser?.id })
   /** Mirrors DashboardMyInboxCard’s render gate (reported via onVisibleChange) for the SectionDock entry. */
   const [myInboxDockVisible, setMyInboxDockVisible] = useState(true)
+  /** Your people (#273, PR 3c): the office's read of the people's open cards, under My Inbox; the dock chip follows it. */
+  const [yourPeopleDockVisible, setYourPeopleDockVisible] = useState(false)
   // Training (punch list #111): the card reports whether it drew, so the dock lists it only when there is a course to show.
   const [trainingDockVisible, setTrainingDockVisible] = useState(false)
   const [pinnedRoutes, setPinnedRoutes] = useState<PinnedItem[]>([])
@@ -1287,6 +1290,7 @@ export default function Dashboard() {
     { id: 'dash-clocked-in', label: 'ClockedIn', visible: Boolean(authUser?.id && showClockActivityStrip) },
     { id: 'dash-crew-day', label: 'Crew Day', visible: Boolean(authUser?.id) && isCrewDayRole(role) },
     { id: 'dash-my-inbox', label: 'My Inbox', visible: myInboxDockVisible },
+    { id: 'dash-your-people', label: 'Your people', visible: yourPeopleDockVisible },
     {
       id: 'dash-teams-inbox',
       label: 'Teams Inbox',
@@ -1323,6 +1327,14 @@ export default function Dashboard() {
     { id: 'dash-training', label: 'Training', visible: Boolean(authUser?.id) && trainingDockVisible },
   ].filter((sec) => sec.visible)
 
+  /** Your people (#273, PR 3c): the office roles only; the section hides itself while nobody has an open one-off card. */
+  const yourPeopleSection = (
+    <DashboardYourPeopleSection
+      authUserId={authUser?.id ?? null}
+      enabled={role === 'dev' || role === 'master_technician' || isAssistantLike(role)}
+      onVisibleChange={setYourPeopleDockVisible}
+    />
+  )
   const myInboxCard = (
     <PhoneFold spaced fold={phoneOffice && myInboxDockVisible} section="dash-my-inbox" userId={authUser?.id} title="My Inbox" headline={checklistLoading ? null : myInboxFoldHeadline(todayChecklist, todayYmdInAppTz())}>
     <DashboardMyInboxCard
@@ -1515,6 +1527,7 @@ export default function Dashboard() {
         <>
           {crewDaySection}
           {myInboxCard}
+          {yourPeopleSection}
           {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && (
             <PhoneFold
               spaced
@@ -1610,6 +1623,7 @@ export default function Dashboard() {
         <>
           {crewDaySection}
           {myInboxCard}
+          {yourPeopleSection}
         </>
       )}
       {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && !isAssistantLike(role) && (
