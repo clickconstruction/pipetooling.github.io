@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } 
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { EmptyState } from '../EmptyState'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
   APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS,
@@ -19,6 +20,7 @@ import { cancelGcStatementSend } from '../../lib/gcStatementEmailRequests'
 import { cancelWeeklyMovementSend } from '../../lib/weeklyMovementEmailRequests'
 import { cancelWeeklyMoneySend } from '../../lib/weeklyMoneyEmailRequests'
 import { applyMoneyMondayPlan } from '../../lib/gc/gcIo'
+import { applyPeopleWeekPlan } from '../../lib/peopleWeekIo'
 import { formatMinutes, parseHhMm } from '../../lib/emailSchedule/emailScheduleWeek'
 import { emailStreamCardId, type EmailStreamKey } from '../../lib/emailLogStreamLink'
 import {
@@ -69,6 +71,8 @@ type GlobalEmailSchedule = {
   weekly_money_requests?: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
   /** The Monday money email about our GC jobs (v2.5024) — optional so either deploy order of client vs migration degrades gracefully. */
   gc_money_monday_requests?: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
+  /** Your people's week (v2.6603, punch list #273) — optional so either deploy order of client vs migration degrades gracefully. */
+  people_week_requests?: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean; people_count?: number }>
   /** Field report emails (v2.3472) — optional so either deploy order of client vs migration degrades gracefully. */
   report_email_subscriptions?: Array<{
     id: string
@@ -846,6 +850,29 @@ export default function SettingsEmailStreamsSection({ focus }: {
                 label={`→ ${r.recipient_name} · ${formatSendAt(r.send_at)}${r.repeat_weekly ? ' · weekly' : ''}`}
                 onRemove={() => void cancelRequest(() => cancelWeeklyMoneySend(r.id), r.recipient_name)}
                 removeLabel={`Cancel the scheduled weekly money send to ${r.recipient_name}`}
+              />
+            ))}
+      </StreamCard>
+
+      <StreamCard
+        id={emailStreamCardId('people_week')}
+        flash={flashKey === 'people_week'}
+        count={(data.people_week_requests ?? []).length}
+        noun="scheduled send"
+        open={!!openCards['people_week']}
+        onToggle={() => toggleCard('people_week')}
+        title="Your people’s week (the Monday people email)"
+        cadence="weekly chains — each reader about the people they picked"
+        manage="schedule more → Checklist → Review → ✉ Email me their week"
+      >
+        {(data.people_week_requests ?? []).length === 0
+          ? <EmptyState compact main="Nobody gets it yet. Checklist → Review → ✉ Email me their week starts the first one." />
+          : (data.people_week_requests ?? []).map((r) => (
+              <RecipientChip
+                key={r.id}
+                label={`→ ${r.recipient_name} · ${r.people_count ?? '?'} ${r.people_count === 1 ? 'person' : 'people'} · ${formatSendAt(r.send_at)}${r.repeat_weekly ? ' · weekly' : ''}`}
+                onRemove={() => void cancelRequest(() => applyPeopleWeekPlan({ inserts: [], cancelIds: [r.id] }), r.recipient_name)}
+                removeLabel={`Cancel the scheduled people’s week email to ${r.recipient_name}`}
               />
             ))}
       </StreamCard>

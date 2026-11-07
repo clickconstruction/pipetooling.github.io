@@ -29,6 +29,7 @@ import { renderCtRosterAuditEmail } from '../../supabase/functions/_shared/ctRos
 import type { CtRosterDiff } from '../../supabase/functions/_shared/ctRosterDiff'
 import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
 import { gcMoneyMondaySubject, renderGcMoneyMondayHtml, renderGcMoneyMondayText, type GcMoneyMondayPayload } from '../../supabase/functions/_shared/gcMoneyMondayEmail'
+import { peopleWeekSubject, renderPeopleWeekHtml, renderPeopleWeekText, samplePeopleWeekPayload } from './peopleWeek'
 import { billTheCustomerUrl, buildOfficeNoticeEmail } from '../../supabase/functions/_shared/gcOfficeNotices'
 import { lienStatusEmailHtml, lienStatusEmailText, lienStatusSubject, type LienStatusPayload } from '../../supabase/functions/_shared/lienDeskStatus'
 import { ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
@@ -634,6 +635,11 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
       })
       const url = `${origin}/bridge`
       return { subject: mondaySheetSubject(sheet), html: mondaySheetHtml(sheet, url), text: mondaySheetText(sheet, url) }
+    }
+    case 'people_week': {
+      const p = samplePeopleWeekPayload(ctx.todayYmd)
+      const reviewUrl = `${origin}/checklist?tab=review`
+      return { subject: peopleWeekSubject(p), html: renderPeopleWeekHtml(p, reviewUrl), text: renderPeopleWeekText(p, reviewUrl) }
     }
     case 'gc_money_monday': {
       const p = sampleGcMoneyMondayPayload(ctx.todayYmd)

@@ -116,6 +116,7 @@ when_to_read:
    - [messages-email](#messages-email)
    - [gc-card-bill](#gc-card-bill)
    - [gc-money-monday-email](#gc-money-monday-email)
+   - [people-week-email](#people-week-email)
    - [bridge-sheet-email](#bridge-sheet-email)
    - [bridge-weekly-sheet](#bridge-weekly-sheet)
    - [your-week-email](#your-week-email)
@@ -1712,6 +1713,20 @@ The payment itself comes through `stripe-webhook` as on any Stripe bill (`metada
 The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on sample data): *Customers owe us $X on N bills*, then **Late**, **Waiting on the architect** and **Coming in**, each bill in OwedRow's words, then **Last week** and **Open Money**. It goes from `EMAIL_FROM` through `sendEmailViaResend`, Reply-To the member who asked, logged as `gc_money_monday`. It is internal, so there is no sent copy.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (the Open Money link; clicktooling.com when unset). **Deploy**: `supabase functions deploy gc-money-monday-email --no-verify-jwt` after migration `20261009233000_gc_money_monday_email.sql`, which makes the requests table, the payload and the cron.
+
+### people-week-email
+
+**Purpose**: Your people's week (v2.6603, punch list #273 PR 5): the `people_week` Report Subscriptions stream ([REPORT_SUBSCRIPTIONS.md](./REPORT_SUBSCRIPTIONS.md)). A reader asks for it on Checklist → Review or the Dashboard's Your people card, about the people they pick, on the weekdays and at the Central time they pick. The email says, for each person, the task cards that finished or moved in the week just finished (Monday to Sunday), the lines ticked and the photos taken, their roadmap tasks, the jobs they clocked on and the cards stuck past a month, with **Open Review** (`/checklist?tab=review`).
+
+**Endpoint**: `POST /functions/v1/people-week-email` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret`, or the caller's JWT checked in-body for the two modes.
+
+- `{ mode: 'preview', people_user_ids? }`: any live account; the office (`OFFICE`: dev, master_technician, assistant, controller, primary, as `is_dev_or_master_or_assistant()`) gets the people it names, everyone else their own week whatever the list says. Answers `{ subject, html }`: the email as it would go now. **See the email as it would go now** calls it.
+- `{ mode: 'test_send', people_user_ids? }`: the same gate; a `[TEST]` copy to the caller's own address only. **Email me a test** calls it.
+- No mode: the cron (`2-57/5`, the :02 lane). It drains due `people_week_email_requests` rows, ten at a time and five tries each, and reads `get_people_week_payload(recipient, people, week_start)` once a row, the week being the previous Monday of the send's Central day. A recipient who is archived or has no email is stamped and skipped. A good send stamps `sent_at` and re-inserts a weekly row +7 days, once.
+
+The email (`_shared/peopleWeekEmail.ts`, which What the team sees renders on sample data): *Your people’s week · Nov 2 to 8*, the headline (*3 people · 2 cards done · 2 moved · 1 stuck*), then each person's part: **Cards**, **Roadmap**, **Jobs**, **Stuck**, and **Open Review**. It goes from `EMAIL_FROM` through `sendEmailViaResend`, logged as `people_week`. It is internal, so there is no sent copy.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (the Open Review link; clicktooling.com when unset). **Deploy**: `supabase functions deploy people-week-email --no-verify-jwt` after migration `20261106233000_people_week_email.sql`, which makes the requests table, the payload and the cron.
 
 ### bridge-sheet-email
 

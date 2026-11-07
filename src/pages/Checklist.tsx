@@ -22,6 +22,7 @@ import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
 import RoadmapTaskContextModal from '../components/checklist/RoadmapTaskContextModal'
 import VehicleTaskContextModal from '../components/checklist/VehicleTaskContextModal'
+import { PeopleWeekSheet } from '../components/checklist/PeopleWeekSheet'
 import { isVehicleTaskTitle, stripVehicleTaskMarker } from '../lib/vehicleFleet'
 import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstanceCard'
 import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
@@ -2090,6 +2091,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
   /** Missed view: representative instance id → its whole missed group (collapse, v2.2272). */
   const [missedGroups, setMissedGroups] = useState<Map<string, MissedGroup<OutstandingInstance>>>(new Map())
   const [remindingUserId, setRemindingUserId] = useState<string | null>(null)
+  /** Your people's week (#273, PR 5): the Monday email's subscribe sheet, the board's people picked. */
+  const [peopleWeekOpen, setPeopleWeekOpen] = useState(false)
   /** 5s undo window after a row ✓ (mockup 55d69b29): the completion is saved
    *  immediately, but notifications + the next repeat occurrence are HELD in
    *  pendingSideEffectsRef until the window closes — Undo reverses the save
@@ -2691,6 +2694,16 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
           outstandingBoardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         })}
       </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', maxWidth: 640, margin: '-0.6rem auto 0.8rem' }}>
+        <button
+          type="button"
+          onClick={() => setPeopleWeekOpen(true)}
+          style={{ fontSize: '0.8rem', fontWeight: 600, padding: '4px 10px', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+        >
+          ✉ Email me their week
+        </button>
+      </div>
+      <PeopleWeekSheet open={peopleWeekOpen} onClose={() => setPeopleWeekOpen(false)} meId={authUserId} canPickOthers={canEditRoadmapTasks} suggested={byUser.map((u) => u.userId)} />
       <div ref={foldReviewRef} style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', scrollMarginTop: 70 }}>
         {foldHeader('Review: completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
         <div style={{ display: foldReviewOpen ? 'block' : 'none', borderTop: '1px solid var(--border)', padding: foldReviewOpen ? '0.5rem 0.5rem 0.2rem' : 0 }}>
