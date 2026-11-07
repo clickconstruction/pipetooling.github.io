@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for Settings → Jobs & billing drawn by heading (punch list #261): the headings in order for the
+ * Render smoke for Settings → Jobs, bills and liens drawn by heading (punch list #261): the headings in order for the
  * role, the strip at two headings or more, every card folded (the switches too since PR 2), and every anchor landing:
  * announcing a card's anchor (what the deep-link effect and the search pick do) opens the card and the id holds
  * its element; a child anchor opens the card that holds it; the fold header is a counted press. Since PR 3 a money
@@ -31,7 +31,7 @@ describe('SettingsJobsBillingGroups (punch list #261)', () => {
     const { container } = renderWithProviders(<SettingsJobsBillingGroups role="dev" cards={stubs()} />)
     const headings = [...container.querySelectorAll('[data-settings-jobs-group]')].map((el) => el.getAttribute('data-settings-jobs-group'))
     expect(headings).toEqual(['money', 'record', 'bill', 'liens', 'notices', 'repairs'])
-    expect(screen.getByRole('navigation', { name: 'Jobs and billing headings' })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Jobs, bills and liens headings' })).toBeTruthy()
     expect(screen.getAllByRole('button', { name: /^Jump to / })).toHaveLength(6)
     for (const c of JOBS_BILLING_CARDS) {
       const el = document.getElementById(c.anchor)

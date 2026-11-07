@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Settings → Jobs & billing → Stage checklists over a fake io, read-only since punch list #237 PR 4: the three kinds,
+ * Settings → Jobs, bills and liens → Stage checklists over a fake io, read-only since punch list #237 PR 4: the three kinds,
  * each question with its asks and the job it came from or who wrote it, the questions taken off the company's list
  * folded under a count, an empty kind pointing at the Documents tab, and nothing to press. Made-up questions only: the
  * owner writes the real ones.

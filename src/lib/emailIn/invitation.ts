@@ -10,6 +10,13 @@
  * *plans are available* …) in the subject, or in the first lines of the body when a bid platform's page is linked; the
  * project's name from the subject; a due day and time when the words name one (*bids due Thursday, November 12 at
  * 2:00 PM*); the platform's page by its host. A plain email that names none of it reads as none.
+ *
+ * Since v2.6647 the kernel also says whose star may take the line (`starTakes`): the reader's last fallback is the
+ * sender's starred job, and a known GC's new invitation so landed on their old bid asked nothing (Rusty Cottar's TPWD
+ * request, 2026-11-06, filed under bid 536; its subject *Bid Request: …* matched no cue, so the body's *addenda* in
+ * passing read it as an addendum, and *bid request* is a cue since). An invitation or a solicitation is a new job, so the star never takes
+ * it and the line sits on the person until the card ties it; an addendum or a pre-bid notice is about a bid already
+ * open, so the star still does.
  */
 
 /** What kind of mail it is: an invitation to price, an addendum to one, an agency's solicitation, or a pre-bid notice. */
@@ -41,7 +48,7 @@ export interface Invitation {
 const CUES: ReadonlyArray<readonly [RegExp, InvitationKind]> = [
   [/\baddend(?:um|a)\b/i, 'addendum'],
   [/\bpre-?bid\b/i, 'prebid'],
-  [/\binvitation to (?:bid|quote|tender|propose)\b|\binvited to (?:bid|quote)\b|\bbid invitation\b|\bITB\b|\bIFB\b|\bRFP\b|\bRFQ\b|\bRFB\b|\brequest for (?:proposals?|quotes?|quotations?|qualifications|bids?)\b|\bsubcontractor bids? (?:requested|wanted|needed)\b|\bbids? requested\b/i, 'invitation'],
+  [/\binvitation to (?:bid|quote|tender|propose)\b|\binvited to (?:bid|quote)\b|\bbid invitation\b|\bITB\b|\bIFB\b|\bRFP\b|\bRFQ\b|\bRFB\b|\brequest for (?:proposals?|quotes?|quotations?|qualifications|bids?)\b|\bsubcontractor bids? (?:requested|wanted|needed)\b|\bbids? requested\b|\bbid requests?\b/i, 'invitation'],
   [/\bsolicitation\b|\bnotice to (?:respondents|bidders|proposers|offerors)\b|\bbid room\b|\bbid opening\b|\bplans (?:are|now) available\b|\bsealed bids?\b|\bbid (?:posting|opportunity)\b/i, 'solicitation'],
 ]
 
@@ -265,7 +272,20 @@ export function invitationFacts(inv: Pick<Invitation, 'kind' | 'due' | 'portal'>
   return parts.join(', ')
 }
 
-/** An invitation nobody has answered, on a line nobody has tied to a bid: the one the lane asks *Bid it?* about. */
+/**
+ * Whether the sender's starred job may take the line when its subject names no job (the reader's last fallback,
+ * v2.6647): yes for a plain mail, an addendum and a pre-bid notice, which are about a job already open; no for an
+ * invitation and a solicitation, which are a new job, so the line sits on the person and the lane asks *Bid it?* with
+ * the sender known (the card's *Start a bid on* that customer).
+ */
+export function starTakes(inv: Pick<Invitation, 'kind'> | null | undefined): boolean {
+  return !inv || inv.kind === 'addendum' || inv.kind === 'prebid'
+}
+
+/**
+ * An invitation nobody has answered, on a line nobody has tied to a bid: the one the lane asks *Bid it?* about. A line on
+ * a bid got there by its subject, a person's hand or, before v2.6647, the sender's star, so it asks nothing.
+ */
 export function openInvitation(line: { direction: string; channel: string; invitation?: Invitation | null; jobId?: string | null }): Invitation | null {
   const inv = line.invitation
   if (!inv || line.direction !== 'in' || line.channel !== 'email') return null

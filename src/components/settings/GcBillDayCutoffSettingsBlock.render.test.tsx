@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Settings → Jobs & billing → the trades' cut-off for GC bill day (Messages cut 9): it loads the setting, saves a new
+ * Settings → Jobs, bills and liens → the trades' cut-off for GC bill day (Messages cut 9): it loads the setting, saves a new
  * number of days through its function, and will not save one outside 2 to 20.
  */
 import { describe, expect, it, vi } from 'vitest'

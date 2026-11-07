@@ -18,7 +18,7 @@ On the **Dashboard**, the **Your people** card has {{button:outline|✉ Get this
 
 :::steps
 
-1. Tick each person you want in the email. You can pick up to 50.
+1. Tick each person you want in the email. You can pick up to 50. The list holds our staff and leaves out subcontractor companies.
 2. Pick the days it goes. Monday is picked for you.
 3. Set the time in Central time. It starts at 6:00 AM.
 4. Press {{button:blue|Start it}}.

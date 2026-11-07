@@ -84,7 +84,7 @@ describe('the catalog agrees with the app', () => {
   it('the anchors it lands on are on the page', () => {
     const catalogs = readRepoFile('src/components/settings/SettingsCatalogsProspectsTab.tsx') ?? ''
     const coverLetter = readRepoFile('src/components/settings/BidCoverLetterDefaultsSettingsBlock.tsx') ?? ''
-    // Jobs & billing's cards carry their anchor from the kernel (punch list #261); the groups render smoke holds that each is on the page.
+    // Jobs, bills and liens’ cards carry their anchor from the kernel (punch list #261); the groups render smoke holds that each is on the page.
     const jobsBilling = new Set(Object.keys(jobsBillingAnchorToTab()))
     for (const e of CUSTOMER_CONTRACT_CATALOG) {
       if (e.edit.kind !== 'settings' || e.edit.anchorId === e.edit.tabId) continue
