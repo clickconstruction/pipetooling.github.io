@@ -109,6 +109,7 @@ import StageChecklistSettingsCard from '../components/settings/StageChecklistSet
 import MachineTemplatesSettingsCard from '../components/settings/MachineTemplatesSettingsCard'
 import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfirmSettingsBlock'
 import LineBudgetSettingsBlock from '../components/settings/LineBudgetSettingsBlock'
+import SuperintendentBonusSettingsBlock from '../components/settings/SuperintendentBonusSettingsBlock'
 import GcBillDayCutoffSettingsBlock from '../components/settings/GcBillDayCutoffSettingsBlock'
 import GcCardBillSettingsBlock from '../components/settings/GcCardBillSettingsBlock'
 import GcOfficeNoticesSettingsBlock from '../components/settings/GcOfficeNoticesSettingsBlock'
@@ -1540,6 +1541,7 @@ export default function Settings() {
 
       {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
       {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
+      {(myRole === 'dev' || myRole === 'master_technician') && <SuperintendentBonusSettingsBlock />}
       {/* Punch list #261 PR 2: the subs' pay schedule under People & teams, off Jobs, bills and liens; its old anchor still lands here. */}
       {myRole === 'dev' && (
         <SettingsFoldCard card={MOVED_SETTINGS_CARDS['sub-pay']} track="settings-people">

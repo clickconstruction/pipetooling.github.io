@@ -2,7 +2,7 @@
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
 group: ready
-status: in hand 2026-11-07 on claude/234-pr1a-budgets-at-award — the owner's three calls recorded on main (the office's sign-off counts as certified, the bonus is on hours saved, a sub-performed stage counts on the sub's sheet hours), PR 1a the budgets at award open as v2.6646 with its migration, PR 1b the owner tunes open as v2.6656 with its migration, PR 1c the weekly review card open as v2.6662 with its migration, PR 2 the planned finish open as v2.6665 with its two migrations · thought through 2026-11-01 with the owner and mocked up in seven boards; PR 1 merged 2026-11-02 as v2.6300 and is live with its migration pushed; the superintendent's line moved to #242's build
+status: in hand 2026-11-07 on claude/234-pr1a-budgets-at-award — the owner's three calls recorded on main (the office's sign-off counts as certified, the bonus is on hours saved, a sub-performed stage counts on the sub's sheet hours), PR 1a the budgets at award open as v2.6646 with its migration, PR 1b the owner tunes open as v2.6656 with its migration, PR 1c the weekly review card open as v2.6662 with its migration, PR 2 the planned finish open as v2.6665 with its two migrations, PR 4 the scoreboard open as v2.6666 with its migration · thought through 2026-11-01 with the owner and mocked up in seven boards; PR 1 merged 2026-11-02 as v2.6300 and is live with its migration pushed; the superintendent's line moved to #242's build
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
@@ -19,7 +19,7 @@ summary: >
   what the bid's workbench priced it from, assumed by a company split when the line was typed,
   tuned only by the owner, frozen at award as the sum of the lines; and the gate became #238's
   kind, a job priced before the work.
-next: Merge PR 1a (v2.6646), PR 1b (v2.6656), PR 1c (v2.6662) and PR 2 (v2.6665) in order, pushing each migration right after. Then PR 4, the scoreboard, on the owner's three calls.
+next: Merge PR 1b (v2.6656), PR 1c (v2.6662), PR 2 (v2.6665) and PR 4 (v2.6666) in order, pushing each migration right after (PR 1a's is owed since its merge). Then the live walk on ZZ Test rows, and the card retires.
 size: L as a train of six (M · M · S · S · M · M), PR 1 shipped; two migrations, the line budgets (pushed with PR 1) and the planned dates; no edge function
 blocker: None. The owner's three calls were made 2026-11-07 and are written under Open questions.
 ver: v2.6300 · 3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837
@@ -324,9 +324,17 @@ kernel and card; the Schedule column and the bonus setting; the certified-percen
    and pace strip (#6769) and the expected hours (#6771) merged 2026-11-02; the board and the phone
    card were in review. What stays here is the line's ground: days against the planned finish once
    PR 2 lands, and the certified percent as the proof.
-6. **PR 4 · the scoreboard** (M). The Schedule column on People → Review with labor kept in dollars
-   and hours under baseline side by side, the superintendent's own row on his phone, the bonus rule
-   in Settings → People, paid at the certified pay app.
+6. **PR 4 · the scoreboard** (M), open 2026-11-07 as v2.6666 with its migration
+   (`20261107200000_superintendent_scores.sql`: `superintendent_scores(from, to, job_ids)`, SECURITY
+   DEFINER, and the `superintendent_bonus_v1` row with the owner's write policy), on the owner's three
+   calls: the certified percent is the office's own sign-off (the newest percent an office role set),
+   the bonus is a share of the labor kept (the award's labor dollars at that percent minus the team at
+   the burden factor and the subs on their sheet hours), a sub-performed stage counts on its sheet
+   hours. People → Review → Scoreboard (the dev-only sample of v2.1312 replaced; a dev or a
+   pay-approved master) reads one row per superintendent for a month with the jobs signed off, hours
+   used of earned, days against the plan, labor kept and the bonus, the held jobs named with their
+   reason, and the rule; the superintendent's card on Job Mode reads his own row, no wage; Settings →
+   People → Superintendent bonus holds the share.
 
 ## How to verify
 
@@ -339,8 +347,10 @@ row. Delete every ZZ Test row after.
 ## Where it stands
 
 2026-11-07: the owner made the three calls (above). PR 1a opened the same day as v2.6646 with its
-migration, PR 1b as v2.6656, PR 1c as v2.6662 and PR 2 as v2.6665, each with its own, each to be
-pushed right after its merge. Then PR 4, the scoreboard; PR 3 builds on #242 from the same kernel. The ground for PR 4 is settled: the certified percent is the
+migration, PR 1b as v2.6656, PR 1c as v2.6662, PR 2 as v2.6665 and PR 4 as v2.6666, each with its own,
+each to be pushed right after its merge; PR 1a merged the same day and its push is owed. PR 3 builds
+on #242 from the same kernel. What is left after the merges: the pushes, `npm run gen-types`, and the
+live walk on ZZ Test rows (How to verify). The ground for PR 4 is settled: the certified percent is the
 office's sign-off, the bonus is a share of labor kept, and sub stages count on their sheet hours.
 
 2026-11-01: thought through with the owner and mocked up; nothing built. The owner asked to keep the
