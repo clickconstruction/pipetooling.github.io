@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useShapeView } from '../components/prototypes/SideBySide'
 import { GC_MONEY_TEAM, canApproveClause, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding, canUseGcSchedule } from '../lib/gc/access'
 import { pageGate } from '../lib/roleGate'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
@@ -1160,6 +1161,8 @@ export default function GcProjects() {
   // paints and only for the stages this reader may see (`ringStages`). One state, so the ring on each row and How the stage
   // is going under a project's title (B2b-vii) never give two answers.
   const ringState = useRingLayers(board, role, crewLinks, today)
+  // Punch list #217, gc-messages-5: the Project Board's price bars, a prototype behind this person's switch.
+  const priceBars = useShapeView('gc-board-price-bars')
   // Each project's stage health on the ring's own state, the same read the strip makes, for the trade rows' tiles (PR 3).
   const healthByProject = useMemo(() => {
     const map = new Map<string, StageHealth>()
@@ -2090,6 +2093,7 @@ export default function GcProjects() {
                 onFollowUpJob={(projectId, partnerId, calling) => setFollowSheet({ projectId, partnerId, calling })}
                 ring={ringState}
                 onNewProject={() => setWindow(true)}
+                priceBars={priceBars}
               />
             ) : devView === 'partners' ? (
               <GcFlowBoard

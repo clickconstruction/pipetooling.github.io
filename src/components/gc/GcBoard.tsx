@@ -31,6 +31,9 @@ import { GC_ICON_PATHS } from './gcIcons'
 import { useJumpStrip } from './useJumpStrip'
 import { usePriceCard } from './usePriceCard'
 import { EmptyState, type EmptyStateWords } from '../EmptyState'
+import { boardBarsSaySomething, boardPriceBar, boardSectionBarWords, type BoardPriceBarKind } from '../../lib/gc/boardPriceBar'
+import { GcBoardPriceBar } from './GcBoardPriceBar'
+import { ShapeSwitch, SideBySide, type ShapeView } from '../prototypes/SideBySide'
 
 /**
  * GC mode, the real build (the Board's B3): the Project Board on real data, from the design spike's
@@ -43,7 +46,10 @@ import { EmptyState, type EmptyStateWords } from '../EmptyState'
  * stage each time the board opens) shows the same rows under each customer we build for, a heading per stage they
  * have jobs in, their closed and lost jobs on one quiet line. A section and a customer are worth `priceToOwner`'s price
  * (gc 5's read). The ring comes with a later cut. Since B2b-viii-a (`onFollowUpJob`) the Who to call card's Follow up and
- * **Work the list** open the Follow up sheet on the job's people.
+ * **Work the list** open the Follow up sheet on the job's people. Since v2.6159 (punch list #217, gc-messages-5, a
+ * prototype) each bidding row can draw its price as a bar on its own line (`GcBoardPriceBar` over `boardPriceBar`), behind
+ * the page's per-person switch (`priceBars`, off by default); with `?sbs=1` and a dev signed in, Bidding draws today's rows
+ * and the rows with the bars one above the other.
  */
 
 /**
@@ -157,6 +163,7 @@ export function GcBoard({
   onFollowUpJob,
   ring,
   onNewProject,
+  priceBars,
 }: {
   state: GcState
   /** Opens a project: its card on the GC projects page. */
@@ -179,6 +186,8 @@ export function GcBoard({
   ring?: RingRead | null
   /** Opens the page's New project window, from an empty Bidding section (punch list #184). Unset: the section's words alone. */
   onNewProject?: () => void
+  /** The price bars' switch (punch list #217, gc-messages-5): on, each bidding row draws its bar; side by side, both shapes. Unset: today's rows. */
+  priceBars?: ShapeView
 }) {
   const bySection = new Map<BoardSection, GcProject[]>()
   for (const key of BOARD_SECTION_ORDER) bySection.set(key, [])
@@ -205,17 +214,25 @@ export function GcBoard({
     dots: STAGES.filter((stage) => g.open.some((p) => p.stage === stage)).map((stage) => SECTIONS[stage].tone),
   }))
   const byCustomer = group === 'customer'
+  // The bars (gc-messages-5): on for this person, or both shapes for a dev who asked for them. On, they draw only while
+  // some bidding row's bar says something its figure does not (`boardBarsSaySomething`); a board of plain quoted rows
+  // keeps its numbers. Side by side draws them regardless and says when they would stay off.
+  const sideBySide = priceBars?.sideBySide === true
+  const biddingBars = priceBars?.on || sideBySide ? (bySection.get('pursuing') ?? []).map((p) => boardPriceBar(state, p, { moneyShown })) : []
+  const barsSay = boardBarsSaySomething(biddingBars)
+  const barsOn = priceBars?.on === true && !sideBySide && barsSay
   const jump = useJumpStrip(
     true,
     byCustomer ? groups.map((g) => g.customer.id) : BOARD_SECTION_ORDER,
     (k) => (byCustomer ? boardCustomerElementId(k) : boardSectionElementId(k as BoardSection)),
     group,
   )
-  const row = (p: GcProject) => (
+  const row = (p: GcProject, bar: boolean = barsOn) => (
     <ProjectRow
       key={p.id}
       project={p}
       state={state}
+      bar={bar}
       onOpen={() => onOpen(p.id)}
       onPlans={() => onPlans(p.id)}
       onCompare={onCompare && ((packageId) => onCompare(p.id, packageId))}
@@ -234,7 +251,12 @@ export function GcBoard({
         active={jump.active}
         onJump={jump.jumpTo}
         label={byCustomer ? 'Jump to a customer' : 'Jump to a stage'}
-        lead={<GroupSwitch value={group} onChange={setGroup} />}
+        lead={
+          <span style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <GroupSwitch value={group} onChange={setGroup} />
+            {priceBars ? <ShapeSwitch view={priceBars} words={{ on: 'Show today’s look', off: 'Show the price bars' }} /> : null}
+          </span>
+        }
       />
       {byCustomer &&
         groups.map((g) => {
@@ -260,7 +282,7 @@ export function GcBoard({
                   return (
                     <div key={stage} style={{ display: 'grid', gap: '0.5rem' }}>
                       <GcStageSubheading item={{ ...item, count: jobs.length }} />
-                      {jobs.map(row)}
+                      {jobs.map((p) => row(p))}
                     </div>
                   )
                 })
@@ -285,10 +307,37 @@ export function GcBoard({
       {!byCustomer && BOARD_SECTION_ORDER.map((key) => {
         const list = bySection.get(key) ?? []
         const item = items.find((i) => i.key === key)!
+        const todayWorth = boardSectionWorthWords(counts.find((c) => c.key === key) ?? { key, count: 0, worth: 0 })
+        // With the bars (gc-messages-5), Bidding's heading says the section's two sums in words, not a fourth bar.
+        const bidding = key === 'pursuing' && list.length > 0
+        const barWorth = bidding ? boardSectionBarWords(biddingBars) : todayWorth
+        if (bidding && sideBySide) {
+          return (
+            <div key={key} style={{ display: 'grid', gap: '0.5rem' }}>
+              <GcStageHeading item={item} worth={todayWorth} blurb={SECTIONS[key].blurb} />
+              <SideBySide
+                label="With the bars"
+                testId="gc-board-side-by-side"
+                today={<div style={{ display: 'grid', gap: '0.5rem' }}>{list.map((p) => row(p, false))}</div>}
+                shape={
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    <span data-gc-board-bar-worth style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>{barWorth}</span>
+                    {!barsSay && (
+                      <span data-gc-board-bars-held style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        With the switch on, this board would keep its numbers: every bidding row is one quoted part, so a bar says nothing the figure does not.
+                      </span>
+                    )}
+                    {list.map((p) => row(p, true))}
+                  </div>
+                }
+              />
+            </div>
+          )
+        }
         return (
           <div key={key} style={{ display: 'grid', gap: '0.5rem' }}>
-            <GcStageHeading item={item} worth={boardSectionWorthWords(counts.find((c) => c.key === key) ?? { key, count: 0, worth: 0 })} blurb={SECTIONS[key].blurb} />
-            {list.length === 0 ? <EmptyState compact {...sectionEmptyWords(key, onNewProject)} /> : list.map(row)}
+            <GcStageHeading item={item} worth={barsOn && bidding ? barWorth : todayWorth} blurb={SECTIONS[key].blurb} />
+            {list.length === 0 ? <EmptyState compact {...sectionEmptyWords(key, onNewProject)} /> : list.map((p) => row(p))}
           </div>
         )
       })}
@@ -449,6 +498,7 @@ function ProjectRow({
   onChase,
   onFollowUp,
   ring,
+  bar = false,
 }: {
   project: GcProject
   state: GcState
@@ -457,6 +507,8 @@ function ProjectRow({
   onCompare?: ((packageId: string) => void) | undefined
   moneyShown: boolean
   folderUrl: string
+  /** Draw the price as a bar under the row (punch list #217, gc-messages-5): a bidding row only. */
+  bar?: boolean
   /** On By customer the heading names the customer, so the row leaves their name out (B2b-iii). */
   byCustomer?: boolean
   onChase?: () => void
@@ -472,6 +524,9 @@ function ProjectRow({
   const firstPerson = people?.people[0]
   const workList = onFollowUp && firstPerson ? () => onFollowUp(callSheetId(firstPerson), false) : null
   const card = usePriceCard()
+  // The bar under a bidding row, and the segment that last opened the card, so the card lights that group of trades.
+  const priceBar = bar && boardSectionOf(project) === 'pursuing' ? boardPriceBar(state, project, { moneyShown }) : null
+  const [barFocus, setBarFocus] = useState<BoardPriceBarKind | null>(null)
   // The customer's name opens their window (the Board's B6-d-ii) where the page gives one; plain words otherwise.
   const customers = useCustomerOpener()
   const newest = planLabel(project, currentRev(project))
@@ -571,7 +626,21 @@ function ProjectRow({
       <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '1.05rem', textAlign: 'right', ...(narrow ? { gridColumn: '2 / -1' } : null) }}>
         {money(totals.price)}
         <PlusUnknown words={proposalUncostedWords(project)} />
-        {totals.holes.length > 0 ? (
+        {priceBar ? (
+          // With the bar (gc-messages-5): two short lines, what the figure is and what it comes to; the bar carries the rest.
+          <>
+            <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: priceBar.holes > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+              <GcPriceTrigger card={card} label={`${priceBar.lines.first}. Show each trade.`} onArm={() => setBarFocus(null)}>
+                {priceBar.lines.first}
+              </GcPriceTrigger>
+            </span>
+            {priceBar.lines.second ? (
+              <span data-gc-board-bar-likely style={{ display: 'block', fontWeight: 600, fontSize: '0.75rem', color: 'var(--text-base)' }}>
+                {priceBar.lines.second.replace(/ with every trade in$/, '')} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>with every trade in</span>
+              </span>
+            ) : null}
+          </>
+        ) : totals.holes.length > 0 ? (
           <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
             <GcPriceTrigger card={card} label={`${soFar}, with ${totals.holes.length} ${totals.holes.length === 1 ? 'hole' : 'holes'}. Show each trade.`}>
               {soFar}, with {totals.holes.length} {totals.holes.length === 1 ? 'hole' : 'holes'}
@@ -586,12 +655,13 @@ function ProjectRow({
             </span>
           )
         )}
-        {!moneyShown && totals.holes.length === 0 && totals.plugged.length === 0 && (
+        {!priceBar && !moneyShown && totals.holes.length === 0 && totals.plugged.length === 0 && (
           <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>the trades alone</span>
         )}
-        <GcPriceLikely state={state} project={project} />
+        {!priceBar && <GcPriceLikely state={state} project={project} />}
       </span>
-      <GcPriceCard card={card} state={state} project={project} onOpen={onOpen} moneyShown={moneyShown} {...(onCompare ? { onCompare } : {})} />
+      <GcPriceCard card={card} state={state} project={project} onOpen={onOpen} moneyShown={moneyShown} focus={priceBar ? barFocus : null} {...(onCompare ? { onCompare } : {})} />
+      {priceBar ? <GcBoardPriceBar bar={priceBar} card={card} onArm={setBarFocus} /> : null}
     </div>
   )
 }

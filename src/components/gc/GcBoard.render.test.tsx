@@ -283,3 +283,88 @@ describe('GcBoard: each stage opens on the pipeline’s band (v2.5543)', () => {
     expect(within(band).getByRole('heading', { level: 3 }).querySelector('.stagesBandCount')).toBeTruthy()
   })
 })
+
+describe('GcBoard, the price bars (punch list #217, gc-messages-5, a prototype)', () => {
+  const view = (over: Partial<{ on: boolean; sideBySide: boolean }> = {}) => ({ on: false, sideBySide: false, setOn: vi.fn(), ...over })
+
+  it('with the switch off the row reads as today, and the strip carries the press', () => {
+    const state = boardStateFromRows(clinicBoardRows())
+    const bars = view()
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} priceBars={bars} />)
+    expect(document.querySelector('[data-gc-board-price-bar]')).toBeNull()
+    const row = document.querySelector('[data-gc-board-row="p1"]') as HTMLElement
+    expect(within(row).getByText(/so far, with 3 holes/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show the price bars' }))
+    expect(bars.setOn).toHaveBeenCalledWith(true)
+  })
+
+  it('with the switch on the bidding row draws its bar under the row, the words under the bar, and the heading says the two sums', () => {
+    const base = clinicBoardRows()
+    const rows = clinicBoardRows({ projects: base.projects.map((p) => ({ ...p, trades: p.trades.map((t) => (t.id === 'k1' ? { ...t, carriedInviteId: 'i1' } : t)) })) })
+    const state = boardStateFromRows(rows)
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} priceBars={view({ on: true })} />)
+    expect(screen.getByRole('button', { name: 'Show today’s look' })).toBeTruthy()
+    const row = document.querySelector('[data-gc-board-row="p1"]') as HTMLElement
+    const bar = within(row).getByTestId('gc-board-price-bar')
+    expect([...bar.querySelectorAll('[data-gc-board-price-segment]')].map((e) => e.getAttribute('data-gc-board-price-segment'))).toEqual(['quoted', 'hole', 'overhead'])
+    expect(within(bar).getByText(/^quoted/)).toBeTruthy()
+    expect(within(bar).getByText(/Concrete from our budget/)).toBeTruthy()
+    expect(within(row).getByText('so far, with 2 holes')).toBeTruthy()
+    expect(within(row).getByText(/with every trade in/)).toBeTruthy()
+    const band = document.querySelector('[data-gc-stage-band="pursuing"]') as HTMLElement
+    expect(band.textContent).toMatch(/\$[\d,]+ priced so far · about \$[\d,.]+[Mk]? with every trade in/)
+  })
+
+  it('a segment opens the price card on its own trades: the quoted part lights the real numbers, the overhead the totals', () => {
+    const base = clinicBoardRows()
+    const rows = clinicBoardRows({ projects: base.projects.map((p) => ({ ...p, trades: p.trades.map((t) => (t.id === 'k1' ? { ...t, carriedInviteId: 'i1' } : t)) })) })
+    const state = boardStateFromRows(rows)
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} priceBars={view({ on: true })} />)
+    fireEvent.click(screen.getByRole('button', { name: /quoted on 1 trade\. Show those trades\./ }))
+    let card = screen.getByRole('dialog', { name: 'What the price of Hill Country Clinic is made of' })
+    expect(card.querySelector('[data-gc-price-group="real"]')?.getAttribute('data-lit')).toBe('1')
+    expect(card.querySelector('[data-gc-price-group="notAsked"]')?.getAttribute('data-lit')).toBeNull()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: /general conditions, contingency 3% and fee 8%\. Show each trade\./ }))
+    card = screen.getByRole('dialog', { name: 'What the price of Hill Country Clinic is made of' })
+    expect(card.querySelector('[data-gc-price-totals]')?.getAttribute('data-lit')).toBe('1')
+    expect(card.querySelector('[data-gc-price-group="real"]')?.getAttribute('data-lit')).toBeNull()
+  })
+
+  it('outside the money team the bar is the trades alone, with no overhead words', () => {
+    const base = clinicBoardRows()
+    const rows = clinicBoardRows({ money: [], moneyShown: false, projects: base.projects.map((p) => ({ ...p, trades: p.trades.map((t) => (t.id === 'k1' ? { ...t, carriedInviteId: 'i1' } : t)) })) })
+    render(<GcBoard state={boardStateFromRows(rows)} onOpen={() => undefined} onPlans={() => undefined} moneyShown={false} priceBars={view({ on: true })} />)
+    const row = document.querySelector('[data-gc-board-row="p1"]') as HTMLElement
+    expect([...row.querySelectorAll('[data-gc-board-price-segment]')].map((e) => e.getAttribute('data-gc-board-price-segment'))).toEqual(['quoted', 'hole'])
+    expect(within(row).getByText('trades so far, with 2 holes')).toBeTruthy()
+    expect(within(row).queryByText(/GC \$/)).toBeNull()
+  })
+
+  it('a board of plain quoted rows keeps its numbers with the switch on, and side by side says so', () => {
+    const base = clinicBoardRows()
+    const rows = clinicBoardRows({ money: [], moneyShown: false, projects: base.projects.map((p) => ({ ...p, trades: p.trades.filter((t) => t.id === 'k1').map((t) => ({ ...t, carriedInviteId: 'i1' })) })) })
+    const state = boardStateFromRows(rows)
+    const { unmount } = render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} moneyShown={false} priceBars={view({ on: true })} />)
+    expect(document.querySelector('[data-gc-board-price-bar]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Show today’s look' })).toBeTruthy()
+    unmount()
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} moneyShown={false} priceBars={view({ sideBySide: true })} />)
+    const both = screen.getByTestId('gc-board-side-by-side')
+    expect(both.querySelectorAll('[data-gc-board-price-bar]').length).toBe(1)
+    expect(both.querySelector('[data-gc-board-bars-held]')?.textContent).toMatch(/would keep its numbers/)
+  })
+
+  it('side by side for a dev: Bidding draws today’s rows and the rows with the bars one above the other, and no switch', () => {
+    const state = boardStateFromRows(clinicBoardRows())
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} priceBars={view({ sideBySide: true })} />)
+    const both = screen.getByTestId('gc-board-side-by-side')
+    expect(within(both).getByText('Today')).toBeTruthy()
+    expect(within(both).getByText('With the bars')).toBeTruthy()
+    expect(both.querySelectorAll('[data-gc-board-row="p1"]').length).toBe(2)
+    expect(both.querySelectorAll('[data-gc-board-price-bar]').length).toBe(1)
+    expect(both.querySelector('[data-gc-board-bar-worth]')?.textContent).toMatch(/priced so far · about/)
+    expect(both.querySelector('[data-gc-board-bars-held]')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Show the price bars|Show today/ })).toBeNull()
+  })
+})
