@@ -185,7 +185,7 @@ export default function LineBudgetSettingsBlock() {
       {LINE_SPLIT_KINDS.map(kindRow)}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-        <span data-testid="line-budget-saved-words">{!loaded ? 'Reading the saved splits…' : changes.any ? `${changes.kinds.length + (changes.rate ? 1 : 0) + (changes.target ? 1 : 0)} change${changes.kinds.length + (changes.rate ? 1 : 0) + (changes.target ? 1 : 0) === 1 ? '' : 's'} not saved yet.` : savedAt ? `Saved ${dayLabel(savedAt)}. Nothing changed yet.` : 'Nothing changed yet.'}</span>
+        <span data-testid="line-budget-saved-words">{!loaded ? 'Reading the saved splits…' : changes.any ? `${changes.kinds.length + (changes.rate ? 1 : 0) + (changes.target ? 1 : 0)} change${changes.kinds.length + (changes.rate ? 1 : 0) + (changes.target ? 1 : 0) === 1 ? '' : 's'} not saved yet.` : savedAt ? `Saved ${dayLabel(savedAt)}. Every line still assumed reads these.` : 'Every line still assumed reads these.'}</span>
         <span style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {canSet && changes.any ? <button type="button" style={link} onClick={() => setDraft(null)}>Back to what you saved</button> : null}
           {canSet ? (
