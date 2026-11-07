@@ -20,6 +20,7 @@ function makeStages(n: number): GoalsStageRow[] {
     groupId: `g${i + 1}`,
     title: `Stage ${i + 1}`,
     done: i < 18 ? 3 : i === 18 ? 1 : 0,
+    doneFraction: i < 18 ? 3 : i === 18 ? 1 : 0,
     total: 3,
     state: i < 18 ? 'complete' : i === 18 ? 'current' : i >= 44 ? 'unplanned' : 'locked',
     openAssigned: 0,
@@ -28,6 +29,14 @@ function makeStages(n: number): GoalsStageRow[] {
 }
 
 describe('GoalsStageStrip', () => {
+  it('a current stage fills by its fraction and titles it (#273): 1.5 of 3 reads 50%', () => {
+    const stages = makeStages(3).map((s, i) => (i === 1 ? { ...s, state: 'current' as const, done: 1, doneFraction: 1.5 } : i === 0 ? { ...s, state: 'complete' as const, done: 3, doneFraction: 3 } : { ...s, state: 'locked' as const, done: 0, doneFraction: 0 }))
+    render(<GoalsStageStrip stages={stages} />)
+    const current = screen.getByTitle('2 · Stage 2 — 1.5 of 3')
+    const fill = current.querySelector('span') as HTMLSpanElement
+    expect(fill.style.width).toBe('50%')
+  })
+
   it('lays 50 stages on a uniform auto-fit grid: equal columns with a 12px floor, no per-segment flex', () => {
     render(<GoalsStageStrip stages={makeStages(50)} />)
     const strip = screen.getByTestId('goals-stage-strip')

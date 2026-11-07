@@ -140,7 +140,7 @@ export function progressLine(a: ProgressLineInput): string {
   return parts.join(' · ')
 }
 
-export type StageTaskShape = { completedAt: string | null | undefined; percentComplete: number | null | undefined }
+export type StageTaskShape = { completedAt: string | null | undefined; percentComplete?: number | null | undefined }
 
 export type StageFraction = { done: number; total: number; words: string }
 

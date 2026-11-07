@@ -11,6 +11,8 @@ export type MutableTechTreeTask = {
   assigneeIds: ReadonlyArray<string>
   pinned_at: string | null
   completed_at: string | null
+  /** Task cards (#273): the task's percent, mirrored from its card's day row or set on the task card. */
+  percent_complete?: number | null
 }
 
 /**
@@ -117,10 +119,10 @@ export function useTechTreeTaskMutations(args: {
   const loadInstanceEvents = useCallback(async (instanceId: string): Promise<ChecklistCardEvent[]> => {
     const { data } = await supabase
       .from('checklist_instance_events')
-      .select('id, instance_id, event_type, actor_user_id, body, created_at')
+      .select('id, instance_id, event_type, actor_user_id, body, created_at, percent')
       .eq('instance_id', instanceId)
       .order('created_at', { ascending: true })
-    return (data ?? []) as ChecklistCardEvent[]
+    return (data ?? []) as unknown as ChecklistCardEvent[]
   }, [])
 
   const postInstanceComment = useCallback(

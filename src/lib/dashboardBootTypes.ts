@@ -32,6 +32,8 @@ export type ChecklistInstance = {
   checklist_item_id: string
   scheduled_date: string
   completed_at: string | null
+  /** Task cards (#273): the day row's percent; a done row reads 100 whatever is stored. */
+  percent_complete?: number | null
   notes: string | null
   completed_by_user_id: string | null
   created_at: string | null

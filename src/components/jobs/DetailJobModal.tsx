@@ -113,6 +113,7 @@ import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { EmptyState } from '../EmptyState'
+import { JobPlansSection, type JobPlansSectionState } from './JobPlansSection'
 import { JobStageChecklistStrip, type OpenStageChecklistAsk } from '../stageChecklists/JobStageChecklistStrip'
 import { JobPhotosStrip } from '../photos/JobPhotosStrip'
 
@@ -623,6 +624,27 @@ function DetailJobModalFilesPlansRow({
           Open plans
         </button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * The crew's plans (punch list #276): the Plans section the office window's Documents tab mounts (v2.6298), so a
+ * helper or a subcontractor reads *Building from* and presses **Add our as-built** on their own window, which this
+ * one is for every role outside the full window's five. The database holds them to their own as-builts on their own
+ * jobs (v2.6583) and reads them the part their job builds from, on a development too (v2.6604). The old *Open plans*
+ * row on the job's mirrored link stays only while the section reads no part, for a job whose plans are one pasted link.
+ */
+function DetailJobModalPlans({
+  job,
+}: {
+  job: { id: string; job_name?: string | null; click_number?: string | null; hcp_number?: string | null; job_plans_link: string | null | undefined }
+}) {
+  const [state, setState] = useState<JobPlansSectionState>('loading')
+  return (
+    <div data-testid="detail-job-plans" data-state={state} style={{ marginTop: '0.75rem', display: 'grid', gap: '0.5rem' }}>
+      <JobPlansSection job={job} onState={setState} />
+      {state === 'no-part' || state === 'failed' ? <DetailJobModalFilesPlansRow jobPlansLink={job.job_plans_link} /> : null}
     </div>
   )
 }
@@ -2414,7 +2436,7 @@ export default function DetailJobModal({
             </div>
 
 
-            <DetailJobModalFilesPlansRow jobPlansLink={fullJob.job_plans_link} />
+            <DetailJobModalPlans job={{ id: fullJob.id, job_name: fullJob.job_name, hcp_number: fullJob.hcp_number, job_plans_link: fullJob.job_plans_link }} />
 
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Assigned Team</div>
@@ -2760,7 +2782,7 @@ export default function DetailJobModal({
               </DetailRow>
             </div>
 
-            <DetailJobModalFilesPlansRow jobPlansLink={limitedJob.job_plans_link} />
+            <DetailJobModalPlans job={{ id: limitedJob.id, job_name: limitedJob.job_name, hcp_number: limitedJob.hcp_number, job_plans_link: limitedJob.job_plans_link }} />
 
             {showMaterialsCostSection ? (
               <JobDetailMaterialsCostSection
