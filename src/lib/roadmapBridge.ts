@@ -10,6 +10,7 @@ import {
   unplannedGroupIds,
   type TechTreeEdge,
 } from './checklistTechTreeGraph'
+import { stageFraction } from './taskProgress'
 
 export type BridgeState = {
   instanceCompletedAt: string | null
@@ -93,6 +94,8 @@ export type GoalsStageRow = {
   groupId: string
   title: string
   done: number
+  /** Task cards (#273, PR 3b): done tasks as one each and open tasks as their percent, so a stage reads *2.5 of 6*. */
+  doneFraction: number
   total: number
   /** 'unplanned' = task-less stage with no prerequisites — "not planned yet" (v2.2127). */
   state: 'complete' | 'current' | 'locked' | 'unplanned'
@@ -112,13 +115,13 @@ export type GoalsStageRow = {
  */
 export function goalsStageRows(args: {
   groups: Array<{ id: string; title: string; sort_index: number }>
-  tasks: Array<{ group_id: string; completed_at: string | null; assigneeCount: number }>
+  tasks: Array<{ group_id: string; completed_at: string | null; assigneeCount: number; percent_complete?: number | null }>
   edges: TechTreeEdge[]
 }): GoalsStageRow[] {
   const { groups, tasks, edges } = args
   const groupIds = new Set(groups.map((g) => g.id))
   const rmEdges = edges.filter((e) => groupIds.has(e.fromGroupId) && groupIds.has(e.toGroupId))
-  const tasksByGroup = new Map<string, Array<{ completed_at: string | null; assigneeCount: number }>>()
+  const tasksByGroup = new Map<string, Array<{ completed_at: string | null; assigneeCount: number; percent_complete?: number | null }>>()
   for (const t of tasks) {
     if (!groupIds.has(t.group_id)) continue
     tasksByGroup.set(t.group_id, [...(tasksByGroup.get(t.group_id) ?? []), t])
@@ -142,6 +145,7 @@ export function goalsStageRows(args: {
         groupId: g.id,
         title: g.title,
         done: gTasks.filter((t) => t.completed_at != null).length,
+        doneFraction: stageFraction(gTasks.map((t) => ({ completedAt: t.completed_at, percentComplete: t.percent_complete }))).done,
         total: gTasks.length,
         state,
         openAssigned: gTasks.filter((t) => t.completed_at == null && t.assigneeCount > 0).length,
@@ -164,17 +168,18 @@ export function goalsStripNowSummary(currentStages: string[], limit = 3): string
   return more > 0 ? `${shown} … +${more} more` : shown
 }
 
-export type StageBadge = { kind: 'done' } | { kind: 'progress'; done: number; total: number } | null
+export type StageBadge = { kind: 'done' } | { kind: 'progress'; done: number; doneFraction: number; total: number } | null
 
 /**
  * Header badge for a stage node (v2.1894 polish): green "✓ done" when every
  * task is complete, "N of M" while in progress, nothing for empty stages.
+ * Since #273 the N carries the open tasks' percents too (*2.5 of 6*).
  */
-export function stageBadgeFor(tasks: Array<{ completedAt: string | null }>): StageBadge {
+export function stageBadgeFor(tasks: Array<{ completedAt: string | null; percentComplete?: number | null }>): StageBadge {
   if (tasks.length === 0) return null
   const done = tasks.filter((t) => t.completedAt != null).length
   if (done === tasks.length) return { kind: 'done' }
-  return { kind: 'progress', done, total: tasks.length }
+  return { kind: 'progress', done, doneFraction: stageFraction(tasks).done, total: tasks.length }
 }
 
 /**

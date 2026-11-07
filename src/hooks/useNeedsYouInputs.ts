@@ -7,6 +7,7 @@ import { useStaleTallyStaffFollowUp } from './useStaleTallyStaffFollowUp'
 import { useJobFollowupNudge } from './useJobFollowupNudge'
 import { JOB_FOLLOWUP_IDLE_DAYS } from '../lib/jobs/jobFollowupQueue'
 import { useTeamReviewsDue } from './useTeamReviewsDue'
+import { useAwayBackDay } from './useAwayBackDay'
 import { useRoadmapNeedsNameNudges } from './useRoadmapNeedsNameNudges'
 import { buildNeedsYouItems, CUSTOMER_MESSAGES_LINE_ON, type NeedsYouInputs, type NeedsYouItem } from '../lib/dashboardNeedsYou'
 import { useCustomerWaitingOptional } from '../contexts/CustomerWaitingContext'
@@ -191,6 +192,9 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   // While you were off (v2.6060, punch list #141 PR 4): the pushes the viewer's own hours held, whoever they are.
   const whileOffEnabled = on('whileOff')
   const whileOff = useWhileOff(whileOffEnabled, authUserId)
+  // The day back (punch list #256 PR 9): an Away note's countdown has ended and the office asked to be told.
+  const awayBackDayEnabled = on('awayBackDay')
+  const awayBackDay = useAwayBackDay(awayBackDayEnabled)
   // The review ask (v2.5946, punch list #185): a low answer nobody has called, for the same office team.
   const lowRatingsEnabled = gcFollowUpEnabled
   const lowRatings = useLowRatings(lowRatingsEnabled)
@@ -282,6 +286,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     todaysSends: todaysSends.need,
     whileOffEnabled,
     whileOff: whileOff.need,
+    awayBackDayEnabled,
+    awayBackDay: awayBackDay.need,
     lowRatingsEnabled,
     lowRatings,
     contractClausesEnabled,
@@ -368,6 +374,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     customerWaitingInboxHref: customerWaitingCtx?.inboxHref ?? null,
     lowRatingContactId: lowRatings?.need.first?.contactId ?? null,
     whileOffFirst: whileOff.need?.first ?? null,
+    awayBackFirstUserId: awayBackDay.need?.first.userId ?? null,
   }
 
   return {

@@ -35,7 +35,7 @@ The packet went and nothing came back. From day 7 the desk offers {{button:blue|
 
 :::card 2 Reminder sent
 
-The one courtesy notice went. The desk waits a week for an answer. After a week with nothing, the row leads with {{button:blue|Send the attorney’s letter}}. The desk never asks for a second courtesy. You may still send one by hand from the footer when a channel bounced.
+The one courtesy notice went. The desk waits a week for an answer. After a week with nothing, the row leads with {{button:blue|Send the attorney’s letter}}. The desk never asks for a second courtesy. You may still send one by hand from the footer when a channel bounced. A notice also stands here while they pay it down.
 
 :::
 
@@ -52,6 +52,10 @@ The bill is paid. Or the GC authorized direct pay in writing. Or the owner calle
 :::
 
 :::
+
+## When they pay part of it
+
+A payment after the notice pauses the reminders. The notice stands on step 2 as *paying it down*. The brief changes with it. The usual move becomes {{button:blue|Record what they promised}}. The timeline shows the payment as a green row with what is still owed. The payment row says when the desk asks again. The attorney's letter row reads *waits* while they pay. Their promise is a row of its own with the day they gave. The affidavit's week and the lien's day still come. A promise moves no legal day. Only the money does.
 
 ## Why two rows at the same day get different buttons
 

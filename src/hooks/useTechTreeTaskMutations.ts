@@ -11,6 +11,8 @@ export type MutableTechTreeTask = {
   assigneeIds: ReadonlyArray<string>
   pinned_at: string | null
   completed_at: string | null
+  /** Task cards (#273): the task's percent, mirrored from its card's day row or set on the task card. */
+  percent_complete?: number | null
 }
 
 /**

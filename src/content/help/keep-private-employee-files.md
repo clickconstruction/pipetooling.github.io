@@ -11,8 +11,8 @@ The files cover employees, helpers, subs, and office alike. Nothing in **People 
 
 Each person's file has three layers:
 
-- **Summary** is the one-page read: trajectory, reliability, pay, watch items. The agent maintains it.
-- **Narrative** is the chronological story of their time with the company. The agent maintains it too.
+- **Summary** is the one-page read: trajectory, reliability, pay, watch items. The agent maintains it. You can edit it too.
+- **Narrative** is the chronological story of their time with the company. The agent maintains it too. You can edit it as well.
 - **Raw entries** are the dated facts everything else is built from. This is the only layer you write here.
 
 ## Add what happened
@@ -99,6 +99,19 @@ Press any item to open it in a window over the list. The window shows the whole 
 Press {{button:outline|Print this theme}} for paper. Press {{button:outline|Copy as a list for counsel}} to put the same words on the clipboard. The theme you picked sits in the address. Send the link and it opens the same view.
 
 A matter reads by theme too. Open **By theme** on the Legal desk or on the person's **Matter** view. The items are the matter's papers and events. Press a paper in the window to open it. Press {{button:outline|Open on the matter ›}} to land on its row.
+
+## Edit the summary or the narrative
+
+The agent writes these two documents. You can change them too.
+
+1. Open the person's file and go to **Narrative**. The summary sits above the narrative.
+2. Press {{button:outline|Edit}} beside the one you want. The text opens in a box, in markdown.
+3. Change the words. The line under the box says what Save will do. Open **How it will read** to see it drawn.
+4. Press {{button:blue|Save the narrative}} or {{button:blue|Save the summary}}. The prior version stays in the file's history.
+
+Save is refused when someone saved the document after you opened it. The agent can do that from its seat. Copy your words, press {{button:outline|Cancel}}, open it again and bring them over.
+
+A file with no summary yet shows {{button:outline|Write}} instead. The agent can still build one from the line.
 
 ## Keeping the summary fresh
 

@@ -7,6 +7,8 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateU
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { derivePersonFileFreshness } from '../../../lib/people/personFileFreshness'
 import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../../lib/people/hrDocMarkdown'
+import { hrDocDraftWords, hrDocSaveFailureWords, hrDocSavePayload, type HrDocKind } from '../../../lib/people/hrDocEditor'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import {
   buildPersonTimeline,
   countPersonTimeline,
@@ -256,6 +258,10 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   /** v2.6554: the Evidence tab's filter, All or Counsel-only. */
   const [evFilter, setEvFilter] = useState<'all' | 'counsel'>('all')
   const hrDocRef = useRef<HTMLDivElement>(null)
+  // v2.6609: the summary or the narrative under edit — the draft, the text it started from, and the updated_at loaded,
+  // which the save quotes so a version kept since (the seat's apply_person_doc, another dev) refuses it.
+  const [docEdit, setDocEdit] = useState<{ kind: HrDocKind; draft: string; original: string; loadedUpdatedAt: string | null } | null>(null)
+  const [docSaving, setDocSaving] = useState(false)
   /** Themes on the record (v2.6546): the catalog and this person's marks, the pickers' drafts, the Timeline's theme filter, the ticked lines and the bulk bar. */
   const [themes, setThemes] = useState<LegalTheme[]>([])
   const [marks, setMarks] = useState<LegalThemeMark[]>([])
@@ -1252,14 +1258,88 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     )
   })()
 
+  const saveDoc = useCallback(async () => {
+    if (!docEdit || !personId) return
+    setDocSaving(true)
+    try {
+      // The same function the dev seat writes through (dev_person_doc_write, 20261107013000): the whole text, with the
+      // updated_at this editor loaded; the prior version is archived by the table's trigger.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).rpc('dev_person_doc_write', {
+        p: hrDocSavePayload({ personId, kind: docEdit.kind, markdown: docEdit.draft, loadedUpdatedAt: docEdit.loadedUpdatedAt }),
+        p_dry_run: false,
+      })
+      if (error) {
+        showToast(hrDocSaveFailureWords(docEdit.kind, formatErrorMessage(error, 'the save was refused')), 'error')
+        return
+      }
+      showToast(`The ${docEdit.kind} is saved. The prior version is in its history.`, 'success')
+      setDocEdit(null)
+      await load()
+      onChanged?.()
+    } catch (e) {
+      showToast(hrDocSaveFailureWords(docEdit.kind, formatErrorMessage(e, 'the save was refused')), 'error')
+    } finally {
+      setDocSaving(false)
+    }
+  }, [docEdit, personId, showToast, load, onChanged])
+
   const renderDoc = (doc: PersonFileDoc | undefined, kind: 'summary' | 'narrative') => {
     const fr = freshness
     const html = doc ? hrDocMarkdownToSafeHtml(doc.content) : ''
     const headings = doc && kind === 'narrative' ? extractHrDocHeadings(doc.content) : []
     return (
       <section aria-label={kind === 'summary' ? 'Summary' : 'Narrative'} style={{ marginBottom: '1.1rem' }}>
-        <h4 style={{ margin: '0 0 0.4rem', fontSize: '0.7rem', letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 700 }}>{kind === 'summary' ? 'Summary' : 'Narrative'}</h4>
-        {doc ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', margin: '0 0 0.4rem' }}>
+          <h4 style={{ margin: 0, fontSize: '0.7rem', letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 700 }}>{kind === 'summary' ? 'Summary' : 'Narrative'}</h4>
+          {viewer.isDev && personId && docEdit === null ? (
+            <button
+              type="button"
+              aria-label={`${doc ? 'Edit' : 'Write'} the ${kind}`}
+              onClick={() => setDocEdit({ kind, draft: doc?.content ?? '', original: doc?.content ?? '', loadedUpdatedAt: doc?.updated_at ?? null })}
+              style={{ padding: '0.2rem 0.6rem', borderRadius: 6, fontSize: '0.74rem', fontWeight: 600, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              {doc ? 'Edit' : 'Write'}
+            </button>
+          ) : null}
+        </div>
+        {docEdit?.kind === kind ? (() => {
+          const state = hrDocDraftWords(kind, docEdit.draft, docEdit.original)
+          const live = state.changed && !docSaving
+          return (
+            <div style={{ ...CARD, maxWidth: '70ch', padding: '0.75rem 0.9rem' }} data-testid={`hr-doc-editor-${kind}`}>
+              <textarea
+                aria-label={`The ${kind}`}
+                value={docEdit.draft}
+                onChange={(e) => setDocEdit({ ...docEdit, draft: e.target.value })}
+                rows={kind === 'summary' ? 14 : 28}
+                autoFocus
+                style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 7, fontSize: '0.82rem', lineHeight: 1.45, background: 'var(--bg-page)', color: 'var(--text-base)', resize: 'vertical', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+              />
+              <p style={{ margin: '0.5rem 0', fontSize: '0.76rem', color: 'var(--text-muted)' }}>Markdown, as the agent writes it. {state.words}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => void saveDoc()}
+                  disabled={!live}
+                  style={{ padding: '0.4rem 0.9rem', borderRadius: 7, fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: live ? 'pointer' : 'default', background: live ? '#2563eb' : DEAD_PRESS_FILL, color: live ? '#fff' : DEAD_PRESS_TEXT }}
+                >
+                  {docSaving ? 'Saving…' : `Save the ${kind}`}
+                </button>
+                <button type="button" onClick={() => setDocEdit(null)} disabled={docSaving} style={{ padding: '0.4rem 0.7rem', borderRadius: 7, fontSize: '0.82rem', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </div>
+              {docEdit.draft.trim() !== '' ? (
+                <details style={{ marginTop: '0.6rem' }}>
+                  <summary style={{ cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-muted)' }}>How it will read</summary>
+                  {/* The draft, rendered the way the saved text is: marked and the contract sanitizer. */}
+                  <div className="hr-doc-body" style={{ ...CARD, marginTop: '0.5rem', padding: '1rem 1.2rem', fontSize: '0.9rem' }} dangerouslySetInnerHTML={{ __html: hrDocMarkdownToSafeHtml(docEdit.draft) }} />
+                </details>
+              ) : null}
+            </div>
+          )
+        })() : doc ? (
           <>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.9rem', fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
               <span>Kept by {doc.author_label ?? 'the agent'}</span>

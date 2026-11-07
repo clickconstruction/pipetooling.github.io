@@ -113,6 +113,7 @@ export function PersonDeskAccessSection({
   const [awayNoteOpen, setAwayNoteOpen] = useState(false)
   const [awayNoteKey, setAwayNoteKey] = useState(0)
   const awayUserId = user?.id ?? null
+  const awayArchivedAt = user?.archived_at ?? null
   const mayLeaveNote = canArchiveAccount(viewer)
   useEffect(() => {
     if (!awayUserId || !mayLeaveNote) {
@@ -126,7 +127,8 @@ export function PersonDeskAccessSection({
     return () => {
       on = false
     }
-  }, [awayUserId, mayLeaveNote, awayNoteKey])
+    // Read again when the account is archived or restored: End employment writes the note from its own window.
+  }, [awayUserId, awayArchivedAt, mayLeaveNote, awayNoteKey])
   // Attach a login (punch list #260, v2.6518): null = the form is closed.
   const [attachDraft, setAttachDraft] = useState<string | null>(null)
   const [attachError, setAttachError] = useState<string | null>(null)

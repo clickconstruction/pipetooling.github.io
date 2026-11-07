@@ -8,6 +8,7 @@
  */
 
 import { blockingStageTitles } from './roadmapBridge'
+import { stageFraction } from './taskProgress'
 import type { TechTreeEdge } from './checklistTechTreeGraph'
 
 export type PlanTask = {
@@ -20,6 +21,8 @@ export type PlanTask = {
   pinned_at?: string | null
   /** Effort estimate in days (v2.2358) — the Timeline's slot weight; null = roadmap average. */
   estimated_days?: number | null
+  /** Task cards (#273): the task's percent, for the slot's fill and the stage's fraction. */
+  percent_complete?: number | null
 }
 
 export type PlanGroup = { id: string; title: string }
@@ -27,6 +30,8 @@ export type PlanGroup = { id: string; title: string }
 export type PlanHeaderStats = {
   total: number
   done: number
+  /** Task cards (#273, PR 3b): done tasks as one each and open tasks as their percent. */
+  doneFraction: number
   /** Open tasks with at least one assignee. */
   assigned: number
   /** Open tasks with no assignee. */
@@ -37,13 +42,16 @@ export function planHeaderStats(tasks: ReadonlyArray<PlanTask>): PlanHeaderStats
   const done = tasks.filter((t) => t.completed_at != null).length
   const open = tasks.filter((t) => t.completed_at == null)
   const assigned = open.filter((t) => t.assigneeIds.length > 0).length
-  return { total: tasks.length, done, assigned, unstaffed: open.length - assigned }
+  const doneFraction = stageFraction(tasks.map((t) => ({ completedAt: t.completed_at, percentComplete: t.percent_complete }))).done
+  return { total: tasks.length, done, doneFraction, assigned, unstaffed: open.length - assigned }
 }
 
 export type PlanNowStage = {
   groupId: string
   title: string
   done: number
+  /** Task cards (#273, PR 3b): the stage's fraction, *2.5* of 6. */
+  doneFraction: number
   total: number
   /** Successor stage titles ("feeds …"). */
   feeds: string[]
@@ -68,11 +76,12 @@ export function planNowStages(args: {
     const tasks = tasksByGroup.get(g.id) ?? []
     if (tasks.length === 0) continue
     const done = tasks.filter((t) => t.completed_at != null).length
+    const doneFraction = stageFraction(tasks.map((t) => ({ completedAt: t.completed_at, percentComplete: t.percent_complete }))).done
     const feeds = edges
       .filter((e) => e.fromGroupId === g.id)
       .map((e) => titleById.get(e.toGroupId))
       .filter((t): t is string => !!t)
-    rows.push({ groupId: g.id, title: g.title, done, total: tasks.length, feeds })
+    rows.push({ groupId: g.id, title: g.title, done, doneFraction, total: tasks.length, feeds })
   }
   return rows
 }

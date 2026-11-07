@@ -47,6 +47,9 @@ type Props = {
   waitingAfterLabel?: string | null
   /** Done ⇄ open (same field the Map checkbox writes); pass only when the viewer may act. */
   onToggleDone?: () => Promise<boolean>
+  /** Task cards (#273, PR 3b): the task's percent, and the dock's Set the % (25 · 50 · 75 beside Done); pass only when the viewer may act. */
+  percent?: number | null
+  onSetPercent?: (percent: number) => Promise<boolean>
   /** Editors only: deletes the task (and its unfinished list item). */
   onDeleteTask?: () => Promise<boolean>
   /** ⏱ effort estimate in days (v2.2358) — the Timeline's slot weight; null = roadmap average. */
@@ -92,6 +95,8 @@ export function ChecklistTechTreeTaskCardModal({
   done = false,
   waitingAfterLabel = null,
   onToggleDone,
+  percent,
+  onSetPercent,
   onDeleteTask,
   estimatedDays = null,
   averageDays = 1,
@@ -121,6 +126,7 @@ export function ChecklistTechTreeTaskCardModal({
    *  silent revert (field crews on one bar of signal must know it saved). */
   const [optimisticDone, setOptimisticDone] = useState<boolean | null>(null)
   const [doneFailed, setDoneFailed] = useState(false)
+  const [percentSaving, setPercentSaving] = useState(false)
   const [quickPosting, setQuickPosting] = useState<string | null>(null)
   const threadRef = useRef<HTMLDivElement | null>(null)
 
@@ -839,7 +845,49 @@ export function ChecklistTechTreeTaskCardModal({
             </div>
           ) : onToggleDone || done || onTogglePin || onDeleteTask ? (
             <div style={{ display: 'flex', gap: 10, padding: '10px 16px 14px', borderTop: '1px solid var(--border)', flex: 'none' }}>
-              {onToggleDone ? (
+              {onToggleDone && onSetPercent && !effectiveDone && !doneFailed ? (
+                // Task cards (#273, PR 3b): Set the % in the press's seat — three chips and Done, the card's own sheet laid flat.
+                <div role="group" aria-label="Set the %" style={{ flex: 1, display: 'flex', gap: 4 }}>
+                  {[25, 50, 75].map((p) => {
+                    const on = (percent ?? 0) === p
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => {
+                          if (percentSaving) return
+                          setPercentSaving(true)
+                          void onSetPercent(p).finally(() => setPercentSaving(false))
+                        }}
+                        disabled={percentSaving}
+                        aria-pressed={on}
+                        aria-label={`Set ${p}%`}
+                        style={{
+                          flex: 1,
+                          height: 48,
+                          borderRadius: 12,
+                          fontSize: '0.9rem',
+                          fontWeight: 800,
+                          fontVariantNumeric: 'tabular-nums',
+                          cursor: 'pointer',
+                          ...(on ? { border: '1.5px solid #2563eb', background: '#2563eb', color: 'white' } : { border: '1.5px solid var(--border-strong)', background: 'transparent', color: 'var(--text-700)' }),
+                        }}
+                      >
+                        {p}
+                      </button>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    onClick={pressDone}
+                    aria-pressed={false}
+                    aria-label="Mark task done"
+                    style={{ flex: 1.4, height: 48, borderRadius: 12, fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', border: '1.5px solid #16a34a', background: 'transparent', color: 'var(--text-green-700)' }}
+                  >
+                    ✓ Done
+                  </button>
+                </div>
+              ) : onToggleDone ? (
                 <button
                   type="button"
                   onClick={pressDone}
