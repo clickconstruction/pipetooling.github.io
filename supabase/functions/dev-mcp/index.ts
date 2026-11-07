@@ -1270,6 +1270,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const out = await getCaseBrief(readerAs(await jwt()), { person: String(args.person ?? '') }, { role: who.role, todayYmd: todayYmdInAppTz() })
       if ('refused' in out) return refused(out.refused, { target: 'people' })
       return ok(out, { target: out.person.id, rowCount: out.entries.count })
+    }
+
     case 'get_person_document': {
       // v2.6621 (punch list #278 PR 3): one GET of dev_doc_read as the dev (devMcpDocRead.ts); another role is refused in words.
       const out = await getPersonDocument(readerAs(await jwt()), { person: String(args.person ?? ''), doc_id: args.doc_id, kind: args.kind, section: args.section }, { role: who.role })
