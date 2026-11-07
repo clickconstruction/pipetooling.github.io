@@ -24,10 +24,10 @@
  * env layering, a poll that throws tried again on the next, a press before a restart read from the kit's own stamp,
  * and one seed per kit.
  */
-import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { mainCheckoutRoot, readEnvFiles } from './env'
 import { parseWalkKit, type WalkKit } from '../../src/lib/walk/kit'
 import { TESTER_EMAIL } from '../../src/lib/walk/walkFunction'
 import {
@@ -51,6 +51,8 @@ import {
   reportKit,
   reportLines,
   SEED_READ_WAIT_MS,
+  SETUP_WAIT_MS,
+  errorWords,
   secretsOut,
   seedLine,
   stepHeld,
@@ -69,7 +71,7 @@ import {
   type WalkFlags,
   type WalkReport,
 } from '../../src/lib/walk/walkRun'
-import { WALK_ENV_FILES, layerEnv, missingKeyWords, type LayeredEnv } from '../../src/lib/walk/walkEnv'
+import { missingKeyWords, type LayeredEnv } from '../../src/lib/walk/walkEnv'
 import { MESSAGE_ROW_COLUMNS } from '../../src/lib/quo/rows'
 import { BOXES_SETTINGS_KEY, parseBoxSettings, type BoxSettings } from '../../src/lib/messages/boxes'
 import { supabaseFollowUpIo } from '../../src/lib/followUp/followUpIo'
@@ -162,9 +164,15 @@ export async function runWalk(flags: WalkFlags, io: WalkIo): Promise<WalkReport>
 
   let kit: WalkKit | null = null
   try {
-    // 1. The kit.
+    // 1. The kit. The call goes through the retrying wait (v2.6652): a lost signal on the first call of the run ended
+    // it with no step on the report and an unhandled `fetch failed`, and the report still read green.
     const setupBody: Record<string, unknown> = flags.fallbackPhone ? { fallback: true, ownerEmail: OWNER_EMAIL } : {}
-    const setup = await walk('setup', setupBody)
+    const setupEnd = await wait(() => walk('setup', setupBody), SETUP_WAIT_MS)
+    if (!setupEnd.found) {
+      step(stepHeld('setup', 'the walk function could not be reached', { waitedFor: waitedWords(setupEnd.waitedMs), saw: waitSaw(setupEnd) }))
+      return (report = finishReport(report, iso(io.now())))
+    }
+    const setup = setupEnd.found
     if (setup.status !== 200 || !setup.body?.kit) {
       step(stepHeld('setup', String(setup.body?.words ?? `walk setup answered ${setup.status}`)))
       return (report = finishReport(report, iso(io.now())))
@@ -377,6 +385,11 @@ export async function runWalk(flags: WalkFlags, io: WalkIo): Promise<WalkReport>
     } catch (e) {
       step(stepHeld('stray', e instanceof Error ? e.message : String(e)))
     }
+  } catch (e) {
+    // A call that threw outside a wait (a send, a reply, a text): the run ends here with the reason on the report, and
+    // cleanup still runs below (v2.6652).
+    report.endedEarly = errorWords(e)
+    say(`✗ The run ended early — ${report.endedEarly}`)
   } finally {
     // 13. Cleanup, always, unless --keep.
     if (flags.keep) {
@@ -399,22 +412,6 @@ export async function runWalk(flags: WalkFlags, io: WalkIo): Promise<WalkReport>
 // ---------------------------------------------------------------------------------------------------------------------
 // The real io
 // ---------------------------------------------------------------------------------------------------------------------
-
-/** The main checkout's root: a worktree resolves there through its common git dir, as claim-version.ts does. */
-export function mainCheckoutRoot(): string {
-  const common = execFileSync('git', ['rev-parse', '--git-common-dir'], { encoding: 'utf8' }).trim()
-  return dirname(isAbsolute(common) ? common : resolve(process.cwd(), common))
-}
-
-/** The main checkout's `.env` with `.env.local` laid over it (found item 1); a file that is not there is listed, not an error. */
-export function readEnvFiles(root: string): LayeredEnv {
-  return layerEnv(
-    WALK_ENV_FILES.map((name) => {
-      const path = resolve(root, name)
-      return { name: path, text: existsSync(path) ? readFileSync(path, 'utf8') : null }
-    }),
-  )
-}
 
 export function realIo(layered: LayeredEnv, root: string): WalkIo {
   const missing = missingKeyWords(layered)
@@ -506,7 +503,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     return 2
   }
   const root = mainCheckoutRoot()
-  const io = realIo(readEnvFiles(root), root)
+  const io = realIo(readEnvFiles(root, process.env), root)
   const report = await runWalk(flags, io)
   return report.ok ? 0 : 1
 }
@@ -518,7 +515,7 @@ if (/[\\/]vite-node$/.test(runner) || /scripts[\\/]walk[\\/]run\.ts$/.test(runne
   main(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (e) => {
-      console.error(e instanceof Error ? e.message : String(e))
+      console.error(errorWords(e))
       process.exit(1)
     },
   )
