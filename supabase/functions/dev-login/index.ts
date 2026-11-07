@@ -85,11 +85,12 @@ serve(async (req) => {
       )
     }
 
-    // A dev or a digital twin and no one else (v2.6639): this door records no imitation, so a link minted as a teammate
-    // would read their Gmail through My email (`_shared/devLoginGate.ts`). A read of the account that fails opens nothing.
+    // A dev, a digital twin or the walk tester and no one else (v2.6639, v2.6652): this door records no imitation, so a
+    // link minted as a teammate would read their Gmail through My email (`_shared/devLoginGate.ts`); the tester has no
+    // mailbox and writes nothing but the walk kit's sends. A read of the account that fails opens nothing.
     const { data: account, error: accountError } = await adminClient
       .from('users')
-      .select('role, is_digital_twin')
+      .select('role, is_digital_twin, is_walk_tester')
       .eq('id', user.id)
       .maybeSingle()
     if (accountError) {

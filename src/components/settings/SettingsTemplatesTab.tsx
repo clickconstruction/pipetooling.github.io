@@ -134,7 +134,7 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
   }
   return (
     <>
-          {/* v2.2088: invoice/bid/company/map blocks moved to their page tabs (Jobs & billing, Bids & materials, Company). */}
+          {/* v2.2088: invoice/bid/company/map blocks moved to their page tabs (Jobs, bills and liens, Bids & materials, Company). */}
           {/* B16 (J28-F14): /templates (project workflow templates) had no nav entry — this is its door. */}
           <div
             style={{

@@ -325,7 +325,7 @@ export function rowMetaWords(a: StageChecklistAnswer | null | undefined): string
 }
 
 /** The foot under the read-out: what the words mean, and where the company's questions are written now (PR 4). */
-export const READOUT_FOOT = 'A No or a Not here is an answer. Open is what holds a stage. The company’s questions are written here too: pick the company on the add box. Settings → Jobs & billing → Stage checklists reads them back.'
+export const READOUT_FOOT = 'A No or a Not here is an answer. Open is what holds a stage. The company’s questions are written here too: pick the company on the add box. Settings → Jobs, bills and liens → Stage checklists reads them back.'
 
 // ── The company's list on Documents (PR 4) ──────────────────────────────────
 

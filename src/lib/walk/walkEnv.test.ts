@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { WALK_ENV_KEYS, layerEnv, missingKeyWords, missingKeys, parseEnvText } from './walkEnv'
+import { PROCESS_ENV_NAME, WALK_ENV_KEYS, layerEnv, layerProcessEnv, missingKeyWords, missingKeys, parseEnvText } from './walkEnv'
 
 describe('parseEnvText', () => {
   it('reads KEY=value lines, drops the quotes, and leaves comments, blanks and empty values out', () => {
@@ -23,6 +23,31 @@ describe('layerEnv', () => {
   })
 })
 
+describe('layerProcessEnv', () => {
+  const files = { env: { VITE_SUPABASE_URL: 'https://x.supabase.co', VITE_SUPABASE_ANON_KEY: 'anon-from-file' }, read: ['/main/.env'], notFound: ['/main/.env.local'] }
+
+  it('lays a variable with a value over the files for the walk’s keys alone, and names the environment once it took one', () => {
+    const out = layerProcessEnv(files, { VITE_SUPABASE_ANON_KEY: ' anon-from-shell ', VITE_DEV_LOGIN_SECRET: 's3cret', VITE_OTHER: 'ignored', HOME: '/Users/x' })
+    expect(out).toEqual({
+      env: { VITE_SUPABASE_URL: 'https://x.supabase.co', VITE_SUPABASE_ANON_KEY: 'anon-from-shell', VITE_DEV_LOGIN_SECRET: 's3cret' },
+      read: ['/main/.env', PROCESS_ENV_NAME],
+      notFound: ['/main/.env.local'],
+    })
+    expect(files.read).toEqual(['/main/.env'])
+  })
+
+  it('an empty or unset variable changes nothing, and the environment is not named', () => {
+    expect(layerProcessEnv(files, { VITE_SUPABASE_URL: '', VITE_DEV_LOGIN_SECRET: '   ', VITE_SUPABASE_ANON_KEY: undefined })).toEqual(files)
+    expect(layerProcessEnv({ env: {}, read: [], notFound: ['/main/.env', '/main/.env.local'] }, {})).toEqual({ env: {}, read: [], notFound: ['/main/.env', '/main/.env.local'] })
+  })
+
+  it('with no files at all, the environment alone is enough', () => {
+    const out = layerProcessEnv({ env: {}, read: [], notFound: ['/main/.env', '/main/.env.local'] }, { VITE_SUPABASE_URL: 'https://x.supabase.co', VITE_SUPABASE_ANON_KEY: 'anon', VITE_DEV_LOGIN_SECRET: 's3cret' })
+    expect(missingKeyWords(out)).toBeNull()
+    expect(out.read).toEqual([PROCESS_ENV_NAME])
+  })
+})
+
 describe('missingKeyWords', () => {
   const all = { VITE_SUPABASE_URL: 'https://x.supabase.co', VITE_SUPABASE_ANON_KEY: 'anon', VITE_DEV_LOGIN_SECRET: 's3cret' }
 
@@ -31,18 +56,24 @@ describe('missingKeyWords', () => {
     expect(missingKeyWords({ env: all, read: ['/main/.env.local'], notFound: ['/main/.env'] })).toBeNull()
   })
 
+  it('names the environment among what was read when a key came from it', () => {
+    expect(missingKeyWords({ env: { VITE_SUPABASE_URL: all.VITE_SUPABASE_URL }, read: ['/main/.env', PROCESS_ENV_NAME], notFound: ['/main/.env.local'] })).toBe(
+      'VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET are missing (read /main/.env and the environment; /main/.env.local not found). The walk needs VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET, in the main checkout’s .env or .env.local, or in the environment.',
+    )
+  })
+
   it('names the missing key, the files read and the file not there', () => {
     expect(missingKeyWords({ env: { VITE_SUPABASE_URL: all.VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY: all.VITE_SUPABASE_ANON_KEY }, read: ['/main/.env.local'], notFound: ['/main/.env'] })).toBe(
-      'VITE_DEV_LOGIN_SECRET is missing (read /main/.env.local; /main/.env not found). The walk needs VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET, in the main checkout’s .env or .env.local.',
+      'VITE_DEV_LOGIN_SECRET is missing (read /main/.env.local; /main/.env not found). The walk needs VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET, in the main checkout’s .env or .env.local, or in the environment.',
     )
     expect(missingKeyWords({ env: { VITE_DEV_LOGIN_SECRET: 's3cret' }, read: ['/main/.env', '/main/.env.local'], notFound: [] })).toBe(
-      'VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing (read /main/.env and /main/.env.local). The walk needs VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET, in the main checkout’s .env or .env.local.',
+      'VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing (read /main/.env and /main/.env.local). The walk needs VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET, in the main checkout’s .env or .env.local, or in the environment.',
     )
   })
 
   it('names every key when neither file is there', () => {
     expect(missingKeyWords({ env: {}, read: [], notFound: ['/main/.env', '/main/.env.local'] })).toBe(
-      `${WALK_ENV_KEYS.slice(0, -1).join(', ')} and ${WALK_ENV_KEYS[2]} are missing (/main/.env and /main/.env.local not found). The walk needs VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET, in the main checkout’s .env or .env.local.`,
+      `${WALK_ENV_KEYS.slice(0, -1).join(', ')} and ${WALK_ENV_KEYS[2]} are missing (/main/.env and /main/.env.local not found). The walk needs VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET, in the main checkout’s .env or .env.local, or in the environment.`,
     )
   })
 })

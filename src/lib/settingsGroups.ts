@@ -16,7 +16,7 @@ import { canSeePhoneAndTexts } from './messages/assignRule'
  * `settings-company` is the one new id.
  *
  * Content notes for maintainers (what moved where in v2.2088):
- * - Invoice footers/issuer/memo + Job Book → settings-jobs ("Jobs & billing")
+ * - Invoice footers/issuer/memo + Job Book → settings-jobs ("Jobs, bills and liens")
  * - Bid cover letter → settings-catalogs ("Bids & materials")
  * - Company documents + office address + map default view → settings-company
  * - Team review cadence → settings-people; Easter eggs → settings-templates
@@ -63,7 +63,7 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   // Job Book was master/assistant-visible before the reorg — the tab keeps
   // that reach; the dev-only engines inside it gate themselves.
   if (r === 'dev' || r === 'master_technician' || isAssistantLike(r)) {
-    groups.push({ id: 'settings-jobs', label: 'Jobs & billing', zone: 'company', pagesHint: 'Shows on: Pipeline, job windows, and the bills you send customers.' })
+    groups.push({ id: 'settings-jobs', label: 'Jobs, bills and liens', zone: 'company', pagesHint: 'Shows on: Pipeline, job windows, and the bills you send customers.' })
   }
   if (r === 'dev' || r === 'estimator') {
     groups.push({ id: 'settings-catalogs', label: 'Bids & materials', zone: 'company', pagesHint: 'Shows on: Bids, Takeoff, and Materials — trades, part types, and the books.' })

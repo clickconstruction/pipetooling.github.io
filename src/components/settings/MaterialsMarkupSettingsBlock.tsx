@@ -8,7 +8,7 @@ import { pairFromMarkup, type MarkupPairState } from '../../lib/charges/markupMa
 import { MaterialsMarkupPair } from '../charges/MaterialsMarkupPair'
 
 /**
- * Settings → Jobs & billing → Markup on materials (punch list #254, PR 1): the company's markup over cost on materials
+ * Settings → Jobs, bills and liens → Markup on materials (punch list #254, PR 1): the company's markup over cost on materials
  * charged to a customer. Self-contained like the trip charge amounts. Blank means no markup is set, and a charges
  * paper then carries materials at cost and says so. Since v2.6538 the markup and the margin it makes on the sale sit
  * side by side, either one typed and the other following, and a bar under them shows $1,000 of materials as cost and
