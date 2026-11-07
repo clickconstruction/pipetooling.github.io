@@ -135,4 +135,38 @@ describe('afterLanding, the photos', () => {
     await afterLanding(press, { added: 2 }, run)
     expect(calls).toEqual(['drop:a,b', 'thread:j:u:Added 2 photos: Meter location'])
   })
+
+  // Punch list #273, v2.6628: a landed task photo drops its bytes and tells the card's strip; nothing on a job's thread.
+  it('a landed task photo press drops the sent shot’s bytes and announces it to the card', async () => {
+    const calls: string[] = []
+    const run: AfterLandingIo = {
+      invokeFunction: async () => {
+        calls.push('fn')
+      },
+      stampMovedLines: async () => {
+        calls.push('stamp')
+      },
+      propagateReportPct: async () => {
+        calls.push('pct')
+      },
+      dropKeptPhotos: async (ids) => {
+        calls.push(`drop:${ids.join(',')}`)
+      },
+      postThreadLine: async () => {
+        calls.push('thread')
+        return true
+      },
+      announceTaskPhotos: (ids) => {
+        calls.push(`announce:${ids.join(',')}`)
+      },
+    }
+    const shot = (id: string, sent: boolean) => ({ id, sent, kind: 'progress' as const, percentAt: 75, criterionId: null, lineBody: null, takenAt: '2026-11-07T20:41:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: 'Mateo Ruiz' })
+    const press = newPress({ id: 'tp', seq: 1, kind: 'task-photo', userId: 'u', pressedAt: T, payload: { instanceId: 'inst-1', photos: [shot('a', true)] } })
+    await afterLanding(press, { instance_id: 'inst-1', photo_ids: ['a'] }, run)
+    expect(calls).toEqual(['drop:a', 'announce:a'])
+    const nothingSent = newPress({ id: 'tp2', seq: 2, kind: 'task-photo', userId: 'u', pressedAt: T, payload: { instanceId: 'inst-1', photos: [shot('b', false)] } })
+    calls.length = 0
+    await afterLanding(nothingSent, {}, run)
+    expect(calls).toEqual([])
+  })
 })

@@ -39,8 +39,7 @@ export default function GcBillDayCutoffSettingsBlock() {
   }
 
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }} data-testid="gc-bill-day-cutoff-block">
-      <h3 style={{ margin: '0 0 0.6rem', fontSize: '1rem' }}>GC jobs · the trades’ cut-off</h3>
+    <div style={{ padding: '1rem' }} data-testid="gc-bill-day-cutoff-block">
       <form
         onSubmit={(e) => {
           e.preventDefault()

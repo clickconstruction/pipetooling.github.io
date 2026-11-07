@@ -15,6 +15,8 @@ import {
   whoGuesses,
   whoHead,
   noticeGuesses,
+  noticedBefore,
+  noticedBeforeWords,
   NOTICE_BLOCK,
   type HasPerson,
   type LaneJob,
@@ -374,6 +376,44 @@ describe('A notice, not a person (punch list #223 PR 1, v2.6202)', () => {
   it('reads the address behind a name from the channels', () => {
     const dale = { who: 'Dale Ferris', body: '', channels: [{ kind: 'email' as const, value: 'Dale@Ridgeway.example' }] }
     expect(whoGuesses(dale, 'bids', {}).filter((x) => x.kind === 'notice').map((x) => x.label)).toEqual(['Mark dale@ridgeway.example a notice', 'And everything from ridgeway.example'])
+  })
+})
+
+describe('The notice block first for a company marked before (punch list #223 call 5\u2019s other half, v2.6641)', () => {
+  const dale = { who: 'Dale Ferris', body: '', channels: [{ kind: 'email' as const, value: 'dale@ridgeway.example' }] }
+
+  it('leads the card with the two notice presses when another address at the domain was marked, and says who', () => {
+    const g = whoGuesses(dale, 'bids', { ...KNOWN, noticed: [{ value: 'news@ridgeway.example', kind: 'address' }] })
+    expect(g.slice(0, 2).map((x) => [x.kind, x.label, x.suggested])).toEqual([
+      ['notice', 'Mark dale@ridgeway.example a notice', true],
+      ['notice', 'And everything from ridgeway.example', true],
+    ])
+    expect(g[0]!.words).toBe('news@ridgeway.example was marked a notice before, so this is likely one too. Closes the row and leaves this address out from now on.')
+    expect(g.filter((x) => x.kind === 'notice')).toHaveLength(2)
+    expect(g[g.length - 1]!.kind).toBe('someone_else')
+    // The team line's order holds the same way.
+    expect(whoGuesses(dale, 'team', { noticed: [{ value: 'ridgeway.example', kind: 'domain' }] })[0]).toMatchObject({ kind: 'notice', suggested: true })
+  })
+
+  it('reads the whole domain and the address itself as a mark before, and nothing at an open mail service or another company', () => {
+    const sender = { address: 'dale@ridgeway.example', domain: 'ridgeway.example' }
+    expect(noticedBefore(sender, [{ value: 'ridgeway.example', kind: 'domain' }])).toEqual({ value: 'ridgeway.example', kind: 'domain' })
+    expect(noticedBeforeWords({ value: 'ridgeway.example', kind: 'domain' })).toMatch(/^Everything from ridgeway.example was marked a notice before, so this is likely one too\./)
+    expect(noticedBefore(sender, [{ value: ' Dale@Ridgeway.example ', kind: 'address' }])).toEqual({ value: 'dale@ridgeway.example', kind: 'address' })
+    // The sender's own row wins over the domain's, so the words name the address.
+    expect(noticedBefore(sender, [{ value: 'ridgeway.example', kind: 'domain' }, { value: 'dale@ridgeway.example', kind: 'address' }])).toEqual({ value: 'dale@ridgeway.example', kind: 'address' })
+    expect(noticedBefore({ address: 'deals@gmail.com', domain: '' }, [{ value: 'news@gmail.com', kind: 'address' }])).toBeNull()
+    expect(noticedBefore({ address: 'deals@gmail.com', domain: '' }, [{ value: 'deals@gmail.com', kind: 'address' }])).toEqual({ value: 'deals@gmail.com', kind: 'address' })
+    expect(noticedBefore(sender, [{ value: 'news@other.example', kind: 'address' }])).toBeNull()
+    expect(noticedBefore({ address: '', domain: '' }, [{ value: 'x.example', kind: 'domain' }])).toBeNull()
+    expect(noticedBefore(sender, undefined)).toBeNull()
+  })
+
+  it('keeps the block last with the plain words when nothing at the company was marked', () => {
+    const g = whoGuesses(dale, 'bids', KNOWN)
+    expect(g[0]!.kind).not.toBe('notice')
+    expect(g.filter((x) => x.kind === 'notice').map((x) => x.suggested ?? false)).toEqual([false, false])
+    expect(g[g.length - 1]).toMatchObject({ kind: 'notice', notice: { scope: 'domain', value: 'ridgeway.example' } })
   })
 })
 

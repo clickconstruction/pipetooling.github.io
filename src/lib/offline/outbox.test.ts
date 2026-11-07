@@ -49,8 +49,8 @@ function clockOut(over: Partial<OutboxPress<'clock-out'>> = {}): OutboxPress<'cl
 }
 
 describe('outbox · what may queue', () => {
-  it('four presses may queue, in this order of names, and nothing else', () => {
-    expect(OUTBOX_KINDS).toEqual(['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign'])
+  it('seven presses may queue, in this order of names, and nothing else', () => {
+    expect(OUTBOX_KINDS).toEqual(['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos', 'checklist-sign', 'task-photo'])
     expect(isOutboxKind('clock-in')).toBe(true)
     expect(isOutboxKind('payment')).toBe(false)
     expect(isOutboxKind(null)).toBe(false)
@@ -434,6 +434,11 @@ describe('the photos on the bar', () => {
     expect(keptPhotoCount([jobPhotos])).toBe(2)
     expect(photosWaitingLine([jobPhotos])).toEqual(['2 photos with it'])
     expect(pressLead(jobPhotos, () => '7:58 AM')).toBe('Job photos from 7:58 AM')
+    // A task photo press (punch list #273, v2.6628): one shot a press, counted the same way.
+    const taskPhoto = newPress({ id: 'p-tp', seq: 4, kind: 'task-photo', userId: 'u1', pressedAt: T0, payload: { instanceId: 'inst-1', photos: [{ id: 'tp-0', sent: false, kind: 'progress', percentAt: 75, criterionId: null, lineBody: null, takenAt: '2026-11-07T13:00:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: 'Mateo Ruiz' }] } })
+    expect(keptPhotoCount([taskPhoto])).toBe(1)
+    expect(photosWaitingLine([taskPhoto])).toEqual(['1 photo with it'])
+    expect(pressLead(taskPhoto, () => '3:12 PM')).toBe('Task photo from 3:12 PM')
     expect(keptPhotoCount([{ ...withPhotos('a', 2, 1), state: 'sent' }])).toBe(0)
     expect(keptPhotoCount([plain])).toBe(0)
   })

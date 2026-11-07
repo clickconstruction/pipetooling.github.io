@@ -181,6 +181,27 @@ describe('DocumentsPhotosTab', () => {
     expect((screen.getByLabelText('Find a photo') as HTMLInputElement).value).toBe('Jordan Pike')
   })
 
+  // Punch list #273, v2.6635: a task card's shot on the list.
+  it('a task card’s shot reads the card’s title and where it stood, its chip opens the checklist, and the Tasks folder press opens Where files go', async () => {
+    io.rows = [
+      row({ id: 'tp1', source: 'task', job_id: null, report_id: null, caption: 'Put the plumbing tools in a neat home', stage_name: '75%', status: 'progress', bucket: 'task-photos', storage_path: 'inst-1/tp1.jpg', job_hcp_number: null, job_name: null, customer_name: null, fail_why: 'The Tasks folder is not set yet. Set it on Documents → Where files go.' }),
+    ]
+    renderWithProviders(<DocumentsPhotosTab io={fakeIo()} />)
+    const rows = await screen.findAllByTestId('documents-photos-row')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.textContent).toContain('Put the plumbing tools in a neat home')
+    expect(rows[0]!.textContent).toContain('At 75%')
+    expect(rows[0]!.textContent).not.toContain('No job tied')
+    expect(rows[0]!.textContent).toContain('Not in Drive yet')
+    expect(screen.getByRole('link', { name: 'Set the Tasks folder' }).getAttribute('href')).toBe('/documents?tab=where-files-go')
+    expect(screen.getByRole('button', { name: 'Task card' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Task cards' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Open Put the plumbing tools in a neat home' }))
+    await waitFor(() => expect(document.querySelector('[data-uploaded-photo-open="tp1"]')).toBeTruthy())
+    expect(screen.getByRole('button', { name: 'Open the checklist' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Open the job' })).toBeNull()
+  })
+
   it('closes the viewer when it opens the job, so the job window is not under it', async () => {
     io.rows = [row({})]
     renderWithProviders(<DocumentsPhotosTab io={fakeIo()} />)

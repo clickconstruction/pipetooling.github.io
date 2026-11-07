@@ -22,6 +22,8 @@ import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
 import SettingsDataTab from '../components/settings/SettingsDataTab'
 import { settingsJobsDevCards } from '../components/settings/SettingsJobsTab'
 import { SettingsJobsBillingGroups, type JobsBillingCardElements } from '../components/settings/SettingsJobsBillingGroups'
+import { SettingsFoldCard } from '../components/settings/SettingsFoldCard'
+import { MOVED_SETTINGS_CARDS } from '../lib/settings/settingsFoldCards'
 import HideHcpFieldSettingsBlock from '../components/settings/HideHcpFieldSettingsBlock'
 import SubPortalPaySettingsBlock from '../components/settings/SubPortalPaySettingsBlock'
 import LegalFirmSettingsBlock from '../components/settings/LegalFirmSettingsBlock'
@@ -1070,7 +1072,6 @@ export default function Settings() {
           rates: <RatesChargedByCrewSettingsBlock />,
           markup: <MaterialsMarkupSettingsBlock />,
           'trip-charges': <TripChargeAmountsSettingsBlock />,
-          'sub-pay': <SubPortalPaySettingsBlock />,
           developments: <DevelopmentsSettingsBlock />,
           'city-lines': <JobAddressCityListSettingsBlock />,
           'county-suggestions': <TxCountyMapSettingsBlock />,
@@ -1079,11 +1080,9 @@ export default function Settings() {
           'stripe-footer': <StripeInvoiceFooterDevSettingsBlock />,
           'bill-memo': <BillCustomerMemoDevSettingsBlock />,
           'legal-firm': <LegalFirmSettingsBlock />,
-          'office-county': <OfficeCountySettingsBlock />,
           uncollectible: <UncollectibleListSettingsBlock />,
           docsmit: <DocsmitDevSettingsBlock />,
           'hide-hcp': <HideHcpFieldSettingsBlock />,
-          'hcp-reconcile': <SettingsHcpReconcileSection />,
         }
       : {}),
     'job-book': <JobBookSettingsSection onDbError={(msg) => setError(msg)} />,
@@ -1334,6 +1333,12 @@ export default function Settings() {
           {myRole === 'dev' || myRole === 'master_technician' ? <SettingsOrgDefaultsSection /> : null}
           {myRole === 'dev' || myRole === 'master_technician' ? <BankTransferDetailsSettingsBlock /> : null}
           {myRole === 'dev' && <OfficeAddressSettingsBlock />}
+          {/* Punch list #261 PR 2: the office's county beside the office address, off Jobs & billing; its old anchor still lands here. */}
+          {myRole === 'dev' && (
+            <SettingsFoldCard card={MOVED_SETTINGS_CARDS['office-county']} track="settings-company">
+              <OfficeCountySettingsBlock />
+            </SettingsFoldCard>
+          )}
           {myRole === 'dev' && <MapDefaultViewSettingsBlock />}
         </SettingsGroup>
       )}
@@ -1530,6 +1535,12 @@ export default function Settings() {
 
       {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
       {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
+      {/* Punch list #261 PR 2: the subs' pay schedule under People & teams, off Jobs & billing; its old anchor still lands here. */}
+      {myRole === 'dev' && (
+        <SettingsFoldCard card={MOVED_SETTINGS_CARDS['sub-pay']} track="settings-people">
+          <SubPortalPaySettingsBlock />
+        </SettingsFoldCard>
+      )}
 
       {/* v2.6545: the catalog of themes on the record, a dev's like the HR file. */}
       {myRole === 'dev' && <LegalThemesSettingsBlock />}
@@ -1660,6 +1671,12 @@ export default function Settings() {
           exportAllBackup={exportAllBackup}
           exportAllLoading={exportAllLoading}
         />
+      )}
+      {/* Punch list #261 PR 2: HCP reconcile under Data & recovery, off Jobs & billing; its old anchor still lands here. */}
+      {myRole === 'dev' && (
+        <SettingsFoldCard card={MOVED_SETTINGS_CARDS['hcp-reconcile']} track="settings-data">
+          <SettingsHcpReconcileSection />
+        </SettingsFoldCard>
       )}
       </SettingsGroup>
 

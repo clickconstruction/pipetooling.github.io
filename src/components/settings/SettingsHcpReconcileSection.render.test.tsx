@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Render-smoke tests for SettingsHcpReconcileSection (v2.2255) — the dev-only
- * HCP reconcile importer on Settings → Jobs & billing. Since punch list #184 (sweep A, PR 2)
+ * HCP reconcile importer on Settings → Data & recovery (off Jobs & billing since punch list #261 PR 2). Since punch list #184 (sweep A, PR 2)
  * the Apply button says its count and what it is made of, a refused row no longer stops the
  * rest, and the rows that did not apply stay listed with the reason.
  */
@@ -10,11 +10,11 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import SettingsHcpReconcileSection from './SettingsHcpReconcileSection'
 import { SettingsFoldCard } from './SettingsFoldCard'
-import { jobsBillingCardBySlug } from '../../lib/settings/jobsBillingGroups'
+import { MOVED_SETTINGS_CARDS } from '../../lib/settings/settingsFoldCards'
 
 /** The section as Jobs & billing draws it since punch list #261: in its fold, closed until its header is pressed. */
 const folded = () => (
-  <SettingsFoldCard card={jobsBillingCardBySlug('hcp-reconcile')}>
+  <SettingsFoldCard card={MOVED_SETTINGS_CARDS['hcp-reconcile']} track="settings-data">
     <SettingsHcpReconcileSection />
   </SettingsFoldCard>
 )

@@ -87,8 +87,18 @@ On the development page, press {{chip:blue|Plans}}. Each part's row now has a **
 
 Every paper also wrote its line on the site's **History** the day it came. Read the History to see the plans and the papers in one stream.
 
+## Move a paper to another part
+
+A paper kept on the wrong part can move. On the development page, press {{chip:blue|Plans}} and open the part's papers. Press **Move to…** on the paper. Pick the part it belongs on, then press {{button:blue|Move it}}. The paper lands on that part itself, since the set it went with stays behind. The site's History gets a line that says where it moved from.
+
+:::tryit
+
+A change order was kept on the Bunker, and it is about the Lodge. Open the Bunker's papers, press **Move to…** on it, pick Lodge and press {{button:blue|Move it}}. It now reads under the Lodge.
+
+:::
+
 ## Take a paper off
 
-Press **×** on a paper, then {{button:outline|Remove}}. Removing a paper never deletes the file in Drive, and its History line stays.
+Press **×** on a paper, then {{button:outline|Remove}}. The press is on the job's Papers section and on the site's Plans look. Removing a paper never deletes the file in Drive, and its History line stays.
 
 See [keep the plans on a job](/help/keep-the-plans-on-a-job) for the sets themselves.

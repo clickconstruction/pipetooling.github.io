@@ -1253,8 +1253,16 @@ export function legalPeriodLabel(from: string, to: string): string {
   return `${M[a.mo - 1]} ${a.d}, ${a.y} – ${M[b.mo - 1]} ${b.d}, ${b.y}`
 }
 
-/** The Evidence row's words on its statements (v2.6413): `2 signed · 1 waiting for a signature · 1 not sent yet`, or nothing signed yet. */
-export function legalStatementsWords(statements: ReadonlyArray<Pick<LegalEvidenceStatement, 'state'>>): string {
+/** What the Signed statements line says to a role the statements' own policy answers nothing (v2.6633): the gate, not an empty job. */
+export const LEGAL_STATEMENTS_CANNOT_READ_WORDS = 'Only a dev or the controller can read the signed statements here.'
+
+/**
+ * The Evidence row's words on its statements (v2.6413): `2 signed · 1 waiting for a signature · 1 not sent yet`, or nothing
+ * signed yet. A viewer who cannot read statements (`canRead` false, v2.6633) is told so instead of *Nothing signed here
+ * yet*, since the policy answers them no rows whether or not signed ones exist.
+ */
+export function legalStatementsWords(statements: ReadonlyArray<Pick<LegalEvidenceStatement, 'state'>>, opts: { canRead?: boolean } = {}): string {
+  if (opts.canRead === false && statements.length === 0) return LEGAL_STATEMENTS_CANNOT_READ_WORDS
   if (statements.length === 0) return 'Nothing signed here yet.'
   const n = (k: string) => statements.filter((s) => s.state === k).length
   const parts: string[] = []

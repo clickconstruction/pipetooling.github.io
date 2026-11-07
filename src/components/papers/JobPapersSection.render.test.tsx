@@ -48,6 +48,7 @@ function fakeIo(read: PapersRead = papersRead, over: Partial<JobPlansIo> = {}): 
     addSet: vi.fn(),
     makeCurrent: vi.fn(),
     removeSet: vi.fn(async () => undefined),
+    movePaper: vi.fn(async () => undefined),
     updateMemo: vi.fn(),
     readPapers: vi.fn(async () => read),
     keepPaper: vi.fn(async (a) => row({ id: 'new', name: a.draft.name, kind: a.draft.kind })),

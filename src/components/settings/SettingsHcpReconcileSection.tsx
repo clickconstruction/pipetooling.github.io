@@ -30,7 +30,7 @@ import {
 } from '../../lib/settings/hcpReconcileApply'
 
 /**
- * Settings → Jobs & billing → HCP reconcile (dev-only, v2.2255) — the
+ * Settings → Data & recovery → HCP reconcile (dev-only, v2.2255; off Jobs & billing since punch list #261 PR 2) — the
  * Billing Truth Plan Phase 3 importer. Turns the 2026-08-24 one-off psql
  * backfills into a repeatable two-lane flow: the HCP invoices export creates
  * dated paid invoices / stamps bill dates / links payments; the HCP payments
