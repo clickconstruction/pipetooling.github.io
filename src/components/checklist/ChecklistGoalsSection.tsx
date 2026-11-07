@@ -11,6 +11,7 @@ import { useChecklistCostEstimates } from '../../hooks/useChecklistCostEstimates
 import { goalsStageRows, goalsStripRows, lockedStageHint, lockedStagePrerequisiteChain, type BridgeState, type GoalsStageRow, type GoalsStripRow } from '../../lib/roadmapBridge'
 import { computeStageOrderUpdates, computeTaskOrderUpdates } from '../../lib/roadmapStageNumbers'
 import { goalsLedgerTaskRows, type GoalsLedgerTaskRow } from '../../lib/roadmapGoalsLedger'
+import { fractionWords } from '../../lib/taskProgress'
 import { recentStageUnlockEvents, stageUnlockPreviewFor, type StageUnlockEvent } from '../../lib/roadmapStageReview'
 import { formatOpenCostSummary, summarizeOpenTaskCosts } from '../../lib/checklistCostEstimate'
 
@@ -136,7 +137,7 @@ export function ChecklistGoalsSection({
         pinned_at: (t as { pinned_at?: string | null }).pinned_at ?? null,
         assigneeIds: ((t as { checklist_tech_tree_task_assignees?: Array<{ user_id: string }> | null }).checklist_tech_tree_task_assignees ?? []).map((a) => a.user_id),
       }))
-      const mappedTasks = fullTasks.map((t) => ({ id: t.id, group_id: t.group_id, completed_at: t.completed_at, assigneeCount: t.assigneeIds.length }))
+      const mappedTasks = fullTasks.map((t) => ({ id: t.id, group_id: t.group_id, completed_at: t.completed_at, assigneeCount: t.assigneeIds.length, percent_complete: (t as { percent_complete?: number | null }).percent_complete ?? null }))
       const mappedEdges = (edgs ?? []).map((e) => ({ fromGroupId: e.from_group_id, toGroupId: e.to_group_id }))
       setGoalRows(goalsStripRows({ roadmaps: rms, groups: grps, tasks: mappedTasks, edges: mappedEdges }))
       const stageMap = new Map<string, GoalsStageRow[]>()
@@ -638,7 +639,7 @@ export function ChecklistGoalsSection({
         onClose={() => setOrderStagesRoadmapId(null)}
         groups={(orderStagesRoadmapId ? goalStageRows.get(orderStagesRoadmapId) ?? [] : []).map((s) => {
           const stageTasks = orderStagesRoadmapId ? goalTaskRows.get(orderStagesRoadmapId)?.get(s.groupId) ?? [] : []
-          const meta = s.state === 'complete' ? '✓ done' : s.state === 'locked' ? '🔒' : s.total > 0 ? `${s.done} of ${s.total}` : null
+          const meta = s.state === 'complete' ? '✓ done' : s.state === 'locked' ? '🔒' : s.total > 0 ? `${fractionWords(s.doneFraction)} of ${s.total}` : null
           return {
             id: s.groupId,
             title: s.title,

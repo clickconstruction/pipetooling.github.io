@@ -25,6 +25,8 @@ import {
 import '@xyflow/react/dist/style.css'
 import { supabase } from '../../lib/supabase'
 import { writeTaskLines } from '../../lib/taskLinesIo'
+import { setRoadmapTaskPercent, setTaskPercent } from '../../lib/taskProgressIo'
+import { fractionWords, stageFraction } from '../../lib/taskProgress'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import {
   layoutTechTreeFlow,
@@ -804,7 +806,7 @@ export function ChecklistTechTreeTab({
           title: g?.title ?? 'Group',
           stageNumber: stageNumbers.get(gid) ?? 0,
           locked: !gu,
-          badge: stageBadgeFor(tlist.map((t) => ({ completedAt: t.completed_at }))),
+          badge: stageBadgeFor(tlist.map((t) => ({ completedAt: t.completed_at, percentComplete: (t as { percent_complete?: number | null }).percent_complete ?? null }))),
           unplanned: tlist.length === 0 && !graphEdges.some((e) => e.toGroupId === gid),
           nextUpCount: tlist.filter((t) => nextUpTaskIds.has(t.id)).length,
           lockedHint: gu
@@ -2273,13 +2275,13 @@ export function ChecklistTechTreeTab({
         onClose={() => setOrderStagesModalOpen(false)}
         groups={groups.map((g) => {
           const tlist = tasksByGroup.get(g.id) ?? []
-          const done = tlist.filter((t) => t.completed_at != null).length
+          const done = stageFraction(tlist.map((t) => ({ completedAt: t.completed_at, percentComplete: (t as { percent_complete?: number | null }).percent_complete ?? null }))).done
           const meta = completeGroupIds.has(g.id)
             ? '✓ done'
             : !unlockedIds.has(g.id)
               ? '🔒'
               : tlist.length > 0
-                ? `${done} of ${tlist.length}`
+                ? `${fractionWords(done)} of ${tlist.length}`
                 : null
           return {
             id: g.id,
@@ -2335,6 +2337,26 @@ export function ChecklistTechTreeTab({
         onToggleDone={
           editTaskForModal && canActOnTask(editTaskForModal, unlockedIds.has(editTaskForModal.group_id))
             ? async () => (editTaskId ? toggleTaskDone(editTaskId) : false)
+            : undefined
+        }
+        percent={(editTaskForModal as { percent_complete?: number | null } | null)?.percent_complete ?? null}
+        onSetPercent={
+          editTaskForModal && canActOnTask(editTaskForModal, unlockedIds.has(editTaskForModal.group_id))
+            ? async (p) => {
+                // Task cards (#273, PR 3b): through the card's day row when one exists (the mirror carries it back), else on the task.
+                if (!editTaskId) return false
+                const instanceId = bridgeByTaskId.get(editTaskId)?.instanceId ?? null
+                const r =
+                  instanceId && authUserId
+                    ? await setTaskPercent({ instanceId, percent: p, words: '', authUserId })
+                    : await setRoadmapTaskPercent(editTaskId, p)
+                if (!r.ok) {
+                  setError(r.error ?? 'The percent did not save.')
+                  return false
+                }
+                await load()
+                return true
+              }
             : undefined
         }
         onDeleteTask={

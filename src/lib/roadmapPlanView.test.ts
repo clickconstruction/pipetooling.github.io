@@ -38,7 +38,9 @@ const unlockedIds = computeUnlockedGroupIds(groups.map((g) => g.id), edges, comp
 
 describe('planHeaderStats', () => {
   it('counts done, assigned-open, and unstaffed-open', () => {
-    expect(planHeaderStats(tasks)).toEqual({ total: 5, done: 1, assigned: 1, unstaffed: 3 })
+    expect(planHeaderStats(tasks)).toEqual({ total: 5, done: 1, doneFraction: 1, assigned: 1, unstaffed: 3 })
+    // Task cards (#273): an open task at 50 counts half.
+    expect(planHeaderStats(tasks.map((x) => (x.id === 'b' ? { ...x, percent_complete: 50 } : x))).doneFraction).toBe(1.5)
   })
 })
 

@@ -9,6 +9,7 @@ import {
   type PlanTask,
 } from '../../lib/roadmapPlanView'
 import { lockedStageHint } from '../../lib/roadmapBridge'
+import { fractionWords, slotFill } from '../../lib/taskProgress'
 import { nextUpPicks } from '../../lib/roadmapNextUp'
 import { stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
@@ -72,7 +73,10 @@ function PlanTaskSlotBar({
     <div style={{ display: 'flex', gap: 2, height: 9 }}>
       {tasks.map((t, i) => {
         const done = t.completed_at != null
+        // Task cards (#273, PR 3b): an open task's slot fills to its percent in blue.
+        const fill = done ? 100 : slotFill({ completedAt: t.completed_at, percentComplete: t.percent_complete })
         const state = done ? 'done' : i === nextUp ? 'next up' : locked ? 'locked' : 'remaining'
+        const words = !done && fill > 0 ? `${state} · ${fill}%` : state
         return (
           <button
             key={t.id}
@@ -81,8 +85,9 @@ function PlanTaskSlotBar({
               e.stopPropagation()
               onOpenTask(t.id)
             }}
-            title={`${taskNumbers.get(t.id) ?? ''} ${t.title} — ${state}`}
+            title={`${taskNumbers.get(t.id) ?? ''} ${t.title} — ${words}`}
             aria-label={`Open task ${t.title}`}
+            data-fill={fill}
             style={{
               flex: 1,
               minWidth: 4,
@@ -90,7 +95,13 @@ function PlanTaskSlotBar({
               borderRadius: 3,
               cursor: 'pointer',
               border: done ? '1px solid #16a34a' : locked ? '1px dashed var(--border-strong)' : '1px solid var(--text-link)',
-              background: done ? 'var(--bg-green-100)' : locked ? 'var(--bg-muted)' : 'var(--surface)',
+              background: done
+                ? 'var(--bg-green-100)'
+                : locked
+                  ? 'var(--bg-muted)'
+                  : fill > 0
+                    ? `linear-gradient(90deg, #2563eb ${fill}%, var(--surface) ${fill}%)`
+                    : 'var(--surface)',
               ...(i === nextUp ? { outline: '1.5px solid #f59e0b', outlineOffset: 1 } : {}),
             }}
           />
@@ -282,7 +293,7 @@ export function ChecklistRoadmapPlanView({
         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, fontSize: '0.8125rem', color: 'var(--text-700)', marginBottom: 6 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <span>
-              <strong style={{ color: 'var(--text-strong)' }}>{stats.done}</strong> of {stats.total} tasks done
+              <strong style={{ color: 'var(--text-strong)' }}>{fractionWords(stats.doneFraction)}</strong> of {stats.total} tasks done
             </span>
             {roadmapCost && roadmapCost.dollars > 0 ? (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -433,7 +444,7 @@ export function ChecklistRoadmapPlanView({
                       : { background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)' }),
                   }}
                 >
-                  {s.done} of {s.total} done
+                  {fractionWords(s.doneFraction)} of {s.total} done
                 </span>
               )}
               {parallelGroupIds?.has(s.groupId) ? <RoadmapParallelBadge /> : null}

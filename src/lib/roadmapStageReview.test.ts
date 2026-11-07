@@ -4,6 +4,7 @@ import { recentStageUnlockEvents, stageUnlockPreviewFor } from './roadmapStageRe
 
 const row = (partial: Partial<GoalsStageRow> & Pick<GoalsStageRow, 'groupId' | 'title' | 'state'>): GoalsStageRow => ({
   done: 0,
+  doneFraction: 0,
   total: 0,
   openAssigned: 0,
   blockedBy: [],

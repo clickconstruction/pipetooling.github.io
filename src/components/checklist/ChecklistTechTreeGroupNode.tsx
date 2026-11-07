@@ -1,4 +1,5 @@
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { fractionWords } from '../../lib/taskProgress'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { useDndContext, useDroppable } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -618,7 +619,7 @@ export function GroupNode({ data }: NodeProps) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {d.badge.done} of {d.badge.total} done
+                  {fractionWords(d.badge.doneFraction)} of {d.badge.total} done
                 </span>
               ) : null}
               {d.locked ? (
