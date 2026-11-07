@@ -7,6 +7,7 @@ import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { getPersonFile } from '../_shared/devMcpPersonFile.ts'
 import { getCaseBrief } from '../_shared/devMcpCaseBrief.ts'
+import { getDocumentHistory } from '../_shared/devMcpDocHistory.ts'
 import { getPersonDocument } from '../_shared/devMcpDocRead.ts'
 import { searchCase } from '../_shared/devMcpCaseSearch.ts'
 import { PERSON_REPORT_SELECT, personReportAppliedWords, personReportDryRun, personReportRpc, type PersonReportPayload, type PersonReportRow } from '../_shared/devMcpPersonReport.ts'
@@ -86,7 +87,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.36.0'
+const SERVER_VERSION = '0.37.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -396,6 +397,11 @@ const TOOLS: McpTool[] = [
     name: 'get_case_brief',
     description: "One page that says what is where on a person's case (v2.6619, punch list #278) — the brief to read before anything else, the way a folder's README is read: your own Agent notes document first (a named document so titled, kept through plan_person_doc), the summary whole, the narrative's section index, the named documents with their section indexes and counsel marks, the entries' count and newest ten, the evidence index, the matter's narrative sections, steps and documents, the theme counts, and the developments the person's jobs sit in with their History's newest lines — every item with its id for a drill-in, the text never carried whole except the summary. Dev-only like the HR file: another role gets the person and held: dev only. read_next says which verb reads each thing further.",
     inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' } }, required: ['person'] },
+  },
+  {
+    name: 'get_document_history',
+    description: "What moved on a document on a person's HR file (v2.6622, punch list #278): the revisions of a named document (doc_id) or of the summary or narrative (kind) — when each was replaced, by whom, how big it was — with the text as it stands as now; with from (an older revision's id) and to (a newer one, or left out for the text as it stands), the difference between the two as hunks of removed and added lines, each named by its first line in the older text, exact when the changed middle is under 600 lines a side and capped at 400 lines. Dev-only. get_person_file's documents list takes since (YYYY-MM-DD) and marks each changed_since.",
+    inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'people.id, users.id (find_person) or a name matching exactly one person' }, doc_id: { type: 'string', description: 'a named document (person_documents.id)' }, kind: { type: 'string', description: 'summary | narrative, instead of doc_id' }, from: { type: 'string', description: 'a revision id from the list, the older one' }, to: { type: 'string', description: 'a newer revision id; the text as it stands when left out' } }, required: ['person'] },
   },
   {
     name: 'get_person_document',
@@ -1278,6 +1284,14 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const out = await getCaseBrief(readerAs(await jwt()), { person: String(args.person ?? '') }, { role: who.role, todayYmd: todayYmdInAppTz() })
       if ('refused' in out) return refused(out.refused, { target: 'people' })
       return ok(out, { target: out.person.id, rowCount: out.entries.count })
+    }
+
+    case 'get_document_history': {
+      // v2.6622 (punch list #278 PR 4): one GET of dev_doc_history as the dev; the two texts are diffed here and only the
+      // difference goes on (devMcpDocHistory.ts); another role is refused in words.
+      const out = await getDocumentHistory(readerAs(await jwt()), { person: String(args.person ?? ''), doc_id: args.doc_id, kind: args.kind, from: args.from, to: args.to }, { role: who.role })
+      if ('refused' in out) return refused(out.refused, { target: 'people' })
+      return ok(out, { target: out.person.id, rowCount: out.revision_count })
     }
 
     case 'get_person_document': {
