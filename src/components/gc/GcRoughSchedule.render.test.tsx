@@ -73,7 +73,7 @@ describe('a rough schedule while we bid (PR 12b, G-45)', () => {
   it('draws from a template made on the Templates page (#210): the pick says D3’s lines, and the rough keeps the rows copy', async () => {
     const quick = quickLubeTemplate()
     const state: GcState = { ...s, scheduleTemplates: [quick] }
-    const onDraw = vi.fn(async () => {})
+    const onDraw = vi.fn(async (_rough: RoughSchedule) => {})
     render(<GcRoughSchedule state={state} project={boerne} by="Robert" onDraw={onDraw} />)
     fireEvent.change(within(card()).getByLabelText('If work starts'), { target: { value: '2026-11-02' } })
     fireEvent.change(within(card()).getByLabelText('Start from a template'), { target: { value: quick.id } })
@@ -81,7 +81,7 @@ describe('a rough schedule while we bid (PR 12b, G-45)', () => {
     expect(within(card()).getByText(/^52 rows in 8 phases land on this job\./)).toBeTruthy()
     fireEvent.click(within(card()).getByRole('button', { name: 'Draw a rough schedule' }))
     await waitFor(() => expect(onDraw).toHaveBeenCalledTimes(1))
-    const rough = onDraw.mock.calls[0]![0] as RoughSchedule
+    const rough = onDraw.mock.calls[0]![0]
     expect(rough.template).toEqual({ id: quick.id, name: quick.name, on: s.today })
     expect(rough.rows).toEqual(templateRows(quick))
     expect(rough.like).toEqual([])
