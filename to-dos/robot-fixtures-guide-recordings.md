@@ -2,7 +2,7 @@
 name: "Robot fixtures: record the estimator guide's screen recordings"
 number: 227
 group: ready
-status: proposed 2026-10-31 · building on claude/227-robot-fixtures-recordings-3bec4e (v2.6627) 2026-11-07
+status: proposed 2026-10-31 · not started
 summary: >
   The owner wants a guide to share with an estimator that walks her through robot fixtures, showing more than
   telling. The text guide (`add-the-robots-fixtures-to-your-count`) matches every live screen, checked on
