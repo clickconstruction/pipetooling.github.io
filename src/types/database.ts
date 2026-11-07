@@ -17578,6 +17578,8 @@ export type Database = {
           charge_words: string | null
           contract_document_id: string | null
           created_at: string
+          drive_file_id: string | null
+          drive_filed_at: string | null
           gap_from: string | null
           gap_to: string | null
           id: string
@@ -17604,6 +17606,8 @@ export type Database = {
           charge_words?: string | null
           contract_document_id?: string | null
           created_at?: string
+          drive_file_id?: string | null
+          drive_filed_at?: string | null
           gap_from?: string | null
           gap_to?: string | null
           id?: string
@@ -17630,6 +17634,8 @@ export type Database = {
           charge_words?: string | null
           contract_document_id?: string | null
           created_at?: string
+          drive_file_id?: string | null
+          drive_filed_at?: string | null
           gap_from?: string | null
           gap_to?: string | null
           id?: string
@@ -38660,6 +38666,25 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_doc_history: {
+        Args: {
+          p_doc_id?: string
+          p_from?: string
+          p_kind?: string
+          p_person_id: string
+          p_to?: string
+        }
+        Returns: Json
+      }
+      dev_doc_read: {
+        Args: {
+          p_doc_id?: string
+          p_kind?: string
+          p_person_id: string
+          p_section?: string
+        }
+        Returns: Json
+      }
       dev_file_index_status: { Args: never; Returns: Json }
       dev_health_connections: { Args: never; Returns: Json }
       dev_health_locks: { Args: never; Returns: Json }
@@ -38929,6 +38954,10 @@ export type Database = {
           name: string
           text: string
         }[]
+      }
+      file_license_expiry_notice: {
+        Args: { p_from_user_id: string; p_license_id: string; p_link: string }
+        Returns: string
       }
       file_person_report: {
         Args: { p_content?: string; p_report_id: string; p_source?: string }
@@ -40230,6 +40259,10 @@ export type Database = {
       }
       holds_vehicle: { Args: { p_vehicle_id: string }; Returns: boolean }
       hr_agent_write: { Args: { p: Json }; Returns: Json }
+      hr_doc_apply_ops: {
+        Args: { p_ops: Json; p_text: string; p_what?: string }
+        Returns: Json
+      }
       hr_doc_heading_index: { Args: { md: string }; Returns: Json }
       hr_doc_headings: {
         Args: { md: string }
@@ -40757,6 +40790,7 @@ export type Database = {
         Args: { p_entry_id: string; p_reason: string }
         Returns: Json
       }
+      license_expiry_notices_sweep: { Args: never; Returns: Json }
       lien_billed_open: {
         Args: {
           p_job_id: string

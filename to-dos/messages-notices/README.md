@@ -2,7 +2,7 @@
 name: "Messages: an invitation is a bid lead and a notice is not a person — New stops asking Who is this? of mail nobody wrote to us"
 number: 223
 group: close
-status: proposed 2026-10-30 from Taunya's look at New on the Messages page · built 2026-10-31 and 11-01 as v2.6200, v2.6202, v2.6222 and v2.6231, with v2.6228 beside it · three migrations pushed, gmail-sync and messages-notify deployed · calls 1, 2, 4, 5 and 6 taken as recommended, call 3 built as recommended and waiting on Wendi's word · closing 2026-11-07 on claude/223-messages-notices-close-a88bf6: call 5's other half v2.6641, the question to Wendi, the prod walk
+status: proposed 2026-10-30 from Taunya's look at New on the Messages page · built 2026-10-31 and 11-01 as v2.6200, v2.6202, v2.6222 and v2.6231, with v2.6228 beside it · three migrations pushed, gmail-sync and messages-notify deployed · calls 1, 2, 4, 5 and 6 taken as recommended, call 3 built as recommended and waiting on Wendi's word · closed 2026-11-07 but for Wendi's word: call 5's other half shipped as v2.6641 (PR #7217), the prod walk passed on real rows, the question to Wendi went through Todd
 summary: >
   On 2026-10-30 New held thirteen rows and eleven of them were mail nobody wrote to us: nine
   invitations to bid and agency procurement notices, one newsletter, one bid platform's own
@@ -17,10 +17,10 @@ summary: >
   its card offers Start a bid with the GC, the link and the due date, Not for us, or Keep it
   with the GC; an addendum lands on the bid it names); and the robot's first pass (the obvious
   notices folded with a count and Put back).
-next: Wendi's word on call 3, what Start a bid makes. A walk on prod, by How to verify below. Then call 5's other half, the notice press as the card's first guess for a domain marked before. Then delete this folder.
+next: Wendi's word on call 3, what Start a bid makes: keep the built answer, or (a) only name the GC, or (b) also file the plans. Then delete this folder.
 size: M+S+L+M (PR 1 a notice, with one small migration and a gmail-sync redeploy; PR 2 the reader's body cue; PR 3 Bid it?; PR 4 the addendum tie and the robot's fold)
-blocker: Nothing in the code. Call 3 waits on Wendi's word, and the walk on a real invitation and a real newsletter reaching bids@.
-ver: v2.6200 · v2.6202 · v2.6222 · v2.6228 · v2.6231 · v2.6641 (PRs #6604, #6608, #6628, #6632, #6638, and the call 5 PR), built on v2.5354 · 5494 · 5546 · 5559 · 5711 · 5716 · 5722 · 5793 · 5795 · 5798 · 5811 · 5814 · 5982 · 6179 · 6191 (PR #6595, the row these pieces build on; this card is PR #6601)
+blocker: Wendi's word on call 3. Nothing in the code.
+ver: v2.6200 · v2.6202 · v2.6222 · v2.6228 · v2.6231 · v2.6641 (PRs #6604, #6608, #6628, #6632, #6638, #7217), built on v2.5354 · 5494 · 5546 · 5559 · 5711 · 5716 · 5722 · 5793 · 5795 · 5798 · 5811 · 5814 · 5982 · 6179 · 6191 (PR #6595, the row these pieces build on; this card is PR #6601)
 opinion: build — every door exists (the reader's left-out rule, the sort card's record-making presses, the bid's ITB links, the line-to-job tie by subject, the Sort all desk); what is missing is two more answers to the sort's question and a list the reader remembers
 mockup: to-dos/messages-notices/mockup.html
 ---
@@ -274,3 +274,20 @@ PR 3 waits on neither. PR 4 waits on PR 1 and PR 3.
   so no *Bid it?* row asked about the new job. That is a follow-up of its own, not this card's. The
   walk kit sends an estimate email and its reply, not an invitation or a newsletter, so the presses
   in How to verify wait on Todd's choice of how to send the test mail.
+- 2026-11-07, the walk: on Todd's pick the presses were made on real rows in New, in his signed-in
+  Chrome, as Robert, with the tables read through the dev seat after each one. PR 1 passed: **Mark
+  the address a notice** on a surety broker's pitch wrote the address to `email_left_out_senders`,
+  drew the grey line and closed the thread; **Not a notice after all** emptied the list and brought
+  the *Who is this?* card back; **And everything from the company** wrote both the address and the
+  domain. PR 3 passed: **Make the customer and start the bid** on a GC's invitation made the
+  customer, bid b589 with the project's name, the due day and time, the GC contact and a note naming
+  the mail, with the trade seat's estimator from the rule and the thread on the bid; `itb_links`
+  stayed empty since the mail linked no bid platform. **Not for us** on a university's tools
+  solicitation wrote the reason into the line's answer and an event line in the thread, and closed
+  the row. New went from twenty rows to seventeen, and the GC's thread now sits in Needs a reply as a
+  customer's. Nothing in Gmail changed: the three presses are
+  SQL alone, and the readers never write. PR 2 is held by the kernel's tests, since no mail this week
+  carried the body cue. PR 4's two presses had no real row: no addendum named a live bid, and nothing
+  was set aside, so **Put back** and the subject tie are held by their tests until the first real
+  one. The bids reader was still refused by Gmail's rate limit through the walk (since 11-06 20:44Z),
+  so the reader's leaving out of the marked company's next mail was not watched. Left: Wendi's word.

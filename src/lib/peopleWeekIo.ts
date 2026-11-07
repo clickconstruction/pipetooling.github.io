@@ -49,9 +49,9 @@ export async function sendPeopleWeekTest(peopleUserIds: string[]): Promise<void>
   if (problem) throw new Error(problem)
 }
 
-/** Everyone the office may pick: the real, live accounts by name. */
+/** Everyone the office may pick: the real, live staff accounts by name. A subcontractor's account is a company, not one of our people, so it is left out (Taunya, 2026-11-07); helpers are crew and stay. */
 export async function loadPeopleToPick(): Promise<{ id: string; name: string }[]> {
-  const { data, error } = await supabase.from('users').select('id, name').is('archived_at', null).eq('is_sample', false).eq('is_walk_tester', false).eq('is_digital_twin', false).order('name', { ascending: true })
+  const { data, error } = await supabase.from('users').select('id, name').is('archived_at', null).eq('is_sample', false).eq('is_walk_tester', false).eq('is_digital_twin', false).neq('role', 'subcontractor').order('name', { ascending: true })
   if (error) throw new Error(formatErrorMessage(error, 'The people did not load.'))
   return (data ?? []).map((u) => ({ id: u.id, name: (u.name ?? '').trim() }))
 }

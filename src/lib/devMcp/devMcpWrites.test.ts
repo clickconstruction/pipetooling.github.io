@@ -12,6 +12,7 @@ const DOCUMENT_MIGRATION = readFileSync('supabase/migrations/20261028010000_dev_
 const GAP_MIGRATION = readFileSync('supabase/migrations/20261028120000_dev_legal_gap_answer_write.sql', 'utf8')
 const DOC_MIGRATION = readFileSync('supabase/migrations/20261107013000_dev_person_doc_write.sql', 'utf8')
 const NAMED_DOCS_MIGRATION = readFileSync('supabase/migrations/20261107040000_person_documents.sql', 'utf8')
+const NARRATIVE_OPS_MIGRATION = readFileSync('supabase/migrations/20261107100000_matter_narrative_ops.sql', 'utf8')
 const HISTORY_MIGRATION = readFileSync('supabase/migrations/20261029130000_dev_history_entry_write.sql', 'utf8')
 const BID_MIGRATION = readFileSync('supabase/migrations/20261030210000_dev_bid_write.sql', 'utf8')
 const STATEMENT_MIGRATION = readFileSync('supabase/migrations/20261031190000_dev_legal_statement_write.sql', 'utf8')
@@ -270,7 +271,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.36.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.38.1'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -334,7 +335,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.36.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.38.1'")
   })
 })
 
@@ -434,7 +435,7 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
     expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
     expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
-    expect(SERVER).toContain("const SERVER_VERSION = '0.36.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.38.1'")
   })
 })
 
@@ -483,7 +484,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.36.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.38.1'")
     expect(SERVER).toContain('Writes are forty-nine verbs and nothing else')
   })
 })
@@ -707,7 +708,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.36.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.38.1'")
     expect(SERVER).toContain('Writes are forty-nine verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
@@ -799,6 +800,21 @@ describe('the narrative verbs (v2.4814)', () => {
     expect(writeRpcBody('apply_matter_narrative', { narrative: { matter_id: MATTER, markdown: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
     expect(writeRpcBody('plan_matter_narrative', { narrative: { matter_id: 'nope', markdown: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('matter_id') })
     expect(writeRpcBody('plan_matter_narrative', { narrative: { matter_id: MATTER } })).toMatchObject({ ok: false })
+  })
+
+  it('v2.6623: ops against the narrative\'s headings, with expect_updated_at; both or neither of markdown and ops refused; the migration carries the shared op function', () => {
+    const ops = [{ op: 'replace_section', heading: 'The claim', markdown: 'What is owed.' }, { op: 'append', markdown: '## Next\n\nThe demand.' }]
+    expect(writeRpcBody('plan_matter_narrative', { narrative: { matter_id: MATTER, ops, expect_updated_at: '2026-11-07T06:00:00Z' } })).toMatchObject({ ok: true, target: MATTER, body: { p: { matter_id: MATTER, ops, expect_updated_at: '2026-11-07T06:00:00Z' }, p_dry_run: true } })
+    expect(writeRpcBody('plan_matter_narrative', { narrative: { matter_id: MATTER, markdown: 'x', ops } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_narrative', { narrative: { matter_id: MATTER, ops: [] } })).toMatchObject({ ok: false })
+    expect(NARRATIVE_OPS_MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
+    expect(NARRATIVE_OPS_MIGRATION).toContain("CREATE OR REPLACE FUNCTION public.hr_doc_apply_ops(p_text text, p_ops jsonb, p_what text DEFAULT 'document')")
+    expect(NARRATIVE_OPS_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_legal_narrative_write(p jsonb, p_dry_run boolean DEFAULT true)')
+    expect(NARRATIVE_OPS_MIGRATION).toContain("IF (p ? 'markdown') = (p ? 'ops') THEN")
+    expect(NARRATIVE_OPS_MIGRATION).toContain("v_applied := public.hr_doc_apply_ops(v_before, p->'ops', 'narrative');")
+    expect(NARRATIVE_OPS_MIGRATION).toContain('v_result := public.legal_set_narrative(v_matter.id, v_md);')
+    expect(NARRATIVE_OPS_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_legal_narrative_write(jsonb, boolean) FROM PUBLIC, anon;')
+    expect(NARRATIVE_OPS_MIGRATION).not.toContain('CREATE TABLE')
   })
 
   it('the plan reply points at apply_matter_narrative, and a repeat apply says it is already on the matter', () => {
@@ -1005,7 +1021,7 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.36.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.38.1'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
     expect(SERVER).toContain('forty-nine verbs')
   })
@@ -1089,7 +1105,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.36.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.38.1'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')
