@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
+import { writeEstimateSentEmailLine } from '../_shared/estimateSentEmailLine.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   ESTIMATE_EXPERIENCE_APP_KEY_LIST,
@@ -413,6 +414,18 @@ serve(async (req) => {
         { kind: isRemail ? 'estimate_remailed' : isResend ? 'estimate_resent' : 'estimate', jobIds: [keys.job_ledger_id], customerId: keys.customer_id, bidId: keys.bid_id, source: { table: 'estimates', id: estimate_id }, sentBy: user.id },
         { to: [customer_email], from: fromMailbox, subject: mail.subject, html: mail.html, resendEmailId: sent.resendEmailId ?? null },
       )
+      // The thread keeps the email we sent (v2.6658, punch list #139's walk): Went out's Emails door and the
+      // customer's thread read it from here; before this they showed nothing for an estimate the sheet had just sent.
+      await writeEstimateSentEmailLine(admin, {
+        estimateId: estimate_id,
+        customerId: keys.customer_id,
+        jobLedgerId: keys.job_ledger_id,
+        to: customer_email,
+        subject: mail.subject,
+        body: mail.text,
+        senderUserId: user.id,
+        senderName: who.name,
+      })
     }
     if (!sent.success) {
       return new Response(

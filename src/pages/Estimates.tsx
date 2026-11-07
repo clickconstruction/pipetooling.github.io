@@ -3139,6 +3139,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         userId={user.id}
         role={role}
         onClose={() => setTellEstimate(null)}
+        // What went re-reads once the sheet's text lands (v2.6658, punch list #139's walk): the page read it during the
+        // email leg's refresh, before the text went, and said *No text went* under a receipt that said it did.
+        onSent={() => setWhatWentRevision((n) => n + 1)}
       />
     ) : null
 
