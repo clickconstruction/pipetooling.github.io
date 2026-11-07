@@ -61,6 +61,8 @@ export type NeedsYouDoorData = {
   lowRatingContactId?: string | null
   /** While you were off (v2.6060, punch list #141 PR 4): the first customer's line still waiting, whose thread the line opens. */
   whileOffFirst?: { contactId: string; messageId: string } | null
+  /** The day back (punch list #256 PR 9): the first teammate whose countdown ended, whose desk opens on Bring back. */
+  awayBackFirstUserId?: string | null
 }
 
 const STAGES = '/jobs?tab=stages'
@@ -212,6 +214,9 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return { kind: 'station', station: 'dispatch-inbox', href: d.customerWaitingInboxHref ?? '/dispatch-mode/inbox' }
     case 'hr-reports-pending':
       return href('/people?tab=hr')
+    case 'away-back-day':
+      // The desk with the Bring back window already up (the deep link's `flow`, v2.6590); the archived list when none is known.
+      return href(d.awayBackFirstUserId ? `/people?tab=users&person=u:${d.awayBackFirstUserId}&flow=bring_back` : '/people?tab=users&archived=1')
   }
 }
 

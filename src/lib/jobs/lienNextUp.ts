@@ -12,7 +12,7 @@ import { isLienLeader, isLienOffice, type LienDeskEntry, type LienDeskPile, type
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { letterTwoIsDue, type LetterTwoStatus } from './lienLetterTwo'
-import { COURTESY_BUTTON, courtesyIsDue, type CourtesyStatus } from './lienCourtesyNotice'
+import { COURTESY_BUTTON, PROMISE_BUTTON, courtesyIsDue, type CourtesyStatus } from './lienCourtesyNotice'
 import { lienReminderAt, type LienReminderAt } from './lienReminders'
 import { lienOfferChipWords, lienOfferFromItem } from './lienPayOffer'
 import { lienChipSigned, lienFieldsHash, lienPenAwaitsConfirm, signatureColumnsOf } from './lienNoticeSignature'
@@ -37,6 +37,8 @@ export type LienNextUpAction =
   | 'letter_two'
   /** The courtesy notice (punch list #231): the plain reminder by email and text from day 7 after a sent notice. */
   | 'courtesy'
+  /** Paying it down (punch list #274, PR 3): a payment since the packet paused the reminders; the row asks what they promised for the rest. */
+  | 'promise'
   | 'note_missed'
   | 'fix_property'
   | 'send_notice'
@@ -101,6 +103,7 @@ const BUTTON: Record<LienNextUpAction, string> = {
   review_hold: 'Review the hold',
   letter_two: 'Send the attorney’s letter',
   courtesy: COURTESY_BUTTON,
+  promise: PROMISE_BUTTON,
   note_missed: 'Note it',
   fix_property: 'Fix the property',
   send_notice: 'Send the notice first',
@@ -235,6 +238,11 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         const twoDue = Boolean(two && letterTwoIsDue(two))
         // The rung on the REMINDERS ladder (punch list #262): the row's dots and the strip's narrowing read it; it changes no rule of when a row appears.
         const reminder = lienReminderAt(courtesy, two)
+        // Paying it down (PR 3 of #274): a payment since the packet is an answer, so no reminder leads; the row asks what they promised for the rest, quiet once a promise is on record.
+        if (courtesy?.state === 'paying') {
+          push({ ...base, key: `promise:${e.jobId}`, sub: courtesy.words, dueOn: null, daysLeft: null, severity: courtesy.paying?.promisedYmd ? 'quiet' : 'amber', action: 'promise', button: office ? BUTTON.promise : null, target: pane('sent'), reminder })
+          break
+        }
         // The courtesy notice (punch list #231) is the light step, so it leads while none has gone, even past day 10; once one went, letter two leads from day 10 with the courtesy's state in its words.
         if (courtesyDue && (!twoDue || !courtesy!.lastSentAt)) {
           push({ ...base, key: `courtesy:${e.jobId}`, sub: courtesy!.words, dueOn: null, daysLeft: null, severity: two?.state === 'overdue' ? 'red' : 'amber', action: 'courtesy', button: office ? BUTTON.courtesy : null, target: pane('sent'), reminder })
@@ -389,9 +397,9 @@ function approvalGroup(r: LienNextUpRow): 'sign' | 'pen' | 'mine' | 'waiting' | 
   return r.button ? 'mine' : 'waiting'
 }
 
-/** A sent notice's follow-up row (punch list #262): the courtesy press or letter two's, with no day of its own. */
+/** A sent notice's follow-up row (punch list #262): the courtesy press, letter two's, or the promise press while they pay (PR 3 of #274), with no day of its own. */
 export function isLienReminderRow(r: Pick<LienNextUpRow, 'action'>): boolean {
-  return r.action === 'courtesy' || r.action === 'letter_two'
+  return r.action === 'courtesy' || r.action === 'letter_two' || r.action === 'promise'
 }
 
 /**

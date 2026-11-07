@@ -77,6 +77,9 @@ vi.mock('../../lib/jobs/propertyKindWrite', () => ({
 const startTwoMock = vi.fn()
 const gcOkayMock = vi.fn()
 const ownerCallMock = vi.fn()
+const promiseMock = vi.fn()
+const jobPromiseMock = vi.fn()
+vi.mock('../../lib/jobs/paymentChaseIo', () => ({ addJobPaymentPromise: (...args: unknown[]) => jobPromiseMock(...args) }))
 const clearPrintedMock = vi.fn()
 const saveDraftMock = vi.fn(async () => 'it-new')
 const signMock = vi.fn()
@@ -84,7 +87,7 @@ const submitMock = vi.fn(async () => undefined)
 const tellLeaderMock = vi.fn(async () => ({ pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args) }
+  return { ...actual, saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args) }
 })
 const codeState = { status: { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null } as { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null } | null, signs: [] as Array<Record<string, unknown>>, answer: { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' } as Record<string, unknown> }
 vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
@@ -1423,6 +1426,34 @@ describe('LienDeskModal the attorney’s letter (v2.3760)', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
     expect((document.querySelector('[data-lien-letter-two="draft"]') as HTMLElement).textContent).toBe('the attorney’s letter · unresponsive')
     expect((document.querySelector('[data-lien-letter-two-heading]') as HTMLElement).textContent).toContain('the attorney’s letter · unresponsive · after the Sep 2 packet')
+  })
+
+  it('paying it down (PR 3 of #274): a payment after the packet reads on the footer, the attorney’s letter door goes plain, and Record what they promised writes the job’s promise and the notice’s record', async () => {
+    promiseMock.mockReset()
+    promiseMock.mockResolvedValue(undefined)
+    jobPromiseMock.mockReset()
+    jobPromiseMock.mockResolvedValue(undefined)
+    const d = sentDesk()
+    d.jobsById = { ...d.jobsById, j650: { ...d.jobsById.j650!, payments_made: 4000 } }
+    d.paymentsByJob = { j650: [{ amount: 4000, paidOn: '2026-09-10' }] }
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 29_500, TODAY, formatYmdMonthDay)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
+    await settle()
+    const state = document.querySelector('[data-lien-courtesy-state]') as HTMLElement
+    expect(state.getAttribute('data-lien-courtesy-state')).toBe('paying')
+    expect(state.textContent).toContain('paying it down · $4,000 paid Sep 10 · $29,500 still owed')
+    expect((document.querySelector('[data-lien-letter-two-door]') as HTMLElement).getAttribute('data-letter-waits')).toBe('paying')
+    expect(document.querySelector('[data-lien-courtesy-door]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Record what they promised…' }))
+    fireEvent.change(screen.getByLabelText('The day they promised'), { target: { value: '2026-09-25' } })
+    fireEvent.change(screen.getByLabelText('The amount they promised'), { target: { value: '29,500' } })
+    fireEvent.change(screen.getByLabelText('Their words'), { target: { value: 'Dana said the check goes out the 24th' } })
+    expect((document.querySelector('[data-lien-promise-form]') as HTMLElement).textContent).toContain('The desk asks again Sep 25.')
+    fireEvent.click(screen.getByRole('button', { name: 'Record it ▸' }))
+    await waitFor(() => expect(promiseMock).toHaveBeenCalled())
+    expect(jobPromiseMock.mock.calls[0]![0]).toMatchObject({ jobId: 'j650', ymd: '2026-09-25', note: 'Dana said the check goes out the 24th' })
+    expect(promiseMock.mock.calls[0]![0]).toMatchObject({ id: 'sent1' })
+    expect(promiseMock.mock.calls[0]![1]).toMatchObject({ by: 'Taunya', ymd: '2026-09-25', amount: 29_500, note: 'Dana said the check goes out the 24th' })
   })
 })
 

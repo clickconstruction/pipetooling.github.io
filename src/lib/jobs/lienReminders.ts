@@ -1,4 +1,4 @@
-import { COURTESY_AFFIDAVIT_MARGIN_DAYS, COURTESY_AGAIN_DAYS, COURTESY_FROM_DAY, type CourtesyStatus } from './lienCourtesyNotice'
+import { COURTESY_AFFIDAVIT_MARGIN_DAYS, COURTESY_AGAIN_DAYS, COURTESY_FROM_DAY, PROMISE_BUTTON, type CourtesyStatus } from './lienCourtesyNotice'
 import { LETTER_TWO_BY_DAY, LETTER_TWO_FROM_DAY, type LetterTwoStatus } from './lienLetterTwo'
 
 /**
@@ -29,6 +29,8 @@ export type LienReminderState =
   | 'waiting'
   /** Step 2: the one courtesy went; the desk waits a week for an answer, then the attorney’s letter leads (v2.6594: never a second courtesy). */
   | 'sent'
+  /** Step 2: they are paying it down (PR 3 of #274) — a payment since the packet pauses the reminders until the promised day or a week; the row asks what they promised for the rest. */
+  | 'paying'
   /** Step 3: letter two is due or overdue and the courtesy is held (no reminder may go, counsel's letter still does) — the row's press is letter two's. */
   | 'two_due'
   /** Step 3: a letter two is on the desk — drafting, awaiting the leader, in the run, or held. */
@@ -101,6 +103,8 @@ export function lienReminderAt(courtesy: CourtesyStatus | null | undefined, two:
     if (two && (two.state === 'due' || two.state === 'overdue')) return at(3, 'two_due', `${two.words} · ${courtesy.words}`)
     return at(4, courtesy.state, courtesy.words)
   }
+  // Paying it down (PR 3 of #274): a payment since the packet is an answer; the notice stands on step 2 with no reminder leading until the promised day or a week.
+  if (courtesy.state === 'paying') return at(2, 'paying', courtesy.words)
   if (courtesy.lastSentAt) {
     // One courtesy, then the attorney's letter (v2.6594): inside the week the desk waits; after it the letter leads when it is due.
     if (!courtesy.waitingForAnswer && two && (two.state === 'due' || two.state === 'overdue')) return at(3, 'two_due', `${two.words} · ${courtesy.words}`)
@@ -110,7 +114,7 @@ export function lienReminderAt(courtesy: CourtesyStatus | null | undefined, two:
   return at(1, 'waiting', courtesy.words, false)
 }
 
-export type LienReminderRow = LienReminderAt & { jobId: string; title: string }
+export type LienReminderRow = LienReminderAt & { jobId: string; title: string; /** Why this notice is on its rung, in the courtesy's or the letter's own words (PR 2 of #274): the step brief counts the step's notices by it. */ why?: string }
 
 export type LienRemindersInput = {
   courtesyByJob: Readonly<Record<string, CourtesyStatus>>
@@ -129,11 +133,26 @@ export type LienReminders = {
 
 export const LIEN_REMINDERS_EMPTY: LienReminders = { rows: [], counts: [0, 0, 0, 0], waiting: 0 }
 
+/** Why a notice stands on its rung, short enough for a chip: the hold's reason, the letter's state, the courtesy's. */
+export function lienReminderWhy(courtesy: CourtesyStatus, two: LetterTwoStatus | null | undefined, at: LienReminderAt): string {
+  if (courtesy.state === 'closed') return courtesy.reason || 'closed'
+  if (at.state === 'paying') return 'paying it down'
+  if (courtesy.state === 'held') return courtesy.reason.replace(/\s—.*$/, '')
+  if (courtesy.state === 'affidavit_week') return 'the affidavit’s week'
+  if (two && two.state === 'in_flight') return 'the attorney’s letter is drafted'
+  if (two && two.state === 'sent') return 'the attorney’s letter went'
+  if (at.step === 3) return 'the courtesy went and a week passed'
+  if (courtesy.state === 'sent') return courtesy.waitingForAnswer ? 'the courtesy went this week' : 'the courtesy went, nothing since'
+  if (courtesy.state === 'waiting') return 'before day 7'
+  return 'nothing since the packet'
+}
+
 export function buildLienReminders(input: LienRemindersInput): LienReminders {
   const rows: LienReminderRow[] = []
   for (const [jobId, courtesy] of Object.entries(input.courtesyByJob)) {
-    const at = lienReminderAt(courtesy, input.letterTwoByJob[jobId])
-    if (at) rows.push({ ...at, jobId, title: input.jobTitle(jobId) })
+    const two = input.letterTwoByJob[jobId]
+    const at = lienReminderAt(courtesy, two)
+    if (at) rows.push({ ...at, jobId, title: input.jobTitle(jobId), why: lienReminderWhy(courtesy, two, at) })
   }
   rows.sort((a, b) => a.step - b.step || (b.day ?? -1) - (a.day ?? -1) || a.title.localeCompare(b.title))
   const counts: [number, number, number, number] = [0, 0, 0, 0]
@@ -175,8 +194,15 @@ export function lienReminderLadderItems(at: LienReminderAt): LienReminderCardIte
     },
     {
       state: s(2),
-      title: s(2) === 'done' ? 'Reminder sent' : 'Reminder sent',
-      detail: s(2) === 'done' ? 'The one reminder went and a week passed.' : s(2) === 'now' ? `${at.words}. One courtesy goes; after a week of silence the attorney’s letter leads.` : 'Then the desk waits a week for an answer.',
+      title: s(2) === 'now' && at.state === 'paying' ? 'Paying it down' : 'Reminder sent',
+      detail:
+        s(2) === 'done'
+          ? 'The one reminder went and a week passed.'
+          : s(2) === 'now'
+            ? at.state === 'paying'
+              ? `${at.words[0]?.toUpperCase() ?? ''}${at.words.slice(1)}. A partial payment is an answer: the desk stops reminding and asks what they promised for the rest.`
+              : `${at.words}. One courtesy goes; after a week of silence the attorney’s letter leads.`
+            : 'Then the desk waits a week for an answer.',
     },
     {
       state: s(3),
@@ -203,7 +229,7 @@ export function lienReminderRungRule(step: LienReminderStep): LienReminderRungRu
     case 1:
       return { when: `the packet went, nothing came back, and it is day ${COURTESY_FROM_DAY} or later`, press: 'Send a courtesy notice, one email and one text from the notice’s own facts, never certified mail', who: 'office', movesOn: 'the courtesy goes' }
     case 2:
-      return { when: 'the one courtesy notice went', press: `none for ${COURTESY_AGAIN_DAYS} days; then Send the attorney’s letter`, who: 'office', movesOn: 'the attorney’s letter is drafted, or something closes it' }
+      return { when: 'the one courtesy notice went, or a payment came in after the packet and money is still owed', press: `none for ${COURTESY_AGAIN_DAYS} days; then Send the attorney’s letter. While they pay, ${PROMISE_BUTTON}`, who: 'office', movesOn: 'the attorney’s letter is drafted, the promised day passes, or something closes it' }
     case 3:
       return { when: `the attorney’s letter is due from day ${LETTER_TWO_FROM_DAY} and overdue from day ${LETTER_TWO_BY_DAY} while the courtesy is held, or an attorney’s letter is drafting, awaiting the leader, in the run or sent`, press: 'Send the attorney’s letter, counsel’s certified second letter, drafted on the notice and approved and run like any notice', who: 'leader', movesOn: 'something closes it, or the affidavit is filed' }
     default:
@@ -243,8 +269,22 @@ const GC_OKAY: LienBriefMove = { press: 'The GC authorized direct pay', means: '
  * step on its own · what happens if nobody acts. The days are the clocks' own constants. The other moves
  * are the presses a sent notice's footer offers: *Record the owner’s call…*, *The GC authorized direct
  * pay…*, *Send a courtesy notice ▸* (again, by hand), *Send the attorney’s letter ▸* while unpaid.
+ * `state` (PR 3 of #274) is the picked notice's own: step 2 while *paying it down* reads the payment's
+ * brief — the usual move is *Record what they promised*, and the attorney's letter waits.
  */
-export function lienReminderBrief(step: LienReminderStep): LienReminderBrief {
+export function lienReminderBrief(step: LienReminderStep, state?: LienReminderState | null): LienReminderBrief {
+  if (step === 2 && state === 'paying') {
+    return {
+      title: LIEN_REMINDER_STEPS[1],
+      who: 'office',
+      plain: `We mailed the lien notice, and they have started paying. A partial payment is an answer, so the desk stops reminding and asks what they promised for the rest. The lien’s last day does not move.`,
+      why: `A payment came in after the packet and money is still owed.`,
+      usual: { press: PROMISE_BUTTON, means: 'the date and the amount they gave for the rest; the desk asks again on that date' },
+      instead: [{ press: 'Send the attorney’s letter', means: 'anyway, when the payment was token' }, OWNER_CALL, GC_OKAY],
+      closes: 'the rest is paid, the GC okays direct pay in writing, the owner’s call is recorded, or the affidavit is filed',
+      ifNobody: `Nothing is sent while they pay. On the promised day, or a week after the payment, the desk asks again. The affidavit’s week and the lien’s day still come.`,
+    }
+  }
   switch (step) {
     case 1:
       return {

@@ -26,6 +26,8 @@ import { parsePaidJobEmailRecipients } from '../../lib/paidJobEmail'
 import { parseReadyToBillRecipientPrefs } from '../../lib/readyToBillNotify'
 import { parseSignedAgreementRecipients } from '../../lib/signedAgreementsStream'
 import { fetchCrewDayPreview, sendCrewDayTest } from '../../lib/crewDayEmailClient'
+import { supabaseWeekEmailIo } from '../../lib/techWeek/weekEmailIo'
+import { YourWeekEmailCard } from './YourWeekEmailCard'
 import { fetchMoneyWaitingPreview, sendMoneyWaitingTest } from '../../lib/moneyWaitingEmailClient'
 import { fetchPaymentForecastPreview, sendPaymentForecastTest } from '../../lib/paymentForecastEmailClient'
 import { fetchBilledReportPreview, sendBilledReportTest } from '../../lib/billedReportEmailClient'
@@ -59,6 +61,17 @@ const REAL: Record<TeamRealPreviewStream, { preview: () => Promise<string>; test
   money_waiting: { preview: fetchMoneyWaitingPreview, test: sendMoneyWaitingTest },
   payment_forecast: { preview: fetchPaymentForecastPreview, test: sendPaymentForecastTest },
   billed_awaiting: { preview: fetchBilledReportPreview, test: sendBilledReportTest },
+  // Your week's Monday email (punch list #255, v2.6607): the caller's own last week, as the run would send it.
+  your_week: {
+    preview: async () => {
+      const r = await supabaseWeekEmailIo().previewMine()
+      if (!r.mine) throw new Error('No card for you yet: the office has not picked your signal, or it has nothing to read.')
+      return r.mine.html
+    },
+    test: async () => {
+      await supabaseWeekEmailIo().testMine()
+    },
+  },
 }
 
 /** The digest stream a row can show for real: its own `real` beside a sample, or its render when it is only that. */
@@ -382,6 +395,8 @@ export function SettingsWhatTheTeamSeesTab() {
           </div>
         </section>
       ))}
+      {/* The Monday email's switch and preview (v2.6607, punch list #255), under the week so the groups keep their order. */}
+      <YourWeekEmailCard />
       {myRole !== 'dev' ? <div style={{ ...CARD, ...MUTED }}>This tab is for devs.</div> : null}
     </div>
   )
