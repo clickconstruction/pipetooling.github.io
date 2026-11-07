@@ -1679,6 +1679,8 @@ export default function LienDeskModal({
                             : e.item
                               ? 'draft saved'
                               : ''
+              // A notice that went inside thirty days on a row off the Sent pile (v2.6624, punch list #248): the day it went stays in the row's words.
+              const sentWords = e.pile !== 'sent' && e.sentItem?.sent_at ? `sent ${formatYmdMonthDay(calendarYmdInAppTzFromIso(e.sentItem.sent_at))}` : ''
               return (
                 <button
                   key={e.jobId}
@@ -1706,12 +1708,13 @@ export default function LienDeskModal({
                     <span>{named.map(workMonthShort).join(' + ')}</span>
                     {e.datedFromCreation ? <span data-lien-desk-dated-from-creation>· {DATED_FROM_CREATION_WORDS}</span> : null}
                     {state ? <span>· {state}</span> : null}
+                    {sentWords ? <span data-lien-desk-sent-words>· {sentWords}</span> : null}
                     {(() => {
                       // Letter two (v2.3760): the second letter's clock on a sent notice, and its mark on a draft that is one.
                       const lt = data?.letterTwoByJob[e.jobId]
                       const draftTwo = e.item && e.item.status !== 'sent' ? parseLienDeskDraftFields(e.item.fields)?.letterTwo : undefined
                       if (draftTwo) return <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-800)')} data-lien-letter-two="draft">the attorney’s letter · {letterTwoKindLabel(draftTwo.kind)}</span>
-                      if (!lt || e.pile !== 'sent' || lt.state === 'none' || lt.state === 'paid') return null
+                      if (!lt || (e.pile !== 'sent' && !e.sentItem) || lt.state === 'none' || lt.state === 'paid') return null
                       const tone = lt.state === 'overdue' ? chip('var(--bg-red-tint)', 'var(--text-red-600)') : lt.state === 'due' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : lt.state === 'sent' || lt.state === 'gc_authorized' || lt.state === 'owner_called' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : chip('var(--bg-subtle)', 'var(--text-muted)')
                       return <span style={tone} data-lien-letter-two={lt.state}>{lt.words}</span>
                     })()}
@@ -2849,6 +2852,91 @@ export default function LienDeskModal({
     const offerSwitch = () => (
       <LienOfferBox part="switch" compact offer={offer} onChange={setOffer} todayYmd={todayYmd} affidavitDueOn={affidavitDueOn} amounts={offerAmounts} disabled={busy} />
     )
+    // The sent notice's facts (v2.3760), for any row whose job has one inside thirty days (v2.6624, punch list #248): the Sent
+    // footer draws them all; a drafting row with new months due draws the courtesy's and the attorney's letter's doors.
+    // Letter two (v2.3760): what has happened since the packet went out, and the two doors — the GC's written okay, or the second letter.
+    const lt = data?.letterTwoByJob[selected.jobId]
+    // The first packet's item carries the GC's okay and the owner's call; the entry's item may be a later letter two.
+    // The packet that went: letter two's first item, else the entry's sent notice — the Sent pile's `item`, or a drafting row's `sentItem` (v2.6624).
+    const first = (lt?.firstItemId ? data?.items.find((i) => i.id === lt.firstItemId) : null) ?? selected.sentItem ?? null
+    const call = data?.ownerCallByJob[selected.jobId] ?? null
+    // The courtesy notice (punch list #231): where it stands, the amount it names (what the enclosed bills still owe, else the notice's claim), and the facts the window sends with.
+    const courtesy = courtesyByJob[selected.jobId] ?? null
+    const courtesyDraft = first ? parseLienDeskDraftFields(first.fields) : null
+    const stillOwed = payPage.rows.reduce((s, r) => s + r.openAmount, 0)
+    const courtesyClaim = payPage.rows.length && stillOwed > 0 ? stillOwed : Math.max(0, Number(courtesyDraft?.notice.claimAmount ?? 0) || 0)
+    const courtesyFacts: CourtesyFacts | null =
+      first && courtesyDraft && courtesy?.lienDay
+        ? {
+            jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : '',
+            jobName: (job?.job_name ?? '').trim(),
+            propertyAddress: (job?.job_address ?? '').trim(),
+            county: (address?.county ?? '').trim(),
+            gcName: gc?.name || courtesyDraft.notice.originalContractorName,
+            claimantName: courtesyDraft.notice.claimantName,
+            claim: courtesyClaim,
+            monthsWords: describeNoticeMonths(first.months ?? []),
+            noticeSentOn: first.sent_at ? calendarYmdInAppTzFromIso(first.sent_at) : todayYmd,
+            lienDay: courtesy.lienDay,
+            payLinks: payPage.rows.filter((r) => r.payable && r.openAmount > 0).map((r) => ({ address: payLinkDisplay(r.invoiceId), amount: r.openAmount })),
+            contactPerson: courtesyDraft.notice.contactPerson,
+            phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(),
+            offer: lienOfferFromItem(first),
+          }
+        : null
+    const openCourtesy = () => {
+      if (!first || !courtesyFacts || !courtesyDraft) return
+      setCourtesyRecipients(null)
+      setCourtesyCtx({ first, facts: courtesyFacts, jobId: selected.jobId, jobLabel: jobLabel(job, selected.jobId), gcCustomerId: job?.gc_customer_id ?? null })
+      void loadCourtesyRecipients({ gcCustomerId: job?.gc_customer_id ?? null, gcName: gc?.name || courtesyDraft.notice.originalContractorName, gcEmail: courtesyDraft.gcEmail || gc?.email || '', ownerName, ownerEmail: property.owner.email, ownerPhone: property.owner.phone }).then(setCourtesyRecipients, (e) => {
+        showToast(formatErrorMessage(e, 'Their addresses could not be found.'), 'error')
+        setCourtesyRecipients([])
+      })
+    }
+    // The recorded packet (v2.4119): a certified send with no number yet gets its "add the number" door here.
+    const sentFiling = (data?.filingsByJob[selected.jobId] ?? []).find((f) => f.id === (first?.sent_filing_id ?? selected.item?.sent_filing_id)) ?? null
+    const trackingOwed = sentFiling ? sendsTrackingOwed(sentFiling.sends) : []
+    const jobBalance = Math.max(0, Number(job?.revenue ?? 0) - Number(job?.payments_made ?? 0))
+    // Counsel's sign-off (#41 PR 3, v2.3790): the memo's moment — an owner paying Click direct while the GC is silent needs
+    // counsel's per-job okay. Read from the firm's matter through `legalSignoff`; no matter with the firm, no door.
+    const signoff = legalSignoff?.stateFor(selected.jobId) ?? null
+    const signoffLine = signoff ? signoffWords(signoff, demandDate) : ''
+    const startTwo = (kind: LetterTwoKind) => {
+      if (!first) return
+      setLetterTwoMenu(false)
+      const fields: LienDeskDraftFields = {
+        notice: jobDefaults,
+        gcEmail: storedDraft?.gcEmail || gc?.email || '',
+        ...(storedDraft?.batchReason ? { batchReason: storedDraft.batchReason } : {}),
+        ...(storedDraft?.staleNote ? { staleNote: storedDraft.staleNote } : {}),
+        ...(storedDraft?.monthsDatedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
+        coverLetter: letterTwoTemplate(kind, { gcName: gc?.name ?? '', claimantName: jobDefaults.claimantName }),
+        letterTwo: { kind, afterItemId: first.id, afterSentAt: first.sent_at ?? '' },
+      }
+      void run('Start the attorney’s letter', async () => void (await startLetterTwo({ first, fields, userId: authUserId })), 'The attorney’s letter drafted — read it on the paper, then send it for approval.')
+    }
+    // The two doors a sent notice keeps (v2.6624): on the Sent footer as before, and on a drafting footer beside Send for approval once new months are due.
+    const courtesyDoor = office && first && courtesy && courtesyMaySend(courtesy) && courtesyFacts ? <button type="button" onClick={openCourtesy} disabled={busy} style={btn(courtesy.state === 'due' ? 'amber' : 'plain', busy)} data-lien-courtesy-door data-courtesy-state={courtesy.state} title={courtesy.state === 'sent' ? 'One courtesy went. Send it again by hand only when a channel bounced; the desk does not ask for a second.' : courtesy.state === 'affidavit_week' ? 'The affidavit comes first this week; a courtesy may still go by hand.' : 'A plain reminder by email and text: the notice stands, the day the lien goes on unless it is paid, the pay link, your number. Not a statutory paper, never certified mail.'}>{courtesy.state === 'sent' ? 'Send a courtesy notice again' : COURTESY_BUTTON} ▸</button> : null
+    const letterTwoDoor = office && first && jobBalance > 0.005 && lt?.state !== 'sent' && lt?.state !== 'in_flight' ? (
+      <span style={{ position: 'relative' }}>
+        <button type="button" onClick={() => setLetterTwoMenu((o) => !o)} disabled={busy} aria-haspopup="menu" aria-expanded={letterTwoMenu} style={lt && letterTwoIsDue(lt) && courtesy?.state !== 'paying' ? { ...btn('amber', busy) } : btn('plain', busy)} data-lien-letter-two-door data-letter-waits={courtesy?.state === 'paying' ? 'paying' : undefined} title={courtesy?.state === 'paying' ? 'They are paying it down, so the desk does not ask for the attorney’s letter. The office may still send it when the payment was token.' : undefined}>Send the attorney’s letter ▸</button>
+        {letterTwoMenu ? (
+          <>
+            <div onClick={() => setLetterTwoMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 5 }} />
+            <div role="menu" aria-label="The attorney’s letter — pick the letter" style={{ position: 'absolute', right: 0, bottom: 'calc(100% + 4px)', zIndex: 6, minWidth: 320, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+              <div style={{ ...boxHead, padding: '0.4rem 0.75rem 0.1rem' }}>Attorney’s letter · pick the letter</div>
+              {LETTER_TWO_KINDS.map((k) => (
+                <button key={k.key} type="button" role="menuitem" onClick={() => startTwo(k.key)} style={{ display: 'grid', gap: 2, width: '100%', padding: '0.45rem 0.75rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--surface)', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }} data-lien-letter-two-kind={k.key}>
+                  <strong>{k.label}</strong>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{k.hint}</span>
+                </button>
+              ))}
+              <div style={{ padding: '0.35rem 0.75rem 0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>Drafts the letter on this job's notice — read it on the paper, then send it for approval as usual.</div>
+            </div>
+          </>
+        ) : null}
+      </span>
+    ) : null
     if (state === 'needs_owner' || state === 'to_draft' || (state === 'missed' && selected.dueMonths.length > 0)) {
       const blocked = !ready
       // The draft footer (v2.3776, punch list #36): ONE row — the state and its verb on the left, Save draft and the primary
@@ -2915,6 +3003,18 @@ export default function LienDeskModal({
             <>
             {leader && !blocked ? offerBox() : null}
             {leader && !blocked ? signLine() : null}
+            {selected.sentItem && first ? (
+              // The notice that went (v2.6624, punch list #248): its day, letter two's clock and its two doors ride above the draft row, so the next months draft while the reminders stay one press away.
+              <div className="lienFootRow" data-lien-desk-sent-doors style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                <span>
+                  Sent <strong style={{ color: 'var(--text-700)' }}>{first.sent_at ? demandDate(calendarYmdInAppTzFromIso(first.sent_at)) : ''}</strong>
+                  {lt?.words ? ` · ${lt.words}` : lt?.day != null ? ` · day ${lt.day}` : ''} · the next notice drafts below
+                </span>
+                <span className="lienFootSpacer" />
+                {courtesyDoor}
+                {letterTwoDoor}
+              </div>
+            ) : null}
             <div className="lienFootRow" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
               <span className="lienFootState">
                 <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {stateWords}
@@ -3157,66 +3257,6 @@ export default function LienDeskModal({
         </>
       )
     } else if (state === 'sent') {
-      // Letter two (v2.3760): what has happened since the packet went out, and the two doors — the GC's written okay, or the second letter.
-      const lt = data?.letterTwoByJob[selected.jobId]
-      // The first packet's item carries the GC's okay and the owner's call; the entry's item may be a later letter two.
-      const first = (lt?.firstItemId ? data?.items.find((i) => i.id === lt.firstItemId) : null) ?? selected.item
-      const call = data?.ownerCallByJob[selected.jobId] ?? null
-      // The courtesy notice (punch list #231): where it stands, the amount it names (what the enclosed bills still owe, else the notice's claim), and the facts the window sends with.
-      const courtesy = courtesyByJob[selected.jobId] ?? null
-      const courtesyDraft = first ? parseLienDeskDraftFields(first.fields) : null
-      const stillOwed = payPage.rows.reduce((s, r) => s + r.openAmount, 0)
-      const courtesyClaim = payPage.rows.length && stillOwed > 0 ? stillOwed : Math.max(0, Number(courtesyDraft?.notice.claimAmount ?? 0) || 0)
-      const courtesyFacts: CourtesyFacts | null =
-        first && courtesyDraft && courtesy?.lienDay
-          ? {
-              jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : '',
-              jobName: (job?.job_name ?? '').trim(),
-              propertyAddress: (job?.job_address ?? '').trim(),
-              county: (address?.county ?? '').trim(),
-              gcName: gc?.name || courtesyDraft.notice.originalContractorName,
-              claimantName: courtesyDraft.notice.claimantName,
-              claim: courtesyClaim,
-              monthsWords: describeNoticeMonths(first.months ?? []),
-              noticeSentOn: first.sent_at ? calendarYmdInAppTzFromIso(first.sent_at) : todayYmd,
-              lienDay: courtesy.lienDay,
-              payLinks: payPage.rows.filter((r) => r.payable && r.openAmount > 0).map((r) => ({ address: payLinkDisplay(r.invoiceId), amount: r.openAmount })),
-              contactPerson: courtesyDraft.notice.contactPerson,
-              phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(),
-              offer: lienOfferFromItem(first),
-            }
-          : null
-      const openCourtesy = () => {
-        if (!first || !courtesyFacts || !courtesyDraft) return
-        setCourtesyRecipients(null)
-        setCourtesyCtx({ first, facts: courtesyFacts, jobId: selected.jobId, jobLabel: jobLabel(job, selected.jobId), gcCustomerId: job?.gc_customer_id ?? null })
-        void loadCourtesyRecipients({ gcCustomerId: job?.gc_customer_id ?? null, gcName: gc?.name || courtesyDraft.notice.originalContractorName, gcEmail: courtesyDraft.gcEmail || gc?.email || '', ownerName, ownerEmail: property.owner.email, ownerPhone: property.owner.phone }).then(setCourtesyRecipients, (e) => {
-          showToast(formatErrorMessage(e, 'Their addresses could not be found.'), 'error')
-          setCourtesyRecipients([])
-        })
-      }
-      // The recorded packet (v2.4119): a certified send with no number yet gets its "add the number" door here.
-      const sentFiling = (data?.filingsByJob[selected.jobId] ?? []).find((f) => f.id === (first?.sent_filing_id ?? selected.item?.sent_filing_id)) ?? null
-      const trackingOwed = sentFiling ? sendsTrackingOwed(sentFiling.sends) : []
-      const jobBalance = Math.max(0, Number(job?.revenue ?? 0) - Number(job?.payments_made ?? 0))
-      // Counsel's sign-off (#41 PR 3, v2.3790): the memo's moment — an owner paying Click direct while the GC is silent needs
-      // counsel's per-job okay. Read from the firm's matter through `legalSignoff`; no matter with the firm, no door.
-      const signoff = legalSignoff?.stateFor(selected.jobId) ?? null
-      const signoffLine = signoff ? signoffWords(signoff, demandDate) : ''
-      const startTwo = (kind: LetterTwoKind) => {
-        if (!first) return
-        setLetterTwoMenu(false)
-        const fields: LienDeskDraftFields = {
-          notice: jobDefaults,
-          gcEmail: storedDraft?.gcEmail || gc?.email || '',
-          ...(storedDraft?.batchReason ? { batchReason: storedDraft.batchReason } : {}),
-          ...(storedDraft?.staleNote ? { staleNote: storedDraft.staleNote } : {}),
-          ...(storedDraft?.monthsDatedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
-          coverLetter: letterTwoTemplate(kind, { gcName: gc?.name ?? '', claimantName: jobDefaults.claimantName }),
-          letterTwo: { kind, afterItemId: first.id, afterSentAt: first.sent_at ?? '' },
-        }
-        void run('Start the attorney’s letter', async () => void (await startLetterTwo({ first, fields, userId: authUserId })), 'The attorney’s letter drafted — read it on the paper, then send it for approval.')
-      }
       const noteOkay = () => {
         if (!first) return
         void run('Note the GC’s okay', async () => noteGcAuthorizedDirectPay(first, { name: authName, note: gcOkayNote }), 'Noted — the attorney’s letter is off; the owner may pay us against a release.').then((ok) => {
@@ -3309,27 +3349,8 @@ export default function LienDeskModal({
               {office && first ? <button type="button" onClick={() => setOwnerCallOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-owner-call-door>{call ? 'The owner called again…' : 'Record the owner’s call…'}</button> : null}
               {office && first && courtesy?.state === 'paying' ? <button type="button" onClick={() => setPromiseOpen(true)} disabled={busy} style={btn(courtesy.paying?.promise ? 'plain' : 'amber', busy)} data-lien-promise-door title="They are paying it down. Record the day and the amount they gave for the rest; the desk asks again on that day. The day also reads on the Stages board.">{courtesy.paying?.promise ? 'They promised again…' : `${PROMISE_BUTTON}…`}</button> : null}
               {office && first && !lt?.gcAuthorized && jobBalance > 0.005 && lt?.state !== 'sent' ? <button type="button" onClick={() => setGcOkayOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-gc-okay>The GC authorized direct pay…</button> : null}
-              {office && first && courtesy && courtesyMaySend(courtesy) && courtesyFacts ? <button type="button" onClick={openCourtesy} disabled={busy} style={btn(courtesy.state === 'due' ? 'amber' : 'plain', busy)} data-lien-courtesy-door data-courtesy-state={courtesy.state} title={courtesy.state === 'sent' ? 'One courtesy went. Send it again by hand only when a channel bounced; the desk does not ask for a second.' : courtesy.state === 'affidavit_week' ? 'The affidavit comes first this week; a courtesy may still go by hand.' : 'A plain reminder by email and text: the notice stands, the day the lien goes on unless it is paid, the pay link, your number. Not a statutory paper, never certified mail.'}>{courtesy.state === 'sent' ? 'Send a courtesy notice again' : COURTESY_BUTTON} ▸</button> : null}
-              {office && first && jobBalance > 0.005 && lt?.state !== 'sent' && lt?.state !== 'in_flight' ? (
-                <span style={{ position: 'relative' }}>
-                  <button type="button" onClick={() => setLetterTwoMenu((o) => !o)} disabled={busy} aria-haspopup="menu" aria-expanded={letterTwoMenu} style={lt && letterTwoIsDue(lt) && courtesy?.state !== 'paying' ? { ...btn('amber', busy) } : btn('plain', busy)} data-lien-letter-two-door data-letter-waits={courtesy?.state === 'paying' ? 'paying' : undefined} title={courtesy?.state === 'paying' ? 'They are paying it down, so the desk does not ask for the attorney’s letter. The office may still send it when the payment was token.' : undefined}>Send the attorney’s letter ▸</button>
-                  {letterTwoMenu ? (
-                    <>
-                      <div onClick={() => setLetterTwoMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 5 }} />
-                      <div role="menu" aria-label="The attorney’s letter — pick the letter" style={{ position: 'absolute', right: 0, bottom: 'calc(100% + 4px)', zIndex: 6, minWidth: 320, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
-                        <div style={{ ...boxHead, padding: '0.4rem 0.75rem 0.1rem' }}>Attorney’s letter · pick the letter</div>
-                        {LETTER_TWO_KINDS.map((k) => (
-                          <button key={k.key} type="button" role="menuitem" onClick={() => startTwo(k.key)} style={{ display: 'grid', gap: 2, width: '100%', padding: '0.45rem 0.75rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--surface)', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }} data-lien-letter-two-kind={k.key}>
-                            <strong>{k.label}</strong>
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{k.hint}</span>
-                          </button>
-                        ))}
-                        <div style={{ padding: '0.35rem 0.75rem 0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>Drafts the letter on this job's notice — read it on the paper, then send it for approval as usual.</div>
-                      </div>
-                    </>
-                  ) : null}
-                </span>
-              ) : null}
+              {courtesyDoor}
+              {letterTwoDoor}
             </div>
           )}
         </>
