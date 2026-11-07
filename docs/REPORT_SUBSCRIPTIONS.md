@@ -5,7 +5,7 @@ file: REPORT_SUBSCRIPTIONS.md
 type: Architecture/Reference
 purpose: Names and defines the app's recurring/scheduled report-email pattern — streams, request tables, cron dispatchers, fresh-at-send builds, and the My Email Schedule surface — and the checklist for adding a new stream
 audience: Developers, AI Agents
-last_updated: 2026-11-01
+last_updated: 2026-11-07
 key_sections:
   - name: "What the system is"
   - name: "The five pieces"
@@ -51,6 +51,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 | `payment_forecast` | scheduled report | `payment_forecast_email_requests` (v2.2223; internal `recipient_user_id`; share UI v2.2226) | `payment-forecast-email-dispatch` | ✅ recipient-scoped (v2.2223) | — (scheduled report) |
 | `ct_roster_audit` | fixed weekly audit | none — fixed dev stream, no request table or share UI (v2.2438) | `ct-roster-audit` (weekly cron, Mon 13:00 UTC) | — | — (dev infra audit; always sends, all-clear = heartbeat) |
 | `bridge_weekly_sheet` | fixed weekly sheet to the devs | none — the switch `app_settings` `bridge_weekly_sheet_on_v1` (off as it ships, dev-only policy) and the run kept in `bridge_weekly_sheet_last_run_v1`, once a day (v2.5883) | `bridge-weekly-sheet` (cron `0 11,12 * * 1`; the 6 AM Central tick runs) | — | — (every dev with a real account, their own address) |
+| `your_week_email` | fixed weekly card to each tech with a signal (v2.6607, punch list #255) | none — the switch `app_settings` `your_week_email_on_v1` (off as it ships, dev-only policy) and the run kept in `your_week_email_last_run_v1`, once a day; the recipients are everyone with a `users.week_signal` on a real, unarchived account with an address (`weekEmailRecipients`) | `your-week-email` (cron `0 11,12 * * 1`; the 6 AM Central tick runs; `week_card_data(user)` as the service role, last week's card as of its Saturday) | — | — (their own address; preview and test from the Monday email card on What the team sees; a person with no card is skipped and named in the run's `gaps`) |
 | `crew_day` | scheduled report | `crew_day_email_requests` (v2.2603; internal `recipient_user_id`; **per-recipient payload** — `get_crew_day_payload_for_user` rebuilds for the recipient; **office-only on both sides since v2.2615** — superintendents neither schedule nor receive (owner decision: the dashboard Crew Day section is their window); emailed day = the send's Chicago day) | `crew-day-email-dispatch` | ✅ recipient-scoped | — (scheduled report) |
 | `legal_referral` | event | `legal_notification_queue` (triggers on `legal_matters.stage` → referred / pulled, office `answer` entries) + `legal_firm_recipients` rules (v2.3325) | `legal-notify-dispatch` (`1-56/5` lane) | — | — (outside recipients: the firm's own Notifications page; office sees them read-only on the Legal desk) |
 | `legal_digest` | fixed weekly per recipient | `legal_firm_recipients.digest_weekday/time` (no request table — the recipient row is the schedule; `last_digest_at` dedupes and, since v2.6283, is the person's own window, at most eight days back, `legalDigestSince`) | `legal-notify-dispatch` | — | — |
