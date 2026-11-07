@@ -88,6 +88,8 @@ export function PersonDeskLifecycleModal({
   const [queueReload, setQueueReload] = useState(0)
   // The Away note (punch list #256 PR 8, v2.6587): written here before the finish, archive-user skips the ban for it.
   const [awayNoteOpen, setAwayNoteOpen] = useState(false)
+  /** A note saved from this window: the confirm says the sign-in opens to it instead of the ban. */
+  const [awayNoteSaved, setAwayNoteSaved] = useState(false)
   const [wageInput, setWageInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   /** Leave: customers still on the account's name (null = not counted yet / no account). */
@@ -271,7 +273,7 @@ export function PersonDeskLifecycleModal({
         const willArchiveRow = archiveAfter && archiveAllowed
         const moving = willArchiveAccount && customerMode === 'reassign' && (customerCount ?? 0) > 0
         const what = [
-          willArchiveAccount ? (userEmail ? 'the account is archived (sign-in banned)' : 'the account is archived') : null,
+          willArchiveAccount ? (userEmail ? (awayNoteSaved ? 'the account is archived (their sign-in opens to the Away note)' : 'the account is archived (sign-in banned)') : 'the account is archived') : null,
           moving ? `${customerCount} customer${customerCount === 1 ? '' : 's'} move to the company owner` : null,
           willArchiveRow ? 'the roster row is archived' : null,
         ].filter(Boolean)
@@ -454,7 +456,7 @@ export function PersonDeskLifecycleModal({
         </div>
       </div>
       {awayNoteOpen && personKey.userId ? (
-        <PersonDeskAwayNoteModal userId={personKey.userId} displayName={personKey.displayName} archived={false} hasLogin={userHasLogin} leftYmd={endDate} readOnly={viewer.readOnly} onClose={() => setAwayNoteOpen(false)} />
+        <PersonDeskAwayNoteModal userId={personKey.userId} displayName={personKey.displayName} archived={false} hasLogin={userHasLogin} leftYmd={endDate} readOnly={viewer.readOnly} onClose={() => setAwayNoteOpen(false)} onChanged={() => setAwayNoteSaved(true)} />
       ) : null}
       {queueOpen && personKey.userId ? (
         <PeopleHoursApprovalsQueueModal

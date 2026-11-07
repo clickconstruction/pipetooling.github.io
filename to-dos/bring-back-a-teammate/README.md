@@ -2,7 +2,7 @@
 name: "Bring back a teammate who left: one press for the login and the roster row, a new stint, the stale rows"
 number: 256
 group: ready
-status: PR 1, the kernel, v2.6480 · PR 2, the stints and `restore_roadmap`, v2.6481 · PR 3, the Bring back window, v2.6523 · PR 4, Hire finds them, v2.6525 · PR 5, the stints in view, v2.6526 · PR 6, the Away note's kernel, v2.6566 · PR 7, the seal, v2.6572 (pushed 2026-11-06, the gate confirmed on prod) · PR 7b, the guard sweep across the 104 functions, v2.6579 · PR 8, the Away note, v2.6587 · the walk of 2026-11-04 on the card with seven follow-ons · every call answered 2026-11-03 (tenure from the day back, roadmap 90 days, wage required, training mode off, the Away note behind a sealed login)
+status: PR 1, the kernel, v2.6480 · PR 2, the stints and `restore_roadmap`, v2.6481 · PR 3, the Bring back window, v2.6523 · PR 4, Hire finds them, v2.6525 · PR 5, the stints in view, v2.6526 · PR 6, the Away note's kernel, v2.6566 · PR 7, the seal, v2.6572 (pushed 2026-11-06, the gate confirmed on prod) · PR 7b, the guard sweep across the 104 functions, v2.6579 · PR 8, the Away note, v2.6587 · PR 9, the Needs you item on the day back, v2.6590 · the walk of 2026-11-04 on the card with seven follow-ons · every call answered 2026-11-03 (tenure from the day back, roadmap 90 days, wage required, training mode off, the Away note behind a sealed login)
 summary: >
   A tech finished their last day on 2026-11-03 and plans to come back in three years. End employment
   closes them out well, but the way back is a dev's undo, not a return. Restore brings back the login
@@ -14,7 +14,7 @@ summary: >
   and the rows three years made stale (sign-in, wage, leader, licenses, paperwork). Hire finds the
   archived match and offers it. While they are away, an Away note the office writes person by person
   (a note, a countdown to the day back, how far they are from the shop) is the one screen they find.
-next: PR 9, the Needs you item on the countdown's day with Bring back… on it, read from `away_notes.alert_on_day`. The seal's migration `20261106120000_archived_seal` was pushed 2026-11-06 and its rolconfig check passed on prod; PR 8's migration `20261106140000_away_notes` and its three functions deploy right after its merge.
+next: every PR of the train is on main; close the card once PR 9 is merged and walked (the `docs(to-dos): retire #256` PR deletes this folder).
 size: L as a train of nine (S · M · M · S · S, then the Away note S · L · M · S)
 blocker: None.
 opinion: build draft 1 as drawn after the second pass, and the Away note behind a sealed login (call 5): the seal first, proven by its probe, then the note. Keep the account; never re-hire a returner as a new person, since the hours log, the logbook, the HR file and every job's history hang off the old account.
@@ -176,7 +176,7 @@ equal columns in the A and B comparison, and the same words from *Email me my no
 | 7 | **Shipped v2.6572.** The seal, nothing visible: `caller_is_archived()`, the pre-request gate, `apply_archived_read_blocks()` on every table (the fourth fence call, CI-checked), the `storage.objects` policy, `refuseArchivedCaller` + `check:edge-archived-guard`, the `CLAUDE.md` rule, the seal probe in the SQL beds. Push and confirm the gate on prod's shape before PR 8 | L |
 | 7b | **Shipped v2.6579.** The guard call swept into the 104 functions that read the caller and switch to the service role (97 by `node scripts/codemods/archived-guard-sweep.mjs`, seven by `python3 scripts/codemods/archived-guard-hand-edits.py`), `check:edge-archived-guard` wired into `ci.yml` after the link step, `docs/EDGE_FUNCTIONS.md`'s Authentication paragraph amended; every one deployed from `main` right after the merge, the drift check clean after | S |
 | 8 | **Shipped v2.6587.** Migration `20261106140000_away_notes`: `away_notes` (one row per account: words, the day back, show where, show call, alert on the day) + `my_away_note()`; the `away-note` function writes the row and opens or closes the sign-in; `archive-user` skips the ban when a note is on and `restore-user` takes the note down; `useAuth` reads the seal's PT403 as `archivedCaller` and `ArchivedCallerGate` draws the Away page over every provider and route; the Leave a note window on the desk's Status row and in End employment's footer, its preview the one `AwayScreen` the sealed sign-in draws; guide *leave a note for a teammate who is away*; the SQL bed `test:pg:away-notes` | M |
-| 9 | The Needs you item on the countdown's day, with Bring back… | S |
+| 9 | **Shipped v2.6590.** The Needs you item on the countdown's day and every day after until Bring back: kernel `lib/people/awayBackDay.ts`, hook `useAwayBackDay`, source `awayBackDay`, item `away-back-day`, the door to the desk with Bring back up through the deep link's new `&flow=bring_back` | S |
 
 ## How to verify
 
