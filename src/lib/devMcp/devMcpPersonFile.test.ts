@@ -174,7 +174,7 @@ describe('get_person_file (the person file from the dev seat)', () => {
     expect(SERVER).toContain("case 'get_person_file':")
     expect(SERVER.indexOf("case 'get_person_file':")).toBeGreaterThan(SERVER.indexOf("case 'get_history':"))
     expect(SERVER).toContain("getPersonFile(readerAs(await jwt())")
-    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.33\.0'/)
+    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.34\.0'/)
     expect(README).toContain('`get_person_file(person')
   })
 })
