@@ -7,7 +7,7 @@
  * not in it come by an address search narrowed to exact normalized-key matches in `splitMembers`, so
  * the real site (13 bids and 29 jobs at one address, 9 jobs tagged) fills the page without a write.
  */
-import { rowToEntry, type HistoryEntry, type HistoryRow } from './history'
+import { HISTORY_HEAD_COLUMNS, headRowToEntry, rowToEntry, type HistoryEntry, type HistoryHeadRow, type HistoryRow } from './history'
 import { supabase } from '../supabase'
 import { parsePaySpeedsRpc, type PaySpeedData } from '../jobs/billedExpectedPay'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -161,6 +161,38 @@ export async function readRequestsWhere(lane: 'estimators' | 'dispatch', filter:
   return rows.map((r) => ({ ...r, lane, notes: notes.filter((n) => n.request_id === r.id).map(({ id, author_user_id, body, created_at }) => ({ id, author_user_id, body, created_at })) }))
 }
 
+/** PostgREST's answer for a relation the schema does not have (the view before its migration is pushed), or Postgres's. */
+const isMissingRelation = (code: string | null | undefined): boolean => code === 'PGRST205' || code === '42P01'
+
+type HistoryHeadsRead = { data: Array<HistoryHeadRow | HistoryRow> | null; error: { message: string } | null }
+
+/**
+ * The site's history entries for the list (punch list #280, v2.6735): the heads view, every column but
+ * the body with its first `HISTORY_HEAD_CHARS` characters and its whole length — on the real site 298 KB
+ * came down on every open and two thirds of it was folded mail bodies. Until the view's migration is
+ * pushed the read falls back to the table whole, so the page stands either side of the push.
+ */
+async function readHistoryHeads(developmentId: string): Promise<HistoryHeadsRead> {
+  const heads = await supabase.from('development_history_heads' as never).select(HISTORY_HEAD_COLUMNS).eq('development_id', developmentId).order('happened_at', { ascending: false }).limit(500)
+  if (!heads.error) return { data: (heads.data ?? []) as unknown as HistoryHeadRow[], error: null }
+  if (!isMissingRelation((heads.error as { code?: string }).code)) return { data: null, error: heads.error }
+  const whole = await supabase.from('development_history_entries' as never).select('*').eq('development_id', developmentId).order('happened_at', { ascending: false }).limit(500)
+  return { data: whole.error ? null : ((whole.data ?? []) as unknown as HistoryRow[]), error: whole.error }
+}
+
+/** One entry's whole body, for the window a line's *more ›* opens (punch list #280); throws with the reason. */
+export async function readHistoryBody(entryId: string): Promise<string> {
+  const row = (await withSupabaseRetry(() => supabase.from('development_history_entries' as never).select('id, body').eq('id', entryId).maybeSingle(), 'read history line')) as unknown as { body: string } | null
+  if (!row) throw new Error('This line is no longer here.')
+  return row.body
+}
+
+/** Every entry's whole body for a site, keyed by id: read once when a search is typed, since a search reads every word (punch list #280). */
+export async function readHistoryBodies(developmentId: string): Promise<Map<string, string>> {
+  const rows = (await withSupabaseRetry(() => supabase.from('development_history_entries' as never).select('id, body').eq('development_id', developmentId).limit(500), 'read history lines')) as unknown as Array<{ id: string; body: string }> | null
+  return new Map((rows ?? []).map((r) => [r.id, r.body]))
+}
+
 /** The people's names by id, for the lines that say who; a name that is blank reads as a dash. */
 export async function readUserNames(userIds: readonly string[]): Promise<Map<string, string>> {
   return (await readUserNamesAndTwins(userIds)).names
@@ -272,7 +304,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     customerIds.length
       ? supabase.from('customer_contacts').select('id, customer_id, contact_date, contact_method, details, created_by').in('customer_id', customerIds).order('contact_date', { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
-    supabase.from('development_history_entries' as never).select('*').eq('development_id', developmentId).order('happened_at', { ascending: false }).limit(500),
+    readHistoryHeads(developmentId),
     priorNumbersP,
   ])
   fail('submission entries', entriesRes.error)
@@ -307,7 +339,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   for (const n of (notesRes.data ?? []) as Array<{ author_user_id: string }>) userIds.add(n.author_user_id)
   for (const n of (bidNotesRes.data ?? []) as Array<{ author_user_id: string }>) userIds.add(n.author_user_id)
   for (const c of (contactsRes.data ?? []) as Array<{ created_by: string | null }>) if (c.created_by) userIds.add(c.created_by)
-  for (const h of (historyRes.data ?? []) as unknown as HistoryRow[]) if (h.author_user_id) userIds.add(h.author_user_id)
+  for (const h of historyRes.data ?? []) if (h.author_user_id) userIds.add(h.author_user_id)
   for (const t of teamMembers) userIds.add(t.user_id)
   // Who sent the bills and booked the payments, named on the Scoreboard's office line (v2.6457).
   for (const i of (invoicesRes.data ?? []) as Array<{ sent_by_user_id?: string | null }>) if (i.sent_by_user_id) userIds.add(i.sent_by_user_id)
@@ -335,7 +367,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     bidNotes: (bidNotesRes.data ?? []) as DevelopmentPageData['bidNotes'],
     customers: customers.map(({ id, name, payment_terms_note, lien_notice_policy_note }) => ({ id, name, payment_terms_note: payment_terms_note ?? null, lien_notice_policy_note: lien_notice_policy_note ?? null })),
     customerContacts: (contactsRes.data ?? []) as DevelopmentPageData['customerContacts'],
-    historyEntries: historyRes.error ? [] : ((historyRes.data ?? []) as unknown as HistoryRow[]).map((h) => rowToEntry(h, names)),
+    historyEntries: historyRes.error ? [] : (historyRes.data ?? []).map((h) => ('body_head' in h ? headRowToEntry(h, names) : rowToEntry(h, names))),
     teamMembers,
     names,
     twinUserIds,
