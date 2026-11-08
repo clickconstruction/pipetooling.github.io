@@ -203,6 +203,17 @@ describe('foldSiteChargeEvents', () => {
     expect(foldSiteChargeEvents([labor('Luis', 8)], label)[0]!.label).toBe('JP612 · Luis — team labor (8h)')
   })
 
+  it('the chip’s cost and the chart’s end for one job agree to the cent: the fold keeps the exact sum and the kernel rounds once (v2.6718)', () => {
+    // Two half-cent charges: rounded one by one they lose a cent (1.00 + 1.00); summed and rounded once they keep it (2.01).
+    const jobs: SiteTimelineJob[] = [{ jobId: 'j1', label: 'JP612', charges: [day({ amount: 1.005 }), day({ amount: 1.005 })], payments: [], values: [], revenue: null, fallbackPercent: null, overheadDays: [] }]
+    const model = buildSiteTimeline({ jobs, selected: new Set() })
+    expect(model.chips[0]!.endExpense).toBe(2.01)
+    expect(model.data.endExpense).toBe(2.01)
+    expect(model.data.endExpense).toBe(buildJobChargesTimelineChartData(jobs[0]!.charges, [], null).endExpense)
+    const folded = foldSiteChargeEvents(jobs[0]!.charges, label)
+    expect(folded[0]!.amount).toBeCloseTo(2.01, 10)
+  })
+
   it('keeps the undated bucket apart and in front', () => {
     const folded = foldSiteChargeEvents([day({ amount: 1 }), day({ dateKey: null, amount: 2 })], label)
     expect(folded.map((e) => e.dateKey)).toEqual([null, '2026-03-02'])

@@ -2,7 +2,7 @@
 name: "People → Users: an Away section above Archived for a teammate who left with an Away note on"
 number: 283
 group: close
-status: BUILT on branch claude/paige-sabbatical-setup-4365bd (commit 053d7ee39, pushed 2026-11-08); kernel, render, guide and release-note suites and lint pass; left: the typecheck's verdict, the live walk, the PR
+status: SHIPPED as v2.6723 — the branch rebased onto main of 2026-11-08 as claude/283-away-section-land-ef934e (PR #7355), armed for auto-merge; typecheck, lint, the kernel, render, release-note, guide and directory suites and the theme, word and press checks green; walked on the dev server as the dev
 summary: >
   A teammate who left with an Away note on is archived and can still sign in, to the one screen
   the office wrote. People → Users listed them under Archived as "Archived <the day the office
@@ -11,7 +11,8 @@ summary: >
   row per person with the roster row folded in: the day they left, the day back with the days
   left (amber on and after the day), Edit the note… and Bring back… or Restore. Archived then
   means sealed and banned. The desk header reads away in place of archived while the note is on.
-next: Check out the branch, run `npm run typecheck`, walk it on a dev server signed in as the dev (People → Users should show the one teammate on sabbatical under Away (1) with Left and Back, Archived one fewer, Edit the note… opening her note, the desk header reading · away), then open the PR and arm auto-merge. If the branch's version claim has lapsed, run `npm run claim` and rename the release note and fragment to the new number.
+next: nothing for the builder — the PR merges on green. The live walk on 2026-11-08 read People → Users with the one teammate on sabbatical under Away (1), Left Nov 3, 2026, Back on Thursday, Nov 8, 2029 · 1,096 days · alert on, Edit the note… and Bring back… on her row; Archived (36) under it, Logins (25) and Roster rows (11), with her in neither (one away_notes row on prod, so the same lists read Archived (37) before the split); Edit the note… opened the window on her note; her desk header read Helper · Plumbing · away with the Away chip. Still open: whether the Away card should also sit on the phone's toolbar beside Archived (n), today only in the ⋯ menu — a card of its own if the owner wants it.
+ver: v2.6723
 size: S (one kernel with tests, the Users tab card, a header chip, three guides, docs; all written)
 blocker: none
 opinion: finish it as built; the one open question is whether the Away card should also sit on the phone's toolbar beside Archived (n), where today only the ⋯ menu lists it.
@@ -26,7 +27,7 @@ The owner, 2026-11-08, after putting the first teammate on a three-year sabbatic
 
 ## What the branch holds
 
-Branch `claude/paige-sabbatical-setup-4365bd`, one commit past `origin/main` of 2026-11-08, claimed as the next release number at the time (`npm run sessions` shows the claim; the release note and fragment on the branch carry it).
+Branch `claude/283-away-section-land-ef934e` (the first session's branch rebased onto `origin/main` of 2026-11-08), one commit, shipped as v2.6723 after the first claim lapsed while the branch sat.
 
 - `src/lib/people/awaySection.ts` + `awaySection.test.ts` (11 tests): `splitAwayFromArchived` takes the Archived lists and the `away_notes` rows, moves every archived login with a note into an `AwayRow` with its roster row folded in by `account_user_id`, and leaves the rest under Archived; `awayBackWords` (*Back on Thursday, Nov 8, 2029 · 1,096 days*, *Back today*, *Due back Nov 5, 2026 · 3 days ago*, *No day back set*), `awayLeftWords` (*Left Nov 3, 2026*, else *Archived Nov 8, 2026*), due rows first by the oldest day, then the soonest day back, then no day, ties by name; `door` is `bring_back` when the roster row ended, else `restore`.
 - `src/components/people/PeopleUsersTab.tsx`: `loadArchivedLogins` also reads `away_notes` for the archived ids (RLS: the people who may archive read them; anyone else sees Archived unchanged) and `login_attached_at`; the split feeds the Archived lists and their count; an **Away (n)** card above the Archived block with a table (Name, Role, Left, Back, Edit the note… / Bring back… or Restore), the desk's `PersonDeskAwayNoteModal` mounted from the tab, and the phone ⋯ menu's *Away (n)*. The render test has the case.

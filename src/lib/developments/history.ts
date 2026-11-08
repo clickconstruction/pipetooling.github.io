@@ -43,10 +43,26 @@ export type HistoryEntry = {
   /** The key's name when a robot wrote it (*the inbox robot*). */
   agentLabel: string | null
   createdAt: string
+  /**
+   * The whole body's length when `body` is only its head (punch list #280: the page reads the first
+   * `HISTORY_HEAD_CHARS` characters and the rest on *more ›* or for a search); absent when `body` is whole.
+   */
+  bodyChars?: number
 }
 
 /** Room for a whole email: the page folds the words, MCP reads them whole (the owner, 2026-10-29: *mcp will still need to be able to read all of it*). */
 export const HISTORY_BODY_MAX = 20000
+
+/** A line's words past this many fold behind *more ›*, which opens the whole of it in a window (the owner, 2026-10-29: *only show so much and show the rest in a modal if the user clicks on it*). */
+export const HISTORY_FOLD_AT = 260
+
+/**
+ * How many characters of a body the page's list reads (punch list #280, v2.6735): the view
+ * `development_history_heads` cuts the body at this many (`left(body, 400)`) and says how long the
+ * whole is, so the list folds a long line without carrying its words. Past `HISTORY_FOLD_AT`, so a
+ * head always has the words the fold shows.
+ */
+export const HISTORY_HEAD_CHARS = 400
 
 export type HistoryDraft = { about: HistoryAbout; happenedAt: string; source: HistorySource; body: string }
 
@@ -94,6 +110,30 @@ export function draftToRow(draft: HistoryDraft, developmentId: string, authorUse
   }
 }
 
+/** A row of `development_history_heads`: the table's columns with the body's head and its whole length in place of the body. */
+export type HistoryHeadRow = Omit<HistoryRow, 'body'> & { body_head: string; body_chars: number }
+
+/** The heads view's columns, as the page's read names them (`development_history_heads`, 20261108234500). */
+export const HISTORY_HEAD_COLUMNS = 'id, development_id, job_id, bid_id, customer_id, happened_at, source, body_head, body_chars, author_user_id, via, agent_label, link_url, file_path, created_at'
+
+/** An entry from a heads row: the body is its head, and `bodyChars` says how long the whole is. */
+export function headRowToEntry(row: HistoryHeadRow, names: ReadonlyMap<string, string>): HistoryEntry {
+  const { body_head, body_chars, ...rest } = row
+  return { ...rowToEntry({ ...rest, body: body_head ?? '' }, names), bodyChars: body_chars }
+}
+
+/** Whether the entry's `body` is only its head, with the rest waiting on a read. */
+export const entryBodyIsHead = (e: Pick<HistoryEntry, 'body' | 'bodyChars'>): boolean => e.bodyChars != null && e.bodyChars > e.body.length
+
+/** The entries with the whole bodies read later swapped in (a search, or *more ›*); an entry with no body in the map keeps its head. */
+export function withBodies(entries: readonly HistoryEntry[], bodies: ReadonlyMap<string, string> | null): HistoryEntry[] {
+  if (!bodies || bodies.size === 0) return [...entries]
+  return entries.map((e) => {
+    const whole = entryBodyIsHead(e) ? bodies.get(e.id) : undefined
+    return whole == null ? e : { ...e, body: whole, bodyChars: whole.length }
+  })
+}
+
 /** An entry from its row, the author's name from the page's names. */
 export function rowToEntry(row: HistoryRow, names: ReadonlyMap<string, string>): HistoryEntry {
   const about: HistoryAbout = row.job_id ? { kind: 'job', id: row.job_id } : row.bid_id ? { kind: 'bid', id: row.bid_id } : row.customer_id ? { kind: 'customer', id: row.customer_id } : { kind: 'site' }
@@ -124,7 +164,23 @@ export function entryLine(e: HistoryEntry, labels: { site: string; job: (id: str
           : { kind: 'site', id: null, label: labels.site }
   // Who wrote it leads; a robot that kept it through MCP is the mark on the line, not the author.
   const by = e.byName ?? (e.via === 'mcp' ? e.agentLabel : null)
-  return { id: `history:${e.id}`, at: e.happenedAt, kind: 'entry', verb: historyVerb(e.source), about, detail: e.body, by, waitingDays: null, source: e.source, via: e.via, agent: e.via === 'mcp' ? e.agentLabel : null, withTime: true }
+  return {
+    id: `history:${e.id}`,
+    at: e.happenedAt,
+    kind: 'entry',
+    verb: historyVerb(e.source),
+    about,
+    detail: e.body,
+    by,
+    waitingDays: null,
+    source: e.source,
+    via: e.via,
+    agent: e.via === 'mcp' ? e.agentLabel : null,
+    withTime: true,
+    entryId: e.id,
+    // The list read the head alone (punch list #280): the window reads the whole by `entryId`.
+    ...(entryBodyIsHead(e) ? { detailIsHead: true } : {}),
+  }
 }
 
 // ---- the chips that narrow -------------------------------------------------------------------

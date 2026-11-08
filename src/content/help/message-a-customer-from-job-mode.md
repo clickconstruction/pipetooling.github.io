@@ -2,7 +2,7 @@
 title: message a customer from job mode
 category: Field Work
 roles: primary, helpers
-keywords: job mode, message the customer, text, customer, on my way, running late, phone, quick replies, something else, note, office, reply, job updates, customer pill, job detail
+keywords: job mode, message the customer, text, customer, on my way, running late, phone, email, copy, quick replies, something else, note, office, reply, job updates, customer pill, job detail
 where: /dashboard
 order: 23
 ---
@@ -16,6 +16,10 @@ You can text the customer from Job Mode in two presses. You pick a line the offi
 An orange dot on **Message the customer** means the customer wrote back. Their answer shows at the top when you open it.
 
 If you do not see **Message the customer**, clock in on the job first. If a text says texts are off, ask the office to turn them on.
+
+## The customer's email
+
+Under **Customer** the card shows their email address as plain words. Press the small copy press beside it to copy the address. Job Mode never opens your own mail app. The office sends the customer's emails, so their answer comes back to the office. To reach them from the job, press **Message the customer** under the address. It opens the same sheet, and the text goes from the company number.
 
 ## Pick a line
 

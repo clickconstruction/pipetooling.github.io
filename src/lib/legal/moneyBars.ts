@@ -86,6 +86,16 @@ function placeMarks(marks: Array<Omit<MoneyBarMark, 'row'>>): MoneyBarMark[] {
   return out
 }
 
+/**
+ * Whether the desk draws the bars and *What each path nets* at all (v2.6727, punch list #171): yes while the claim
+ * has a figure or an offer stands. The claim holds the open balance, the retainage no bill asks for and the typed
+ * lines, so a matter whose claim is typed lines alone, with no open bill, draws — the 2026-11-08 walk found the
+ * desk gating on the balance and showing nothing on such a matter.
+ */
+export function moneyBarsDraw(input: Pick<MoneyBarsInput, 'claim' | 'offers'>): boolean {
+  return input.claim > 0.004 || input.offers.some((o) => offerStands(o.status) && o.amount > 0.004)
+}
+
 export function moneyBars(input: MoneyBarsInput): MoneyBars {
   const bars: MoneyBar[] = []
   const bills = input.bills.filter((b) => b.open > 0.004).slice().sort((a, b) => (a.ymd ?? '9999').localeCompare(b.ymd ?? '9999') || a.key.localeCompare(b.key))
@@ -180,9 +190,9 @@ export function moneyBars(input: MoneyBarsInput): MoneyBars {
 
   // --- One sentence ---------------------------------------------------------
   const parts: string[] = []
-  parts.push(bills.length === 0 ? `${formatLegalMoney(balance)} owed on no sent bill.` : `${bills.length === 1 ? 'One open bill' : `${bills.length} open bills`}, ${formatLegalMoney(balance)}.`)
+  parts.push(balance <= 0.004 ? 'Nothing open on the bills.' : bills.length === 0 ? `${formatLegalMoney(balance)} owed on no sent bill.` : `${bills.length === 1 ? 'One open bill' : `${bills.length} open bills`}, ${formatLegalMoney(balance)}.`)
   if (added > 0.004) parts.push(`The claim adds ${formatLegalMoney(added)} of retainage no bill asks for yet.`)
-  if (typed > 0.004) parts.push(`The office typed ${formatLegalMoney(typed)} more onto the claim.`)
+  if (typed > 0.004) parts.push(`The office typed ${formatLegalMoney(typed)}${balance > 0.004 || added > 0.004 ? ' more' : ''} onto the claim.`)
   const theirs = standing.filter((o) => o.direction === 'received').sort((a, b) => b.ymd.localeCompare(a.ymd))[0]
   if (theirs) parts.push(`Their offer of ${formatLegalMoney(theirs.amount)} ${theirs.amount >= claim - 0.004 ? 'covers the claim on record' : theirs.amount >= balance - 0.004 ? 'covers the bills' : `leaves ${formatLegalMoney(round2(claim - theirs.amount))} of the claim`}.`)
   return { bars, words: parts.join(' ') }

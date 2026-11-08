@@ -161,7 +161,7 @@ The bar at the bottom shows the notice's state on the left. Most often it says t
 
 The same row has two answers for when the master stands beside you. One is *standing over me*, and the other is *typing it in*. The box already holds his name and today's date. Press {{button:blue|Approve on his word ▸}} to approve it. Nobody signs in. The record names you as the one who wrote it down. It names him as the one who decided. Then it goes to Ready to send on his word. Press **Preview the record ›** at the end of the row to see the record first. The card shows the words in every place they will show. The notice itself does not change.
 
-A notice already sent to him has {{button:blue|Leader here, Approve ▸}} on its footer. It is blue because it is the approval step. You need not pull it back first. A claim set by hand above the balance refuses a remembered word. That one needs him standing there or typing it in. A notice approved this way is unsigned until he signs it. He signs from his phone, or draws on your screen from the run. See [What the run holds back](#sending-the-run).
+A notice already sent to him has {{button:blue|Leader here, Approve ▸}} on its footer. It is blue because it is the approval step. You need not pull it back first. A claim set by hand above the balance refuses a remembered word. That one needs him standing there or typing it in. A notice approved this way is unsigned until he signs it. He signs from his phone, types his code on your screen, or draws on your screen. See [Signing on someone else's screen](#signing-on-someone-else-s-screen).
 
 ## A notice sent by hand
 
@@ -281,6 +281,8 @@ A signing code lets you sign on someone else's screen. It is four to six digits 
 ### Signing on someone else's screen
 
 Open a notice on a screen that is not the master's own, and the line is his. His name waits on it in cursive. The tag reads *Malachi signs here with his code*. A code field sits under the rule. He types his code and presses {{button:green|Sign and approve ▸}}. The app checks the code and puts his name on the paper. The record names whose screen it was. A wrong code says so and counts the tries left. Five wrong tries lock the code for fifteen minutes. Press **Draw instead** and he draws on the line in his own hand. With no code set, the line opens on the pad and says where he sets one. The office sees the same line above **Leader here, Approve ▸**.
+
+The same line waits in two more places. A ready notice approved on his word shows the office his line too. Its own {{button:green|Sign ▸}} sits beside **He signed the paper ›**. In the run, press {{button:outline|Leader here, sign ▸}} on a held envelope. The line opens on his code field when he has set one. He types it and presses {{button:green|Sign ▸}}. Every unsigned notice in the envelope carries his name, and the record names your screen. Press **Draw instead** for his hand.
 
 His phone gets one line each time his code signs a notice. On his own screen the notice sits first under **Signed with your code, as recorded**. He presses {{button:green|Yes, it was me ▸}} and the record carries his word too. If it was not him, he presses **Not me**. The signature clears, the approval stands, and the run holds the notice. Then he changes his code in Settings.
 

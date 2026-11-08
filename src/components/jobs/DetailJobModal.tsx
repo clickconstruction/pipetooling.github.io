@@ -60,6 +60,7 @@ import { ScheduleJobModal } from './ScheduleJobModal'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
+import { usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { JobReviewLine } from '../ratings/JobReviewLine'
@@ -88,6 +89,9 @@ import { crewJobWindowBar, crewStampOffer, jobWindowTiles, viewerOnCrew, type Jo
 import type { JobThreadStampKind } from '../../lib/jobThreadNoteStampBody'
 import { JobWindowActionBar, JobWindowNoteSheet } from './JobWindowActionBar'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
+import { useJobEstimateAuthor } from '../../hooks/useJobEstimateAuthor'
+import { jobPeopleRows } from '../../lib/jobs/jobPeople'
+import { EstimateAuthorChip } from './EstimateAuthorChip'
 import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
 import { useJobThreadSummary } from '../../hooks/useJobThreadSummary'
@@ -355,9 +359,15 @@ export function DetailJobModalCustomerPanel({
   customerId?: string | null
   /** The window closes before the Messages button opens the customer's thread (residential R2). */
   onLeave?: () => void
-  /** The customer's door (v2.5629, punch list #124): the bubble opens the customer's sheet over the window instead of leaving. */
-  onOpenCustomerDoor?: () => void
+  /**
+   * The customer's door (v2.5629, punch list #124): the bubble opens the customer's sheet over the window instead of
+   * leaving. Since punch list #125 PR 7 (v2.6717) the ✉️ chip opens it on Email, so an email to the customer goes from
+   * the office and lands in their thread, where a `mailto:` on the person's own mail app recorded nothing.
+   */
+  onOpenCustomerDoor?: (kind?: 'text' | 'email') => void
 }) {
+  const { showToast } = useToastContext()
+  const promptDialog = usePromptDialog()
   const name = customerName?.trim() ?? ''
   const phone = customerPhone?.trim() ?? ''
   const email = customerEmail?.trim() ?? ''
@@ -371,8 +381,21 @@ export function DetailJobModalCustomerPanel({
   const openTel = () => {
     if (phone) openInExternalBrowser(`tel:${phone}`)
   }
-  const openMailto = () => {
-    if (email) openInExternalBrowser(`mailto:${email}`)
+  /** The address, copied (#125 PR 7): the clipboard, or a window to copy from when the app cannot reach it. */
+  const copyEmail = async () => {
+    if (!email) return
+    try {
+      await navigator.clipboard.writeText(email)
+      showToast('Email address copied', 'success')
+    } catch {
+      await promptDialog({ title: 'Copy the email address', message: 'The app could not reach the clipboard. Select the address below and copy it.', defaultValue: email, confirmLabel: 'I copied it' })
+    }
+  }
+  /** The ✉️ chip: the customer's sheet on Email when the window has the door; with no door, the address is copied. */
+  const openEmailDoor = () => {
+    if (!email) return
+    if (onOpenCustomerDoor) onOpenCustomerDoor('email')
+    else void copyEmail()
   }
 
   const contactChipStyle: CSSProperties = {
@@ -399,6 +422,17 @@ export function DetailJobModalCustomerPanel({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  }
+  const copyPressStyle: CSSProperties = {
+    flexShrink: 0,
+    border: '1px solid var(--border-strong)',
+    borderRadius: 999,
+    background: 'var(--surface)',
+    color: 'var(--text-muted)',
+    fontSize: '0.8125rem',
+    lineHeight: 1,
+    padding: '0.22rem 0.45rem',
+    cursor: 'pointer',
   }
 
   return (
@@ -477,25 +511,41 @@ export function DetailJobModalCustomerPanel({
           <span style={missingChipStyle} title="No phone on file">📞 <span style={chipTextStyle}>no phone</span></span>
         )}
         {email ? (
-          <span
-            role="link"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation()
-              openMailto()
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', minWidth: 0, maxWidth: '100%' }}>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
                 e.stopPropagation()
-                openMailto()
-              }
-            }}
-            title="Compose email to customer"
-            aria-label="Customer email — compose message"
-            style={contactChipStyle}
-          >
-            ✉️ <span style={chipTextStyle}>{email}</span>
+                openEmailDoor()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  openEmailDoor()
+                }
+              }}
+              title={onOpenCustomerDoor ? 'Email the customer from the office' : 'Copy the email address'}
+              aria-label={onOpenCustomerDoor ? 'Customer email — email them from the office' : 'Customer email — copy the address'}
+              style={contactChipStyle}
+              data-testid="customer-email-chip"
+            >
+              ✉️ <span style={chipTextStyle}>{email}</span>
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                void copyEmail()
+              }}
+              aria-label="Copy the email address"
+              title="Copy the email address"
+              style={copyPressStyle}
+              data-testid="customer-email-copy"
+            >
+              ⧉
+            </button>
           </span>
         ) : (
           <span style={missingChipStyle} title="No email on file">✉️ <span style={chipTextStyle}>no email</span></span>
@@ -774,6 +824,8 @@ export default function DetailJobModal({
   // embed comes back with a null name and the list showed raw UUIDs. Resolve those via
   // the RPC-backed helper (list_user_display_names), which can name archived users.
   const [teamMemberNameFallback, setTeamMemberNameFallback] = useState<Map<string, string>>(new Map())
+  // v2.6694: the author of the signed estimate the job came from is one of the job's people and wears the E chip.
+  const estimateAuthor = useJobEstimateAuthor(fullJob?.id ?? null)
   useEffect(() => {
     const missing = (fullJob?.team_members ?? [])
       .filter((tm) => !(tm.users?.name ?? '').trim())
@@ -1420,6 +1472,8 @@ export default function DetailJobModal({
   const navigate = useNavigate()
   // The customer's door (v2.5629): the header's bubble opens the customer's sheet over the window; Open their thread closes the window first, as the bubble's own press did.
   const [customerDoorOpen, setCustomerDoorOpen] = useState(false)
+  /** The kind the sheet opens on (#125 PR 7): Email from the ✉️ chip; the bubble leaves it to the sheet. */
+  const [customerDoorKind, setCustomerDoorKind] = useState<'text' | 'email' | undefined>(undefined)
   // Mirrors Jobs.tsx canOpenJobScheduleModal — the roles that can use the Dispatch job-week grid.
   const showWeekDispatchButton =
     Boolean(jobId) &&
@@ -2189,7 +2243,14 @@ export default function DetailJobModal({
                     developmentName={'development_name' in detailJob ? detailJob.development_name : detailJob.development?.name ?? null}
                     developmentId={detailJob.development_id ?? null}
                     onLeave={onClose}
-                    onOpenCustomerDoor={fullJob ? () => setCustomerDoorOpen(true) : undefined}
+                    onOpenCustomerDoor={
+                      fullJob
+                        ? (kind) => {
+                            setCustomerDoorKind(kind)
+                            setCustomerDoorOpen(true)
+                          }
+                        : undefined
+                    }
                   />
                 </div>
               ) : (
@@ -2312,6 +2373,7 @@ export default function DetailJobModal({
           {customerDoorOpen && fullJob ? (
             <JobCustomerSheet
               job={fullJob}
+              initialKind={customerDoorKind}
               onClose={() => setCustomerDoorOpen(false)}
               onSent={threadNotes.reload}
               openThread={async (customerId) => {
@@ -2440,22 +2502,30 @@ export default function DetailJobModal({
 
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Assigned Team</div>
-              {(fullJob.team_members ?? []).length === 0 ? (
-                <EmptyState
-                  compact
-                  main="No team members yet."
-                  next={showEditJobButton ? { label: 'Edit job', onPress: handleEditJobClick } : undefined}
-                  tail={showEditJobButton ? 'adds them.' : undefined}
-                />
-              ) : (
-                <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.875rem' }}>
-                  {fullJob.team_members.map((tm) => (
-                    <li key={tm.id} style={{ marginBottom: 4 }}>
-                      {tm.users?.name?.trim() || teamMemberNameFallback.get(tm.user_id) || '…'}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {(() => {
+                // The team by name (archived names through the fallback), and the estimate's author with the E chip (v2.6694).
+                const people = jobPeopleRows(
+                  (fullJob.team_members ?? []).map((tm) => ({ user_id: tm.user_id, name: tm.users?.name?.trim() || teamMemberNameFallback.get(tm.user_id) || '…' })),
+                  estimateAuthor,
+                )
+                return people.length === 0 ? (
+                  <EmptyState
+                    compact
+                    main="No team members yet."
+                    next={showEditJobButton ? { label: 'Edit job', onPress: handleEditJobClick } : undefined}
+                    tail={showEditJobButton ? 'adds them.' : undefined}
+                  />
+                ) : (
+                  <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.875rem' }}>
+                    {people.map((p) => (
+                      <li key={p.userId} style={{ marginBottom: 4 }}>
+                        {p.name}
+                        {p.estimate ? <EstimateAuthorChip estimate={p.estimate} /> : null}
+                      </li>
+                    ))}
+                  </ul>
+                )
+              })()}
             </div>
 
             <div style={{ marginTop: '1rem', ...jobDetailDateBandStyle }}>
