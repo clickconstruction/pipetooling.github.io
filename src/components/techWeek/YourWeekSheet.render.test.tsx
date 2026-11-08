@@ -2,13 +2,16 @@
 /**
  * The sheet after the week's last clock-out (punch list #255, v2.6606): the week said once with the clock-out line,
  * the signal, the move and the customer's words; one press closes it; no signal closes it by itself; the week is
- * remembered on this device.
+ * remembered on this device. The fixture's days are the company calendar's (`todayYmdInAppTz`), as the sheet reads
+ * them: the UTC day runs a day ahead from 6 PM to midnight in Chicago, and on a Saturday evening that puts the hours
+ * in next Sunday's pay week (the merge queue failed on it 2026-11-08 00:11 UTC).
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { YourWeekIo } from '../../lib/techWeek/yourWeekIo'
 import { weekSheetSeenKey } from '../../lib/techWeek/weekSheet'
 import { YourWeekSheet, weekSheetAlreadyDealt } from './YourWeekSheet'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 const io = (week: unknown, words: unknown = []): YourWeekIo => ({ myWeek: async () => week, myWords: async () => words })
 
@@ -16,14 +19,17 @@ const week = (signal: string | null) => ({
   signal,
   name: 'Marcus',
   role: 'primary',
-  hours: [{ session_id: 's', work_date: new Date().toISOString().slice(0, 10), clocked_in_at: '', clocked_out_at: '', hours: 8.5, approved: false, job_ledger_id: 'a', job_number: '1184', job_name: 'Water heater', job_address: '', service_type_name: 'Plumbing', bid_id: null }],
+  hours: [{ session_id: 's', work_date: todayYmdInAppTz(), clocked_in_at: '', clocked_out_at: '', hours: 8.5, approved: false, job_ledger_id: 'a', job_number: '1184', job_name: 'Water heater', job_address: '', service_type_name: 'Plumbing', bid_id: null }],
   licenses: [],
-  jobs: [{ job_id: 'a', job_number: '1184', job_name: 'Water heater', finished_ymd: new Date().toISOString().slice(0, 10), expected_hours: null, budget_hours: 40, crew_hours: 36, my_first_ymd: '2026-11-02' }],
+  jobs: [{ job_id: 'a', job_number: '1184', job_name: 'Water heater', finished_ymd: todayYmdInAppTz(), expected_hours: null, budget_hours: 40, crew_hours: 36, my_first_ymd: '2026-11-02' }],
   callbacks: [],
 })
 
 beforeEach(() => localStorage.clear())
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 describe('YourWeekSheet', () => {
   it('says the week once, with the words, and the press closes it', async () => {
@@ -39,6 +45,17 @@ describe('YourWeekSheet', () => {
     fireEvent.click(press)
     expect(onClose).toHaveBeenCalled()
     expect(weekSheetAlreadyDealt('u-marcus', Object.keys(localStorage).find((k) => k.startsWith('your_week_sheet_seen_u-marcus_'))!.replace('your_week_sheet_seen_u-marcus_', ''))).toBe(true)
+  })
+
+  it('reads the week on the company calendar on a Saturday evening, when the UTC day is already Sunday', async () => {
+    // 6:30 PM Saturday Nov 7 in Chicago is 00:30 Sunday Nov 8 in UTC: the next pay week by the UTC day.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-08T00:30:00Z'))
+    expect(todayYmdInAppTz()).toBe('2026-11-07')
+    render(<YourWeekSheet open userId="u-marcus" clockedOutIso="2026-11-07T23:31:00Z" onClose={vi.fn()} io={io(week('jobs_without_callback'))} />)
+    expect(await screen.findByRole('dialog', { name: 'Your week' })).toBeTruthy()
+    expect(screen.getByText('Clocked out at 5:31 PM. 8.5 hours this week.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Have a good weekend' })).toBeTruthy()
   })
 
   it('closes itself when the office has picked no signal, and remembers nothing', async () => {
