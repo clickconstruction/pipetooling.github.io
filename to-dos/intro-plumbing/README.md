@@ -3,7 +3,7 @@ name: "Intro to plumbing: how water comes in and goes out, in drawings"
 number: 119
 flagged: true
 group: ready
-status: BUILT 2026-10-18 — the owner said build it, checking the work along the way; PR 1 (the offered state, the pipe drawing language, Start here and all of Water in, eleven lessons and eleven figures shot at three widths in both themes) is v2.5610; PR 2 (Water out, eight lessons and eight figures) is v2.5611; PR 3 (the conditions, eight strips) is v2.5612; PR 4 (Reading the job, three figures, the course whole at thirty lessons) is v2.5613; PR 5 (the owner's read-through, ten more drawings where a fact was words alone and three drawings reused with their own captions) is v2.5619; PR 6 (the fourteen-year-old's read: every trade word taught where it is first met, lessons 15 and 27 each cut to one fact, the trade-word rule in the content test) is v2.5621; left: the owner's correction pass over § Read-through and On in Settings → Training; the six calls taken as drawn until the owner says otherwise · 2026-11-08 the careful read of every lesson ran as the dev preview on a dev server (§ Read-through 2026-11-08: 25 doubted facts, no typo and no plain-words break, so no fix PR); nothing in the course or in Settings was touched
+status: BUILT 2026-10-18 — the owner said build it, checking the work along the way; PR 1 (the offered state, the pipe drawing language, Start here and all of Water in, eleven lessons and eleven figures shot at three widths in both themes) is v2.5610; PR 2 (Water out, eight lessons and eight figures) is v2.5611; PR 3 (the conditions, eight strips) is v2.5612; PR 4 (Reading the job, three figures, the course whole at thirty lessons) is v2.5613; PR 5 (the owner's read-through, ten more drawings where a fact was words alone and three drawings reused with their own captions) is v2.5619; PR 6 (the fourteen-year-old's read: every trade word taught where it is first met, lessons 15 and 27 each cut to one fact, the trade-word rule in the content test) is v2.5621; left: the owner's correction pass over § Read-through; the course has been On since 2026-10-18 16:04Z, offered to all and required of helpers and dev, good for 120 months (`training_courses`, read through the dev seat 2026-11-08); the six calls taken as drawn until the owner says otherwise · 2026-11-08 the careful read of every lesson ran as the dev on a dev server, a live course and not a preview (§ Read-through 2026-11-08: 25 doubted facts, no typo and no plain-words break, so no fix PR); nothing in the course or in Settings was touched
 summary: >
   The second training course: thirty five-minute lessons on how a house's plumbing works, for
   understanding and not for estimating. Part 1 is water in under pressure, from the meter to the
@@ -14,7 +14,7 @@ summary: >
   first-timer's mistakes. The course rides the Training mechanism built for the OSHA 30 refresher
   and adds one thing to it, an offered state so a course can be open to every role and required
   for some. The owner, a master plumber, co-writes and corrects every lesson.
-next: The read is done (§ Read-through 2026-11-08). The owner's correction pass over its 25 rows, each correction as one commit with the lesson's `from:` line naming it, and his press to On in Settings → Training stay his; #111's switch proof (`to-dos/training/README.md` § Pick up) can run now; delete this folder once the first crew member has been through it.
+next: The read is done (§ Read-through 2026-11-08). The owner's correction pass over its 25 rows, each correction as one commit with the lesson's `from:` line naming it, stays his; the course has been On since 2026-10-18, so no press to On is left; #111's switch proof (`to-dos/training/README.md` § Pick up) can run now; delete this folder once the first crew member has been through it.
 size: L (PR 1 is M; each part is an M PR of eight to ten drawings; the owner's corrections ride each one)
 blocker: none; the six calls are built to the drawn leans and each is one row in Settings or one line in a lesson.
 opinion: build it as outlined once the owner has corrected it; the drawings are the course, the mechanism is one column and one row on the card.
@@ -412,7 +412,7 @@ one line each.
 
 ## Read-through 2026-11-08
 
-25 doubted facts over the thirty lessons, 43 drawings as placed and the 46-question bank, read as the dev preview on a dev server (the final check opens only once every lesson is passed, so the bank was read from its file). Each row is the lesson, the sentence as it stands and the doubt, for the owner's correction pass; nothing here rewrites a fact. Owner's call 5 (the IPC and the UPC give different numbers, and the owner names the code) is marked where it is the whole doubt. No typo and no plain-words break was found: `courseContent.test.ts` (300 tests) and `figures.test.ts` are green, so no fix PR was cut.
+25 doubted facts over the thirty lessons, 43 drawings as placed and the 46-question bank, read as the dev on a dev server (the course was already On on prod, so this was the live course and not a preview; the final check opens only once every lesson is passed, so the bank was read from its file). Each row is the lesson, the sentence as it stands and the doubt, for the owner's correction pass; nothing here rewrites a fact. Owner's call 5 (the IPC and the UPC give different numbers, and the owner names the code) is marked where it is the whole doubt. No typo and no plain-words break was found: `courseContent.test.ts` (300 tests) and `figures.test.ts` are green, so no fix PR was cut.
 
 | # | Lesson | The sentence as it stands | Why it is doubted |
 |---|--------|---------------------------|-------------------|
@@ -448,12 +448,16 @@ Read and not doubted: every other number in § The outline's tables, the four ti
 
 2026-11-08: at the owner's word the read-through moves to a session on another computer; § Pick up
 above is its brief. No lesson was read on the live page and nothing in the course or in Settings
-was touched from this machine. The course stays off and offered, as v2.5610 seeded it.
+was touched from this machine. This line believed the course off and offered as v2.5610 seeded it; it had been On
+since 2026-10-18 (the later line below).
 
 2026-11-08, later: the read is done. A session on another computer read the thirty lessons in order as
-the dev preview on a dev server, every section, every drawing against its caption and labels, and the
+the dev on a dev server, every section, every drawing against its caption and labels, and the
 46-question bank from its file, and listed 25 doubted facts under § Read-through 2026-11-08 above,
 sixteen of them the IPC-or-UPC question of owner's call 5. No typo and no plain-words break turned up,
 so no fix PR was cut; the two content gates are green. Nothing in the course or in Settings was
-touched and the course stays off and offered. Next is the owner's correction pass over the 25 rows
-and his press to On in Settings → Training; #111's switch proof may run now.
+touched. The course was not off: `training_courses`, read through the dev seat at 2026-11-08 19:50Z after
+the #111 session noticed, has every course `enabled` since 2026-10-18 16:04Z by a dev account, Intro to
+plumbing offered to all and required of helpers and dev, good for 120 months, with no `training_passes`
+row yet. So the press to On already happened and the read was of a live course. Next is the owner's
+correction pass over the 25 rows; #111's switch proof may run now.
