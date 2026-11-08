@@ -391,6 +391,8 @@ export const TELL_WORDS = {
   whatGoes: 'What goes',
   whatHappens: 'What happens',
   textTo: (number: string) => `Text to ${number}`,
+  /** The word before the To chip (punch list #118, PR 2), which carries the number. */
+  textWord: 'Text',
   emailTo: (email: string) => `Email to ${email}`,
   emailWhat: 'The estimate with its link to approve, as the page previews it.',
   reads: (lang: PortalLang) => (lang === 'es' ? 'reads Spanish' : 'reads English'),

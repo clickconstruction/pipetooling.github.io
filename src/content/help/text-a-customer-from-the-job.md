@@ -69,6 +69,8 @@ Press {{button:outline|Note}} to go back to the note box. A note stays on the jo
 - *This job has no customer yet.* Add one in **Edit Job**, then come back.
 - A customer with no mobile number cannot get a text. A customer with no email address cannot get an email. The window says which is missing.
 
+A customer with two numbers or more has a **To** chip in the send window and on the sheet. [Pick the number a text goes to](/help/pick-the-number-a-text-goes-to) shows how to switch it and remember the pick.
+
 ## More on the box
 
 The box is the same one as in Messages. [Reply to a person from their thread](/help/reply-to-a-person-from-their-thread#use-a-quick-reply) shows the quick replies. [Send a text or an email](/help/reply-to-a-person-from-their-thread#send-a-text-or-an-email) shows the window before it goes.

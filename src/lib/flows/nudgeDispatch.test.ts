@@ -12,6 +12,8 @@ import {
   notSentWords,
   nudgeLine,
   OFFER_HELD,
+  heldStopped,
+  heldWithNumber,
   offerHeldBlanks,
   planNudgeRun,
   type AppSends,
@@ -195,7 +197,17 @@ describe('the morning run’s offers (v2.5595)', () => {
 
   it('holds the prepared text with why when there is no number or it sent STOP, instead of keeping it back', () => {
     expect(run({ appSends: PORTAL_OFFERS, numbers: { ...NUMBERS, tom: { number: null, optedOut: false } } }).offers).toEqual([{ ...TOMS_OFFER, held: OFFER_HELD['no number'] }])
-    expect(run({ appSends: PORTAL_OFFERS, numbers: { ...NUMBERS, tom: { number: '(210) 555-0130', optedOut: true } } }).offers).toEqual([{ ...TOMS_OFFER, held: OFFER_HELD['opted out'] }])
+    expect(run({ appSends: PORTAL_OFFERS, numbers: { ...NUMBERS, tom: { number: '(210) 555-0130', optedOut: true } } }).offers).toEqual([{ ...TOMS_OFFER, held: '(210) 555-0130 sent STOP. Call instead.' }])
+  })
+
+  it('a held row names the number it would go to, so a wrong usual is seen before a press (punch list #118, PR 2)', () => {
+    const tom = NUMBERS.tom?.number ?? ''
+    expect(tom).not.toBe('')
+    expect(run({ appSends: PORTAL_OFFERS, prefers: { tom: 'email' } }).offers[0]?.held).toBe(`${OFFER_HELD['prefers email']} It would go to ${tom}.`)
+    expect(heldWithNumber('The line still has a blank.', null)).toBe('The line still has a blank.')
+    expect(heldWithNumber('The line still has a blank.', '(210) 555-0130')).toBe('The line still has a blank. It would go to (210) 555-0130.')
+    // The words around the number read plain; the number itself is the customer's, as the thread prints it.
+    for (const w of [heldStopped('their cell'), heldWithNumber(OFFER_HELD['prefers email'], 'their cell'), heldWithNumber(offerHeldBlanks(['bill']), 'their cell')]) expect(plainWordsFailures(w), w).toEqual([])
   })
 
   it('never prepares a second while one waits on Today’s sends, nor sends over one when the step turns to Sends', () => {
@@ -211,7 +223,7 @@ describe('the morning run’s offers (v2.5595)', () => {
 
   it('holds or keeps back a text for a person who asked for email (v2.5597)', () => {
     expect(run({ appSends: PORTAL_ON, prefers: { tom: 'email' } })).toEqual({ texts: [], offers: [], notSent: [tomKept('prefers email')] })
-    expect(run({ appSends: PORTAL_OFFERS, prefers: { tom: 'email' } }).offers).toEqual([{ ...TOMS_OFFER, held: OFFER_HELD['prefers email'] }])
+    expect(run({ appSends: PORTAL_OFFERS, prefers: { tom: 'email' } }).offers).toEqual([{ ...TOMS_OFFER, held: heldWithNumber(OFFER_HELD['prefers email'], NUMBERS.tom?.number ?? null) }])
     expect(run({ appSends: PORTAL_ON, prefers: { tom: 'text' } }).texts).toEqual([TOMS_TEXT])
     expect(run({ appSends: PORTAL_ON, prefers: { tom: 'either' } }).texts).toEqual([TOMS_TEXT])
   })
@@ -305,7 +317,7 @@ describe('a line with a blank the run cannot fill (punch list #124, v2.6079)', (
   it('holds the prepared text with why and its door instead of keeping it back, so Today’s sends shows it', () => {
     const r = run({ appSends: PORTAL_OFFERS, quickReplies: [portalLine(BILL_LINE)] })
     expect(r.notSent).toEqual([])
-    expect(r.offers).toEqual([expect.objectContaining({ ...tomsBlanks, body: 'Tom, {amount} is still open. Pay it here: {bill}', held: offerHeldBlanks(['amount', 'bill']) })])
+    expect(r.offers).toEqual([expect.objectContaining({ ...tomsBlanks, body: 'Tom, {amount} is still open. Pay it here: {bill}', held: heldWithNumber(offerHeldBlanks(['amount', 'bill']), '(210) 555-0130') })])
   })
 
   it('says the person’s reason first: no number, STOP or email before the line’s blank', () => {
@@ -420,7 +432,7 @@ describe('the Paid reminder’s bill: {amount}, {bill} and {number} filled from 
     expect(runDana({ papers: papersOf([invoice()], [paid(1200)]) }).notSent).toEqual([{ ...danasPaid, why: 'blanks left', words: 'the line still has {amount} and {bill}' }])
     const offers = runDana({ appSends: { residential: { paid: 'offer' } } })
     expect(offers.notSent).toEqual([])
-    expect(offers.offers).toEqual([expect.objectContaining({ ...danasPaid, body: 'Dana, a reminder that {amount} for the water heater is still open. You can pay it here: {bill}', held: offerHeldBlanks(['amount', 'bill']) })])
+    expect(offers.offers).toEqual([expect.objectContaining({ ...danasPaid, body: 'Dana, a reminder that {amount} for the water heater is still open. You can pay it here: {bill}', held: heldWithNumber(offerHeldBlanks(['amount', 'bill']), '(210) 555-0101') })])
   })
 
   it('fills the amount but leaves {bill} for a bill billed outside Stripe, which has no pay page, so the text waits', () => {
@@ -429,7 +441,7 @@ describe('the Paid reminder’s bill: {amount}, {bill} and {number} filled from 
     expect(r.notSent).toEqual([{ ...danasPaid, why: 'blanks left', words: 'the line still has {bill}' }])
     const offer = runDana({ appSends: { residential: { paid: 'offer' } }, papers: papersOf([invoice({ stripe_invoice_id: null })], [paid(559.5)]) }).offers[0]
     expect(offer?.body).toBe('Dana, a reminder that $640.50 for the water heater is still open. You can pay it here: {bill}')
-    expect(offer?.held).toBe(offerHeldBlanks(['bill']))
+    expect(offer?.held).toBe(heldWithNumber(offerHeldBlanks(['bill']), '(210) 555-0101'))
   })
 
   it('speaks of the step’s job’s bill and no other job’s, as a job’s box does', () => {

@@ -10,6 +10,7 @@ import type { ChannelKind, Contact } from '../contacts/kernel'
 import type { CallTaskRecord } from '../calls/callTasks'
 import type { CallTaskDbRow } from '../calls/callTasksIo'
 import { jobKeyOfRow } from '../messages/jobKeys'
+import { numberOrder } from '../messages/compose'
 import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
 import { threadMessageFromRow, type MessageLoadContext, type MessageRow } from '../messages/load'
 import type { ThreadMessage } from '../messages/thread'
@@ -88,7 +89,7 @@ export type FollowUpContact = QueueContact & {
   /** Their jobs, by key, in the rail's order, and the starred one. Empty when the read loaded none. */
   jobIds?: string[]
   defaultJobId?: string | null
-  /** Their first phone number that did not send STOP, for a call's dial (v2.5596); null for none. */
+  /** The number a call dials (v2.5596): their usual, else the first that did not send STOP (punch list #118, PR 2, `numberOrder`); null for none. */
   phone?: string | null
   /** Their numbers and addresses as given, numbers first, for the New row's words after the name (v2.6191). Unset when the read loaded none. */
   channels?: ReadonlyArray<{ kind: ChannelKind; value: string }>
@@ -137,11 +138,10 @@ const nameOf = (userNames: Readonly<Record<string, string>>, id: string | null) 
  */
 export function followUpContactsFromRows(rows: FollowUpRows, userNames: Readonly<Record<string, string>>): FollowUpContact[] {
   const byId = new Map(rows.contacts.map((r) => [r.id, r]))
-  const phones = new Map<string, string>()
-  for (const ch of rows.channels) if (ch.kind === 'phone' && !ch.opted_out_at && !phones.has(ch.contact_id)) phones.set(ch.contact_id, ch.value)
   return contactsFromRows(rows.contacts, rows.channels, rows.jobs ?? [], rows.records).map((c: Contact) => ({
     ...followUpContactOf(c, byId.get(c.id), userNames),
-    phone: phones.get(c.id) ?? null,
+    // The dial reads the recipient rule (punch list #118): the usual first, never a number that sent STOP.
+    phone: numberOrder(c).find((ch) => !ch.optedOutAt)?.value ?? null,
     channels: c.channels.map((ch) => ({ kind: ch.kind, value: ch.value })),
   }))
 }
