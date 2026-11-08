@@ -61,6 +61,7 @@ export default function LienDeskNextUp({
   onOpenRun,
   factsFor,
   viewerIsLeader,
+  leadsRow,
   onOpenPaper,
   gapsFor,
   printed,
@@ -83,6 +84,8 @@ export default function LienDeskNextUp({
   /** What the desk knows about a row's job, for its card (v2.4631). */
   factsFor?: (row: LienNextUpRow) => LienStepFacts
   viewerIsLeader?: boolean
+  /** Whether the viewer is the leader this row's job waits on (v2.6734, punch list #150): the step tiles say *you* only then; absent, `viewerIsLeader` stands for every row. */
+  leadsRow?: (row: LienNextUpRow) => boolean
   /** The chip as a door to the paper (v2.4632): opens the notice or the affidavit as it stands, blanks marked. */
   onOpenPaper?: (row: LienNextUpRow) => void
   /** How many statutory blanks the row's paper has (the chip's red count; a tick at zero); null when unknown. */
@@ -307,7 +310,7 @@ export default function LienDeskNextUp({
                   </div>
                   <div>{title(r, { fontWeight: 700, fontSize: '0.92rem', overflowWrap: 'anywhere', whiteSpace: 'normal' })}</div>
                   {/* The four dots are four named tiles on a phone (v2.4881): no hover there, so the names are the card. */}
-                  <LienStepRow at={lienStepOfRow(r)} ladder={lienStepOfRow(r)?.ladder ?? r.kind} viewerIsLeader={Boolean(viewerIsLeader)} onPress={(el) => { setOpenRow(r); card.show(el, lienStepCard(r, factsFor?.(r))) }} />
+                  <LienStepRow at={lienStepOfRow(r)} ladder={lienStepOfRow(r)?.ladder ?? r.kind} viewerIsLeader={leadsRow ? leadsRow(r) : Boolean(viewerIsLeader)} onPress={(el) => { setOpenRow(r); card.show(el, lienStepCard(r, factsFor?.(r))) }} />
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{r.sub}</div>
                   {fold(r)}
                   {secondary(r)}
