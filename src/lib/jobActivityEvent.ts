@@ -174,6 +174,39 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   hazmat_notice_emailed: { tag: 'Emailed', ...BILLING_BLUE, bucket: 'billing' },
 }
 
+/**
+ * The events the customer got, or did (punch list #125, v2.6690): a bill sent to them (Stripe's email, the app's, a paper
+ * bill emailed again), the contract sent or its link shared, the contract opened and signed by them, a release they were
+ * asked to sign and one sent to them, the demand letter, the lien or retainage notice, the courtesy notice before a
+ * lien, the hazmat notice, and their word on when they would pay. One set, read by Job activity's **Customer** filter
+ * (`jobActivityLineMatches`, a lens across the buckets: these stay under Billing too) and by the Pipeline row's box
+ * (`jobActivityBoxFeed.ts`, each an unnumbered line), so the box, the filter and the customer sheet agree on what
+ * reached the customer. Left out on purpose: a bill made or billed (ours until it is sent), a contract or a release
+ * voided (ours unless the void was sent), a release issued or signed by us, the payment itself, and the contract
+ * reminder the cron sends up to three of on its own.
+ */
+export const CUSTOMER_EVENT_TYPES: ReadonlySet<JobActivityEventType> = new Set<JobActivityEventType>([
+  'invoice_sent',
+  'invoice_stripe_email_sent',
+  'invoice_resent',
+  'contract_sent',
+  'contract_shared',
+  'contract_viewed',
+  'contract_signed',
+  'lien_release_signature_requested',
+  'lien_release_sent',
+  'demand_letter_sent',
+  'lien_notice_sent',
+  'lien_courtesy_sent',
+  'hazmat_notice_emailed',
+  'payment_promise',
+])
+
+/** The customer got this, or did it. */
+export function isCustomerEvent(type: JobActivityEventType): boolean {
+  return CUSTOMER_EVENT_TYPES.has(type)
+}
+
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {
   return JOB_ACTIVITY_EVENT_RENDER[type]
 }

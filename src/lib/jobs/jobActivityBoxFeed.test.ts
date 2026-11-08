@@ -250,3 +250,44 @@ describe('the customer’s conversation in the box (v2.6689, punch list #125)', 
     })
   })
 })
+
+describe('every event the customer got or did (v2.6690, punch list #125)', () => {
+  const ev = (key: string, at: string, type: JobThreadEventActivityItem['event']['type'], summary: string, actor: string | null = null): JobThreadActivityItem => ({
+    kind: 'event',
+    event: { dedupeKey: key, type, occurredAt: at, actorName: actor, summary, financial: true },
+  })
+
+  it('comes in unnumbered under its tag, in its words, with the customer named on what they did', () => {
+    const feed = buildJobActivityBoxFeed([
+      note('n1', '2026-08-10T12:00:00Z', 'older note'),
+      ev('e1', '2026-08-11T12:00:00Z', 'contract_sent', 'Contract sent to dana@example.test — Service agreement', 'Rosa'),
+      ev('e2', '2026-08-11T13:00:00Z', 'contract_viewed', 'Contract opened by the customer'),
+      ev('e3', '2026-08-11T14:00:00Z', 'contract_signed', 'Contract signed by Dana Whitfield — Service agreement'),
+      ev('e4', '2026-08-12T12:00:00Z', 'lien_release_signature_requested', 'Signature requested — Final release $4,820.00', 'Rosa'),
+      ev('e5', '2026-08-12T13:00:00Z', 'payment_promise', 'They said Friday, by phone'),
+      ev('e6', '2026-08-12T14:00:00Z', 'contract_reminded', 'Contract reminder emailed'),
+      ev('e7', '2026-08-12T15:00:00Z', 'payment_added', 'Payment $1,200.00 (card)'),
+      note('n2', '2026-08-13T12:00:00Z', 'newer note'),
+    ])
+    expect(feed.map((e) => [e.kind, e.number, e.sentTag ?? null])).toEqual([
+      ['note', 1, null],
+      ['sent', null, 'Sent'],
+      ['sent', null, 'Opened'],
+      ['sent', null, 'Signed'],
+      ['sent', null, 'Sent'],
+      ['sent', null, 'Said'],
+      ['note', 2, null],
+    ])
+    expect(feed[1]).toMatchObject({ authorName: 'Rosa', body: 'Contract sent' })
+    expect(feed[2]).toMatchObject({ authorName: 'The customer', body: 'Contract opened by the customer' })
+    expect(feed[3]).toMatchObject({ authorName: 'The customer', body: 'Contract signed' })
+    expect(feed[4]).toMatchObject({ body: 'Release sent to sign' })
+    expect(feed[5]).toMatchObject({ authorName: 'The customer', body: 'They said Friday, by phone' })
+  })
+
+  it('reads a re-sent contract and a paper signature from the event’s words', () => {
+    expect(sentLineBody({ type: 'contract_sent', summary: 'Contract re-sent to dana@example.test — Service agreement' })).toBe('Contract sent again')
+    expect(sentLineBody({ type: 'contract_signed', summary: 'Signed contract on file (paper) — Service agreement' })).toBe('Signed contract on file')
+    expect(sentLineBody({ type: 'lien_courtesy_sent', summary: 'Courtesy notice sent' })).toBe('Courtesy notice sent')
+  })
+})

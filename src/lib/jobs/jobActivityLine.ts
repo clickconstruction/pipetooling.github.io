@@ -1,5 +1,6 @@
 import type { JobThreadActivityItem } from '../../components/JobThreadNotesPanel'
 import type { UserRole } from '../../hooks/useAuth'
+import { CUSTOMER_EVENT_TYPES } from '../jobActivityEvent'
 import { activityItemMatchesFilter, type JobActivityFilter } from '../jobActivityFilter'
 import { allReportFieldLinesForThread } from '../reportForViewFromJobLedgerRow'
 import { displayReportTemplateName } from '../reportTemplateDisplayName'
@@ -226,7 +227,11 @@ export function buildJobActivityLines(
 
 /**
  * A line's bucket. A message is the customer's when it is with her (cut 10), and a note when it is a team note written
- * in her thread. A message with anyone else, and an event, shows under All only.
+ * in her thread. A message with anyone else, and an event, shows under All only. Since v2.6690 (punch list #125, PR 3)
+ * **Customer** is everything to or from the customer: her calls, texts and emails, and the events she got or did
+ * (`CUSTOMER_EVENT_TYPES`: the bill sent, the contract sent, opened and signed, the release asked for and sent, the
+ * notices, her word on paying). Those events stay under Billing too, so Customer is a lens across the buckets, not a
+ * bucket of its own.
  */
 export function jobActivityLineMatches(line: JobActivityLine, filter: JobActivityFilter): boolean {
   if (filter === 'all') return true
@@ -234,7 +239,8 @@ export function jobActivityLineMatches(line: JobActivityLine, filter: JobActivit
     if (filter === 'customer') return isCustomerSide(line.message.tone)
     return filter === 'notes' && line.message.tone === 'teamNote'
   }
-  return filter !== 'customer' && activityItemMatchesFilter(line.item, filter)
+  if (filter === 'customer') return line.item.kind === 'event' && CUSTOMER_EVENT_TYPES.has(line.item.event.type)
+  return activityItemMatchesFilter(line.item, filter)
 }
 
 /** Narrow to one of the panel's buckets. Numbers were assigned pre-filter, so they don't move. */
@@ -246,16 +252,21 @@ export function filterJobActivityLines(
   return lines.filter((l) => jobActivityLineMatches(l, filter))
 }
 
-/** Each bucket's count for the filter pills, from the same lines the filter narrows. 'all' is every line. */
+/**
+ * Each bucket's count for the filter pills, from the same lines the filter narrows. 'all' is every line. Customer is
+ * counted in its own pass (v2.6690): it is a lens across the buckets, so a contract signed counts under Billing and
+ * under Customer both, while the other buckets stay disjoint.
+ */
 export function countJobActivityLines(lines: JobActivityLine[]): Record<JobActivityFilter, number> {
   const counts: Record<JobActivityFilter, number> = { all: lines.length, notes: 0, reports: 0, status: 0, billing: 0, crew: 0, customer: 0 }
   for (const line of lines) {
-    for (const f of ['notes', 'reports', 'status', 'billing', 'crew', 'customer'] as const) {
+    for (const f of ['notes', 'reports', 'status', 'billing', 'crew'] as const) {
       if (jobActivityLineMatches(line, f)) {
         counts[f]++
-        break // buckets are disjoint, so a line lives in at most one
+        break // these buckets are disjoint, so a line lives in at most one
       }
     }
+    if (jobActivityLineMatches(line, 'customer')) counts.customer++
   }
   return counts
 }

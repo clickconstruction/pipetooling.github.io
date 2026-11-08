@@ -150,8 +150,8 @@ function entryLine(e: JobActivityBoxEntry, onOpenLine?: (line: JobActivityBoxLin
         </span>
       ) : sent ? (
         // A send to the customer (v2.5633, v2.5636) takes no number: a small Sent tag in the billing blue holds its place.
-        <span style={sentTagStyle} aria-label="Sent to the customer">
-          Sent
+        <span style={sentTagStyle} aria-label={e.sentTag === 'Sent' || !e.sentTag ? 'Sent to the customer' : `${e.sentTag} by the customer`}>
+          {e.sentTag ?? 'Sent'}
         </span>
       ) : (
         <span style={report ? reportNumStyle : numStyle} aria-label={report ? `Entry ${e.number}, a report` : `Entry ${e.number}`}>

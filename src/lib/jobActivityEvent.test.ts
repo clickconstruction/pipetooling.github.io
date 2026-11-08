@@ -119,3 +119,16 @@ describe('the hazmat fee and its notice (v2.5635)', () => {
     for (const t of written) expect(JOB_ACTIVITY_EVENT_RENDER, t).toHaveProperty(t)
   })
 })
+
+describe('CUSTOMER_EVENT_TYPES (v2.6690, punch list #125)', () => {
+  it('holds what the customer got or did, every one of them a Billing event, and leaves ours out', async () => {
+    const { CUSTOMER_EVENT_TYPES, isCustomerEvent } = await import('./jobActivityEvent')
+    for (const t of CUSTOMER_EVENT_TYPES) expect(bucketForEvent(t)).toBe('billing')
+    for (const t of ['invoice_sent', 'invoice_stripe_email_sent', 'invoice_resent', 'contract_sent', 'contract_shared', 'contract_viewed', 'contract_signed', 'lien_release_signature_requested', 'lien_release_sent', 'demand_letter_sent', 'lien_notice_sent', 'lien_courtesy_sent', 'hazmat_notice_emailed', 'payment_promise'] as const) {
+      expect(isCustomerEvent(t)).toBe(true)
+    }
+    for (const t of ['invoice_created', 'invoice_billed', 'contract_voided', 'contract_reminded', 'lien_release_issued', 'lien_release_signed', 'lien_release_voided', 'payment_added', 'status_change', 'crew_added'] as const) {
+      expect(isCustomerEvent(t)).toBe(false)
+    }
+  })
+})
