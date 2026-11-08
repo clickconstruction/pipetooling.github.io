@@ -59,7 +59,7 @@ the packet prints the table. The floor's percent can be of the claim or of the b
 
 ## Open decisions
 
-- Whether the firm sees each claim line or only the total.
+- Whether the firm sees each claim line or only the total. **The owner's call, 2026-11-08: each line.** Built as v2.6696: the legal-portal function sends the matter's claim lines, the firm's Account tab and its print draw the same table the desk keeps, and the firm's demand reads the claim plus its fees.
 - Whether a line can be marked *settlement only*, claimed in an offer but not in the demand.
 
 ## Where it plugs in
