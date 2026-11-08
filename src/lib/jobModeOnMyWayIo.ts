@@ -23,6 +23,7 @@ import { normalizeAddressForGeocodeKey } from './map/normalizeAddressForGeocode'
 import { resolveClockPunchCoordinates } from './resolveClockPunchCoordinates'
 import { scheduleArrivedLocationPatch } from './patchClockPunchSessionLocations'
 import { supabaseTextsSwitchIo } from './quo/textsSwitchIo'
+import { makeUsualChannel } from './messages/replyIo'
 import type { TravelFacts } from './jobMode/onMyWay'
 
 export interface OnMyWayIo extends JobModeMessageIo {
@@ -42,6 +43,8 @@ export interface OnMyWayIo extends JobModeMessageIo {
   loadMyBio(userId: string): Promise<BioLine[] | null>
   /** Whether this customer's thread already carries the tech's bio: false with no thread yet; null when the app cannot tell, so no bio is offered. */
   loadIntroduced(contactId: string | null, userId: string): Promise<boolean | null>
+  /** The To chip's tick (punch list #118, PR 2): make this number their usual, through `contact_channel_make_usual`'s tech door. A smoke may leave it out. */
+  makeUsual?(channelId: string): Promise<void>
 }
 
 export function supabaseOnMyWayIo(client: unknown = supabase): OnMyWayIo {
@@ -96,6 +99,7 @@ export function supabaseOnMyWayIo(client: unknown = supabase): OnMyWayIo {
       if (result.error) return null
       return ((result.data ?? []) as unknown[]).length > 0
     },
+    makeUsual: (channelId) => makeUsualChannel(channelId),
     async arrive(sessionId) {
       const result = await db
         .from('clock_sessions')

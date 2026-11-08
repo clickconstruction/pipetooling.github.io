@@ -9,3 +9,5 @@ Punch list #174, PR 1 (`docs/recent-features/v2.6705.md`): the people on a legal
 - The four fences close both tables.
 
 **Order:** push right after PR 1 merges (the client calls the tables and the RPCs by name; `check:calls-ahead` labels the PR). PR 2 redeploys `legal-portal` after this push. Regenerate types afterwards (`npm run gen-types:linked`, its own chore PR).
+
+**Applied** to prod by 2026-11-08, read the same day through the dev seat's `check_migration_ledger`: 1166 versions applied against the 1166 files on `main`, this one among them (`npm run check:migration-drift` could not reach the database from this worktree — the IPv6-only path — so the ledger was the read).

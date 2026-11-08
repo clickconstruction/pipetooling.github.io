@@ -13,3 +13,5 @@
 **Apply**: `supabase db push` from a clean checkout of `main` right after this merges, before the Pages deploy finishes — the New Job form calls the eight-argument `award_job_baseline` the moment a project is created, and the seven-argument one is gone the same instant, so an old client and a new one both land on the new function (the eighth argument defaults). Push `20261107190500_project_board_planned_finish.sql` in the same push.
 
 **Check**: `select column_name from information_schema.columns where table_name = 'job_budgets' and column_name like 'planned_%'` reads six rows; `select pronargs from pg_proc where proname = 'award_job_baseline'` reads one row, 8.
+
+**Applied** to prod by 2026-11-08, read the same day through the dev seat's `check_migration_ledger`: 1166 versions applied against the 1166 files on `main`, this one among them (`npm run check:migration-drift` could not reach the database from this worktree — the IPv6-only path — so the ledger was the read).

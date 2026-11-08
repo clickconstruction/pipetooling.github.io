@@ -9,7 +9,9 @@
  * two axes share one $0 gridline — `computeChargesTimelineAxisDomains` aligns their zero
  * heights (unit-tested) so the dashed $0 reference is truthful for both; vertical comparisons
  * BETWEEN axes are otherwise meaningless (standard dual-axis caveat). All lines carry
- * end-of-line value labels. Data shaping lives in the pure kernel
+ * end-of-line value labels, drawn as one column by `ChargesTimelineEndLabels` over the pure
+ * `src/lib/jobs/chartEndLabels.ts` (v2.6718: drawn one per line they crossed each other on a
+ * site's chart and sat under the icons). Data shaping lives in the pure kernel
  * `src/lib/jobChargesTimeline.ts` (unit-tested); this component only adapts props and renders.
  */
 import { cardEventRowsFromJobSummaryRows } from '../../lib/jobs/jobCardChargeEvents'
@@ -18,6 +20,7 @@ import {
   Area,
   CartesianGrid,
   ComposedChart,
+  Customized,
   Line,
   ReferenceLine,
   ResponsiveContainer,
@@ -38,6 +41,7 @@ import {
   type JobChargesTimelineData,
 } from '../../lib/jobChargesTimeline'
 import type { JobOverheadDayLine } from '../../lib/jobs/jobDayLedger'
+import { endLabelWidth, iconRowSpan, iconRowY, marksWithin, paymentMarkerY, placeEndLabels, type ChartMark, type EndLabelWant } from '../../lib/jobs/chartEndLabels'
 import { formatCurrency, jobSummaryPartsCostIsZero } from '../../lib/jobs/jobFormatting'
 import { resolveJobCurrentPercentFallback } from '../../lib/jobSummaryPercentComplete'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
@@ -82,157 +86,160 @@ function signedCurrency(n: number): string {
   return `${n < 0 ? '−' : '+'}$${formatCurrency(Math.abs(n))}`
 }
 
-/** Dot renderer for the costs line: source icons (clamped inside the plot) at charge
- * buckets + a bold end-of-line total (anchored left of the point — the right axis owns
- * the gutter now). */
-function makeCostsDot(lastIndex: number, iconsOnTrueCost = false) {
+/** Dot renderer for the costs line: source icons (clamped inside the plot) at charge buckets.
+ * The end-of-line total is `ChargesTimelineEndLabels`'s (v2.6718). */
+function makeCostsDot(iconsOnTrueCost = false) {
   return function renderCostsDot(props: TimelineDotProps) {
     const { cx, cy, index, payload } = props
     const key = `costs-dot-${index ?? 'x'}`
     // With the overhead band on, the icon row rides the band's top edge (see makeTrueCostDot).
     const sources = iconsOnTrueCost ? [] : payload?.chargeSources ?? []
-    const isLast = index === lastIndex && payload != null
-    if (cx == null || cy == null || (sources.length === 0 && !isLast)) {
+    if (cx == null || cy == null || sources.length === 0) {
       return <g key={key} />
     }
-    const iconRowY = Math.max(24, cy - 12)
+    const rowY = iconRowY(cy)
     return (
       <g key={key}>
-        {sources.length > 0 && <circle cx={cx} cy={cy} r={2.5} fill="#dc2626" />}
+        <circle cx={cx} cy={cy} r={2.5} fill="#dc2626" />
         {sources.map((s, i) => (
           <text
             key={s}
             x={cx + (i - (sources.length - 1) / 2) * 24}
-            y={iconRowY}
+            y={rowY}
             fontSize={22}
             textAnchor="middle"
           >
             {JOB_CHARGE_SOURCE_META[s].icon}
           </text>
         ))}
-        {isLast && payload && (
-          <text
-            x={cx - 8}
-            y={iconsOnTrueCost ? cy + 15 : cy - 8}
-            fontSize={13}
-            fontWeight={700}
-            textAnchor="end"
-            fill="#dc2626"
-            stroke="var(--surface)"
-            strokeWidth={2}
-            paintOrder="stroke"
-          >
-            ${formatCurrency(payload.expense)}
-          </text>
-        )}
       </g>
     )
   }
 }
 
 /** Dot renderer for the true-cost edge (v2.3271): the source icons ride the band's top so they
- * never sit inside the fill, and the last point carries the amber true-cost label. */
-function makeTrueCostDot(lastIndex: number) {
-  return function renderTrueCostDot(props: TimelineDotProps) {
-    const { cx, cy, index, payload } = props
-    const key = `true-cost-dot-${index ?? 'x'}`
-    const sources = payload?.chargeSources ?? []
-    const isLast = index === lastIndex && payload != null
-    if (cx == null || cy == null || (sources.length === 0 && !isLast)) return <g key={key} />
-    const iconRowY = Math.max(24, cy - 12)
-    return (
-      <g key={key}>
-        {sources.length > 0 && <circle cx={cx} cy={cy} r={2.5} fill={OVERHEAD_STROKE} />}
-        {sources.map((s, i) => (
-          <text key={s} x={cx + (i - (sources.length - 1) / 2) * 24} y={iconRowY} fontSize={22} textAnchor="middle">
-            {JOB_CHARGE_SOURCE_META[s].icon}
-          </text>
-        ))}
-        {isLast && payload && (
-          <text x={cx - 8} y={cy - 8} fontSize={13} fontWeight={700} textAnchor="end" fill={OVERHEAD_STROKE} stroke="var(--surface)" strokeWidth={2} paintOrder="stroke">
-            ${formatCurrency(payload.trueCost)} true cost
-          </text>
-        )}
-      </g>
-    )
-  }
+ * never sit inside the fill. */
+function renderTrueCostDot(props: TimelineDotProps) {
+  const { cx, cy, index, payload } = props
+  const key = `true-cost-dot-${index ?? 'x'}`
+  const sources = payload?.chargeSources ?? []
+  if (cx == null || cy == null || sources.length === 0) return <g key={key} />
+  const rowY = iconRowY(cy)
+  return (
+    <g key={key}>
+      <circle cx={cx} cy={cy} r={2.5} fill={OVERHEAD_STROKE} />
+      {sources.map((s, i) => (
+        <text key={s} x={cx + (i - (sources.length - 1) / 2) * 24} y={rowY} fontSize={22} textAnchor="middle">
+          {JOB_CHARGE_SOURCE_META[s].icon}
+        </text>
+      ))}
+    </g>
+  )
 }
 
-/** Dot renderer for the profit line: 💵 payment marker (flips above the point near the
- * chart floor) + a bold end-of-line value label. */
-function makeProfitDot(lastIndex: number) {
-  return function renderProfitDot(props: TimelineDotProps) {
-    const { cx, cy, index, payload } = props
-    const key = `profit-dot-${index ?? 'x'}`
-    const hasPayment = payload?.hasPaymentMarker === true
-    const isLast = index === lastIndex && payload != null
-    if (cx == null || cy == null || (!hasPayment && !isLast)) {
-      return <g key={key} />
-    }
-    const paymentY = cy > 190 ? cy - 16 : cy + 26
-    return (
-      <g key={key}>
-        {hasPayment && (
-          <>
-            <circle cx={cx} cy={cy} r={2.5} fill="#16a34a" />
-            <text x={cx} y={paymentY} fontSize={22} textAnchor="middle">
-              💵
-            </text>
-          </>
-        )}
-        {isLast && payload && (
-          <text
-            x={cx - 8}
-            y={cy + 16}
-            fontSize={13}
-            fontWeight={700}
-            textAnchor="end"
-            fill={payload.profit >= 0 ? '#15803d' : '#b91c1c'}
-            stroke="var(--surface)"
-            strokeWidth={2}
-            paintOrder="stroke"
-          >
-            {signedCurrency(payload.profit)}
-          </text>
-        )}
-      </g>
-    )
+/** Dot renderer for the profit line: 💵 payment marker (flips above the point near the chart floor). */
+function renderProfitDot(props: TimelineDotProps) {
+  const { cx, cy, index, payload } = props
+  const key = `profit-dot-${index ?? 'x'}`
+  if (cx == null || cy == null || payload?.hasPaymentMarker !== true) {
+    return <g key={key} />
   }
+  return (
+    <g key={key}>
+      <circle cx={cx} cy={cy} r={2.5} fill="#16a34a" />
+      <text x={cx} y={paymentMarkerY(cy)} fontSize={22} textAnchor="middle">
+        💵
+      </text>
+    </g>
+  )
 }
 
-/** Dot renderer for the value line: 🚩 report markers + an end-of-line value label. */
-function makeValueDot(lastIndex: number) {
-  return function renderValueDot(props: TimelineDotProps) {
-    const { cx, cy, index, payload } = props
-    const key = `value-dot-${index ?? 'x'}`
-    const hasMarker = payload?.hasReportMarker === true
-    const isLast = index === lastIndex && payload?.value != null
-    if (cx == null || cy == null || (!hasMarker && !isLast)) return <g key={key} />
-    return (
-      <g key={key}>
-        {hasMarker && (
-          <>
-            <circle cx={cx} cy={cy} r={2.5} fill="#2563eb" />
-            <text x={cx} y={cy - 12} fontSize={22} textAnchor="middle">
-              🚩
-            </text>
-          </>
-        )}
-        {isLast && payload?.value != null && (
-          <text
-            x={cx - 8}
-            y={cy - 6}
-            fontSize={13}
-            fontWeight={700}
-            textAnchor="end"
-            fill="#2563eb"
-          >
-            ${formatCurrency(payload.value)}
-          </text>
-        )}
-      </g>
-    )
+/** Dot renderer for the value line: 🚩 report markers. */
+function renderValueDot(props: TimelineDotProps) {
+  const { cx, cy, index, payload } = props
+  const key = `value-dot-${index ?? 'x'}`
+  if (cx == null || cy == null || payload?.hasReportMarker !== true) return <g key={key} />
+  return (
+    <g key={key}>
+      <circle cx={cx} cy={cy} r={2.5} fill="#2563eb" />
+      <text x={cx} y={cy - 12} fontSize={22} textAnchor="middle">
+        🚩
+      </text>
+    </g>
+  )
+}
+
+/** What recharts hands a `Customized` layer: the axes with their scales and the plot's box. */
+type ChartStateProps = {
+  xAxisMap?: Record<string, { scale?: ((v: unknown) => number) & { bandwidth?: () => number } }>
+  yAxisMap?: Record<string, { scale?: (v: number) => number }>
+  offset?: { top?: number; height?: number }
+}
+
+const END_LABEL_LINE_HEIGHT = 15
+
+/**
+ * The end-of-line labels as one column at the last point (v2.6718): cost, true cost, cash position and
+ * value, each wanting to sit just above or below its line, spread by `placeEndLabels` so no two overlap,
+ * clear of every mark their text reaches across (the icon rows, the 💵 and the 🚩 of the last buckets)
+ * and inside the plot. One layer knows every line's end, which the per-line dot renderers never did.
+ */
+function ChargesTimelineEndLabels({ xAxisMap, yAxisMap, offset, rows, overheadShown, valueShown }: ChartStateProps & { rows: readonly JobChargesTimelineChartRow[]; overheadShown: boolean; valueShown: boolean }) {
+  const xAxis = xAxisMap ? Object.values(xAxisMap)[0] : undefined
+  const dollars = yAxisMap?.dollars?.scale
+  const last = rows[rows.length - 1]
+  if (!last || !xAxis?.scale || !dollars) return null
+  const scale = xAxis.scale
+  const xOf = (row: JobChargesTimelineChartRow) => {
+    const at = scale(row.dateLabel)
+    return Number.isFinite(at) ? at + (scale.bandwidth ? scale.bandwidth() / 2 : 0) : null
   }
+  const cx = xOf(last)
+  if (cx == null) return null
+  const costY = dollars(last.expense)
+  const trueCostY = overheadShown ? dollars(last.trueCost) : null
+  const cashY = dollars(last.profit)
+  const valueScale = yAxisMap?.value?.scale
+  const valueY = valueShown && last.value != null && valueScale ? valueScale(last.value) : null
+  const wants: EndLabelWant[] = [
+    ...(trueCostY != null ? [{ key: 'trueCost', lineY: trueCostY, side: 'above' as const }] : []),
+    { key: 'cost', lineY: costY, side: overheadShown ? ('below' as const) : ('above' as const) },
+    { key: 'cash', lineY: cashY, side: 'below' as const },
+    ...(valueY != null ? [{ key: 'value', lineY: valueY, side: 'above' as const }] : []),
+  ]
+  const texts: Record<string, string> = {
+    trueCost: `$${formatCurrency(last.trueCost)} true cost`,
+    cost: `$${formatCurrency(last.expense)}`,
+    cash: signedCurrency(last.profit),
+    value: `$${formatCurrency(last.value ?? 0)}`,
+  }
+  // The marks the labels' text reaches across: every bucket's icon row, 💵 and 🚩 within the widest label's reach of the end.
+  const reachLeft = cx - 8 - Math.max(...wants.map((w) => endLabelWidth(texts[w.key] ?? '')))
+  const marks: ChartMark[] = []
+  for (const row of rows) {
+    const x = xOf(row)
+    if (x == null || x + 60 < reachLeft) continue
+    if (row.chargeSources.length > 0) marks.push({ x, halfWidth: 12 * (row.chargeSources.length - 1) + 11, ...iconRowSpan(iconRowY(dollars(overheadShown ? row.trueCost : row.expense))) })
+    if (row.hasPaymentMarker) marks.push({ x, halfWidth: 11, ...iconRowSpan(paymentMarkerY(dollars(row.profit))) })
+    if (valueShown && row.hasReportMarker && row.value != null && valueScale) marks.push({ x, halfWidth: 11, ...iconRowSpan(valueScale(row.value) - 12) })
+  }
+  const obstacles = marksWithin(marks, reachLeft, cx - 8)
+  const top = 2
+  const bottom = (offset?.top ?? 0) + (offset?.height ?? 300)
+  const placed = placeEndLabels(wants, { lineHeight: END_LABEL_LINE_HEIGHT, top, bottom, obstacles })
+  const label = (key: string, fill: string, text: string, stroke = true) => (
+    <text key={key} x={cx - 8} y={placed.get(key)} dominantBaseline="middle" fontSize={13} fontWeight={700} textAnchor="end" fill={fill} stroke={stroke ? 'var(--surface)' : undefined} strokeWidth={stroke ? 2 : undefined} paintOrder={stroke ? 'stroke' : undefined} data-end-label={key}>
+      {text}
+    </text>
+  )
+  return (
+    <g data-testid="charges-timeline-end-labels">
+      {trueCostY != null && label('trueCost', OVERHEAD_STROKE, texts.trueCost!)}
+      {label('cost', '#dc2626', texts.cost!)}
+      {label('cash', last.profit >= 0 ? '#15803d' : '#b91c1c', texts.cash!)}
+      {valueY != null && label('value', '#2563eb', texts.value!, false)}
+    </g>
+  )
 }
 
 type TimelineTooltipProps = {
@@ -447,12 +454,8 @@ export function JobChargesTimelineChartView({
   /** See `Props.teamLaborIncluded`; defaults to the owner's full-cost reading. */
   teamLaborIncluded?: boolean
 }) {
-  const lastIndex = data.chartRows.length - 1
   const overheadShown = data.overheadSeriesAvailable
-  const costsDot = useMemo(() => makeCostsDot(lastIndex, overheadShown), [lastIndex, overheadShown])
-  const trueCostDot = useMemo(() => makeTrueCostDot(lastIndex), [lastIndex])
-  const profitDot = useMemo(() => makeProfitDot(lastIndex), [lastIndex])
-  const valueDot = useMemo(() => makeValueDot(lastIndex), [lastIndex])
+  const costsDot = useMemo(() => makeCostsDot(overheadShown), [overheadShown])
   const axisDomains = useMemo(() => computeChargesTimelineAxisDomains(data.chartRows), [data])
   // Opt-in second axis: the value-created line's scale (0 → revenue) usually
   // dwarfs cost/profit, so it stays hidden until asked for.
@@ -538,7 +541,7 @@ export function JobChargesTimelineChartView({
                 name="True cost"
                 stroke={OVERHEAD_STROKE}
                 strokeWidth={1.5}
-                dot={trueCostDot}
+                dot={renderTrueCostDot}
                 activeDot={{ r: 4 }}
                 isAnimationActive={false}
                 connectNulls
@@ -563,7 +566,7 @@ export function JobChargesTimelineChartView({
               name="Cash position"
               stroke="#16a34a"
               strokeWidth={2}
-              dot={profitDot}
+              dot={renderProfitDot}
               activeDot={{ r: 4 }}
               isAnimationActive={false}
               connectNulls
@@ -576,12 +579,14 @@ export function JobChargesTimelineChartView({
                 name="Value created"
                 stroke="#2563eb"
                 strokeWidth={2}
-                dot={valueDot}
+                dot={renderValueDot}
                 activeDot={{ r: 4 }}
                 isAnimationActive={false}
                 connectNulls
               />
             )}
+            {/* The end-of-line labels as one column (v2.6718): drawn last, over every line. */}
+            <Customized component={<ChargesTimelineEndLabels rows={data.chartRows} overheadShown={overheadShown} valueShown={valueShown} />} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

@@ -109,6 +109,20 @@ export function myStaleClaims(claims: readonly PaidClaim[], userId: string | nul
   return staleClaims(claims, todayYmd, after).filter((c) => c.heardById === userId)
 }
 
+/**
+ * The one open claim a Billed row draws (v2.6695): per job, the open claim with the latest day they named (the customer's
+ * last word), ties by the latest written. A job whose every claim met a deposit has none here.
+ */
+export function openClaimByJob(claims: readonly PaidClaim[]): Map<string, PaidClaim> {
+  const out = new Map<string, PaidClaim>()
+  for (const c of claims) {
+    if (!claimOpen(c)) continue
+    const have = out.get(c.jobId)
+    if (!have || c.paidYmd > have.paidYmd || (c.paidYmd === have.paidYmd && c.createdAt > have.createdAt)) out.set(c.jobId, c)
+  }
+  return out
+}
+
 /** "a check in the mail", as a claim says it. */
 export function claimHow(claim: Pick<PaidClaim, 'method'>): string {
   return claim.method ? PAID_METHOD_WORDS[claim.method] : 'not sure how'

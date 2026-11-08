@@ -108,6 +108,22 @@ describe('followUpContactsFromRows', () => {
     expect(people[0]!.trade).toBe('Sitework')
   })
 
+  it('the dial reads the usual first, else the first number that did not send STOP (punch list #118, PR 2)', () => {
+    const at = '2026-10-02T14:12:00.000Z'
+    const rows: FollowUpRows = {
+      ...ROWS,
+      channels: [
+        { id: 'ch-g1', contact_id: 'greg', kind: 'phone', value: '(210) 555-0113', opted_out_at: null, created_at: at } as ContactChannelRow,
+        { id: 'ch-g2', contact_id: 'greg', kind: 'phone', value: '(210) 555-0199', opted_out_at: null, created_at: at, usual_at: '2026-11-01T00:00:00.000Z' } as ContactChannelRow,
+        { id: 'ch-p1', contact_id: 'priya', kind: 'phone', value: '(210) 555-0150', opted_out_at: '2026-10-20T00:00:00.000Z', created_at: at } as ContactChannelRow,
+        { id: 'ch-p2', contact_id: 'priya', kind: 'phone', value: '(210) 555-0151', opted_out_at: null, created_at: at } as ContactChannelRow,
+        { id: 'ch-b1', contact_id: 'bill', kind: 'phone', value: '(210) 555-0160', opted_out_at: '2026-10-20T00:00:00.000Z', created_at: at } as ContactChannelRow,
+      ],
+    }
+    const phones = Object.fromEntries(followUpContactsFromRows(rows, USERS).map((c) => [c.id, c.phone]))
+    expect(phones).toEqual({ greg: '(210) 555-0199', priya: '(210) 555-0151', unk1: null, bill: null })
+  })
+
   it('reads a state it does not know as done, a snooze without its state as no day, and an unknown teammate as Someone', () => {
     const rows: FollowUpRows = {
       ...ROWS,

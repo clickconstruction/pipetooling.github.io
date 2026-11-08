@@ -12,3 +12,5 @@
 **Apply**: `supabase db push` from a clean checkout of `main` after this merges. The client reads the row fail-soft — the constants stand in until it is read, and a missing row reads as the constants — so the order against the Pages deploy does not matter; the Settings card's Save says *the setting row is missing, apply the v2.6656 migration* until the push.
 
 **Check**: `select value_text from app_settings where key = 'line_budget_settings_v1'` reads the JSON; `select polname from pg_policies where tablename = 'app_settings' and polname = 'master_or_dev_update_line_budget_settings'` reads one row.
+
+**Applied** to prod by 2026-11-08, read the same day through the dev seat's `check_migration_ledger`: 1166 versions applied against the 1166 files on `main`, this one among them (`npm run check:migration-drift` could not reach the database from this worktree — the IPv6-only path — so the ledger was the read).

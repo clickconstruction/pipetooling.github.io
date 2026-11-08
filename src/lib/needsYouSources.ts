@@ -47,6 +47,8 @@ export type NeedsYouSource =
   | 'jobKindGaps'
   | 'baselineGaps'
   | 'lineBudgetsReview'
+  // Materials on site (punch list #209, v2.6728): the boxes due a count and the week's shortfalls, the office's.
+  | 'materialsOnSite'
   | 'jobFollowups'
   | 'staleOpen'
   | 'capacityUnder'
@@ -100,6 +102,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'jobKindGaps',
   'baselineGaps',
   'lineBudgetsReview',
+  'materialsOnSite',
   'jobFollowups',
   'staleOpen',
   'capacityUnder',
@@ -174,6 +177,7 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'unpricedWorkOrders':
     case 'jobKindGaps':
     case 'baselineGaps':
+    case 'materialsOnSite':
     case 'jobFollowups':
     case 'staleOpen':
     case 'capacityUnder':

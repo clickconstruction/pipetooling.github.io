@@ -8,7 +8,8 @@ import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { cascadePersonNameInPayTables } from '../../lib/cascadePersonName'
 import { loginAsUser } from '../../lib/loginAsUser'
 import { describeLastSeen, describePersonGap, type PersonGap, type PersonKey } from '../../lib/people/personKey'
-import { canImitate, type PersonDeskViewer } from '../../lib/people/personDeskGates'
+import { canArchiveAccount, canImitate, type PersonDeskViewer } from '../../lib/people/personDeskGates'
+import { loadAwayNote } from '../../lib/people/awayNoteIo'
 import { buildApprovalsQueue } from '../../lib/people/approvalsQueue'
 import { fetchAllPendingClockSessions } from '../../lib/people/fetchAllPendingClockSessions'
 import { formatHoursShort } from '../../lib/myTeamApprovals'
@@ -87,6 +88,25 @@ export function PersonDeskHeader({
   const [kindPick, setKindPick] = useState<string>('')
 
   const userId = personKey?.userId ?? null
+
+  // The Away note (v2.6723): on an archived desk, for the people who may archive, the header says away while a note
+  // is on, since that teammate can sign in to it; read again on every desk write (Save note, Take the note down).
+  const archivedDesk = personKey?.archived === true
+  const mayReadNote = canArchiveAccount(viewer)
+  const [awayNoteOn, setAwayNoteOn] = useState(false)
+  useEffect(() => {
+    if (!userId || !archivedDesk || !mayReadNote) {
+      setAwayNoteOn(false)
+      return
+    }
+    let on = true
+    void loadAwayNote(userId)
+      .then((n) => on && setAwayNoteOn(n.row != null))
+      .catch(() => on && setAwayNoteOn(false))
+    return () => {
+      on = false
+    }
+  }, [userId, archivedDesk, mayReadNote, changeKey])
 
   useEffect(() => {
     if (!userId) {
@@ -237,7 +257,7 @@ export function PersonDeskHeader({
           <span style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-strong)' }}>{name}</span>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             {[roleLabel, ...trades].filter(Boolean).join(' · ')}
-            {personKey?.archived ? ' · archived' : ''}
+            {personKey?.archived ? (awayNoteOn ? ' · away' : ' · archived') : ''}
           </span>
           {hideClose ? null : (
             <button type="button" aria-label="Close" onClick={onClose} style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: 'var(--text-muted)', padding: '0 0.15rem' }}>
@@ -302,7 +322,7 @@ export function PersonDeskHeader({
               {pending.count} session{pending.count === 1 ? '' : 's'} waiting · {formatHoursShort(pending.hours)}
             </Chip>
           ) : null}
-          {personKey?.archived ? <Chip tone="gray">Archived</Chip> : null}
+          {personKey?.archived ? <Chip tone="gray" title={awayNoteOn ? 'Archived, with an Away note on: their sign-in opens to the note and nothing else.' : undefined}>{awayNoteOn ? 'Away' : 'Archived'}</Chip> : null}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.55rem' }}>
           {personKey?.userId ? (

@@ -33,7 +33,10 @@ export function matterReadNextWords(section: { heading: string | null } | null):
   return `Read one section with get_matter_document { matter_id, doc_id, section: <n or heading> }. ${change}`
 }
 
-export async function getMatterDocument(reader: Reader, ask: MatterDocReadAsk, who: { role: string }) {
+/** The reply: the matter, the target row, the section index and, when asked, one section with what reads on. */
+export type MatterDocReadOut = { matter_id: string; target: Record<string, unknown>; lines: number; sections: Section[]; section: RpcReply['section']; read_next: string }
+
+export async function getMatterDocument(reader: Reader, ask: MatterDocReadAsk, who: { role: string }): Promise<{ refused: string } | MatterDocReadOut> {
   if (who.role !== 'dev') return { refused: 'get_matter_document reads the Legal desk\'s matter, which the seat reads as a dev only; it does not read as another person.' }
   const input = matterDocReadInput(ask)
   if (!input.ok) return { refused: input.refused }

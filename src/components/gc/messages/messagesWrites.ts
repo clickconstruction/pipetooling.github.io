@@ -24,4 +24,6 @@ export interface MessagesWrites {
   searchRecords: (words: string) => Promise<RecordHit[]>
   /** The jobs a name or a number may be, for + add a job. */
   searchJobs: (words: string) => Promise<JobTile[]>
+  /** Who is this?'s tick (punch list #118): make the named number their usual. A smoke may leave it out. */
+  makeUsual?: (channelId: string) => Promise<void>
 }

@@ -12,6 +12,8 @@ export const CASE_SEARCH_SOURCES = ['entries', 'evidence', 'documents', 'summary
 export type CaseSearchSource = (typeof CASE_SEARCH_SOURCES)[number]
 
 export type CaseSearchHit = { source: string; id: string; title: string | null; section_n: number | null; section: string | null; day: string | null; counsel_only: boolean; rank: number; snippet: string }
+/** v2.6713 (punch list #287): the record a document hit transcribes, so the agent cites the call by its record, not the document's title. */
+export type CaseSearchEvidence = { evidence_id: string; evidence_day: string | null; evidence_title: string | null }
 type RpcReply = { q: string; query: string; in: string | null; person_id: string; matter_id: string | null; count: number; shown: number; hits: CaseSearchHit[] }
 
 /** What reads a hit further, by its source. */
@@ -22,7 +24,7 @@ export function readNextFor(source: string): string {
     case 'evidence':
       return 'get_person_file (evidence, with the files and Drive state)'
     case 'document':
-      return 'get_person_document { person, doc_id, section } for the section named, or read_rows on documents (select content) by id; change it with plan_person_doc { doc_id, ops } on the section named'
+      return 'get_person_document { person, doc_id, section } for the section named, or read_rows on documents (select content) by id; change it with plan_person_doc { doc_id, ops } on the section named; a hit that carries evidence_id transcribes that record (get_person_file lists it with its files)'
     case 'summary':
     case 'narrative':
       return 'read_rows on person_files (select content) by person_id and kind; change it with plan_person_doc { kind, ops }'
@@ -55,7 +57,8 @@ export async function searchCase(reader: Reader, ask: CaseSearchAsk, who: { role
   if ('refused' in resolved) return resolved
   const person = resolved.person
   const reply = (await reader.rpc('dev_case_search', { p_person_id: person.id, p_q: input.q, p_in: input.in, p_limit: input.limit })) as RpcReply | null
-  const hits = (reply?.hits ?? []).map((h) => ({ ...h, read_next: readNextFor(h.source) }))
+  const transcribed = await transcribedRecords(reader, person.id, reply?.hits ?? [])
+  const hits = (reply?.hits ?? []).map((h) => ({ ...h, ...(h.source === 'document' ? transcribed.get(h.id) ?? {} : {}), read_next: readNextFor(h.source) }))
   const bySource: Record<string, number> = {}
   for (const h of hits) bySource[h.source] = (bySource[h.source] ?? 0) + 1
   return {
@@ -68,6 +71,33 @@ export async function searchCase(reader: Reader, ask: CaseSearchAsk, who: { role
     shown: hits.length,
     by_source: bySource,
     hits,
-    note: 'A hit on a document names the section it sits in (section_n is the heading\'s number, when it carries one); the snippet marks the match with « ». A matter document kept as text (a .md or .txt) is searched by section like a named document; a PDF, an image or an .eml is found by its title and what it shows alone. Counsel-only items are marked, not hidden; a counsel-only matter document\'s row and words are refused to the seat when read on, so the hit is all a session sees of it.',
+    note: 'A hit on a document names the section it sits in (section_n is the heading\'s number, when it carries one); the snippet marks the match with « ». A document that transcribes a recording carries evidence_id, evidence_day and evidence_title, the record to cite. A matter document kept as text (a .md or .txt) is searched by section like a named document; a PDF, an image or an .eml is found by its title and what it shows alone. Counsel-only items are marked, not hidden; a counsel-only matter document\'s row and words are refused to the seat when read on, so the hit is all a session sees of it.',
   }
+}
+
+/**
+ * v2.6713 (punch list #287): for the document hits, the record each transcribes — `person_documents.evidence_id` read
+ * from the index view, the record's day and title from `person_file_evidence` — joined here so `dev_case_search`'s
+ * body stays as it is. Fail-soft: a catalog that does not know the column yet, or a refused read, leaves the hits as
+ * they were. A counsel-only record's title stays out, as the seat's other reads keep it.
+ */
+async function transcribedRecords(reader: Reader, personId: string, hits: ReadonlyArray<CaseSearchHit>): Promise<Map<string, CaseSearchEvidence>> {
+  const out = new Map<string, CaseSearchEvidence>()
+  const docIds = hits.filter((h) => h.source === 'document').map((h) => h.id)
+  if (docIds.length === 0) return out
+  try {
+    const docs = (await reader.rows('person_document_index', { select: 'id,evidence_id', filters: [{ column: 'person_id', op: 'eq', value: personId }], limit: 200 })) as { id: string; evidence_id: string | null }[]
+    const tied = docs.filter((d) => d.evidence_id && docIds.includes(d.id))
+    if (tied.length === 0) return out
+    const recordIds = [...new Set(tied.map((d) => d.evidence_id as string))]
+    const records = (await reader.rows('person_file_evidence', { select: 'id,dated_on,title,counsel_only', filters: [{ column: 'id', op: 'in', value: recordIds }], limit: 200 })) as { id: string; dated_on: string; title: string; counsel_only: boolean | null }[]
+    const byId = new Map(records.map((r) => [r.id, r]))
+    for (const d of tied) {
+      const r = byId.get(d.evidence_id as string)
+      out.set(d.id, { evidence_id: d.evidence_id as string, evidence_day: r?.dated_on ?? null, evidence_title: r && !r.counsel_only ? r.title : null })
+    }
+  } catch {
+    // Left as the search answered: the hit still names the document.
+  }
+  return out
 }

@@ -151,6 +151,22 @@ Have a paper scan instead? The small **Have a scan or photo instead?** link unde
 
 Did two people sign the paper? Type the second name in **Second signer**. A second signer named on the draft is already in that box. Each name is filed as its own signature. The record names both people. Clear the box when only one person signed. When the second signer already signed through the link, the sheet says so and keeps that signature. The same goes for the first signer. A PDF you emailed to sign by hand still carries its link. When the customer signed there, **Signed by** shows that signature in place of its box. Put the name of the person who signed the paper in **Second signer**. The record keeps both signatures, one from the link and one from the paper.
 
+## Their paper, signed by us only
+
+A GC often sends their own subcontract. Our master signs it and the GC never countersigns. Do not file it as signed by the customer, because that is not true. Record it as their paper instead.
+
+1. Open the bill with **View bill** or **Bill Customer**, or open the job with **Edit Job**.
+2. Press {{button:outline|Their paper…}} on the contract strip.
+3. Say what the paper is, such as *their subcontract, their form*.
+4. Type who signed for us, the day and how under **Signed by us**.
+5. Leave **Countersigned on** blank when they never signed it.
+6. Tick **They rely on it** once their notice or their pay application stands on the paper. Give the day and what they relied on it for.
+7. Paste the Drive link, or press **Have the PDF or a scan instead?** and pick the file.
+8. Type each key term in a few words with its clause, such as *§14.2* for termination.
+9. Press {{button:blue|Record their paper}}.
+
+Nothing is sent to anyone. The job reads {{chip:blue|Their paper · signed by us only · not relied on yet}}. The chip says *they rely on it* once you tick that. Press {{button:outline|Edit the record}} on the strip to change it. The Contract window shows the same record in a band at the top. The Legal desk reads the paper too. Read [how the desk counts it](/help/review-a-collections-account-before-it-goes-to-your-attorney#read-the-top-first).
+
 ## One signed paper for several jobs
 
 A builder often signs one paper that names several of their jobs. File it once and tick the jobs it names. It never covers every job they have.
