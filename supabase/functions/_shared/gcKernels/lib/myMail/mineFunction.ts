@@ -30,6 +30,8 @@ import {
   type MyMailJobKind,
   type MyMailLabel,
   type MyMailParty,
+  type MyMailPersonTagPlanMail,
+  type MyMailPersonTagPlanOk,
   type MyMailRefusal,
   type MyMailRefusalError,
   type MyMailRequest,
@@ -39,6 +41,7 @@ import {
   type MyMailView,
 } from './contract.ts'
 import { subjectJobChip, type MyMailGuess, type MyMailGuessFacts } from './mailGuess.ts'
+import type { MyMailPersonTagPlan } from './personTagPlan.ts'
 import {
   MY_MAIL_MAILBOX,
   MY_MAIL_NEVER_LABELS,
@@ -95,15 +98,26 @@ export function parseMyMailRequest(raw: unknown): MyMailRequest | null {
     case 'open':
       return typeof r.gmailId === 'string' && GMAIL_ID.test(r.gmailId) ? { action: 'open', gmailId: r.gmailId } : null
     case 'tag': {
-      const job = r.job
-      if (typeof r.threadId !== 'string' || !GMAIL_ID.test(r.threadId) || !job || typeof job !== 'object') return null
-      const j = job as Record<string, unknown>
-      const kind = JOB_KINDS.find((k) => k === j.kind)
-      if (!kind || typeof j.id !== 'string' || !UUID.test(j.id)) return null
+      if (typeof r.threadId !== 'string' || !GMAIL_ID.test(r.threadId)) return null
       // The seat's door (server 0.30.0): `as` the login whose box it is, `plan` for the dry run. Anything else in them is no request.
       if (r.plan !== undefined && typeof r.plan !== 'boolean') return null
       if (r.as !== undefined && (typeof r.as !== 'string' || !myMailAddressKey(r.as))) return null
-      return { action: 'tag', threadId: r.threadId, job: { kind, id: j.id.toLowerCase() }, ...(r.plan === true ? { plan: true } : {}), ...(typeof r.as === 'string' ? { as: r.as.trim().toLowerCase() } : {}) }
+      const plan = r.plan === true ? { plan: true as const } : {}
+      const as = typeof r.as === 'string' ? r.as.trim().toLowerCase() : null
+      // A person in place of the job (punch list #289): the seat's alone, so `as` is required; `stop` lifts the follow.
+      if (r.person !== undefined && r.person !== null) {
+        if (r.job !== undefined || as === null) return null
+        const p = r.person as Record<string, unknown>
+        if (typeof p !== 'object' || typeof p.personId !== 'string' || !UUID.test(p.personId)) return null
+        if (r.stop !== undefined && typeof r.stop !== 'boolean') return null
+        return { action: 'tag', threadId: r.threadId, person: { personId: p.personId.toLowerCase() }, as, ...plan, ...(r.stop === true ? { stop: true } : {}) }
+      }
+      const job = r.job
+      if (!job || typeof job !== 'object') return null
+      const j = job as Record<string, unknown>
+      const kind = JOB_KINDS.find((k) => k === j.kind)
+      if (!kind || typeof j.id !== 'string' || !UUID.test(j.id)) return null
+      return { action: 'tag', threadId: r.threadId, job: { kind, id: j.id.toLowerCase() }, ...plan, ...(as ? { as } : {}) }
     }
     case 'untag':
       return typeof r.threadId === 'string' && GMAIL_ID.test(r.threadId) ? { action: 'untag', threadId: r.threadId } : null
@@ -791,6 +805,8 @@ export interface MyMailFollowOk {
   lines: number
   tied: number
   failed: number
+  /** Entries written onto HR files this run (punch list #289); a function deployed before it sends none. */
+  entries?: number
 }
 
 /** Whether a body is the cron's `{ action: 'follow' }`. */
@@ -1001,4 +1017,29 @@ export function tagPlanPreview(plan: MyMailTagPlan, emails: readonly EmailIn[], 
     return { ...head, kind: 'write', files: s.files.length }
   })
   return { ok: true, plan: true, threadId: plan.threadId, account, job: plan.job, counts: plan.counts, mails, movingFrom }
+}
+
+/**
+ * The plan of a person tag as the seat reads it back (punch list #289): the person, whether the conversation is followed
+ * onto the file already, the counts, and each mail with what the tag would do — a new entry on its day with its files
+ * counted, one the file holds already, or a skip with why. A `stop` plan lists no mail: `counts.already` is what the file
+ * holds for the conversation and `following` says whether there is a follow to lift. Pure.
+ */
+export function personTagPlanPreview(
+  plan: MyMailPersonTagPlan,
+  emails: readonly Pick<EmailIn, 'gmailId' | 'at' | 'from' | 'subject'>[],
+  input: { account: string; person: { id: string; name: string }; following: boolean; stop: boolean },
+): MyMailPersonTagPlanOk {
+  const byId = new Map(emails.map((e) => [e.gmailId, e]))
+  const mails: MyMailPersonTagPlanMail[] = input.stop
+    ? []
+    : plan.steps.map((s) => {
+        const e = byId.get(s.gmailId)
+        const head = { gmailId: s.gmailId, at: e?.at ?? null, from: e?.from ? (e.from.name?.trim() ? `${e.from.name.trim()} <${e.from.address}>` : e.from.address) : '', subject: e?.subject ?? '' }
+        if (s.kind === 'skip') return { ...head, kind: 'skip', why: MY_MAIL_SKIP_WORDS[s.why] }
+        if (s.kind === 'already') return { ...head, kind: 'already', why: 'an entry on the file holds this mail' }
+        return { ...head, kind: 'entry', entryDate: s.entryDate, files: s.files }
+      })
+  const counts = input.stop ? { entries: 0, already: plan.counts.already, skipped: 0 } : plan.counts
+  return { ok: true, plan: true, threadId: plan.threadId, account: input.account, person: input.person, following: input.following, stop: input.stop, counts, mails }
 }
