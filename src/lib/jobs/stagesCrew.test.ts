@@ -90,3 +90,26 @@ describe('buildStagesCrewModel', () => {
     expect(model.totalHours).toBe(0)
   })
 })
+
+describe('buildStagesCrewModel with the estimate’s author (v2.6694)', () => {
+  const author = { userId: 'nia', name: 'Nia', estimateId: 'e-1', estimateNumber: 1041 }
+  it('an author on the team keeps her row, with the estimate on it', () => {
+    const model = buildStagesCrewModel({ members: [m('nia', 'Nia', null, 'estimator'), m('a', 'Tristen')], hours: [], author })
+    expect(model.crew.map((r) => [r.name, r.onTeam, r.estimate?.estimateNumber ?? null])).toEqual([
+      ['Nia', true, 1041],
+      ['Tristen', true, null],
+    ])
+  })
+  it('an author off the team is listed with the live crew, her hours matched by name, not on the team', () => {
+    const model = buildStagesCrewModel({ members: [m('a', 'Tristen')], hours: [{ personName: 'Nia', hours: 2, byWorkDate: [{ workDate: '2026-11-03', hours: 2 }] }], author })
+    expect(model.crew.map((r) => [r.name, r.onTeam, r.estimate != null, r.hours])).toEqual([
+      ['Nia', false, true, 2],
+      ['Tristen', true, false, 0],
+    ])
+    expect(model.others).toEqual([])
+  })
+  it('no author, or a nameless one, changes nothing', () => {
+    expect(buildStagesCrewModel({ members: [m('a', 'Tristen')], hours: [], author: null }).crew.map((r) => r.name)).toEqual(['Tristen'])
+    expect(buildStagesCrewModel({ members: [m('a', 'Tristen')], hours: [], author: { ...author, name: null } }).crew.map((r) => r.name)).toEqual(['Tristen'])
+  })
+})

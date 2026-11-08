@@ -2,7 +2,7 @@
 name: "Lien desk: a dev's Approve opens a sign block that signs with the dev's name over the master's line — hold the mark to the job's master and give the dev's screen a door"
 number: 150
 group: residual
-status: shipped 2026-10-23 as v2.5788 (the code in Settings, the table, the RPCs, the guard rule; migration pushed) and v2.5791 (the master's line and code field on anyone's screen); notify-lien-approval and dev-mcp deployed
+status: shipped 2026-10-23 as v2.5788 (the code in Settings, the table, the RPCs, the guard rule; migration pushed) and v2.5791 (the master's line and code field on anyone's screen); notify-lien-approval and dev-mcp deployed; residual A shipped 2026-11-08 as v2.6733 (his code field on the run's held envelope and the office's Ready footer)
 summary: >
   When a dev presses Approve on the Lien desk, the notice opens with the signature block in typed
   mode: the cursive reads the signed-in dev's name (Robert) while the line under it reads the
@@ -13,10 +13,10 @@ summary: >
   rule and fixes the screen (draw mode by default, in the master's name, on the dev's screen);
   B gives the master his own door (Ask Malachi to sign, by text and push, he signs on his phone);
   C lets him type on any screen with a second proof, the record the guard was written to refuse.
-next: residuals — the run window's amber card and the office's Ready footer still offer his hand and the pen record only (no code field there); the desk's piles still call every leader *you* on another master's jobs
+next: residual B — the desk's piles still call every leader *you* on another master's jobs (v2.6734, PR open)
 size: S (A) + M (B); C would be L with a guard migration
 blocker: none
-ver: v2.5788, v2.5791
+ver: v2.5788, v2.5791, v2.6733
 opinion: A then B. A typed name on someone else's device is the office placing his name unless he proves it is him, and if he has his phone to prove it he has his phone to sign on. Fix the screen so it never shows the wrong name, and send him the notice instead of the laptop.
 ---
 
@@ -175,6 +175,10 @@ in). Pick 804 or 891 (master: Malachi). Read the block: the tag, the name in cur
 under the rule. Never press *Sign and approve* on a live notice; the write would sign it.
 
 ## Where it stands
+
+**Residual A (2026-11-08, v2.6733):** the run window's held envelope and the office's Ready footer carry the master's line with his code field, through the one kernel `lienCodeSigner.ts`; the hold's words name the code. Walk recorded below once done.
+
+### The findings (2026-10-23)
 
 Findings and mock-ups only. The preview was read as the dev; one production read confirmed the
 master's role, phone and empty push subscriptions; a second was refused by the auto-mode
