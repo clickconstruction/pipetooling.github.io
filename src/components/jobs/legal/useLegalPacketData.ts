@@ -19,6 +19,7 @@ import {
 import { classifyPromises, parsePaymentPromisesRpc, parsePromiseRecordsRpc } from '../../../lib/jobs/paymentPromises'
 import { parseChaseTouchesRpc } from '../../../lib/jobs/paymentChase'
 import { JOB_CONTRACT_COVERAGE_COLUMNS, type JobContractRowLike, type SignedEstimateLike } from '../../../lib/jobs/jobContractCoverage'
+import { withTheirPaperColumns } from '../../../lib/jobs/theirPaperIo'
 import type { JobDemandLetterRow } from '../../../lib/jobs/demandLetterTracking'
 import type { JobLienFilingRow } from '../../../lib/jobs/lienDeadlines'
 import type { LegalDeskItemLike } from '../../../lib/legal/legalLienPaper'
@@ -139,11 +140,14 @@ export function useLegalPacketData(
             const rows = (await withSupabaseRetry<unknown[]>(() => db.from('customer_addresses').select(ADDRESS_COLUMNS).eq('customer_id', customerId).order('sequence_order'), 'load legal packet property record')) ?? []
             return rows as CustomerAddressRow[]
           }, []),
+          // v2.6698 (punch list #173): their paper's own columns ride along for the rows whose kind says so.
           src<JobContractRowLike[]>('contracts', async () =>
-            (await withSupabaseRetry<JobContractRowLike[]>(
-              () => db.from('job_contracts').select(JOB_CONTRACT_COVERAGE_COLUMNS).in('job_id', jobIds).is('voided_at', null),
-              'load legal packet contracts',
-            )) ?? [], []),
+            withTheirPaperColumns(
+              (await withSupabaseRetry<JobContractRowLike[]>(
+                () => db.from('job_contracts').select(JOB_CONTRACT_COVERAGE_COLUMNS).in('job_id', jobIds).is('voided_at', null),
+                'load legal packet contracts',
+              )) ?? [],
+            ), []),
           src<SignedEstimateLike[]>('accepted estimates', async () =>
             (await withSupabaseRetry<SignedEstimateLike[]>(
               () => db.from('estimates').select('id, job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents').in('job_ledger_id', jobIds).eq('status', 'customer_accepted').not('acceptor_consented_at', 'is', null),

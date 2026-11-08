@@ -53,8 +53,12 @@ export const MATTER_ADDRESS_COLUMNS = LIEN_BOOK_ADDRESS_COLUMNS
 export const MATTER_PROPERTY_OWNER_COLUMNS = LIEN_BOOK_OWNER_COLUMNS
 /** `legal_matters`: the matter's own row, named column by column (no `select('*')`). */
 export const MATTER_ROW_COLUMNS = ['id', 'firm_id', 'stage', 'customer_id', 'payer_key', 'payer_name', 'handling_name', 'note_to_firm', 'released_at', 'held_overrides', 'fees_to_statement'] as const
-/** `job_contracts`: who signed what and when, and the signed PDF as a short-lived link. Never the storage paths or the Doc link. */
-export const MATTER_CONTRACT_COLUMNS = ['id', 'job_id', 'status', 'revision', 'recipient_email', 'recipient_name', 'sent_at', 'last_sent_at', 'view_count', 'signed_at', 'signer_printed_name', 'signer_mode', 'signer_consented_at', 'co_signer_name', 'co_signed_at', 'co_signer_printed_name', 'voided_at', 'signedPdfUrl'] as const
+/**
+ * `job_contracts`: who signed what and when, and the signed PDF as a short-lived link. Never the storage paths or the Doc link.
+ * v2.6698 (punch list #173): the kind, and their paper's own columns — who signed for us, whether they countersigned or relied on
+ * it, the key terms — so the firm reads the paper as the desk does (the coverage kernel needs the kind to tell it from ours).
+ */
+export const MATTER_CONTRACT_COLUMNS = ['id', 'job_id', 'status', 'revision', 'recipient_email', 'recipient_name', 'sent_at', 'last_sent_at', 'view_count', 'signed_at', 'signer_printed_name', 'signer_mode', 'signer_consented_at', 'co_signer_name', 'co_signed_at', 'co_signer_printed_name', 'voided_at', 'kind', 'created_at', 'paper_title', 'our_signer_name', 'our_signed_on', 'our_signed_how', 'their_signed_on', 'relied_on_on', 'relied_on_what', 'key_terms', 'signedPdfUrl'] as const
 /** `estimates` accepted with consent: the coverage kernel's columns. Never the total. */
 export const MATTER_ESTIMATE_COLUMNS = ['id', 'job_ledger_id', 'bid_id', 'doc_kind', 'status', 'acceptor_consented_at', 'acceptor_printed_name', 'estimate_number'] as const
 /** `job_demand_letters`: sent when, how, tracking, deadline, to whom, for how much. `fields` is cut to the fee clock and the exhibits. */

@@ -2,7 +2,7 @@
 name: "Training: courses the crew takes at their own pace, with a clock on each"
 number: 111
 flagged: true
-group: close
+group: ready
 status: BUILT and LIVE 2026-10-16; the fourteen-year-old's read over the OSHA refresher, every OSHA word met first where it is explained by adding words only, is v2.5624 (2026-10-18) — the six PRs (#5758, #5757, #5761, #5762, #5763, #5764), the types regen #5759 and the test fix #5768 merged; migration 20261015060000 on prod (drift 925/925), dev-mcp redeployed; walked live as the dev on prod data (the course page previews while off, lesson 19 recorded a pass, the Settings tab flips the policy, the Dashboard card read red with Continue and the People rail read the need while the course was on for devs, then the policy was put back: off, required for the five field roles); left: the owner or a dev presses On in Settings → Training, then the crew walk · 2026-11-08 the On, View as, Off proof of the switch is briefed for a session on another computer (§ Pick up), nothing pressed from this machine
 summary: >
   A Training section at the bottom of the Dashboard, under My Time, where each person sees the

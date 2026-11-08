@@ -170,6 +170,39 @@ describe('buildLegalPacket', () => {
     expect(partial.account.jobs.every((j) => j.record.dispute === false)).toBe(true)
   })
 
+  it('their paper (punch list #173): signed by us only is a flagged basis beside the sworn account; relied on, it is the theory, the gap goes and the steps carry it', () => {
+    const usOnly: JobContractRowLike = { id: 'c-their', job_id: 'job-a', status: 'signed', revision: 1, recipient_email: null, sent_at: null, last_sent_at: null, view_count: 0, signed_at: null, signer_printed_name: null, signer_mode: null, voided_at: null, kind: 'their_paper', created_at: '2026-02-09T18:00:00Z', paper_title: 'Harrow subcontract, their form', our_signer_name: 'D. Vasquez', our_signed_on: '2026-02-09', our_signed_how: 'their e-sign', key_terms: [{ key: 'termination', clause: '§14.2', words: 'for convenience' }] }
+    const flagged = buildLegalPacket(baseInput(account, { ...withEvidence, contracts: [usOnly] }))
+    const lineA = flagged.account.jobs.find((j) => j.jobId === 'job-a')!
+    expect(lineA.contract.kind).toBe('their_paper')
+    expect(flagged.theory.key).toBe('sworn')
+    const gapA = flagged.gaps.find((g) => g.key === 'contract:job-a')
+    expect(gapA).toEqual(expect.objectContaining({ severity: 'warn', fix: 'contract', label: `Their paper on ${lineA.label} is signed by us only and not yet relied on — proceeds as a sworn account` }))
+    expect(gapA?.detail).toMatch(/Record the day they relied on it/)
+    // Without the sworn account, the same paper is a stop that says what fixes it.
+    const bare = buildLegalPacket(baseInput(account, { contracts: [usOnly] }))
+    expect(bare.theory.key).toBe('none')
+    expect(bare.gaps.find((g) => g.key === 'contract:job-a')?.severity).toBe('stop')
+    // The paper is listed under Agreements and its signing is a step, with its terms.
+    expect(flagged.paper.agreements.map((a) => a.jobId)).toContain('job-a')
+    expect(flagged.feesAndSteps.steps.find((s) => s.kind === 'contract')).toEqual(expect.objectContaining({ ymd: '2026-02-09', text: 'Harrow subcontract, their form signed for us by D. Vasquez, not countersigned · Termination §14.2 — for convenience', jobLabel: lineA.label }))
+    expect(flagged.exhibits.map((e) => e.title)).not.toContain('Signed agreements')
+    // Relied on (the owner's call of 2026-11-08): the theory is the contract, the basis names the paper, the gap goes, a second step dates the reliance.
+    const relied = buildLegalPacket(baseInput(account, { ...withEvidence, contracts: [{ ...usOnly, relied_on_on: '2026-10-02', relied_on_what: 'their notice of termination' }] }))
+    expect(relied.theory).toEqual({ key: 'contract', label: 'Signed contract', basis: 'their paper, signed by us only, relied on (their notice of termination, Oct 2, 2026); backup: sworn account' })
+    expect(relied.gaps.map((g) => g.key)).not.toContain('contract:job-a')
+    expect(relied.feesAndSteps.steps.filter((s) => s.kind === 'contract').map((s) => [s.ymd, s.text])).toEqual([
+      ['2026-02-09', 'Harrow subcontract, their form signed for us by D. Vasquez, not countersigned · Termination §14.2 — for convenience'],
+      ['2026-10-02', 'They relied on their paper: their notice of termination'],
+    ])
+    expect(relied.exhibits.find((e) => e.title === 'Signed agreements')?.count).toBe(1)
+    // The print reads the paper as it is, never as signed by the customer.
+    const html = buildLegalPacketPrintHtml(relied, { preparedOn: TODAY, companyName: 'Click Plumbing and Electrical' })
+    expect(html).toContain('their paper, relied on')
+    expect(html).toContain('signed for us by D. Vasquez on Feb 9, 2026 (their e-sign), not countersigned. They rely on it: their notice of termination (Oct 2, 2026).')
+    expect(html).not.toContain('Signed 2026-02-09')
+  })
+
   it('the printed packet dates a signed or sent agreement on the company calendar', () => {
     // Signed 7:30 pm CDT on Apr 2 (Apr 3 in UTC); the other job's agreement went out 6:30 pm CST on Dec 1.
     const signed: JobContractRowLike = { id: 'c1', job_id: 'job-a', status: 'signed', revision: 1, recipient_email: null, sent_at: null, last_sent_at: null, view_count: 0, signed_at: '2026-04-03T00:30:00+00:00', signer_printed_name: 'Aaron Smith', signer_mode: 'typed', voided_at: null }

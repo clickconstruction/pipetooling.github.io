@@ -21,6 +21,7 @@ import JobContractSiblingOffer from './JobContractSiblingOffer'
 import { useJobContractPapers } from '../../hooks/useJobContractPapers'
 import { contractCoversLine, jobNumberLabel, siblingPaperOffers, streetOf } from '../../lib/jobs/jobContractCovers'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import TheirPaperSheet from './TheirPaperSheet'
 
 const btn: React.CSSProperties = {
   padding: '0.25rem 0.6rem',
@@ -54,6 +55,8 @@ export default function JobContractStrip({
   const [filingLink, setFilingLink] = useState(false)
   /** v2.4301: Add the contract — file a signed paper for this job and any other job of theirs it names. */
   const [sheetOpen, setSheetOpen] = useState(false)
+  /** v2.6698 (punch list #173): their paper — a contract on their form that we signed and they did not countersign. */
+  const [theirOpen, setTheirOpen] = useState(false)
   const papersOn = variant !== 'inline' && job != null && coverage != null
   const { papers, numById, reload: reloadPapers } = useJobContractPapers([job?.customer_id, job?.gc_customer_id], papersOn)
   if (!job || coverage == null) return null
@@ -81,13 +84,15 @@ export default function JobContractStrip({
 
   const label = jobContractChipLabel(coverage)
   // v2.4183: one window across states — a signed chip opens it on the signed state.
-  const openPrimary = () => setModalOpen(true)
+  const openPrimary = () => (coverage.kind === 'their_paper' ? setTheirOpen(true) : setModalOpen(true))
+  const theirPaper = coverage.kind === 'their_paper' ? coverage.record : null
+  const canRecordTheirs = coverage.kind === 'none' || coverage.kind === 'draft' || coverage.kind === 'not_needed'
   const controls = (
     <>
       {variant === 'row' ? null : <JobContractChip coverage={coverage} onClick={openPrimary} />}
-      {coverage.kind === 'signed' && coverage.documentUrl ? (
+      {(coverage.kind === 'signed' || coverage.kind === 'their_paper') && coverage.documentUrl ? (
         <a href={coverage.documentUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }} data-testid="contract-open-link">
-          Open the contract ↗
+          {coverage.kind === 'their_paper' ? 'Open the paper ↗' : 'Open the contract ↗'}
         </a>
       ) : null}
       {variant === 'inline' && field.show ? (
@@ -121,6 +126,16 @@ export default function JobContractStrip({
           Add the contract
         </button>
       ) : null}
+      {canRecordTheirs ? (
+        <button type="button" style={btn} onClick={() => setTheirOpen(true)} data-testid="their-paper-button" title="A contract on their form that we signed and they did not countersign: record who signed, whether they rely on it, and its key terms">
+          Their paper…
+        </button>
+      ) : null}
+      {theirPaper ? (
+        <button type="button" style={btn} onClick={() => setTheirOpen(true)} data-testid="their-paper-edit">
+          Edit the record
+        </button>
+      ) : null}
       {coverage.kind === 'none' || coverage.kind === 'draft' ? (
         <button type="button" style={quiet ? btn : { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }} onClick={() => setModalOpen(true)}>
           {variant === 'inline' ? 'Send contract' : 'Send one to sign'}
@@ -143,6 +158,13 @@ export default function JobContractStrip({
         job={job}
         onChanged={() => void reload()}
         coverage={coverage}
+      />
+      <TheirPaperSheet
+        open={theirOpen}
+        onClose={() => setTheirOpen(false)}
+        onDone={() => void reload()}
+        job={{ id: job.id, num: jobNumberLabel(job), partyName: signer }}
+        existing={theirPaper}
       />
       {sheetOpen ? (
         <AddJobContractSheet
@@ -192,7 +214,7 @@ export default function JobContractStrip({
       </div>
     )
   }
-  const tone = coverage.kind === 'signed' ? 'var(--bg-green-tint)' : coverage.kind === 'sent' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)'
+  const tone = coverage.kind === 'signed' ? 'var(--bg-green-tint)' : coverage.kind === 'sent' ? 'var(--bg-amber-tint)' : coverage.kind === 'their_paper' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)'
   return (
     <div style={{ marginBottom: '0.75rem' }}>
       <div

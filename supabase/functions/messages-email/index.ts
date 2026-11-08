@@ -11,6 +11,13 @@ import { loadWalkKit } from '../_shared/walkKit.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { placeFiles, readFiles, takeBack } from './files.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+// Through Gmail as the box (punch list #207 PR 2, v2.6702): the reader's token, the raw mail, the send, the log and the copy.
+import { GMAIL_SCOPES, GmailError, gmailSend } from '../_shared/gmail.ts'
+import { googleServiceToken } from '../_shared/googleToken.ts'
+import { readerBoxes } from '../_shared/gcKernels/lib/emailIn/readerBoxes.ts'
+import { messagesEmailMessageId, rawMailBase64Url, senderDisplayName } from '../_shared/gcKernels/lib/emailOut/rawMail.ts'
+import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 
 /**
  * messages-email — Messages, cut 3: an email from the reply box's send window, to one person at one of their
@@ -21,15 +28,23 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  * together with `compose.emailDraft`.
  *
  * In order: the line is written in `messages` as the service role (channel email, direction out, the job and the
- * address), so the email has an id before it goes; the email goes through Resend's existing send as a plain email
- * (`buildPlainMessagesEmail`, v2.6038, punch list #207 PR 1: the words as typed with the greeting the box pre-typed, the
- * signature from the sender's account, nothing of ours after it; no letterhead bar, no card, no footer), from the
- * company's name on `EMAIL_FROM`'s address, its replies to the box (R6, v2.5496: the box
- * they last wrote to, else their kind's, Settings' address in `messages_boxes_v1`, as the reply box names it; with no
- * address there, to the sender as before), and the line carries that box; its sent copy
- * is filed with the line as its source, so the thread's overlay of sent copies skips it. If Resend refuses it, the line
- * is taken back out and the refusal is said. The answer is the line's id, which a later press can name (cut 2's
- * *this message gets it done*).
+ * address), so the email has an id before it goes; the email is a plain email (`buildPlainMessagesEmail`, v2.6038, punch
+ * list #207 PR 1: the words as typed with the greeting the box pre-typed, the signature from the sender's account,
+ * nothing of ours after it; no letterhead bar, no card, no footer). Since v2.6702 (punch list #207 PR 2, the owner's
+ * calls 5 and 6 of 2026-11-08) it goes **through Gmail as the box** their answer comes back to (R6, v2.5496: the box
+ * they last wrote to, else their kind's, Settings' address in `messages_boxes_v1`) whenever that box is one the bids@
+ * reader reads (`readerBoxes`: bids@ by the secret or Settings, the team box by Settings), under the reader's own token
+ * (`GOOGLE_SERVICE_ACCOUNT_JSON`, `gmail.modify`), as the raw mail `rawMail.ts` builds with the display name *Wendi
+ * Doll · Click Construction* and the files attached: so the mail sits in that box's Sent, the From reads a person and
+ * the company instead of team@noreply, and no Reply-To is needed. The line keeps the mail's own Message-ID
+ * (`rfc_message_id`), its Gmail id and its conversation, so the box's own read of its Sent, or a copy it gets back,
+ * writes no second line (v2.5504's fence, `email_write_line`'s `ON CONFLICT (gmail_id)`). The function writes the
+ * `email_send_log` row and files the sent copy itself, as Resend's helper did. When no reader box answers the thread,
+ * when the Google secret is missing, or when Google refuses the token or the send, the email goes through **Resend as
+ * before**, from the company's name on `EMAIL_FROM`'s address with the box as its Reply-To (the sender's own address
+ * with no box), and the refusal is logged; the line carries the box either way. Its sent copy is filed with the line
+ * as its source, so the thread's overlay of sent copies skips it. If nothing sends, the line is taken back out and the
+ * refusal is said. The answer is the line's id, which a later press can name (cut 2's *this message gets it done*).
  *
  * Its files (cut 7e, `files.ts`; the rules are `_shared/messagesEmailFiles.ts`): each the app asked to send is checked
  * and, when it goes as the file, read before the line is written, and a file from this computer is put into the job's
@@ -191,6 +206,31 @@ serve(async (req) => {
       source: { table: 'messages', id: line.id },
       sentBy: who.id,
     }
+
+    // Through Gmail as the box (v2.6702): when the box their answer comes back to is one the reader reads, the mail goes
+    // from that box under the reader's token, named for the person and the company, and sits in the box's Sent. The line
+    // keeps the mail's Message-ID and Gmail ids first, so the box's read of its own Sent lands nothing twice.
+    const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+    const asBox = boxAddress && saJson ? readerBoxes(parseBoxSettings(boxesRow?.value_text), Deno.env.get('GMAIL_IMPERSONATE_USER')).find((b) => b.address.trim().toLowerCase() === boxAddress.trim().toLowerCase()) ?? null : null
+    if (asBox && saJson) {
+      const from = mailboxWithName(senderDisplayName(String(who.name ?? ''), letterhead), asBox.address)
+      const messageId = messagesEmailMessageId(line.id, asBox.address)
+      const raw = rawMailBase64Url({ from, to, subject: built.subject, text: built.text, html: built.html, messageId, at: new Date().toISOString(), files: placed.attachments })
+      try {
+        const token = await googleServiceToken(saJson, GMAIL_SCOPES, asBox.address)
+        const went = await gmailSend(token, raw)
+        const kept = await admin.from('messages').update({ rfc_message_id: messageId, gmail_id: went.id, gmail_thread_id: went.threadId ?? null }).eq('id', line.id)
+        if (kept.error) console.warn('[messages-email] the sent mail’s ids were not kept on the line', line.id, kept.error.message)
+        await logEmailSendBestEffort({ resendEmailId: null, to: [to], from, subject: built.subject, emailType: MESSAGES_EMAIL_KIND })
+        await fileSentEmailBestEffort({ kind: 'messages_email', ...filed }, { to: [to], from, subject: built.subject, html: built.html, attachments: placed.attachments, resendEmailId: null })
+        return json({ ok: true, messageId: line.id, sentAs: asBox.address })
+      } catch (e) {
+        // Google said no (a token Google will not mint, a send it refused): Resend takes the email as before, logged.
+        const why = e instanceof GmailError ? `Gmail ${e.status}: ${e.message}` : e instanceof Error ? e.message : String(e)
+        console.warn('[messages-email] Gmail as the box did not take it; Resend sends it', asBox.mailbox, why.slice(0, 300))
+      }
+    }
+
     const sent = await sendEmailViaResend(to, built.subject, built.text, built.html, resendKey, {
       from: mailboxWithName(letterhead, EMAIL_FROM),
       replyTo,

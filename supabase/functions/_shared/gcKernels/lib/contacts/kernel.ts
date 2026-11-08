@@ -55,6 +55,11 @@ export interface ContactChannel {
   value: string
   /** When this number texted STOP. Null: it can be texted. An address is never stopped. */
   optedOutAt: string | null
+  /**
+   * When the office made this their usual number or address (punch list #118, `contact_channels.usual_at`). The
+   * recipient rule reads it first. Unset or null: never picked.
+   */
+  usualAt?: string | null
 }
 
 export interface Contact {
@@ -165,6 +170,20 @@ export function matchChannel(
 /** The numbers we may text: each one that has not sent STOP. */
 export function textableNumbers(c: Pick<Contact, 'channels'>): ContactChannel[] {
   return c.channels.filter((ch) => ch.kind === 'phone' && !ch.optedOutAt)
+}
+
+/**
+ * Their usual number or address (punch list #118): the channel of the kind the office starred, the newest star when a
+ * fold brought two together. A usual number that sent STOP is no longer usual. Null when none is starred.
+ */
+export function usualChannel(c: Pick<Contact, 'channels'>, kind: ChannelKind): ContactChannel | null {
+  let best: ContactChannel | null = null
+  for (const ch of c.channels) {
+    if (ch.kind !== kind || !ch.usualAt) continue
+    if (kind === 'phone' && ch.optedOutAt) continue
+    if (!best || ch.usualAt > (best.usualAt ?? '')) best = ch
+  }
+  return best
 }
 
 /**

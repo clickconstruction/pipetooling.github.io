@@ -49,6 +49,8 @@ import { gapAnswerCounts, gapAnswersByKey, type LegalGapAnswer, type LegalGapAns
 import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, legalLastWorkBasis, type LegalLastWorkSource, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline, type LegalMailPieceLike } from './legalLienPaper'
 import { claimRetainage, claimRetainageForAccount, type LegalPayApplicationLike } from './legalClaimRetainage'
 import { claimSettlementOnly, claimTyped, type LegalClaimLineLike } from './legalClaimLines'
+import { agreementCountsForSuit, signedAgreementBasis, theirPaperGapWords, theirPaperNotCounting } from './legalContractBasis'
+import { theirPaperTermLine } from '../jobs/theirPaper'
 import type { LegalMatterPersonLike } from './legalMatterPeople'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
@@ -1040,14 +1042,15 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   const broken = accountOutcomes.filter((o) => o.state === 'broken').length
 
   // --- Theory ---------------------------------------------------------------
-  const anySigned = jobLines.some((l) => l.contract.kind === 'signed')
+  // v2.6698 (punch list #173): their paper counts once they countersigned or relied on it (`legalContractBasis.ts`).
+  const anySigned = jobLines.some((l) => agreementCountsForSuit(l.contract))
   const swornJobs = jobLines.filter((l) => l.swornMissing.length === 0).length
   // A petition pleads the jobs that qualify: one job with a sworn-account basis is a theory; the others stay gaps.
   const swornHolds = swornJobs > 0
   // A lien is on the table on a job whose own property record is complete and whose window is open or filed (item 6: per job, not the first address).
   const lienable = lienClock.some((c) => propertyOf(c.jobId)?.lienReady && (c.status === 'notice_open' || c.status === 'affidavit_open' || c.status === 'filed'))
   const theory: LegalTheory = anySigned
-    ? { key: 'contract', label: theoryLabel('contract'), basis: 'a signed agreement is on file' }
+    ? { key: 'contract', label: theoryLabel('contract'), basis: signedAgreementBasis(jobLines.map((l) => l.contract), swornHolds) }
     : swornHolds
       ? { key: 'sworn', label: theoryLabel('sworn'), basis: `bill received, field evidence with GPS, no dispute on record${swornJobs < jobLines.length ? ` — on ${swornJobs} of ${jobLines.length} jobs` : ''}` }
       : lienable
@@ -1107,6 +1110,13 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       const y = calendarYmdInAppTzFromIso(a.coverage.signedAt ?? '') || null
       steps.push({ ymd: y, sortKey: y ?? '0000', kind: 'contract', text: `Agreement signed${a.coverage.signerName ? ` by ${a.coverage.signerName}` : ''} (${a.coverage.source})`, jobLabel: a.jobLabel })
     }
+    // v2.6698: their paper is two steps — the day we signed it, and the day they relied on it.
+    if (a.coverage.kind === 'their_paper') {
+      const r = a.coverage.record
+      const signedOn = r.ourSignedOn
+      steps.push({ ymd: signedOn, sortKey: signedOn ?? '0000', kind: 'contract', text: `${r.title || 'Their paper'} signed for us${r.ourSigner ? ` by ${r.ourSigner}` : ''}${r.theirSignedOn ? `, countersigned ${r.theirSignedOn}` : ', not countersigned'}${r.terms.length ? ` · ${r.terms.map(theirPaperTermLine).join(' · ')}` : ''}`, jobLabel: a.jobLabel })
+      if (r.reliedOn) steps.push({ ymd: r.reliedOn.on || null, sortKey: r.reliedOn.on || '0000', kind: 'contract', text: `They relied on their paper${r.reliedOn.what ? `: ${r.reliedOn.what}` : ''}`, jobLabel: a.jobLabel })
+    }
   }
   for (const e of timeline) {
     if (!e.shared) continue
@@ -1131,7 +1141,13 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   // --- Gaps ----------------------------------------------------------------
   const gaps: LegalGap[] = []
   for (const l of jobLines) {
-    if (l.contract.kind === 'signed') continue
+    if (agreementCountsForSuit(l.contract)) continue
+    const theirs = theirPaperNotCounting(l.contract)
+    if (theirs) {
+      // v2.6698: their paper is on file but does not count yet — the gap says what makes it count.
+      gaps.push({ key: `contract:${l.jobId}`, ...theirPaperGapWords(theirs, l.label, l.swornMissing), jobId: l.jobId, fix: 'contract' })
+      continue
+    }
     if (l.swornMissing.length === 0) {
       gaps.push({
         key: `contract:${l.jobId}`,
@@ -1228,7 +1244,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   // --- Exhibits ------------------------------------------------------------
   const exhibitCandidates: Array<{ title: string; count: number }> = [
     { title: 'Invoices and payments', count: ledger.length },
-    { title: 'Signed agreements', count: agreements.filter((a) => a.coverage.kind === 'signed').length },
+    { title: 'Signed agreements', count: agreements.filter((a) => agreementCountsForSuit(a.coverage)).length },
     { title: 'Final demand letters', count: demandLetters.filter((d) => d.sentYmd).length },
     { title: 'Lien notices and filings', count: lienFilings.length },
     { title: 'What was said — contacts, promises, calls', count: timeline.filter((e) => e.shared).length },
