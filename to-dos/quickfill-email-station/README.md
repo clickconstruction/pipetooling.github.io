@@ -2,7 +2,7 @@
 name: "Quickfill Email station: the live inbox, not the retyped list"
 number: 159
 group: close
-status: built 2026-10-24 (the owner's "build it all"): v2.5814 #6100 (migration pushed, types #6114), v2.5820 #6102 (gmail-count), v2.5824 #6104 (Settings cards), v2.5827 #6108 (the station), v2.5828 (the trend) · left: the owner's Google admin step, then his switch and his list
+status: built 2026-10-24 (the owner's "build it all"): v2.5814 #6100 (migration pushed, types #6114), v2.5820 #6102 (gmail-count), v2.5824 #6104 (Settings cards), v2.5827 #6108 (the station), v2.5828 (the trend) · the Google admin step done 2026-11-08 (the delegation row reads four scopes, `gmail.metadata` among them; a session typed it from the owner's Chrome, the owner pressed Authorize) · left: his list and his switch, then a week of use
 summary: >
   The Email station is three free boxes and a mark. Its history shows the same six emails retyped
   every morning for a week, and the station cannot tell that nothing moved. The app already reads
@@ -12,9 +12,9 @@ summary: >
   day they arrived and a door into Gmail, what moved since the last look, and a Looked that saves
   the live list as the note. The same read, under a metadata-only scope, can count a teammate's own
   labels; who is counted and who sees it is the owner's list, said on the station.
-next: The owner adds the gmail.metadata scope to the delegation row (The admin step, below), says so, then adds the boxes and people in Settings → Phone and texts → Mail the app counts and turns it on; a week of use, then delete the folder.
+next: The owner adds the boxes and people in Settings → Phone and texts → Mail the app counts and turns it on (his picks of 2026-11-08: bids@ and the team box, every person on the list each seeing their own rows, Robert seeing everyone's; a session may not add a person, that press is the owner's); a week of use, then delete the folder. The admin step is done (2026-11-08).
 size: M as a train of five (S · M · S · M · S); one migration, one new edge function, one Google admin step for the metadata scope
-blocker: The owner's five-minute Google admin step; no mailbox beyond bids@ is read until he has done it and said so.
+blocker: None since 2026-11-08: the scope is on the delegation. The list and the switch are the owner's presses.
 ver: v2.5814 · 5820 · 5824 · 5827 · 5828
 opinion: build B over the delegation with the metadata-only scope — the key already reaches every mailbox on the Workspace, so the honest control is the app's own list and the words on the station, not a consent screen asking for a yes the admin already gave; start with the two shared boxes and one person
 ---
