@@ -224,8 +224,14 @@ async function legalSendsFor(admin: any, contacts: any[]): Promise<Record<string
   const customerIds = [...new Set(contacts.map(customerOf).filter((id): id is string => !!id))]
   if (customerIds.length === 0) return out
 
-  const { data: jobData } = await admin.from('jobs_ledger').select('id, customer_id').in('customer_id', customerIds)
-  const jobs = (jobData ?? []) as Array<{ id: string; customer_id: string }>
+  // The customer's own jobs and (punch list #249, row 6) the jobs it is the GC on: the courtesy's GC copy lands on the GC's thread too.
+  const [{ data: ownJobData }, { data: gcJobData }] = await Promise.all([
+    admin.from('jobs_ledger').select('id, customer_id, gc_customer_id').in('customer_id', customerIds),
+    admin.from('jobs_ledger').select('id, customer_id, gc_customer_id').in('gc_customer_id', customerIds),
+  ])
+  const jobsById = new Map<string, LegalSendJob>()
+  for (const j of [...((ownJobData ?? []) as LegalSendJob[]), ...((gcJobData ?? []) as LegalSendJob[])]) jobsById.set(j.id, j)
+  const jobs = [...jobsById.values()]
   if (jobs.length === 0) return out
   const jobIds = jobs.map((j) => j.id)
   const [{ data: filingData }, { data: letterData }] = await Promise.all([
@@ -242,16 +248,33 @@ async function legalSendsFor(admin: any, contacts: any[]): Promise<Record<string
   for (const c of contacts) {
     const customer = customerOf(c)
     if (!customer) continue
-    const theirJobs = new Set(jobs.filter((j) => j.customer_id === customer).map((j) => j.id))
-    out[c.id] = [
-      ...legalSendsFromFilings(
-        filings.filter((f) => theirJobs.has(f.job_id)),
-        { items, recipient: 'owner' },
-      ),
-      ...legalSendsFromDemandLetters(letters.filter((d) => theirJobs.has(d.job_id))),
-      // The courtesy notice (punch list #231): the owner's copy, when one went to them.
-      ...legalSendsFromCourtesy(items.filter((it) => theirJobs.has(it.job_id)), { recipient: 'owner' }),
-    ]
+    out[c.id] = legalSendsForCustomer({ customer, jobs, filings, letters, items })
   }
   return out
+}
+
+export type LegalSendJob = { id: string; customer_id: string | null; gc_customer_id?: string | null }
+
+/**
+ * One customer's legal sends (pure): on the jobs it owns, every notice filing, demand letter and the
+ * courtesy's owner copy; on the jobs it is the GC of (punch list #249, row 6), the courtesy's GC copy,
+ * so the GC's thread shows the grey line v2.6269's release note promised. A customer that is both
+ * owner and GC of one job reads one line per press.
+ */
+export function legalSendsForCustomer(input: { customer: string; jobs: readonly LegalSendJob[]; filings: readonly any[]; letters: readonly any[]; items: readonly any[] }): LegalSend[] {
+  const theirJobs = new Set(input.jobs.filter((j) => j.customer_id === input.customer).map((j) => j.id))
+  const gcJobs = new Set(input.jobs.filter((j) => j.gc_customer_id === input.customer).map((j) => j.id))
+  const sends: LegalSend[] = [
+    ...legalSendsFromFilings(
+      input.filings.filter((f) => theirJobs.has(f.job_id)),
+      { items: input.items as any, recipient: 'owner' },
+    ),
+    ...legalSendsFromDemandLetters(input.letters.filter((d) => theirJobs.has(d.job_id)) as any),
+    // The courtesy notice (punch list #231): the owner's copy, when one went to them.
+    ...legalSendsFromCourtesy(input.items.filter((it) => theirJobs.has(it.job_id)) as any, { recipient: 'owner' }),
+    // The GC's copy, on the jobs they are the GC of (punch list #249, row 6).
+    ...legalSendsFromCourtesy(input.items.filter((it) => gcJobs.has(it.job_id)) as any, { recipient: 'original_contractor' }),
+  ]
+  const seen = new Set<string>()
+  return sends.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)))
 }

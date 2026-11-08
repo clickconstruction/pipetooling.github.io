@@ -9,6 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE, LIEN_RETAINAGE_PILES, buildLienRetainageQueue, type LienRetainageRow } from '../../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom } from '../../lib/jobs/lienLetterTwo'
+import type { CourtesyRecord } from '../../lib/jobs/lienCourtesyNotice'
 import { ownerCallByJobFrom } from '../../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -159,6 +160,14 @@ beforeEach(() => {
   payPageRefresh.mockReset()
   openBillCustomerMock.mockReset()
 })
+
+// The courtesy notice's io (punch list #249, row 1): the addresses found at once, the send and the record write as the case sets them.
+const courtesyIo = vi.hoisted(() => ({ send: vi.fn(), write: vi.fn() }))
+vi.mock('../../lib/jobs/lienCourtesyIo', () => ({
+  loadCourtesyRecipients: async () => [{ who: 'original_contractor', name: 'Loberg Contracting', email: { address: 'office@loberg.test', goes: true, reason: '' }, text: { address: '', goes: false, reason: 'no number on the job' }, contactId: null, textChannelId: null }],
+  sendCourtesyNotice: (...args: unknown[]) => courtesyIo.send(...args),
+  writeCourtesyRecord: (...args: unknown[]) => courtesyIo.write(...args),
+}))
 
 const TODAY = '2026-09-14'
 
@@ -1458,6 +1467,32 @@ describe('LienDeskModal the attorney’s letter (v2.3760)', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
     expect((document.querySelector('[data-lien-letter-two="draft"]') as HTMLElement).textContent).toBe('the attorney’s letter · unresponsive')
     expect((document.querySelector('[data-lien-letter-two-heading]') as HTMLElement).textContent).toContain('the attorney’s letter · unresponsive · after the Sep 2 packet')
+  })
+
+  it('a courtesy send whose record did not take closes the window, names it on the footer in place of Send, and Write the record again writes the record alone (punch list #249, row 1)', async () => {
+    const record: CourtesyRecord = { at: '2026-09-14T15:00:00Z', by: 'Taunya', lienDay: '2026-11-16', claim: 33_500, to: [{ who: 'original_contractor', name: 'Loberg Contracting', channel: 'email', address: 'office@loberg.test', ok: true, id: 're_1', reason: '' }] }
+    courtesyIo.send.mockReset()
+    courtesyIo.write.mockReset()
+    courtesyIo.send.mockResolvedValue({ record, to: record.to, recordError: 'the row was changed by someone else' })
+    courtesyIo.write.mockResolvedValue(undefined)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={sentDesk()} />)
+    await settle()
+    const door = document.querySelector('[data-lien-courtesy-door]') as HTMLButtonElement | null
+    expect(door, 'the courtesy door on the sent footer').not.toBeNull()
+    fireEvent.click(door!)
+    await waitFor(() => expect((document.querySelector('[data-lien-courtesy-send]') as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(document.querySelector('[data-lien-courtesy-send]') as HTMLButtonElement)
+    await waitFor(() => expect(courtesyIo.send).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(document.querySelector('[data-lien-courtesy-window]')).toBeNull())
+    const band = document.querySelector('[data-lien-courtesy-unrecorded]') as HTMLElement
+    expect(band.textContent).toContain('1 message went: email to the GC. The record could not be written: the row was changed by someone else. Write the record again. Nothing goes out a second time.')
+    expect(document.querySelector('[data-lien-courtesy-door]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Write the record again ›' }))
+    await waitFor(() => expect(courtesyIo.write).toHaveBeenCalledTimes(1))
+    expect(courtesyIo.write.mock.calls[0]![0]).toMatchObject({ id: 'sent1' })
+    expect(courtesyIo.write.mock.calls[0]![1]).toEqual(record)
+    expect(courtesyIo.send).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(document.querySelector('[data-lien-courtesy-unrecorded]')).toBeNull())
   })
 
   it('paying it down (PR 3 of #274): a payment after the packet reads on the footer, the attorney’s letter door goes plain, and Record what they promised writes the job’s promise and the notice’s record', async () => {

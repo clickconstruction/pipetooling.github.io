@@ -19,7 +19,7 @@ import {
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { buildLienAffidavitQueue, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
-import { letterTwoByJobFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
+import { letterTwoByJobFrom, letterTwoMailClocksFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
 import { ownerCallByJobFrom, type OwnerCall } from '../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import type { CustomerAddressRow, JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
@@ -298,7 +298,12 @@ export function useLienDeskData(
         const summaryWithBatches = summarizeLienDeskForNeedsYou(queue)
         summaryWithBatches.leader.batches = lienDeskBatches(queue, gcNames)
         // Letter two (v2.3760): the second owner letter's clock per job, from the notice items and the job's own balance.
-        const letterTwoByJob = letterTwoByJobFrom(items, (id) => Math.max(0, Number(jobsById[id]?.revenue ?? 0) - Number(jobsById[id]?.payments_made ?? 0)), todayYmd, formatYmdMonthDay)
+        // Day 0 is the owner's piece's day when Docsmit knows it (D9's rule, unread until v2.6669 — punch list #249, row 4): the sent
+        // packets' pieces are read under the item's id and its filing's, in light mode too, so the Dashboard's count and the desk agree.
+        const sentPackets = items.filter((i) => i.kind === 'notice_53_056' && i.status === 'sent' && !i.voided_at)
+        const packetPieces = await readMailPiecesBySource([...sentPackets.map((i) => i.id), ...sentPackets.map((i) => i.sent_filing_id).filter((v): v is string => Boolean(v))], 'lien desk: the packets’ pieces')
+        if (cancelled) return
+        const letterTwoByJob = letterTwoByJobFrom(items, (id) => Math.max(0, Number(jobsById[id]?.revenue ?? 0) - Number(jobsById[id]?.payments_made ?? 0)), todayYmd, formatYmdMonthDay, letterTwoMailClocksFrom(sentPackets, packetPieces))
         summaryWithBatches.office.letterTwo = summarizeLetterTwo(letterTwoByJob)
         const ownerCallByJob = ownerCallByJobFrom(items)
         // The next deadline's GCs by name (v2.3704) — the kernel only knows ids.
