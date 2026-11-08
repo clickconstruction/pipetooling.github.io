@@ -144,6 +144,74 @@ export interface MyMailTagRequest {
   as?: string
 }
 
+/** A person as the seat names one for a tag onto an HR file (punch list #289): a `people.id`. */
+export interface MyMailPersonRef {
+  personId: string
+}
+
+/**
+ * Tag a conversation onto a person's HR file (punch list #289, server 0.41.0): the dev seat's alone, so `as` (the login
+ * whose box the conversation is in) is required and a person's own press never carries `person`. Each mail of the
+ * conversation becomes a dated entry on the file (`person_file_entries`, source `conversation`, the mail's day, its
+ * headers and words in a fixed shape, its Gmail id), written as the dev; a mail the file already holds by its Gmail id
+ * is left; later mail follows by itself as the job tag's does. `plan` answers `MyMailPersonTagPlanOk` and writes nothing.
+ * `stop` lifts the follow instead of tagging: the row goes and every entry stays.
+ */
+export interface MyMailPersonTagRequest {
+  action: 'tag'
+  threadId: string
+  person: MyMailPersonRef
+  as: string
+  plan?: boolean
+  stop?: boolean
+}
+
+/** One mail of a person tag plan: what the tag would do with it, and the headers that say which mail. */
+export interface MyMailPersonTagPlanMail {
+  gmailId: string
+  /** entry: a new entry on the file; already: the file holds it by its Gmail id; skip: never written. */
+  kind: 'entry' | 'already' | 'skip'
+  at: string | null
+  from: string
+  subject: string
+  /** On an entry: the day it lands on (the mail's day in the app's calendar) and how many files it names. */
+  entryDate?: string
+  files?: number
+  /** On a skip: why. */
+  why?: string
+}
+
+export interface MyMailPersonTagCounts {
+  entries: number
+  already: number
+  skipped: number
+}
+
+/** The plan of a person tag, written nowhere: the person, whether the conversation is followed onto the file already, the counts, each mail. */
+export interface MyMailPersonTagPlanOk {
+  ok: true
+  plan: true
+  threadId: string
+  account: string
+  person: { id: string; name: string }
+  /** A row stands for this conversation on this file: the follow is on, and a tag refreshes its window. */
+  following: boolean
+  /** The plan is to lift the follow (`stop`): no mail is listed, `counts.already` is what the file holds for the conversation, and nothing else moves. */
+  stop: boolean
+  counts: MyMailPersonTagCounts
+  mails: MyMailPersonTagPlanMail[]
+}
+
+/** The person tag done: the entries written, the ones the file held already, the mails skipped; or the follow lifted (`stopped`). */
+export interface MyMailPersonTagOk {
+  ok: true
+  personId: string
+  entries: number
+  already: number
+  skipped: number
+  stopped: boolean
+}
+
 /** One mail of a tag plan as the seat reads it back: what the tag would do with it, and the headers that say which mail. */
 export interface MyMailTagPlanMail {
   gmailId: string
@@ -212,7 +280,7 @@ export interface MyMailUntagOk {
 }
 
 /** What the tab posts to the function. */
-export type MyMailRequest = MyMailListRequest | MyMailOpenRequest | MyMailTagRequest | MyMailUntagRequest
+export type MyMailRequest = MyMailListRequest | MyMailOpenRequest | MyMailTagRequest | MyMailPersonTagRequest | MyMailUntagRequest
 
 // ---------- a refusal ----------
 

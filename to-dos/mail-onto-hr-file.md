@@ -2,7 +2,7 @@
 name: "A mail conversation onto an HR file: the seat's mail tag lands a thread as dated entries on a person, each with its Gmail id"
 number: 289
 group: ready
-status: proposed 2026-11-08 · the owner's yes the same day · not built
+status: built 2026-11-08 on claude/289-mail-onto-hr-file-1c7694 (v2.6715, one PR) · left after the merge — the migration push, gmail-mine then dev-mcp deployed, the live verify on a ZZ Test person
 summary: >
   The seat's mail tag (v2.6568) puts a whole Gmail conversation onto a job's Activity and notes,
   every mail at its own time. A conversation about a person has no such door: the mails that bear
@@ -11,7 +11,8 @@ summary: >
   Let the mail tag take a person as its target: each mail becomes an HR entry on its day with the
   sender, the recipients, the subject and the body as plain text, the entry carries the Gmail id
   and thread id, and a later mail in the thread follows by itself as the job tag's does.
-next: Build the person target on plan_mail_tag and apply_mail_tag, the Gmail columns on the entry, and the follow-on sweep; then the October mails of the case go on as one tag each.
+next: After the merge push 20261108194723_hr_mail_tag, deploy gmail-mine then dev-mcp, run How to verify on a ZZ Test person and record it below; then the October mails of the case go on as one tag each.
+ver: v2.6715
 size: S
 blocker: None.
 opinion: build — the job tag already does the hard part (the thread read, the dedupe, the follow-on); this is a second landing and two columns
@@ -70,3 +71,13 @@ Send three made-up mails in a thread between two test logins; `plan_mail_tag` wi
 person lists three entries with their days and subjects; apply writes three; the Timeline shows
 them; a fourth mail in the thread appears as an entry after the next sweep; tagging the thread
 again adds nothing; `search_case` finds a phrase from a body.
+
+## Where it stands
+
+Built 2026-11-08 as one PR (v2.6715, server 0.41.0, migration `20261108194723_hr_mail_tag.sql`): `tag.person: { person_id }` on
+`plan_mail_tag` / `apply_mail_tag`, the landing in `gmail-mine` (`tagPerson`, the kernel `src/lib/myMail/personTagPlan.ts`),
+`gmail_message_id` / `gmail_thread_id` on the entry with the partial unique index as the dedupe, `email_tag_threads.person_id`
+and the follow's `followFiles` branch, the docs and the skill. Two things differ from the plan above: the follow lives in
+gmail-mine's own cron action (the job tag's follow was never in gmail-sync, so gmail-sync is untouched), and *Stop following*
+is the seat's `person: { person_id, stop: true }` for now, not a press on the entry — the Timeline press is a follow-up card
+if the office wants it. Left for after the merge: the push, the two deploys, and How to verify on a ZZ Test person, recorded here.
