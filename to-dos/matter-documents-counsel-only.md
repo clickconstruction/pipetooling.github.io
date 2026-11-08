@@ -2,7 +2,7 @@
 name: "Counsel-only on a matter document, and the matter's documents as text the search can read"
 number: 288
 group: ready
-status: proposed 2026-11-08 · the owner's yes the same day · the shape picked the same day (the shared documents table) · PR 1 built as v2.6716 (migration 20261108210000, legal-portal and dev-mcp 0.42.0 to deploy after the push) · PR 2 and PR 3 next
+status: proposed 2026-11-08 · the owner's yes the same day · the shape picked the same day (the shared documents table) · PR 1 built as v2.6716 (migration 20261108210000, legal-portal and dev-mcp 0.44.0 to deploy after the push) · PR 2 and PR 3 next
 summary: >
   The Legal desk's matter is what the firm reads, so it is the natural home for anything written
   for the attorney. Two things keep that from working for a case on a person: a matter document

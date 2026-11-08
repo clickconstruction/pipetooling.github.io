@@ -32,7 +32,10 @@ export type ContactRow = Pick<
 >
 
 /** A `contact_channels` row. Its `key` is the database's own, matched there. */
-export type ContactChannelRow = Pick<Tables<'contact_channels'>, 'id' | 'contact_id' | 'kind' | 'value' | 'opted_out_at' | 'created_at'>
+export type ContactChannelRow = Pick<Tables<'contact_channels'>, 'id' | 'contact_id' | 'kind' | 'value' | 'opted_out_at' | 'created_at'> & {
+  /** Punch list #118 (v2.6699): when the office made it their usual. Typed here until the types are regenerated after the push. */
+  usual_at?: string | null
+}
 
 /** A `contact_jobs` row. */
 export type ContactJobRow = Pick<Tables<'contact_jobs'>, 'contact_id' | 'bid_id' | 'project_id' | 'jobs_ledger_id' | 'is_default' | 'created_at'>
@@ -150,7 +153,7 @@ export function contactFromRows(
   const mine: ContactChannel[] = channels
     .filter((ch) => ch.contact_id === row.id && CHANNEL_KINDS.has(ch.kind))
     .sort((a, b) => (a.kind === b.kind ? a.created_at.localeCompare(b.created_at) : a.kind === 'phone' ? -1 : 1))
-    .map((ch) => ({ id: ch.id, kind: ch.kind as ChannelKind, value: ch.value, optedOutAt: ch.opted_out_at }))
+    .map((ch) => ({ id: ch.id, kind: ch.kind as ChannelKind, value: ch.value, optedOutAt: ch.opted_out_at, usualAt: ch.usual_at ?? null }))
   const myJobs = jobs.filter((j) => j.contact_id === row.id).sort((a, b) => a.created_at.localeCompare(b.created_at))
   const star = myJobs.find((j) => j.is_default)
   const customerId = row.customer_id ?? byId(records.customerContactPersons, row.customer_contact_person_id)?.customer_id ?? null

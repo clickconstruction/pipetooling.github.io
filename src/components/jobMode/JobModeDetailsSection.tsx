@@ -9,6 +9,7 @@ import {
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useJobThreadNotesForModal } from '../../hooks/useJobThreadNotesForModal'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
@@ -34,6 +35,37 @@ const sectionLabel: CSSProperties = {
   fontSize: '0.8125rem',
   fontWeight: 500,
   color: 'var(--text-muted)',
+}
+
+/** The copy press beside the customer's address (#125 PR 7). */
+const copyPress: CSSProperties = {
+  flexShrink: 0,
+  border: '1px solid var(--border-strong)',
+  borderRadius: 999,
+  background: 'var(--surface)',
+  color: 'var(--text-muted)',
+  font: 'inherit',
+  fontSize: '0.8125rem',
+  lineHeight: 1,
+  padding: '0.2rem 0.45rem',
+  cursor: 'pointer',
+}
+
+/** Message the customer under the address (#125 PR 7): the card's own door, in the quiet look of the contact lines. */
+const messagePress: CSSProperties = {
+  alignSelf: 'flex-start',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.3rem',
+  padding: '0.3rem 0.7rem',
+  border: '1px solid var(--border-orange)',
+  borderRadius: 999,
+  background: 'var(--bg-orange-tint)',
+  color: 'var(--text-orange-700)',
+  font: 'inherit',
+  fontSize: '0.8125rem',
+  fontWeight: 600,
+  cursor: 'pointer',
 }
 
 const contactLinkBtn: CSSProperties = {
@@ -70,6 +102,7 @@ export default function JobModeDetailsSection({
   hcpNumber,
   jobName,
   updatesRev = 0,
+  onMessageCustomer,
 }: {
   jobId: string
   jobAddress: string
@@ -78,9 +111,17 @@ export default function JobModeDetailsSection({
   jobName?: string | null
   /** Goes up when the card wrote to the job (Message the customer's note or text): Job updates reads again. */
   updatesRev?: number
+  /**
+   * The card's Message the customer door (#125 PR 7, v2.6717): a press under the customer's address opens it, so the
+   * tech texts from the company number. Left out (the next job's card, or a role the door is not offered to), the
+   * address stands alone. A tech never emails the customer from Job Mode (the owner's call 4, 2026-11-08): the address
+   * is text with a copy press, not a `mailto:`.
+   */
+  onMessageCustomer?: () => void
 }) {
   const { user: authUser, profileName, role } = useAuth()
   const { showToast } = useToastContext()
+  const promptDialog = usePromptDialog()
   const jobDetailModal = useJobDetailModal()
 
   const [contact, setContact] = useState<CustomerContact | null>(null)
@@ -208,6 +249,17 @@ export default function JobModeDetailsSection({
   const email = contact?.customer_email?.trim() ?? ''
   const hasContact = Boolean(name || phone || email)
 
+  /** The address, copied (#125 PR 7): the clipboard, or a window to copy from when the app cannot reach it. */
+  const copyEmail = async () => {
+    if (!email) return
+    try {
+      await navigator.clipboard.writeText(email)
+      showToast('Email address copied', 'success')
+    } catch {
+      await promptDialog({ title: 'Copy the email address', message: 'The app could not reach the clipboard. Select the address below and copy it.', defaultValue: email, confirmLabel: 'I copied it' })
+    }
+  }
+
   return (
     <div
       style={{
@@ -259,13 +311,19 @@ export default function JobModeDetailsSection({
                 </button>
               ) : null}
               {email ? (
-                <button
-                  type="button"
-                  style={contactLinkBtn}
-                  aria-label={`Email customer at ${email}`}
-                  onClick={() => openInExternalBrowser(`mailto:${email}`)}
-                >
-                  {email}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, maxWidth: '100%' }}>
+                  <span style={{ ...contactLinkBtn, cursor: 'text', textDecoration: 'none', color: 'var(--text-700)' }} data-testid="job-mode-customer-email">
+                    {email}
+                  </span>
+                  <button type="button" style={copyPress} aria-label="Copy the customer’s email address" title="Copy the email address" onClick={() => void copyEmail()} data-testid="job-mode-customer-email-copy">
+                    ⧉
+                  </button>
+                </span>
+              ) : null}
+              {onMessageCustomer ? (
+                <button type="button" style={messagePress} aria-label="Message the customer by text" onClick={onMessageCustomer} data-testid="job-mode-details-message-customer">
+                  <span aria-hidden>💬</span>
+                  Message the customer
                 </button>
               ) : null}
             </>

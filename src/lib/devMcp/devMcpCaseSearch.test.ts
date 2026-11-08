@@ -57,6 +57,44 @@ describe('search_case (one full-text search across a person\'s case, v2.6620)', 
     expect(readNextFor('matter_document')).toContain('text_document_id')
   })
 
+  it('v2.6713: a document hit carries the record it transcribes — its id, day and title — joined here, fail-soft when the column is not known yet', async () => {
+    const rpcReply = {
+      q: 'generator', query: "'generat'", in: null, person_id: PERSON, matter_id: null, count: 2, shown: 2,
+      hits: [
+        { source: 'document', id: 'd1', title: 'Transcript of the call', section_n: null, section: null, day: '2026-11-07', counsel_only: false, rank: 0.3, snippet: 'the «generator»' },
+        { source: 'document', id: 'd2', title: 'Memo', section_n: null, section: null, day: '2026-11-07', counsel_only: false, rank: 0.2, snippet: 'a «generator»' },
+      ],
+    }
+    const tables: Record<string, Row[]> = {
+      people,
+      person_document_index: [{ id: 'd1', person_id: PERSON, evidence_id: 'r1' }, { id: 'd2', person_id: PERSON, evidence_id: null }, { id: 'd3', person_id: PERSON, evidence_id: 'r2' }],
+      person_file_evidence: [{ id: 'r1', dated_on: '2026-10-28', title: 'Recording of the call', counsel_only: false }, { id: 'r2', dated_on: '2026-10-29', title: 'Call K', counsel_only: true }],
+    }
+    const r: Reader & { asked: unknown[] } = {
+      asked: [],
+      rpc: async () => rpcReply,
+      rows: async (table, q) => {
+        if (!(table in tables)) throw new Error(`relation "${table}" does not exist`)
+        let out = tables[table]!
+        for (const f of q.filters ?? []) {
+          if (f.op === 'eq') out = out.filter((x) => x[f.column] === f.value)
+          else if (f.op === 'in') out = out.filter((x) => (f.value as unknown[]).includes(x[f.column]))
+          else if (f.op === 'ilike') out = out.filter((x) => String(x[f.column] ?? '').toLowerCase().includes(String(f.value).replace(/[%*]/g, '').toLowerCase()))
+        }
+        return out
+      },
+    }
+    const out = await searchCase(r, { person: 'Pat', q: 'generator' }, { role: 'dev' })
+    if ('refused' in out) throw new Error(out.refused)
+    expect(out.hits[0]).toMatchObject({ id: 'd1', evidence_id: 'r1', evidence_day: '2026-10-28', evidence_title: 'Recording of the call', read_next: expect.stringContaining('evidence_id') })
+    expect(out.hits[1]).not.toHaveProperty('evidence_id')
+    expect(out.note).toContain('evidence_id')
+    // The plain reader knows no index view: the hits stand as the search answered them.
+    const plain = await searchCase(reader(rpcReply), { person: 'Pat', q: 'generator' }, { role: 'dev' })
+    if ('refused' in plain) throw new Error(plain.refused)
+    expect(plain.hits[0]).not.toHaveProperty('evidence_id')
+  })
+
   it('refuses another role before any read, and an unknown person', async () => {
     const r = reader({ hits: [] })
     expect(await searchCase(r, { person: PERSON, q: 'x' }, { role: 'assistant' })).toMatchObject({ refused: expect.stringContaining('dev-only') })

@@ -80,7 +80,7 @@ const CONTACT_COLUMNS = [
   'roster:people(id, name)',
   'prospect:prospects(id, contact_name, company_name)',
 ].join(', ')
-const CHANNEL_COLUMNS = 'id, contact_id, kind, value, opted_out_at, created_at'
+const CHANNEL_COLUMNS = 'id, contact_id, kind, value, opted_out_at, usual_at, created_at'
 /**
  * A line's columns as Follow up reads them, the thread's read too (`followUpThreadIo.ts`). The box it came through,
  * who tied it, whether the app sent it on its own and what the reader read from an invitation to bid are the New lane's

@@ -164,6 +164,17 @@ describe('textNumberOf: the number a reminder goes to', () => {
     const n = textNumberOf([phone('ch-01', '2026-09-01T00:00:00Z', '2026-09-20T00:00:00Z'), phone('ch-02', '2026-09-10T00:00:00Z', '2026-09-22T00:00:00Z')])
     expect(n).toEqual({ number: '(210) 555-0102', optedOut: true, channelId: 'ch-02' })
   })
+
+  // Punch list #118: the usual the office starred comes first, whatever the thread last carried; a stopped usual is not usual.
+  it('takes the usual the office starred first, the newest star when two meet, and never a stopped one', () => {
+    const lines: RunLineRow[] = [{ contact_id: 'tom', direction: 'in', at: '2026-09-28T15:00:00Z', channel_id: 'ch-02' }]
+    const both = [{ ...phone('ch-01', '2026-09-01T00:00:00Z'), usual_at: '2026-09-15T00:00:00Z' }, phone('ch-02', '2026-09-10T00:00:00Z')]
+    expect(textNumberOf(both, lines).channelId).toBe('ch-01')
+    const twoStars = [{ ...phone('ch-01', '2026-09-01T00:00:00Z'), usual_at: '2026-09-15T00:00:00Z' }, { ...phone('ch-02', '2026-09-10T00:00:00Z'), usual_at: '2026-09-16T00:00:00Z' }]
+    expect(textNumberOf(twoStars).channelId).toBe('ch-02')
+    const stoppedStar = [{ ...phone('ch-01', '2026-09-01T00:00:00Z', '2026-09-20T00:00:00Z'), usual_at: '2026-09-15T00:00:00Z' }, phone('ch-02', '2026-09-10T00:00:00Z')]
+    expect(textNumberOf(stoppedStar).channelId).toBe('ch-02')
+  })
 })
 
 describe('portalLinkOf: a trade partner’s live page', () => {

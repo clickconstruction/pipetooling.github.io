@@ -15,6 +15,11 @@ import { useBidVsActualBurnInputs } from './useBidVsActualBurnInputs'
 import { useStageChecklistStates } from './useStageChecklistStates'
 import { useExpectedHours, type ExpectedHoursApi } from './useExpectedHours'
 import { useLineBudgetSettings } from './useLineBudgetSettings'
+import { useSuperintendentScores } from './useSuperintendentScores'
+import { todayYmdInAppTz } from '../utils/dateUtils'
+
+/** The sign-off read reaches back to the first award ever written, so every project's newest office percent is in it. */
+const SCORES_SINCE_YMD = '2020-01-01'
 import { checklistCountOf, isWorkingProject, projectPace, sortByPace, type ProjectPace } from '../lib/jobs/projectsBoard'
 import { laborEventsOf, parseProjectBoardRead, valueEventsOf, type ProjectBoardJob, type ProjectBoardRead } from '../lib/jobs/projectBoardRead'
 import type { SuperintendentLine } from '../lib/jobs/superintendentLine'
@@ -83,6 +88,15 @@ export function useProjectsBoard({ dayDetail = true }: { dayDetail?: boolean } =
   const checklists = useStageChecklistStates(ids, ids.length > 0)
   const targets = useExpectedHours(ids, ids.length > 0)
   const { settings } = useLineBudgetSettings()
+  // The office's sign-off on each percent and the subs' sheet hours, off the Scoreboard's own read (punch list #234 PR 4),
+  // so the proof line and the hours in agree with the score; fail-soft to none for a viewer the read refuses.
+  const today = todayYmdInAppTz()
+  const scores = useSuperintendentScores({ fromYmd: SCORES_SINCE_YMD, toYmd: today, jobIds: ids, enabled: ids.length > 0 })
+  const scoreByJob = useMemo(() => {
+    const m = new Map<string, { certifiedPct: number | null; signedOn: string | null; subHours: number }>()
+    for (const r of scores.read?.rows ?? []) if (!m.has(r.jobId)) m.set(r.jobId, { certifiedPct: r.certifiedPct, signedOn: r.signedOn, subHours: r.subHours })
+    return m
+  }, [scores.read])
 
   const cards = useMemo(() => {
     return sortByPace(
@@ -94,6 +108,7 @@ export function useProjectsBoard({ dayDetail = true }: { dayDetail?: boolean } =
           target: targets.byJob.get(row.id) ?? null,
           checklist: checklistCountOf(row.fixtures ?? [], checklists.questions, checklists.answersByFixture),
           settings,
+          score: scoreByJob.get(row.id) ?? null,
         })
         return {
           row,
@@ -105,7 +120,7 @@ export function useProjectsBoard({ dayDetail = true }: { dayDetail?: boolean } =
         }
       }),
     )
-  }, [rows, burn.inputsByJob, wantsDollars, targets.byJob, checklists.questions, checklists.answersByFixture])
+  }, [rows, burn.inputsByJob, wantsDollars, targets.byJob, checklists.questions, checklists.answersByFixture, settings, scoreByJob])
 
   return { rows, cards, targets, loading, failure, reload }
 }

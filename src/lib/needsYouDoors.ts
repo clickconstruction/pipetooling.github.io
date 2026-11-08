@@ -7,6 +7,7 @@ import { legalDeskHref } from './legal/legalDeskRoute'
 import { GC_FOLLOW_UP_HREF } from './gc/links'
 import { messagesThreadHref } from './messages/customerThread'
 import type { NeedsYouHost } from './needsYouSources'
+import { materialsNeedsHref } from './needsYou/materialsOnSite'
 import type { UserRole } from '../hooks/useAuth'
 
 /**
@@ -63,6 +64,9 @@ export type NeedsYouDoorData = {
   whileOffFirst?: { contactId: string; messageId: string } | null
   /** The day back (punch list #256 PR 9): the first teammate whose countdown ended, whose desk opens on Bring back. */
   awayBackFirstUserId?: string | null
+  /** Materials on site (punch list #209, v2.6728): the one job holding every box due, or every shortfall, when there is one. */
+  materialsStaleJobId?: string | null
+  materialsMissingJobId?: string | null
 }
 
 const STAGES = '/jobs?tab=stages'
@@ -109,6 +113,11 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
     case 'line-budgets-review':
       // The owner's weekly review opens over the card (punch list #234, PR 1c).
       return { kind: 'window', window: 'line-budgets-review' }
+    case 'materials-count-due':
+      // Materials on site (punch list #209, v2.6728): the desk, or the one job's page when it holds every box due.
+      return href(materialsNeedsHref(d.materialsStaleJobId ?? null))
+    case 'materials-missing-week':
+      return href(materialsNeedsHref(d.materialsMissingJobId ?? null))
     case 'jobs-stale-open':
       return href('/jobs?tab=stages&followups=idle')
     case 'capacity-under':

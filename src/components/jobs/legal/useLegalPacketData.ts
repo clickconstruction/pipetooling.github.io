@@ -19,6 +19,7 @@ import {
 import { classifyPromises, parsePaymentPromisesRpc, parsePromiseRecordsRpc } from '../../../lib/jobs/paymentPromises'
 import { parseChaseTouchesRpc } from '../../../lib/jobs/paymentChase'
 import { JOB_CONTRACT_COVERAGE_COLUMNS, type JobContractRowLike, type SignedEstimateLike } from '../../../lib/jobs/jobContractCoverage'
+import { withTheirPaperColumns } from '../../../lib/jobs/theirPaperIo'
 import type { JobDemandLetterRow } from '../../../lib/jobs/demandLetterTracking'
 import type { JobLienFilingRow } from '../../../lib/jobs/lienDeadlines'
 import type { LegalDeskItemLike } from '../../../lib/legal/legalLienPaper'
@@ -28,6 +29,7 @@ import type { LegalGapAnswerLike } from '../../../lib/legal/legalGapAnswers'
 import { claimLinesFromRows, type LegalClaimLineLike, type LegalClaimLineRow } from '../../../lib/legal/legalClaimLines'
 import { peopleFromRows, type LegalMatterPersonLike, type LegalMatterPersonRow } from '../../../lib/legal/legalMatterPeople'
 import { MATTER_PEOPLE_SELECT } from '../../../lib/legal/legalMatterPeopleIo'
+import { proceedingsFromRows, type LegalMatterProceedingRow, type LegalProceedingLike } from '../../../lib/legal/legalProceedings'
 import { buildHoursStatement, type HoursStatementInput } from '../../../lib/people/hoursStatement'
 
 /**
@@ -60,6 +62,8 @@ const db = supabase as unknown as SupabaseClient
 
 /** PostgREST caps a plain select at 1,000 rows; Collections accounts sit far under it, and the cap is named here so a runaway one is a known shape. */
 const ROW_CAP = 1000
+/** `legal_matter_proceedings` as the desk reads it (v2.6726): the office's note included, which the firm never gets. */
+const MATTER_PROCEEDINGS_SELECT = 'id, kind, title, agency, reference, person_id, status, status_on, note, document_ids, keep_out, added_at'
 /** An embedded `users(name)`, as PostgREST hands it back: one row, or a one-row list on an older client. */
 function nameOf(v: { name: string | null } | Array<{ name: string | null }> | null | undefined): string | null {
   const one = Array.isArray(v) ? v[0] : v
@@ -139,11 +143,14 @@ export function useLegalPacketData(
             const rows = (await withSupabaseRetry<unknown[]>(() => db.from('customer_addresses').select(ADDRESS_COLUMNS).eq('customer_id', customerId).order('sequence_order'), 'load legal packet property record')) ?? []
             return rows as CustomerAddressRow[]
           }, []),
+          // v2.6698 (punch list #173): their paper's own columns ride along for the rows whose kind says so.
           src<JobContractRowLike[]>('contracts', async () =>
-            (await withSupabaseRetry<JobContractRowLike[]>(
-              () => db.from('job_contracts').select(JOB_CONTRACT_COVERAGE_COLUMNS).in('job_id', jobIds).is('voided_at', null),
-              'load legal packet contracts',
-            )) ?? [], []),
+            withTheirPaperColumns(
+              (await withSupabaseRetry<JobContractRowLike[]>(
+                () => db.from('job_contracts').select(JOB_CONTRACT_COVERAGE_COLUMNS).in('job_id', jobIds).is('voided_at', null),
+                'load legal packet contracts',
+              )) ?? [],
+            ), []),
           src<SignedEstimateLike[]>('accepted estimates', async () =>
             (await withSupabaseRetry<SignedEstimateLike[]>(
               () => db.from('estimates').select('id, job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents').in('job_ledger_id', jobIds).eq('status', 'customer_accepted').not('acceptor_consented_at', 'is', null),
@@ -253,6 +260,15 @@ export function useLegalPacketData(
         )) ?? []
         return peopleFromRows(rows)
       }, [])
+      // v2.6726 (punch list #174): the proceedings beside the claim, live rows only, for the list and the keep-out hold.
+      const proceedings = await src<LegalProceedingLike[]>('proceedings beside the claim', async () => {
+        if (!matterId) return []
+        const rows = (await withSupabaseRetry<LegalMatterProceedingRow[]>(
+          () => db.from('legal_matter_proceedings').select(MATTER_PROCEEDINGS_SELECT).eq('matter_id', matterId).is('removed_at', null).order('added_at').limit(ROW_CAP),
+          'load the proceedings beside the claim',
+        )) ?? []
+        return proceedingsFromRows(rows)
+      }, [])
       // v2.6413 (punch list #212 PR 4): the signed hours statements on the jobs, and the app's first clock day for the gap jobs.
       // The statements' policy is a dev's and the controller's (v2.6450); anyone else reads none, and the tab says so by showing none.
       const [hoursStatements, firstRecordedDay, sheetSubs] = await Promise.all([
@@ -352,6 +368,7 @@ export function useLegalPacketData(
           gapAnswers,
           claimLines,
           people,
+          proceedings,
         }),
       )
       setFailed(failures)
