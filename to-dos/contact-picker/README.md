@@ -1,8 +1,8 @@
 ---
 name: "The To chip: pick the number, the address and the person a send goes to, and remember the pick"
 number: 118
-group: gated
-status: written up 2026-10-17 at Grace's ask, after the Tell the customer train (#115) went live; waits on her look
+group: waiting
+status: BUILDING 2026-11-08 on the owner's word, which stood in for Grace's look (built as drawn) — PR 1 v2.6699 (the usual number `contact_channels.usual_at`, the rule, the To chip on the send window, Who is this? asks; migration `20261108170919_contact_channel_usual.sql`, pushed right after the merge, then `messages-nudge-dispatch` redeployed); PRs 2 to 4 not built
 summary: >
   Every send today picks the number and the address by a rule and offers no choice: the first number
   that can still take a text, the first address, the customer's own contact rather than a person at
@@ -12,10 +12,11 @@ summary: >
   job's people when a job has more than one, the starred one first. One recipient rule in one kernel
   feeds the thread, the sheets, the morning run, the call task's dial and the tech's text, so a pick
   made anywhere holds everywhere.
-next: Grace's look; then PR 1 (the usual channel, the rule and the chip on the send window) is a day's work and can go alone
-size: M as a train of four (the usual channel and the chip, the sheets and the tech, who on this job, the address side); each PR S or M
-blocker: Grace's look. Nothing else: the tables, the people and the jobs are all there.
+next: The owner walks PR 1 on a ZZ Test customer with two numbers (How to verify, steps 1 to 3 and 5). Then PR 2 (the chip on the Tell the customer sheet and On my way, the tech's gate), PR 3 (Who on this job) and PR 4 (the address side).
+size: M as a train of four (the usual channel and the chip, the sheets and the tech, who on this job, the address side); each PR S or M; left: PRs 2 to 4 (S · M · S)
+blocker: none for PR 2; PR 3 and PR 4 wait on the owner's look at PR 1 and PR 2 live
 opinion: build the usual channel and the chip first; it closes the gap where a customer texted from a second phone and the rule keeps answering the first. Who on this job second. The address side last, since the estimate already has an override box.
+ver: v2.6699
 mockup: to-dos/contact-picker/mockup.html
 ---
 
@@ -81,6 +82,13 @@ customer's say (text or email) above the chip, which still decides the kind; the
 box, which becomes the *another address* row of the chip's menu rather than a bare field.
 
 ## The five calls, settled
+
+The owner, 2026-11-08: build it as drawn; his call stood in for Grace's look. PR 1 (v2.6699) built calls 1, 2's
+office half and 4 as written below, with two readings of its own: the usual's "partial unique index" is an ordinary
+index, since *Who is this?* folds a named number into the record's own contact by moving channel rows and a unique
+index would refuse the fold when both sides carry a usual (the function keeps one per kind; the readers take the newest
+when two meet); and the morning run reads the usual (call 3's first half) while *a held row names the number it would
+go to* waits on PR 2. Call 2's tech half and call 5 are PR 2's.
 
 1. **Where the usual lives.** On the channel row (`contact_channels.usual_at`), not on the contact:
    a contact may have a usual number and a usual address at once, and the row already carries

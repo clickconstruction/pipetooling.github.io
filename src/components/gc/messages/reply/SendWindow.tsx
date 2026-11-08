@@ -33,6 +33,8 @@ import {
 import { lastOurTextAt, priorTexts } from '../../../../lib/messages/replyBox'
 import type { ReplyIo } from '../../../../lib/messages/replyIo'
 import { TextsWaitLine } from './TextsWaitLine'
+import { ToChip } from './ToChip'
+import { numberChoices, usualToSet } from '../../../../lib/messages/toChip'
 import type { AttachIo } from '../../../../lib/messages/attachIo'
 import type { DeviceBytes } from '../../../../lib/documents/emailFileAsks'
 import { chipFacts, emailFileNote, textFileNote, type Audience } from '../../../../lib/documents/outgoing'
@@ -88,8 +90,14 @@ export function SendWindow({
   onSent: (kind: Kind, more?: string | null) => void
 }) {
   const open = useOpenThread()
-  const to = useMemo(() => replyRecipient(contact), [contact])
   const now = Date.parse(open?.nowIso ?? '') || Date.now()
+  // The To chip (punch list #118, PR 1): the rule's number, or the one the office picked this once; the tick
+  // remembers the pick as their usual on send.
+  const [pickedNumberId, setPickedNumberId] = useState<string | null>(null)
+  const [usualTick, setUsualTick] = useState(true)
+  const lines = useMemo(() => open?.lines ?? [], [open?.lines])
+  const to = useMemo(() => replyRecipient(contact, { lines, numberChannelId: pickedNumberId }), [contact, lines, pickedNumberId])
+  const choices = useMemo(() => numberChoices(contact, lines, new Date(now).toISOString()), [contact, lines, now])
   const jobName = jobKey ? (open?.tiles[jobKey]?.name ?? null) : null
   const [sender, setSender] = useState<ComposeSender | null>(null)
   const [typedSubject, setTypedSubject] = useState<string | null>(null)
@@ -172,6 +180,9 @@ export function SendWindow({
         messageId = await io.sendEmail({ contactId: contact.id, channelId: to.emailChannelId, jobKey, draft, ...(asks.asks.length ? { files: asks.asks } : {}) })
       } else {
         if (!to.numberChannelId) return
+        // The tick first, so the thread's gray line sits above the text it explains; a refusal stops the send and is said.
+        const star = usualToSet(choices, pickedNumberId, usualTick)
+        if (star && io.makeUsual) await io.makeUsual(star)
         messageId = await io.sendText({ contactId: contact.id, channelId: to.numberChannelId, jobKey, body, held })
       }
       // It went. What we owe follows the press under the message; a refusal there is said, and the message stays sent.
@@ -343,8 +354,15 @@ export function SendWindow({
           ) : (
             <>
               <p style={note}>What {contact.name} sees on their phone, under the texts already there.</p>
-              <div style={{ fontSize: '0.82rem' }}>
-                <strong>To:</strong> {contact.name} {to.number ? `<${to.number}>` : <em style={{ color: 'var(--text-muted)' }}>no mobile number on file</em>}
+              <div style={{ fontSize: '0.82rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span>
+                  <strong>To:</strong> {contact.name}
+                </span>
+                {to.number ? (
+                  <ToChip choices={choices} pickedId={pickedNumberId} onPick={setPickedNumberId} tick={usualTick} onTick={setUsualTick} />
+                ) : (
+                  <em style={{ color: 'var(--text-muted)' }}>no mobile number on file</em>
+                )}
               </div>
               <div data-send-phone style={{ width: 'min(320px, 100%)', margin: '0 auto', border: '1px solid var(--border-strong)', borderRadius: 18, overflow: 'hidden', background: 'var(--bg-subtle)' }}>
                 <div style={{ padding: '0.45rem 0.7rem', borderBottom: '1px solid var(--border)', background: 'var(--surface)', fontSize: '0.8rem', display: 'grid' }}>

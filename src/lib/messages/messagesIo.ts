@@ -53,7 +53,7 @@ const CONTACT_COLS =
   'id, kind, customer_id, customer_contact_person_id, gc_company_id, gc_company_person_id, person_id, name, goes_by, off_since, off_why, off_by, ' +
   // R0's four kinds: a lead, a supply house's counter, a rep at one and a candidate (`20261013180000`).
   'prospect_id, supply_house_id, supply_house_contact_id, team_prospect_id'
-const CHANNEL_COLS = 'id, contact_id, kind, value, opted_out_at, created_at'
+const CHANNEL_COLS = 'id, contact_id, kind, value, opted_out_at, usual_at, created_at'
 const JOB_COLS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at'
 /** `mailbox` is R6's column (20261014003000_messages_two_boxes.sql): the box a line came in on or went out from. */
 const MESSAGE_COLS =
