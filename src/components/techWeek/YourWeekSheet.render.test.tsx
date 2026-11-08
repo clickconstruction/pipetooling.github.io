@@ -2,9 +2,7 @@
 /**
  * The sheet after the week's last clock-out (punch list #255, v2.6606): the week said once with the clock-out line,
  * the signal, the move and the customer's words; one press closes it; no signal closes it by itself; the week is
- * remembered on this device. The fixture's days are the company calendar's (`todayYmdInAppTz`), as the sheet reads
- * them: the UTC day runs a day ahead from 6 PM to midnight in Chicago, and on a Saturday evening that puts the hours
- * in next Sunday's pay week (the merge queue failed on it 2026-11-08 00:11 UTC).
+ * remembered on this device; and the week read on the company calendar at the Saturday-evening edge.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -12,7 +10,6 @@ import type { YourWeekIo } from '../../lib/techWeek/yourWeekIo'
 import { weekSheetSeenKey } from '../../lib/techWeek/weekSheet'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { YourWeekSheet, weekSheetAlreadyDealt } from './YourWeekSheet'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 // The rows are dated in the app's timezone, as the sheet reads the week: a UTC date is a day ahead every evening, and on a
 // Saturday evening that is the next pay week (it failed CI at 6:30 PM Central on 2026-11-07).
