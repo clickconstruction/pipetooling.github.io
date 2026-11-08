@@ -1,7 +1,7 @@
 ---
 name: "Contracts: their paper, signed by us only, and its key terms"
 number: 173
-group: built
+group: waiting
 status: Do 2026-11-08 · rank 8 of 10 from the review of the Burd matter (job 891) · built as v2.6698 (the their_paper kind with the signer fields, the relied-on flag and the key terms; the strip's Their paper… sheet and the Contract window's band; the desk's agreement line, Can we sue rule and gap; Insert the contract's terms) · the owner's look left · the PDF read of the terms is the follow-up below
 summary: >
   A GC's own subcontract, signed by us and never countersigned, still governs when the GC relies
