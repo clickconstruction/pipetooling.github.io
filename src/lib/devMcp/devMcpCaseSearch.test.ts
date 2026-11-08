@@ -54,7 +54,7 @@ describe('search_case (one full-text search across a person\'s case, v2.6620)', 
     expect(out).toMatchObject({ person: { id: PERSON, name: 'Pat Doe' }, q: 'generator', query: "'generat'", matter_id: 'm1', count: 3, shown: 3, by_source: { document: 1, entry: 1, evidence: 1 } })
     expect(out.hits[0]).toMatchObject({ source: 'document', section_n: 12, read_next: expect.stringContaining('plan_person_doc { doc_id, ops }') })
     expect(out.hits[2]).toMatchObject({ counsel_only: true, read_next: expect.stringContaining('evidence') })
-    expect(readNextFor('matter_document')).toContain('not its file')
+    expect(readNextFor('matter_document')).toContain('text_document_id')
   })
 
   it('refuses another role before any read, and an unknown person', async () => {
