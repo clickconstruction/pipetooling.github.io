@@ -165,7 +165,7 @@ describe('the Money look’s Timeline view', () => {
     const chips = within(chart).getByRole('group', { name: 'Jobs on the chart' })
     // The label is the page's own (no prefix map in the smoke, so the bare J); the job with no dated event is not a chip.
     expect(within(chips).getAllByRole('button').map((b) => b.textContent)).toEqual(['All jobs', 'J956'])
-    expect(screen.getByTestId('timeline-scope').textContent).toBe('All 1 job on one chart. 1 job with no dated charge or payment is left out.')
+    expect(screen.getByTestId('timeline-scope').textContent).toBe('All 1 job on one chart. 1 job has no dated charge or payment. It is listed under the chart.')
     expect(screen.getByText(/cost to date/).textContent).toContain('Red')
     // The day ledger reads only once the view is open, and its lines draw the amber band (v2.6498).
     expect(hookCalls.overhead.some((e) => e)).toBe(true)
