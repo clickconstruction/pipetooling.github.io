@@ -4,17 +4,15 @@
  * customer's words; an apprentice's hours with the bar; a lead's crew against the target with the dashed line's words.
  */
 import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { YourWeekIo } from '../../lib/techWeek/yourWeekIo'
+import { DashboardYourWeekCard } from './DashboardYourWeekCard'
 
 // The card reads the Sun–Sat pay week containing today (v2.6684): the fixtures below finished 2026-11-02 to 11-04, so
-// today is pinned inside that week. Unpinned, the lead's no-target job left the week on 2026-11-08 and the smoke failed.
-vi.mock('../../utils/dateUtils', async (original) => ({
-  ...(await original<typeof import('../../utils/dateUtils')>()),
-  todayYmdInAppTz: () => '2026-11-05',
-}))
-
-import { DashboardYourWeekCard } from './DashboardYourWeekCard'
+// the clock is pinned inside that week (Date only; no fake timers, so findByText still waits). Unpinned, the lead's
+// no-target job left the week on Sunday 2026-11-08 and the smoke failed on every PR in the queue.
+beforeAll(() => vi.setSystemTime(new Date('2026-11-05T15:00:00.000Z')))
+afterAll(() => vi.useRealTimers())
 
 const io = (week: unknown, words: unknown = []): YourWeekIo => ({ myWeek: async () => week, myWords: async () => words })
 
