@@ -10,6 +10,7 @@ import { useJobMessages } from '../../hooks/useJobMessages'
 import { useJobEstimateAuthor } from '../../hooks/useJobEstimateAuthor'
 import { jobPeopleRows } from '../../lib/jobs/jobPeople'
 import { JobPeopleNames } from './JobPeopleNames'
+import { EmptyState } from '../EmptyState'
 import { JobCustomerBox } from './JobCustomerBox'
 import { JobPickerWindow } from '../gc/messages/JobPickerWindow'
 import { searchJobs, tieMessage } from '../../lib/messages/messagesIo'
@@ -228,18 +229,25 @@ export function JobActivityView({
             </svg>
           </button>
         ) : null}
-        <span
-          style={{
-            minWidth: 0,
-            fontSize: '0.8125rem',
-            color: people.length > 0 ? 'var(--text-700)' : 'var(--text-muted)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {people.length > 0 ? <JobPeopleNames team={teamMembers ?? []} author={estimateAuthor} /> : peopleAction ? 'No one assigned' : ''}
-        </span>
+        {people.length > 0 ? (
+          <span
+            style={{
+              minWidth: 0,
+              fontSize: '0.8125rem',
+              color: 'var(--text-700)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <JobPeopleNames team={teamMembers ?? []} author={estimateAuthor} />
+          </span>
+        ) : peopleAction ? (
+          // Nobody yet: the empty state names the press (the people button beside it is the same door).
+          <EmptyState compact main="Nobody on this job yet." next={peopleAction.disabled ? undefined : { label: 'Manage people', onPress: peopleAction.onClick }} tail={peopleAction.disabled ? undefined : 'adds them.'} />
+        ) : (
+          <span style={{ minWidth: 0 }} />
+        )}
         {pctComplete != null ? (
           <span
             title="Pipeline % complete for this job"
