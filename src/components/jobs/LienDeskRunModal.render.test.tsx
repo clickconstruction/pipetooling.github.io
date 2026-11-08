@@ -30,7 +30,20 @@ const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [], releaseFa
 const buildPdfMock = vi.fn(async (..._args: unknown[]) => new Blob(['%PDF-1.4 courtesy']))
 // Leader here, sign ▸ (v2.5086): the drawing's write, watched.
 const signMock = vi.fn(async (_args: unknown) => ({ ok: true as const, signedAtIso: '2026-10-09T19:14:00Z' }))
-vi.mock('../../lib/jobs/lienDeskSignIo', () => ({ signLienDeskItem: (args: unknown) => signMock(args) }))
+// His code on this screen (v2.6733): the status the card reads when the sheet opens, and the code RPC, watched. No code set unless a case says so.
+const codeState = {
+  status: { set: false, setAtIso: null, lastUsedAtIso: null, lockedUntilIso: null } as { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null } | null,
+  signs: [] as Array<Record<string, unknown>>,
+  answer: { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Robert Douglas' } as Record<string, unknown>,
+}
+vi.mock('../../lib/jobs/lienDeskSignIo', () => ({
+  signLienDeskItem: (args: unknown) => signMock(args),
+  lienSignCodeStatus: async () => codeState.status,
+  signLienDeskItemWithCode: async (args: Record<string, unknown>) => {
+    codeState.signs.push(args)
+    return codeState.answer
+  },
+}))
 vi.mock('signature_pad', () => ({
   default: class {
     constructor(_c: HTMLCanvasElement) {}
@@ -710,6 +723,78 @@ describe('an unsigned notice at the run (v2.5086)', () => {
     // Signed: the envelopes go back into the run, numbered 1 and 2, nothing held.
     await waitFor(() => expect(screen.queryByTestId('run-held-1')).toBeNull())
     expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
+  })
+
+  it('with his code set, the sheet opens on the code field (v2.6733, punch list #150): Sign ▸ hands the code to the RPC as his signature on her screen, with no approval, and the envelopes go back into the run', async () => {
+    codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+    codeState.signs = []
+    signMock.mockClear()
+    try {
+      renderWithProviders(
+        <LienDeskRunModal
+          notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, rowFields: { notice: { claimAmount: '33500' } } })]}
+          issuer={null}
+          todayYmd="2026-10-09"
+          userId="u-taunya"
+          viewer={{ userId: 'u-taunya', name: 'Taunya' }}
+          onClose={() => {}}
+          onRecorded={() => {}}
+        />,
+      )
+      await settle()
+      expect(screen.getByTestId('run-held-1').textContent).toContain('types his code or draws it here with Leader here, sign ▸')
+      fireEvent.click(screen.getByTestId('run-leader-here-sign-1'))
+      await waitFor(() => expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('code'))
+      const sheet = screen.getByTestId('run-sign-here-1')
+      expect(sheet.textContent).toContain('Robert signs here with his code')
+      expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Robert Douglas')
+      expect(sheet.textContent).toContain('Robert Douglas types his code or draws on this screen. The record names Taunya as whose screen it was.')
+      // No code typed: nothing is sent, nothing drawn is asked for.
+      fireEvent.click(screen.getByTestId('run-sign-here-go-1'))
+      await settle()
+      expect(codeState.signs).toHaveLength(0)
+      expect(signMock).not.toHaveBeenCalled()
+      fireEvent.change(screen.getByLabelText('Robert’s signing code'), { target: { value: '2468' } })
+      fireEvent.click(screen.getByTestId('run-sign-here-go-1'))
+      await waitFor(() => expect(codeState.signs).toHaveLength(1))
+      expect(codeState.signs[0]).toEqual({ itemId: 'it1', fields: { notice: { claimAmount: '33500' } }, signerUserId: 'u-robert', code: '2468', approve: false })
+      expect(signMock).not.toHaveBeenCalled()
+      await waitFor(() => expect(screen.queryByTestId('run-held-1')).toBeNull())
+      expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
+    } finally {
+      codeState.status = { set: false, setAtIso: null, lastUsedAtIso: null, lockedUntilIso: null }
+    }
+  })
+
+  it('a refused code says so under the field with the tries left, and the envelope stays held (v2.6733)', async () => {
+    codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+    codeState.signs = []
+    codeState.answer = { ok: false, reason: 'wrong', message: 'That is not Robert’s code.', triesLeft: 2, lockedUntilIso: null }
+    try {
+      renderWithProviders(
+        <LienDeskRunModal
+          notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, rowFields: { notice: { claimAmount: '33500' } } })]}
+          issuer={null}
+          todayYmd="2026-10-09"
+          userId="u-taunya"
+          viewer={{ userId: 'u-taunya', name: 'Taunya' }}
+          onClose={() => {}}
+          onRecorded={() => {}}
+        />,
+      )
+      await settle()
+      fireEvent.click(screen.getByTestId('run-leader-here-sign-1'))
+      await waitFor(() => expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('code'))
+      fireEvent.change(screen.getByLabelText('Robert’s signing code'), { target: { value: '0000' } })
+      fireEvent.click(screen.getByTestId('run-sign-here-go-1'))
+      await waitFor(() => expect(document.querySelector('[data-lien-sign-code-words]')!.textContent).toBe('That is not Robert’s code. 2 tries left.'))
+      expect(codeState.signs).toHaveLength(1)
+      expect(screen.getByTestId('run-held-1')).toBeTruthy()
+      expect(screen.getByTestId('run-sign-here-1')).toBeTruthy()
+    } finally {
+      codeState.status = { set: false, setAtIso: null, lastUsedAtIso: null, lockedUntilIso: null }
+      codeState.answer = { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Robert Douglas' }
+    }
   })
 
   it('without a viewer, or a notice whose builder said nothing about signing, there is no door and nothing held for it', async () => {

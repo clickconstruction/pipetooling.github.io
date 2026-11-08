@@ -4,6 +4,7 @@ import { ESTIMATE_ACCEPT_SIGNATURE_FONT } from '../estimates/EstimateAcceptTyped
 import { SIGNATURE_INK_COLOR, SIGNATURE_PAPER_COLOR } from '../contracts/SignatureTypeOrDrawInput'
 import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 import { LIEN_SIGN_CODE_RE } from '../../lib/jobs/lienDeskSignIo'
+import type { LienNoticeSignLineCodeSigner } from '../../lib/jobs/lienCodeSigner'
 
 /**
  * The notice's own signature line, in the desk footer and on the phone card (v2.5082, lien desk
@@ -33,15 +34,8 @@ export type LienNoticeSignLineHandle = {
   clear: () => void
 }
 
-/** Who signs with a code on this screen, and whether his code can be taken right now. */
-export type LienNoticeSignLineCodeSigner = {
-  /** His first name, as the words use it: "Malachi signs here with his code". */
-  firstName: string
-  /** `ready` = he has a code; `none` = not set; `locked` = five wrong tries; `not_live` = the database side is not pushed; `loading` = still asking. */
-  status: 'ready' | 'none' | 'locked' | 'not_live' | 'loading'
-  /** "2:29 PM" while locked. */
-  lockedUntilClock?: string | null
-}
+/** Who signs with a code on this screen, and whether his code can be taken right now (`lienCodeSignerFrom` builds it from the status read). */
+export type { LienNoticeSignLineCodeSigner }
 
 const LINE_HEIGHT_PX = 84
 const linkBtn: CSSProperties = {

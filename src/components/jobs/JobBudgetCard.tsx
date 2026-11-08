@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
-import { budgetStandsForJob, budgetWhyWords, componentBurn, spendByComponent, type ResolvedJobBudget } from '../../lib/jobs/jobBudget'
+import { budgetStandsForJob, budgetWhyWords, componentBurn, jobBudgetAwardOf, spendByComponent, type ResolvedJobBudget } from '../../lib/jobs/jobBudget'
 import type { JobBudgetState, SuggestedBid } from '../../hooks/useJobBudget'
 import type { JobChargesTimelineInputs } from '../../hooks/useJobChargesTimelineInputs'
 
@@ -206,11 +206,13 @@ export function JobBudgetCard(p: JobBudgetCardProps) {
                 {r.source === 'book' ? 'Type a baseline' : 'Edit'}
               </button>
             ) : null}
-            {p.canWrite ? (
+            {/* The award is written once (punch list #234): Clear is withheld on an awarded row, since it took the frozen award with the live row. */}
+            {p.canWrite && !jobBudgetAwardOf(p.budget.row) ? (
               <button type="button" onClick={() => void p.budget.clear()} disabled={p.budget.busy} style={btn()} title="Back to the assumption (price × (1 − target)); the bid link stays">
                 Clear
               </button>
             ) : null}
+            {p.canWrite && jobBudgetAwardOf(p.budget.row) ? <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', alignSelf: 'center' }} title="Clearing the live row would take the frozen award with it">Frozen at award · written once</span> : null}
           </span>
         </div>
         {typedOpen ? typedForm() : null}

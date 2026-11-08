@@ -2106,6 +2106,31 @@ describe('LienDeskModal · the master signs on someone else’s screen with his 
     codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
   })
 
+  it('the office’s Ready footer carries his line and its own Sign ▸ (v2.6733): the code goes to the RPC as the master with no approval, and He signed the paper stays', async () => {
+    codeState.signs = []
+    codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+    // Approved on his word (unsigned), the job's master Malachi, the office signed in.
+    const approved = {
+      id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-taunya', approved_at: '2026-09-14T15:00:00Z', approval_mode: 'word', word_note: 'Malachi said send it', word_channel: 'phone', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T15:00:00Z', voided_at: null,
+    } as LienDeskItemRow
+    const d = data(J650, [approved], true)
+    d.jobsById.j650 = { ...d.jobsById.j650!, master_user_id: 'u-malachi' } as NonNullable<typeof d.jobsById.j650>
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" authName="Wendi" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Wendi')} data={d} initialPile="ready" />)
+    await settle()
+    const foot = document.querySelector('[data-lien-desk-foot="ready"]') as HTMLElement
+    expect(foot).toBeTruthy()
+    await waitFor(() => expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('code'))
+    expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi Whites')
+    expect(foot.querySelector('[data-lien-desk-sign]')).toBeNull()
+    expect(foot.querySelector('[data-lien-desk-pen]')).toBeTruthy()
+    const press = foot.querySelector('[data-lien-desk-office-sign-press]') as HTMLButtonElement
+    expect(press.textContent).toBe('Sign ▸')
+    fireEvent.change(screen.getByLabelText('Malachi’s signing code'), { target: { value: '1357' } })
+    fireEvent.click(press)
+    await waitFor(() => expect(codeState.signs).toHaveLength(1))
+    expect(codeState.signs[0]).toMatchObject({ itemId: 'it1', signerUserId: 'u-malachi', code: '1357', approve: false })
+  })
+
   it('the master on his own screen is unchanged: his own name, a press', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" authUserId="u-malachi" authName="Malachi" leaderNameFor={() => 'Malachi Whites'} data={awaitingOn({ master_user_id: 'u-malachi' })} />)
     await settle()

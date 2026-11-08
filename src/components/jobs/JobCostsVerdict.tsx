@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { baselineFrozenWords, baselineHeadWords, baselineKeptWords, baselineReadWords, baselineScoreWords, pctDoneWords, timeLeftWords, type CostsVerdict } from '../../lib/jobs/jobCostsVerdict'
-import { bookBaselineUsable, bookBaselineWhy } from '../../lib/jobs/awardBaseline'
+import { bidBaselineUsable, bidNotUsableWords, bidRateNeeded, bookBaselineUsable, bookBaselineWhy } from '../../lib/jobs/awardBaseline'
 import type { BaselineReading } from '../../lib/bids/bidBaselineRates'
 import type { JobBudgetState } from '../../hooks/useJobBudget'
 import type { JobBaselineState } from '../../hooks/useJobBaseline'
@@ -71,6 +71,16 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
   const good = margin != null && margin.usd >= 0
   const heroTone: CSSProperties = margin == null ? {} : good ? { borderColor: 'var(--border-green, #16a34a)', background: 'var(--bg-green-100, var(--surface))' } : { borderColor: 'var(--border-red)', background: 'var(--bg-red-100, var(--surface))' }
   const b = v.baseline
+  // The bid's rows read against the company rate when the bid has none of its own, as the Labor tab reads them
+  // (slip 8 of punch list #234's second walk); the rate rides the press and is saved on the bid before the snapshot.
+  const rate = bookRateUsd ?? 0
+  const bd = budget.linkedBreakdown
+  const bidUsable = bidBaselineUsable(bd, rate)
+  const bidWhyNot = bidNotUsableWords(bd, b.bidLabel ?? 'the bid', rate)
+  const bidRate = bidRateNeeded(bd) ? rate : null
+  // The award is written once: Clear is withheld on an awarded row, since clearing the live row took the frozen award
+  // with it and the next press re-awarded the project as whatever it wrote (slip 11 of the second walk).
+  const awarded = b.award != null
 
   return (
     <div style={{ display: 'grid', gap: '0.6rem' }} data-testid="job-costs-verdict">
@@ -172,11 +182,12 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
             <span style={{ fontSize: '0.78rem' }}>{baselineReadWords(b, v.pctDone)}</span>
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap' }}>
               {canWrite && linkedBid && b.kind === 'bid' ? <button type="button" onClick={() => void budget.linkAndSnapshot(linkedBid.id)} disabled={budget.busy} style={btn()} title="Take the bid's estimate again">Refresh from bid ↻</button> : null}
-              {canWrite && linkedBid && b.kind !== 'bid' && budget.linkedBreakdown?.completeness?.usable ? <button type="button" onClick={() => void budget.linkAndSnapshot(linkedBid.id)} disabled={budget.busy} style={btn(true)} title="The bid's Labor rows are usable now — take them as the baseline">Take {b.bidLabel}'s estimate · {h0(budget.linkedBreakdown.labor_hours)}</button> : null}
-              {canWrite && linkedBid && b.kind === 'book' && !budget.linkedBreakdown?.completeness?.usable && onOpenBidLabor ? <button type="button" onClick={onOpenBidLabor} style={btn()} title="Fill the Labor rows on the bid and it becomes the pick">Fill the Labor rows on {b.bidLabel} →</button> : null}
+              {canWrite && linkedBid && b.kind !== 'bid' && bidUsable && bd ? <button type="button" onClick={() => void budget.linkAndSnapshot(linkedBid.id, bidRate)} disabled={budget.busy} style={btn(true)} title={bidRate != null ? `The bid's Labor rows are usable at the company's ${usd0(bidRate)} rate — saved on the bid, then taken as the baseline` : "The bid's Labor rows are usable now — take them as the baseline"}>Take {b.bidLabel}'s estimate · {h0(bd.labor_hours)}</button> : null}
+              {canWrite && linkedBid && b.kind === 'book' && !bidUsable && onOpenBidLabor ? <button type="button" onClick={onOpenBidLabor} style={btn()} title={bidWhyNot ? `${bidWhyNot} Fill them and it becomes the pick.` : 'Fill the Labor rows on the bid and it becomes the pick'}>Fill the Labor rows on {b.bidLabel} →</button> : null}
               {canWrite && b.kind === 'book' ? <button type="button" onClick={() => setDoorOpen((o) => !o)} aria-expanded={doorOpen} style={btn()}>Type a baseline {doorOpen ? '▴' : '▾'}</button> : null}
               {canWrite && b.kind === 'typed' ? <button type="button" onClick={() => setDoorOpen((o) => !o)} aria-expanded={doorOpen} style={btn()}>Change it {doorOpen ? '▴' : '▾'}</button> : null}
-              {canWrite ? <button type="button" onClick={() => void budget.clear()} disabled={budget.busy} style={btn()}>Clear</button> : null}
+              {canWrite && !awarded ? <button type="button" onClick={() => void budget.clear()} disabled={budget.busy} style={btn()}>Clear</button> : null}
+              {canWrite && awarded ? <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', alignSelf: 'center' }} data-testid="baseline-clear-withheld" title="Clearing the live row would take the frozen award with it, and the next press would re-award the project as whatever it wrote">Frozen at award · written once. Take the bid's estimate or type a baseline to move the live figure.</span> : null}
             </span>
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="baseline-frozen">
@@ -202,12 +213,13 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
         </div>
       ) : (
         <div style={{ border: '1px solid #f59e0b', background: 'var(--bg-amber-100)', borderRadius: 8, padding: '0.6rem 0.8rem', display: 'grid', gap: '0.4rem' }} data-testid="baseline-strip-none">
-          <b style={{ fontSize: '0.9rem' }}>{linkedBid ? `No baseline for this job yet — bid ${b.bidLabel} was sent without hours.` : 'No baseline for this job yet — no bid is linked.'}</b>
+          {/* The reason is the bid's, read as the Labor tab reads it: no Labor rows, thin hours, or no rate anywhere — never "sent without hours" over rows that carry them. */}
+          <b style={{ fontSize: '0.9rem' }}>{linkedBid ? `This job has no baseline yet — ${bidWhyNot ? bidWhyNot.replace(/\.$/, '') : bidUsable ? `bid ${b.bidLabel} has hours on its Labor rows and is not taken yet` : `bid ${b.bidLabel} could not be read`}.` : 'This job has no baseline yet — no bid is linked. Link the bid below, or type a budget.'}</b>
           {isProject ? (
             <div style={{ display: 'flex', gap: '0.5rem 0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem' }} data-testid="baseline-award-late">
               <span>A project, made before baselines were written at award.{bookNow && bookBaselineUsable(bookNow, v.priceUsd) ? ` The book says ${h0(bookNow.impliedHours!)} (${bookBaselineWhy(bookNow, v.priceUsd)})` : ''}</span>
-              {canWrite && linkedBid && budget.linkedBreakdown?.completeness?.usable ? <button type="button" onClick={() => void budget.award({ p_job_id: '', p_source: 'bid', p_bid_id: linkedBid.id, p_labor_hours: null, p_labor_rate: null, p_book: {}, p_note: null })} disabled={budget.busy} style={btn(true)}>Take {b.bidLabel}'s estimate · {h0(budget.linkedBreakdown.labor_hours)}</button> : null}
-              {canWrite && bookNow && bookBaselineUsable(bookNow, v.priceUsd) ? <button type="button" onClick={() => void budget.award({ p_job_id: '', p_source: 'book', p_bid_id: null, p_labor_hours: Math.round(bookNow.impliedHours! * 10) / 10, p_labor_rate: bookRateUsd, p_book: { hours_per_thousand: bookNow.medianHoursPerThousand, n: bookNow.n, price_usd: v.priceUsd, scope: bookNow.scope, billed: bookNow.billed }, p_note: null })} disabled={budget.busy} style={btn(!(linkedBid && budget.linkedBreakdown?.completeness?.usable))} title="The book's assumed hours, frozen as this project's baseline and read as a guess">Freeze the book's {h0(bookNow.impliedHours!)}</button> : null}
+              {canWrite && linkedBid && bidUsable && bd ? <button type="button" onClick={() => void budget.award({ p_job_id: '', p_source: 'bid', p_bid_id: linkedBid.id, p_labor_hours: null, p_labor_rate: bidRate, p_book: {}, p_note: null })} disabled={budget.busy} style={btn(true)} title={bidRate != null ? `Priced at the company's ${usd0(bidRate)} rate, saved on the bid as the Labor tab reads it` : undefined}>Take {b.bidLabel}'s estimate · {h0(bd.labor_hours)}</button> : null}
+              {canWrite && bookNow && bookBaselineUsable(bookNow, v.priceUsd) ? <button type="button" onClick={() => void budget.award({ p_job_id: '', p_source: 'book', p_bid_id: null, p_labor_hours: Math.round(bookNow.impliedHours! * 10) / 10, p_labor_rate: bookRateUsd, p_book: { hours_per_thousand: bookNow.medianHoursPerThousand, n: bookNow.n, price_usd: v.priceUsd, scope: bookNow.scope, billed: bookNow.billed }, p_note: null })} disabled={budget.busy} style={btn(!(linkedBid && bidUsable))} title="The book's assumed hours, frozen as this project's baseline and read as a guess">Freeze the book's {h0(bookNow.impliedHours!)}</button> : null}
             </div>
           ) : null}
           <div style={{ fontSize: '0.78rem' }}>What it has taken so far is the baseline:</div>
@@ -239,8 +251,8 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
             {linkedBid ? (
               <>
                 {onOpenBidCounts ? <button type="button" onClick={onOpenBidCounts} style={btn()}>Count sheet on {b.bidLabel} →</button> : null}
-                {canWrite && budget.linkedBreakdown?.has_estimate && !isProject ? <button type="button" onClick={() => void budget.linkAndSnapshot(linkedBid.id)} disabled={budget.busy} style={btn()}>Take its estimate</button> : null}
-                <span>{budget.linkedBreakdown?.has_estimate ? `${b.bidLabel} has an estimate without hours — add hours on its Labor tab and take it again.` : `Add a count sheet and hours to ${b.bidLabel} and this job reads against them.`}</span>
+                {canWrite && bd?.has_estimate && !isProject ? <button type="button" onClick={() => void budget.linkAndSnapshot(linkedBid.id, bidRate)} disabled={budget.busy} style={btn()}>Take its estimate</button> : null}
+                <span>{bd?.has_estimate ? (bidUsable ? `${b.bidLabel}'s Labor rows carry ${h0(bd.labor_hours)}${bidRate != null ? ` at the company's ${usd0(bidRate)} rate` : ''} — take them and this job reads against them.` : `${bidWhyNot} ${!bd.completeness || bd.completeness.rows_total === 0 ? 'Add them' : 'Fill them'} on its Labor tab and take it again.`) : `Add a count sheet and hours to ${b.bidLabel} and this job reads against them.`}</span>
               </>
             ) : (
               <button type="button" onClick={() => setDoorOpen((o) => !o)} aria-expanded={doorOpen} style={btn()}>Link the bid {doorOpen ? '▴' : '▾'}</button>

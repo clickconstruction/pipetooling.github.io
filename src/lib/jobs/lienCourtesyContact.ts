@@ -1,4 +1,5 @@
 import { TEXTS_OFF } from '../quo/textsSwitch'
+import { numberOrder } from '../messages/compose'
 
 /**
  * The GC's channels for the courtesy notice, read without making anything (punch list #243, PR 1).
@@ -11,7 +12,11 @@ import { TEXTS_OFF } from '../quo/textsSwitch'
  * makes the contact, and only when a text goes (`lienCourtesyIo.ts`). Pure; the IO reads the rows.
  */
 
-export type CourtesyChannelLike = { id: string; kind: string; value: string; optedOutAt: string | null }
+export type CourtesyChannelLike = { id: string; kind: string; value: string; optedOutAt: string | null; usualAt?: string | null }
+
+/** Their phone channels in the order a text would go to them (punch list #118, `numberOrder`): the usual first, a STOP last. */
+const phonesInOrder = (channels: ReadonlyArray<CourtesyChannelLike>) =>
+  numberOrder({ channels: channels.filter((c) => c.kind === 'phone' && c.value.trim()).map((c) => ({ id: c.id, kind: 'phone' as const, value: c.value, optedOutAt: c.optedOutAt, usualAt: c.usualAt ?? null })) })
 
 /**
  * Mirrors `contact_channel_key('phone', …)` (20261012010000_messages_spine.sql): the digits alone, a
@@ -51,7 +56,7 @@ export type CourtesyGcChannels = {
 /** The GC's number and address as the window shows them, and whether a text may go. */
 export function courtesyGcChannels(input: CourtesyGcChannelsInput): CourtesyGcChannels {
   if (input.contact) {
-    const phones = input.contact.channels.filter((c) => c.kind === 'phone' && c.value.trim())
+    const phones = phonesInOrder(input.contact.channels)
     const live = phones.find((c) => !c.optedOutAt) ?? null
     const email = input.contact.channels.find((c) => c.kind === 'email' && c.value.trim())?.value.trim() ?? ''
     if (live) return { contactId: input.contact.id, phone: live.value.trim(), textHold: input.textsOn ? '' : TEXTS_OFF, textChannelId: input.textsOn ? live.id : null, email }

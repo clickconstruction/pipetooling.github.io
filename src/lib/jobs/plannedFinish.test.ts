@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { finishAfterWorkingDays, jobPlannedOf, jobPlannedWords, plannedFinishOptions, plannedFinishPayload, plannedFinishPick, plannedFinishPressWords, workingDaysFor, type PlannedFinishInput } from './plannedFinish'
+import { finishAfterWorkingDays, firstWorkingDay, jobPlannedOf, jobPlannedWords, plannedFinishOptions, plannedFinishPayload, plannedFinishPick, plannedFinishPressWords, workingDaysFor, type PlannedFinishInput } from './plannedFinish'
 
 const base: PlannedFinishInput = { rough: null, bidStartYmd: '2026-10-06', todayYmd: '2026-11-07', hours: 480, typedFinishYmd: null }
 
@@ -15,6 +15,21 @@ describe('plannedFinish (punch list #234 PR 2)', () => {
     // Friday plus one day is Monday.
     expect(finishAfterWorkingDays('2026-10-09', 2)).toBe('2026-10-12')
   })
+  it('a weekend start counts from the Monday after it (the second walk: a Sunday award at 241 h read Nov 20, not Nov 23)', () => {
+    expect(firstWorkingDay('2026-11-08')).toBe('2026-11-09')
+    expect(firstWorkingDay('2026-11-07')).toBe('2026-11-09')
+    expect(firstWorkingDay('2026-11-09')).toBe('2026-11-09')
+    expect(workingDaysFor(241)).toBe(11)
+    // Sun Nov 8 2026 → Mon Nov 9 is day one; 11 working days end Mon Nov 23.
+    expect(finishAfterWorkingDays('2026-11-08', 11)).toBe('2026-11-23')
+    expect(finishAfterWorkingDays('2026-11-08', 1)).toBe('2026-11-09')
+    // Before the roll the same award read the Friday: the Thursday the card named, one day short of a working week.
+    expect(finishAfterWorkingDays('2026-11-09', 10)).toBe('2026-11-20')
+    const o = plannedFinishOptions({ ...base, bidStartYmd: null, todayYmd: '2026-11-08', hours: 241 })
+    expect(o[1]).toMatchObject({ source: 'assumed', usable: true, startYmd: '2026-11-09', finishYmd: '2026-11-23', head: 'Nov 23 · assumed from the hours' })
+    expect(o[1]!.why).toBe('241 h at 24 crew hours a day is 11 working days from Nov 9, the Monday after Nov 8, the day of the award. A guess, read as one.')
+    expect(plannedFinishPayload({ ...base, bidStartYmd: null, todayYmd: '2026-11-08', hours: 241 }, o, 'assumed')).toMatchObject({ start: '2026-11-09', finish: '2026-11-23', detail: { working_days: 11, start_from: 'award' } })
+  })
   it('the rough schedule is the pick when kept, the hours stand in else, the typed day last', () => {
     const o = plannedFinishOptions({ ...base, rough: { start: '2026-09-28', finish: '2026-11-14', weeks: 7, keptAt: 'bid', keptOn: '2026-09-20' } })
     expect(o[0]).toMatchObject({ source: 'rough', usable: true, finishYmd: '2026-11-14', head: 'Nov 14 · from the rough schedule' })
@@ -28,11 +43,12 @@ describe('plannedFinish (punch list #234 PR 2)', () => {
   it('no rough: the hours from the award day when the bid assumed no start; no hours: only a typed day', () => {
     const o = plannedFinishOptions({ ...base, bidStartYmd: null })
     expect(o[0]).toMatchObject({ usable: false, why: 'No GC project with a kept rough schedule behind this job.' })
-    expect(o[1]).toMatchObject({ usable: true, startYmd: '2026-11-07' })
-    expect(o[1]!.why).toContain('from Nov 7, the day of the award')
+    // Sat Nov 7 is the award day; the plan counts from Mon Nov 9.
+    expect(o[1]).toMatchObject({ usable: true, startYmd: '2026-11-09' })
+    expect(o[1]!.why).toContain('from Nov 9, the Monday after Nov 7, the day of the award')
     expect(plannedFinishPick(o)).toBe('assumed')
     expect(plannedFinishPressWords(o, 'assumed')).toMatch(/^planned finish Dec \d+, assumed$/)
-    expect(plannedFinishPayload({ ...base, bidStartYmd: null }, o, 'assumed')).toMatchObject({ source: 'assumed', start: '2026-11-07', detail: { hours: 480, crew_hours_per_day: 24, working_days: 20, start_from: 'award' } })
+    expect(plannedFinishPayload({ ...base, bidStartYmd: null }, o, 'assumed')).toMatchObject({ source: 'assumed', start: '2026-11-09', detail: { hours: 480, crew_hours_per_day: 24, working_days: 20, start_from: 'award' } })
     const none = plannedFinishOptions({ ...base, hours: null })
     expect(none[1]).toMatchObject({ usable: false, why: 'Needs an hours baseline to count the days from.' })
     expect(plannedFinishPick(none)).toBe('typed')

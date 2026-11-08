@@ -14,8 +14,9 @@
  * the office team, so the owner working a job is not turned away. The contact: the sheet's when it is the job's
  * customer's, else the door's (`contact_for_job` for a tech, `contact_for_customer` for the office), found or made as
  * the caller, so a training account and a digital twin are refused in words. A sheet's contact that is not the
- * customer's is logged, so a stale sheet shows. The number: the one they last texted from, else their first phone. The
- * line is tied to the job, keeps the phone line it came from (`messages.quick_reply_id`) or the tech it introduces, and
+ * customer's is logged, so a stale sheet shows. The number (punch list #118, PR 2): the sheet's To chip pick when it
+ * sent one, refused when it is not one of theirs; else the usual starred on the contact, else the one they last texted
+ * from, else their first phone that can still take a text (`pickPhone`). The line is tied to the job, keeps the phone line it came from (`messages.quick_reply_id`) or the tech it introduces, and
  * for a tech, the customer's answer is held for them until their hour (`techHoldUntil`, `contacts.has_*`). The send
  * itself is the reply box's (`sendText`), so the box, the STOP, the opt-out line, the pause and Settings' Send texts
  * switch all hold.
@@ -148,9 +149,9 @@ export async function jobModeSend(admin: any, caller: any, who: TechSendCaller, 
     keeps = { quick_reply_id: line.id }
   }
 
-  // The number: the one they last texted from, else their first phone.
+  // The number: the sheet's pick, else the usual, else the one they last texted from, else their first phone.
   const [channelsRead, lastInRead] = await Promise.all([
-    admin.from('contact_channels').select('id, kind, value, created_at, opted_out_at, opted_out_by_box').eq('contact_id', contactId),
+    admin.from('contact_channels').select('id, kind, value, created_at, opted_out_at, opted_out_by_box, usual_at').eq('contact_id', contactId),
     admin
       .from('messages')
       .select('channel_id, mailbox')
@@ -163,13 +164,15 @@ export async function jobModeSend(admin: any, caller: any, who: TechSendCaller, 
   ])
   if (channelsRead.error) throw new Error(`contact_channels: ${channelsRead.error.message}`)
   if (lastInRead.error) throw new Error(`messages: ${lastInRead.error.message}`)
-  const channels = (channelsRead.data ?? []) as Array<{ id: string; kind: string; value: string; created_at: string; opted_out_at: string | null; opted_out_by_box: OptedOutByBox | null }>
+  const channels = (channelsRead.data ?? []) as Array<{ id: string; kind: string; value: string; created_at: string; opted_out_at: string | null; opted_out_by_box: OptedOutByBox | null; usual_at?: string | null }>
   const lastIn = lastInRead.data as { channel_id: string | null; mailbox: Mailbox | null } | null
   const phone = pickPhone(
-    channels.map((c) => ({ id: c.id, kind: c.kind, value: c.value, createdAt: c.created_at })),
+    channels.map((c) => ({ id: c.id, kind: c.kind, value: c.value, createdAt: c.created_at, optedOutAt: c.opted_out_at, usualAt: c.usual_at ?? null })),
     lastIn?.channel_id ?? null,
+    ask.channelId,
   )
   const channel = phone ? channels.find((c) => c.id === phone.id) : undefined
+  if (!channel && ask.channelId) return refused('notFound', TECH_SEND_WORDS.notTheirNumber, 404)
   if (!channel) return refused('noPhone', TECH_SEND_WORDS.noPhone, 422)
 
   // The box: the one they last texted on this number, else a customer's, as the reply box's path picks it.
