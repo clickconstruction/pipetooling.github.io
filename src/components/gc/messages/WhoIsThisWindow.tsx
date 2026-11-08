@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { formatErrorMessage } from '../../../utils/errorHandling'
-import type { Contact, ContactKind } from '../../../lib/contacts/kernel'
+import type { Contact, ContactKind, ContactRecord } from '../../../lib/contacts/kernel'
 import { orderHitsByBox, type Mailbox } from '../../../lib/messages/boxes'
 import type { RecordHit } from '../../../lib/messages/messagesIo'
+import { usualAsk, type KnownNumber } from '../../../lib/messages/toChip'
 import { PhoneSheet } from '../../PhoneSheet'
 import { Btn, input } from '../gcUi'
 import type { MessagesWrites } from './messagesWrites'
@@ -25,13 +26,18 @@ export function WhoIsThisWindow({
   contact,
   box = null,
   writes,
+  knownNumbers,
+  nowIso,
   onNamed,
   onClose,
 }: {
   contact: Contact
   /** The box their newest line came in on (`lastWroteTo`). Null: not known, and the records stay in the order they came. */
   box?: Mailbox | null
-  writes: Pick<MessagesWrites, 'nameContact' | 'searchRecords'>
+  writes: Pick<MessagesWrites, 'nameContact' | 'searchRecords' | 'makeUsual'>
+  /** Punch list #118: the numbers a record already has in Messages, so the sheet can ask *Make this their usual number?*. */
+  knownNumbers?: (record: NonNullable<ContactRecord>) => KnownNumber[]
+  nowIso?: string
   /** The contact that holds the thread now: this one, or the person it joined. */
   onNamed: (contactId: string) => void
   onClose: () => void
@@ -62,6 +68,12 @@ export function WhoIsThisWindow({
     }
   }, [words, searchRecords, box])
 
+  // Punch list #118, the card's call 4: the moment the office names a new number is when it knows which phone the
+  // customer is holding, so the sheet asks Make this their usual number? with the old number beside it.
+  const newNumber = contact.channels.find((ch) => ch.kind === 'phone' && !ch.optedOutAt) ?? null
+  const ask = picked && newNumber && knownNumbers ? usualAsk(knownNumbers(picked.record), nowIso ?? new Date().toISOString()) : null
+  const [usualTick, setUsualTick] = useState<boolean | null>(null)
+  const usualOn = usualTick ?? ask?.tickedByDefault ?? false
   const isCompanyRow = picked?.record.table === 'customers' || picked?.record.table === 'gc_companies' || picked?.record.table === 'supply_houses'
   // A supply house's record makes them a supply house (punch list #179, v2.6136), as the roster makes a sub or a teammate.
   const isSupplyHouseRow = picked?.record.table === 'supply_houses' || picked?.record.table === 'supply_house_contacts'
@@ -71,6 +83,8 @@ export function WhoIsThisWindow({
     setProblem(null)
     try {
       const id = await writes.nameContact(contact.id, { record: picked.record, kind, name: isCompanyRow ? name : null })
+      // The number keeps its row through the fold (name_contact moves the channel), so the star lands on the right one.
+      if (ask && usualOn && newNumber && writes.makeUsual) await writes.makeUsual(newNumber.id)
       onNamed(id ?? contact.id)
     } catch (e) {
       setProblem(formatErrorMessage(e, 'The number was not named.'))
@@ -142,6 +156,14 @@ export function WhoIsThisWindow({
               </label>
             )}
           </>
+        )}
+        {ask && (
+          <label data-who-usual style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.85rem' }}>
+            <input type="checkbox" checked={usualOn} onChange={(e) => setUsualTick(e.target.checked)} style={{ margin: 0 }} />
+            <span>
+              {ask.label} <span style={{ color: 'var(--text-muted)' }}>· {ask.was}</span>
+            </span>
+          </label>
         )}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <Btn onClick={onClose} kind="quiet">

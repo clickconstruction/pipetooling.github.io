@@ -20,6 +20,8 @@ const TONE_STYLES: Record<string, { bg: string; fg: string; border: string }> = 
   none: { bg: 'var(--bg-subtle)', fg: 'var(--text-muted)', border: 'var(--border-strong)' },
   /** The office answered Not needed (PR 0): quieter than a gap — faint text, dashed edge. */
   not_needed: { bg: 'transparent', fg: 'var(--text-faint)', border: 'var(--border)' },
+  /** v2.6698 (punch list #173): their paper, signed by us only — the blue of a record, neither a gap nor our signed agreement. */
+  their_paper: { bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-700)', border: 'var(--border-blue)' },
   /** v2.4342: a Pipeline row's ask (a crew booked or on site, nothing on file) — the amber of a sent contract. */
   ask: { bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-700)', border: 'var(--border-amber)' },
 }

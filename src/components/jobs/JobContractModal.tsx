@@ -73,9 +73,17 @@ import { clearJobContractNotNeeded, markJobContractNotNeeded } from '../../lib/j
 import { handoffBlocker, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
 import { effectiveWindowWay, emailLooksValid, jobTakesTheirSubcontract, phoneLooksUsable, windowStatusPill, windowWayButton, windowWaysPlan, windowWaySentence, type PaperSend, type WindowWay } from '../../lib/jobs/contractWindowWays'
 import JobContractSigningRail from './JobContractSigningRail'
+import { ContractTextDoor } from './ContractTextDoor'
+import { addNumberChipWords, contractSignTextWords, typedNumberOnContact } from '../../lib/jobs/contractTextDoor'
+import { firstName, type Contact } from '../../lib/contacts/kernel'
+import { jobBoxJobKey, jobBoxJobName } from '../../lib/messages/jobBox'
+import { addContactPhone, loadCustomerContact } from '../../lib/messages/messagesIo'
+import { supabaseReplyIo } from '../../lib/messages/replyIo'
 import JobContractPaper from './JobContractPaper'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { filedOnPaper, frameAsSignerRow, framesLabel, framesProgress, signerFrames, signerNamesLine } from '../../lib/jobs/jobContractSigners'
+import { isTheirPaperRow, theirPaperFromRow, theirPaperLine, theirPaperWords, type TheirPaperRecord } from '../../lib/jobs/theirPaper'
+import TheirPaperSheet from './TheirPaperSheet'
 import { DEFAULT_JOB_WARRANTY_TERMS_PLAIN, DEFAULT_WARRANTY_INITIAL_LINES, JOB_AGREEMENT_KINDS, JOB_AGREEMENT_WORDS, jobAgreementHeading, jobAgreementKindOf, parseInitials, type JobAgreementKind } from '../../lib/jobs/jobAgreementKind'
 
 type TemplateRow = Pick<
@@ -181,6 +189,9 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [recordRow, setRecordRow] = useState<JobContractRow | null>(null)
   /** v2.4183: the rows have been read once this open — until then the window shows neither rail. */
   const [rowsLoaded, setRowsLoaded] = useState(false)
+  /** v2.6698 (punch list #173): their paper on this job, kept out of the window's own rows — the band names it and the sheet edits it. */
+  const [theirPaper, setTheirPaper] = useState<TheirPaperRecord | null>(null)
+  const [theirOpen, setTheirOpen] = useState(false)
   /** v2.4183: Start a new agreement… — a fresh draft while a signed copy is on file. */
   const [startNew, setStartNew] = useState(false)
   /** v2.4183: the estimates row behind an acceptance, handed up by the record on the left. */
@@ -194,6 +205,14 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [pickedWay, setPickedWay] = useState<WindowWay | null>(null)
   const [paperSend, setPaperSend] = useState<PaperSend>('download')
   const [textToo, setTextToo] = useState(false)
+  /**
+   * Punch list #125 PR 5 (v2.6700): the text door — the customer's box on Text with the signing link filled — in place
+   * of an `sms:` on the person's phone. Holds the link the words carry; null while closed.
+   */
+  const [textDoor, setTextDoor] = useState<{ url: string } | null>(null)
+  /** The customer's contact, read once the rail may text, so the chip can say the typed number is not on it yet. */
+  const [customerContact, setCustomerContact] = useState<{ customerId: string; contact: Contact | null } | null>(null)
+  const [addingNumber, setAddingNumber] = useState(false)
   const [oursShown, setOursShown] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
   /** Channel of the live row's latest send event: 'email' = the customer was emailed, 'link' = only minted/copied. */
@@ -203,12 +222,33 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const prefillDoneRef = useRef(false)
 
   const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
+  // #125 PR 5: the customer's contact, read once a usable number is typed and the link may go by text (Text it too, or no
+  // email), so the chip under Mobile can say the number is not on the contact yet; the same read serves the one-press
+  // send. A read that fails leaves the chip out, and the press opens the box, which says why itself.
+  const customerId = job?.customer_id ?? null
+  const wantsContact = open && Boolean(customerId) && phoneLooksUsable(recipientPhone) && (textToo || !emailLooksValid(recipientEmail))
+  useEffect(() => {
+    if (!wantsContact || !customerId) return
+    if (customerContact && customerContact.customerId === customerId) return
+    let live = true
+    loadCustomerContact(customerId).then(
+      (contact) => live && setCustomerContact({ customerId, contact }),
+      () => live && setCustomerContact({ customerId, contact: null }),
+    )
+    return () => {
+      live = false
+    }
+  }, [wantsContact, customerId, customerContact])
+
 
   const loadRows = useCallback(async () => {
     if (!job) return
     try {
       const { data } = await supabase.from('job_contracts').select('*').eq('job_id', job.id).order('created_at', { ascending: false })
-      const list = (data ?? []) as JobContractRow[]
+      const all = (data ?? []) as JobContractRow[]
+      const theirs = all.find((r) => isTheirPaperRow(r)) ?? null
+      setTheirPaper(theirs ? theirPaperFromRow(theirs) : null)
+      const list = all.filter((r) => !isTheirPaperRow(r))
       setRows(list)
       const live = list.find((r) => jobContractIsLive(r)) ?? null
       setLiveRow(live)
@@ -249,6 +289,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setVoidArmed(false)
     setReopenArmed(false)
     setLastLink(null)
+    setTextDoor(null)
     setMessage('')
     setPaperOpen(initialFilingOpen)
     setRecordRow(null)
@@ -602,12 +643,11 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     }
   }
 
+  /** Text the link (#125 PR 5): the customer's box on Text with the words and the link filled; the box's send is the confirm. */
   const textLink = async () => {
     const url = await linkToHandOut()
     if (!url) return
-    const phone = recipientPhone.replace(/[^\d+]/g, '')
-    const body = `Here is your service agreement for ${job?.job_address || 'your project'} — review and sign here: ${url}`
-    window.location.href = `sms:${phone}?&body=${encodeURIComponent(body)}`
+    setTextDoor({ url })
   }
 
   const signInPerson = async () => {
@@ -916,22 +956,56 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const sentence = windowWaySentence({ way, paperSend, recipientName, email: recipientEmail, phone: recipientPhone, textToo, remindersEnabled, fromAddress: issuerForSentence.email || 'the office' })
   const wayButton = windowWayButton({ way, paperSend, email: recipientEmail, phone: recipientPhone, textToo })
 
-  const openSms = (phone: string, url: string) => {
-    const digits = phone.replace(/[^\d+]/g, '')
-    const body = `Here is your service agreement for ${job.job_address || 'your project'} — review and sign here: ${url}`
-    window.location.href = `sms:${digits}?&body=${encodeURIComponent(body)}`
+  // #125 PR 5: the chip under Mobile draws once the rail may text the typed number (the contact was read above).
+  const mayText = way === 'link' && phoneOk && (textToo || !emailOk)
+  const contactForChip = customerContact && customerContact.customerId === customerId ? customerContact.contact : null
+  const typedChannel = contactForChip ? typedNumberOnContact(contactForChip, recipientPhone) : null
+  const addTypedNumber = async () => {
+    if (!contactForChip || addingNumber) return
+    setAddingNumber(true)
+    try {
+      const channel = await addContactPhone(contactForChip.id, recipientPhone.trim())
+      setCustomerContact({ customerId: contactForChip.customerId ?? customerId ?? '', contact: { ...contactForChip, channels: [...contactForChip.channels.filter((ch) => ch.id !== channel.id), channel] } })
+      showToast(`${recipientPhone.trim()} added to ${firstName(contactForChip) || contactForChip.name}’s contact.`, 'success')
+    } catch (err) {
+      showToast(formatErrorMessage(err, 'The number was not added.'), 'error')
+    } finally {
+      setAddingNumber(false)
+    }
   }
-  /** Send a link: email when there is one (and text too when asked), else the link by text alone. */
+  const phoneNote =
+    mayText && contactForChip && !typedChannel ? (
+      <button type="button" style={{ ...btn, padding: '0.22rem 0.6rem', fontSize: '0.75rem', borderRadius: 999, border: '1px solid var(--border-orange)', background: 'var(--bg-orange-tint)', color: 'var(--text-orange-700)' }} disabled={addingNumber} onClick={() => void addTypedNumber()} data-testid="contract-add-number-chip">
+        {addingNumber ? 'Adding…' : addNumberChipWords(firstName(contactForChip) || contactForChip.name, recipientPhone)}
+      </button>
+    ) : null
+  /**
+   * Send a link: email when there is one, the text in the same press when asked (#125 PR 5: `quo-send` from the company
+   * number, the rail's sentence its confirm); a typed number not on the contact, or a phone alone, opens the customer's
+   * box instead, where the chip adds the number and the box's send is the confirm.
+   */
   const sendLink = async () => {
     const phone = recipientPhone.trim()
     if (emailOk) {
       const url = await invokeSend('email')
-      if (url && textToo && phone) openSms(phone, url)
+      if (!url || !textToo || !phone) return
+      if (contactForChip && typedChannel) {
+        try {
+          await supabaseReplyIo().sendText({ contactId: contactForChip.id, channelId: typedChannel.id, jobKey: jobBoxJobKey(job.id), body: contractSignTextWords(job.job_address, url), held: false })
+          showToast(`Signing link texted to ${phone} from the company number.`, 'success')
+          dispatchChanged()
+          onChanged?.()
+        } catch (err) {
+          showToast(`${formatErrorMessage(err, 'The text did not go.')} Copy the link to send it another way.`, 'error')
+        }
+        return
+      }
+      setTextDoor({ url })
       return
     }
     if (phone) {
       const url = await linkToHandOut()
-      if (url) openSms(phone, url)
+      if (url) setTextDoor({ url })
     }
   }
   /** On paper, download: the PDF with pen rules, and the hand-off recorded so the job leaves the count (the sweep's rule, v2.3629). */
@@ -1086,6 +1160,17 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     >
       <div style={{ fontSize: '0.85rem', display: 'grid', gridTemplateColumns: narrow ? 'minmax(0, 1fr)' : 'minmax(0, 1.25fr) minmax(300px, 1fr)', gap: '1rem 1.4rem', alignItems: 'start' }}>
         <div style={{ minWidth: 0, display: 'grid', gap: '0.6rem' }}>
+          {theirPaper ? (
+            <div data-testid="contract-their-paper-band" style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontSize: '0.8rem', display: 'flex', gap: '0.5rem 0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ flex: '1 1 260px', minWidth: 0 }}>
+                <b>{theirPaperLine(theirPaper)}</b> — {theirPaperWords(theirPaper)}
+              </span>
+              <button type="button" onClick={() => setTheirOpen(true)} style={{ padding: '0.25rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-blue)', background: 'var(--surface)', color: 'var(--text-blue-700)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
+                Edit the record
+              </button>
+              <TheirPaperSheet open={theirOpen} onClose={() => setTheirOpen(false)} onDone={() => { void loadRows(); onChanged?.() }} job={{ id: job?.id ?? '', num: jobNumber, partyName: (job?.customer_name ?? '').trim() || (job?.gcCustomer?.name ?? '').trim() }} existing={theirPaper} overlayZIndex={1400} />
+            </div>
+          ) : null}
           {signedOnFile ? (
             <div style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.8rem' }}>
               ✍ A signed agreement is already on file for this job (see history below). Starting a new one supersedes it only if the customer signs again.
@@ -1287,6 +1372,24 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
             />
           ) : null}
           {signedView ? null : sentRail}
+          {textDoor && job && !signedView ? (
+            <ContractTextDoor
+              title="Text the signing link"
+              jobId={job.id}
+              jobName={jobBoxJobName(job)}
+              jobStatus={job.status ?? null}
+              customerId={job.customer_id ?? null}
+              typedPhone={recipientPhone}
+              words={contractSignTextWords(job.job_address, textDoor.url)}
+              onClose={() => setTextDoor(null)}
+              onCopyLink={() => void copyLink()}
+              onSent={() => {
+                setTextDoor(null)
+                dispatchChanged()
+                onChanged?.()
+              }}
+            />
+          ) : null}
           {paperEditable ? (
             <JobContractSigningRail
               plan={plan}
@@ -1306,6 +1409,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
               setPhone={(v) => { touch(); setRecipientPhone(v) }}
               textToo={textToo}
               setTextToo={setTextToo}
+              phoneNote={phoneNote}
               cc={ccText}
               setCc={(v) => { touch(); setCcText(v) }}
               message={message}

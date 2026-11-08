@@ -47,8 +47,8 @@ describe('the contacts as the screens load them (rows shaped like the seed)', ()
   it('puts numbers before addresses, keeps a STOP on its number, and reads past a kind it does not know', () => {
     expect(who('c-greg').channels.map((ch) => ch.id)).toEqual(['ch-greg-phone', 'ch-greg-email'])
     expect(who('c-elena').channels).toEqual([
-      { id: 'ch-elena-phone', kind: 'phone', value: '(210) 555-0188', optedOutAt: '2026-10-01T17:00:00.000Z' },
-      { id: 'ch-elena-email', kind: 'email', value: 'elena@cibolocreek.example', optedOutAt: null },
+      { id: 'ch-elena-phone', kind: 'phone', value: '(210) 555-0188', optedOutAt: '2026-10-01T17:00:00.000Z', usualAt: null },
+      { id: 'ch-elena-email', kind: 'email', value: 'elena@cibolocreek.example', optedOutAt: null, usualAt: null },
     ])
   })
 

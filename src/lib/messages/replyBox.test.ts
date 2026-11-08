@@ -126,14 +126,14 @@ describe('the company a reply goes as (replyCompany)', () => {
     const dana = replyCompany('pipeline:j1040', { settings: SETTINGS, kind: 'customer', wroteTo: null })
     expect(dana).toEqual({ name: 'Click Plumbing and Electrical', phone: '(512) 555-0144', numberWords: 'the company number', mailbox: 'team@clickplumbing.example', address: '' })
     const greg = replyCompany('bid:b482', { settings: SETTINGS, kind: 'trade', wroteTo: null })
-    expect(fromLine('email', greg)).toEqual(['from Click Construction', 'replies to bids@clickconstruction.example'])
+    expect(fromLine('email', greg)).toEqual(['from Click Construction', 'bids@clickconstruction.example'])
     expect(fromLine('text', greg)).toEqual(['from the bids number (512) 555-0199', 'Click Construction'])
   })
 
   it('answers from the box they wrote to', () => {
     const elena = replyCompany('bid:b482', { settings: SETTINGS, kind: 'customer', wroteTo: 'bids' })
     expect(fromLine('text', elena)).toEqual(['from the bids number (512) 555-0199', 'Click Construction'])
-    expect(fromLine('email', elena)).toEqual(['from Click Construction', 'replies to bids@clickconstruction.example'])
+    expect(fromLine('email', elena)).toEqual(['from Click Construction', 'bids@clickconstruction.example'])
   })
 
   it('texts from the company number while bids@ has no number of its own, as quo-send sends it', () => {

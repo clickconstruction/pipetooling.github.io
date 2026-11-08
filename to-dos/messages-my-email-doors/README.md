@@ -2,7 +2,7 @@
 name: "Messages → My email: a door on the job and the bid, where the person already works, and the Sent side with no press"
 number: 263
 group: gated
-status: proposed 2026-11-04 from Grace's review of #230, four days after the tab went live with no visit by a clickplumbing.com person and no tag · two design calls drawn Now beside the suggestion · nothing built
+status: proposed 2026-11-04 from Grace's review of #230, four days after the tab went live with no visit by a clickplumbing.com person and no tag · two design calls drawn Now beside the suggestion · the owner answered 2026-11-08 (calls 1, 2 and 5 yes, now; call 3 no) · READY TO BUILD, drawn step by step at the foot, nothing built yet (the session ran out of credits)
 summary: >
   My email (#230) shipped 2026-11-01 as a tab on Messages, the person's own Inbox and Sent with one
   press to tag a conversation onto a job. Four days on, the usage ledger shows no office member on
@@ -15,10 +15,10 @@ summary: >
   Sent side with no press at all, the shape #230 called option C and #207 called call 1: a mail the
   person sends from their own box to an address on exactly one open job lands on it by itself,
   marked as put there by the app, with Untag on the line.
-next: The owner's five calls at the foot, call 1 first. Before any of it, Grace's own first live tag as grace@clickplumbing.com on a ZZ Test job, which proves the read and the tag no agent can.
+next: Build calls 1, 2 and 5 as three PRs from the *Ready to build* section at the foot, on any computer. Grace's first live tag as grace@clickplumbing.com on a ZZ Test job still proves the read no agent can.
 size: S (call 1 as drawn: one Gmail search per window open through gmail-mine's list, one kernel, the line on JobThreadSummary and the bid's thread rail, the guide) + M (call 2: the follow widened to the person's Sent, a per-person fence, a marked line with Untag)
 blocker: The owner's calls. No agent can read a Workspace mailbox, so the guess's quality on real rows is still unmeasured: Grace's walk comes first.
-ver: proposed
+ver: proposed · the owner's answers 2026-11-08
 opinion: build call 1 — the tab's one assumption, that a person will go and look, is the one the ledger refutes; a door at the job costs one read on open and keeps the person's press; call 2 after a month of call 1
 mockup: to-dos/messages-my-email-doors/mockup.html
 ---
@@ -149,3 +149,67 @@ Untag.
 - 2026-11-04: written from Grace's review of #230 (the ledger, the code, the live tab as the dev). The
   mock-up draws the job window's Where it stands card and a thread line, each Now beside the
   suggestion, at a desk and on a phone. Nothing built. Waiting on the five calls, and on Grace's walk.
+
+## The owner's answers (2026-11-08)
+
+| # | The call | Owner's answer |
+|---|---|---|
+| 1 | A door on the job and the bid | **Yes, build now**: option A, the line read on open. |
+| 2 | The Sent side with no press | **Yes, build now** (not after a month): option A. The owner wants a person's sent and received mail in line on a bid at a moment's notice. |
+| 3 | A Needs you line on the Dashboard | **No.** |
+| 4 | The retire test and Grace's walk | Grace's walk stands; the month's clock is moot once call 2 lands mail by itself. |
+| 5 | The guess's thread rule | **Yes, build now.** |
+
+## Ready to build (hand-over of 2026-11-08)
+
+Read against the code on 2026-11-08; no further decision needed. Three PRs from fresh `main`, each with release note,
+fragment, the guide *tag an email onto a job from your own mail* amended in plain words, `docs/MESSAGES_ARCHITECTURE.md`
+(the My email row and the crons table) and `docs/EDGE_FUNCTIONS.md` § gmail-mine.
+
+### PR A · call 1, the door (S)
+
+- There is no component named a bid's thread rail. The two surfaces that fit the ask are the job window's **Where it
+  stands** card (`DetailJobModal.tsx` draws `JobThreadSummary`; the job's people are `summaryRead.facts.people`, contact
+  ids) and the **thread window narrowed to a job** (`OpenThread.jobFilter` set, which is how the Bid Board opens a GC's
+  thread on a bid), as an `aboveBox` slot; the person there is the thread's contact and its `channels` of kind email.
+- Kernel `src/lib/myMail/jobDoor.ts`: `jobDoorQuery(addresses, jobNum)` = `from:a OR to:a OR … OR "JP1077"` (no braces:
+  `fencedQuery` strips them); `jobDoorRows(rows, jobKey)` groups the page by `threadId`, newest first, drops a row
+  tagged on this job, held by a line on this job (`inMessages.jobKey`) or folded, keeps at most three with the count of
+  the rest; the words (*Your mail with Dale Okafor: 2 conversations not on this job*, the quiet line *Read from your
+  Gmail as this opened. Nothing is kept until you press Yes.*, *All your mail with Dale ›* to
+  `/messages?tab=my-email&q=<query>`). Io `jobDoorIo.ts`: the people's email addresses from `contact_channels`, then
+  `supabaseMyMailIo().list({ view: 'toTag', q })`; null when `loadMyMailSetting().on` is false or the function refuses
+  (off, offWorkspace, imitated: no line, no words).
+- `MyMailJobLine.tsx` draws the rows with **Yes** on each (the tab's own `tag` onto this job); after Yes the row turns
+  green, *on JP1077 ✓ · open the thread ›*. Read once per window open, keyed by job and addresses; nothing counts or
+  nags. Render tests over a fake io.
+
+### PR B · call 2, the Sent side (M, one migration)
+
+- Migration: `users.my_mail_sent_read_at timestamptz` (the per-person cursor), `email_tag_threads.placed_by_app boolean
+  not null default false`, `messages.placed_by_app boolean not null default false` (set by an UPDATE after
+  `email_write_line` answers written, like `body_html_path`), and a small table `email_tag_threads_off (user_id,
+  gmail_thread_id, untagged_at, primary key (user_id, gmail_thread_id))` with the four fence calls: the tombstone so a
+  conversation the person untagged is never placed by the app again (a hand tag deletes the tombstone).
+- `gmail-mine`'s `follow()` gains `followSent`: for each person `followPeople` names, with their token, when
+  `my_mail_sent_read_at` is null set it to now and read nothing (no backfill, as `gmail-sync`'s first run); else
+  `gmailMessagePage(token, 'in:sent after:<epoch> -label:"Tagged in ClickTooling" -label:<hidden>…')`, each mail read
+  whole: skip a thread with an `email_tag_threads` row (the follow's own) or a tombstone; a mail a line already holds
+  is tied as `planFollow` ties a box's loose line, never doubled; else the job by the guess's steps 3 and 4 alone
+  (`myMailGuessFacts`: the party's address on exactly one open job, or its domain one customer's with one open job);
+  with one job, upsert the `email_tag_threads` row with `placed_by_app` true, `landMail`, the grey event with the
+  app's words (*The app put Wendi's mail to Rusty on BP523: he is on one open job. Later mail in it lands here by
+  itself.*), the label; then `my_mail_sent_read_at` = the newest mail's time.
+- The thread line: `load.ts` reads `placed_by_app`, `mail_user_id`, `gmail_thread_id`; `ThreadLine.tsx` draws the grey
+  mark *from Wendi's mail · put here by the app* and **Untag** (the person whose mail it is alone; a confirm whose
+  button reads Untag), which is `myMailIo.untag({ threadId })` then a re-read; `untag` writes the tombstone when the
+  row was app-placed. `messagesIo`'s thread select adds the three columns, so push the migration right after the merge.
+- Verify: a mail from grace@ to the ZZ Test customer's address on one open ZZ Test job is on the thread as ours within
+  five minutes, marked, and Untag takes it off and keeps it off.
+
+### PR C · call 5, the guess reads the conversation (S)
+
+- In `gmail-mine`'s `fillRows` (and `open`'s thread rows): before `guessJob`, a row wanting a guess whose `threadId` has
+  a sibling on the same page with `inMessages.jobKey` takes that job as its guess, why *a mail of this conversation is
+  on JP1077 already*; `loadFacts`' `jobAsk` includes those keys so the chip is loaded. Pure in `mineFunction.ts`
+  (`conversationJobs(rows)`), tested; a case in `gmailMine.run.test.ts`. Deploy `gmail-mine` after the merge.

@@ -196,7 +196,7 @@ export function ReplyBox({
   const io = useMemo(() => ioGiven ?? supabaseReplyIo(), [ioGiven])
   const qio = useMemo(() => quickIo ?? supabaseQuickRepliesIo(), [quickIo])
   const aio = attachIo ?? supabaseAttachIo
-  const to = useMemo(() => replyRecipient(contact), [contact])
+  const to = useMemo(() => replyRecipient(contact, { lines: open?.lines ?? [] }), [contact, open?.lines])
   const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
   const offered = useMemo(() => REPLY_KINDS.filter((k) => !kinds || kinds.includes(k.kind)), [kinds])
   const [chosen, setKind] = useState<ReplyKind>(() => defaultReplyKind(to))
@@ -798,7 +798,7 @@ export function ReplyBox({
               aria-hidden="true"
               style={{ position: 'absolute', right: '0.6rem', bottom: '0.45rem', fontSize: '0.72rem', color: 'var(--text-muted)', pointerEvents: 'none' }}
             >
-              {fromLine(shown, company).join(' · ')}
+              {fromLine(shown, company, open?.userNames[me] ?? auth?.profileName ?? null).join(' · ')}
             </span>
           )}
         </div>

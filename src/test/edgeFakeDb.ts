@@ -32,11 +32,20 @@ export function fakeTable(db: FakeDb, name: string): Chain {
     const matched = (db.tables[name] ?? []).filter((r) => where.every((w) => w(r)))
     db.calls.push(`${op} ${name}`)
     if (op !== 'select') db.writes.push({ op, table: name, values, matched })
+    // An insert keeps its row with an id and answers it, so `.insert(...).select('id').single()` reads as the database
+    // answers (v2.6702, messages-email's line); an update changes the rows it matched in place.
+    if (op === 'insert') {
+      const row: FakeRow = { id: `row-${(db.tables[name] ?? []).length + 1}`, ...values }
+      ;(db.tables[name] ??= []).push(row)
+      return [row]
+    }
+    if (op === 'update') for (const r of matched) Object.assign(r, values)
     return op === 'select' ? matched : []
   }
   const chain: Chain = {}
   const self = () => chain
   for (const m of ['select', 'order', 'limit', 'lt', 'lte', 'gt', 'gte', 'neq', 'not', 'ilike', 'range', 'contains']) chain[m] = self
+  chain.delete = (() => ((op = 'update'), (values = {}), chain)) as never
   chain.eq = ((c: string, v: unknown) => (where.push((r) => r[c] === v), chain)) as never
   chain.match = ((q: FakeRow) => {
     for (const [c, v] of Object.entries(q)) where.push((r) => r[c] === v)
