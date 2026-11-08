@@ -125,6 +125,15 @@ describe('getZonedSettingsGroups', () => {
     }
   })
 
+  it('People & teams is the office’s: dev, owner, assistant and controller, nobody else (punch list #188, rows 12 and 22)', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id), role).toContain('settings-people')
+    }
+    for (const role of ['estimator', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id), role).not.toContain('settings-people')
+    }
+  })
+
   it('master keeps People & teams and Company; deep-linked ids all survive the reorg', () => {
     const ids = getZonedSettingsGroups('master_technician').map((g) => g.id)
     expect(ids).toContain('settings-people')

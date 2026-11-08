@@ -2,7 +2,7 @@ import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
 import { canEditClause, canEditFlows, canOpenGcProjects } from './gc/access'
 import { canSeePhoneAndTexts } from './messages/assignRule'
-import { isOwnerOrDev } from './doorRoles'
+import { isOfficeRole, isOwnerOrDev } from './doorRoles'
 
 /**
  * Zoned Settings groups (v2.2088, reorg mockup A). The tab bar answers the
@@ -69,7 +69,9 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (r === 'dev' || r === 'estimator') {
     groups.push({ id: 'settings-catalogs', label: 'Bids & materials', zone: 'company', pagesHint: 'Shows on: Bids, Takeoff, and Materials — trades, part types, and the books.' })
   }
-  if (r === 'dev' || r === 'master_technician') {
+  // People & teams (punch list #188 rows 8–13 and 22, v2.6755): the office's tab — Additional People is the office's filing, the sub
+  // pay schedule the controller's; the owner holds the groups and the switches, a dev the pay approvals and the role map.
+  if (isOfficeRole(r)) {
     groups.push({ id: 'settings-people', label: 'People & teams', zone: 'company', pagesHint: 'Shows on: People — accounts, teams, and review cadence.' })
   }
   // Training (punch list #111, v2.5569): the courses the crew must take and how long a pass is good for. A dev's.
