@@ -58,10 +58,13 @@ export function QuickfillCompleteNoBillSection({
   rows,
   clockSummaryByJobId,
   jobsListBusy,
+  loading = false,
 }: {
   rows: CompleteNoBillRow<JobWithDetails>[]
   clockSummaryByJobId: Map<string, QuickfillJobClockSummary>
   jobsListBusy: boolean
+  /** The hook's read still in flight (the jobs, their lines, the report percents): the body says so instead of claiming the list is empty. */
+  loading?: boolean
 }) {
   const { runFetchJobs } = useJobsListCache()
   const jobDetailModal = useJobDetailModal()
@@ -100,7 +103,11 @@ export function QuickfillCompleteNoBillSection({
         </Link>
         .
       </p>
-      {rows.length === 0 ? (
+      {rows.length === 0 && loading ? (
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }} data-complete-no-bill-reading>
+          Reading the finished jobs' bills…
+        </p>
+      ) : rows.length === 0 ? (
         // Empty is the good state (punch list #184, sweep C): the station's own words say so.
         <EmptyState compact main="No complete job is missing its Total Bill or its Specific Work." />
       ) : (

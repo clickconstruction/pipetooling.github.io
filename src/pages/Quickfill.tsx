@@ -1612,6 +1612,7 @@ function QuickfillPage() {
               rows={quickfillCompleteNoBill.rows}
               clockSummaryByJobId={quickfillCompleteNoBill.clockSummaryByJobId}
               jobsListBusy={quickfillCompleteNoBill.jobsListBusy}
+              loading={quickfillCompleteNoBill.loading}
             />
           </QuickfillSectionWrapper>
         )

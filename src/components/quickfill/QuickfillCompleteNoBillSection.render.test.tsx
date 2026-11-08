@@ -60,8 +60,11 @@ describe('QuickfillCompleteNoBillSection · the three checks on each row (v2.675
     expect(openEditJob).toHaveBeenCalledTimes(1)
   })
 
-  it('says in its own words when no finished job is missing a field', () => {
-    renderWithProviders(<QuickfillCompleteNoBillSection rows={[]} clockSummaryByJobId={new Map()} jobsListBusy={false} />)
+  it('says in its own words when no finished job is missing a field, and says it is reading while the count is not in yet', () => {
+    const { rerender } = renderWithProviders(<QuickfillCompleteNoBillSection rows={[]} clockSummaryByJobId={new Map()} jobsListBusy={true} loading={true} />)
+    expect(document.querySelector('[data-complete-no-bill-reading]')?.textContent).toBe("Reading the finished jobs' bills…")
+    expect(screen.queryByText('No complete job is missing its Total Bill or its Specific Work.')).toBeNull()
+    rerender(<QuickfillCompleteNoBillSection rows={[]} clockSummaryByJobId={new Map()} jobsListBusy={false} loading={false} />)
     expect(screen.getByText('No complete job is missing its Total Bill or its Specific Work.')).toBeTruthy()
     expect(document.querySelectorAll('[data-complete-no-bill-row]')).toHaveLength(0)
   })
