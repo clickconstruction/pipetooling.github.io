@@ -44,6 +44,7 @@ import {
   optoutRecord,
   ownMailboxNote,
   replyRecipient,
+  numberOrder,
   sendWarnings,
   sentCopyNote,
   sentWords,
@@ -143,6 +144,27 @@ describe('the recipient, from the spine’s contact', () => {
     expect(replyRecipient({ ...greg, channels: [stopped, cell] })).toMatchObject({ number: '(210) 555-0199', numberOptedOut: false, numberChannelId: 'greg-cell' })
     expect(replyRecipient({ ...greg, channels: [stopped] })).toMatchObject({ number: '(210) 555-0113', numberOptedOut: true })
     expect(defaultReplyKind(replyRecipient({ ...greg, channels: [stopped, greg.channels[1]!] }))).toBe('email')
+  })
+
+  // Punch list #118: the usual the office starred, else the last the thread carried a line on, else the first that can take a text.
+  it('texts the usual first, else the number the thread last carried a line on, and takes an explicit pick this once', () => {
+    const greg = demo('greg')
+    const land = { id: 'greg-phone', kind: 'phone' as const, value: '(210) 555-0113', optedOutAt: null }
+    const cell = { id: 'greg-cell', kind: 'phone' as const, value: '(210) 555-0199', optedOutAt: null }
+    const two = { ...greg, channels: [land, cell] }
+    const lines = [{ channelId: 'greg-cell', at: '2026-10-01T15:00:00.000Z', direction: 'in' as const }]
+    expect(numberOrder(two).map((c) => c.id)).toEqual(['greg-phone', 'greg-cell'])
+    expect(replyRecipient(two, { lines })).toMatchObject({ number: '(210) 555-0199', numberChannelId: 'greg-cell' })
+    const starred = { ...greg, channels: [{ ...land, usualAt: '2026-10-02T15:00:00.000Z' }, cell] }
+    expect(replyRecipient(starred, { lines })).toMatchObject({ number: '(210) 555-0113', numberChannelId: 'greg-phone' })
+    expect(replyRecipient(starred, { lines, numberChannelId: 'greg-cell' })).toMatchObject({ number: '(210) 555-0199', numberChannelId: 'greg-cell' })
+    // A stopped usual is not usual; a stopped pick is still the pick, and the box says why it cannot go.
+    const stoppedStar = { ...greg, channels: [{ ...land, usualAt: '2026-10-02T15:00:00.000Z', optedOutAt: '2026-10-03T15:00:00.000Z' }, cell] }
+    expect(replyRecipient(stoppedStar, { lines })).toMatchObject({ number: '(210) 555-0199', numberOptedOut: false })
+    expect(replyRecipient(stoppedStar, { lines, numberChannelId: 'greg-phone' })).toMatchObject({ number: '(210) 555-0113', numberOptedOut: true })
+    // A usual address wins over the first.
+    const mails = { ...greg, channels: [{ id: 'm1', kind: 'email' as const, value: 'a@hillside.example', optedOutAt: null }, { id: 'm2', kind: 'email' as const, value: 'b@hillside.example', optedOutAt: null, usualAt: '2026-10-02T15:00:00.000Z' }] }
+    expect(replyRecipient(mails)).toMatchObject({ email: 'b@hillside.example', emailChannelId: 'm2' })
   })
 })
 

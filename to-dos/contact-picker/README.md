@@ -1,8 +1,8 @@
 ---
 name: "The To chip: pick the number, the address and the person a send goes to, and remember the pick"
 number: 118
-group: gated
-status: written up 2026-10-17 at Grace's ask, after the Tell the customer train (#115) went live; waits on her look
+group: waiting
+status: BUILDING 2026-11-08 on the owner's word, which stood in for Grace's look (built as drawn) — PR 1 v2.6699 (the usual number `contact_channels.usual_at`, the rule, the To chip on the send window, Who is this? asks; migration `20261108170919_contact_channel_usual.sql`, pushed right after the merge, then `messages-nudge-dispatch` redeployed); PRs 2 to 4 not built
 summary: >
   Every send today picks the number and the address by a rule and offers no choice: the first number
   that can still take a text, the first address, the customer's own contact rather than a person at
@@ -12,10 +12,11 @@ summary: >
   job's people when a job has more than one, the starred one first. One recipient rule in one kernel
   feeds the thread, the sheets, the morning run, the call task's dial and the tech's text, so a pick
   made anywhere holds everywhere.
-next: Grace's look; then PR 1 (the usual channel, the rule and the chip on the send window) is a day's work and can go alone
-size: M as a train of four (the usual channel and the chip, the sheets and the tech, who on this job, the address side); each PR S or M
-blocker: Grace's look. Nothing else: the tables, the people and the jobs are all there.
+next: Another session builds PR 2 from the hand-over section (the chip on the Tell the customer sheet and On my way, the tech's gate) once PR 1 is merged and pushed; the owner walks PR 1 on a ZZ Test customer with two numbers (How to verify, steps 1 to 3 and 5). Then PR 3 (Who on this job) and PR 4 (the address side).
+size: M as a train of four (the usual channel and the chip, the sheets and the tech, who on this job, the address side); each PR S or M; left: PRs 2 to 4 (S · M · S)
+blocker: none for PR 2; PR 3 and PR 4 wait on the owner's look at PR 1 and PR 2 live
 opinion: build the usual channel and the chip first; it closes the gap where a customer texted from a second phone and the rule keeps answering the first. Who on this job second. The address side last, since the estimate already has an override box.
+ver: v2.6699
 mockup: to-dos/contact-picker/mockup.html
 ---
 
@@ -82,6 +83,13 @@ box, which becomes the *another address* row of the chip's menu rather than a ba
 
 ## The five calls, settled
 
+The owner, 2026-11-08: build it as drawn; his call stood in for Grace's look. PR 1 (v2.6699) built calls 1, 2's
+office half and 4 as written below, with two readings of its own: the usual's "partial unique index" is an ordinary
+index, since *Who is this?* folds a named number into the record's own contact by moving channel rows and a unique
+index would refuse the fold when both sides carry a usual (the function keeps one per kind; the readers take the newest
+when two meet); and the morning run reads the usual (call 3's first half) while *a held row names the number it would
+go to* waits on PR 2. Call 2's tech half and call 5 are PR 2's.
+
 1. **Where the usual lives.** On the channel row (`contact_channels.usual_at`), not on the contact:
    a contact may have a usual number and a usual address at once, and the row already carries
    `opted_out_at`, so a STOP on the usual drops it from the rule without a second table.
@@ -96,6 +104,43 @@ box, which becomes the *another address* row of the chip's menu rather than a ba
    is actually holding.
 5. **The tech's chip.** Shown, switchable, remembered as the usual only when the tech ticks *Make this
    their usual*; a plain switch is this once. The office sees the gray line either way.
+
+## Hand-over: PR 2, ready to build
+
+The owner stopped the first session on 2026-11-08 after PR 1 so another machine can pick PR 2 up.
+Everything it needs is on `main` once PR 1 (v2.6699) merges and its migration is pushed.
+
+1. **The pieces PR 1 left.** `contact_channels.usual_at` and `contact_channel_make_usual(p_channel)`
+   (gated by `follow_up_press`, the office team); `numberOrder` / `replyRecipient(contact, { lines,
+   numberChannelId })` in `src/lib/messages/compose.ts`; `numberChoices`, `chipHasMenu`, `usualToSet`
+   in `src/lib/messages/toChip.ts`; the component `ToChip.tsx` in
+   `src/components/gc/messages/reply/` (props `choices · pickedId · onPick · tick · onTick`);
+   `ReplyIo.makeUsual`. Reuse all of it; write no second chip.
+2. **The Tell the customer sheet** (`src/components/customers/TellCustomerSheet.tsx`, both moments:
+   the booking's first visit and the estimate's text): the sheet reads `contact.numbers[0]` today.
+   Read the customer's contact channels with `usual_at` (`tellCustomerIo.ts` line ~146 already
+   selects `contact_channels`; add `usual_at`), build `numberChoices` from them and the thread's
+   lines, draw `ToChip` beside *Text to*, and pass the picked `channelId` into the send
+   (`tellCustomerIo` → `quo-send` takes `channelId` already). The tick calls `makeUsualChannel`
+   (`replyIo.ts`) before the send, as `SendWindow` does. Keep #115's say note beside the chip.
+3. **The tech's On my way** (`OnMyWaySheet.tsx`, `src/lib/jobModeOnMyWayIo.ts`,
+   `supabase/functions/quo-send`'s tech path, `_shared/quoTechSend.ts`): the tech path takes an
+   optional `channelId` instead of the record's phone; the sheet draws the chip (*Dana · (830)
+   555-0190 ▾*), a plain switch is this once, the tick makes it the usual (the card's call 5). The
+   gate widens: a second migration adds `contact_channel_make_usual`'s tech door, e.g. a check that
+   `messages_tech_can_read()` finds the contact on the tech's jobs this week or last (the R5 door,
+   `20261013190000_messages_tech_door.sql`) when `gc_office_team()` is false. `npm run claim --
+   --migration`, `SET lock_timeout`, a `docs/migrations/` page; **the coordinating session pushes**.
+4. **The moved visit's offer and the call task's dial** read the usual: `textNumberOf` already
+   does for the morning run; find the two other pickers (`grep -rn "opted_out_at" src/lib/calls
+   src/lib/tellCustomer src/lib/schedule`) and route them through `numberOrder`.
+5. **Today's sends names the number a held row would go to** (the card's call 3, second half):
+   `offerHeld` words in `src/lib/flows/nudgeDispatch.ts` gain the number.
+6. **Words:** one release note + fragment per PR, the guide *pick the number a text goes to* gains
+   a section for the sheet and the tech, *text a customer from the job* a sentence, `GLOSSARY.md`'s
+   Messages entry a clause, `ACCESS_CONTROL.md`'s Messages cut 1 paragraph the tech door,
+   `EDGE_FUNCTIONS.md` → quo-send a `v2.NNNN` block (**redeploy `quo-send` after the merge**), this
+   card's front matter. Verify on a ZZ Test customer with two numbers (How to verify, steps 2 and 3).
 
 ## Alternatives weighed
 
