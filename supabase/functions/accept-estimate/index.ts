@@ -5,6 +5,7 @@ import { clientIpFromRequest, insertEstimateCustomerEvent } from '../_shared/log
 import { writeEstimateThreadLine } from '../_shared/estimateThreadLine.ts'
 import { canDeclineEstimate, normalizeEstimateDeclineReason } from '../_shared/estimateDecline.ts'
 import { estimateRefForTokenHash, linkHasExpired, type EstimateLookupClient } from '../_shared/estimateTokenLookup.ts'
+import { ESTIMATE_LINK_LOCKED_CODE, ESTIMATE_LINK_LOCKED_WORDS, recordEstimateLinkMiss, type EstimateMissClient } from '../_shared/estimateLinkMisses.ts'
 
 const SIGNATURE_BUCKET = 'estimate-acceptor-signatures'
 const MAX_SIGNATURE_BYTES = 524288 // 512 KiB (matches bucket file_size_limit)
@@ -103,11 +104,14 @@ async function handleDecline(
 ): Promise<Response> {
   // #127: the emailed link's hash on the row, or a link shared in a message (estimate_share_links).
   const ref = await estimateRefForTokenHash(admin as unknown as EstimateLookupClient, tokenHash)
-  const { data: rowRaw, error: fetchErr } = ref
-    ? await admin.from('estimates').select('id, status, public_token_expires_at').eq('id', ref.estimateId).maybeSingle()
-    : { data: null, error: null }
+  if (!ref) {
+    // #281: a link that opens nothing is a miss against its source; past 20 in the hour the source hears 429, not 404.
+    const miss = await recordEstimateLinkMiss(admin as unknown as EstimateMissClient, req, 'accept-estimate')
+    return miss.locked ? json(429, { error: ESTIMATE_LINK_LOCKED_WORDS, code: ESTIMATE_LINK_LOCKED_CODE }) : json(404, { error: 'Not found' })
+  }
+  const { data: rowRaw, error: fetchErr } = await admin.from('estimates').select('id, status, public_token_expires_at').eq('id', ref.estimateId).maybeSingle()
   const row = rowRaw as Pick<EstimateFetchRow, 'id' | 'status' | 'public_token_expires_at'> | null
-  if (fetchErr || !row || !ref) return json(404, { error: 'Not found' })
+  if (fetchErr || !row) return json(404, { error: 'Not found' })
 
   if (row.status === 'declined') return json(200, { ok: true, alreadyDeclined: true })
   if (row.status === 'customer_accepted') return json(409, { error: 'Already accepted', code: 'already_accepted' })
@@ -218,19 +222,22 @@ serve(async (req) => {
 
     // #127: the emailed link's hash on the row, or a link shared in a message (estimate_share_links).
     const ref = await estimateRefForTokenHash(admin as unknown as EstimateLookupClient, tokenHash)
-    const { data: rowRaw, error: fetchErr } = ref
-      ? await admin
-          .from('estimates')
-          .select(
-            'id, status, public_token_expires_at, valid_until, accept_notify_user_ids, master_user_id, estimate_number, title, total_cents, options_snapshot',
-          )
-          .eq('id', ref.estimateId)
-          .maybeSingle()
-      : { data: null, error: null }
+    if (!ref) {
+      // #281: a link that opens nothing is a miss against its source; past 20 in the hour the source hears 429, not 404.
+      const miss = await recordEstimateLinkMiss(admin as unknown as EstimateMissClient, req, 'accept-estimate')
+      return miss.locked ? json(429, { error: ESTIMATE_LINK_LOCKED_WORDS, code: ESTIMATE_LINK_LOCKED_CODE }) : json(404, { error: 'Not found' })
+    }
+    const { data: rowRaw, error: fetchErr } = await admin
+      .from('estimates')
+      .select(
+        'id, status, public_token_expires_at, valid_until, accept_notify_user_ids, master_user_id, estimate_number, title, total_cents, options_snapshot',
+      )
+      .eq('id', ref.estimateId)
+      .maybeSingle()
 
     const row = rowRaw as EstimateFetchRow | null
 
-    if (fetchErr || !row || !ref) {
+    if (fetchErr || !row) {
       return new Response(JSON.stringify({ error: 'Not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
