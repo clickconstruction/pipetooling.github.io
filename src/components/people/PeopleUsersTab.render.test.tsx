@@ -209,4 +209,32 @@ describe('PeopleUsersTab', () => {
     rerender(ui())
     await waitFor(() => expect(reloadRoster).toHaveBeenCalledTimes(2))
   })
+
+  // v2.6723: an archived login with an Away note on is away, not gone — it lists above Archived with the day back and
+  // leaves the Archived lists, so Archived means sealed and banned.
+  it('an archived login with an Away note on lists under Away with the day back, and leaves Archived', async () => {
+    const users = TABLE_ROWS.users!
+    // The viewer row the other reads share gets an id here, since the Archived list keys its rows by one.
+    TABLE_ROWS.users = [{ ...(users[0] as object), id: 'u-viewer', archived_at: '2026-01-01T00:00:00Z' }, { id: 'u9', name: 'Nadia Test', email: 'nadia@example.com', role: 'helpers', archived_at: '2026-11-08T17:01:23Z', login_attached_at: '2026-02-16T23:25:04Z' }]
+    TABLE_ROWS.people = [{ account_user_id: 'u9', end_date: '2026-11-03' }]
+    TABLE_ROWS.away_notes = [{ user_id: 'u9', countdown_ymd: '2029-11-08', alert_on_day: true }]
+    try {
+      renderTab({ isDev: true })
+      const away = await screen.findByRole('table', { name: 'Away' })
+      expect(screen.getByText('Away (1)')).toBeTruthy()
+      expect(within(away).getByText('Nadia Test')).toBeTruthy()
+      expect(within(away).getByText('Left Nov 3, 2026')).toBeTruthy()
+      expect(within(away).getByText(/^Back on Thursday, Nov 8, 2029 · /)).toBeTruthy()
+      expect(within(away).getByText('· alert on')).toBeTruthy()
+      expect(within(away).getByRole('button', { name: 'Edit the note…' })).toBeTruthy()
+      expect(within(away).getByRole('button', { name: 'Bring back…' })).toBeTruthy()
+      fireEvent.click(screen.getAllByRole('button', { name: /^Archived \(/ })[0]!)
+      const archived = await screen.findByRole('table', { name: 'Archived logins' })
+      expect(within(archived).queryByText('Nadia Test')).toBeNull()
+    } finally {
+      TABLE_ROWS.users = users
+      delete TABLE_ROWS.people
+      delete TABLE_ROWS.away_notes
+    }
+  })
 })

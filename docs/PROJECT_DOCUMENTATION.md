@@ -2895,7 +2895,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `/templates` - Template management (dev)
 - `/settings` - User management (dev) and password change (all users)
 - Public/entry routes: `/accept-invite`, `/task`, `/estimate/accept` (and `/e/:code`, the estimate text's short link read from the path, v2.6678), `/contract/accept`, `/rate` (the customer's review, v2.5876; its Google ask and better question v2.5934)
-- The Away page (`pages/Away.tsx`, v2.6587, punch list #256 PR 8) has no route: `App`'s `ArchivedCallerGate` draws it in place of every provider and route for a signed-in teammate who left with an Away note on (the seal's `PT403` on the role read), whatever path they typed; the office writes the note from the archived desk's **Leave a note…** or End employment's footer, through the `away-note` function ([GLOSSARY.md](./GLOSSARY.md) → *Away note*)
+- The Away page (`pages/Away.tsx`, v2.6587, punch list #256 PR 8) has no route: `App`'s `ArchivedCallerGate` draws it in place of every provider and route for a signed-in teammate who left with an Away note on (the seal's `PT403` on the role read), whatever path they typed; the office writes the note from the archived desk's **Leave a note…** or End employment's footer, through the `away-note` function; since v2.6723 People → Users lists such a teammate under **Away** above Archived, one row with the day they left, the day back, **Edit the note…** and **Bring back…** (`lib/people/awaySection.ts`), and the desk header reads *· away* ([GLOSSARY.md](./GLOSSARY.md) → *Away note*)
 - Full route list: [`src/App.tsx`](../src/App.tsx)
 
 ### Environment Variables
