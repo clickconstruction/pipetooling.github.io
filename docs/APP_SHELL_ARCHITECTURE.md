@@ -18,6 +18,8 @@ last_updated: 2026-11-07
 
 > **v2.6099 (after the stamp) — the outbox's one sender:** `Layout.tsx` calls `useOutboxReplay(authUser?.id)` once (`hooks/useOutboxReplay.ts`), which sends the field presses kept on the phone in order when the signal returns, and hands its `tryNow` to the `AppHealthStrip` it mounts as the chrome's first row (v2.6009) through `onTryNow`; the strip's second segment is now the queue's bar (*Clock in from 7:58 AM · waiting to send* with **Try now**), so a phone never carries two bars (`docs/recent-features/v2.6099.md`).
 
+> **v2.6559 (after the stamp) — the machine's code page:** `App.tsx` lazy-loads `MachineCode` (`pages/MachineCode.tsx`) at `m/:code` inside the signed-in layout — the pre-use check a phone opens from the sticker's code (punch list #270; the twins' directory lists `/m/:code`); the same commit mounts the fleet's `MachinesSection` in `PeopleVehiclesTab.tsx`.
+
 ## What this surface is
 
 The shell is everything around a page. `App.tsx` decides which of **69 `<Route>` elements** (70 since the stamp, the note above) renders and wraps the signed-in tree in **23 providers**. `Layout.tsx` draws the chrome every signed-in user sees: the top nav (different per role), the header toolbar (search, task buttons, Job Mode "Contact:" row), the ⚙ gear menu (mode toggles, secondary pages, sign out, reloads), the phone hamburger or the assistant's phone dock, the Dispatch/Job Mode footers, the Pin Mode footer, the twin/read-only/customer-waiting banners, the impersonation Exit button, and the route `<Outlet>` inside a chunk-error boundary. It also mounts 12 app-wide modal and deep-link components.
