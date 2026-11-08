@@ -12,6 +12,9 @@ import {
   columnNotPushed,
   contactJobsOf,
   contactsByAddress,
+  conversationGuess,
+  conversationJobs,
+  conversationWhy,
   customerOpenJobs,
   domainCustomers,
   domainFilter,
@@ -441,6 +444,34 @@ describe('the facts a page’s guesses read', () => {
     expect(wantsGuess(row('a'), { tagKey: `pipeline:${ELM}`, line: null })).toBe(false)
     expect(wantsGuess(row('a', { folded: 'bulk' }), { tagKey: null, line: null })).toBe(false)
     expect(wantsGuess(row('a'), { tagKey: null, line: { id: 'm-1', bid_id: CLUB, project_id: null, jobs_ledger_id: null } })).toBe(false)
+  })
+})
+
+describe('the thread rule: a conversation already on a job (punch list #263 PR C)', () => {
+  const elmChip: MyMailJobChip = { kind: 'pipeline', id: ELM, key: `pipeline:${ELM}`, num: 'JP1077', name: '4 Elm Ct' }
+  const clubChip: MyMailJobChip = { kind: 'bid', id: CLUB, key: `bid:${CLUB}`, num: 'BP523', name: 'Cedar Bend clubhouse' }
+
+  it('names the one job a conversation’s held lines are on, and nothing for two different jobs or none', () => {
+    expect(
+      conversationJobs([
+        { threadId: 't-elm', jobKey: null },
+        { threadId: 't-elm', jobKey: elmChip.key },
+        { threadId: 't-elm', jobKey: elmChip.key },
+        { threadId: 't-split', jobKey: elmChip.key },
+        { threadId: 't-split', jobKey: clubChip.key },
+        { threadId: 't-free', jobKey: null },
+      ]),
+    ).toEqual({ 't-elm': elmChip.key })
+    expect(conversationJobs([])).toEqual({})
+  })
+
+  it('guesses that job with the chip and its why, before the subject, the party and the domain; nothing when the chip is not loaded', () => {
+    const onJob = { 't-elm': elmChip.key, 't-club': clubChip.key }
+    expect(conversationGuess('t-elm', onJob, { [elmChip.key]: elmChip })).toEqual({ ...elmChip, why: 'a mail of this conversation is on JP1077 already' })
+    expect(conversationGuess('t-club', onJob, { [elmChip.key]: elmChip })).toBeNull()
+    expect(conversationGuess('t-free', onJob, { [elmChip.key]: elmChip })).toBeNull()
+    expect(conversationWhy({ num: '', name: 'Cedar Bend clubhouse' })).toBe('a mail of this conversation is on Cedar Bend clubhouse already')
+    expect(plainWordsFailures(`${conversationWhy(elmChip)}.`)).toEqual([])
   })
 })
 

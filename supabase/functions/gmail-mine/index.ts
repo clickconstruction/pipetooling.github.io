@@ -10,7 +10,8 @@
  * - `list` ({ view, q?, pageToken?, labels? }): one page of 50 of the Inbox and the Sent box, newest first (`myMailQuery`:
  *   never Drafts, Spam, Trash or Chats, never a label the person left out, their own search as one group), each mail read
  *   whole ten at a time into a row (`readMyMail`), then filled from the database: `tagged` (`email_tag_threads`, the
- *   job's chip), `inMessages` (a line already holding the mail's Message-ID) and the guess (`guessJob`, never acted on).
+ *   job's chip), `inMessages` (a line already holding the mail's Message-ID) and the guess (since v2.6747 the job another
+ *   mail of the conversation is held on, `conversationGuess`, else `guessJob`; never acted on).
  *   The view (`viewRows`) decides the rows answered: the ones it draws, then the ones behind its fold line, each
  *   flagged with its `folded` kind, so the tab draws its fold line; `folded` counts them. Nothing is kept.
  * - `open` ({ gmailId }): one mail whole, its row filled as above, its addresses, words, HTML and files, and the rest of
@@ -136,6 +137,8 @@ import {
   columnNotPushed,
   contactJobsOf,
   contactsByAddress,
+  conversationGuess,
+  conversationJobs,
   customerOpenJobs,
   domainCustomers,
   domainFilter,
@@ -459,12 +462,15 @@ async function fillRows(ctx: Ctx, box: Box, reads: readonly MyMailRead[], guessF
     const guess = (guessFor === 'all' || guessFor.has(read.row.gmailId)) && wantsGuess(read.row, { tagKey: key, line })
     return { read, line, tagKey: key, guess }
   })
-  const facts = await loadFacts(admin, box, held.filter((h) => h.guess).map((h) => h.read.row), unique(held.map((h) => h.tagKey)))
+  // The thread rule (v2.6747, punch list #263 PR C): a conversation another mail of which, on this page, a line holds on a
+  // job names that job outright, before the subject, the party and the domain are asked; its chip is loaded with the tags'.
+  const onJob = conversationJobs(held.map((h) => ({ threadId: h.read.row.threadId, jobKey: h.line ? jobKeyOfRow(h.line) : null })))
+  const facts = await loadFacts(admin, box, held.filter((h) => h.guess).map((h) => h.read.row), unique([...held.map((h) => h.tagKey), ...Object.values(onJob)]))
   return held.map((h) =>
     filledRow(h.read.row, {
       tagged: h.tagKey ? (facts.chips[h.tagKey] ?? null) : null,
       line: h.line,
-      guess: h.guess ? guessJob(h.read.row, myMailGuessFacts(h.read.row, facts)) : null,
+      guess: h.guess ? (conversationGuess(h.read.row.threadId, onJob, facts.chips) ?? guessJob(h.read.row, myMailGuessFacts(h.read.row, facts))) : null,
     }, me.id),
   )
 }
