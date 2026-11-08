@@ -18,6 +18,7 @@ import {
 import { boardStateFromRows, type BoardRows } from './boardRows'
 import { withDraws } from './drawRows'
 import { gcProjectFromRows, type GcProjectRows } from './projectRows'
+import { customerSchedulePicture } from './schedule/customerSchedule'
 import { portalSchedule } from './schedule/portalSchedule'
 import { withScheduleRows, type ScheduleRows } from './schedule/rows'
 
@@ -258,7 +259,12 @@ describe('the copy reads as the office reads (call 1)', () => {
     })
     const empty = { parts: [], milestones: [], failures: [], moves: [], pushes: [], tells: [], answers: [], walks: [], marks: [], lateNotices: [], waits: [], waitHolds: [], crewCounts: [], sends: [], whatIf: null, rough: null }
     const read = withScheduleRows({ state: withoutOthersSendBacks(state, MINE), projectId: 'p1', rows: { ...empty, ...scheduleOf('p1') }, templates: [], names: new Map() })!
-    expect(portalSchedule(read.state, MINE, read.project)).toEqual(portalSchedulesFromRows(rows, MINE, TODAY).p1)
+    const answer = portalSchedulesFromRows(rows, MINE, TODAY).p1!
+    // The planned finish beside the chart (punch list #205, PR 2) is the customer picture's, and nothing else of the picture.
+    const picture = customerSchedulePicture(read.state, read.project)
+    expect(answer).toEqual({ ...portalSchedule(read.state, MINE, read.project), finish: picture.standing.finish })
+    expect(answer.finish).toBe('2026-10-30')
+    expect(Object.keys(answer).sort()).toEqual(['after', 'before', 'finish', 'first', 'last', 'mine'])
     // Without taking the neighbours' send-backs off, Frame Right would read our 10, not its 30.
     const raw = withScheduleRows({ state, projectId: 'p1', rows: { ...empty, ...scheduleOf('p1') }, templates: [], names: new Map() })!
     expect(portalSchedule(raw.state, MINE, raw.project)!.after[0]!.pct).toBe(10)
