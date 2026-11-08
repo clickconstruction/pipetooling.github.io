@@ -55,6 +55,8 @@ export const WRITE_VERBS = {
   // v2.6608: a person's HR document — the summary or the narrative — the whole text or section ops against its own
   // headings (dev_person_doc_write). The plan commits to the row's updated_at, so a save by anyone since refuses the apply.
   // v2.6613 (punch list #277): the same door takes doc_id (a named document) or title (a new one), counsel_only and archive.
+  // v2.6712 (punch list #286): or drive_file_id — the server reads the Drive file's text in (devMcpDriveDoc.ts) and the
+  // row keeps source_drive_file_id + source_sha256, so a reader knows the document is a copy of a file and which bytes.
   plan_person_doc: { rpc: 'dev_person_doc_write', step: 'plan' },
   apply_person_doc: { rpc: 'dev_person_doc_write', step: 'apply' },
   // v2.4814: the narrative for the firm on a legal matter (dev_legal_narrative_write over legal_set_narrative);
@@ -273,7 +275,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const kind = doc && typeof doc.kind === 'string' ? doc.kind.trim() : ''
     const docId = doc && typeof doc.doc_id === 'string' ? doc.doc_id.trim() : ''
     const title = doc && typeof doc.title === 'string' ? doc.title.trim() : ''
-    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20); for a named document also counsel_only? (true | false, the mark) and archive? (true retires it, false brings it back), either alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
+    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20) — or, for a named document, drive_file_id (or drive_url): a .md, .txt or Google Doc in Drive whose text the server reads itself (v2.6712); for a named document also counsel_only? (true | false, the mark) and archive? (true retires it, false brings it back), either alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
     if (!doc || !UUID_RE.test(personId)) return { ok: false, error: shape }
     const targets = [kind !== '', docId !== '', title !== ''].filter(Boolean).length
     if (targets !== 1) return { ok: false, error: shape }
@@ -289,6 +291,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if ((counselOnly !== null || archive !== null) && !docId && !(title && counselOnly !== null && archive === null)) return { ok: false, error: shape }
     // A named document may take the mark or the archive alone; the fixed two and a new title need the text.
     if (!hasMarkdown && !ops && !(docId && (counselOnly !== null || archive !== null))) return { ok: false, error: shape }
+    // v2.6712 (punch list #286): the server read a Drive file and put its text in as markdown; the source rides to the row.
+    // The two come together, on a named document, with the whole text — the RPC holds the same rule.
+    const sourceId = typeof doc.source_drive_file_id === 'string' ? doc.source_drive_file_id.trim() : ''
+    const sourceSha = typeof doc.source_sha256 === 'string' ? doc.source_sha256.trim().toLowerCase() : ''
+    if ((sourceId !== '') !== (sourceSha !== '')) return { ok: false, error: `${verb}: source_drive_file_id and source_sha256 come together — and the server sets them from drive_file_id; send drive_file_id, not the source fields.` }
+    if (sourceId && (!hasMarkdown || kind || !HASH_RE.test(sourceSha))) return { ok: false, error: `${verb}: a Drive source is a named document's, with the whole text and the file's sha256 — send drive_file_id on a doc_id or title, and the server reads the file.` }
     const p: Json = { person_id: personId }
     if (kind) p.kind = kind
     if (docId) p.doc_id = docId
@@ -297,6 +305,10 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (ops) p.ops = ops
     if (counselOnly !== null) p.counsel_only = counselOnly
     if (archive !== null) p.archive = archive
+    if (sourceId) {
+      p.source_drive_file_id = sourceId
+      p.source_sha256 = sourceSha
+    }
     if (typeof doc.expect_updated_at === 'string' && doc.expect_updated_at.trim()) p.expect_updated_at = doc.expect_updated_at.trim()
     if (typeof doc.covered_through === 'string' && doc.covered_through.trim()) p.covered_through = doc.covered_through.trim()
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: docId || personId, planHash }

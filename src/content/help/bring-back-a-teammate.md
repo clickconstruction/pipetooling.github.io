@@ -20,13 +20,13 @@ Their login is banned and they leave every roster and picker. Their open roadmap
 
 ## While they are away
 
-Their desk stays. Open People → Users, press {{button:outline|Archived}}, and find their name. The desk reads *Archived* with the dates of the stint that ended. A license that expires meanwhile still shows on Licenses. Bring back marks it red on the day back.
+Their desk stays. Open People → Users, press {{button:outline|Archived}}, and find their name. With an Away note on, they list under **Away** above it, with the day back. The desk reads *Archived* with the dates of the stint that ended. A license that expires meanwhile still shows on Licenses. Bring back marks it red on the day back.
 
 You can leave them one screen to find when they sign in. Press {{button:outline|Leave a note…}} on the Status row. See [leave a note for a teammate who is away](/help/leave-a-note-for-a-teammate-who-is-away). Bring back takes the note down.
 
 ## On the day they are back
 
-1. Open People → Users and press {{button:outline|Archived}}. Press {{button:blue|Bring back…}} on their row. The desk's Status row and its **⋯** menu offer the same press. If their Away note counted down to today, the Dashboard's Needs you card lists them with {{button:blue|Bring back…}} too.
+1. Open People → Users and press {{button:outline|Archived}}. Press {{button:blue|Bring back…}} on their row. The desk's Status row and its **⋯** menu offer the same press. A teammate with an Away note on has the same press on their **Away** row, above Archived. If their Away note counted down to today, the Dashboard's Needs you card lists them with {{button:blue|Bring back…}} too.
 2. Set **Back on** to their first day back. The line under it says how long they were away and the first stint's dates.
 3. Work the rows. Each one is something time away made stale.
 4. Tick **Give back their open roadmap tasks** only when you want the old tasks back. The box starts ticked within 90 days of leaving. After that it starts unticked.

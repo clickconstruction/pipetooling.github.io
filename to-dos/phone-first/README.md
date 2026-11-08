@@ -2,7 +2,7 @@
 name: "Phone first: the five screens a tech touches, with one thumb and a camera"
 number: 189
 group: gated
-status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · the picks of 2026-10-29 on the review canvas (sections 3, 4, 6 and 8 as redrawn, Leaving opens the On my way sheet, a home screen web app, the clock-out note filled from the day's reports, a photo with no folder kept and marked, the typed plan stays) · built the same day as five PRs, PR 5a v2.6076, PR 5b v2.6083, PR 3 v2.6089, the Leaving PR v2.6091 and PR 8 v2.6092, run live on the ZZ test jobs at 375 px before the queue took them, all five live by the 05:55Z deploy on 2026-10-30 · the report photos migration on prod since the push of 2026-10-30, and photo-save redeployed with the report sweep at 14:13Z the same day; the camera's live run passed on the ZZ Test job at 15:00Z the same day, and its one finding was fixed as v2.6126 · PR 6, a photo answers a checklist question, built 2026-10-31 as v2.6219 with one additive migration, the `report_photo_id` column and its two mirror triggers, merged as #6625 at 11:16Z and live since the 11:32Z deploy the same day; the migration pushed the same day with the drift check fully applied, in the types and the dev-mcp catalog since #6646 · PR 7, the field report through the queue, built as v2.6265 (#6695, 2026-11-01, with #229's PR 6) once #163's PR 3 landed as v2.6100
+status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · the picks of 2026-10-29 on the review canvas (sections 3, 4, 6 and 8 as redrawn, Leaving opens the On my way sheet, a home screen web app, the clock-out note filled from the day's reports, a photo with no folder kept and marked, the typed plan stays) · built the same day as five PRs, PR 5a v2.6076, PR 5b v2.6083, PR 3 v2.6089, the Leaving PR v2.6091 and PR 8 v2.6092, run live on the ZZ test jobs at 375 px before the queue took them, all five live by the 05:55Z deploy on 2026-10-30 · the report photos migration on prod since the push of 2026-10-30, and photo-save redeployed with the report sweep at 14:13Z the same day; the camera's live run passed on the ZZ Test job at 15:00Z the same day, and its one finding was fixed as v2.6126 · PR 6, a photo answers a checklist question, built 2026-10-31 as v2.6219 with one additive migration, the `report_photo_id` column and its two mirror triggers, merged as #6625 at 11:16Z and live since the 11:32Z deploy the same day; the migration pushed the same day with the drift check fully applied, in the types and the dev-mcp catalog since #6646 · PR 7, the field report through the queue, built as v2.6265 (#6695, 2026-11-01, with #229's PR 6) once #163's PR 3 landed as v2.6100 · PR 6 ran live on 2026-11-08 as the Sample helper on ZZ test job 1088 at 375 px, below; its one finding, the sheet hiding a report photo until the pick, fixed as v2.6738
 summary: >
   A tech's day on the phone is five screens: the Job Mode card with the day's press, the On my
   way sheet, the field report, My Schedule with its percent stepper, and the job window. Walked
@@ -14,11 +14,11 @@ summary: >
   customer's Drive folder as #164 decided, and clock out in one press. #163's waiting bar sits
   under the status bar on every screen and #164's gallery under the address. The position on
   native: stay a home screen web app, with three named triggers for revisiting it.
-next: run PR 6 live on a ZZ job once the office types a stage checklist question that asks for a photo; prod has none yet, and no ZZ job has a Rough In, Top Out or Trim Set line, so the run needs a ZZ job with two such lines. PR 7 waits on #163's PR 3, the field report through the queue.
-size: L as a train of nine (S · XS · S · M · M · S · S · S, and the Leaving PR at XS), all nine built; two migrations, the report photos table and the answer's report photo column; left: the live run of PR 6 (XS)
-blocker: None; PR 6's live run needs a stage checklist question that asks for a photo on a ZZ job.
-ver: v2.5905 · 5910 · 6076 · 6083 · 6089 · 6091 · 6092 · 6126 · 6219 · 6265
-opinion: every PR the owner's picks unlocked is built and live; PR 6 waits on a live run once a photo question exists; PR 7 shipped as v2.6265; stay a home screen web app until one of the three triggers fires
+next: PR 6 ran live on 2026-11-08 (below) and its finding shipped as v2.6738; PR 7 shipped as v2.6265 with #229's PR 6 on 2026-11-01, so every PR of the train is built, live and run; nothing is left but the owner's read of the run.
+size: L as a train of nine (S · XS · S · M · M · S · S · S, and the Leaving PR at XS), all nine built; two migrations, the report photos table and the answer's report photo column; the live run of PR 6 done 2026-11-08; nothing left
+blocker: None.
+ver: v2.5905 · 5910 · 6076 · 6083 · 6089 · 6091 · 6092 · 6126 · 6219 · 6265 · 6738
+opinion: every PR the owner's picks unlocked is built and live; PR 6 ran live on 2026-11-08 and its one finding is fixed; PR 7 shipped as v2.6265; stay a home screen web app until one of the three triggers fires
 mockup: to-dos/phone-first/mockup.html
 ---
 
@@ -350,8 +350,8 @@ On the phone preset as the dev with Job Mode on, and on a real iPhone on a ZZ te
 | 3 · 44 px everywhere a tech presses | v2.6089 | built 2026-10-29, live since the 02:00Z deploy on 2026-10-30: `lib/phonePress.ts` holds the heights; the whole-job percent's five chips stand 44 px; the job window's activity pills and the ＋ Report chip stand 32 px on a phone; `phonePressTargets.render.test.tsx` holds every daily press at 375 px. |
 | the Leaving PR (decision 6) | v2.6091 | built 2026-10-29, live since the 00:10Z deploy on 2026-10-30: `leavingOpens` in `lib/jobs/jobWindowBar.ts`; the bridge's `registerOnMyWayOpener` / `requestOnMyWay`, which Job Mode's card answers with its sheet on the day's next block; the Clock In window at z 1020 beside Update Focus, above the job window. |
 | 8 · clock out in one press | v2.6092 | built 2026-10-29, live since the 04:57Z deploy on 2026-10-30: `lib/clock/clockOutNote.ts` writes the note from the day's reports; the review is called Clock out and fills it when it opens, only while the box still holds what it opened on; the card reloads after its own press through the bridge; the pinned row's Job Report button leaves Job Mode at every width. |
-| 6 · a photo answers a checklist question | v2.6219 | built 2026-10-31: `lib/photos/reportPhotoChecklist.ts` (which chips a tile offers, what a pick does, what Save writes, tested); the question chips under the stage chips in `ReportPhotoTiles`, *Or it answers a checklist question*; Save writes the answer row through `answerQuestionsWithReportPhotos` after the attach, best-effort; the sheet draws a report photo's thumbnail from the report bucket with *Taken on a field report.*; the caption and Stage progress name the question. The migration `20261031150000_checklist_answer_report_photo.sql` (the `report_photo_id` column, the two mirror triggers) was pushed the same day with the drift check fully applied, and #6646 carried the types and the dev-mcp catalog; no edge deploy of its own. The live run waits on a photo question the office types and a ZZ job with two checklist-kind lines. |
-| 7 · the bar and the queue on these screens | — | #163's PR 2 is on main (v2.6099: the store, the bar on #183's strip, the clock through the queue); the field report through the queue waits on #163's PR 3, and #163 keeps photos out of its train (its call of 2026-10-29), so the photos' leg is this PR's own |
+| 6 · a photo answers a checklist question | v2.6219 | built 2026-10-31: `lib/photos/reportPhotoChecklist.ts` (which chips a tile offers, what a pick does, what Save writes, tested); the question chips under the stage chips in `ReportPhotoTiles`, *Or it answers a checklist question*; Save writes the answer row through `answerQuestionsWithReportPhotos` after the attach, best-effort; the sheet draws a report photo's thumbnail from the report bucket with *Taken on a field report.*; the caption and Stage progress name the question. The migration `20261031150000_checklist_answer_report_photo.sql` (the `report_photo_id` column, the two mirror triggers) was pushed the same day with the drift check fully applied, and #6646 carried the types and the dev-mcp catalog; no edge deploy of its own. Ran live on 2026-11-08 as the Sample helper on ZZ test job 1088, below; the one finding, the sheet hiding a report photo until the pick, fixed as v2.6738. |
+| 7 · the bar and the queue on these screens | v2.6265 | #163's PR 2 is on main (v2.6099: the store, the bar on #183's strip, the clock through the queue) and its PR 3 landed as v2.6100; the field report with its photos through the queue shipped as v2.6265 on 2026-11-01 with #229's PR 6 (#6695), whose fragment holds the live recipe |
 
 PRs 2 and 4 were checked at 375 px as the dev before merging, nothing pressed that saves. The press bar
 sat right above the tab bar in all six of the card's states. The plain window was opened with a
@@ -439,6 +439,43 @@ put on the day.
   skips a test job.
 - **Undone.** The report, now in Recently deleted, and its photo row. The shot stays in the ZZ
   Test job's Drive folder, since nothing here deletes a Drive file.
+
+**PR 6's live run, 2026-11-08.** On the dev server at 375 px, as the Sample helper through View as, on
+ZZ TEST Riders Walk (1088), which already carried Rough In, Top Out and Trim Set lines on its Bill tab
+(the office set them on 2026-11-02) and the customer's Files and Pictures folders. The company has no live
+photo question, so the dev added one check for this job on Rough In from the Documents tab, *is the water
+test holding on the rough in?*, ticked **Asks for a photo**, and took it off after the run.
+
+- **Who could run it.** The Sample primary is scoped to the jobs it is Account Man for (v2.2174), so its
+  clock-in on 1088 read *No job or bid linked yet* and Leave report stayed dead; that is the scope, not a
+  bug. The Sample helper reaches a job through its team, and the people picker hides the sample
+  accounts, so the dev put the helper on the team through the app's own client for the run and took the
+  row off after.
+- **The form.** Clock In chose 1088 by number; the card drew the job with *Stage checklists · Rough In ·
+  0 of 1 answered, not ready* and Leave report live. Leave report clicked the back-camera input once
+  (`capture="environment"`). A generated 4032 × 3024 shot shrank in the worker from 741 KB to 140 KB at
+  1600 px. Under the tile: *This photo shows* with Rough In, Top Out, Trim Set and the water heater line
+  at 48 px, then *Or it answers a checklist question* and one chip, *Rough In · ZZ TEST #189 PR 6: is the
+  water test holding on the rough…*, cut on a word, two lines at 74 px. Pressing it put the tile on Rough
+  In with *Answers: … is the water test holding on the rough in?*. Note as the type, so the job's unset
+  percent stayed unset; Save read *Save report · 1 photo*.
+- **The writes.** The report filed with *Stage progress: 1 photo on Rough In, 1 answers a checklist
+  question*. The `report_photos` row carried the caption *Rough In · ZZ TEST #189 PR 6: …* by the Sample
+  helper, and the `stage_checklist_answers` row took its id, the file name *2026-11-08 Rough In · ZZ TEST
+  189 PR 6 is the water test holding on the rough in.jpg*, the time and the bytes, pick null. The report
+  email and push were stubbed in the page, so nobody was sent a test report.
+- **The sheet, the finding.** Rough In on the card opened the sheet to the question with its *photo* tag
+  and Yes · No · Not here, and no thumbnail: the photo row drew only once a pick stood. Yes answered the
+  one question and filed the checklist as record CL-1088-1 at once, whose paper read *Yes · Sample helper
+  · photo in the job's Drive folder*, true by then: the 21:25Z sweep had filed the shot in the customer's
+  Pictures folder and the mirror trigger had put the Drive id on the answer. So on a one-question stage
+  the words *Taken on a field report.* were never on screen. Fixed as v2.6738: the open row draws the
+  report photo before the pick, and a closed row reads *photo taken on a field report*.
+- **Undone.** The report, its answer row, the record, the helper's team row, the two clock sessions (the
+  primary's and the helper's) and the question, taken off from the Documents tab. Left: the
+  `report_photos` row, which has no delete policy and now names no report, and its shot in the ZZ
+  customer's Pictures folder, which nothing removes; the crew and status lines the team row and the
+  clock-ins wrote on the job's activity.
 
 ## The mock-up
 

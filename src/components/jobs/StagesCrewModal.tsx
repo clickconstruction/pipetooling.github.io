@@ -8,6 +8,8 @@ import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHh
 import { formatWorkDateYmdMonthDayShort, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { usePersonDeskContext } from '../../contexts/PersonDeskContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useJobEstimateAuthor } from '../../hooks/useJobEstimateAuthor'
+import { EstimateAuthorChip } from './EstimateAuthorChip'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { EmptyState } from '../EmptyState'
 
@@ -16,7 +18,9 @@ import { EmptyState } from '../EmptyState'
  * live accounts by hours, then archived accounts by hours — with hours, days
  * and last day from the crew-sheet breakdown the Costs tab counts, and a
  * second section for people with hours who are not on the team. A name opens
- * the Person desk when the viewer may open it. Nobody on the job names Manage
+ * the Person desk when the viewer may open it. Since v2.6694 the author of the
+ * signed estimate the job came from wears the E chip beside their name, listed
+ * with the crew even when the office never put them on the team. Nobody on the job names Manage
  * people when the board hands it over (punch list #184).
  */
 export function StagesCrewModal({ job, onClose, onManagePeople }: { job: JobWithDetails; onClose: () => void; onManagePeople?: () => void }) {
@@ -47,7 +51,8 @@ export function StagesCrewModal({ job, onClose, onManagePeople }: { job: JobWith
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
-  const model = useMemo(() => buildStagesCrewModel({ members: job.team_members, hours }), [job.team_members, hours])
+  const author = useJobEstimateAuthor(job.id)
+  const model = useMemo(() => buildStagesCrewModel({ members: job.team_members, hours, author }), [job.team_members, hours, author])
   const num = effectiveJobLedgerNumber(job.hcp_number, job.click_number)
   const title = `Everyone on ${(job.job_name ?? '').trim() || 'this job'}`
   const maxHours = Math.max(1, ...model.crew.map((r) => r.hours), ...model.others.map((r) => r.hours))
@@ -158,6 +163,7 @@ function CrewRow({ row, maxHours, isMobile, onOpenPerson }: { row: StagesCrewRow
           ) : (
             row.name
           )}
+          {row.estimate ? <EstimateAuthorChip estimate={row.estimate} /> : null}
         </span>
       </td>
       {isMobile ? null : <td style={{ ...TD, color: muted }}>{humanRoleLabel(row.role)}</td>}
@@ -166,8 +172,10 @@ function CrewRow({ row, maxHours, isMobile, onOpenPerson }: { row: StagesCrewRow
           <span style={{ fontSize: '0.72rem', borderRadius: 999, padding: '0 0.5em', border: '1px solid var(--border)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             Archived {formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(row.archivedAt!))}
           </span>
-        ) : row.userId ? (
+        ) : row.userId && row.onTeam ? (
           <span style={{ fontSize: '0.72rem', borderRadius: 999, padding: '0 0.5em', border: '1px solid #16a34a', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>Active</span>
+        ) : row.estimate ? (
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>wrote the estimate</span>
         ) : (
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>not on the team</span>
         )}
