@@ -180,7 +180,7 @@ under the rule. Never press *Sign and approve* on a live notice; the write would
 
 **Residual B (2026-11-08, v2.6734):** a leader's own Do now rows are the jobs he is master of (`lienViewerLeadsJob`); another master's read as the office's — *Waiting on Malachi*, out of his count, the step tiles saying *you* only on his own — and his Ready footer draws no confirm group for a signature the other master's code placed. The rail's step-3 *you* chip stays the role's legend.
 
-Walk recorded below once done.
+**The walk (2026-11-08, the dev server on this branch in the owner's Chrome, signed in as the dev, nothing pressed that writes):** no ZZ Test job carries a lien notice, so the screens were read on the live desk without signing. Do now as the dev read *Waiting on Malachi · 3 · since Oct 7* with **Open** alone, the tab *Do now · 32* with those three left out, and the step card on one of his rows *Waiting on the leader.*; before this branch the same desk read *Only you can approve · 3*. In the run, *Leader here, sign ▸* on a held envelope of his opened the line in his name, read his code status live through `lien_sign_code_status`, and since he has set no code it led with the pad and *Malachi has not set a signing code yet. He sets it under Settings, Your account. He can draw here instead.*, the hint reading *Malachi draws on this screen. The record names Robert as whose screen it was.*; Cancel closed it. The code field itself, a refused code and the office's Ready footer are held by the tests alone: he has no code set live and Ready was empty. The rail's step-3 *you* chip still shows for the dev (the role's legend, left as is).
 
 ### The findings (2026-10-23)
 
