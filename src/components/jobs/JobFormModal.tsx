@@ -68,12 +68,12 @@ import { jobFormAutosaveAggregate, jobFormFooterShowsDelete, type JobFormCloseFl
 import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
 import { AwardBaselineBlock } from './AwardBaselineBlock'
 import { awardBaselineOptions, awardBaselinePick, awardBaselineRpcArgs, awardNotNowSource, type AwardBaselineSource, type AwardBidBreakdown } from '../../lib/jobs/awardBaseline'
+import { awardJobBaseline } from '../../lib/jobs/awardBaselineIo'
 import { plannedFinishOptions, plannedFinishPayload, plannedFinishPick, type PlannedFinishSource, type RoughForPlan } from '../../lib/jobs/plannedFinish'
 import { loadRough } from '../../lib/gc/scheduleIo'
 import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import { baselineReading } from '../../lib/bids/bidBaselineRates'
 import { useJobBaselineRates } from '../../hooks/useJobBaselineRates'
-import { JOB_BUDGET_CHANGED_EVENT } from '../../hooks/useJobBudget'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload, resolveGcCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
@@ -2501,9 +2501,12 @@ export default function JobFormModal({
           if (args) {
             // The plan rides the award (PR 2): the pick when it can be written, else the assumed one, else none.
             args.p_planned = plannedFinishPayload(planInput, planOptions, planPickEffective) ?? plannedFinishPayload(planInput, planOptions, 'assumed')
-            const { error: awardErr } = await supabase.rpc('award_job_baseline' as never, args as never)
-            if (awardErr) showToast(`Job saved, but its hours baseline could not be written: ${formatErrorMessage(awardErr)}`, 'info')
-            else window.dispatchEvent(new Event(JOB_BUDGET_CHANGED_EVENT))
+            // The shared write saves the company rate on a bid that has none before the snapshot (slip 8 of the second walk).
+            try {
+              await awardJobBaseline(args)
+            } catch (awardErr) {
+              showToast(`Job saved, but its hours baseline could not be written: ${formatErrorMessage(awardErr)}`, 'info')
+            }
           }
         } else if (bidId && carryBidBudget) {
           // v2.3302: the bid's estimate becomes the job's budget (Burn against the bid) — best effort, the job is already saved.

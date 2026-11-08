@@ -63,6 +63,25 @@ describe('buildCostsVerdict', () => {
     expect(w.baseline.hoursShare).toBeCloseTo(6 / 36, 6)
     expect(baselineReadWords(w.baseline, 50)).toBe("17% of the bid's hours at 50% done · the book was heavy here")
   })
+  it('the read waits: no hour in is nothing to judge, and hours with no percent judge only a bid run past (the walks\' slip 6)', () => {
+    const costed: ResolvedJobBudget = { ...assumed, source: 'bid', glyph: '◆', directUsd: 3_000, components: { laborHours: 70, laborRate: null, laborUsd: 0, materialsUsd: 0, subsUsd: 0, otherUsd: 0 }, targetMarginPct: null, partial: { labor: true, materials: false, subs: false } }
+    const noSpend = { teamUsd: 0, subUsd: 0, partsUsd: 0, totalUsd: 0 }
+    // Before any hour, at 25% done: the strip used to read "0% of the bid's hours at 25% done · the book was heavy here".
+    const fresh = buildCostsVerdict({ ...base, burn: { ...burn, percentDone: 25 }, spend: noSpend, teamHours: 0, teamPeople: 0, resolved: costed, bidLabel: '398' })
+    expect(fresh.baseline).toMatchObject({ kind: 'bid', bidHours: 70, hoursShare: 0, read: null })
+    expect(baselineReadWords(fresh.baseline, 25)).toBe('no hours in yet · the read waits on the first clocked hour')
+    // The book baseline read the same before any hour.
+    const book = buildCostsVerdict({ ...base, burn: { ...burn, percentDone: 25 }, spend: noSpend, teamHours: 0, teamPeople: 0, bidLabel: null, resolved: { ...costed, source: 'book', glyph: '≈' } })
+    expect(book.baseline.kind).toBe('book')
+    expect(baselineReadWords(book.baseline, 25)).toBe('no hours in yet · the read waits on the first clocked hour')
+    // Hours in and no percent: nothing to judge against until the hours pass the whole bid.
+    const noPct = buildCostsVerdict({ ...base, burn: { ...burn, percentDone: null }, teamHours: 7, teamPeople: 1, resolved: costed, bidLabel: '398', latestReportYmd: null, jobPct: null })
+    expect(noPct.baseline.read).toBeNull()
+    expect(baselineReadWords(noPct.baseline, null)).toBe("10% of the bid's hours · set a percent to read it against the work")
+    const over = buildCostsVerdict({ ...base, burn: { ...burn, percentDone: null }, teamHours: 90, teamPeople: 2, resolved: costed, bidLabel: '398', latestReportYmd: null, jobPct: null })
+    expect(over.baseline.read).toBe('over')
+    expect(baselineReadWords(over.baseline, null)).toBe("129% of the bid's hours · the book was light here")
+  })
   it('a book baseline at award reads as a guess with what it was computed from (punch list #234 PR 1a)', () => {
     const book: ResolvedJobBudget = { ...assumed, source: 'book', glyph: '≈', directUsd: 21_168, components: { laborHours: 470.4, laborRate: 45, laborUsd: 21_168, materialsUsd: 0, subsUsd: 0, otherUsd: 0 }, targetMarginPct: null, takenAt: '2026-11-01T15:00:00Z', takenBy: 'u1', partial: { labor: true, materials: false, subs: false } }
     const row = { kind: 'book', labor_hours: 470.4, labor_usd: 21_168, materials_usd: 0, subs_usd: 0, other_usd: 0, total_direct_usd: 21_168, completeness: { usable: false, book: { hours_per_thousand: 4.2, n: 12, price_usd: 112_000, scope: 'similar' } }, awarded_at: '2026-11-01T15:00:00Z', awarded_by: 'u1', awarded_kind: 'book', awarded_labor_hours: 470.4, awarded_labor_usd: 21_168, awarded_materials_usd: 0, awarded_total_direct_usd: 21_168, awarded_detail: {} }

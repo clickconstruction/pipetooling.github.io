@@ -41,8 +41,8 @@ function harness(stampError?: Error) {
   }
   const onClose = vi.fn()
   const onChanged = vi.fn()
-  renderWithProviders(<LineBudgetsReviewWindow review={review} onClose={onClose} onChanged={onChanged} io={io} />)
-  return { stamped, onClose, onChanged }
+  const r = renderWithProviders(<LineBudgetsReviewWindow review={review} onClose={onClose} onChanged={onChanged} io={io} />)
+  return { stamped, onClose, onChanged, rerender: r.rerender }
 }
 
 installDomShims()
@@ -62,6 +62,18 @@ describe('LineBudgetsReviewWindow', () => {
     await waitFor(() => expect(screen.getByText('2 lines stamped reviewed with your name. Each still reads the company split.')).toBeTruthy())
     expect(h.onChanged).toHaveBeenCalled()
     expect(screen.queryByTestId('line-budgets-looks-right')).toBeNull()
+  })
+
+  it("keeps the review it opened on when the line re-reads after the stamp (the first walk's slip 1: 'The other 1 line on these 0 projects')", async () => {
+    const h = harness()
+    fireEvent.click(screen.getByTestId('line-budgets-looks-right'))
+    await waitFor(() => expect(h.stamped).toEqual([['b', 'c']]))
+    // The stamp makes the Needs you line re-read; the re-read has no assumed line left and the two now-stamped lines settled.
+    const after: LineBudgetsReview = { lines: [], jobIds: [], assumedUsd: 0, totalUsd: 168_000, settledLines: 11 }
+    h.rerender(<LineBudgetsReviewWindow review={after} onClose={h.onClose} onChanged={h.onChanged} />)
+    expect(screen.getByText('2 lines stamped reviewed with your name. Each still reads the company split.')).toBeTruthy()
+    expect(screen.getByText('The other 9 lines on these 2 projects came from the workbench, were tuned, or were stamped, and need nothing.')).toBeTruthy()
+    expect(screen.queryByText(/these 0 projects/)).toBeNull()
   })
 
   it('Tune closes and opens the first project; a refused stamp stays on the rows with its reason', async () => {
