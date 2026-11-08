@@ -180,7 +180,8 @@ describe('the migration, the server and the docs', () => {
     expect(MIGRATION).toContain('ALTER TABLE public.person_documents ADD COLUMN IF NOT EXISTS source_drive_file_id text;')
     expect(MIGRATION).toContain('ALTER TABLE public.person_documents ADD COLUMN IF NOT EXISTS source_sha256 text;')
     expect(MIGRATION).toContain('CREATE OR REPLACE VIEW public.person_document_index\nWITH (security_invoker = true) AS')
-    expect(MIGRATION).toContain('d.source_drive_file_id, d.source_sha256\n    FROM public.person_documents d;')
+    // CREATE OR REPLACE VIEW can drop no column: the headings column 20261107060000 added stays, the two new ones after it.
+    expect(MIGRATION).toContain('public.hr_doc_heading_index(d.content) AS headings,\n         d.source_drive_file_id, d.source_sha256\n    FROM public.person_documents d;')
     expect(MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_person_doc_write(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(MIGRATION).toContain("IF (v_source_id IS NULL) <> (v_source_sha IS NULL) THEN")
     expect(MIGRATION).toContain("a Drive source is for a named document; the % is written from the entries")

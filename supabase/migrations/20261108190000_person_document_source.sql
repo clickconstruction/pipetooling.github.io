@@ -19,12 +19,14 @@ COMMENT ON COLUMN public.person_documents.source_drive_file_id IS
 COMMENT ON COLUMN public.person_documents.source_sha256 IS
   'sha256 of the bytes the document was read from, so a reader knows which version of the file it is.';
 
--- The list without the text (20261107040000), with the source beside it: CREATE OR REPLACE adds the two at the end.
+-- The list without the text (20261107040000; headings since 20261107060000), with the source beside it: CREATE OR REPLACE
+-- adds the two at the end and can drop no column, so every column the view has today stays in its place.
 CREATE OR REPLACE VIEW public.person_document_index
 WITH (security_invoker = true) AS
   SELECT d.id, d.person_id, d.title, d.counsel_only, d.author_label, d.created_by, d.updated_by, d.created_at, d.updated_at, d.archived_at,
          length(d.content) AS chars,
          (SELECT count(*)::int FROM public.hr_doc_headings(d.content)) AS sections,
+         public.hr_doc_heading_index(d.content) AS headings,
          d.source_drive_file_id, d.source_sha256
     FROM public.person_documents d;
 GRANT SELECT ON public.person_document_index TO authenticated;
