@@ -381,3 +381,8 @@ refused.
 § Pick up above is its brief. Nothing was pressed in Settings → Training from this machine; both
 courses stand as they did, the refresher off and required for the five field roles, Intro to
 plumbing off and offered.
+
+2026-11-08, later: #119's read is complete (`to-dos/intro-plumbing/README.md` § Read-through 2026-11-08,
+25 doubted facts for the owner, no fix PR), so the switch proof above can run. `training_courses`, read
+through the dev seat the same day, has Intro to plumbing On since 2026-10-18 16:04Z, offered and required
+of helpers and dev, so the On step is already in place and the owner's correction pass is what is left.
