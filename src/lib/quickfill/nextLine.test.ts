@@ -87,7 +87,11 @@ describe('nextLine · the first row and its verb (punch list #176, change 2)', (
 
   it('Missing bill dates, Complete no bill (lowest number first) and Unassigned field time (oldest day first)', () => {
     expect(undatedBillsNextLine([{ customerName: 'Loberg', amount: 5622, hcpNumber: '650' }])).toBe("Date Loberg's $5,622 bill on 650")
-    expect(completeNoBillNextLine([{ hcp_number: '1060', job_name: 'Cano Camera' }, { hcp_number: '995', job_name: 'Locks' }])).toBe('Set the Total Bill on 995 Locks')
+    // The rows come ordered from the kernel (v2.6750): the first row's first gap is the verb.
+    expect(completeNoBillNextLine([{ job: { hcp_number: '995', job_name: 'Locks' }, gaps: ['total', 'work'] }, { job: { hcp_number: '1060', job_name: 'Cano Camera' }, gaps: ['work'] }])).toBe('Set the Total Bill on 995 Locks')
+    expect(completeNoBillNextLine([{ job: { hcp_number: '1060', job_name: 'Cano Camera' }, gaps: ['work', 'charges'] }])).toBe('Add the Specific Work lines to 1060 Cano Camera')
+    expect(completeNoBillNextLine([{ job: { hcp_number: '1061', job_name: null }, gaps: ['charges'] }])).toBe('Add the Other job charges to 1061')
+    expect(completeNoBillNextLine([])).toBeNull()
     expect(
       unassignedFieldTimeNextLine([
         { personName: 'Abraham', workDate: '2026-10-23', unallocatedHrs: 4.7 },

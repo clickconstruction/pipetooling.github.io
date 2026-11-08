@@ -58,7 +58,6 @@ import { QuickfillNeedsYouSection } from '../components/quickfill/QuickfillNeeds
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
 import { CantReachSection } from '../components/quickfill/CantReachSection'
 import { QuickfillMyInboxSection } from '../components/quickfill/QuickfillMyInboxSection'
-import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
 import { QuickfillCompleteNoBillSection } from '../components/quickfill/QuickfillCompleteNoBillSection'
 import { QuickfillStagesNoCustomerSection } from '../components/quickfill/QuickfillStagesNoCustomerSection'
 import { QuickfillPropertyKindsSection } from '../components/quickfill/QuickfillPropertyKindsSection'
@@ -421,7 +420,7 @@ function QuickfillDevSectionSortableRow({
             fontSize: '0.8125rem',
           }}
         />
-        {meta.sectionId === 'jobs-billing' && (
+        {meta.sectionId === 'complete-no-bill' && (
           <label
             style={{
               display: 'flex',
@@ -656,11 +655,11 @@ function QuickfillPage() {
   const quickfillCompleteNoBill = useQuickfillCompleteNoBillJobs(jobsBillingMinHcp, stationReadsOn('complete-no-bill'))
   useReportQuickfillSectionMetric(
     'complete-no-bill',
-    quickfillCompleteNoBill.fetchEnabled ? quickfillCompleteNoBill.completeNoBillJobs.length : null,
+    quickfillCompleteNoBill.fetchEnabled ? quickfillCompleteNoBill.rows.length : null,
     quickfillCompleteNoBill.fetchEnabled && (!stationReadsOn('complete-no-bill') || quickfillCompleteNoBill.loading),
     null,
     null,
-    quickfillCompleteNoBill.fetchEnabled && !quickfillCompleteNoBill.loading ? completeNoBillNextLine(quickfillCompleteNoBill.completeNoBillJobs) : null,
+    quickfillCompleteNoBill.fetchEnabled && !quickfillCompleteNoBill.loading ? completeNoBillNextLine(quickfillCompleteNoBill.rows) : null,
   )
   const quickfillCantReach = useQuickfillCantReachProspects()
   useReportQuickfillSectionMetric(
@@ -1592,24 +1591,6 @@ function QuickfillPage() {
             <SupplyHousesSection />
           </QuickfillSectionWrapper>
         )
-      case 'jobs-billing':
-        return (
-          <QuickfillSectionWrapper
-            id={id}
-            sectionId={sectionId}
-            label={label}
-            bannerText={bannerText}
-            withTopDivider={withTopDivider}
-            color={chipColorOf('jobs-billing')}
-            collapsed={isCollapsed('jobs-billing') && !forceExpandedSections.has('jobs-billing')}
-            mark={sectionMarks['jobs-billing']}
-            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('jobs-billing', { outcome, questionWords: words })}
-            onOpenNow={() => openSectionNow('jobs-billing')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'jobs-billing', label: 'Jobs Billing' })}
-          >
-            <JobsBillingReminderSection minHcpNumber={jobsBillingMinHcp} />
-          </QuickfillSectionWrapper>
-        )
       case 'complete-no-bill':
         return (
           <QuickfillSectionWrapper
@@ -1628,7 +1609,7 @@ function QuickfillPage() {
             }
           >
             <QuickfillCompleteNoBillSection
-              completeNoBillJobs={quickfillCompleteNoBill.completeNoBillJobs}
+              rows={quickfillCompleteNoBill.rows}
               clockSummaryByJobId={quickfillCompleteNoBill.clockSummaryByJobId}
               jobsListBusy={quickfillCompleteNoBill.jobsListBusy}
             />

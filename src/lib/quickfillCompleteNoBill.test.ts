@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   buildJobClockSummaries,
   buildQuickfillCompleteNoBillList,
+  completeBillGaps,
+  completeNoBillRows,
   jobHasNoTotalBill,
+  jobHasOtherCharges,
+  jobHasSpecificWork,
   quickfillCompleteNoBillCandidates,
 } from './quickfillCompleteNoBill'
 
@@ -14,6 +18,9 @@ function job(partial: Partial<Parameters<typeof buildQuickfillCompleteNoBillList
     hcp_number: '900',
     pct_complete: null,
     invoices: [],
+    // A filled-in bill by default (v2.6750): the old cases are about the Total Bill alone.
+    fixtures: [{ name: 'Water heater', count: 1 }],
+    materials: [{ amount: 120 }],
     ...partial,
   }
 }
@@ -147,5 +154,52 @@ describe('buildJobClockSummaries · a clock-in with no work date keeps its Centr
       { job_ledger_id: 'a', clocked_in_at: '2026-06-05T12:00:00Z', clocked_out_at: '2026-06-05T14:00:00Z', work_date: null },
     ])
     expect(map.get('a')?.workDates).toEqual(['2026-06-03', '2026-06-05', '2026-12-01'])
+  })
+})
+
+describe('the three checks (v2.6750, punch list #176, decision 4: Jobs Billing folded into Complete, no Total Bill)', () => {
+  it('reads a Specific Work line as a named fixture with a count, and an Other job charge as a material with an amount', () => {
+    expect(jobHasSpecificWork([{ name: 'Water heater', count: 1 }])).toBe(true)
+    expect(jobHasSpecificWork([{ name: ' ', count: 1 }, { name: 'Lav', count: 0 }, { name: 'Lav', count: '0' }])).toBe(false)
+    expect(jobHasSpecificWork([{ name: 'Lav', count: '2' }])).toBe(true)
+    expect(jobHasSpecificWork(undefined)).toBe(false)
+    expect(jobHasOtherCharges([{ amount: 0 }, { amount: null }])).toBe(false)
+    expect(jobHasOtherCharges([{ amount: '45.50' }])).toBe(true)
+    expect(jobHasOtherCharges([{ amount: -20 }])).toBe(true)
+    expect(jobHasOtherCharges(undefined)).toBe(false)
+  })
+
+  it('lists the gaps worst first, and judges the Total Bill alone while the bill lines are unknown', () => {
+    expect(completeBillGaps({ revenue: null, fixtures: [], materials: [] })).toEqual(['total', 'work', 'charges'])
+    expect(completeBillGaps({ revenue: 2500, fixtures: [], materials: [{ amount: 10 }] })).toEqual(['work'])
+    expect(completeBillGaps({ revenue: 2500, fixtures: [{ name: 'Lav', count: 1 }], materials: [] })).toEqual(['charges'])
+    expect(completeBillGaps({ revenue: 2500, fixtures: [{ name: 'Lav', count: 1 }], materials: [{ amount: 10 }] })).toEqual([])
+    // The jobs cache has not laid fixtures and materials over the rows yet: an empty line is not a gap.
+    expect(completeBillGaps({ revenue: null, fixtures: [], materials: [] }, false)).toEqual(['total'])
+    expect(completeBillGaps({ revenue: 2500, fixtures: [], materials: [] }, false)).toEqual([])
+  })
+
+  it('a finished job with a Total Bill but no line is a candidate and a row; one with every field is neither', () => {
+    const jobs = [
+      job({ id: 'lines-missing', revenue: 2500, fixtures: [], materials: [], pct_complete: 100 }),
+      job({ id: 'filled', revenue: 2500, pct_complete: 100 }),
+      job({ id: 'not-done', revenue: 2500, fixtures: [], pct_complete: 40 }),
+      job({ id: 'paid', status: 'paid', revenue: null, fixtures: [], materials: [] }),
+    ]
+    expect(quickfillCompleteNoBillCandidates(jobs, 406).map((j) => j.id)).toEqual(['lines-missing', 'not-done'])
+    expect(quickfillCompleteNoBillCandidates(jobs, 406, false)).toEqual([])
+    expect(completeNoBillRows(jobs, new Map(), 406)).toEqual([{ job: jobs[0], gaps: ['work', 'charges'] }])
+  })
+
+  it('orders the rows no Total Bill first, then the lowest job number', () => {
+    const jobs = [
+      job({ id: 'c', hcp_number: '1200', revenue: 900, materials: [], pct_complete: 100 }),
+      job({ id: 'b', hcp_number: '1100', revenue: null, pct_complete: 100 }),
+      job({ id: 'a', hcp_number: '995', revenue: 900, fixtures: [], pct_complete: 100 }),
+      job({ id: 'd', hcp_number: '1010', revenue: 0, fixtures: [], materials: [], pct_complete: 100 }),
+    ]
+    const rows = completeNoBillRows(jobs, new Map(), 406)
+    expect(rows.map((r) => `${r.job.id}:${r.gaps.join('+')}`)).toEqual(['d:total+work+charges', 'b:total', 'a:work', 'c:charges'])
+    expect(buildQuickfillCompleteNoBillList(jobs, new Map(), 406).map((j) => j.id)).toEqual(['d', 'b', 'a', 'c'])
   })
 })

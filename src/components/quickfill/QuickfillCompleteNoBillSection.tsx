@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
@@ -9,9 +10,12 @@ import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { useJobThreadNotesForModal } from '../../hooks/useJobThreadNotesForModal'
 import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHhMm'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
-import type { QuickfillJobClockSummary } from '../../lib/quickfillCompleteNoBill'
+import { COMPLETE_BILL_GAP_WORDS, type CompleteBillGap, type CompleteNoBillRow, type QuickfillJobClockSummary } from '../../lib/quickfillCompleteNoBill'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { EmptyState } from '../EmptyState'
+
+/** The Jobs Billing tab, where the three fields are typed; the hidden station's door (v2.6750). */
+export const JOBS_BILLING_TAB_HREF = '/jobs?tab=billing'
 
 function formatShortDate(iso: string | null | undefined): string {
   const t = calendarYmdInAppTzFromIso(iso ?? '')
@@ -30,15 +34,29 @@ function clockSummaryLine(summary: QuickfillJobClockSummary | undefined): string
   return `Started ${formatShortDate(summary.firstClockInAt)} · ${sessions}${hours}${open}`
 }
 
-/** Jobs resolved 100% complete (report % / Edit Job % complete) with no Total Bill set.
- * Inline list: work dates + clock rollup per job, expandable Job-Detail-style activity feed,
- * and an Edit job button to fill in the Total Bill. */
+/** The chip for one gap: the missing Total Bill red, a missing line amber. */
+function GapChip({ gap }: { gap: CompleteBillGap }) {
+  const tone =
+    gap === 'total'
+      ? { background: 'var(--bg-red-100)', color: 'var(--text-red-800)' }
+      : { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+  return (
+    <span data-bill-gap={gap} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 9999, whiteSpace: 'nowrap', ...tone }}>
+      {COMPLETE_BILL_GAP_WORDS[gap]}
+    </span>
+  )
+}
+
+/** Jobs resolved 100% complete (report % / Edit Job % complete) whose bill is not filled in: no Total
+ * Bill, no Specific Work line or no Other job charges (the Jobs Billing station's three checks, folded in
+ * by v2.6750). Inline list: the gaps as chips, work dates + clock rollup per job, an expandable
+ * Job-Detail-style activity feed, and an Edit job button to fill the bill in. */
 export function QuickfillCompleteNoBillSection({
-  completeNoBillJobs,
+  rows,
   clockSummaryByJobId,
   jobsListBusy,
 }: {
-  completeNoBillJobs: JobWithDetails[]
+  rows: CompleteNoBillRow<JobWithDetails>[]
   clockSummaryByJobId: Map<string, QuickfillJobClockSummary>
   jobsListBusy: boolean
 }) {
@@ -71,15 +89,20 @@ export function QuickfillCompleteNoBillSection({
     <>
       <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
         Jobs marked <strong>100% complete</strong> (latest field report %, or the Edit Job{' '}
-        <strong>% complete</strong> field when no report has one) with no <strong>Total Bill</strong>{' '}
-        set. Open a job to fill in the Total Bill so it can be billed.
+        <strong>% complete</strong> field when no report has one) whose bill is not filled in: no{' '}
+        <strong>Total Bill</strong>, no <strong>Specific Work</strong> line, or no <strong>Other job charges</strong>.
+        Each row says which. Open a job to fill the bill in so it can be billed, or work the{' '}
+        <Link to={JOBS_BILLING_TAB_HREF} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+          Jobs Billing tab
+        </Link>
+        .
       </p>
-      {completeNoBillJobs.length === 0 ? (
+      {rows.length === 0 ? (
         // Empty is the good state (punch list #184, sweep C): the station's own words say so.
-        <EmptyState compact main="No complete jobs are missing a Total Bill." />
+        <EmptyState compact main="No complete job is missing its Total Bill, its Specific Work or its Other job charges." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {completeNoBillJobs.map((j) => {
+          {rows.map(({ job: j, gaps }) => {
             const num = effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'
             const name = (j.job_name ?? '').trim()
             const addr = (j.job_address ?? '').trim()
@@ -92,6 +115,7 @@ export function QuickfillCompleteNoBillSection({
             return (
               <div
                 key={j.id}
+                data-complete-no-bill-row={j.id}
                 style={{
                   border: '1px solid #fecaca',
                   background: 'var(--bg-red-tint)',
@@ -109,9 +133,14 @@ export function QuickfillCompleteNoBillSection({
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-red-900)' }}>
-                      {num}
-                      {name ? ` · ${name}` : ''}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-red-900)' }}>
+                        {num}
+                        {name ? ` · ${name}` : ''}
+                      </span>
+                      {gaps.map((g) => (
+                        <GapChip key={g} gap={g} />
+                      ))}
                     </div>
                     {addr ? (
                       <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{addr}</div>
@@ -144,7 +173,7 @@ export function QuickfillCompleteNoBillSection({
                     <button
                       type="button"
                       onClick={() => openEditJob(j.id)}
-                      title="Open Edit Job to set the Total Bill"
+                      title="Open Edit Job to fill in the bill"
                       style={{
                         padding: '0.35rem 0.7rem',
                         fontSize: '0.8125rem',
