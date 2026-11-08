@@ -5,6 +5,7 @@
  */
 import { exhibitHome } from './legalFirmPacketPrint'
 import { formatLegalMoney, type LegalPacket } from './legalPacket'
+import { theirPaperCountsAsSigned, theirPaperWords, type TheirPaperRecord } from '../jobs/theirPaper'
 
 export type ExhibitTab = 'account' | 'paper' | 'their_word' | 'evidence'
 export type ExhibitDetail = {
@@ -23,7 +24,7 @@ export type ExhibitSource = {
   exhibits: LegalPacket['exhibits']
   account: { ledger: ReadonlyArray<Pick<LegalPacket['account']['ledger'][number], 'ymd' | 'jobLabel' | 'kind' | 'text' | 'amount'>>; properties: ReadonlyArray<{ address: string; owner: string; source: string }> }
   paper: {
-    agreements: ReadonlyArray<{ jobLabel: string; coverage: { kind: string; signerName?: string | null; source?: string } }>
+    agreements: ReadonlyArray<{ jobLabel: string; coverage: { kind: string; signerName?: string | null; source?: string; record?: TheirPaperRecord } }>
     demandLetters: ReadonlyArray<Pick<LegalPacket['paper']['demandLetters'][number], 'jobLabel' | 'sentYmd' | 'method' | 'tracking' | 'amount'>>
     lienFilings: ReadonlyArray<Pick<LegalPacket['paper']['lienFilings'][number], 'jobLabel' | 'kind' | 'filedYmd' | 'wentOutYmd' | 'county'>>
   }
@@ -47,7 +48,15 @@ function linesFor(title: string, p: ExhibitSource): string[] {
   const t = title.toLowerCase()
   if (t.startsWith('invoices')) return p.account.ledger.map((e) => `${day(e.ymd)} · ${e.jobLabel} · ${e.text} · ${formatLegalMoney(Math.abs(e.amount))}`)
   if (t.startsWith('property')) return p.account.properties.filter((x) => x.source !== 'job_address').map((x) => `${x.address}${x.owner ? ` · owner ${x.owner}` : ''}`)
-  if (t.startsWith('signed agreements')) return p.paper.agreements.filter((a) => a.coverage.kind === 'signed').map((a) => `${a.jobLabel} · signed${a.coverage.signerName ? ` by ${a.coverage.signerName}` : ''}${a.coverage.source ? ` (${a.coverage.source})` : ''}`)
+  if (t.startsWith('signed agreements')) {
+    // v2.6698 (punch list #173): their paper is on the exhibit once it counts (`legalContractBasis.ts`), in its own words.
+    const counts = (c: ExhibitSource['paper']['agreements'][number]['coverage']) => c.kind === 'signed' || (c.kind === 'their_paper' && c.record != null && theirPaperCountsAsSigned(c.record))
+    return p.paper.agreements.filter((a) => counts(a.coverage)).map((a) => {
+      const c = a.coverage
+      if (c.kind === 'their_paper' && c.record) return `${a.jobLabel} · ${theirPaperWords(c.record)}`
+      return `${a.jobLabel} · signed${c.signerName ? ` by ${c.signerName}` : ''}${c.source ? ` (${c.source})` : ''}`
+    })
+  }
   if (t.startsWith('final demand')) return p.paper.demandLetters.filter((d) => d.sentYmd).map((d) => `${day(d.sentYmd)} · ${d.jobLabel} · ${d.method}${d.tracking ? ` · ${d.tracking}` : ''} · ${formatLegalMoney(d.amount)}`)
   if (t.startsWith('lien notices')) return p.paper.lienFilings.map((f) => `${day(f.filedYmd ?? f.wentOutYmd)} · ${f.jobLabel} · ${f.kind}${f.filedYmd ? ' filed' : ''}${f.county ? ` · ${f.county}` : ''}`)
   if (t.startsWith('what was said')) return p.theirWord.timeline.filter((e) => e.shared).map((e) => `${day(e.ymd)}${e.jobLabel ? ` · ${e.jobLabel}` : ''} · ${e.text}`)

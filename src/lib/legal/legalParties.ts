@@ -110,6 +110,9 @@ export function contractStateWords(agreements: ReadonlyArray<{ coverage: JobCont
     return by ? `${head} signed by ${by}` : `${head} signed`
   }
   if (signed.length > 0) return `${signed.length} of ${agreements.length} signed`
+  // v2.6698 (punch list #173): their paper, signed by us only — relied on or not.
+  const theirs = agreements.find((a) => a.coverage.kind === 'their_paper')
+  if (theirs && theirs.coverage.kind === 'their_paper') return theirs.coverage.record.theirSignedOn ? 'their paper, signed by both' : `their paper, signed by us only${theirs.coverage.record.reliedOn ? ', relied on' : ''}`
   if (agreements.every((a) => a.coverage.kind === 'not_needed')) return 'no agreement of ours needed'
   if (agreements.some((a) => a.coverage.kind === 'sent')) return `${paper} sent, not signed`
   return `no signed ${paper}`

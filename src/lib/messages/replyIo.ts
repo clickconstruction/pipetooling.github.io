@@ -87,6 +87,8 @@ export interface ReplyIo {
   sendText(input: ReplyText): Promise<string>
   /** A call the office made, logged (punch list #140 PR 7): `log_call` through Follow up's io. Resolves to the call's line. */
   logCall(contactId: string, draft: CallLogDraft, jobKey: string | null): Promise<string>
+  /** The To chip's tick (punch list #118): make this number their usual, through `contact_channel_make_usual`. A smoke may leave it out. */
+  makeUsual?(channelId: string): Promise<void>
 }
 
 /** An edge function's answer: the line it wrote, or its refusal in words. */
@@ -128,5 +130,12 @@ export function supabaseReplyIo(followUp: Pick<FollowUpIo, 'addNote' | 'logCall'
     },
     sendText: (input) =>
       invoke('quo-send', { contactId: input.contactId, channelId: input.channelId, tie: tieOf(input.jobKey), body: input.body, held: input.held }, 'send the text'),
+    makeUsual: (channelId) => makeUsualChannel(channelId),
   }
+}
+
+/** Punch list #118: star a number or an address as the contact's usual. The function writes the thread's gray line. */
+export async function makeUsualChannel(channelId: string): Promise<void> {
+  const { error } = await supabase.rpc('contact_channel_make_usual' as never, { p_channel: channelId } as never)
+  checkSupabaseError({ data: null, error }, 'make it their usual number')
 }
