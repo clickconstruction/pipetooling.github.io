@@ -48,6 +48,8 @@ export type MessageRow = Pick<
   invitation?: unknown
   /** The teammate this text introduced (v2.5590, the bio after a first On my way). Optional: a read may leave it out. */
   introduces_user_id?: string | null
+  /** Where the reader kept the email's HTML part (v2.6675, punch list #259). Optional until the types regenerate; a read may leave it out. */
+  body_html_path?: string | null
 }
 
 export interface MessageLoadContext {
@@ -95,6 +97,7 @@ export function threadMessageFromRow(row: MessageRow, ctx: MessageLoadContext = 
     auto: row.auto === true,
     invitation: row.invitation ?? null,
     introducesUserId: row.introduces_user_id ?? null,
+    bodyHtmlPath: row.body_html_path ?? null,
   }
 }
 
