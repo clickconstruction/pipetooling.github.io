@@ -67,6 +67,15 @@ export function useDashboardAssignedJobs({ authUserId, role }: UseDashboardAssig
   const [superintendentJobsAll, setSuperintendentJobs] = useState<DashboardTeamAssignedJobRow[]>([])
   const superintendentJobs = useMemo(() => shown(superintendentJobsAll), [shown, superintendentJobsAll])
   const [superintendentJobsLoading, setSuperintendentJobsLoading] = useState(false)
+  /**
+   * Every row the three reads returned, ZZ test jobs kept: Job Mode labels a visit already on the
+   * person's day from these when its own job read comes back empty (v2.6706), and Job Mode draws ZZ
+   * visits too, so the hiding rule above does not apply to a label.
+   */
+  const jobsForVisitLabels = useMemo(
+    () => [...assignedJobsAll, ...assignedReadyToBillJobsAll, ...superintendentJobsAll],
+    [assignedJobsAll, assignedReadyToBillJobsAll, superintendentJobsAll],
+  )
   /** Assigned in `useDashboardBillingInvoices`' body during render (quirk #10); reloads dashboard job lists on `update_job_status` RPC failure. */
   const resyncDashboardAfterUpdateJobStatusFailureRef = useRef<() => Promise<void>>(async () => {})
 
@@ -158,6 +167,7 @@ export function useDashboardAssignedJobs({ authUserId, role }: UseDashboardAssig
     superintendentJobs,
     setSuperintendentJobs,
     superintendentJobsLoading: superintendentJobsLoading || zzLoading,
+    jobsForVisitLabels,
     refreshDashboardAssignedJobLists,
     refreshAssignedReadyToBill,
     resyncDashboardAfterUpdateJobStatusFailureRef,

@@ -387,6 +387,7 @@ export default function Dashboard() {
     superintendentJobs,
     setSuperintendentJobs,
     superintendentJobsLoading,
+    jobsForVisitLabels,
     zzTestJobsReadFailed,
     retryZzTestJobs,
     refreshDashboardAssignedJobLists,
@@ -419,6 +420,7 @@ export default function Dashboard() {
     role,
     assignedJobs,
     assignedReadyToBillJobs,
+    jobsForVisitLabels,
   })
   // Billing-invoices engine seam (v2.727): invoice/job lists + loaders +
   // refreshInvoices/updateJobStatus/revert/delete + locks live in the hook.
@@ -1219,6 +1221,7 @@ export default function Dashboard() {
           onLeaveReport={(j) => setLeaveReportJob(j)}
           onTurnaway={(j) => setTurnawayJob(j)}
           canClockOut={!dashboardSelfIsSalary}
+          knownJobs={jobsForVisitLabels}
         />
         {/* Your week (v2.6589, punch list #255): the one progress signal the office picked for this person, and how far it moved this week. */}
         <DashboardYourWeekCard userId={authUser.id} />

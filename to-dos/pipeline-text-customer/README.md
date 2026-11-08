@@ -2,7 +2,7 @@
 name: "Text the customer from the Pipeline row"
 number: 123
 group: close
-status: BUILT 2026-10-18 — the owner read the three mock-ups, asked whether that was the best we could do, and picked the two better shapes; PR 1 (v2.5626) found the row already carried a speech bubble to the customer's thread (v2.5451) and made it the door, the customer's sheet over the board with Call · Text · Email · Open their thread · Their record and whose word came last; PR 2 (v2.5627) is the board's ask, a forward move to Working, Ready to Bill or Billed opening Tell the customer with the step's text while the Residential customer flow's step is set to Asks under The app and this move, every step shipped Off; left: the owner turns a step to Asks and the first live walk (his yes of 2026-10-18: Done to Asks, a test job to Ready to Bill, nothing sent, back to Off); follow-up v2.5632 on his yes of 2026-10-19: the sheet shows the thread's last three lines and the bubble carries the waiting dot
+status: BUILT 2026-10-18 and WALKED LIVE 2026-11-08 — PR 1 (v2.5626) made the row's speech bubble the door to the customer's sheet over the board; PR 2 (v2.5627) is the board's ask, a forward move to Working, Ready to Bill or Billed opening Tell the customer with the step's text while the Residential customer flow's step is set to Asks; follow-up v2.5632 shows the thread's last three lines. On 2026-11-08 the owner's session turned Done to Asks in Settings → Flows and moved a ZZ Test job to Ready to Bill: the sheet opened with the work-is-done text, one text went to the owner's own number, and the Pipeline row's Job activity recorded it. Done stays on Asks; Working and Billed stay Off
 summary: >
   One door on the Pipeline row and the phone card that texts or emails the job's customer. Today the
   office can do it only inside the job window, below the activity: open the job, scroll, press Text,
@@ -12,7 +12,7 @@ summary: >
   The three options differ in what the icon opens: the job window already scrolled to the box on
   Text; the box alone in a small window over the board; or the customer's whole thread filtered to
   the job. Every send lands in the customer's thread tied to the job, as the box does now.
-next: The owner turns Working, Done or Billed to Asks in Settings → Flows when he is ready; delete this folder after the first live move asks.
+next: The owner's only call is whether Done stays on Asks (Off is one press on the Done step in Settings → Flows, under The app and this move) and whether Working or Billed should ask too; the first live move asked and sent on 2026-11-08, so delete this folder once he has seen the text on his phone.
 size: M + M, both shipped (v2.5626, v2.5627)
 blocker: none; the switch is the owner's
 opinion: built; turn Done to Asks first, since the work-is-done text is the one customers most want
@@ -113,3 +113,20 @@ forward move and reads the step's switch, the Residential customer flow's Workin
 and this move** (Off · Asks) in Settings → Flows, and `JobsStagesTab`'s `askAfterMove` opens the sheet over the
 board on the move hook's notice. A move back, Waiting, Paid, the crew's moves and the Dashboard's billing moves ask
 nothing. Every step ships Off.
+
+**2026-11-08, the live walk (the owner's session, his Chrome, client v2.6691).** Settings → Flows → Residential customer:
+Working, Done and Billed all read **Off** under The app and this move. One press turned **Done** to **Asks**; the toast
+read *When a job is moved to Done on the Pipeline, the office is asked before the text goes.* On the Pipeline, **Ready to
+Bill** on job 1111 (ZZ Test bio walk, whose customer's number is the owner's own) opened the usual Ready to Bill window
+(the two ticks, Confirm), the job moved (Working 4 → 3, Ready to Bill 0 → 1), and **Tell Robert** opened over the board:
+*Text to ‹his number› · Robert reads English*, the app's own Done line filled from the job (*…The work on ZZ Test bio walk
+is done. Your bill follows by email. Text me here with any question.*), Email unticked with *No email goes with this
+text.*, the presses Skip · Send in the morning · **Send text to Robert**. One press sent it at 11:04 AM; the receipt
+read *Sent to Robert* with the text, *from the company number · in Robert's thread*, the call script under it and
+**Call** beside Done. The Pipeline row's Job activity box then carried the line (*Text · Sun 11:04 AM · Robert · from the
+company number · Robert, this is Robert with Click Plumbing. The work on ZZ Test bio walk is…*) under yesterday's On my
+way text, and the job window's *Where it stands with Robert Test* read *The last word was Robert · from the company
+number's, a text today at 11:04 AM.* The job window's own activity feed draws no customer lines for an office role by
+design (`readsCustomerLinesInJobUpdates`: the office reads them on the Pipeline's Job activity and in Messages; the
+pill is the crew's). Done was left on **Asks**; Working and Billed stay Off. Nothing else was written: job 1111 is a ZZ
+Test row and stays at Ready to Bill. Screenshots in the walk session's scratchpad (`123-1` to `123-5`).

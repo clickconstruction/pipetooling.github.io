@@ -282,6 +282,20 @@ export function activityBoxTeaser(stat: TeaserStats | null | undefined, lines: r
 /** The dot's words on their newest line, as the mock-up draws them. */
 export const NOBODY_HAS_ANSWERED = 'Nobody has answered.'
 
+/** A teaser that is the customer's line, its `line` present. */
+export type JobActivityBoxLineTeaser = JobActivityBoxTeaser & { kind: 'line'; line: JobActivityBoxLine }
+
+/**
+ * The phone row's teaser (v2.6692, punch list #125): the customer's line alone, and only while it is the newest thing
+ * on the job. The phone row is two lines and one chip (punch list #30), so a note or a report never earns a third line
+ * there, as the fuller card's teaser gives them; the customer's newest line does, since v2.6689 promised it on the
+ * phone and the phone rows had already replaced the card it was drawn on.
+ */
+export function phoneRowCustomerTeaser(stat: TeaserStats | null | undefined, lines: readonly JobActivityMessage[] | null | undefined, waiting = false): JobActivityBoxLineTeaser | null {
+  const t = activityBoxTeaser(stat, lines, waiting)
+  return t?.kind === 'line' && t.line ? { ...t, kind: 'line', line: t.line } : null
+}
+
 export function jobActivityItemTimeIso(item: JobThreadActivityItem): string {
   switch (item.kind) {
     case 'note':

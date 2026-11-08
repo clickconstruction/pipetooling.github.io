@@ -27,6 +27,8 @@ import type { CustomerAddressRow } from '../../../lib/jobs/lienProperty'
 import type { LegalJobOwnerRow } from '../../../lib/legal/legalProperty'
 import type { LegalGapAnswerLike } from '../../../lib/legal/legalGapAnswers'
 import { claimLinesFromRows, type LegalClaimLineLike, type LegalClaimLineRow } from '../../../lib/legal/legalClaimLines'
+import { peopleFromRows, type LegalMatterPersonLike, type LegalMatterPersonRow } from '../../../lib/legal/legalMatterPeople'
+import { MATTER_PEOPLE_SELECT } from '../../../lib/legal/legalMatterPeopleIo'
 import { buildHoursStatement, type HoursStatementInput } from '../../../lib/people/hoursStatement'
 
 /**
@@ -246,6 +248,15 @@ export function useLegalPacketData(
         )) ?? []
         return claimLinesFromRows(rows)
       }, [])
+      // v2.6705 (punch list #174): the people on the matter, live rows only, for the list and the letters' picker.
+      const people = await src<LegalMatterPersonLike[]>('people on the matter', async () => {
+        if (!matterId) return []
+        const rows = (await withSupabaseRetry<LegalMatterPersonRow[]>(
+          () => db.from('legal_matter_people').select(MATTER_PEOPLE_SELECT).eq('matter_id', matterId).is('removed_at', null).order('added_at').limit(ROW_CAP),
+          'load the people on the matter',
+        )) ?? []
+        return peopleFromRows(rows)
+      }, [])
       // v2.6413 (punch list #212 PR 4): the signed hours statements on the jobs, and the app's first clock day for the gap jobs.
       // The statements' policy is a dev's and the controller's (v2.6450); anyone else reads none, and the tab says so by showing none.
       const [hoursStatements, firstRecordedDay, sheetSubs] = await Promise.all([
@@ -344,6 +355,7 @@ export function useLegalPacketData(
           fee,
           gapAnswers,
           claimLines,
+          people,
         }),
       )
       setFailed(failures)
