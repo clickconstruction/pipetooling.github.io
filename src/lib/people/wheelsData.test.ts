@@ -4,8 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  * The Wheels report loader. Its kernels (wheels.ts, vehicleFleet.ts, the
  * category-tag lookups) have their own suites; this pins the composition: the
  * window and query filters, which charges count as fuel (tag by label, else by
- * bank category), the card / off-card / company-card split, attribution to
- * people, the trucks with their holders, and a hand-computed set of rows.
+ * bank category), the off-card label check, whose fuel each card charge is (People →
+ * Spending's rule since v2.6671: attributed, else the card's holder; a company card set
+ * aside), the trucks with their holders, and a hand-computed set of rows.
  */
 type Step = { method: string; args: unknown[] }
 const queries: Array<{ table: string; steps: Step[] }> = []
@@ -50,17 +51,52 @@ const members = [
   { tag_id: 'tag-meals', bank_category: 'Restaurants', label_id: null },
 ]
 const loadCategoryTags = vi.fn(async () => ({ tags, members }))
-const fetchLabelIdByTxId = vi.fn(async (_ids: readonly string[]) => new Map([['tx2', 'lbl-fuel'], ['tx6', 'lbl-other']]))
+const fetchLabelIdByTxId = vi.fn(async (_ids: readonly string[]) => new Map([['tx2', 'lbl-fuel'], ['tx5', 'lbl-other']]))
 vi.mock('../banking/categoryTagsData', () => ({ loadCategoryTags: () => loadCategoryTags(), fetchLabelIdByTxId: (ids: readonly string[]) => fetchLabelIdByTxId(ids) }))
-const fetchAttributions = vi.fn(async (_ids: string[], _label: string) => [
-  { mercury_transaction_id: 'tx1', user_id: 'u-ana' },
-  { mercury_transaction_id: 'tx7', user_id: 'u-ana' },
-])
-vi.mock('../fetchMercuryRelationsByTxIds', () => ({ fetchAttributionsByMercuryTxIds: (ids: string[], label: string) => fetchAttributions(ids, label) }))
-const loadDirectory = vi.fn(async () => ({ nicknameByCard: { 'card-b': 'Truck 2 card' } as Record<string, string>, roleByCard: { 'card-c': 'company' } as Record<string, string> }))
-vi.mock('../banking/debitCards', () => ({ loadDebitCardDirectory: () => loadDirectory() }))
-// The raw-payload parser has its own suite; here a card id rides on `raw.cardId`.
-vi.mock('../mercuryRawDebitCard', () => ({ mercuryDebitCardIdFromRaw: (raw: { cardId?: string } | null) => raw?.cardId ?? null }))
+// People → Spending's read of the window's card charges (v2.6671): holder, attribution, label and card on each row.
+let seq = 0
+const cardCharge = (over: Record<string, unknown>) => {
+  seq += 1
+  return {
+    id: `tx${seq}`,
+    postedAt: '2026-08-01T15:00:00Z',
+    purchasedAt: null,
+    amount: -1,
+    counterpartyName: 'Shell',
+    kind: 'debitCardTransaction',
+    status: 'sent',
+    bankCategory: 'Gas Stations',
+    debitCardId: 'card-a',
+    cardNickname: null,
+    cardRole: null,
+    holderUserId: 'u-ana',
+    holderName: 'Ana',
+    attributedUserId: null,
+    attributedPersonId: null,
+    labelId: null,
+    labelDefaultKey: null,
+    payrollMarked: false,
+    splits: [],
+    invoiceLinks: [],
+    sortedAt: null,
+    sortedByName: null,
+    viewerCanSort: true,
+    ...over,
+  }
+}
+const windowCharges = [
+  cardCharge({ amount: -60 }), // tx1 · fuel by bank category on Ana's card, nobody attributed → Ana, by the card she holds
+  cardCharge({ amount: -40, bankCategory: 'Restaurants', labelId: 'lbl-fuel', debitCardId: 'card-b', cardNickname: 'Truck 2 card', holderUserId: null, holderName: null }), // tx2 · fuel by label; no holder → by card
+  cardCharge({ amount: -25, debitCardId: 'card-c', cardRole: 'company', holderUserId: null, holderName: null }), // tx3 · a company card, nobody attributed
+  cardCharge({ amount: -30, bankCategory: 'Restaurants' }), // tx4 · meals
+  cardCharge({ amount: -20, labelId: 'lbl-other' }), // tx5 · labelled into no tag: untagged
+  cardCharge({ amount: 10, kind: 'other' }), // tx6 · a refund to Ana's card: Mercury files it as kind 'other'
+  cardCharge({ amount: -35, attributedUserId: 'u-bob' }), // tx7 · on Ana's card but Bob's fill-up: the attribution wins
+]
+const fetchWindow = vi.fn(async (_args: { startYmd: string; endYmd: string }) => windowCharges)
+vi.mock('../banking/cardChargesWindow', () => ({ fetchCardChargesWindow: (args: { startYmd: string; endYmd: string }) => fetchWindow(args) }))
+const loadSpendingDirectory = vi.fn(async () => ({ userNameById: new Map([['u-ana', 'Ana'], ['u-bob', 'Bob']]), personById: new Map() }))
+vi.mock('./loadSpending', () => ({ loadSpendingDirectory: () => loadSpendingDirectory() }))
 
 import { loadWheelsFixedRates, loadWheelsSnapshot, saveVehicleRateOverride } from './wheelsData'
 
@@ -73,21 +109,17 @@ const data: Record<string, unknown[]> = {
     { person_name: 'Bob ', vehicle_arrangement: 'company', vehicle_rate_override: null },
     { person_name: 'Cy', vehicle_arrangement: 'bogus', vehicle_rate_override: 2.5 },
   ],
+  // Every transaction in the window, card or not — the off-card label check's read. The card
+  // charges among them (tx1–tx7) are in the window read above; tx8 carries no card.
   mercury_transactions: [
-    { id: 'tx1', amount: -60, kind: 'debitCardTransaction', mercury_category: 'Gas Stations', counterparty_name: 'Shell' }, // fuel by bank category, Ana's card
-    { id: 'tx2', amount: -40, kind: 'debitCardTransaction', mercury_category: 'Restaurants', counterparty_name: 'Buc-ees' }, // fuel by accounting label, nobody attributed
-    { id: 'tx3', amount: -500, kind: 'externalTransfer', mercury_category: 'Gas Stations', counterparty_name: ' Fuel Supplier LLC ' }, // fuel family, no card
-    { id: 'tx4', amount: -25, kind: 'debitCardTransaction', mercury_category: 'Gas Stations', counterparty_name: 'Shell' }, // company card
-    { id: 'tx5', amount: -30, kind: 'debitCardTransaction', mercury_category: 'Restaurants', counterparty_name: 'Cafe' }, // meals
-    { id: 'tx6', amount: -20, kind: 'debitCardTransaction', mercury_category: 'Gas Stations', counterparty_name: 'Shell' }, // labelled into no tag: untagged
-    { id: 'tx7', amount: 10, kind: 'other', mercury_category: 'Gas Stations', counterparty_name: 'Shell' }, // a refund to Ana's card: Mercury files it as kind 'other'
-  ],
-  raw: [
-    { id: 'tx1', raw: { cardId: 'card-a' } },
-    { id: 'tx2', raw: { cardId: 'card-b' } },
-    { id: 'tx3', raw: null },
-    { id: 'tx4', raw: { cardId: 'card-c' } },
-    { id: 'tx7', raw: { cardId: 'card-a' } },
+    { id: 'tx1', amount: -60, kind: 'debitCardTransaction', mercury_category: 'Gas Stations', counterparty_name: 'Shell' },
+    { id: 'tx2', amount: -40, kind: 'debitCardTransaction', mercury_category: 'Restaurants', counterparty_name: 'Buc-ees' },
+    { id: 'tx3', amount: -25, kind: 'debitCardTransaction', mercury_category: 'Gas Stations', counterparty_name: 'Shell' },
+    { id: 'tx4', amount: -30, kind: 'debitCardTransaction', mercury_category: 'Restaurants', counterparty_name: 'Cafe' },
+    { id: 'tx5', amount: -20, kind: 'debitCardTransaction', mercury_category: 'Gas Stations', counterparty_name: 'Shell' },
+    { id: 'tx6', amount: 10, kind: 'other', mercury_category: 'Gas Stations', counterparty_name: 'Shell' },
+    { id: 'tx7', amount: -35, kind: 'debitCardTransaction', mercury_category: 'Gas Stations', counterparty_name: 'Shell' },
+    { id: 'tx8', amount: -500, kind: 'externalTransfer', mercury_category: 'Gas Stations', counterparty_name: ' Fuel Supplier LLC ' }, // fuel family, no card
   ],
   clock_sessions: [
     session({}), // Ana 8 h field
@@ -109,15 +141,7 @@ const data: Record<string, unknown[]> = {
     { vehicle_id: 'v1', cost: null, service_date: '2026-08-02' },
   ],
 }
-const routeScenario = (table: string, steps: Step[]): unknown => {
-  if (table === 'mercury_transactions') {
-    const isRaw = argsOf(steps, 'select').some((a) => String(a[0]).includes('raw'))
-    if (!isRaw) return data.mercury_transactions
-    const ids = argsOf(steps, 'in')[0]![1] as string[]
-    return data.raw!.filter((r) => ids.includes((r as { id: string }).id))
-  }
-  return data[table] ?? []
-}
+const routeScenario = (table: string, _steps: Step[]): unknown => data[table] ?? []
 const input = { todayYmd: '2026-09-07', users: [{ id: 'u-ana', name: 'Ana' }, { id: 'u-bob', name: 'Bob' }] }
 
 beforeEach(() => {
@@ -126,15 +150,15 @@ beforeEach(() => {
   tags = [tagRow({ id: 'tag-fuel', name: 'Fuel & gas', default_key: 'fuel_vehicle' }), tagRow({ id: 'tag-meals', name: 'Meals' })]
   loadCategoryTags.mockClear()
   fetchLabelIdByTxId.mockClear()
-  fetchAttributions.mockClear()
-  loadDirectory.mockClear()
+  fetchWindow.mockClear()
+  loadSpendingDirectory.mockClear()
 })
 
 describe('loadWheelsSnapshot', () => {
   it('spans the trailing 90 days and bounds every read to the window', async () => {
     const snap = await loadWheelsSnapshot(input)
     expect(snap.window).toEqual({ start: '2026-06-10', end: '2026-09-07', days: 90 })
-    const tx = q('mercury_transactions', (s) => !argsOf(s, 'select').some((a) => String(a[0]).includes('raw')))
+    const tx = q('mercury_transactions')
     expect(argsOf(tx.steps, 'gte')).toEqual([['posted_at', '2026-06-10']])
     expect(argsOf(tx.steps, 'lt')).toEqual([['posted_at', '2026-09-08']]) // end is inclusive → exclusive bound is the next day
     expect(argsOf(tx.steps, 'range')).toEqual([[0, 999]])
@@ -146,17 +170,21 @@ describe('loadWheelsSnapshot', () => {
     expect(argsOf(sv.steps, 'lte')).toEqual([['service_date', '2026-09-07']])
     expect(argsOf(q('vehicle_possessions').steps, 'order')).toEqual([['start_date', { ascending: false }]])
     expect(argsOf(q('vehicle_insurance_periods').steps, 'order')).toEqual([['start_date', { ascending: false }]])
-    expect(fetchLabelIdByTxId).toHaveBeenCalledWith(['tx1', 'tx2', 'tx3', 'tx4', 'tx5', 'tx6', 'tx7'])
-    expect(fetchAttributions).toHaveBeenCalledWith(['tx1', 'tx2', 'tx7'], 'wheels') // only card fuel is anyone's fuel — a refund to the card included
+    expect(fetchLabelIdByTxId).toHaveBeenCalledWith(['tx1', 'tx2', 'tx3', 'tx4', 'tx5', 'tx6', 'tx7', 'tx8'])
+    // The card charges come from People → Spending's read of the same window (v2.6671).
+    expect(fetchWindow).toHaveBeenCalledWith({ startYmd: '2026-06-10', endYmd: '2026-09-07' })
+    expect(loadSpendingDirectory).toHaveBeenCalledTimes(1)
   })
 
-  it('picks the fuel tag, splits its charges into card / off-card / company-card, and attributes card fuel to people', async () => {
+  it('picks the fuel tag, reports the off-card label check, and gives each card charge to its person by Spending’s rule', async () => {
     const snap = await loadWheelsSnapshot(input)
     expect(snap.fuelTag?.id).toBe('tag-fuel')
+    // tx2 has no holder and no attribution: it reaches no one, listed by card. tx1 (Ana's card, nobody
+    // attributed) is Ana's now — before v2.6671 it sat here beside tx2.
     expect(snap.unattributedFuelUsd).toBe(40)
     expect(snap.unattributedCards).toEqual([{ cardId: 'card-b', label: 'Truck 2 card', usd: 40, n: 1 }])
     expect(snap.offCardFuelFamily).toEqual({ usd: 500, n: 1, top: [{ counterparty: 'Fuel Supplier LLC', usd: 500 }] })
-    expect(snap.companyCardSpend).toEqual({ usd: 25, n: 1, byCard: [{ cardId: 'card-c', label: 'card …ardc', usd: 25 }] })
+    expect(snap.companyCardSpend).toEqual({ usd: 25, n: 1, byCard: [{ cardId: 'card-c', label: 'card …ardc', usd: 25, n: 1 }] })
   })
 
   it('builds the trucks with their current holders and running cost, holders first', async () => {
@@ -165,22 +193,22 @@ describe('loadWheelsSnapshot', () => {
       ['v1', '2022 Ford F-150', 'u-bob', 'Bob', 4],
       ['v2', 'Chevy Van', null, null, 0], // motor pool
     ])
-    // 90 days = 12.857 weeks: insurance 35/wk on plan, registration 7/wk, one costed service, Bob has no fuel.
-    expect(snap.trucks[0]!.cost).toEqual({ fuel: 0, insurance: 450, registration: 90, service: 120, wear: 0, hasReplacementValue: false, total: 660, ratePerFieldHour: 165, fixedRatePerFieldHour: 165 })
+    // 90 days = 12.857 weeks: insurance 35/wk on plan, registration 7/wk, one costed service; Bob's fuel is the $35 attributed to him on Ana's card.
+    expect(snap.trucks[0]!.cost).toEqual({ fuel: 35, insurance: 450, registration: 90, service: 120, wear: 0, hasReplacementValue: false, total: 695, ratePerFieldHour: 173.75, fixedRatePerFieldHour: 165 })
     expect(snap.trucks[1]!.cost).toEqual({ fuel: 0, insurance: 0, registration: 0, service: 0, wear: 0, hasReplacementValue: false, total: 0, ratePerFieldHour: null, fixedRatePerFieldHour: null }) // no insurance period: not on plan
   })
 
   it('builds a row per pay-config person — company holders first — linking names to logins by trimmed name', async () => {
     const snap = await loadWheelsSnapshot(input)
-    // Ana's fuel is $60 less the $10 refund to her card; the fixed rate is what Review charges besides fuel on no job.
+    // Ana's fuel is the $60 on the card she holds less the $10 refund to it; Bob's is the $35 attributed to him. The fixed rate is what Review charges besides fuel on no job.
     expect(snap.rows.map((r) => [r.name, r.userId, r.arrangement, r.fuelUsd, r.fieldHours, r.computedFixedRate, r.fixedRate])).toEqual([
-      ['Bob ', 'u-bob', 'company', 0, 4, 165, 165],
+      ['Bob ', 'u-bob', 'company', 35, 4, 165, 165],
       ['Ana', 'u-ana', 'own_fuel_paid', 50, 8, 0, 0],
       ['Cy', null, 'none', 0, 0, null, 2.5], // unknown arrangement → none; a manual fixed rate wins
     ])
     expect(snap.rows[0]!.note).toBe('2022 Ford F-150 · $660 fixed ÷ 4.0 field h, no replacement value on file; fuel stays on the jobs')
     expect(snap.rows[2]!.note).toBe('manual fixed rate; fuel stays on the jobs')
-    expect(snap.comparison).toEqual({ ownAvg: 6.25, companyAvg: 165 })
+    expect(snap.comparison).toEqual({ ownAvg: 6.25, companyAvg: 173.75 })
   })
 
   it('without a flagged fuel tag (or with only a name match) the fuel side is empty but trucks and rows still build', async () => {
@@ -188,7 +216,7 @@ describe('loadWheelsSnapshot', () => {
     const snap = await loadWheelsSnapshot(input)
     expect(snap.fuelTag).toBeNull()
     expect(fetchLabelIdByTxId).not.toHaveBeenCalled()
-    expect(fetchAttributions).not.toHaveBeenCalled()
+    expect(loadSpendingDirectory).not.toHaveBeenCalled()
     expect(snap.unattributedFuelUsd).toBe(0)
     expect(snap.offCardFuelFamily).toEqual({ usd: 0, n: 0, top: [] })
     expect(snap.trucks).toHaveLength(2)
@@ -198,15 +226,9 @@ describe('loadWheelsSnapshot', () => {
     expect((await loadWheelsSnapshot(input)).fuelTag?.id).toBe('tag-named') // name fallback
   })
 
-  it('a failed card directory read degrades: no company cards, so that charge counts as unattributed card fuel', async () => {
-    loadDirectory.mockRejectedValueOnce(new Error('rls'))
-    const snap = await loadWheelsSnapshot(input)
-    expect(snap.companyCardSpend).toEqual({ usd: 0, n: 0, byCard: [] })
-    expect(snap.unattributedFuelUsd).toBe(65)
-    expect(snap.unattributedCards).toEqual([
-      { cardId: 'card-b', label: 'card …ardb', usd: 40, n: 1 },
-      { cardId: 'card-c', label: 'card …ardc', usd: 25, n: 1 },
-    ])
+  it('a failed card-charges read throws to the caller: fuel is never silently zero', async () => {
+    fetchWindow.mockRejectedValueOnce(new Error('window rls'))
+    await expect(loadWheelsSnapshot(input)).rejects.toThrow('window rls')
   })
 
   it('a failed core read throws to the caller', async () => {
@@ -246,7 +268,7 @@ describe('v2.5039 · wear and the fixed rates alone', () => {
     expect(argsOf(rv.steps, 'lte')).toEqual([['read_date', '2026-09-07']])
     expect(argsOf(rv.steps, 'order')).toEqual([['read_date', { ascending: false }]])
     // $36,500 over a five-year life is $20 a day: $1,800 over the 90 days.
-    expect(snap.trucks[0]!.cost).toMatchObject({ wear: 1800, hasReplacementValue: true, total: 2460, fixedRatePerFieldHour: 615 })
+    expect(snap.trucks[0]!.cost).toMatchObject({ fuel: 35, wear: 1800, hasReplacementValue: true, total: 2495, fixedRatePerFieldHour: 615 })
     expect(snap.rows.find((r) => r.name === 'Bob ')!.note).toBe('2022 Ford F-150 · $2,460 fixed ÷ 4.0 field h; fuel stays on the jobs')
   })
   it('the fixed rates alone read no card charges, and match the snapshot’s', async () => {
@@ -254,6 +276,7 @@ describe('v2.5039 · wear and the fixed rates alone', () => {
     const { rows, window } = await loadWheelsFixedRates(input)
     expect(window).toEqual({ start: '2026-06-10', end: '2026-09-07', days: 90 })
     expect(queries.some((x) => x.table === 'mercury_transactions')).toBe(false)
+    expect(fetchWindow).not.toHaveBeenCalled()
     expect(loadCategoryTags).not.toHaveBeenCalled()
     expect(rows.map((r) => [r.name, r.arrangement, r.fixedRate])).toEqual([
       ['Bob ', 'company', 615],
