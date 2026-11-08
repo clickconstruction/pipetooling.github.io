@@ -82,8 +82,8 @@ What is left to build, as of the evening of 2026-10-09. Each row is read from th
 
 | Card | What it waits on |
 |---|---|
-| [#1 Crew P&L](../to-dos/crew-pnl-and-wheels.md) | Vehicle records for item 2. The audit footer's raw job # texts for item 3. |
-| [#3 Job Summary](../to-dos/job-summary-follow-ups.md) | Weekly hours per person and session start times in the day ledger. A Crew P&L sitting. |
+| #1 Crew P&L (retired 2026-11-07, the $50 default kept) | Vehicle records for item 2. The audit footer's raw job # texts for item 3. |
+| #3 Job Summary (retired 2026-11-07) | Weekly hours per person and session start times in the day ledger. A Crew P&L sitting. |
 | [#4 Journey map](../to-dos/journey-map-tier-1.md) | The private repo's `_DRIFT-2` |
 | [#5 Owner decisions pending](../to-dos/owner-decisions-pending.md) | The owner. Pay codes on the GC's copy and the real scan test. The Ferguson rep's phone and email. Partnerships. Twins Phase 2. Edgar's back charge, with the office. The DNS steps for the clickplumbing.com sender. |
 | [#6 Partnerships](../to-dos/partnerships-off-toggles.md) | The owner and the attorney |
