@@ -2,14 +2,14 @@
 name: People → Utilization and the drawn week
 number: 284
 group: ready
-status: built 2026-11-08 on three branches · PR 1 #7311 in the queue · left: push the migration, the types PR, open PRs 2 and 3, verify live
+status: built 2026-11-08 on three branches · PR 1 #7311 merged as v2.6707 and its migration in prod's ledger the same day · left: the types PR, open PRs 2 and 3, verify live
 summary: >
   A People view that reads the hours each person said they can work against the hours the clock
   recorded, by pay week, so the office knows when to add people and when to use the people it has
   more; and the person's side on My Time, where they draw the week they can work, Sunday to
   Saturday, and read their last eight weeks against it. Everything is built and tested; what is
   left is landing it in order.
-next: When #7311 merges, supabase db push, then the chore(types) PR, then rebase and open claude/utilization-2-board, then claude/utilization-3-my-time; verify live as a dev, an assistant and a helper; delete this folder.
+next: The chore(types) PR (the migration is pushed), then rebase and open claude/utilization-2-board, then claude/utilization-3-my-time; verify live as a dev, an assistant and a helper; delete this folder.
 size: S as what is left (the code is done; three PRs to land in order)
 blocker: The merge queue, one PR at a time.
 opinion: build — the owner said ship; the branches are ready and the write-up is theirs

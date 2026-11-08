@@ -7,3 +7,5 @@ The answers table behind the Utilization train (PR 1 of three): the hours a pers
 - One index, `(user_id, effective_from DESC, created_at DESC)`, the board's read order.
 
 Deploy order: free. No client reads the table until PR 2 of the train (the kernels, the tab and the window) lands, and that PR's `check:calls-ahead` holds its deploy until this migration is pushed. Push, then `npm run gen-types:linked` as its own `chore(types)` PR.
+
+**Applied** to prod by 2026-11-08, read the same day through the dev seat's `check_migration_ledger`: 1166 versions applied against the 1166 files on `main`, this one among them (`npm run check:migration-drift` could not reach the database from this worktree — the IPv6-only path — so the ledger was the read).
