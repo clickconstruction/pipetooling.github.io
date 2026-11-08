@@ -14,7 +14,7 @@ It looks the same wherever you open it from. The floating window, the panel unde
 
 Three ways in, same content:
 
-1. On wide screens, click **See all** in the strip under the row's **Job activity box**. When the job has reports it says so, like *See all 9 · 1 report*.
+1. On wide screens, click **See all** in the strip under the row's **Job activity box**. When the job has reports it says so, like *See all 9 · 1 report*. The box itself shows the newest three calls, texts and emails with the customer under orange tags. [Read the conversation on the row](/help/text-a-customer-from-the-job#read-the-conversation-on-the-row) shows how they read.
 2. On narrower screens and phone cards, click the **See all** button in the job's **Job** column. A blue border means the job has reports.
 3. Click a row's **▶ notes toggle** to open the panel under the row. Its ⛶ button takes it full screen.
 

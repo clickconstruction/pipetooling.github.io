@@ -34,6 +34,16 @@ A small orange dot on the speech bubble means the customer wrote last on this jo
 
 The dot comes on as their message lands. You do not need to reload the board. Their reply also shows in the job's activity and in the open window as it lands.
 
+## Read the conversation on the row
+
+On a wide screen the row's **Job activity** box shows the customer's side too. The newest three calls, texts and emails between you and the customer sit among the team's notes, in time order. Each one wears a small orange tag in place of a number. The tag says how it came, like *Text*, *Email* or *Call*. The notes keep their numbers, so *check note 3* still points at the same note.
+
+A line from the customer carries an orange bar and the customer's name. A line from your team carries the sender's name. A text the app sent by itself says *the app*. While the customer wrote last and nobody has answered, their newest line says *Nobody has answered.*
+
+Press any of these lines. The speech bubble's window opens, with the thread's last lines and the {{button:outline|Text}} and {{button:outline|Email}} presses. Older lines are in **See all**, under the box.
+
+On a phone the card has one teaser line under its Next chip. The teaser is the newest of the team's note, the report and the customer's line. When the customer's line is newest it reads in orange, like *Dana · text · 1d ago — Can you do Thursday?* Press it to open the same window.
+
 ## Write to the customer
 
 1. Press {{button:outline|Text}} or {{button:outline|Email}}. The box turns orange, since orange is the customer's.

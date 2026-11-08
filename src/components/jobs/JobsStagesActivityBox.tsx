@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
-import { buildJobActivityBoxFeed, stripRedundantStampBody, type JobActivityBoxEntry } from '../../lib/jobs/jobActivityBoxFeed'
+import { activityBoxTeaser, buildJobActivityBoxFeed, NOBODY_HAS_ANSWERED, type JobActivityBoxEntry, type JobActivityBoxLine } from '../../lib/jobs/jobActivityBoxFeed'
 import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import { JobsWorkedTodayReportIcon } from '../icons/JobsWorkedTodayReportIcon'
 import { seeAllDoorWords } from '../../lib/jobs/stagesRowDoors'
@@ -18,7 +18,12 @@ function entryMetaLabel(atIso: string): string {
 /**
  * The Pipeline row "Job activity" box (viewports ≥1100px): fills the
  * Job cell's dead middle with the job's conversational trail: the notes, the
- * reports and, since v2.5633, a bill sent to the customer, unnumbered. Anatomy (owner-
+ * reports, since v2.5633 a bill sent to the customer, unnumbered, and since
+ * v2.6689 (punch list #125) the customer's own conversation: the job's newest
+ * three calls, texts and emails, unnumbered under an orange tag naming the
+ * channel, the customer's in orange and a line from them with the bar and,
+ * while nobody has answered it, the dot's words. A press on a line opens the
+ * bubble's sheet. Anatomy (owner-
  * approved mockup): pinned NEXT line, a SCROLLING feed of numbered entries
  * in chat order — 1 = oldest at the top, newest at the bottom, the box keeps
  * itself scrolled to the newest (owner request v2.2062; numbers are stable
@@ -89,12 +94,61 @@ const sentTagStyle: CSSProperties = {
   fontWeight: 600,
 }
 
-function entryLine(e: JobActivityBoxEntry) {
+/** The customer's line (v2.6689): the orange tag in the number's place names the channel; from them, the deeper fill. */
+const lineTagStyle: CSSProperties = {
+  ...sentTagStyle,
+  border: '1px solid var(--text-orange-700)',
+  color: 'var(--text-orange-700)',
+  background: 'var(--surface)',
+}
+const lineTagInStyle: CSSProperties = {
+  ...lineTagStyle,
+  border: '1px solid var(--text-orange-800)',
+  color: 'var(--text-orange-800)',
+  background: 'var(--bg-orange-100)',
+}
+/** A trade's or a supplier's line tied to the job reads plain, as Job activity draws it. */
+const lineTagPlainStyle: CSSProperties = { ...sentTagStyle, border: '1px solid var(--border-strong)', color: 'var(--text-muted)', background: 'var(--surface)' }
+
+const lineTagStyleFor = (l: JobActivityBoxLine): CSSProperties => (!l.customer ? lineTagPlainStyle : l.fromThem ? lineTagInStyle : lineTagStyle)
+
+/** A line from the customer sits on the orange tint with the bar, as her lines do in Job activity. */
+const lineInRowStyle: CSSProperties = {
+  background: 'var(--bg-orange-tint)',
+  boxShadow: 'inset 3px 0 0 var(--border-orange)',
+  borderRadius: '0 6px 6px 0',
+  padding: '1px 4px 1px 6px',
+  marginLeft: -6,
+}
+
+/** The press that opens the bubble's sheet on a line: a button with no chrome, the line's own look. */
+const lineButtonStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  width: '100%',
+  marginTop: 5,
+  padding: 0,
+  border: 'none',
+  background: 'transparent',
+  font: 'inherit',
+  color: 'inherit',
+  textAlign: 'left',
+  cursor: 'pointer',
+}
+
+function entryLine(e: JobActivityBoxEntry, onOpenLine?: (line: JobActivityBoxLine) => void) {
   const report = e.kind === 'report'
   const sent = e.kind === 'sent'
-  return (
-    <div key={`${e.kind}-${e.number ?? 'x'}-${e.atIso}`} data-activity-entry-kind={e.kind} style={{ display: 'flex', alignItems: 'flex-start', marginTop: 5 }}>
-      {sent ? (
+  const line = e.kind === 'line' ? e.line : undefined
+  const key = `${e.kind}-${e.number ?? line?.id ?? 'x'}-${e.atIso}`
+  const inner = (
+    <>
+      {line ? (
+        // The customer's conversation (v2.6689): no number, the channel's tag in orange holds its place.
+        <span style={lineTagStyleFor(line)} aria-label={`${line.fromThem ? 'From' : 'To'} the customer, a ${line.tag.toLowerCase()}`}>
+          {line.tag}
+        </span>
+      ) : sent ? (
         // A send to the customer (v2.5633, v2.5636) takes no number: a small Sent tag in the billing blue holds its place.
         <span style={sentTagStyle} aria-label="Sent to the customer">
           Sent
@@ -124,10 +178,33 @@ function entryLine(e: JobActivityBoxEntry) {
         <span style={{ color: 'var(--text-muted)', fontSize: '0.6875rem' }}>
           {entryMetaLabel(e.atIso)}
         </span>{' '}
-        <strong style={{ color: 'var(--text-strong)' }}>{e.authorName ?? '—'}</strong>
+        <strong style={{ color: line?.fromThem && line.customer ? 'var(--text-orange-800)' : 'var(--text-strong)' }}>{e.authorName ?? '—'}</strong>
         <span style={{ color: 'var(--text-faint)', margin: '0 5px' }}>|</span>
         {e.body}
+        {line?.waiting ? <em style={{ color: 'var(--text-orange-700)', fontWeight: 600, marginLeft: 5, fontStyle: 'normal' }}>{NOBODY_HAS_ANSWERED}</em> : null}
       </span>
+    </>
+  )
+  if (line && onOpenLine) {
+    return (
+      <button
+        key={key}
+        type="button"
+        data-activity-entry-kind={e.kind}
+        onClick={(ev) => {
+          ev.stopPropagation()
+          onOpenLine(line)
+        }}
+        title="Open the conversation with the customer"
+        style={line.fromThem && line.customer ? { ...lineButtonStyle, ...lineInRowStyle } : lineButtonStyle}
+      >
+        {inner}
+      </button>
+    )
+  }
+  return (
+    <div key={key} data-activity-entry-kind={e.kind} style={{ display: 'flex', alignItems: 'flex-start', marginTop: 5, ...(line?.fromThem && line.customer ? lineInRowStyle : {}) }}>
+      {inner}
     </div>
   )
 }
@@ -151,9 +228,14 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
 
   const activity = ctx.jobThreadActivityByJobId[job.id]
   const loaded = activity != null
-  const feed = loaded ? buildJobActivityBoxFeed(activity) : []
+  // The customer's lines on the job (v2.6689) and whether the dot is on: their newest line carries the dot's words.
+  const lines = ctx.customerLinesByJobId?.get(job.id)
+  const waiting = ctx.boardDotByJobId?.get(job.id) != null
+  const feed = loaded ? buildJobActivityBoxFeed(activity, { lines, waiting }) : []
   const stat = ctx.jobThreadStatsByJobId[job.id]
   const up = ctx.stagesUpcomingByJobId[job.id]
+  // A press on a line opens the bubble's sheet, where the thread's last lines and the reply box are.
+  const openLine = ctx.onOpenCustomerDoor ? () => ctx.onOpenCustomerDoor?.(job) : undefined
 
   const ensureLoaded = () => {
     if (requestedLoadRef.current || loaded || !loadActivityForJob) return
@@ -161,21 +243,8 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
     loadActivityForJob(job.id)
   }
 
-  // Pre-load teaser from the board-wide stats (latest note or report only).
-  const teaser = (() => {
-    if (loaded || !stat) return null
-    const tNote = stat.last_note_at ? Date.parse(stat.last_note_at) : null
-    const tRep = stat.last_report_at ? Date.parse(stat.last_report_at) : null
-    if (tNote == null && tRep == null) return null
-    const useReport = tRep != null && (tNote == null || tRep > tNote)
-    return {
-      authorName: (useReport ? stat.last_report_author_name : stat.last_note_author_name)?.trim() || null,
-      atIso: (useReport ? stat.last_report_at : stat.last_note_at) as string,
-      body: useReport
-        ? (stat.last_report_preview ?? '').trim() || `Report: ${(stat.last_report_template_name ?? '').trim() || 'Report'}`
-        : stripRedundantStampBody((stat.last_note_body ?? '').trim()),
-    }
-  })()
+  // Pre-load teaser: the newest of the board-wide stats' note and report and the board's lines (v2.6689).
+  const teaser = loaded ? null : activityBoxTeaser(stat, lines, waiting)
 
   const empty = loaded ? feed.length === 0 : teaser == null
 
@@ -261,7 +330,10 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
           }}
         >
           {loaded ? (
-            feed.map(entryLine)
+            feed.map((e) => entryLine(e, openLine))
+          ) : teaser?.kind === 'line' ? (
+            // The customer's line is the newest thing on the job: it reads as it will in the feed (v2.6689).
+            entryLine({ ...teaser, number: null }, openLine)
           ) : teaser ? (
             <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: 2 }}>
               <span style={{ minWidth: 0, color: 'var(--text-700)', overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, lineHeight: 1.45 }}>

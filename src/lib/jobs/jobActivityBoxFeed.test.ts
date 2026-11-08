@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildJobActivityBoxFeed, SENT_BY_APP, sentLineBody, stripRedundantStampBody } from './jobActivityBoxFeed'
+import { activityBoxTeaser, buildJobActivityBoxFeed, SENT_BY_APP, sentLineBody, stripRedundantStampBody } from './jobActivityBoxFeed'
+import type { JobActivityMessage } from './jobActivityMessages'
 import type { JobThreadActivityItem } from '../../components/JobThreadNotesPanel'
 import type { JobThreadEventActivityItem } from '../jobActivityEvent'
 import type { JobThreadNoteRow } from '../../components/JobThreadNotesPanel'
@@ -156,5 +157,96 @@ describe('the papers that follow a bill (v2.5636)', () => {
     expect(sentLineBody({ type: 'invoice_resent', summary: 'Invoice emailed again to x (stripe)', detail: { channel: 'physical' } })).toBe('Bill emailed again')
     expect(sentLineBody({ type: 'demand_letter_sent', summary: 'Demand letter sent to x by email — $1.00', detail: { sent_method: 'email' } })).toBe('Demand letter sent')
     expect(sentLineBody({ type: 'lien_notice_sent', summary: 'Lien notice sent — $75.00', detail: undefined })).toBe('Lien notice sent')
+  })
+})
+
+describe('the customer’s conversation in the box (v2.6689, punch list #125)', () => {
+  const line = (id: string, at: string, over: Partial<JobActivityMessage> = {}): JobActivityMessage => ({
+    id,
+    contactId: 'c-dana',
+    contact: { name: 'Dana Whitfield', goesBy: null, kind: 'customer' },
+    channel: 'text',
+    direction: 'in',
+    at,
+    who: '',
+    body: 'Can you do Thursday after 10 instead?',
+    tied: true,
+    ...over,
+  })
+
+  it('a line sits in its place in time with no number under its channel’s tag, and the notes keep their numbers', () => {
+    const feed = buildJobActivityBoxFeed(
+      [note('n5', '2026-10-05T20:12:00Z', 'Rough-in done.', 'Marcus'), note('n6', '2026-10-06T14:02:00Z', 'Inspector confirmed. Gate code is 4471.', 'Rosa')],
+      {
+        lines: [
+          line('m-out', '2026-10-05T21:40:00Z', { direction: 'out', who: 'Tanya Ortiz', body: 'Dana, the city set your inspection for Thursday 8 to 10.' }),
+          line('m-in', '2026-10-06T23:15:00Z'),
+        ],
+      },
+    )
+    expect(feed.map((e) => [e.kind, e.number])).toEqual([
+      ['note', 1],
+      ['line', null],
+      ['note', 2],
+      ['line', null],
+    ])
+    expect(feed[1]).toMatchObject({ authorName: 'Tanya Ortiz', line: { tag: 'Text', fromThem: false, customer: true, waiting: false, channelWord: 'text' } })
+    expect(feed[3]).toMatchObject({ authorName: 'Dana', body: 'Can you do Thursday after 10 instead?', line: { tag: 'Text', fromThem: true, customer: true, waiting: false } })
+  })
+
+  it('tags each channel in one word, reads an email’s subject first and a call’s summary, and leaves a note out', () => {
+    const feed = buildJobActivityBoxFeed([], {
+      lines: [
+        line('m-call', '2026-10-01T12:00:00Z', { channel: 'call', durationSeconds: 192, summary: 'Dana asked about the permit.', body: 'Call.', who: 'answered on the company number' }),
+        line('m-missed', '2026-10-01T12:01:00Z', { channel: 'missed', body: '' }),
+        line('m-vm', '2026-10-01T12:02:00Z', { channel: 'voicemail', transcript: 'Call me back about Thursday.', body: '' }),
+        line('m-email', '2026-10-01T12:03:00Z', { channel: 'email', subject: 'Inspection', body: 'Thursday works for me.' }),
+        line('m-portal', '2026-10-01T12:04:00Z', { channel: 'portal', body: 'Paid on the page.' }),
+        line('m-note', '2026-10-01T12:05:00Z', { channel: 'note', direction: 'team', who: 'Rosa', body: 'Texts after 5.' }),
+      ],
+    })
+    expect(feed.map((e) => e.line?.tag)).toEqual(['Call', 'Missed', 'Voicemail', 'Email', 'Portal'])
+    expect(feed[0]).toMatchObject({ body: 'Dana asked about the permit.', line: { channelWord: 'call · 3:12' } })
+    expect(feed[1]!.body).toBe('No voicemail.')
+    expect(feed[2]!.body).toBe('Call me back about Thursday.')
+    expect(feed[3]!.body).toBe('Inspection · Thursday works for me.')
+  })
+
+  it('a trade’s line tied to the job reads plain, not orange', () => {
+    const feed = buildJobActivityBoxFeed([], { lines: [line('m-hector', '2026-10-01T12:00:00Z', { contactId: 'c-hector', contact: { name: 'Hector Ruiz', goesBy: null, kind: 'trade' }, body: 'Trencher on site at 7.' })] })
+    expect(feed[0]).toMatchObject({ authorName: 'Hector', line: { customer: false, fromThem: true } })
+  })
+
+  it('while nobody has answered, the customer’s newest line carries the words and no other does', () => {
+    const feed = buildJobActivityBoxFeed([], {
+      lines: [line('m-1', '2026-10-01T12:00:00Z'), line('m-2', '2026-10-02T12:00:00Z'), line('m-3', '2026-10-03T12:00:00Z', { direction: 'out', who: 'Tanya' })],
+      waiting: true,
+    })
+    expect(feed.map((e) => e.line?.waiting)).toEqual([false, true, false])
+    expect(buildJobActivityBoxFeed([], { lines: [line('m-1', '2026-10-01T12:00:00Z')] })[0]!.line!.waiting).toBe(false)
+  })
+
+  describe('activityBoxTeaser', () => {
+    const stat = {
+      last_note_at: '2026-10-06T14:02:00Z',
+      last_note_body: 'Inspector confirmed. Gate code is 4471.',
+      last_note_author_name: 'Rosa',
+      last_report_at: '2026-10-05T12:00:00Z',
+      last_report_author_name: 'Marcus',
+      last_report_template_name: 'Status Report',
+      last_report_preview: 'I think the job is 60% complete',
+    }
+
+    it('takes the newest of the note, the report and the line', () => {
+      expect(activityBoxTeaser(stat, [line('m-in', '2026-10-06T23:15:00Z')], true)).toMatchObject({ kind: 'line', authorName: 'Dana', line: { tag: 'Text', waiting: true } })
+      expect(activityBoxTeaser(stat, [line('m-in', '2026-10-06T10:00:00Z')])).toMatchObject({ kind: 'note', authorName: 'Rosa', body: 'Inspector confirmed. Gate code is 4471.' })
+      expect(activityBoxTeaser({ ...stat, last_note_at: null, last_note_body: null }, [])).toMatchObject({ kind: 'report', body: 'I think the job is 60% complete' })
+      expect(activityBoxTeaser(undefined, [line('m-in', '2026-10-06T10:00:00Z')])).toMatchObject({ kind: 'line' })
+    })
+
+    it('is null with nothing on the job', () => {
+      expect(activityBoxTeaser(undefined, [])).toBeNull()
+      expect(activityBoxTeaser({ ...stat, last_note_at: null, last_report_at: null }, undefined)).toBeNull()
+    })
   })
 })
