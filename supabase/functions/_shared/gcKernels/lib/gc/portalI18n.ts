@@ -47,6 +47,8 @@ const S = {
   letterhead: { en: 'Trade partner portal', es: 'Portal de subcontratistas' },
   backHome: { en: '← Everything with {gc}', es: '← Todo con {gc}' },
   gcLine: { en: 'General contractor: {name} · Hello, {contact}.', es: 'Contratista general: {name} · Hola, {contact}.' },
+  // Punch list #205, row 5: the address opens in the phone's maps app with no key (`directionsUrlForAddress`).
+  directions: { en: 'Directions', es: 'Cómo llegar' },
   noInvite: { en: 'You have no open invitation on this project.', es: 'No tiene una invitación abierta en este proyecto.' },
   close: { en: 'Close', es: 'Cerrar' },
   and: { en: ' and ', es: ' y ' },

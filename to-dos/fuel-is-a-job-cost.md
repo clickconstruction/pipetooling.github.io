@@ -2,7 +2,7 @@
 name: "Fuel is a job cost: one rule, its own line, by day, and who is spending"
 number: 52
 group: close
-status: PRs 1–3 shipped (v2.4059, v2.4068, v2.4104) · PR 4a shipped v2.4106 (migration 20260929001119 — the office roles read the tags; on prod, drift check clean 2026-09-29) · PR 4b-1 (the read + the kernel) shipped v2.4594, migration 20261005212106 on prod · PR 4b-1b (card refunds) shipped v2.4611, migration 20261005235207 on prod · PR 4b-2 (People → Spending) shipped v2.4602 · PR 5 (Review follows the job) shipped v2.4653, client only · the four follow-ups the owner picked on 2026-11-07 built 2026-11-08: the print v2.6670, Wheels v2.6671, the comment migration v2.6672 (20261108054743, to push); dev-mcp's get_job had taken the card rule in v2.6468 on 2026-11-03
+status: PRs 1–3 shipped (v2.4059, v2.4068, v2.4104) · PR 4a shipped v2.4106 (migration 20260929001119 — the office roles read the tags; on prod, drift check clean 2026-09-29) · PR 4b-1 (the read + the kernel) shipped v2.4594, migration 20261005212106 on prod · PR 4b-1b (card refunds) shipped v2.4611, migration 20261005235207 on prod · PR 4b-2 (People → Spending) shipped v2.4602 · PR 5 (Review follows the job) shipped v2.4653, client only · the four follow-ups the owner picked on 2026-11-07 built 2026-11-08: the print v2.6670, Wheels v2.6671, the comment migration v2.6672 (20261108054743, pushed 2026-11-08); dev-mcp's get_job had taken the card rule in v2.6468 on 2026-11-03
 summary: >
   What a job cost, fuel included, the same on every screen, with fuel as its own line and dated
   to the day it was bought, so a long multi-day job shows whether it is making or losing money

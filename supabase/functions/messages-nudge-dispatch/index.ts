@@ -121,7 +121,7 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
       all<any>((a, b) => admin.from('messages').select('contact_id, step_key, project_id, jobs_ledger_id, who_user_id, body, at').in('contact_id', ids).not('step_key', 'is', null).order('id').range(a, b), 'step notes'),
       all<any>((a, b) => admin.from('messages').select('contact_id, direction, at, channel_id').in('contact_id', ids).order('at', { ascending: false }).order('id').range(a, b), 'messages'),
       all<any>((a, b) => admin.from('contact_owed').select('contact_id, done_at').in('contact_id', ids).is('done_at', null).order('id').range(a, b), 'contact_owed'),
-      all<any>((a, b) => admin.from('contact_channels').select('id, contact_id, kind, value, opted_out_at, opted_out_by_box, created_at').in('contact_id', ids).eq('kind', 'phone').order('id').range(a, b), 'contact_channels'),
+      all<any>((a, b) => admin.from('contact_channels').select('id, contact_id, kind, value, opted_out_at, opted_out_by_box, usual_at, created_at').in('contact_id', ids).eq('kind', 'phone').order('id').range(a, b), 'contact_channels'),
     ])
     got.holds.push(...holds)
     got.sent.push(...sent)

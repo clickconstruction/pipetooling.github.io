@@ -9,9 +9,9 @@
  * tag) comes back as parts, which the screen joins with a middle dot. Every sentence keeps the plain-words rules
  * (`src/lib/plainWords.ts`), and `compose.test.ts` holds them.
  */
-import { textableNumbers, type Contact } from '../contacts/kernel'
+import { usualChannel, type Contact, type ContactChannel } from '../contacts/kernel'
 import { SIGNATURE_FREE_LINES_MAX } from './signature'
-import type { MessageChannel } from './thread'
+import type { MessageChannel, ThreadMessage as MessageLine } from './thread'
 import {
   OPTOUT_SILENCE_DAYS,
   optoutLine,
@@ -79,16 +79,54 @@ export interface ReplyRecipient {
   email: string | null
 }
 
+/** A line as the recipient rule reads it: which channel it went on, and when. */
+export type RecipientLine = Pick<MessageLine, 'channelId' | 'at' | 'direction'>
+
 /**
- * The recipient from the spine's contact. The number is the first that can still take a text, else the first they
- * have, so a STOP from one number leaves the next one open. The address is their first. The channel ids name the
- * `contact_channels` rows the message goes to.
+ * Their numbers in the order a text would go to them (punch list #118, the card's call 1): the usual the office
+ * starred, else the one the thread last carried a line on, else the first that can still take a text, else the
+ * rest as added. A number that sent STOP comes last, so a contact whose every number stopped still names one and
+ * the box says why it cannot go. The last line is a signal, not a default: a customer who texts once from a second
+ * phone gets the reply back on that phone until the office stars one.
+ */
+export function numberOrder(contact: Pick<Contact, 'channels'>, lines: readonly RecipientLine[] = []): ContactChannel[] {
+  const phones = contact.channels.filter((ch) => ch.kind === 'phone')
+  const usual = usualChannel(contact, 'phone')
+  const lastOn = new Map<string, string>()
+  for (const l of lines) {
+    if (!l.channelId || (l.direction !== 'in' && l.direction !== 'out')) continue
+    const t = lastOn.get(l.channelId) ?? ''
+    if (l.at > t) lastOn.set(l.channelId, l.at)
+  }
+  return [...phones].sort((a, b) => {
+    const sa = a.optedOutAt ? 1 : 0
+    const sb = b.optedOutAt ? 1 : 0
+    if (sa !== sb) return sa - sb
+    const ua = usual && a.id === usual.id ? 0 : 1
+    const ub = usual && b.id === usual.id ? 0 : 1
+    if (ua !== ub) return ua - ub
+    const la = lastOn.get(a.id) ?? ''
+    const lb = lastOn.get(b.id) ?? ''
+    if (la !== lb) return la < lb ? 1 : -1
+    return phones.indexOf(a) - phones.indexOf(b)
+  })
+}
+
+/**
+ * The recipient from the spine's contact. The number follows `numberOrder` (the usual, else the last the thread
+ * carried a line on, else the first that can still take a text), unless the send window picked one this once
+ * (`numberChannelId`, punch list #118): a pick of a number that sent STOP is still the pick, and the box says why
+ * it cannot go. The address is their usual, else their first. The channel ids name the `contact_channels` rows the
+ * message goes to.
  */
 export function replyRecipient(
   contact: Pick<Contact, 'name' | 'channels'>,
+  opts: { lines?: readonly RecipientLine[]; numberChannelId?: string | null } = {},
 ): ReplyRecipient & { numberChannelId: string | null; emailChannelId: string | null } {
-  const number = textableNumbers(contact)[0] ?? contact.channels.find((ch) => ch.kind === 'phone') ?? null
-  const email = contact.channels.find((ch) => ch.kind === 'email') ?? null
+  const order = numberOrder(contact, opts.lines ?? [])
+  const picked = opts.numberChannelId ? order.find((ch) => ch.id === opts.numberChannelId) : undefined
+  const number = picked ?? order[0] ?? null
+  const email = usualChannel(contact, 'email') ?? contact.channels.find((ch) => ch.kind === 'email') ?? null
   return {
     name: contact.name,
     number: number?.value ?? null,
