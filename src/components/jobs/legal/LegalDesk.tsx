@@ -27,6 +27,8 @@ import { addLegalMatterDocument, listLegalMatterDocuments, openLegalMatterDocume
 import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 import { claimAmountOf, type LegalClaimLineDraft } from '../../../lib/legal/legalClaimLines'
 import type { ClaimPanel } from './LegalClaimTable'
+import type { PeoplePanel } from './LegalMatterPeopleTable'
+import { seedPeople, type LegalPersonDraft } from '../../../lib/legal/legalMatterPeople'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
@@ -472,6 +474,36 @@ export default function LegalDesk(props: LegalDeskProps) {
     reload()
     return null
   }
+  // v2.6705 (punch list #174): the people on the matter — added, edited, taken off or seeded from the record through
+  // the matter's own RPCs; the first save makes the matter when the account has none, so the list is read again for it.
+  const savePerson = async (draft: LegalPersonDraft, personId: string | null): Promise<string | null> => {
+    if (!selected) return 'Pick an account first.'
+    const r = await legalRpcData('legal_matter_person_save', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_person_id: personId, p_name: draft.name.trim(), p_role: draft.role, p_organization: draft.organization.trim(), p_email: draft.email.trim(), p_phone: draft.phone.trim(), p_mailing_address: draft.mailingAddress.trim(), p_use: draft.use, p_reason: draft.reason.trim() })
+    if (r.error) return r.error
+    showToast(personId ? 'The person is saved.' : 'They are on the matter.', 'success')
+    if (!matter) await legal?.reload()
+    reload()
+    return null
+  }
+  const removePerson = async (personId: string): Promise<string | null> => {
+    const err = await legalRpc('legal_matter_person_remove', { p_person_id: personId })
+    if (err) return err
+    showToast('They are off the matter.', 'info')
+    reload()
+    return null
+  }
+  const seedMatterPeople = async (): Promise<string | null> => {
+    if (!selected || !packet) return 'Pick an account first.'
+    const rows = seedPeople(packet.account)
+    if (!rows.length) return 'The record names nobody to add.'
+    const r = await legalRpcData('legal_matter_people_seed', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_people: rows })
+    if (r.error) return r.error
+    const added = Number(r.data?.added ?? 0)
+    showToast(added ? `${added} ${added === 1 ? 'person is' : 'people are'} on the matter from the record.` : 'Everyone the record knows is on the matter already.', added ? 'success' : 'info')
+    if (!matter) await legal?.reload()
+    reload()
+    return null
+  }
   const clearGapAnswer = async (g: LegalGap) => {
     if (!matter?.id) return
     const err = await legalRpc('legal_clear_gap_answer', { p_matter_id: matter.id, p_gap_key: g.key })
@@ -782,6 +814,9 @@ export default function LegalDesk(props: LegalDeskProps) {
       const row = matterDocuments.find((d) => d.id === id)
       if (row) void openLegalMatterDocument(supabase, row)
     },
+  }
+  const peoplePanel: PeoplePanel = {
+    acts: stored && canEditReview && !closed ? { save: savePerson, remove: removePerson, seed: seedMatterPeople, canSeed: Boolean(packet && seedPeople(packet.account).length > 0) } : null,
   }
   // v2.6588: who marked what, by user id, for the By theme window.
   const namesById = useMemo(() => Object.fromEntries(users.map((u) => [u.id, u.name ?? ''])), [users])
@@ -1278,7 +1313,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, setCounselRead, counselRead, moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, canPull: stored && canEditReview && !closed, reload: () => void legal?.reload(), themes: themeCatalog.themes.length > 0 ? themeCatalog.themes : undefined, marks: themeCatalog.marks, onMarksChanged: () => void reloadThemes() } : null}
-                    narrative={narrativeDesk} busy={busy} planActs={planActs} onStatementsChanged={reload} claim={claimPanel} />
+                    narrative={narrativeDesk} busy={busy} planActs={planActs} onStatementsChanged={reload} claim={claimPanel} people={peoplePanel} />
                 ) : null}
                 </div>
               </>
