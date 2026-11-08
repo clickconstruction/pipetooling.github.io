@@ -154,6 +154,7 @@ export type JobsStagesTableProps = {
   onOpenJobContract?: StagesRowRenderContext['onOpenJobContract']
   onOpenCustomerDoor?: StagesRowRenderContext['onOpenCustomerDoor']
   boardDotByJobId?: StagesRowRenderContext['boardDotByJobId']
+  customerLinesByJobId?: StagesRowRenderContext['customerLinesByJobId']
   /** The group's empty words (punch list #184): its name and what hides its rows, from the Stages tab. */
   groupEmpty?: StagesGroupEmptyContext
 }
@@ -229,6 +230,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     onOpenJobContract,
     onOpenCustomerDoor,
     boardDotByJobId,
+    customerLinesByJobId,
   } = props
   // The job's plans (punch list #239, PR 6): one read for every row that names a part; the icon opens the one set or
   // the picker, and a job with no part keeps opening its old plans link.
@@ -287,6 +289,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     onOpenJobContract,
     onOpenCustomerDoor,
     boardDotByJobId,
+    customerLinesByJobId,
   }
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) => <StagesFieldAndBillingLines ctx={stagesRowSharedCtx} job={job} />
   const renderJobCustomerLine = (job: JobWithDetails) => renderJobCustomerLineWithCtx(stagesRowSharedCtx, job)
