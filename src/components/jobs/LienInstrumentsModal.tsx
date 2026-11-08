@@ -69,6 +69,10 @@ import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { supabase } from '../../lib/supabase'
+import LegalLetterRecipients from './legal/LegalLetterRecipients'
+import { payerForJob } from '../../lib/legal/legalPacket'
+import { loadMatterPeopleForPayer } from '../../lib/legal/legalMatterPeopleIo'
+import type { LegalMatterPersonLike } from '../../lib/legal/legalMatterPeople'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -545,6 +549,23 @@ export default function LienInstrumentsModal({
     const row = effJob.customer_id ? payerRows[effJob.customer_id] : undefined
     return { name: row?.name || (effJob.customer_name ?? '').trim(), email: row?.email || (effJob.customer_email ?? '').trim(), address: row?.address ?? customerAddress, label: 'the customer on the job' }
   }, [effJob, selectedInvoices, debtorParty, payerRows, gcEmail, customerAddress])
+
+  // v2.6705 (punch list #174): the people on the payer's matter, for the letter's To — read when the window opens on a
+  // job whose payer has a matter; nothing (and no strip) otherwise.
+  const [matterPeople, setMatterPeople] = useState<LegalMatterPersonLike[]>([])
+  useEffect(() => {
+    if (!open || !effJob) {
+      setMatterPeople([])
+      return
+    }
+    let live = true
+    loadMatterPeopleForPayer(supabase, payerForJob(effJob).key)
+      .then((found) => live && setMatterPeople(found?.people ?? []))
+      .catch(() => live && setMatterPeople([]))
+    return () => {
+      live = false
+    }
+  }, [open, effJob])
 
   // The unpaid bills behind the § 53.056 notice (v2.3437) — every one, not just the demand's selection.
   const noticeDocs = useMemo(() => (effJob ? noticeInvoiceDocs(effJob, stripeByInvoice) : []), [effJob, stripeByInvoice])
@@ -1288,6 +1309,19 @@ export default function LienInstrumentsModal({
               </p>
             )}
 
+            {/* v2.6705 (punch list #174): the matter's people, in the To chip's shape — a press fills Who owes it; a never refuses with why. */}
+            <LegalLetterRecipients
+              people={matterPeople}
+              pickedName={fields.recipientName}
+              onPick={(p) => {
+                setField('recipientName', p.name)
+                setField('recipientEmail', p.email)
+                if (p.mailingAddress.trim()) {
+                  setAddressTouched(true)
+                  setField('recipientAddress', p.mailingAddress)
+                }
+              }}
+            />
             {/* Who owes it (v2.3425): read from the bill, never typed — the demand goes where the bill went. */}
             <div style={{ marginBottom: '0.65rem', fontSize: '0.875rem' }} data-demand-debtor>
               <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>

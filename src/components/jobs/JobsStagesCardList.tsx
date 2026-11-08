@@ -37,7 +37,7 @@ import {
   formatDispatchNoteWeekdayShortTimeChicago,
   getDispatchNoteDisplayMeta,
 } from '../../utils/dispatchNoteDisplay'
-import { activityBoxTeaser, NOBODY_HAS_ANSWERED } from '../../lib/jobs/jobActivityBoxFeed'
+import { activityBoxTeaser, NOBODY_HAS_ANSWERED, phoneRowCustomerTeaser, type JobActivityBoxTeaser } from '../../lib/jobs/jobActivityBoxFeed'
 import { showTaskDispatchButton } from '../../lib/headerTaskDispatchEstimatorEligible'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
@@ -383,39 +383,45 @@ function cardNextChip(ctx: StagesRowRenderContext, job: JobWithDetails) {
  * #125) the line is the newest of the note, the report and the customer's line: a customer's line reads in orange with
  * its channel word, *Dana · text · 1d ago — Can you do Thursday?*, and a press on it opens the bubble's sheet.
  */
-function cardActivityTeaser(ctx: StagesRowRenderContext, job: JobWithDetails) {
-  const stat = ctx.jobThreadStatsByJobId[job.id]
-  const teaser = activityBoxTeaser(stat, ctx.customerLinesByJobId?.get(job.id), ctx.boardDotByJobId?.get(job.id) != null)
-  const atIso = teaser?.atIso ?? null
-  const author = teaser?.authorName ?? ''
-  const body = teaser?.body ?? ''
-  const line = teaser?.kind === 'line' ? teaser.line : undefined
+/** The teaser's words, shared by the fuller card and the phone row: who, the channel word, when, the body, the waiting mark. */
+function activityTeaserWords(teaser: JobActivityBoxTeaser) {
+  const author = teaser.authorName ?? ''
+  const line = teaser.kind === 'line' ? teaser.line : undefined
   const customerIn = line?.fromThem === true && line.customer
-  // No activity and no notes → no row at all (zoned card); the card tap and
-  // the ⋯ sheet's "Activity and notes" still reach the thread.
-  if (!atIso && (stat?.note_count ?? 0) === 0) return null
-  const words = atIso ? (
+  return (
     <>
       {author ? <strong style={{ color: customerIn ? 'var(--text-orange-800)' : 'var(--text-strong)', flexShrink: 0 }}>{author}</strong> : null}
       {line ? <span style={{ color: 'var(--text-orange-700)', fontSize: '0.6875rem', flexShrink: 0 }}>{line.channelWord}</span> : null}
       <span
         style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}
-        title={formatDispatchNoteWeekdayShortTimeChicago(atIso)}
+        title={formatDispatchNoteWeekdayShortTimeChicago(teaser.atIso)}
       >
-        {formatDispatchNoteDaysAgoShortPhrase(atIso)}
+        {formatDispatchNoteDaysAgoShortPhrase(teaser.atIso)}
       </span>
-      {body ? (
+      {teaser.body ? (
         // One line, hard-ellipsized (zoned card) — the ▶ expand and the
         // fullscreen thread carry the full text, so the card only teases.
         <span style={{ color: 'var(--text-700)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          — {body}
+          — {teaser.body}
         </span>
       ) : null}
       {line?.waiting ? <span style={{ color: 'var(--text-orange-700)', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{NOBODY_HAS_ANSWERED}</span> : null}
     </>
-  ) : (
-    <span style={{ color: 'var(--text-faint)' }}>—</span>
   )
+}
+
+/** The orange tint and bar a line from the customer draws under its words, on the card and on the phone row. */
+const customerInTeaserStyle: CSSProperties = { background: 'var(--bg-orange-tint)', boxShadow: 'inset 3px 0 0 var(--border-orange)', borderRadius: '0 6px 6px 0', padding: '1px 6px' }
+
+function cardActivityTeaser(ctx: StagesRowRenderContext, job: JobWithDetails) {
+  const stat = ctx.jobThreadStatsByJobId[job.id]
+  const teaser = activityBoxTeaser(stat, ctx.customerLinesByJobId?.get(job.id), ctx.boardDotByJobId?.get(job.id) != null)
+  const line = teaser?.kind === 'line' ? teaser.line : undefined
+  const customerIn = line?.fromThem === true && line.customer
+  // No activity and no notes → no row at all (zoned card); the card tap and
+  // the ⋯ sheet's "Activity and notes" still reach the thread.
+  if (!teaser && (stat?.note_count ?? 0) === 0) return null
+  const words = teaser ? activityTeaserWords(teaser) : <span style={{ color: 'var(--text-faint)' }}>—</span>
   return (
     <div
       style={{
@@ -424,7 +430,7 @@ function cardActivityTeaser(ctx: StagesRowRenderContext, job: JobWithDetails) {
         display: 'flex',
         alignItems: 'baseline',
         columnGap: '0.35rem',
-        ...(customerIn ? { background: 'var(--bg-orange-tint)', boxShadow: 'inset 3px 0 0 var(--border-orange)', borderRadius: '0 6px 6px 0', padding: '1px 6px' } : {}),
+        ...(customerIn ? customerInTeaserStyle : {}),
       }}
     >
       {line && ctx.onOpenCustomerDoor ? (
@@ -444,6 +450,35 @@ function cardActivityTeaser(ctx: StagesRowRenderContext, job: JobWithDetails) {
       )}
       {renderStagesThreadExpandButton(ctx, job.id)}
     </div>
+  )
+}
+
+/**
+ * The phone row's third line (v2.6692, punch list #125): the customer's newest line, in orange with its channel word,
+ * on the tint with the bar when from them, *Nobody has answered.* while the dot is on. Null while a note or a report is
+ * newer, so the row keeps #30's two lines. Marked `data-phone-row-chip`: its press opens the customer's window, not
+ * the job.
+ */
+function phoneRowTeaser(ctx: StagesRowRenderContext, job: JobWithDetails): ReactNode {
+  const teaser = phoneRowCustomerTeaser(ctx.jobThreadStatsByJobId[job.id], ctx.customerLinesByJobId?.get(job.id), ctx.boardDotByJobId?.get(job.id) != null)
+  if (!teaser) return null
+  const customerIn = teaser.line.fromThem && teaser.line.customer
+  const words = activityTeaserWords(teaser)
+  const style: CSSProperties = { fontSize: '0.75rem', minWidth: 0, display: 'flex', alignItems: 'baseline', columnGap: '0.35rem', ...(customerIn ? customerInTeaserStyle : {}) }
+  if (!ctx.onOpenCustomerDoor) return <div style={style}>{words}</div>
+  return (
+    <button
+      type="button"
+      data-phone-row-chip
+      aria-label="Open the conversation with the customer"
+      onClick={(e) => {
+        e.stopPropagation()
+        ctx.onOpenCustomerDoor?.(job)
+      }}
+      style={{ ...style, width: '100%', padding: customerIn ? customerInTeaserStyle.padding : 0, border: 'none', background: customerIn ? customerInTeaserStyle.background : 'transparent', font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+    >
+      {words}
+    </button>
   )
 }
 
@@ -915,6 +950,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
               onOpen={() => openStagesDetailJobModal(j)}
               onChip={(chip) => (chip.action === 'advance' || chip.action === 'bill-stage' ? onAction(j) : pr.onChip(j, chip, null))}
               onMore={() => setMoreActionsJob(j)}
+              teaser={phoneRowTeaser(ctx, j)}
             />
           ))
         )}
@@ -1263,6 +1299,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 onOpen={() => openStagesDetailJobModal(j)}
                 onChip={(chip) => (chip.action === 'advance' || chip.action === 'bill-stage' ? go() : pr.onChip(j, chip, row))}
                 onMore={() => setMoreActionsRow(row)}
+                teaser={phoneRowTeaser(ctx, j)}
               />
             )
           })
