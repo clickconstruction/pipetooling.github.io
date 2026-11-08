@@ -129,6 +129,25 @@ The brief the second session built from; every item landed as written, the firm'
    `docs/GLOSSARY.md` (the *People on a matter · proceedings* entry: drop "(PR 2)"), this card's
    front matter (`status`, `ver`, `next`). `npm run claim` first.
 
+## Walk, 2026-11-08 (PR 2, on the dev server at the branch's head)
+
+On the ZZ TEST GC On Notice matter (its jobs sit out of Collections between walks, so the walk flagged
+*ZZ TEST sink* in through the app's own `set_job_collections_flag` and unflagged it after; the
+dev's **ZZ test jobs** switch on). A text stand-in for a filed complaint went onto Evidence through
+the dev seat's `apply_matter_document`. **Add the people the record knows** seeded the customer.
+**＋ Add a proceeding** → Agency complaint, a name, an agency, *C-2026-0431*, the seeded contact,
+the document ticked, the hold on → **Save the proceeding** → the row read *Agency complaint ·
+<name>* with *ref C-2026-0431 · contact: <the customer> · 1 document · kept out of settlement
+letters* under it and the document as a press; the stored row carried the person, the document and
+`keep_out`. Evidence → the document's row wore *final* and *kept out*, the chip's hover naming the
+picker. Account → **＋ Add a claim line** → the Evidence picker offered *None yet* (the matter's one
+document is held). **⚖ Mark attorney ready…** → **Preview what the firm sees** → *Beside the claim*
+under Property record: *Agency complaint · <name>* · *<agency> · ref C-2026-0431* · *<the customer>
+· the customer* · *open* · the document, *kept out of settlement letters* under it; the office's
+note was nowhere in the preview. The proceeding, the person and the document stay on the ZZ matter
+for the owner's walk; to see the account on the desk, flag *ZZ TEST sink* into Collections and turn
+the ZZ test jobs switch on.
+
 ## Where it plugs in
 
 Existing: the customer's contacts, the property's owner, the letters' recipient code, #118's chip.
