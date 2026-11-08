@@ -148,7 +148,8 @@ export const TRADE_PORTAL_FIELDS = {
   sets: ['id', 'project_id', 'rev', 'label', 'kind', 'issued_on', 'note', 'drive_url'],
   setItems: ['id', 'set_id', 'position', 'kind', 'number', 'title', 'change', 'was_title', 'discipline', 'page'],
   questions: ['id', 'project_id', 'package_id', 'text', 'sheets', 'asked_on', 'answered_on', 'answer', 'in_set_id'],
-  messages: ['id', 'project_id', 'kind', 'mail_group', 'lang', 'subject', 'lines', 'to_names', 'sent_on'],
+  // `sent_at` (punch list #205, PR 5) orders a sent email among the thread's lines within a day.
+  messages: ['id', 'project_id', 'kind', 'mail_group', 'lang', 'subject', 'lines', 'to_names', 'sent_on', 'sent_at'],
   setSends: ['set_id', 'touched'],
   // Its own number on its own work: never the leveled total or another company's. What it will not do (P2c-ii) is
   // what its own quote left out. The signer's fields stay the server's.
