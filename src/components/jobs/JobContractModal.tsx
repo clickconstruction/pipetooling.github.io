@@ -76,6 +76,8 @@ import JobContractSigningRail from './JobContractSigningRail'
 import JobContractPaper from './JobContractPaper'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { filedOnPaper, frameAsSignerRow, framesLabel, framesProgress, signerFrames, signerNamesLine } from '../../lib/jobs/jobContractSigners'
+import { isTheirPaperRow, theirPaperFromRow, theirPaperLine, theirPaperWords, type TheirPaperRecord } from '../../lib/jobs/theirPaper'
+import TheirPaperSheet from './TheirPaperSheet'
 import { DEFAULT_JOB_WARRANTY_TERMS_PLAIN, DEFAULT_WARRANTY_INITIAL_LINES, JOB_AGREEMENT_KINDS, JOB_AGREEMENT_WORDS, jobAgreementHeading, jobAgreementKindOf, parseInitials, type JobAgreementKind } from '../../lib/jobs/jobAgreementKind'
 
 type TemplateRow = Pick<
@@ -181,6 +183,9 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [recordRow, setRecordRow] = useState<JobContractRow | null>(null)
   /** v2.4183: the rows have been read once this open — until then the window shows neither rail. */
   const [rowsLoaded, setRowsLoaded] = useState(false)
+  /** v2.6698 (punch list #173): their paper on this job, kept out of the window's own rows — the band names it and the sheet edits it. */
+  const [theirPaper, setTheirPaper] = useState<TheirPaperRecord | null>(null)
+  const [theirOpen, setTheirOpen] = useState(false)
   /** v2.4183: Start a new agreement… — a fresh draft while a signed copy is on file. */
   const [startNew, setStartNew] = useState(false)
   /** v2.4183: the estimates row behind an acceptance, handed up by the record on the left. */
@@ -208,7 +213,10 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     if (!job) return
     try {
       const { data } = await supabase.from('job_contracts').select('*').eq('job_id', job.id).order('created_at', { ascending: false })
-      const list = (data ?? []) as JobContractRow[]
+      const all = (data ?? []) as JobContractRow[]
+      const theirs = all.find((r) => isTheirPaperRow(r)) ?? null
+      setTheirPaper(theirs ? theirPaperFromRow(theirs) : null)
+      const list = all.filter((r) => !isTheirPaperRow(r))
       setRows(list)
       const live = list.find((r) => jobContractIsLive(r)) ?? null
       setLiveRow(live)
@@ -1086,6 +1094,17 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     >
       <div style={{ fontSize: '0.85rem', display: 'grid', gridTemplateColumns: narrow ? 'minmax(0, 1fr)' : 'minmax(0, 1.25fr) minmax(300px, 1fr)', gap: '1rem 1.4rem', alignItems: 'start' }}>
         <div style={{ minWidth: 0, display: 'grid', gap: '0.6rem' }}>
+          {theirPaper ? (
+            <div data-testid="contract-their-paper-band" style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontSize: '0.8rem', display: 'flex', gap: '0.5rem 0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ flex: '1 1 260px', minWidth: 0 }}>
+                <b>{theirPaperLine(theirPaper)}</b> — {theirPaperWords(theirPaper)}
+              </span>
+              <button type="button" onClick={() => setTheirOpen(true)} style={{ padding: '0.25rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-blue)', background: 'var(--surface)', color: 'var(--text-blue-700)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
+                Edit the record
+              </button>
+              <TheirPaperSheet open={theirOpen} onClose={() => setTheirOpen(false)} onDone={() => { void loadRows(); onChanged?.() }} job={{ id: job?.id ?? '', num: jobNumber, partyName: (job?.customer_name ?? '').trim() || (job?.gcCustomer?.name ?? '').trim() }} existing={theirPaper} overlayZIndex={1400} />
+            </div>
+          ) : null}
           {signedOnFile ? (
             <div style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.8rem' }}>
               ✍ A signed agreement is already on file for this job (see history below). Starting a new one supersedes it only if the customer signs again.

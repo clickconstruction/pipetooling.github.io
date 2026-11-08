@@ -24,6 +24,7 @@ import { addMarks, authUserIdNow, loadThemes } from '../../../lib/legal/legalThe
 import { markedWords, type LegalTheme, type LegalThemeMark } from '../../../lib/legal/legalThemes'
 import { supabase } from '../../../lib/supabase'
 import { addLegalMatterDocument, listLegalMatterDocuments, openLegalMatterDocument, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
+import { theirPaperNarrativeMarkdown } from '../../../lib/jobs/theirPaper'
 import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 import { claimAmountOf, type LegalClaimLineDraft } from '../../../lib/legal/legalClaimLines'
 import type { ClaimPanel } from './LegalClaimTable'
@@ -536,6 +537,8 @@ export default function LegalDesk(props: LegalDeskProps) {
     eventsMarkdown: matter ? eventsNarrativeMarkdown(buildLegalTimeline({ entries: legal?.entriesByMatter.get(matter.id) ?? [], documents: timelineDocumentsFromRows(legal?.documentsByMatter.get(matter.id) ?? [], calendarYmdInAppTzFromIso), todayYmd, reader: 'office' }), todayYmd) : '',
     // v2.5923: the answered gaps as a list, for *Insert the answers*.
     answersMarkdown: packet ? answersNarrativeMarkdown(packet.gaps) : '',
+    // v2.6698 (punch list #173): their paper and its key terms, for *Insert the contract's terms*.
+    contractMarkdown: packet ? theirPaperNarrativeMarkdown(packet.paper.agreements.flatMap((a) => (a.coverage.kind === 'their_paper' ? [{ jobLabel: a.jobLabel, record: a.coverage.record }] : []))) : '',
   }
   /** #85 item 29: everything goes to counsel; the office holds one entry back, with a reason, or shares it again. */
   const holdBack = async (key: string, reason: string) => {
