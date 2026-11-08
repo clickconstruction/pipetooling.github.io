@@ -29,7 +29,7 @@ The row above the box has four kinds. The one you chose has an orange ring.
 
 The box starts as a text when their number can take one. Otherwise it starts as an email.
 
-While the box is empty, a grey line in it says who the message is from. It always names the company, never you.
+While the box is empty, a grey line in it says who the message is from. A text names the company number. An email names you and the company, and the inbox it goes from.
 
 ## Use a quick reply
 
@@ -120,9 +120,9 @@ The window shows the email the way their inbox opens it. It is a plain email, wi
 - Your signature goes under your words. It is the one you keep on [Your account](/settings?tab=settings-account), under **Your signature on an email**.
 - Nothing is added after your signature.
 
-The window's **Replies to** line names the inbox their answer comes to. Once that inbox is read, their answer lands back on the thread.
+The **From** line names you and the company, like *Wendi Doll · Click Construction*. The email goes out from the inbox the window names under **Replies to**. So it sits in that inbox's Sent folder, in Gmail and in Apple Mail. Their answer comes back to the same inbox. Once that inbox is read, their answer lands back on the thread.
 
-With no **Replies to** line, their answer comes to your own inbox. Bring anything that matters back to the thread. A copy of every email is kept in Documents.
+With no **Replies to** line, the email goes from the company's own sending address. Their answer comes to your own inbox. Bring anything that matters back to the thread. A copy of every email is kept in Documents.
 
 ### After this sends
 

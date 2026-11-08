@@ -2,7 +2,7 @@
 name: "Messages and the estimator's own mailbox: an answer the app never saw, the email's shape, the noreply sender and the Sent folder (Wendi's findings, 2026-10-27)"
 number: 207
 group: gated
-status: proposed 2026-10-27 from Wendi's five findings on the Messages page · finding 5 built as its own PR the same day · findings 1 to 4 read against the code, the email's shape mocked up, six calls at the foot with a recommendation each · PR 1, the shape and the words, built 2026-10-28 as v2.6038 (calls 3 and 4 at their recommendation)
+status: proposed 2026-10-27 from Wendi's five findings on the Messages page · finding 5 built as its own PR the same day · findings 1 to 4 read against the code, the email's shape mocked up, six calls at the foot with a recommendation each · PR 1, the shape and the words, built 2026-10-28 as v2.6038 (calls 3 and 4 at their recommendation) · the owner answered calls 1, 5 and 6 on 2026-11-08 · PR 2, the sender through Gmail as the box, built 2026-11-08 as v2.6702
 summary: >
   Wendi tested Messages on 2026-10-27, emailing herself from the app and replying from her own
   mailbox. She found four things the code confirms. A bid request she already answered from
@@ -14,10 +14,10 @@ summary: >
   reply box's email through Gmail as the box the answer comes back to, the way the walk kit
   already replies. The rest is the shape of the email and how the app learns of an answer sent
   from a teammate's own mailbox.
-next: The owner's calls 1, 5 and 6 at the foot, then PR 2, the sender. Calls 3 and 4 shipped as PR 1 at their recommendation; Wendi's eye on the first real email she gets from it.
+next: READY TO BUILD on another computer (the session of 2026-11-08 ran out of credits after PR 2): PR 3, the boxes' Sent read as ours, then the thread's *Answered from my own mailbox* press in place of PR 4, both drawn step by step under *Ready to build* at the foot. After PR 2 merges, the lead redeploys `messages-email`.
 size: M (four PRs, S to M; one small migration for the signature's two lines; a second migration only if call 1 picks reading each estimator's own Sent)
 blocker: The owner's calls. Nothing else. Finding 5 is already its own PR.
-ver: v2.5496 · 5504 · 5541 · 5686 · 5699 · 5707 · 5722 · 5739
+ver: v2.5496 · 5504 · 5541 · 5686 · 5699 · 5707 · 5722 · 5739 · 6038 · 6702
 opinion: build — every door it needs exists (the Gmail send the walk kit uses, the boxes' tokens, the signature columns, the Message-ID fence); what is missing is the decision on the sender and the shape, and the reader looking one label further
 ---
 
@@ -186,12 +186,12 @@ Each row holds the recommendation the mock-up draws. The owner answers in one li
 
 | # | The call | Options | Recommended | Owner's answer |
 |---|---|---|---|---|
-| 1 | How the app learns of an answer sent from a mailbox it does not read | Copy the box, as today. Read the boxes' own Sent. Read each office member's own Sent, by a switch on their account, mail to people in Messages only. A press on the thread, *Answered from my own email*. | Read the boxes' Sent, and offer the per-person switch. Until then, a grey line in the reply box says to copy bids@. No press: a press is a habit too, and the fact is in the mail. **Wendi's word on which mailbox she answers from.** | |
+| 1 | How the app learns of an answer sent from a mailbox it does not read | Copy the box, as today. Read the boxes' own Sent. Read each office member's own Sent, by a switch on their account, mail to people in Messages only. A press on the thread, *Answered from my own email*. | Read the boxes' Sent, and offer the per-person switch. Until then, a grey line in the reply box says to copy bids@. No press: a press is a habit too, and the fact is in the mail. **Wendi's word on which mailbox she answers from.** | **2026-11-08: read the boxes' own Sent (PR 3). No per-person Sent switch. Instead, a press on the thread, *Answered from my own mailbox*, that suggests the matching sent mail when the app can see one and otherwise records the answer by hand (in place of PR 4).** |
 | 2 | What *took* means for the clock | Nothing changes. A take stops the clock. A take marks our move done. | Nothing changes. *Took* says who, the clock says since when. | |
 | 3 | The email's frame (**Wendi's eye**) | A plain. B one line of letterhead. C today's card without the bar. Keep today's. | A. The papers keep their letterhead; a reply is a person's. | |
 | 4 | The greeting, the signature and the footer (**Wendi's eye**) | Keep the app's greeting, signature line and footer. The greeting pre-typed in the box, the signature from Your account with two free lines, no footer. Keep the job line at the foot in grey. | The greeting pre-typed and hers, the signature from Your account, no footer. The owner's *Email back, text, or call.* retires from the generated lines. | |
-| 5 | The sender | Keep team@noreply. A Resend subdomain without the word. clickplumbing.com verified in Resend. Through Gmail as the box. Through Gmail as the person. | Through Gmail as the box the reply comes back to, with *Wendi Doll · Click Construction* as the name. Every other app email keeps Resend and `EMAIL_FROM`. | |
-| 6 | Where the sent mail shows in Apple Mail | Nowhere, the thread is the record. A copy put into the box's Sent. In the box's Sent because the box sent it. | In the box's Sent, which call 5's recommendation gives. A copy by insert if the owner keeps Resend. | |
+| 5 | The sender | Keep team@noreply. A Resend subdomain without the word. clickplumbing.com verified in Resend. Through Gmail as the box. Through Gmail as the person. | Through Gmail as the box the reply comes back to, with *Wendi Doll · Click Construction* as the name. Every other app email keeps Resend and `EMAIL_FROM`. | **2026-11-08: through Gmail as the box the reply comes back to, named with the replying person and the company, *Wendi Doll · Click Construction*. Every other app email keeps Resend.** Built as v2.6702 (PR 2). |
+| 6 | Where the sent mail shows in Apple Mail | Nowhere, the thread is the record. A copy put into the box's Sent. In the box's Sent because the box sent it. | In the box's Sent, which call 5's recommendation gives. A copy by insert if the owner keeps Resend. | **2026-11-08: in the box's Sent, which Gmail-as-the-box gives.** Built as v2.6702 (PR 2). |
 
 ## Where it plugs in
 
@@ -262,3 +262,61 @@ and land one after the other. The two pairs are independent.
   draws when given, so no stale send loses its greeting. Calls 3 and 4 were built at their
   recommendation without the owner's line, since the card said PR 1 needed no decision; Wendi's eye on
   the first real email is still wanted. Calls 1, 5 and 6 are open; PR 2 waits on 5 and 6.
+- 2026-11-08: **the owner answered calls 1, 5 and 6** (the table). **PR 2 built**, v2.6702: `messages-email` sends
+  through Gmail as the box the reply comes back to whenever that box is one the reader reads (`readerBoxes`), under the
+  reader's own token, as the raw mail `src/lib/emailOut/rawMail.ts` builds (the words, the HTML, the files; the From
+  *Wendi Doll · Click Construction <bids@…>*; no Reply-To), and keeps the mail's Message-ID and Gmail ids on the line so
+  the box's Sent read (PR 3) and a copy the box gets back land once; the function writes the send log and files the sent
+  copy itself; with no reader box for the thread, or when Google refuses, Resend sends it as before with the box as
+  Reply-To. The reply box's from line reads *from Wendi Doll · Click Construction · bids@…* and the send window's From
+  the same. Where the code parted from the card: the fallback to Resend on Google's refusal is new (the card had the
+  Gmail path alone), so a delegation hiccup never loses an email. The lead redeploys `messages-email` after the merge;
+  no migration. PR 3 (the boxes' Sent) is next, then the thread's press in place of PR 4.
+
+## Ready to build (hand-over of 2026-11-08, after PR 2)
+
+The session that built PR 2 stopped for credits. Everything below was read against the code on 2026-11-08 and needs no
+further decision. Cut each as its own PR from fresh `main` (claim with `npm run claim`; release note, fragment, the
+guide's words, `docs/MESSAGES_ARCHITECTURE.md` and `docs/EDGE_FUNCTIONS.md` amended; the lead deploys).
+
+### PR 3 · the boxes' Sent (S, call 1 as the owner answered it)
+
+- `_shared/gmail.ts`'s `gmailHistory`: drop the `labelId: 'INBOX'` filter (Gmail's history takes one label at most, and
+  the walk wants two), keep `historyTypes` messageAdded and labelAdded. `historyWalk.ts`'s `recordMessageIds` keeps a
+  message when its `messagesAdded` entry's `labelIds`, or a `labelsAdded` entry's, carries `INBOX` **or** `SENT`
+  (`SENT_LABEL`), so drafts, Spam and chats never count against `MAX_PER_RUN`. The test gains the Sent cases.
+- `leftOut.ts`: a new `sentByTheBox(email, isTheBox)`: labels hold `SENT` and not `SPAM`/`TRASH`, and the From is the
+  box. `outsideInbox` is unchanged for everything else.
+- `emailLine.ts`: the sent line's who, `Wendi Doll <bids@…> to Rusty Cottar <rusty@…> · sent from bids@`, as a sibling
+  of the *copied to* words (a `how` on `emailLine`, or `sentLine`).
+- `gmail-sync/index.ts`'s `takeMail`: before `leftOut`, when `sentByTheBox`, the party is the first To or Cc that is
+  not ours (`isOurs`), direction out; none outside (the box wrote a teammate) is `'left'`. `heldLine` by Message-ID
+  stays the fence: a mail `messages-email` sent as the box (PR 2 writes `rfc_message_id` and `gmail_id` on the line)
+  answers `'already'` and gets the label. `who_user_id`: the team member whose `users.name` equals the From's display
+  name, case-blind, else null; `who_text` the sent line's. Everything after (files, `email_write_line`, the HTML part,
+  the label) as for a line in.
+- `compose.ts`'s `ownMailboxNote` is reworded: *Answering from your own mailbox? Answer from bids@ in Apple Mail, or
+  copy it, and this thread hears it.* (the guide link stays). The guide *turn on reading the bids inbox* gains **An
+  email sent from the inbox**.
+- Verify: an answer sent from bids@ in Apple Mail lands on the person's thread as ours within a minute, the court flips
+  to theirs, Went out lists it with the sender's name; the app's own send (PR 2) writes no second line.
+- Deploy `gmail-sync --no-verify-jwt` after the merge. No migration.
+
+### PR 4 · *Answered from my own mailbox* (S to M, the owner's variant of call 1)
+
+- One migration: `answered_from_own_mailbox(p_contact_id uuid, p_words text, p_job_kind text, p_job_id uuid) returns
+  uuid`, SECURITY DEFINER over `follow_up_press` like `log_call` (`20261021010000_log_call.sql`): inserts a `messages`
+  row, channel `email`, direction `out`, `who_user_id` me, `who_text` `<name> · answered from their own mailbox`, body
+  `p_words` or *Answered from my own mailbox.*, `mailbox` `mine`, `mail_user_id` me, the job in its column
+  (`contact_job_check`). A client cannot insert an out line (`messages_client_writes_own_team_lines`), and a note moves
+  nothing, so the record needs this door. `SET lock_timeout = '3s'`, a `docs/migrations/` page.
+- A slot in `threadSlots.tsx` (`aboveBox`, beside cut 2's owed strip), `useOwnMailboxThreadSlots`: drawn only while
+  `courtOf` reads ours and not owed. One strip: *Answered them from your own mailbox?* with **Find my sent mail** and
+  **I answered, write it down**. Find: `myMailIo.list({ view: 'toTag', labels: ['SENT'], q: 'to:<each of their
+  addresses> newer_than:30d' })` as the person (nothing when their `users.my_mail_on` is off or the function refuses);
+  each row not tagged and not held by a line gets **Tag it**, which is `myMailIo.tag({ threadId, job })` onto the
+  thread's `jobFilter`, else the person's star, else the job picker; nothing found says so and offers the hand record.
+  Write it down: one optional line of words, then the RPC, then `useMessagesReread`. The pure kernel
+  (`src/lib/messages/ownMailboxAnswer.ts`) decides when the strip shows and the words; a render test over a fake io.
+- The guide *reply to a person from their thread* gains **Say you answered from your own mailbox**.
+- Push the migration right after the merge, before the Pages deploy finishes (`check:calls-ahead` will label it).

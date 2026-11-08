@@ -1,0 +1,185 @@
+/**
+ * Messages, email out through Gmail as the box (punch list #207 PR 2, v2.6702, the owner's calls 5 and 6 of 2026-11-08):
+ * the RFC 2822 mail `messages-email` hands Gmail's `users.messages.send` as `raw`, built here so the function and its
+ * tests read one builder. The reply box's email goes from the box the answer comes back to (bids@ or the team box),
+ * under the reader's own token, with the replying person and the company as the display name (*Wendi Doll · Click
+ * Construction*), so the mail sits in that box's Sent and the word *noreply* is gone. The walk kit's reply
+ * (`walk/walkFunction.ts`'s `replyMessage`) is the plain-text ancestor; this one carries the plain words, the HTML and
+ * the files as Resend took them (base64), each part base64 so no line is ever too long and every character travels.
+ * Pure, dependency-free; mirrored to the edge by `scripts/edge-kernels.mjs`.
+ */
+
+/** A file on the mail, as `messages-email`'s `placeFiles` holds one for Resend: its name and its bytes as base64. */
+export interface RawMailFile {
+  filename: string
+  /** Standard base64 (not url-safe), as Resend takes an attachment. */
+  content: string
+  /** The file's type when the caller knows it; else `mimeByName` guesses from the name. */
+  mime?: string | null
+}
+
+export interface RawMailInput {
+  /** The From as a full mailbox: `Wendi Doll · Click Construction <bids@…>`. */
+  from: string
+  to: string
+  /** Set when the answer should come back somewhere other than From. The box's own send needs none. */
+  replyTo?: string | null
+  subject: string
+  text: string
+  html: string
+  /** The mail's own Message-ID, `<…@…>`, which the line keeps as its `rfc_message_id`. */
+  messageId: string
+  /** The Date header, ISO. */
+  at: string
+  files?: readonly RawMailFile[]
+}
+
+/** The characters of the line a header's value may hold: no line breaks, which would start a header of their own. */
+const headerSafe = (v: string): string => v.replace(/[\r\n]+/g, ' ').trim()
+
+const ASCII = /^[\x20-\x7e]*$/
+
+/** Standard base64 of UTF-8 bytes, built in slices so a long body never spreads into one call. */
+export function base64OfBytes(bytes: Uint8Array): string {
+  let bin = ''
+  const step = 0x8000
+  for (let i = 0; i < bytes.length; i += step) bin += String.fromCharCode(...bytes.subarray(i, i + step))
+  return btoa(bin)
+}
+
+const base64OfText = (text: string): string => base64OfBytes(new TextEncoder().encode(text))
+
+/** Base64 broken into 76-character lines, as a mail body wants it. */
+export function wrap76(b64: string): string {
+  const out: string[] = []
+  for (let i = 0; i < b64.length; i += 76) out.push(b64.slice(i, i + 76))
+  return out.join('\r\n')
+}
+
+/** A header word a mail client reads whole whatever it holds: bare when ASCII, else an RFC 2047 encoded word (UTF-8, base64). */
+export function encodedWord(value: string): string {
+  const v = headerSafe(value)
+  return ASCII.test(v) ? v : `=?UTF-8?B?${base64OfText(v)}?=`
+}
+
+/**
+ * A mailbox header, its display name encoded when it needs to be: `Name <addr>` with a name that is not plain ASCII
+ * becomes `=?UTF-8?B?…?= <addr>`, which is how *Wendi Doll · Click Construction* travels (the middle dot is not ASCII).
+ * A bare address, or a name a mail client already reads, is kept as given.
+ */
+export function mailboxHeader(mailbox: string): string {
+  const m = /^(.*?)\s*<([^>]+)>\s*$/.exec(mailbox.trim())
+  if (!m) return headerSafe(mailbox)
+  const name = m[1]!.trim().replace(/^"(.*)"$/, '$1').replace(/\\(["\\])/g, '$1')
+  const address = m[2]!.trim()
+  if (!name) return address
+  if (ASCII.test(name)) return `${/^[A-Za-z0-9 !#$%&'*+\-/=?^_`{|}~]+$/.test(name) ? name : `"${name.replace(/["\\]/g, (c) => `\\${c}`)}"`} <${address}>`
+  return `${encodedWord(name)} <${address}>`
+}
+
+/** The display name on the From: the replying person and the company, *Wendi Doll · Click Construction*; the company alone when the person is unnamed. */
+export function senderDisplayName(personName: string | null | undefined, company: string): string {
+  const person = (personName ?? '').trim()
+  const co = company.trim()
+  if (!person) return co
+  if (!co) return person
+  return `${person} · ${co}`
+}
+
+/** A Message-ID of our own for the line, in the box's domain: `<messages-<line id>@clickplumbing.example>`. */
+export function messagesEmailMessageId(lineId: string, fromAddress: string): string {
+  const domain = fromAddress.split('@')[1]?.trim().replace(/[>\s]/g, '') || 'pipetooling.local'
+  return `<messages-${lineId.replace(/[^A-Za-z0-9-]/g, '')}@${domain}>`
+}
+
+const MIME_BY_EXT: Readonly<Record<string, string>> = {
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  heic: 'image/heic',
+  txt: 'text/plain',
+  csv: 'text/csv',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  zip: 'application/zip',
+}
+
+/** A file's type from its name when the caller does not know it; `application/octet-stream` for a name it cannot read. */
+export function mimeByName(filename: string): string {
+  const ext = filename.toLowerCase().split('.').pop() ?? ''
+  return MIME_BY_EXT[ext] ?? 'application/octet-stream'
+}
+
+/** The boundary of a part: letters and digits from the Message-ID, so two mails never share one and no body can hold it by chance. */
+function boundary(messageId: string, n: number): string {
+  const seed = messageId.replace(/[^A-Za-z0-9]/g, '').slice(0, 24) || 'pt'
+  return `=_pt${n}_${seed}`
+}
+
+/** One base64 part: its headers, a blank line, the wrapped bytes. */
+function part(headers: readonly string[], b64: string): string {
+  return [...headers, 'Content-Transfer-Encoding: base64', '', wrap76(b64)].join('\r\n')
+}
+
+/**
+ * The mail as RFC 2822 text, CRLF lines: the headers, then the plain words and the HTML as `multipart/alternative`,
+ * wrapped in `multipart/mixed` with each file when there are files. Every part is base64, so the words' UTF-8 and a
+ * long paragraph travel whole. The subject and the display names are encoded words when they are not ASCII.
+ */
+export function rawMailMessage(input: RawMailInput): string {
+  const files = input.files ?? []
+  const alt = boundary(input.messageId, 1)
+  const mixed = boundary(input.messageId, 2)
+  const alternative = [
+    `--${alt}`,
+    part(['Content-Type: text/plain; charset="UTF-8"'], base64OfText(input.text.replace(/\r?\n/g, '\r\n'))),
+    `--${alt}`,
+    part(['Content-Type: text/html; charset="UTF-8"'], base64OfText(input.html)),
+    `--${alt}--`,
+  ].join('\r\n')
+  const headers = [
+    `From: ${mailboxHeader(input.from)}`,
+    `To: ${mailboxHeader(input.to)}`,
+    ...(input.replyTo?.trim() ? [`Reply-To: ${mailboxHeader(input.replyTo)}`] : []),
+    `Subject: ${encodedWord(input.subject)}`,
+    `Date: ${new Date(input.at).toUTCString()}`,
+    `Message-ID: ${headerSafe(input.messageId)}`,
+    'MIME-Version: 1.0',
+  ]
+  if (files.length === 0) return [...headers, `Content-Type: multipart/alternative; boundary="${alt}"`, '', alternative, ''].join('\r\n')
+  const attached = files.map((f) => {
+    const name = encodedWord(f.filename)
+    const quoted = `"${name.replace(/["\\]/g, (c) => `\\${c}`)}"`
+    return [
+      `--${mixed}`,
+      part([`Content-Type: ${f.mime?.trim() || mimeByName(f.filename)}; name=${quoted}`, `Content-Disposition: attachment; filename=${quoted}`], f.content.replace(/\s+/g, '')),
+    ].join('\r\n')
+  })
+  return [
+    ...headers,
+    `Content-Type: multipart/mixed; boundary="${mixed}"`,
+    '',
+    `--${mixed}`,
+    `Content-Type: multipart/alternative; boundary="${alt}"`,
+    '',
+    alternative,
+    ...attached,
+    `--${mixed}--`,
+    '',
+  ].join('\r\n')
+}
+
+/** Bytes as Gmail's `raw` wants them: base64url, no padding. */
+export function base64UrlOfBytes(bytes: Uint8Array): string {
+  return base64OfBytes(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+/** The mail's `raw` for `users.messages.send`. */
+export function rawMailBase64Url(input: RawMailInput): string {
+  return base64UrlOfBytes(new TextEncoder().encode(rawMailMessage(input)))
+}

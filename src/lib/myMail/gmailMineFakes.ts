@@ -441,6 +441,10 @@ export class FakeGoogle {
   /** Called with a conversation's id as Gmail reads it: a test's untag, beginning while the follow runs. */
   onThreadRead: ((threadId: string) => void) | null = null
   nextLabel = 1
+  /** Every mail sent as a box (`users.messages.send`, v2.6702): whose box, the raw mail decoded, and the id Gmail gave it. */
+  sent: { sub: string; raw: string; id: string; threadId: string }[] = []
+  /** Boxes whose send Gmail refuses (a 403), until a test takes them out. */
+  sendRefused = new Set<string>()
 
   reset() {
     this.boxes = {}
@@ -453,6 +457,8 @@ export class FakeGoogle {
     this.labelsDown = false
     this.onThreadRead = null
     this.nextLabel = 1
+    this.sent = []
+    this.sendRefused = new Set()
   }
 
   /** A mail as `users.messages.get` answers it, in the format asked. */
@@ -503,6 +509,17 @@ export class FakeGoogle {
     const notFound = () => reply(404, { error: { code: 404, message: 'Requested entity was not found.' } })
     const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as Row) : {}
     let m: RegExpExecArray | null
+    if (path === '/messages/send' && method === 'POST') {
+      // A send as the box (v2.6702): the raw mail lands in the box's Sent with an id of Gmail's; a refused box answers 403.
+      if (this.sendRefused.has(sub)) return reply(403, { error: { code: 403, message: 'Delegation denied for ' + sub } })
+      const raw = new TextDecoder().decode(Uint8Array.from(atob(String(body.raw ?? '').replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)))
+      const id = `sent-${this.sent.length + 1}`
+      const threadId = typeof body.threadId === 'string' ? body.threadId : `t-${id}`
+      this.sent.push({ sub, raw, id, threadId })
+      const headerOf = (name: string) => new RegExp(`^${name}: (.*)$`, 'm').exec(raw)?.[1]?.trim() ?? ''
+      box.mails.push({ id, threadId, labelIds: ['SENT'], at: new Date().toISOString(), headers: { From: headerOf('From'), To: headerOf('To'), Subject: headerOf('Subject'), 'Message-ID': headerOf('Message-ID') }, text: '' })
+      return reply(200, { id, threadId, labelIds: ['SENT'] })
+    }
     if (path === '/messages' && method === 'GET') {
       this.queries.push(url.searchParams.get('q') ?? '')
       const token = url.searchParams.get('pageToken') ?? ''

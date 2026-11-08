@@ -134,25 +134,43 @@ export function textBoxBlocked(kind: ReplyKind, to: ReplyRecipient): string | nu
 }
 
 /**
- * The from line floating in the empty box: our number or the box their answer comes back to, never a person's own.
- * Empty on a note. An email goes as our name on the app's sending address, with the box as its Reply-To (R6), so the
- * line says where the answer goes. A blank number or box leaves it out rather than drawing a gap.
+ * An email's sender as their inbox names it (punch list #207 PR 2, v2.6702): the replying person and the company,
+ * *Wendi Doll · Click Construction*, the company alone while the person is unnamed. The same words the function puts on
+ * the From (`emailOut/rawMail.ts`'s `senderDisplayName`).
  */
-export function fromLine(kind: ReplyKind, company: ComposeCompany): string[] {
+export function emailSenderName(company: Pick<ComposeCompany, 'name'>, senderName?: string | null): string {
+  const person = (senderName ?? '').trim()
+  return person ? `${person} · ${company.name}` : company.name
+}
+
+/**
+ * The from line floating in the empty box: our number, or who an email goes from and the box it goes from. Empty on a
+ * note. Since v2.6702 an email goes through Gmail as the box their answer comes back to (bids@ or the team box), under
+ * the replying person's name with the company's, so the line reads *from Wendi Doll · Click Construction · bids@…*; with
+ * no box set it goes from the app's sending address under the company's name, and the line names the company alone. A
+ * blank number or box leaves it out rather than drawing a gap.
+ */
+export function fromLine(kind: ReplyKind, company: ComposeCompany, senderName?: string | null): string[] {
   const phone = company.phone.trim()
   const mailbox = company.mailbox.trim()
   const number = company.numberWords?.trim() || 'the company number'
   if (kind === 'text') return [phone ? `from ${number} ${phone}` : `from ${number}`, company.name]
-  if (kind === 'email') return mailbox ? [`from ${company.name}`, `replies to ${mailbox}`] : [`from ${company.name}`]
+  if (kind === 'email') return mailbox ? [`from ${emailSenderName(company, senderName)}`, mailbox] : [`from ${company.name}`]
   return []
 }
 
-/** An email's From as their inbox shows it: our name, on the app's own sending address. */
-export function fromHeader(company: ComposeCompany): string {
-  return company.name
+/**
+ * An email's From as their inbox shows it: the replying person and the company on the box's address (v2.6702), or the
+ * company alone on the app's sending address while no box is set.
+ */
+export function fromHeader(company: ComposeCompany, senderName?: string | null): string {
+  return company.mailbox.trim() ? emailSenderName(company, senderName) : company.name
 }
 
-/** An email's Reply-To (R6): the box their answer comes back to. Null when the app does not know one. */
+/**
+ * The box an email goes from and their answer comes back to (R6; since v2.6702 the From's own address, since the mail
+ * goes through Gmail as the box). Null when the app does not know one, and the answer comes to the sender's own inbox.
+ */
 export function replyToHeader(company: ComposeCompany): string | null {
   return company.mailbox.trim() || null
 }
