@@ -33,7 +33,7 @@ describe('jobsBillingValueLines (punch list #261, PR 3)', () => {
   it('one select reads each key once, in card order, for the cards the role sees', () => {
     const all = jobsBillingValueKeysFor(JOBS_BILLING_VALUE_SLUGS)
     expect(new Set(all).size).toBe(all.length)
-    expect(all).toEqual([...JOBS_BILLING_VALUE_KEYS.rates, MATERIALS_MARKUP_PCT_KEY, APP_SETTINGS_KEY_TRIP_CHARGE_CLIENT_NOT_HOME, APP_SETTINGS_KEY_TRIP_CHARGE_SITE_NOT_READY, DEFAULT_LABOR_RATE_KEY, GC_CARD_BILL_SETTING_KEY, BILL_DAY_CUTOFF_KEY])
+    expect(all).toEqual([...JOBS_BILLING_VALUE_KEYS.rates, MATERIALS_MARKUP_PCT_KEY, APP_SETTINGS_KEY_TRIP_CHARGE_CLIENT_NOT_HOME, APP_SETTINGS_KEY_TRIP_CHARGE_SITE_NOT_READY, DEFAULT_LABOR_RATE_KEY, GC_CARD_BILL_SETTING_KEY, BILL_DAY_CUTOFF_KEY, 'line_budget_settings_v1'])
     // A master sees Job Book, pay by card and the cut-off: two keys, none of the dev's.
     expect(jobsBillingValueKeysFor(['job-book', 'gc-card', 'gc-cutoff'])).toEqual([GC_CARD_BILL_SETTING_KEY, BILL_DAY_CUTOFF_KEY])
     expect(jobsBillingValueKeysFor([])).toEqual([])
@@ -105,6 +105,7 @@ describe('jobsBillingValueLines (punch list #261, PR 3)', () => {
       'labor-rate': 'No default',
       'gc-card': 'On',
       'gc-cutoff': '6 days before bill day',
+      'line-budgets': '45 / 35 rough in · 45 / 35 top out · 40 / 40 trim set · 45 / 35 any line · $45 an hour',
     })
     expect(jobsBillingValueLines({ settings, jobBookLines: 14 }, ['job-book', 'gc-card'])).toEqual({ 'job-book': '14 line items', 'gc-card': 'On' })
     expect(jobsBillingValueLines({ settings: [], jobBookLines: null }, ['stage-checklists'])).toEqual({})

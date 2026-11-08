@@ -1,6 +1,8 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { formatCurrency } from '../../lib/format'
-import { baselineKeptWords, baselineReadWords, pctDoneWords, timeLeftWords, type CostsVerdict } from '../../lib/jobs/jobCostsVerdict'
+import { baselineFrozenWords, baselineHeadWords, baselineKeptWords, baselineReadWords, baselineScoreWords, pctDoneWords, timeLeftWords, type CostsVerdict } from '../../lib/jobs/jobCostsVerdict'
+import { bookBaselineUsable, bookBaselineWhy } from '../../lib/jobs/awardBaseline'
+import type { BaselineReading } from '../../lib/bids/bidBaselineRates'
 import type { JobBudgetState } from '../../hooks/useJobBudget'
 import type { JobBaselineState } from '../../hooks/useJobBaseline'
 
@@ -27,6 +29,16 @@ type Props = {
   jobFinished: boolean
   /** The Costs tab on paper (v2.5749): a Print button after the % done words; null hides it. */
   onPrint?: (() => void) | null
+  /** The budgets at award (punch list #234 PR 1a): the signed-in user (a typed baseline says "by you"). */
+  currentUserId?: string | null
+  /** The labor book's reading at the job's price today: the amber strip's Freeze press and the typed strip's "the book says". */
+  bookNow?: BaselineReading | null
+  /** The rate the book's hours are priced at when frozen here. */
+  bookRateUsd?: number | null
+  /** The job reads as a project: the amber strip offers to award it late. */
+  isProject?: boolean
+  /** Bids → Labor on the linked bid, for a book baseline whose bid was sent without hours. */
+  onOpenBidLabor?: (() => void) | null
 }
 
 const usd0 = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
@@ -45,9 +57,14 @@ const tdNum: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 't
 const muted: CSSProperties = { color: 'var(--text-muted)' }
 const btn = (primary = false): CSSProperties => ({ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600, border: `1px solid ${primary ? '#2563eb' : 'var(--border-strong)'}`, borderRadius: 6, background: primary ? '#2563eb' : 'var(--surface)', color: primary ? 'white' : 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' })
 
-export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpenBidCounts, doorway, kept, jobFinished, onPrint = null }: Props) {
+const isoDayLabel = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+/** The strip's border by footing: the bid's green, the book's grey (dashed), a typed figure's purple. */
+const stripTone: Record<'bid' | 'book' | 'typed', { border: string }> = { bid: { border: 'var(--border-green, #16a34a)' }, book: { border: 'var(--border-strong)' }, typed: { border: '#7c3aed' } }
+
+export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpenBidCounts, doorway, kept, jobFinished, onPrint = null, currentUserId = null, bookNow = null, bookRateUsd = null, isProject = false, onOpenBidLabor = null }: Props) {
   const [sectionsOpen, setSectionsOpen] = useState(false)
   const [doorOpen, setDoorOpen] = useState(false)
+  const [planDay, setPlanDay] = useState('')
   const tl = timeLeftWords(v.timeLeft, usd0)
   const margin = v.trueMargin ?? v.directMargin
   const marginIsTrue = v.trueMargin != null
@@ -148,26 +165,51 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
         </div>
       ) : null}
 
-      {b.kind === 'bid' ? (
-        <div style={{ border: '1px solid var(--border-green, #16a34a)', borderRadius: 8, padding: '0.6rem 0.8rem', display: 'grid', gap: '0.35rem' }} data-testid="baseline-strip-bid">
+      {b.kind !== 'none' ? (
+        <div style={{ border: `1px solid ${stripTone[b.kind].border}`, borderLeft: `4px ${b.kind === 'book' ? 'dashed' : 'solid'} ${stripTone[b.kind].border}`, borderRadius: 8, padding: '0.6rem 0.8rem', display: 'grid', gap: '0.35rem' }} data-testid={`baseline-strip-${b.kind}`}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem 0.75rem', flexWrap: 'wrap' }}>
-            <b style={{ fontSize: '0.9rem' }}>◆ Baseline from {b.bidLabel ?? 'the bid'} · {h0(b.bidHours ?? 0)} predicted</b>
+            <b style={{ fontSize: '0.9rem' }}>{baselineHeadWords(b, currentUserId)}</b>
             <span style={{ fontSize: '0.78rem' }}>{baselineReadWords(b, v.pctDone)}</span>
-            <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.4rem' }}>
-              {canWrite && linkedBid ? <button type="button" onClick={() => void budget.linkAndSnapshot(linkedBid.id)} disabled={budget.busy} style={btn()} title="Take the bid's estimate again">Refresh from bid ↻</button> : null}
+            <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {canWrite && linkedBid && b.kind === 'bid' ? <button type="button" onClick={() => void budget.linkAndSnapshot(linkedBid.id)} disabled={budget.busy} style={btn()} title="Take the bid's estimate again">Refresh from bid ↻</button> : null}
+              {canWrite && linkedBid && b.kind !== 'bid' && budget.linkedBreakdown?.completeness?.usable ? <button type="button" onClick={() => void budget.linkAndSnapshot(linkedBid.id)} disabled={budget.busy} style={btn(true)} title="The bid's Labor rows are usable now — take them as the baseline">Take {b.bidLabel}'s estimate · {h0(budget.linkedBreakdown.labor_hours)}</button> : null}
+              {canWrite && linkedBid && b.kind === 'book' && !budget.linkedBreakdown?.completeness?.usable && onOpenBidLabor ? <button type="button" onClick={onOpenBidLabor} style={btn()} title="Fill the Labor rows on the bid and it becomes the pick">Fill the Labor rows on {b.bidLabel} →</button> : null}
+              {canWrite && b.kind === 'book' ? <button type="button" onClick={() => setDoorOpen((o) => !o)} aria-expanded={doorOpen} style={btn()}>Type a baseline {doorOpen ? '▴' : '▾'}</button> : null}
+              {canWrite && b.kind === 'typed' ? <button type="button" onClick={() => setDoorOpen((o) => !o)} aria-expanded={doorOpen} style={btn()}>Change it {doorOpen ? '▴' : '▾'}</button> : null}
               {canWrite ? <button type="button" onClick={() => void budget.clear()} disabled={budget.busy} style={btn()}>Clear</button> : null}
             </span>
           </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="baseline-frozen">
+            {baselineFrozenWords(b, isoDayLabel, bookNow?.impliedHours ?? null)}
+            {baselineFrozenWords(b, isoDayLabel) ? ' · ' : ''}
+            {baselineScoreWords(b)}
+          </div>
+          {doorOpen ? <div>{doorway}</div> : null}
+          {canWrite && isProject && !b.planned ? (
+            <div style={{ display: 'flex', gap: '0.5rem 0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="baseline-plan-ask">
+              <span>No planned finish on this project yet. The superintendent's line reads hours alone until one is frozen.</span>
+              <input type="date" value={planDay} aria-label="Planned finish" onChange={(e) => setPlanDay(e.target.value)} style={{ border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.2rem 0.4rem', font: 'inherit', fontSize: '0.78rem', background: 'var(--surface)', color: 'inherit' }} />
+              <button type="button" disabled={!planDay || budget.busy} onClick={() => void budget.setPlanned({ source: 'typed', start: null, finish: planDay })} style={btn(!!planDay)} title="Freeze this day as the planned finish; the line reads days against it">Freeze the planned finish</button>
+            </div>
+          ) : null}
           <div style={{ display: 'flex', gap: '0.5rem 0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             <span>{kept.row ? baselineKeptWords(kept.row) : jobFinished ? 'No baseline kept — the job had no recorded hours when it billed.' : 'Kept for the labor book when the job bills.'}</span>
             {canWrite && !kept.row && !jobFinished ? <button type="button" onClick={() => void kept.keepNow()} disabled={kept.busy} style={btn()} title="Keep what the job has taken so far as its baseline now">Keep now</button> : null}
             {canWrite && kept.row ? <button type="button" onClick={() => void kept.keepNow()} disabled={kept.busy} style={btn()} title="Take the baseline again from today's hours">Keep again ↻</button> : null}
             {kept.error ? <span style={{ color: 'var(--text-red-700)' }}>{kept.error}</span> : null}
           </div>
+          {budget.error ? <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{budget.error}</p> : null}
         </div>
       ) : (
         <div style={{ border: '1px solid #f59e0b', background: 'var(--bg-amber-100)', borderRadius: 8, padding: '0.6rem 0.8rem', display: 'grid', gap: '0.4rem' }} data-testid="baseline-strip-none">
           <b style={{ fontSize: '0.9rem' }}>{linkedBid ? `No baseline for this job yet — bid ${b.bidLabel} was sent without hours.` : 'No baseline for this job yet — no bid is linked.'}</b>
+          {isProject ? (
+            <div style={{ display: 'flex', gap: '0.5rem 0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem' }} data-testid="baseline-award-late">
+              <span>A project, made before baselines were written at award.{bookNow && bookBaselineUsable(bookNow, v.priceUsd) ? ` The book says ${h0(bookNow.impliedHours!)} (${bookBaselineWhy(bookNow, v.priceUsd)})` : ''}</span>
+              {canWrite && linkedBid && budget.linkedBreakdown?.completeness?.usable ? <button type="button" onClick={() => void budget.award({ p_job_id: '', p_source: 'bid', p_bid_id: linkedBid.id, p_labor_hours: null, p_labor_rate: null, p_book: {}, p_note: null })} disabled={budget.busy} style={btn(true)}>Take {b.bidLabel}'s estimate · {h0(budget.linkedBreakdown.labor_hours)}</button> : null}
+              {canWrite && bookNow && bookBaselineUsable(bookNow, v.priceUsd) ? <button type="button" onClick={() => void budget.award({ p_job_id: '', p_source: 'book', p_bid_id: null, p_labor_hours: Math.round(bookNow.impliedHours! * 10) / 10, p_labor_rate: bookRateUsd, p_book: { hours_per_thousand: bookNow.medianHoursPerThousand, n: bookNow.n, price_usd: v.priceUsd, scope: bookNow.scope, billed: bookNow.billed }, p_note: null })} disabled={budget.busy} style={btn(!(linkedBid && budget.linkedBreakdown?.completeness?.usable))} title="The book's assumed hours, frozen as this project's baseline and read as a guess">Freeze the book's {h0(bookNow.impliedHours!)}</button> : null}
+            </div>
+          ) : null}
           <div style={{ fontSize: '0.78rem' }}>What it has taken so far is the baseline:</div>
           <div style={{ display: 'flex', gap: '0.5rem 1rem', flexWrap: 'wrap', fontSize: '0.82rem' }}>
             <span><b>{h0(b.teamHours)}</b> team</span>
@@ -197,7 +239,7 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
             {linkedBid ? (
               <>
                 {onOpenBidCounts ? <button type="button" onClick={onOpenBidCounts} style={btn()}>Count sheet on {b.bidLabel} →</button> : null}
-                {canWrite && budget.linkedBreakdown?.has_estimate ? <button type="button" onClick={() => void budget.linkAndSnapshot(linkedBid.id)} disabled={budget.busy} style={btn()}>Take its estimate</button> : null}
+                {canWrite && budget.linkedBreakdown?.has_estimate && !isProject ? <button type="button" onClick={() => void budget.linkAndSnapshot(linkedBid.id)} disabled={budget.busy} style={btn()}>Take its estimate</button> : null}
                 <span>{budget.linkedBreakdown?.has_estimate ? `${b.bidLabel} has an estimate without hours — add hours on its Labor tab and take it again.` : `Add a count sheet and hours to ${b.bidLabel} and this job reads against them.`}</span>
               </>
             ) : (

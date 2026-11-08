@@ -102,6 +102,9 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
   // job's rule, nothing on it what the worker was paid. Open to every maker; the pay switch is ignored while it is on.
   const [charged, setCharged] = useState(false)
   const [stated, setStated] = useState(false)
+  // A sub's company on the attestation (punch list #212, the card's last residual): typed here for a sheet paper, kept on
+  // the row as labor_company and in the snapshot's worker, so the paper reads *I, <name>, for <company>, state …*.
+  const [company, setCompany] = useState('')
   const [read, setRead] = useState<{ read: HoursStatementRead; asOf: string } | null>(null)
   const [reading, setReading] = useState(false)
   const [readError, setReadError] = useState<string | null>(null)
@@ -123,6 +126,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
     setRow(existing)
     setWithPay(existing ? existing.with_pay && payAllowed : payAllowed)
     setCharged(existing?.basis === 'charged')
+    setCompany(existing?.labor_company ?? existing?.snapshot?.worker.company ?? '')
     setStated(existing ? existing.stated_days.length > 0 || existing.snapshot?.input.addStatedBlock === true : false)
     setRead(null)
     setReadError(null)
@@ -213,18 +217,20 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
     return () => clearTimeout(t)
   }, [spanOk, jobId, userId, from, to, withPay, payAllowed, stated, charged, isSheet])
 
+  // The company goes with a sheet paper alone; blank, the attestation reads without one.
+  const laborCompany = isSheet ? company.trim().slice(0, 160) || null : null
   const snapshot = useMemo<HoursStatementSnapshot | null>(() => {
     if (!read || !jobFacts) return null
     return {
-      input: read.read.input,
-      worker: read.read.worker,
+      input: laborCompany ? { ...read.read.input, worker: { ...read.read.input.worker, company: laborCompany } } : read.read.input,
+      worker: laborCompany ? { ...read.read.worker, company: laborCompany } : read.read.worker,
       job: { number: jobFacts.number, name: jobFacts.name, customer: jobFacts.customer, site: jobFacts.site, isOfficeJob: read.read.isOfficeJob },
       approvedBy: read.read.approvedBy,
       preparedBy: (profileName ?? '').trim() || 'the office',
       preparedOn: hoursStatementLongDate(todayYmdInAppTz()),
       asOf: read.asOf,
     }
-  }, [read, jobFacts, profileName])
+  }, [read, jobFacts, profileName, laborCompany])
   // A sent or signed statement is a record: its paper is its snapshot's, never the live read's.
   const paperSnapshot = row && !hoursStatementIsOpen(row.state) && row.snapshot?.job ? row.snapshot : snapshot
   const html = useMemo(() => (paperSnapshot ? buildHoursStatementPaper(paperSnapshot, row?.record_id ?? null) : null), [paperSnapshot, row?.record_id])
@@ -243,7 +249,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
         jobNumber: jobFacts.number,
         userId,
         personId: read.read.personId,
-        laborCompany: null,
+        laborCompany,
         periodStart: from,
         periodEnd: to,
         withPay: snapshot.input.withPay,
@@ -261,7 +267,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
       onSaved?.(saved)
       return saved
     },
-    [snapshot, read, jobFacts, userId, row?.id, from, to, user?.id, onSaved],
+    [snapshot, read, jobFacts, userId, row?.id, from, to, user?.id, onSaved, laborCompany],
   )
 
   /** The saved row the signing works on: a record as it stands, or the live read saved first so the paper is current. */
@@ -501,6 +507,13 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
                 </select>
               </label>
             )}
+            {isSheet ? (
+              <label style={label}>
+                Company
+                <input type="text" style={field} value={company} maxLength={160} onChange={(e) => setCompany(e.target.value)} aria-label="Company" placeholder="The sub’s company, as it signs" disabled={!rowOpen} data-testid="hours-statement-company" />
+                <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>Named on the attestation: the sub signs for the company. Leave it blank to name the sub alone.</span>
+              </label>
+            ) : null}
             {listEmpty ? <p style={quiet}>{scope.kind === 'job' ? 'Nothing is clocked on this job yet. A statement needs at least one counted session here.' : `${scope.name} has no counted session on a job yet.`}</p> : null}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
               <label style={label}>

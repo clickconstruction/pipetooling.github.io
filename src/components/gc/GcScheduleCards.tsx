@@ -259,6 +259,9 @@ export function GcAddOwnWork({
   const [finish, setFinish] = useState(today)
   const [after, setAfter] = useState<string[]>([])
   const [holdsUp, setHoldsUp] = useState<string[]>([])
+  // The phase it lands in (#210), offered when the schedule was drawn with phases; none lands it under Not in a phase.
+  const [phase, setPhase] = useState('')
+  const phases = project.schedule?.phases ?? []
   const press = useSchedulePress(onReload)
   const who = whoPick === 'Someone else' ? whoText : whoPick
   const problem = addedActivityProblem(label, who, start, finish)
@@ -269,6 +272,7 @@ export function GcAddOwnWork({
     setWhoText('')
     setAfter([])
     setHoldsUp([])
+    setPhase('')
   }
   if (!open) {
     return (
@@ -316,6 +320,19 @@ export function GcAddOwnWork({
             </select>
           </label>
           {whoPick === 'Someone else' && <input value={whoText} onChange={(e) => setWhoText(e.target.value)} placeholder="Who" aria-label="Who it is" style={{ ...rowBox, width: '12rem' }} />}
+          {phases.length > 0 && (
+            <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Phase</span>
+              <select value={phase} onChange={(e) => setPhase(e.target.value)} aria-label="The phase it is in" style={rowBox}>
+                <option value="">Not in a phase</option>
+                {phases.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
@@ -336,7 +353,7 @@ export function GcAddOwnWork({
             disabled={problem !== null || press.busy}
             title={problem ?? undefined}
             onClick={() => {
-              const made = ownWorkPress(project, { label, who, start, finish, after, holdsUp }, by)
+              const made = ownWorkPress(project, { label, who, start, finish, after, holdsUp, ...(phase ? { phase } : {}) }, by)
               if (!made) return
               void press.run(() => onAdd(made.activities, made.words), 'The work did not go on the schedule.').then((saved) => {
                 if (saved) reset()

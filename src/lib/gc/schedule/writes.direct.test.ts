@@ -24,6 +24,8 @@ import { movedParts, splitParts } from './splitBars'
 import { templateShape } from './templates'
 import { initialGcState } from './testState'
 import { withTheirDates } from './theirDates'
+import { templateRows } from './builder'
+import { quickLubeTemplate } from './testTemplate'
 import type { ActivityPart, LookAheadMark, ProjectSchedule, RoughSchedule, ScheduleActivity, ScheduleMove, ScheduleWait } from './types'
 import { whatIfCopy } from './whatIf'
 import {
@@ -334,6 +336,10 @@ describe('the job’s own work, an inspection failed, and the records', () => {
     expect(holds.start > first!.start).toBe(true)
     expect(JSON.stringify(made)).not.toContain(kernelId)
     expect(addedForRpc(sch.activities, sch.activities, keys())).toBeNull()
+    // Its phase (#210) rides on the bar when the kernel set one; none, no key.
+    expect(made.bar).not.toHaveProperty('phase')
+    const inPhase = addedForRpc(sch.activities, activities.map((a) => (a.lineId === kernelId ? { ...a, phase: 'Closeout' } : a)), keys())!
+    expect(inPhase.bar.phase).toBe('Closeout')
   })
 
   it('moves a failed inspection to its re-inspection day with its days kept, as the function checks', () => {
@@ -488,8 +494,24 @@ describe('the plain writes’ rows read back as the kernel’s records', () => {
     const r = roughRowOf(fo.id, rough, ROBERT)
     const rows = { ...baseRows(), rough: { start: r.start, stage_days: r.stage_days, drawn_on: r.drawn_on, drawn_by: r.drawn_by ?? null, kept_on: r.kept_on ?? null, kept_weeks: r.kept_weeks ?? null, kept_finish: r.kept_finish ?? null, kept_at: r.kept_at ?? null, template_id: r.template_id ?? null, template_name: r.template_name ?? null, template_used_on: r.template_used_on ?? null, template_lines: r.template_lines ?? null } }
     expect(readBack(rows).rough).toEqual(rough)
-    // A rough on the stage days alone keeps no template.
-    expect(roughRowOf(fo.id, { start: '2026-11-02', days: {}, by: 'Robert', on: today }, ROBERT)).toMatchObject({ template_id: null, template_name: null, template_used_on: null, template_lines: null, kept_on: null })
+    expect(r.template_rows).toBeNull()
+    // A rough drawn from a rows template (#210) keeps the copy of its phases and rows, and reads it back.
+    const quick = quickLubeTemplate({ id: tid })
+    const fromRows: RoughSchedule = { start: '2026-11-02', days: {}, by: 'Robert', on: today, template: { id: tid, name: quick.name, on: today }, like: quick.lines, rows: templateRows(quick) }
+    const r2 = roughRowOf(fo.id, fromRows, ROBERT)
+    expect(r2.template_lines).toEqual([])
+    expect(r2.template_rows).toEqual(templateRows(quick))
+    const rows2 = { ...baseRows(), rough: { start: r2.start, stage_days: r2.stage_days, drawn_on: r2.drawn_on, drawn_by: r2.drawn_by ?? null, kept_on: r2.kept_on ?? null, kept_weeks: r2.kept_weeks ?? null, kept_finish: r2.kept_finish ?? null, kept_at: r2.kept_at ?? null, template_id: r2.template_id ?? null, template_name: r2.template_name ?? null, template_used_on: r2.template_used_on ?? null, template_lines: r2.template_lines ?? null, template_rows: r2.template_rows } }
+    expect(readBack(rows2).rough).toEqual(fromRows)
+    // A row from before the column, or one holding something that is not a copy, reads as lines alone.
+    expect(readBack({ ...baseRows(), rough: { ...rows2.rough, template_rows: undefined } }).rough).toEqual({ ...fromRows, rows: undefined })
+    expect(readBack({ ...baseRows(), rough: { ...rows2.rough, template_rows: ['nope'] } }).rough?.rows).toBeUndefined()
+    // A copy left in the column by a rough drawn back to the stage days alone is not read.
+    expect(readBack({ ...baseRows(), rough: { ...rows2.rough, template_name: null, template_used_on: null, template_lines: null } }).rough).toEqual({ start: '2026-11-02', days: {}, by: 'Robert', on: today })
+    // A rough on the stage days alone keeps no template, and leaves the column alone.
+    const plain = roughRowOf(fo.id, { start: '2026-11-02', days: {}, by: 'Robert', on: today }, ROBERT)
+    expect(plain).toMatchObject({ template_id: null, template_name: null, template_used_on: null, template_lines: null, kept_on: null })
+    expect(plain).not.toHaveProperty('template_rows')
     const copy = whatIfCopy(fo, 'Robert', today)!
     const w = whatIfRowOf(fo.id, copy, ROBERT, 4)
     expect(w).toMatchObject({ user_id: ROBERT, base_version: 4, made_on: today })

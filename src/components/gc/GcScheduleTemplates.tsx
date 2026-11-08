@@ -12,7 +12,7 @@ import { Link, useInRouterContext } from 'react-router-dom'
 import { templatesHref } from '../../lib/gc/links'
 import { rowsFit, rowsFitLines, templateRows } from '../../lib/gc/schedule/builder'
 import { drawnFromWords, templateFitWords, templateNameProblem } from '../../lib/gc/schedule/templates'
-import type { ScheduleTemplate, TemplateLine, TemplateUse } from '../../lib/gc/schedule/types'
+import type { ScheduleTemplate, TemplateLine, TemplateRowsShape, TemplateUse } from '../../lib/gc/schedule/types'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { PressNote } from './GcScheduleCards'
 import { Btn, Card, input } from './gcUi'
@@ -35,8 +35,8 @@ function PageLink({ to, children }: { to: string; children: string }) {
 }
 
 /** What a template with rows makes of this job before the draw (#204, D3): the six labelled lines of `rowsFitLines`. */
-function RowsFit({ project, start, template, stageDays }: { project: GcProject; start: string; template: ScheduleTemplate; stageDays?: Partial<Record<string, number>> }) {
-  const fit = rowsFit(project, start, templateRows(template), stageDays)
+function RowsFit({ project, start, rows, stageDays }: { project: GcProject; start: string; rows: TemplateRowsShape; stageDays?: Partial<Record<string, number>> }) {
+  const fit = rowsFit(project, start, rows, stageDays)
   if (!fit) return <span>Nothing to draw from it. Pick another template.</span>
   return (
     <div data-rows-fit style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.1rem 0.6rem' }}>
@@ -121,16 +121,17 @@ export function GcTemplatePick({
   start: string
   stageDays?: Partial<Record<string, number>>
   offered: ScheduleTemplate[]
-  /** The template the job's rough was drawn from, with its copy of the lines. */
-  own?: { use: TemplateUse; lines: TemplateLine[] }
+  /** The template the job's rough was drawn from, with its copy of the lines, and of the rows when it has them (#210). */
+  own?: { use: TemplateUse; lines: TemplateLine[]; rows?: TemplateRowsShape }
   value: string
   onChange: (templateId: string) => void
   /** Say the fit of the one picked. Off where the card already says it. */
   fit?: boolean
 }) {
-  const choices: { id: string; name: string; lines: TemplateLine[]; rows?: ScheduleTemplate }[] = [
-    ...(own ? [{ id: own.use.id, name: own.use.name, lines: own.lines }] : []),
-    ...offered.filter((t) => t.id !== own?.use.id).map((t) => ({ id: t.id, name: t.name, lines: t.lines, ...(t.rows ? { rows: t } : {}) })),
+  // A template with rows says D3's lines (#204 PR 5), whether offered or the rough's own copy (#210); lines alone keep the fit words.
+  const choices: { id: string; name: string; lines: TemplateLine[]; rows?: TemplateRowsShape }[] = [
+    ...(own ? [{ id: own.use.id, name: own.use.name, lines: own.lines, ...(own.rows ? { rows: own.rows } : {}) }] : []),
+    ...offered.filter((t) => t.id !== own?.use.id).map((t) => ({ id: t.id, name: t.name, lines: t.lines, ...(t.rows ? { rows: templateRows(t) } : {}) })),
   ]
   if (choices.length === 0) return null
   const picked = choices.find((c) => c.id === value)
@@ -150,7 +151,7 @@ export function GcTemplatePick({
       </label>
       {picked && fit && start && (
         <div data-template-fit style={{ flexBasis: '100%', color: 'var(--text-600)' }}>
-          {picked.rows ? <RowsFit project={project} start={start} template={picked.rows} stageDays={stageDays} /> : templateFitWords(picked, project, start, stageDays)}
+          {picked.rows ? <RowsFit project={project} start={start} rows={picked.rows} stageDays={stageDays} /> : templateFitWords(picked, project, start, stageDays)}
         </div>
       )}
     </>

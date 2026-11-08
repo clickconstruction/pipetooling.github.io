@@ -1152,7 +1152,7 @@ export default function DevelopmentPage() {
         <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>Development since {shortDay(dev.created_at)}</span>
         <div style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
           {btn('Ask a question', () => openAsk(), 'Ask the estimators or Dispatch about the site or one of its jobs or bids; the answer comes back under Questions', true)}
-          {btn('Edit', () => navigate('/settings?tab=settings-jobs#settings-jobs-developments'), 'Rename, the default GC, archive: Settings → Jobs & billing → Manage developments')}
+          {btn('Edit', () => navigate('/settings?tab=settings-jobs#settings-jobs-developments'), 'Rename, the default GC, archive: Settings → Jobs, bills and liens → Manage developments')}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', padding: '6px 0 4px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>

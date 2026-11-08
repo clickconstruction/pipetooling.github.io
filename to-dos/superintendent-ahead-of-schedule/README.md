@@ -1,8 +1,8 @@
 ---
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
-group: gated
-status: thought through 2026-11-01 with the owner and mocked up in seven boards; PR 1 merged 2026-11-02 as v2.6300 and is live with its migration pushed, the superintendent's line moved to #242's build; the owner's three calls made 2026-11-07 (the office's sign-off counts as certified, the bonus is on hours saved, a sub-performed stage counts on the sub's sheet hours), so nothing gates the train now; PR 1a building on claude/234-pr1a-budgets-at-award
+group: ready
+status: in hand on the stack claude/234-pr2-planned-finish → pr4-scoreboard — PR 1a the budgets at award merged 2026-11-07 as v2.6646 (#7244), its migration `20261107150000` pushed and the types regenerated (#7264) · PR 1b the owner tunes merged 2026-11-08 as v2.6656 (#7256), its migration `20261107210000` pushed the same day · PR 1c the weekly review card merged 2026-11-08 as v2.6662 (#7260), its migration `20261107180000` to push · the owner's three calls recorded on main 2026-11-07 (the office's sign-off counts as certified, the bonus is on hours saved, a sub-performed stage counts on the sub's sheet hours) · PR 2 (#7261) and PR 4 (#7263) open, stacked in that order, each with its migration · thought through 2026-11-01 with the owner and mocked up in seven boards; PR 1 merged 2026-11-02 as v2.6300 and is live with its migration pushed; the superintendent's line moved to #242's build
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
@@ -19,8 +19,8 @@ summary: >
   what the bid's workbench priced it from, assumed by a company split when the line was typed,
   tuned only by the owner, frozen at award as the sum of the lines; and the gate became #238's
   kind, a job priced before the work.
-next: PR 1a, the budgets at award: the workbench writes ◆ on the lines it priced, the award window writes one baseline with its source, the Costs strip's states, the Quickfill deck line. Then PR 1b, PR 2 and PR 4 in the card's order, each with the owner's three calls built in.
-size: L as a train of six (M · M · S · S · M · M), PR 1 shipped; two migrations, the line budgets (pushed with PR 1) and the planned dates; no edge function
+next: Push PR 1c's migration and regenerate the types; merge PR 2 and PR 4 in order, pushing each migration right after its merge; then the live walk on ZZ Test rows (How to verify), PR 1a's first: a ZZ Test project from a bid with hours on its Labor rows, the award block, the Costs strip's frozen line, Quickfill's *Freeze the book's N h* and its Undo.
+size: L as a train of six (M · M · S · S · M · M), PRs 1, 1a, 1b and 1c shipped; left: 2 and 4 (S · M), each open with its migration
 blocker: None. The owner's three calls were made 2026-11-07 and are written under Open questions.
 ver: v2.6300 · 3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837
 opinion: build — the three calls are made and PR 1 is live; the train runs from PR 1a to the scoreboard
@@ -288,21 +288,37 @@ kernel and card; the Schedule column and the bonus setting; the certified-percen
    owner's two sliders opening in place; the Costs tab's *Where we are* card, spent of the whole
    budget with a row per line; and the owner's two grid asks, the stage badge as the press and the
    cents small. What shipped and how is `docs/recent-features/v2.6300.md`.
-2. **PR 1a · the budgets at award** (M), what PR 1 left. The gate on #238's `jobKind` (a line In
-   order stands in until it lands); a workbench line writing ◆ with the hours and parts it was
-   priced from; the award window that writes one baseline every time with its source (bid → book
-   → typed), the job's footings as the sum; the Costs strip's four states, its amber *No baseline*
-   giving way to the card; the quiet line on the Pricing tab, never on a customer's paper (the
-   lens's What customers see check proves it); the Quickfill deck line *projects working with no
-   hours baseline*. Useful on its own: the Pipeline's burning card and the Build desk read it at
-   once.
-3. **PR 1b · the owner tunes** (S). The two sliders per line shipped in place with PR 1; left: the
-   brush that carries one line's split to the job's other assumed lines, with Undo; the weekly
-   Needs you review card with *Looks right* and *Tune*; Settings → Jobs & billing → Line budgets
-   with the splits per kind, the burdened cost rate and the learning line, Save moving only lines
-   still assumed; and spent per line on the Costs card once hours land on a stage.
-4. **PR 2 · the planned finish** (S). Carry the rough schedule's stage weeks onto the job at award as
-   planned dates; one migration with the award snapshot's freeze.
+2. **PR 1a · the budgets at award** (M), open 2026-11-07 as v2.6646 with its migration
+   (`20261107150000_job_budget_award.sql`: `job_budgets.kind` gains `book`, eight `awarded_*`
+   columns hold the frozen award, `set_book_job_budget` and `award_job_baseline`). The gate is
+   #238's `jobKind` on the quiet line and the Costs card; the *Bid price* line a bid import carries
+   takes the bid's labor and materials shares as ◆ (the bid's rows never reach the job, so the ◆
+   lands on the carried line, not per stage); the *Hours baseline at award* block on New Job picks
+   bid → book → typed and Create Job freezes it through `award_job_baseline`; the Costs strip's
+   four states with the frozen line and the score words; the Needs You line *N projects working
+   with no hours baseline* with its Fill them in presses. Left out, with the reason in
+   `docs/recent-features/v2.6646.md`: the Pricing tab's quiet line (its workbench rows already
+   read labor, materials and margin per line, and the cover letter carries none of it).
+3. **PR 1b · the owner tunes** (S), open 2026-11-07 as v2.6656 with its migration
+   (`20261107210000_line_budget_settings.sql`: one `app_settings` row and the owner's write policy).
+   Settings → Jobs & billing → Line budgets with two sliders per kind, the burdened cost rate with
+   the roster's beside it, the target margin, the read-out on a chosen line size, Save naming what
+   it writes and moving only lines still assumed, the learning line on its kind's row; every reader
+   of the budgets on the shared settings; the brush on a line's panel with Undo. **PR 1c**, open the
+   same day as v2.6662 with its migration (`20261107180000_fixture_budget_reviewed.sql`: the reviewed
+   mark on the line row and the owner's stamp): the owner's weekly Needs you line *4 assumed lines on 2
+   projects awarded this week* over the award freeze, its window listing the lines with *Looks right ·
+   stamp 4 lines* (reviewed with his name, left assumed) and *Tune*. Left out for good: spent per line,
+   since no hours land on a stage yet (the clock has no stage), named in `docs/recent-features/v2.6656.md`.
+4. **PR 2 · the planned finish** (S), open 2026-11-07 as v2.6665 with two migrations
+   (`20261107190000_job_planned_finish.sql`: six `planned_*` columns on `job_budgets`,
+   `set_job_planned_finish`, `award_job_baseline` taking `p_planned`; `20261107190500_project_board_planned_finish.sql`:
+   the board's read returns it). The plan freezes with the hours at award from three sources in order:
+   the GC project's rough schedule when its weeks were kept (`gc_rough_schedules.kept_finish`; the rough
+   stores no per-stage dates, so the finish is the whole job's), else the start the bid assumed and the
+   baseline hours at 24 crew hours a day in working days (assumed), else a typed day; the award block
+   draws it under the hours, the Costs strip's frozen line ends with it and offers a date box where
+   none is set, the Projects board and the superintendent's line read days against it.
 5. **PR 3 · the superintendent's line** (M), moved to punch list #242, the Projects board, which
    builds the line with the office's board from the same kernel; its card is the spec. Its kernel
    and pace strip (#6769) and the expected hours (#6771) merged 2026-11-02; the board and the phone
@@ -322,8 +338,9 @@ row. Delete every ZZ Test row after.
 
 ## Where it stands
 
-2026-11-07: the owner made the three calls (above). PR 1a is next, then PR 1b, PR 2 and PR 4; PR 3
-builds on #242 from the same kernel. The ground for PR 4 is settled: the certified percent is the
+2026-11-07: the owner made the three calls (above). PR 1a opened the same day as v2.6646 with its
+migration, PR 1b as v2.6656, PR 1c as v2.6662 and PR 2 as v2.6665, each with its own, each to be
+pushed right after its merge. Then PR 4, the scoreboard; PR 3 builds on #242 from the same kernel. The ground for PR 4 is settled: the certified percent is the
 office's sign-off, the bonus is a share of labor kept, and sub stages count on their sheet hours.
 
 2026-11-01: thought through with the owner and mocked up; nothing built. The owner asked to keep the

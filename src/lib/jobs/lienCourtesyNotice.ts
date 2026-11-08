@@ -4,6 +4,7 @@ import { demandDate, demandMoney, lienLineBlockedReason } from '../jobsDocuments
 import { countedLabel } from '../batchWords'
 import type { LetterTwoStatus } from './lienLetterTwo'
 import { lienOfferSentence, type LienPayOffer } from './lienPayOffer'
+import { LIEN_MONTH_RULE, type LienMonthRule } from './lienMonthRhythm'
 
 /**
  * The courtesy notice (punch list #231, PR 1): the plain reminder a supply house sends before it
@@ -35,6 +36,14 @@ export const COURTESY_AGAIN_DAYS = 7
 /** Inside this many days of the affidavit's day it is the affidavit's week (v2.6594): the desk recommends the affidavit, not a reminder; the courtesy's press stays on the footer. */
 export const COURTESY_AFFIDAVIT_MARGIN_DAYS = 7
 export const COURTESY_BUTTON = 'Send a courtesy notice'
+
+/** Reminders week of the lien's month (punch list #235, PR 4): the courtesy is due from its first day, the day-7 floor kept; null without a lien day. */
+export function courtesyReminderWindow(lienDay: string | null | undefined, rule: LienMonthRule = LIEN_MONTH_RULE): { from: string; to: string } | null {
+  if (!lienDay || !/^\d{4}-\d{2}-\d{2}$/.test(lienDay)) return null
+  const month = lienDay.slice(0, 7)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return { from: `${month}-${pad(rule.reminders.from)}`, to: `${month}-${pad(rule.reminders.to)}` }
+}
 /** The key on the sent item's `fields`. */
 export const COURTESY_FIELDS_KEY = 'courtesy'
 /** The key on the sent item's `fields` for what they promised for the rest (punch list #274, PR 3). */
@@ -174,6 +183,8 @@ export type CourtesyStatus = {
   letterTwoWords?: string
   /** While `paying` (PR 3 of #274): the payment, the remainder, the day the pause ends; null or absent otherwise. */
   paying?: CourtesyPaying | null
+  /** Reminders week of the lien's month (punch list #235, PR 4), 'YYYY-MM-DD' both ends; null without a lien day. `waiting` past day 7 waits for it. */
+  reminderWindow?: { from: string; to: string } | null
   records: CourtesyRecord[]
 }
 
@@ -201,6 +212,8 @@ export type CourtesyStatusInput = {
   promisedYmd?: string | null
   /** What they promised for the rest, as the sent item keeps it; null or absent when none. */
   promise?: CourtesyPromise | null
+  /** The lien month's days (punch list #235); the office's rule when absent. */
+  monthRule?: LienMonthRule | null
   formatDay?: (ymd: string) => string
 }
 
@@ -251,7 +264,8 @@ export function courtesyStatus(input: CourtesyStatusInput): CourtesyStatus {
   const deadline = (input.affidavit?.deadline ?? '').trim()
   const lienDay = YMD.test(deadline) ? deadline : null
   const letterTwoWords = lt.state === 'sent' || lt.state === 'in_flight' ? lt.words : ''
-  const base = { day: lt.day, lastSentAt, waitingForAnswer: false, lienDay, letterTwoWords, records }
+  const reminderWindow = courtesyReminderWindow(lienDay, input.monthRule ?? LIEN_MONTH_RULE)
+  const base = { day: lt.day, lastSentAt, waitingForAnswer: false, lienDay, letterTwoWords, reminderWindow, records }
   const closed = (reason: string): CourtesyStatus => ({ ...base, state: 'closed', words: reason, reason })
   const held = (reason: string): CourtesyStatus => ({ ...base, state: 'held', words: `Courtesy held · ${reason}`, reason })
 
@@ -281,6 +295,8 @@ export function courtesyStatus(input: CourtesyStatusInput): CourtesyStatus {
     return { ...base, state: 'sent', words: `day ${day} · ${sentWords} · nothing since · the attorney’s letter next`, reason: '' }
   }
   if (day < COURTESY_FROM_DAY) return { ...base, state: 'waiting', words: `day ${day} · courtesy from day ${COURTESY_FROM_DAY}`, reason: '' }
+  // The lien month (punch list #235, PR 4): the one reminder goes in reminders week of the lien's month, so a notice mailed on the 3rd is not nagged about on the 10th; past that week it stays due until the affidavit's week.
+  if (reminderWindow && input.todayYmd < reminderWindow.from) return { ...base, state: 'waiting', words: `day ${day} · reminder goes ${fmt(reminderWindow.from)} to ${Number(reminderWindow.to.slice(8, 10))}`, reason: '' }
   return { ...base, state: 'due', words: `day ${day} · nothing since the packet`, reason: '' }
 }
 
@@ -289,9 +305,9 @@ export function courtesyIsDue(s: Pick<CourtesyStatus, 'state'>): boolean {
   return s.state === 'due'
 }
 
-/** The footer keeps the press past *due* (v2.6594): a resend by hand after one went, and inside the affidavit's week; amber only while due. */
-export function courtesyMaySend(s: Pick<CourtesyStatus, 'state'>): boolean {
-  return s.state === 'due' || s.state === 'sent' || s.state === 'affidavit_week'
+/** The footer keeps the press past *due* (v2.6594): a resend by hand after one went, inside the affidavit's week, and (punch list #235, PR 4) early by hand while the reminder waits for reminders week; amber only while due. */
+export function courtesyMaySend(s: Pick<CourtesyStatus, 'state' | 'day' | 'reminderWindow'>): boolean {
+  return s.state === 'due' || s.state === 'sent' || s.state === 'affidavit_week' || (s.state === 'waiting' && (s.day ?? 0) >= COURTESY_FROM_DAY && Boolean(s.reminderWindow))
 }
 
 /** The footer's sentence under a sent notice, beside letter two's. */
@@ -315,6 +331,8 @@ export function courtesyFooterSentence(s: CourtesyStatus, amountWords: string, f
     case 'sent':
       return `${s.words[0]!.toUpperCase()}${s.words.slice(1)}. One courtesy notice goes; after ${COURTESY_AGAIN_DAYS} days of silence ${s.letterTwoWords ? `${s.letterTwoWords}` : "the attorney’s letter leads, counsel's certified letter"}. Send it again by hand only when a channel bounced.`
     case 'waiting':
+      // Past day 7 the wait is for reminders week of the lien's month (punch list #235, PR 4): the footer names the days instead of nagging for three weeks.
+      if (s.reminderWindow && (s.day ?? 0) >= COURTESY_FROM_DAY) return `The reminder goes ${formatDay(s.reminderWindow.from)} to ${Number(s.reminderWindow.to.slice(8, 10))}, reminders week of the lien’s month: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number. Send it earlier by hand from the footer if you must.`
       return `A courtesy notice may go from day ${COURTESY_FROM_DAY}: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number.`
     case 'due':
       // After one went (v2.6382) the sentence says so: *nothing since the courtesy notice of Oct 20*, not *since the packet*.
@@ -513,4 +531,14 @@ export function courtesyOutcomeWords(to: ReadonlyArray<CourtesySent>): string {
   const head = n === 0 ? 'Nothing went.' : `${n} ${n === 1 ? 'message' : 'messages'} went: ${went.map((t) => `${t.channel} to ${WHO_WORDS[t.who]}`).join(', ')}.`
   const tail = failed.length ? ` Not sent: ${failed.map((t) => `${t.channel} to ${WHO_WORDS[t.who]} — ${t.reason || 'no reason given'}`).join('; ')}.` : ''
   return `${head}${tail}`
+}
+
+export const COURTESY_RECORD_AGAIN_BUTTON = 'Write the record again ›'
+
+/**
+ * The words when the messages went but the record did not take (punch list #249, row 1): what went,
+ * why the record failed, and that the press that follows writes alone, so nobody sends a second time.
+ */
+export function courtesyUnrecordedWords(to: ReadonlyArray<CourtesySent>, reason: string): string {
+  return `${courtesyOutcomeWords(to)} The record could not be written: ${reason.trim() || 'no reason given'}. Write the record again. Nothing goes out a second time.`
 }

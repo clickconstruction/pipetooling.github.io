@@ -22,7 +22,7 @@ import { isAssistantLike } from '../subcontractorLikeRole'
 import { applyRecognizedStages } from './stageRecognition'
 import { jobKindOfRow, type JobKind, type JobKindRowLike } from './jobKind'
 import { calcLineBudget, lineBudgetEntryOf, lineBudgetFor, sumLineBudgets, type LineBudgetColumns, type LineBudgetSettings } from './lineBudgets'
-import type { JobBudgetSource } from './jobBudget'
+import { isJobBudgetRowKind, type JobBudgetSource } from './jobBudget'
 import { laborEventsOf, teamHoursOf, type ProjectBoardJob } from './projectBoardRead'
 import { stageSharesOf, type StageShare } from './stageShares'
 import { laborDaysOf, superintendentLine, type SuperintendentLine, type SuperintendentLineInput } from './superintendentLine'
@@ -149,7 +149,8 @@ export function projectPace(args: {
     lines.map((l) => ({ priceUsd: l.price, entry: l.entry, pctDone: l.f.progress_pct != null ? num(l.f.progress_pct) : null })),
     settings,
   )
-  const fromBaseline = (job.budgetKind === 'bid' || job.budgetKind === 'typed') && (job.budgetHours ?? 0) > 0
+  // A book baseline (punch list #234 PR 1a) is a pace budget too, read as a guess.
+  const fromBaseline = isJobBudgetRowKind(job.budgetKind) && (job.budgetHours ?? 0) > 0
   const baseHours = fromBaseline ? job.budgetHours! : sums.laborHours
   const baseSource: JobBudgetSource = fromBaseline ? (job.budgetKind as JobBudgetSource) : 'assumed'
   const budgetEdge = Math.max(1, Math.round(baseHours))
@@ -170,7 +171,8 @@ export function projectPace(args: {
     target: t ? { by: t.by, at: t.at, from: t.from, why: t.why } : null,
     // The line reads only the ratio: the read's percent, over a budget of 100.
     money: job.spentPct != null ? { spentUsd: job.spentPct, budgetUsd: 100 } : null,
-    plannedFinishYmd: null,
+    // The planned finish frozen at award (punch list #234 PR 2), when the read carries one.
+    plannedFinishYmd: job.plannedFinish ?? null,
     checklist: args.checklist,
     certifiedPct: null,
   }

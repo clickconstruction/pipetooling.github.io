@@ -30,7 +30,10 @@
  *     before the address is placed, so nothing flips their done thread back to waiting.
  * - The sender's address finds its contact or makes the Who is this? row (`email_place_address`).
  * - The subject's job number, or a job's name among the sender's own, ties the line (`jobInSubject.ts`). Else the
- *   person's star does, and with no star the line sits on the person.
+ *   person's star does, and with no star the line sits on the person. Since v2.6647 the star never takes a new
+ *   invitation or a solicitation (`starTakes`): a known GC's new bid request sits on the person, so the New lane asks
+ *   *Bid it?* with the GC known, instead of landing on their old bid in silence. An addendum or a pre-bid notice
+ *   still goes to the star.
  * - Each file up to 25 MB is copied into the private `message-attachments` bucket. A bigger one, or one that would
  *   not copy, stays in Gmail. A file host's link stays a link. A trade partner's W-9 or certificate is guessed for the
  *   thread's offer (`emailLine.ts`).
@@ -38,6 +41,18 @@
  *   at the last record taken whole and writes `last_error`, and the next run starts there; what was taken is passed
  *   over by its label. The run's health is on `gmail_sync_state` (`last_run_at`, `last_ok_at`, `last_error`,
  *   `last_taken`).
+ * - The label's id is the row's `label_id` (v2.6649): found by name once, made when the box has none, and found again
+ *   only when a label press answers that Gmail no longer has the id (someone took the label off the box). Before, every
+ *   run opened with `/labels`.
+ * - A box whose last run stopped on Gmail's 429 (*User-rate limit exceeded. Retry after …*) is held (v2.6649,
+ *   `readerHold`): the run writes nothing and asks Gmail nothing until Google's own time has passed. The other box reads
+ *   as before.
+ * - A mail whose files killed the run is taken once more without them (v2.6667, `copyStop`). Before a run fetches a
+ *   mail's files it writes the mail's id in `last_error`. A worker that runs out of memory writes nothing on its way out,
+ *   so the words stay; the next run waits out the dead run's lifetime, then takes that mail with its files left in Gmail.
+ *   Before, the next run fetched the same file again, every minute: from 2026-11-06 20:45Z a bid mail to bids@
+ *   (1a1b29b453e52e9b) killed about 190 runs in a row, and the fetches spent bids@'s Gmail download limit, so every
+ *   call as bids@ answered 429 from 00:21Z on 11-07. File bytes are decoded a slice at a time (`base64UrlBytes`).
  *
  *
  * Two boxes since R6's reader (v2.5494, `src/lib/emailIn/readerBoxes.ts`): bids@ as above, and the team box once
@@ -67,12 +82,14 @@ import { kitCarries, type WalkKit } from '../_shared/gcKernels/lib/walk/kit.ts'
 import { loadWalkKit } from '../_shared/walkKit.ts'
 import { readForwarded } from '../_shared/gcKernels/lib/emailIn/forwarded.ts'
 import { walkHistory, type HistoryWalk, type Took } from '../_shared/gcKernels/lib/emailIn/historyWalk.ts'
+import { readerHold } from '../_shared/gcKernels/lib/emailIn/readerHold.ts'
+import { copyMarkWords, copyStop, fetchBytes, keepMark, markOf } from '../_shared/gcKernels/lib/emailIn/copyStop.ts'
 import { base64UrlBytes, parseAddress, readGmailMessage, type EmailIn } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
 import { jobInSubject } from '../_shared/gcKernels/lib/emailIn/jobInSubject.ts'
 import { bulkByBody, leftOut, outsideInbox } from '../_shared/gcKernels/lib/emailIn/leftOut.ts'
 import { bidInSubject, type LiveBid } from '../_shared/gcKernels/lib/emailIn/bidInSubject.ts'
 import { leftOutSenders, type LeftOutSenderMatch, type LeftOutSenderRow } from '../_shared/gcKernels/lib/emailIn/leftOutSenders.ts'
-import { invitation } from '../_shared/gcKernels/lib/emailIn/invitation.ts'
+import { invitation, starTakes } from '../_shared/gcKernels/lib/emailIn/invitation.ts'
 import { ASSIGN_RULE_KEY, parseAssignSeats, type AssignRuleSeats } from '../_shared/gcKernels/lib/followUp/assignSeats.ts'
 import { subjectJobs, subjectNumbers, type SubjectBidRow, type SubjectPipelineRow, type SubjectProjectRow } from '../_shared/gcKernels/lib/emailIn/subjectJobs.ts'
 import { buildLedgerPrefixMap, type LedgerPrefixMap } from '../_shared/gcKernels/lib/ledgerDisplayPrefixes.ts'
@@ -97,6 +114,7 @@ interface TeamMember {
 interface Ctx {
   admin: Admin
   token: string
+  /** The label's id, the row's `label_id`; `putLabel` finds it again when Gmail says it is gone. */
   labelId: string
   /** The box it reads, which each line carries in `messages.mailbox`. */
   box: Mailbox
@@ -120,6 +138,13 @@ interface Ctx {
   seats: AssignRuleSeats
   /** The bids we are pricing (v2.6231): a subject that names one lands the line on it. */
   liveBids: readonly LiveBid[]
+  /**
+   * The mail the run before died copying (v2.6667, `copyStop`): taken with its files left in Gmail, and null once
+   * taken. `mark` is the row's words for it, carried into this run's own words until then.
+   */
+  bare: { gmailId: string; mark: string | null } | null
+  /** This run's mark for the mail it is on, cleared once that mail is through: a run that throws on it keeps it. */
+  onMark: string | null
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -222,13 +247,16 @@ async function rows<T>(query: Promise<{ data: T[] | null; error: { message: stri
   return data ?? []
 }
 
-/** The job a line ties to: the one its subject names, else the person's star, else none. */
-async function jobFor(ctx: Ctx, contactId: string, subject: string): Promise<string | null> {
+/**
+ * The job a line ties to: the one its subject names, else the person's star when it may take the line (`starMayTake`,
+ * v2.6647: false for a new invitation or a solicitation, which sit on the person for *Bid it?*), else none.
+ */
+async function jobFor(ctx: Ctx, contactId: string, subject: string, starMayTake = true): Promise<string | null> {
   const ties = await rows<{ bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null; is_default: boolean }>(
     ctx.admin.from('contact_jobs').select('bid_id, project_id, jobs_ledger_id, is_default').eq('contact_id', contactId),
     "the person's jobs",
   )
-  const star = keyOf(ties.find((t) => t.is_default) ?? { bid_id: null, project_id: null, jobs_ledger_id: null })
+  const star = starMayTake ? keyOf(ties.find((t) => t.is_default) ?? { bid_id: null, project_id: null, jobs_ledger_id: null }) : null
   const mine = new Set(ties.map(keyOf).filter((k): k is string => k !== null))
   const nums = subjectNumbers(subject)
   if (!subject.trim() || (nums.length === 0 && mine.size === 0)) return star
@@ -274,8 +302,35 @@ async function heldLine(ctx: Ctx, rfc: string | null): Promise<boolean> {
   return (data ?? []).length > 0
 }
 
-/** One message: read, placed, tied, its files copied, written once, then labelled. */
+/**
+ * The label onto a message (v2.6649). Gmail answers 400 (*Invalid label*) or 404 to an id the box no longer has, when
+ * someone took the label off the box: it is found or made again by its name, kept for the run, and the press tried once
+ * more. Any other refusal is the message's own and is thrown as before.
+ */
+async function putLabel(ctx: Ctx, messageId: string): Promise<void> {
+  try {
+    await gmailAddLabel(ctx.token, messageId, ctx.labelId)
+  } catch (e) {
+    if (!(e instanceof GmailError && (e.status === 400 || e.status === 404))) throw e
+    ctx.labelId = await gmailLabelId(ctx.token, LABEL_NAME)
+    await gmailAddLabel(ctx.token, messageId, ctx.labelId)
+  }
+}
+
+/**
+ * One message, and the guard's bookkeeping (v2.6667): once a message is through, whatever became of it, the run before's
+ * marked mail is done with and this run's own mark is cleared. A message that throws keeps both, so the next run never
+ * fetches its files again.
+ */
 async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
+  const took = await takeMail(ctx, id, putBack)
+  if (ctx.bare?.gmailId === id) ctx.bare = null
+  ctx.onMark = null
+  return took
+}
+
+/** One message: read, placed, tied, its files copied, written once, then labelled. */
+async function takeMail(ctx: Ctx, id: string, putBack: boolean): Promise<Took> {
   let m
   try {
     m = await gmailMessage(ctx.token, id)
@@ -303,7 +358,7 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
   }
   // The same mail, read first in the other box: no address placed, no file copied, no line. Only this box's label.
   if (await heldLine(ctx, rfcMessageId(email))) {
-    await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
+    await putLabel(ctx, email.gmailId)
     return 'already'
   }
 
@@ -320,10 +375,23 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
 
   const by = fwd ? ctx.member(fwd.by.address) : null
   const line = emailLine(email, fwd, party, ctx.mailbox, by?.name ?? null)
-  const jobKey = await jobFor(ctx, contactId, line.subject ?? '')
+  // An invitation to bid (punch list #223 PR 3, v2.6222): what the line's subject, words and links say, kept on the
+  // line so the New lane asks *Bid it?* and the card never reads the body again. Null on every other line. Read before
+  // the job, since v2.6647: a new invitation or a solicitation is never handed to the sender's star.
+  const invite = line.direction === 'in' ? invitation({ subject: line.subject ?? '', text: line.body, links: email.links, at: line.at ?? email.at ?? nowIso() }) : null
+  const jobKey = await jobFor(ctx, contactId, line.subject ?? '', starTakes(invite))
 
+  const fileRows = emailFileRows(email, placed.data.placed_kind as string)
+  // The mail the run before died on (v2.6667): no file is fetched, each stays in Gmail. Any other mail with files to
+  // fetch is written down first, so a worker that dies on them leaves its mail's id on the row for the next run.
+  const bare = ctx.bare?.gmailId === email.gmailId
+  const fetch = fetchBytes(fileRows)
+  if (!bare && fetch.files > 0) {
+    ctx.onMark = copyMarkWords(email.gmailId, fetch.bytes)
+    await saveState(ctx.admin, ctx.box, { last_error: ctx.onMark })
+  }
   const files: Record<string, unknown>[] = []
-  for (const f of emailFileRows(email, placed.data.placed_kind as string)) {
+  for (const f of fileRows) {
     if (f.kind === 'link') {
       files.push({ kind: 'link', name: f.name, url: f.url, host: f.host })
       continue
@@ -331,6 +399,10 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
     const base = { kind: 'file', name: f.name, mime: f.mime, size_bytes: f.size, gmail_attachment_id: f.attachmentId, paper: f.paper }
     if (f.keep === 'tooBig') {
       files.push({ ...base, left_in_gmail: 'too_big' })
+      continue
+    }
+    if (bare) {
+      files.push({ ...base, left_in_gmail: 'not_copied' })
       continue
     }
     const path = `${email.gmailId}/${f.partId || files.length}-${safeName(f.name)}`
@@ -349,9 +421,6 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
 
   // Our line going out: the forwarded copy's first sender, or the teammate who copied the box (v2.5722).
   const ourSender = party.direction === 'out' ? ctx.member((fwd ? fwd.from : email.from)?.address ?? '') : null
-  // An invitation to bid (punch list #223 PR 3, v2.6222): what the line's subject, words and links say, kept on the
-  // line so the New lane asks *Bid it?* and the card never reads the body again. Null on every other line.
-  const invite = line.direction === 'in' ? invitation({ subject: line.subject ?? '', text: line.body, links: email.links, at: line.at ?? email.at ?? nowIso() }) : null
   const row = {
     invitation: invite,
     contact_id: contactId,
@@ -380,20 +449,34 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
     const held = await ctx.admin.from('contacts').update({ has_user_id: ctx.seats.trade, has_how: 'rule', has_since: nowIso(), has_until: null }).eq('id', contactId).is('has_user_id', null)
     if (held.error) console.warn(`gmail-sync: ${email.gmailId}'s invitation was not handed to the estimator's seat: ${held.error.message}`)
   }
-  await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
+  await putLabel(ctx, email.gmailId)
   return written ? 'taken' : 'already'
 }
 
 /** One box's run: its token, its row, its label, and its walk. A failure here is this box's alone. */
 async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, prefixes: LedgerPrefixMap, notices: readonly LeftOutSenderRow[], seats: AssignRuleSeats, liveBids: readonly LiveBid[]): Promise<Record<string, unknown>> {
-  const startedAt = nowIso()
-  await saveState(admin, b.mailbox, { last_run_at: startedAt })
+  // The marked mail not yet taken (v2.6667): its mark rides on whatever words this run saves, so a run stopped before
+  // it reached that mail (a 429, a page that failed) never lets the next run fetch its files again.
+  let pending: Ctx['bare'] = null
+  const ctxRef: { ctx: Ctx | null } = { ctx: null }
+  const stillMarked = () => (ctxRef.ctx ? ctxRef.ctx.bare : pending)
+  const withMark = (words: string) => keepMark(ctxRef.ctx?.onMark ?? stillMarked()?.mark ?? null, words)
   try {
-    const token = await googleServiceToken(saJson, GMAIL_SCOPES, b.address)
-    const { data: state, error } = await admin.from('gmail_sync_state').select('history_id').eq('mailbox', b.mailbox).maybeSingle()
+    const { data: state, error } = await admin.from('gmail_sync_state').select('history_id, label_id, last_error, updated_at').eq('mailbox', b.mailbox).maybeSingle()
     if (error) throw new Error(`Reading the ${b.mailbox} reader's state failed: ${error.message}`)
-    // Found by its name each run, and made again if someone took it off the box.
-    const labelId = await gmailLabelId(token, LABEL_NAME)
+    // Inside Google's retry window after a 429 (v2.6649): nothing written, nothing asked of Gmail, so the window closes.
+    // The row keeps the 429's words and its time, which Settings' health line reads as before.
+    const until = readerHold(state, nowIso())
+    if (until) return { ok: true, held: true, until }
+    // The run before died copying a mail's files (v2.6667): wait while it may still be at work, then take that mail bare.
+    const stop = copyStop(state, nowIso())
+    if (stop.kind === 'wait') return { ok: true, held: true, until: stop.until, copying: stop.gmailId }
+    pending = stop.kind === 'bare' ? { gmailId: stop.gmailId, mark: markOf(state?.last_error) } : null
+    await saveState(admin, b.mailbox, { last_run_at: nowIso() })
+    const token = await googleServiceToken(saJson, GMAIL_SCOPES, b.address)
+    // The label by the id the row keeps (v2.6649); found by its name, and made when the box has none, only when the row
+    // holds none yet. A label press that finds the id gone finds it again (`putLabel`).
+    const labelId = (state?.label_id as string | null | undefined) || (await gmailLabelId(token, LABEL_NAME))
 
     // The first run: keep the box's history point and read nothing older.
     if (!state?.history_id) {
@@ -402,7 +485,8 @@ async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, pr
       return { ok: true, started: true }
     }
 
-    const ctx: Ctx = { admin, token, labelId, box: b.mailbox, mailbox: b.words, ...team, prefixes, isNotice: leftOutSenders(notices, b.mailbox), seats, liveBids }
+    const ctx: Ctx = { admin, token, labelId, box: b.mailbox, mailbox: b.words, ...team, prefixes, isNotice: leftOutSenders(notices, b.mailbox), seats, liveBids, bare: pending, onMark: null }
+    ctxRef.ctx = ctx
     // The notices put back (v2.6231): each taken after all, then stamped, so a mail long gone is never asked for again.
     try {
       const backs = await rows<{ id: string; gmail_id: string }>(admin.from('email_set_aside').select('id, gmail_id').eq('mailbox', b.mailbox).not('put_back_at', 'is', null).is('taken_at', null).limit(20), 'the notices put back')
@@ -428,14 +512,15 @@ async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, pr
     if (walk.error) {
       // A message failed: keep the point at the last record taken whole, and say why. The next run starts there.
       const message = walk.error instanceof Error ? walk.error.message : String(walk.error)
-      await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: labelId, last_error: message.slice(0, 1000), last_taken: walk.counts.taken })
+      await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: ctx.labelId, last_error: withMark(message).slice(0, 1000), last_taken: walk.counts.taken })
       throw walk.error
     }
-    await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: labelId, last_ok_at: nowIso(), last_error: null, last_taken: walk.counts.taken })
-    return { ok: true, full: walk.full, ...walk.counts }
+    // A run that ends well clears the words, a mark among them, unless the marked mail is still ahead (a full run).
+    await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: ctx.labelId, last_ok_at: nowIso(), last_error: ctx.bare?.mark ?? null, last_taken: walk.counts.taken })
+    return { ok: true, full: walk.full, ...walk.counts, ...(ctx.bare ? { bareAhead: ctx.bare.gmailId } : {}) }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
-    await saveState(admin, b.mailbox, { last_error: message.slice(0, 1000) }).catch(() => undefined)
+    await saveState(admin, b.mailbox, { last_error: withMark(message).slice(0, 1000) }).catch(() => undefined)
     throw e
   }
 }

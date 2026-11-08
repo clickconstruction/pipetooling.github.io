@@ -7,7 +7,7 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('tab=settings-people', '')).toEqual({ tabId: 'settings-people', anchorId: null })
   })
 
-  it('lands the collections law firm block on Jobs & billing, from the Legal desk’s firm window', () => {
+  it('lands the collections law firm block on Jobs, bills and liens, from the Legal desk’s firm window', () => {
     expect(resolveSettingsDeepLink('?tab=settings-jobs', '#settings-legal-firm')).toEqual({ tabId: 'settings-jobs', anchorId: 'settings-legal-firm' })
     expect(resolveSettingsDeepLink('', '#settings-legal-firm')).toEqual({ tabId: 'settings-jobs', anchorId: 'settings-legal-firm' })
   })
@@ -17,7 +17,7 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('', '#settings-phone-texts-reminders')).toEqual({ tabId: 'settings-phone-texts', anchorId: 'settings-phone-texts-reminders' })
   })
 
-  it('lands every Jobs & billing card and heading on the tab, and a child anchor opens its card (punch list #261)', () => {
+  it('lands every Jobs, bills and liens card and heading on the tab, and a child anchor opens its card (punch list #261)', () => {
     expect(resolveSettingsDeepLink('?tab=settings-jobs', '#settings-jobs-rates')).toEqual({ tabId: 'settings-jobs', anchorId: 'settings-jobs-rates' })
     expect(resolveSettingsDeepLink('', '#settings-jobs-stage-checklists')).toEqual({ tabId: 'settings-jobs', anchorId: 'settings-jobs-stage-checklists' })
     expect(resolveSettingsDeepLink('', '#settings-jobs-group-liens')).toEqual({ tabId: 'settings-jobs', anchorId: 'settings-jobs-group-liens' })
@@ -25,7 +25,7 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('', '#who-counts-as-what')).toEqual({ tabId: 'settings-jobs', anchorId: 'who-counts-as-what' })
   })
 
-  it('a card that left Jobs & billing (punch list #261 PR 2) answers on its new tab by its new anchor and its old one', () => {
+  it('a card that left Jobs, bills and liens (punch list #261 PR 2) answers on its new tab by its new anchor and its old one', () => {
     expect(resolveSettingsDeepLink('', '#settings-data-hcp-reconcile')).toEqual({ tabId: 'settings-data', anchorId: 'settings-data-hcp-reconcile' })
     expect(resolveSettingsDeepLink('', '#settings-jobs-hcp-reconcile')).toEqual({ tabId: 'settings-data', anchorId: 'settings-data-hcp-reconcile' })
     // The dev door and the guides carried `?tab=settings-jobs` before the move: the card's tab wins.

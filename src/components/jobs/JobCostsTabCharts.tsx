@@ -5,12 +5,17 @@ import { useBidCrewRate } from '../../hooks/useBidCrewRate'
 import { useBidPricedMargin } from '../../hooks/useBidPricedMargin'
 import { useJobBaseline } from '../../hooks/useJobBaseline'
 import { useJobBudget } from '../../hooks/useJobBudget'
+import { useJobBaselineRates } from '../../hooks/useJobBaselineRates'
 import { useJobBurnOverhead } from '../../hooks/useJobBurnOverhead'
 import { useJobChargesTimelineInputs, type JobChargesTimelineInputsState } from '../../hooks/useJobChargesTimelineInputs'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { withLiveJobFormValues, type JobCostsLiveValues } from '../../lib/jobs/jobCostsLiveInputs'
-import { budgetForBurn, resolveJobBudget, spendByComponent } from '../../lib/jobs/jobBudget'
+import { budgetForBurn, resolveJobBudget, spendByComponent, type JobBudgetAwardColumns, type JobBudgetRowLike } from '../../lib/jobs/jobBudget'
+import { jobKindOfRow } from '../../lib/jobs/jobKind'
+import type { JobPlannedColumns } from '../../lib/jobs/plannedFinish'
+import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
+import { baselineReading } from '../../lib/bids/bidBaselineRates'
 import { baselineKeptWords, buildCostsVerdict, pctDoneWords } from '../../lib/jobs/jobCostsVerdict'
 import { buildMoneyRows } from '../../lib/jobs/jobMoneyTable'
 import { materialRowHasUserContent } from '../../lib/jobs/jobFormRows'
@@ -95,6 +100,10 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
   // ONE overhead load (v2.3271): the verdict, the chart and the Cost Timeline read the same share.
   const overheadState = useJobBurnOverhead(includeTeamLabor && inputsState.kind === 'ready', job.id, firstEventYmdOf(inputsState))
   const budget = useJobBudget(job.id, job.bid_id ?? null, includeTeamLabor)
+  // The budgets at award (punch list #234 PR 1a): the job's kind, and the book's reading at its price today.
+  const isProject = jobKindOfRow({ ...job, fixtures: (job.fixtures ?? []).map((f, i) => ({ id: f.id, name: f.name, count: f.count, line_unit_price: f.line_unit_price, sequence_order: f.sequence_order ?? i, stage_kind: f.stage_kind })) }).kind === 'project'
+  const bookRates = useJobBaselineRates(includeTeamLabor && isProject)
+  const { settings: lineBudgetSettings } = useLineBudgetSettings()
   const kept = useJobBaseline(job.id, includeTeamLabor)
   const { crewRate } = useBidCrewRate(includeTeamLabor)
   // v2.5043: the margin the linked bid was priced at, beside the direct margin at completion.
@@ -104,6 +113,7 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
   const inputs = inputsState.kind === 'ready' ? inputsState.inputs : null
   const priceUsd = inputs?.revenue ?? live?.priceUsd ?? (job.revenue != null ? Number(job.revenue) : null)
   const resolved = useMemo(() => resolveJobBudget({ row: budget.row, priceUsd, targetMarginPct: readTargetMarginPct() }), [budget.row, priceUsd])
+  const bookNow = useMemo(() => (isProject && bookRates.rates.length > 0 ? baselineReading(bookRates.rates, priceUsd) : null), [isProject, bookRates.rates, priceUsd])
   const canWrite = role === 'dev' || role === 'assistant' || role === 'controller' || role === 'master_technician'
   const pctDone = useMemo(() => {
     // v2.3372: the newest dated % — a report or the office's hand-set — else the job's own.
@@ -132,9 +142,9 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
     // office's hand-set is newer (v2.3372) so the verdict reads "(set on the job)".
     const newest = newestPercentEvent(inputs.valueEvents)
     const latestReportYmd = newest && newest.kind !== 'manual' ? newest.dateKey : null
-    const verdict = buildCostsVerdict({ burn, priceUsd, spend: spendByComponent(inputs.chargeEvents), teamHours: inputs.teamHours, teamPeople, resolved, bidLabel: job.linkedBid?.bid_number ?? null, latestReportYmd, jobPct: inputs.fallbackPercent ?? resolveJobCurrentPercentFallback(job), jobFinished: finished, todayYmd: todayYmdInAppTz(), priced })
+    const verdict = buildCostsVerdict({ burn, priceUsd, spend: spendByComponent(inputs.chargeEvents), teamHours: inputs.teamHours, teamPeople, resolved, bidLabel: job.linkedBid?.bid_number ?? null, latestReportYmd, jobPct: inputs.fallbackPercent ?? resolveJobCurrentPercentFallback(job), jobFinished: finished, todayYmd: todayYmdInAppTz(), priced, budgetRow: budget.row as (JobBudgetRowLike & JobBudgetAwardColumns & JobPlannedColumns) | null })
     return { burn, verdict }
-  }, [inputs, overheadState.overhead, resolved, priceUsd, teamPeople, job, finished, priced])
+  }, [inputs, overheadState.overhead, resolved, priceUsd, teamPeople, job, finished, priced, budget.row])
   const verdict = built?.verdict ?? null
 
   const linkedBid = job.linkedBid ? { id: job.linkedBid.id, bid_number: job.linkedBid.bid_number, project_name: job.linkedBid.project_name } : null
@@ -224,12 +234,12 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
     <>
       {includeTeamLabor ? (
         verdict ? (
-          <JobCostsVerdict verdict={verdict} canWrite={canWrite} budget={budget} linkedBid={linkedBid} onOpenBidCounts={linkedBid ? () => navigate(`/bids?tab=counts&bidId=${encodeURIComponent(linkedBid.id)}`) : null} doorway={doorway} kept={kept} jobFinished={finished} onPrint={packet ? printPacket : null} />
+          <JobCostsVerdict verdict={verdict} canWrite={canWrite} budget={budget} linkedBid={linkedBid} onOpenBidCounts={linkedBid ? () => navigate(`/bids?tab=counts&bidId=${encodeURIComponent(linkedBid.id)}`) : null} onOpenBidLabor={linkedBid ? () => navigate(`/bids?tab=labor&bidId=${encodeURIComponent(linkedBid.id)}`) : null} doorway={doorway} kept={kept} jobFinished={finished} onPrint={packet ? printPacket : null} currentUserId={user?.id ?? null} bookNow={bookNow} bookRateUsd={crewRate?.companyRate ?? lineBudgetSettings.rateUsd} isProject={isProject} />
         ) : (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>{inputsState.kind === 'error' ? 'Could not load the job’s costs.' : 'Loading…'}</p>
         )
       ) : null}
-      {includeTeamLabor && inputs ? <JobCostsLineBudgets fixtures={job.fixtures ?? []} teamHours={inputs.teamHours ?? null} spend={spendByComponent(inputs.chargeEvents)} jobPctDone={pctDone} jobId={job.id} /> : null}
+      {includeTeamLabor && inputs ? <JobCostsLineBudgets fixtures={job.fixtures ?? []} teamHours={inputs.teamHours ?? null} spend={spendByComponent(inputs.chargeEvents)} jobPctDone={pctDone} jobId={job.id} isProject={isProject} /> : null}
       {includeTeamLabor ? <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} mode="chart" /> : null}
       <div>
         <button type="button" onClick={toggleDetail} aria-expanded={detailOpen} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.7rem', fontSize: '0.78rem', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit' }} data-testid="costs-detail-toggle">

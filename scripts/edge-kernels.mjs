@@ -106,6 +106,10 @@ export const ENTRIES = {
   'lib/emailIn/jobInSubject.ts': { values: ['jobInSubject'], types: ['SubjectJob'] },
   'lib/emailIn/subjectJobs.ts': { values: ['subjectJobs', 'subjectNumbers'], types: ['SubjectJobRows'] },
   'lib/emailIn/historyWalk.ts': { values: ['walkHistory'], types: ['HistoryWalk', 'Took'] },
+  // v2.6649: a run inside Google's retry window after a 429 waits instead of asking Gmail again.
+  'lib/emailIn/readerHold.ts': { values: ['readerHold', 'isRateLimited', 'retryAfterIn', 'RETRY_AFTER_DEFAULT_MS', 'RETRY_AFTER_CAP_MS'], types: ['ReaderHoldState'] },
+  // v2.6667: a mail whose files killed the run is taken once more without them, so no file is fetched twice.
+  'lib/emailIn/copyStop.ts': { values: ['copyStop', 'copyMarkWords', 'markedMail', 'markOf', 'keepMark', 'fetchBytes', 'COPY_RUN_LIMIT_MS'], types: ['CopyStop', 'CopyStopState', 'FetchRow'] },
   // Residential R6, the reader's PR: bids@ and, once Settings holds its address, the team box.
   'lib/emailIn/readerBoxes.ts': { values: ['boxWords', 'readerBoxes'], types: ['ReaderBox'] },
   // Quickfill's Email station (punch list #159, v2.5820): the boxes the counter reads and one sweep's pure part.
@@ -118,6 +122,15 @@ export const ENTRIES = {
   'lib/photos/photoRows.ts': { values: ['PHOTO_ROWS_SELECT', 'PHOTO_SWITCHES_SELECT', 'photoRowOf', 'photoNameInputOf', 'onSwitches'], types: ['PhotoAttachmentRow', 'PhotoLineRow'] },
   // Materials on site (punch list #209): the ledger's arithmetic, read by dev-mcp's read_on_site so an agent's numbers are the screens'.
   'lib/materials/onSite.ts': { values: ['containerLines', 'countDiffs', 'lastCountedAt', 'countIsDue', 'linesOf', 'partKey', 'groupByPlace', 'placeName', 'STALE_COUNT_DAYS', 'UNSORTED_LABEL'], types: ['Container', 'ContainerLine', 'CountDiff', 'Movement', 'MovementReason', 'Place'] },
+  // The signed hours statement's charged basis and a sub's sheets through the dev MCP (punch list #212): the crew-days
+  // pricing the Hours statement window reads with, its rate card, standings and adjustments, and the sheets kernel, so
+  // get_hours_statement's charged and sheet papers carry the numbers the printed paper carries.
+  'lib/people/hoursStatementCharged.ts': { values: ['hoursStatementChargedRows'], types: ['HoursStatementChargeFacts', 'HoursStatementChargedInput'] },
+  'lib/charges/crewDays.ts': { values: ['buildCrewDays', 'jobChargeRuleFrom', 'jobChargeRuleWords'], types: ['CrewSessionInput', 'CrewUncharged', 'JobChargeRule'] },
+  'lib/charges/rateCard.ts': { values: ['parseCrewShape', 'rateCardFromSettings', 'RATE_CARD_SETTING_KEYS'], types: ['RateCard'] },
+  'lib/charges/adjustments.ts': { values: ['chargeAdjustmentFromRow', 'indexAdjustments'], types: ['ChargeAdjustment'] },
+  'lib/charges/chargeStandings.ts': { values: ['standingsById'], types: ['ChargeStandingRow'] },
+  'lib/people/hoursStatementSheets.ts': { values: ['hoursStatementSheetCounts', 'hoursStatementSheetPayGroups', 'hoursStatementSheetRows'], types: ['HoursStatementSheet', 'HoursStatementSheetLine', 'HoursStatementSheetPayment'] },
   // v2.6406's way back from a retire: read_on_site lists a job's retired boxes with the screens' own Bring back verdict.
   'lib/materials/unretire.ts': { values: ['retiredContainers', 'unretireVerdict'], types: ['UnretireVerdict'] },
   // Messages, cut 5 (v2.5261 to v2.5268 and this): the Quo link's webhook and send. The thread is here for its types,

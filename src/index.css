@@ -4981,7 +4981,7 @@ tr.gcNoticeBandRow[data-flash='yes'] > td:first-child {
 .messagesJumpStrip {
   margin-bottom: 0;
 }
-/* Settings → Jobs & billing's strip of headings (punch list #261) takes the same shape, on a phone the same line. */
+/* Settings → Jobs, bills and liens’ strip of headings (punch list #261) takes the same shape, on a phone the same line. */
 .settingsJumpStrip {
   margin-bottom: 0.5rem;
 }

@@ -213,6 +213,17 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ unpricedWorkOrdersEnabled: true, unpricedWorkOrders: null }))).toEqual([])
   })
 
+  it("the owner's weekly review of the assumed lines (punch list #234 PR 1c): one gray line with the money, gated by the flag", () => {
+    const one = buildNeedsYouItems(inputs({ lineBudgetsReviewEnabled: true, lineBudgetsReview: { lines: 4, projects: 2, assumedUsd: 9_400, totalUsd: 168_000 } }))
+    expect(one.map((i) => i.key)).toEqual(['line-budgets-review'])
+    expect(one[0]).toMatchObject({ severity: 'gray', title: '4 assumed lines on 2 projects awarded this week', detail: '$9,400 of $168,000 on the company split. Looks right stamps them with your name and leaves them assumed. Tune opens the job.', figure: '4', actionLabel: 'Review' })
+    expect(buildNeedsYouItems(inputs({ lineBudgetsReviewEnabled: true, lineBudgetsReview: { lines: 1, projects: 1, assumedUsd: 500, totalUsd: 500 } }))[0]!.title).toBe('1 assumed line on 1 project awarded this week')
+    expect(NEEDS_YOU_RANK['line-budgets-review']).toBe(40)
+    expect(buildNeedsYouItems(inputs({ lineBudgetsReviewEnabled: false, lineBudgetsReview: { lines: 4, projects: 2, assumedUsd: 1, totalUsd: 1 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lineBudgetsReviewEnabled: true, lineBudgetsReview: { lines: 0, projects: 0, assumedUsd: 0, totalUsd: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lineBudgetsReviewEnabled: true, lineBudgetsReview: null }))).toEqual([])
+  })
+
   it('working jobs with no kind (punch list #238): one gray hygiene line, gated by the flag', () => {
     const one = buildNeedsYouItems(inputs({ jobKindGapsEnabled: true, jobKindGaps: { count: 1 } }))
     expect(one.map((i) => i.key)).toEqual(['jobs-no-kind'])

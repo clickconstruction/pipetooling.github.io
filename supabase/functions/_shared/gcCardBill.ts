@@ -16,7 +16,7 @@ export const GC_CARD_FEE_LINE = 'Credit card fee (3%)'
 
 /**
  * The switch (O8c): one `app_settings` row, `value_text` 'true' or 'false', inserted 'false' by migration
- * 20261010042000. The owner turns it on in Settings → Jobs & billing (dev and the owner write). It replaced O8b's
+ * 20261010042000. The owner turns it on in Settings → Jobs, bills and liens (dev and the owner write). It replaced O8b's
  * env value `GC_CARD_BILL_ON`. Both functions, `customer-portal`'s offer, `gc-customer-email`'s card lines and Bill
  * the customer's hint read it.
  */

@@ -1,14 +1,14 @@
 # The walk kit
 
-> One command, `npm run walk`, runs the Messages loop on prod end to end, on the company's own inbox and number, prints what landed where with times, and cleans up after itself. Punch list #142 (v2.5724 to v2.5740; the first walks' paper cuts fixed in v2.6030). The decisions behind it were made in `to-dos/walk-kit/` and are kept here once that folder is gone.
+> One command, `npm run walk`, runs the Messages loop on prod end to end, on the company's own inbox and number, prints what landed where with times, and cleans up after itself; since v2.6652 it also runs every night from GitHub Actions. Punch list #142 (v2.5724 to v2.5740; the first walks' paper cuts fixed in v2.6030; the driver from any checkout, the tester's door and the schedule in v2.6652). The decisions behind it were made on punch list card #142 (retired 2026-11-07) and are kept here and in the fragments v2.5724 to v2.5740.
 
-last_updated: 2026-10-28
+last_updated: 2026-11-07
 
 ## What it is
 
 Every Messages train so far ended on a live walk that only the owner could press: a send goes out, a reply comes back by email and by text, and someone reads the thread, the lanes and the strip. The walk kit lets any Claude session do that in about ten minutes after any deploy, touching only the company's own inbox and number, and leaving nothing behind in the app.
 
-The loop it walks (`to-dos/walk-kit/README.md`'s step table, now this page):
+The loop it walks (the card's step table, now this page; the card retired 2026-11-07):
 
 1. **The kit**: a customer *ZZ Walk Messages Desk* whose email is the bids box's address and whose phone is the bids number, its contact with the two channels, a draft estimate of $1.00, and the row `app_settings.walk_kit_v1` that names them (`walk_setup`, `20261022045047_walk_kit.sql`).
 2. **The tester** presses the estimate email and the estimate text through the app's own doors (`send-estimate-to-customer`, `quo-send`): a hidden training-mode assistant, `walk-tester@walk.pipetooling.local`, flagged `users.is_walk_tester`, let through only at the kit's own targets (`src/lib/walk/kitDoor.ts`). It can write nothing else.
@@ -24,13 +24,13 @@ While the kit stands, the readers' rule holds (v2.5726): an address or number of
 
 ## How to run it
 
-From any checkout that has the main checkout's `.env` and `.env.local` beside it (a worktree resolves there on its own):
+From any checkout, the main one or a worktree:
 
 ```bash
 npm run walk
 ```
 
-It reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_DEV_LOGIN_SECRET` from the main checkout's `.env` with `.env.local` laid over it (`src/lib/walk/walkEnv.ts`), prints none of them, and a key still missing names itself and the files read. The tester's session lives in memory only. Every wait polls every 15 seconds, tries a poll that failed (a lost signal) again on the next, and ends after its limit (three minutes for the mail and text legs) with what it saw, the last failed poll included. A step that holds does not stop the steps that do not need it. Cleanup always runs at the end, unless you keep the rows.
+It reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_DEV_LOGIN_SECRET` from the main checkout's `.env` with `.env.local` laid over it, then the process environment over both (`src/lib/walk/walkEnv.ts`; a worktree resolves to the main checkout's files on its own, and a run with no files hands the keys in as variables), prints none of them, and a key still missing names itself and the files read. `npm run walk` starts in `scripts/walk/start.ts` (v2.6652), which reads the keys first and then runs the driver in a second vite-node with them in its environment: the driver imports the screens' own io, whose first module throws at load when Vite's own env has no key, and Vite's env is filled only when vite-node starts. The tester's session lives in memory only. Every wait polls every 15 seconds, tries a poll that failed (a lost signal) again on the next, and ends after its limit (three minutes for the mail and text legs) with what it saw, the last failed poll included. A step that holds does not stop the steps that do not need it. Cleanup always runs at the end, unless you keep the rows.
 
 The flags:
 
@@ -42,7 +42,11 @@ The flags:
 | `--answer` | At the end the tester answers from the thread by email, and the walk checks one line went out and no second. |
 | `--cleanup-only` | Only `walk cleanup`, for a kit a stopped run left behind. |
 
-The report is printed and written to `tmp/walk/<stamp>.json` (ignored by git): one row per step with sent at, landed at, where (the line, its box, the lane) and whether it went or why it held; then the lanes, Went out, the strip's difference, the stray check, Quo's answers and cleanup's counts. Nothing printed carries a key, a token or a whole link: a link shows as its last four characters.
+The report is printed and written to `tmp/walk/<stamp>.json` (ignored by git): one row per step with sent at, landed at, where (the line, its box, the lane) and whether it went or why it held; then the lanes, Went out, the strip's difference, the stray check, Quo's answers and cleanup's counts. A call that fails outside a wait ends the run early with its reason on the report (*✗ The run ended early*), cleanup still runs, and a report with no step that went is never green (v2.6652). Nothing printed carries a key, a token or a whole link: a link shows as its last four characters.
+
+### On a schedule
+
+`.github/workflows/walk.yml` (v2.6652) runs `npm run walk` every night at 09:00 UTC (3–4 AM Texas, before the office) and on demand from the Actions tab, one run at a time, non-gating: it never runs on a pull request and blocks no merge. The three keys come from the repository's secrets: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are the deploy's, and `VITE_DEV_LOGIN_SECRET` is added once by hand (the same value as the `dev-login` function's `DEV_LOGIN_SECRET`; the run fails on its first step and names the missing one until then). The report under `tmp/walk/` is attached to every run for thirty days. A red run means a leg of the loop held on prod and the report says which and what it saw; it says nothing about any PR.
 
 ## What it touches, and what stays
 
@@ -113,7 +117,8 @@ With `query_logs`, over the run's window: `quo-webhook`'s and `gmail-sync`'s lin
 
 | Piece | Where |
 |---|---|
-| The driver and its io | `scripts/walk/run.ts` (`runWalk`), tested by `src/lib/walk/walkDriver.run.test.ts` |
+| The driver and its io | `scripts/walk/run.ts` (`runWalk`), tested by `src/lib/walk/walkDriver.run.test.ts`; `scripts/walk/start.ts` reads the keys (`scripts/walk/env.ts`) and starts it |
+| The nightly run | `.github/workflows/walk.yml` |
 | The walk's pure half: flags, steps, waits, the report, the scrub | `src/lib/walk/walkRun.ts` |
 | The kit's row and the readers' rule | `src/lib/walk/kit.ts`, `src/lib/messages/ownChannels.ts` |
 | The tester's doors | `src/lib/walk/kitDoor.ts`; `quo-send`, `messages-email`, `send-estimate-to-customer` |
@@ -122,9 +127,20 @@ With `query_logs`, over the run's window: `quo-webhook`'s and `gmail-sync`'s lin
 | The tester's flag | `docs/migrations/20261022044606_users_is_walk_tester.md`, `ACCESS_CONTROL.md` § The walk tester |
 | Quiet to people | `src/lib/messages/notifyPlan.ts`, `src/lib/followUp/assignSeats.ts`, `src/lib/flows/nudgeRunInputs.ts` |
 
+## Found on the 2026-11-07 run
+
+The fixed driver's first live runs, from a worktree, with the owner's word to run them. Three defects in the way of sign-in, none in the Messages loop, all fixed in v2.6652 (its fragment has the detail); after the `dev-login` redeploy the run went past sign-in and found a fourth, with bids@'s Gmail quota behind it.
+
+1. **The driver could not start from a worktree**: `src/lib/supabase.ts` throws at load when Vite's own env has no key, and a worktree has no `.env`. Fixed: `scripts/walk/start.ts` reads the keys first and runs the driver with them in its environment.
+2. **A lost signal on the first call ended the run, and the report read green**: `walk setup` was the one call outside the retrying wait, and a report with no step had nothing held. Fixed: setup goes through the wait, a call that throws mid-run ends the run with its reason on the report, and a report with no step that went is not green.
+3. **dev-login refused the tester** (403): v2.6639, merged the same morning, closed the door to everyone but a dev or a digital twin. Fixed: the gate admits `users.is_walk_tester`, which has no mailbox and can write nothing but the kit's sends.
+4. **A refused open read as a mail that never came** (v2.6664): with `dev-login` redeployed, the tester pressed both sends itself for the first time (17:49 UTC); the text reply landed in one second with the estimate text's ✓ delivered, STOP and START set and cleared the team box's stop, the office read ZZ Walk in New, no stray contact, and cleanup removed every row. The one held step, *Open the estimate from the bids inbox*, said the email never arrived, while Resend had delivered it to bids@ in one second: the `walk` function's `open` was answering *Gmail /messages failed (429): User-rate limit exceeded*, and the driver's wait read every non-200 answer as not yet. Fixed: the open wait throws a refusal, so the held step's *saw* carries the function's words. **Not a kit defect, and still open**: Gmail has refused every read of bids@ since 2026-11-06 20:44 UTC (`gmail_sync_state.bids`), with a *Retry after* fifteen minutes past each request, and a sixteen-minute quiet stretch (18:06 to 18:22 UTC) did not clear it, so the two Gmail legs of the walk, the open and the email reply, hold until bids@'s quota is back. The nightly run (§ On a schedule) is the proof to watch.
+
+Before the run, the three test records that still carried bids@ in their own columns were read (the GC test trade company's `email`, *GC Test Architects*' `contact_info.email`, *GC Test Owner LLC*'s `billing_email`; no `contact_channels` row carries it, so `walk_setup` passes). The SQL that retypes each to a `zz-test-…@example.com` address dry-ran clean over the pooler; the committing run is the owner's, since a Claude session in auto mode is refused that write.
+
 ## Found on the first walks (2026-10-23)
 
-The first green run went on the owner's presses (`--owner-presses --keep`), then the owner's own Chrome walked Take it, Answer all, Log a call and Nudge on the kit's thread before `--cleanup-only` removed every row. Four paper cuts in the driver, none in the app, all four fixed in v2.6030 (the fixed driver's live walk is still to run):
+The first green run went on the owner's presses (`--owner-presses --keep`), then the owner's own Chrome walked Take it, Answer all, Log a call and Nudge on the kit's thread before `--cleanup-only` removed every row. Four paper cuts in the driver, none in the app, all four fixed in v2.6030:
 
 1. **The keys.** `scripts/walk/run.ts` read the main checkout's `.env.local` alone and needed all three keys there, while that checkout kept `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`; the two lines were copied into `.env.local` by hand. Fixed in v2.6030: the driver reads `.env` and lays `.env.local` over it (`src/lib/walk/walkEnv.ts`), and a key still missing names itself and the files read.
 2. **A failed fetch ends the run.** A transient `TypeError: fetch failed` inside a wait (polling the estimate for the owner's press) aborted the whole run with exit 1 instead of being retried on the next poll, with the kit kept. Fixed in v2.6030: `waitUntil` tries a poll that threw again on the next poll within the wait's own limit, prints each failure as it happens, and a wait that never succeeds holds its step with the last error in what it saw.
@@ -135,4 +151,4 @@ Also seen: a kit whose newest line is theirs sits in New or Needs a reply, never
 
 ## Not carried
 
-Log a call, Answer all, Take it on, Nudge and Book a visit as the tester (each writes through an RPC that refuses a training account; each can be fenced like the sends when a walk needs it); a walk on a schedule; deleting the kit's mail in Gmail or its texts in Quo; the estimate email's Reply-To, which is still the sender's own address rather than the team box (the owner's call); calls between the two numbers; files on a reply.
+Log a call, Answer all, Take it on, Nudge and Book a visit as the tester (each writes through an RPC that refuses a training account; each can be fenced like the sends when a walk needs it); a walk after each deploy (the nightly one is § On a schedule); deleting the kit's mail in Gmail or its texts in Quo; the estimate email's Reply-To, which is still the sender's own address rather than the team box (the owner's call); calls between the two numbers; files on a reply.

@@ -1,5 +1,5 @@
 /**
- * Settings → Jobs & billing, drawn by the question a person brings (punch list #261): six
+ * Settings → Jobs, bills and liens, drawn by the question a person brings (punch list #261): six
  * headings in order, each card's anchor, name, one-line of what it sets and who sees it.
  * The page draws the headings from here, the strip reads them, the deep
  * links register every anchor from here and the doors test holds a door for each. A card is
@@ -28,6 +28,7 @@ export type JobsBillingSlug =
   | 'job-book'
   | 'gc-card'
   | 'gc-cutoff'
+  | 'line-budgets'
   | 'stage-checklists'
   | 'machine-templates'
   | 'photos'
@@ -87,6 +88,7 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
       card('job-book', 'Job Book', 'the Collect Payment line items', 'dev-master-office'),
       card('gc-card', 'GC jobs · pay by card', 'the Pay by card switch on certified bills', 'dev-master'),
       card('gc-cutoff', 'GC jobs · the trades’ cut-off', 'days before bill day', 'money-team'),
+      card('line-budgets', 'Line budgets', 'the split a typed line gets until the owner tunes it, and the cost rate the hours use', 'dev-master'),
     ],
   },
   {
@@ -182,7 +184,7 @@ export function jobsBillingGroupsFor(role: UserRole | null | undefined): JobsBil
 
 export function jobsBillingCardBySlug(slug: JobsBillingSlug): JobsBillingCard {
   const found = JOBS_BILLING_CARDS.find((c) => c.slug === slug)
-  if (!found) throw new Error(`No Jobs & billing card ${slug}`)
+  if (!found) throw new Error(`No Jobs, bills and liens card ${slug}`)
   return found
 }
 

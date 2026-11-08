@@ -17,6 +17,8 @@ import { DashboardArDepositsModal } from '../dashboard/DashboardArDepositsModal'
 const TodaysSendsWindow = lazy(() => import('../dashboard/TodaysSendsWindow').then((m) => ({ default: m.TodaysSendsWindow })))
 // The statement round (v2.6096, punch list #178): GC Review over the card, loaded when it opens for the same reason.
 const GcReviewWindow = lazy(() => import('../dashboard/GcReviewWindow').then((m) => ({ default: m.GcReviewWindow })))
+// The owner's weekly review of the assumed line budgets (punch list #234, PR 1c), loaded when it opens.
+const LineBudgetsReviewWindow = lazy(() => import('../dashboard/LineBudgetsReviewWindow').then((m) => ({ default: m.LineBudgetsReviewWindow })))
 
 type WindowDoor = Extract<NeedsYouDoor, { kind: 'window' }>
 
@@ -127,6 +129,11 @@ export function useNeedsYouPress({
             }}
             onChanged={() => handles.reloadStatementRound()}
           />
+        </Suspense>
+      ) : null}
+      {open?.window === 'line-budgets-review' && handles.lineBudgetsReviewRows ? (
+        <Suspense fallback={null}>
+          <LineBudgetsReviewWindow review={handles.lineBudgetsReviewRows} onClose={close} onChanged={() => handles.reloadLineBudgetsReview()} />
         </Suspense>
       ) : null}
       {officeEligible ? (

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Settings → Jobs & billing → Pay by card's switch for GC customers (O8c): it loads off, says what turning it on does,
+ * Settings → Jobs, bills and liens → Pay by card's switch for GC customers (O8c): it loads off, says what turning it on does,
  * and a press saves the new value through the setting's own io.
  */
 import { describe, expect, it, vi } from 'vitest'

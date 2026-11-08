@@ -1,0 +1,52 @@
+/**
+ * Messages, cut 6 (email in): when the bids@ reader (`gmail-sync`) waits instead of asking Gmail again. Gmail answers a
+ * box past one of its per-user limits with 429 *User-rate limit exceeded. Retry after 2026-11-07T16:57:02.324Z*, the
+ * time always fifteen minutes past the request. On bids@ from 2026-11-07 00:21Z the limit was the mailbox's download
+ * allowance, spent by a run that died copying one mail's files and was tried again every minute (v2.6667, `copyStop`
+ * has the story); the limit outlasts any one retry time. So a run that finds the box's last run stopped on a 429 writes
+ * nothing and asks Gmail nothing until Google's own time has passed (`readerHold`), one knock each window instead of
+ * sixty; the row's `last_error` keeps the words, and Settings' health line reads them as before. Pure.
+ */
+
+/** The row's fields the hold reads: the last run's words and when they were written. */
+export interface ReaderHoldState {
+  last_error: string | null
+  updated_at: string | null
+}
+
+/** How long a 429 with no time in its words holds the box: Google's usual window. */
+export const RETRY_AFTER_DEFAULT_MS = 15 * 60_000
+/** The most a hold ever runs past now, whatever the words say: a clock astray never parks the reader for a day. */
+export const RETRY_AFTER_CAP_MS = 60 * 60_000
+
+const RETRY_AFTER = /retry after\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)/i
+
+/** Whether the words are Gmail's rate-limit refusal: a 429 as `gmail.ts` writes it, or Google's own name for it. */
+export function isRateLimited(message: string | null | undefined): boolean {
+  const words = (message ?? '').trim()
+  return /\(429\)/.test(words) || /rate.?limit/i.test(words)
+}
+
+/** The time Google named in the words ("Retry after 2026-11-07T16:57:02.324Z"), as ISO, or null when it named none. */
+export function retryAfterIn(message: string | null | undefined): string | null {
+  const found = RETRY_AFTER.exec(message ?? '')
+  if (!found) return null
+  const ms = Date.parse(found[1]!)
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null
+}
+
+/**
+ * Until when a box's run waits, as ISO, or null when it runs now: the last run was not a 429, or the time has passed.
+ * The time is Google's own from the words; a 429 that named none holds fifteen minutes past the row's save. Either
+ * runs at most an hour past now.
+ */
+export function readerHold(state: ReaderHoldState | null | undefined, nowIso: string): string | null {
+  if (!state || !isRateLimited(state.last_error)) return null
+  const now = Date.parse(nowIso)
+  if (!Number.isFinite(now)) return null
+  const named = retryAfterIn(state.last_error)
+  const saved = Date.parse(state.updated_at ?? '')
+  const until = named ? Date.parse(named) : Number.isFinite(saved) ? saved + RETRY_AFTER_DEFAULT_MS : NaN
+  if (!Number.isFinite(until) || until <= now) return null
+  return new Date(Math.min(until, now + RETRY_AFTER_CAP_MS)).toISOString()
+}

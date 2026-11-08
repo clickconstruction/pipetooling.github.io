@@ -20,12 +20,24 @@ import { normalizeFormFixtureRows } from '../lib/jobs/jobFormFixtureHydrate'
 import { normalizeEstimateLineItemsFromJson } from '../lib/estimateLineItemNormalize'
 import { fixturesPayloadForCreateJobFromEstimate } from '../lib/createJobFromEstimateSubmit'
 import type { JobBillToParty } from '../lib/jobs/billToParty'
+import { workbenchLineBudget, type AwardBidBreakdown } from '../lib/jobs/awardBaseline'
+import { readLineBudgetSettings } from '../lib/jobs/lineBudgetSettingsStore'
 import type { FixtureRow, JobFormServiceType, MeServiceTypeColumns } from '../lib/jobs/jobFormTypes'
 import type { WinningGcOption } from '../components/jobs/PickWinningGcModal'
 import type { JobBidLinkOption } from '../components/jobs/JobBidLinkChoiceModal'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
+
+/** The bid's breakdown for the carried line's ◆ (punch list #234 PR 1a); null on any failure, so the import never waits on it. */
+async function readBidBreakdownForImport(bidId: string): Promise<AwardBidBreakdown | null> {
+  try {
+    const res = await supabase.rpc('bid_estimate_breakdown', { p_bid_id: bidId })
+    return res.error ? null : ((res.data as unknown as AwardBidBreakdown | null) ?? null)
+  } catch {
+    return null
+  }
+}
 
 /** The winning-GC picker's open question: a bid with several GCs and no single recorded winner. */
 export type JobImportWinningGcPick = {
@@ -255,7 +267,10 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
         if (carryValue != null) {
           const carry = draft ? true : await confirmDialog(bidImportCarryQuestion({ carryValue, agreedValue, bid: b, gcName: chosen?.name ?? b.customers?.name }))
           if (carry) {
-            setFixtures([{ id: crypto.randomUUID(), ...bidImportFirstLine({ carryValue, agreedValue, bid: b }) }])
+            // The ◆ a carried line takes (punch list #234 PR 1a): the bid's workbench priced labor and
+            // materials, so the line that carries the price carries their shares. Fail-soft to no budget.
+            const breakdown = await readBidBreakdownForImport(b.id)
+            setFixtures([{ id: crypto.randomUUID(), ...bidImportFirstLine({ carryValue, agreedValue, bid: b }), ...(workbenchLineBudget(breakdown, carryValue, readLineBudgetSettings().rateUsd) ?? {}) }])
             setFixtureScopeExpandedById({})
             if (agreedValue == null) {
               // Conditional carry (`.is('agreed_value', null)`): zero rows is the expected already-set case, not a refused write — no guard on purpose.

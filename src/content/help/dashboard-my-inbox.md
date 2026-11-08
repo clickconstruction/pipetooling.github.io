@@ -9,7 +9,7 @@ The My Inbox card on the Dashboard is your personal task inbox. Everything in it
 
 Treat it like email. Work it down to empty.
 
-On a **desktop screen** each item is a compact one-line row. It shows a checkbox, the title, then small chips. A status chip like {{chip:yellow|Reopened · Sun 3:17 PM}} shows the status. Hover it for the reason. A notes chip like {{chip:blue|2 notes}} opens the thread. The quiet **＋ Note** and forward buttons sit at the end of a row. They brighten when you hover the row. The **Overdue** and **Due Today** headers carry a count of what's waiting. On a **phone** you get the big glove-friendly cards described below. Nothing there has changed.
+On a **desktop screen** each item is a compact one-line row. It shows a checkbox, the title, then small chips. A card that happens once shows a ring with its percent instead of the box. A status chip like {{chip:yellow|Reopened · Sun 3:17 PM}} shows the status. Hover it for the reason. A notes chip like {{chip:blue|2 notes}} opens the thread. The quiet **＋ Note** and forward buttons sit at the end of a row. They brighten when you hover the row. The **Overdue** and **Due Today** headers carry a count of what's waiting. On a **phone** you get the big glove-friendly cards described below. Nothing there has changed.
 
 ## What's inside
 

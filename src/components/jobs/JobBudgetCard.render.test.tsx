@@ -36,7 +36,7 @@ const inputs: JobChargesTimelineInputs = {
 const bidRow = { job_id: 'j1', kind: 'bid', bid_id: 'b66', bid_version_id: null, labor_hours: 1180, labor_rate: 38, labor_usd: 44_840, materials_usd: 31_200, subs_usd: 6_500, other_usd: 2_900, total_direct_usd: 85_440, completeness: { rows_total: 26, rows_with_hours: 23, rate_set: true, materials_source: 'takeoff', usable: false }, taken_at: '2026-09-11T15:00:00Z', taken_by: 'u1', note: null, created_at: '', updated_at: '' }
 
 function state(over: Partial<JobBudgetState> = {}): JobBudgetState {
-  return { loading: false, busy: false, error: null, row: null, candidates: [], linkedBreakdown: null, reload: vi.fn(async () => {}), linkAndSnapshot: vi.fn(async () => true), setTyped: vi.fn(async () => true), clear: vi.fn(async () => true), ...over }
+  return { loading: false, busy: false, error: null, row: null, candidates: [], linkedBreakdown: null, reload: vi.fn(async () => {}), linkAndSnapshot: vi.fn(async () => true), setTyped: vi.fn(async () => true), clear: vi.fn(async () => true), setBook: vi.fn(async () => true), award: vi.fn(async () => true), setPlanned: vi.fn(async () => true), ...over }
 }
 
 function renderCard(budget: JobBudgetState, over: Partial<Parameters<typeof JobBudgetCard>[0]> = {}) {

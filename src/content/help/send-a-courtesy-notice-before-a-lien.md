@@ -11,9 +11,11 @@ Supply houses send this letter before they lien, and it gets bills paid. Ours go
 
 ## When the desk offers it
 
-Open the Lien desk and go to **Do now**. A sent notice with nothing paid shows a row from day 7 after the packet. The row sits under the **Reminders** heading. The row's button reads {{button:blue|Send a courtesy notice}}. The same button sits on the notice's footer under **Sent**. The Reminders rail above the rows counts these notices on its first step, Reminder due. The rail's other steps count the reminders sent, the second letters and the notices closed.
+Open the Lien desk and go to **Do now**. A sent notice with nothing paid shows a row in reminders week of the lien's month. Reminders week is days 1 to 5 of the month the lien is due in. The row never shows before day 7 after the packet. The row sits under the **Reminders** heading. The row's button reads {{button:blue|Send a courtesy notice}}. The same button sits on the notice's footer under **Sent**. The Reminders rail above the rows counts these notices on its first step, Reminder due. The rail's other steps count the reminders sent, the second letters and the notices closed.
 
 - Day 7 is counted the way the attorney’s letter counts it. The desk uses the delivery day when the mail piece knows it.
+- Before reminders week the footer says when the reminder goes, like *The reminder goes Dec 1 to 5*. The rail's first step counts these notices as waiting for reminders week. The footer still sends one earlier by hand.
+- Past reminders week an unsent reminder stays due until the affidavit's week. The lien month bar counts it as slipped.
 - The attorney’s letter keeps its own day. From day 10 the desk offers counsel's certified second letter beside the courtesy notice.
 - The desk sends one courtesy notice. After a week of silence it offers the attorney's letter. The footer still lets you send the courtesy again by hand when an email or a text bounced.
 
@@ -39,6 +41,8 @@ Seven days before the lien's day the affidavit comes first. The paper takes abou
 
 The toast says what went and what did not, with the reason. A refusal on one channel never stops the others.
 
+When the messages went but the record could not be written, the window closes and the footer says so. The footer's button reads {{button:amber|Write the record again ›}}. Press it once. Nothing goes out a second time.
+
 Opening the window makes nothing. A send by email alone makes nothing either. A text makes the GC a Messages contact when it goes, and the text lands in Messages.
 
 The owner's text goes only when the owner's number already belongs to someone in Messages. Most owners are not in Messages yet. Then the owner gets the email alone, and the Text column says so. The owner is never made a Messages contact by this window.
@@ -46,7 +50,7 @@ The owner's text goes only when the owner's number already belongs to someone in
 ## What the message says
 
 - The notice we mailed on its day stands. The message is a reminder, not a new notice.
-- One number, the notice's claim.
+- One number, what the job's bills still owe today. The notice claimed the whole balance, so a bill raised since is added and a payment since is taken off.
 - The day the lien affidavit is filed unless it is paid, and the property it is filed on. The day comes from the affidavit's own clock.
 - That a recorded affidavit is public record on the property. A title search finds it later, even after it is released.
 - Where to pay, in one line, and that we cannot take a joint check.
@@ -70,7 +74,7 @@ The button leaves the row once any of these happens.
 - The owner's call is recorded.
 - The GC's written okay is recorded.
 - The affidavit is filed.
-- The GC or the owner answers the message in Messages.
+- The GC or the owner answers in Messages and the office records the call or the okay. A reply alone does not close it yet.
 
 ## Where the record goes
 

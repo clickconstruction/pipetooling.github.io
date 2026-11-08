@@ -26,7 +26,7 @@ The **numbered guide** beside the document lists what the customer's copy needs.
 
 1. Read **What goes**. The email is ticked, with the address it goes to. The text is ticked when the customer has a number on file.
 2. Read the text in the orange box. Change any word. Keep the word link in braces where you want the estimate's link.
-3. Press {{button:green|Send both to Dana}}. The email goes first. Then the text goes with the same link.
+3. Press {{button:green|Send both to Dana}}. The email goes first. Then the text goes with a shorter link to the same page.
 
 Press **Preview** beside the email or the text to see it as Dana will. The sheet stays open under it. The link in the text preview is a sample. The real one fills in when the email goes.
 
@@ -42,7 +42,7 @@ Under the words, the sheet says whose script it is. Press **Change the script in
 
 The estimate keeps a **What went** card after that. It lists the email with its time and each text that carried the link. Press **Open the thread** to read the text where it landed. When no text went, the card says why.
 
-A send that cannot finish says so in the sheet. A red band names the reason and your typed words stay. Press {{button:green|Try again}} when you fixed the reason, or **Skip** to leave it. If the estimate already went, the band says when it went. The button then reads {{button:green|Send the link again}}. That press emails a fresh link and texts it. The old link stops working.
+A send that cannot finish says so in the sheet. A red band names the reason and your typed words stay. Press {{button:green|Try again}} when you fixed the reason, or **Skip** to leave it. If the estimate already went, the band says when it went. The button then reads {{button:green|Send the link again}}. That press emails a fresh link and texts a short one. The old emailed link stops working. A link texted before keeps working for its 14 days.
 
 A change order, or an estimate with a $0 total, keeps the old question: **Send to pat@example.com?** The customer gets one letter with a {{button:amber|Review & accept the estimate}} button either way. See [schedule a job and tell the customer](/help/schedule-a-job-and-tell-the-customer) for the same sheet on a booking.
 

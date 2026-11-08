@@ -22,7 +22,7 @@ export type NeedsYouDoor =
   /** `navigate(href)`. */
   | { kind: 'href'; href: string }
   /** A window the host mounts over the card. Since v2.6096 (punch list #178) the statement round (GC Review) and a returned check's case (the Accounts receivable window on that deposit) open in place too. */
-  | { kind: 'window'; window: 'ar-deposits' | 'tally-team' | 'lien-unconditional' | 'lien-waivers-to-sign' | 'todays-sends' | 'statement-round' | 'returned-check'; depositId?: string | null }
+  | { kind: 'window'; window: 'ar-deposits' | 'tally-team' | 'lien-unconditional' | 'lien-waivers-to-sign' | 'todays-sends' | 'statement-round' | 'returned-check' | 'line-budgets-review'; depositId?: string | null }
   /** The first draft test report in the Test report modal; `href` when there is none or no modal. */
   | { kind: 'test-report'; first: { jobId: string; reportId: string } | null; href: string }
   /** A station on the Quickfill page, or the Teams Inbox card on the Dashboard; `href` when the host cannot show it. */
@@ -104,6 +104,11 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return href('/jobs?tab=subs&wof=drafts')
     case 'jobs-no-kind':
       return href('/jobs?tab=stages&kind=unset')
+    case 'projects-no-baseline':
+      return href('/jobs?tab=stages&kind=project')
+    case 'line-budgets-review':
+      // The owner's weekly review opens over the card (punch list #234, PR 1c).
+      return { kind: 'window', window: 'line-budgets-review' }
     case 'jobs-stale-open':
       return href('/jobs?tab=stages&followups=idle')
     case 'capacity-under':

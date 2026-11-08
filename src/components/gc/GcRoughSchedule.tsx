@@ -56,7 +56,7 @@ export function GcRoughSchedule({
   const daysOf = (key: string, drawn: number) => days[key] ?? drawn
   // Start from a template (G-44): the one the rough was drawn from, until another is picked.
   const [templateId, setTemplateId] = useState(rough?.template?.id ?? '')
-  const own = rough?.template && rough.like ? { use: rough.template, lines: rough.like } : undefined
+  const own = rough?.template && rough.like ? { use: rough.template, lines: rough.like, ...(rough.rows ? { rows: rough.rows } : {}) } : undefined
   const covered = rough?.like ? stagesCovered(rough.like, project) : new Set<string>()
   const draw = () => {
     if (!onDraw) return

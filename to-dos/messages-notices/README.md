@@ -2,7 +2,7 @@
 name: "Messages: an invitation is a bid lead and a notice is not a person — New stops asking Who is this? of mail nobody wrote to us"
 number: 223
 group: close
-status: proposed 2026-10-30 from Taunya's look at New on the Messages page · built 2026-10-31 and 11-01 as v2.6200, v2.6202, v2.6222 and v2.6231, with v2.6228 beside it · three migrations pushed, gmail-sync and messages-notify deployed · calls 1, 2, 4, 5 and 6 taken as recommended, call 3 built as recommended and waiting on Wendi's word · closed 2026-11-07 but for Wendi's word: call 5's other half shipped as v2.6641 (PR #7217), the prod walk passed on real rows, the question to Wendi went through Todd
+status: proposed 2026-10-30 from Taunya's look at New on the Messages page · built 2026-10-31 and 11-01 as v2.6200, v2.6202, v2.6222 and v2.6231, with v2.6228 beside it · three migrations pushed, gmail-sync and messages-notify deployed · calls 1, 2, 4, 5 and 6 taken as recommended, call 3 built as recommended and waiting on Wendi's word · closed 2026-11-07 but for Wendi's word: call 5's other half shipped as v2.6641 (PR #7217), the prod walk passed on real rows, the question to Wendi went through Todd · the two follow-ups the close left shipped the same day: a known GC's new invitation asks Bid it? instead of landing on their star (v2.6647, #7236) and the bids@ reader waits out Gmail's 429 instead of knocking every minute (v2.6649, #7237); gmail-sync redeployed
 summary: >
   On 2026-10-30 New held thirteen rows and eleven of them were mail nobody wrote to us: nine
   invitations to bid and agency procurement notices, one newsletter, one bid platform's own
@@ -269,9 +269,13 @@ PR 3 waits on neither. PR 4 waits on PR 1 and PR 3.
   real mail read on prod through the dev seat: since 11-02 the reader kept the facts on eleven lines
   (six invitations, five addenda, each with its cue and most with a due day and time); nothing marked
   a notice yet and nothing set aside, so the fold and the left-out list are still empty; the bids
-  reader hit Gmail's rate limit on the morning of 11-07 and retried on its own. One gap seen: a known
+  reader hit Gmail's rate limit on the evening of 11-06 and, knocking every minute, stayed inside
+  Google's window for twenty hours; since v2.6649 (#7237) a 429 holds the box until the time Google
+  names, and the row's label is kept by its id. One gap seen: a known
   GC's new bid request landed on their starred bid (the star wins when the subject names no live bid),
-  so no *Bid it?* row asked about the new job. That is a follow-up of its own, not this card's. The
+  so no *Bid it?* row asked about the new job. That is a follow-up of its own, not this card's, built
+  the same day as v2.6647 (the star never takes a new invitation or a solicitation; `gmail-sync`
+  redeploy after the merge). The
   walk kit sends an estimate email and its reply, not an invitation or a newsletter, so the presses
   in How to verify wait on Todd's choice of how to send the test mail.
 - 2026-11-07, the walk: on Todd's pick the presses were made on real rows in New, in his signed-in

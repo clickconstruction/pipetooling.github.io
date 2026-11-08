@@ -30,6 +30,8 @@ import { useDemandDeadlinesNudge } from './useDemandDeadlinesNudge'
 import { useJobContractsNudge } from './useJobContractsNudge'
 import { useUnpricedWorkOrders } from './useUnpricedWorkOrders'
 import { useJobKindGaps } from './useJobKindGaps'
+import { useBaselineGaps } from './useBaselineGaps'
+import { useLineBudgetsReview } from './useLineBudgetsReview'
 import { useCapacityUnderNudge } from './useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from './useJobAccountEvidenceGapsNudge'
 import { useSupplyMoveWindowNudge } from './useSupplyMoveWindowNudge'
@@ -164,6 +166,10 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
   const jobKindGapsEnabled = on('jobKindGaps')
   const { gaps: jobKindGaps } = useJobKindGaps(jobKindGapsEnabled)
+  const baselineGapsEnabled = on('baselineGaps')
+  const { gaps: baselineGaps } = useBaselineGaps(baselineGapsEnabled)
+  const lineBudgetsReviewEnabled = on('lineBudgetsReview')
+  const { review: lineBudgetsReviewRows, reload: reloadLineBudgetsReview } = useLineBudgetsReview(lineBudgetsReviewEnabled)
   // The quiet jobs (v2.2487) and the idle ones (v2.5512): one fetch, the deck's kernel. Quickfill's own
   // station carries the quiet jobs; the idle line is the deck's and rides the same read.
   const jobFollowupsEnabled = on('jobFollowups')
@@ -260,6 +266,10 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     unpricedWorkOrders,
     jobKindGapsEnabled,
     jobKindGaps,
+    baselineGapsEnabled,
+    baselineGaps,
+    lineBudgetsReviewEnabled,
+    lineBudgetsReview: lineBudgetsReviewRows ? { lines: lineBudgetsReviewRows.lines.length, projects: lineBudgetsReviewRows.jobIds.length, assumedUsd: lineBudgetsReviewRows.assumedUsd, totalUsd: lineBudgetsReviewRows.totalUsd } : null,
     staleOpenEnabled,
     staleOpen,
     capacityUnderEnabled,
@@ -391,6 +401,9 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
       reloadSupplyMoveWindow,
       /** The two windows of v2.6096 (punch list #178): the round's and the returned check's lines re-read on close. */
       reloadStatementRound,
+      /** The owner's weekly review window (punch list #234, PR 1c): its rows, and the re-read after a stamp. */
+      lineBudgetsReviewRows,
+      reloadLineBudgetsReview,
       reloadBankReturned: bankReturnedNudge.reload,
       arBankUnallocatedCount: arBank.count,
       refetchArBankUnallocatedCount: arBank.refetch,

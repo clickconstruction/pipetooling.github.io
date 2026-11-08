@@ -70,11 +70,11 @@ import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
 import LienOwnerCallDialog from './LienOwnerCallDialog'
 import LienCourtesyWindow from './LienCourtesyWindow'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { COURTESY_BUTTON, COURTESY_FROM_DAY, PROMISE_BUTTON, courtesyFooterSentence, courtesyMaySend, courtesyOutcomeWords, type CourtesyFacts, type CourtesyPromise } from '../../lib/jobs/lienCourtesyNotice'
+import { COURTESY_BUTTON, COURTESY_FROM_DAY, COURTESY_RECORD_AGAIN_BUTTON, PROMISE_BUTTON, courtesyFooterSentence, courtesyMaySend, courtesyOutcomeWords, courtesyUnrecordedWords, type CourtesyFacts, type CourtesyPromise, type CourtesyRecord, type CourtesySent } from '../../lib/jobs/lienCourtesyNotice'
 import { courtesyByJobFrom } from '../../lib/jobs/lienCourtesyDesk'
 import { buildLienReminders, LIEN_REMINDERS_EMPTY } from '../../lib/jobs/lienReminders'
 import { lienNoticeTimeline, lienTimelineTodayWords, type LienTimelineRow } from '../../lib/jobs/lienNoticeTimeline'
-import { loadCourtesyRecipients, sendCourtesyNotice, type CourtesyRecipient } from '../../lib/jobs/lienCourtesyIo'
+import { loadCourtesyRecipients, sendCourtesyNotice, writeCourtesyRecord, type CourtesyRecipient } from '../../lib/jobs/lienCourtesyIo'
 import { payLinkDisplay } from '../../lib/billing/payLink'
 import type { LienDeskItemRow } from '../../lib/jobs/lienDesk'
 import { LienCallerDoor } from './LienCallerDoor'
@@ -89,6 +89,8 @@ import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { buildLienMonth, lienMonthZoneHasRow, type LienMonthZoneKey } from '../../lib/jobs/lienMonthRhythm'
+import { LienMonthBar } from './LienMonthBar'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { LienStepRow } from './LienDeskSteps'
 import { freshHtml, gapToken, lienPaperFilledSince, lienPaperFixWindow, lienPaperGaps, paintGaps, withFreshMarks, withGapTokens, type LienPaperFacts, type LienPaperFixWindow, type LienPaperGap } from '../../lib/jobs/lienPaperGaps'
@@ -516,6 +518,8 @@ export default function LienDeskModal({
   // The courtesy notice (punch list #231): the window over the sent footer, with the facts it was opened on, and the addresses it finds.
   const [courtesyCtx, setCourtesyCtx] = useState<{ first: LienDeskItemRow; facts: CourtesyFacts; jobId: string; jobLabel: string; gcCustomerId: string | null } | null>(null)
   const [courtesyRecipients, setCourtesyRecipients] = useState<CourtesyRecipient[] | null>(null)
+  /** A courtesy press whose messages went but whose record did not take (punch list #249, row 1): the footer offers the record alone until it is written. */
+  const [courtesyUnrecorded, setCourtesyUnrecorded] = useState<{ jobId: string; item: Pick<LienDeskItemRow, 'id' | 'fields'>; record: CourtesyRecord; to: CourtesySent[]; reason: string } | null>(null)
   // ☎ Someone's calling (v2.3854): the door's pick — the call sheet opens on that job without selecting it.
   const [callerJobId, setCallerJobId] = useState<string | null>(null)
   // The door's practice call (v2.4249): the same sheet on a made-up letter — no job, no item, no save.
@@ -696,12 +700,19 @@ export default function LienDeskModal({
     },
     [data, courtesyByJob, todayYmd],
   )
+  // Filed affidavits not yet served (§ 53.055): Do now's record-service rows, and the lien month's copies to mail.
+  const serveDue = useMemo(
+    () =>
+      data
+        ? Object.values(data.filingsByJob)
+            .flat()
+            .filter((f) => f.kind === 'affidavit' && f.filed_at && !f.served_at && !f.voided_at && f.serve_due)
+            .map((f) => ({ jobId: f.job_id, serveDue: f.serve_due as string }))
+        : [],
+    [data],
+  )
   const nextUpRows = useMemo(() => {
     if (!data) return []
-    const serveDue = Object.values(data.filingsByJob)
-      .flat()
-      .filter((f) => f.kind === 'affidavit' && f.filed_at && !f.served_at && !f.voided_at && f.serve_due)
-      .map((f) => ({ jobId: f.job_id, serveDue: f.serve_due as string }))
     return buildLienNextUp({
       notices: data.queue.entries,
       affidavits: data.affidavits.entries,
@@ -717,7 +728,10 @@ export default function LienDeskModal({
       userName: (userId) => leaderNameFor?.(userId)?.trim() || null,
       mailNeedsYou: mailNeedsYouRows(data.filingsByJob, data.mailPiecesByFiling ?? {}, formatYmdMonthDay),
     })
-  }, [data, authRole, todayYmd, leaderNameFor, courtesyByJob])
+  }, [data, authRole, todayYmd, leaderNameFor, courtesyByJob, serveDue])
+  // The lien month (punch list #235, PR 2): the five zones over the same book Do now reads, drawn as the bar above the list; a pressed zone narrows the list to its work.
+  const lienMonth = useMemo(() => (data ? buildLienMonth({ todayYmd, notices: data.queue.entries, affidavits: data.affidavits.entries, courtesyByJob, serveDue, jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId) }) : null), [data, todayYmd, courtesyByJob, serveDue])
+  const [monthZone, setMonthZone] = useState<LienMonthZoneKey | null>(null)
   // The office's waiting rows (punch list #101 PR 3) close the list under the leader's name when they share one.
   const nextUpWaitingOn = useMemo(() => {
     if (!data || !leaderNameFor) return null
@@ -752,6 +766,10 @@ export default function LienDeskModal({
         : nextUpRows,
     [nextUpRows, finding, findWords, findFactsFor],
   )
+  const nextUpRowsShown = useMemo(() => {
+    const zone = monthZone && lienMonth ? lienMonth.zones.find((z) => z.key === monthZone) : null
+    return zone ? nextUpRowsFound.filter((r) => lienMonthZoneHasRow(zone, r)) : nextUpRowsFound
+  }, [nextUpRowsFound, monthZone, lienMonth])
   const paperFactsFor = (row: LienNextUpRow): LienPaperFacts | null => {
     if (!data || !row.jobId) return null
     const rowJob = data.jobsById[row.jobId]
@@ -2931,7 +2949,23 @@ export default function LienDeskModal({
       void run('Start the attorney’s letter', async () => void (await startLetterTwo({ first, fields, userId: authUserId })), 'The attorney’s letter drafted — read it on the paper, then send it for approval.')
     }
     // The two doors a sent notice keeps (v2.6624): on the Sent footer as before, and on a drafting footer beside Send for approval once new months are due.
-    const courtesyDoor = office && first && courtesy && courtesyMaySend(courtesy) && courtesyFacts ? <button type="button" onClick={openCourtesy} disabled={busy} style={btn(courtesy.state === 'due' ? 'amber' : 'plain', busy)} data-lien-courtesy-door data-courtesy-state={courtesy.state} title={courtesy.state === 'sent' ? 'One courtesy went. Send it again by hand only when a channel bounced; the desk does not ask for a second.' : courtesy.state === 'affidavit_week' ? 'The affidavit comes first this week; a courtesy may still go by hand.' : 'A plain reminder by email and text: the notice stands, the day the lien goes on unless it is paid, the pay link, your number. Not a statutory paper, never certified mail.'}>{courtesy.state === 'sent' ? 'Send a courtesy notice again' : COURTESY_BUTTON} ▸</button> : null
+    // The messages went but the record did not take (punch list #249, row 1): the Send press gives way to the record alone, so nothing goes out twice.
+    const courtesyUnrecordedHere = courtesyUnrecorded && courtesyUnrecorded.jobId === selected.jobId ? courtesyUnrecorded : null
+    const courtesyUnrecordedBand = courtesyUnrecordedHere ? (
+      <span data-lien-courtesy-unrecorded style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
+        <span>{courtesyUnrecordedWords(courtesyUnrecordedHere.to, courtesyUnrecordedHere.reason)}</span>
+        <button
+          type="button"
+          onClick={() => void run('Write the courtesy record', async () => { await writeCourtesyRecord(courtesyUnrecordedHere.item, courtesyUnrecordedHere.record) }, 'Recorded — the footer and the job’s History read it.').then((ok) => { if (ok) setCourtesyUnrecorded(null) })}
+          disabled={busy}
+          style={btn('amber', busy)}
+          data-lien-courtesy-record-again
+        >
+          {COURTESY_RECORD_AGAIN_BUTTON}
+        </button>
+      </span>
+    ) : null
+    const courtesyDoor = office && first && courtesy && courtesyMaySend(courtesy) && courtesyFacts && !courtesyUnrecordedHere ? <button type="button" onClick={openCourtesy} disabled={busy} style={btn(courtesy.state === 'due' ? 'amber' : 'plain', busy)} data-lien-courtesy-door data-courtesy-state={courtesy.state} title={courtesy.state === 'sent' ? 'One courtesy went. Send it again by hand only when a channel bounced; the desk does not ask for a second.' : courtesy.state === 'affidavit_week' ? 'The affidavit comes first this week; a courtesy may still go by hand.' : 'A plain reminder by email and text: the notice stands, the day the lien goes on unless it is paid, the pay link, your number. Not a statutory paper, never certified mail.'}>{courtesy.state === 'sent' ? 'Send a courtesy notice again' : COURTESY_BUTTON} ▸</button> : null
     const letterTwoDoor = office && first && jobBalance > 0.005 && lt?.state !== 'sent' && lt?.state !== 'in_flight' ? (
       <span style={{ position: 'relative' }}>
         <button type="button" onClick={() => setLetterTwoMenu((o) => !o)} disabled={busy} aria-haspopup="menu" aria-expanded={letterTwoMenu} style={lt && letterTwoIsDue(lt) && courtesy?.state !== 'paying' ? { ...btn('amber', busy) } : btn('plain', busy)} data-lien-letter-two-door data-letter-waits={courtesy?.state === 'paying' ? 'paying' : undefined} title={courtesy?.state === 'paying' ? 'They are paying it down, so the desk does not ask for the attorney’s letter. The office may still send it when the payment was token.' : undefined}>Send the attorney’s letter ▸</button>
@@ -3026,6 +3060,7 @@ export default function LienDeskModal({
                   {lt?.words ? ` · ${lt.words}` : lt?.day != null ? ` · day ${lt.day}` : ''} · the next notice drafts below
                 </span>
                 <span className="lienFootSpacer" />
+                {courtesyUnrecordedBand}
                 {courtesyDoor}
                 {letterTwoDoor}
               </div>
@@ -3364,6 +3399,7 @@ export default function LienDeskModal({
               {office && first ? <button type="button" onClick={() => setOwnerCallOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-owner-call-door>{call ? 'The owner called again…' : 'Record the owner’s call…'}</button> : null}
               {office && first && courtesy?.state === 'paying' ? <button type="button" onClick={() => setPromiseOpen(true)} disabled={busy} style={btn(courtesy.paying?.promise ? 'plain' : 'amber', busy)} data-lien-promise-door title="They are paying it down. Record the day and the amount they gave for the rest; the desk asks again on that day. The day also reads on the Stages board.">{courtesy.paying?.promise ? 'They promised again…' : `${PROMISE_BUTTON}…`}</button> : null}
               {office && first && !lt?.gcAuthorized && jobBalance > 0.005 && lt?.state !== 'sent' ? <button type="button" onClick={() => setGcOkayOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-gc-okay>The GC authorized direct pay…</button> : null}
+              {courtesyUnrecordedBand}
               {courtesyDoor}
               {letterTwoDoor}
             </div>
@@ -3621,9 +3657,10 @@ export default function LienDeskModal({
             return <LienPaperPropertyWindow job={fixJob} address={fixAddress} ownerOnJob={resolveLienProperty(fixAddress, data.ownerByJob[fixJob.id] ?? null).owner.source === 'job_override'} focus={paperFix.gap.key} onClose={done} />
           })() : null}
           {kind === 'next' ? (
-            <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }}>
-            <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsFound.length} isMobile={isMobile} />
-            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
+            <div style={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }}>
+            {lienMonth ? <LienMonthBar month={lienMonth} on={monthZone} onPick={setMonthZone} isMobile={isMobile} shown={nextUpRowsShown.length} total={nextUpRowsFound.length} /> : <div />}
+            <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
+            <LienDeskNextUp rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
@@ -3731,6 +3768,12 @@ export default function LienDeskModal({
             void run('Send the courtesy notice', async () => {
               const r = await sendCourtesyNotice({ item: courtesyCtx.first, jobId: courtesyCtx.jobId, gcCustomerId: courtesyCtx.gcCustomerId, facts: courtesyCtx.facts, greeting, recipients: courtesyRecipients ?? [], by: { userId: authUserId, name: authName } })
               if (!r.record) throw new Error(courtesyOutcomeWords(r.to))
+              if (r.recordError) {
+                // The messages went and the record did not take (punch list #249, row 1): the window closes with the rest, and the footer offers the record alone.
+                setCourtesyUnrecorded({ jobId: courtesyCtx.jobId, item: courtesyCtx.first, record: r.record, to: r.to, reason: r.recordError })
+                showToast(courtesyUnrecordedWords(r.to, r.recordError), 'error')
+                return
+              }
               showToast(courtesyOutcomeWords(r.to), r.to.every((t) => t.ok) ? 'success' : 'error')
             }).then((ok) => {
               if (ok) setCourtesyCtx(null)

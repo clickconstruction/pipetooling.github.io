@@ -85,7 +85,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Recently deleted', keywords: ['trash', 'restore', 'undelete', 'deleted records'], tabId: 'settings-data', anchorId: 'settings-recently-deleted' },
   { label: 'Bulk-deletion alert', keywords: ['mass delete', 'deletion warning'], tabId: 'settings-data' },
   { label: 'Link jobs to their bids', keywords: ['backfill', 'bid link', 'matches by value', 'job budget', 'burn'], tabId: 'settings-data', anchorId: 'settings-bid-job-backfill' },
-  // Jobs & billing (punch list #261): one entry per heading and one per card, each landing on its anchor; a card's opens it.
+  // Jobs, bills and liens (punch list #261): one entry per heading and one per card, each landing on its anchor; a card's opens it.
   { label: 'Billing and money', keywords: ['money settings', 'what an hour costs', 'pay rhythm', 'billing settings'], tabId: 'settings-jobs', anchorId: 'settings-jobs-group-money' },
   { label: 'The job’s record', keywords: ['job record', 'stages photos test papers', 'job settings'], tabId: 'settings-jobs', anchorId: 'settings-jobs-group-record' },
   { label: 'What a bill says', keywords: ['bill words', 'invoice words', 'footers and memo'], tabId: 'settings-jobs', anchorId: 'settings-jobs-group-bill' },
@@ -109,6 +109,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Job address city line breaks', keywords: ['city names', 'address parser', 'localities'], tabId: 'settings-jobs', anchorId: 'settings-jobs-city-lines' },
   { label: 'Property county suggestions', keywords: ['county suggestions', 'city county pairs'], tabId: 'settings-jobs', anchorId: 'settings-jobs-county-suggestions' },
   { label: 'Owner of record from the roll', keywords: ['owner of record', 'appraisal roll', 'save owners'], tabId: 'settings-jobs', anchorId: 'settings-jobs-owner-of-record' },
+  { label: 'Line budgets', keywords: ['line budget', 'labor split', 'materials split', 'cost rate', 'burdened rate', 'target margin', 'assumed split'], tabId: 'settings-jobs', anchorId: 'settings-jobs-line-budgets' },
   { label: 'Office county for sworn statements', keywords: ['office county', 'venue', 'sworn statement county', 'notary'], tabId: 'settings-company', anchorId: 'settings-company-office-county' },
   { label: 'Uncollectible list', keywords: ['uncollectible', 'given up on', 'accountant', 'write off'], tabId: 'settings-jobs', anchorId: 'settings-jobs-uncollectible' },
   { label: 'GC office notices', keywords: ['office notices', 'project manager notice', 'architect reminder'], tabId: 'settings-jobs', anchorId: 'settings-jobs-gc-office-notices' },
@@ -130,7 +131,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   // Company
   { label: 'Office address', keywords: ['company address', 'shop address'], tabId: 'settings-company' },
   { label: 'Map default view', keywords: ['map center', 'map zoom'], tabId: 'settings-company' },
-  // Jobs & billing (moved from Templates in v2.2088; anchored since punch list #261)
+  // Jobs, bills and liens (moved from Templates in v2.2088; anchored since punch list #261)
   { label: 'Invoice footers & issuer', keywords: ['stripe footer', 'paper invoice', 'invoice identity', 'billing footer', 'signs for the company'], tabId: 'settings-jobs', anchorId: 'settings-jobs-invoice-issuer' },
   { label: 'Physical invoice footer presets', keywords: ['paper footer', 'physical footer'], tabId: 'settings-jobs', anchorId: 'settings-jobs-invoice-footer' },
   { label: 'Stripe invoice footer presets', keywords: ['stripe footer presets', 'plumbing footer', 'electrical footer'], tabId: 'settings-jobs', anchorId: 'settings-jobs-stripe-footer' },

@@ -74,6 +74,8 @@ export const JOBS_LEDGER_FIXTURES_EMBED = [
   'budget_labor_pct',
   'budget_materials_pct',
   'budget_rate_usd',
+  'budget_reviewed_at',
+  'budget_reviewed_by',
   'budget_source',
   'budget_tuned_at',
   'count',

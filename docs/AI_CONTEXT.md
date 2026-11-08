@@ -38,7 +38,7 @@
 **RLS Everywhere**:
 - Every table has Row Level Security; policies check role and, for field/outsider roles, assignment
 - Helper/capability functions prevent timeouts and centralize role logic: `is_dev()`, `is_assistant()` (assistant + controller), `has_payroll_access()`, `can_access_project_via_step()`, `can_edit_schedule_dispatch()` (mirror of the client's `CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES`)
-- **Read-only training mode**: users flagged `users.read_only` are blocked from writes by restrictive policies and a statement trigger (two of the three calls every CREATE TABLE migration ends with — `../CLAUDE.md` → DB migrations)
+- **Read-only training mode**: users flagged `users.read_only` are blocked from writes by restrictive policies and a statement trigger (two of the four calls every CREATE TABLE migration ends with, the fourth being the archived caller's read fence of v2.6572 — `../CLAUDE.md` → DB migrations)
 
 ### Data Flow
 
@@ -70,7 +70,7 @@ Customer
 
 ### Backend
 - Supabase: PostgreSQL 17 + RLS, Auth, Edge Functions (Deno), some Realtime
-- ~590 tables; ~179 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
+- ~620 tables; ~182 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
 - Linked prod project: `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"); **no staging** — migrations hit prod
 
 ### Deployment (four separate tracks — see `../CLAUDE.md`)
@@ -128,7 +128,7 @@ The large-file inventory and each surface's architecture map live in `PAGE_DECOM
 
 ### Adding a New Database Table
 
-1. **Create the migration** and write the SQL (CREATE TABLE + RLS policies + constraints) under the rules in `../AGENTS.md` → Critical constraints §1 — numbering, the lock-timeout preamble, the three closing calls (two read-only blocks, the twin fence).
+1. **Create the migration** and write the SQL (CREATE TABLE + RLS policies + constraints) under the rules in `../AGENTS.md` → Critical constraints §1 — numbering, the lock-timeout preamble, the four closing calls (two read-only blocks, the twin fence, and since v2.6572 the archived fence; `scripts/check-migrations.sh` rule 6 fails a CREATE TABLE migration that skips one).
 2. **Merge the PR**, then **apply** with `supabase db push`; regenerate types (`npm run gen-types:linked`) as its own PR.
 3. **Test RLS** for all 9 roles.
 4. **Document**: a `migrations/<version>_<slug>.md` fragment + the relevant specialist doc.
@@ -194,7 +194,7 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### Pure Logic Kernels
-Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior; a smoke asserts on something the data load produces (`renderSettled(ui, { loaded })` / `settle()` in the harness), never on the line after `render()` or a container `findBy*`, and never widens a `waitFor` timeout to hide the race. ~4,100 test files (~1,140 of them render smokes). A theme or style change is checked on the screens: Settings → What everyone sees (dev) draws every screen as every role on invented data, **Check every screen** runs the lens's checks (`src/lib/lens/lensAudit.ts`, a drawing's SVG words among the text) in each frame, and a PR touching the CSS, the portal's palette or the lens gets the non-gating **lens-report** artifact (`docs/E2E_SMOKE.md`).
+Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior; a smoke asserts on something the data load produces (`renderSettled(ui, { loaded })` / `settle()` in the harness), never on the line after `render()` or a container `findBy*`, and never widens a `waitFor` timeout to hide the race. ~4,200 test files (~1,190 of them render smokes). A theme or style change is checked on the screens: Settings → What everyone sees (dev) draws every screen as every role on invented data, **Check every screen** runs the lens's checks (`src/lib/lens/lensAudit.ts`, a drawing's SVG words among the text) in each frame, and a PR touching the CSS, the portal's palette or the lens gets the non-gating **lens-report** artifact (`docs/E2E_SMOKE.md`).
 
 ### Windows (modals)
 A window is a full-screen `position: fixed` backdrop that closes on `onClick` (not `onMouseDown` — `npm run check:backdrop-click` fails CI on one that closes on the press), holding a panel that stops the click (`onClick={(e) => e.stopPropagation()}`). [`modalBackdropGuard.ts`](../src/lib/modalBackdropGuard.ts), installed once in `main.tsx`, stops a backdrop click unless the press and the release were both on the backdrop, so a drag out of a window never closes it — no window needs its own drag guard (a backdrop under three quarters of the screen is not covered). A window drawn inside another window's backdrop but outside its panel, or inside a row that opens on a click, stops its own backdrop click before closing, or a click outside it also closes the window behind or toggles the row; `npm run check:nested-windows` lists any that do not and CI fails on a backdrop one — a `nested-windows: allow — <why>` comment above the inner window lets a meant one through (`-- --rows` lists rows, report only). A window's z-index is above the Dispatch / Job mode dock ([`DISPATCH_MODE_FOOTER_Z_INDEX`](../src/components/dispatchMode/DispatchModeFooter.tsx)) and below whatever opens on top of it — the Job form, the Job window and the Bid window stand at 1000–1010, so a list window that opens them stands under 1000; `npm run check:window-z` fails CI on a window under the dock, and a `window-z: allow — <why>` comment lets a page-level layer that keeps the dock on top through. A window's layer pads its top by `var(--app-top-chrome, 0px)` (the iPhone status bar when the app is on the Home Screen — one `padding` string, or `paddingTop` alone, never both) and a panel whose height is in `vh` is clamped to that padded layer (`min(90vh, 100%)`), so its title and × are never under the clock; `npm run check:status-bar` fails CI on a layer or panel that does not (`node scripts/codemods/window-below-status-bar.mjs` rewrites it), and a `status-bar: allow — <why>` comment lets a layer that is not a window through.
@@ -260,11 +260,11 @@ type Customer = Database['public']['Tables']['customers']['Row']
                            │ Supabase JS client
 ┌──────────────────────────┼──────────────────────────────┐
 │                 Supabase Backend (prod only)             │
-│  PostgreSQL: ~590 tables, RLS everywhere, triggers,      │
+│  PostgreSQL: ~620 tables, RLS everywhere, triggers,      │
 │    SECURITY DEFINER helpers, transaction functions       │
 │  Auth: email/password + magic links (dev-login,          │
 │    login-as-user)                                        │
-│  Edge Functions (Deno, ~170): email (Resend), Stripe,    │
+│  Edge Functions (Deno, ~180): email (Resend), Stripe,    │
 │    Mercury sync, geocoding, notifications, cron jobs     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -302,4 +302,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-11-05
+last_updated: 2026-11-07
