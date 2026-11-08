@@ -2,13 +2,13 @@
 name: "Messages: an email as rich text, the HTML part kept"
 number: 259
 group: close
-status: built 2026-11-08 on the owner's yes of 2026-11-07 · PR 1 v2.6675 (#7280, the reader keeps the HTML part, one migration) and PR 2 v2.6676 (the Rich text · Plain switch) queued with auto-merge · the live check is the owner's
+status: built 2026-11-08 on the owner's yes of 2026-11-07 · PR 1 v2.6675 (#7280) and PR 2 v2.6676 (#7289) merged, the migration pushed and gmail-sync redeployed (edge drift clean) · the walk of 2026-11-08 found an older email drawing no switch, as designed; the Rich text press waits on the first email into bids@ since the redeploy
 summary: >
   Grace asked to read an email as rich text or as plain words, the reader's choice. The bids@ reader
   now keeps each inbound email's HTML part at <line id>/body.html in the message-attachments bucket,
   messages.body_html_path naming it, and the message window draws Rich text · Plain over the words,
   the rich view through DOMPurify pinned with pictures off until Show pictures. Older lines stay plain.
-next: Both PRs merged 2026-11-08; the migration was applied and gmail-sync redeployed the same morning, and PR 2 deployed through Pages. Left: the owner's live check. Open one real email in Messages that came in after the redeploy, press Rich text, press Show pictures. Delete nothing, the check reads.
+next: The owner, on the first email that reaches bids@ or the team box after the 2026-11-08 redeploy: open it in Messages, press Rich text, press Show pictures, reload. Nothing arrived in the hours after the redeploy, so that press is still untaken. Delete nothing, the check reads.
 ver: v2.6675 (PR 1) · v2.6676 (PR 2)
 size: M · PR 1 the reader's write and a migration · PR 2 the switch, a sanitizer and images off until pressed
 blocker: none since the owner's yes of 2026-11-07
@@ -25,6 +25,8 @@ Built 2026-11-08, the night after the owner's yes. PR 1 (v2.6675, #7280) is the 
 (v2.6676) is the switch: `RichMailView.tsx` over `richMailIo.ts`, `richMail.ts` and `richMailDom.ts`, DOMPurify 3.4.17
 pinned, the guide section *Read an email as the sender laid it out*. Order on prod: push the migration, deploy
 `gmail-sync`, then PR 2's client (`check:calls-ahead` holds it until the push). The live check below is the owner's.
+
+**Walked 2026-11-08** (read-only, as the owner in his Chrome, the client at v2.6691): `npm run check:edge-drift` read every function current, `gmail-sync` among them, so the reader keeps the HTML part from here on. No inbound email had reached bids@ or the team box since the redeploy (the newest was 2026-11-06), so no line carries `body_html_path` yet and the Rich text and Show pictures presses could not be walked. An email from 2026-11-06 opened in the message window draws no Rich text · Plain chips and reads as plain words, as the release note says an older line does. Left: the owner's press on the first new email (`next`).
 
 ## The ask
 
