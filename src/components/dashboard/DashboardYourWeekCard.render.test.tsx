@@ -6,13 +6,22 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { YourWeekIo } from '../../lib/techWeek/yourWeekIo'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { DashboardYourWeekCard } from './DashboardYourWeekCard'
 
 const io = (week: unknown, words: unknown = []): YourWeekIo => ({ myWeek: async () => week, myWords: async () => words })
 
+// The card reads the clock (todayYmdInAppTz) and windows the jobs by the pay week that holds today, so the fixture is
+// dated from today — the first cut pinned the days of the week it was written in, and the test rotted when that week ended (2026-11-08).
+const TODAY = todayYmdInAppTz()
+const daysAgo = (n: number): string => {
+  const d = new Date(`${TODAY}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - n)
+  return d.toISOString().slice(0, 10)
+}
 const jobs = [
-  { job_id: 'a', job_number: '1184', job_name: 'Water heater', finished_ymd: '2026-11-03', expected_hours: null, budget_hours: 40, crew_hours: 36, my_first_ymd: '2026-11-02' },
-  { job_id: 'b', job_number: '1185', job_name: 'Repipe', finished_ymd: '2026-10-28', expected_hours: 84, budget_hours: 90, crew_hours: 76, my_first_ymd: '2026-10-20' },
+  { job_id: 'a', job_number: '1184', job_name: 'Water heater', finished_ymd: TODAY, expected_hours: null, budget_hours: 40, crew_hours: 36, my_first_ymd: daysAgo(1) },
+  { job_id: 'b', job_number: '1185', job_name: 'Repipe', finished_ymd: daysAgo(10), expected_hours: 84, budget_hours: 90, crew_hours: 76, my_first_ymd: daysAgo(18) },
 ]
 
 afterEach(cleanup)
@@ -49,7 +58,7 @@ describe('DashboardYourWeekCard', () => {
   })
 
   it('a lead reads the crew against the target, the no-target note and the dashed line’s words', async () => {
-    const withNone = [...jobs, { job_id: 'c', job_number: '1186', job_name: 'Drain', finished_ymd: '2026-11-04', expected_hours: null, budget_hours: null, crew_hours: 9, my_first_ymd: '2026-11-04' }]
+    const withNone = [...jobs, { job_id: 'c', job_number: '1186', job_name: 'Drain', finished_ymd: TODAY, expected_hours: null, budget_hours: null, crew_hours: 9, my_first_ymd: TODAY }]
     render(<DashboardYourWeekCard userId="u" io={io({ signal: 'crew_vs_target', name: 'Luis', role: 'superintendent', hours: [], licenses: [], jobs: withNone, callbacks: [] })} />)
     expect(await screen.findByText('Your crew against the target')).toBeTruthy()
     expect(screen.getByText('One more job finished with no target, so it is not counted.')).toBeTruthy()
