@@ -252,3 +252,54 @@ describe('JobsStagesActivityBox', () => {
     await vi.waitFor(() => expect(submitNoteWithBody).toHaveBeenCalledWith(job.id, 'Check arrived', 'draft'))
   })
 })
+
+describe('the customer’s conversation in the box (v2.6689, punch list #125)', () => {
+  const dana = { id: 'c-dana', name: 'Dana Whitfield', goesBy: null, kind: 'customer' as const }
+  const lines = [
+    { id: 'm-out', contactId: 'c-dana', contact: dana, channel: 'text' as const, direction: 'out' as const, at: '2026-08-11T18:00:00Z', who: 'Tanya Ortiz', body: 'Dana, the city set your inspection for Thursday 8 to 10.', tied: true },
+    { id: 'm-in', contactId: 'c-dana', contact: dana, channel: 'text' as const, direction: 'in' as const, at: '2026-08-12T01:15:00Z', who: '', body: 'Can you do Thursday after 10 instead?', tied: true },
+  ]
+
+  it('after the load, the lines sit unnumbered under their Text tags while the notes keep their numbers, and a press on one opens the customer’s sheet', async () => {
+    const onOpenCustomerDoor = vi.fn()
+    const job = makeJob({ job_name: 'Whitfield re-pipe' })
+    renderWithProviders(
+      <JobsStagesActivityBox
+        job={job}
+        ctx={makeCtx({
+          jobThreadActivityByJobId: { [job.id]: [note('n1', '2026-08-10T12:00:00Z', 'older note'), note('n2', '2026-08-13T12:00:00Z', 'newer note')] } as StagesRowRenderContext['jobThreadActivityByJobId'],
+          customerLinesByJobId: new Map([[job.id, lines]]),
+          boardDotByJobId: new Map([[job.id, { who: 'Dana', channel: 'text', when: 'yesterday', line: 'Can you do Thursday after 10 instead?', status: 'Nobody has answered.' as const }]]),
+          onOpenCustomerDoor,
+        })}
+      />,
+    )
+    await settle()
+    expect(screen.getAllByLabelText(/^Entry /).map((n) => n.textContent)).toEqual(['1', '2'])
+    expect(screen.getByLabelText('To the customer, a text').textContent).toBe('Text')
+    expect(screen.getByLabelText('From the customer, a text').textContent).toBe('Text')
+    expect(screen.getByText(/Can you do Thursday after 10 instead\?/)).toBeTruthy()
+    expect(screen.getByText('Nobody has answered.')).toBeTruthy()
+    fireEvent.click(screen.getByText(/Can you do Thursday after 10 instead\?/))
+    expect(onOpenCustomerDoor).toHaveBeenCalledWith(job)
+  })
+
+  it('before the load, the teaser is the customer’s line when it is the newest thing on the job', async () => {
+    const job = makeJob({ job_name: 'Whitfield re-pipe' })
+    renderWithProviders(
+      <JobsStagesActivityBox
+        job={job}
+        ctx={makeCtx({
+          jobThreadStatsByJobId: {
+            [job.id]: { note_count: 1, last_note_at: '2026-08-11T14:28:00Z', last_note_body: 'Inspector confirmed.', last_note_author_name: 'Rosa', last_report_at: null },
+          } as StagesRowRenderContext['jobThreadStatsByJobId'],
+          customerLinesByJobId: new Map([[job.id, lines]]),
+        })}
+      />,
+    )
+    await settle()
+    expect(screen.getByText(/Can you do Thursday after 10 instead\?/)).toBeTruthy()
+    expect(screen.queryByText(/Inspector confirmed/)).toBeNull()
+    expect(screen.queryByText('Nobody has answered.')).toBeNull()
+  })
+})

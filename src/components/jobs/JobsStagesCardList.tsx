@@ -37,6 +37,7 @@ import {
   formatDispatchNoteWeekdayShortTimeChicago,
   getDispatchNoteDisplayMeta,
 } from '../../utils/dispatchNoteDisplay'
+import { activityBoxTeaser, NOBODY_HAS_ANSWERED } from '../../lib/jobs/jobActivityBoxFeed'
 import { showTaskDispatchButton } from '../../lib/headerTaskDispatchEstimatorEligible'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
@@ -377,51 +378,69 @@ function cardNextChip(ctx: StagesRowRenderContext, job: JobWithDetails) {
   )
 }
 
-/** One-line author · time teaser + 2-line note clamp; expand chevron routes to the thread. */
+/**
+ * One-line author · time teaser + 2-line note clamp; expand chevron routes to the thread. Since v2.6689 (punch list
+ * #125) the line is the newest of the note, the report and the customer's line: a customer's line reads in orange with
+ * its channel word, *Dana · text · 1d ago — Can you do Thursday?*, and a press on it opens the bubble's sheet.
+ */
 function cardActivityTeaser(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const stat = ctx.jobThreadStatsByJobId[job.id]
-  const wireMs = (iso: string | null | undefined): number | null => {
-    if (iso == null || !String(iso).trim()) return null
-    const t = Date.parse(String(iso))
-    return Number.isNaN(t) ? null : t
-  }
-  const tNote = wireMs(stat?.last_note_at)
-  const tReport = wireMs(stat?.last_report_at)
-  let atIso: string | null = null
-  let author = ''
-  let body = ''
-  if (stat && (tNote != null || tReport != null)) {
-    const useReport = tReport != null && (tNote == null || tReport > tNote)
-    atIso = useReport ? stat.last_report_at! : stat.last_note_at!
-    author = (useReport ? stat.last_report_author_name : stat.last_note_author_name)?.trim() || ''
-    body = useReport
-      ? (stat.last_report_preview ?? '').trim() || `Report: ${(stat.last_report_template_name ?? '').trim() || 'Report'}`
-      : (stat.last_note_body ?? '').trim()
-  }
+  const teaser = activityBoxTeaser(stat, ctx.customerLinesByJobId?.get(job.id), ctx.boardDotByJobId?.get(job.id) != null)
+  const atIso = teaser?.atIso ?? null
+  const author = teaser?.authorName ?? ''
+  const body = teaser?.body ?? ''
+  const line = teaser?.kind === 'line' ? teaser.line : undefined
+  const customerIn = line?.fromThem === true && line.customer
   // No activity and no notes → no row at all (zoned card); the card tap and
   // the ⋯ sheet's "Activity and notes" still reach the thread.
   if (!atIso && (stat?.note_count ?? 0) === 0) return null
+  const words = atIso ? (
+    <>
+      {author ? <strong style={{ color: customerIn ? 'var(--text-orange-800)' : 'var(--text-strong)', flexShrink: 0 }}>{author}</strong> : null}
+      {line ? <span style={{ color: 'var(--text-orange-700)', fontSize: '0.6875rem', flexShrink: 0 }}>{line.channelWord}</span> : null}
+      <span
+        style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}
+        title={formatDispatchNoteWeekdayShortTimeChicago(atIso)}
+      >
+        {formatDispatchNoteDaysAgoShortPhrase(atIso)}
+      </span>
+      {body ? (
+        // One line, hard-ellipsized (zoned card) — the ▶ expand and the
+        // fullscreen thread carry the full text, so the card only teases.
+        <span style={{ color: 'var(--text-700)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          — {body}
+        </span>
+      ) : null}
+      {line?.waiting ? <span style={{ color: 'var(--text-orange-700)', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{NOBODY_HAS_ANSWERED}</span> : null}
+    </>
+  ) : (
+    <span style={{ color: 'var(--text-faint)' }}>—</span>
+  )
   return (
-    <div style={{ fontSize: '0.75rem', minWidth: 0, display: 'flex', alignItems: 'baseline', columnGap: '0.35rem' }}>
-      {atIso ? (
-        <>
-          {author ? <strong style={{ color: 'var(--text-strong)', flexShrink: 0 }}>{author}</strong> : null}
-          <span
-            style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}
-            title={formatDispatchNoteWeekdayShortTimeChicago(atIso)}
-          >
-            {formatDispatchNoteDaysAgoShortPhrase(atIso)}
-          </span>
-          {body ? (
-            // One line, hard-ellipsized (zoned card) — the ▶ expand and the
-            // fullscreen thread carry the full text, so the card only teases.
-            <span style={{ color: 'var(--text-700)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              — {body}
-            </span>
-          ) : null}
-        </>
+    <div
+      style={{
+        fontSize: '0.75rem',
+        minWidth: 0,
+        display: 'flex',
+        alignItems: 'baseline',
+        columnGap: '0.35rem',
+        ...(customerIn ? { background: 'var(--bg-orange-tint)', boxShadow: 'inset 3px 0 0 var(--border-orange)', borderRadius: '0 6px 6px 0', padding: '1px 6px' } : {}),
+      }}
+    >
+      {line && ctx.onOpenCustomerDoor ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            ctx.onOpenCustomerDoor?.(job)
+          }}
+          aria-label="Open the conversation with the customer"
+          style={{ display: 'flex', alignItems: 'baseline', columnGap: '0.35rem', minWidth: 0, flex: 1, padding: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+        >
+          {words}
+        </button>
       ) : (
-        <span style={{ color: 'var(--text-faint)' }}>—</span>
+        words
       )}
       {renderStagesThreadExpandButton(ctx, job.id)}
     </div>

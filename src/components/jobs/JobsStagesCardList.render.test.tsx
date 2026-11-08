@@ -180,3 +180,26 @@ describe('JobsStagesCardList empty group (#184)', () => {
     expect(screen.getByText('Nothing in Waiting needs you.')).toBeTruthy()
   })
 })
+
+describe('JobsStagesCardList customer line teaser (v2.6689, punch list #125)', () => {
+  it('the card’s teaser is the customer’s text when it is newer than the note, with its channel word, and opens the sheet', async () => {
+    const onOpenCustomerDoor = vi.fn()
+    const job = makeJob({ job_name: 'Card Lines', customer_id: 'cust-dana', customer_name: 'Dana Whitfield' })
+    const dana = { id: 'c-dana', name: 'Dana Whitfield', goesBy: null, kind: 'customer' as const }
+    renderWithProviders(
+      <JobsStagesCardList
+        {...makeProps({
+          jobList: [job],
+          jobThreadStatsByJobId: { [job.id]: { note_count: 1, last_note_at: '2026-08-11T14:28:00Z', last_note_body: 'Inspector confirmed.', last_note_author_name: 'Rosa', last_report_at: null, report_count: 0, last_report_author_name: null, last_report_template_name: null, last_report_preview: null } },
+          customerLinesByJobId: new Map([[job.id, [{ id: 'm-in', contactId: 'c-dana', contact: dana, channel: 'text' as const, direction: 'in' as const, at: '2026-08-12T01:15:00Z', who: '', body: 'Can you do Thursday after 10 instead?', tied: true }]]]),
+          onOpenCustomerDoor,
+        })}
+      />,
+    )
+    await settle()
+    expect(screen.getByText(/Can you do Thursday after 10 instead\?/)).toBeTruthy()
+    expect(screen.queryByText(/Inspector confirmed/)).toBeNull()
+    fireEvent.click(screen.getByLabelText('Open the conversation with the customer'))
+    expect(onOpenCustomerDoor).toHaveBeenCalledWith(job)
+  })
+})
