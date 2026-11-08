@@ -73,6 +73,12 @@ export interface ThreadMessage {
    * list #282) so the office reads it as the app's intro, not words the tech typed. Null on every other line.
    */
   introducesUserId?: string | null
+  /**
+   * Where the bids@ reader kept this email's HTML part (`messages.body_html_path`, v2.6675, punch list #259):
+   * `<line id>/body.html` in the message-attachments bucket. The message window draws Rich text · Plain over the words
+   * when it is set. Null on a line with no kept HTML; unset on a read that leaves it out.
+   */
+  bodyHtmlPath?: string | null
 }
 
 /** The small mark on a bio line (v2.6659): the word and its hover words, naming the tech when the roster knows them. */
