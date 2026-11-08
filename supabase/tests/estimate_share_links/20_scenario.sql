@@ -1,10 +1,12 @@
--- A second link to an estimate per share (punch list #127 PR 3, migration *_estimate_share_links): the office makes a
--- link to a sent and to an approved estimate through share_estimate_link, each its own token kept only as its SHA-256
--- in hex (what the edge functions compute from the token in the link), fourteen days long, with who made it; the
--- emailed link's hash on the estimate is untouched; a draft, a missing estimate, a primary, a training account, a twin
--- and anon are refused; whoever reads the estimate reads its links and nobody signed in writes them; the read-only
--- fences are on the new table. Everything rolls back. Raises on the first failed assertion; ends with
--- "estimate_share_links PASSED". See scripts/pgtest-estimate-share-links.sh. Never against prod.
+-- A second link to an estimate per share (punch list #127 PR 3, migration *_estimate_share_links; #281 PR 2, migration
+-- *_estimate_short_codes): the office makes a link to a sent and to an approved estimate through share_estimate_link,
+-- each its own ten-letter code from the alphabet with no 0, O, 1, l or I, kept only as its SHA-256 in hex (what the
+-- edge functions compute from the code in the link), fourteen days long, with who made it; the emailed link's hash on
+-- the estimate is untouched; a draft, a missing estimate, a primary, a training account, a twin and anon are refused;
+-- whoever reads the estimate reads its links and nobody signed in writes them; the read-only fences are on the new
+-- tables; the guard on guessing (estimate_link_miss) counts by source and hour, the 21st miss reads 21, the service
+-- role alone calls it and nobody signed in reads the table. Everything rolls back. Raises on the first failed
+-- assertion; ends with "estimate_share_links PASSED". See scripts/pgtest-estimate-share-links.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -72,8 +74,8 @@ INSERT INTO esl.tokens VALUES
   (1, '00000000-0000-0000-0000-0000000e4b01', public.share_estimate_link('00000000-0000-0000-0000-0000000e4b01')),
   (2, '00000000-0000-0000-0000-0000000e4b01', public.share_estimate_link('00000000-0000-0000-0000-0000000e4b01')),
   (3, '00000000-0000-0000-0000-0000000e4b02', public.share_estimate_link('00000000-0000-0000-0000-0000000e4b02'));
-SELECT esl.same('each token reads in a link: 32 URL-safe characters, three different ones',
-  (SELECT count(DISTINCT token)::text || ' ' || bool_and(token ~ '^[A-Za-z0-9_-]{32}$')::text FROM esl.tokens), '3 true');
+SELECT esl.same('each code reads aloud: ten letters from the 31 with no look-alikes, three different ones (#281)',
+  (SELECT count(DISTINCT token)::text || ' ' || bool_and(token ~ '^[23456789abcdefghjkmnpqrstuvwxyz]{10}$')::text FROM esl.tokens), '3 true');
 
 RESET ROLE;
 SELECT esl.same('each link keeps only the SHA-256 of its token, in hex, as the edge functions compute it',
@@ -111,10 +113,35 @@ SELECT esl.as_anon();
 SELECT esl.refused('anon cannot make a link', $q$SELECT public.share_estimate_link('00000000-0000-0000-0000-0000000e4b01')$q$, 'permission denied');
 SELECT esl.refused('anon reads no link', $q$SELECT count(*) FROM public.estimate_share_links$q$, 'permission denied');
 
--- 4 · The fences on the new table.
+-- 4 · The fences on the new tables.
 RESET ROLE;
 SELECT esl.same('the read-only and twin fences are on the table',
   (SELECT (count(*) FILTER (WHERE permissive = 'RESTRICTIVE') > 0)::text FROM pg_policies WHERE schemaname = 'public' AND tablename = 'estimate_share_links'), 'true');
+SELECT esl.same('the fences are on the misses table too, and no permissive policy opens it',
+  (SELECT (count(*) FILTER (WHERE permissive = 'RESTRICTIVE') > 0)::text || ' ' || (count(*) FILTER (WHERE permissive = 'PERMISSIVE') = 0)::text
+   FROM pg_policies WHERE schemaname = 'public' AND tablename = 'estimate_link_misses'), 'true true');
+
+-- 5 · The guard on guessing (#281 PR 2): a miss counts against its source by the hour; the service role alone bumps it.
+CREATE FUNCTION esl.misses(p_hash text, n int) RETURNS int LANGUAGE plpgsql AS $$
+DECLARE r int;
+BEGIN
+  FOR i IN 1..n LOOP r := public.estimate_link_miss(p_hash); END LOOP;
+  RETURN r;
+END $$;
+SELECT esl.same('the twenty-first miss from one source in the hour reads 21', esl.misses(repeat('c', 64), 21)::text, '21');
+SELECT esl.same('another source starts at one', esl.misses(repeat('d', 64), 1)::text, '1');
+SELECT esl.same('one row per source and hour, the hour on the hour',
+  (SELECT count(*)::text || ' ' || bool_and(hour = date_trunc('hour', now()))::text FROM public.estimate_link_misses WHERE source_hash IN (repeat('c', 64), repeat('d', 64))), '2 true');
+SELECT esl.refused('a source that is not a hash is refused', $q$SELECT public.estimate_link_miss('203.0.113.9')$q$, 'estimate_link_misses_source_hash_shape');
+SELECT esl.same('the service role alone may bump it; nobody signed in and no anon',
+  has_function_privilege('service_role', 'public.estimate_link_miss(text)', 'execute')::text || ' ' ||
+  has_function_privilege('authenticated', 'public.estimate_link_miss(text)', 'execute')::text || ' ' ||
+  has_function_privilege('anon', 'public.estimate_link_miss(text)', 'execute')::text, 'true false false');
+SET LOCAL ROLE authenticated;
+SELECT esl.as_user('00000000-0000-0000-0000-0000000e4a01');
+SELECT esl.refused('the office reads no count', $q$SELECT count(*) FROM public.estimate_link_misses$q$, 'permission denied');
+SELECT esl.refused('the office bumps no count', $q$SELECT public.estimate_link_miss(repeat('e', 64))$q$, 'permission denied');
+RESET ROLE;
 
 DO $$ BEGIN RAISE NOTICE 'estimate_share_links PASSED'; END $$;
 ROLLBACK;

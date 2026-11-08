@@ -9,6 +9,7 @@ import {
 import { clientIpFromRequest } from '../_shared/logEstimateCustomerEvent.ts'
 import { writeEstimateThreadLine } from '../_shared/estimateThreadLine.ts'
 import { estimateRefForTokenHash, linkHasExpired, type EstimateLookupClient } from '../_shared/estimateTokenLookup.ts'
+import { ESTIMATE_LINK_LOCKED_CODE, ESTIMATE_LINK_LOCKED_WORDS, recordEstimateLinkMiss, type EstimateMissClient } from '../_shared/estimateLinkMisses.ts'
 import { parseCustomerAttachmentSent } from '../_shared/estimateCustomerAttachment.ts'
 import { normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
@@ -131,17 +132,29 @@ serve(async (req) => {
 
     // #127: the emailed link's hash on the row, or a link shared in a message (estimate_share_links).
     const ref = await estimateRefForTokenHash(admin as unknown as EstimateLookupClient, tokenHash)
-    const { data: row, error } = ref
-      ? await admin
-          .from('estimates')
-          .select(
-            'id, title, line_items_snapshot, terms_snapshot, total_cents, valid_until, status, public_token_expires_at, sent_at, estimate_number, customer_experience_sent, customer_experience_overrides, for_address, customer_id, accept_header_brand, customer_attachment_sent, doc_kind, change_order_fields, options_snapshot',
-          )
-          .eq('id', ref.estimateId)
-          .maybeSingle()
-      : { data: null, error: null }
+    if (!ref) {
+      // #281: a link that opens nothing is a miss against its source; past 20 in the hour the source hears 429, not 404.
+      const miss = await recordEstimateLinkMiss(admin as unknown as EstimateMissClient, req, 'get-estimate-for-customer')
+      if (miss.locked) {
+        return new Response(JSON.stringify({ error: ESTIMATE_LINK_LOCKED_WORDS, code: ESTIMATE_LINK_LOCKED_CODE }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      return new Response(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const { data: row, error } = await admin
+      .from('estimates')
+      .select(
+        'id, title, line_items_snapshot, terms_snapshot, total_cents, valid_until, status, public_token_expires_at, sent_at, estimate_number, customer_experience_sent, customer_experience_overrides, for_address, customer_id, accept_header_brand, customer_attachment_sent, doc_kind, change_order_fields, options_snapshot',
+      )
+      .eq('id', ref.estimateId)
+      .maybeSingle()
 
-    if (error || !row || !ref) {
+    if (error || !row) {
       return new Response(JSON.stringify({ error: 'Not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

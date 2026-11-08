@@ -26,14 +26,14 @@ The **numbered guide** beside the document lists what the customer's copy needs.
 
 1. Read **What goes**. The email is ticked, with the address it goes to. The text is ticked when the customer has a number on file.
 2. Read the text in the orange box. Change any word. Keep the word link in braces where you want the estimate's link.
-3. Press {{button:green|Send both to Dana}}. The email goes first. Then the text goes with a shorter link to the same page.
+3. Press {{button:green|Send both to Dana}}. The email goes first. Then the text goes with a short Click Plumbing link to the same page.
 
 Press **Preview** beside the email or the text to see it as Dana will. The sheet stays open under it. The link in the text preview is a sample. The real one fills in when the email goes.
 
 Press **Email only** to skip the text this time. Press **Skip** to send nothing.
 
 :::example The text as it goes
-Dana, this is Rosa with Click Plumbing. Your estimate for Whitfield water heater is ready, $1,850.00. Open it to approve the option you want: clicktooling.com/estimate/…
+Dana, this is Rosa with Click Plumbing. Your estimate for Whitfield water heater is ready, $1,850.00. Open it to approve the option you want: my.clickplumbing.com/e/k7mnp2qrst
 :::
 
 After the send, the sheet shows what went and when. Under it, **Call Dana to talk it through?** with the words to say. Press {{button:blue|Call}} to dial, or **Done**.
