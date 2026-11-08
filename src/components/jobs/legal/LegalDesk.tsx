@@ -67,7 +67,7 @@ import { counselReadMetaFromDraft, currentCounselRead, type CounselReadDraft } f
 import { settlementPathsOfMatter } from '../../../lib/legal/settlementPaths'
 import LegalSettlementPaths from './LegalSettlementPaths'
 import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
-import { moneyBars } from '../../../lib/legal/moneyBars'
+import { moneyBars, moneyBarsDraw } from '../../../lib/legal/moneyBars'
 import LegalMoneyBars from './LegalMoneyBars'
 import { confirmJobOwnerContract, setJobGcFromCustomer } from '../../../lib/legal/subJobIo'
 import type { LegalPaperNextDoor } from '../../../lib/legal/legalPaperNextDoor'
@@ -1221,8 +1221,9 @@ export default function LegalDesk(props: LegalDeskProps) {
                     ))}
                   </div>
                 ) : null}
-                {packet && w && w.balance > 0.004 ? (() => {
+                {packet && w && moneyBarsDraw({ claim: w.claim, offers: standingOffers }) ? (() => {
                   // v2.6105 (punch list #214, PR 2): the same money as bars — the open bills by part, the claim with every standing offer marked, what is left after the firm's cut.
+                  // v2.6727 (punch list #171): the gate reads the claim, not the balance — a claim typed onto a matter with no open bill draws too.
                   // v2.6176 (punch list #218, PR 3): what each path nets, with the walk-away line derived from the cost to continue and marked on the claim bar.
                   const paths = settlementPathsOfMatter(w, stage, matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], userNameOf)
                   return (

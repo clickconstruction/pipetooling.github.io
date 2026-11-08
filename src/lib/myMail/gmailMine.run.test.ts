@@ -701,7 +701,7 @@ describe('gmail-mine: tag and untag', () => {
 
     // A run of the follow passes the marked row by: Gmail still holds every mail, and none lands back.
     const written = rpcs('email_write_line').length
-    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 0, lines: 0, tied: 0, failed: 0 })
+    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 0, lines: 0, tied: 0, failed: 0, entries: 0 })
     expect(rpcs('email_write_line')).toHaveLength(written)
     expect(mine()).toEqual([])
 
@@ -719,7 +719,7 @@ describe('gmail-mine: tag and untag', () => {
     delete db.refuse['admin delete email_tag_threads']
     expect(await post('marisol-jwt', tagElm)).toMatchObject({ status: 200, body: { ok: true, lines: 2, tied: 1 } })
     expect(db.rows('email_tag_threads')).toEqual([expect.objectContaining({ untagging_at: null, tied_line_ids: ['m-box-1'] })])
-    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0 })
+    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0, entries: 0 })
   })
 
   it('never copies a mail under a label the person leaves out, the name read case-blind from their box’s labels', async () => {
@@ -891,7 +891,7 @@ describe('gmail-mine: follow, the cron’s', () => {
     it('lands a new reply on the job by itself, ties the one a box holds, and passes over what is already a line', async () => {
       const writesBefore = rpcs('email_write_line').length
       const res = await cron({ action: 'follow' })
-      expect(res).toEqual({ status: 200, body: { ok: true, rows: 1, lines: 1, tied: 1, failed: 0 } })
+      expect(res).toEqual({ status: 200, body: { ok: true, rows: 1, lines: 1, tied: 1, failed: 0, entries: 0 } })
 
       // Dale's reply, as the tag writes a mail: on Dale, from Marisol's box, on the job, with its raw copy.
       const dale2 = lines().find((l) => l.gmail_id === 'g-dale-2')
@@ -933,7 +933,7 @@ describe('gmail-mine: follow, the cron’s', () => {
 
       // The next run finds every mail a line and writes nothing.
       const again = await cron({ action: 'follow' })
-      expect(again.body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0 })
+      expect(again.body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0, entries: 0 })
       expect(rpcs('email_write_line')).toHaveLength(writesBefore + 1)
     })
 
@@ -945,7 +945,7 @@ describe('gmail-mine: follow, the cron’s', () => {
       expect(row.last_mail_at).toBe('2026-11-01T16:30:00.000Z')
       // A run with nothing new moves the read and leaves the newest mail.
       row.last_read_at = '2026-11-01T16:45:00.000Z'
-      expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0 })
+      expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0, entries: 0 })
       expect(row).toMatchObject({ last_mail_at: '2026-11-01T16:30:00.000Z', last_error: null })
       expect(row.last_read_at).not.toBe('2026-11-01T16:45:00.000Z')
       // Ana's last mail deleted from Gmail since: the window stays where that mail put it.
@@ -961,7 +961,7 @@ describe('gmail-mine: follow, the cron’s', () => {
       google.boxes[MARISOL]!.mails = google.boxes[MARISOL]!.mails.filter((m) => m.id !== 'g-dale-2')
       const ties = rpcs('tie_message').length
       const res = await cron({ action: 'follow' })
-      expect(res.body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0 })
+      expect(res.body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0, entries: 0 })
       expect(rpcs('tie_message')).toHaveLength(ties)
       expect(lines().find((l) => l.id === 'm-box-2')).toMatchObject({ jobs_ledger_id: null, tied_by: 'u-rosa' })
       expect(lines().find((l) => l.gmail_id === 'g-marisol-1')).toMatchObject({ jobs_ledger_id: HARBOR })
@@ -986,7 +986,7 @@ describe('gmail-mine: follow, the cron’s', () => {
     it('passes over later mail under a label the person leaves out, held by a box’s line or not', async () => {
       google.boxes[MARISOL]!.labels.push({ id: 'Label_7', name: 'Personal' })
       for (const id of ['g-dale-2', 'g-ana-2']) google.boxes[MARISOL]!.mails.find((m) => m.id === id)!.labelIds.push('Label_7')
-      expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0 })
+      expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0, entries: 0 })
       expect(lines().some((l) => l.gmail_id === 'g-dale-2')).toBe(false)
       expect(lines().find((l) => l.id === 'm-box-2')).toMatchObject({ jobs_ledger_id: null, tied_by: null })
       expect(fullReads()).toEqual([])
@@ -994,7 +994,7 @@ describe('gmail-mine: follow, the cron’s', () => {
 
     it('marks a person’s rows as a failed read when Gmail will not list the labels they leave out', async () => {
       google.labelsDown = true
-      expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 1 })
+      expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 1, entries: 0 })
       expect(db.rows('email_tag_threads')[0]).toMatchObject({ last_error: expect.stringContaining(MY_MAIL_REFUSAL_WORDS.google), last_read_at: expect.any(String) })
       expect(threadReads()).toEqual([])
     })
@@ -1014,7 +1014,7 @@ describe('gmail-mine: follow, the cron’s', () => {
     ]
     const res = await cron({ action: 'follow' })
     // The Elm conversation's three mails land (no line held them); the gone ones and Rosa's fail, and the run goes on.
-    expect(res.body).toEqual({ ok: true, rows: 4, lines: 3, tied: 0, failed: 3 })
+    expect(res.body).toEqual({ ok: true, rows: 4, lines: 3, tied: 0, failed: 3, entries: 0 })
     expect(google.subs).toEqual([MARISOL, ROSA])
     expect(threadReads()).toEqual(['t-gone', 't-elm', 't-err'])
 
@@ -1051,7 +1051,7 @@ describe('gmail-mine: follow, the cron’s', () => {
       tagRow('tag-live', 'u-marisol', 't-live', { tagged_at: ago(70), last_mail_at: liveAt, last_read_at: readAt }),
     ]
     const res = await cron({ action: 'follow' })
-    expect(res.body).toEqual({ ok: true, rows: 1, lines: 1, tied: 0, failed: 0 })
+    expect(res.body).toEqual({ ok: true, rows: 1, lines: 1, tied: 0, failed: 0, entries: 0 })
     expect(threadReads()).toEqual(['t-live'])
     expect(rowOf('tag-live')).toMatchObject({ last_mail_at: liveAt, last_error: null })
     expect(rowOf('tag-live')!.last_read_at).not.toBe(readAt)
@@ -1074,7 +1074,7 @@ describe('gmail-mine: follow, the cron’s', () => {
     google.boxes[MARISOL]!.mails.push(mail('g-old-3', 't-old', replyAt, { From: DALE, Subject: 'Re: Harbor Ln sewer line', 'Message-ID': '<old-3@ridgeway.example>' }, 'Still want it done. Thursday?'))
     google.calls.length = 0
     const res = await cron({ action: 'follow' })
-    expect(res.body).toEqual({ ok: true, rows: 1, lines: 1, tied: 0, failed: 0 })
+    expect(res.body).toEqual({ ok: true, rows: 1, lines: 1, tied: 0, failed: 0, entries: 0 })
     expect(threadReads()).toEqual(['t-old'])
     expect(lines().find((l) => l.gmail_id === 'g-old-3')).toMatchObject({ jobs_ledger_id: HARBOR, mail_user_id: 'u-marisol', direction: 'in' })
     expect(row.last_mail_at).toBe(replyAt)
@@ -1097,7 +1097,7 @@ describe('gmail-mine: follow, the cron’s', () => {
 
     // The first run: Google stumbles on the oldest conversation, and the newest healthy one waits for the next run.
     google.down.add('t-blip')
-    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: FOLLOW_ROWS_PER_RUN, lines: 0, tied: 0, failed: 1 })
+    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: FOLLOW_ROWS_PER_RUN, lines: 0, tied: 0, failed: 1, entries: 0 })
     expect(threadReads()[0]).toBe('t-blip')
     expect(rowOf('tag-blip')).toMatchObject({ last_read_at: expect.any(String), last_error: expect.stringContaining(MY_MAIL_REFUSAL_WORDS.google), last_mail_at: null })
     expect(rowOf('tag-blip')!.last_error).toContain('Backend Error')
@@ -1108,7 +1108,7 @@ describe('gmail-mine: follow, the cron’s', () => {
     // have kept it out of every run.
     google.down.delete('t-blip')
     google.calls.length = 0
-    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: FOLLOW_ROWS_PER_RUN, lines: 1, tied: 0, failed: 0 })
+    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: FOLLOW_ROWS_PER_RUN, lines: 1, tied: 0, failed: 0, entries: 0 })
     expect(threadReads().slice(0, 2)).toEqual([`t-steady-${FOLLOW_ROWS_PER_RUN - 1}`, 't-blip'])
     expect(rowOf('tag-blip')).toMatchObject({ last_error: null })
     expect(lines().find((l) => l.gmail_id === 'g-blip')).toMatchObject({ jobs_ledger_id: ELM, mail_user_id: 'u-marisol' })
@@ -1117,7 +1117,7 @@ describe('gmail-mine: follow, the cron’s', () => {
   it('reads at most a run’s worth of conversations, and leaves the newest for the next run', async () => {
     db.tables.email_tag_threads = Array.from({ length: FOLLOW_ROWS_PER_RUN + 2 }, (_, i) => tagRow(`tag-${i}`, 'u-marisol', `t-none-${i}`, { tagged_at: ago(30 - i * 0.01) }))
     const res = await cron({ action: 'follow' })
-    expect(res.body).toEqual({ ok: true, rows: FOLLOW_ROWS_PER_RUN, lines: 0, tied: 0, failed: FOLLOW_ROWS_PER_RUN })
+    expect(res.body).toEqual({ ok: true, rows: FOLLOW_ROWS_PER_RUN, lines: 0, tied: 0, failed: FOLLOW_ROWS_PER_RUN, entries: 0 })
     expect(threadReads()).toHaveLength(FOLLOW_ROWS_PER_RUN)
     expect(google.subs).toEqual([MARISOL])
     expect([rowOf(`tag-${FOLLOW_ROWS_PER_RUN}`), rowOf(`tag-${FOLLOW_ROWS_PER_RUN + 1}`)]).toEqual([
@@ -1133,7 +1133,7 @@ describe('gmail-mine: follow, the cron’s', () => {
       mail('g-lee-harbor', 't-lee-harbor', ago(1), { From: LEE, Subject: 'Harbor install', 'Message-ID': '<lee-harbor@ridgeway.example>' }, 'Harbor is Thursday.'),
     ]
     db.tables.email_tag_threads = [tagRow('tag-elm', 'u-marisol', 't-lee-elm', { tagged_at: ago(2) }), tagRow('tag-harbor', 'u-marisol', 't-lee-harbor', { tagged_at: ago(1), jobs_ledger_id: HARBOR })]
-    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 2, lines: 2, tied: 0, failed: 0 })
+    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 2, lines: 2, tied: 0, failed: 0, entries: 0 })
     const lee = db.rows('contacts').find((c) => c.name === 'Lee Tran')!
     expect(db.rows('contact_jobs').filter((j) => j.contact_id === lee.id).map((j) => j.jobs_ledger_id)).toEqual([ELM, HARBOR])
   })
@@ -1147,7 +1147,7 @@ describe('gmail-mine: follow, the cron’s', () => {
       if (id === 't-c') rowOf('tag-c')!.untagging_at = new Date().toISOString()
     }
     const res = await cron({ action: 'follow' })
-    expect(res.body).toEqual({ ok: true, rows: 3, lines: 1, tied: 0, failed: 0 })
+    expect(res.body).toEqual({ ok: true, rows: 3, lines: 1, tied: 0, failed: 0, entries: 0 })
     expect(threadReads()).toEqual(['t-a', 't-c'])
     expect(lines().map((l) => l.gmail_id)).toEqual(['g-a'])
     for (const id of ['tag-b', 'tag-c']) expect(rowOf(id), id).toMatchObject({ last_read_at: null, last_error: null })
@@ -1163,5 +1163,125 @@ describe('gmail-mine: follow, the cron’s', () => {
     expect(google.subs).toEqual([])
     expect(writes()).toEqual([])
     expect(rowOf('tag-elm')).toMatchObject({ last_read_at: null, last_error: null })
+  })
+})
+
+describe('gmail-mine: a conversation onto a person’s HR file (punch list #289)', () => {
+  const PERSON = '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
+  const ask = (over: Row = {}): Row => ({ action: 'tag', threadId: 't-elm', person: { personId: PERSON }, as: MARISOL, ...over })
+  /** A post as the dev seat makes it: the dev's own session and the seat header. */
+  async function seat(body: unknown, bearer = 'dev-jwt'): Promise<{ status: number; body: Record<string, unknown> }> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}`, 'X-Dev-Seat': 'dev-mcp' }
+    const res = await box.handler!(new Request('http://localhost/functions/v1/gmail-mine', { method: 'POST', headers, body: JSON.stringify(body) }))
+    return { status: res.status, body: (await res.json()) as Record<string, unknown> }
+  }
+  const entries = () => db.rows('person_file_entries')
+  const tagRows = () => db.rows('email_tag_threads')
+
+  beforeEach(() => {
+    google.boxes[MARISOL]!.mails = elmThread()
+    db.tables.people = [{ id: PERSON, name: 'ZZ Test Person' }]
+    db.tables.person_file_entries = []
+  })
+
+  it('plans one dated entry per mail and writes nothing, the draft skipped', async () => {
+    const res = await seat(ask({ plan: true }))
+    expect(res.status).toBe(200)
+    expect(res.body).toMatchObject({ ok: true, plan: true, threadId: 't-elm', account: MARISOL, person: { id: PERSON, name: 'ZZ Test Person' }, following: false, stop: false, counts: { entries: 3, already: 0, skipped: 1 } })
+    const mails = res.body.mails as Array<Record<string, unknown>>
+    expect(mails.map((m) => [m.gmailId, m.kind, m.entryDate ?? m.why])).toEqual([
+      ['g-dale-1', 'entry', '2026-10-30'],
+      ['g-marisol-1', 'entry', '2026-10-31'],
+      ['g-ana-1', 'entry', '2026-11-01'],
+      ['g-draft-elm', 'skip', 'a draft'],
+    ])
+    expect(mails[2]!.files).toBe(1)
+    expect(writes()).toEqual([])
+    expect(entries()).toEqual([])
+  })
+
+  it('writes the entries as the dev with their Gmail ids, keeps the row with the person, puts no label on and no line in Messages, and adds nothing on a second tag', async () => {
+    const res = await seat(ask())
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ ok: true, personId: PERSON, entries: 3, already: 0, skipped: 1, stopped: false })
+    expect(entries().map((e) => [e.gmail_message_id, e.entry_date, e.source, e.created_by, e.author_label, e.gmail_thread_id])).toEqual([
+      ['g-dale-1', '2026-10-30', 'conversation', 'u-dev', 'Robert', 't-elm'],
+      ['g-marisol-1', '2026-10-31', 'conversation', 'u-dev', 'Robert', 't-elm'],
+      ['g-ana-1', '2026-11-01', 'conversation', 'u-dev', 'Robert', 't-elm'],
+    ])
+    const ana = String(entries()[2]!.content)
+    expect(ana.startsWith('From: Ana Ruiz <ana@ridgeway.example>\nTo: marisol@clickplumbing.example\nCc: Dale Okafor <dale@ridgeway.example>\nSubject: Re: 4 Elm Ct water heater\nSent: 2026-11-01 02:15 AM Central\nFiles: elm-ct-spec-sheet.pdf (2 KB)\n\nHere is the spec sheet for the 50.')).toBe(true)
+    expect(ana).not.toContain('logo.png')
+    expect(tagRows()).toHaveLength(1)
+    expect(tagRows()[0]).toMatchObject({ user_id: 'u-marisol', gmail_thread_id: 't-elm', person_id: PERSON, bid_id: null, project_id: null, jobs_ledger_id: null, tagged_by: 'u-dev', last_mail_at: '2026-11-01T08:15:00.000Z', last_read_at: null, untagging_at: null })
+    expect(lines()).toEqual([])
+    // Reads alone at Google: no label made or put on (the box's labels are listed for the ones the person leaves out).
+    expect(google.calls.filter((c) => / (POST|PATCH|PUT|DELETE) /.test(c))).toEqual([])
+    expect(logged.join('\n')).not.toContain('spec sheet')
+    // The same conversation again: every mail is on the file already.
+    const again = await seat(ask())
+    expect(again.body).toEqual({ ok: true, personId: PERSON, entries: 0, already: 3, skipped: 1, stopped: false })
+    expect(entries()).toHaveLength(3)
+    expect((await seat(ask({ plan: true }))).body).toMatchObject({ following: true, counts: { entries: 0, already: 3, skipped: 1 } })
+  })
+
+  it('brings a later mail as an entry through the follow, as the dev who tagged, then a stop lifts the follow and keeps every entry', async () => {
+    await seat(ask())
+    google.boxes[MARISOL]!.mails.push(mail('g-dale-2', 't-elm', '2026-11-02T16:00:00.000Z', { From: DALE, Subject: 'Re: 4 Elm Ct water heater', 'Message-ID': '<dale-2@ridgeway.example>' }, 'Go with the 50 then.'))
+    const res = await cron({ action: 'follow' })
+    expect(res.body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0, entries: 1 })
+    expect(entries().map((e) => e.gmail_message_id)).toEqual(['g-dale-1', 'g-marisol-1', 'g-ana-1', 'g-dale-2'])
+    expect(entries()[3]).toMatchObject({ entry_date: '2026-11-02', created_by: 'u-dev', author_label: 'Robert', person_id: PERSON })
+    expect(tagRows()[0]).toMatchObject({ last_mail_at: '2026-11-02T16:00:00.000Z', last_error: null })
+    expect(tagRows()[0]!.last_read_at).toBeTruthy()
+    // Nothing new: the follow reads and writes no entry.
+    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0, entries: 0 })
+    // Stop: the plan names the follow and the entries, the apply takes the row and leaves the entries.
+    const plan = await seat(ask({ stop: true, plan: true }))
+    expect(plan.body).toMatchObject({ ok: true, plan: true, stop: true, following: true, counts: { entries: 0, already: 4, skipped: 0 }, mails: [] })
+    const stopped = await seat(ask({ stop: true }))
+    expect(stopped.body).toEqual({ ok: true, personId: PERSON, entries: 0, already: 4, skipped: 0, stopped: true })
+    expect(tagRows()).toEqual([])
+    expect(entries()).toHaveLength(4)
+    expect((await cron({ action: 'follow' })).body).toEqual({ ok: true, rows: 0, lines: 0, tied: 0, failed: 0, entries: 0 })
+    // A stop with nothing to lift says so and is still ok.
+    expect((await seat(ask({ stop: true, plan: true }))).body).toMatchObject({ following: false, counts: { already: 4 } })
+  })
+
+  it('reads an archived login’s box for a person, and refuses it for a job', async () => {
+    db.rows('users').find((u) => u.id === 'u-marisol')!.archived_at = '2026-10-15T00:00:00.000Z'
+    expect((await seat(ask())).body).toMatchObject({ ok: true, entries: 3 })
+    const job = await seat({ action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM }, as: MARISOL })
+    expect(job.status).toBe(404)
+    expect(String(job.body.words)).toContain('No current login')
+  })
+
+  it('holds a conversation to one target a box, and keeps the person target to the seat', async () => {
+    // A person's own press never carries a person.
+    const own = await post('marisol-jwt', { action: 'tag', threadId: 't-elm', person: { personId: PERSON }, as: MARISOL })
+    expect(own.status).toBe(400)
+    expect(String(own.body.words)).toContain('dev seat')
+    expect(entries()).toEqual([])
+    // On a job already: the person tag is refused in words.
+    await post('marisol-jwt', { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } })
+    const onJob = await seat(ask({ plan: true }))
+    expect(onJob.status).toBe(400)
+    expect(String(onJob.body.words)).toContain('tagged onto a job')
+    await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    // On a file: the person's own job tag and untag are refused, and so is another person.
+    await seat(ask())
+    const tagOnFile = await post('marisol-jwt', { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } })
+    expect(tagOnFile.status).toBe(400)
+    expect(String(tagOnFile.body.words)).toContain('HR file')
+    const untagOnFile = await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    expect(untagOnFile.status).toBe(400)
+    expect(tagRows()).toHaveLength(1)
+    db.rows('people').push({ id: '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4e', name: 'ZZ Other Person' })
+    const other = await seat(ask({ person: { personId: '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4e' } }))
+    expect(other.status).toBe(400)
+    expect(String(other.body.words)).toContain('another person')
+    // No such person, and a caller who is not a dev.
+    expect((await seat(ask({ person: { personId: '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4f' } }))).status).toBe(404)
+    expect((await seat(ask(), 'marisol-jwt')).status).toBe(400)
   })
 })
