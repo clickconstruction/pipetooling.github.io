@@ -1165,6 +1165,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                           bills: w.openBills.map((b) => ({ key: b.invoiceId, jobId: b.jobId, jobLabel: b.jobLabel, ymd: b.ymd, text: b.text, open: b.open })),
                           retainageOnBillsByJob: new Map(Object.entries(w.retainageOnBillsByJob)),
                           retainageAdded: w.retainageAdded,
+                          claimTyped: w.claimTyped,
                           balance: w.balance,
                           claim: w.claim,
                           contingencyPct: w.contingencyPct,

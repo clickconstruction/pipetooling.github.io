@@ -25,6 +25,8 @@ function fill(s: MoneyBarSegment, i: number): CSSProperties {
       return { background: '#2563eb', color: '#fff' }
     case 'retainage':
       return { background: '#bfdbfe', color: 'var(--text-on-bright-solid)' }
+    case 'typed':
+      return { background: '#93c5fd', color: 'var(--text-on-bright-solid)' }
     case 'beyond':
       return { background: HATCH_NEUTRAL, color: 'var(--text-700)' }
     case 'keep':
