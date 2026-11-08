@@ -80,6 +80,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 
 **Everything else**
 - Your day, pins, nudges → `/dashboard`
+- Draw the hours you can work each week and read your last eight pay weeks against them → `/dashboard` (My Time's Your hours block, v2.6709; the same card under Your record in Job Mode; guide `draw-the-hours-you-can-work`)
 - Company task list → `/checklist`
 - Calendar view → `/calendar`; map of work → `/map`
 - Price/labor/assembly books (catalog data behind pricing) → `/materials`

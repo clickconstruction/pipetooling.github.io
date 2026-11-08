@@ -2,14 +2,14 @@
 name: People → Utilization and the drawn week
 number: 284
 group: ready
-status: PR 1 #7311 and the types PR #7331 merged · PR 2 #7332 armed · PR 3 #7333 open, armed when #7332 lands · walked on the dev server as a dev, an assistant and a helper, two defects fixed on PR 2 · left: the same walk on prod after #7333 deploys
+status: PR 1 #7311, the types PR #7331 and PR 2 #7332 merged · PR 3 #7333 armed · walked on the dev server as a dev, an assistant and a helper, two defects fixed on PR 2 · left: the same walk on prod after #7333 deploys
 summary: >
   A People view that reads the hours each person said they can work against the hours the clock
   recorded, by pay week, so the office knows when to add people and when to use the people it has
   more; and the person's side on My Time, where they draw the week they can work, Sunday to
   Saturday, and read their last eight weeks against it. Everything is built and tested; what is
   left is landing it in order.
-next: When #7332 merges, merge main into #7333 and arm it; repeat the walk below on prod after #7333 deploys and record it here; delete this folder once the owner has seen it.
+next: Repeat the walk below after #7333 deploys and record it here; delete this folder once the owner has seen it.
 size: S as what is left (the code is done; three PRs to land in order)
 blocker: The merge queue, one PR at a time; #7332 and #7333 wait for the PR ahead.
 opinion: build — the owner said ship; the branches are ready and the write-up is theirs
