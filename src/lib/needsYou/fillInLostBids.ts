@@ -6,8 +6,11 @@ import { fillInRowKey, type FillInRowBase } from './fillIn'
  * The lost-bid kind (v2.5774, punch list #146, PR 2): the rows behind the Needs you line
  * *N lost bids have no reason recorded*, what the app knows about each, the fields the
  * assistant fills, and the writes. The rows are the Why we lost lens's own rule
- * (`bidSentCounts`: lost, no `loss_category`, not adopted into another bid), biggest value
- * first. The write is the lens's own: the bid's `loss_category` and `loss_reason`; and, when
+ * (`bidSentCounts`: lost, no `loss_category`, not adopted into another bid), oldest first since
+ * v2.6754 (punch list #176, decision 6: the owner's *oldest first*, no daily portion): the bid
+ * marked lost longest ago on top, the day it went out standing in when the loss was never stamped
+ * (on 2026-11-08 six of 63 carried a stamp, 56 only the day they went out), a bid with no date last, the biggest value breaking a
+ * tie. The write is the lens's own: the bid's `loss_category` and `loss_reason`; and, when
  * the assistant names who they talked to, one contact-log entry, which is what stamps the
  * bid's last contact. Pure; `fillInLostBidsIo.ts` reads and writes.
  */
@@ -37,6 +40,10 @@ export type LostBidFillInRow = FillInRowBase & {
   project: string
   gcName: string
   value: number | null
+  /** When it was marked lost, epoch ms; null when the bid never got the stamp. */
+  lostAtMs: number | null
+  /** When the bid went out, epoch ms; null when unknown. */
+  sentAtMs: number | null
   /** What the row held before the save, for Undo. */
   previous: { loss_category: string | null; loss_reason: string | null }
 }
@@ -50,6 +57,12 @@ function day(iso: string | null | undefined): string | null {
   if (!iso) return null
   const ms = Date.parse(iso)
   return Number.isFinite(ms) ? formatDenverCalendarDayShort(ms) : null
+}
+
+function epochMs(iso: string | null | undefined): number | null {
+  if (!iso) return null
+  const ms = Date.parse(iso)
+  return Number.isFinite(ms) ? ms : null
 }
 
 /** "Marked lost on Sep 30." · "Bid went out Aug 14." · "Last contact: Sep 22." or "No contact recorded since it went out." */
@@ -92,15 +105,32 @@ export function lostBidFillInRows(bids: readonly LostBidSource[]): LostBidFillIn
         project,
         gcName,
         value,
+        lostAtMs: epochMs(b.outcome_at),
+        sentAtMs: epochMs(b.bid_date_sent),
         previous: { loss_category: b.loss_category, loss_reason: b.loss_reason },
       }
     })
   return rows.sort(compareLostBidRows)
 }
 
-/** Biggest value first, as the line's dollars count them; no value last. */
+/** The day a lost bid is old from: the day it was marked lost, else the day it went out; null with neither. */
+export function lostBidAgeMs(row: Pick<LostBidFillInRow, 'lostAtMs' | 'sentAtMs'>): number | null {
+  return row.lostAtMs ?? row.sentAtMs
+}
+
+/**
+ * Oldest first (v2.6754): by the day the bid is old from (`lostBidAgeMs`), a bid with no date after those with one;
+ * the biggest value breaks a tie, no value last.
+ */
 export function compareLostBidRows(a: LostBidFillInRow, b: LostBidFillInRow): number {
-  return (b.value ?? -1) - (a.value ?? -1)
+  return oldestFirst(lostBidAgeMs(a), lostBidAgeMs(b)) || (b.value ?? -1) - (a.value ?? -1)
+}
+
+function oldestFirst(a: number | null, b: number | null): number {
+  if (a == null && b == null) return 0
+  if (a == null) return 1
+  if (b == null) return -1
+  return a - b
 }
 
 /** The fields the assistant fills: the reason chip, what they said, who they talked to. */
