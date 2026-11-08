@@ -9,8 +9,7 @@ summary: >
   while it runs; then who is spending what; then Review follows the job numbers.
 next: >
   The owner enters the 2007 Ram 3500's insurance, registration and service on People → Vehicles;
-  until then Review charges its driver only fuel on no job. The coordinating session pushes migration
-  20261108054743 (one column comment). The rows left under Found along the way are naming and edge
+  until then Review charges its driver only fuel on no job. Migration 20261108054743 (one column comment) was pushed on 2026-11-08. The rows left under Found along the way are naming and edge
   cases the owner has not picked.
 size: M for PRs 1–3 · M for the spend view
 blocker: None.

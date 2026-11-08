@@ -8,7 +8,7 @@ summary: >
   now keeps each inbound email's HTML part at <line id>/body.html in the message-attachments bucket,
   messages.body_html_path naming it, and the message window draws Rich text · Plain over the words,
   the rich view through DOMPurify pinned with pictures off until Show pictures. Older lines stay plain.
-next: The owner's live check once PR 1's migration is pushed and gmail-sync redeployed, then PR 2 deployed. Open one real email in Messages that came in after the redeploy, press Rich text, press Show pictures. Delete nothing, the check reads.
+next: Both PRs merged 2026-11-08; the migration was applied and gmail-sync redeployed the same morning, and PR 2 deployed through Pages. Left: the owner's live check. Open one real email in Messages that came in after the redeploy, press Rich text, press Show pictures. Delete nothing, the check reads.
 ver: v2.6675 (PR 1) · v2.6676 (PR 2)
 size: M · PR 1 the reader's write and a migration · PR 2 the switch, a sanitizer and images off until pressed
 blocker: none since the owner's yes of 2026-11-07

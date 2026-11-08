@@ -8,3 +8,5 @@ The claim on a legal matter, line by line (punch list #171, `to-dos/legal-desk-c
 - The fences: `apply_read_only_write_blocks`, `apply_read_only_stmt_blocks`, `apply_digital_twin_write_blocks`, `apply_archived_read_blocks`.
 
 The client (`LegalClaimTable.tsx`, `useLegalPacketData.ts`) calls the table and the RPCs by name, so `check:calls-ahead` labels the PR *push right after the merge*: push this file right after #171 PR 1 merges, before the Pages deploy finishes. Then `npm run gen-types:linked` as its own `chore(types)` PR.
+
+**Applied** to prod on 2026-11-08, read the same day: `npm run check:migration-drift` from the coordinating session's worktree read 1164 local files and 1164 remote versions, fully applied, this file among them; pushed together with 20261108053000 under `--include-all` after #7285 merged; the one NOTICE was its `DROP POLICY IF EXISTS` finding no policy yet, the idempotent form at work. Types regenerated from prod through #7301 (`chore(types)` after the night's six migrations).
