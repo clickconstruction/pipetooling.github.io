@@ -32,6 +32,7 @@ export function LienStepRail({
   viewerIsLeader,
   printed,
   reminderWaiting,
+  reminderScheduled,
 }: {
   counts: LienStepCounts
   ladders: ReadonlyArray<LienStepLadder>
@@ -47,6 +48,8 @@ export function LienStepRail({
   printed?: Partial<Record<LienStepLadder, number>>
   /** Sent notices before day 7 (punch list #262): on the REMINDERS ladder's first rung but not in its count. */
   reminderWaiting?: number
+  /** Sent notices past day 7 waiting for reminders week of the lien's month (punch list #235, PR 4): on the first rung, not in its count. */
+  reminderScheduled?: number
 }) {
   return (
     <div data-testid="lien-step-rails" style={{ display: 'grid', gap: 8, marginBottom: '0.9rem' }}>
@@ -102,7 +105,7 @@ export function LienStepRail({
                     <span style={{ marginLeft: 'auto', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums', color: empty ? 'var(--text-muted)' : 'var(--text-strong)', opacity: empty ? 0.6 : 1, flex: 'none' }} data-testid={`lien-step-count-${key}-${step}`}>
                       {n}
                       {isRun && n > 0 ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{lienRunRungWords(n, printed?.[key] ?? 0)}</span> : null}
-                      {key === 'reminder' ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{lienReminderRungWords(step, reminderWaiting ?? 0)}</span> : null}
+                      {key === 'reminder' ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{lienReminderRungWords(step, reminderWaiting ?? 0, reminderScheduled ?? 0)}</span> : null}
                     </span>
                   </button>
                 )

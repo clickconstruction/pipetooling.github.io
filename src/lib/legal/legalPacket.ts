@@ -242,6 +242,9 @@ export type LegalHoursStatementLike = {
 
 export type LegalThreadNoteLike = { jobId: string; body: string; createdAt: string; authorName: string | null }
 
+/** A sub on one of the account's jobs' sheets (v2.6660, punch list #212): one row per sheet the sub's roster row is assigned to, by their login. A sub never punches, so this is how the Evidence tab knows to ask them. */
+export type LegalSheetSubLike = { jobId: string; userId: string; name: string; sheetId: string }
+
 export type LegalPacketInput = {
   todayYmd: string
   account: LegalAccountSummary
@@ -278,6 +281,8 @@ export type LegalPacketInput = {
   threadNotes: ReadonlyArray<LegalThreadNoteLike>
   /** The signed hours statements on the jobs (v2.6413, punch list #212 PR 4). Absent on an older caller: none shown. */
   hoursStatements?: ReadonlyArray<LegalHoursStatementLike>
+  /** The subs on the jobs' sheets with a login (v2.6660): asked for a statement from their sheets, as the window's Who list offers them. Absent: only who clocked is asked. */
+  sheetSubs?: ReadonlyArray<LegalSheetSubLike>
   /** The first day any clock row exists in the app (`2026-03-12` live): a job whose work predates it with no session is a gap job. Absent: no job reads as one. */
   firstRecordedDay?: string | null
   /** For naming who flagged Collections. */
@@ -469,7 +474,8 @@ export type LegalEvidenceStatement = {
 }
 
 /** Someone who clocked on the job (approved sessions), for the Evidence tab's Ask… (v2.6413). */
-export type LegalEvidenceWorker = { userId: string; name: string; sessions: number }
+/** Someone the Evidence tab can ask for a signed statement: who clocked on the job (`clock`, by approved sessions), or a sub on its sheets (`sheet`, by sheets, v2.6660). */
+export type LegalEvidenceWorker = { userId: string; name: string; sessions: number; kind: 'clock' | 'sheet'; /** A sub's sheets on the job; 0 for who clocked. */ sheets: number }
 
 export type LegalEvidenceJob = {
   jobId: string
@@ -734,15 +740,28 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       if (!x.userId) continue
       const w = workerMap.get(x.userId)
       if (w) w.sessions += 1
-      else workerMap.set(x.userId, { userId: x.userId, name: (x.userName ?? '').trim() || 'Unnamed', sessions: 1 })
+      else workerMap.set(x.userId, { userId: x.userId, name: (x.userName ?? '').trim() || 'Unnamed', sessions: 1, kind: 'clock', sheets: 0 })
     }
-    const workers = Array.from(workerMap.values()).sort((p, q) => q.sessions - p.sessions || p.name.localeCompare(q.name))
+    // v2.6660: the subs on the job's sheets, by their sheets, after who clocked; a login that also clocked stays a clock worker, as the window's Who list has it.
+    const sheetSubs = (input.sheetSubs ?? []).filter((x) => x.jobId === j.id)
+    const sheetMap = new Map<string, LegalEvidenceWorker>()
+    for (const x of sheetSubs) {
+      if (!x.userId || workerMap.has(x.userId)) continue
+      const w = sheetMap.get(x.userId)
+      if (w) w.sheets += 1
+      else sheetMap.set(x.userId, { userId: x.userId, name: (x.name ?? '').trim() || 'Unnamed', sessions: 0, kind: 'sheet', sheets: 1 })
+    }
+    const workers = [
+      ...Array.from(workerMap.values()).sort((p, q) => q.sessions - p.sessions || p.name.localeCompare(q.name)),
+      ...Array.from(sheetMap.values()).sort((p, q) => q.sheets - p.sheets || p.name.localeCompare(q.name)),
+    ]
     const statements = (input.hoursStatements ?? [])
       .filter((h) => h.jobId === j.id)
       .map((h): LegalEvidenceStatement => ({ id: h.id, recordId: h.recordId, workerName: h.workerName, state: h.state, signed: h.state === 'signed', periodLabel: legalPeriodLabel(h.periodStart, h.periodEnd), hours: h.hours, withPay: h.withPay, statedDays: h.statedDays, signedOn: h.signedOn, contractDocumentId: h.contractDocumentId, matterDocumentId: h.matterDocumentId }))
       .sort((p, q) => q.recordId.localeCompare(p.recordId))
     const lastKnown = ymdOfIso(j.last_work_date) ?? ymdOfIso(j.created_at) ?? null
-    const beforeTheApp = Boolean(input.firstRecordedDay) && live.length === 0 && lastKnown != null && lastKnown < (input.firstRecordedDay as string)
+    // A sub's sheet is a record too (v2.6660): a job with one is never a gap job.
+    const beforeTheApp = Boolean(input.firstRecordedDay) && live.length === 0 && sheetSubs.length === 0 && lastKnown != null && lastKnown < (input.firstRecordedDay as string)
     return {
       jobId: j.id,
       jobLabel: labelByJob.get(j.id) ?? '—',
@@ -1251,6 +1270,12 @@ export function legalPeriodLabel(from: string, to: string): string {
   if (!a || !b) return `${from} – ${to}`
   if (a.y === b.y) return `${M[a.mo - 1]} ${a.d} – ${M[b.mo - 1]} ${b.d}, ${a.y}`
   return `${M[a.mo - 1]} ${a.d}, ${a.y} – ${M[b.mo - 1]} ${b.d}, ${b.y}`
+}
+
+/** The Ask press's title: *Opens the Hours statement window on 717 with Marcus Reyes picked: 12 approved sessions here*, or for a sub *… picked: 2 sheets here, read as the sheets' lines* (v2.6660). */
+export function legalAskWorkerTitle(jobLabel: string, w: Pick<LegalEvidenceWorker, 'name' | 'sessions' | 'kind' | 'sheets'>): string {
+  const what = w.kind === 'sheet' ? `${w.sheets} sheet${w.sheets === 1 ? '' : 's'} here, read as the sheets’ lines` : `${w.sessions} approved session${w.sessions === 1 ? '' : 's'} here`
+  return `Opens the Hours statement window on ${jobLabel} with ${w.name} picked: ${what}`
 }
 
 /** What the Signed statements line says to a role the statements' own policy answers nothing (v2.6633): the gate, not an empty job. */

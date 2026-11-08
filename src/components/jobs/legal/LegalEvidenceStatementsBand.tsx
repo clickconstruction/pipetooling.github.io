@@ -2,16 +2,17 @@
  * Signed hours statements under a job's row on the Legal desk's Evidence tab (punch list #212, PR 4, v2.6413): the
  * statements made for the job with their record, worker, period, hours and where they stand, **Add to evidence** on a
  * signed one not yet on the matter (the signed PDF copied into `legal_matter_documents`, the statement tied to it),
- * **Show on Evidence ↗** once it is, and **Ask <name>…** per worker who clocked here, which opens the Hours statement
- * window on the job with that worker picked. A gap job — nothing clocked and the work before the app's first day —
- * says so and asks no one: a statement there would be the worker's own. A viewer the statements' policy answers nothing
+ * **Show on Evidence ↗** once it is, and **Ask <name>…** per worker who clocked here and per sub on the job's sheets
+ * (v2.6660; a sub never punches, so the window reads their sheets), which opens the Hours statement window on the job
+ * with that worker picked. A gap job — nothing clocked, no sheet, and the work before the app's first day — says so and
+ * asks no one: a statement there would be the worker's own. A viewer the statements' policy answers nothing
  * (not a dev or the controller) reads who can see them, not *Nothing signed here yet* (v2.6633). Words and the orchestration are
  * `lib/legal/hoursStatementEvidence.ts` and `legalPacket.ts`; the band draws and the tab does the calls.
  */
 import type { CSSProperties } from 'react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import { hoursStatementEvidenceProblem } from '../../../lib/legal/hoursStatementEvidence'
-import { legalGapJobWords, legalStatementsWords, type LegalEvidenceJob } from '../../../lib/legal/legalPacket'
+import { legalAskWorkerTitle, legalGapJobWords, legalStatementsWords, type LegalEvidenceJob } from '../../../lib/legal/legalPacket'
 import { hoursStatementStateWords, isHoursStatementState } from '../../../lib/people/hoursStatementRecord'
 import { MUTED, btn } from './legalDeskShared'
 import { EmptyState } from '../../EmptyState'
@@ -61,10 +62,10 @@ export function LegalEvidenceStatementsBand({ job, firstRecordedDay, matter, can
       })}
       {canAsk && !job.beforeTheApp ? (
         <div style={row}>
-          {job.workers.length === 0 ? <EmptyState compact main="Nobody has an approved session here yet, so there is no one to ask." /> : null}
+          {job.workers.length === 0 ? <EmptyState compact main="Nobody has an approved session or a sheet here yet, so there is no one to ask." /> : null}
           {job.workers.map((w) => (
-            <button key={w.userId} type="button" style={acts ? btn : dead} disabled={!acts} onClick={() => acts?.ask(job.jobId, w.userId)} title={`Opens the Hours statement window on ${job.jobLabel} with ${w.name} picked: ${w.sessions} approved session${w.sessions === 1 ? '' : 's'} here`} aria-label={`Ask ${w.name} for a signed statement`}>
-              Ask {w.name}…
+            <button key={w.userId} type="button" style={acts ? btn : dead} disabled={!acts} onClick={() => acts?.ask(job.jobId, w.userId)} title={legalAskWorkerTitle(job.jobLabel, w)} aria-label={`Ask ${w.name} for a signed statement`}>
+              Ask {w.name}…{w.kind === 'sheet' ? <span style={{ ...MUTED, fontWeight: 400 }}> on the sheets</span> : null}
             </button>
           ))}
         </div>

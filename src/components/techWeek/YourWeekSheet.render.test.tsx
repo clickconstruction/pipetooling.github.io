@@ -8,17 +8,20 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { YourWeekIo } from '../../lib/techWeek/yourWeekIo'
 import { weekSheetSeenKey } from '../../lib/techWeek/weekSheet'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { YourWeekSheet, weekSheetAlreadyDealt } from './YourWeekSheet'
 
+// The rows are dated in the app's timezone, as the sheet reads the week: a UTC date is a day ahead every evening, and on a
+// Saturday evening that is the next pay week (it failed CI at 6:30 PM Central on 2026-11-07).
 const io = (week: unknown, words: unknown = []): YourWeekIo => ({ myWeek: async () => week, myWords: async () => words })
 
 const week = (signal: string | null) => ({
   signal,
   name: 'Marcus',
   role: 'primary',
-  hours: [{ session_id: 's', work_date: new Date().toISOString().slice(0, 10), clocked_in_at: '', clocked_out_at: '', hours: 8.5, approved: false, job_ledger_id: 'a', job_number: '1184', job_name: 'Water heater', job_address: '', service_type_name: 'Plumbing', bid_id: null }],
+  hours: [{ session_id: 's', work_date: todayYmdInAppTz(), clocked_in_at: '', clocked_out_at: '', hours: 8.5, approved: false, job_ledger_id: 'a', job_number: '1184', job_name: 'Water heater', job_address: '', service_type_name: 'Plumbing', bid_id: null }],
   licenses: [],
-  jobs: [{ job_id: 'a', job_number: '1184', job_name: 'Water heater', finished_ymd: new Date().toISOString().slice(0, 10), expected_hours: null, budget_hours: 40, crew_hours: 36, my_first_ymd: '2026-11-02' }],
+  jobs: [{ job_id: 'a', job_number: '1184', job_name: 'Water heater', finished_ymd: todayYmdInAppTz(), expected_hours: null, budget_hours: 40, crew_hours: 36, my_first_ymd: '2026-11-02' }],
   callbacks: [],
 })
 

@@ -22,8 +22,10 @@ vi.mock('../../lib/supabase', async () => {
 const BLOCK: TellBlock = { workDate: '2026-10-23', timeStart: '10:00:00', timeEnd: '12:00:00', techName: 'Luis Ortega' }
 const BOOKED: QuickReply = { id: 'q1', text: '{first}, this is {me} with Click Plumbing. We have you booked for {day}, {window}. {tech} will text you when on the way.', for: 'customer', stepId: 'booked', scope: 'team', addedBy: 'rosa', addedAt: 1, removed: false, uses: {}, lastUsed: null, textEs: null } as QuickReply
 const AT = Date.parse('2026-10-16T19:41:00Z')
+/** The short share link the fake io mints for an estimate text (v2.6657): 32 characters of token against the email's 64. */
+const SHORT_LINK = `https://clicktooling.com/estimate/accept?t=${'s'.repeat(32)}`
 
-type Fake = TellCustomerIo & { send: ReturnType<typeof vi.fn>; makeOffer: ReturnType<typeof vi.fn>; addCall: ReturnType<typeof vi.fn>; saveOfficeLine: ReturnType<typeof vi.fn> }
+type Fake = TellCustomerIo & { send: ReturnType<typeof vi.fn>; makeOffer: ReturnType<typeof vi.fn>; addCall: ReturnType<typeof vi.fn>; saveOfficeLine: ReturnType<typeof vi.fn>; shareEstimateLink: ReturnType<typeof vi.fn> }
 function fakeIo(set: Partial<TellCustomerIo> = {}): Fake {
   return {
     loadJob: vi.fn(async () => ({ customerId: 'cust-dana', customerName: 'Dana Whitfield', jobName: 'Whitfield water heater', jobAddress: '1208 Mesquite Ln', lang: 'en' as const })),
@@ -34,6 +36,7 @@ function fakeIo(set: Partial<TellCustomerIo> = {}): Fake {
     loadMyName: vi.fn(async () => 'Rosa Perez'),
     isFirstVisit: vi.fn(async () => true),
     send: vi.fn(async () => 'msg-1'),
+    shareEstimateLink: vi.fn(async () => SHORT_LINK),
     makeOffer: vi.fn(async () => 'offer-1'),
     loadCallScript: vi.fn(async () => null),
     addCall: vi.fn(async () => 'call-1'),
@@ -258,6 +261,7 @@ describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () =
     sendEmail: TellEstimate['sendEmail'] = vi.fn(async () => ({ ok: true as const, acceptUrl: 'https://clicktooling.com/estimate/accept?t=abc', emailed: true })),
     sendEmailAgain?: TellEstimate['sendEmailAgain'],
   ) => ({
+    estimateId: 'est-512',
     customerId: 'cust-dana',
     email: 'dana@example.com',
     amount: '$1,850.00',
@@ -298,7 +302,7 @@ describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () =
     expect(screen.getByTestId('tell-sheet')).toBeTruthy()
   })
 
-  it('both channels in one press: the email first, then the text with the link it came back with, and the receipt names both', async () => {
+  it('both channels in one press: the email first, then the text with the short share link to its page, and the receipt names both (v2.6657)', async () => {
     const io = fakeIo({ loadLines: vi.fn(async () => [ESTIMATE_LINE]) })
     const { est } = mountEstimate(io)
     const box = (await screen.findByTestId('tell-body')) as HTMLTextAreaElement
@@ -317,10 +321,12 @@ describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () =
     fireEvent.click(primary)
     await waitFor(() => expect(io.send).toHaveBeenCalledTimes(1))
     expect(est.sendEmail).toHaveBeenCalledTimes(1)
-    expect(io.send).toHaveBeenCalledWith({ contactId: 'contact-dana', channelId: 'ch-1', jobId: null, body: 'Dana, Rosa here with Click Plumbing. Your estimate for Whitfield water heater is ready, $1,850.00: https://clicktooling.com/estimate/accept?t=abc' })
+    expect(io.shareEstimateLink).toHaveBeenCalledWith('est-512')
+    expect(io.send).toHaveBeenCalledWith({ contactId: 'contact-dana', channelId: 'ch-1', jobId: null, body: `Dana, Rosa here with Click Plumbing. Your estimate for Whitfield water heater is ready, $1,850.00: ${SHORT_LINK}` })
     expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
     expect(screen.getByTestId('tell-receipt-email').textContent).toBe('Email · dana@example.com · 2:41 PM')
-    expect(screen.getByTestId('tell-receipt-words').textContent).toContain('https://clicktooling.com/estimate/accept?t=abc')
+    expect(screen.getByTestId('tell-receipt-words').textContent).toContain(SHORT_LINK)
+    expect(screen.getByTestId('tell-receipt-words').textContent).not.toContain('t=abc')
     expect(screen.getByTestId('tell-script').textContent).toBe('Hi Dana, this is Rosa with Click Plumbing. I just sent your estimate for Whitfield water heater, $1,850.00. Do you have two minutes for me to walk you through it? You can approve from the link whenever you are ready.')
   })
 
@@ -363,9 +369,20 @@ describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () =
     expect(primary.textContent).toBe('Send the link again')
     fireEvent.click(primary)
     await waitFor(() => expect(sendEmailAgain).toHaveBeenCalledTimes(1))
-    await waitFor(() => expect(io.send).toHaveBeenCalledWith(expect.objectContaining({ body: expect.stringContaining('t=fresh') })))
+    await waitFor(() => expect(io.send).toHaveBeenCalledWith(expect.objectContaining({ body: expect.stringContaining(SHORT_LINK) })))
     expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
     expect(sendEmail).toHaveBeenCalledTimes(1)
+  })
+
+  it('a share link that cannot be made falls back to the email’s own link, so the text still goes (v2.6657)', async () => {
+    const io = fakeIo({ loadLines: vi.fn(async () => [ESTIMATE_LINE]), shareEstimateLink: vi.fn(async () => Promise.reject(new Error('Only a sent estimate can be shared.'))) })
+    mountEstimate(io)
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-primary'))
+    await waitFor(() => expect(io.send).toHaveBeenCalledTimes(1))
+    expect(io.shareEstimateLink).toHaveBeenCalledWith('est-512')
+    expect(io.send).toHaveBeenCalledWith(expect.objectContaining({ body: expect.stringContaining('https://clicktooling.com/estimate/accept?t=abc') }))
+    expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
   })
 
   it('the receipt says when the email did not go, and when the text failed after it (v2.5681)', async () => {

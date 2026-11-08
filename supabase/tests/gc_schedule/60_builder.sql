@@ -4,7 +4,8 @@
 -- the one it replaced and keeps the name; the save's refusals in the kernel's words; the old shape straight to the
 -- table, and the table's own checks; the append-only grant; training mode and a subcontractor. Presses run as a
 -- dev through RLS on a job of its own, made as postgres, inside one transaction that rolls back. Raises on the
--- first failed assertion; ends with "gc_schedule builder PASSED". See scripts/pgtest-gc-schedule.sh. Never
+-- first failed assertion; ends with "gc_schedule builder PASSED". Since punch list #210 (v2.6651) section 13 plays the
+-- job's own work in a phase and the rough's copy of a rows template. See scripts/pgtest-gc-schedule.sh. Never
 -- against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
@@ -235,6 +236,35 @@ SELECT gsb.same('authenticated may update name, aside_on and superseded_on alone
   (SELECT string_agg(column_name, ' ' ORDER BY column_name) FROM information_schema.column_privileges
    WHERE table_schema = 'public' AND table_name = 'gc_schedule_templates' AND grantee = 'authenticated' AND privilege_type = 'UPDATE'),
   'aside_on name superseded_on');
+
+-- 13 · Punch list #210 (v2.6651, migration *_gc_schedule_own_work_phase_and_rough_rows): the job's own work added to
+-- a schedule drawn with phases lands in the phase picked; a phase the schedule was not drawn with is refused before the
+-- version moves; no phase lands under Not in a phase as before. The rough keeps a copy of a rows template as an object.
+SELECT gsb.as_user('00000000-0000-0000-0000-0000000009d1');
+SET LOCAL ROLE authenticated;
+SELECT gsb.same('drawn again with phases, as version 3', public.gc_schedule_draft('00000000-0000-0000-0000-0000000009a1', 2, 'Drew the schedule on Builder test P again.',
+  '{"phases": ["Sitework and utilities", "MEP rough-in"],
+    "bars": [{"kind": "line", "scopeItemId": "00000000-0000-0000-0000-0000000009e1", "packageId": "00000000-0000-0000-0000-0000000009b1", "start": "2026-11-02", "finish": "2026-11-06", "after": [], "phase": "Sitework and utilities"}],
+    "milestones": [{"id": "00000000-0000-0000-0000-0000000009f5", "label": "Substantial completion", "planned": "2026-11-20"}]}')::text, '3');
+SELECT gsb.refused('the job''s own work in a phase the schedule was not drawn with', $q$SELECT public.gc_schedule_add_activity('00000000-0000-0000-0000-0000000009a1', 3,
+    '{"id": "00000000-0000-0000-0000-0000000009f6", "label": "Mobilize", "who": "Our own crew", "start": "2026-11-02", "finish": "2026-11-03", "after": [], "phase": "Closeout"}', '{}', '[]', 'Added it.')$q$,
+  'That phase is not on this schedule.');
+SELECT gsb.same('the version did not move on the refusal', (SELECT version::text FROM public.gc_schedules WHERE project_id = '00000000-0000-0000-0000-0000000009a1'), '3');
+SELECT gsb.same('Mobilize on in MEP rough-in, as version 4', public.gc_schedule_add_activity('00000000-0000-0000-0000-0000000009a1', 3,
+  '{"id": "00000000-0000-0000-0000-0000000009f6", "label": "Mobilize", "who": "Our own crew", "start": "2026-11-02", "finish": "2026-11-03", "after": [], "phase": " MEP rough-in "}', '{}', '[]',
+  'Builder Dev put Mobilize on Builder test P''s schedule, Mon Nov 2 to Tue Nov 3, Our own crew.')::text, '4');
+SELECT gsb.same('Cure on with no phase, as version 5', public.gc_schedule_add_activity('00000000-0000-0000-0000-0000000009a1', 4,
+  '{"id": "00000000-0000-0000-0000-0000000009f7", "label": "Cure", "who": "Cure time", "start": "2026-11-09", "finish": "2026-11-10", "after": []}', '{}', '[]',
+  'Builder Dev put Cure on Builder test P''s schedule, Mon Nov 9 to Tue Nov 10, Cure time.')::text, '5');
+SELECT gsb.same('Mobilize in its phase, Cure in none', gsb.bars('00000000-0000-0000-0000-0000000009a1'), E'9e1 Sitework and utilities\nMobilize MEP rough-in\nCure -');
+RESET ROLE;
+-- The rough's copy of a rows template is an object beside a template's name, never alone and never an array.
+INSERT INTO public.gc_rough_schedules (project_id, start, drawn_on, template_name, template_used_on, template_lines, template_rows)
+VALUES ('00000000-0000-0000-0000-0000000009a1', DATE '2026-11-02', DATE '2026-11-07', 'ZZ quick-lube shell', DATE '2026-11-07', '[]',
+  '{"phases": [{"key": "site", "name": "Sitework and utilities"}], "rows": [{"phase": "site", "label": "Mobilize", "who": {"kind": "office"}, "days": 2, "after": [], "offset": 0, "milestone": false}], "workingDays": true}');
+SELECT gsb.same('the rough keeps the rows copy as an object', (SELECT jsonb_typeof(template_rows) || ' ' || jsonb_array_length(template_rows -> 'rows')::text FROM public.gc_rough_schedules WHERE project_id = '00000000-0000-0000-0000-0000000009a1'), 'object 1');
+SELECT gsb.refused('a rows copy that is not an object', $q$UPDATE public.gc_rough_schedules SET template_rows = '[]' WHERE project_id = '00000000-0000-0000-0000-0000000009a1'$q$, 'gc_rough_schedules_template_rows_shaped');
+SELECT gsb.refused('a rows copy with no template named', $q$UPDATE public.gc_rough_schedules SET template_name = NULL, template_used_on = NULL, template_lines = NULL WHERE project_id = '00000000-0000-0000-0000-0000000009a1'$q$, 'gc_rough_schedules_template_rows_shaped');
 
 DO $$ BEGIN RAISE NOTICE 'gc_schedule builder PASSED'; END $$;
 ROLLBACK;

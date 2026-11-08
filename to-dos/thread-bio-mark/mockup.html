@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The bio line wears a small bio mark</title>
+<style>
+  /* Punch list #282. Light only. Made-up people: Luis Ortega (tech), Dana Whitfield at 1208 Mesquite Ln. */
+  :root { color-scheme: light; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --blue-line: #93c5fd; --page: #f3f4f6; --surface: #fff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cbd5e1; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 28px 0 4px; }
+  p.lede { margin: 0 0 18px; color: var(--ink-2); }
+  .thread { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .day { text-align: center; font-size: 12px; color: var(--muted); }
+  .line { align-self: flex-end; max-width: 92%; border: 1px solid var(--blue-line); background: var(--blue-tint); border-radius: 10px; padding: 8px 11px; }
+  .line.in { align-self: flex-start; background: var(--surface); border-color: var(--line); }
+  .meta { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .meta strong { color: var(--ink-2); }
+  .chip { border: 1px solid var(--blue-line); border-radius: 999px; background: var(--surface); padding: 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .02em; color: var(--blue-ink); }
+  .job { margin-left: auto; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); padding: 0 7px; font-size: 11.5px; color: var(--ink-2); }
+  .words { font-size: 14px; margin-top: 2px; }
+  .time { font-size: 11px; color: var(--muted); text-align: right; }
+  .hover { margin: 14px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .hover b { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The bio line wears a small bio mark</h1>
+  <p class="lede">Dana's thread as the office reads it. Luis pressed On my way to her for the first time, so his bio followed the line. The second bubble carries the mark.</p>
+  <div class="thread">
+    <div class="day">Today</div>
+    <div class="line">
+      <div class="meta"><strong>text</strong><span>Luis</span><span class="job"><strong>1203</strong> Whitfield water heater</span></div>
+      <div class="words">Dana, this is Luis with Click Plumbing. I am on my way, about 20 minutes out.</div>
+      <div class="time">10:41 AM</div>
+    </div>
+    <div class="line">
+      <div class="meta"><strong>text</strong><span>Luis</span><span class="chip" title="Luis's bio, as the office wrote it. The app sent it after their first On my way to this customer.">bio</span><span class="job"><strong>1203</strong></span></div>
+      <div class="words">A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. Off the clock he coaches Little League in Seguin.</div>
+      <div class="time">10:41 AM</div>
+    </div>
+    <div class="line in">
+      <div class="meta"><strong>text</strong><span>Dana Whitfield</span></div>
+      <div class="words">Great, see you soon.</div>
+      <div class="time">10:44 AM</div>
+    </div>
+  </div>
+  <p class="hover"><b>Hover the mark:</b> Luis's bio, as the office wrote it. The app sent it after their first On my way to this customer.</p>
+</div>
+</body>
+</html>

@@ -21,3 +21,5 @@ Push right after PR 1's merge. PR 2 (the lines), PR 3 (the ring) and PR 4 (the p
 ## Rollback
 
 Nothing on main reads the new columns before PR 2. Dropping the three tables, the two columns on each of the four tables, the two gates, `can_write_task_criteria` and the two new triggers, and re-running `20261106050000`'s cron block and `20260820041532`'s mirror function, puts the schema back.
+
+**Applied** to prod by 2026-11-07, read on 2026-11-07: types regenerated from prod through #7174 (`chore(types)` after `20261107013000`, 2026-11-07) with this file already on `main` — the repo's evidence that it was pushed; the dev seat's `check_migration_ledger` was not read in this pass (the connector was not available in the docs worktree), and `check:edge-drift` on 2026-11-07 found every function deployed, 15 of them on `_shared` code older than `main` after #7159 / #7166 (a redeploy owed, not a migration matter).

@@ -7,7 +7,7 @@ const HOLD_TRAVEL_PX = 10
 import type { AppFoldThreadRow } from '../../../lib/messages/appLines'
 import type { JobTile } from '../../../lib/messages/jobTiles'
 import { isSentLine } from '../../../lib/messages/sentLines'
-import { callLength, channelWord, clockTime, deliveryMark, isLong, type ThreadMessage } from '../../../lib/messages/thread'
+import { bioMark, callLength, channelWord, clockTime, deliveryMark, isLong, type ThreadMessage } from '../../../lib/messages/thread'
 import { FiledLines, LineFileChips } from './LineFiles'
 import { MessageBody } from './MessageBody'
 import type { Contact } from '../../../lib/contacts/kernel'
@@ -127,6 +127,9 @@ export function ThreadLine({
       {mark.words}
     </span>
   ) : null
+  // The bio the app sent after a tech's first On my way (v2.6659): a small mark beside who, so the office reads the
+  // paragraph as the intro, not words the tech typed; the hover names the tech.
+  const bio = bioMark(message, userNames)
   const side = message.direction === 'out' ? 'flex-end' : 'flex-start'
   const tone: CSSProperties =
     message.direction === 'team'
@@ -174,6 +177,15 @@ export function ThreadLine({
             {message.durationSeconds ? ` · ${callLength(message.durationSeconds)}` : ''}
           </strong>
           <span>{message.who}</span>
+          {bio && (
+            <span
+              data-thread-bio={message.introducesUserId}
+              title={bio.title}
+              style={{ border: '1px solid var(--border-blue)', borderRadius: 999, background: 'var(--surface)', padding: '0 0.4rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.02em', color: 'var(--text-blue-700)' }}
+            >
+              {bio.words}
+            </span>
+          )}
           {job !== 'none' && tile ? (
             <button
               type="button"

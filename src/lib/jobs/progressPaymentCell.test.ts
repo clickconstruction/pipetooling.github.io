@@ -211,6 +211,50 @@ describe('buildProgressPaymentView — the rules at the edges', () => {
       ['later', 0, null],
     ])
     expect(v.words).toMatchObject({ text: 'Worked Thu · 55% Sep 13', full: 'Top Out · Miguel on site Thu · 55% typed Sep 13 · $15,098 paid, nothing billed · $5,662 done, not billed', tone: 'amber' })
+    // No stage has reported: the $5,662 done, not billed pours onto the Top Out after the paid Rough In — 38% of it.
+    expect(v.segments.map((s) => Math.round(s.money.paidFrac * 100))).toEqual([100, 0, 0])
+    expect(v.segments.map((s) => Math.round(s.money.unbilledFrac * 100))).toEqual([0, 38, 0])
+  })
+
+  it('a stage with its own report draws its amber at that number, the way a line does (v2.6663)', () => {
+    // The Top Out reported 30%; the job still says 55% (the typed number), whose pour would put 38% on it.
+    const reported = fixtures.map((f) => (f.id === 't' ? { ...f, progress_pct: 30 } : f))
+    const money = buildStagesMoneyBarModel({ totalBill: 37_745, paymentsMade: 15_098, pctComplete: 55 })
+    const stageBar = buildPipelineStageBar({ fixtures: reported, invoices: [], payments: [], pctComplete: 55, todayYmd: today })
+    const v = buildProgressPaymentView({ money, stageBar, fixtures: reported, invoices: [], crew: null, pctComplete: 55, status: 'working', todayYmd: today })
+    expect(v.segments.map((s) => [s.state, s.fillPct])).toEqual([
+      ['done', 100],
+      ['live', 30],
+      ['later', 0],
+    ])
+    // The paid Rough In has no amber; the Top Out's is its own 30%, not the job's 38% pour; the Trim Set has none.
+    expect(v.segments.map((s) => Math.round(s.money.paidFrac * 100))).toEqual([100, 0, 0])
+    expect(v.segments.map((s) => Math.round(s.money.unbilledFrac * 100))).toEqual([0, 30, 0])
+    expect(v.segments[1]!.title).toBe('2. Top Out · the crew is here · 30% · $15,098 · nothing billed')
+    // A bill on the live stage takes its number first: Top Out at 30% = $4,529 done, $3,000 of it billed, $1,529 (10%) amber.
+    const billed = fixtures.map((f) => (f.id === 'r' ? { ...f, invoice_id: 'inv1' } : f.id === 't' ? { ...f, progress_pct: 30, invoice_id: 'inv2' } : f))
+    const invoices = [{ id: 'inv1', status: 'paid', amount: 15_098, applied: 15_098 }, { id: 'inv2', status: 'billed', amount: 3_000, applied: 0 }]
+    const money2 = buildStagesMoneyBarModel({ totalBill: 37_745, paymentsMade: 15_098, pctComplete: 55, billedUnpaid: 3_000 })
+    const bar2 = buildPipelineStageBar({ fixtures: billed, invoices, payments: [{ invoice_id: 'inv1', paid_on: '2026-08-20' }], pctComplete: 55, todayYmd: today })
+    const v2 = buildProgressPaymentView({ money: money2, stageBar: bar2, fixtures: billed, invoices, crew: null, pctComplete: 55, status: 'working', todayYmd: today })
+    expect(v2.segments.map((s) => [s.state, s.fillPct])).toEqual([
+      ['done', 100],
+      ['live', 30],
+      ['later', 0],
+    ])
+    expect(v2.segments.map((s) => Math.round(s.money.billedFrac * 100))).toEqual([0, 20, 0])
+    expect(v2.segments.map((s) => Math.round(s.money.unbilledFrac * 100))).toEqual([0, 10, 0])
+    // A stage the crew said is done but nobody has billed reads all amber (the plan keeps it live until its draw is paid).
+    const saidDone = fixtures.map((f) => (f.id === 'r' ? { ...f, progress_pct: 100 } : f))
+    const unpaid = buildStagesMoneyBarModel({ totalBill: 37_745, paymentsMade: 0, pctComplete: 40 })
+    const bar3 = buildPipelineStageBar({ fixtures: saidDone, invoices: [], payments: [], pctComplete: 40, todayYmd: today })
+    const v3 = buildProgressPaymentView({ money: unpaid, stageBar: bar3, fixtures: saidDone, invoices: [], crew: null, pctComplete: 40, status: 'working', todayYmd: today })
+    expect(v3.segments.map((s) => [s.state, s.fillPct])).toEqual([
+      ['live', 100],
+      ['later', 0],
+      ['later', 0],
+    ])
+    expect(v3.segments.map((s) => Math.round(s.money.unbilledFrac * 100))).toEqual([100, 0, 0])
   })
 
   it('a stage report beats the money floor when it points further along; a paid invoice on a line covers that line outright', () => {
@@ -259,9 +303,29 @@ describe('buildProgressPaymentView — the rules at the edges', () => {
     expect(v.segments.map((s) => s.state)).toEqual(['done', 'live', 'later', 'done'])
     expect(v.segments.map((s) => s.label)).toEqual(['Underground ✓', 'Rough In 50%', 'Top Out', 'Water heater ✓'])
     expect(v.words.text).toBe('No hours · 43%')
+    // v2.6653: the money the board draws follows the same numbers — the amber on each block is the
+    // line's own number past what is paid on it (the paid Underground has none), not the job's pour.
+    expect(v.segments.map((s) => Math.round(s.money.unbilledFrac * 100))).toEqual([0, 50, 0, 100])
+    expect(v.segments[1]!.title).toBe('Rough In · $3,500 · 50% done')
     // No line has its own number: the job percent pours down the lines as before.
     const poured = buildProgressPaymentView({ money, stageBar: null, fixtures: lines.map((l) => ({ ...l, progress_pct: null })), invoices: [{ id: 'inv1', status: 'paid', amount: 2_000, applied: 2_000 }], crew: null, pctComplete: 43, status: 'working', todayYmd: today })
     expect(poured.segments.map((s) => s.fillPct)).toEqual([100, 66, 0, 0])
+    // 43% of $10,000 less the $2,000 paid = $2,300 done, not billed, poured onto the Rough In.
+    expect(poured.segments.map((s) => Math.round(s.money.unbilledFrac * 100))).toEqual([0, 66, 0, 0])
+  })
+
+  it('a line billed past its own number keeps no amber; a line said done past its bill shows the rest as done, not billed (v2.6653)', () => {
+    const lines = [
+      { ...line('a', 'Water heater', 1_000, 0, 'inv1'), progress_pct: 50 },
+      { ...line('b', 'Gas line', 500, 1), progress_pct: 100 },
+      { ...line('c', 'Slab leak repair', 1_500, 2), progress_pct: 25 },
+      { ...line('d', 'Fixture set', 1_000, 3), progress_pct: null },
+    ]
+    const money = buildStagesMoneyBarModel({ totalBill: 4_000, paymentsMade: 0, pctComplete: 34, billedUnpaid: 1_000 })
+    const v = buildProgressPaymentView({ money, stageBar: null, fixtures: lines, invoices: [{ id: 'inv1', status: 'billed', amount: 1_000, applied: 0 }], crew: null, pctComplete: 34, status: 'working', todayYmd: today })
+    expect(v.segments.map((s) => Math.round(s.money.billedFrac * 100))).toEqual([100, 0, 0, 0])
+    expect(v.segments.map((s) => Math.round(s.money.unbilledFrac * 100))).toEqual([0, 100, 25, 0])
+    expect(v.segments.map((s) => s.fillPct)).toEqual([50, 100, 25, 0])
   })
 
 })

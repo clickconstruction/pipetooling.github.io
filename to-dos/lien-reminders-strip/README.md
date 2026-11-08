@@ -2,7 +2,7 @@
 name: "Lien desk: a REMINDERS strip between Notices and Affidavits"
 number: 262
 group: waiting
-status: drawn 2026-11-04 from Grace's ask the same day (card #7036) · built the same day as v2.6515 on the recommended defaults · left: the owner's five calls below, then this folder goes or its open rows move to #235
+status: drawn 2026-11-04 from Grace's ask the same day (card #7036) · built the same day as v2.6515 on the recommended defaults · the pressed step's Showing line (v2.6522) gave way to the step brief and the sort under punch list #274 (v2.6574 → v2.6611: one courtesy, the attorney's letter's name, the dated timeline, the partial-payment pause) · left: the owner's five calls below, then this folder goes or its open rows move to #235
 summary: >
   On the Lien desk's Do now the sent notices that want a reminder sit in Needs you now beside the
   leader's approvals and the affidavits: seven rows reading "day 21 · nothing since the packet ·
@@ -71,7 +71,7 @@ it, as the affidavit and retainage rails do.
 | Step | Counts | The row's press today |
 |---|---|---|
 | 1 Reminder due | sent notices from day 7 with nothing since the packet; the ones before day 7 read beside the count as *· 2 before day 7* | *Send a courtesy notice* |
-| 2 Reminder sent | the courtesy went: this week (waiting), or a week ago with nothing since (another may go) | *Send a courtesy notice* again, or *Send letter two* from day 10 |
+| 2 Reminder sent | the courtesy went: this week (waiting), or a week ago with nothing since (never a second courtesy since v2.6594 — the attorney's letter leads); since v2.6611 also *paying it down* after a partial payment | *Send the attorney’s letter* after the week (*Send letter two* until v2.6591), or *Record what they promised* while paying (v2.6611) |
 | 3 Letter two | letter two due while the courtesy is held (no reminder may go, counsel's letter still does), or a letter two drafting, awaiting the leader, in the run, held, or sent | *Send letter two*, the letter two's own row on the NOTICES rail, or the notice under Sent |
 | 4 Closed | paid, the GC authorized direct pay, the owner called, they answered, the affidavit is filed, or no reminder may go (held) | the notice under Sent |
 
@@ -158,14 +158,16 @@ stands where `courtesyStatus` and `letterTwoStatus` put it.
 | card | this card and the mock-up | XS · #7036 |
 | 1 | the strip on Do now with its counts, the step's list, the Reminders group, the dots and tiles, the smoke at 1,400 and 375, the guide, the map | S · v2.6515 |
 | 2 | the *Showing N · step* line under a pressed rung with **Show all**, the rung's rule under the rail, the guide `read-the-reminders-ladder-on-the-lien-desk` (Grace's screenshot of eight pale rows) | XS · v2.6522 |
+| — | the Showing line and the fade gave way to a pressed step's brief and the sort (punch list #274: v2.6574, v2.6577, v2.6594), the picked notice's timeline (v2.6596) and the partial-payment pause (v2.6611); the strip itself is unchanged | shipped under #274 |
 
 ## How to verify
 
 Open the Lien desk as the dev on the dev server (`/dev-login?as=1&to=/jobs?tab=stages&liendesk=1`).
 Do now draws REMINDERS between NOTICES and AFFIDAVITS with four counts; the sum of steps 1 and 2 is
-the number of courtesy and letter-two rows in the Reminders group below. Press step 1: the group's
-rows stay lit, the rest dim, and any notice before day 7 lists under the rail. Press step 4: the
-closed notices list under the rail, each opening its notice under Sent. At 375 the strip stacks as
+the number of courtesy and letter-two rows in the Reminders group below. Press step 1: its brief opens under
+the rails and the group's rows lead under *On this step* (since v2.6574; until then the rest dimmed), with any
+notice before day 7 inside the brief as *Also on this step, with no row on the list*. Press step 4: the closed
+notices read inside the brief the same way, each opening its notice under Sent. At 375 the strip stacks as
 the other rails do and the group's rows are cards. Nothing is sent; every press lands on a screen
 that exists today. The desk reads real rows read-only; a ZZ Test lien row is made only when a step
 has nothing to show, and deleted after.

@@ -247,6 +247,8 @@ export interface RpcAddedBar {
   start: string
   finish: string
   after: RpcWait[]
+  /** The phase it lands in, by name (#210): one the schedule was drawn with. Unset: Not in a phase. */
+  phase?: string
 }
 
 /**
@@ -268,7 +270,7 @@ export function addedForRpc(before: ScheduleActivity[], after: ScheduleActivity[
     ...(a.lag ? { lag: Object.fromEntries(Object.entries(a.lag).map(([k, v]) => [keyed(k), v])) } : {}),
   }))
   return {
-    bar: { id, label: added.added.label, who: added.added.who, start: added.start, finish: added.finish, after: waitsOf(added) },
+    bar: { id, label: added.added.label, who: added.added.who, start: added.start, finish: added.finish, after: waitsOf(added), ...(added.phase ? { phase: added.phase } : {}) },
     holdsUp: after.filter((a) => a.after.includes(kernelId)).map((a) => a.lineId),
     bars: barsForRpc(before, renamed),
   }
@@ -386,7 +388,11 @@ export function pushBackOf(on: string, by: string, note: string): TablesUpdate<'
   return { pushed_back_on: on, pushed_back_by: by, pushed_back_note: note.trim() }
 }
 
-/** The rough while we bid (G-45) as its row, whole: a redraw takes the place of the one before. */
+/**
+ * The rough while we bid (G-45) as its row, whole: a redraw takes the place of the one before. `template_rows` (#210,
+ * migration 20261107160000) goes with a template, the copy of its rows or null, and is left out of a rough on the stage
+ * days alone, which leaves the column as it was; the mapper reads the copy only beside a template.
+ */
 export function roughRowOf(projectId: string, rough: RoughSchedule, by: string): TablesInsert<'gc_rough_schedules'> {
   const kept = rough.kept
   const template = rough.template && rough.like ? rough.template : null
@@ -404,6 +410,7 @@ export function roughRowOf(projectId: string, rough: RoughSchedule, by: string):
     template_name: template?.name ?? null,
     template_used_on: template?.on ?? null,
     template_lines: template ? (rough.like as unknown as Json) : null,
+    ...(template ? { template_rows: rough.rows ? (rough.rows as unknown as Json) : null } : {}),
   }
 }
 

@@ -11,3 +11,5 @@ The morning sweep for the license-expiry notices a Save never asked for: Dispatc
 **Apply order**: deploy `notify-dispatch-request` first (the cron door), then `supabase db push`, right after the merge. The client calls nothing new, so the Pages deploy may land in any order. A tick before the function is redeployed files its rows and gets a 401 on the push; the rows stand on the Dispatch desk and are never asked for again.
 
 **Bed**: `npm run test:pg:license-expiry-sweep` (`supabase/tests/license_expiry_sweep/`, in `scripts/sql-beds.txt`).
+
+**Applied** to prod on 2026-11-07, read the same day: `npm run check:migration-drift` from the docs worktree read 1153 local files and 1153 remote versions, fully applied, this file among them; the #253 card's retirement (#7222) says the sweep was walked on prod.
