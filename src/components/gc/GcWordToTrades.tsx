@@ -127,7 +127,7 @@ export function GcWordToTrades({
           ) : (
             <>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>
-                {recipients.length === 1 ? '1 email goes out' : `${recipients.length} emails go out`}, each with the company&apos;s portal link. The same words go once.
+                {recipients.length === 0 ? '' : `${recipients.length === 1 ? '1 email goes out' : `${recipients.length} emails go out`}, each with the company’s portal link. The same words go once.`}
               </span>
               <Btn kind="quiet" onClick={onClose}>
                 Cancel
