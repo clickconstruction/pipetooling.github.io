@@ -24,6 +24,7 @@ import {
   type JobModeScheduleBlock,
 } from '../../lib/jobModePickCurrentNext'
 import { buildJobModeDayRail, type JobModeDayRailRow } from '../../lib/jobModeDayRail'
+import { fillScheduledJobLabels, type ScheduledJobLabelSource } from '../../lib/jobMode/scheduledJobLabels'
 import { OnMyWaySheet, type OnMyWayDestination } from './OnMyWaySheet'
 import { ImHereSheet } from './ImHereSheet'
 import { legOf, legWords, type TravelFacts } from '../../lib/jobMode/onMyWay'
@@ -84,6 +85,12 @@ type Props = {
   onTurnaway: (job: LeaveReportJobPick) => void
   /** False for salaried users — their sessions auto-materialize, no manual clock-out. */
   canClockOut: boolean
+  /**
+   * The jobs the Dashboard already read for this person through definer reads (team, ready to bill, a
+   * superintendent's projects). A visit whose own job read came back empty takes its labels from here
+   * (`lib/jobMode/scheduledJobLabels.ts`): a superintendent cannot read a job they never clocked onto.
+   */
+  knownJobs?: readonly ScheduledJobLabelSource[]
 }
 
 type OpenSessionState = {
@@ -321,7 +328,7 @@ function safeTrim(s: string | null | undefined): string {
   return (s ?? '').trim()
 }
 
-export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway, canClockOut }: Props) {
+export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway, canClockOut, knownJobs }: Props) {
   const { prefixMap } = useLedgerDisplayPrefixes()
   const navigate = useNavigate()
   const { user: authUser, role, profileName } = useAuth()
@@ -623,9 +630,10 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
    * day landed, so a half day is never kept. A failed live read leaves the kept day up with the
    * stamp's Retry; the open session itself is never kept, the clock reads live.
    */
+  const labeledBlocks = useMemo(() => fillScheduledJobLabels(scheduleBlocks, knownJobs), [scheduleBlocks, knownJobs])
   const rowsToKeep = useMemo(
-    () => buildJobModeKeptRows({ blocks: scheduleBlocks, currentJobId: openSession?.jobLedgerId ?? null, visitedJobIds }),
-    [scheduleBlocks, openSession?.jobLedgerId, visitedJobIds],
+    () => buildJobModeKeptRows({ blocks: labeledBlocks, currentJobId: openSession?.jobLedgerId ?? null, visitedJobIds }),
+    [labeledBlocks, openSession?.jobLedgerId, visitedJobIds],
   )
   const kept = useKeptRead<JobModeKeptRow>(userId ? jobModeKeptKey(userId, workDateYmd) : null, rowsToKeep, {
     loading,
@@ -638,7 +646,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const held = keptDay != null
   /** The header and the rail draw: the live read landed, or the kept day stands in for it. */
   const dayOnScreen = !loading || held
-  const dayBlocks = keptDay ? keptDay.blocks : scheduleBlocks
+  const keptBlocks = useMemo(() => (keptDay ? fillScheduledJobLabels(keptDay.blocks, knownJobs) : null), [keptDay, knownJobs])
+  const dayBlocks = keptBlocks ?? labeledBlocks
   const dayVisited = keptDay ? keptDay.visitedJobIds : visitedJobIds
   const daySession = useMemo(
     () =>

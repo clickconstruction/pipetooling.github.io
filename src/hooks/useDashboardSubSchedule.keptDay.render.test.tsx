@@ -171,3 +171,16 @@ describe('useDashboardSubSchedule, the kept day (#183 PR 3)', () => {
     expect(result.current.subScheduleKeptAt).toBeNull()
   })
 })
+
+describe('useDashboardSubSchedule, a visit on a job the reader cannot read (v2.6706)', () => {
+  it('labels the visit and fills its address from the Dashboard’s job reads when the job read gives no row', async () => {
+    readKept.mockResolvedValue(null)
+    // A superintendent’s visit on a job they have not clocked onto: the stub’s job read answers no row.
+    const known = [{ id: 'job-3', hcp_number: '1113', click_number: '1113', job_name: 'Harbor Lane Offices', job_address: '100 Harbor Ln', google_drive_link: null, job_plans_link: null, revenue: null, created_at: null }]
+    const { result } = renderHook(() => useDashboardSubSchedule({ authUserId: USER, role: 'superintendent', assignedJobs: NO_JOBS, assignedReadyToBillJobs: NO_JOBS, jobsForVisitLabels: known }))
+    await waitFor(() => expect(readBlocks).toHaveBeenCalled())
+    await act(async () => pending?.resolve(liveRows))
+    await waitFor(() => expect(result.current.subScheduleLabels.get('job-3')).toBe('1113 · Harbor Lane Offices'))
+    await waitFor(() => expect(result.current.subScheduleJobMeta.get('job-3')?.job_address).toBe('100 Harbor Ln'))
+  })
+})
