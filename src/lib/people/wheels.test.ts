@@ -7,13 +7,11 @@ import {
   truckWearForWindow,
   ownVehicleFuelRate,
   parseVehicleArrangement,
-  sumFuelByUser,
   truckRunningCost,
   wheelsComparison,
   wheelsWindow,
   type WheelsTruck,
   splitFuelFamily,
-  unattributedFuelByCard,
 } from './wheels'
 
 describe('wheels window + arrangement parsing', () => {
@@ -27,18 +25,7 @@ describe('wheels window + arrangement parsing', () => {
 })
 
 describe('fuel + hours per user', () => {
-  it('sums fuel as cost per attributed user: a purchase adds, a refund comes off; skips unattributed charges', () => {
-    const m = sumFuelByUser([
-      { amount: -60.1, userId: 'u1' },
-      { amount: -40, userId: 'u1' },
-      { amount: 5, userId: 'u1' },
-      { amount: -80, userId: null },
-      { amount: -12.5, userId: 'u2' },
-    ])
-    expect(m.get('u1')).toBe(95.1) // 60.10 + 40 − 5 refunded
-    expect(m.get('u2')).toBe(12.5)
-    expect(m.size).toBe(2)
-  })
+  // Fuel by person moved onto People → Spending's kernel in v2.6671: see wheelsFuel.test.ts.
   it('counts approved closed job sessions only', () => {
     const base = { user_id: 'u1', job_ledger_id: 'j', bid_id: null, approved_at: 'x', rejected_at: null, revoked_at: null }
     const h = fieldHoursByUser([
@@ -193,20 +180,5 @@ describe('fuel family split (card charges only)', () => {
     )
     expect(s.card.map((r) => r.id)).toEqual(['a'])
     expect(s.companyCard).toEqual({ usd: 254.21, n: 2, byCard: [{ cardId: 'card-gps', usd: 147.04 }, { cardId: 'card-tesla', usd: 107.17 }] })
-  })
-  it('lists unattributed card fuel by card with the nickname when there is one', () => {
-    const out = unattributedFuelByCard(
-      [
-        { amount: -50, cardId: 'bb2cfabe-74ac-11f0-bf2b-cf8ecc6de40f', userId: null },
-        { amount: -45.31, cardId: 'bb2cfabe-74ac-11f0-bf2b-cf8ecc6de40f', userId: null },
-        { amount: -30.03, cardId: '11e42d2c-8f7e-11f1-aa2d-7fe8c2f61158', userId: null },
-        { amount: -80, cardId: 'cc31655c-0000-0000-0000-000000000000', userId: 'u1' },
-      ],
-      new Map([['bb2cfabe-74ac-11f0-bf2b-cf8ecc6de40f', 'Jonathan 4692']]),
-    )
-    expect(out).toEqual([
-      { cardId: 'bb2cfabe-74ac-11f0-bf2b-cf8ecc6de40f', label: 'Jonathan 4692', usd: 95.31, n: 2 },
-      { cardId: '11e42d2c-8f7e-11f1-aa2d-7fe8c2f61158', label: 'card …1158', usd: 30.03, n: 1 },
-    ])
   })
 })
