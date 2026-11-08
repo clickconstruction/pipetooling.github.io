@@ -54,9 +54,24 @@ export function workingDaysFor(hours: number, crewHoursPerDay = PLANNED_CREW_HOU
   return Math.max(1, Math.ceil(hours / crewHoursPerDay))
 }
 
-/** The finish `days` working days after the start, the start counting as day one. */
+const weekendDay = (ymd: string): boolean => {
+  const d = new Date(`${ymd}T12:00:00Z`).getUTCDay()
+  return d === 0 || d === 6
+}
+
+/** A start on a Saturday or Sunday counts from the Monday after it; a weekday start is its own day one. */
+export function firstWorkingDay(startYmd: string): string {
+  return weekendDay(startYmd) ? addBusinessDays(startYmd, 1) : startYmd
+}
+
+/**
+ * The finish `days` working days after the start, the start counting as day one. A weekend start rolls to
+ * Monday first: an award on a Sunday at 11 working days reads the Monday two weeks on, never the Friday
+ * before it (the second walk of punch list #234, 2026-11-08).
+ */
 export function finishAfterWorkingDays(startYmd: string, days: number): string {
-  return days <= 1 ? startYmd : addBusinessDays(startYmd, days - 1)
+  const first = firstWorkingDay(startYmd)
+  return days <= 1 ? first : addBusinessDays(first, days - 1)
 }
 
 export function plannedFinishOptions(i: PlannedFinishInput): PlannedFinishOption[] {
@@ -67,9 +82,11 @@ export function plannedFinishOptions(i: PlannedFinishInput): PlannedFinishOption
   const start = isYmd(i.bidStartYmd) ? i.bidStartYmd : i.todayYmd
   const crew = i.crewHoursPerDay ?? PLANNED_CREW_HOURS_PER_DAY
   const days = i.hours != null ? workingDaysFor(i.hours, crew) : 0
+  const firstDay = firstWorkingDay(start)
+  const rolled = firstDay !== start
   const assumed: PlannedFinishOption =
     days > 0
-      ? { source: 'assumed', glyph: '≈', startYmd: start, finishYmd: finishAfterWorkingDays(start, days), usable: true, head: `${dayWords(finishAfterWorkingDays(start, days))} · assumed from the hours`, why: `${Math.round(i.hours!)} h at ${crew} crew hours a day is ${days} working day${days === 1 ? '' : 's'} from ${dayWords(start)}${isYmd(i.bidStartYmd) ? ', the start the bid assumed' : ', the day of the award'}. A guess, read as one.` }
+      ? { source: 'assumed', glyph: '≈', startYmd: firstDay, finishYmd: finishAfterWorkingDays(start, days), usable: true, head: `${dayWords(finishAfterWorkingDays(start, days))} · assumed from the hours`, why: `${Math.round(i.hours!)} h at ${crew} crew hours a day is ${days} working day${days === 1 ? '' : 's'} from ${dayWords(firstDay)}${rolled ? `, the Monday after ${dayWords(start)}` : ''}${isYmd(i.bidStartYmd) ? ', the start the bid assumed' : ', the day of the award'}. A guess, read as one.` }
       : { source: 'assumed', glyph: '≈', startYmd: null, finishYmd: null, usable: false, head: 'Assumed from the hours', why: 'Needs an hours baseline to count the days from.' }
 
   const typed: PlannedFinishOption = isYmd(i.typedFinishYmd)
