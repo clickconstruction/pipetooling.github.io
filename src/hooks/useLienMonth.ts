@@ -70,6 +70,8 @@ export function useLienMonth(enabled: boolean, hideZzTestJobs: boolean): { month
       filingsByJob: have?.filingsByJob ?? {},
       paymentsByJob: have?.paymentsByJob,
       promisesByJob: have?.promisesByJob,
+      // A reply in Messages (punch list #249, row 3): the desk's light read carries it, so the card closes what the desk closes.
+      repliedAtByJob: data.courtesyRepliedAtByJob,
     })
     const serveDue = Object.values(have?.filingsByJob ?? {})
       .flat()

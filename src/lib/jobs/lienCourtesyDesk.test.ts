@@ -56,3 +56,17 @@ describe('courtesyByJobFrom — the desk’s courtesy status per job', () => {
     expect(Object.keys(courtesyByJobFrom({ ...base, letterTwoByJob: {} }))).toEqual([])
   })
 })
+
+describe('courtesyByJobFrom — a reply in Messages (punch list #249, row 3)', () => {
+  const sentItems = [{ id: 'first', months: ['2026-08'], fields: { courtesy: [{ at: '2026-10-31T14:00:00.000Z', by: 'Grace', lienDay: '2027-01-15', claim: 4850, to: [{ who: 'original_contractor', channel: 'email', address: 'x@y.example', ok: true, id: 'e1', reason: '' }] }] } }]
+
+  it('the desk’s reply after the last courtesy closes the job’s courtesy with the day they answered', () => {
+    const out = courtesyByJobFrom({ ...base, items: sentItems, repliedAtByJob: { j1: '2026-11-01T15:00:00.000Z' } })
+    expect(out.j1!).toMatchObject({ state: 'closed', reason: 'they answered Nov 1', lastSentAt: '2026-10-31T14:00:00.000Z' })
+  })
+
+  it('a reader without the replies, or a job nobody answered, reads the send as before', () => {
+    expect(courtesyByJobFrom({ ...base, items: sentItems }).j1!.state).toBe('sent')
+    expect(courtesyByJobFrom({ ...base, items: sentItems, repliedAtByJob: { other: '2026-11-01T15:00:00.000Z' } }).j1!.state).toBe('sent')
+  })
+})

@@ -1830,7 +1830,8 @@ export default function People() {
     vehicles: canAccessVehicles,
     housing: canAccessPay,
     review: isDev,
-    scoreboard: isDev,
+    // The superintendents' scoreboard (punch list #234 PR 4): a dev and a pay-approved master; the read carries labor dollars.
+    scoreboard: isDev || canAccessPay,
     activity: canSeeActivityTab,
     feedback: isDev,
   }
@@ -2638,7 +2639,7 @@ export default function People() {
         />
       ) : null}
 
-      {activeTab === 'scoreboard' && isDev && <PeopleScoreboardTab />}
+      {activeTab === 'scoreboard' && (isDev || canAccessPay) && <PeopleScoreboardTab />}
       {/* 'hr' follows Scoreboard's pattern: no URL gate (isDev resolves async), render-site gated. */}
       {activeTab === 'hr' && isDev && <PeopleHrTab />}
       {/* 'person' (v2.2710): the Person Desk as a page; gate mirrors canOpenPersonDesk (office roles). */}
