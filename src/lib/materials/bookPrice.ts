@@ -1,0 +1,120 @@
+/**
+ * Materials on site (punch list #209), the owner's call 5: a container line's missing money is priced
+ * from the parts book — the supply house's latest price, with the day it was last checked drawn
+ * beside it — and falls back to the price the office read off the invoice that landed the part when
+ * the book's price is older than `BOOK_PRICE_FRESH_DAYS` or the book has none. A part typed on site
+ * (a `text:` key) has no book page, so it only ever carries the invoice price. Pure: the book's rows
+ * and the invoice prices come in, a pick and its words go out; the store does the reading.
+ */
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, ymdDaysBetween } from '../../utils/dateUtils'
+
+/** The parts book's own freshness rule (What your materials cost): a price checked longer ago than this is stale. */
+export const BOOK_PRICE_FRESH_DAYS = 90
+
+export type BookPriceRow = {
+  partId: string
+  supplyHouse: string
+  price: number
+  /** The day the price was last checked, YYYY-MM-DD: `effective_date` (Check prices writes it), else the row's updated day; null when never. */
+  checkedOn: string | null
+}
+
+export type PricePick = {
+  price: number
+  from: 'book' | 'invoice'
+  /** The supply house whose price this is; null for an invoice price. */
+  supplyHouse: string | null
+  checkedOn: string | null
+  /** Whole days from the check to today; null for an invoice price or a price never checked. */
+  ageDays: number | null
+  /** A book price checked longer ago than `BOOK_PRICE_FRESH_DAYS`, or never checked. An invoice price is never stale: it is what was paid. */
+  stale: boolean
+}
+
+/** The table's row (`material_part_prices` with its supply house joined) as the kernel reads it. */
+export function bookPriceRow(r: { part_id: string; price: number; effective_date: string | null; updated_at: string | null; supply_houses?: { name: string } | null }): BookPriceRow {
+  const effective = (r.effective_date ?? '').trim().slice(0, 10)
+  const updated = r.updated_at ? calendarYmdInAppTzFromIso(r.updated_at) : ''
+  return { partId: r.part_id, supplyHouse: r.supply_houses?.name ?? '', price: r.price, checkedOn: effective || updated || null }
+}
+
+function ageOf(checkedOn: string | null, today: string): number | null {
+  return checkedOn ? ymdDaysBetween(checkedOn, today) : null
+}
+
+function isStale(ageDays: number | null): boolean {
+  return ageDays == null || ageDays > BOOK_PRICE_FRESH_DAYS
+}
+
+/**
+ * The supply house's latest price: of a part's rows, the one checked most recently wins; two checked
+ * the same day go to the lower price; a row never checked comes after every dated one. Null for no rows.
+ */
+export function pickBookPrice(rows: ReadonlyArray<BookPriceRow>, today: string): PricePick | null {
+  let best: BookPriceRow | null = null
+  for (const r of rows) {
+    if (!Number.isFinite(r.price) || r.price < 0) continue
+    if (!best) {
+      best = r
+      continue
+    }
+    const a = r.checkedOn ?? ''
+    const b = best.checkedOn ?? ''
+    if (a > b || (a === b && r.price < best.price)) best = r
+  }
+  if (!best) return null
+  const ageDays = ageOf(best.checkedOn, today)
+  return { price: best.price, from: 'book', supplyHouse: best.supplyHouse || null, checkedOn: best.checkedOn, ageDays, stale: isStale(ageDays) }
+}
+
+function invoicePick(price: number | null): PricePick | null {
+  if (price == null || !Number.isFinite(price) || price < 0) return null
+  return { price, from: 'invoice', supplyHouse: null, checkedOn: null, ageDays: null, stale: false }
+}
+
+/**
+ * The one rule every money figure reads through, by part key (`id:<part>` or `text:<name>`): a fresh
+ * book price first; past 90 days or with no book page, the invoice price the office read when the
+ * part landed; a stale book price when that is all there is, flagged; null when nothing is known.
+ */
+export function priceLookup(book: (partId: string) => ReadonlyArray<BookPriceRow>, invoice: (partKey: string) => number | null, today: string): (partKey: string) => PricePick | null {
+  return (partKey) => {
+    const fromInvoice = invoicePick(invoice(partKey))
+    if (!partKey.startsWith('id:')) return fromInvoice
+    const fromBook = pickBookPrice(book(partKey.slice(3)), today)
+    if (fromBook && !fromBook.stale) return fromBook
+    return fromInvoice ?? fromBook
+  }
+}
+
+/** "Oct 3" this year, "Oct 3, 2025" another. */
+function dayWords(ymd: string, today: string): string {
+  const short = formatWorkDateYmdMonthDayShort(ymd)
+  return ymd.slice(0, 4) === today.slice(0, 4) ? short : `${short}, ${ymd.slice(0, 4)}`
+}
+
+/**
+ * The words beside a priced figure: "parts book · checked Oct 3", "parts book · checked Jul 1, 129 days
+ * ago" when stale, "parts book · never checked", or "invoice price". The supply house is `houseWords`.
+ */
+export function priceWords(pick: PricePick, today: string): string {
+  if (pick.from === 'invoice') return 'invoice price'
+  if (!pick.checkedOn) return 'parts book · never checked'
+  const day = dayWords(pick.checkedOn, today)
+  if (pick.stale && pick.ageDays != null) return `parts book · checked ${day}, ${pick.ageDays} days ago`
+  return `parts book · checked ${day}`
+}
+
+/** The longer line for a title: "Pecan Supply's price, checked Oct 3." / "The price typed off the invoice that landed the part." */
+export function priceTitle(pick: PricePick, today: string): string {
+  if (pick.from === 'invoice') return 'The price typed off the invoice that landed the part.'
+  const whose = pick.supplyHouse ? `${pick.supplyHouse}’s price` : 'The parts book’s price'
+  if (!pick.checkedOn) return `${whose}, never checked.`
+  const when = `checked ${dayWords(pick.checkedOn, today)}`
+  return pick.stale ? `${whose}, ${when}, older than ${BOOK_PRICE_FRESH_DAYS} days.` : `${whose}, ${when}.`
+}
+
+/** The distinct book parts a ledger names, for the store's one read. */
+export function bookPartIds(movements: ReadonlyArray<{ partId: string | null }>): string[] {
+  return [...new Set(movements.map((m) => m.partId).filter((id): id is string => Boolean(id)))]
+}

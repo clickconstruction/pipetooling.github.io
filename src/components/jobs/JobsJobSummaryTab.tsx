@@ -480,6 +480,8 @@ export type JobsJobSummaryTabProps = {
     billedMaterialsSum: number
     invoicesFromSupplyHouses: number
     cardCharges: number
+    cardChargesLinkedToInvoices: number
+    costLines: ReadonlyArray<{ tagId: string; name: string; icon: string; usd: number }>
     totalBill: number
     profit: number
     tallyPartsForJob: TallyPartRow[]
@@ -761,6 +763,7 @@ export default function JobsJobSummaryTab({
                           invoicesFromSupplyHouses,
                           billedMaterialsSum,
                           cardCharges,
+                          cardChargesLinkedToInvoices,
                           costLines,
                           teamLaborRow,
                           subLaborJobs,
@@ -1011,6 +1014,8 @@ export default function JobsJobSummaryTab({
                                           billedMaterialsSum,
                                           invoicesFromSupplyHouses,
                                           cardCharges,
+                                          cardChargesLinkedToInvoices,
+                                          costLines,
                                           totalBill,
                                           profit,
                                           tallyPartsForJob,

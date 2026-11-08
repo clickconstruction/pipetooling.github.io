@@ -662,7 +662,7 @@ export default function LienDeskModal({
     return findOnDesk(find, sentIndex).sent.filter((h) => !shown.has(h.jobId))
   }, [finding, find, sentIndex, visible])
   // The courtesy notice per job with a sent notice (punch list #231): one kernel with the Accounts Receivable chips (`lienCourtesyDesk.ts`), so the row and the chip agree. No read of its own.
-  const courtesyByJob = useMemo(() => (data ? courtesyByJobFrom({ todayYmd, letterTwoByJob: data.letterTwoByJob, items: data.items, entries: data.queue.entries, jobsById: data.jobsById, addressesById: data.addressesById, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob, paymentsByJob: data.paymentsByJob, promisesByJob: data.promisesByJob }) : {}), [data, todayYmd])
+  const courtesyByJob = useMemo(() => (data ? courtesyByJobFrom({ todayYmd, letterTwoByJob: data.letterTwoByJob, items: data.items, entries: data.queue.entries, jobsById: data.jobsById, addressesById: data.addressesById, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob, paymentsByJob: data.paymentsByJob, promisesByJob: data.promisesByJob, repliedAtByJob: data.courtesyRepliedAtByJob }) : {}), [data, todayYmd])
   // Do now (punch list #82; Next up until v2.4630): the queues this desk already holds, folded into one ordered list. No read of its own.
   // The REMINDERS strip (punch list #262): every sent notice's rung from the two statuses above; the Do now rail draws its counts, a rung pressed lists its names. No read of its own.
   const reminders = useMemo(() => (data ? buildLienReminders({ courtesyByJob, letterTwoByJob: data.letterTwoByJob, jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId) }) : LIEN_REMINDERS_EMPTY), [data, courtesyByJob])

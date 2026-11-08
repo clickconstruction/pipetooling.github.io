@@ -7,7 +7,8 @@ import type { LetterTwoStatus } from './lienLetterTwo'
 /**
  * The courtesy notice per job, from what the Lien desk already holds (punch list #231, PR 2): letter
  * two's clock on each job with a sent notice, the first packet's records, the job's balance, the
- * affidavit's day, the property's homestead flag and a filed affidavit. The desk's modal and the
+ * affidavit's day, the property's homestead flag, a filed affidavit and, since v2.6674, the reply
+ * that came back in Messages (`repliedAtByJob`, read by `lienCourtesyReplyIo.ts`). The desk's modal and the
  * Accounts Receivable chips both read it, so the row and the chip never disagree. Pure, structural:
  * the desk's data is read through the few fields it needs, so a test hands in plain objects.
  *
@@ -30,6 +31,8 @@ export type CourtesyDeskSource = {
   paymentsByJob?: Readonly<Record<string, ReadonlyArray<{ amount: number; paidOn: string | null }> | undefined>>
   /** The jobs' promised pay dates (`list_job_promised_pay_dates`), for the pause's end; absent on a reader that does not load them. */
   promisesByJob?: Readonly<Record<string, { promisedYmd: string } | undefined>>
+  /** The newest inbound Messages line after each job's last courtesy, ISO (punch list #249, row 3; `readCourtesyRepliesByJob`); absent on a reader that does not load them, and a job nobody answered is not listed. */
+  repliedAtByJob?: Readonly<Record<string, string | undefined>>
 }
 
 export function courtesyByJobFrom(src: CourtesyDeskSource): Record<string, CourtesyStatus> {
@@ -52,6 +55,8 @@ export function courtesyByJobFrom(src: CourtesyDeskSource): Record<string, Court
       payments: (src.paymentsByJob?.[jobId] ?? []).filter((p) => p.paidOn).map((p) => ({ ymd: String(p.paidOn).slice(0, 10), amount: p.amount })),
       promisedYmd: src.promisesByJob?.[jobId]?.promisedYmd ?? null,
       promise: parsePromiseRecord((first?.fields as { promise?: unknown } | null)?.promise),
+      // A reply in Messages (punch list #249, row 3): the GC's or the owner's line after the last courtesy closes it.
+      repliedAt: src.repliedAtByJob?.[jobId] ?? null,
       affidavit: {
         deadline: aff?.deadline || (lastMonth ? filingDeadlineForMonth(`${lastMonth}-15`, kind) : ''),
         filedAt: filed?.filed_at ?? null,
