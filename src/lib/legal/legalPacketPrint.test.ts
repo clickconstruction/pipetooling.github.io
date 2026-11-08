@@ -29,6 +29,17 @@ describe('buildLegalPacketPrintHtml — the cover sheet', () => {
     expect(html).toContain(paths.line ? 'settling beats a full win' : 'Collections and trial')
     expect(html).toContain('A full win at trial nets')
   })
+  it('prints the claim as one table under the account — the rows that fill in, the typed lines, the total (v2.6681, punch list #171)', () => {
+    const { payload, packet } = sample()
+    const plain = buildLegalPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name })
+    expect(plain).toContain('<h3>The claim</h3>')
+    expect(plain).toContain('Open bills <span class="muted">fills in</span>')
+    expect(plain).not.toContain('Materials left on site')
+    const typed = { ...packet, worth: { ...packet.worth, claimLines: [{ id: 'l1', kind: 'materials' as const, title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', documentId: 'd1', documentTitle: 'Materials on site — count.pdf' }], claimTyped: 5310, claim: packet.worth.claim + 5310 } }
+    const html = buildLegalPacketPrintHtml(typed, { preparedOn: payload.preparedOn, companyName: company.name })
+    expect(html).toContain('<td>Materials left on site</td><td>contract ¶ 9</td><td>Materials on site — count.pdf</td><td class="num">$5,310.00</td>')
+    expect(html).toContain('<b>The claim</b>')
+  })
   it('prints without the paths as before', () => {
     const { payload, packet } = sample()
     const html = buildLegalPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name })
