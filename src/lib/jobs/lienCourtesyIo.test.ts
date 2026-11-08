@@ -17,6 +17,8 @@ const db = vi.hoisted(() => ({
   contacts: {} as Record<string, { id: string; channels: { id: string; kind: 'phone' | 'email'; value: string; optedOutAt: string | null }[] }>,
   made: [] as string[],
   makeRefusal: null as string | null,
+  /** The record write's refusal (punch list #249, row 1): null when the update takes. */
+  updateRefusal: null as string | null,
   /** Whose number the owner's is (`contact_for_channel`): null when nobody's; a thrown message when the read fails. */
   phoneHolderId: null as string | null,
   phoneAsked: [] as string[],
@@ -42,6 +44,7 @@ vi.mock('../supabase', () => ({
       }),
       update: (patch: unknown) => ({
         eq: async (_col: string, id: unknown) => {
+          if (db.updateRefusal) return { data: null, error: { message: db.updateRefusal } }
           db.updates.push({ table, patch, id })
           return { data: null, error: null }
         },
@@ -76,7 +79,7 @@ vi.mock('../messages/messagesIo', () => ({
   },
 }))
 
-import { loadCourtesyRecipients, sendCourtesyNotice, type CourtesyRecipient } from './lienCourtesyIo'
+import { loadCourtesyRecipients, sendCourtesyNotice, writeCourtesyRecord, type CourtesyRecipient } from './lienCourtesyIo'
 
 const facts: CourtesyFacts = {
   jobNumber: '741',
@@ -219,5 +222,26 @@ describe('the press', () => {
     expect(db.made).toEqual(['cu-ridgeway'])
     expect(db.invokes.map((i) => i.name)).toEqual(['send-lien-filing-email'])
     expect(r.record?.to[1]).toMatchObject({ channel: 'text', ok: false, reason: 'their Messages contact holds no number that can be texted' })
+  })
+})
+
+describe('the record did not take after the messages went (punch list #249, row 1)', () => {
+  it('comes back with the record and the reason instead of throwing, writes nothing, and the record alone writes on the next press', async () => {
+    db.updateRefusal = 'new row violates row-level security policy'
+    try {
+      const r = await send([gc({ text: { address: '', goes: false, reason: 'no number on the job' } }), owner])
+      expect(db.invokes.map((i) => i.name)).toEqual(['send-lien-filing-email'])
+      expect(r.record?.to).toEqual([expect.objectContaining({ channel: 'email', ok: true })])
+      expect(r.recordError).toBe('new row violates row-level security policy')
+      expect(db.updates).toHaveLength(0)
+      db.updateRefusal = null
+      await writeCourtesyRecord({ id: 'sent1', fields: { courtesy: [] } }, r.record!)
+      expect(db.invokes).toHaveLength(1)
+      expect(db.updates).toHaveLength(1)
+      expect(db.updates[0]).toMatchObject({ table: 'job_lien_desk_items', id: 'sent1' })
+      expect((db.updates[0]!.patch as { fields: { courtesy: unknown[] } }).fields.courtesy).toEqual([r.record])
+    } finally {
+      db.updateRefusal = null
+    }
   })
 })

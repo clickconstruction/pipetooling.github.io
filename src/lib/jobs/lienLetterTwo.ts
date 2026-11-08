@@ -44,6 +44,32 @@ export type LetterTwoState = 'none' | 'waiting' | 'due' | 'overdue' | 'paid' | '
 /** What the first packet's mail piece knows, when one carried it: the owner's copy, keyed by the first item's id. */
 export type LetterTwoMailClock = { mailedAt: string | null; deliveredAt: string | null; status?: string | null }
 
+/** What a mail piece says of itself as the desk reads it (`LienMailPieceRow`): the fields the clock needs. */
+export type LetterTwoPieceLike = { recipient: string; mailed_at: string | null; delivered_at: string | null; status?: string | null }
+
+/**
+ * The first packets' clocks from the pieces the desk read (punch list #249, row 4 — the rule is D9's,
+ * unread until v2.6669): for every sent notice item, the owner's piece under the item's own id or its
+ * filing's, the newest mailing when there are several, keyed by the item's id as `letterTwoStatus`
+ * reads it. An item with no owner's piece has no clock and counts from the day the run recorded it.
+ */
+export function letterTwoMailClocksFrom(
+  items: ReadonlyArray<Pick<LetterTwoItemLike, 'id' | 'kind' | 'status' | 'voided_at'> & { sent_filing_id?: string | null }>,
+  piecesBySource: Readonly<Record<string, ReadonlyArray<LetterTwoPieceLike>>>,
+): Record<string, LetterTwoMailClock> {
+  const out: Record<string, LetterTwoMailClock> = {}
+  for (const it of items) {
+    if (it.kind !== 'notice_53_056' || it.status !== 'sent' || it.voided_at) continue
+    const seen = new Set<LetterTwoPieceLike>()
+    const owner = [...(piecesBySource[it.id] ?? []), ...(it.sent_filing_id ? piecesBySource[it.sent_filing_id] ?? [] : [])]
+      .filter((p) => p.recipient === 'owner' && (seen.has(p) ? false : (seen.add(p), true)))
+      .sort((a, b) => ((a.mailed_at ?? '') < (b.mailed_at ?? '') ? 1 : -1))[0]
+    if (!owner) continue
+    out[it.id] = { mailedAt: owner.mailed_at, deliveredAt: owner.delivered_at, status: owner.status ?? null }
+  }
+  return out
+}
+
 /** Which day the clock counts from, and why, in words the row and the footer can show. */
 export type LetterTwoClock = { kind: 'recorded' | 'mailed' | 'delivered'; at: string; why: string }
 
