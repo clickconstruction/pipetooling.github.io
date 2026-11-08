@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { pageSubTabStyle, pageTabStyle } from '../lib/pageTabStyle'
+import { canManageActivityGrants, canPickOfficeJob, canSeePayrollViews, canSeeReviewTab, canSeeScoreboardTab, canUseUsersTags } from '../lib/people/peopleDoorGates'
 import {
   PEOPLE_TAB_GROUP_MEMORY_KEY,
   PEOPLE_TAB_LABELS,
@@ -625,6 +626,11 @@ export default function People() {
     authRole === 'dev' || (authRole === 'master_technician' && canAccessPay)
   const canDeletePeopleContracts =
     authRole !== null && ['dev', 'master_technician'].includes(authRole)
+  // Punch list #188 PR 4 (v2.6757): the doors the owner and the controller now hold, one gate each in peopleDoorGates.ts.
+  const canSeeReview = canSeeReviewTab(isDev, authRole)
+  const canSeeScoreboard = canSeeScoreboardTab(isDev, canAccessPay, authRole)
+  const canSeePayrollLedgerViews = canSeePayrollViews(canAccessPay, authRole)
+  const canSeeActivity = canSeeActivityTab || canManageActivityGrants(isDev, authRole)
 
   // Hours tab state (unassigned hours modal)
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
@@ -1311,7 +1317,7 @@ export default function People() {
   }, [draftPayrollModalOpen])
 
   useEffect(() => {
-    if (activeTab === 'review' && isDev) {
+    if (activeTab === 'review' && canSeeReview) {
       const t = setTimeout(() => {
         void loadPayConfig()
         void loadRosterPeople()
@@ -1832,10 +1838,10 @@ export default function People() {
     hr: isDev,
     vehicles: canAccessVehicles,
     housing: canAccessPay,
-    review: isDev,
+    review: canSeeReview,
     // The superintendents' scoreboard (punch list #234 PR 4): a dev and a pay-approved master; the read carries labor dollars.
-    scoreboard: isDev || canAccessPay,
-    activity: canSeeActivityTab,
+    scoreboard: canSeeScoreboard,
+    activity: canSeeActivity,
     feedback: isDev,
   }
   const tabGroups = visibleTabGroups(visiblePeopleTabs)
@@ -1915,6 +1921,7 @@ export default function People() {
             void loadArchivedPeople()
           }}
           isDev={isDev}
+          canUseTags={canUseUsersTags(isDev, authRole)}
           narrowViewport={narrowViewport}
           users={users}
           people={people}
@@ -1958,12 +1965,12 @@ export default function People() {
           authUser={authUser}
           setError={setError}
           canAccessOverheadTab={canAccessOverheadTab}
-          isDev={isDev}
+          canPickOfficeJob={canPickOfficeJob(isDev, authRole)}
           loadPayConfig={loadPayConfig}
         />
       )}
 
-      {activeTab === 'pay_stubs' && canAccessPay && isDev ? (
+      {activeTab === 'pay_stubs' && canSeePayrollLedgerViews ? (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
           <div role="tablist" aria-label="Payroll view" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
             {(
@@ -1999,7 +2006,7 @@ export default function People() {
         </div>
       ) : null}
 
-      {activeTab === 'pay_stubs' && canAccessPay && isDev && payrollView === 'ledger' && (
+      {activeTab === 'pay_stubs' && canSeePayrollLedgerViews && payrollView === 'ledger' && (
         <PeoplePayLedgerView
           payStubs={payStubs}
           payStubPaymentsByStubId={payStubPaymentsByStubId}
@@ -2016,11 +2023,11 @@ export default function People() {
         />
       )}
 
-      {activeTab === 'pay_stubs' && canAccessPay && isDev && payrollView === 'payments' && (
+      {activeTab === 'pay_stubs' && canSeePayrollLedgerViews && payrollView === 'payments' && (
         <PayRunPaymentsView onViewStub={(stub) => void viewPayStubInModal(stub)} />
       )}
 
-      {activeTab === 'pay_stubs' && canAccessPay && !(isDev && payrollView !== 'reports') && (
+      {activeTab === 'pay_stubs' && canAccessPay && !(canSeePayrollLedgerViews && payrollView !== 'reports') && (
         <PeoplePayStubsTab
           payStubs={payStubs}
           payStubPaymentsByStubId={payStubPaymentsByStubId}
@@ -2642,12 +2649,12 @@ export default function People() {
         />
       ) : null}
 
-      {activeTab === 'scoreboard' && (isDev || canAccessPay) && <PeopleScoreboardTab />}
+      {activeTab === 'scoreboard' && canSeeScoreboard && <PeopleScoreboardTab />}
       {/* 'hr' follows Scoreboard's pattern: no URL gate (isDev resolves async), render-site gated. */}
       {activeTab === 'hr' && isDev && <PeopleHrTab />}
       {/* 'person' (v2.2710): the Person Desk as a page; gate mirrors canOpenPersonDesk (office roles). */}
       {activeTab === 'person' && canOpenPersonDesk(authRole) && <PersonDeskPage />}
-      {activeTab === 'review' && isDev && (
+      {activeTab === 'review' && canSeeReview && (
         <PeopleReviewTab
           payConfig={payConfig}
           archived={archivedRoster}
@@ -2686,8 +2693,8 @@ export default function People() {
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : canSeeActivityTab ? (
             <PeopleAppActivityPanel
-              enabled={activityAccessResolved && canSeeActivityTab}
-              isDev={isDev}
+              enabled={activityAccessResolved && canSeeActivity}
+              canManageGrants={canManageActivityGrants(isDev, authRole)}
               users={users}
               authUserId={authUser?.id ?? null}
             />
