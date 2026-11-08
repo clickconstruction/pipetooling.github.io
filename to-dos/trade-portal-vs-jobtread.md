@@ -263,9 +263,11 @@ that `fieldJobLookup.ts` re-exports, and the `directions` key in `portalI18n.ts`
   Directions helper moved to its own pure file. Anything new the portal draws from must be pure the same way.
 - **A worktree has no `.env`**: the portal render tests throw *Missing VITE_SUPABASE_URL* until
   `ln -s ../../../.env .env && ln -s ../../../.env.local .env.local` in the worktree (both gitignored).
-- **Do not touch the copy of the kernels** (`supabase/functions/_shared/gcKernels/`, generated from `src`). A change to
-  any file in it, or to an export line in its index, regenerates and makes `check:edge-drift` name every one of its 32
-  importers for redeploy. Every PR below is designed so nothing in the copy changes: the extra fields ride on types
+- **The copy of the kernels** (`supabase/functions/_shared/gcKernels/`, generated from `src`) holds `portalI18n.ts`, so
+  **every new portal word regenerates it**: run `npm run gen:edge-kernels` in the same PR and commit the copy's file, or
+  `edgeKernels.test.ts` fails CI (PR 1 learned this the hard way). A regenerate makes `check:edge-drift` name every one
+  of the copy's 32 importers for redeploy, as v2.6025 did, so **add all of PRs 2 to 6's words in PR 2** and the copy
+  changes once more, not five times. Beyond the words, change nothing else in the copy: the extra fields ride on types
   declared in `_shared/gcTradePortalSchedule.ts`, and the new kernels import only what the copy's index already
   exports (`customerSchedulePicture`, `portalSchedule`, `withScheduleRows`, …). `portal.ts`, `portalSchedule.ts`,
   `customerSchedule.ts`, `gantt.ts` and `draft.ts` are all in the copy, so no new export is added to them either.
@@ -317,7 +319,8 @@ that `fieldJobLookup.ts` re-exports, and the `directions` key in `portalI18n.ts`
   lines, Who to call under the head, and Needs you on this job with the punch item; `tradePortalSlice.test.ts` reviewed fields.
 - **Docs**: `gc-trade-portal`'s section in `docs/EDGE_FUNCTIONS.md` (a `> **v2.NNNN — …**` line at the top and the two
   columns in **Purpose**); the guide *share a trade partner its portal* under *What the company sees*; release note and fragment.
-- **After the merge**: deploy `gc-trade-portal`. The page reads an older answer with no head finish.
+- **After the merge**: deploy `gc-trade-portal`, and with it every importer `npm run check:edge-drift` names, since
+  the words regenerated the copy. The page reads an older answer with no head finish.
 
 ### PR 3 · the whole-job stages fold · gc-trade-portal redeploy
 
