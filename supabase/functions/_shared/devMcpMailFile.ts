@@ -60,7 +60,7 @@ function mailFileBase(args: Record<string, unknown>, known: readonly MailAccount
 /**
  * `plan_mail_file` / `apply_mail_file`'s arguments: `file = { account, id, name, to }`, where `to` is one of
  * `{ kind: 'job', jobs_ledger_id | bid_id | project_id, where? }`, `{ kind: 'person_evidence', person_id, dated_on, title,
- * memo, entry_id?, counsel_only? }` or `{ kind: 'matter_document', matter_id, title, shows, dated_on?, state?, … }`.
+ * memo, entry_id?, counsel_only? }` or `{ kind: 'matter_document', matter_id, title, shows, dated_on?, state?, counsel_only?, … }`.
  * The inner door checks the rest of an evidence record or a document as it does for its own verbs.
  */
 export function mailFileArgs(args: Record<string, unknown>, known: readonly MailAccount[]): { ok: true; value: MailFileArgs } | { ok: false; error: string } {

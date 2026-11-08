@@ -7,7 +7,7 @@ import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNe
 import { contingencyEntries, firmDemand, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
-import { legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
+import { COUNSEL_ONLY_DOCUMENT_WORDS, legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import { portalThemeCountWords, type PortalTheme } from '../../../lib/legal/legalThemes'
 import { legalNarrativeBandWords } from '../../../lib/legal/legalNarrative'
 import { counselReadFacts, counselReadLine, counselTriesWords, currentCounselRead } from '../../../lib/legal/counselRead'
@@ -497,7 +497,7 @@ function FirmDocuments({ documents, held }: { documents: ReadonlyArray<LegalPort
         head={['Document', 'What it shows', 'State', 'Dated · added', '']}
         subRows={documents.map((d) => (d.text && reading === d.id ? <div key={d.id} data-legal-firm-document-text className="hr-doc-body" style={{ padding: '6px 10px 10px', fontSize: 13, maxHeight: '60vh', overflow: 'auto' }} dangerouslySetInnerHTML={{ __html: hrDocMarkdownToSafeHtml(d.text) }} /> : null))}
         rows={documents.map((d) => [
-          <span key="t"><b>{d.title}</b><div style={{ fontSize: portalSmall(11.5), color: FAINT }}>{[legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · ')}{d.text ? <> · <button type="button" data-legal-firm-document-read aria-expanded={reading === d.id} onClick={() => setReading(reading === d.id ? null : d.id)} style={{ font: 'inherit', color: COPPER, fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>{reading === d.id ? 'Fold' : 'Read here'}</button></> : null}</div></span>,
+          <span key="t"><b>{d.title}</b>{d.counselOnly ? <span data-legal-firm-document-counsel title={COUNSEL_ONLY_DOCUMENT_WORDS.portalLine} style={{ marginLeft: 6, fontSize: portalSmall(11), color: COPPER, fontWeight: 600, whiteSpace: 'nowrap' }}>🔒 {COUNSEL_ONLY_DOCUMENT_WORDS.chip}</span> : null}<div style={{ fontSize: portalSmall(11.5), color: FAINT }}>{[legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · ')}{d.counselOnly ? <> · {COUNSEL_ONLY_DOCUMENT_WORDS.portalLine}</> : null}{d.text ? <> · <button type="button" data-legal-firm-document-read aria-expanded={reading === d.id} onClick={() => setReading(reading === d.id ? null : d.id)} style={{ font: 'inherit', color: COPPER, fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>{reading === d.id ? 'Fold' : 'Read here'}</button></> : null}</div></span>,
           d.shows,
           // v2.5846: a draft is shared on purpose (the office's call) and says so; a sent paper carries its record.
           <span key="s" data-legal-firm-document-state={d.state} style={{ color: d.state === 'draft' ? COPPER : MUTED, fontWeight: d.state === 'draft' ? 600 : undefined }}>{legalDocumentStateWords(d) || 'Final'}</span>,

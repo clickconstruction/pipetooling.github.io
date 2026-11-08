@@ -487,7 +487,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   }
   if (verb === 'plan_matter_document' || verb === 'apply_matter_document') {
     const document = obj(input.document)
-    const shape = `${verb} needs document — { matter_id (a legal_matters.id), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256) or markdown (a text document's words, kept as text and searched by section; the server makes the .md file), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), and for a sent paper sent_on? (YYYY-MM-DD, today when left out), sent_how (email | certified_mail | mail | hand | other) and sent_to (who it went to) }.`
+    const shape = `${verb} needs document — { matter_id (a legal_matters.id), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256) or markdown (a text document's words, kept as text and searched by section; the server makes the .md file), counsel_only? (true: for counsel alone — on the portal with a lock, out of the printed packet, never read by the seat or the agent), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), and for a sent paper sent_on? (YYYY-MM-DD, today when left out), sent_how (email | certified_mail | mail | hand | other) and sent_to (who it went to) }.`
     if (!document) return { ok: false, error: shape }
     const str = (k: string) => (typeof document[k] === 'string' ? (document[k] as string).trim() : '')
     const matterId = str('matter_id')
@@ -505,6 +505,11 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
       if (document.markdown.length > 1_000_000) return { ok: false, error: `${verb}: markdown is longer than 1,000,000 characters.` }
       if (mime !== 'text/plain' && mime !== 'text/markdown') return { ok: false, error: `${verb}: markdown goes with a text file (.md or .txt); a ${mime} keeps its bytes alone.` }
       p.markdown = document.markdown
+    }
+    // v2.6720 (punch list #288 PR 2): for counsel alone, on the Evidence row and on its words.
+    if (document.counsel_only !== undefined) {
+      if (typeof document.counsel_only !== 'boolean') return { ok: false, error: `${verb}: counsel_only must be true or false.` }
+      if (document.counsel_only) p.counsel_only = true
     }
     const state = str('state') || 'final'
     if (!(DOCUMENT_STATES as readonly string[]).includes(state)) return { ok: false, error: shape }
