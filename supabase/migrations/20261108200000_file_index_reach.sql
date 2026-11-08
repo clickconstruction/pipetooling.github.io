@@ -113,6 +113,12 @@ AS $$
   ORDER BY h.rank DESC, h.modified_at DESC NULLS LAST, h.drive_file_id
 $$;
 
+-- The function below carries SET hnsw.ef_search, a parameter the vector library defines when it loads. A fresh session
+-- has not loaded it (20261102051500 ran CREATE EXTENSION in its own session, which did), and a placeholder parameter
+-- may be set by a superuser alone, so the push and the SQL beds answered "permission denied to set parameter". One
+-- cast through the type's input function loads the library first.
+DO $$ BEGIN PERFORM '[1]'::extensions.vector; END $$;
+
 CREATE OR REPLACE FUNCTION public.search_file_index_meaning(query_embedding extensions.vector(768), words text, max_hits integer DEFAULT 30, max_distance real DEFAULT 0.45)
 RETURNS TABLE (
   drive_file_id text,
