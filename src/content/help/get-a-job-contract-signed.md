@@ -70,7 +70,7 @@ Tap the {{chip:gray|No contract}} chip on the row. The Contract window opens wit
 
 **The rail** offers three ways, with the answer already picked from what the job knows. Only the fields the picked way needs appear under it. Then comes one blue button whose label follows the pick. A sentence says exactly what pressing it will do.
 
-- {{button:outline|Send a link}} is *picked when the job has an email or a mobile.* They review and sign on their phone. Email is filled from the job. Tick **Text it too** to open a text with the same link after the email goes. Or leave the email blank and the button reads **Text the link**. **Copies** are for a GC or property manager who only reads it. GC means the general contractor. Reminders go every 3 days until signed, up to 3. **Copy the link** in the sentence pastes it anywhere.
+- {{button:outline|Send a link}} is *picked when the job has an email or a mobile.* They review and sign on their phone. Email is filled from the job. Tick **Text it too** and the same press texts them the link from the company number. Or leave the email blank and the button reads **Text the link**. That opens the customer's orange box with the link in it. Press {{button:blue|Send text…}} and the text goes from the company number. The line lands in their thread and in the job's activity. **Copies** are for a GC or property manager who only reads it. GC means the general contractor. Reminders go every 3 days until signed, up to 3. **Copy the link** in the sentence pastes it anywhere.
 - {{button:outline|Sign here, now}} means the customer signs on this device, at the kitchen table. Nothing is needed but their name. An email is only where their signed copy goes. A technician clocked in on the job has the same door on the Job Mode card. It reads *✍ Hand the phone to the customer to sign*.
 - {{button:outline|On paper}} is *picked when the job has neither an email nor a mobile.* **Download to print** gives the page blank **Sign** and **Date** rules. It **marks the agreement handed over**. So the job leaves the count and reads *handed over · awaiting signature*. **Email the PDF** sends it to print, sign and send back, with the signing link riding along.
 - A way that cannot run says why and steps aside. It reads {{chip:yellow|Needs an email or a mobile — add one, or pick another way}}. The button greys until it can.
@@ -102,6 +102,8 @@ A page downloaded and emailed from your own mail leaves no trace: the job stays 
 :::example While it's out
 The row reads {{chip:yellow|Contract sent · opened 2× · 6d}} and the window's rail shows an amber strip with the same facts, then three groups: **Nudge** ({{button:blue|Resend email}}, **Text the link**, **Copy link**), **Sign here** (**Open the signing page on this device**) and **Change it** (**Edit & re-send** or **Void & redo**). Handed over on paper, the groups are **It's back** ({{button:blue|File the signed copy}}) and **Change it**.
 
+**Text the link** opens the customer's orange box with the signing link in it. Nothing goes until you press {{button:blue|Send text…}} there. The text goes from the company number, so their answer comes back to the office. When the mobile in the window is not on the customer's contact yet, one chip offers to add it. It reads {{chip:yellow|Add (512) 555-0100 to Sam's contact}}. Tap it once and the number joins their contact as a text number. The numbers already on file sit beside the chip. When the company number cannot text, the box says why, and **Copy link** in its head still works.
+
 **Need to change it after sending?** It depends on whether they have opened it:
 
 - **They have not opened it** — {{button:outline|Edit & re-send}}. Press it once and the strip says what they may be holding (nothing yet, or *revision 1 as a PDF in their inbox*); press {{button:blue|Confirm — unlock to edit}} and the same agreement unlocks right there as the next revision. Fix the scope, the amount or the email and send again — the **same link** carries it, and shows nothing in between. No voided copy is left behind in the history.
@@ -123,7 +125,7 @@ The link never dies. It shows the signed record afterwards. It shows a polite no
 
 Once a job reads {{chip:green|✍ Signed}}, the chip opens the same **Contract window**, now on its signed state. That holds whether the customer signed a contract you sent, or the office filed paper or a Google Doc. It holds when the customer accepted an estimate online too. The left column is the agreement exactly as signed. It is the paper with the signature closing it, or the accepted estimate's record. The signature is the drawn mark when they drew, then *Signed electronically by …*, the time and *consent recorded*. The right column says who signed, when and how, where from and on what device. It says which document at which revision. Then come the doors:
 
-- **Share**: {{button:blue|Email a copy…}} sends the signed PDF, or the filed link, to the customer or anyone else. It records who got it. **Copy link** copies the customer's page, which now shows the signed record. **Text link** shows when a mobile is on file.
+- **Share**: {{button:blue|Email a copy…}} sends the signed PDF, or the filed link, to the customer or anyone else. It records who got it. **Copy link** copies the customer's page, which now shows the signed record. **Text link** shows when a mobile is on file. It opens the customer's orange box with that page's link in it, and the text goes from the company number.
 - **Keep**: **Download PDF** gives the stored copy, or one built on the spot. **Open uploaded copy ↗** is for a paper scan. Then come **Print / save as PDF**, and the filed **Google Doc** with its own copy-link button.
 - **Later**: {{button:outline|Start a new agreement…}} turns the window back into a fresh draft. A new signature supersedes the old one, which stays under **History**. Then comes **Open job**. An accepted estimate adds **Open estimate #N**.
 
@@ -148,6 +150,22 @@ Have a paper scan instead? The small **Have a scan or photo instead?** link unde
 {{gif:get-a-job-contract-signed-file.gif|From the Pipeline row, the chip opens the Contract modal. File a signed contract opens the sheet. The pasted Google Doc link turns into the green linked line, and Record as signed lights up}}
 
 Did two people sign the paper? Type the second name in **Second signer**. A second signer named on the draft is already in that box. Each name is filed as its own signature. The record names both people. Clear the box when only one person signed. When the second signer already signed through the link, the sheet says so and keeps that signature. The same goes for the first signer. A PDF you emailed to sign by hand still carries its link. When the customer signed there, **Signed by** shows that signature in place of its box. Put the name of the person who signed the paper in **Second signer**. The record keeps both signatures, one from the link and one from the paper.
+
+## Their paper, signed by us only
+
+A GC often sends their own subcontract. Our master signs it and the GC never countersigns. Do not file it as signed by the customer, because that is not true. Record it as their paper instead.
+
+1. Open the bill with **View bill** or **Bill Customer**, or open the job with **Edit Job**.
+2. Press {{button:outline|Their paper…}} on the contract strip.
+3. Say what the paper is, such as *their subcontract, their form*.
+4. Type who signed for us, the day and how under **Signed by us**.
+5. Leave **Countersigned on** blank when they never signed it.
+6. Tick **They rely on it** once their notice or their pay application stands on the paper. Give the day and what they relied on it for.
+7. Paste the Drive link, or press **Have the PDF or a scan instead?** and pick the file.
+8. Type each key term in a few words with its clause, such as *§14.2* for termination.
+9. Press {{button:blue|Record their paper}}.
+
+Nothing is sent to anyone. The job reads {{chip:blue|Their paper · signed by us only · not relied on yet}}. The chip says *they rely on it* once you tick that. Press {{button:outline|Edit the record}} on the strip to change it. The Contract window shows the same record in a band at the top. The Legal desk reads the paper too. Read [how the desk counts it](/help/review-a-collections-account-before-it-goes-to-your-attorney#read-the-top-first).
 
 ## One signed paper for several jobs
 

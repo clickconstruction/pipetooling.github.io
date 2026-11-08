@@ -30,8 +30,8 @@ describe('contractWindowWays — the sentence and the button', () => {
   it('a link: to whom, from where, with what reminders; by text when there is only a mobile; nothing without either', () => {
     expect(windowWaySentence({ ...base, way: 'link' })).toBe('Emails sam@example.com a Review & sign link from office@clickplumbing.com. Reminders every 3 days until signed, up to 3.')
     expect(windowWaySentence({ ...base, way: 'link', remindersEnabled: false })).toContain('No reminders.')
-    expect(windowWaySentence({ ...base, way: 'link', phone: '512-555-0100', textToo: true })).toContain('opens a text to 512-555-0100')
-    expect(windowWaySentence({ ...base, way: 'link', email: '', phone: '512-555-0100' })).toBe('Opens a text to 512-555-0100 with the Review & sign link. Add an email for reminders and their signed copy.')
+    expect(windowWaySentence({ ...base, way: 'link', phone: '512-555-0100', textToo: true })).toContain('texts 512-555-0100 the same link from the company number')
+    expect(windowWaySentence({ ...base, way: 'link', email: '', phone: '512-555-0100' })).toBe('Opens the customer’s box with the Review & sign link, to text 512-555-0100 from the company number. Add an email for reminders and their signed copy.')
     expect(windowWaySentence({ ...base, way: 'link', email: '' })).toBe('Add an email or a mobile to send a link.')
     expect(windowWayButton({ way: 'link', paperSend: 'download', email: '', phone: '', textToo: false })).toEqual({ label: 'Send the link', busyLabel: 'Sending…', disabled: true })
     expect(windowWayButton({ way: 'link', paperSend: 'download', email: '', phone: '512', textToo: false }).label).toBe('Text the link')

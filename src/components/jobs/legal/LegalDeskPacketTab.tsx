@@ -25,6 +25,7 @@ import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
 import type { LegalTheme, LegalThemeMark } from '../../../lib/legal/legalThemes'
 import LegalStatementsStrip from './LegalStatementsStrip'
 import LegalClaimTable, { type ClaimPanel } from './LegalClaimTable'
+import LegalMatterPeopleTable, { type PeoplePanel } from './LegalMatterPeopleTable'
 import { claimTable } from '../../../lib/legal/legalClaimLines'
 import { isStatementEntry, statementMetaOf } from '../../../lib/legal/affidavitPaper'
 
@@ -80,6 +81,7 @@ import { type CounselRead, type CounselReadDraft } from '../../../lib/legal/coun
 
 import type { LegalDeskProps } from './LegalDesk'
 import { type Tab, TAB_LABELS, MUTED, btn, pill, Door, DeskEnvelopeAnswersBand, SectionTitle, Table, coverageText, type EntryLike } from './legalDeskShared'
+import { agreementCountsForSuit } from '../../../lib/legal/legalContractBasis'
 import { CounselReadPanel, OffersPanel, SettlementAnswer, DeskVoidableText, DeskUndo } from './LegalDeskFirmPanels'
 import { EmptyState } from '../../EmptyState'
 
@@ -115,7 +117,7 @@ export type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatter
 /** The Timeline tab (v2.5800): the matter's holds (a planned step held back reads held) and the office's acts, null when read only. */
 export type PlanActs = { holds: Record<string, boolean>; holdReasons: Record<string, string>; acts: TimelinePlanActs | null }
 
-export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null, onShowOnEvidence, evidenceDoc = null, onEvidenceLanded, onStatementsChanged, claim = null }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null; /** v2.6166: the Evidence tab opened on a document's row, lit. */ onShowOnEvidence?: (documentId: string) => void; /** v2.6166: the row the Evidence tab lands on, from the address. */ evidenceDoc?: string | null; /** v2.6166: the landed row was pressed. */ onEvidenceLanded?: () => void; /** v2.6413 (punch list #212 PR 4): the packet read again after a statement is asked for or put on the matter. */ onStatementsChanged?: () => void; /** v2.6679 (punch list #171): the claim table's documents, acts and doors; null draws the table read only with the desk's own doors. */ claim?: ClaimPanel | null }) {
+export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null, onShowOnEvidence, evidenceDoc = null, onEvidenceLanded, onStatementsChanged, claim = null, people = null }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null; /** v2.6166: the Evidence tab opened on a document's row, lit. */ onShowOnEvidence?: (documentId: string) => void; /** v2.6166: the row the Evidence tab lands on, from the address. */ evidenceDoc?: string | null; /** v2.6166: the landed row was pressed. */ onEvidenceLanded?: () => void; /** v2.6413 (punch list #212 PR 4): the packet read again after a statement is asked for or put on the matter. */ onStatementsChanged?: () => void; /** v2.6679 (punch list #171): the claim table's documents, acts and doors; null draws the table read only with the desk's own doors. */ claim?: ClaimPanel | null; /** v2.6705 (punch list #174): the people list's acts; null draws it read only. */ people?: PeoplePanel | null }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -191,6 +193,8 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
           <span style={MUTED}>Terms</span><span>{a.paymentTerms}{a.paymentTermsNote ? <span style={MUTED}> — {a.paymentTermsNote}</span> : null}</span>
         </div>
         {a.contacts.length ? (<><SectionTitle doors={customerDoor()}>Contacts</SectionTitle><Table head={['Name', 'Email', 'Phone', 'Note']} rows={a.contacts.map((c) => [c.name, c.email ?? '—', c.phone ?? '—', c.note ?? ''])} empty="" /></>) : null}
+        {/* v2.6705 (punch list #174): the people on the matter — who the letters pick from, with the use and its reason on the row. */}
+        <LegalMatterPeopleTable people={packet.people} panel={{ acts: people?.acts ?? null }} />
         <SectionTitle doors={first ? <Door label="Pipeline row" onClick={() => props.onFocusJob(first.id)} /> : null}>Jobs in this account</SectionTitle>
         <Table head={['Job', 'Name', 'Address', 'Age', 'Basis', 'Balance', '']} numCols={[3, 5]}
           rows={a.jobs.map((j) => [
@@ -230,10 +234,16 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
         <Table head={['Job', 'Agreement', 'Sworn account', '']}
           rows={a.jobs.map((j) => [
             <b key="l">{j.label}</b>,
-            <span key="s" style={j.contract.kind === 'signed' ? undefined : { color: '#b42318' }}>{coverageText(j.contract)}</span>,
+            // v2.6698 (punch list #173): their paper reads blue while it counts and amber until they rely on it; a missing agreement stays red.
+            <span key="s" data-legal-agreement={j.contract.kind} style={agreementCountsForSuit(j.contract) ? (j.contract.kind === 'their_paper' ? { color: 'var(--text-blue-700)' } : undefined) : j.contract.kind === 'their_paper' ? { color: 'var(--text-amber-700)' } : { color: '#b42318' }}>{coverageText(j.contract)}</span>,
             j.swornMissing.length ? pill(`needs ${j.swornMissing.join(', ')}`, 'warn') : pill('holds', 'ok'),
-            <button key="b" type="button" onClick={() => { const job = jobOf(j.jobId); if (job) props.onOpenContract(job) }} style={btn}>{j.contract.kind === 'signed' ? 'View' : 'Contract…'}</button>,
+            <button key="b" type="button" onClick={() => { const job = jobOf(j.jobId); if (job) props.onOpenContract(job) }} style={btn}>{j.contract.kind === 'signed' || j.contract.kind === 'their_paper' ? 'View' : 'Contract…'}</button>,
           ])} empty="No jobs." />
+        {a.jobs.some((j) => j.contract.kind === 'their_paper') ? (
+          <p data-legal-agreement-basis style={{ ...MUTED, fontSize: '0.78rem', margin: '4px 0 0' }}>
+            Basis: <b style={{ color: 'var(--text)' }}>{packet.theory.label}</b> · {packet.theory.basis}
+          </p>
+        ) : null}
         <SectionTitle doors={first ? <Door label="Liens on the job" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Where each job stands</SectionTitle>
         {packet.paper.timelines.length === 0 ? <p style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0' }}>No jobs.</p> : packet.paper.timelines.map((t) => (
           <div key={t.jobId} data-legal-job-timeline={t.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 190px) minmax(0, 1fr)', gap: 12, padding: '8px 0', borderBottom: '1px dotted var(--border)', alignItems: 'start', fontSize: '0.82rem' }}>

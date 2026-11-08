@@ -2,7 +2,7 @@
 name: "Subs: the board by trade, built for the moment a set of plans lands"
 number: 153
 group: close
-status: built 2026-10-24 on the owner's yes of 2026-10-23 ("Build it all and push any migrations"); all four PRs merged: PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run), PR 3 v2.5809 (the migration, pushed to prod 2026-10-24; the drag; the priority), PR 4 v2.5810 (the ask on landing); the run's first text starts the sub's Messages thread v2.6032 (2026-10-28; its migration 20261028220000 is on prod, the drift check reading fully applied on 2026-11-01)
+status: built 2026-10-24 on the owner's yes of 2026-10-23 ("Build it all and push any migrations"); all four PRs merged: PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run), PR 3 v2.5809 (the migration, pushed to prod 2026-10-24; the drag; the priority), PR 4 v2.5810 (the ask on landing); the run's first text starts the sub's Messages thread v2.6032 (2026-10-28; its migration 20261028220000 is on prod, the drift check reading fully applied on 2026-11-01); the board's first text walked live 2026-11-08 in the owner's Chrome on a ZZ Test sub (Didn't Answer set the 3 pm callback, Text them started the thread and the text reached the owner's number, the receipt read *1 to call back today 3 pm, 1 texted*); no screen removes a bench company (checked the board card, the bench row, the company record)
 summary: >
   Prospects → Subs holds 104 trade companies found on 2026-10-23, one card at a time on the deck
   and a table on the Prospect List sorted by how long since a touch. Nothing on the page says how
@@ -16,7 +16,7 @@ summary: >
   callback and a text offer when one does not answer; a yes lands on the bench and is asked on
   the job in one press. A's stage strip, sentence and press per card and C's record and priority
   (the rank's reason and the column's default order, a drag pinning a card over it) are folded in.
-next: use the board on the next set of plans; delete the ZZ Test Sprinkler Co company the walk left on the bench (no screen removes one), then walk one real first text (Where it stands)
+next: use the board on the next set of plans. The owner's call: whether the bench gets a Remove press for a company with no history (a small feature, one PR, not one line; see Where it stands) — until it exists the ZZ Test Sprinkler Co stays on the bench, and even that press would not take it, since it carries an ask (a dev deletes it by hand with its ask).
 size: built: PR 1 S · PR 2 M · PR 3 M · PR 4 S
 blocker: none; the owner said build it all on 2026-10-23
 ver: v2.5807, v2.5808, v2.5809, v2.5810, v2.6032
@@ -334,3 +334,34 @@ let me know when complete."
 Left after the build (the build session's closing note, 2026-10-24): the ZZ Test Sprinkler Co company the walk put on the bench, which only a dev can delete, by hand from `gc_companies` with its ask (still the lead's by-hand prod write); and the run's **Text them** read *No Messages thread for them yet. Open Messages to start one.* for a sub the company has never written to, since New Prospect writes no contact and nobody signed in may insert one.
 
 | 5 | v2.6032 | The run's first text starts the thread (2026-10-28): `runTextPlan` in `callRun.ts` decides send, start then send, or hold with the reason (the texting rule as it was; no number on the card: *No number on their card yet. Add their phone with Edit prospect, then press Text them.*; a STOP: call instead); the start is `contact_for_prospect` (`20261028220000`, a definer door of `contact_for_customer`'s shape: the row's lead contact, named after the card, with the card's numbers and address as channels), called through `prospectThreadIo.ts`; the card's note says when a text started the thread. **The migration is pushed by the lead after the merge**; until then the press on a sub with no thread names the missing function. Walked on the dev server against prod with a ZZ sub (the plan's path to the door, the hold words) and the function in a rolled-back psql transaction; the first real text after the push is the owner's or the lead's walk. |
+
+**2026-11-08, the live walk (the owner's session, his Chrome, client v2.6691).** Prospects → Subs → **Board**: the strip
+read To call 97 · Called 7 · Talked 0 · On the bench 0 · Quoted 0, *Not a fit 1 folded under the list*, **For** on *every
+trade*, one column a trade in the panel's order with its need line and **Call the top 3 →**. **New Prospect** → *A sub*
+with the trade *Fire sprinkler*, May we text? *Yes*, and the owner's own number on the contact (the window warned
+*Robert Test is already a customer* on the number and offered **Save anyway**, as it should). The card landed as #8 in
+the Fire sprinkler column (*new to us · added today*), whose head then read *1 on the bench · wants 2 more · 8 to call
+here*. **Call now →** on the card opened Follow Up as a run of one: *Run · Fire sprinkler · 1 of 1 · The deck works these
+in order. Nothing reshuffles under you.*, the card with *OK to text*, the rail *1 of 1 · never called · added 0d ago*.
+**Didn't Answer** filed the call (*Prospect did not answer*, 11:32 AM), set *callback set today 3 pm* (*Callback 11/8/26
+3:00 PM (From a run: Fire sprinkler scope. They did not answer.)*) and offered **Text them**; the press sent the one
+text to the owner's number and the card's note read *Text sent: Robert at Click Plumbing and Electrical here. We have a
+set of plans with a fire sprinkler scope and would like your quote. Call us back when you can. This first text started
+their Messages thread.* (11:33 AM), the toast *Text sent*, the strip Called 8. **Finish the run →**: *Run done. 1 to call
+back today 3 pm, 1 texted* and **Back to the board →**. The ZZ Test Walk Sub Co prospect was then deleted from Edit
+prospect (its confirm window, **Delete**); its Messages thread and the sent text stay, since no screen deletes a thread.
+
+**No door removes a bench company**, read on Trade partners: the company's row offers Open, the address, **Will not do
+it**, **Cannot do it** and **Log a contact**; *New to us* offers **Approve**, **Approve up to this** and **Decline** (a
+vetting status, the company stays listed, offered last); the company record window (About · Activity · Documents · Flow
+· Their portal) has none; the board card's **Pass** is the prospect's exit, not the bench's. The ZZ Test Sprinkler Co
+stays, listed under both Concrete and Fire sprinkler and in *New to us*. **A Remove press for a company with no history
+is a small feature, not one line:** `gc_companies` is referenced by some fifteen tables with `ON DELETE RESTRICT`
+(invites, quotes, awards, notices, promises) and nine with `CASCADE` (people, contacts, vetting forms), so the delete
+itself is one call that the database refuses once the company was ever asked, which is the right line for *no
+history*; but the press needs a confirm window with its verb, the refusal's reason in words (`formatErrorMessage`), the
+prospect it came from put back on the lane (`prospect_fit_status` off *converted*; the FK already nulls
+`converted_gc_company_id`), a DELETE policy for the office (only the dev's `FOR ALL` policy exists on the table), a
+render smoke, the note, the fragment and a line in the bench guide. One PR, S. The ZZ Test Sprinkler Co has an ask on
+the GC test bidding project, so the press would refuse it; it leaves with its ask by a dev's hand.
+Screenshots `153-1` to `153-4` in the walk session's scratchpad.

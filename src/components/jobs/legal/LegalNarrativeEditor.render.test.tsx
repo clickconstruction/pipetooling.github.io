@@ -47,4 +47,19 @@ describe('LegalNarrativeEditor (v2.4812)', () => {
     rerender(<LegalNarrativeEditor narrative={desk({ canEdit: false })} busy={false} />)
     expect(screen.getByText(/No narrative yet/)).toBeTruthy()
   })
+
+  it("Insert the contract's terms (punch list #173) pastes their paper under The contract, once", () => {
+    const md = '**Harrow subcontract** on 891: signed for us by D. Vasquez, not countersigned.\n- Termination §14.2 — for convenience'
+    render(<LegalNarrativeEditor narrative={desk({ markdown: '## The parties\n\nClick was the sub.', contractMarkdown: md })} busy={false} />)
+    const btn = document.querySelector('[data-legal-narrative-insert-contract]') as HTMLButtonElement
+    expect(btn.textContent).toBe("Insert the contract's terms")
+    fireEvent.click(btn)
+    const area = screen.getByLabelText('Narrative for the firm') as HTMLTextAreaElement
+    expect(area.value).toBe(`## The parties\n\nClick was the sub.\n\n## The contract\n\n${md}\n`)
+    fireEvent.click(btn)
+    expect(area.value.split('Termination §14.2').length).toBe(2)
+    cleanup()
+    render(<LegalNarrativeEditor narrative={desk({ markdown: '' })} busy={false} />)
+    expect(document.querySelector('[data-legal-narrative-insert-contract]')).toBeNull()
+  })
 })

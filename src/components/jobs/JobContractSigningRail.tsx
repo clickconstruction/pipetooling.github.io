@@ -24,6 +24,8 @@ export type JobContractSigningRailProps = {
   setPhone: (v: string) => void
   textToo: boolean
   setTextToo: (v: boolean) => void
+  /** #125 PR 5: the chip under Mobile when the typed number is not on the customer's contact yet; null when it is, or nothing is known. */
+  phoneNote?: ReactNode
   cc: string
   setCc: (v: string) => void
   message: string
@@ -127,6 +129,7 @@ export default function JobContractSigningRail(p: JobContractSigningRailProps) {
                   <label style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.78rem', whiteSpace: 'nowrap', color: 'var(--text-700)' }}>
                     <input type="checkbox" checked={p.textToo} onChange={(e) => p.setTextToo(e.target.checked)} /> Text it too
                   </label>
+                  {p.phoneNote}
                 </div>
               </div>
               <div style={row}>

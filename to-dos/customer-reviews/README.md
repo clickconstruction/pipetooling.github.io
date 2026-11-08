@@ -2,7 +2,7 @@
 name: "Customer reviews: one link that is theirs, and the ask after a paid job"
 number: 185
 group: close
-status: "shipped 2026-10-27 as four PRs: v2.5934 the review page (#6228 closed, its commits rode in #6263's squash), v2.5943 the morning offer (#6263), v2.5946 the office's view (#6268), v2.5948 the portal's Your jobs (#6270); the fix v2.6007 (#6360, 2026-10-28). Read against main and prod 2026-11-07: both migrations in the ledger, job-rating and messages-nudge-dispatch run main's code, customer-portal's review code is live. Left: the owner's Google link, the live test against the mock-up, the owner's look"
+status: "shipped 2026-10-27 as four PRs: v2.5934 the review page (#6228 closed, its commits rode in #6263's squash), v2.5943 the morning offer (#6263), v2.5946 the office's view (#6268), v2.5948 the portal's Your jobs (#6270); the fix v2.6007 (#6360, 2026-10-28). Read against main and prod 2026-11-07: both migrations in the ledger, the functions run main's code. Walked live 2026-11-08 in the owner's Chrome: the Reviews block reads with no Google link and no answers this month, the rating page renders on the sample token (stars, the words box, the Google ask), and a paid ZZ test job's Review asked step was brought to now, where the app sends the ask itself the next morning. Not yet seen: a real text on the owner's phone, a rating that lands, the words on the job. Left: the owner's Google link, the rating from his phone, the owner's look"
 summary: >
   The customer's side, lens 9 of the 2026-10-26 look at the whole app. Today a homeowner gets
   up to four different links over one job (the estimate's accept link, Stripe's Pay now, the
@@ -15,7 +15,7 @@ summary: >
   put it on Google; at fewer, "what could we have done better" and a Needs you line so someone
   calls. Google's policy forbids asking only the happy customers to post, so the Google ask is
   the owner's call, with the recommendation to show it to everyone after the direct review.
-next: The owner or a dev sets the Google review link at Settings → What customers see → Reviews (the page never mentions Google while it is empty); the live test from How to verify on a ZZ test job with the dev's number; then the owner's look and delete the folder. Nothing is left to push or deploy.
+next: The owner or a dev sets the Google review link at Settings → What customers see → Reviews (the page never mentions Google while it is empty). The review text for the paid ZZ test job goes to the owner's own number from the 9:00 AM run on 2026-11-09 (the step is on Sends and reads now since the walk); he taps the stars, writes a line, and reads it on the job window's Review line, the Reviews block and the thread; then the owner's look and delete the folder. Nothing is left to push or deploy.
 size: M, as four PRs after this one, S M S M
 blocker: the owner's Google review link, and the owner's look at the live page.
 ver: v2.5934 · 5943 · 5946 · 5948 · 6007
@@ -369,3 +369,38 @@ test under *How to verify*, which needs a signed-in office account and the dev's
   stars. Smaller than the plan on purpose: the Pipeline's five statuses rather than the flow's
   reading at the edge (the residential loader's ten reads on every portal load), and no estimate
   door (estimate links are kept as hashes; a portal load must not mint one).
+
+**2026-11-08, the live walk (the owner's session, his Chrome, client v2.6691).** Settings → What customers see → **Reviews**
+reads as the card says: *The company's Google review link* empty with its placeholder, **Save the link** dead, the line
+*While this is empty, the review page never mentions Google*, and THIS MONTH 0 asked · 0 answered · — average · 0 pressed
+Google · 0 of 0 low ones called, *No answers yet this month.* The Google link stays the owner's. The rating page renders
+on the sample token (`/rate?t=sample`, nothing saved): the company name, *Sam, how did we do on the water heater? One tap
+answers it.*, five stars; the fifth star reads *Great · Thank you. Your answer is saved.*, then *Anything we should know?
+(optional)* with **Send the words**, and *Would you put this on Google for us?* with **Post it on Google** (the sample
+carries a made-up link on purpose; a real page with the key empty draws none), the portal and the office number in the
+foot. The live ask found two things worth knowing:
+
+- **The by-hand ask has no door while the step is on Sends.** The strip's *Ask for a review* press is offered only when
+  the Review asked step is on *now* and the step's switch is not Sends (`residentialPresses` and `appSends.residential.review`
+  in `card.ts`); prod has the step on Sends, so the step card shows *Text the morning after Paid, sent by the app* with
+  **Remind now** and **Hold until Mon**, and no press fills the box. A `{rate}` typed by hand is never minted (*Fill
+  {rate} first. The app does not know it.*): the blank is minted only when a pressed line carries it, and no shipped
+  quick reply does. So today the office cannot send the ask by hand on a given day without first writing a quick reply
+  that holds `{rate}`; the card's *the office can send it by hand any day* is true only with that line. Not a one-line fix:
+  either the strip keeps the press under Sends too (and the run reads the sent copy as the ask, which `review_asked`
+  already does), or a starter quick reply ships with the blank.
+- **A job that never passed its earlier steps is never asked.** The flow's *now* is the first step not done, so a paid
+  job whose Booked, On the way, Arrived, What we found, Estimate sent and Approved never turned true (the ZZ TEST ones,
+  but also a real job entered after the fact or billed with no estimate) keeps Review asked on *later*, and `nudgeDue`
+  returns *not on* for it, so neither the run nor the strip asks. The office's escape is the card's **Skip for ‹first›**,
+  one press and a reason per step; the walk pressed it six times on the paid ZZ TEST job (1072, Paid Oct 7) and Review
+  asked turned to *now*: *Our move. On it 32 days, usually 1. Text the morning after Paid, sent by the app. Paid was 32
+  days ago, so it is on Follow up now.* **Remind now** was pressed. Today's sends held only this morning's two real pay
+  reminders (untouched); the run prepares its offers at 9:00 AM, so the ZZ text goes on 2026-11-09 to the ZZ TEST
+  customer's number, which the walk set to the owner's own (the row had none). The owner reads the text, taps the stars
+  and the words show on the job window's Review line, the Reviews block, the Customer Hub and, at four or five stars,
+  the techs' Your week (`ratingCredit.ts`: a tech with a clock session on the job; none on this job, so that strip
+  stays empty here).
+
+Rows the walk left (all ZZ): the owner's number on the customer *ZZ TEST Owner On Notice*, and six `contact_step_skips`
+on that customer (Put it back undoes each). Screenshots `185-1` to `185-4` in the walk session's scratchpad.

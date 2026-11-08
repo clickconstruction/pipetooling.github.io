@@ -14,7 +14,7 @@ import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from '../supabasePaging'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
 import { jobActivityMessagesFromRows, jobTakesUntiedLines, type JobActivityMessage, type JobMessageContact, type JobMessageRow } from '../jobs/jobActivityMessages'
-import { kindOf, type Contact, type ContactKind, type ContactRecord } from '../contacts/kernel'
+import { kindOf, normalizeChannel, type Contact, type ContactChannel, type ContactKind, type ContactRecord } from '../contacts/kernel'
 import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
 import { loadSentEmailsTo } from '../sent/sentCopiesIo'
 import { factJobKeys, railJobKeys, type InviteJobRow, type ProjectRolesRow } from './factJobs'
@@ -53,7 +53,7 @@ const CONTACT_COLS =
   'id, kind, customer_id, customer_contact_person_id, gc_company_id, gc_company_person_id, person_id, name, goes_by, off_since, off_why, off_by, ' +
   // R0's four kinds: a lead, a supply house's counter, a rep at one and a candidate (`20261013180000`).
   'prospect_id, supply_house_id, supply_house_contact_id, team_prospect_id'
-const CHANNEL_COLS = 'id, contact_id, kind, value, opted_out_at, created_at'
+const CHANNEL_COLS = 'id, contact_id, kind, value, opted_out_at, usual_at, created_at'
 const JOB_COLS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at'
 /** `mailbox` is R6's column (20261014003000_messages_two_boxes.sql): the box a line came in on or went out from. */
 const MESSAGE_COLS =
@@ -498,6 +498,25 @@ export async function loadCustomerContact(customerId: string): Promise<Contact> 
   const contact = await loadContact(await contactForCustomer(customerId))
   if (!contact) throw new Error('Their messages could not be opened. Read the job again.')
   return contact
+}
+
+/**
+ * A number joins their contact as a text channel (punch list #125 PR 5, the owner's call of 2026-11-08): the Contract
+ * window's typed number that `quo-send` could not text until it was one of theirs. The office writes it (the channels
+ * policy); the same number already on the contact reads as the row it is, so a second tap adds nothing twice.
+ */
+export async function addContactPhone(contactId: string, value: string): Promise<ContactChannel> {
+  const trimmed = value.trim()
+  const inserted = await from('contact_channels').insert({ contact_id: contactId, kind: 'phone', value: trimmed } as never).select(CHANNEL_COLS).maybeSingle()
+  if (inserted.error && inserted.error.code === '23505') {
+    const had = taken((await from('contact_channels').select(CHANNEL_COLS).eq('contact_id', contactId).eq('kind', 'phone')) as Result<ContactChannelRow[]>, 'read their numbers')
+    const key = normalizeChannel('phone', trimmed)
+    const row = had.find((ch) => normalizeChannel('phone', ch.value) === key)
+    if (row) return { id: row.id, kind: 'phone', value: row.value, optedOutAt: row.opted_out_at }
+  }
+  const row = taken(inserted as Result<ContactChannelRow | null>, 'add the number to their contact')
+  if (!row) throw new Error('The number was not added. Read the job again.')
+  return { id: row.id, kind: 'phone', value: row.value, optedOutAt: row.opted_out_at }
 }
 
 /** Ties a line to a job, or unties it (null): it then sits on the person. */

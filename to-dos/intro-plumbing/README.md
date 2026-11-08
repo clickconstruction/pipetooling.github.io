@@ -1,8 +1,9 @@
 ---
 name: "Intro to plumbing: how water comes in and goes out, in drawings"
 number: 119
-group: close
-status: BUILT 2026-10-18 — the owner said build it, checking the work along the way; PR 1 (the offered state, the pipe drawing language, Start here and all of Water in, eleven lessons and eleven figures shot at three widths in both themes) is v2.5610; PR 2 (Water out, eight lessons and eight figures) is v2.5611; PR 3 (the conditions, eight strips) is v2.5612; PR 4 (Reading the job, three figures, the course whole at thirty lessons) is v2.5613; PR 5 (the owner's read-through, ten more drawings where a fact was words alone and three drawings reused with their own captions) is v2.5619; PR 6 (the fourteen-year-old's read: every trade word taught where it is first met, lessons 15 and 27 each cut to one fact, the trade-word rule in the content test) is v2.5621; left: the owner's read-through and On in Settings → Training; the six calls taken as drawn until the owner says otherwise
+flagged: true
+group: ready
+status: BUILT 2026-10-18 — the owner said build it, checking the work along the way; PR 1 (the offered state, the pipe drawing language, Start here and all of Water in, eleven lessons and eleven figures shot at three widths in both themes) is v2.5610; PR 2 (Water out, eight lessons and eight figures) is v2.5611; PR 3 (the conditions, eight strips) is v2.5612; PR 4 (Reading the job, three figures, the course whole at thirty lessons) is v2.5613; PR 5 (the owner's read-through, ten more drawings where a fact was words alone and three drawings reused with their own captions) is v2.5619; PR 6 (the fourteen-year-old's read: every trade word taught where it is first met, lessons 15 and 27 each cut to one fact, the trade-word rule in the content test) is v2.5621; left: the owner's correction pass over § Read-through; the course has been On since 2026-10-18 16:04Z, offered to all and required of helpers and dev, good for 120 months (`training_courses`, read through the dev seat 2026-11-08); the six calls taken as drawn until the owner says otherwise · 2026-11-08 the careful read of every lesson ran as the dev on a dev server, a live course and not a preview (§ Read-through 2026-11-08: 25 doubted facts, no typo and no plain-words break, so no fix PR); nothing in the course or in Settings was touched
 summary: >
   The second training course: thirty five-minute lessons on how a house's plumbing works, for
   understanding and not for estimating. Part 1 is water in under pressure, from the meter to the
@@ -13,7 +14,7 @@ summary: >
   first-timer's mistakes. The course rides the Training mechanism built for the OSHA 30 refresher
   and adds one thing to it, an offered state so a course can be open to every role and required
   for some. The owner, a master plumber, co-writes and corrects every lesson.
-next: The owner reads the course as a dev preview, corrects any fact or number in place, then presses On in Settings → Training; delete this folder once the first crew member has been through it.
+next: The read is done (§ Read-through 2026-11-08). The owner's correction pass over its 25 rows, each correction as one commit with the lesson's `from:` line naming it, stays his; the course has been On since 2026-10-18, so no press to On is left; #111's switch proof (`to-dos/training/README.md` § Pick up) can run now; delete this folder once the first crew member has been through it.
 size: L (PR 1 is M; each part is an M PR of eight to ten drawings; the owner's corrections ride each one)
 blocker: none; the six calls are built to the drawn leans and each is one row in Settings or one line in a lesson.
 opinion: build it as outlined once the owner has corrected it; the drawings are the course, the mechanism is one column and one row on the card.
@@ -359,3 +360,104 @@ Not drawn, on purpose: a figure inside a check question (#116's open call 3) and
   green on the spot, with no second pass.
 - Every drawing read at 375, 768 and 1280 px in light and dark, with no sideways scroll and the
   caption under it; VoiceOver reads the caption.
+
+## Pick up (2026-11-08)
+
+The owner asked, 2026-11-08, that the course read-through run from a session on another computer,
+so this section is the whole brief: a session that opens this card cold can start at once. Nothing
+was read or pressed from the session that wrote it. The read comes first; #111's walk
+(`to-dos/training/README.md` § Pick up) follows it, because the switch that walk proves is the one
+the owner presses only after this read.
+
+**The rules, from the owner.** Work in his Chrome on that computer, signed in as the owner, through
+Claude in Chrome: open your own tab, work only in it, never close, select or act in another tab,
+and keep every click inside clicktooling.com. Other sessions may share that Chrome: a View as there
+swaps the whole browser's session for minutes, and a window resize moves every coordinate, so prefer
+element refs over coordinates and hold a write while the tab reads as someone else. Open Settings →
+Release notes first and confirm the top entry is v2.6691 or later; an older one is the stale
+service-worker bundle, so reload until it is current. Every step on a test account or reversible.
+The repo is public: no customer or private name in anything committed.
+
+**Where the course is.** The live page is `/training/intro-to-plumbing`; a course previews while
+it is off, from the dev's Settings → Training (`/settings?tab=settings-training`) through its
+**Preview the course** link (v2.5577) or by the path itself. Its words live in
+`src/content/training/intro-to-plumbing/`: `course.md`, the thirty lessons `01-…` to `30-…`, and
+`final-bank.md`; its drawings are the components under `src/components/training/figures/` named by
+the `{{figure:<name>|<caption>}}` lines. The gates are `src/lib/training/courseContent.test.ts`
+(the shape, the plain words, the trade-word rule, the figure names both ways) and
+`src/lib/training/figures.test.ts`. The plain-words rules are `src/lib/plainWords.ts`.
+
+**The read.** Read every lesson on the live page as a careful plumbing reader would, all five
+sections, the figure and its caption, and the final bank at the end. List each fact, number, code
+reference or drawing label you doubt as one row under a `## Read-through <date>` section on this
+card: the lesson's number and title, the sentence as it stands, and why you doubt it, in one line
+each. The tables under § The outline carry every number the course teaches, so they are the
+checklist; owner's call 5 (the IPC and the UPC give different trap-arm and vent numbers, and the
+owner names the code) is the lens for every code figure, and a drawing whose labels disagree with
+its lesson's words is a row too. Doubt is the bar, not certainty: the list is for the owner's
+correction pass, and a master plumber decides. Fix in place only a plain typo or a sentence that
+breaks `plainWords.ts`, never a fact or a number; a reword never voids a pass, since the content
+version hashes the words (v2.5569). Such a fix is its own small PR with a claimed version
+(`npm run claim`), its release note and its fragment, and the two tests above green.
+
+**Done looks like.** The `## Read-through <date>` section on this card with its rows and the count
+in its first line; the `status` and `next` lines amended, `next` saying the read is done and the
+owner's correction pass and his press to On stay his; a dated line under § Where it stands; the
+card shipped as one docs-only PR (`gh pr create`, `gh pr merge --auto`; no version claim for a
+docs-only change; `npm run check:todos` green), the one press on Auto-fix in the PR bar named in
+the wrap-up for the owner; the second PR for any typo or plain-words fix; a session card dropped in
+the main checkout's `.claude/sessions/active/` while the work runs and removed when it is done
+(`docs/SESSIONS.md`). The report to the owner carries the count of doubted facts and any defect in
+one line each.
+
+## Read-through 2026-11-08
+
+25 doubted facts over the thirty lessons, 43 drawings as placed and the 46-question bank, read as the dev on a dev server (the course was already On on prod, so this was the live course and not a preview; the final check opens only once every lesson is passed, so the bank was read from its file). Each row is the lesson, the sentence as it stands and the doubt, for the owner's correction pass; nothing here rewrites a fact. Owner's call 5 (the IPC and the UPC give different numbers, and the owner names the code) is marked where it is the whole doubt. No typo and no plain-words break was found: `courseContent.test.ts` (300 tests) and `figures.test.ts` are green, so no fix PR was cut.
+
+| # | Lesson | The sentence as it stands | Why it is doubted |
+|---|--------|---------------------------|-------------------|
+| 1 | 1 · Two systems, one house | Traps: "A drain never needs pressure. If someone says a drain is pressurised, something is wrong." | A sewage ejector or grinder pump in a room below the sewer discharges under pressure into a force main, so a pressurised drain line exists in houses. |
+| 2 | 4 · The water heater | The caption "Cold goes in at the bottom through the dip tube." beside the Must know "Cold water enters at the top and drops down a dip tube to the bottom of the tank." | The drawing's label puts "cold in" at the top; the caption reads as if the cold connection were at the bottom, so the caption and the lesson's words say it two ways. |
+| 3 | 7 · PEX | "PEX is rated for 100 psi at 180°F. It is not for the T&P drain line or anything hotter." | The IPC's relief-valve discharge rule (504.6) allows any water-distribution material of Table 605.4, PEX among them; the UPC keeps PEX out of the first 18 in from a heater. Owner's call 5. |
+| 4 | 7 · PEX | "A kinked PEX line is a damaged line. Cut the kink out, never bend it back." and question 4's right answer | PEX-A makers (Uponor) allow a kink to be repaired with a heat gun; the rule as written is PEX-B's. |
+| 5 | 8 · CPVC and the glued joint | "Primer goes on first, on the pipe's outside and the socket's inside. It softens the plastic." | One-step CPVC cement (FlowGuard Gold) is listed with no primer and most house CPVC is joined that way; primer on CPVC is a city's call, not the pipe's. |
+| 6 | 8 · CPVC and the glued joint | "A joint sets in minutes and cures in hours. Wait before you put pressure on it." and Numbers "hours · before pressure" | Makers' cure tables run from 15 minutes to over a day by pipe size, temperature and test pressure; "hours" is one row of that table. |
+| 7 | 8 · CPVC and the glued joint | Question 1's option "Colours the joint purple so the inspector sees it", marked wrong | Lesson 19 teaches that the purple primer shows the inspector the joint was primed, so the option marked wrong is partly true. |
+| 8 | 10 · Valves at the fixture and the hose | "An angle stop sits under every fixture, one on the hot line and one on the cold." and Numbers "1 · angle stop per line" | A tub or shower valve usually has no stop (some have integral stops), so "every fixture" overreaches. |
+| 9 | 10 · Valves at the fixture and the hose | "A frost-proof hose bib has a long stem. Its valve seat sits 8 to 12 in inside the warm wall." and the drawing's "8 to 12 in" | Frost-proof sillcocks come in 4 to 24 in stems by maker, picked to the wall; 8 to 12 is a common pair, not the range. |
+| 10 | 12 · Gravity and slope | "Pipe from 3 in up may run at 1/8 in per ft." and Numbers "1/8 in per ft · allowed from 3 in" | IPC Table 704.1 gives 1/8 in per ft from 3 in; the UPC (708.0) allows 1/8 only for 4 in and larger, and only with approval. Owner's call 5. |
+| 11 | 13 · The trap and its seal | "A plug at the bottom of the bend lets a plumber open the trap without cutting it." and the drawing's "plug" | Tubular P-traps under sinks open at their slip nuts; the bottom plug is on cast or brass traps, so the drawn trap may not be the one the crew meets. |
+| 12 | 14 · Why vents exist, and 30 · The first-timer's mistakes | "The trap arm for a 1-1/2 in trap is at most 6 ft. For a 2 in trap it is 8 ft." (also lesson 14 question 3, the trap-arm drawing, lesson 30's Numbers and its drawing's "9 ft" and "6 ft") | These are IPC Table 909.1; the UPC's Table 1002.2 gives 3 ft 6 in and 5 ft, so under a UPC city both lessons teach a longer arm than the code allows. Owner's call 5. |
+| 13 | 15 · Vent types | The drawing's label "10 ft from the vent or 3 ft below it" beside the words "A vent end stays 10 ft from a window or door, or ends 3 ft above it." | The label puts the window below the vent and the words put the vent above the window; the meaning is the same but the two read differently. |
+| 14 | 15 · Vent types | "A wet vent does two jobs, so it is sized for both. It is a size bigger than the drain alone would be." | The IPC (912.3) sizes a wet vent by its fixture units, 1-1/2 in to 3 in, not one size up from the drain; "a size bigger" is a habit, not the table. |
+| 15 | 16 · The building drain, the sewer and the cleanouts | "The building drain becomes the building sewer 30 in outside the foundation wall." and Numbers "30 in" and question 1 | The 30 in is the IPC's definition; the UPC's building drain ends 2 ft outside the wall. Owner's call 5. |
+| 16 | 16 · The building drain, the sewer and the cleanouts | "Every turn of more than 45° gets one too." and "A straight run gets a cleanout every 100 ft." | Both are the IPC (708.1); the UPC (707) puts a cleanout at each horizontal drain's upper end and where the aggregate change of direction exceeds 135°, so the rule differs by code. Owner's call 5. |
+| 17 | 16 · The building drain, and the bank's question 29 | "A cleanout goes at the base of each stack" and the bank's "What goes at the base of every stack? A cleanout" | The base-of-stack cleanout was the 2012 IPC's 708.3.4 and the 2015 rewrite of 708 dropped the line; whether the code the cities inspect under still requires it is the owner's call. |
+| 18 | 17 · Sanitary tee vs wye | "A double sanitary tee serves two fixtures back to back on one stack." | IPC 706.3 bars a double sanitary tee for back-to-back water closets and pumped fixtures unless each sits 18 in or more from the fitting; a double fixture fitting is used there. |
+| 19 | 19 · PVC, ABS and cast iron | "Cast iron has no hub. It is joined with a no-hub coupling, a rubber sleeve inside a steel band, tightened to 60 in-lb." | Hub-and-spigot cast iron, joined with lead and oakum or a compression gasket, is what older houses have; "has no hub" fits only the modern no-hub kind, two lines after the lesson teaches the hub. |
+| 20 | 20 · A flush | "A new toilet uses 1.6 gal a flush. A WaterSense toilet uses 1.28 gal." with Numbers "1.6 gal · a flush, 1.28 for WaterSense" and question 3's right line "A plain new toilet uses 1.6." | Texas has required 1.28 gal a flush on every toilet sold since 2014-01-01 (HB 2667), so in the company's cities a new toilet is 1.28. |
+| 21 | 23 · A blocked vent | "An air admittance valve, an AAV, is a one-way air valve under a sink. It goes where no pipe can reach the roof." | The IPC (918) allows AAVs; the UPC allows them only where the authority approves, and some Texas cities refuse them. Owner's call 5. |
+| 22 | 27 · Backflow and cross-connection | "The faucet ends above the rim by twice the pipe's width, at least 1 in." and Numbers "an air gap · of twice the pipe's width, at least 1 in" | IPC Table 608.17.1 gives 1 in for a lavatory's 1/2 in opening and 1-1/2 in for a kitchen sink's 3/4 in opening, so "at least 1 in" is the lavatory's number alone. |
+| 23 | 27 · Backflow and cross-connection | "A dishwasher drains through an air gap on the counter or a high loop under it." and the drawing's two panels | The IPC (802.1.6) allows the high loop; the UPC (807.3) requires the air gap fitting, so under a UPC city the left panel is the mistake. Owner's call 5. |
+| 24 | 29 · What the inspector tests | "Or the drains are tested with air at 5 psi for 15 min. The gauge must not move." and the drawing's "drains, air" panel | IPC 312.3 says plastic piping shall not be tested with air, and most DWV is PVC or ABS, so the air test as drawn is for cast iron or copper only. |
+| 25 | 29 · What the inspector tests | "The supply is tested at the working pressure, or with air at 50 psi for 15 min." and Numbers "50 psi · air on the supply" | IPC 312.5 allows the 50 psi air test only on piping other than plastic, so a PEX or CPVC house gets the water test alone; the UPC (609.4) allows 50 psi water or air. |
+
+Read and not doubted: every other number in § The outline's tables, the four tints and the arrows in every drawing against its lesson's words, and the 46 bank questions against the lessons they draw on.
+
+## Where it stands
+
+2026-11-08: at the owner's word the read-through moves to a session on another computer; § Pick up
+above is its brief. No lesson was read on the live page and nothing in the course or in Settings
+was touched from this machine. This line believed the course off and offered as v2.5610 seeded it; it had been On
+since 2026-10-18 (the later line below).
+
+2026-11-08, later: the read is done. A session on another computer read the thirty lessons in order as
+the dev on a dev server, every section, every drawing against its caption and labels, and the
+46-question bank from its file, and listed 25 doubted facts under § Read-through 2026-11-08 above,
+sixteen of them the IPC-or-UPC question of owner's call 5. No typo and no plain-words break turned up,
+so no fix PR was cut; the two content gates are green. Nothing in the course or in Settings was
+touched. The course was not off: `training_courses`, read through the dev seat at 2026-11-08 19:50Z after
+the #111 session noticed, has every course `enabled` since 2026-10-18 16:04Z by a dev account, Intro to
+plumbing offered to all and required of helpers and dev, good for 120 months, with no `training_passes`
+row yet. So the press to On already happened and the read was of a live course. Next is the owner's
+correction pass over the 25 rows; #111's switch proof may run now.

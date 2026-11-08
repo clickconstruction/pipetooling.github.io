@@ -44,6 +44,7 @@ import {
   optoutRecord,
   ownMailboxNote,
   replyRecipient,
+  numberOrder,
   sendWarnings,
   sentCopyNote,
   sentWords,
@@ -144,17 +145,45 @@ describe('the recipient, from the spine’s contact', () => {
     expect(replyRecipient({ ...greg, channels: [stopped] })).toMatchObject({ number: '(210) 555-0113', numberOptedOut: true })
     expect(defaultReplyKind(replyRecipient({ ...greg, channels: [stopped, greg.channels[1]!] }))).toBe('email')
   })
+
+  // Punch list #118: the usual the office starred, else the last the thread carried a line on, else the first that can take a text.
+  it('texts the usual first, else the number the thread last carried a line on, and takes an explicit pick this once', () => {
+    const greg = demo('greg')
+    const land = { id: 'greg-phone', kind: 'phone' as const, value: '(210) 555-0113', optedOutAt: null }
+    const cell = { id: 'greg-cell', kind: 'phone' as const, value: '(210) 555-0199', optedOutAt: null }
+    const two = { ...greg, channels: [land, cell] }
+    const lines = [{ channelId: 'greg-cell', at: '2026-10-01T15:00:00.000Z', direction: 'in' as const }]
+    expect(numberOrder(two).map((c) => c.id)).toEqual(['greg-phone', 'greg-cell'])
+    expect(replyRecipient(two, { lines })).toMatchObject({ number: '(210) 555-0199', numberChannelId: 'greg-cell' })
+    const starred = { ...greg, channels: [{ ...land, usualAt: '2026-10-02T15:00:00.000Z' }, cell] }
+    expect(replyRecipient(starred, { lines })).toMatchObject({ number: '(210) 555-0113', numberChannelId: 'greg-phone' })
+    expect(replyRecipient(starred, { lines, numberChannelId: 'greg-cell' })).toMatchObject({ number: '(210) 555-0199', numberChannelId: 'greg-cell' })
+    // A stopped usual is not usual; a stopped pick is still the pick, and the box says why it cannot go.
+    const stoppedStar = { ...greg, channels: [{ ...land, usualAt: '2026-10-02T15:00:00.000Z', optedOutAt: '2026-10-03T15:00:00.000Z' }, cell] }
+    expect(replyRecipient(stoppedStar, { lines })).toMatchObject({ number: '(210) 555-0199', numberOptedOut: false })
+    expect(replyRecipient(stoppedStar, { lines, numberChannelId: 'greg-phone' })).toMatchObject({ number: '(210) 555-0113', numberOptedOut: true })
+    // A usual address wins over the first.
+    const mails = { ...greg, channels: [{ id: 'm1', kind: 'email' as const, value: 'a@hillside.example', optedOutAt: null }, { id: 'm2', kind: 'email' as const, value: 'b@hillside.example', optedOutAt: null, usualAt: '2026-10-02T15:00:00.000Z' }] }
+    expect(replyRecipient(mails)).toMatchObject({ email: 'b@hillside.example', emailChannelId: 'm2' })
+  })
 })
 
 describe('the from line', () => {
   it('names our number, or our name and the box their answer comes back to, never a person’s own', () => {
     expect(fromLine('text', CLICK)).toEqual(['from the company number (210) 555-0100', 'Click Construction'])
-    expect(fromLine('email', CLICK)).toEqual(['from Click Construction', 'replies to bids@clickconstruction.example'])
+    expect(fromLine('email', CLICK)).toEqual(['from Click Construction', 'bids@clickconstruction.example'])
     expect(fromLine('note', CLICK)).toEqual([])
-    // An email goes from the app's own sending address under our name, with the box as its Reply-To (R6).
+    // An email goes through Gmail as the box, under the person's name with the company's (v2.6702, punch list #207 PR 2).
+    expect(fromLine('email', CLICK, 'Wendi Doll')).toEqual(['from Wendi Doll · Click Construction', 'bids@clickconstruction.example'])
     expect(fromHeader(CLICK)).toBe('Click Construction')
+    expect(fromHeader(CLICK, 'Wendi Doll')).toBe('Wendi Doll · Click Construction')
+    expect(fromHeader(CLICK, '  ')).toBe('Click Construction')
     expect(replyToHeader(CLICK)).toBe('bids@clickconstruction.example')
     expect(emailRepliesNote(CLICK)).toBe('Their answer comes to bids@clickconstruction.example.')
+    // With no box set, the email goes from the app's sending address under the company's name alone.
+    const noBox = { ...CLICK, mailbox: '' }
+    expect(fromLine('email', noBox, 'Wendi Doll')).toEqual(['from Click Construction'])
+    expect(fromHeader(noBox, 'Wendi Doll')).toBe('Click Construction')
   })
 
   it('names the bids number when a text goes from it (R6)', () => {

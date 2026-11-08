@@ -6,6 +6,7 @@ import {
   resolveSubScheduleJobMeta,
   sortSubScheduleBlocksByStart,
   subScheduleJobLabel,
+  withKnownScheduledJobMeta,
 } from './dashboardSubSchedule'
 
 const block = (over: Partial<JobScheduleBlockRow> & { id: string }): JobScheduleBlockRow => ({
@@ -183,5 +184,31 @@ describe('resolveSubScheduleJobMeta', () => {
     expect(
       resolveSubScheduleJobMeta({ job_address: ' 12 Main St ' }, null).job_address,
     ).toBe(' 12 Main St ')
+  })
+})
+
+describe('withKnownScheduledJobMeta', () => {
+  const read = { job_pictures_link: null, hcp_number: '512', click_number: null, job_address: '1407 Cedar Bend Dr' }
+  const known = [
+    { id: 'job-a', hcp_number: '999', job_address: 'Elsewhere' },
+    { id: 'job-b', hcp_number: '1113', click_number: '1113', job_address: '100 Harbor Ln', job_pictures_link: 'https://photos.example/b' },
+    { id: 'job-c', hcp_number: '7', job_address: 'Not on the schedule' },
+  ]
+
+  it('fills a scheduled job the read gave no row for, never replaces one it gave, and adds nothing off the schedule', () => {
+    const meta = new Map([['job-a', read]])
+    const out = withKnownScheduledJobMeta(meta, ['job-a', 'job-b'], known)
+    expect(out.get('job-a')).toBe(read)
+    expect(out.get('job-b')).toEqual({ job_pictures_link: 'https://photos.example/b', hcp_number: '1113', click_number: '1113', job_address: '100 Harbor Ln' })
+    expect(out.has('job-c')).toBe(false)
+    expect(meta.has('job-b')).toBe(false) // the map it was handed is left alone
+  })
+
+  it('hands back the same map when nothing changed', () => {
+    const meta = new Map([['job-a', read]])
+    expect(withKnownScheduledJobMeta(meta, ['job-a'], known)).toBe(meta)
+    expect(withKnownScheduledJobMeta(meta, ['job-z'], known)).toBe(meta)
+    expect(withKnownScheduledJobMeta(meta, ['job-b'], [])).toBe(meta)
+    expect(withKnownScheduledJobMeta(meta, ['job-b'], undefined)).toBe(meta)
   })
 })
