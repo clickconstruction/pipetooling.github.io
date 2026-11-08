@@ -14,7 +14,7 @@ summary: >
   reply box's email through Gmail as the box the answer comes back to, the way the walk kit
   already replies. The rest is the shape of the email and how the app learns of an answer sent
   from a teammate's own mailbox.
-next: BUILT. PR 3 (v2.6731) and the press (v2.6745) are open, the press stacked on PR 3 and armed once PR 3 lands. After PR 3 merges the lead deploys `gmail-sync --no-verify-jwt`; right after the press merges the lead runs `supabase db push` (`check:calls-ahead` labels it). Then Wendi's live checks: one bid request answered from bids@ in Apple Mail, read on the thread a minute later; one answered from wendi@, then **Find my sent mail** → **Tag it** on the thread. `messages-email` was redeployed after PR 2 (`check:edge-drift` on 2026-11-08 named it current).
+next: BUILT. PR 3 (v2.6731) merged 2026-11-08; the lead deploys `gmail-sync --no-verify-jwt`. The press (v2.6745) is open and armed; right after it merges the lead runs `supabase db push` (`check:calls-ahead` labels it). Then Wendi's live checks: one bid request answered from bids@ in Apple Mail, read on the thread a minute later; one answered from wendi@, then **Find my sent mail** → **Tag it** on the thread. `messages-email` was redeployed after PR 2 (`check:edge-drift` on 2026-11-08 named it current).
 size: M (four PRs, S to M; one small migration for the signature's two lines; a second migration only if call 1 picks reading each estimator's own Sent)
 blocker: The owner's calls. Nothing else. Finding 5 is already its own PR.
 ver: v2.5496 · 5504 · 5541 · 5686 · 5699 · 5707 · 5722 · 5739 · 6038 · 6702 · 6731 · 6745
