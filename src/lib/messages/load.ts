@@ -46,6 +46,8 @@ export type MessageRow = Pick<
   auto?: boolean | null
   /** What the reader read from an invitation to bid (v2.6222), for the email viewer's row (v2.6509). Optional: a read may leave it out. */
   invitation?: unknown
+  /** The teammate this text introduced (v2.5590, the bio after a first On my way). Optional: a read may leave it out. */
+  introduces_user_id?: string | null
 }
 
 export interface MessageLoadContext {
@@ -92,6 +94,7 @@ export function threadMessageFromRow(row: MessageRow, ctx: MessageLoadContext = 
     delivery: deliveryOf(row.delivery),
     auto: row.auto === true,
     invitation: row.invitation ?? null,
+    introducesUserId: row.introduces_user_id ?? null,
   }
 }
 

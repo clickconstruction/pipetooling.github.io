@@ -19,3 +19,5 @@ Idempotent: `CREATE OR REPLACE`, `DROP POLICY IF EXISTS` and `CREATE POLICY` by 
 ## After the push
 
 Nothing to regenerate: no column the client reads. The live check: as the dev on a ZZ Test job's Plans section, add a set and an as-built, change the as-built's memo, remove both; `npm run check:migration-drift`.
+
+**Applied** to prod by 2026-11-06, read on 2026-11-07: types regenerated from prod right after this file in #7136 (`chore(types)` after `20261106180000`, 2026-11-06) — the repo's evidence that it was pushed; the dev seat's `check_migration_ledger` was not read in this pass (the connector was not available in the docs worktree), and `check:edge-drift` on 2026-11-07 found every function deployed, 15 of them on `_shared` code older than `main` after #7159 / #7166 (a redeploy owed, not a migration matter).

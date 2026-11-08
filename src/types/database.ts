@@ -14346,6 +14346,7 @@ export type Database = {
           template_id: string | null
           template_lines: Json | null
           template_name: string | null
+          template_rows: Json | null
           template_used_on: string | null
           updated_at: string
         }
@@ -14362,6 +14363,7 @@ export type Database = {
           template_id?: string | null
           template_lines?: Json | null
           template_name?: string | null
+          template_rows?: Json | null
           template_used_on?: string | null
           updated_at?: string
         }
@@ -14378,6 +14380,7 @@ export type Database = {
           template_id?: string | null
           template_lines?: Json | null
           template_name?: string | null
+          template_rows?: Json | null
           template_used_on?: string | null
           updated_at?: string
         }
@@ -18246,6 +18249,14 @@ export type Database = {
       }
       job_budgets: {
         Row: {
+          awarded_at: string | null
+          awarded_by: string | null
+          awarded_detail: Json | null
+          awarded_kind: string | null
+          awarded_labor_hours: number | null
+          awarded_labor_usd: number | null
+          awarded_materials_usd: number | null
+          awarded_total_direct_usd: number | null
           bid_id: string | null
           bid_version_id: string | null
           completeness: Json
@@ -18265,6 +18276,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          awarded_at?: string | null
+          awarded_by?: string | null
+          awarded_detail?: Json | null
+          awarded_kind?: string | null
+          awarded_labor_hours?: number | null
+          awarded_labor_usd?: number | null
+          awarded_materials_usd?: number | null
+          awarded_total_direct_usd?: number | null
           bid_id?: string | null
           bid_version_id?: string | null
           completeness?: Json
@@ -18284,6 +18303,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          awarded_at?: string | null
+          awarded_by?: string | null
+          awarded_detail?: Json | null
+          awarded_kind?: string | null
+          awarded_labor_hours?: number | null
+          awarded_labor_usd?: number | null
+          awarded_materials_usd?: number | null
+          awarded_total_direct_usd?: number | null
           bid_id?: string | null
           bid_version_id?: string | null
           completeness?: Json
@@ -18303,6 +18330,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "job_budgets_awarded_by_fkey"
+            columns: ["awarded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "job_budgets_bid_id_fkey"
             columns: ["bid_id"]
@@ -37980,6 +38014,18 @@ export type Database = {
         Args: { p_estimate_id: string }
         Returns: string
       }
+      award_job_baseline: {
+        Args: {
+          p_bid_id?: string
+          p_book?: Json
+          p_job_id: string
+          p_labor_hours?: number
+          p_labor_rate?: number
+          p_note?: string
+          p_source: string
+        }
+        Returns: Json
+      }
       back_done: { Args: { p_note_id: string }; Returns: undefined }
       backfill_ar_applied_income_labels: {
         Args: { p_dry_run?: boolean }
@@ -43241,6 +43287,15 @@ export type Database = {
       set_back_day: {
         Args: { p_note_id: string; p_on: string; p_words?: string }
         Returns: undefined
+      }
+      set_book_job_budget: {
+        Args: {
+          p_book?: Json
+          p_job_id: string
+          p_labor_hours: number
+          p_labor_rate: number
+        }
+        Returns: Json
       }
       set_cashapp_alias: {
         Args: {

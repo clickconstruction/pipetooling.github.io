@@ -130,4 +130,4 @@ A file picked off your desk is read in your browser. Nothing leaves it until you
 
 ## Keeping the summary fresh
 
-When you add entries, the summary falls behind. The person's dot turns amber. The Summary view shows how many entries it has not covered. You ask the agent to bring the file current. It rewrites the summary and extends the narrative from the raw entries.
+When you add entries, the summary falls behind. The person's dot turns amber. The Documents view shows how many entries it has not covered. You ask the agent to bring the file current. It rewrites the summary and extends the narrative from the raw entries.

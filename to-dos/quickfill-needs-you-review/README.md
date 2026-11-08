@@ -17,7 +17,7 @@ summary: >
   assistant's lines and the owner's lines stop sharing one list, and the round ends on a
   close sheet the owner can read from the Dashboard.
 next: the owner's two clicks (decisions 4 and 5) and decisions 6, 8 and 9; after a week of rounds, read the outcomes against the eight weeks here (the share of presses under 20 seconds, the questions filed), then delete this folder
-size: change 1 one PR with a migration · change 2 one PR · change 3 a train of three · change 4 hours · change 5 one PR
+size: change 1 one PR with a migration · change 2 one PR · change 3 a train of three · change 4 hours · change 5 one PR, all built; left: the owner's picks and the outcomes read (XS)
 blocker: the owner's picks
 ver: v2.5837, v2.5839, v2.5841, v2.5843, v2.5844, v2.5845, v2.5868
 opinion: do changes 1, 2 and 4 first, in that order; they fix the stamp without moving a line; change 3 is the owner's thesis in code and earns its train once 1 and 2 have shown what the assistant actually works

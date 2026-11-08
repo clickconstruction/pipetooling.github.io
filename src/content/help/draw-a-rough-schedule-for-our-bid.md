@@ -16,9 +16,12 @@ Only devs can open the schedule for now. The rest of the office gets the Schedul
 2. Press {{button:outline|Schedule}} on the card of a job we are bidding.
 3. Pick the day work would start under **If work starts**.
 4. Pick a template under **Start from a template** if one fits. The line under it says how much it covers.
+   A template made on the Templates page says which rows land on this job and the weeks it makes.
 5. Press {{button:blue|Draw a rough schedule}}.
 
 The card shows one row per stage, with its days, its dates and its bar. The weeks to build sit at the top. Nothing on the rough goes to the trades or the customer.
+
+A template with rows draws every row from the start day. The rough keeps its own copy of the rows. A later change to the template does not move the bid.
 
 ## Change a stage's days
 
@@ -32,4 +35,4 @@ If the card says the weeks were not kept, open the schedule. Press **Keep the we
 
 ## When we win
 
-The first draft starts from the rough. The first draft takes the rough's start day and its stage days. The card says how the first draft compares to the weeks we bid.
+The first draft starts from the rough. The first draft takes the rough's start day and its stage days. A rough drawn from a template draws the first draft from the same copy. The card says how the first draft compares to the weeks we bid.

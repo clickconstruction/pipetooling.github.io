@@ -18,9 +18,8 @@ import { ADDED_WHO, OFFICE_WHO } from './addedActivity'
 import { SCHEDULE_STAGES, lineStage, scheduleDraft } from './draft'
 import { isWeekend } from './network'
 import { cleanPlace, keptPlaces, placeProblem } from './places'
-import { drawWeeks } from './rough'
-import { daysBetween, scheduleLinesOf } from './schedule'
-import type { ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScheduleTemplate, TemplateLine, TemplatePhase, TemplateRow, TemplateWho } from './types'
+import { daysBetween, drawWeeks, scheduleLinesOf } from './schedule'
+import type { ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScheduleTemplate, TemplateLine, TemplatePhase, TemplateRow, TemplateRowsShape, TemplateWho } from './types'
 import { addDays } from '../building'
 import type { GcProject } from '../types'
 import { weekdayDate } from '../words'
@@ -63,12 +62,8 @@ export function findRow(rows: TemplateRow[], ref: string): TemplateRow | null {
 // Every template read as rows
 // ---------------------------------------------------------------------------------------------
 
-/** A template's phases and rows, and how it counts days: what every reader of a template takes. */
-export interface TemplateRowsShape {
-  phases: TemplatePhase[]
-  rows: TemplateRow[]
-  workingDays: boolean
-}
+/** A template's phases and rows, and how it counts days: what every reader of a template takes. In `types.ts` since #210, so the rough keeps a copy without reading the builder. */
+export type { TemplateRowsShape } from './types'
 
 /** The stage one of the first draft's inspections is drawn in. Null: not one of the two. */
 function inspectionStage(label: string): string | null {

@@ -7,3 +7,5 @@ PR 3a of punch list #269. A legal matter that stands on a person instead of a Co
 - `legal_person_matter_open(p_person_id, p_handling_name)` (devs only): opens the matter — stage `review`, nothing released, the person's name as `payer_name` — or returns the one that stands; replies `{ ok, matter_id, stage, closed, made, person_name }`.
 
 No table is created, so no fence calls. Apply order: **push right after the merge** — the Matter view reads `legal_matters` by `person_id` (a filter on a column that is not there is refused, which the view reads as no matter, so the old client stands), and Open a matter… calls the new function.
+
+**Applied** to prod by 2026-11-06, read on 2026-11-07: types regenerated from prod through #7112 (`chore(types)` after `20261106040000`, 2026-11-06) with this file already on `main` — the repo's evidence that it was pushed; the dev seat's `check_migration_ledger` was not read in this pass (the connector was not available in the docs worktree), and `check:edge-drift` on 2026-11-07 found every function deployed, 15 of them on `_shared` code older than `main` after #7159 / #7166 (a redeploy owed, not a migration matter).

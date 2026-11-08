@@ -2,8 +2,9 @@
  * GC mode, the real build, the schedule's PR 1b: a rough schedule while we bid (G-45), moved word for word from the GC mode prototype
  * (branch spike/gc-mode, `gcRoughSchedule.ts`).
  */
+import { rowsDraft } from './builder'
 import { SCHEDULE_STAGES, lineStage, scheduleDraft } from './draft'
-import { daysBetween, scheduleLinesOf } from './schedule'
+import { drawWeeks, scheduleLinesOf } from './schedule'
 import type { ProjectSchedule, RoughSchedule } from './types'
 import type { GcProject } from '../types'
 import { weekdayDate } from '../words'
@@ -12,22 +13,19 @@ function weeksWords(n: number): string {
   return `${n} ${n === 1 ? 'week' : 'weeks'}`
 }
 
-/** The rough's draw: the first draft's kernel on the trades' lines, from the rough's start, with the job's stage days, and its copy of a template's lines when it was drawn from one (G-44). Null: none drawn. */
+/**
+ * The rough's draw: the first draft's kernel on the trades' lines, from the rough's start, with the job's stage days, and
+ * its copy of a template's lines when it was drawn from one (G-44). From a rows template (#210): every row of the copy
+ * lands from the start as the first draft draws it (`rowsDraft`), with the stage days for the lines in no row. Null: none drawn.
+ */
 export function roughDraw(project: GcProject): ProjectSchedule | null {
   const r = project.rough
-  return r ? scheduleDraft(project, r.start, r.days, r.like) : null
+  if (!r) return null
+  return r.rows ? rowsDraft(project, r.start, r.rows, r.days) : scheduleDraft(project, r.start, r.days, r.like)
 }
 
-/** A draw's length: its first day of work to substantial completion (else its last day), rounded up to whole weeks. Null: nothing drawn. */
-export function drawWeeks(schedule: ProjectSchedule): { weeks: number; days: number; start: string; finish: string } | null {
-  const first = schedule.activities[0]
-  if (!first) return null
-  const start = schedule.activities.reduce((m, a) => (a.start < m ? a.start : m), first.start)
-  const last = schedule.activities.reduce((m, a) => (a.finish > m ? a.finish : m), first.finish)
-  const finish = schedule.milestones.find((m) => /substantial completion/i.test(m.label))?.planned ?? last
-  const days = daysBetween(start, finish) + 1
-  return { weeks: Math.ceil(days / 7), days, start, finish }
-}
+/** A draw's length in whole weeks. In `schedule.ts` since #210, so the builder reads it without this file; every reader here still finds it. */
+export { drawWeeks } from './schedule'
 
 /** The weeks to build on the rough, and whether they are kept as they went with the bid. */
 export interface RoughWeeks {

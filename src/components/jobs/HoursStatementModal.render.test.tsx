@@ -170,10 +170,20 @@ describe('the Hours statement window (punch list #212, PR 2)', () => {
     const charged = screen.getByTestId('hours-statement-charged') as HTMLInputElement
     expect(charged.disabled).toBe(true)
     expect(screen.getByTestId('hours-statement-sheet-note').textContent).toBe('A sub’s sheet is agreed work, so the paper reads the sheet’s lines as paid.')
-    // Back to a clock person: the switch is theirs again.
+    // The sub's company on the attestation (the card's last residual): typed for a sheet paper, saved as labor_company and in the snapshot's worker.
+    saveSpy.mockClear()
+    fireEvent.change(screen.getByLabelText('Company'), { target: { value: ' Whitfield Plumbing LLC ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save a draft' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(1))
+    const saved = saveSpy.mock.calls[0]![0]
+    expect(saved.laborCompany).toBe('Whitfield Plumbing LLC')
+    expect(saved.snapshot.worker.company).toBe('Whitfield Plumbing LLC')
+    expect(saved.snapshot.input.worker.company).toBe('Whitfield Plumbing LLC')
+    // Back to a clock person: the switch is theirs again, and the company field is gone.
     fireEvent.change(who, { target: { value: 'u-lena' } })
     await waitFor(() => expect(loadSpy).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u-lena', kind: 'clock' })))
     expect((screen.getByTestId('hours-statement-charged') as HTMLInputElement).disabled).toBe(false)
+    expect(screen.queryByLabelText('Company')).toBeNull()
   })
 
   it('Save a draft writes the row with the read as its snapshot and mints the record id; the paper then carries it', async () => {

@@ -68,7 +68,10 @@ inbox instead of the company number or the office's box (§ 4).
   send window's confirm, and every hold (no mobile, STOP, texts off, paused, a prospect not asked).
 - **The sends.** `quo-send` texts from the box's number, which is the company number until a box
   has its own, and writes the line tied to the job. `messages-email` emails under our letterhead,
-  with its Reply-To the office's box (R6), writes the line and files the sent copy.
+  with its Reply-To the office's box (R6), writes the line and files the sent copy. Neither send,
+  nor the Tell the customer sheet's (v2.5681) nor the estimate email's (v2.6658), stamps the line's
+  `step_key`; the step chip drawn on Went out's rows in punch list #139's mock-up waits until the
+  send path does (carried here from #139 at its close, 2026-11-07).
 
 ## 1 · The row's box: three options
 

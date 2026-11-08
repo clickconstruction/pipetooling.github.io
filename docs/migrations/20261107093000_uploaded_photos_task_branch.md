@@ -7,3 +7,5 @@ The last piece v2.6602 named: the gallery on Documents → Photos did not read a
 - **No table is made**, so the fence calls are not needed; nothing here writes. The `photo-save` cron already names `task_photos` (`20261106230000`).
 
 Apply order: the client reads only columns the view already has, so a client ahead of the push lists no task photos and breaks nothing; `check:calls-ahead` labels the PR for the view it replaces. Push after the merge; no types regen (the view's columns are unchanged).
+
+**Applied** to prod on 2026-11-07, read the same day: `npm run check:migration-drift` from the docs worktree read 1153 local files and 1153 remote versions, fully applied, this file among them (a view with the same columns, so no types regenerated for it).

@@ -38,7 +38,7 @@ In the **Plan** view's header, **N assigned** and **N unstaffed** are tappable. 
 
 Tap the **title itself**. The faint ✎ marks it. Type, and press **Enter**. Esc cancels. Editors only.
 
-## The dock — Mark done, Pin, Delete
+## The dock — Set the %, Done, Pin, Delete
 
 Everything you press lives in one **dock at the bottom of the card**, the same on phone and desktop:
 
@@ -46,7 +46,7 @@ Everything you press lives in one **dock at the bottom of the card**, the same o
 - The **☆ square** pins the task. The square shows an amber ★ when pinned. The task jumps to the top of its lane on the Plan's ⚡ Next up shortlist.
 - The **🗑 square** starts the two-step delete: {{button:red|Delete permanently}} or **Keep it**. Completed history always stays.
 
-Editors see all three. An assignee sees Mark done when the stage is unlocked. The card opens from the Map, Plan and Next up. The card also opens from the Review tab's Goals ledger and the "Where this task fits" window.
+Editors see all three. An assignee sees Set the % and ✓ Done when the stage is unlocked. The card opens from the Map, Plan and Next up. The card also opens from the Review tab's Goals ledger and the "Where this task fits" window.
 
 ## On a phone in the field
 

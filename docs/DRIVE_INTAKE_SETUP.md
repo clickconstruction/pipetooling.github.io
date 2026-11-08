@@ -5,7 +5,7 @@ file: docs/DRIVE_INTAKE_SETUP.md
 type: Runbook / Setup
 purpose: One-time Google setup for the drive-intake edge function (estimator-twin pipeline Wave 4.4) — a SERVICE ACCOUNT, never a user password. Five minutes in console.cloud.google.com, two supabase secrets, one deploy.
 audience: Owner, Developers
-last_updated: 2026-11-04
+last_updated: 2026-11-07
 ---
 
 Why a service account: the function needs a robot identity that can write ONE shared
@@ -147,13 +147,25 @@ the agent that a person can drop the file into the division folder and press Fin
 
 A person's evidence (People → HR, the person file, `HR_FILES.md` → Evidence) is filed by `hr-evidence-drive` under the
 **People folder** the office sets on Documents → Where files go (`drive_people_folder_id`), as *<People folder> › <Person's
-name> › <YYYY-MM-DD · title> › the files*. **It lives in a Shared Drive of its own** (the owner's call, 2026-11-02): the
+name> › <YYYY-MM-DD · title> › the files* (a file linked from Drive, v2.6541, stays where it already is; a counsel-only record, v2.6554, is never filed). **It lives in a Shared Drive of its own** (the owner's call, 2026-11-02): the
 Jobs drive's members would read the evidence there while the app keeps it dev-only, so `set.people` refuses a folder whose
 Shared Drive is the jobs root's. One-time setup, by a person (the SA cannot make a Shared Drive): a licensed
 clickplumbing.com user makes Shared Drive **PipeTooling People**, adds the owner as Manager and the SA
 (`drive-intake@pipetooling-drive.iam.gserviceaccount.com`) as Content manager and nobody else, opens the drive and pastes
 its link on the People folder card (the drive's own id serves as the folder), presses Check, then Use this folder. The same
 SA, key and secrets; nothing new to set up on the functions.
+
+## The machines' check photos (v2.6556, v2.6564)
+
+A machine's pre-use check photos (punch list #270) are filed by `photo-save`'s sixth pass (`sweepMachinePhotos`) into a folder
+of the machine's own, *E-12 · Kubota KX040* or *Rental · Sunbelt 48812-3 · Bobcat E35* (`_shared/machineWords.ts`), found or
+made under the **Fleet folder** the office sets on Documents → Where files go (`drive_fleet_root_folder_id`, read with the
+other Drive settings in `_shared/driveSettings.ts`); the link is kept on `vehicles.google_drive_link`. Unlike the company
+and People folders, which are pasted, the Fleet folder gets a press: **Make the Fleet folder** has the SA make *PipeTooling
+Fleet* beside the Jobs folder in the jobs root's Shared Drive (`job-drive-folders` → `make: 'fleet'`, v2.6564), refusing a
+root in a My Drive, where the account cannot own a file (`fleet_needs_shared_drive`); a pasted link is checked for the write
+as the others are. Until a Fleet folder is set every machine photo waits with the reason on its row (`NO_FLEET_FOLDER_WORDS`)
+and files on the next pass once one is. The same SA, key and secrets; nothing new to set up on the functions.
 
 ## Our own OCR (punch list #240, PR 3, v2.6336)
 
