@@ -356,7 +356,7 @@ describe('gmail-mine: list', () => {
       0,
       mail('g-priya-2', 't-priya', '2026-11-01T15:30:00.000Z', { From: 'Priya Nair <priya@cedarbend.example>', Subject: 'Re: Clubhouse walk', 'Message-ID': '<priya-2@cedarbend.example>' }, 'Tuesday at 9 then.'),
     )
-    google.boxes[MARISOL] = { mails: page, labels: [{ id: 'INBOX', name: 'INBOX' }], pages: { '': { ids: page.map((m) => m.id), next: null } } }
+    google.boxes[MARISOL] = { mails: page, labels: [{ id: 'INBOX', name: 'INBOX' }], pages: { '': { ids: page.map((m) => m.id) } } }
     const res = await post('marisol-jwt', { action: 'list', view: 'all' })
     expect(res.status).toBe(200)
     const by = Object.fromEntries((res.body.rows as Row[]).map((r) => [r.gmailId, r]))
