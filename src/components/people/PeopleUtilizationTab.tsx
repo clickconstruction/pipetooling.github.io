@@ -173,6 +173,8 @@ export default function PeopleUtilizationTab({ authRole, authUserId, io: ioIn }:
 
   // An assistant's window is the Hours tab's: never more weeks than the setting allows.
   const weeksAllowed = authRole === 'assistant' && assistantWeeks > 0 ? Math.min(weeks, assistantWeeks) : weeks
+  // The pressed chip names the window on screen; a cap that is not one of the choices gets its own chip, so the row never reads 8 weeks over 3.
+  const weekChoices: readonly number[] = authRole === 'assistant' && assistantWeeks > 0 && !WEEK_CHOICES.some((n) => n === assistantWeeks) ? [assistantWeeks, ...WEEK_CHOICES] : WEEK_CHOICES
 
   // The window narrows once the viewer's role and the assistant setting arrive, and the wider read
   // (more sessions) answers after the narrower one; only the newest read may land.
@@ -360,8 +362,8 @@ export default function PeopleUtilizationTab({ authRole, authUserId, io: ioIn }:
           <span style={MUTED}>The hours people said they can work in a week, against what the clock recorded. A day over {UTILIZATION_LONG_DAY_HOURS} hours is a long day. The week is Sunday to Saturday.</span>
         </div>
         <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {WEEK_CHOICES.map((n) => (
-            <button key={n} type="button" style={CHIP(weeks === n)} aria-pressed={weeks === n} onClick={() => setWeeks(n)} disabled={authRole === 'assistant' && assistantWeeks > 0 && n > assistantWeeks}>
+          {weekChoices.map((n) => (
+            <button key={n} type="button" style={CHIP(weeksAllowed === n)} aria-pressed={weeksAllowed === n} onClick={() => setWeeks(n)} disabled={authRole === 'assistant' && assistantWeeks > 0 && n > assistantWeeks}>
               {n} weeks
             </button>
           ))}
