@@ -61,7 +61,7 @@ describe("JobCostsVerdict · the second walk's slips (punch list #234)", () => {
     const r = render(<JobCostsVerdict verdict={v} canWrite budget={b} linkedBid={bid398} onOpenBidCounts={null} doorway={null} kept={kept} jobFinished={false} isProject bookRateUsd={45} />)
     const strip = screen.getByTestId('baseline-strip-none')
     expect(strip.textContent).not.toContain('sent without hours')
-    expect(strip.textContent).toContain('No baseline for this job yet — bid B398 has hours on its Labor rows and is not taken yet.')
+    expect(strip.textContent).toContain('This job has no baseline yet — bid B398 has hours on its Labor rows and is not taken yet.')
     const take = screen.getByRole('button', { name: "Take B398's estimate · 70 h" })
     expect(take.title).toContain("company's $45 rate")
     take.click()
@@ -69,7 +69,7 @@ describe("JobCostsVerdict · the second walk's slips (punch list #234)", () => {
     r.unmount()
     // No company rate either: the reason is the rate, in words, and no press.
     render(<JobCostsVerdict verdict={v} canWrite budget={b} linkedBid={bid398} onOpenBidCounts={null} doorway={null} kept={kept} jobFinished={false} isProject bookRateUsd={null} />)
-    expect(screen.getByTestId('baseline-strip-none').textContent).toContain('No baseline for this job yet — B398 has hours on its Labor rows but no labor rate.')
+    expect(screen.getByTestId('baseline-strip-none').textContent).toContain('This job has no baseline yet — B398 has hours on its Labor rows but no labor rate.')
     expect(screen.queryByRole('button', { name: /Take B398's estimate/ })).toBeNull()
   })
 
@@ -77,7 +77,7 @@ describe("JobCostsVerdict · the second walk's slips (punch list #234)", () => {
     const b = { ...budget, linkedBreakdown: { ...noRate, labor_hours: 0, completeness: { rows_total: 0, rows_with_hours: 0, rate_set: true, materials_source: 'none', usable: false } } } as unknown as JobBudgetState
     render(<JobCostsVerdict verdict={buildCostsVerdict({ ...base, spend: noSpend, teamHours: 0, teamPeople: 0, bidLabel: '398' })} canWrite budget={b} linkedBid={bid398} onOpenBidCounts={null} doorway={null} kept={kept} jobFinished={false} bookRateUsd={45} />)
     const strip = screen.getByTestId('baseline-strip-none')
-    expect(strip.textContent).toContain('No baseline for this job yet — B398 has no Labor rows yet.')
+    expect(strip.textContent).toContain('This job has no baseline yet — B398 has no Labor rows yet.')
     expect(strip.textContent).toContain('B398 has no Labor rows yet. Add them on its Labor tab and take it again.')
   })
 })

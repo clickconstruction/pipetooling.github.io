@@ -214,7 +214,7 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
       ) : (
         <div style={{ border: '1px solid #f59e0b', background: 'var(--bg-amber-100)', borderRadius: 8, padding: '0.6rem 0.8rem', display: 'grid', gap: '0.4rem' }} data-testid="baseline-strip-none">
           {/* The reason is the bid's, read as the Labor tab reads it: no Labor rows, thin hours, or no rate anywhere — never "sent without hours" over rows that carry them. */}
-          <b style={{ fontSize: '0.9rem' }}>{linkedBid ? `No baseline for this job yet — ${bidWhyNot ? bidWhyNot.replace(/\.$/, '') : bidUsable ? `bid ${b.bidLabel} has hours on its Labor rows and is not taken yet` : `bid ${b.bidLabel} could not be read`}.` : 'No baseline for this job yet — no bid is linked.'}</b>
+          <b style={{ fontSize: '0.9rem' }}>{linkedBid ? `This job has no baseline yet — ${bidWhyNot ? bidWhyNot.replace(/\.$/, '') : bidUsable ? `bid ${b.bidLabel} has hours on its Labor rows and is not taken yet` : `bid ${b.bidLabel} could not be read`}.` : 'This job has no baseline yet — no bid is linked. Link the bid below, or type a budget.'}</b>
           {isProject ? (
             <div style={{ display: 'flex', gap: '0.5rem 0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem' }} data-testid="baseline-award-late">
               <span>A project, made before baselines were written at award.{bookNow && bookBaselineUsable(bookNow, v.priceUsd) ? ` The book says ${h0(bookNow.impliedHours!)} (${bookBaselineWhy(bookNow, v.priceUsd)})` : ''}</span>
