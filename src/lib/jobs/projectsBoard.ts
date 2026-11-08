@@ -171,7 +171,8 @@ export function projectPace(args: {
     target: t ? { by: t.by, at: t.at, from: t.from, why: t.why } : null,
     // The line reads only the ratio: the read's percent, over a budget of 100.
     money: job.spentPct != null ? { spentUsd: job.spentPct, budgetUsd: 100 } : null,
-    plannedFinishYmd: null,
+    // The planned finish frozen at award (punch list #234 PR 2), when the read carries one.
+    plannedFinishYmd: job.plannedFinish ?? null,
     checklist: args.checklist,
     certifiedPct: null,
   }

@@ -66,6 +66,8 @@ export type JobBudgetState = {
   setBook: (args: { laborHours: number; laborRate: number | null; book: Record<string, unknown> }) => Promise<boolean>
   /** The award press: the live row by its source, then the award stamped once (`award_job_baseline`). */
   award: (args: AwardBaselineRpcArgs) => Promise<boolean>
+  /** The planned finish on a project that has a baseline (PR 2); `replace` rewrites one already frozen. */
+  setPlanned: (args: { source: 'rough' | 'assumed' | 'typed'; start: string | null; finish: string; detail?: Record<string, unknown>; replace?: boolean }) => Promise<boolean>
   setTyped: (args: { laborHours: number; laborRate: number | null; materialsUsd: number; subsUsd: number; otherUsd?: number; note?: string | null }) => Promise<boolean>
   clear: () => Promise<boolean>
 }
@@ -173,5 +175,15 @@ export function useJobBudget(jobId: string | null, linkedBidId: string | null, e
     [run, jobId],
   )
 
-  return { loading, busy, error, row, candidates, linkedBreakdown, reload, linkAndSnapshot, setTyped, clear, setBook, award }
+  const setPlanned = useCallback(
+    (args: { source: 'rough' | 'assumed' | 'typed'; start: string | null; finish: string; detail?: Record<string, unknown>; replace?: boolean }) =>
+      run(async () => {
+        const res = await supabase.rpc('set_job_planned_finish' as never, { p_job_id: jobId!, p_source: args.source, p_start: args.start, p_finish: args.finish, p_detail: args.detail ?? {}, p_replace: args.replace ?? false } as never)
+        if (!res.error) window.dispatchEvent(new Event(JOB_BUDGET_CHANGED_EVENT))
+        return res
+      }, 'Could not write the planned finish'),
+    [run, jobId],
+  )
+
+  return { loading, busy, error, row, candidates, linkedBreakdown, reload, linkAndSnapshot, setTyped, clear, setBook, award, setPlanned }
 }

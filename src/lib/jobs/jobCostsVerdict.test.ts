@@ -73,6 +73,10 @@ describe('buildCostsVerdict', () => {
     expect(w.sections.find((s) => s.key === 'labor')!.budgetWords).toBe('≈ the book')
     expect(baselineHeadWords(w.baseline)).toBe('≈ Baseline assumed from the book at award · 470 h')
     expect(baselineFrozenWords(w.baseline, (iso) => iso.slice(0, 10))).toBe('Frozen 2026-11-01 · 4.2 h per $1k × $112,000 · 12 similar projects · a guess, read as one')
+    // The plan frozen beside it (PR 2) closes the line.
+    const planned = buildCostsVerdict({ ...base, burn: { ...burn, percentDone: 50 }, priceUsd: 112_000, teamHours: 212, resolved: book, bidLabel: '917', budgetRow: { ...row, planned_finish: '2026-12-02', planned_source: 'assumed', planned_start: '2026-11-01', planned_detail: { working_days: 20, crew_hours_per_day: 24 } } })
+    expect(planned.baseline.planned).toMatchObject({ finishYmd: '2026-12-02', source: 'assumed', startYmd: '2026-11-01' })
+    expect(baselineFrozenWords(planned.baseline, (iso) => iso.slice(0, 10))).toBe('Frozen 2026-11-01 · 4.2 h per $1k × $112,000 · 12 similar projects · a guess, read as one · planned finish Dec 2, assumed (20 working days at 24 h a day)')
     expect(baselineReadWords(w.baseline, 50)).toBe("45% of the baseline's hours at 50% done · on the baseline")
     expect(baselineScoreWords(w.baseline)).toBe("The superintendent's line draws grey. The score skips this job until a bid or typed baseline replaces it.")
   })

@@ -155,6 +155,8 @@ export type AwardBaselineRpcArgs = {
   p_labor_rate: number | null
   p_book: Record<string, unknown>
   p_note: string | null
+  /** The planned start and finish (PR 2); omitted or null leaves the job without one. */
+  p_planned?: { source: 'rough' | 'assumed' | 'typed'; start: string | null; finish: string; detail: Record<string, unknown> } | null
 }
 
 /** The `award_job_baseline` call for a pick; null when the pick cannot be written (a dead source). */

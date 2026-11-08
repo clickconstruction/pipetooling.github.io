@@ -16,6 +16,8 @@ export type ProjectBoardJob = ProjectRow & {
   /** The Costs baseline's kind and hours; null with no baseline. */
   budgetKind: string | null
   budgetHours: number | null
+  /** The planned finish frozen at award (punch list #234 PR 2), `YYYY-MM-DD`; null with none, or a function older than it. Optional, so a fixture built before it still fits. */
+  plannedFinish?: string | null
   labor: ProjectLaborRow[]
   values: ProjectValueRow[]
   /** The blended spend as a whole percent of the money budget; null with no money budget. */
@@ -55,6 +57,7 @@ function parseJob(raw: unknown): ProjectBoardJob | null {
     fixtures: arr(j.fixtures) as ProjectFixture[],
     budgetKind: str(j.budget_kind),
     budgetHours: num(j.budget_hours),
+    plannedFinish: str(j.planned_finish),
     labor: arr(j.labor).flatMap((r) => {
       const l = obj(r)
       const ymd = str(l.ymd)

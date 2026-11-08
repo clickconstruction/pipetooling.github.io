@@ -17,6 +17,7 @@
  */
 import type { JobBurnModel } from './jobBurn'
 import { componentBurn, jobBudgetAwardOf, jobBudgetBookDetailOf, type JobBudgetAward, type JobBudgetAwardColumns, type JobBudgetBookDetail, type JobBudgetRowLike, type ResolvedJobBudget, type SpendByComponent } from './jobBudget'
+import { jobPlannedOf, jobPlannedWords, type JobPlanned, type JobPlannedColumns } from './plannedFinish'
 import { pricedMarginPartialWords, pricedMarginPctWords, pricedVsDirectWords, type BidPricedMargin } from '../bids/pricedMargin'
 
 export type VerdictMoney = { usd: number; pct: number | null }
@@ -90,6 +91,8 @@ export type CostsBaseline = {
   book: JobBudgetBookDetail | null
   /** The frozen award, when the job was awarded with one; the score reads this, never the live row. */
   award: JobBudgetAward | null
+  /** The planned start and finish frozen at award (PR 2); null when none was written. */
+  planned: JobPlanned | null
   teamHours: number
   people: number | null
   hoursPerThousand: number | null
@@ -125,7 +128,7 @@ export function buildCostsVerdict(args: {
   /** The linked bid's priced-margin stamp (v2.5043); null / omitted with none. */
   priced?: BidPricedMargin | null
   /** The raw `job_budgets` row (punch list #234 PR 1a): the award snapshot and a book row's reading come off it. */
-  budgetRow?: (JobBudgetRowLike & JobBudgetAwardColumns) | null
+  budgetRow?: (JobBudgetRowLike & JobBudgetAwardColumns & JobPlannedColumns) | null
 }): CostsVerdict {
   const { burn: m, priceUsd, spend, resolved: r } = args
   const c = r.components
@@ -190,6 +193,7 @@ export function buildCostsVerdict(args: {
       note: r.note,
       book: r.source === 'book' ? jobBudgetBookDetailOf(args.budgetRow?.completeness) : null,
       award: jobBudgetAwardOf(args.budgetRow),
+      planned: jobPlannedOf(args.budgetRow),
       teamHours: args.teamHours,
       people: args.teamPeople,
       hoursPerThousand: priceUsd != null && priceUsd > 0 && args.teamHours > 0 ? args.teamHours / (priceUsd / 1000) : null,
@@ -273,6 +277,7 @@ export function baselineFrozenWords(b: CostsBaseline, fmtDay: (iso: string) => s
   } else if (b.award && b.award.kind !== 'bid') {
     parts.push(`awarded on ${b.award.kind === 'book' ? "the book's" : 'a typed'} ${h0(b.award.laborHours)}, the score keeps that`)
   }
+  if (b.planned) parts.push(jobPlannedWords(b.planned))
   return parts.join(' · ')
 }
 
