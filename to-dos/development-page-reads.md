@@ -2,7 +2,7 @@
 name: "Development page: two reads the Gun Dog spike left for later"
 number: 280
 group: residual
-status: measured 2026-11-08 (the figures below); PR 1 the heads view built the same day as v2.6735, waiting on the merge, the push and the after measurement; PR 2 next
+status: measured 2026-11-08 (the figures below); PR 1 the heads view built the same day as v2.6735 and PR 2 the payers' pace as v2.6739 (stacked on PR 1), both waiting on the merge, the push and the after measurement
 summary: >
   The Gun Dog spike (punch list #208, 2026-11-02) cut the Development page's read from seven
   round trips to four and left two reads as they were. The pay-speed read for the Money look's
@@ -11,12 +11,12 @@ summary: >
   read takes every column of `development_history_entries` for the site, up to 500 rows, and on
   the real site that is about 279 KB of kept mail bodies the page shows folded. Neither is wrong,
   both are weight the page carries on every open.
-next: Merge PR 1 (v2.6735), push its migration, measure the open again on the same site and write the after under the before. Then PR 2 the by-customer pay-speed RPC with its migration, measured the same way. Then delete this file.
+next: Merge PR 1 (v2.6735) and PR 2 (v2.6739), push both migrations, measure the open again on the same site and write the after under the before, then one types PR. Then delete this file.
 size: S (PR 1 the entries read) + S (PR 2 the pay-speed RPC, a migration)
 blocker: None. A measured open of the real site's page, before and after, is the proof either PR needs.
 mockup: not required — reads only, no screen changes
 opinion: later — the page opens in about four seconds on the real site after the spike's cut; neither read has been named as slow since
-ver: v2.6735 (PR 1, the heads view and the body read on *more ›* and for a search)
+ver: v2.6735 (PR 1, the heads view and the body read on *more ›* and for a search) · v2.6739 (PR 2, `get_customer_pay_speeds(uuid[])` and the Money look's read of the site's payers alone)
 ---
 
 # Development page: two reads the Gun Dog spike left for later (#280)
@@ -46,7 +46,7 @@ The two reads this card holds:
 - **`get_billed_customer_pay_speeds`**: 87,600 bytes, 194 to 378 ms, twice an open — about 9% of the page's bytes. It leaves at once and ends before the members read does (`jobs_ledger`, 522 to 634 ms), so it is off the critical path: a by-customer RPC saves the bytes and the server's work, not a millisecond of the open.
 - For scale, the biggest call is `mercury_transaction_job_allocations` at 391,551 bytes and 653 to 716 ms, the Costs column's read, #257's territory and not this card's.
 
-**Decision.** The entries read earns PR 1: a third of the page's bytes on every open, two thirds of them words the page folds and almost no open unfolds. The card's first shape, the list's columns with the body fetched on unfold, needs no migration but leaves the lines with no words at all, since the body is the words; PostgREST cannot cut a column without a view, so PR 1 is the card's second shape, `development_history_heads` (`left(body, 400)` and `char_length(body)`), with the whole body read by id on *more ›* and once for the site when a search is typed, so a search still reads every word. The after figures go under this table once the view is on prod. The pay-speed read is the smaller share and off the clock; PR 2 follows PR 1 as the card planned, and its figures will say what it saved.
+**Decision.** The entries read earns PR 1: a third of the page's bytes on every open, two thirds of them words the page folds and almost no open unfolds. The card's first shape, the list's columns with the body fetched on unfold, needs no migration but leaves the lines with no words at all, since the body is the words; PostgREST cannot cut a column without a view, so PR 1 is the card's second shape, `development_history_heads` (`left(body, 400)` and `char_length(body)`), with the whole body read by id on *more ›* and once for the site when a search is typed, so a search still reads every word. The after figures go under this table once the view is on prod. The pay-speed read is the smaller share and off the clock; PR 2 follows PR 1 as the card planned: `get_customer_pay_speeds(p_customer_ids uuid[])` runs the whole-list read on the server and hands back its shape cut to the site's payers (each job's GC, else its customer), the company and segment medians kept whole for the borrowed pace, so the server's work is the same and the bytes are what it saves; the read now rides beside the fan-out once the members name the payers. The after figures will say what each saved.
 
 ## Where it plugs in
 
