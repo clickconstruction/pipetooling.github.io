@@ -461,6 +461,7 @@ describe('what a tag writes', () => {
     links: [],
     files: [],
     headers: { 'message-id': `<${gmailId}@mail.example>` },
+    html: null,
     ...over,
   })
   const elm: MyMailJobChip = { kind: 'pipeline', id: ELM, key: `pipeline:${ELM}`, num: 'JP1077', name: '4 Elm Ct' }
@@ -765,6 +766,7 @@ describe('the follow: whose conversations, which, and what it does with each mai
       links: [],
       files: [],
       headers: { 'message-id': `<${gmailId}@x>` },
+      html: null,
       ...over,
     })
     const line = (id: string, rfc: string | null, over: Partial<MyMailFollowLine> = {}): MyMailFollowLine => ({
