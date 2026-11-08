@@ -23,7 +23,7 @@ export function docHistoryInput(ask: DocHistoryAsk): { ok: true; docId: string |
   const docId = typeof ask.doc_id === 'string' ? ask.doc_id.trim().toLowerCase() : ''
   const kind = typeof ask.kind === 'string' ? ask.kind.trim() : ''
   if ((docId !== '') === (kind !== '')) return { ok: false, refused: 'get_document_history needs doc_id (a named document) or kind (summary | narrative), one of the two.' }
-  if (docId && !UUID_RE.test(docId)) return { ok: false, refused: 'get_document_history: doc_id must be a person_documents.id.' }
+  if (docId && !UUID_RE.test(docId)) return { ok: false, refused: 'get_document_history: doc_id must be a documents.id (a named document on the file).' }
   if (kind && kind !== 'summary' && kind !== 'narrative') return { ok: false, refused: 'get_document_history: kind must be summary or narrative.' }
   const from = typeof ask.from === 'string' ? ask.from.trim().toLowerCase() : ''
   const to = typeof ask.to === 'string' ? ask.to.trim().toLowerCase() : ''

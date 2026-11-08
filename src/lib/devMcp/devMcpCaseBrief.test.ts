@@ -56,7 +56,7 @@ function fixture() {
       { id: 'd-guide', person_id: PERSON, title: 'Interview guide', counsel_only: false, author_label: 'Robert', updated_at: '2026-11-01T00:00:00Z', archived_at: null, chars: 4000, sections: 2, headings: [{ n: null, level: 2, heading: 'Before the call', line: 1 }, { n: null, level: 2, heading: 'After the call', line: 20 }] },
       { id: 'd-old', person_id: PERSON, title: 'Old notes', counsel_only: false, author_label: 'HR agent', updated_at: '2026-09-01T00:00:00Z', archived_at: '2026-10-01T00:00:00Z', chars: 10, sections: 0, headings: [] },
     ],
-    person_documents: [{ id: 'd-notes', content: '## Open\n\nAsk about the second week. ' + 'x'.repeat(2000) }],
+    documents: [{ id: 'd-notes', content: '## Open\n\nAsk about the second week. ' + 'x'.repeat(2000) }],
     legal_matters: [{ id: MATTER, person_id: PERSON, stage: 'review', narrative_md: '## The parties\n\nWho.\n\n## The claim\n\nWhat.', narrative_updated_at: '2026-11-05T00:00:00Z', closed_at: null }],
     legal_matter_entries: [
       { id: 'm1', matter_id: MATTER, kind: 'plan', occurred_on: '2026-11-10', body: 'Pull the subcontract.', meta: { done_at: null }, voided_at: null },
@@ -127,7 +127,7 @@ describe('get_case_brief (the seat reads a case the way an agent reads a folder,
     ])
     expect(SERVER).toContain("name: 'get_case_brief'")
     expect(SERVER).toContain("case 'get_case_brief': {")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.44.0'")
     expect(README).toContain('`get_case_brief(person)`')
     expect(MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
     expect(MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.hr_doc_heading_index(md text)')

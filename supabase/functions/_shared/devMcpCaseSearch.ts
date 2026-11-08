@@ -22,7 +22,7 @@ export function readNextFor(source: string): string {
     case 'evidence':
       return 'get_person_file (evidence, with the files and Drive state)'
     case 'document':
-      return 'read_rows on person_documents (select content) by id; change it with plan_person_doc { doc_id, ops } on the section named'
+      return 'get_person_document { person, doc_id, section } for the section named, or read_rows on documents (select content) by id; change it with plan_person_doc { doc_id, ops } on the section named'
     case 'summary':
     case 'narrative':
       return 'read_rows on person_files (select content) by person_id and kind; change it with plan_person_doc { kind, ops }'
@@ -31,7 +31,7 @@ export function readNextFor(source: string): string {
     case 'matter_entry':
       return 'read_rows on legal_matter_entries by id'
     case 'matter_document':
-      return 'the document on the matter\'s Evidence tab (read_rows on legal_matter_documents by id); a hit with a section is a text document\'s words — read_rows on documents (select content) by the row\'s text_document_id; a hit with no section is the title or what it shows, not the file'
+      return 'the document on the matter\'s Evidence tab (read_rows on legal_matter_documents by id); a hit with a section is a text document\'s words — get_matter_document { matter_id, doc_id, section } reads that section; a hit with no section is the title or what it shows, not the file'
     default:
       return 'read_rows on the source by id'
   }

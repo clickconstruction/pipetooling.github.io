@@ -94,7 +94,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
   const summaryRows = summaryIndex ? await read<{ content: string }>('summary', () => reader.rows('person_files', { select: 'content', filters: [...eq('person_id', personId), ...eq('kind', 'summary')], limit: 1 })) : []
   const docs = docIndex.filter((d) => !d.archived_at).sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0))
   const notesDoc = docs.find((d) => d.title.trim().toLowerCase() === AGENT_NOTES_TITLE.toLowerCase()) ?? null
-  const notesRows = notesDoc ? await read<{ content: string }>('agent notes', () => reader.rows('person_documents', { select: 'content', filters: eq('id', notesDoc.id), limit: 1 })) : []
+  const notesRows = notesDoc ? await read<{ content: string }>('agent notes', () => reader.rows('documents', { select: 'content', filters: eq('id', notesDoc.id), limit: 1 })) : []
 
   // The matter: its steps and documents, when one stands on the person.
   const matter = matters.find((m) => !m.closed_at) ?? matters[0] ?? null
@@ -193,6 +193,6 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     developments,
     held: heldOnce,
     read_next:
-      'A document whole: read_rows on person_documents (select content) by id, or the narrative on person_files by kind; a development: get_history; the Timeline whole: get_person_file; a matter document\'s bytes are on its Evidence tab. Change a document by section with plan_person_doc { doc_id | kind, ops }.',
+      'A document whole: read_rows on documents (select content) by id (a section at a time: get_person_document, or get_matter_document for a matter\'s text document), or the narrative on person_files by kind; a development: get_history; the Timeline whole: get_person_file; a matter document\'s bytes are on its Evidence tab. Change a document by section with plan_person_doc { doc_id | kind, ops }.',
   }
 }
