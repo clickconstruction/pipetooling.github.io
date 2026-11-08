@@ -52,7 +52,27 @@ export type PersonEvidenceRecord = {
   fail_why: string | null
   /** v2.6554: kept here only — never filed in Drive, never read by the agent or by the seat as deployed. */
   counsel_only?: boolean
+  /** v2.6704: the named document that now carries what this Drive-linked record pointed at; the record stays with its link. */
+  superseded_by_document_id?: string | null
+  superseded_at?: string | null
+  superseded_by?: string | null
   files: PersonEvidenceFile[]
+}
+
+/** A record that only links Drive files (v2.6541's rows, no bytes staged here): the kind a named document can take over. */
+export function evidenceIsDriveLinkOnly(r: Pick<PersonEvidenceRecord, 'files'>): boolean {
+  return r.files.length > 0 && r.files.every(evidenceFileIsLinked)
+}
+
+/** Whether the *Now a named document* door shows (v2.6704): a Drive-link-only record not yet marked. */
+export function evidenceCanBeSuperseded(r: Pick<PersonEvidenceRecord, 'files' | 'superseded_by_document_id'>): boolean {
+  return evidenceIsDriveLinkOnly(r) && !r.superseded_by_document_id
+}
+
+/** The mark's chip: "Superseded by Company history · Nov 8, 2026 · Robert"; the title falls back when the document is gone. */
+export function evidenceSupersededWords(args: { title: string | null; dateWords: string; by: string | null }): string {
+  const who = args.by?.trim() ? ` · ${args.by.trim()}` : ''
+  return `Superseded by ${args.title?.trim() || 'a named document'} · ${args.dateWords}${who}`
 }
 
 export type PersonEvidenceDraft = { datedOn: string; title: string; memo: string; /** v2.6554: the counsel-only tick. */ counselOnly?: boolean }

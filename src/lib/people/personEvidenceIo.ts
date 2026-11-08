@@ -19,7 +19,9 @@ const db = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
 
 type RecordRow = Omit<PersonEvidenceRecord, 'files'>
 
-const RECORD_COLUMNS = 'id, person_id, entry_id, dated_on, title, memo, created_by, author_label, created_at, drive_folder_id, drive_folder_url, filed_at, fail_why, counsel_only'
+const RECORD_COLUMNS = 'id, person_id, entry_id, dated_on, title, memo, created_by, author_label, created_at, drive_folder_id, drive_folder_url, filed_at, fail_why, counsel_only, superseded_by_document_id, superseded_at, superseded_by'
+/** Before migration 20261108110000 is pushed the superseded columns are not there (42703); the read falls back and no record reads as superseded. */
+const RECORD_COLUMNS_BEFORE_SUPERSEDED = 'id, person_id, entry_id, dated_on, title, memo, created_by, author_label, created_at, drive_folder_id, drive_folder_url, filed_at, fail_why, counsel_only'
 /** Before migration 20261106020000 is pushed the column is not there; the read falls back and every record reads as not counsel-only. */
 const RECORD_COLUMNS_BEFORE_COUNSEL = 'id, person_id, entry_id, dated_on, title, memo, created_by, author_label, created_at, drive_folder_id, drive_folder_url, filed_at, fail_why'
 const FILE_COLUMNS = 'id, evidence_id, entry_id, filename, mime_type, size_bytes, storage_path, drive_file_id, drive_url, filed_at, fail_why, created_at, sha256'
@@ -41,6 +43,7 @@ export async function loadPersonEvidence(personId: string): Promise<PersonEviden
   type RecordsRes = { data: Record<string, unknown>[] | null; error: { code?: string; message: string } | null }
   const readRecords = async (columns: string): Promise<RecordsRes> => (await db.from('person_file_evidence').select(columns).eq('person_id', personId)) as unknown as RecordsRes
   let res = await readRecords(RECORD_COLUMNS)
+  if (res.error && res.error.code === '42703') res = await readRecords(RECORD_COLUMNS_BEFORE_SUPERSEDED)
   if (res.error && res.error.code === '42703') res = await readRecords(RECORD_COLUMNS_BEFORE_COUNSEL)
   if (res.error) {
     // 42P01: the migration is not pushed yet — nothing to show, nothing to say.
@@ -183,5 +186,20 @@ export async function fileEvidenceToDrive(recordId: string): Promise<{ ok: boole
     return { ok: !d.fail_why, why: d.fail_why ?? null }
   } catch (e) {
     return { ok: false, why: formatErrorMessage(e) }
+  }
+}
+
+/**
+ * Mark a Drive-linked record as superseded by a named document, or lift the mark (v2.6704, punch list #277 open call
+ * 2): `person_evidence_supersede` (migration 20261108110000), devs only, which holds the rules — every file a Drive
+ * link, the document kept and on the same person. The record stays with its link; the reason comes back as written.
+ */
+export async function supersedeEvidenceWithDocument(args: { evidenceId: string; documentId: string | null }): Promise<{ ok: true; title: string | null } | { ok: false; why: string }> {
+  try {
+    const { data, error } = (await db.rpc('person_evidence_supersede', { p_evidence_id: args.evidenceId, p_document_id: args.documentId })) as { data: { document?: { title?: string } } | null; error: { message: string } | null }
+    if (error) return { ok: false, why: formatErrorMessage(error, 'the mark was refused') }
+    return { ok: true, title: data?.document?.title ?? null }
+  } catch (e) {
+    return { ok: false, why: formatErrorMessage(e, 'the mark was refused') }
   }
 }

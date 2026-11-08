@@ -33,6 +33,7 @@ import { PersonMatterPanel } from './PersonMatterPanel'
 import { personMatterChipWords } from '../../../lib/people/personMatter'
 import { loadPersonMatterStanding, type PersonMatterStanding } from '../../../lib/people/personMatterIo'
 import {
+  evidenceCanBeSuperseded,
   evidenceCountWords,
   evidenceDraftProblem,
   evidenceDrivePathWords,
@@ -44,13 +45,14 @@ import {
   evidenceFileWhereWords,
   evidenceHashWords,
   evidenceLinkProblem,
+  evidenceSupersededWords,
   type PersonEvidenceLink,
   sortEvidenceNewestFirst,
   type PersonEvidenceDraft,
   type PersonEvidenceFile,
   type PersonEvidenceRecord,
 } from '../../../lib/people/personEvidence'
-import { fileEvidenceToDrive, savePersonEvidence } from '../../../lib/people/personEvidenceIo'
+import { fileEvidenceToDrive, savePersonEvidence, supersedeEvidenceWithDocument } from '../../../lib/people/personEvidenceIo'
 import { shrinkPhoto } from '../../../lib/materials/photoShrink'
 import { EmptyState } from '../../EmptyState'
 import { EMPTY_MARK_DRAFT, linesWithTheme, markIsProposed, markTargetOfLine, markedWords, marksOnTarget, provesByWords, sortThemes, themeCountsOnLines, themeStands, tickedWords, type LegalTheme, type LegalThemeMark, type MarkDraft, type MarkTarget } from '../../../lib/legal/legalThemes'
@@ -273,6 +275,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   // v2.6693 (punch list #277, open call 1): the Archive confirm over an open document, and the press in flight.
   const [confirmArchive, setConfirmArchive] = useState<PersonDocumentRow | null>(null)
   const [archiving, setArchiving] = useState(false)
+  // v2.6704 (punch list #277, open call 2): the Now a named document picker open on one evidence record.
+  const [supersedePick, setSupersedePick] = useState<{ recordId: string; docId: string; saving: boolean } | null>(null)
   const [addDoc, setAddDoc] = useState<{ how: 'write' | 'file' | 'paste'; title: string; text: string; counselOnly: boolean; fileName: string | null; why: string | null; saving: boolean } | null>(null)
   const namedDocRef = useRef<HTMLDivElement>(null)
   // v2.6615 (punch list #277 PR 3): a citation pressed on a line asks for a section of the narrative; the Jump to list
@@ -1276,6 +1280,31 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     </div>
   ) : null
 
+  // The Documents section's presses and field (v2.6614), shared with the Evidence view's picker since v2.6704.
+  const OUTLINE_PRESS: CSSProperties = { padding: '0.3rem 0.75rem', borderRadius: 7, fontSize: '0.8rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }
+  const QUIET_PRESS: CSSProperties = { padding: '0.3rem 0.7rem', borderRadius: 7, fontSize: '0.8rem', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }
+  const COUNSEL_CHIP: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.1rem 0.55rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+  const FIELD: CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 7, fontSize: '0.84rem', background: 'var(--bg-page)', color: 'var(--text-base)' }
+
+  const { kept: keptDocuments, archived: archivedDocuments } = splitDocumentsByArchive(documents)
+
+  /** Mark a Drive-linked record as superseded by the picked named document (v2.6704); the file reads again after. */
+  const markSuperseded = async (r: PersonEvidenceRecord) => {
+    if (!supersedePick || supersedePick.recordId !== r.id || !supersedePick.docId || supersedePick.saving) return
+    setSupersedePick({ ...supersedePick, saving: true })
+    const out = await supersedeEvidenceWithDocument({ evidenceId: r.id, documentId: supersedePick.docId })
+    if (!out.ok) {
+      showToast(`Could not mark ${r.title}: ${out.why}`, 'error')
+      setSupersedePick({ ...supersedePick, saving: false })
+      return
+    }
+    const title = out.title ?? keptDocuments.find((d) => d.id === supersedePick.docId)?.title ?? 'a named document'
+    showToast(`${r.title} is marked: superseded by ${title}.`, 'success')
+    setSupersedePick(null)
+    await load()
+    onChanged?.()
+  }
+
   const evidenceView = (() => {
     const older = sources?.attachments ?? []
     const nothing = evidenceRecords.length === 0 && older.length === 0
@@ -1334,7 +1363,41 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                         ) : null}
                         {on ? <span>On the {dayWords(on.ymd)} entry</span> : null}
                         <span>{(r.created_by ? sources?.input.namesById[r.created_by] : null) ?? r.author_label ?? 'a dev'} · kept {formatIsoDate(r.created_at)}</span>
+                        {r.superseded_by_document_id ? (
+                          // v2.6704: the record stays with its link; the chip names the document that carries it now and opens it.
+                          <button
+                            type="button"
+                            data-testid="evidence-superseded-chip"
+                            title="Open the named document"
+                            onClick={() => { setView('narrative'); void openDocument(r.superseded_by_document_id!) }}
+                            style={chip(FACT_TONE.gray, { cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, lineHeight: 'inherit' })}
+                          >
+                            {evidenceSupersededWords({ title: documents.find((d) => d.id === r.superseded_by_document_id)?.title ?? null, dateWords: formatIsoDate(r.superseded_at ?? null), by: (r.superseded_by ? sources?.input.namesById[r.superseded_by] : null) ?? null })}
+                          </button>
+                        ) : canWrite && evidenceCanBeSuperseded(r) && keptDocuments.length > 0 && supersedePick?.recordId !== r.id ? (
+                          <button type="button" onClick={() => setSupersedePick({ recordId: r.id, docId: '', saving: false })} style={{ font: 'inherit', fontSize: '0.72rem', color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                            Now a named document…
+                          </button>
+                        ) : null}
                       </div>
+                      {supersedePick?.recordId === r.id ? (
+                        <div data-testid="evidence-supersede-picker" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.8rem' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>Which named document carries it now?</span>
+                          <select aria-label="The named document" value={supersedePick.docId} onChange={(e) => setSupersedePick({ ...supersedePick, docId: e.target.value })} style={{ ...FIELD, width: 'auto', padding: '0.3rem 0.5rem' }}>
+                            <option value="">Pick a document</option>
+                            {keptDocuments.map((d) => (
+                              <option key={d.id} value={d.id}>{d.title}</option>
+                            ))}
+                          </select>
+                          <button type="button" onClick={() => void markSuperseded(r)} disabled={!supersedePick.docId || supersedePick.saving} style={{ padding: '0.3rem 0.75rem', borderRadius: 7, fontSize: '0.78rem', fontWeight: 600, border: 'none', cursor: supersedePick.docId && !supersedePick.saving ? 'pointer' : 'default', background: supersedePick.docId && !supersedePick.saving ? '#2563eb' : DEAD_PRESS_FILL, color: supersedePick.docId && !supersedePick.saving ? '#fff' : DEAD_PRESS_TEXT }}>
+                            {supersedePick.saving ? 'Marking…' : 'Mark it'}
+                          </button>
+                          <button type="button" onClick={() => setSupersedePick(null)} disabled={supersedePick.saving} style={QUIET_PRESS}>
+                            Cancel
+                          </button>
+                          <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>The record and its link stay; the chip says which document carries it now.</span>
+                        </div>
+                      ) : null}
                     </div>
                   </li>
                 )
@@ -1559,10 +1622,6 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   }
 
   // ─── Documents (v2.6614, punch list #277): the two the agent keeps, then the named ones, then the doors to add one ───
-  const OUTLINE_PRESS: CSSProperties = { padding: '0.3rem 0.75rem', borderRadius: 7, fontSize: '0.8rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }
-  const QUIET_PRESS: CSSProperties = { padding: '0.3rem 0.7rem', borderRadius: 7, fontSize: '0.8rem', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }
-  const COUNSEL_CHIP: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.1rem 0.55rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
-  const FIELD: CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 7, fontSize: '0.84rem', background: 'var(--bg-page)', color: 'var(--text-base)' }
 
   const startAdd = (how: 'write' | 'file' | 'paste') => {
     setOpenDoc(null)
@@ -1732,7 +1791,6 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     )
   }
 
-  const { kept: keptDocuments, archived: archivedDocuments } = splitDocumentsByArchive(documents)
   const documentsTab = documentsTabCount({ hasSummary: Boolean(sources?.docs.summary), hasNarrative: Boolean(sources?.docs.narrative), named: keptDocuments.length })
   const documentsView = viewer.isDev ? (
     openDoc ? (

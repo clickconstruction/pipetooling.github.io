@@ -87,7 +87,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.41.0'
+const SERVER_VERSION = '0.42.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [

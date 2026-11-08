@@ -137,6 +137,16 @@ A named document you no longer need stays on the file, out of the way. Nothing i
 
 The document leaves the Named documents list. It sits in the **Archived** fold at the foot of the section. Press {{button:outline|Open}} there to read it. An archived document has no Edit press. The agent cannot change it either. Press {{button:outline|Unarchive}} to put it back on the list, its text and history as they were.
 
+## Mark evidence that is now a named document
+
+Some evidence records only link a file in Drive. Once that text is on the file as a named document, mark the record.
+
+1. Open **Evidence** and find the record. Its files are all Drive links.
+2. Press {{button:outline|Now a named document…}} at the foot of the record.
+3. Pick the document from the list. Press {{button:blue|Mark it}}.
+
+The record stays where it is, with its link and its memo. It wears a chip that names the document, the day and who marked it. Press the chip to open the document. The agent reads the document from then on.
+
 ## Keeping the summary fresh
 
 When you add entries, the summary falls behind. The person's dot turns amber. The Documents view shows how many entries it has not covered. You ask the agent to bring the file current. It rewrites the summary and extends the narrative from the raw entries.

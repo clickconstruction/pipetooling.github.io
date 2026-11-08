@@ -63,7 +63,7 @@ type AttachmentRow = PersonEvidenceFile & { entry_id: string | null }
 type DocRow = { kind: string; content: string; updated_at: string; covered_through: string | null; author_label: string | null }
 /** One row of person_document_index (v2.6613): a named document without its text. */
 type DocIndexRow = { id: string; title: string; counsel_only: boolean; author_label: string | null; created_at: string; updated_at: string; archived_at: string | null; chars: number; sections: number }
-type EvidenceRow = { id: string; person_id: string; entry_id: string | null; dated_on: string; title: string; memo: string; created_by: string | null; author_label: string | null; created_at: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null }
+type EvidenceRow = { id: string; person_id: string; entry_id: string | null; dated_on: string; title: string; memo: string; created_by: string | null; author_label: string | null; created_at: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null}
 type WriteupRow = { id: string; template_id: string; status: string; disclosure: string | null; submitted_at: string | null; created_at: string; filled_by_user_id: string | null }
 type ExcuseRow = { id: string; work_date: string; note: string; created_at: string; author: unknown }
 
@@ -275,6 +275,11 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   // v2.6693: the archived ones are listed too, after the kept, each with its archived_at — the seat sees what the
   // Archived fold holds, and plan_person_doc refuses every change to one but archive: false.
   const newestFirst = (a: DocIndexRow, b: DocIndexRow) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0)
+  // v2.6704: the superseded mark on a Drive-linked record — its own read, quiet until the catalog knows the three columns
+  // (regenerated after migration 20261108110000's push), so the records themselves still read on the known columns.
+  type SupersededRow = { id: string; superseded_by_document_id: string | null; superseded_at: string | null; superseded_by: string | null }
+  const supersededRows = isDev && evidenceRows.length > 0 ? ((await quiet(() => reader.rows('person_file_evidence', { select: 'id,superseded_by_document_id,superseded_at,superseded_by', filters: eq('person_id', personId), limit: PERSON_FILE_READ_CAP }))) as unknown as SupersededRow[]) : []
+  const supersededById = new Map(supersededRows.filter((r) => r.superseded_by_document_id).map((r) => [r.id, r]))
   const documents = [...documentRows.filter((d) => !d.archived_at).sort(newestFirst), ...documentRows.filter((d) => d.archived_at).sort(newestFirst)]
     .map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, archived_at: d.archived_at, chars: d.chars, sections: d.sections, ...(filter.since ? { changed_since: d.updated_at.slice(0, 10) >= filter.since } : {}) }))
 
@@ -295,7 +300,11 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     months,
     evidence: sortEvidenceNewestFirst(evidenceRows).map((r) => {
       const files = (filesByRecord.get(r.id) ?? []).map((f) => ({ id: f.id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, drive_url: f.drive_url, filed_at: f.filed_at, fail_why: f.fail_why, sha256: f.sha256 ?? null, linked: !f.storage_path && !!f.drive_url }))
-      return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: r.memo, by: namesById[r.created_by ?? ''] ?? r.author_label ?? '', created_at: r.created_at, drive: evidenceDriveWords({ fail_why: r.fail_why, filed_at: r.filed_at, files: filesByRecord.get(r.id) ?? [] }), drive_folder_url: r.drive_folder_url, files }
+      // v2.6704: a Drive-linked record a named document now carries — follow the document, the link is the old road.
+      const mark = supersededById.get(r.id)
+      const supersededBy = mark ? documentRows.find((d) => d.id === mark.superseded_by_document_id) : null
+      const superseded = mark ? { document_id: mark.superseded_by_document_id, title: supersededBy?.title ?? null, at: mark.superseded_at, by: namesById[mark.superseded_by ?? ''] ?? null, read_next: `read_rows on person_documents by id ${mark.superseded_by_document_id} (select content), or get_person_document { doc_id }` } : null
+      return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: r.memo, by: namesById[r.created_by ?? ''] ?? r.author_label ?? '', created_at: r.created_at, drive: evidenceDriveWords({ fail_why: r.fail_why, filed_at: r.filed_at, files: filesByRecord.get(r.id) ?? [] }), drive_folder_url: r.drive_folder_url, superseded, files }
     }),
     files_before_records: attachments.filter((a) => !a.evidence_id).map((f) => ({ id: f.id, entry_id: f.entry_id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, created_at: f.created_at })),
     docs: filter.docs ? { summary: docs.summary ?? null, narrative: docs.narrative ?? null } : 'left out (docs: false)',

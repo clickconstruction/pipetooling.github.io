@@ -82,6 +82,7 @@ describe('get_person_file (the person file from the dev seat)', () => {
     expect(out.evidence[0]!.drive).toBe('In Drive')
     expect(out.evidence[0]!.files.map((f) => f.filename)).toEqual(['site.jpg'])
     expect(out.evidence[0]!.by).toBe('Robert')
+    expect(out.evidence[0]!.superseded).toBeNull()
     expect(out.files_before_records.map((f) => f.id)).toEqual(['f-old'])
     expect(out.docs).toEqual({ summary: data.person_files[0], narrative: data.person_files[1] })
     // v2.6613: the named documents come from the index view, quiet until the catalog knows it.
@@ -174,7 +175,7 @@ describe('get_person_file (the person file from the dev seat)', () => {
     expect(SERVER).toContain("case 'get_person_file':")
     expect(SERVER.indexOf("case 'get_person_file':")).toBeGreaterThan(SERVER.indexOf("case 'get_history':"))
     expect(SERVER).toContain("getPersonFile(readerAs(await jwt())")
-    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.41\.0'/)
+    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.42\.0'/)
     expect(README).toContain('`get_person_file(person')
   })
 })
@@ -197,6 +198,11 @@ describe('get_person_file lists the named documents (v2.6613, punch list #277)',
     ])
     expect(String(out.documents_note)).toContain('plan_person_doc { doc_id }')
     expect(String(out.documents_note)).toContain('archive: false')
+    // v2.6704: a record marked superseded names the document that carries it now, with the day and who.
+    // The mark comes from its own quiet read of the three columns (the catalog learns them after the push); the records read as before.
+    const marked = { ...base, rows: async (table: string, q: Parameters<typeof base.rows>[1]) => (table === 'person_document_index' ? index : table === 'person_file_evidence' && String(q.select).startsWith('id,superseded') ? [{ id: RECORD, superseded_by_document_id: 'doc-a', superseded_at: '2026-11-08T20:00:00Z', superseded_by: DEV }] : base.rows(table, q)) }
+    const withMark = (await getPersonFile(marked, { person: PERSON }, dev)) as Reply
+    expect(withMark.evidence[0]!.superseded).toMatchObject({ document_id: 'doc-a', title: 'Interview guide', at: '2026-11-08T20:00:00Z', by: 'Robert' })
     const office = (await getPersonFile(reader, { person: PERSON }, { role: 'assistant', todayYmd: TODAY })) as Reply
     expect(office.documents).toEqual([])
   })

@@ -17,6 +17,9 @@ import {
   evidenceTitleFromName,
   sortEvidenceNewestFirst,
   type PersonEvidenceFile,
+  evidenceCanBeSuperseded,
+  evidenceIsDriveLinkOnly,
+  evidenceSupersededWords,
 } from './personEvidence'
 
 const TODAY = '2026-11-02'
@@ -158,5 +161,22 @@ describe('counsel-only (v2.6554)', () => {
     expect(evidenceDriveState(rec())).toBe('waiting')
     expect(evidenceCountWords([rec({ counsel_only: true }), rec(), rec({ files: [{ ...file, drive_file_id: 'd1' }] })])).toBe('3 pieces of evidence, 3 files. 1 not in Drive yet. 1 counsel-only.')
     expect(evidenceCountWords([rec({ counsel_only: true }), rec({ counsel_only: true })])).toBe('2 pieces of evidence, 2 files. 2 counsel-only.')
+  })
+})
+
+describe('superseded by a named document (v2.6704, punch list #277 open call 2)', () => {
+  const linked = { id: 'f', evidence_id: 'r', entry_id: null, filename: 'history.md', mime_type: null, size_bytes: null, storage_path: null, drive_file_id: 'd', drive_url: 'https://drive.google.com/file/d/d/view', filed_at: '2026-11-07T00:00:00Z', fail_why: null, created_at: '2026-11-07T00:00:00Z', sha256: null }
+  const staged = { ...linked, id: 'g', storage_path: 'p/evidence/r/g-scan.pdf', drive_url: null, drive_file_id: null }
+  it('only a record whose every file is a Drive link can be superseded, and not twice', () => {
+    expect(evidenceIsDriveLinkOnly({ files: [linked] })).toBe(true)
+    expect(evidenceIsDriveLinkOnly({ files: [linked, staged] })).toBe(false)
+    expect(evidenceIsDriveLinkOnly({ files: [] })).toBe(false)
+    expect(evidenceCanBeSuperseded({ files: [linked], superseded_by_document_id: null })).toBe(true)
+    expect(evidenceCanBeSuperseded({ files: [linked], superseded_by_document_id: 'doc-1' })).toBe(false)
+    expect(evidenceCanBeSuperseded({ files: [staged], superseded_by_document_id: null })).toBe(false)
+  })
+  it('the chip names the document, the day and who, and falls back when the document is gone', () => {
+    expect(evidenceSupersededWords({ title: 'Company history', dateWords: 'Nov 8, 2026', by: 'Robert' })).toBe('Superseded by Company history · Nov 8, 2026 · Robert')
+    expect(evidenceSupersededWords({ title: null, dateWords: 'Nov 8, 2026', by: null })).toBe('Superseded by a named document · Nov 8, 2026')
   })
 })
