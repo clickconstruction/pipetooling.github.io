@@ -21,6 +21,7 @@ import type { CourtFacts } from '../../../lib/followUp/courtFacts'
 import { useNewLaneThreadSlots } from '../../followUp/useNewLaneThreadSlots'
 import { useEmailViewerThreadSlots } from '../../messages/useEmailViewerThreadSlots'
 import { useLeadDoorThreadSlots } from '../../messages/useLeadDoorThreadSlots'
+import { useOwnMailboxThreadSlots } from '../../messages/useOwnMailboxThreadSlots'
 import { hasBillOffer, hasPaperOffer } from '../../../lib/messages/lineFiles'
 import { PaperOffers } from './PaperOffers'
 import { NudgedReplyBox } from './reply/NudgedReplyBox'
@@ -179,7 +180,10 @@ export function useThreadSlots(): ThreadSlots {
   const newLane = useNewLaneThreadSlots()
   // #140 PR 8: a lead's doors above the lines, Book a visit and Start an estimate, once they are named a lead.
   const leadDoors = useLeadDoorThreadSlots()
-  // By cut number: cut 2's Follow up, cut 3's reply box, cut 4's flow, cut 4b's change orders, R8 · 8's estimate lines,
-  // #139's estimate door, cut 6's paper offer, R7's sort card.
-  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, emailViewer, estimateLines, estimateDoor, email, leadDoors, newLane)
+  // #207 (v2.6745): *Answered them from your own mailbox?* above the box, after cut 2's owed strip, while the court is
+  // ours by their last word alone.
+  const ownMailbox = useOwnMailboxThreadSlots()
+  // By cut number: cut 2's Follow up, #207's own-mailbox strip, cut 3's reply box, cut 4's flow, cut 4b's change
+  // orders, R8 · 8's estimate lines, #139's estimate door, cut 6's paper offer, R7's sort card.
+  return mergeThreadSlots(followUp, ownMailbox, replyBox, flow, changeOrders, emailViewer, estimateLines, estimateDoor, email, leadDoors, newLane)
 }
