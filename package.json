@@ -153,7 +153,7 @@
     "walk:bids": "node scripts/bids-live-walk.mjs",
     "lint": "eslint src --cache --cache-location .cache/eslint/ --cache-strategy content",
     "lint:fix": "eslint src --fix --cache --cache-location .cache/eslint/ --cache-strategy content",
-    "typecheck": "node --max-old-space-size=10240 node_modules/typescript/bin/tsc -p tsconfig.json",
+    "typecheck": "node scripts/typecheck-queued.mjs",
     "format": "prettier --write src",
     "format:check": "prettier --check src"
   },
