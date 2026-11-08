@@ -10,6 +10,7 @@ import {
   searchJobsLedgerForDispatchSettings,
 } from '../../lib/dispatchSettingsJobsSearch'
 import { filterRosterByQuery } from '../../lib/dispatchSettingsPeopleSearch'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { ChipsWithSearchPicker, type ChipsWithSearchPickerOption } from './ChipsWithSearchPicker'
 import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -53,8 +54,8 @@ export function DispatchSettingsModal({
   const { config, reload } = useDispatchNoteRequirements()
   const { role } = useAuth()
   const settingsPrefixMap = useLedgerPrefixMap()
-  /** app_settings writes are dev-only per RLS, so the Travel section renders for devs only. */
-  const isDev = role === 'dev'
+  /** Punch list #188 row 50 (v2.6760): the dispatchers draw the board, so the Travel section is the office's (its key has an office policy). */
+  const canSetTravel = isOfficeRole(role)
   const [travel, setTravel] = useState<TravelHintsConfig>(TRAVEL_HINTS_DEFAULTS)
   // Tier-2 #42 (J18-F10): the swim-lane and office-schedule sections are live
   // list editors that write per row, while the footer's Save covers note
@@ -91,7 +92,7 @@ export function DispatchSettingsModal({
   }, [open, config])
 
   useEffect(() => {
-    if (!open || !isDev) return
+    if (!open || !canSetTravel) return
     let cancelled = false
     void loadTravelHintsConfig().then((c) => {
       if (!cancelled) setTravel(c)
@@ -99,7 +100,7 @@ export function DispatchSettingsModal({
     return () => {
       cancelled = true
     }
-  }, [open, isDev])
+  }, [open, canSetTravel])
 
   // Resolve labels for any job ids already saved in config so the chips render the same labels
   // we'd see if the user searched for those jobs. Uses `get_jobs_ledger_by_ids` (broad-access
@@ -192,7 +193,7 @@ export function DispatchSettingsModal({
         skip_note_job_ids: skipJobIds,
       }
       await upsertDispatchNoteRequirementsConfigToAppSettings(next)
-      if (isDev) {
+      if (canSetTravel) {
         const { error: travelErr } = await upsertTravelHintsConfig(travel)
         if (travelErr) throw new Error(travelErr)
         window.dispatchEvent(new Event(TRAVEL_HINTS_CONFIG_CHANGED_EVENT))
@@ -205,7 +206,7 @@ export function DispatchSettingsModal({
     } finally {
       setBusy(false)
     }
-  }, [requireIds, skipIds, skipJobIds, reload, showToast, onClose, isDev, travel])
+  }, [requireIds, skipIds, skipJobIds, reload, showToast, onClose, canSetTravel, travel])
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -390,14 +391,14 @@ export function DispatchSettingsModal({
 
         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
           The two sections below <strong>save as you go</strong> — each change writes for everyone the moment you make
-          it. <strong>Cancel</strong> at the bottom only drops unsaved changes to job instructions{isDev ? ' and travel hints' : ''}.
+          it. <strong>Cancel</strong> at the bottom only drops unsaved changes to job instructions{canSetTravel ? ' and travel hints' : ''}.
         </p>
 
         <DispatchSwimLanesSettingsSection roster={roster} onChanged={onSwimLanesWrote} />
 
         <DispatchOfficeRosterSettingsSection onChanged={onOfficeRosterWrote} />
 
-        {isDev ? (
+        {canSetTravel ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
             <button
               type="button"

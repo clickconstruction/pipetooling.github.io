@@ -4,6 +4,7 @@ import { QuickEstimateWizard } from '../estimates/QuickEstimateWizard'
 import { WriteUpChangeGlyph } from '../dashboard/dashboardJobRowShared'
 import { Link, useNavigate } from 'react-router-dom'
 import { canSeeWhatCustomersSee } from '../../lib/settingsGroups'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
 import { canOpenMoneyStory, moneyStoryHref } from '../../lib/jobs/moneyStoryDoor'
 import { supabase } from '../../lib/supabase'
@@ -1840,7 +1841,8 @@ export default function DetailJobModal({
             ) : null}
             {/* Paid-in-full email sits left of the calendar (owner call,
                 v2.1709); the green "$" badge says PAID at a glance (v2.1706). */}
-            {showDetailHeaderRightCluster && (authRole === 'dev' || authRole === 'master_technician') && jobId ? (
+            {/* Punch list #188 row 49 (v2.6760): the assistants bill and collect, so the office sends it (paid-job-email admits the same set). */}
+            {showDetailHeaderRightCluster && isOfficeRole(authRole) && jobId ? (
               <button
                 type="button"
                 onClick={(e) => {

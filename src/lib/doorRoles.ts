@@ -19,16 +19,16 @@ import { isAssistantLike } from './subcontractorLikeRole'
 export { isOwnerOrDev } from './gc/access'
 
 /** *role: controller* — the controller or a dev; the books' doors. */
-export function isControllerOrDev(role: UserRole | null | undefined): boolean {
+export function isControllerOrDev(role: UserRole | string | null | undefined): boolean {
   return role === 'dev' || role === 'controller'
 }
 
 /** *role: office* — a dev, the owner or an assistant-like role (assistant, controller); the office's filing. */
-export function isOfficeRole(role: UserRole | null | undefined): boolean {
+export function isOfficeRole(role: UserRole | string | null | undefined): boolean {
   return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 }
 
 /** *role: estimator* — an estimator or a dev; the estimators' own words and catalog. */
-export function isEstimatorOrDev(role: UserRole | null | undefined): boolean {
+export function isEstimatorOrDev(role: UserRole | string | null | undefined): boolean {
   return role === 'dev' || role === 'estimator'
 }

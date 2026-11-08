@@ -4291,7 +4291,7 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 **Endpoint**: `POST /functions/v1/paid-job-email`
 
 **Three modes** (JSON body):
-- `{ "mode": "preview", "job_id": "<uuid>", "variant": "detailed" | "summary" }` — Bearer JWT, role **dev/master_technician** (non-archived); returns `{ "html": "..." }`. No DB writes, no send.
+- `{ "mode": "preview", "job_id": "<uuid>", "variant": "detailed" | "summary" }` — Bearer JWT, an office role (`SENDER_ROLES`: dev, master_technician, assistant, controller, non-archived; since v2.6760, punch list #188 row 49 — dev/master_technician before); returns `{ "html": "..." }`. No DB writes, no send.
 - `{ "mode": "test_send", "job_id": "<uuid>" }` — same role gate; sends the **detailed** variant via Resend to the **caller's own `users.email` only**, subject prefixed **`[TEST]`**.
 - `{ "mode": "send_to", "job_id": "<uuid>", "recipient_user_id": "<uuid>" }` (v2.970) — same role gate; sends the **real** email (no `[TEST]`) to the chosen **active** user; the **recipient's role** picks detailed vs sterilized, and both variants carry a *"Sent manually by {sender}"* footer. Driven by the Job Detail ✉ modal.
 - cron (no `mode` or `{ "mode": "dispatch" }`) — **`X-Cron-Secret`** (or body `cron_secret`) must equal **`CRON_SECRET`**. Loads pending queue rows (`sent_at IS NULL`, `attempts < 5`, limit 20); per row fetches the payload, loads recipients from `app_settings` key **`paid_job_email_recipients_v1`** (JSON array of user ids) joined to non-archived `users`, sends detailed vs summary by role, stamps `sent_at` on success or bumps `error`/`attempts`. **Empty recipient list stamps `sent_at` with `no recipients configured`** so rows never retry forever.

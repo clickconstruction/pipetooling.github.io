@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
+import { isControllerOrDev } from '../../lib/doorRoles'
 import { APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE } from '../../lib/appSettingsKeys'
 import { parseFieldDispatchPhoneFromValueText } from '../../lib/fieldDispatchPhone'
 import { formatWaitingLabelFromCertifiedAt } from '../../lib/formatElapsedCountUp'
@@ -757,7 +758,8 @@ export default function CollectPaymentModal({
 
   const collectStripeInvoiceId = (collectInv?.stripe_invoice_id ?? '').trim()
   const impersonatingUi = isImpersonationSessionActive()
-  const showStripeDashDevLink = role === 'dev' || impersonatingUi
+  // Punch list #188 row 46 (v2.6760): she reconciles Stripe, so the controller gets the Dashboard link with a dev.
+  const showStripeDashDevLink = isControllerOrDev(role) || impersonatingUi
   const stripeDashOpenEnabled = showStripeDashDevLink && Boolean(collectStripeInvoiceId)
 
   const stripeDashButtonStyle = impersonatingUi

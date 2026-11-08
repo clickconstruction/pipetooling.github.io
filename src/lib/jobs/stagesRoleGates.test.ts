@@ -9,6 +9,7 @@ import {
   canSeeBankReturned,
   canSeeBilledExpectedPay,
   canSeeStagesMoneyCharts,
+  canOpenBillingNotifications,
   canSetPaySpeedNoCountDate,
   canTunePaySpeeds,
   canSeeStagesPowerToggles,
@@ -51,6 +52,7 @@ describe('stagesRoleGates — the matrix', () => {
   it('money charts are dev-level visibility: dev and controller only', () => {
     admits(canSeeStagesMoneyCharts, ['dev', 'master_technician', 'controller'])
     admits(canTunePaySpeeds, ['dev', 'master_technician', 'controller'])
+    admits(canOpenBillingNotifications, ['dev', 'master_technician', 'controller'])
     admits(canSetPaySpeedNoCountDate, ['dev', 'controller'])
   })
   it('the Job Schedule modal opens for the office and superintendents', () => {

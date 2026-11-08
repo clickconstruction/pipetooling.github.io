@@ -248,7 +248,7 @@ A bill the customer paid by **card or bank transfer** through Stripe is differen
 
 The moment a job lands in {{chip:green|Paid}}, the app can email the good news automatically. Devs and leaders on the list get the **detailed review**. It has a {{chip:green|PAID IN FULL}} banner, and the job start and last-work dates. Then comes the full scoreboard. That is revenue, every payment with its date, and team labor person by person, hours × wage. Then sub labor, parts, and the profit line, plus a month-by-month timeline. Everyone else on the list gets the **summary**. It has the same banner and dates, and the payment amount and time. It has no cost or profit figures anywhere.
 
-Who gets it lives behind the {{icon:gear}} **Paid in Full notifications** button. It sits across from the **Paid in Full** section header on Jobs → Pipeline. Devs and leaders can open it. Only devs can change the list. Each person shows a Detailed or Summary badge so there are no surprises. The same window has a **Preview & test** block. You search for any job, then
+Who gets it lives behind the {{icon:gear}} **Paid in Full notifications** button. It sits across from the **Paid in Full** section header on Jobs → Pipeline. The owner, a dev and the controller can open it. The controller or a dev can change the list. Each person shows a Detailed or Summary badge so there are no surprises. The same window has a **Preview & test** block. You search for any job, then
 
 :::example Preview & test
 Selected: **J512** · Smith House Repipe
@@ -262,13 +262,13 @@ The previews open the exact email in a new tab. **Email me a test** sends the de
 
 There is a second stream for jobs that are not finished yet. Whenever **any** payment lands on a job, the app can email a progress version of the same report. A payment lands when the office marks a payment. It lands when a bank deposit is allocated in Accounts Receivable. It lands when a Stripe payment comes in. Instead of the green banner it leads with an amber ***$X (Y%) OF $Z PAID*** banner and the payment that just arrived. Then comes the job's **Invoices** table exactly as the office sees it in Edit Job. Each bill shows its {{chip:yellow|Draft}} / {{chip:blue|Billed}} / {{chip:green|Paid}} status, sent date, and amount. It shows how much of it is paid and how much is still open. The line items follow. Detailed and Summary versions work like the paid-in-full email.
 
-Its recipient list is separate. It sits behind the {{icon:gear}} **Paid notifications** button next to the **Billed Awaiting Payment** section header. The same rules apply: devs and leaders open it, devs edit it. When a payment finishes the job, only the paid-in-full email goes out. You never get both for the same payment.
+Its recipient list is separate. It sits behind the {{icon:gear}} **Paid notifications** button next to the **Billed Awaiting Payment** section header. The same rules apply. The owner, a dev and the controller open it. The controller or a dev edits it. When a payment finishes the job, only the paid-in-full email goes out. You never get both for the same payment.
 
 ## Ready to Bill notifications
 
 The third stream watches the **front** of the billing pipeline. It fires the moment any job moves to {{chip:yellow|Ready to Bill}}. That can be a crew finishing up, or the office moving it by hand. It can be a job coming **back** from Billed after an invoice is deleted or reverted. The people on its list are notified so billing can start right away.
 
-This stream is the first that can reach people **two ways, set per person**. The list sits behind the {{icon:gear}} **Ready to Bill notifications** button on the Ready to Bill section header. The same rules apply: devs and leaders open it, devs edit it. Every person in the list has their own **📧 email** and **🔔 push** checkboxes. They sit at the right end of their row:
+This stream is the first that can reach people **two ways, set per person**. The list sits behind the {{icon:gear}} **Ready to Bill notifications** button on the Ready to Bill section header. The same rules apply. The owner, a dev and the controller open it. The controller or a dev edits it. Every person in the list has their own **📧 email** and **🔔 push** checkboxes. They sit at the right end of their row:
 
 - **📧 Email**: sent within about 15 minutes, batched with the other notification emails. Devs and leaders get the detailed version. That is the billable amount, draft bills, and payments so far. Everyone else gets a summary with no dollar figures.
 - **🔔 Push notification**: a short alert straight to that person's phone or computer. It works once they have enabled push notifications on a device, at Settings → Your account. Checking 🔔 for someone who has not enabled push yet shows a red **no push device** warning. The checkbox is still fine to leave on. Pushes start the moment they enable it. Push follows the same detailed/summary rule. Dollar amounts go only to devs and leaders.

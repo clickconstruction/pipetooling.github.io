@@ -3880,7 +3880,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <span aria-hidden>{sectionShown('readyToBill') ? '\u25BC' : '\u25B6'}</span>
                     <StagesSectionBandTitle label="Ready to Bill" count={readyToBillHdr.count} total={readyToBillHdr.total} />{sectionLoadingSuffix('readyToBill')}
                   </button>
-                  {(stagesGates.isStagesOwnerRole(authRole)) && (
+                  {(stagesGates.canOpenBillingNotifications(authRole)) && (
                     <button
                       type="button"
                       onClick={() => setReadyToBillNotifySettingsOpen(true)}
@@ -4055,7 +4055,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       Payment forecast
                     </button>
                   )}
-                  {(stagesGates.isStagesOwnerRole(authRole)) && (
+                  {(stagesGates.canOpenBillingNotifications(authRole)) && (
                     <button
                       type="button"
                       onClick={() => setPaymentEmailSettingsOpen(true)}
@@ -4288,7 +4288,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     Chart
                   </button>
                 )}
-                {(stagesGates.isStagesOwnerRole(authRole)) && (
+                {(stagesGates.canOpenBillingNotifications(authRole)) && (
                   <button
                     type="button"
                     onClick={() => setPaidEmailSettingsOpen(true)}
@@ -4354,6 +4354,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   collectionsRows={unfilteredBoardLists.collectionsRows}
                   users={users}
                   isDev={authRole === 'dev'}
+                  canEditStandingCopies={stagesGates.isStagesOfficeRole(authRole)}
                   canCertify={stagesGates.isStagesOfficeRole(authRole)}
                   onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
                   onOpenJob={(jobId) => {

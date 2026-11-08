@@ -102,6 +102,7 @@ const props = (over: Partial<ComponentProps<typeof JobsGcReviewModal>> = {}): Co
   lastSentByGcId: {},
   users: [{ id: 'u-taunya', name: 'Taunya', email: 'taunya@example.com', role: 'assistant' }],
   isDev: false,
+  canEditStandingCopies: false,
   canCertify: true,
   ...over,
 })

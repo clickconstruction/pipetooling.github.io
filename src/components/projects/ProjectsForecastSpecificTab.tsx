@@ -312,8 +312,8 @@ export function ProjectsForecastSpecificTab({
   )
 
   // Balance column (v2.1196): the Workflow money-flow numbers folded into the
-  // Forecast gutter. Dev/master only — same visibility as Projections.
-  const canSeeMoney = myRole === 'dev' || myRole === 'master_technician'
+  // Forecast gutter. The owner pair and the controller — same visibility as Projections (punch list #188 row 48, v2.6760).
+  const canSeeMoney = myRole === 'dev' || myRole === 'master_technician' || myRole === 'controller'
   const [moneyProjections, setMoneyProjections] = useState<MoneyFlowProjectionInput[]>([])
   const [moneyItems, setMoneyItems] = useState<
     Array<{ step_id: string; amount: number | null; item_date: string | null }>

@@ -27,7 +27,7 @@ export type WorkflowFinancialsPanelProps = {
   steps: ReadonlyArray<{ id: string; name: string }>
   lineItems: Record<string, LineItem[]>
   /** Dev or master: sees projections and may change them. */
-  isDevOrMaster: boolean
+  canEditProjections: boolean
   /** May manage stages: sees the ledger. */
   canManageStages: boolean
   onAddProjection: () => void
@@ -39,7 +39,7 @@ export function WorkflowFinancialsPanel({
   projections,
   steps,
   lineItems,
-  isDevOrMaster,
+  canEditProjections,
   canManageStages,
   onAddProjection,
   onEditProjection,
@@ -51,7 +51,7 @@ export function WorkflowFinancialsPanel({
     <div style={{ marginBottom: '1rem' }}>
       {/* Collapsible summary bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', background: 'var(--bg-sky-tint)', border: '1px solid var(--border-sky)', borderRadius: 8 }}>
-        {isDevOrMaster && (
+        {canEditProjections && (
           <>
             <span style={{ fontSize: '0.875rem', color: totals.projectionsTotal < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
               Projections: {formatAmount(totals.projectionsTotal)}
@@ -64,7 +64,7 @@ export function WorkflowFinancialsPanel({
             Ledger: {formatAmount(totals.ledgerTotal)}
           </span>
         )}
-        {isDevOrMaster && (
+        {canEditProjections && (
           <>
             <span style={{ fontSize: '0.875rem', color: 'var(--text-faint)' }}>|</span>
             <span
@@ -81,7 +81,7 @@ export function WorkflowFinancialsPanel({
             </span>
           </>
         )}
-        {isDevOrMaster && (
+        {canEditProjections && (
           <button
             type="button"
             onClick={() => onAddProjection()}
@@ -115,7 +115,7 @@ export function WorkflowFinancialsPanel({
               <EmptyState
                 compact
                 main="No projections or ledger items yet."
-                {...(isDevOrMaster ? { next: { label: 'Add Projection', onPress: () => onAddProjection() }, tail: 'adds the first.' } : {})}
+                {...(canEditProjections ? { next: { label: 'Add Projection', onPress: () => onAddProjection() }, tail: 'adds the first.' } : {})}
               />
             </div>
           )
@@ -128,9 +128,9 @@ export function WorkflowFinancialsPanel({
                 <tr style={{ borderBottom: '1px solid var(--border-sky)' }}>
                   <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Step</th>
                   <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Memo</th>
-                  {isDevOrMaster && <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Projections</th>}
+                  {canEditProjections && <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Projections</th>}
                   <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Ledger</th>
-                  {isDevOrMaster && <th style={{ textAlign: 'center', padding: '0.35rem 0.5rem', fontWeight: 600, width: 90 }}>Actions</th>}
+                  {canEditProjections && <th style={{ textAlign: 'center', padding: '0.35rem 0.5rem', fontWeight: 600, width: 90 }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -163,7 +163,7 @@ export function WorkflowFinancialsPanel({
                         )}
                       </div>
                     </td>
-                    {isDevOrMaster && (
+                    {canEditProjections && (
                       <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.projectionAmount ?? 0) < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
                         {row.projectionAmount != null ? formatAmount(row.projectionAmount) : '\u2014'}
                       </td>
@@ -171,7 +171,7 @@ export function WorkflowFinancialsPanel({
                     <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.ledgerAmount ?? 0) < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
                       {row.ledgerAmount != null ? formatAmount(row.ledgerAmount) : '\u2014'}
                     </td>
-                    {isDevOrMaster && (
+                    {canEditProjections && (
                       <td style={{ padding: '0.35rem 0.5rem', textAlign: 'center' }}>
                         {row.projection ? (
                           <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
@@ -200,10 +200,10 @@ export function WorkflowFinancialsPanel({
               </tbody>
               <tfoot>
                 <tr style={{ borderTop: '2px solid #0ea5e9' }}>
-                  <td style={{ padding: '0.5rem 0.5rem', fontWeight: 600 }} colSpan={isDevOrMaster ? 2 : 2}>
+                  <td style={{ padding: '0.5rem 0.5rem', fontWeight: 600 }} colSpan={canEditProjections ? 2 : 2}>
                     Total
                   </td>
-                  {isDevOrMaster && (
+                  {canEditProjections && (
                     <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: totals.projectionsTotal < 0 ? 'var(--text-red-700)' : 'var(--text-strong)' }}>
                       {formatAmount(totals.projectionsTotal)}
                     </td>
@@ -211,7 +211,7 @@ export function WorkflowFinancialsPanel({
                   <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: totals.ledgerTotal < 0 ? 'var(--text-red-700)' : 'var(--text-strong)' }}>
                     {formatAmount(totals.ledgerTotal)}
                   </td>
-                  {isDevOrMaster && <td style={{ padding: '0.5rem 0.5rem' }} />}
+                  {canEditProjections && <td style={{ padding: '0.5rem 0.5rem' }} />}
                 </tr>
               </tfoot>
             </table>

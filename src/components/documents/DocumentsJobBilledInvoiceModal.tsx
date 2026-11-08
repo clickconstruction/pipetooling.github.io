@@ -4,6 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { isControllerOrDev } from '../../lib/doorRoles'
 import { openInvoiceEmailPreviewInNewTab } from '../../lib/openInvoiceEmailPreview'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -150,7 +151,7 @@ export default function DocumentsJobBilledInvoiceModal({
           <h2 id="documents-billed-invoice-title" style={{ margin: 0, fontSize: '1.25rem', lineHeight: 1.3 }}>
             View bill
           </h2>
-          {isStripeHosted && stripeId && role === 'dev' ? (
+          {isStripeHosted && stripeId && isControllerOrDev(role) ? (
             <button
               type="button"
               title="Open this invoice in Stripe Dashboard"
