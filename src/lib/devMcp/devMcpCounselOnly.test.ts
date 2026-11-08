@@ -20,7 +20,7 @@ describe('counsel-only and the seat (v2.6554)', () => {
     const named = SERVER.match(/Authorization: `Bearer \$\{jwt\}`, 'X-Dev-Seat': 'dev-mcp'/g)?.length ?? 0
     expect(auth).toBeGreaterThan(5)
     expect(named).toBe(auth)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.42.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
   })
 
   it('plan_person_evidence carries counsel_only only when true, and an apply of one never asks Drive', () => {

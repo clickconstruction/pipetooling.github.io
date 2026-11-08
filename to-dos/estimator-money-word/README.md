@@ -2,8 +2,8 @@
 name: "The estimator's word on money: the leftovers"
 number: 129
 group: close
-status: BUILT 2026-11-08 on the owner's three calls of that day — yes to the estimate's author (PR 1 v2.6694, migration `20261108100000_job_people_estimate_author.sql`, to push after its merge), the job-accounts gate holds, seven days stays — with the first follow-up, *They say paid* on the Billed row, as PR 2 right behind it; the train of 2026-10-19/20 (v2.5646–v2.5651, v2.5655–v2.5659, v2.5668, v2.5670) is live; left: the live checks and the heard-day offer in Messages
-ver: v2.6694
+status: BUILT 2026-11-08 on the owner's three calls of that day — yes to the estimate's author (PR 1 v2.6694, migration `20261108100000_job_people_estimate_author.sql`, to push after its merge), the job-accounts gate holds, seven days stays — with the first follow-up, *They say paid* on the Billed row (PR 2 v2.6695); the train of 2026-10-19/20 (v2.5646–v2.5651, v2.5655–v2.5659, v2.5668, v2.5670) is live; left: the live checks and the heard-day offer in Messages
+ver: v2.6694 · v2.6695
 summary: >
   The estimator who sold a job can now see its money and write down the customer's word on
   paying, from the won bid, the Money lens, the Dashboard and the customer's line in Messages.
@@ -15,7 +15,7 @@ summary: >
 next: Push `20261108100000_job_people_estimate_author.sql` after PR 1 merges; then check BP166 reads *J878 opened from this bid* as an estimator, and open a job the Signed agreements made as the office to see the E beside the estimator's name.
 size: XS each
 blocker: none — the owner's three calls are answered (2026-11-08)
-opinion: the heard-day offer in Messages is a small build of its own; the untyped calls are typed as each is touched (`list_paid_claims` is typed in PR 2)
+opinion: the heard-day offer in Messages is a small build of its own; the untyped calls are typed as each is touched (`list_paid_claims` typed in PR 2)
 mockup: not required — the leftovers are owner calls and small follow-ups to screens that shipped; the train's mock-up is in git history at the retiring commit
 ---
 
@@ -53,11 +53,12 @@ Answered 2026-11-08.
 
 ## The follow-ups
 
-- **The Pipeline row's chip for a paid claim.** PR 2, right behind PR 1: the Billed row's dates
+- **The Pipeline row's chip for a paid claim.** Built as PR 2 (v2.6695): the Billed row's dates
   ledger reads the job's open claim from `list_paid_claims` and draws **They say paid** with the
   day they named, green for a week and amber with *nothing landed in N days* after it, its press
   the Write down their word sheet; the board read `job_promised_pay_dates` alone before, which a
-  claim never touches.
+  claim never touches. The phone rows' one line has no room for the words; the card opens the
+  sheet where the ledger draws.
 - **The live check as an estimator.** Done 2026-10-20 as Wendi through the app's Imitate, on prod
   data: the Money lens, the trail, the word sheet, the Dashboard card and the money line work. It
   found three breaks, each fixed in its own PR: *Send the pay page* opened an empty box (v2.5657),
@@ -74,7 +75,7 @@ Answered 2026-11-08.
   back. When it is drawn, its press should open the same sheet with the day filled in.
 - **The untyped calls.** The seven new functions are in `src/types/database.ts` since v2.5656; the
   client called them `as never`. Type each on the next change that touches it: `list_paid_claims`
-  is typed in PR 2; the other six wait.
+  is typed since PR 2 (v2.6695); the other six wait.
 
 ## Retire when
 

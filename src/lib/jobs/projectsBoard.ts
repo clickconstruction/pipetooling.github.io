@@ -137,6 +137,8 @@ export function projectPace(args: {
   target: ExpectedHoursTarget | null | undefined
   checklist: { answered: number; asked: number }
   settings: LineBudgetSettings
+  /** The office's sign-off on the percent and the subs' sheet hours, off the `superintendent_scores` read (punch list #234 PR 4); null while not read. */
+  score?: { certifiedPct: number | null; signedOn: string | null; subHours: number } | null
 }): ProjectPace {
   const { job, settings } = args
   const fixtures = stagedFixtures(job.fixtures ?? []).filter((f) => f.line_kind !== 'discount')
@@ -165,6 +167,8 @@ export function projectPace(args: {
   const input: SuperintendentLineInput = {
     pctDone: job.pct_complete != null ? num(job.pct_complete) : null,
     hoursUsed: teamHoursOf(job),
+    // A sub-performed stage counts on the sub's sheet hours (the owner's third call), as the Scoreboard counts it.
+    subHours: args.score?.subHours ?? null,
     laborDays: laborDaysOf(laborEventsOf(job)),
     hoursBudget: t ? t.hours : baseHours,
     budgetSource: t ? 'target' : baseSource,
@@ -174,7 +178,9 @@ export function projectPace(args: {
     // The planned finish frozen at award (punch list #234 PR 2), when the read carries one.
     plannedFinishYmd: job.plannedFinish ?? null,
     checklist: args.checklist,
-    certifiedPct: null,
+    // The office's sign-off is the certified percent (the owner's first call); the same read the Scoreboard makes.
+    certifiedPct: args.score?.certifiedPct ?? null,
+    certifiedOn: args.score?.signedOn ?? null,
   }
   return { input, line: superintendentLine(input), baseHours, baseSource, budgetEdge, stages, shares }
 }
