@@ -3,7 +3,9 @@
  * Named documents on the HR file (v2.6614, punch list #277 PR 2) over a fake documents io: the Documents view lists
  * them with the counsel-only chip under the two the agent keeps; Open draws the document with its Jump to and Edit the
  * document; Add a document from a file reads the file in the browser, proposes the title and saves through the io;
- * Write it needs a title and words before Add wakes. Made-up people only.
+ * Write it needs a title and words before Add wakes. Since v2.6693 an archived document sits in the Archived (n) fold,
+ * opens read-only with Unarchive, and Archive… on an open document asks first with a button that names the act. Made-up
+ * people only.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -30,6 +32,7 @@ const io = vi.hoisted(() => ({
   documents: [] as unknown[],
   loadPersonDocument: vi.fn(async (id: string) => ({ document: { id, person_id: 'p-marcus', title: 'Interview guide', content: '## Before the call\n\nRead the file.\n\n## During the call\n\nAsk, then listen.\n\n## After the call\n\nWrite it down the same day.', counsel_only: false, author_label: 'Robert', updated_by: 'u-dev', created_at: '2026-11-01T00:00:00Z', updated_at: '2026-11-07T20:00:00Z', archived_at: null, chars: 90, sections: 3 }, why: null })),
   savePersonDocument: vi.fn(async () => ({ ok: true as const, docId: 'doc-new', updatedAt: '2026-11-07T21:00:00Z' })),
+  setPersonDocumentArchived: vi.fn(async () => ({ ok: true as const, docId: 'doc-1', updatedAt: '2026-11-08T21:00:00Z' })),
 }))
 
 vi.mock('../../../hooks/useAuth', async () => {
@@ -57,6 +60,7 @@ vi.mock('../../../lib/people/personDocumentsIo', () => ({
   loadPersonDocuments: vi.fn(async () => ({ documents: io.documents, heldWhy: null })),
   loadPersonDocument: io.loadPersonDocument,
   savePersonDocument: io.savePersonDocument,
+  setPersonDocumentArchived: io.setPersonDocumentArchived,
 }))
 
 afterEach(() => {
@@ -116,6 +120,45 @@ describe('PersonFilePanel · named documents', () => {
     await waitFor(() => expect(io.savePersonDocument).toHaveBeenCalledTimes(1))
     expect(io.savePersonDocument).toHaveBeenCalledWith({ personId: 'p-marcus', docId: null, title: 'Interview guide v2', markdown: '## Before the call\n\nRead the file.', expectUpdatedAt: null, counselOnly: true })
     expect(await screen.findByText(/Interview guide v2 is on the file\./)).toBeTruthy()
+  })
+
+  it('an archived document sits in the Archived fold, not the list or the tab count; Open draws it read-only and Unarchive brings it back', async () => {
+    io.documents = [row({}), row({ id: 'doc-arch', title: 'Old notes', updated_at: '2026-09-01T00:00:00Z', archived_at: '2026-11-08T15:00:00Z' })]
+    io.loadPersonDocument.mockImplementationOnce(async (id: string) => ({ document: { id, person_id: 'p-marcus', title: 'Old notes', content: 'Kept for the record.', counsel_only: false, author_label: 'Robert', updated_by: 'u-dev', created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z', archived_at: '2026-11-08T15:00:00Z', chars: 20, sections: 0 }, why: null }))
+    renderWithProviders(<PersonFilePanel personId="p-marcus" userId="u-marcus" personName="Marcus Reed" viewer={VIEWER} initialView="narrative" />)
+    expect(await screen.findByRole('tab', { name: 'Documents (2)' })).toBeTruthy()
+    const list = await screen.findByRole('region', { name: 'Named documents' })
+    expect(within(list).getByText('Interview guide')).toBeTruthy()
+    const fold = within(list).getByTestId('hr-doc-archived-fold')
+    expect(within(fold).getByText('Archived (1)')).toBeTruthy()
+    expect(within(fold).getByText('Old notes')).toBeTruthy()
+    expect(within(fold).getByText(/archived Nov 8, 2026 · Kept by Robert/)).toBeTruthy()
+    fireEvent.click(within(fold).getByRole('button', { name: 'Open Old notes' }))
+    const open = await screen.findByTestId('hr-doc-open')
+    expect(within(open).getByTestId('hr-doc-archived-line').textContent).toBe('Archived Nov 8, 2026 · read-only until Unarchive')
+    expect(within(open).queryByRole('button', { name: 'Edit the document' })).toBeNull()
+    expect(within(open).queryByRole('button', { name: 'Archive…' })).toBeNull()
+    fireEvent.click(within(open).getByRole('button', { name: 'Unarchive' }))
+    await waitFor(() => expect(io.setPersonDocumentArchived).toHaveBeenCalledWith({ personId: 'p-marcus', docId: 'doc-arch', archive: false }))
+    expect(await screen.findByText('Old notes is back on the list.')).toBeTruthy()
+  })
+
+  it('Archive… on an open document asks first with a button that names the act, then archives through the io', async () => {
+    io.documents = [row({})]
+    renderWithProviders(<PersonFilePanel personId="p-marcus" userId="u-marcus" personName="Marcus Reed" viewer={VIEWER} initialView="narrative" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Interview guide' }))
+    const open = await screen.findByTestId('hr-doc-open')
+    expect(within(open).queryByTestId('hr-doc-archived-line')).toBeNull()
+    fireEvent.click(within(open).getByRole('button', { name: 'Archive…' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'Archive this document?' })
+    expect(dialog.textContent).toContain('Interview guide leaves the Named documents list')
+    expect(io.setPersonDocumentArchived).not.toHaveBeenCalled()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    fireEvent.click(within(open).getByRole('button', { name: 'Archive…' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Archive the document' }))
+    await waitFor(() => expect(io.setPersonDocumentArchived).toHaveBeenCalledWith({ personId: 'p-marcus', docId: 'doc-1', archive: true }))
+    expect(await screen.findByText('Interview guide is archived.')).toBeTruthy()
   })
 
   it('a file that is not text is refused with its reason, and Write it needs a title and words', async () => {

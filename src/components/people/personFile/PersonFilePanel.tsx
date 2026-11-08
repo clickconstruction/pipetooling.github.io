@@ -8,8 +8,9 @@ import { formatErrorMessage } from '../../../utils/errorHandling'
 import { derivePersonFileFreshness } from '../../../lib/people/personFileFreshness'
 import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../../lib/people/hrDocMarkdown'
 import { hrDocDraftWords, hrDocSaveFailureWords, hrDocSavePayload, type HrDocTarget } from '../../../lib/people/hrDocEditor'
-import { checkDocumentFile, cleanDocumentTitle, documentKeptByWords, documentSizeWords, documentsTabCount, type PersonDocumentIndexRow, type PersonDocumentRow } from '../../../lib/people/personDocuments'
-import { loadPersonDocument, loadPersonDocuments, savePersonDocument } from '../../../lib/people/personDocumentsIo'
+import { archiveConfirmWords, archiveOutcomeWords, archivedDocumentWords, archivedFoldWords, checkDocumentFile, cleanDocumentTitle, documentKeptByWords, documentSizeWords, documentsTabCount, splitDocumentsByArchive, type PersonDocumentIndexRow, type PersonDocumentRow } from '../../../lib/people/personDocuments'
+import { loadPersonDocument, loadPersonDocuments, savePersonDocument, setPersonDocumentArchived } from '../../../lib/people/personDocumentsIo'
+import ConfirmDialog from '../../ConfirmDialog'
 import { citationsBySection, citedByWords, headingNumber, sectionByNumber, splitByCitations } from '../../../lib/people/hrDocCitations'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import {
@@ -269,6 +270,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [documents, setDocuments] = useState<PersonDocumentIndexRow[]>([])
   const [documentsHeld, setDocumentsHeld] = useState<string | null>(null)
   const [openDoc, setOpenDoc] = useState<PersonDocumentRow | null>(null)
+  // v2.6693 (punch list #277, open call 1): the Archive confirm over an open document, and the press in flight.
+  const [confirmArchive, setConfirmArchive] = useState<PersonDocumentRow | null>(null)
+  const [archiving, setArchiving] = useState(false)
   const [addDoc, setAddDoc] = useState<{ how: 'write' | 'file' | 'paste'; title: string; text: string; counselOnly: boolean; fileName: string | null; why: string | null; saving: boolean } | null>(null)
   const namedDocRef = useRef<HTMLDivElement>(null)
   // v2.6615 (punch list #277 PR 3): a citation pressed on a line asks for a section of the narrative; the Jump to list
@@ -371,6 +375,26 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
       setOpenDoc(r.document)
     },
     [showToast],
+  )
+
+  /** Archive an open document, or bring one back (v2.6693): the row keeps its text; the list and the open document read again. */
+  const setDocumentArchived = useCallback(
+    async (d: PersonDocumentRow, archive: boolean) => {
+      if (!personId || archiving) return
+      setArchiving(true)
+      const out = await setPersonDocumentArchived({ personId, docId: d.id, archive })
+      setArchiving(false)
+      setConfirmArchive(null)
+      if (!out.ok) {
+        showToast(`Could not ${archive ? 'archive' : 'unarchive'} ${d.title}: ${out.why}`, 'error')
+        return
+      }
+      showToast(archiveOutcomeWords(d.title, archive), 'success')
+      await reloadDocuments()
+      await openDocument(d.id)
+      onChanged?.()
+    },
+    [personId, archiving, showToast, reloadDocuments, openDocument, onChanged],
   )
 
   useEffect(() => {
@@ -1617,6 +1641,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     const headings = extractHrDocHeadings(d.content)
     const html = hrDocMarkdownToSafeHtml(d.content)
     const editing = docEdit?.kind === 'document' && docEdit.docId === d.id
+    const archived = Boolean(d.archived_at)
     const copy = () => {
       navigator.clipboard.writeText(d.content).then(
         () => showToast('Copied the text.', 'success'),
@@ -1636,19 +1661,40 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
           <span>{documentKeptByWords(d)}</span>
           <span>saved {formatIsoDate(d.updated_at)}</span>
           <span>{documentSizeWords({ chars: d.content.length, sections: headings.length })}</span>
+          {archived ? <span data-testid="hr-doc-archived-line" style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>{archivedDocumentWords(formatIsoDate(d.archived_at))}</span> : null}
           {!editing ? (
             <>
-              <button type="button" onClick={() => setDocEdit({ kind: 'document', docId: d.id, title: d.title, draft: d.content, original: d.content, loadedUpdatedAt: d.updated_at })} style={OUTLINE_PRESS}>
-                Edit the document
-              </button>
+              {!archived ? (
+                <button type="button" onClick={() => setDocEdit({ kind: 'document', docId: d.id, title: d.title, draft: d.content, original: d.content, loadedUpdatedAt: d.updated_at })} style={OUTLINE_PRESS}>
+                  Edit the document
+                </button>
+              ) : null}
               {!d.counsel_only ? (
                 <button type="button" onClick={copy} style={QUIET_PRESS}>
                   Copy as text
                 </button>
               ) : null}
+              {archived ? (
+                <button type="button" onClick={() => void setDocumentArchived(d, false)} disabled={archiving} style={OUTLINE_PRESS}>
+                  {archiving ? 'Unarchiving…' : 'Unarchive'}
+                </button>
+              ) : (
+                <button type="button" onClick={() => setConfirmArchive(d)} disabled={archiving} style={QUIET_PRESS}>
+                  Archive…
+                </button>
+              )}
             </>
           ) : null}
         </div>
+        {confirmArchive && confirmArchive.id === d.id ? (
+          <ConfirmDialog
+            title={archiveConfirmWords(d.title).title}
+            body={archiveConfirmWords(d.title).body}
+            confirmLabel={archiving ? 'Archiving…' : archiveConfirmWords(d.title).confirmLabel}
+            onConfirm={() => void setDocumentArchived(d, true)}
+            onCancel={() => { if (!archiving) setConfirmArchive(null) }}
+          />
+        ) : null}
         {editing ? (
           renderEditor('document')
         ) : (
@@ -1686,7 +1732,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     )
   }
 
-  const documentsTab = documentsTabCount({ hasSummary: Boolean(sources?.docs.summary), hasNarrative: Boolean(sources?.docs.narrative), named: documents.length })
+  const { kept: keptDocuments, archived: archivedDocuments } = splitDocumentsByArchive(documents)
+  const documentsTab = documentsTabCount({ hasSummary: Boolean(sources?.docs.summary), hasNarrative: Boolean(sources?.docs.narrative), named: keptDocuments.length })
   const documentsView = viewer.isDev ? (
     openDoc ? (
       renderOpenDocument(openDoc)
@@ -1699,9 +1746,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
           {documentsHeld ? (
             <p role="alert" style={{ fontSize: '0.8rem', color: 'var(--text-red-600)', margin: '0 0 0.5rem' }}>The documents could not be read: {documentsHeld}</p>
           ) : null}
-          {documents.length > 0 ? (
+          {keptDocuments.length > 0 ? (
             <ul style={{ listStyle: 'none', margin: '0 0 0.7rem', padding: 0, display: 'grid', gap: '0.5rem', maxWidth: '70ch' }}>
-              {documents.map((r) => (
+              {keptDocuments.map((r) => (
                 <li key={r.id} style={{ ...CARD, display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'center' }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1734,6 +1781,30 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>From a file reads the file in the browser and saves it as it is, so a long document lands in one press.</div>
             </div>
           )}
+          {archivedDocuments.length > 0 ? (
+            // v2.6693: the archived documents fold at the foot; Open draws one read-only with its Unarchive door.
+            <details style={{ marginTop: '0.8rem', maxWidth: '70ch' }} data-testid="hr-doc-archived-fold">
+              <summary style={{ cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{archivedFoldWords(archivedDocuments.length)}</summary>
+              <ul style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0, display: 'grid', gap: '0.5rem' }}>
+                {archivedDocuments.map((r) => (
+                  <li key={r.id} style={{ ...CARD, display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'center', opacity: 0.85 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 600 }}>{r.title}</span>
+                        {r.counsel_only ? <span style={COUNSEL_CHIP}>🔒 Counsel-only</span> : null}
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                        archived {formatIsoDate(r.archived_at)} · {documentKeptByWords(r)} · {documentSizeWords(r)}
+                      </div>
+                    </div>
+                    <button type="button" aria-label={`Open ${r.title}`} onClick={() => void openDocument(r.id)} style={OUTLINE_PRESS}>
+                      Open
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </section>
       </div>
     )

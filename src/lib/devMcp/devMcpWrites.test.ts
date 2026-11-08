@@ -13,6 +13,7 @@ const DOCUMENT_MIGRATION = readFileSync('supabase/migrations/20261028010000_dev_
 const GAP_MIGRATION = readFileSync('supabase/migrations/20261028120000_dev_legal_gap_answer_write.sql', 'utf8')
 const DOC_MIGRATION = readFileSync('supabase/migrations/20261107013000_dev_person_doc_write.sql', 'utf8')
 const NAMED_DOCS_MIGRATION = readFileSync('supabase/migrations/20261107040000_person_documents.sql', 'utf8')
+const ARCHIVE_GUARD_MIGRATION = readFileSync('supabase/migrations/20261108090000_person_document_archive_guard.sql', 'utf8')
 const NARRATIVE_OPS_MIGRATION = readFileSync('supabase/migrations/20261107100000_matter_narrative_ops.sql', 'utf8')
 const HISTORY_MIGRATION = readFileSync('supabase/migrations/20261029130000_dev_history_entry_write.sql', 'utf8')
 const BID_MIGRATION = readFileSync('supabase/migrations/20261030210000_dev_bid_write.sql', 'utf8')
@@ -189,7 +190,7 @@ describe('the event verbs (v2.6682, punch list #169)', () => {
     expect(alreadyApplied('apply_matter_event', { target: MATTER, at: '2026-11-08T06:00:00Z' })).toContain('on this matter')
     expect(alreadyApplied('apply_matter_event', { target: MATTER, at: null })).toContain('kind eq event')
   })
-  it('the migration is the plan wrapper\'s shape over legal_event_add with source mcp, and the server names both verbs at 0.40.0', () => {
+  it('the migration is the plan wrapper\'s shape over legal_event_add with source mcp, and the server names both verbs at 0.41.0', () => {
     expect(EVENT_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
     expect(EVENT_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_legal_event_write(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(EVENT_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
@@ -204,7 +205,7 @@ describe('the event verbs (v2.6682, punch list #169)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.41.0'")
     expect(SERVER).toContain('plan_matter_event → apply_matter_event')
     expect(SERVER).toContain('fifty-one verbs')
   })
@@ -322,7 +323,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.41.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -386,7 +387,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.41.0'")
   })
 })
 
@@ -486,7 +487,7 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
     expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
     expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.41.0'")
   })
 })
 
@@ -535,7 +536,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.41.0'")
     expect(SERVER).toContain('Writes are fifty-one verbs and nothing else')
   })
 })
@@ -759,7 +760,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.41.0'")
     expect(SERVER).toContain('Writes are fifty-one verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
@@ -1072,7 +1073,7 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.41.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
     expect(SERVER).toContain('fifty-one verbs')
   })
@@ -1156,7 +1157,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.41.0'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')
@@ -1317,5 +1318,17 @@ describe('named documents on the HR file (v2.6613, punch list #277)', () => {
     expect(NAMED_DOCS_MIGRATION).toContain("IF NOT v_named AND (v_archive IS NOT NULL OR v_counsel IS NOT NULL) THEN")
     expect(NAMED_DOCS_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_person_doc_write(jsonb, boolean) FROM PUBLIC, anon;')
     for (const fence of ['apply_read_only_write_blocks', 'apply_read_only_stmt_blocks', 'apply_digital_twin_write_blocks', 'apply_archived_read_blocks']) expect(NAMED_DOCS_MIGRATION).toContain(`SELECT public.${fence}();`)
+  })
+
+  it('the archive guard migration (v2.6693): the same function whole, refusing every change to an archived document but archive: false, no table so no fence', () => {
+    expect(ARCHIVE_GUARD_MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
+    expect(ARCHIVE_GUARD_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_person_doc_write(p jsonb, p_dry_run boolean DEFAULT true)')
+    expect(ARCHIVE_GUARD_MIGRATION).toContain('IF v_doc.archived_at IS NOT NULL AND (v_archive IS DISTINCT FROM false OR v_has_text OR v_counsel IS NOT NULL) THEN')
+    expect(ARCHIVE_GUARD_MIGRATION).toContain('is read-only; bring it back first (archive: false, alone), then edit it')
+    expect(ARCHIVE_GUARD_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_person_doc_write(jsonb, boolean) FROM PUBLIC, anon;')
+    expect(ARCHIVE_GUARD_MIGRATION).not.toMatch(/CREATE TABLE/)
+    // The v2.6613 body otherwise: the trigger untouched, the three ops, the stale guard and the archive flag still there.
+    for (const kept of ['replace_section', 'insert_after', "'append'", 'expect_updated_at', "CASE WHEN v_archive THEN 'archive' ELSE 'restore' END"]) expect(ARCHIVE_GUARD_MIGRATION).toContain(kept)
+    expect(ARCHIVE_GUARD_MIGRATION).not.toMatch(/CREATE TRIGGER/)
   })
 })

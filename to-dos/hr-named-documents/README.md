@@ -2,7 +2,7 @@
 name: "Named documents on the HR file: any number of titled markdown documents beside the summary and narrative, edited in the app or by the seat a section at a time, with a counsel-only mark and a file door for the long ones"
 number: 277
 group: close
-status: LIVE 2026-11-07 · PR 1 the table and the seat's door (v2.6613, #7181, migration 20261107040000 pushed, dev-mcp deployed), PR 2 the Documents view with Add a document (v2.6614, #7182) and PR 3 the citations as doors (v2.6615, #7185) merged and deployed; the Documents view walked on prod after the deploy (the tab, the pinned pair, the three doors, the From a file form), nothing added.
+status: LIVE 2026-11-07 · PR 1 the table and the seat's door (v2.6613, #7181, migration 20261107040000 pushed, dev-mcp deployed), PR 2 the Documents view with Add a document (v2.6614, #7182) and PR 3 the citations as doors (v2.6615, #7185) merged and deployed; the Documents view walked on prod after the deploy (the tab, the pinned pair, the three doors, the From a file form), nothing added. Open call 1 answered yes 2026-11-08 and built as v2.6693 (Archive… with its confirm, the Archived (n) fold, Unarchive, the seat's listing and refusal; migration 20261108090000 and dev-mcp 0.41.0 wait on the coordinating session's push and deploy).
 summary: >
   A person's HR file keeps two documents the agent writes from the entries, a one-page summary
   and the chronological narrative, and since v2.6610 a dev edits either in the app while the seat
@@ -15,8 +15,9 @@ summary: >
   mark, and a door that takes a .md or .txt file off the desk so a long document never rides
   through an agent's context. The view the two fixed documents share becomes Documents, with
   Summary and Narrative pinned at the top as the two the agent keeps.
-next: Taunya adds the case's two long documents by From a file on the person's Documents view; then her and Micah's two calls on the card: archive a named document in the app, and whether the two Drive-linked evidence records are retired once the documents are in. Delete this card after.
-size: M + M + S
+next: Taunya adds the case's two long documents by From a file on the person's Documents view; the coordinating session pushes migration 20261108090000 and deploys dev-mcp 0.41.0 once v2.6693 is on main; then her and Micah's one call left on the card: whether the two Drive-linked evidence records are retired once the documents are in. Delete this card after.
+size: M + M + S + S
+ver: v2.6613 · 6614 · 6615 · 6693
 blocker: None.
 mockup: mockup.html — the Documents view with the two pinned documents and the named list, Add a document's three doors, one document open with its section index and Edit the document, the counsel-only mark, and the seat's plan reply by document id
 opinion: build — the summary and narrative stay the two derived documents with their freshness and the agent's routine; everything else written about a person is a titled document, and the app already has the editor, the renderer, the revision trigger and the seat verb to carry it. The alternatives below were weighed and lose on either editing or scale.
@@ -36,7 +37,7 @@ opinion: build — the summary and narrative stay the two derived documents with
 - **A file door, so long documents never ride through an agent.** *Add a document* offers *Write it*, *From a file* (a `.md` or `.txt` picked off the desk, read in the browser, saved through the same RPC) and *Paste text*. This is how the two case-folder documents land: Taunya picks the file. A document of a few hundred kilobytes costs an agent hundreds of thousands of tokens a call when sent whole, which is why the Drive link was the only door this week.
 - **A counsel-only mark on the document.** The same lock the evidence records wear (v2.6554): the document shows its chip, is left out of any print or copy for a third party, and the seat's reads say so. Passages inside a document keep the `[C] COUNSEL-ONLY` tag the week's app copies carry; the mark is for a document that is counsel-only whole.
 - **The view is Documents.** The tab named *Summary & narrative* since v2.6612 becomes *Documents (n)*: the two pinned documents first, under *Kept by the agent*, then *Named documents* newest first, then *Add a document*. A document opens in place of the list with a *‹ Documents* door, its section index on the left (the `##` headings, as the narrative's jump list reads them), the reading pane on the right, *Edit the document*, *Copy as text*, and the lock chip when it is counsel-only.
-- **Open, Taunya's and Micah's:** whether a named document can be archived in the app (the row keeps `archived_at`; the press is a one-liner either way); whether the two Drive-linked evidence records are retired once the documents are in (a note on each, nothing deleted).
+- **Open, Taunya's and Micah's:** call 1, whether a named document can be archived in the app, was answered **yes on 2026-11-08 and built** as v2.6693 — *Archive…* on an open document with a confirm that names the act, the document leaving the list for an *Archived (n)* fold at the foot that opens it read-only with *Unarchive*, the seat listing archived documents as such and `dev_person_doc_write` refusing every change to one but `archive: false` (migration `20261108090000`). Call 2 stays open: whether the two Drive-linked evidence records are retired once the documents are in (a note on each, nothing deleted).
 
 ## Is this the best we can do?
 

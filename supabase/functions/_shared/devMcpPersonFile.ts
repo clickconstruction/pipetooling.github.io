@@ -272,10 +272,11 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   // v2.6613 (punch list #277): the named documents, from the index view — the list without the text; read one whole with
   // read_rows on person_documents by id. Quiet until the catalog knows the view (regenerated after the migration's push).
   const documentRows = isDev ? ((await quiet(() => reader.rows('person_document_index', { select: 'id,title,counsel_only,author_label,created_at,updated_at,archived_at,chars,sections', filters: eq('person_id', personId), limit: PERSON_FILE_READ_CAP }))) as unknown as DocIndexRow[]) : []
-  const documents = documentRows
-    .filter((d) => !d.archived_at)
-    .sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0))
-    .map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, sections: d.sections, ...(filter.since ? { changed_since: d.updated_at.slice(0, 10) >= filter.since } : {}) }))
+  // v2.6693: the archived ones are listed too, after the kept, each with its archived_at — the seat sees what the
+  // Archived fold holds, and plan_person_doc refuses every change to one but archive: false.
+  const newestFirst = (a: DocIndexRow, b: DocIndexRow) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0)
+  const documents = [...documentRows.filter((d) => !d.archived_at).sort(newestFirst), ...documentRows.filter((d) => d.archived_at).sort(newestFirst)]
+    .map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, archived_at: d.archived_at, chars: d.chars, sections: d.sections, ...(filter.since ? { changed_since: d.updated_at.slice(0, 10) >= filter.since } : {}) }))
 
   const filtered = Boolean(filter.lane || filter.source || filter.since)
   return {
@@ -299,6 +300,6 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     files_before_records: attachments.filter((a) => !a.evidence_id).map((f) => ({ id: f.id, entry_id: f.entry_id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, created_at: f.created_at })),
     docs: filter.docs ? { summary: docs.summary ?? null, narrative: docs.narrative ?? null } : 'left out (docs: false)',
     documents,
-    documents_note: isDev ? 'The named documents on the file (v2.6613), newest first, without their text: read one with read_rows on person_documents (select content) by id; change one with plan_person_doc { doc_id }; archived ones are left out.' : 'dev only',
+    documents_note: isDev ? 'The named documents on the file (v2.6613), the kept ones newest first and then the archived ones (archived_at set), without their text: read one with read_rows on person_documents (select content) by id; change one with plan_person_doc { doc_id }. An archived document is read-only: plan_person_doc refuses every change to it but { doc_id, archive: false }, which brings it back.' : 'dev only',
   }
 }

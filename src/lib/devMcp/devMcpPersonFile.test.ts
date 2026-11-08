@@ -174,13 +174,13 @@ describe('get_person_file (the person file from the dev seat)', () => {
     expect(SERVER).toContain("case 'get_person_file':")
     expect(SERVER.indexOf("case 'get_person_file':")).toBeGreaterThan(SERVER.indexOf("case 'get_history':"))
     expect(SERVER).toContain("getPersonFile(readerAs(await jwt())")
-    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.40\.0'/)
+    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.41\.0'/)
     expect(README).toContain('`get_person_file(person')
   })
 })
 
 describe('get_person_file lists the named documents (v2.6613, punch list #277)', () => {
-  it('reads person_document_index for a dev, newest first, archived ones left out, and says how to read one whole', async () => {
+  it('reads person_document_index for a dev, the kept newest first and then the archived as such (v2.6693), and says how to read one whole', async () => {
     const data = rows()
     const base = catalogReader({ rows: data })
     const index = [
@@ -191,10 +191,12 @@ describe('get_person_file lists the named documents (v2.6613, punch list #277)',
     const reader = { ...base, rows: async (table: string, q: Parameters<typeof base.rows>[1]) => (table === 'person_document_index' ? index : base.rows(table, q)) }
     const out = (await getPersonFile(reader, { person: PERSON }, dev)) as Reply
     expect(out.documents).toEqual([
-      { id: 'doc-b', title: 'Counsel memo', counsel_only: true, kept_by: 'Robert', updated_at: '2026-11-07T00:00:00Z', chars: 18000, sections: 6 },
-      { id: 'doc-a', title: 'Interview guide', counsel_only: false, kept_by: 'Robert', updated_at: '2026-11-01T00:00:00Z', chars: 4000, sections: 2 },
+      { id: 'doc-b', title: 'Counsel memo', counsel_only: true, kept_by: 'Robert', updated_at: '2026-11-07T00:00:00Z', archived_at: null, chars: 18000, sections: 6 },
+      { id: 'doc-a', title: 'Interview guide', counsel_only: false, kept_by: 'Robert', updated_at: '2026-11-01T00:00:00Z', archived_at: null, chars: 4000, sections: 2 },
+      { id: 'doc-c', title: 'Old notes', counsel_only: false, kept_by: 'HR agent', updated_at: '2026-09-01T00:00:00Z', archived_at: '2026-10-01T00:00:00Z', chars: 10, sections: 0 },
     ])
     expect(String(out.documents_note)).toContain('plan_person_doc { doc_id }')
+    expect(String(out.documents_note)).toContain('archive: false')
     const office = (await getPersonFile(reader, { person: PERSON }, { role: 'assistant', todayYmd: TODAY })) as Reply
     expect(office.documents).toEqual([])
   })

@@ -128,6 +128,15 @@ Press {{button:outline|Open}} on a document to read it. Long ones have a **Jump 
 
 A file picked off your desk is read in your browser. Nothing leaves it until you press Add. The agent can change a named document too, one section at a time.
 
+## Archive a document
+
+A named document you no longer need stays on the file, out of the way. Nothing is deleted.
+
+1. Open the document and press {{button:outline|Archive…}}.
+2. Read the confirm. Press {{button:blue|Archive the document}}.
+
+The document leaves the Named documents list. It sits in the **Archived** fold at the foot of the section. Press {{button:outline|Open}} there to read it. An archived document has no Edit press. The agent cannot change it either. Press {{button:outline|Unarchive}} to put it back on the list, its text and history as they were.
+
 ## Keeping the summary fresh
 
 When you add entries, the summary falls behind. The person's dot turns amber. The Documents view shows how many entries it has not covered. You ask the agent to bring the file current. It rewrites the summary and extends the narrative from the raw entries.

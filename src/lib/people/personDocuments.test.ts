@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PERSON_DOCUMENT_MAX_CHARS, checkDocumentFile, cleanDocumentTitle, documentFileIsText, documentKeptByWords, documentSizeWords, documentsTabCount, sortDocumentsNewestFirst, titleFromFileName } from './personDocuments'
+import { PERSON_DOCUMENT_MAX_CHARS, archiveConfirmWords, archiveOutcomeWords, archivedDocumentWords, archivedFoldWords, checkDocumentFile, cleanDocumentTitle, documentFileIsText, documentKeptByWords, documentSizeWords, documentsTabCount, sortDocumentsNewestFirst, splitDocumentsByArchive, titleFromFileName } from './personDocuments'
 
 describe('personDocuments (named documents on the HR file, v2.6614)', () => {
   it('sorts newest first and leaves archived ones out', () => {
@@ -9,6 +9,31 @@ describe('personDocuments (named documents on the HR file, v2.6614)', () => {
       { id: 'c', updated_at: '2026-11-09T00:00:00Z', archived_at: '2026-11-10T00:00:00Z' },
     ]
     expect(sortDocumentsNewestFirst(rows).map((r) => r.id)).toEqual(['b', 'a'])
+  })
+
+  it('splits the kept from the archived (v2.6693): kept newest first, archived by the day they were archived, newest first', () => {
+    const rows = [
+      { id: 'a', updated_at: '2026-11-01T00:00:00Z', archived_at: null },
+      { id: 'b', updated_at: '2026-11-07T00:00:00Z', archived_at: null },
+      { id: 'c', updated_at: '2026-11-09T00:00:00Z', archived_at: '2026-11-10T00:00:00Z' },
+      { id: 'd', updated_at: '2026-10-01T00:00:00Z', archived_at: '2026-11-12T00:00:00Z' },
+    ]
+    const split = splitDocumentsByArchive(rows)
+    expect(split.kept.map((r) => r.id)).toEqual(['b', 'a'])
+    expect(split.archived.map((r) => r.id)).toEqual(['d', 'c'])
+    expect(splitDocumentsByArchive([])).toEqual({ kept: [], archived: [] })
+  })
+
+  it('the archive words: the fold, the confirm with a button that names the act, the open line and the toast', () => {
+    expect(archivedFoldWords(2)).toBe('Archived (2)')
+    const confirm = archiveConfirmWords('Interview guide')
+    expect(confirm.title).toBe('Archive this document?')
+    expect(confirm.body).toContain('Interview guide leaves the Named documents list')
+    expect(confirm.body).toContain('Nothing is deleted')
+    expect(confirm.confirmLabel).toBe('Archive the document')
+    expect(archivedDocumentWords('Nov 8, 2026')).toBe('Archived Nov 8, 2026 · read-only until Unarchive')
+    expect(archiveOutcomeWords('Interview guide', true)).toBe('Interview guide is archived.')
+    expect(archiveOutcomeWords('Interview guide', false)).toBe('Interview guide is back on the list.')
   })
 
   it('the size words, the kept-by words and the tab count', () => {

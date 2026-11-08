@@ -33,6 +33,42 @@ export function sortDocumentsNewestFirst<T extends { updated_at: string; archive
   return rows.filter((r) => !r.archived_at).sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0))
 }
 
+/**
+ * Which list a document sits in (v2.6693, punch list #277 open call 1): the Named documents list holds the kept ones
+ * newest first; the Archived (n) fold at the foot holds the archived ones, the most recently archived first. A document
+ * is archived when `archived_at` is set, whatever else it carries.
+ */
+export function splitDocumentsByArchive<T extends { updated_at: string; archived_at: string | null }>(rows: readonly T[]): { kept: T[]; archived: T[] } {
+  const archived = rows
+    .filter((r): r is T & { archived_at: string } => Boolean(r.archived_at))
+    .sort((a, b) => (a.archived_at < b.archived_at ? 1 : a.archived_at > b.archived_at ? -1 : a.updated_at < b.updated_at ? 1 : -1))
+  return { kept: sortDocumentsNewestFirst(rows), archived }
+}
+
+/** The fold's summary line: "Archived (2)". */
+export function archivedFoldWords(count: number): string {
+  return `Archived (${count})`
+}
+
+/** The confirm before Archive: what leaves, what stays, and a button that names the act (`confirmLabel`). */
+export function archiveConfirmWords(title: string): { title: string; body: string; confirmLabel: string } {
+  return {
+    title: 'Archive this document?',
+    body: `${title} leaves the Named documents list for the Archived fold at the foot, read-only. Nothing is deleted, and Unarchive brings it back.`,
+    confirmLabel: 'Archive the document',
+  }
+}
+
+/** The line an archived document wears when open: "Archived Nov 8, 2026 · read-only until Unarchive". */
+export function archivedDocumentWords(dateWords: string): string {
+  return `Archived ${dateWords} · read-only until Unarchive`
+}
+
+/** The toast after the press: "Interview guide is archived." / "Interview guide is back on the list." */
+export function archiveOutcomeWords(title: string, archived: boolean): string {
+  return archived ? `${title} is archived.` : `${title} is back on the list.`
+}
+
 /** "24 sections · 180 KB" / "1 section · 2 KB" / "4 KB" when there are no headings. */
 export function documentSizeWords(row: { chars: number; sections: number }): string {
   const kb = row.chars < 1024 ? `${row.chars} characters` : `${Math.round(row.chars / 1024).toLocaleString('en-US')} KB`
@@ -45,7 +81,7 @@ export function documentKeptByWords(row: { author_label: string | null }): strin
   return `Kept by ${row.author_label?.trim() || 'the agent'}`
 }
 
-/** How many count on the tab: the two fixed documents that exist plus the named ones. */
+/** How many count on the tab: the two fixed documents that exist plus the named ones kept (archived ones do not count). */
 export function documentsTabCount(args: { hasSummary: boolean; hasNarrative: boolean; named: number }): number {
   return (args.hasSummary ? 1 : 0) + (args.hasNarrative ? 1 : 0) + args.named
 }

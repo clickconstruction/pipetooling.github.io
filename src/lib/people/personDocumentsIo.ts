@@ -1,6 +1,6 @@
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { sortDocumentsNewestFirst, type PersonDocumentIndexRow, type PersonDocumentRow } from './personDocuments'
+import { type PersonDocumentIndexRow, type PersonDocumentRow } from './personDocuments'
 
 /**
  * Named documents on a person's HR file (v2.6614): the list from `person_document_index`, one document whole from
@@ -23,7 +23,8 @@ export async function loadPersonDocuments(personId: string): Promise<{ documents
     if (res.error.code === '42P01' || /does not exist/i.test(res.error.message)) return { documents: [], heldWhy: null }
     return { documents: [], heldWhy: res.error.message }
   }
-  return { documents: sortDocumentsNewestFirst(res.data ?? []), heldWhy: null }
+  // Every row, archived ones too (v2.6693): the view splits them with `splitDocumentsByArchive`.
+  return { documents: res.data ?? [], heldWhy: null }
 }
 
 export async function loadPersonDocument(id: string): Promise<{ document: PersonDocumentRow | null; why: string | null }> {
@@ -59,5 +60,22 @@ export async function savePersonDocument(args: SavePersonDocumentArgs): Promise<
     return { ok: true, docId: data?.document?.id ?? args.docId, updatedAt: data?.updated_at ?? null }
   } catch (e) {
     return { ok: false, why: formatErrorMessage(e, 'the save was refused') }
+  }
+}
+
+/**
+ * Archive a named document, or bring it back (v2.6693, punch list #277 open call 1): the same function with `archive`
+ * alone, as the seat sends it; the row keeps its text and its revisions, `archived_at` set or cleared. The function
+ * refuses every other change to an archived document until it is back, so this is the one write an archived row takes.
+ */
+export async function setPersonDocumentArchived(args: { personId: string; docId: string; archive: boolean }): Promise<SavePersonDocumentOutcome> {
+  const p: Record<string, unknown> = { person_id: args.personId, doc_id: args.docId, archive: args.archive }
+  const fallback = args.archive ? 'the archive was refused' : 'the unarchive was refused'
+  try {
+    const { data, error } = (await db.rpc('dev_person_doc_write', { p, p_dry_run: false })) as Res<{ ok?: boolean; document?: { id?: string }; updated_at?: string }>
+    if (error) return { ok: false, why: formatErrorMessage(error, fallback) }
+    return { ok: true, docId: data?.document?.id ?? args.docId, updatedAt: data?.updated_at ?? null }
+  } catch (e) {
+    return { ok: false, why: formatErrorMessage(e, fallback) }
   }
 }
