@@ -8,8 +8,8 @@ import { formatErrorMessage } from '../../../utils/errorHandling'
 import { derivePersonFileFreshness } from '../../../lib/people/personFileFreshness'
 import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../../lib/people/hrDocMarkdown'
 import { hrDocDraftWords, hrDocSaveFailureWords, hrDocSavePayload, type HrDocTarget } from '../../../lib/people/hrDocEditor'
-import { checkDocumentFile, cleanDocumentTitle, documentKeptByWords, documentSizeWords, documentsTabCount, type PersonDocumentIndexRow, type PersonDocumentRow } from '../../../lib/people/personDocuments'
-import { loadPersonDocument, loadPersonDocuments, savePersonDocument } from '../../../lib/people/personDocumentsIo'
+import { checkDocumentFile, cleanDocumentTitle, documentKeptByWords, documentSizeWords, documentsByEvidenceId, documentsTabCount, recordPickWords, tieToRecordProblem, transcribedRecordWords, type PersonDocumentIndexRow, type PersonDocumentRow } from '../../../lib/people/personDocuments'
+import { loadPersonDocument, loadPersonDocuments, savePersonDocument, tieDocumentToEvidence } from '../../../lib/people/personDocumentsIo'
 import { citationsBySection, citedByWords, headingNumber, sectionByNumber, splitByCitations } from '../../../lib/people/hrDocCitations'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import {
@@ -271,6 +271,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [openDoc, setOpenDoc] = useState<PersonDocumentRow | null>(null)
   const [addDoc, setAddDoc] = useState<{ how: 'write' | 'file' | 'paste'; title: string; text: string; counselOnly: boolean; fileName: string | null; why: string | null; saving: boolean } | null>(null)
   const namedDocRef = useRef<HTMLDivElement>(null)
+  // v2.6713 (punch list #287): the picker over the person's records open on a document's header, and its save.
+  const [tiePicking, setTiePicking] = useState(false)
+  const [tieSaving, setTieSaving] = useState(false)
   // v2.6615 (punch list #277 PR 3): a citation pressed on a line asks for a section of the narrative; the Jump to list
   // opens the entries that cite a section.
   const [pendingSection, setPendingSection] = useState<number | null>(null)
@@ -398,6 +401,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     return m
   }, [sources])
   const evidenceRecords = useMemo(() => sortEvidenceNewestFirst(sources?.evidence ?? []), [sources])
+  const evidenceById = useMemo(() => new Map(evidenceRecords.map((r) => [r.id, r])), [evidenceRecords])
+  /** v2.6713 (punch list #287): the transcript on each record, for *Transcript on file* on its row and its line. */
+  const transcriptByEvidenceId = useMemo(() => documentsByEvidenceId(documents), [documents])
   /** v2.6615: the entries that cite each section of the narrative (`N§16` in their words). */
   const citesBySection = useMemo(() => citationsBySection(lines.filter((l) => l.ref.table === 'person_file_entries').map((l) => ({ key: l.key, ymd: l.ymd, what: l.what }))), [lines])
   const lineByEntryId = useMemo(() => {
@@ -763,6 +769,55 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     }, 50)
   }
 
+  /** v2.6713 (punch list #287): from a document's header, the Evidence tab scrolled to the record it transcribes and lit for a moment. */
+  const openEvidenceRecord = (id: string) => {
+    setOpenDoc(null)
+    setDocEdit(null)
+    setTiePicking(false)
+    setEvFilter('all')
+    setView('evidence')
+    window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-person-evidence="${id}"]`)
+      if (!el) return
+      el.scrollIntoView({ block: 'center' })
+      el.style.transition = 'background 1.2s'
+      el.style.background = 'var(--bg-blue-tint)'
+      window.setTimeout(() => {
+        el.style.background = ''
+      }, 1400)
+    }, 50)
+  }
+
+  /** From a record's row or its Timeline line: the Documents view open on the transcript. */
+  const openTranscript = (docId: string) => {
+    setAddDoc(null)
+    setView('narrative')
+    void openDocument(docId)
+  }
+
+  /** The document names its record (or stands alone again) through the same function the seat writes with; the function holds the counsel rule too. */
+  const tieRecord = async (d: PersonDocumentRow, evidenceId: string | null) => {
+    if (!personId) return
+    const record = evidenceId ? evidenceById.get(evidenceId) ?? null : null
+    const problem = evidenceId ? tieToRecordProblem(d, record) : null
+    if (problem) {
+      showToast(problem, 'error')
+      return
+    }
+    setTieSaving(true)
+    const out = await tieDocumentToEvidence({ personId, docId: d.id, evidenceId, expectUpdatedAt: d.updated_at })
+    setTieSaving(false)
+    if (!out.ok) {
+      showToast(`The record was not tied: ${out.why}`, 'error')
+      return
+    }
+    setTiePicking(false)
+    showToast(evidenceId ? 'The document now names its record.' : 'The document stands on its own again.', 'success')
+    await reloadDocuments()
+    await openDocument(d.id)
+    onChanged?.()
+  }
+
   /** A citation on a line (v2.6615): the Documents view on the narrative, scrolled to that section and lit for a moment. */
   const openNarrativeSection = (n: number) => {
     setOpenDoc(null)
@@ -932,6 +987,11 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         <span style={{ minWidth: 0 }}>
           <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem', flexWrap: 'wrap' }}>
             <span style={chip(look)}>{line.kindWords}</span>
+            {line.ref.table === 'person_file_evidence' && transcriptByEvidenceId.has(line.ref.id) ? (
+              <button type="button" onClick={() => { const t = transcriptByEvidenceId.get(line.ref.id); if (t) openTranscript(t.id) }} aria-label={`Open the transcript of ${line.what}`} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                Transcript on file ›
+              </button>
+            ) : null}
             {line.door ? (
               <a href={line.door.to} style={{ fontSize: '0.72rem', color: 'var(--text-link)', textDecoration: 'none', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
                 {line.door.label} ›
@@ -1299,6 +1359,11 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                       {r.files.length > 0 ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.45rem' }}>{r.files.map((f) => evidenceFileChip(f, r))}</div> : null}
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.7rem', marginTop: '0.45rem', fontSize: '0.72rem', color: 'var(--text-faint)' }}>
                         <span style={chip(r.counsel_only ? FACT_TONE.gray : stateLook)} data-testid={r.counsel_only ? 'evidence-counsel-chip' : undefined}>{r.counsel_only ? '🔒 ' : ''}{evidenceDriveWords(r)}</span>
+                        {transcriptByEvidenceId.has(r.id) ? (
+                          <button type="button" onClick={() => { const t = transcriptByEvidenceId.get(r.id); if (t) openTranscript(t.id) }} aria-label={`Open the transcript of ${r.title}`} data-testid="evidence-transcript-chip" style={{ ...chip(FACT_TONE.gray), border: 'none', cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}>
+                            Transcript on file ›
+                          </button>
+                        ) : null}
                         {r.counsel_only ? null : r.drive_folder_url ? (
                           <a href={r.drive_folder_url} target="_blank" rel="noopener" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
                             Open the folder in Drive ›
@@ -1613,6 +1678,51 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     )
   }
 
+  /**
+   * v2.6713 (punch list #287): the record a document transcribes — its title, day and hash as a press that opens the record,
+   * the record's file chips (the audio's door), and *Transcribes…*, a picker over the person's records that ties or unties it.
+   */
+  const renderTranscribes = (d: PersonDocumentRow) => {
+    const record = d.evidence_id ? evidenceById.get(d.evidence_id) ?? null : null
+    if (!record && !d.evidence_id && evidenceRecords.length === 0) return null
+    return (
+      <div data-testid="hr-doc-transcribes" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center', marginBottom: '0.6rem', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+        {record ? (
+          <>
+            <button type="button" aria-label={`Open the evidence record ${record.title}`} title="Open the record on the Evidence tab" onClick={() => openEvidenceRecord(record.id)} style={{ ...chip(FACT_TONE.gray), border: 'none', cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}>
+              {transcribedRecordWords(record, dayWordsWithYear)} ›
+            </button>
+            {record.files.map((f) => evidenceFileChip(f, record))}
+          </>
+        ) : d.evidence_id ? (
+          <span style={chip(FACT_TONE.gray)}>Transcribes a record not on this file</span>
+        ) : null}
+        {tiePicking ? (
+          <>
+            <select aria-label="The record this document transcribes" disabled={tieSaving} value={d.evidence_id ?? ''} onChange={(e) => void tieRecord(d, e.target.value || null)} style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', maxWidth: '100%' }}>
+              <option value="">— none —</option>
+              {evidenceRecords.map((r) => {
+                const taken = transcriptByEvidenceId.get(r.id)
+                return (
+                  <option key={r.id} value={r.id}>
+                    {recordPickWords(r, dayWordsWithYear, taken && taken.id !== d.id ? taken : null)}
+                  </option>
+                )
+              })}
+            </select>
+            <button type="button" onClick={() => setTiePicking(false)} disabled={tieSaving} style={QUIET_PRESS}>
+              Cancel
+            </button>
+          </>
+        ) : evidenceRecords.length > 0 ? (
+          <button type="button" onClick={() => setTiePicking(true)} style={QUIET_PRESS}>
+            {d.evidence_id ? 'Change the record…' : 'Transcribes…'}
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
   const renderOpenDocument = (d: PersonDocumentRow) => {
     const headings = extractHrDocHeadings(d.content)
     const html = hrDocMarkdownToSafeHtml(d.content)
@@ -1649,6 +1759,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
             </>
           ) : null}
         </div>
+        {!editing ? renderTranscribes(d) : null}
         {editing ? (
           renderEditor('document')
         ) : (
