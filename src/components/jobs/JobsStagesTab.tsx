@@ -1012,6 +1012,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     refreshBilledPaySpeeds,
     promisedPayDates,
     loadPromisedPayDates,
+    paidClaimsByJob,
     promiseRecordsByCustomer,
     loadPromiseRecords,
     promiseSlipByCustomer,
@@ -1112,6 +1113,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         data: billedPaySpeeds,
         pace: inv && payer ? paceInputFor(billedPaceContext, { payerId: payer.id, jobId: row.job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds) : null,
         promise,
+        // v2.6695: the customer's word that they paid takes the money row (They say paid).
+        claim: paidClaimsByJob?.get(row.job.id) ?? null,
         runway,
         inCollections: jobInCollections(row.job),
         uncollectible: jobUncollectible(row.job),
@@ -1142,7 +1145,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         />
       )
     },
-    [lienRunwayFor, promisedPayDates, billedPaySpeeds, billedPaceContext, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn],
+    [lienRunwayFor, promisedPayDates, paidClaimsByJob, billedPaySpeeds, billedPaceContext, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn],
   )
   /**
    * The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries.

@@ -53,7 +53,7 @@ Press {{button:outline|Write down their word}} on the line. A sheet opens with a
 - **They'll pay by…** is for a day the customer named. Pick the day, who said it and how, then press {{button:green|Save promise}}.
 - **They say they paid…** is for a customer who says the money is on its way. Pick how they paid, the day they name and who said it. Leave the amount blank when they paid all of it. Then press {{button:green|Write it down}}.
 
-The same press sits under the customer's own lines in [Messages](/messages). The word shows on the line and in the job's activity. The job stays billed until the money lands. The office pairs the word with the deposit. A wrong entry comes off with **Never said that** under the sheet.
+The same press sits under the customer's own lines in [Messages](/messages). The word shows on the line and in the job's activity. The office sees it on the Pipeline too, as **They say paid** on the job's Billed row. The job stays billed until the money lands. The office pairs the word with the deposit. A wrong entry comes off with **Never said that** under the sheet.
 
 When a week passes after the day they named and nothing lands, the word comes back to you. The line turns amber and says **nothing landed in 9 days**. Your [Dashboard](/dashboard) shows it under Needs you. Ask the customer before the office chases.
 

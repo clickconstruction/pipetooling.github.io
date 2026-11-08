@@ -53,7 +53,7 @@ function fixture() {
     person_files: [{ person_id: PERSON, kind: 'summary', content: '## Trajectory\nSteady.\n\n## Pay\nWeekly.' }, { person_id: PERSON, kind: 'narrative', content: '## 1. Background\n…' }],
     person_document_index: [
       { id: 'd-notes', person_id: PERSON, title: AGENT_NOTES_TITLE, counsel_only: false, author_label: 'Robert', updated_at: '2026-11-07T06:00:00Z', archived_at: null, chars: 80, sections: 1, headings: [{ n: null, level: 2, heading: 'Open', line: 1 }] },
-      { id: 'd-guide', person_id: PERSON, title: 'Interview guide', counsel_only: false, author_label: 'Robert', updated_at: '2026-11-01T00:00:00Z', archived_at: null, chars: 4000, sections: 2, headings: [{ n: null, level: 2, heading: 'Before the call', line: 1 }, { n: null, level: 2, heading: 'After the call', line: 20 }] },
+      { id: 'd-guide', person_id: PERSON, title: 'Interview guide', counsel_only: false, author_label: 'Robert', updated_at: '2026-11-01T00:00:00Z', archived_at: null, evidence_id: 'r1', chars: 4000, sections: 2, headings: [{ n: null, level: 2, heading: 'Before the call', line: 1 }, { n: null, level: 2, heading: 'After the call', line: 20 }] },
       { id: 'd-old', person_id: PERSON, title: 'Old notes', counsel_only: false, author_label: 'HR agent', updated_at: '2026-09-01T00:00:00Z', archived_at: '2026-10-01T00:00:00Z', chars: 10, sections: 0, headings: [] },
     ],
     person_documents: [{ id: 'd-notes', content: '## Open\n\nAsk about the second week. ' + 'x'.repeat(2000) }],
@@ -90,9 +90,11 @@ describe('get_case_brief (the seat reads a case the way an agent reads a folder,
     expect(out.narrative).toMatchObject({ chars: 9000, kept_by: 'Robert', sections: [{ n: 1, heading: '1. Background', line: 1 }, { n: 2, heading: '2. The spring', line: 40 }] })
     // The notes are not listed twice; the archived document is out.
     expect(out.documents.map((d) => d.id)).toEqual(['d-guide'])
+    // v2.6713: the pair from either side — the document names the record it transcribes, the record names its document.
+    expect(out.documents[0]).toMatchObject({ evidence_id: 'r1' })
     expect(out.entries).toMatchObject({ count: 2, first: '2026-09-02', last: '2026-10-20', by_source: { conversation: 1, incident: 1 } })
     expect(out.entries.newest[0]).toEqual({ id: 'e1', ymd: '2026-10-20', source: 'conversation', first_line: 'Called in sick.' })
-    expect(out.evidence).toEqual([{ id: 'r1', dated_on: '2026-10-28', title: 'Recording of the call', counsel_only: true }])
+    expect(out.evidence).toEqual([{ id: 'r1', dated_on: '2026-10-28', title: 'Recording of the call', counsel_only: true, document_id: 'd-guide' }])
     expect(out.matter).toMatchObject({ id: MATTER, stage: 'review', events: 1, narrative: { sections: [{ heading: 'The parties', line: 1 }, { heading: 'The claim', line: 5 }] } })
     expect(out.matter?.steps).toEqual([{ id: 'm2', on: '2026-11-03', body: 'Send the notice.', done: true }, { id: 'm1', on: '2026-11-10', body: 'Pull the subcontract.', done: false }])
     expect(out.matter?.documents).toEqual([{ id: 'md1', title: 'Scenario map', state: 'final', dated_on: '2026-10-14', text: true }])
@@ -127,7 +129,7 @@ describe('get_case_brief (the seat reads a case the way an agent reads a folder,
     ])
     expect(SERVER).toContain("name: 'get_case_brief'")
     expect(SERVER).toContain("case 'get_case_brief': {")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.44.0'")
     expect(README).toContain('`get_case_brief(person)`')
     expect(MIGRATION).toMatch(/^SET lock_timeout = '3s';/)
     expect(MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.hr_doc_heading_index(md text)')
