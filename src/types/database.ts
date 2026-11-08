@@ -14346,6 +14346,7 @@ export type Database = {
           template_id: string | null
           template_lines: Json | null
           template_name: string | null
+          template_rows: Json | null
           template_used_on: string | null
           updated_at: string
         }
@@ -14362,6 +14363,7 @@ export type Database = {
           template_id?: string | null
           template_lines?: Json | null
           template_name?: string | null
+          template_rows?: Json | null
           template_used_on?: string | null
           updated_at?: string
         }
@@ -14378,6 +14380,7 @@ export type Database = {
           template_id?: string | null
           template_lines?: Json | null
           template_name?: string | null
+          template_rows?: Json | null
           template_used_on?: string | null
           updated_at?: string
         }

@@ -2,7 +2,7 @@
 name: "The estimate text's link: short, and on a Click Plumbing address"
 number: 281
 group: ready
-status: claude/short-estimate-link · asked 2026-11-07 · PR 1 built as v2.6657 on this branch (the share link in the text, 107 → 75 characters) · PR 2 and PR 3 planned below
+status: asked 2026-11-07 · PR 1 merged the same day as v2.6657 (#7252: the share link in the text, 107 → 75 characters; client only, nothing to push or deploy) · PR 2 and PR 3 planned below
 summary: >
   The text the Tell the customer sheet sends with an estimate ended in a 107-character link, a
   64-hex token on clicktooling.com, and the owner wants it much shorter and looking like it came
@@ -14,8 +14,8 @@ summary: >
   locks a source after N misses. PR 3 (the owner's Cloudflare rule): the text's link on
   clickplumbing.com/e/<code> or my.clickplumbing.com/e/<code>, a 301 to the app, the app emitting
   that host through one constant beside PORTAL_SHORT_ORIGIN once the owner says the rule is live.
-next: Merge PR 1 and walk it on a ZZ Test estimate. Then the owner's three calls below; PR 2 on call 2, PR 3 on call 1 once his Cloudflare rule answers a curl.
-size: S (PR 1) + S (PR 2, a migration) + XS (PR 3, the owner's Cloudflare rule)
+next: Walk PR 1 on a ZZ Test estimate (the text's link is 75 characters and opens the accept page; Send the link again, then the first text's link still opens). Then the owner's three calls below; PR 2 on call 2, PR 3 on call 1 once his Cloudflare rule answers a curl.
+size: S (PR 1) + S (PR 2, a migration) + XS (PR 3, the owner's Cloudflare rule); left: PR 2 (S) + PR 3 (XS)
 blocker: none for PR 1; PR 3 waits on the owner's host call and his Cloudflare rule
 ver: v2.6657 (PR 1)
 mockup: not required — the change is the link's length and host in a text that already goes; the before and after are the two lines under The ask
