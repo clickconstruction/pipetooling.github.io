@@ -24,7 +24,8 @@ import { combineNoticesByProperty, combineSummary, type CombinedRunNotice } from
 import { useToastContext } from '../../contexts/ToastContext'
 import { runNoticesTakenBack, runPrintedItemIds, runTakeBackConfirm, runTakenBackWords, runTypedTrackingCount } from '../../lib/jobs/lienRunTakeBack'
 import LienRunPreviewOverlay, { type LienRunPreviewEntry } from './LienRunPreviewOverlay'
-import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
+import { lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode } from '../../lib/jobs/lienDeskSignIo'
+import { lienCodeRefusalWords, lienCodeSignerFrom, lienCodeStatusStale, lienFirstName, type LienCodeStatusRead } from '../../lib/jobs/lienCodeSigner'
 import { lienNoticeSignatureAfterSigning } from '../../lib/jobs/lienNoticeSignature'
 import { LienNoticeSignLine, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
 import LienPenSignaturePane, { type PenPaneRecorded } from './LienPenSignaturePane'
@@ -105,6 +106,11 @@ export default function LienDeskRunModal({
   // Leader here, sign ▸ (v2.5086): the held envelope whose sign sheet is open, and the line he draws on.
   const [signOpen, setSignOpen] = useState<string | null>(null)
   const signRef = useRef<LienNoticeSignLineHandle>(null)
+  // His code on this screen (v2.6733, punch list #150): the leader's code status, read when the sign sheet opens on his envelope and he is not
+  // the one signed in here; the last refused code sits under the field; a lock or a missing code reads the status again.
+  const [codeStatus, setCodeStatus] = useState<{ userId: string; status: LienCodeStatusRead } | null>(null)
+  const [codeTick, setCodeTick] = useState(0)
+  const [codeProblem, setCodeProblem] = useState<string | null>(null)
   // He signed the paper ▸ (the pen train, PR 2): the held envelope whose pen pane is open.
   const [penOpen, setPenOpen] = useState<string | null>(null)
   // More ▾ (Run-4): the foot's secondary doors, folded.
@@ -397,21 +403,62 @@ export default function LienDeskRunModal({
     }
     return out
   }
-  // Leader here, sign ▸: he draws on this screen; each unsigned notice in the envelope gets the mark, attributed to him, the row naming this sign-in's screen.
+  // The leader whose sign sheet is open, and whether this is someone else's screen (then his code is offered beside the pad).
+  const signEnv = signOpen ? envelopes.find((e) => e.key === signOpen) ?? null : null
+  const signLeader = signEnv ? unsignedIn(signEnv)[0]?.leader ?? null : null
+  const codeLeaderId = signLeader?.userId && viewer?.userId && signLeader.userId !== viewer.userId ? signLeader.userId : null
+  useEffect(() => {
+    setCodeProblem(null)
+    if (!codeLeaderId) {
+      setCodeStatus(null)
+      return
+    }
+    let live = true
+    setCodeStatus({ userId: codeLeaderId, status: 'loading' })
+    lienSignCodeStatus(codeLeaderId)
+      .then((s) => {
+        if (live) setCodeStatus({ userId: codeLeaderId, status: s ?? 'not_live' })
+      })
+      .catch(() => {
+        if (live) setCodeStatus({ userId: codeLeaderId, status: 'not_live' })
+      })
+    return () => {
+      live = false
+    }
+  }, [codeLeaderId, codeTick])
+  const codeSigner = codeLeaderId && signLeader ? lienCodeSignerFrom(signLeader.name, codeStatus?.userId === codeLeaderId ? codeStatus.status : 'loading') : null
+  // Leader here, sign ▸: he draws on this screen, or types his code (v2.6733); each unsigned notice in the envelope gets the mark, attributed to him, the row naming this sign-in's screen.
   const signHere = async (env: RunEnvelope) => {
     if (busy || !viewer) return
     const targets = unsignedIn(env)
     const leader = targets[0]?.leader ?? null
     if (!leader) return
-    const png = signRef.current?.toDataURL() ?? null
-    if (!png) {
-      showToast('Sign on the line first.', 'error')
+    const h = signRef.current
+    const byCode = h?.mode === 'code'
+    const code = byCode ? h.code() : ''
+    const png = byCode ? '' : (h?.toDataURL() ?? '')
+    if (byCode ? code.length < 4 : !png) {
+      showToast(byCode ? `Type ${lienFirstName(leader.name)}’s signing code first.` : 'Sign on the line first.', 'error')
       return
     }
     setBusy(true)
     try {
       const signed: RunNotice[] = []
       for (const n of targets) {
+        if (byCode) {
+          // His code, checked in the database, the record naming this sign-in's screen; a refused code stops at the first notice and says why under the field.
+          const r = await signLienDeskItemWithCode({ itemId: n.itemId, fields: n.rowFields ?? null, signerUserId: leader.userId ?? '', code, approve: false })
+          if (!r.ok) {
+            const words = lienCodeRefusalWords(r)
+            setCodeProblem(words)
+            if (lienCodeStatusStale(r.reason)) setCodeTick((t) => t + 1)
+            showToast(words, 'error')
+            break
+          }
+          setCodeProblem(null)
+          signed.push({ ...n, signature: lienNoticeSignatureAfterSigning({ mode: 'code', printedName: leader.name, pngDataUrl: null, signedAtIso: r.signedAtIso, jobNumber: n.jobNumber, itemId: n.itemId, onDeviceName: viewer.name }) })
+          continue
+        }
         const r = await signLienDeskItem({ itemId: n.itemId, fields: n.rowFields ?? null, signer: { userId: leader.userId, printedName: leader.name }, payload: { mode: 'draw', signaturePngBase64: png }, onDevice: { userId: viewer.userId, name: viewer.name }, approve: false })
         if (!r.ok) {
           showToast(r.message, 'error')
@@ -787,8 +834,8 @@ export default function LienDeskRunModal({
                       {viewer && unsignedIn(env)[0]?.leader ? (
                         signOpen === env.key ? (
                           <div data-testid={`run-sign-here-${env.n}`} style={{ marginTop: '0.45rem', display: 'grid', gap: '0.4rem', maxWidth: 480 }}>
-                            <LienNoticeSignLine ref={signRef} printedName={unsignedIn(env)[0]!.leader!.name} under={[unsignedIn(env)[0]!.fields.contactPerson, unsignedIn(env)[0]!.fields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} allowPress={false} compact disabled={busy} />
-                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{unsignedIn(env)[0]!.leader!.name} draws on this screen. The record names {viewer.name || 'you'} as whose screen it was.</div>
+                            <LienNoticeSignLine ref={signRef} printedName={unsignedIn(env)[0]!.leader!.name} under={[unsignedIn(env)[0]!.fields.contactPerson, unsignedIn(env)[0]!.fields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} allowPress={false} codeSigner={codeSigner} codeProblem={codeProblem} compact disabled={busy} />
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{unsignedIn(env)[0]!.leader!.name} {codeSigner?.status === 'ready' ? 'types his code or draws' : 'draws'} on this screen. The record names {viewer.name || 'you'} as whose screen it was.</div>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                               <button type="button" onClick={() => void signHere(env)} disabled={busy} data-testid={`run-sign-here-go-${env.n}`} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #15803d', background: '#15803d', color: '#fff', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Sign ▸</button>
                               <button type="button" onClick={() => setSignOpen(null)} disabled={busy} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.8125rem', cursor: 'pointer' }}>Cancel</button>
@@ -807,7 +854,7 @@ export default function LienDeskRunModal({
                           />
                         ) : (
                           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
-                            <button type="button" onClick={() => setSignOpen(env.key)} data-testid={`run-leader-here-sign-${env.n}`} title="The leader is beside you: he draws his signature on this screen, and the record names yours" style={{ padding: '4px 11px', borderRadius: 7, border: '1px solid var(--text-link)', background: 'var(--surface)', color: 'var(--text-link)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Leader here, sign ▸</button>
+                            <button type="button" onClick={() => setSignOpen(env.key)} data-testid={`run-leader-here-sign-${env.n}`} title="The leader is beside you: he types his signing code or draws his signature on this screen, and the record names yours" style={{ padding: '4px 11px', borderRadius: 7, border: '1px solid var(--text-link)', background: 'var(--surface)', color: 'var(--text-link)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Leader here, sign ▸</button>
                             <button type="button" onClick={() => setPenOpen(env.key)} data-testid={`run-pen-sign-${env.n}`} title="He signed the printed paper with a pen: write down who, when, how you know, and add the signed page" style={{ padding: '4px 11px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>He signed the paper ▸</button>
                           </div>
                         )

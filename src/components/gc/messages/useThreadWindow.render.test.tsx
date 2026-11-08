@@ -23,6 +23,8 @@ vi.mock('../../estimates/useEstimateLineThreadSlots', () => ({ useEstimateLineTh
 vi.mock('../../estimates/useEstimateDoorThreadSlots', () => ({ useEstimateDoorThreadSlots: () => ({}) }))
 // #140 PR 8's lead doors navigate and open Add Job, and this hook runs outside a Router here: its own smoke covers it.
 vi.mock('../../messages/useLeadDoorThreadSlots', () => ({ useLeadDoorThreadSlots: () => ({}) }))
+// Punch list #263 PR A: My email's line above the box of a thread narrowed to a job, read through its own smoke.
+vi.mock('../../messages/useMyMailJobLineThreadSlots', () => ({ useMyMailJobLineThreadSlots: () => ({}) }))
 // #223 PR 3's Start a bid navigates to the Bid Board (useNavigate), and this hook runs outside a Router here: its own smoke covers it.
 vi.mock('../../followUp/useNewLaneThreadSlots', () => ({ useNewLaneThreadSlots: () => ({}) }))
 // v2.6509: the email viewer's row (Start a bid, Put it on a bid…, Open the bid) is its own smoke, `useEmailViewerThreadSlots.render.test.tsx`.

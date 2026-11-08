@@ -20,6 +20,8 @@ import { Link } from 'react-router-dom'
 import { Phone } from 'lucide-react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { TellCustomerPreview } from './TellCustomerPreview'
+import { ToChip } from '../gc/messages/reply/ToChip'
+import { numberChoices, usualToSet } from '../../lib/messages/toChip'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { UserRole } from '../../hooks/useAuth'
 import { canEditFlows, GC_OFFICE_TEAM } from '../../lib/gc/access'
@@ -149,6 +151,9 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   const [closeHint, setCloseHint] = useState(false)
   const [busy, setBusy] = useState(false)
   const [view, setView] = useState<View>({ kind: 'tell' })
+  // The To chip (punch list #118, PR 2): the office's pick this once, and the tick that makes it their usual.
+  const [pickedNumberId, setPickedNumberId] = useState<string | null>(null)
+  const [usualTick, setUsualTick] = useState(true)
   /** Preview (v2.5794): the window over the sheet, on the email or the text; null while closed. */
   const [preview, setPreview] = useState<PreviewKind | null>(null)
 
@@ -201,7 +206,20 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   )
   const line = useMemo(() => (lines ? lineFor(moment, lines, userId) : null), [lines, moment, userId])
   const starting = useMemo(() => (line ? tellWords(line, fills, lang) : null), [line, fills, lang])
-  const number = contact?.numbers[0] ?? null
+  // Their numbers in the rule's order (`numberOrder`: the usual, else the last the thread carried a line on, else the
+  // first that can still take a text), the picked one first when the office opened the menu. `stopped` is a yes or no
+  // here; the rule reads only whether a number sent STOP.
+  const choices = useMemo(
+    () =>
+      numberChoices(
+        { channels: (contact?.numbers ?? []).map((n) => ({ id: n.channelId, kind: 'phone' as const, value: n.value, optedOutAt: n.stopped ? 'stopped' : null, usualAt: n.usualAt ?? null })) },
+        contact?.lines ?? [],
+        new Date(now()).toISOString(),
+      ),
+    [contact, now],
+  )
+  const toChannelId = (pickedNumberId && choices.some((c) => c.id === pickedNumberId) ? pickedNumberId : null) ?? choices[0]?.id ?? null
+  const number = contact?.numbers.find((n) => n.channelId === toChannelId) ?? null
   const loading = job === null || lines === null || textsOn === null || contact === undefined
   const hold = loading ? null : tellHold({ office, hasCustomer: Boolean(job?.customerId), number: number?.value ?? null, stopped: number?.stopped ?? false, textsOn: textsOn === true })
   const text = body ?? starting?.text ?? ''
@@ -210,8 +228,15 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   const textCanGo = !hold && Boolean(contact) && Boolean(number)
   const canSend = !loading && !busy && (moment === 'estimate' ? Boolean(estimate) && (!textCanGo || (text.trim().length > 0 && left.length === 0)) : textCanGo && text.trim().length > 0 && left.length === 0)
 
+  /** The tick first (punch list #118), so the thread's gray line sits above the text it explains; a refusal stops the send and is said. */
+  const starUsual = async () => {
+    const star = usualToSet(choices, pickedNumberId, usualTick)
+    if (star && io.makeUsual) await io.makeUsual(star)
+  }
+
   const sendText = async (bodyToSend: string): Promise<string | null> => {
     if (!contact || !number) return null
+    await starUsual()
     const id = await io.send({ contactId: contact.contactId, channelId: number.channelId, jobId: estimate ? estimate.jobId : jobId, body: bodyToSend })
     onSent?.(id)
     return bodyToSend
@@ -305,6 +330,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
     setBusy(true)
     try {
       const day = morningSendOn(now())
+      await starUsual()
       await io.makeOffer({ contactId: contact.contactId, channelId: number.channelId, jobId, stepKey: MOMENT_STEP[moment], body: text.trim(), sendOn: day })
       showToast(TODAYS_SENDS_WORDS.morningToast(weekdayDate(day)), 'success')
       setView({ kind: 'morning', day })
@@ -531,8 +557,9 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
                 </span>
                 <div>
                   <div style={rowHead}>
-                    <div style={{ fontWeight: 700 }}>
-                      {TELL_WORDS.textTo(number.value)} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {first ?? 'They'} {TELL_WORDS.reads(lang)}</span>
+                    <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }} data-testid="tell-text-to">
+                      {TELL_WORDS.textWord} <ToChip choices={choices} pickedId={pickedNumberId} onPick={setPickedNumberId} tick={usualTick} onTick={setUsualTick} />
+                      <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {first ?? 'They'} {TELL_WORDS.reads(lang)}</span>
                     </div>
                     <button type="button" style={previewBtn} title={PREVIEW_WORDS.pressTip('text')} onClick={() => setPreview('text')} data-testid="tell-preview-text-press">
                       {PREVIEW_WORDS.press}

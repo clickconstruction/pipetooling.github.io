@@ -21,6 +21,7 @@ import type { CourtFacts } from '../../../lib/followUp/courtFacts'
 import { useNewLaneThreadSlots } from '../../followUp/useNewLaneThreadSlots'
 import { useEmailViewerThreadSlots } from '../../messages/useEmailViewerThreadSlots'
 import { useLeadDoorThreadSlots } from '../../messages/useLeadDoorThreadSlots'
+import { useMyMailJobLineThreadSlots } from '../../messages/useMyMailJobLineThreadSlots'
 import { useOwnMailboxThreadSlots } from '../../messages/useOwnMailboxThreadSlots'
 import { hasBillOffer, hasPaperOffer } from '../../../lib/messages/lineFiles'
 import { PaperOffers } from './PaperOffers'
@@ -183,7 +184,10 @@ export function useThreadSlots(): ThreadSlots {
   // #207 (v2.6745): *Answered them from your own mailbox?* above the box, after cut 2's owed strip, while the court is
   // ours by their last word alone.
   const ownMailbox = useOwnMailboxThreadSlots()
+  // Punch list #263 PR A (v2.6730): above the box of a thread narrowed to a job, the person's own mail with its person
+  // that is not on that job yet, with Yes on each; after cut 2's owed strip and #207's strip in the slot they share.
+  const myMailJobLine = useMyMailJobLineThreadSlots()
   // By cut number: cut 2's Follow up, #207's own-mailbox strip, cut 3's reply box, cut 4's flow, cut 4b's change
-  // orders, R8 · 8's estimate lines, #139's estimate door, cut 6's paper offer, R7's sort card.
-  return mergeThreadSlots(followUp, ownMailbox, replyBox, flow, changeOrders, emailViewer, estimateLines, estimateDoor, email, leadDoors, newLane)
+  // orders, R8 · 8's estimate lines, #139's estimate door, cut 6's paper offer, R7's sort card, #263's My email line last.
+  return mergeThreadSlots(followUp, ownMailbox, replyBox, flow, changeOrders, emailViewer, estimateLines, estimateDoor, email, leadDoors, newLane, myMailJobLine)
 }

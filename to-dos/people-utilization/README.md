@@ -2,14 +2,14 @@
 name: People → Utilization and the drawn week
 number: 284
 group: ready
-status: PR 1 #7311, the types PR #7331 and PR 2 #7332 merged · PR 3 #7333 armed · walked on the dev server as a dev, an assistant and a helper, two defects fixed on PR 2 · left: the same walk on prod after #7333 deploys
+status: landed — #7311, #7331, #7332 and #7333 all on main 2026-11-08 · walked on the dev server from the stacked branches and again from main · left: the owner's look, then delete this folder
 summary: >
   A People view that reads the hours each person said they can work against the hours the clock
   recorded, by pay week, so the office knows when to add people and when to use the people it has
   more; and the person's side on My Time, where they draw the week they can work, Sunday to
   Saturday, and read their last eight weeks against it. Everything is built and tested; what is
   left is landing it in order.
-next: Repeat the walk below after #7333 deploys and record it here; delete this folder once the owner has seen it.
+next: The owner reads the walk below and the two fixes, then this folder goes (and the spike branch claude/people-utilization-tracking-745ad5 with it).
 size: S as what is left (the code is done; three PRs to land in order)
 blocker: The merge queue, one PR at a time; #7332 and #7333 wait for the PR ahead.
 opinion: build — the owner said ship; the branches are ready and the write-up is theirs
@@ -72,3 +72,5 @@ A Needs You nudge for people who have not drawn their week and for a three-week 
 2026-11-08, afternoon: #7311 merged and its migration is in prod's ledger; the types regen opened as #7331 and armed; #7332 (PR 2) and #7333 (PR 3) opened from the rebased branches, tests and the CI check scripts clean on both, armed in order as each PR ahead lands. The live walk waits for #7333 to deploy.
 
 2026-11-08, evening: the walk from § How to verify ran on the dev server from the stacked branches (#7333 over #7332 over #7331) against prod data. **As the dev**: the lines, the five tiles and both lists; **Weeks** opened the per-week rows (a 32 h week reads its 8 h off); **Set hours** opened *Hours Tristen can work*, a real pointer sweep took Friday to 7a–1p and the words, the total and the Save button read 38 h — cancelled, so nothing was written on a real person. **As the Sample assistant**: the tab shows with the 3-week window and every longer chip closed; two defects found and fixed on #7332: the kernel counted its default eight weeks over three weeks of sessions, so the five weeks the assistant's fence hides read as nothing recorded and a steady helper read *Light four weeks running* (`fetchUtilizationBoard.test.ts` pins the count now), and the *8 weeks* chip read pressed over a 3-week board (the cap gets its own chip). **As the Sample helper**: `/people` sends them to the dashboard, so no tab; the Job Mode card and the My Time row both show *How many hours a week can you work?*; the painter painted by pressing and sweeping, **Save 38 h a week** wrote the sample's row and the block read the week back in words with the bars. Not exercised: a salaried account (no salaried sample on the roster); a sub.
+
+2026-11-08, 21:45Z: #7333 merged at 21:42Z, so all four PRs are on main; the board re-read from main's checkout on the dev server as the dev shows the same lines, tiles and twelve rows, with the 8-week bars and the Utilization chip in the People group. The Pages deploy of 4cc2fa212 was running at the time.

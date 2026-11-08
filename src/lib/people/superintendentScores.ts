@@ -134,9 +134,24 @@ export type SuperintendentScore = {
   usedHours: number
   keptUsd: number | null
   bonusUsd: number | null
-  /** The days against the plan across the scored jobs, as the line reads them; null without a plan. */
+  /** The days against the plan across the scored jobs, as the line reads them; null while nothing can be read. */
   daysVsPlan: number | null
+  /** Why the days read nothing, when they read nothing: the scored jobs have no plan, or a plan waits on hours or a sign-off. */
+  daysHold: DaysVsPlanHold | null
 }
+
+/** What stops a job's days from reading: no planned finish, no sign-off to pace from, or no hours in yet. */
+export type DaysVsPlanHold = 'no-plan' | 'no-sign-off' | 'no-hours'
+
+export function daysVsPlanHoldOf(r: ScoreRow): DaysVsPlanHold | null {
+  if (!r.plannedFinish) return 'no-plan'
+  if (r.certifiedPct == null || r.certifiedPct <= 0) return 'no-sign-off'
+  if (r.teamHours + r.subHours <= 0) return 'no-hours'
+  return null
+}
+
+/** The strongest reason first: a plan waiting on hours outranks a job with no plan at all. */
+const HOLD_RANK: Record<DaysVsPlanHold, number> = { 'no-hours': 0, 'no-sign-off': 1, 'no-plan': 2 }
 
 export function holdReason(r: ScoreRow): string | null {
   if (r.awardedKind === 'book') return "awarded on the book's hours, a guess; the score waits for a bid or typed baseline"
@@ -166,7 +181,7 @@ export function daysVsPlanOf(r: ScoreRow, todayYmd: string, crewHoursPerDay = 24
 export function superintendentScores(read: ScoreRead, todayYmd: string): SuperintendentScore[] {
   const byUser = new Map<string, SuperintendentScore>()
   for (const r of read.rows) {
-    const s = byUser.get(r.userId) ?? { userId: r.userId, userName: r.userName, jobs: [], held: [], hoursUnder: 0, awardedHours: 0, usedHours: 0, keptUsd: read.readsWages ? 0 : null, bonusUsd: null, daysVsPlan: null }
+    const s = byUser.get(r.userId) ?? { userId: r.userId, userName: r.userName, jobs: [], held: [], hoursUnder: 0, awardedHours: 0, usedHours: 0, keptUsd: read.readsWages ? 0 : null, bonusUsd: null, daysVsPlan: null, daysHold: null }
     byUser.set(r.userId, s)
     const why = holdReason(r)
     if (why) {
@@ -181,6 +196,10 @@ export function superintendentScores(read: ScoreRead, todayYmd: string): Superin
     if (r.bonusUsd != null) s.bonusUsd = (s.bonusUsd ?? 0) + r.bonusUsd
     const d = daysVsPlanOf(r, todayYmd)
     if (d != null) s.daysVsPlan = (s.daysVsPlan ?? 0) + d
+    else {
+      const hold = daysVsPlanHoldOf(r)
+      if (hold && (s.daysHold == null || HOLD_RANK[hold] < HOLD_RANK[s.daysHold])) s.daysHold = hold
+    }
   }
   return [...byUser.values()].sort((a, b) => (b.bonusUsd ?? -1) - (a.bonusUsd ?? -1) || b.hoursUnder - a.hoursUnder || a.userName.localeCompare(b.userName))
 }
@@ -198,6 +217,17 @@ export function daysWords(d: number | null): string {
   if (d == null) return ''
   if (d === 0) return 'on the plan'
   return `${Math.abs(d)} day${Math.abs(d) === 1 ? '' : 's'} ${d > 0 ? 'ahead of' : 'behind'} the plan`
+}
+
+/**
+ * The Days column: the days when they read, else why they do not — "no plan", "waits on hours" (a plan with
+ * nothing clocked yet; the second walk read *no plan* here), "waits on a sign-off"; "—" with nothing scored.
+ */
+export function daysColumnWords(s: Pick<SuperintendentScore, 'jobs' | 'daysVsPlan' | 'daysHold'>): string {
+  if (s.jobs.length === 0) return '—'
+  const words = daysWords(s.daysVsPlan)
+  if (words) return words
+  return s.daysHold === 'no-hours' ? 'waits on hours' : s.daysHold === 'no-sign-off' ? 'waits on a sign-off' : 'no plan'
 }
 
 /** "$2,130 kept" / "−$1,420, nothing owed back"; '' without payroll access. */

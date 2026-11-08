@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bonusWords, daysVsPlanOf, daysWords, holdReason, hoursUnderWords, jobScoreWords, keptWords, monthOf, monthRange, monthShift, monthWords, parseScoreRead, superintendentScores, type ScoreRow } from './superintendentScores'
+import { bonusWords, daysColumnWords, daysVsPlanHoldOf, daysVsPlanOf, daysWords, holdReason, hoursUnderWords, jobScoreWords, keptWords, monthOf, monthRange, monthShift, monthWords, parseScoreRead, superintendentScores, type ScoreRow } from './superintendentScores'
 
 const raw = {
   reads_wages: true,
@@ -64,6 +64,25 @@ describe('superintendentScores (punch list #234 PR 4)', () => {
     expect(daysWords(-1)).toBe('1 day behind the plan')
     expect(daysWords(0)).toBe('on the plan')
     expect(daysWords(null)).toBe('')
+  })
+  it('the Days column says what it waits on: a plan with no hours yet waits on hours, never "no plan" (the second walk\'s slip 5)', () => {
+    const r: ScoreRow = { userId: 'u', userName: 'U', jobId: 'j', jobLabel: 'J', status: 'working', awardedKind: 'bid', awardedAt: null, plannedFinish: '2026-11-20', awardedHours: 70, certifiedPct: 25, signedOn: '2026-11-08', signedBy: 'Taunya', teamHours: 0, subHours: 0, hoursUnder: 17.5, scored: true, signedInPeriod: true, earnedUsd: null, actualUsd: null, keptUsd: null, bonusUsd: null }
+    expect(daysVsPlanHoldOf(r)).toBe('no-hours')
+    expect(daysVsPlanHoldOf({ ...r, plannedFinish: null })).toBe('no-plan')
+    expect(daysVsPlanHoldOf({ ...r, certifiedPct: null })).toBe('no-sign-off')
+    expect(daysVsPlanHoldOf({ ...r, teamHours: 9 })).toBeNull()
+    const read = { readsWages: false, sharePct: 10, burden: 1.2, fromYmd: '2026-11-01', toYmd: '2026-11-30', rows: [r] }
+    const [line] = superintendentScores(read, '2026-11-08')
+    expect(line!.daysVsPlan).toBeNull()
+    expect(line!.daysHold).toBe('no-hours')
+    expect(daysColumnWords(line!)).toBe('waits on hours')
+    expect(daysColumnWords({ ...line!, daysHold: 'no-plan' })).toBe('no plan')
+    expect(daysColumnWords({ ...line!, daysHold: 'no-sign-off' })).toBe('waits on a sign-off')
+    expect(daysColumnWords({ ...line!, daysVsPlan: 10 })).toBe('10 days ahead of the plan')
+    expect(daysColumnWords({ ...line!, jobs: [] })).toBe('—')
+    // Two jobs: the one waiting on hours outranks the one with no plan.
+    const [two] = superintendentScores({ ...read, rows: [{ ...r, jobId: 'a', plannedFinish: null }, { ...r, jobId: 'b' }] }, '2026-11-08')
+    expect(two!.daysHold).toBe('no-hours')
   })
   it('the words', () => {
     expect(hoursUnderWords(41.7)).toBe('42 h under the baseline')
