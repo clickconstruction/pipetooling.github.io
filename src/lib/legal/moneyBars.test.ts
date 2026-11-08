@@ -125,3 +125,21 @@ describe('moneyBars — the Legal desk’s money as bars (v2.6105)', () => {
     expect(['withdrawn', 'expired'].map((s) => offerStands(s as never))).toEqual([false, false])
   })
 })
+
+describe('a settlement-only line on the claim bar (v2.6697, punch list #171)', () => {
+  it('is its own block after the typed one, inside the bar’s length and the caption, and out of What’s left; the sentence says so', () => {
+    const { bars, words } = moneyBars({ ...base, offers: [], retainageOnBillsByJob: new Map(), claimTyped: 500, claimSettlementOnly: 400, claim: 3620.5 })
+    const claim = bars.find((b) => b.key === 'claim')!
+    expect(claim.total).toBe(4020.5)
+    expect(claim.segments.map((s) => [s.kind, s.amount])).toEqual([['bills', 3120.5], ['typed', 500], ['settlement', 400]])
+    expect(claim.segments[2]!.label).toBe('settlement only $400.00')
+    expect(claim.caption).toBe('The claim · $4,020.50 · $3,620.50 in the demand')
+    expect(bars.find((b) => b.key === 'left_claim')!.total).toBe(3620.5)
+    expect(words).toContain('The office typed $500.00 more onto the claim. Another $400.00 is settlement only, in an offer and not in the demand.')
+  })
+  it('alone, still draws the claim bar; absent, nothing changes', () => {
+    const alone = moneyBars({ ...base, offers: [], retainageOnBillsByJob: new Map(), claimSettlementOnly: 400 })
+    expect(alone.bars.find((b) => b.key === 'claim')!.segments.map((s) => s.kind)).toEqual(['bills', 'settlement'])
+    expect(moneyBars({ ...base, offers: [], retainageOnBillsByJob: new Map() }).bars.find((b) => b.key === 'claim')).toBeUndefined()
+  })
+})

@@ -2,7 +2,7 @@
 name: "Legal desk: the claim, not only the open balance"
 number: 171
 group: gated
-status: Do 2026-11-07 · rank 6 of 10 from the review of the Burd matter (job 891) · step 2's tile built as v2.5849 (How much? and What's left for us? read the claim as the open bills plus the retainage held, from the job rows; since v2.6103, #213, only the retainage no sent bill already carries) · step 1 built as v2.6679 (the claim table on the Account tab over legal_matter_claim_lines, the two rows that fill in, add · edit · remove) · step 2 finished as v2.6680 (How much?, What's left for us?, the bars and the paths read the typed lines inside the claim) · step 3 built as v2.6681 (the packet prints the table; the floor half is moot since v2.6170 retired the settlement floor, so the claim feeds the bars and the paths instead) · built 2026-11-08, the owner's look left
+status: Do 2026-11-07 · rank 6 of 10 from the review of the Burd matter (job 891) · step 2's tile built as v2.5849 (How much? and What's left for us? read the claim as the open bills plus the retainage held, from the job rows; since v2.6103, #213, only the retainage no sent bill already carries) · step 1 built as v2.6679 (the claim table on the Account tab over legal_matter_claim_lines, the two rows that fill in, add · edit · remove) · step 2 finished as v2.6680 (How much?, What's left for us?, the bars and the paths read the typed lines inside the claim) · step 3 built as v2.6681 (the packet prints the table; the floor half is moot since v2.6170 retired the settlement floor, so the claim feeds the bars and the paths instead) · built 2026-11-08 · the two open decisions made by the owner on 2026-11-08 and built the same day: the firm sees each line (v2.6696, legal-portal sends them, the firm's demand reads the claim) and a line can be marked settlement only (v2.6697, a column, a tick, a chip; out of the demand and the prints, inside the claim bar and the paths) · only the owner's look is left
 summary: >
   The desk sizes a case by its open bills: *How much?* is the balance, and *What's left for us?*
   and the settlement floor work from it. A dispute can claim more than the bills say, such as
@@ -10,12 +10,12 @@ summary: >
   each with an amount, its basis (a statute or a contract clause) and the document behind it. The
   open bills and the retainage held fill in on their own. *How much?* shows the claim with the
   balance inside it, and the floor can be set against either.
-next: The owner's look at the desk (Account → The claim on a ZZ TEST matter, the tile, the print), and the two open decisions below — whether the firm's portal shows each line (today only the printed packet does) and whether a line can be marked settlement only.
-ver: v2.6679 · 6680 · 6681
+next: The owner's look at the desk (Account → The claim on a ZZ TEST matter with one line ticked Settlement only, the tile, the bars, the print) and at the firm's portal (the matter's Account tab shows the same table, the card's demand reads the claim). Both decisions are made and built; nothing else is open on this card.
+ver: v2.6679 · 6680 · 6681 · 6696 · 6697
 size: M (a table, the tile, the floor, the packet's print)
 blocker: >
-  The owner's look at what shipped, and the two open decisions.
-opinion: built on the owner's Do of 2026-11-07; the two open decisions can wait for a live matter that needs them
+  The owner's look at what shipped.
+opinion: built on the owner's Do of 2026-11-07; the two decisions were made on 2026-11-08 and built the same day
 ---
 
 # Legal desk: the claim, not only the open balance
@@ -60,7 +60,7 @@ the packet prints the table. The floor's percent can be of the claim or of the b
 ## Open decisions
 
 - Whether the firm sees each claim line or only the total. **The owner's call, 2026-11-08: each line.** Built as v2.6696: the legal-portal function sends the matter's claim lines, the firm's Account tab and its print draw the same table the desk keeps, and the firm's demand reads the claim plus its fees.
-- Whether a line can be marked *settlement only*, claimed in an offer but not in the demand.
+- Whether a line can be marked *settlement only*, claimed in an offer but not in the demand. **The owner's call, 2026-11-08: yes.** Built as v2.6697: `settlement_only` on the line, a **Settlement only** tick on the Add and Edit form, the chip on the desk's and the firm's table, the demand's figures and both printed packets leave such a line out, the claim bar and *What each path nets* keep it.
 
 ## Where it plugs in
 

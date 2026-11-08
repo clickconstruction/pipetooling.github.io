@@ -458,7 +458,7 @@ export default function LegalDesk(props: LegalDeskProps) {
   // RPCs; the matter is made by the first save when the account has none, so the list is read again for it.
   const saveClaimLine = async (draft: LegalClaimLineDraft, lineId: string | null): Promise<string | null> => {
     if (!selected) return 'Pick an account first.'
-    const r = await legalRpcData('legal_claim_line_save', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_line_id: lineId, p_kind: draft.kind, p_title: draft.title.trim(), p_amount: claimAmountOf(draft.amount), p_basis: draft.basis.trim(), p_document_id: draft.documentId || null })
+    const r = await legalRpcData('legal_claim_line_save', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_line_id: lineId, p_kind: draft.kind, p_title: draft.title.trim(), p_amount: claimAmountOf(draft.amount), p_basis: draft.basis.trim(), p_document_id: draft.documentId || null, p_settlement_only: draft.settlementOnly })
     if (r.error) return r.error
     showToast(lineId ? 'The claim line is saved.' : 'The line is on the claim.', 'success')
     if (!matter) await legal?.reload()
@@ -1166,6 +1166,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                           retainageOnBillsByJob: new Map(Object.entries(w.retainageOnBillsByJob)),
                           retainageAdded: w.retainageAdded,
                           claimTyped: w.claimTyped,
+                          claimSettlementOnly: w.claimSettlementOnly,
                           balance: w.balance,
                           claim: w.claim,
                           contingencyPct: w.contingencyPct,

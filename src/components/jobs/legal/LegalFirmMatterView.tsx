@@ -5,7 +5,7 @@ import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeS
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmExhibitWhere, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import { contingencyEntries, firmDemand, firmDemandWords, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
-import { claimTable, claimTotalWords, type ClaimTableRow } from '../../../lib/legal/legalClaimLines'
+import { CLAIM_SETTLEMENT_ONLY_CHIP, claimSettlementOnlyWords, claimTable, claimTotalWords, type ClaimTableRow } from '../../../lib/legal/legalClaimLines'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
@@ -215,12 +215,13 @@ export function FirmClaimTable({ packet, documents }: { packet: LegalPacket; doc
         head={['Part of the claim', 'Grounds', 'Evidence', 'Amount']}
         numCols={[3]}
         rows={[
-          ...claim.rows.map((r) => [<span key="p"><b>{r.part}</b>{r.source !== 'typed' ? <span style={{ color: FAINT }}> · fills in</span> : null}</span>, r.basis || '—', evidence(r), formatLegalMoney(r.amount)]),
+          ...claim.rows.map((r) => [<span key="p"><b>{r.part}</b>{r.source !== 'typed' ? <span style={{ color: FAINT }}> · fills in</span> : null}{r.settlementOnly ? <span style={{ color: COPPER }}> · {CLAIM_SETTLEMENT_ONLY_CHIP}</span> : null}</span>, r.basis || '—', evidence(r), formatLegalMoney(r.amount)]),
           [<b key="t">{claimTotalWords(claim)}</b>, '', '', <b key="a" data-legal-firm-claim-total>{formatLegalMoney(claim.total)}</b>],
         ]}
         empty=""
       />
       {claim.note ? <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>{claim.note}</p> : null}
+      {claim.settlementOnlyCount > 0 ? <p data-legal-firm-claim-settlement-only style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>{claimSettlementOnlyWords(claim)} What each path nets counts it.</p> : null}
       <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>The open bills and the retainage held fill in from the office's records. The typed lines are what the office claims past the bills, each with its grounds and the document that shows it. The demand above reads this total plus your fees and costs.</p>
     </div>
   )

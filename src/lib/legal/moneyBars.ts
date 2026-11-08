@@ -34,7 +34,10 @@ export type MoneyBarsInput = {
   retainageAdded: number
   /** What the office typed onto the claim (v2.6680, punch list #171): materials, damages, interest, fees; drawn after the retainage. Absent on an older caller: nothing typed. */
   claimTyped?: number
+  /** The settlement-only lines (v2.6697): in an offer, not in the demand. Drawn after the typed block; the claim bar runs to `claim + claimSettlementOnly`. Absent: none. */
+  claimSettlementOnly?: number
   balance: number
+  /** The claim as demanded (the bills, the retainage added, the typed lines in the demand). */
   claim: number
   contingencyPct: number
   fee: number
@@ -45,7 +48,7 @@ export type MoneyBarsInput = {
   line?: number | null
 }
 
-export type MoneyBarSegmentKind = 'bill' | 'bills' | 'retainage' | 'typed' | 'beyond' | 'keep' | 'fee' | 'filing' | 'short'
+export type MoneyBarSegmentKind = 'bill' | 'bills' | 'retainage' | 'typed' | 'settlement' | 'beyond' | 'keep' | 'fee' | 'filing' | 'short'
 export type MoneyBarSegment = { key: string; kind: MoneyBarSegmentKind; label: string; title: string; amount: number; fraction: number }
 export type MoneyBarBracket = { key: string; label: string; amount: number; fromFraction: number; toFraction: number }
 export type MoneyBarMark = { key: string; kind: 'theirs' | 'ours' | 'line'; label: string; amount: number; fraction: number; row: 0 | 1 }
@@ -137,18 +140,22 @@ export function moneyBars(input: MoneyBarsInput): MoneyBars {
   }
 
   // --- The claim ----------------------------------------------------------
-  const claim = round2(input.claim)
+  const demand = round2(input.claim)
+  // v2.6697 (punch list #171): the claim bar is a settlement figure — offers are marked on it — so a settlement-only line is in its length, as its own block.
+  const settlementOnly = round2(Math.max(0, input.claimSettlementOnly ?? 0))
+  const claim = round2(demand + settlementOnly)
   const added = round2(Math.max(0, input.retainageAdded))
   const standing = input.offers.filter((o) => offerStands(o.status) && o.amount > 0.004)
   const scale = round2(Math.max(claim, ...standing.map((o) => o.amount)))
   const typed = round2(Math.max(0, input.claimTyped ?? 0))
-  const claimSays = added > 0.004 || typed > 0.004 || standing.length > 0
+  const claimSays = added > 0.004 || typed > 0.004 || settlementOnly > 0.004 || standing.length > 0
   if (claimSays && scale > 0.004) {
     const segments: MoneyBarSegment[] = []
     if (balance > 0.004) segments.push({ key: 'bills', kind: 'bills', label: `the bills ${formatLegalMoney(balance)}`, title: `The open bills, ${formatLegalMoney(balance)}`, amount: balance, fraction: frac(balance, scale) })
     if (added > 0.004) segments.push({ key: 'retainage', kind: 'retainage', label: `retainage ${formatLegalMoney(added)}`, title: `Retainage held that no sent bill asks for yet, ${formatLegalMoney(added)}: the claim adds it once`, amount: added, fraction: frac(added, scale) })
     // v2.6680 (punch list #171): the typed lines after the retainage, one block; the Account tab's table names each.
     if (typed > 0.004) segments.push({ key: 'typed', kind: 'typed', label: `typed ${formatLegalMoney(typed)}`, title: `What the office typed onto the claim, ${formatLegalMoney(typed)}: materials left on site, damages, interest or fees, line by line on the Account tab`, amount: typed, fraction: frac(typed, scale) })
+    if (settlementOnly > 0.004) segments.push({ key: 'settlement', kind: 'settlement', label: `settlement only ${formatLegalMoney(settlementOnly)}`, title: `Lines marked settlement only, ${formatLegalMoney(settlementOnly)}: claimed in an offer, not in the demand of ${formatLegalMoney(demand)}`, amount: settlementOnly, fraction: frac(settlementOnly, scale) })
     const beyond = round2(scale - claim)
     if (beyond > 0.004) segments.push({ key: 'beyond', kind: 'beyond', label: `asked beyond the claim on record · ${formatLegalMoney(beyond)}`, title: `An offer reaches ${formatLegalMoney(beyond)} past the claim the desk can count (${formatLegalMoney(claim)}); what it covers is in the narrative, not in the bills`, amount: beyond, fraction: frac(beyond, scale) })
     const marks = placeMarks([
@@ -161,10 +168,10 @@ export function moneyBars(input: MoneyBarsInput): MoneyBars {
       })),
       ...(input.line != null && input.line > 0.004 ? [{ key: 'line', kind: 'line' as const, label: 'above this, settling beats a full win', amount: round2(input.line), fraction: frac(input.line, scale) }] : []),
     ])
-    bars.push({ key: 'claim', caption: `The claim · ${formatLegalMoney(claim)}${beyond > 0.004 ? ` · asked ${formatLegalMoney(scale)}` : ''}`, total: scale, segments, brackets: [], marks })
+    bars.push({ key: 'claim', caption: `The claim · ${formatLegalMoney(claim)}${settlementOnly > 0.004 ? ` · ${formatLegalMoney(demand)} in the demand` : ''}${beyond > 0.004 ? ` · asked ${formatLegalMoney(scale)}` : ''}`, total: scale, segments, brackets: [], marks })
   }
 
-  // --- What's left for us -------------------------------------------------
+  // --- What's left for us: on the claim as demanded ----------------------
   const left = (key: MoneyBarKey, caption: string, total: number, feeAmt: number): MoneyBar => {
     const filing = round2(input.filingCost)
     const keep = round2(total - feeAmt - filing)
@@ -175,14 +182,15 @@ export function moneyBars(input: MoneyBarsInput): MoneyBars {
     if (keep < -0.004) segments.push({ key: 'short', kind: 'short', label: `${formatLegalMoney(-keep)} short`, title: `The firm's cut and the filing cost exceed the figure by ${formatLegalMoney(-keep)}`, amount: round2(-keep), fraction: frac(-keep, total) })
     return { key, caption: `${caption} · ${keep > 0.004 ? `${formatLegalMoney(keep)} left` : keep < -0.004 ? `${formatLegalMoney(-keep)} short` : 'nothing left'}`, total, segments, brackets: [], marks: [] }
   }
-  if (claim > 0.004) bars.push(left('left_claim', claim > balance + 0.004 ? 'What’s left, on the claim' : 'What’s left for us', claim, round2(input.fee)))
-  if (claim > balance + 0.004 && balance > 0.004) bars.push(left('left_bills', 'What’s left, on the bills alone', balance, round2(balance * input.contingencyPct)))
+  if (demand > 0.004) bars.push(left('left_claim', demand > balance + 0.004 ? 'What’s left, on the claim' : 'What’s left for us', demand, round2(input.fee)))
+  if (demand > balance + 0.004 && balance > 0.004) bars.push(left('left_bills', 'What’s left, on the bills alone', balance, round2(balance * input.contingencyPct)))
 
   // --- One sentence ---------------------------------------------------------
   const parts: string[] = []
   parts.push(bills.length === 0 ? `${formatLegalMoney(balance)} owed on no sent bill.` : `${bills.length === 1 ? 'One open bill' : `${bills.length} open bills`}, ${formatLegalMoney(balance)}.`)
   if (added > 0.004) parts.push(`The claim adds ${formatLegalMoney(added)} of retainage no bill asks for yet.`)
   if (typed > 0.004) parts.push(`The office typed ${formatLegalMoney(typed)} more onto the claim.`)
+  if (settlementOnly > 0.004) parts.push(`Another ${formatLegalMoney(settlementOnly)} is settlement only, in an offer and not in the demand.`)
   const theirs = standing.filter((o) => o.direction === 'received').sort((a, b) => b.ymd.localeCompare(a.ymd))[0]
   if (theirs) parts.push(`Their offer of ${formatLegalMoney(theirs.amount)} ${theirs.amount >= claim - 0.004 ? 'covers the claim on record' : theirs.amount >= balance - 0.004 ? 'covers the bills' : `leaves ${formatLegalMoney(round2(claim - theirs.amount))} of the claim`}.`)
   return { bars, words: parts.join(' ') }
