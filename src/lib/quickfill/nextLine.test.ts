@@ -90,7 +90,8 @@ describe('nextLine · the first row and its verb (punch list #176, change 2)', (
     // The rows come ordered from the kernel (v2.6750): the first row's first gap is the verb.
     expect(completeNoBillNextLine([{ job: { hcp_number: '995', job_name: 'Locks' }, gaps: ['total', 'work'] }, { job: { hcp_number: '1060', job_name: 'Cano Camera' }, gaps: ['work'] }])).toBe('Set the Total Bill on 995 Locks')
     expect(completeNoBillNextLine([{ job: { hcp_number: '1060', job_name: 'Cano Camera' }, gaps: ['work', 'charges'] }])).toBe('Add the Specific Work lines to 1060 Cano Camera')
-    expect(completeNoBillNextLine([{ job: { hcp_number: '1061', job_name: null }, gaps: ['charges'] }])).toBe('Add the Other job charges to 1061')
+    // A job with no HCP number reads by its Click number, as the row does.
+    expect(completeNoBillNextLine([{ job: { hcp_number: null, click_number: 'C1061', job_name: null }, gaps: ['work', 'charges'] }])).toBe('Add the Specific Work lines to C1061')
     expect(completeNoBillNextLine([])).toBeNull()
     expect(
       unassignedFieldTimeNextLine([

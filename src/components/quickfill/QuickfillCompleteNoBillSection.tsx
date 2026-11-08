@@ -34,12 +34,14 @@ function clockSummaryLine(summary: QuickfillJobClockSummary | undefined): string
   return `Started ${formatShortDate(summary.firstClockInAt)} · ${sessions}${hours}${open}`
 }
 
-/** The chip for one gap: the missing Total Bill red, a missing line amber. */
+/** The chip for one gap: the missing Total Bill red, a missing work line amber, the charges note grey. */
 function GapChip({ gap }: { gap: CompleteBillGap }) {
   const tone =
     gap === 'total'
       ? { background: 'var(--bg-red-100)', color: 'var(--text-red-800)' }
-      : { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+      : gap === 'work'
+        ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+        : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }
   return (
     <span data-bill-gap={gap} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 9999, whiteSpace: 'nowrap', ...tone }}>
       {COMPLETE_BILL_GAP_WORDS[gap]}
@@ -47,10 +49,11 @@ function GapChip({ gap }: { gap: CompleteBillGap }) {
   )
 }
 
-/** Jobs resolved 100% complete (report % / Edit Job % complete) whose bill is not filled in: no Total
- * Bill, no Specific Work line or no Other job charges (the Jobs Billing station's three checks, folded in
- * by v2.6750). Inline list: the gaps as chips, work dates + clock rollup per job, an expandable
- * Job-Detail-style activity feed, and an Edit job button to fill the bill in. */
+/** Jobs resolved 100% complete (report % / Edit Job % complete) whose bill cannot go out: no Total
+ * Bill or no Specific Work line, with no Other job charges as a grey note on a listed row (the Jobs
+ * Billing station's three checks, folded in by v2.6750). Inline list: the gaps as chips, work dates +
+ * clock rollup per job, an expandable Job-Detail-style activity feed, and an Edit job button to fill the
+ * bill in. */
 export function QuickfillCompleteNoBillSection({
   rows,
   clockSummaryByJobId,
@@ -89,9 +92,9 @@ export function QuickfillCompleteNoBillSection({
     <>
       <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
         Jobs marked <strong>100% complete</strong> (latest field report %, or the Edit Job{' '}
-        <strong>% complete</strong> field when no report has one) whose bill is not filled in: no{' '}
-        <strong>Total Bill</strong>, no <strong>Specific Work</strong> line, or no <strong>Other job charges</strong>.
-        Each row says which. Open a job to fill the bill in so it can be billed, or work the{' '}
+        <strong>% complete</strong> field when no report has one) whose bill cannot go out: no{' '}
+        <strong>Total Bill</strong> or no <strong>Specific Work</strong> line. Each row says which, and notes a job
+        with no <strong>Other job charges</strong>. Open a job to fill the bill in so it can be billed, or work the{' '}
         <Link to={JOBS_BILLING_TAB_HREF} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
           Jobs Billing tab
         </Link>
@@ -99,7 +102,7 @@ export function QuickfillCompleteNoBillSection({
       </p>
       {rows.length === 0 ? (
         // Empty is the good state (punch list #184, sweep C): the station's own words say so.
-        <EmptyState compact main="No complete job is missing its Total Bill, its Specific Work or its Other job charges." />
+        <EmptyState compact main="No complete job is missing its Total Bill or its Specific Work." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {rows.map(({ job: j, gaps }) => {

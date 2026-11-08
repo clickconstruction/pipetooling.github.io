@@ -62,7 +62,7 @@ describe('QuickfillCompleteNoBillSection · the three checks on each row (v2.675
 
   it('says in its own words when no finished job is missing a field', () => {
     renderWithProviders(<QuickfillCompleteNoBillSection rows={[]} clockSummaryByJobId={new Map()} jobsListBusy={false} />)
-    expect(screen.getByText('No complete job is missing its Total Bill, its Specific Work or its Other job charges.')).toBeTruthy()
+    expect(screen.getByText('No complete job is missing its Total Bill or its Specific Work.')).toBeTruthy()
     expect(document.querySelectorAll('[data-complete-no-bill-row]')).toHaveLength(0)
   })
 })

@@ -3,6 +3,7 @@ import {
   buildJobClockSummaries,
   buildQuickfillCompleteNoBillList,
   completeBillGaps,
+  completeBillListed,
   completeNoBillRows,
   jobHasNoTotalBill,
   jobHasOtherCharges,
@@ -179,10 +180,16 @@ describe('the three checks (v2.6750, punch list #176, decision 4: Jobs Billing f
     expect(completeBillGaps({ revenue: 2500, fixtures: [], materials: [] }, false)).toEqual([])
   })
 
-  it('a finished job with a Total Bill but no line is a candidate and a row; one with every field is neither', () => {
+  it('no Total Bill or no Specific Work lists a finished job; no Other job charges alone is a note, not a row', () => {
+    expect(completeBillListed(['total'])).toBe(true)
+    expect(completeBillListed(['work', 'charges'])).toBe(true)
+    expect(completeBillListed(['charges'])).toBe(false)
+    expect(completeBillListed([])).toBe(false)
     const jobs = [
       job({ id: 'lines-missing', revenue: 2500, fixtures: [], materials: [], pct_complete: 100 }),
       job({ id: 'filled', revenue: 2500, pct_complete: 100 }),
+      // A pre-test or a service visit: the work and the total are there, nothing else to charge (40 such on 2026-11-08).
+      job({ id: 'no-charges', revenue: 450, materials: [], pct_complete: 100 }),
       job({ id: 'not-done', revenue: 2500, fixtures: [], pct_complete: 40 }),
       job({ id: 'paid', status: 'paid', revenue: null, fixtures: [], materials: [] }),
     ]
@@ -191,15 +198,16 @@ describe('the three checks (v2.6750, punch list #176, decision 4: Jobs Billing f
     expect(completeNoBillRows(jobs, new Map(), 406)).toEqual([{ job: jobs[0], gaps: ['work', 'charges'] }])
   })
 
-  it('orders the rows no Total Bill first, then the lowest job number', () => {
+  it('orders the rows no Total Bill first, then the lowest number as the row shows it (the Click number when there is no HCP number)', () => {
     const jobs = [
       job({ id: 'c', hcp_number: '1200', revenue: 900, materials: [], pct_complete: 100 }),
       job({ id: 'b', hcp_number: '1100', revenue: null, pct_complete: 100 }),
       job({ id: 'a', hcp_number: '995', revenue: 900, fixtures: [], pct_complete: 100 }),
       job({ id: 'd', hcp_number: '1010', revenue: 0, fixtures: [], materials: [], pct_complete: 100 }),
+      job({ id: 'e', hcp_number: null, click_number: '1003', revenue: 900, fixtures: [], pct_complete: 100 }),
     ]
     const rows = completeNoBillRows(jobs, new Map(), 406)
-    expect(rows.map((r) => `${r.job.id}:${r.gaps.join('+')}`)).toEqual(['d:total+work+charges', 'b:total', 'a:work', 'c:charges'])
-    expect(buildQuickfillCompleteNoBillList(jobs, new Map(), 406).map((j) => j.id)).toEqual(['d', 'b', 'a', 'c'])
+    expect(rows.map((r) => `${r.job.id}:${r.gaps.join('+')}`)).toEqual(['d:total+work+charges', 'b:total', 'a:work', 'e:work'])
+    expect(buildQuickfillCompleteNoBillList(jobs, new Map(), 406).map((j) => j.id)).toEqual(['d', 'b', 'a', 'e'])
   })
 })

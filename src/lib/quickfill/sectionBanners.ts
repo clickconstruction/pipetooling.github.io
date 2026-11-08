@@ -37,7 +37,7 @@ export const QUICKFILL_DEFAULT_SECTION_BANNERS: Readonly<Record<string, string>>
   'supply-houses': 'Is anything past due with a supply house?',
   // Complete, no Total Bill asks for the three fields since v2.6750 (punch list #176, decision 4): the Jobs Billing
   // station's question retired under it.
-  'complete-no-bill': 'Does every finished job have its Specific Work, its Other job charges and its Total Bill?',
+  'complete-no-bill': 'Does every finished job have its Specific Work and its Total Bill?',
   'my-inbox': 'Anything due today or overdue?',
   'office-leaving': 'Is the office closed up for the night?',
 }

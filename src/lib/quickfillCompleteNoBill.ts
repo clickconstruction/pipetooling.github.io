@@ -3,10 +3,14 @@
  * the Job Summary % column) whose bill is not filled in. Since v2.6750 (punch list #176, decision 4)
  * the hidden Jobs Billing station's three checks live here, on the finished jobs alone: no **Total
  * Bill** (`jobs_ledger.revenue` unset or $0), no **Specific Work** line (a fixture with a name and a
- * count) and no **Other job charges** (a material with an amount). Each row says which it lacks.
- * Pure — no React/supabase.
+ * count) and no **Other job charges** (a material with an amount). Each row says which it lacks. The
+ * first two list a job, since a bill with no total or no work lines cannot go out; the third is a note
+ * on a listed row: the walk of 2026-11-08 found 40 finished jobs reading it alone, pre-tests, post
+ * tests and service visits with nothing to charge beyond the work, a standing backlog the round does
+ * not need. Pure — no React/supabase.
  */
 import { jobSummaryPaidInvoiceOpts, resolveJobSummaryPercentComplete } from './jobSummaryPercentComplete'
+import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 /** What a finished job's bill lacks, worst first: the total, then the work lines, then the charges. */
@@ -19,11 +23,18 @@ export const COMPLETE_BILL_GAP_WORDS: Readonly<Record<CompleteBillGap, string>> 
   charges: 'no Other job charges',
 }
 
+/** A gap that puts a finished job on the list; `charges` alone does not. */
+export function completeBillListed(gaps: ReadonlyArray<CompleteBillGap>): boolean {
+  return gaps.some((g) => g === 'total' || g === 'work')
+}
+
 export type QuickfillCompleteNoBillJobShape = {
   id: string
   status: string
   revenue: number | null
   hcp_number: string | null
+  /** The Click number a job has when it has no HCP number; the rows sort and read by the one it shows. */
+  click_number?: string | null
   pct_complete: number | null
   invoices: Array<{ status: string | null; amount: number | null }>
   /** The Jobs Billing tab's Specific Work lines; the jobs cache fills them once its enrichment lands. */
@@ -64,16 +75,16 @@ export function completeBillGaps(job: Pick<QuickfillCompleteNoBillJobShape, 'rev
   return gaps
 }
 
-/** Candidates worth resolving a report % for: non-paid, a gap on the bill, HCP # at or above the
- * org threshold (the `parseInt(hcp_number) >= min` rule the Jobs Billing station set — hides
- * old imports; jobs with a non-numeric HCP # are kept). */
+/** Candidates worth resolving a report % for: non-paid, a listing gap on the bill (no Total Bill or no
+ * Specific Work), HCP # at or above the org threshold (the `parseInt(hcp_number) >= min` rule the Jobs
+ * Billing station set — hides old imports; jobs with a non-numeric HCP # are kept). */
 export function quickfillCompleteNoBillCandidates<T extends QuickfillCompleteNoBillJobShape>(
   jobs: T[],
   minHcpNumber: number,
   billLinesKnown = true,
 ): T[] {
   return jobs.filter((j) => {
-    if (j.status === 'paid' || completeBillGaps(j, billLinesKnown).length === 0) return false
+    if (j.status === 'paid' || !completeBillListed(completeBillGaps(j, billLinesKnown))) return false
     const hcp = parseInt(j.hcp_number ?? '', 10)
     return !Number.isFinite(hcp) || hcp >= minHcpNumber
   })
@@ -81,14 +92,20 @@ export function quickfillCompleteNoBillCandidates<T extends QuickfillCompleteNoB
 
 export type CompleteNoBillRow<T> = { job: T; gaps: CompleteBillGap[] }
 
-function hcpOrder(a: { hcp_number: string | null }, b: { hcp_number: string | null }): number {
-  return (a.hcp_number ?? '').localeCompare(b.hcp_number ?? '', undefined, { numeric: true })
+/** The number the row shows: the HCP number, else the Click number (`effectiveJobLedgerNumber`). */
+export function completeNoBillJobNumber(job: Pick<QuickfillCompleteNoBillJobShape, 'hcp_number' | 'click_number'>): string {
+  return effectiveJobLedgerNumber(job.hcp_number, job.click_number)
+}
+
+function numberOrder(a: Pick<QuickfillCompleteNoBillJobShape, 'hcp_number' | 'click_number'>, b: Pick<QuickfillCompleteNoBillJobShape, 'hcp_number' | 'click_number'>): number {
+  return completeNoBillJobNumber(a).localeCompare(completeNoBillJobNumber(b), undefined, { numeric: true })
 }
 
 /**
- * The station's rows: candidates whose resolved percent is 100, each with what its bill lacks; a job
- * with no Total Bill first, then the lowest number. A candidate with no Total Bill keeps the
- * paid-invoices branch's old "fully collected ⇒ done" meaning — there is no contract to cover.
+ * The station's rows: candidates whose resolved percent is 100, each with what its bill lacks (the
+ * charges note included); a job with no Total Bill first, then the lowest number as the row shows it. A
+ * candidate with no Total Bill keeps the paid-invoices branch's old "fully collected ⇒ done" meaning —
+ * there is no contract to cover.
  */
 export function completeNoBillRows<T extends QuickfillCompleteNoBillJobShape>(
   jobs: T[],
@@ -99,7 +116,7 @@ export function completeNoBillRows<T extends QuickfillCompleteNoBillJobShape>(
   return quickfillCompleteNoBillCandidates(jobs, minHcpNumber, billLinesKnown)
     .filter((j) => resolveJobSummaryPercentComplete(reportPctByJobId.get(j.id) ?? null, j.pct_complete, jobSummaryPaidInvoiceOpts(j.invoices, j.revenue)) === 100)
     .map((job) => ({ job, gaps: completeBillGaps(job, billLinesKnown) }))
-    .sort((a, b) => COMPLETE_BILL_GAP_ORDER.indexOf(a.gaps[0]!) - COMPLETE_BILL_GAP_ORDER.indexOf(b.gaps[0]!) || hcpOrder(a.job, b.job))
+    .sort((a, b) => COMPLETE_BILL_GAP_ORDER.indexOf(a.gaps[0]!) - COMPLETE_BILL_GAP_ORDER.indexOf(b.gaps[0]!) || numberOrder(a.job, b.job))
 }
 
 /** The rows' jobs alone, in the rows' order. */
