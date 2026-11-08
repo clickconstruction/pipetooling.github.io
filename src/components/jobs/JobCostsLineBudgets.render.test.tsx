@@ -21,6 +21,8 @@ function fixture(over: Partial<Fixture> & { id: string; name: string }): Fixture
     budget_labor_pct: null,
     budget_materials_pct: null,
     budget_rate_usd: null,
+    budget_reviewed_at: null,
+    budget_reviewed_by: null,
     budget_source: null,
     budget_tuned_at: null,
     count: 1,
