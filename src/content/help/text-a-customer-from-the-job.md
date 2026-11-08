@@ -42,7 +42,7 @@ A line from the customer carries an orange bar and the customer's name. A line f
 
 Press any of these lines. The speech bubble's window opens, with the thread's last lines and the {{button:outline|Text}} and {{button:outline|Email}} presses. Older lines are in **See all**, under the box.
 
-On a phone the card has one teaser line under its Next chip. The teaser is the newest of the team's note, the report and the customer's line. When the customer's line is newest it reads in orange, like *Dana · text · 1d ago — Can you do Thursday?* Press it to open the same window.
+On a phone each job is a row of two lines. When the customer's line is the newest thing on the job, the row gains a third line in orange. It reads like *Dana · text · 1d ago — Can you do Thursday?* Press it to open the same window. A note or a report does not earn that line on the phone.
 
 ## Write to the customer
 
