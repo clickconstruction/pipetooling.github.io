@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activityBoxTeaser, buildJobActivityBoxFeed, SENT_BY_APP, sentLineBody, stripRedundantStampBody } from './jobActivityBoxFeed'
+import { activityBoxTeaser, buildJobActivityBoxFeed, phoneRowCustomerTeaser, SENT_BY_APP, sentLineBody, stripRedundantStampBody } from './jobActivityBoxFeed'
 import type { JobActivityMessage } from './jobActivityMessages'
 import type { JobThreadActivityItem } from '../../components/JobThreadNotesPanel'
 import type { JobThreadEventActivityItem } from '../jobActivityEvent'
@@ -247,6 +247,21 @@ describe('the customer’s conversation in the box (v2.6689, punch list #125)', 
     it('is null with nothing on the job', () => {
       expect(activityBoxTeaser(undefined, [])).toBeNull()
       expect(activityBoxTeaser({ ...stat, last_note_at: null, last_report_at: null }, undefined)).toBeNull()
+    })
+
+    describe('phoneRowCustomerTeaser (v2.6692)', () => {
+      it('is the customer’s line while it is the newest thing on the job, the waiting mark carried', () => {
+        expect(phoneRowCustomerTeaser(stat, [line('m-in', '2026-10-06T23:15:00Z')], true)).toMatchObject({ kind: 'line', authorName: 'Dana', line: { tag: 'Text', fromThem: true, waiting: true } })
+        expect(phoneRowCustomerTeaser(stat, [line('m-in', '2026-10-06T23:15:00Z')])).toMatchObject({ kind: 'line', line: { waiting: false } })
+        expect(phoneRowCustomerTeaser(undefined, [line('m-out', '2026-10-06T10:00:00Z', { direction: 'out', who: 'Roxi' })])).toMatchObject({ kind: 'line', line: { fromThem: false, customer: true } })
+      })
+
+      it('is null when a note or a report is newer, or the job has no line: the phone row keeps its two lines', () => {
+        expect(phoneRowCustomerTeaser(stat, [line('m-in', '2026-10-06T10:00:00Z')])).toBeNull()
+        expect(phoneRowCustomerTeaser({ ...stat, last_note_at: null, last_note_body: null }, [line('m-in', '2026-10-05T08:00:00Z')])).toBeNull()
+        expect(phoneRowCustomerTeaser(stat, [])).toBeNull()
+        expect(phoneRowCustomerTeaser(undefined, undefined)).toBeNull()
+      })
     })
   })
 })

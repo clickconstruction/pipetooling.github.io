@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { useLongPress } from '../../hooks/useLongPress'
 import { classifySwipe } from '../../lib/people/usersTabPhone'
@@ -33,7 +33,9 @@ const toneStyle: Record<JobNextTone, CSSProperties> = {
  * One job on the phone Pipeline (punch list #30, PR 2a): two lines and at most one chip.
  * Tap opens the job; the chip opens its fix; press-and-hold opens the ⋯ sheet; a swipe to
  * the right uncovers the stage's forward verb and, on release, confirms it — never a live
- * status button on a touch screen.
+ * status button on a touch screen. Since v2.6692 (punch list #125) a `teaser` draws a third,
+ * smaller line under the two: the customer's newest line, marked `data-phone-row-chip` by its
+ * maker so its press opens the customer's window and never the job.
  */
 export function StagesPhoneRow({
   job,
@@ -44,6 +46,7 @@ export function StagesPhoneRow({
   onOpen,
   onChip,
   onMore,
+  teaser = null,
 }: {
   job: JobWithDetails
   next: JobNextLine
@@ -53,6 +56,8 @@ export function StagesPhoneRow({
   onOpen: () => void
   onChip: (chip: JobNextChip) => void
   onMore: () => void
+  /** The customer's newest line (v2.6692), or null for the two-line row. */
+  teaser?: ReactNode
 }) {
   const [dragX, setDragX] = useState(0)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -210,6 +215,7 @@ export function StagesPhoneRow({
               {developmentName && developmentId ? <span aria-hidden="true">·</span> : null}
               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{next.line}</span>
             </div>
+            {teaser ? <div style={{ minWidth: 0, marginTop: 2 }}>{teaser}</div> : null}
           </div>
           {busy ? (
             <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>…</span>
