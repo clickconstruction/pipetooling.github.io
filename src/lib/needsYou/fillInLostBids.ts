@@ -8,8 +8,9 @@ import { fillInRowKey, type FillInRowBase } from './fillIn'
  * assistant fills, and the writes. The rows are the Why we lost lens's own rule
  * (`bidSentCounts`: lost, no `loss_category`, not adopted into another bid), oldest first since
  * v2.6754 (punch list #176, decision 6: the owner's *oldest first*, no daily portion): the bid
- * marked lost longest ago on top, then the one that went out longest ago, the biggest value
- * breaking a tie. The write is the lens's own: the bid's `loss_category` and `loss_reason`; and, when
+ * marked lost longest ago on top, the day it went out standing in when the loss was never stamped
+ * (on 2026-11-08 four of 63 carried a stamp), a bid with no date last, the biggest value breaking a
+ * tie. The write is the lens's own: the bid's `loss_category` and `loss_reason`; and, when
  * the assistant names who they talked to, one contact-log entry, which is what stamps the
  * bid's last contact. Pure; `fillInLostBidsIo.ts` reads and writes.
  */
@@ -112,12 +113,17 @@ export function lostBidFillInRows(bids: readonly LostBidSource[]): LostBidFillIn
   return rows.sort(compareLostBidRows)
 }
 
+/** The day a lost bid is old from: the day it was marked lost, else the day it went out; null with neither. */
+export function lostBidAgeMs(row: Pick<LostBidFillInRow, 'lostAtMs' | 'sentAtMs'>): number | null {
+  return row.lostAtMs ?? row.sentAtMs
+}
+
 /**
- * Oldest first (v2.6754): the bid marked lost longest ago, then the bid that went out longest ago; a bid with no
- * date for a step sorts after those with one; the biggest value breaks a tie, no value last.
+ * Oldest first (v2.6754): by the day the bid is old from (`lostBidAgeMs`), a bid with no date after those with one;
+ * the biggest value breaks a tie, no value last.
  */
 export function compareLostBidRows(a: LostBidFillInRow, b: LostBidFillInRow): number {
-  return oldestFirst(a.lostAtMs, b.lostAtMs) || oldestFirst(a.sentAtMs, b.sentAtMs) || (b.value ?? -1) - (a.value ?? -1)
+  return oldestFirst(lostBidAgeMs(a), lostBidAgeMs(b)) || (b.value ?? -1) - (a.value ?? -1)
 }
 
 function oldestFirst(a: number | null, b: number | null): number {

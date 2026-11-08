@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_LOST_BID_DECISION, lostBidDecisionReady, lostBidFillInRows, lostBidKnows, lostBidTrailWords, lostBidWrites, type LostBidSource } from './fillInLostBids'
+import { EMPTY_LOST_BID_DECISION, lostBidAgeMs, lostBidDecisionReady, lostBidFillInRows, lostBidKnows, lostBidTrailWords, lostBidWrites, type LostBidSource } from './fillInLostBids'
 
 const bid = (p: Partial<LostBidSource> = {}): LostBidSource => ({
   id: 'bid-1',
@@ -33,7 +33,7 @@ describe('fillInLostBids · the rows (punch list #146)', () => {
     expect(rows.map((r) => r.bidId)).toEqual(['big', 'legacy', 'small', 'none'])
   })
 
-  it('runs oldest first (v2.6754, punch list #176): marked lost longest ago, then sent longest ago, a bid with no date after those with one', () => {
+  it('runs oldest first (v2.6754, punch list #176): by the day marked lost, else the day it went out; a bid with no date after those with one', () => {
     const rows = lostBidFillInRows([
       bid({ id: 'lost-oct', outcome_at: '2026-10-20T15:00:00Z', bid_value: 500_000 }),
       bid({ id: 'lost-aug', outcome_at: '2026-08-02T15:00:00Z', bid_value: 1_000 }),
@@ -42,10 +42,12 @@ describe('fillInLostBids · the rows (punch list #146)', () => {
       bid({ id: 'no-dates', outcome_at: null, bid_date_sent: null }),
       bid({ id: 'lost-aug-too', outcome_at: '2026-08-02T15:00:00Z', bid_value: 2_000 }),
     ])
-    expect(rows.map((r) => r.bidId)).toEqual(['lost-aug-too', 'lost-aug', 'lost-oct', 'no-stamp-sent-july', 'no-stamp-sent-sept', 'no-dates'])
-    expect(rows[0]!.lostAtMs).toBe(Date.parse('2026-08-02T15:00:00Z'))
-    expect(rows[3]!.lostAtMs).toBeNull()
-    expect(rows[3]!.sentAtMs).toBe(Date.parse('2026-07-01T15:00:00Z'))
+    // An old lost bid never stamped lost (most of the real rows) counts from the day it went out, so it is not pushed behind every stamped one.
+    expect(rows.map((r) => r.bidId)).toEqual(['no-stamp-sent-july', 'lost-aug-too', 'lost-aug', 'no-stamp-sent-sept', 'lost-oct', 'no-dates'])
+    expect(rows[0]!.lostAtMs).toBeNull()
+    expect(rows[0]!.sentAtMs).toBe(Date.parse('2026-07-01T15:00:00Z'))
+    expect(rows[1]!.lostAtMs).toBe(Date.parse('2026-08-02T15:00:00Z'))
+    expect(rows.map((r) => lostBidAgeMs(r) == null)).toEqual([false, false, false, false, false, true])
   })
 
   it('titles the row as the Needs you lines say a bid, and reads the GC from the customer or the builder', () => {
