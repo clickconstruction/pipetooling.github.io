@@ -16,7 +16,7 @@ has each conversation. A **flow** per kind of person says where each one stands,
 fact the app already keeps, never by a typed word. The papers a step turns on are sent, signed and reminded from the
 thread. One rule under all of it: **a step is finished by a fact the app keeps.** Everything else is a view.
 
-It was built in two trains in October 2026, then worked into a desk by two punch-list trains on 2026-10-20 and 21 (#139, `to-dos/press-always-answers/README.md`, v2.5681 to v2.5708; #140, its card retired 2026-11-01, v2.5709 to v2.5717): the GC Messages build (cuts 1 to 10, for trade partners, architects and the
+It was built in two trains in October 2026, then worked into a desk by two punch-list trains on 2026-10-20 and 21 (#139, its card retired 2026-11-07 after the live walk, v2.5681 to v2.5708 and v2.6658; #140, its card retired 2026-11-01, v2.5709 to v2.5717): the GC Messages build (cuts 1 to 10, for trade partners, architects and the
 customers of GC projects) and the residential build (cuts R0 to R9, the plumbing company's own customers, leads, subs,
 supply houses and candidates on the same spine). The per-version record is `docs/recent-features/v2.5247.md` onward;
 the design is the plans named at the end of this page.
@@ -341,7 +341,7 @@ run with the secret before a step is switched on.
 - `docs/MESSAGES_RESIDENTIAL_BUILD_PLAN.md` — the residential build, R0 to R9, with its own data, order, owner's calls
   and after-live list; `docs/MESSAGES_RESIDENTIAL_HANDOFF_2026-10-13.md` and `docs/MESSAGES_LIVE_WALK_2026-10-14.md`
   beside it.
-- `to-dos/press-always-answers/README.md` (punch list #139: the sheet that answers every press, then the page's sections) and punch list #140 (Messages worked like a desk; its card retired 2026-11-01, the record in `docs/recent-features/v2.5709.md` to `v2.5717.md`), the two trains of 2026-10-20 and 21; #139's README's *Where it stands* reads what shipped.
+- Punch list #139 (the sheet that answers every press, then the page's sections; its card retired 2026-11-07, the record in `docs/recent-features/v2.5681.md` to `v2.5708.md` and the walk's fixes in `v2.6658.md`) and punch list #140 (Messages worked like a desk; its card retired 2026-11-01, the record in `docs/recent-features/v2.5709.md` to `v2.5717.md`), the two trains of 2026-10-20 and 21.
 - The prototypes and mock-ups stay on branch `spike/gc-mode` under `to-dos/gc-mode/messages/` (`prototype.html`
   v1.178 is the GC spec; `customer-messages-prototype.html` and `customer-messages-integrations-mockups.html` the
   residential one; one `*-mockups.html` per screen). Read one with `git show origin/spike/gc-mode:<path>`.
