@@ -828,6 +828,10 @@ export function JobFormInvoiceList({
                 labeledCluster
                 invoiceId={inv.id}
                 billLabel={`Bill ${ledgerDollars(row.amount)}`}
+                jobId={editing.id}
+                customerId={editing.customer_id}
+                jobStatus={editing.status}
+                onSent={() => refreshEditingJobAndHydratePayments(editing.id)}
               />
             ) : null}
             {!isDraft && hasStripeShare ? (
