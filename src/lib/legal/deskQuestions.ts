@@ -43,7 +43,7 @@ export function canWeSue(packet: Pick<LegalPacket, 'theory' | 'account'>, read: 
   }
 }
 
-export function howMuch(packet: Pick<LegalPacket, 'account' | 'worth'>): DeskQuestion {
+export function howMuch(packet: { account: Pick<LegalPacket['account'], 'jobs' | 'totals'>; worth: Pick<LegalPacket['worth'], 'balance' | 'claim' | 'retainageHeld' | 'retainageOnBills' | 'retainageAdded' | 'claimLines' | 'claimTyped'> }): DeskQuestion {
   const n = packet.account.jobs.length
   const days = packet.account.totals.oldestDays
   const owed = `Owed on ${n} job${n === 1 ? '' : 's'}.`
@@ -53,7 +53,12 @@ export function howMuch(packet: Pick<LegalPacket, 'account' | 'worth'>): DeskQue
   const oldest = days == null ? '' : ` The oldest bill is ${days} days old.`
   if (w.claim > w.balance + 0.005) {
     const onBills = w.retainageOnBills > 0.005 ? ` Another ${formatLegalMoney(w.retainageOnBills)} of the retainage held is already on a bill.` : ''
-    const inside = `Open bills ${formatLegalMoney(w.balance)} inside it, plus retainage ${formatLegalMoney(w.retainageAdded)} that no bill asks for yet.${onBills}`
+    // v2.6680 (punch list #171 step 2): the typed lines — materials, damages, interest, fees — are the third part.
+    const typedCount = w.claimLines.length
+    const typedWords = typedCount > 0 && w.claimTyped > 0.005 ? `${typedCount === 1 ? 'one typed line' : `${typedCount} typed lines`}, ${formatLegalMoney(w.claimTyped)}` : ''
+    const retainageWords = w.retainageAdded > 0.005 ? `retainage ${formatLegalMoney(w.retainageAdded)} that no bill asks for yet` : ''
+    const parts = [retainageWords, typedWords].filter(Boolean)
+    const inside = `Open bills ${formatLegalMoney(w.balance)} inside it, plus ${parts.join(' and ')}.${onBills}`
     return { label: 'How much?', answer: formatLegalMoney(w.claim), why: `${inside}${oldest}`, chip: { text: 'the claim', tone: 'ok' } }
   }
   const carried = w.retainageHeld > 0.005 ? ` The retainage held ${formatLegalMoney(w.retainageHeld)} is already inside the open bills.` : ''

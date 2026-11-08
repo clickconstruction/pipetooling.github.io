@@ -32,6 +32,8 @@ export type MoneyBarsInput = {
   /** By job id: the retainage that job's sent bills already carry (v2.6103); drawn as a bracket under its bills. */
   retainageOnBillsByJob: ReadonlyMap<string, number>
   retainageAdded: number
+  /** What the office typed onto the claim (v2.6680, punch list #171): materials, damages, interest, fees; drawn after the retainage. Absent on an older caller: nothing typed. */
+  claimTyped?: number
   balance: number
   claim: number
   contingencyPct: number
@@ -43,7 +45,7 @@ export type MoneyBarsInput = {
   line?: number | null
 }
 
-export type MoneyBarSegmentKind = 'bill' | 'bills' | 'retainage' | 'beyond' | 'keep' | 'fee' | 'filing' | 'short'
+export type MoneyBarSegmentKind = 'bill' | 'bills' | 'retainage' | 'typed' | 'beyond' | 'keep' | 'fee' | 'filing' | 'short'
 export type MoneyBarSegment = { key: string; kind: MoneyBarSegmentKind; label: string; title: string; amount: number; fraction: number }
 export type MoneyBarBracket = { key: string; label: string; amount: number; fromFraction: number; toFraction: number }
 export type MoneyBarMark = { key: string; kind: 'theirs' | 'ours' | 'line'; label: string; amount: number; fraction: number; row: 0 | 1 }
@@ -139,11 +141,14 @@ export function moneyBars(input: MoneyBarsInput): MoneyBars {
   const added = round2(Math.max(0, input.retainageAdded))
   const standing = input.offers.filter((o) => offerStands(o.status) && o.amount > 0.004)
   const scale = round2(Math.max(claim, ...standing.map((o) => o.amount)))
-  const claimSays = added > 0.004 || standing.length > 0
+  const typed = round2(Math.max(0, input.claimTyped ?? 0))
+  const claimSays = added > 0.004 || typed > 0.004 || standing.length > 0
   if (claimSays && scale > 0.004) {
     const segments: MoneyBarSegment[] = []
     if (balance > 0.004) segments.push({ key: 'bills', kind: 'bills', label: `the bills ${formatLegalMoney(balance)}`, title: `The open bills, ${formatLegalMoney(balance)}`, amount: balance, fraction: frac(balance, scale) })
     if (added > 0.004) segments.push({ key: 'retainage', kind: 'retainage', label: `retainage ${formatLegalMoney(added)}`, title: `Retainage held that no sent bill asks for yet, ${formatLegalMoney(added)}: the claim adds it once`, amount: added, fraction: frac(added, scale) })
+    // v2.6680 (punch list #171): the typed lines after the retainage, one block; the Account tab's table names each.
+    if (typed > 0.004) segments.push({ key: 'typed', kind: 'typed', label: `typed ${formatLegalMoney(typed)}`, title: `What the office typed onto the claim, ${formatLegalMoney(typed)}: materials left on site, damages, interest or fees, line by line on the Account tab`, amount: typed, fraction: frac(typed, scale) })
     const beyond = round2(scale - claim)
     if (beyond > 0.004) segments.push({ key: 'beyond', kind: 'beyond', label: `asked beyond the claim on record · ${formatLegalMoney(beyond)}`, title: `An offer reaches ${formatLegalMoney(beyond)} past the claim the desk can count (${formatLegalMoney(claim)}); what it covers is in the narrative, not in the bills`, amount: beyond, fraction: frac(beyond, scale) })
     const marks = placeMarks([
@@ -177,6 +182,7 @@ export function moneyBars(input: MoneyBarsInput): MoneyBars {
   const parts: string[] = []
   parts.push(bills.length === 0 ? `${formatLegalMoney(balance)} owed on no sent bill.` : `${bills.length === 1 ? 'One open bill' : `${bills.length} open bills`}, ${formatLegalMoney(balance)}.`)
   if (added > 0.004) parts.push(`The claim adds ${formatLegalMoney(added)} of retainage no bill asks for yet.`)
+  if (typed > 0.004) parts.push(`The office typed ${formatLegalMoney(typed)} more onto the claim.`)
   const theirs = standing.filter((o) => o.direction === 'received').sort((a, b) => b.ymd.localeCompare(a.ymd))[0]
   if (theirs) parts.push(`Their offer of ${formatLegalMoney(theirs.amount)} ${theirs.amount >= claim - 0.004 ? 'covers the claim on record' : theirs.amount >= balance - 0.004 ? 'covers the bills' : `leaves ${formatLegalMoney(round2(claim - theirs.amount))} of the claim`}.`)
   return { bars, words: parts.join(' ') }

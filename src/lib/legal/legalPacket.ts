@@ -547,7 +547,7 @@ export type LegalWorth = {
   retainageOnBills: number
   /** held − on bills: the retainage no sent bill asks for, the part the claim adds. */
   retainageAdded: number
-  /** What the dispute claims (v2.5849): the open bills plus the retainage no sent bill carries (v2.6103). Equal to `balance` when nothing is added. */
+  /** What the dispute claims (v2.5849): the open bills plus the retainage no sent bill carries (v2.6103) plus the typed lines (v2.6680, punch list #171). Equal to `balance` when nothing is added. */
   claim: number
   /** claim − fee − filing cost: what Click keeps if every dollar lands. */
   net: number
@@ -562,7 +562,7 @@ export type LegalWorth = {
   retainageHeldByJob: Record<string, number>
   /** The typed lines of the claim (v2.6679, punch list #171), in the order added; empty while the account has no matter or nothing is typed. */
   claimLines: LegalClaimLineLike[]
-  /** What the typed lines add up to. The claim table's total is `balance + retainageAdded + claimTyped`; PR 2 of the card folds it into `claim`. */
+  /** What the typed lines add up to, inside `claim` since v2.6680: `claim = balance + retainageAdded + claimTyped`, the claim table's total. */
   claimTyped: number
 }
 
@@ -1075,11 +1075,11 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     if (held > 0.004) retainageHeldByJob[rj.id] = round2(held)
   }
   // v2.6679 (punch list #171 step 1): the typed lines of the claim ride the worth so the Account tab's table and the
-  // print read one list; the tile folds them into `claim` in the card's step 2.
+  // print read one list; v2.6680 (step 2) folds them into `claim`, so the tile, the bars, the paths and the firm's cut read them.
   const claimLines = [...(input.claimLines ?? [])]
   const typed = claimTyped(claimLines)
   const retainageHeld = retainage.held
-  const claim = round2(balance + retainage.added)
+  const claim = round2(balance + retainage.added + typed)
   const feeAmt = claim * fee.contingencyPct
   const net = claim - feeAmt - fee.filingCost
   const verdict: LegalWorthVerdict = theory.key === 'none' || noMoney || net <= 0 ? 'not worth it' : net < 500 || flags.length > 0 ? 'marginal' : 'worth it'

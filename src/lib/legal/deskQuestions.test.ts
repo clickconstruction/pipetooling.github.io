@@ -9,7 +9,7 @@ const packet = (over: { theory?: Partial<Theory>; jobs?: LegalPacket['account'][
   ({
     theory: { key: 'sworn', label: 'Sworn account', basis: '', ...over.theory },
     account: { jobs: over.jobs ?? [job('707'), job('717', ['a signed agreement']), job('718')], totals: { billed: 0, paid: 0, writtenDown: 0, balance: 15781.82, oldestDays: over.oldestDays === undefined ? 192 : over.oldestDays } },
-    worth: { balance: 15781.82, retainageHeld: 0, retainageOnBills: 0, retainageAdded: 0, claim: 15781.82, contingencyPct: 0.33, fee: 5208, filingCost: 350, net: 10223.82, flags: [], verdict: 'worth it', openBills: [], retainageOnBillsByJob: {}, ...over.worth },
+    worth: { balance: 15781.82, retainageHeld: 0, retainageOnBills: 0, retainageAdded: 0, claim: 15781.82, contingencyPct: 0.33, fee: 5208, filingCost: 350, net: 10223.82, flags: [], verdict: 'worth it', openBills: [], retainageOnBillsByJob: {}, retainageHeldByJob: {}, claimLines: [], claimTyped: 0, ...over.worth },
   }) as unknown as Pick<LegalPacket, 'theory' | 'account' | 'worth'>
 
 describe('Can we sue?', () => {
@@ -54,6 +54,14 @@ describe('How much? and What\'s left for us?', () => {
     const part = howMuch(packet({ jobs: [job('891')], oldestDays: null, worth: { balance: 2028.04, retainageHeld: 1678.04, retainageOnBills: 1000, retainageAdded: 678.04, claim: 2706.08 } }))
     expect(part).toMatchObject({ answer: '$2,706.08', why: 'Open bills $2,028.04 inside it, plus retainage $678.04 that no bill asks for yet. Another $1,000.00 of the retainage held is already on a bill.', chip: { text: 'the claim', tone: 'ok' } })
     expect(plainWordsFailures(part.why)).toEqual([])
+    // v2.6680 (punch list #171 step 2): the typed lines are the third part, with the retainage or alone.
+    const line = (id: string, amount: number) => ({ id, kind: 'materials' as const, title: 'Materials left on site', amount, basis: '', documentId: null, documentTitle: '' })
+    const both = howMuch(packet({ jobs: [job('891')], oldestDays: 94, worth: { balance: 14980, retainageHeld: 6420, retainageAdded: 6420, claim: 34084, claimLines: [line('a', 5310), line('b', 2800), line('c', 1074), line('d', 3500)], claimTyped: 12684 } }))
+    expect(both).toMatchObject({ answer: '$34,084.00', why: 'Open bills $14,980.00 inside it, plus retainage $6,420.00 that no bill asks for yet and 4 typed lines, $12,684.00. The oldest bill is 94 days old.', chip: { text: 'the claim', tone: 'ok' } })
+    const typedOnly = howMuch(packet({ jobs: [job('891')], oldestDays: null, worth: { balance: 2028.04, claim: 7338.04, claimLines: [line('a', 5310)], claimTyped: 5310 } }))
+    expect(typedOnly.why).toBe('Open bills $2,028.04 inside it, plus one typed line, $5,310.00.')
+    for (const q of [both, typedOnly]) expect(plainWordsFailures(q.why)).toEqual([])
+    expect(whatsLeftForUs(packet({ worth: { balance: 2028.04, claim: 7338.04, claimTyped: 5310, fee: 2421.55, net: 4566.49 } })).why).toBe('The firm takes 33%, or $2,421.55 of the claim, and filing costs $350.00.')
     // A bill sent for the whole amount and paid short by the retainage: the balance is the claim, and the sentence says where the retainage sits.
     const all = howMuch(packet({ jobs: [job('891')], oldestDays: 108, worth: { balance: 1509.8, retainageHeld: 1509.8, retainageOnBills: 1509.8, retainageAdded: 0, claim: 1509.8 } }))
     expect(all).toMatchObject({ answer: '$1,509.80', why: 'Owed on 1 job. The retainage held $1,509.80 is already inside the open bills. The oldest bill is 108 days old.' })

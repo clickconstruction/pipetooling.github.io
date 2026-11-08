@@ -74,6 +74,18 @@ describe('moneyBars — the Legal desk’s money as bars (v2.6105)', () => {
     expect(words).toBe('One open bill, $1,750.00. The claim adds $1,750.00 of retainage no bill asks for yet.')
   })
 
+  it('the typed lines (v2.6680, punch list #171) are one block after the retainage, and the claim bar appears for them alone', () => {
+    const { bars, words } = moneyBars({ ...base, bills: [base.bills[1]!], retainageOnBillsByJob: new Map(), retainageAdded: 1750, claimTyped: 3500, balance: 1750, claim: 7000, offers: [], fee: 2310, net: 4340 })
+    const claim = bars.find((b) => b.key === 'claim')!
+    expect(claim.total).toBe(7000)
+    expect(claim.segments.map((s) => [s.kind, s.amount, s.fraction])).toEqual([['bills', 1750, 0.25], ['retainage', 1750, 0.25], ['typed', 3500, 0.5]])
+    expect(claim.segments[2]!.label).toBe('typed $3,500.00')
+    expect(words).toBe('One open bill, $1,750.00. The claim adds $1,750.00 of retainage no bill asks for yet. The office typed $3,500.00 more onto the claim.')
+    const alone = moneyBars({ ...base, retainageOnBillsByJob: new Map(), claimTyped: 500, claim: 3620.5, offers: [] })
+    expect(alone.bars.find((b) => b.key === 'claim')!.segments.map((s) => s.kind)).toEqual(['bills', 'typed'])
+    expect(alone.bars.map((b) => b.key)).toEqual(['bills', 'claim', 'left_claim', 'left_bills'])
+  })
+
   it('no claim bar when the claim is the bills and nothing is offered: the bills bar says it all', () => {
     const { bars } = moneyBars({ ...base, offers: [] })
     expect(bars.map((b) => b.key)).toEqual(['bills', 'left_claim'])
