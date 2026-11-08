@@ -9,7 +9,7 @@ import { fillInRowKey, type FillInRowBase } from './fillIn'
  * (`bidSentCounts`: lost, no `loss_category`, not adopted into another bid), oldest first since
  * v2.6754 (punch list #176, decision 6: the owner's *oldest first*, no daily portion): the bid
  * marked lost longest ago on top, the day it went out standing in when the loss was never stamped
- * (on 2026-11-08 four of 63 carried a stamp), a bid with no date last, the biggest value breaking a
+ * (on 2026-11-08 six of 63 carried a stamp, 56 only the day they went out), a bid with no date last, the biggest value breaking a
  * tie. The write is the lens's own: the bid's `loss_category` and `loss_reason`; and, when
  * the assistant names who they talked to, one contact-log entry, which is what stamps the
  * bid's last contact. Pure; `fillInLostBidsIo.ts` reads and writes.
