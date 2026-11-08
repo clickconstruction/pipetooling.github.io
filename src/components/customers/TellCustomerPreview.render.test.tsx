@@ -39,7 +39,7 @@ describe('TellCustomerPreview', { timeout: 15_000 }, () => {
     renderWithProviders(<TellCustomerPreview first="ZZ" kind="text" onKind={vi.fn()} email={EMAIL} emailTo="bids@clickplumbing.com" textWords={WORDS} number="(737) 300-9478" onClose={vi.fn()} />)
     expect(screen.getByTestId('tell-preview').getAttribute('data-kind')).toBe('text')
     expect(screen.getByTestId('tell-preview-caption').textContent).toBe('To (737) 300-9478From the company number.')
-    expect(screen.getByTestId('tell-preview-words').textContent).toBe('ZZ, this is Robert with Click Plumbing. Your estimate is ready, $1.00. Open it: https://clicktooling.com/estimate/accept?t=sample')
+    expect(screen.getByTestId('tell-preview-words').textContent).toBe('ZZ, this is Robert with Click Plumbing. Your estimate is ready, $1.00. Open it: https://my.clickplumbing.com/e/sample')
     expect(screen.getByTestId('tell-preview-sample').textContent).toBe('The link here is a sample. The real one fills in when the email goes.')
     expect(screen.queryByTestId('tell-preview-frame')).toBeNull()
   })

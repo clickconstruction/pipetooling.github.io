@@ -161,5 +161,5 @@ Prep merged in v2.2440 — all zero-behavior-change:
   protocol contact field sent to push services, never user-visible; sweep
   whenever those functions are next touched.
 - `@twins.pipetooling.local` fleet emails — internal identifiers, not URLs.
-- `my.clickplumbing.com` — the customer-facing short domain (rule target changes only).
+- `my.clickplumbing.com` — the customer-facing short domain (rule target changes only); since v2.6678 its Worker also answers `/e/<code>`, the estimate text's link, with a 301 to `clicktooling.com/e/<code>` (`scripts/cloudflare/portal-link-shell.worker.js`). The apex `clickplumbing.com` is GitHub Pages behind DNS-only records, not proxied, so no redirect rule can live there.
 - Supabase project URLs (`yewfzhbofbbyvkvtaatw.supabase.co`) — endpoints don't move.
