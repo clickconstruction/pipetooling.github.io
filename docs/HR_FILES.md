@@ -14,7 +14,7 @@ Per-person HR files, visible to **devs only**, maintained mostly by an AI agent 
 
 | Layer | Table | Mutability | What it is |
 |---|---|---|---|
-| **Raw entries** | `person_file_entries` | **Append-only** (no UPDATE/DELETE policies exist) | Dated facts: what happened, when, from where. The source of truth. |
+| **Raw entries** | `person_file_entries` | **Append-only** (no UPDATE/DELETE policies exist) | Dated facts: what happened, when, from where. The source of truth. An entry made from a mail by the dev seat's mail tag (v2.6715, punch list #289) carries its `gmail_message_id` and `gmail_thread_id`, one entry per person and Gmail id. |
 | **Summary** | `person_files` (`kind='summary'`) | Rewritten freely, whole or a section at a time (`dev_person_doc_write`, v2.6608) — **prior versions auto-archive** (v2.2232) | ≤1 page: trajectory, reliability, pay, watch items. Read first. |
 | **Narrative** | `person_files` (`kind='narrative'`) | Extended, occasionally consolidated, a section at a time through `dev_person_doc_write` (v2.6608) — **prior versions auto-archive** (v2.2232) | The chronological story, oldest → newest. |
 | **Doc history** | `person_file_revisions` | Written only by trigger; dev read-only | Prior version of every summary/narrative rewrite (v2.2232). |
@@ -39,6 +39,7 @@ Any agent (or dev) writing to these tables follows this:
 - **Facts with dates, never speculation.** "Missed Tue and Thu, third occurrence this month" — not "seems checked out". If it's an impression, attribute it: "Robert's read after the call: …".
 - One event per entry; `entry_date` is the date it **happened** (in `APP_CALENDAR_TZ`), not the date it was logged (`created_at` covers that).
 - Name the `source`: `conversation` | `payroll_event` | `incident` | `review` | `milestone` | `job_event` | `report` (field reports filed from the Pending reports queue, v2.2235).
+- **A mail conversation goes on as entries** (v2.6715, punch list #289): the dev seat's `plan_mail_tag` → `apply_mail_tag` with `person: { person_id }` ([`dev-mcp/README.md`](./dev-mcp/README.md)) lands each mail of a Gmail conversation as one `conversation` entry on the day it was sent (the app's calendar), in a fixed shape — From, To, Cc, Subject, Sent, the files by name and size, then the body as plain text — with `gmail_message_id` and `gmail_thread_id` on the row, written as the dev who applied (`created_by`, `author_label`). A thread tagged twice adds only the mails the file has not seen; later mail in the thread follows by itself through gmail-mine's cron (`email_tag_threads.person_id`) until the seat lifts it (`stop: true`). The files stay in Gmail unless filed: `plan_mail_file` with `to.kind person_evidence` makes one an evidence record. Entries carry no counsel-only mark (#269), so a mail whose content is counsel-only goes on as an evidence record with the tick, not as an entry. `read_mail(account, id)` reads an entry's mail back. Migration `20261108194723_hr_mail_tag.sql`.
 - Write nothing you wouldn't be comfortable having read back in a dispute. Consistent factual documentation protects the company; venting doesn't.
 - Corrections: append a new entry referencing what it corrects ("Correction to 2026-08-19 entry: …").
 

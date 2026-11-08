@@ -12,7 +12,8 @@ import type { MyMailTagPlanOk } from '../myMail/contract'
 import { parseMyMailRequest, tagPlanPreview } from '../myMail/mineFunction'
 import type { MyMailTagPlan } from '../myMail/tagPlan'
 import type { MailAccount } from '../../../supabase/functions/_shared/devMcpMailSearch'
-import { mailTagAppliedWords, mailTagArgs, mailTagChangedWords, mailTagJobOf, tagApplyReply, tagCommitment, tagPlanReply, tagReading } from '../../../supabase/functions/_shared/devMcpMailTag'
+import type { MyMailPersonTagPlanOk } from '../myMail/contract'
+import { mailTagAppliedWords, mailTagArgs, mailTagChangedWords, mailTagJobOf, mailTagPersonOf, personTagApplyReply, personTagCommitment, personTagPlanReply, personTagReading, tagApplyReply, tagCommitment, tagPlanReply, tagReading } from '../../../supabase/functions/_shared/devMcpMailTag'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const MINE = readFileSync('supabase/functions/gmail-mine/index.ts', 'utf8')
@@ -22,6 +23,7 @@ const SKILL = readFileSync('.claude/skills/mail-search/SKILL.md', 'utf8')
 
 const KNOWN: MailAccount[] = [{ email: 'dana@example-plumbing.test', name: 'Dana Okafor', archived: false }, { email: 'old@example-plumbing.test', name: 'Old', archived: true }]
 const JOB = '11111111-1111-4111-8111-111111111111'
+const PERSON = '22222222-2222-4222-8222-222222222222'
 const THREAD = '18f3a2b9c0d1e2f3'
 
 const email = (over: Partial<EmailIn>): EmailIn => ({ gmailId: 'm1', threadId: THREAD, labels: ['INBOX'], at: '2026-08-03T15:00:00.000Z', from: { name: 'Supplier', address: 'ap@supplier.test' }, to: [], cc: [], subject: 'Invoice 4471', text: '', links: [], files: [], headers: {}, html: null, ...over })
@@ -70,7 +72,7 @@ describe('plan_mail_tag · the kernel', () => {
 
   it('takes a current login, a thread id and a job in the seat’s words', () => {
     const r = mailTagArgs({ tag: { account: 'Dana@example-plumbing.test', thread_id: THREAD, job: { jobs_ledger_id: JOB } } }, KNOWN)
-    expect(r.ok && r.value).toEqual({ account: KNOWN[0], threadId: THREAD, job: { kind: 'pipeline', id: JOB }, target: `pipeline ${JOB}` })
+    expect(r.ok && r.value).toEqual({ account: KNOWN[0], threadId: THREAD, job: { kind: 'pipeline', id: JOB }, person: null, target: `pipeline ${JOB}` })
     expect(mailTagJobOf({ bid_id: JOB })).toEqual({ kind: 'bid', id: JOB })
     expect(mailTagJobOf({ project_id: JOB })).toEqual({ kind: 'project', id: JOB })
     expect(mailTagJobOf({ job: '912' })).toBeNull()
@@ -78,11 +80,21 @@ describe('plan_mail_tag · the kernel', () => {
     expect(mailTagArgs({ tag: { account: 'x@gmail.com', thread_id: THREAD, job: { jobs_ledger_id: JOB } } }, KNOWN)).toEqual({ ok: false, error: expect.stringContaining('not a login of the Workspace') })
     expect(mailTagArgs({ tag: { account: 'old@example-plumbing.test', thread_id: THREAD, job: { jobs_ledger_id: JOB } } }, KNOWN)).toEqual({ ok: false, error: expect.stringContaining('archived login') })
     expect(mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: 'x?', job: { jobs_ledger_id: JOB } } }, KNOWN)).toEqual({ ok: false, error: expect.stringContaining('not a Gmail thread id') })
-    expect(mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, job: { number: '912' } } }, KNOWN)).toEqual({ ok: false, error: expect.stringContaining('tag.job needs one of') })
+    expect(mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, job: { number: '912' } } }, KNOWN)).toEqual({ ok: false, error: expect.stringContaining('tag needs job') })
+  })
+
+  it('takes a person in place of the job (punch list #289), an archived box included, with stop', () => {
+    const r = mailTagArgs({ tag: { account: 'old@example-plumbing.test', thread_id: THREAD, person: { person_id: PERSON.toUpperCase() } } }, KNOWN)
+    expect(r.ok && r.value).toEqual({ account: KNOWN[1], threadId: THREAD, job: null, person: { personId: PERSON, stop: false }, target: `person ${PERSON}` })
+    const stop = mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, person: { person_id: PERSON, stop: true } } }, KNOWN)
+    expect(stop.ok && stop.value.person).toEqual({ personId: PERSON, stop: true })
+    expect(mailTagPersonOf({ person_id: 'nobody' })).toBeNull()
+    expect(mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, person: { person_id: 'nobody' } } }, KNOWN)).toEqual({ ok: false, error: expect.stringContaining('tag.person needs person_id') })
+    expect(mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, person: { person_id: PERSON }, job: { bid_id: JOB } } }, KNOWN)).toEqual({ ok: false, error: expect.stringContaining('both a job and a person') })
   })
 
   it('commits to the account, the conversation, the job and what each mail becomes, and words the plan', () => {
-    const args = { account: KNOWN[0]!, threadId: THREAD, job: { kind: 'pipeline' as const, id: JOB }, target: `pipeline ${JOB}` }
+    const args = { account: KNOWN[0]!, threadId: THREAD, job: { kind: 'pipeline' as const, id: JOB }, person: null, target: `pipeline ${JOB}` }
     const c = tagCommitment(args, preview)
     expect(c).toEqual({ account: 'dana@example-plumbing.test', thread_id: THREAD, job: { kind: 'pipeline', id: JOB }, counts: { lines: 1, tied: 1, files: 1, skipped: 1 }, mails: [{ gmailId: 'm1', kind: 'write' }, { gmailId: 'm2', kind: 'tie', tie: true }, { gmailId: 'm3', kind: 'skip' }], moving_from: null })
     expect(JSON.stringify(c)).not.toContain('Supplier')
@@ -97,12 +109,57 @@ describe('plan_mail_tag · the kernel', () => {
     expect(mailTagChangedWords()).toContain('nothing was tagged')
     expect(mailTagAppliedWords({ target: null, at: '2026-11-06T00:00:00Z' })).toContain('applied already at 2026-11-06T00:00:00Z')
   })
+
+  it('commits a person tag to the account, the conversation, the person, the follow and what each mail becomes, and words it', () => {
+    const args = { account: KNOWN[1]!, threadId: THREAD, job: null, person: { personId: PERSON, stop: false }, target: `person ${PERSON}` }
+    const preview: MyMailPersonTagPlanOk = {
+      ok: true,
+      plan: true,
+      threadId: THREAD,
+      account: 'old@example-plumbing.test',
+      person: { id: PERSON, name: 'ZZ Test Person' },
+      following: false,
+      stop: false,
+      counts: { entries: 2, already: 1, skipped: 0 },
+      mails: [
+        { gmailId: 'm1', kind: 'entry', at: '2026-08-03T15:00:00.000Z', from: 'Supplier <ap@supplier.test>', subject: 'Invoice 4471', entryDate: '2026-08-03', files: 1 },
+        { gmailId: 'm2', kind: 'already', at: '2026-08-04T15:00:00.000Z', from: 'old@example-plumbing.test', subject: 'Re: Invoice 4471', why: 'an entry on the file holds this mail' },
+        { gmailId: 'm3', kind: 'entry', at: '2026-08-05T15:00:00.000Z', from: 'Supplier <ap@supplier.test>', subject: 'Re: Invoice 4471', entryDate: '2026-08-05', files: 0 },
+      ],
+    }
+    const c = personTagCommitment(args, preview)
+    expect(c).toEqual({ account: 'old@example-plumbing.test', thread_id: THREAD, person: { person_id: PERSON, stop: false }, following: false, counts: { entries: 2, already: 1, skipped: 0 }, mails: [{ gmailId: 'm1', kind: 'entry' }, { gmailId: 'm2', kind: 'already' }, { gmailId: 'm3', kind: 'entry' }] })
+    expect(JSON.stringify(c)).not.toContain('Supplier')
+    expect(personTagReading(preview)).toBe('3 mails in the conversation: 2 entries written, 1 mail on the file already, 0 mails skipped.')
+    expect(personTagReading({ ...preview, following: true, counts: { entries: 0, already: 3, skipped: 0 } })).toContain('the follow is on already and is refreshed. No entry would be written')
+    const reply = personTagPlanReply(c, preview, 'abcdef0123456789')
+    expect(reply.plan_hash).toBe('abcdef0123456789')
+    expect(reply.lands).toBe("2 entries on ZZ Test Person's HR file, each on its mail's own day, as you; the mail stays in old@example-plumbing.test's box and each entry carries its Gmail id. Later mail in the conversation follows as entries.")
+    expect(reply.person).toEqual({ person_id: PERSON, stop: false, name: 'ZZ Test Person' })
+    expect(String(reply.next)).toContain('apply_mail_tag')
+    const done = personTagApplyReply(c, preview, { ok: true, personId: PERSON, entries: 2, already: 1, skipped: 0, stopped: false })
+    expect(done.tagged).toBe("2 entries written onto ZZ Test Person's HR file, 1 mail on the file already, 0 mails skipped; later mail in the conversation follows as entries by itself.")
+    // A stop: no mail listed, the follow lifted, the entries kept.
+    const stopPreview: MyMailPersonTagPlanOk = { ...preview, following: true, stop: true, counts: { entries: 0, already: 3, skipped: 0 }, mails: [] }
+    expect(personTagReading(stopPreview)).toBe("The follow on this conversation is lifted: later mail no longer lands on ZZ Test Person's file. The 3 entries already on the file stay.")
+    expect(personTagReading({ ...stopPreview, following: false })).toContain('there is nothing to lift')
+    const stopReply = personTagPlanReply({ ...c, person: { person_id: PERSON, stop: true }, following: true }, stopPreview, 'ff00')
+    expect(stopReply.lands).toBe("Nothing lands; the follow on ZZ Test Person's file comes off.")
+    expect(personTagApplyReply(c, stopPreview, { ok: true, personId: PERSON, entries: 0, already: 3, skipped: 0, stopped: true }).tagged).toContain('is lifted from ZZ Test Person')
+    expect(mailTagChangedWords('person')).toContain('nothing was written')
+    expect(mailTagAppliedWords({ target: null, at: null }, 'person')).toContain('on the file and later mail follows')
+  })
 })
 
 describe('the doors and the docs', () => {
   it('gmail-mine opens the tag to a dev’s key with the seat header, as a current login, and answers the plan before anything is written', () => {
     expect(MINE).toContain("if (req.headers.get('X-Dev-Seat') !== 'dev-mcp' || who.role !== 'dev') return refuse(")
-    expect(MINE).toContain("if (!them || isFixtureAccount(them) || them.is_walk_tester === true || them.archived_at) return refuse(")
+    expect(MINE).toContain("if (!them || isFixtureAccount(them) || them.is_walk_tester === true || (them.archived_at && !onFile)) return refuse(")
+    // Punch list #289: a person target goes to its own tag, a person's own press never carries one, and the follow reads the file rows.
+    expect(MINE).toContain("if ('person' in ask) return await tagPerson(ctx, ask,")
+    expect(MINE).toContain("if ('person' in ask) return refuse(")
+    expect(MINE).toContain(".not('person_id', 'is', null)")
+    expect(MINE).toContain(".is('person_id', null)")
     expect(MINE).toContain('if (ask.plan === true) {')
     expect(MINE).toContain('return json(tagPlanPreview(plan, emails, me.email,')
     expect(MINE).toContain("if (ask.action === 'tag' && ask.plan === true) return refuse(")
@@ -113,6 +170,8 @@ describe('the doors and the docs', () => {
 
   it('the seat declares both verbs, plans through gmail-mine as the dev, asks the log before a second apply, and keeps view_as off them', () => {
     expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
+    expect(SERVER).toContain('personTagPlanReply(commitment, preview, hash)')
+    expect(SERVER).toContain("mailTagAppliedWords(prior, 'person')")
     for (const verb of ['plan_mail_tag', 'apply_mail_tag']) {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
@@ -127,6 +186,8 @@ describe('the doors and the docs', () => {
     expect(README).toContain('`plan_mail_tag(tag)` · `apply_mail_tag(tag, plan_hash)`')
     expect(EDGE).toContain('Server 0.30.0 — a conversation onto a job')
     expect(EDGE).toContain('dev seat’s door (server 0.30.0)')
-    expect(SKILL).toContain('plan_mail_tag')
+    expect(README).toContain('tag.person')
+    expect(EDGE).toContain('Server 0.42.0 — a conversation onto an HR file')
+    expect(SKILL).toContain('person: { person_id }')
   })
 })
