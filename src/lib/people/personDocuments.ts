@@ -99,9 +99,10 @@ export function transcribedRecordWords(record: TranscribedRecord, dayWords: (ymd
 }
 
 /** The documents by the record each transcribes, for *Transcript on file* on the record's row and its Timeline line. */
-export function documentsByEvidenceId<T extends { evidence_id: string | null; archived_at: string | null }>(rows: readonly T[]): Map<string, T> {
+export function documentsByEvidenceId<T extends { evidence_id: string | null; archived_at: string | null; updated_at: string }>(rows: readonly T[]): Map<string, T> {
   const m = new Map<string, T>()
-  for (const r of sortDocumentsNewestFirst(rows)) if (r.evidence_id && !m.has(r.evidence_id)) m.set(r.evidence_id, r)
+  const kept = rows.filter((r) => !r.archived_at && r.evidence_id).sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0))
+  for (const r of kept) if (r.evidence_id && !m.has(r.evidence_id)) m.set(r.evidence_id, r)
   return m
 }
 
