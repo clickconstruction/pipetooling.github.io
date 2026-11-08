@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: 58caa94ee
 audience: Developers, AI Agents
-last_updated: 2026-11-05
+last_updated: 2026-11-07
 ---
 
 > **Line numbers are as of `58caa94ee`** (v2.4706, from the `npm run map` fact sheets). This is the hottest surface in the repo (253 commits in 90 days on the tab, 82 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -24,7 +24,7 @@ last_updated: 2026-11-05
 
 > **v2.5522 (after `mapped_at`) — the in-the-mail mark on Deadlines:** `useBilledLienClocks` reads the approved, printed, unsent desk items once more (`job_lien_desk_items`, chunked) and `JobsStagesTab.tsx` hands `clock.mailedMonths` to the runway (`lienPayRunway.ts`'s `mailedMonths`; `LienRunwayNoticeMonth.state` gains `'mailed'`), so a notice printed and waiting on its number wears its own amber envelope on the desk's Deadlines and the bar's second door reads *Record the mailing · N*; the read fails soft, the months reading as owed.
 
-> **v2.6087 (after `mapped_at`) — the checklist's standing on a stage name:** `JobsStagesTab.tsx` calls `useStageChecklistStates` (one read of the live questions and, only when any exist, one chunked read of the answers on the board's jobs, fail-soft) and hands `checklistMarksFor(job)` (`lib/jobs/stageChecklistMarks.ts`) through `StagesRowRenderContext` to `JobsStagesTable.tsx`, `JobsStagesUnifiedTable.tsx` and the card list, so `StagesStageBar` draws a stage with a question left in amber with `☐` before its name and *not ready* in its title; null while no question exists, so the board reads nothing until the office types one (`docs/recent-features/v2.6087.md`).
+> **v2.6087 (after `mapped_at`) — the checklist's standing on a stage name:** `JobsStagesTab.tsx` calls `useStageChecklistStates` (one read of the live questions and, only when any exist, one chunked read of the answers on the board's jobs, fail-soft; since v2.6563 the read carries the signature columns and `voided_at` (`ANSWER_MARK_COLS`), so a signature item holds the mark until it is signed and a taken-back row counts for nothing) and hands `checklistMarksFor(job)` (`lib/jobs/stageChecklistMarks.ts`) through `StagesRowRenderContext` to `JobsStagesTable.tsx`, `JobsStagesUnifiedTable.tsx` and the card list, so `StagesStageBar` draws a stage with a question left in amber with `☐` before its name and *not ready* in its title; null while no question exists, so the board reads nothing until the office types one (`docs/recent-features/v2.6087.md`).
 
 > **v2.6096 (after `mapped_at`) — the GC Review shell glue is shared:** the print (`printGcReviewGroups`, filed as a send) and the copy for email (`copyGcReviewGroupForEmail`) that the tab wired inline since v2.1414 live in `lib/jobs/gcReviewShellIo.ts` and the tab calls them, so the Needs you line's `GcReviewWindow` (the Pipeline's own `JobsGcReviewModal` over the Dashboard) drives the modal with the same words (`docs/recent-features/v2.6096.md`).
 

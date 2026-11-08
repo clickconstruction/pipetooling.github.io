@@ -325,7 +325,7 @@ export function tellProblem(answer: Extract<TellSendEmailAnswer, { ok: false }>,
     return {
       kind: 'already-went',
       title: `This estimate already went to ${who}.${when}`,
-      detail: 'Send the link again makes a fresh link and emails it. The old link stops working. The text carries the fresh link.',
+      detail: 'Send the link again makes a fresh link and emails it. The old emailed link stops working. The text carries a short link of its own.',
     }
   }
   if (answer.kind === 'slow') {

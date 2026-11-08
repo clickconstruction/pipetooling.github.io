@@ -17,12 +17,13 @@ The office and estimators can open the schedule. Superintendents get it later.
 3. Under the chart, press **Add an activity**.
 4. Name it, like Slab cure.
 5. Pick whose it is under **Whose**.
-6. Set the day it starts and the day it finishes.
-7. Tick what it waits on under **It waits on**.
-8. Tick what waits on it under **It holds up**.
-9. Press {{button:blue|Put it on the schedule}}.
+6. Pick its phase under **Phase** when the schedule has phases. Leave it as **Not in a phase** when it belongs to none.
+7. Set the day it starts and the day it finishes.
+8. Tick what it waits on under **It waits on**.
+9. Tick what waits on it under **It holds up**.
+10. Press {{button:blue|Put it on the schedule}}.
 
-Work that waits on it moves out if it has to. Nobody reports this work, so the office marks it done.
+Work that waits on it moves out if it has to. Nobody reports this work, so the office marks it done. The bar sits in its phase on the chart and the list.
 
 ## Mark it done
 

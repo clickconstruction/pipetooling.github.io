@@ -8,3 +8,5 @@ The dev MCP's dry-run wrapper for themes marked on the record: `plan_theme_marks
 - No table is created, so no read-only fence is owed; training mode is blocked by the table's statement trigger.
 
 Deploy order: push this migration, then deploy `dev-mcp` (server 0.26.0).
+
+**Applied** to prod by 2026-11-06, read on 2026-11-07: types regenerated from prod through #7112 (`chore(types)` after `20261106040000`, 2026-11-06) with this file already on `main` — the repo's evidence that it was pushed; the dev seat's `check_migration_ledger` was not read in this pass (the connector was not available in the docs worktree), and `check:edge-drift` on 2026-11-07 found every function deployed, 15 of them on `_shared` code older than `main` after #7159 / #7166 (a redeploy owed, not a migration matter).

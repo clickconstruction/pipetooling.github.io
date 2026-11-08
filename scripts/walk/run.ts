@@ -253,7 +253,10 @@ export async function runWalk(flags: WalkFlags, io: WalkIo): Promise<WalkReport>
     if (!held.has('estimateEmail')) {
       const arrived = await wait(async () => {
         const res = await walk('open')
-        return res.status === 200 && res.body?.arrived === true ? res.body : null
+        // A refusal is thrown, so the wait's last error carries the function's words (Gmail's 429, a missing secret) into
+        // what the held step saw, instead of reading as a mail that never came (found 2026-11-07).
+        if (res.status !== 200) throw new Error(String(res.body?.words ?? res.body?.error ?? `walk open answered ${res.status}`))
+        return res.body?.arrived === true ? res.body : null
       }, MAIL_WAIT_MS)
       if (!arrived.found) {
         step(stepHeld('open', 'the estimate email never arrived in the bids inbox', { waitedFor: waitedWords(arrived.waitedMs), saw: waitSaw(arrived, 'bids@ had no email from the app’s sender for this estimate') }))

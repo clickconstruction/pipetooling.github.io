@@ -34,7 +34,7 @@ Stage 6 has two tasks left, and finishing it is what moves "Full Use of Land". T
 
 ## Pin a task — "this one, now"
 
-You open any task's card and tap the **☆** in its bottom row, beside *○ Mark done*. It turns to ★ once pinned. Only editors can pin. A pinned task jumps to the **top of its lane** on the shortlist. The pinned task sits above everything the rules would pick, wearing a {{chip:yellow|★ pinned}} chip. The task shows a small ★ on its Plan row and inside its Map cluster. You can pin several, and they keep the order you pinned them in. You tap ★ again to unpin. Pinning never changes stage numbers, arrows or anyone's lists. Pinning only changes what the shortlist points at first.
+You open any task's card and tap the **☆** in its bottom row, beside **Set the %** and *✓ Done*. It turns to ★ once pinned. Only editors can pin. A pinned task jumps to the **top of its lane** on the shortlist. The pinned task sits above everything the rules would pick, wearing a {{chip:yellow|★ pinned}} chip. The task shows a small ★ on its Plan row and inside its Map cluster. You can pin several, and they keep the order you pinned them in. You tap ★ again to unpin. Pinning never changes stage numbers, arrows or anyone's lists. Pinning only changes what the shortlist points at first.
 
 ## The same picks, elsewhere
 

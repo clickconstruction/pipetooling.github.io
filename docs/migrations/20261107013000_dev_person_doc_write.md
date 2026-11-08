@@ -13,3 +13,5 @@ No `CREATE TABLE`, so no fence appliers; training mode still blocks the write, b
 ## Order
 
 After `20260824141540` (the trigger and the columns it writes). Push, then `supabase functions deploy dev-mcp`. Until the push, `plan_person_doc` answers PostgREST's "function not found", and the editor's Save (PR 2) the same. The verb names are fixed in `_shared/devMcpWrites.ts`, so the verbs need no catalog regeneration; run `npm run gen-types:linked` → `node scripts/build-dev-mcp-catalog.mjs` after the push so `find_rpc` lists both functions.
+
+**Applied** to prod by 2026-11-07, read on 2026-11-07: types regenerated from prod right after this file in #7174 (`chore(types)` after `20261107013000`, 2026-11-07) — the repo's evidence that it was pushed; the dev seat's `check_migration_ledger` was not read in this pass (the connector was not available in the docs worktree), and `check:edge-drift` on 2026-11-07 found every function deployed, 15 of them on `_shared` code older than `main` after #7159 / #7166 (a redeploy owed, not a migration matter).

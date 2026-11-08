@@ -38,6 +38,13 @@ export interface TemplatePhase {
   name: string
 }
 
+/** A template's phases and rows, and how it counts days: what every reader of a template takes (`templateRows`). The rough keeps a copy of it (#210). */
+export interface TemplateRowsShape {
+  phases: TemplatePhase[]
+  rows: TemplateRow[]
+  workingDays: boolean
+}
+
 /**
  * Who a template row is assigned to (#204, call 3): a trade from the scope book's list, Us for our own
  * crew, or Office for work nobody is hired for. Never a company and never a person: the company shows on
@@ -422,6 +429,8 @@ export interface RoughSchedule {
   template?: TemplateUse
   /** A copy of that template's lines, so every redraw reads the copy and no edit to the template reaches the rough (G-44). */
   like?: TemplateLine[]
+  /** A copy of that template's phases and rows when it has rows (#210): the rough draws them as the first draft does, and no edit to the template reaches it. Unset: lines alone, or no template. */
+  rows?: TemplateRowsShape
 }
 
 /** A job's schedule shape kept to start the next job like it (G-44). Never dates, companies, percents or moves. */

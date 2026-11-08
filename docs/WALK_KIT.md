@@ -1,6 +1,6 @@
 # The walk kit
 
-> One command, `npm run walk`, runs the Messages loop on prod end to end, on the company's own inbox and number, prints what landed where with times, and cleans up after itself; since v2.6652 it also runs every night from GitHub Actions. Punch list #142 (v2.5724 to v2.5740; the first walks' paper cuts fixed in v2.6030; the driver from any checkout, the tester's door and the schedule in v2.6652). The decisions behind it were made in `to-dos/walk-kit/` and are kept here once that folder is gone.
+> One command, `npm run walk`, runs the Messages loop on prod end to end, on the company's own inbox and number, prints what landed where with times, and cleans up after itself; since v2.6652 it also runs every night from GitHub Actions. Punch list #142 (v2.5724 to v2.5740; the first walks' paper cuts fixed in v2.6030; the driver from any checkout, the tester's door and the schedule in v2.6652). The decisions behind it were made on punch list card #142 (retired 2026-11-07) and are kept here and in the fragments v2.5724 to v2.5740.
 
 last_updated: 2026-11-07
 
@@ -8,7 +8,7 @@ last_updated: 2026-11-07
 
 Every Messages train so far ended on a live walk that only the owner could press: a send goes out, a reply comes back by email and by text, and someone reads the thread, the lanes and the strip. The walk kit lets any Claude session do that in about ten minutes after any deploy, touching only the company's own inbox and number, and leaving nothing behind in the app.
 
-The loop it walks (`to-dos/walk-kit/README.md`'s step table, now this page):
+The loop it walks (the card's step table, now this page; the card retired 2026-11-07):
 
 1. **The kit**: a customer *ZZ Walk Messages Desk* whose email is the bids box's address and whose phone is the bids number, its contact with the two channels, a draft estimate of $1.00, and the row `app_settings.walk_kit_v1` that names them (`walk_setup`, `20261022045047_walk_kit.sql`).
 2. **The tester** presses the estimate email and the estimate text through the app's own doors (`send-estimate-to-customer`, `quo-send`): a hidden training-mode assistant, `walk-tester@walk.pipetooling.local`, flagged `users.is_walk_tester`, let through only at the kit's own targets (`src/lib/walk/kitDoor.ts`). It can write nothing else.
@@ -129,11 +129,12 @@ With `query_logs`, over the run's window: `quo-webhook`'s and `gmail-sync`'s lin
 
 ## Found on the 2026-11-07 run
 
-The fixed driver's first live run, from a worktree, with the owner's word to run it. Three defects in the way, none in the Messages loop, all fixed in v2.6652 (its fragment has the detail); the walk past sign-in waits on the `dev-login` redeploy, and then `npm run walk` with no flag and no press by anyone is the live run the card asked for.
+The fixed driver's first live runs, from a worktree, with the owner's word to run them. Three defects in the way of sign-in, none in the Messages loop, all fixed in v2.6652 (its fragment has the detail); after the `dev-login` redeploy the run went past sign-in and found a fourth, with bids@'s Gmail quota behind it.
 
 1. **The driver could not start from a worktree**: `src/lib/supabase.ts` throws at load when Vite's own env has no key, and a worktree has no `.env`. Fixed: `scripts/walk/start.ts` reads the keys first and runs the driver with them in its environment.
 2. **A lost signal on the first call ended the run, and the report read green**: `walk setup` was the one call outside the retrying wait, and a report with no step had nothing held. Fixed: setup goes through the wait, a call that throws mid-run ends the run with its reason on the report, and a report with no step that went is not green.
 3. **dev-login refused the tester** (403): v2.6639, merged the same morning, closed the door to everyone but a dev or a digital twin. Fixed: the gate admits `users.is_walk_tester`, which has no mailbox and can write nothing but the kit's sends.
+4. **A refused open read as a mail that never came** (v2.6664): with `dev-login` redeployed, the tester pressed both sends itself for the first time (17:49 UTC); the text reply landed in one second with the estimate text's ✓ delivered, STOP and START set and cleared the team box's stop, the office read ZZ Walk in New, no stray contact, and cleanup removed every row. The one held step, *Open the estimate from the bids inbox*, said the email never arrived, while Resend had delivered it to bids@ in one second: the `walk` function's `open` was answering *Gmail /messages failed (429): User-rate limit exceeded*, and the driver's wait read every non-200 answer as not yet. Fixed: the open wait throws a refusal, so the held step's *saw* carries the function's words. **Not a kit defect, and still open**: Gmail has refused every read of bids@ since 2026-11-06 20:44 UTC (`gmail_sync_state.bids`), with a *Retry after* fifteen minutes past each request, and a sixteen-minute quiet stretch (18:06 to 18:22 UTC) did not clear it, so the two Gmail legs of the walk, the open and the email reply, hold until bids@'s quota is back. The nightly run (§ On a schedule) is the proof to watch.
 
 Before the run, the three test records that still carried bids@ in their own columns were read (the GC test trade company's `email`, *GC Test Architects*' `contact_info.email`, *GC Test Owner LLC*'s `billing_email`; no `contact_channels` row carries it, so `walk_setup` passes). The SQL that retypes each to a `zz-test-…@example.com` address dry-ran clean over the pooler; the committing run is the owner's, since a Claude session in auto mode is refused that write.
 

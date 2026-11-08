@@ -21,7 +21,7 @@ Paste a Drive folder link into the card's field and press {{button:outline|Check
 
 ## Set the People folder
 
-The third card names the folder where a person's evidence lands. A dev keeps evidence on a person's file under **People → HR**. Each piece gets a folder of its own under that person, named by the day and the title.
+The third card names the folder where a person's evidence lands. A dev keeps evidence on a person's file under **People → HR**. Each piece gets a folder of its own under that person, named by the day and the title. A file already in Drive is linked from the record and stays where it is. A counsel-only record is never filed.
 
 Give this folder a Shared Drive of its own. Only that drive's members can read what lands there. A folder in the Jobs drive is refused, because everyone on that drive could read the evidence.
 
