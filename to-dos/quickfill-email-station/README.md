@@ -2,7 +2,7 @@
 name: "Quickfill Email station: the live inbox, not the retyped list"
 number: 159
 group: close
-status: built 2026-10-24 (the owner's "build it all"): v2.5814 #6100 (migration pushed, types #6114), v2.5820 #6102 (gmail-count), v2.5824 #6104 (Settings cards), v2.5827 #6108 (the station), v2.5828 (the trend) · the Google admin step done 2026-11-08 (the delegation row reads four scopes, `gmail.metadata` among them; a session typed it from the owner's Chrome, the owner pressed Authorize) · the switch went on 2026-11-08 at the owner's hand (`email_count_on_v1` true, the lead Robert, the limit 3 days; bids@ and team@ as the shared boxes and the eight people on the list, each seeing their own rows) · left: a week of use
+status: built 2026-10-24 (the owner's "build it all"): v2.5814 #6100 (migration pushed, types #6114), v2.5820 #6102 (gmail-count), v2.5824 #6104 (Settings cards), v2.5827 #6108 (the station), v2.5828 (the trend) · the Google admin step done 2026-11-08 (the delegation row reads four scopes, `gmail.metadata` among them; a session typed it from the owner's Chrome, the owner pressed Authorize) · the switch went on 2026-11-08 at the owner's hand (`email_count_on_v1` true, the lead Robert, the limit 3 days; bids@ and team@ as the shared boxes and three people, Taunya, Grace and Wendi, each seeing their own rows) · left: a week of use
 summary: >
   The Email station is three free boxes and a mark. Its history shows the same six emails retyped
   every morning for a week, and the station cannot tell that nothing moved. The app already reads
@@ -12,7 +12,7 @@ summary: >
   day they arrived and a door into Gmail, what moved since the last look, and a Looked that saves
   the live list as the note. The same read, under a metadata-only scope, can count a teammate's own
   labels; who is counted and who sees it is the owner's list, said on the station.
-next: A week of use from 2026-11-08, the switch on with bids@, team@ and the eight people (the owner's own presses; a session may not add a person); read the station's counts against the typed numbers, then delete the folder.
+next: A week of use from 2026-11-08, the switch on with bids@, team@ and three people, Taunya, Grace and Wendi (the owner's own presses; a session may not add a person); read the station's counts against the typed numbers, then delete the folder.
 size: M as a train of five (S · M · S · M · S); one migration, one new edge function, one Google admin step for the metadata scope
 blocker: None since 2026-11-08: the scope is on the delegation and the switch is on.
 ver: v2.5814 · 5820 · 5824 · 5827 · 5828
