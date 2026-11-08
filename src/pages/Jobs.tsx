@@ -663,6 +663,9 @@ export default function Jobs() {
     billedMaterialsSum: number
     invoicesFromSupplyHouses: number
     cardCharges: number
+    /** The row's card charges also on a supply-house invoice and its cost lines, so the print's Parts cost is the table's (v2.6670). */
+    cardChargesLinkedToInvoices: number
+    costLines: ReadonlyArray<{ tagId: string; name: string; icon: string; usd: number }>
     totalBill: number
     profit: number
     tallyPartsForJob: TallyPartRow[]

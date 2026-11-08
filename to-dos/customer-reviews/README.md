@@ -1,8 +1,8 @@
 ---
 name: "Customer reviews: one link that is theirs, and the ask after a paid job"
 number: 185
-group: gated
-status: built 2026-10-26 · PR 2 v2.5934 the review page on customer_ratings; PR 3 v2.5943 the step's text and the morning offer; PR 4 v2.5946 the office's view; PR 5 v2.5948 the portal's Your jobs; left: the push, the deploys, the live test, the owner's look
+group: close
+status: "shipped 2026-10-27 as four PRs: v2.5934 the review page (#6228 closed, its commits rode in #6263's squash), v2.5943 the morning offer (#6263), v2.5946 the office's view (#6268), v2.5948 the portal's Your jobs (#6270); the fix v2.6007 (#6360, 2026-10-28). Read against main and prod 2026-11-07: both migrations in the ledger, job-rating and messages-nudge-dispatch run main's code, customer-portal's review code is live. Left: the owner's Google link, the live test against the mock-up, the owner's look"
 summary: >
   The customer's side, lens 9 of the 2026-10-26 look at the whole app. Today a homeowner gets
   up to four different links over one job (the estimate's accept link, Stripe's Pay now, the
@@ -15,11 +15,11 @@ summary: >
   put it on Google; at fewer, "what could we have done better" and a Needs you line so someone
   calls. Google's policy forbids asking only the happy customers to post, so the Google ask is
   the owner's call, with the recommendation to show it to everyone after the direct review.
-next: Once the four PRs land, supabase db push (both migrations), deploy job-rating, messages-nudge-dispatch and customer-portal, set the Google link, test live against the mock-up; then the owner's look and delete the folder.
+next: The owner or a dev sets the Google review link at Settings → What customers see → Reviews (the page never mentions Google while it is empty); the live test from How to verify on a ZZ test job with the dev's number; then the owner's look and delete the folder. Nothing is left to push or deploy.
 size: M, as four PRs after this one, S M S M
-blocker: none. The owner said build it on the recommendations (2026-10-26).
-ver: proposed
-opinion: building as recommended, on the one-tap rating another session shipped the same day (v2.5876), so the customer gets one ask
+blocker: the owner's Google review link, and the owner's look at the live page.
+ver: v2.5934 · 5943 · 5946 · 5948 · 6007
+opinion: built as recommended on the one-tap rating (v2.5876), so the customer gets one ask; the folder closes on the owner's look
 mockup: to-dos/customer-reviews/mockup.html
 ---
 
@@ -340,6 +340,18 @@ became stars (the owner's own words), and a low score's answer goes in the one w
 better without promising a call; three or fewer promises the call.
 
 ## Where it stands
+
+**Read against main and prod, 2026-11-07.** All four PRs are on `main` (PR 2's #6228 closed
+unmerged; the merge queue squashed its commits into PR 3's #6263, so v2.5934's note, fragment
+and code landed there). Both migrations, `20261026230000_customer_ratings_review.sql` and
+`20261026231000_review_ask_step.sql`, are in prod's ledger; `job-rating` and
+`messages-nudge-dispatch` run main's code (`check:edge-drift`), and `customer-portal`'s review
+code is deployed (it is behind only on v2.6667's mail kernel, nothing of this card's). v2.6007
+(2026-10-28) fixed the step's done fact, the answered-job mint and a residential reminder's
+column inside PR 3's feature; v2.6584 (#255, 2026-11-06) carries a four- or five-star answer to
+the techs on the job. Not verified from a dev's checkout: whether `google_review_link_v1` holds
+the owner's link yet (a read of Settings → What customers see → Reviews says), and the live
+test under *How to verify*, which needs a signed-in office account and the dev's number.
 
 - **PR 2, v2.5934**: the review page on `/rate` (stars, the Google ask, the better question, the
   call), the thread's lines, the columns, the Google link's row, the samples, the person strip,

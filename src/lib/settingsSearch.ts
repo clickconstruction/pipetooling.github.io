@@ -72,6 +72,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'User management', keywords: ['users', 'accounts', 'roles', 'archive user'], tabId: 'settings-people' },
   { label: 'Invite via email', keywords: ['invite user', 'add user', 'new account'], tabId: 'settings-people' },
   { label: 'Merge users', keywords: ['combine users', 'duplicate accounts'], tabId: 'settings-people' },
+  { label: 'Superintendent bonus', keywords: ['superintendent bonus', 'labor kept', 'hours saved', 'scoreboard share', 'bonus share'], tabId: 'settings-people', anchorId: 'settings-people-superintendent-bonus' },
   { label: 'Active accounts', keywords: ['who is active', 'logins'], tabId: 'settings-people' },
   { label: 'Report-enabled users', keywords: ['who can report'], tabId: 'settings-people' },
   // Email & notifications (dev)
