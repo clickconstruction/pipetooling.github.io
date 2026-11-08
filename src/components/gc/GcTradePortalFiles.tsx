@@ -5,6 +5,7 @@ import type { PortalFileRow, PortalFileWhat } from '../../lib/gc/tradePortalPage
 import type { PickedFile } from '../../lib/gc/tradePortalFile'
 import type { TradeFilePlaced } from '../../lib/gc/tradePortalSubmit'
 import type { GcProject } from '../../lib/gc/types'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { HAIR, MUTED } from '../../lib/portal/portalTheme'
 import { Btn, input } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
@@ -111,7 +112,7 @@ function SendFile({ projectId, onSent }: { projectId: string; onSent: (row: Port
         return
       }
       const file: TradeFilePlaced | null = placed.file
-      onSent({ id: file?.id ?? `sent-${Date.now()}`, what: 'note', paper: null, name: file?.name ?? `${note.trim()}`, url: file?.url ?? '', day: new Date().toISOString().slice(0, 10) })
+      onSent({ id: file?.id ?? `sent-${Date.now()}`, what: 'note', paper: null, name: file?.name ?? `${note.trim()}`, url: file?.url ?? '', day: todayYmdInAppTz() })
       setPicked(null)
       setNote('')
       setDone(true)
