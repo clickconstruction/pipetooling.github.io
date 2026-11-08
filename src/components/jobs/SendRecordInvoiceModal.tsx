@@ -3315,7 +3315,6 @@ export default function SendRecordInvoiceModal({
                   amountLabel={`$${Number(billAmountStr).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   jobId={job.id}
                   customerId={job.customer_id}
-                  jobStatus={job.status}
                 />
                 {stripeFallbackLedgerInvoiceId ? (
                   <StripeInvoiceSendFromStripeButton

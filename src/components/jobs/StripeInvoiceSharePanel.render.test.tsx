@@ -91,14 +91,12 @@ describe('StripeInvoiceSharePanel — the doors through the company (#125 PR 6)'
     fireEvent.click(within(win).getByRole('button', { name: 'Send the email' }))
     await waitFor(() => expect(io.sendEmail).toHaveBeenCalledTimes(1))
     expect(load).toHaveBeenCalledWith('cust-sam')
-    const sent = (io.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][0] as { contactId: string; channelId: string; jobKey: string; draft: { subject: string; body: string; signature: string[] } }
-    expect(sent.contactId).toBe('c-sam')
-    expect(sent.channelId).toBe('ch-email')
-    expect(sent.jobKey).toBe('pipeline:j1')
-    expect(sent.draft.subject).toBe('Invoice — Oak Street')
-    expect(sent.draft.body).toContain('Please view and pay your invoice here:')
-    expect(sent.draft.body).toContain(PAY)
-    expect(sent.draft.signature[0]).toBe('Rosa')
+    expect(io.sendEmail).toHaveBeenCalledWith({
+      contactId: 'c-sam',
+      channelId: 'ch-email',
+      jobKey: 'pipeline:j1',
+      draft: { subject: 'Invoice — Oak Street', body: expect.stringContaining(`Please view and pay your invoice here:\n${PAY}`), signature: expect.arrayContaining(['Rosa']) },
+    })
     await waitFor(() => expect(onSent).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Email Bill Draft' })).toBeNull())
     expect(document.body.textContent).toContain('The bill went to sam@example.com from the office.')
