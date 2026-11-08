@@ -5,7 +5,7 @@ file: docs/MATERIALS_ON_SITE_ARCHITECTURE.md
 type: Architecture map
 purpose: The objects, the writes and their rules, the screens, the agent's door and the gaps of Materials on site (punch list #209) — what is in the stencilled cages and boxes a crew leaves on a big job site. Read it before touching `src/lib/materials/onSite*.ts`, the On site tab, Jobs → Materials or the dev MCP's on-site verbs.
 audience: Developers, AI agents
-last_updated: 2026-11-05
+last_updated: 2026-11-07
 sections:
   - The idea
   - The objects
@@ -56,7 +56,7 @@ One pure kernel, [`src/lib/materials/onSite.ts`](../src/lib/materials/onSite.ts)
 - **`countDiffs(movements)`** — every count with its expected, counted and difference, newest first: the Missing section and the money read these.
 - **`lastCountedAt`, `countIsDue`, `STALE_COUNT_DAYS = 14`** — a box with no count, or one older than 14 days, is due.
 - **Words**: `REASON_WORDS`, `pressLabel` (*Mark 4 used*, *Move 10 to A1*, *Save 12*), `leftWords` (*A2 will have 10 left.*), `containerWords`, `nextLabel` (A1 → A2), `compareLabels` (A1, A2, A10), `groupByPlace` (Unsorted first on its own, then the places in name order, no-place last).
-- **Money**: `missingMoney(diff, unitPrice)` prices a shortfall; [`onSiteSummary.ts`](../src/lib/materials/onSiteSummary.ts) gives the desk, the Job window's tab, the ⋯ menu and the Needs you line one job's facts (live containers, lines on site, the week's missing lines and money, the stale boxes, credits due). The price today is one remembered off an invoice on the device (`priceOf` in the store) — call 5, the parts-book price with its checked date, is not built.
+- **Money**: `missingMoney(diff, unitPrice)` prices a shortfall; [`onSiteSummary.ts`](../src/lib/materials/onSiteSummary.ts) gives the desk, the Job window's tab, the ⋯ menu and the Needs you line one job's facts (live containers, lines on site, the week's missing lines and money, the stale boxes, credits due). The price is the parts book's (call 5, v2.6673, [`bookPrice.ts`](../src/lib/materials/bookPrice.ts)): the store reads `material_part_prices` for the parts a ledger names, `pickBookPrice` takes the row checked most recently (a same-day tie to the lower price) and flags it stale past 90 days, and `priceLookup` falls back to the invoice price the office typed when the part landed (`rememberPrice`, kept on the device) where the book's is stale or missing; a typed name only ever carries the invoice price. `priceFor` is the pick with its checked day, `priceOf` its number for the sums.
 
 The same arithmetic lives once more, in SQL, as `on_site_line_on_hand(container, part_id, part_name)` ([`20261102100000`](./migrations/20261102100000_dev_on_site_write.md)), so the agent's plans can say a line's before and after without a round trip; `read_on_site` reads the kernel, so the two can be held against each other, and on 2026-11-03 they agreed on all 118 live lines of the yard job. Both part arguments default to null since v2.6456, so the seat's `call_read` names just one.
 
@@ -116,7 +116,7 @@ Read as a dev through the seat (`read_rows` on the five tables, two pages of the
 
 From the card's Left list and this reading, each one small PR:
 
-- **Money**: the parts-book price with its checked date (call 5), the PO price past 90 days; today the price is remembered off an invoice on the device, so the desk's missing money is only as good as what the office typed there, and an agent reads no price at all.
+- **Money**: the invoice price that stands in past the book's 90 days lives on the device that read it, not on the Delivered row, and an agent's `read_on_site` reads no price at all.
 - **Seeding**: *Mark delivered* on the Procure step writes no movement; *Start from the bid's parts* is not there. A running job starts from a first count, by hand or through `plan_count`.
 - **The Needs you line** for stale containers and missing money, and the Procure step's door to the tab.
 - **The Short press** as a tally request; reading an invoice from the Drive folder with the model (the Deliveries panel's Drive-first path reads the folder but does not read the PDF).
