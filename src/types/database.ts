@@ -6464,6 +6464,7 @@ export type Database = {
           kind: string
           opted_out_at: string | null
           opted_out_by_box: Json
+          usual_at: string | null
           value: string
         }
         Insert: {
@@ -6474,6 +6475,7 @@ export type Database = {
           kind: string
           opted_out_at?: string | null
           opted_out_by_box?: Json
+          usual_at?: string | null
           value: string
         }
         Update: {
@@ -6484,6 +6486,7 @@ export type Database = {
           kind?: string
           opted_out_at?: string | null
           opted_out_by_box?: Json
+          usual_at?: string | null
           value?: string
         }
         Relationships: [
@@ -18877,12 +18880,17 @@ export type Database = {
           id: string
           initials: Json | null
           job_id: string
+          key_terms: Json | null
           kind: string
           last_sent_at: string | null
           last_viewed_at: string | null
           minted_pdf_path: string | null
           next_reminder_at: string | null
+          our_signed_how: string | null
+          our_signed_on: string | null
+          our_signer_name: string | null
           paper_signed_on: string | null
+          paper_title: string | null
           paper_upload_path: string | null
           public_token: string | null
           public_token_expires_at: string | null
@@ -18891,6 +18899,8 @@ export type Database = {
           recipient_name: string | null
           recipient_phone: string | null
           recorded_by: string | null
+          relied_on_on: string | null
+          relied_on_what: string | null
           reminder_count: number
           reminders_enabled: boolean
           revision: number
@@ -18911,6 +18921,7 @@ export type Database = {
           template_document_id: string | null
           template_name: string | null
           template_version_date: string | null
+          their_signed_on: string | null
           updated_at: string
           view_count: number
           void_reason: string | null
@@ -18938,12 +18949,17 @@ export type Database = {
           id?: string
           initials?: Json | null
           job_id: string
+          key_terms?: Json | null
           kind?: string
           last_sent_at?: string | null
           last_viewed_at?: string | null
           minted_pdf_path?: string | null
           next_reminder_at?: string | null
+          our_signed_how?: string | null
+          our_signed_on?: string | null
+          our_signer_name?: string | null
           paper_signed_on?: string | null
+          paper_title?: string | null
           paper_upload_path?: string | null
           public_token?: string | null
           public_token_expires_at?: string | null
@@ -18952,6 +18968,8 @@ export type Database = {
           recipient_name?: string | null
           recipient_phone?: string | null
           recorded_by?: string | null
+          relied_on_on?: string | null
+          relied_on_what?: string | null
           reminder_count?: number
           reminders_enabled?: boolean
           revision?: number
@@ -18972,6 +18990,7 @@ export type Database = {
           template_document_id?: string | null
           template_name?: string | null
           template_version_date?: string | null
+          their_signed_on?: string | null
           updated_at?: string
           view_count?: number
           void_reason?: string | null
@@ -18999,12 +19018,17 @@ export type Database = {
           id?: string
           initials?: Json | null
           job_id?: string
+          key_terms?: Json | null
           kind?: string
           last_sent_at?: string | null
           last_viewed_at?: string | null
           minted_pdf_path?: string | null
           next_reminder_at?: string | null
+          our_signed_how?: string | null
+          our_signed_on?: string | null
+          our_signer_name?: string | null
           paper_signed_on?: string | null
+          paper_title?: string | null
           paper_upload_path?: string | null
           public_token?: string | null
           public_token_expires_at?: string | null
@@ -19013,6 +19037,8 @@ export type Database = {
           recipient_name?: string | null
           recipient_phone?: string | null
           recorded_by?: string | null
+          relied_on_on?: string | null
+          relied_on_what?: string | null
           reminder_count?: number
           reminders_enabled?: boolean
           revision?: number
@@ -19033,6 +19059,7 @@ export type Database = {
           template_document_id?: string | null
           template_name?: string | null
           template_version_date?: string | null
+          their_signed_on?: string | null
           updated_at?: string
           view_count?: number
           void_reason?: string | null
@@ -28973,6 +29000,8 @@ export type Database = {
           evidence_id: string | null
           id: string
           person_id: string
+          source_drive_file_id: string | null
+          source_sha256: string | null
           title: string
           updated_at: string
           updated_by: string | null
@@ -28987,6 +29016,8 @@ export type Database = {
           evidence_id?: string | null
           id?: string
           person_id: string
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
           title: string
           updated_at?: string
           updated_by?: string | null
@@ -29001,6 +29032,8 @@ export type Database = {
           evidence_id?: string | null
           id?: string
           person_id?: string
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
           title?: string
           updated_at?: string
           updated_by?: string | null
@@ -37856,6 +37889,8 @@ export type Database = {
           id: string | null
           person_id: string | null
           sections: number | null
+          source_drive_file_id: string | null
+          source_sha256: string | null
           title: string | null
           updated_at: string | null
           updated_by: string | null
@@ -37872,6 +37907,8 @@ export type Database = {
           id?: string | null
           person_id?: string | null
           sections?: never
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
           title?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -37888,6 +37925,8 @@ export type Database = {
           id?: string | null
           person_id?: string | null
           sections?: never
+          source_drive_file_id?: string | null
+          source_sha256?: string | null
           title?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -38744,6 +38783,10 @@ export type Database = {
       contact_channel_key: {
         Args: { p_kind: string; p_value: string }
         Returns: string
+      }
+      contact_channel_make_usual: {
+        Args: { p_channel: string }
+        Returns: undefined
       }
       contact_channels_keep_stops: {
         Args: { p_gone: string; p_keep: string }
