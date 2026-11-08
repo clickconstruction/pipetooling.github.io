@@ -2,7 +2,7 @@
 name: "Intro to plumbing: how water comes in and goes out, in drawings"
 number: 119
 flagged: true
-group: close
+group: ready
 status: BUILT 2026-10-18 — the owner said build it, checking the work along the way; PR 1 (the offered state, the pipe drawing language, Start here and all of Water in, eleven lessons and eleven figures shot at three widths in both themes) is v2.5610; PR 2 (Water out, eight lessons and eight figures) is v2.5611; PR 3 (the conditions, eight strips) is v2.5612; PR 4 (Reading the job, three figures, the course whole at thirty lessons) is v2.5613; PR 5 (the owner's read-through, ten more drawings where a fact was words alone and three drawings reused with their own captions) is v2.5619; PR 6 (the fourteen-year-old's read: every trade word taught where it is first met, lessons 15 and 27 each cut to one fact, the trade-word rule in the content test) is v2.5621; left: the owner's read-through and On in Settings → Training; the six calls taken as drawn until the owner says otherwise · 2026-11-08 the careful read of every lesson is briefed for a session on another computer (§ Pick up), nothing read from this machine
 summary: >
   The second training course: thirty five-minute lessons on how a house's plumbing works, for
