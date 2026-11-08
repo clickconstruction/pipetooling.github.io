@@ -88,6 +88,9 @@ import { crewJobWindowBar, crewStampOffer, jobWindowTiles, viewerOnCrew, type Jo
 import type { JobThreadStampKind } from '../../lib/jobThreadNoteStampBody'
 import { JobWindowActionBar, JobWindowNoteSheet } from './JobWindowActionBar'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
+import { useJobEstimateAuthor } from '../../hooks/useJobEstimateAuthor'
+import { jobPeopleRows } from '../../lib/jobs/jobPeople'
+import { EstimateAuthorChip } from './EstimateAuthorChip'
 import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
 import { useJobThreadSummary } from '../../hooks/useJobThreadSummary'
@@ -774,6 +777,8 @@ export default function DetailJobModal({
   // embed comes back with a null name and the list showed raw UUIDs. Resolve those via
   // the RPC-backed helper (list_user_display_names), which can name archived users.
   const [teamMemberNameFallback, setTeamMemberNameFallback] = useState<Map<string, string>>(new Map())
+  // v2.6694: the author of the signed estimate the job came from is one of the job's people and wears the E chip.
+  const estimateAuthor = useJobEstimateAuthor(fullJob?.id ?? null)
   useEffect(() => {
     const missing = (fullJob?.team_members ?? [])
       .filter((tm) => !(tm.users?.name ?? '').trim())
@@ -2440,22 +2445,30 @@ export default function DetailJobModal({
 
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Assigned Team</div>
-              {(fullJob.team_members ?? []).length === 0 ? (
-                <EmptyState
-                  compact
-                  main="No team members yet."
-                  next={showEditJobButton ? { label: 'Edit job', onPress: handleEditJobClick } : undefined}
-                  tail={showEditJobButton ? 'adds them.' : undefined}
-                />
-              ) : (
-                <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.875rem' }}>
-                  {fullJob.team_members.map((tm) => (
-                    <li key={tm.id} style={{ marginBottom: 4 }}>
-                      {tm.users?.name?.trim() || teamMemberNameFallback.get(tm.user_id) || '…'}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {(() => {
+                // The team by name (archived names through the fallback), and the estimate's author with the E chip (v2.6694).
+                const people = jobPeopleRows(
+                  (fullJob.team_members ?? []).map((tm) => ({ user_id: tm.user_id, name: tm.users?.name?.trim() || teamMemberNameFallback.get(tm.user_id) || '…' })),
+                  estimateAuthor,
+                )
+                return people.length === 0 ? (
+                  <EmptyState
+                    compact
+                    main="No team members yet."
+                    next={showEditJobButton ? { label: 'Edit job', onPress: handleEditJobClick } : undefined}
+                    tail={showEditJobButton ? 'adds them.' : undefined}
+                  />
+                ) : (
+                  <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.875rem' }}>
+                    {people.map((p) => (
+                      <li key={p.userId} style={{ marginBottom: 4 }}>
+                        {p.name}
+                        {p.estimate ? <EstimateAuthorChip estimate={p.estimate} /> : null}
+                      </li>
+                    ))}
+                  </ul>
+                )
+              })()}
             </div>
 
             <div style={{ marginTop: '1rem', ...jobDetailDateBandStyle }}>

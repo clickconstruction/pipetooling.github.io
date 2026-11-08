@@ -6,7 +6,7 @@
 #   npm run test:pg:job-people
 #
 # The same bed as scripts/pgtest-quick-replies-shortcut.sh: the Supabase Postgres image with every file in
-# supabase/migrations applied in order, then the job-people migration a second time, which must change nothing. The
+# supabase/migrations applied in order, then the job-people migrations (the predicate of v2.5646 and its re-statement of v2.6694, the estimate's author) a second time, which must change nothing. The
 # scenario, inside one transaction that rolls back: is_job_people answers true for the office, the job's account
 # manager and the bid's estimator or account manager, and false for a stranger, an estimator on another bid, a helper
 # on the team and nobody signed in; the estimator writes a promise with heard_by themselves, voids their own and the
@@ -20,7 +20,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55514}"
 NAME="pgtest-job-people"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_job_people.sql)"
+WRITES="$(ls supabase/migrations/*_job_people.sql supabase/migrations/*_job_people_estimate_author.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -38,7 +38,7 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 
 pgtest_migrate
 # A second run must change nothing: every function is CREATE OR REPLACE.
-psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+cat $WRITES | psql_as postgres -f - >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/job_people/20_scenario.sql 2>&1 || true)"
 if ! grep -q "job_people PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
