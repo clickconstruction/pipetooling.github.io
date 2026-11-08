@@ -3,7 +3,7 @@ name: "Training: courses the crew takes at their own pace, with a clock on each"
 number: 111
 flagged: true
 group: ready
-status: BUILT and LIVE 2026-10-16; the fourteen-year-old's read over the OSHA refresher, every OSHA word met first where it is explained by adding words only, is v2.5624 (2026-10-18) — the six PRs (#5758, #5757, #5761, #5762, #5763, #5764), the types regen #5759 and the test fix #5768 merged; migration 20261015060000 on prod (drift 925/925), dev-mcp redeployed; walked live as the dev on prod data (the course page previews while off, lesson 19 recorded a pass, the Settings tab flips the policy, the Dashboard card read red with Continue and the People rail read the need while the course was on for devs, then the policy was put back: off, required for the five field roles); left: the owner or a dev presses On in Settings → Training, then the crew walk · 2026-11-08 the On, View as, Off proof of the switch is briefed for a session on another computer (§ Pick up), nothing pressed from this machine
+status: BUILT and LIVE 2026-10-16; the fourteen-year-old's read over the OSHA refresher, every OSHA word met first where it is explained by adding words only, is v2.5624 (2026-10-18) — the six PRs (#5758, #5757, #5761, #5762, #5763, #5764), the types regen #5759 and the test fix #5768 merged; migration 20261015060000 on prod (drift 925/925), dev-mcp redeployed; walked live as the dev on prod data (the course page previews while off, lesson 19 recorded a pass, the Settings tab flips the policy, the Dashboard card read red with Continue and the People rail read the need while the course was on for devs, then the policy was put back: off, required for the five field roles); left: the owner or a dev presses On in Settings → Training, then the crew walk · 2026-11-08 the On, View as, Off proof of the switch is briefed for a session on another computer (§ Pick up), nothing pressed from this machine · 2026-11-08 (later) the pick-up ran from this computer: the course read lesson by lesson with 34 doubted facts under § Read-through and no fix PR, and the dev seat read all three courses already On since 2026-10-18 (a dev's press), so nothing was pressed and the proof became a read of the live state, the helper's red card and lesson 1 shot through View as on the dev server (§ Where it stands)
 summary: >
   A Training section at the bottom of the Dashboard, under My Time, where each person sees the
   courses their role must take, in one of three states: not done (red), done but lapsed or
@@ -13,7 +13,7 @@ summary: >
   everyone take it again. The People rail and the Users row carry a training chip beside the
   paperwork ones. The first course is the OSHA 30 refresher, 30 lessons plus a final check,
   built from the owner's capture of the ClickSafety course.
-next: A session on another computer picks up § Pick up after #119's read — On for Intro to plumbing in Settings → Training, the helper's red card and first lesson through View as, Off within minutes, both states shot; the owner's own press to On after his correction pass stays his, then the first crew member through a lesson, a week of use and the seven calls at the mock-up's foot; delete this folder once nothing comes up.
+next: The owner reads § Read-through and decides each of the 34 rows, the three ★ first; the switch already stands On for all three courses (a dev's press, 2026-10-18), so the only press left is his, Off if the course is not meant to be live before his correction pass, otherwise none; then the first crew member through a lesson, a week of use and the seven calls at the mock-up's foot; delete this folder once nothing comes up.
 size: L (six PRs, each S or M; the lesson rewrite into plain words is the biggest single piece)
 blocker: none; the seven calls are built to the drawn leans and each is one constant or one Settings number.
 opinion: build it as drawn; the Dashboard section and the course page are the feature, the rest is wiring the three states into places that already show paperwork state.
@@ -366,6 +366,29 @@ minutes, in an hour the crew is off the app. The OSHA refresher's switch stays a
    the Training card draws no Intro to plumbing row (with the refresher off too, the card itself is
    gone). Shot `111-helper-card-off`. Exit View as. Settings → Training must read as shot 1 did.
 
+**Checked off 2026-11-08, from this computer, on the dev server as the dev.** The steps were written
+for a switch that stood off. It did not: the dev seat's read of `training_courses` (read only) found all
+three courses `enabled` since 2026-10-18 16:04Z, set by a dev account, so no press was made and the Off
+half of the proof was not run. What each step read instead:
+
+1. Settings → Training as the dev: Intro to electrical **On**, required for devs; Intro to plumbing
+   **On**, required for devs and helpers, good for 120 months; OSHA 30 refresher **On**, required for
+   masters, subcontractors, helpers, primaries and superintendents, good for 12 months, *0 current ·
+   0 lapsed · 30 not done*. Shots `111-settings-before` and `111-settings-before-refresher`.
+2. Not pressed. On stood already, and Off would have hidden a live course from the crew.
+3. View as → Sample helper → Dashboard: the Training card under My Schedule reads red, *2 courses to
+   do*, Intro to plumbing and the OSHA 30 refresher each with its size line and **Start**, Intro to
+   electrical under *Available*. Shot `111-helper-card-on`.
+4. **Start** on Intro to plumbing opened `/training/intro-to-plumbing` with its rail at *0 of 30
+   lessons*; lesson 1's four checks answered right read *All four right. This lesson is done.* and the
+   rail *1 of 30 lessons*. The mark **landed**: one `training_lesson_passes` row on the Sample helper
+   account (`is_sample`), lesson `01-two-systems-one-house`, one try. Nobody's record. Shot
+   `111-helper-lesson-1`.
+5. **Exit** returned the dev to Settings → Training, which read as step 1 did. No Off, so no
+   `111-settings-off` or `111-helper-card-off`.
+
+The shots sit in the session's scratchpad and in this group's shared notes folder outside the repo.
+
 **Done looks like.** A dated line per step under § Where it stands naming its shot and what it
 read, with any defect in one line; the `status` and `next` lines amended, `next` saying the switch
 is proved both ways and the owner's own press to On, after his correction pass of #119, stays his;
@@ -375,9 +398,92 @@ wrap-up for the owner; the session card in the main checkout's `.claude/sessions
 when done. The report to the owner names the shots and whether the lesson mark landed or was
 refused.
 
+## Read-through 2026-11-08
+
+Thirty-four doubted facts, read lesson by lesson on 2026-11-08 from the words in
+`src/content/training/osha-30-refresher/` and the labels of their drawings, with the real standard's
+number where I know it. Doubt is the bar, not certainty: the owner's correction pass and a safety
+professional decide, and nothing here was changed. No typo and no plain-words break was found; the
+content test (300 cases) and the figures test are green on the words as they stand, so there is no
+fix PR. The three fixes most worth a look are marked ★: lessons 8 and 22 disagree on whether a net
+prevents a fall, the final bank's table-saw question explains itself with silica where lesson 16 says
+wood has none, and lesson 28's Trap teaches that a rubber-coated tool is insulated.
+
+| Lesson | The sentence as it stands | Why I doubt it |
+|---|---|---|
+| 1 How safety works on a site | *A signal person is certified* | 1926.1428 asks for a *qualified* signal person, evaluated by the employer or a third party; certified is the crane operator's word |
+| 2 Every day on the job | *a trench air permit for one day* | OSHA has no permit by that name; 1926.651(g) asks for atmospheric testing where a hazardous atmosphere could exist, and the record is the test |
+| 2 Every day on the job | *use hand tools within 3 ft of a flag* | the hand-dig zone is state law; Texas Utilities Code ch. 251 sets it at 18 in each side of the marked line (lesson 9 and the dig-flags drawing say 3 ft too) |
+| 2 Every day on the job | *materials 6 ft from edges* | 1926.250(b)(1) says 6 ft from a hoistway or floor opening and 10 ft from an exterior wall the stack rises above (lesson 10 repeats it as *from any edge*) |
+| 3 OSHA and your rights | *It covers all employees, whatever their citizenship or the size of the company* and the not-covered list | state and local government workers are outside federal OSHA too; Texas has no state plan, so a city's crew is not covered |
+| 3 OSHA and your rights | *There are seven categories, from De Minimis with no fine to Willful and Repeated* | OSHA's own list is six: De Minimis, Other-than-Serious, Serious, Willful, Repeated, Failure to Abate |
+| 7 Falls: the hazard | *A 20-ft ladder's base sits 5 ft out from the wall* and the ladder-angle drawing | the 4-to-1 rule in 1926.1053(b)(5) runs on the height to the top support, not the ladder's length; a 20-ft ladder reaching 16 ft sits 4 ft out |
+| 7 Falls: the hazard | *Platforms above 10 ft need guardrails on all sides* | 10 ft is the scaffold rule (1926.451(g)); any other platform needs its guardrail at 6 ft under 1926.501 |
+| 8 Falls: the gear | *Posts take 200 lb* and the chip *200 lb a guardrail post holds* | 1926.502(b)(3) puts the 200 lb on the top rail; the midrail takes 150 lb; a post has no number of its own |
+| 9 Electrocution | *200 mA can stop the heart* and the current-scale drawing | OSHA's own current chart puts ventricular fibrillation at 1,000 to 4,300 mA and cardiac arrest at 10,000 mA; 100 to 200 mA is the textbook figure, so the sources disagree |
+| 9 Electrocution | *Test them monthly* (GFCIs) | 1926.404(b)(1)(iii)'s program tests cords and receptacles every 3 months; monthly is the maker's advice, not a rule |
+| 10 Caught in or between | *ROPS, the roll cage over the operator, is required on all heavy machinery on any ground* | 1926.1000 names scrapers, loaders, dozers, tractors and graders; an excavator, a crane or a skid steer is outside it |
+| 10 Caught in or between | *Seat belts are enforced under the General Duty Clause* | 1926.602(a)(2)(i) requires seat belts on equipment that carries ROPS; the clause is the fall-back where no standard reaches |
+| 10 and 20 | the cave-in-signs caption *Six ways a wall says it is about to go* | the drawing carries seven labels (bulging, cracks along the edge, cracks on top, boiling, heaving, slumping, sliding); lesson 20's sentence names six and lesson 10's four or five |
+| 11 Struck by | *Powder-actuated and pneumatic tools need certification* and *An uncertified nail gun killed an apprentice* | 1926.302(e) asks for training on the powder-actuated tool in use; a pneumatic nail gun has no OSHA certification |
+| 11 Struck by | *Reversing needs a back-up alarm and a spotter* | 1926.601(b)(4) asks for a reverse alarm audible above the noise *or* an observer, one or the other |
+| 11 Struck by | *Brace walls 8 ft or higher* | 1926.706(b) says walls *over* 8 ft (lesson 22 has it right) |
+| 15 Noise, heat and cold | *An 8-hour TWA of 85 dBA starts a hearing conservation program. That means noise monitoring, free hearing protection, training, records, and baseline and annual hearing tests* and its Trap | the 85 dBA action level and the test program are general industry's 1910.95; construction's 1926.52 has no action level and its program starts at the 90 dBA PEL |
+| 16 Silica and asbestos | *presume it in shingles, pipe insulation, fireproofing, vinyl flooring, popcorn ceilings and plaster* | 1926.1101's presumption covers thermal system insulation, surfacing material and asphalt or vinyl flooring from 1980 or before; shingles are not in it |
+| 16 Silica and asbestos | the chip *30 years silica exposure records kept* | no sentence in the lesson teaches it; 1910.1020 keeps exposure records 30 years, so the number is right but stands alone |
+| 17 Ladders and stairs | *The yearly inspection is the employer's job* | 1926.1053(b)(15) asks for periodic inspection by a competent person and sets no interval |
+| 18 Scaffolds | the power-line caption *10 ft from anything else* | 1926.451(f)(6) adds 0.4 in per kV past 50 kV; 10 ft is the floor, not the whole rule |
+| 19 Trenches: soil and protection | the Trap *edge fall protection at 6* | 1926.501(b)(7)(ii) guards a pit or shaft 6 ft or deeper only when it cannot be readily seen; a trench edge has no blanket 6 ft rule |
+| 20 Trenches: getting out | *A trench deeper than 4 ft needs a ladder, stair or ramp within 25 ft* | 1926.651(c)(2) says 4 ft *or more*; a trench of exactly 4 ft is inside the rule |
+| 20 Trenches: getting out | *The competent person's atmospheric permit lasts one day* and the chip *1 day the atmospheric permit* | OSHA has no such permit (as in lesson 2); the day is the course's own |
+| 21 Lifting, handling and storing | *Cylinders stay no higher than 5 ft unless racked* and the stacking-limits drawing | I find no cylinder height in 1926.250; the lumber, brick and block numbers are there, this one may be the course's own |
+| 22 Cranes, concrete and steel | *A certified signal person is required* and the Trap *A signal person is certified* | the same doubt as lesson 1: 1926.1428 says qualified |
+| 22 Cranes, concrete and steel ★ | *Harnesses, lifelines and anchor points are fall protection. Nets and guardrails are fall prevention* and its Trap | lesson 8's Trap says *Nets do not prevent a fall*; the two lessons disagree, and a final draw can ask a reader both |
+| 22 Cranes, concrete and steel | Check 1's wrong line *Gloves, grounding and care do not beat high voltage* | no option names gloves; the three wrong picks are a careful operator, not holding the tag line and grounding the crane |
+| 24 Vehicles and forklifts | *Orange or yellow means warning. Yellow and black means caution* and the sign-colours drawing | ANSI Z535 makes warning orange and caution yellow with black; *orange or yellow* blurs the two |
+| 24 Vehicles and forklifts | *An empty truck's center of gravity is higher than a loaded one's* and the load-center caption *an empty truck is top-heavy too* | a load on the forks moves the combined center of gravity forward and usually up, so the sentence reads backwards; the course's own words may differ |
+| 28 Electrical safety and NFPA 70E | *It has three chapters and 19 non-mandatory annexes* and the chip *19 annexes* | the 2024 edition's informative annexes run A to R by my count, 18; worth a look at the book |
+| 28 Electrical safety and NFPA 70E ★ | the Trap *A rubber-coated tool prevents electricity from traveling through the tool* | a rubber dip on a plier handle is a grip, not insulation; the insulated tools the lesson rates at 1,000 V are the ASTM F1505 kind, so the quiz's answer may teach the wrong lesson |
+| Final bank ★ | Q8's right line *Silica dust is a hazard for everyone nearby*, for a table saw with no dust collection | a table saw cuts wood, and lesson 16 says silica is *not in paint or wood*; wood dust is the hazard unless the saw cuts tile or block |
+
+Counted another way: twenty-one rows are a standard's number or word the course rounded (the signal
+person, the 4 ft trench, the 8 ft wall, the back-up alarm, the hearing program), eight are the
+course's own terms or counts OSHA does not set (the trench air permit, the atmospheric permit, the
+yearly ladder inspection, the cylinder height, the seven violation categories), two are captions that
+disagree with their lesson's words, and three are the ★ rows where the course would teach a reader
+something wrong. Every
+`from:` line stands; no question, option or figure was touched.
+
 ## Where it stands
 
 2026-11-08: at the owner's word the On, View as, Off proof moves to a session on another computer;
 § Pick up above is its brief. Nothing was pressed in Settings → Training from this machine; both
 courses stand as they did, the refresher off and required for the five field roles, Intro to
 plumbing off and offered.
+
+2026-11-08, later: #119's read is complete (`to-dos/intro-plumbing/README.md` § Read-through 2026-11-08,
+25 doubted facts for the owner, no fix PR), so the switch proof above can run. `training_courses`, read
+through the dev seat the same day, has Intro to plumbing On since 2026-10-18 16:04Z, offered and required
+of helpers and dev, so the On step is already in place and the owner's correction pass is what is left.
+
+2026-11-08, later: the first 2026-11-08 line was written without a read. The dev seat read `training_courses`
+at 13:50 CST and all three courses have been On since 2026-10-18 16:04Z, pressed by a dev account the
+day the fourteen-year-old's reads (v2.5621, v2.5624) landed; Intro to plumbing is required of helpers
+and devs, the refresher of the five field roles, Intro to electrical of devs. No course pass exists
+yet (`training_passes` is empty to the dev, who reads every pass); two lesson passes exist, the
+refresher's lessons 1 and 2 on a helper's account on 2026-10-17, before the press. So the course has
+been live for the crew for three weeks and the owner's "press to On" already happened.
+
+2026-11-08: the read-through of the OSHA 30 refresher, thirty lessons, their drawings and the final
+bank, is § Read-through above: 34 doubted facts, three starred, no typo and no plain-words break, so
+no fix PR; the content and figures tests are green on the words as they stand.
+
+2026-11-08: the switch proof ran in the shape the live state allowed (§ Pick up → Checked off): the
+Settings tab read three On switches, the Sample helper's Dashboard read red with *2 courses to do*,
+lesson 1 of Intro to plumbing passed and its mark landed on the sample account, Exit returned the dev
+and the tab read unchanged. Nothing was pressed in Settings → Training. The Off half waits on the
+owner: it is his call whether a course should come off before his correction pass of #119 and of
+§ Read-through here.
+
+2026-11-08: #119's read ran at the same time in a sibling session, so this card ships in its own
+docs-only PR, not #119's; that session was told the course already reads On.
