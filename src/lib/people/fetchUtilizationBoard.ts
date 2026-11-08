@@ -84,9 +84,12 @@ export async function fetchUtilizationBoard(io: AvailabilityIo, opts: { weeks?: 
   }
   const userIds = people.map((p) => p.id)
   const [timeOff, answers] = await Promise.all([fetchUserTimeOffForUsersInRange(userIds, startYmd, endYmd), io.listAnswers(userIds)])
+  // The kernel counts the same weeks the reads covered; left to its default it would count eight
+  // and read the weeks outside a narrower window (an assistant's) as nothing recorded.
   const board = buildUtilizationBoard({
     todayYmd,
     nowMs,
+    weeks: weeks.length,
     people,
     sessions,
     answers,
@@ -111,6 +114,7 @@ export async function fetchMyUtilization(args: { userId: string; name: string; r
   const board = buildUtilizationBoard({
     todayYmd,
     nowMs,
+    weeks: weeks.length,
     people: [person],
     sessions: sessions ?? [],
     answers,

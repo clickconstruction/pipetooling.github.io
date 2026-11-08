@@ -8,7 +8,7 @@
  * Reads through `fetchUtilizationBoard`; the counting is `lib/people/utilization.ts`. The office
  * changes a person's hours here (Change), and the person changes their own from My Time.
  */
-import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useAssistantHoursWindow } from '../../hooks/useAssistantHoursWindow'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { defaultAvailabilityIo, type AvailabilityIo } from '../../lib/people/availabilityIo'
@@ -174,15 +174,22 @@ export default function PeopleUtilizationTab({ authRole, authUserId, io: ioIn }:
   // An assistant's window is the Hours tab's: never more weeks than the setting allows.
   const weeksAllowed = authRole === 'assistant' && assistantWeeks > 0 ? Math.min(weeks, assistantWeeks) : weeks
 
+  // The window narrows once the viewer's role and the assistant setting arrive, and the wider read
+  // (more sessions) answers after the narrower one; only the newest read may land.
+  const readSeq = useRef(0)
   const load = useCallback(async () => {
+    const seq = ++readSeq.current
     setLoading(true)
     setError(null)
     try {
-      setRead(await fetchUtilizationBoard(io, { weeks: weeksAllowed }))
+      const next = await fetchUtilizationBoard(io, { weeks: weeksAllowed })
+      if (seq !== readSeq.current) return
+      setRead(next)
     } catch (e) {
+      if (seq !== readSeq.current) return
       setError(formatErrorMessage(e, 'The board did not load.'))
     } finally {
-      setLoading(false)
+      if (seq === readSeq.current) setLoading(false)
     }
   }, [io, weeksAllowed])
   useEffect(() => {
