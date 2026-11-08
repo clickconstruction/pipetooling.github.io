@@ -2,7 +2,7 @@
  * A conversation tagged onto a job from the dev seat (server 0.30.0): `plan_mail_tag` → `apply_mail_tag` run
  * gmail-mine's own tag — the Messages → My email press — as the login whose box the conversation is in, through the
  * seat's door on that function (`as`, `plan`), so every mail lands on the job's Activity and notes at its own time,
- * deduplicated by Message-ID, with later mail following as the press's would. Since punch list #289 (server 0.41.0)
+ * deduplicated by Message-ID, with later mail following as the press's would. Since punch list #289 (server 0.42.0)
  * the target may be a person instead: each mail lands as a dated entry on that person's HR file, deduplicated by its
  * Gmail id, later mail following as entries; `stop` lifts that follow. The pure half: the arguments, the commitment the
  * plan hashes (the target, the conversation, and what the tag would do with each mail), the words.

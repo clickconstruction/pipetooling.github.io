@@ -150,7 +150,7 @@ export interface MyMailPersonRef {
 }
 
 /**
- * Tag a conversation onto a person's HR file (punch list #289, server 0.41.0): the dev seat's alone, so `as` (the login
+ * Tag a conversation onto a person's HR file (punch list #289, server 0.42.0): the dev seat's alone, so `as` (the login
  * whose box the conversation is in) is required and a person's own press never carries `person`. Each mail of the
  * conversation becomes a dated entry on the file (`person_file_entries`, source `conversation`, the mail's day, its
  * headers and words in a fixed shape, its Gmail id), written as the dev; a mail the file already holds by its Gmail id

@@ -13,6 +13,7 @@
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { isUnderContractFloor } from './jobContractFloor'
 import { filedOnPaper, framesLabel, framesProgress, framesWaitingLine, joinSignerNames, signedNames, signerNamesLine } from './jobContractSigners'
+import { isTheirPaperRow, theirPaperFromRow, theirPaperLine, theirPaperWords, type TheirPaperColumns, type TheirPaperRecord } from './theirPaper'
 
 export type JobContractRowLike = {
   id: string
@@ -41,9 +42,11 @@ export type JobContractRowLike = {
   co_signer_printed_name?: string | null
   /** v2.5101: a second frame filed from the paper after the first signed through the link reads as paper. */
   co_signer_mode?: string | null
-  /** The kind of agreement (2026-11-02): our contract, or the warranty sent in place of one. A row from before the column is a contract. */
+  /** The kind of agreement (2026-11-02): our contract, or the warranty sent in place of one. A row from before the column is a contract. v2.6698: `their_paper`, the other side's own form signed by us (`theirPaper.ts`). */
   kind?: string | null
-}
+  /** v2.6698: the paper's own fields. A `created_at` orders two their-paper rows; the newest wins. */
+  created_at?: string | null
+} & TheirPaperColumns
 
 /** The kind a row is, for the chip's words; anything but `warranty` is a contract. */
 export type JobAgreementKindWord = 'contract' | 'warranty'
@@ -81,6 +84,11 @@ export type JobContractCoverage =
   | { kind: 'draft'; contractId: string; agreement?: JobAgreementKindWord }
   /** The office said no agreement of ours is needed here (a builder's subcontract, a service call…). Not a gap. */
   | { kind: 'not_needed'; at: string; reason: string | null }
+  /**
+   * Their paper (punch list #173, v2.6698): a contract on the other side's own form, signed by us and not
+   * countersigned. Not a gap; counts as signed for the Legal desk once they rely on it (`legalContractBasis.ts`).
+   */
+  | { kind: 'their_paper'; contractId: string; record: TheirPaperRecord; documentUrl: string | null }
   | {
       kind: 'sent'
       contractId: string
@@ -163,7 +171,7 @@ export function buildJobContractCoverage(
   for (const job of jobs) {
     const rows = byJob.get(job.id) ?? []
     const signed = rows
-      .filter((c) => c.status === 'signed' && c.signed_at)
+      .filter((c) => c.status === 'signed' && c.signed_at && !isTheirPaperRow(c))
       .sort((a, b) => (b.signed_at ?? '').localeCompare(a.signed_at ?? ''))[0]
     if (signed) {
       out.set(job.id, {
@@ -178,6 +186,13 @@ export function buildJobContractCoverage(
         estimateId: null,
         agreement: agreementKindWord(signed.kind),
       })
+      continue
+    }
+    // v2.6698: their paper, after a signed agreement of ours and before an acceptance of ours — the paper that governs the job.
+    const theirs = rows.filter(isTheirPaperRow).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0]
+    if (theirs) {
+      const record = theirPaperFromRow(theirs)
+      out.set(job.id, { kind: 'their_paper', contractId: theirs.id, record, documentUrl: record.documentUrl })
       continue
     }
     const est = countEstimates ? acceptedByJob.get(job.id) : undefined
@@ -236,7 +251,7 @@ export function buildJobContractCoverage(
   return out
 }
 
-export type JobContractChipTone = 'none' | 'draft' | 'sent' | 'signed' | 'not_needed'
+export type JobContractChipTone = 'none' | 'draft' | 'sent' | 'signed' | 'not_needed' | 'their_paper'
 
 /** The reasons the Not needed door offers; the office may type its own. */
 export const CONTRACT_NOT_NEEDED_REASONS = ['GC job — their subcontract', 'Service call', 'Warranty / no charge'] as const
@@ -276,6 +291,7 @@ export function jobContractChipLabel(cov: JobContractCoverage | null | undefined
   if (!cov || cov.kind === 'none') return 'No contract'
   if (cov.kind === 'draft') return `${Noun(cov.agreement)} draft`
   if (cov.kind === 'not_needed') return 'No contract · not needed'
+  if (cov.kind === 'their_paper') return theirPaperLine(cov.record)
   if (cov.kind === 'sent') {
     const parts = [`${Noun(cov.agreement)} sent`]
     // v2.4590: once one of two has signed, the count says more than the opens (a signature was an open).
@@ -307,6 +323,7 @@ export function jobContractChipTitle(cov: JobContractCoverage | null | undefined
     const when = shortDate(cov.at)
     return `The office marked this job as needing no agreement of ours${when ? ` on ${when}` : ''}${cov.reason ? ` — ${cov.reason}` : ''}`
   }
+  if (cov.kind === 'their_paper') return theirPaperWords(cov.record)
   if (cov.kind === 'sent') {
     return `${Noun(cov.agreement)} rev ${cov.revision} sent${cov.recipientEmail ? ` to ${cov.recipientEmail}` : ''}${
       cov.viewCount > 0 ? ` · opened ${cov.viewCount} time${cov.viewCount === 1 ? '' : 's'}` : ' · not opened yet'

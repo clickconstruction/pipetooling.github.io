@@ -12,6 +12,7 @@ import { mercuryLinesFromRows, supplyLinesFromRows, tallyLinesFromRows } from '.
 import { jobSubLaborInputsFromRows } from '../../../supabase/functions/_shared/jobSubLaborInputs'
 import { laborJobSubCost } from '../../../supabase/functions/_shared/subLaborCost'
 import {
+  JOB_CHARGE_SOURCE_META,
   buildJobChargeEvents,
   buildJobChargesTimelineChartData,
   buildJobManualPercentEvents,
@@ -310,6 +311,56 @@ export function siteJobHasDatedEvent(job: Pick<SiteTimelineJob, 'charges' | 'pay
 
 export type SiteTimelineChip = { jobId: string; label: string; endExpense: number }
 
+/** A job the chart cannot draw (v2.6711): its cost, undated charges included, and the undated charges by source. */
+export type SiteTimelineLeftOutJob = { jobId: string; label: string; endExpense: number; undated: { source: JobChargeSource; count: number }[] }
+
+/** What the chart cannot draw, by job: the order given, the cost summed over every charge, the undated charges counted by source. */
+export function siteTimelineLeftOutJobs(jobs: readonly SiteTimelineJob[]): SiteTimelineLeftOutJob[] {
+  return jobs
+    .filter((j) => !siteJobHasDatedEvent(j))
+    .map((j) => {
+      const counts = new Map<JobChargeSource, number>()
+      for (const e of j.charges) if (e.dateKey == null) counts.set(e.source, (counts.get(e.source) ?? 0) + 1)
+      return { jobId: j.jobId, label: j.label, endExpense: round2(j.charges.reduce((s, e) => s + e.amount, 0)), undated: [...counts].map(([source, count]) => ({ source, count })) }
+    })
+}
+
+/** The noun for a source's undated charges: *sub labor sheet*, *card charge*, *supply house invoice*; the meta's name lowercased, a sheet or a day where the meta names the work. */
+function undatedNoun(source: JobChargeSource, count: number): string {
+  const base = source === 'sub_labor' ? 'sub labor sheet' : source === 'team_labor' ? 'team labor day' : source === 'fuel' ? 'fuel charge' : JOB_CHARGE_SOURCE_META[source].name.toLowerCase()
+  return count === 1 ? base : `${base}s`
+}
+
+/**
+ * Why a job is off the chart, for its strip row: *1 sub labor sheet and 2 card charges with no date · date them and the
+ * job joins the chart*; with no charge at all, *nothing charged yet*.
+ */
+export function siteTimelineLeftOutReason(job: Pick<SiteTimelineLeftOutJob, 'undated'>): string {
+  if (job.undated.length === 0) return 'nothing charged yet'
+  const n = job.undated.reduce((s, u) => s + u.count, 0)
+  const parts = job.undated.map((u) => `${u.count} ${undatedNoun(u.source, u.count)}`)
+  const list = parts.length <= 2 ? parts.join(' and ') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+  return `${list} with no date · date ${n === 1 ? 'it' : 'them'} and the job joins the chart`
+}
+
+/** The strip's sum line (v2.6711): the chart's end, the left-out jobs' cost, and both together, the Scoreboard's cost before overhead. */
+export function siteTimelineStripSum(model: Pick<SiteTimelineModel, 'siteEndExpense' | 'leftOutJobs'>): { chartEnd: number; offChart: number; together: number } {
+  const offChart = round2(model.leftOutJobs.reduce((s, j) => s + j.endExpense, 0))
+  return { chartEnd: model.siteEndExpense, offChart, together: round2(model.siteEndExpense + offChart) }
+}
+
+/** The strip as lines for the print (v2.6711): the head, one line per job with its reason and cost, the sum line. Empty when nothing is left out. */
+export function siteTimelineStripLines(model: Pick<SiteTimelineModel, 'siteEndExpense' | 'leftOutJobs'>, money: (n: number) => string): string[] {
+  const n = model.leftOutJobs.length
+  if (n === 0) return []
+  const sum = siteTimelineStripSum(model)
+  return [
+    `Not on the chart · ${n} ${n === 1 ? 'job' : 'jobs'} with no dated charge or payment`,
+    ...model.leftOutJobs.map((j) => `${j.label} · ${siteTimelineLeftOutReason(j)} · ${money(j.endExpense)}`),
+    `Chart ends at ${money(sum.chartEnd)} · Not on the chart ${money(sum.offChart)} · Together ${money(sum.together)}, the Scoreboard’s cost before overhead`,
+  ]
+}
+
 export type SiteTimelineModel = {
   data: JobChargesTimelineData
   /** The jobs with a dated event, in the Money look's order, each with its own end expense. */
@@ -318,6 +369,10 @@ export type SiteTimelineModel = {
   drawn: ReadonlySet<string>
   /** How many of the site's jobs have no dated event and are left out. */
   leftOut: number
+  /** The jobs left out, in the order given, each with its cost and what it holds with no date (v2.6711, the ledger strip). */
+  leftOutJobs: SiteTimelineLeftOutJob[]
+  /** The whole site's end expense, the chart's end with nothing narrowed: the strip's sum reads it whatever the chips say. */
+  siteEndExpense: number
   /** True when the icons were kept to the biggest days. */
   iconsThinned: boolean
   /** Jobs with no dated percent whose current percent adds to the value line's last point (v2.6499). */
@@ -346,12 +401,17 @@ export function buildSiteTimeline(args: { jobs: readonly SiteTimelineJob[]; sele
   data.valueSeriesAvailable = value.available
   data.valueFromFallbackPercent = false
   const iconsThinned = thinChargeIcons(data.chartRows, args.iconDays ?? SITE_TIMELINE_ICON_DAYS)
+  // The whole site's end, for the strip's sum: the chart's own end unless the chips narrowed it, then the same sum over every dated job.
+  const siteCharges = chosen.length ? foldSiteChargeEvents(dated.flatMap((j) => j.charges), (id) => labelOf.get(id) ?? id) : charges
+  const siteEndExpense = chosen.length ? round2(siteCharges.reduce((s, e) => s + e.amount, 0)) : data.endExpense
   return {
     data,
     valueFallbackJobs: value.fallbackJobs,
     chips: dated.map((j) => ({ jobId: j.jobId, label: j.label, endExpense: round2(j.charges.reduce((s, e) => s + e.amount, 0)) })),
     drawn: new Set(drawnJobs.map((j) => j.jobId)),
     leftOut: args.jobs.length - dated.length,
+    leftOutJobs: siteTimelineLeftOutJobs(args.jobs),
+    siteEndExpense,
     iconsThinned,
   }
 }
@@ -431,7 +491,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
  * site's name, the scope line and the ends, with the key and the printed stamp. A printed page has no theme, so
  * its colours are literal, as on the other print documents. Pure; `openHtmlPrintWindow` opens it.
  */
-export function siteTimelinePrintHtml(input: { siteName: string; customerName: string | null; scopeLine: string; endWords: readonly string[]; keyLines: readonly string[]; svg: string; printedAt: string; printedBy: string | null }): string {
+export function siteTimelinePrintHtml(input: { siteName: string; customerName: string | null; scopeLine: string; endWords: readonly string[]; keyLines: readonly string[]; svg: string; printedAt: string; printedBy: string | null; /** The ledger strip's lines (v2.6711), under the key: the jobs the chart cannot draw and the sum line. */ stripLines?: readonly string[] }): string {
   const svg = input.svg.replace(/var\(--surface\)/g, '#ffffff').replace(/var\(--[a-z0-9-]+\)/g, '#374151')
   const stamp = `Printed ${input.printedAt}${input.printedBy ? ` by ${input.printedBy}` : ''}`
   return `<!doctype html>
@@ -444,6 +504,9 @@ h1 { font-size: 18px; margin: 0 0 2px; }
 .ends { font-size: 13px; font-weight: 600; margin: 4px 0 10px; }
 .chart svg { width: 100%; height: auto; }
 .key { font-size: 11px; color: #374151; text-align: center; margin: 6px 0 0; }
+.strip { font-size: 11px; color: #374151; text-align: left; margin: 10px 0 0; }
+.strip p { margin: 2px 0 0; }
+.strip .head { font-weight: 600; }
 .stamp { font-size: 10px; color: #6b7280; margin-top: 10px; }
 </style></head><body>
 <h1>${esc(input.siteName)} · cost timeline</h1>
@@ -451,14 +514,15 @@ h1 { font-size: 18px; margin: 0 0 2px; }
 <p class="ends">${input.endWords.map(esc).join(' · ')}</p>
 <div class="chart">${svg}</div>
 ${input.keyLines.map((l) => `<p class="key">${esc(l)}</p>`).join('\n')}
+${input.stripLines?.length ? `<div class="strip">${input.stripLines.map((l, i) => `<p${i === 0 ? ' class="head"' : ''}>${esc(l)}</p>`).join('')}</div>` : ''}
 <p class="stamp">${esc(stamp)}</p>
 </body></html>`
 }
 
-/** The line under the chips: how many jobs are left out, and why. */
+/** The line under the chips: how many jobs are off the chart, and where they are listed (the strip, v2.6711). */
 export function siteTimelineLeftOutWords(leftOut: number): string | null {
   if (leftOut <= 0) return null
-  return leftOut === 1 ? '1 job with no dated charge or payment is left out.' : `${leftOut} jobs with no dated charge or payment are left out.`
+  return leftOut === 1 ? '1 job has no dated charge or payment. It is listed under the chart.' : `${leftOut} jobs have no dated charge or payment. They are listed under the chart.`
 }
 
 /** The chip row's title words for the chart's scope. */

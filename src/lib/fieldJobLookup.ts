@@ -1,5 +1,6 @@
 import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
+import { directionsUrlForAddress } from './directionsUrl'
 
 /**
  * Field job lookup (journey map Tier 5 X1 / J28-F2, C18).
@@ -41,12 +42,8 @@ export function headerSearchEligibleForRole(role: UserRole | null | undefined, f
   return officeHeaderSearchEligible(role, farmModeActive) || fieldJobLookupEligible(role, farmModeActive) || doorsOnlyHeaderSearchEligible(role, farmModeActive)
 }
 
-/** Google Maps directions link for an address; null when there is nothing to route to. */
-export function directionsUrlForAddress(address: string | null | undefined): string | null {
-  const a = (address ?? '').trim()
-  if (!a) return null
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(a)}`
-}
+// The directions link lives in `directionsUrl.ts` (pure, no import) since punch list #205, so the trade portal draws it too.
+export { directionsUrlForAddress }
 
 /** `tel:` href for the office phone constant ("(512) 360-0599" → "tel:+15123600599"); null when blank. */
 export function officeTelHref(phone: string | null | undefined): string | null {

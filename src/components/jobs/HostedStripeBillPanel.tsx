@@ -642,6 +642,10 @@ export function HostedStripeBillPanel({
             invoiceId={inv.id}
             billLabel={stripeDetail?.invoice_number ? `Invoice #${stripeDetail.invoice_number}` : 'Bill'}
             remainingLabel={stripeDetail && !stripeError ? formatStripeCents(stripeDetail.amount_remaining, stripeDetail.currency) : `$${invoiceRemaining.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            jobId={job.id}
+            customerId={job.customer_id}
+            jobStatus={job.status}
+            onSent={() => setStripeDetailsGeneration((g) => g + 1)}
           />
           {stripeDetail && !stripeError && stripeDetail.amount_remaining > 0 ? (
             <StripeInvoiceSendFromStripeButton

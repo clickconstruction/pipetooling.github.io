@@ -74,7 +74,7 @@ again adds nothing; `search_case` finds a phrase from a body.
 
 ## Where it stands
 
-Built 2026-11-08 as one PR (v2.6715, server 0.41.0, migration `20261108194723_hr_mail_tag.sql`): `tag.person: { person_id }` on
+Built 2026-11-08 as one PR (v2.6715, server 0.42.0, migration `20261108194723_hr_mail_tag.sql`): `tag.person: { person_id }` on
 `plan_mail_tag` / `apply_mail_tag`, the landing in `gmail-mine` (`tagPerson`, the kernel `src/lib/myMail/personTagPlan.ts`),
 `gmail_message_id` / `gmail_thread_id` on the entry with the partial unique index as the dedupe, `email_tag_threads.person_id`
 and the follow's `followFiles` branch, the docs and the skill. Two things differ from the plan above: the follow lives in
