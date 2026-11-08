@@ -28734,6 +28734,7 @@ export type Database = {
           counsel_only: boolean
           created_at: string
           created_by: string | null
+          evidence_id: string | null
           id: string
           person_id: string
           title: string
@@ -28747,6 +28748,7 @@ export type Database = {
           counsel_only?: boolean
           created_at?: string
           created_by?: string | null
+          evidence_id?: string | null
           id?: string
           person_id: string
           title: string
@@ -28760,6 +28762,7 @@ export type Database = {
           counsel_only?: boolean
           created_at?: string
           created_by?: string | null
+          evidence_id?: string | null
           id?: string
           person_id?: string
           title?: string
@@ -28772,6 +28775,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_evidence"
             referencedColumns: ["id"]
           },
           {
@@ -37605,6 +37615,7 @@ export type Database = {
           counsel_only: boolean | null
           created_at: string | null
           created_by: string | null
+          evidence_id: string | null
           headings: Json | null
           id: string | null
           person_id: string | null
@@ -37620,6 +37631,7 @@ export type Database = {
           counsel_only?: boolean | null
           created_at?: string | null
           created_by?: string | null
+          evidence_id?: string | null
           headings?: never
           id?: string | null
           person_id?: string | null
@@ -37635,6 +37647,7 @@ export type Database = {
           counsel_only?: boolean | null
           created_at?: string | null
           created_by?: string | null
+          evidence_id?: string | null
           headings?: never
           id?: string | null
           person_id?: string | null
@@ -37649,6 +37662,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_evidence"
             referencedColumns: ["id"]
           },
           {

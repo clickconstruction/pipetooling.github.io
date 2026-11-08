@@ -273,7 +273,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const kind = doc && typeof doc.kind === 'string' ? doc.kind.trim() : ''
     const docId = doc && typeof doc.doc_id === 'string' ? doc.doc_id.trim() : ''
     const title = doc && typeof doc.title === 'string' ? doc.title.trim() : ''
-    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20); for a named document also counsel_only? (true | false, the mark) and archive? (true retires it, false brings it back), either alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
+    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20); for a named document also counsel_only? (true | false, the mark), archive? (true retires it, false brings it back) and evidence_id? (a person_file_evidence.id the document transcribes — get_person_file lists the records — or null to untie; a counsel-only record needs counsel_only: true), any alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
     if (!doc || !UUID_RE.test(personId)) return { ok: false, error: shape }
     const targets = [kind !== '', docId !== '', title !== ''].filter(Boolean).length
     if (targets !== 1) return { ok: false, error: shape }
@@ -286,9 +286,13 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (ops && (ops.length === 0 || ops.length > 20)) return { ok: false, error: shape }
     const counselOnly = typeof doc.counsel_only === 'boolean' ? doc.counsel_only : null
     const archive = typeof doc.archive === 'boolean' ? doc.archive : null
+    // v2.6713 (punch list #287): the record the document transcribes — a uuid, or null to untie; a named document only.
+    const evidenceSet = 'evidence_id' in doc && doc.evidence_id !== undefined
+    const evidenceId = evidenceSet ? (doc.evidence_id === null ? null : typeof doc.evidence_id === 'string' ? doc.evidence_id.trim() : '') : null
+    if (evidenceSet && (kind || (evidenceId !== null && !UUID_RE.test(evidenceId)))) return { ok: false, error: shape }
     if ((counselOnly !== null || archive !== null) && !docId && !(title && counselOnly !== null && archive === null)) return { ok: false, error: shape }
-    // A named document may take the mark or the archive alone; the fixed two and a new title need the text.
-    if (!hasMarkdown && !ops && !(docId && (counselOnly !== null || archive !== null))) return { ok: false, error: shape }
+    // A named document may take the mark, the archive or the record alone; the fixed two and a new title need the text.
+    if (!hasMarkdown && !ops && !(docId && (counselOnly !== null || archive !== null || evidenceSet))) return { ok: false, error: shape }
     const p: Json = { person_id: personId }
     if (kind) p.kind = kind
     if (docId) p.doc_id = docId
@@ -297,6 +301,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (ops) p.ops = ops
     if (counselOnly !== null) p.counsel_only = counselOnly
     if (archive !== null) p.archive = archive
+    if (evidenceSet) p.evidence_id = evidenceId
     if (typeof doc.expect_updated_at === 'string' && doc.expect_updated_at.trim()) p.expect_updated_at = doc.expect_updated_at.trim()
     if (typeof doc.covered_through === 'string' && doc.covered_through.trim()) p.covered_through = doc.covered_through.trim()
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: docId || personId, planHash }
