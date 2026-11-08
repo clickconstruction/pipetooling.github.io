@@ -6,6 +6,8 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { YourWeekIo } from '../../lib/techWeek/yourWeekIo'
+import { payWeekContaining } from '../../lib/payWeekAnchor'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { DashboardYourWeekCard } from './DashboardYourWeekCard'
 
 const io = (week: unknown, words: unknown = []): YourWeekIo => ({ myWeek: async () => week, myWords: async () => words })
@@ -49,7 +51,9 @@ describe('DashboardYourWeekCard', () => {
   })
 
   it('a lead reads the crew against the target, the no-target note and the dashed line’s words', async () => {
-    const withNone = [...jobs, { job_id: 'c', job_number: '1186', job_name: 'Drain', finished_ymd: '2026-11-04', expected_hours: null, budget_hours: null, crew_hours: 9, my_first_ymd: '2026-11-04' }]
+    // The card reads the real clock, so the job with no target finishes in this pay week whatever day the suite runs: a fixed Nov 4 fell out of the week on Sunday Nov 8 (v2.6674's CI).
+    const thisWeek = payWeekContaining(todayYmdInAppTz())
+    const withNone = [...jobs, { job_id: 'c', job_number: '1186', job_name: 'Drain', finished_ymd: thisWeek.start, expected_hours: null, budget_hours: null, crew_hours: 9, my_first_ymd: thisWeek.start }]
     render(<DashboardYourWeekCard userId="u" io={io({ signal: 'crew_vs_target', name: 'Luis', role: 'superintendent', hours: [], licenses: [], jobs: withNone, callbacks: [] })} />)
     expect(await screen.findByText('Your crew against the target')).toBeTruthy()
     expect(screen.getByText('One more job finished with no target, so it is not counted.')).toBeTruthy()

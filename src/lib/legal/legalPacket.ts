@@ -48,6 +48,7 @@ import { SUSPECTED_SUB_JOB_DETAIL, suspectedSubJob, suspectedSubJobLabel } from 
 import { gapAnswerCounts, gapAnswersByKey, type LegalGapAnswer, type LegalGapAnswerLike } from './legalGapAnswers'
 import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, legalLastWorkBasis, type LegalLastWorkSource, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline, type LegalMailPieceLike } from './legalLienPaper'
 import { claimRetainage, claimRetainageForAccount, type LegalPayApplicationLike } from './legalClaimRetainage'
+import { claimTyped, type LegalClaimLineLike } from './legalClaimLines'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -271,6 +272,8 @@ export type LegalPacketInput = {
   mailPieces?: ReadonlyArray<LegalMailPieceLike>
   /** The jobs' live pay applications (v2.6103, punch list #213): which bill each became and its retainage, so the claim adds only the retainage no sent bill carries. Absent on an older caller: every held dollar is added, as v2.5849 did. */
   payApplications?: ReadonlyArray<LegalPayApplicationLike>
+  /** The typed lines of the matter's claim (v2.6679, punch list #171): materials, damages, interest, fees, other, from `legal_matter_claim_lines`. Absent on an older caller, or while the account has no matter: none. */
+  claimLines?: ReadonlyArray<LegalClaimLineLike>
   /** Promise details (who said it, how) — list_job_payment_promises. */
   promises: ReadonlyArray<PaymentPromise>
   /** Promise outcomes (kept / late / broken / open) — classifyPromises over list_payment_promise_records. */
@@ -544,7 +547,7 @@ export type LegalWorth = {
   retainageOnBills: number
   /** held − on bills: the retainage no sent bill asks for, the part the claim adds. */
   retainageAdded: number
-  /** What the dispute claims (v2.5849): the open bills plus the retainage no sent bill carries (v2.6103). Equal to `balance` when nothing is added. */
+  /** What the dispute claims (v2.5849): the open bills plus the retainage no sent bill carries (v2.6103) plus the typed lines (v2.6680, punch list #171). Equal to `balance` when nothing is added. */
   claim: number
   /** claim − fee − filing cost: what Click keeps if every dollar lands. */
   net: number
@@ -555,6 +558,12 @@ export type LegalWorth = {
   openBills: LegalOpenBill[]
   /** By job id, the retainage that job's sent bills already carry (v2.6103's per-job read): the bars' bracket under that job's bills. */
   retainageOnBillsByJob: Record<string, number>
+  /** By job id, the retainage that job holds (`jobs_ledger.lien_retainage_held`), jobs holding none left out: the claim table's retainage row names them (v2.6679). */
+  retainageHeldByJob: Record<string, number>
+  /** The typed lines of the claim (v2.6679, punch list #171), in the order added; empty while the account has no matter or nothing is typed. */
+  claimLines: LegalClaimLineLike[]
+  /** What the typed lines add up to, inside `claim` since v2.6680: `claim = balance + retainageAdded + claimTyped`, the claim table's total. */
+  claimTyped: number
 }
 
 /** One open billed line as the money bars read it (v2.6105): the ledger row's words and the day it was billed, with what it still needs. */
@@ -1060,12 +1069,21 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     const onBills = claimRetainage(rj, payApplications.filter((a) => a.jobId === rj.id)).onBills
     if (onBills > 0.004) retainageOnBillsByJob[rj.id] = onBills
   }
+  const retainageHeldByJob: Record<string, number> = {}
+  for (const rj of retainageJobs) {
+    const held = Number(rj.lien_retainage_held ?? 0)
+    if (held > 0.004) retainageHeldByJob[rj.id] = round2(held)
+  }
+  // v2.6679 (punch list #171 step 1): the typed lines of the claim ride the worth so the Account tab's table and the
+  // print read one list; v2.6680 (step 2) folds them into `claim`, so the tile, the bars, the paths and the firm's cut read them.
+  const claimLines = [...(input.claimLines ?? [])]
+  const typed = claimTyped(claimLines)
   const retainageHeld = retainage.held
-  const claim = round2(balance + retainage.added)
+  const claim = round2(balance + retainage.added + typed)
   const feeAmt = claim * fee.contingencyPct
   const net = claim - feeAmt - fee.filingCost
   const verdict: LegalWorthVerdict = theory.key === 'none' || noMoney || net <= 0 ? 'not worth it' : net < 500 || flags.length > 0 ? 'marginal' : 'worth it'
-  const worth: LegalWorth = { balance, retainageHeld, retainageOnBills: retainage.onBills, retainageAdded: retainage.added, claim, contingencyPct: fee.contingencyPct, fee: feeAmt, filingCost: fee.filingCost, net, flags, verdict, openBills, retainageOnBillsByJob }
+  const worth: LegalWorth = { balance, retainageHeld, retainageOnBills: retainage.onBills, retainageAdded: retainage.added, claim, contingencyPct: fee.contingencyPct, fee: feeAmt, filingCost: fee.filingCost, net, flags, verdict, openBills, retainageOnBillsByJob, retainageHeldByJob, claimLines, claimTyped: typed }
 
   // --- Steps (what we did, in order) ---------------------------------------
   const steps: LegalStep[] = []

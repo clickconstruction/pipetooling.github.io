@@ -1,18 +1,17 @@
 // Loader for the Wheels report (v2.2733): gathers the trailing-90-day facts —
-// fuel-tag card charges by attributed person, approved field hours by user,
-// company trucks with their holders, insurance, registration and service —
-// and hands them to the pure kernel in `wheels.ts`.
+// fuel by person (read through People → Spending's window and kernel since
+// v2.6671, `wheelsFuel.ts`: attributed to them, else on a card they hold),
+// approved field hours by user, company trucks with their holders, insurance,
+// registration and service — and hands them to the pure kernel in `wheels.ts`.
 
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { ymdAddDays } from '../../utils/dateUtils'
 import { buildCategoryTagLookups, categoryTagForCharge, pickFuelTag, type CategoryTagRow } from '../banking/categoryTags'
-import { mercuryDebitCardIdFromRaw } from '../mercuryRawDebitCard'
-import { fetchAllRowsChunkedIn } from '../supabasePaging'
-import type { Json } from '../../types/database'
 import { fetchLabelIdByTxId, loadCategoryTags } from '../banking/categoryTagsData'
-import { fetchAttributionsByMercuryTxIds } from '../fetchMercuryRelationsByTxIds'
-import { loadDebitCardDirectory } from '../banking/debitCards'
+import { fetchCardChargesWindow } from '../banking/cardChargesWindow'
+import { loadSpendingDirectory } from './loadSpending'
+import { wheelsFuelFromSpending, type WheelsCardGroup } from './wheelsFuel'
 import { currentInsurancePeriod, currentPossession, isMotorPoolPossession, vehicleDisplayName, type FleetInsurancePeriod, type FleetPossession } from '../vehicleFleet'
 import {
   buildWheelsRows,
@@ -20,9 +19,7 @@ import {
   fleetTruckRate,
   parseVehicleArrangement,
   splitFuelFamily,
-  sumFuelByUser,
   truckRunningCost,
-  unattributedFuelByCard,
   type FleetTruckInput,
   type FuelFamilyTx,
   wheelsComparison,
@@ -52,14 +49,14 @@ export type WheelsSnapshot = {
   /** The tag whose charges count as fuel (default family ⛽ Fuel & gas). null when no tag is flagged. */
   fuelTag: CategoryTagRow | null
   comparison: { ownAvg: number | null; companyAvg: number | null }
-  /** Card fuel in the window nobody is attributed to — it can't reach a person's rate. */
+  /** Card fuel in the window that reaches no login — nobody attributed and the card has no holder — so it can't reach a person's rate. */
   unattributedFuelUsd: number
-  /** The same, by card (nickname when there is one) — the list to link in Banking. v2.2739 */
-  unattributedCards: Array<{ cardId: string | null; label: string; usd: number; n: number }>
+  /** The same, by card (nickname when there is one) — the list to link in Banking. v2.2739; Spending's rule since v2.6671 */
+  unattributedCards: WheelsCardGroup[]
   /** Fuel-family rows with no debit card (ACH supplier payments…) — shown as a label check, never counted. v2.2739 */
   offCardFuelFamily: { usd: number; n: number; top: Array<{ counterparty: string; usd: number }> }
-  /** Purchases on company cards (management tools) — not fuel; by card nickname. v2.2750 */
-  companyCardSpend: { usd: number; n: number; byCard: Array<{ cardId: string; label: string; usd: number }> }
+  /** Fuel-tag purchases on company cards nobody is attributed to (management tools) — not fuel; by card nickname. v2.2750 */
+  companyCardSpend: { usd: number; n: number; byCard: WheelsCardGroup[] }
   /** v2.5039 · every truck's fixed costs and wear ÷ the whole crew's field hours: the rate the Bids crew-rate card shows (`fleet_truck_rate_per_field_hour`). */
   fleet: WheelsFleetRate
 }
@@ -73,13 +70,16 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
   const window = wheelsWindow(input.todayYmd)
   const endExclusive = ymdAddDays(window.end, 1)
 
-  const [payRows, tagData, txRows, sessions, vehicles, possessions, insPeriods, serviceEvents, replacementValues] = await Promise.all([
+  const [payRows, tagData, txRows, cardCharges, sessions, vehicles, possessions, insPeriods, serviceEvents, replacementValues] = await Promise.all([
     withSupabaseRetry(async () => await supabase.from('people_pay_config').select('*'), 'wheels pay config') as Promise<PayConfigLite[]>,
     loadCategoryTags(),
+    // Every transaction in the window, card or not: the off-card label check below needs the ones with no card.
     paged<{ id: string; amount: number; kind: string; mercury_category: unknown; counterparty_name: string | null }>(
       (f, t) => supabase.from('mercury_transactions').select('id, amount, kind, mercury_category, counterparty_name').gte('posted_at', window.start).lt('posted_at', endExclusive).order('id').range(f, t),
       'wheels transactions',
     ),
+    // Every card charge in the window, with its holder, attribution, label and card — People → Spending's own read (v2.6671).
+    fetchCardChargesWindow({ startYmd: window.start, endYmd: window.end }, supabase, 'wheels card charges'),
     paged<WheelsSessionRow>(
       (f, t) =>
         supabase
@@ -104,8 +104,8 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
   // Fuel = charges whose accounting label's tag, else bank category's tag, is the fuel family.
   const lookups = buildCategoryTagLookups(tagData.tags, tagData.members)
   const fuelTag = pickFuelTag(tagData.tags)
-  // Only card purchases can be someone's fuel (v2.2739): a supplier ACH filed
-  // under a vehicle label is reported as a label check, never counted.
+  // The off-card label check (v2.2739): a fuel-family row the card-charges window does not carry
+  // has no card — a supplier ACH filed under a vehicle label — and is reported, never counted.
   let familyRows: typeof txRows = []
   if (fuelTag && txRows.length > 0) {
     const labelIdByTxId = await fetchLabelIdByTxId(txRows.map((r) => r.id))
@@ -116,44 +116,28 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
       return categoryTagForCharge(lookups, labelIdByTxId.get(r.id) ?? null, bank)?.id === fuelTag.id
     })
   }
-  const cardIdByTx = new Map<string, string>()
-  if (familyRows.length > 0) {
-    const rawRows = await fetchAllRowsChunkedIn(
-      familyRows.map((r) => r.id),
-      (chunk, f, t) => supabase.from('mercury_transactions').select('id, raw').in('id', chunk).order('id').range(f, t),
-      'wheels card ids',
-    )
-    for (const r of rawRows as Array<{ id: string; raw: Json | null }>) {
-      const card = mercuryDebitCardIdFromRaw(r.raw)
-      if (card) cardIdByTx.set(r.id, card)
-    }
-  }
-  // Company cards (v2.2750) are management tools — never anyone's fuel.
-  const directory = await loadDebitCardDirectory().catch(() => ({ nicknameByCard: {}, roleByCard: {} }))
-  const companyCardIds = new Set(Object.entries(directory.roleByCard).filter(([, role]) => role === 'company').map(([id]) => id))
-  const split = splitFuelFamily(
-    familyRows.map<FuelFamilyTx>((r) => ({ id: r.id, amount: r.amount, kind: r.kind, counterparty: r.counterparty_name, hasCard: cardIdByTx.has(r.id), cardId: cardIdByTx.get(r.id) ?? null })),
-    companyCardIds,
-  )
-  const fuelTx = split.card
-  const attributions = fuelTx.length > 0 ? await fetchAttributionsByMercuryTxIds(fuelTx.map((r) => r.id), 'wheels') : []
-  const userByTx = new Map<string, string>()
-  for (const a of attributions) if (a.user_id) userByTx.set(a.mercury_transaction_id, a.user_id)
-  const charges = fuelTx.map((r) => ({ amount: r.amount, userId: userByTx.get(r.id) ?? null, cardId: cardIdByTx.get(r.id) ?? null }))
-  const fuelByUser = sumFuelByUser(charges)
-  // A purchase adds and a refund comes off (the one card rule's sign).
-  const unattributedFuelUsd = Math.round(charges.filter((c) => !c.userId).reduce((s, c) => s - c.amount, 0) * 100) / 100
-  const nicknameByCard = new Map<string, string>(Object.entries(directory.nicknameByCard))
-  const unattributedCards = unattributedFuelByCard(charges, nicknameByCard)
-  const companyCardSpend = {
-    usd: split.companyCard.usd,
-    n: split.companyCard.n,
-    byCard: split.companyCard.byCard.map((c) => ({ cardId: c.cardId, label: nicknameByCard.get(c.cardId) ?? `card …${c.cardId.replace(/-/g, '').slice(-4)}`, usd: c.usd })),
-  }
+  const onACard = new Set(cardCharges.map((c) => c.id))
+  const split = splitFuelFamily(familyRows.map<FuelFamilyTx>((r) => ({ id: r.id, amount: r.amount, kind: r.kind, counterparty: r.counterparty_name, hasCard: onACard.has(r.id) })))
+  // Whose fuel each card charge is: People → Spending's kernel over the same window (v2.6671) —
+  // attributed to them, else on a card they hold — so Wheels, Spending and Review agree.
+  const directory = fuelTag ? await loadSpendingDirectory(cardCharges) : undefined
+  const fuel = wheelsFuelFromSpending({ charges: cardCharges, lookups, fuelTagId: fuelTag?.id ?? null, directory })
+  const fuelByUser = fuel.fuelByUser
 
   const { trucks, people, hoursByUser, fleet } = buildTrucksAndPeople({ todayYmd: input.todayYmd, days: window.days, users: input.users, payRows, sessions, vehicles, possessions, insPeriods, serviceEvents, replacementValues, fuelByUser })
   const rows = buildWheelsRows(people, fuelByUser, hoursByUser, trucks)
-  return { window, rows, trucks, fuelTag, comparison: wheelsComparison(rows), unattributedFuelUsd, unattributedCards, offCardFuelFamily: split.offCard, companyCardSpend, fleet }
+  return {
+    window,
+    rows,
+    trucks,
+    fuelTag,
+    comparison: wheelsComparison(rows),
+    unattributedFuelUsd: fuel.unattributedUsd,
+    unattributedCards: fuel.unattributedCards,
+    offCardFuelFamily: split.offCard,
+    companyCardSpend: fuel.companyCardSpend,
+    fleet,
+  }
 }
 
 type VehicleLite = { id: string; year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number | null; weekly_registration_cost: number | null }

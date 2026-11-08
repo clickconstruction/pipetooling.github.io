@@ -24,6 +24,8 @@ import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
 import type { LegalTheme, LegalThemeMark } from '../../../lib/legal/legalThemes'
 import LegalStatementsStrip from './LegalStatementsStrip'
+import LegalClaimTable, { type ClaimPanel } from './LegalClaimTable'
+import { claimTable } from '../../../lib/legal/legalClaimLines'
 import { isStatementEntry, statementMetaOf } from '../../../lib/legal/affidavitPaper'
 
 /** v2.6212 (punch list #220): each signed scan's statement, by document id, for the Evidence row's door back. */
@@ -113,7 +115,7 @@ export type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatter
 /** The Timeline tab (v2.5800): the matter's holds (a planned step held back reads held) and the office's acts, null when read only. */
 export type PlanActs = { holds: Record<string, boolean>; holdReasons: Record<string, string>; acts: TimelinePlanActs | null }
 
-export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null, onShowOnEvidence, evidenceDoc = null, onEvidenceLanded, onStatementsChanged }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null; /** v2.6166: the Evidence tab opened on a document's row, lit. */ onShowOnEvidence?: (documentId: string) => void; /** v2.6166: the row the Evidence tab lands on, from the address. */ evidenceDoc?: string | null; /** v2.6166: the landed row was pressed. */ onEvidenceLanded?: () => void; /** v2.6413 (punch list #212 PR 4): the packet read again after a statement is asked for or put on the matter. */ onStatementsChanged?: () => void }) {
+export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null, onShowOnEvidence, evidenceDoc = null, onEvidenceLanded, onStatementsChanged, claim = null }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null; /** v2.6166: the Evidence tab opened on a document's row, lit. */ onShowOnEvidence?: (documentId: string) => void; /** v2.6166: the row the Evidence tab lands on, from the address. */ evidenceDoc?: string | null; /** v2.6166: the landed row was pressed. */ onEvidenceLanded?: () => void; /** v2.6413 (punch list #212 PR 4): the packet read again after a statement is asked for or put on the matter. */ onStatementsChanged?: () => void; /** v2.6679 (punch list #171): the claim table's documents, acts and doors; null draws the table read only with the desk's own doors. */ claim?: ClaimPanel | null }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -197,6 +199,11 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
             formatLegalMoney(j.balance),
             <button key="e" type="button" onClick={() => props.onOpenEditJob(j.jobId)} style={btn}>Edit job</button>,
           ])} empty="No jobs." />
+        {/* v2.6679 (punch list #171): the claim as one table — the open bills and the retainage fill in, the office types the rest. */}
+        <LegalClaimTable
+          table={claimTable(packet.worth, (jobId) => a.jobs.find((j) => j.jobId === jobId)?.label ?? jobId)}
+          panel={{ documents: claim?.documents ?? [], acts: claim?.acts ?? null, onOpenDocument: claim?.onOpenDocument, onOpenJob: props.onOpenEditJob, onOpenAccountsReceivable: props.onOpenAccountsReceivable }}
+        />
         <SectionTitle doors={<Door label="Accounts Receivable" onClick={props.onOpenAccountsReceivable} />}>Invoices and payments</SectionTitle>
         <Table head={['Date', 'Job', 'Entry', 'Amount', 'Balance']} numCols={[3, 4]} rows={legalRunningLedger(a.ledger).map((e) => [e.ymd ?? '—', e.jobLabel, e.text, <span key="a" style={{ color: e.amount < 0 ? '#1f7a3a' : undefined }}>{formatLegalMoney(e.amount)}</span>, formatLegalMoney(e.running)])} empty="No billed lines or payments recorded on these jobs." />
         <div style={{ display: 'flex', gap: 18, fontSize: '0.84rem', marginTop: 6, flexWrap: 'wrap' }}>

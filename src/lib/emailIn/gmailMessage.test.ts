@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BASE64_SLICE, base64UrlBytes, decodeHeaderWords, EMAIL_TEXT_MAX, htmlToText, parseAddress, parseAddressList, readGmailMessage, type GmailPart } from './gmailMessage'
+import { BASE64_SLICE, base64UrlBytes, decodeHeaderWords, EMAIL_HTML_MAX, EMAIL_TEXT_MAX, htmlPart, htmlToText, parseAddress, parseAddressList, readGmailMessage, type GmailPart } from './gmailMessage'
 
 /** Text as Gmail sends a part's bytes: base64url of its UTF-8, or of the bytes given. */
 const b64url = (text: string | Uint8Array): string => {
@@ -63,6 +63,18 @@ describe('readGmailMessage', () => {
     expect(email.links).toEqual(['https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUv/view?usp=sharing&x=1'])
     expect(email.at).toBeNull()
     expect(email.files).toEqual([])
+  })
+
+  it('keeps the HTML part as it came beside the words, none for a plain-only mail, none past the cap (#259)', () => {
+    const rich = readGmailMessage({ id: 'g-1', payload: greg })
+    expect(rich.html).toBe('<p>Robert,</p><p>Numbers attached.</p><a href="https://hillside.example/about">us</a>')
+    const plainOnly = readGmailMessage({ id: 'g-3', payload: { mimeType: 'text/plain', body: { data: b64url('Just words.') } } })
+    expect(plainOnly.html).toBeNull()
+    const blank = readGmailMessage({ id: 'g-4', payload: { mimeType: 'text/html', body: { data: b64url('  \n ') } } })
+    expect(blank.html).toBeNull()
+    expect(htmlPart(['<p>a</p>', '<p>b</p>'])).toBe('<p>a</p>\n<p>b</p>')
+    expect(htmlPart(['<p>' + 'x'.repeat(EMAIL_HTML_MAX) + '</p>'])).toBeNull()
+    expect(htmlPart([])).toBeNull()
   })
 
   it('reads a part in its own charset', () => {

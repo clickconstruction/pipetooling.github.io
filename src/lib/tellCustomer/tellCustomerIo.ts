@@ -17,6 +17,7 @@ import { contactForCustomer } from '../messages/messagesIo'
 import { jobKey } from '../messages/jobKeys'
 import { supabaseReplyIo } from '../messages/replyIo'
 import { supabaseEstimateLinkIo } from '../messages/estimateLinkIo'
+import { estimateTextShareUrl } from './estimateTextLink'
 import { supabaseOffersIo } from '../offers/offersIo'
 import { supabaseCallTasksIo, type CallTaskAdd } from '../calls/callTasksIo'
 import { supabaseMyWayIo } from './myWayIo'
@@ -76,9 +77,9 @@ export interface TellCustomerIo {
   /** Resolves to the text's line id. */
   send(input: TellSend): Promise<string>
   /**
-   * The short link for the estimate text (v2.6657, punch list #281): a share link to the accept page through
-   * `share_estimate_link`, 32 characters of token against the email's 64, the same powers for the same 14 days. The
-   * sheet falls back to the email's own link when this throws (`estimateTextLink.ts`).
+   * The short link for the estimate text (punch list #281): a share code through `share_estimate_link`, ten letters
+   * against the email's 64, on the Click Plumbing host (`my.clickplumbing.com/e/<code>`, v2.6678), the same powers for
+   * the same 14 days. The sheet falls back to the email's own link when this throws (`estimateTextLink.ts`).
    */
   shareEstimateLink(estimateId: string): Promise<string>
   /** Send in the morning (v2.5595): the text waits on Today's sends and the morning run sends it on its day. Resolves to the offer's id. */
@@ -185,7 +186,7 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
     },
     addCall: (input) => supabaseCallTasksIo(db).add(input),
     loadMyWay: (userId) => supabaseMyWayIo(db).load(userId),
-    shareEstimateLink: (estimateId) => supabaseEstimateLinkIo(db).share(estimateId),
+    shareEstimateLink: async (estimateId) => estimateTextShareUrl(await supabaseEstimateLinkIo(db).shareToken(estimateId)),
     async saveOfficeLine(input) {
       const lines = supabaseQuickRepliesIo(client)
       const tags = { for: 'customer' as const, stepId: input.stepKey }

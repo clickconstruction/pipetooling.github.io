@@ -25,6 +25,8 @@ import { markedWords, type LegalTheme, type LegalThemeMark } from '../../../lib/
 import { supabase } from '../../../lib/supabase'
 import { addLegalMatterDocument, listLegalMatterDocuments, openLegalMatterDocument, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
 import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
+import { claimAmountOf, type LegalClaimLineDraft } from '../../../lib/legal/legalClaimLines'
+import type { ClaimPanel } from './LegalClaimTable'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
@@ -452,6 +454,24 @@ export default function LegalDesk(props: LegalDeskProps) {
       setGapAnswerBusy(false)
     }
   }
+  // v2.6679 (punch list #171): the claim table's acts — a typed line added, edited or removed through the matter's own
+  // RPCs; the matter is made by the first save when the account has none, so the list is read again for it.
+  const saveClaimLine = async (draft: LegalClaimLineDraft, lineId: string | null): Promise<string | null> => {
+    if (!selected) return 'Pick an account first.'
+    const r = await legalRpcData('legal_claim_line_save', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_line_id: lineId, p_kind: draft.kind, p_title: draft.title.trim(), p_amount: claimAmountOf(draft.amount), p_basis: draft.basis.trim(), p_document_id: draft.documentId || null })
+    if (r.error) return r.error
+    showToast(lineId ? 'The claim line is saved.' : 'The line is on the claim.', 'success')
+    if (!matter) await legal?.reload()
+    reload()
+    return null
+  }
+  const removeClaimLine = async (lineId: string): Promise<string | null> => {
+    const err = await legalRpc('legal_claim_line_remove', { p_line_id: lineId })
+    if (err) return err
+    showToast('The line is off the claim.', 'info')
+    reload()
+    return null
+  }
   const clearGapAnswer = async (g: LegalGap) => {
     if (!matter?.id) return
     const err = await legalRpc('legal_clear_gap_answer', { p_matter_id: matter.id, p_gap_key: g.key })
@@ -754,6 +774,15 @@ export default function LegalDesk(props: LegalDeskProps) {
     return Boolean(ok)
   }
   const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []
+  // Below matterDocuments on purpose: a const read before its line throws at render (the Bridge's lesson).
+  const claimPanel: ClaimPanel = {
+    documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })),
+    acts: stored && canEditReview && !closed ? { save: saveClaimLine, remove: removeClaimLine } : null,
+    onOpenDocument: (id) => {
+      const row = matterDocuments.find((d) => d.id === id)
+      if (row) void openLegalMatterDocument(supabase, row)
+    },
+  }
   // v2.6588: who marked what, by user id, for the By theme window.
   const namesById = useMemo(() => Object.fromEntries(users.map((u) => [u.id, u.name ?? ''])), [users])
   const themesForActs = themeCatalog.themes.length > 0 ? themeCatalog.themes : undefined
@@ -1136,6 +1165,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                           bills: w.openBills.map((b) => ({ key: b.invoiceId, jobId: b.jobId, jobLabel: b.jobLabel, ymd: b.ymd, text: b.text, open: b.open })),
                           retainageOnBillsByJob: new Map(Object.entries(w.retainageOnBillsByJob)),
                           retainageAdded: w.retainageAdded,
+                          claimTyped: w.claimTyped,
                           balance: w.balance,
                           claim: w.claim,
                           contingencyPct: w.contingencyPct,
@@ -1248,7 +1278,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, setCounselRead, counselRead, moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, canPull: stored && canEditReview && !closed, reload: () => void legal?.reload(), themes: themeCatalog.themes.length > 0 ? themeCatalog.themes : undefined, marks: themeCatalog.marks, onMarksChanged: () => void reloadThemes() } : null}
-                    narrative={narrativeDesk} busy={busy} planActs={planActs} onStatementsChanged={reload} />
+                    narrative={narrativeDesk} busy={busy} planActs={planActs} onStatementsChanged={reload} claim={claimPanel} />
                 ) : null}
                 </div>
               </>

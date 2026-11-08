@@ -1495,6 +1495,22 @@ describe('LienDeskModal the attorney’s letter (v2.3760)', () => {
     await waitFor(() => expect(document.querySelector('[data-lien-courtesy-unrecorded]')).toBeNull())
   })
 
+  it('a reply in Messages after the courtesy closes it on the footer, with the day they answered (punch list #249, row 3)', async () => {
+    const d = sentDesk()
+    const courtesy = [{ at: '2026-09-10T15:00:00.000Z', by: 'Taunya', lienDay: '2026-11-16', claim: 33_500, to: [{ who: 'original_contractor', name: 'Loberg Contracting', channel: 'email', address: 'office@loberg.test', ok: true, id: 're_1', reason: '' }] }]
+    d.items = [{ ...sentPacket, fields: { ...(sentPacket.fields as object), courtesy } } as unknown as LienDeskItemRow]
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
+    // The desk's read: the GC's line of Sep 13 on a thread the office never texted from.
+    d.courtesyRepliedAtByJob = { j650: '2026-09-13T16:20:00.000Z' }
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
+    await settle()
+    const state = document.querySelector('[data-lien-courtesy-state]') as HTMLElement
+    expect(state.getAttribute('data-lien-courtesy-state')).toBe('closed')
+    expect(state.textContent).toContain('they answered Sep 13')
+    // Closed: no courtesy door, and the attorney's letter is not amber either.
+    expect(document.querySelector('[data-lien-courtesy-door]')).toBeNull()
+  })
+
   it('paying it down (PR 3 of #274): a payment after the packet reads on the footer, the attorney’s letter door goes plain, and Record what they promised writes the job’s promise and the notice’s record', async () => {
     promiseMock.mockReset()
     promiseMock.mockResolvedValue(undefined)

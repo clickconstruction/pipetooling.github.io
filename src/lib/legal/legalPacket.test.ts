@@ -275,6 +275,13 @@ describe('buildLegalPacket', () => {
     // The live account of 2026-10-29: no application, a hand-made bill for the whole draw paid 90%, the typed figure its remainder, two more bills open.
     const live = groupCollectionsByPayer([collectionsJob({ id: 'job-l', hcp_number: '891', customer_id: 'gc', customer_name: 'A GC', revenue: 18078.7, lien_retainage_held: 1678.04, invoices: [billedInvoice('inv-d', 16780.4, '2026-07-09'), billedInvoice('inv-t', 350, '2026-08-06', { sequence_order: 2 }), billedInvoice('inv-f', 948.3, '2026-10-27', { sequence_order: 3 })], payments: [{ id: 'p', invoice_id: 'inv-d', amount: 15102.36, paid_on: '2026-09-08' }] })], new Map(), TODAY)[0] as LegalAccountSummary
     expect(buildLegalPacket(baseInput(live)).worth).toEqual(expect.objectContaining({ balance: 2976.34, retainageHeld: 1678.04, retainageOnBills: 1678.04, retainageAdded: 0, claim: 2976.34 }))
+    // v2.6679 / v2.6680 (punch list #171): the typed lines ride the worth and, since step 2, sit inside the claim; the fee and the net follow; the held figure is kept by job.
+    const typed = [{ id: 'l1', kind: 'materials' as const, title: 'Materials left on site', amount: 500, basis: 'contract ¶ 9', documentId: null, documentTitle: '' }, { id: 'l2', kind: 'fees' as const, title: 'Attorney fees', amount: 250.5, basis: '', documentId: 'd1', documentTitle: 'Fee letter' }]
+    const withLines = buildLegalPacket({ ...baseInput(heldJob(billedInvoice('inv-r', 13588.2, '2026-07-01'), 10000)), payApplications: [app], claimLines: typed }).worth
+    expect(withLines).toEqual(expect.objectContaining({ balance: 3588.2, retainageAdded: 1509.8, claimTyped: 750.5, claim: 5848.5, retainageHeldByJob: { 'job-r': 1509.8 } }))
+    expect(withLines.claimLines).toEqual(typed)
+    expect(withLines.fee).toBeCloseTo(5848.5 * 0.33, 2)
+    expect(buildLegalPacket(baseInput(live)).worth).toEqual(expect.objectContaining({ claimTyped: 0, claimLines: [], retainageHeldByJob: { 'job-l': 1678.04 } }))
     const broke = groupCollectionsByPayer([collectionsJob({ id: 'job-h', hcp_number: '981', customer_id: 'herb', customer_name: 'Bryan Herber', customer_phone: '830', revenue: 1239, invoices: [], collections_note: 'He does not have the money to pay.' })], new Map(), TODAY)[0] as LegalAccountSummary
     const hp = buildLegalPacket(baseInput(broke))
     expect(hp.worth.flags).toContain('“no money” note')
