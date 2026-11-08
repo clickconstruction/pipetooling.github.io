@@ -8,6 +8,7 @@ import {
   type JobForCoverage,
   type SignedEstimateLike,
 } from '../lib/jobs/jobContractCoverage'
+import { withTheirPaperColumns } from '../lib/jobs/theirPaperIo'
 
 /**
  * The row-flag lookups behind Stages' job rows (moved out of JobsStagesTab,
@@ -70,7 +71,8 @@ export function useJobContractCoverage(
           .eq('status', 'customer_accepted')
           .not('acceptor_consented_at', 'is', null),
       ])
-      if (!contractsRes.error) setJobContractRows((contractsRes.data ?? []) as JobContractRowLike[])
+      // v2.6698 (punch list #173): their paper's own columns ride along for the rows whose kind says so.
+      if (!contractsRes.error) setJobContractRows(await withTheirPaperColumns((contractsRes.data ?? []) as JobContractRowLike[]))
       if (!estimatesRes.error) setSignedEstimateRows((estimatesRes.data ?? []) as SignedEstimateLike[])
     } catch {
       // glanceable extra — never block the tab

@@ -27,6 +27,8 @@ Below that the home shows who at the company gets our emails. **Before** lists t
 
 A project opens its own page. The page shows the latest plans and the questions about them. It also shows the lines the quote should cover and who to call. Messages lists every email we sent the company.
 
+The job's address sits at the top of the page with a **Directions** link beside it. The link opens the address in the phone's maps app.
+
 From its portal the company can:
 
 - Give the day its quote will come, or pass on the ask.

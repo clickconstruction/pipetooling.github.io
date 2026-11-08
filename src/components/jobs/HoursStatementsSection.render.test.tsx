@@ -4,7 +4,8 @@
  * their record id, state, kind and who saved them, the worker as the title on the job and the job on the desk; the
  * press with its count; Print again from a row's snapshot; Open handing the window the row; the empty section naming
  * the press, or saying why there is no one to make a statement for; who sees it. Since PR 3 (v2.6411) a signed row's
- * Open the signed PDF through the gate, first in the card's press group. The window is lazy-loaded, so the stub is awaited.
+ * Open the signed PDF through the gate, first in the card's press group, and the link in a dialog when the browser blocks
+ * the window. The window is lazy-loaded, so the stub is awaited.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -138,6 +139,23 @@ describe('the Hours statements section (punch list #212, PR 2)', () => {
     fireEvent.click(within(list[0]!).getByRole('button', { name: 'Open the signed PDF HS-1042-0003' }))
     await waitFor(() => expect(pdfSpy).toHaveBeenCalledWith('doc-3'))
     await waitFor(() => expect(openSpy).toHaveBeenCalledWith('https://files.example.com/doc-3', '_blank', 'noopener'))
+    openSpy.mockRestore()
+  })
+
+  it('when the browser blocks the PDF window, the row press shows the link in a dialog with I opened it, as the window and Sign here now do', async () => {
+    rows = [row({ id: 'hs-3', record_id: 'HS-1042-0003', state: 'signed', contract_document_id: 'doc-3' })]
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    renderWithProviders(<HoursStatementsSection scope={jobScope} signingIo={signingIo} />)
+    const list = await screen.findAllByTestId('hours-statement-row')
+    fireEvent.click(within(list[0]!).getByRole('button', { name: 'Open the signed PDF HS-1042-0003' }))
+    await waitFor(() => expect(openSpy).toHaveBeenCalledWith('https://files.example.com/doc-3', '_blank', 'noopener'))
+    const dialog = await screen.findByRole('dialog', { name: 'Open the signed PDF' })
+    expect(dialog.textContent).toContain('The window was blocked. Open this link; it works for five minutes.')
+    expect((within(dialog).getByRole('textbox') as HTMLInputElement).value).toBe('https://files.example.com/doc-3')
+    expect(screen.queryByText(/Allow pop-ups/)).toBeNull()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'I opened it' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Open the signed PDF' })).toBeNull())
+    expect(within(list[0]!).getByRole('button', { name: 'Open the signed PDF HS-1042-0003' }).textContent).toBe('Open the signed PDF')
     openSpy.mockRestore()
   })
 

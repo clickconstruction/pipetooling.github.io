@@ -22,6 +22,7 @@
 import { LIEN_BOOK_ADDRESS_COLUMNS, LIEN_BOOK_OWNER_COLUMNS } from './legalLienBookShape.ts'
 import { MATTER_DOCUMENT_PAYLOAD_KEYS } from './legalMatterDocuments.ts'
 import { NARRATIVE_PAYLOAD_KEYS } from './legalNarrative.ts'
+import { PROCEEDING_PAYLOAD_KEYS } from './legalProceedings.ts'
 
 type Row = Record<string, unknown>
 
@@ -53,8 +54,12 @@ export const MATTER_ADDRESS_COLUMNS = LIEN_BOOK_ADDRESS_COLUMNS
 export const MATTER_PROPERTY_OWNER_COLUMNS = LIEN_BOOK_OWNER_COLUMNS
 /** `legal_matters`: the matter's own row, named column by column (no `select('*')`). */
 export const MATTER_ROW_COLUMNS = ['id', 'firm_id', 'stage', 'customer_id', 'payer_key', 'payer_name', 'handling_name', 'note_to_firm', 'released_at', 'held_overrides', 'fees_to_statement'] as const
-/** `job_contracts`: who signed what and when, and the signed PDF as a short-lived link. Never the storage paths or the Doc link. */
-export const MATTER_CONTRACT_COLUMNS = ['id', 'job_id', 'status', 'revision', 'recipient_email', 'recipient_name', 'sent_at', 'last_sent_at', 'view_count', 'signed_at', 'signer_printed_name', 'signer_mode', 'signer_consented_at', 'co_signer_name', 'co_signed_at', 'co_signer_printed_name', 'voided_at', 'signedPdfUrl'] as const
+/**
+ * `job_contracts`: who signed what and when, and the signed PDF as a short-lived link. Never the storage paths or the Doc link.
+ * v2.6698 (punch list #173): the kind, and their paper's own columns — who signed for us, whether they countersigned or relied on
+ * it, the key terms — so the firm reads the paper as the desk does (the coverage kernel needs the kind to tell it from ours).
+ */
+export const MATTER_CONTRACT_COLUMNS = ['id', 'job_id', 'status', 'revision', 'recipient_email', 'recipient_name', 'sent_at', 'last_sent_at', 'view_count', 'signed_at', 'signer_printed_name', 'signer_mode', 'signer_consented_at', 'co_signer_name', 'co_signed_at', 'co_signer_printed_name', 'voided_at', 'kind', 'created_at', 'paper_title', 'our_signer_name', 'our_signed_on', 'our_signed_how', 'their_signed_on', 'relied_on_on', 'relied_on_what', 'key_terms', 'signedPdfUrl'] as const
 /** `estimates` accepted with consent: the coverage kernel's columns. Never the total. */
 export const MATTER_ESTIMATE_COLUMNS = ['id', 'job_ledger_id', 'bid_id', 'doc_kind', 'status', 'acceptor_consented_at', 'acceptor_printed_name', 'estimate_number'] as const
 /** `job_demand_letters`: sent when, how, tracking, deadline, to whom, for how much. `fields` is cut to the fee clock and the exhibits. */
@@ -87,6 +92,13 @@ export const MATTER_ENTRY_PENDING_COLUMNS: ReadonlyArray<string> = ['voided_at',
  */
 export const MATTER_GAP_ANSWER_COLUMNS = ['matter_id', 'gap_key', 'label', 'answer', 'document_id', 'answered_at', 'answered_by_name'] as const
 
+/**
+ * The typed lines of the claim (v2.6696, punch list #171, the owner's call of 2026-11-08): the kind, the name, the
+ * amount, the basis, the Evidence document's id and the order added. Never who typed it, who changed it or when a
+ * removed line went (the function sends live rows only).
+ */
+export const MATTER_CLAIM_LINE_COLUMNS = ['id', 'kind', 'title', 'amount', 'basis', 'document_id', 'added_at'] as const
+
 /** The select strings: each list, plus the columns only the function reads (the PDF paths it signs, the payer key). */
 export const MATTER_COUNSEL_SELECT = {
   jobs: MATTER_JOB_COLUMNS.join(', '),
@@ -105,6 +117,11 @@ export const MATTER_COUNSEL_SELECT = {
   mailPieces: [...MATTER_MAIL_PIECE_COLUMNS, 'pdf_bucket', 'certification_path'].join(', '),
   entries: MATTER_ENTRY_COLUMNS.filter((c) => !MATTER_ENTRY_PENDING_COLUMNS.includes(c)).join(', '),
   gapAnswers: 'matter_id, gap_key, label, answer, document_id, answered_at, answered_by',
+  claimLines: ['matter_id', ...MATTER_CLAIM_LINE_COLUMNS].join(', '),
+  // The proceedings beside the claim (v2.6726, punch list #174): never the note; the person's id is traded for the name and role before it travels.
+  proceedings: 'matter_id, id, kind, title, agency, reference, person_id, status, status_on, document_ids, keep_out, added_at',
+  // The people the proceedings name, live rows only: the name and the role, never the reach or a reason.
+  proceedingPeople: 'id, matter_id, name, role',
 } as const
 
 function isRecord(v: unknown): v is Row {
@@ -178,6 +195,10 @@ export function shapeMatterForCounsel(matter: Row): Row {
   if ('documents' in matter) out.documents = rows(matter.documents).map((d) => pick(d, MATTER_DOCUMENT_PAYLOAD_KEYS))
   // Gap answers (v2.5923): what the office knows, by gap key; the name, never the user id.
   if ('gapAnswers' in matter) out.gapAnswers = rows(matter.gapAnswers).map((g) => pick(g, MATTER_GAP_ANSWER_COLUMNS))
+  // The claim's typed lines (v2.6696): the line as the desk's table reads it, never who typed it.
+  if ('claimLines' in matter) out.claimLines = rows(matter.claimLines).map((l) => pick(l, MATTER_CLAIM_LINE_COLUMNS))
+  // The proceedings beside the claim (v2.6726): kind, name, agency, reference, the contact's name and role, status, documents, keep out; never the note.
+  if ('proceedings' in matter) out.proceedings = rows(matter.proceedings).map((p) => pick(p, PROCEEDING_PAYLOAD_KEYS))
   // The narrative (v2.4812): the office's own words for the firm, who saved them and when; nothing else.
   if ('narrative' in matter) out.narrative = isRecord(matter.narrative) ? pick(matter.narrative, NARRATIVE_PAYLOAD_KEYS) : null
   return out

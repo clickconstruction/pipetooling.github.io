@@ -17,6 +17,7 @@ import { portalThemesForMatter, type LegalTheme, type LegalThemeMark } from '../
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 // Item 23 (#85): the matter's rows name their columns and are cut to them once more before they leave.
 import { MATTER_COUNSEL_SELECT, MATTER_ENTRY_PENDING_COLUMNS, shapeMatterForCounsel } from '../_shared/legalMatterShape.ts'
+import { proceedingForFirm, proceedingsFromRows, type LegalMatterProceedingRow } from '../_shared/legalProceedings.ts'
 import { LEGAL_MATTER_DOCUMENTS_BUCKET, legalPortalDocumentFromRow } from '../_shared/legalMatterDocuments.ts'
 import { legalNarrativeFromRow } from '../_shared/legalNarrative.ts'
 // v2.4756: the key is short on purpose, so wrong keys are counted by caller and a guesser is refused.
@@ -468,6 +469,20 @@ serve(async (req) => {
     const gapAnswerRead = await admin.from('legal_matter_gap_answers').select(MATTER_COUNSEL_SELECT.gapAnswers).in('matter_id', matterIds)
     const gapAnswerRows = gapAnswerRead.error ? [] : ((gapAnswerRead.data ?? []) as Row[])
 
+    // The claim's typed lines (v2.6696, punch list #171, the owner's call of 2026-11-08): the firm reads each line,
+    // not only the total, so its page draws the same table the desk keeps and its demand reads the claim. Live rows
+    // only; the read fails soft. A line's document that the office held back travels with no document id.
+    const claimLineRead = await admin.from('legal_matter_claim_lines').select(MATTER_COUNSEL_SELECT.claimLines).in('matter_id', matterIds).is('removed_at', null).order('added_at')
+    const claimLineRows = claimLineRead.error ? [] : ((claimLineRead.data ?? []) as Row[])
+
+    // The proceedings beside the claim (v2.6726, punch list #174, the owner's call: the firm sees the list). Live rows
+    // only, the read fail-soft; the contact's name and role are read off the matter's live people and the person's id
+    // never travels, nor does the office's note. A document the office held back is not named.
+    const proceedingRead = await admin.from('legal_matter_proceedings').select(MATTER_COUNSEL_SELECT.proceedings).in('matter_id', matterIds).is('removed_at', null).order('added_at')
+    const proceedingRows = proceedingRead.error ? [] : ((proceedingRead.data ?? []) as Row[])
+    const proceedingPeopleRead = proceedingRows.length ? await admin.from('legal_matter_people').select(MATTER_COUNSEL_SELECT.proceedingPeople).in('matter_id', matterIds).is('removed_at', null) : { data: [], error: null }
+    const proceedingPeople = proceedingPeopleRead.error ? [] : ((proceedingPeopleRead.data ?? []) as Row[])
+
     // Names for the office people the packet mentions (who flagged, who logged, who heard).
     const userIds = new Set<string>()
     for (const j of jobs) if (j.collections_by) userIds.add(j.collections_by as string)
@@ -571,6 +586,15 @@ serve(async (req) => {
         heldDocumentCount: documentRows.filter((d) => d.matter_id === m.id && documentHeld(d)).length,
         // v2.5923: the answers travel with the name, never the user id; the shaper cuts the row either way.
         gapAnswers: gapAnswerRows.filter((g) => g.matter_id === m.id).map((g) => ({ ...g, answered_by_name: (g.answered_by ? userName.get(g.answered_by as string) : null) ?? '', answered_by: undefined })),
+        // v2.6696: the claim's typed lines; a document the office held back is not named.
+        claimLines: claimLineRows.filter((l) => l.matter_id === m.id).map((l) => ({ ...l, document_id: l.document_id && documentRows.some((d) => d.id === l.document_id && d.matter_id === m.id && !documentHeld(d)) ? l.document_id : null })),
+        // v2.6726: the proceedings beside the claim, each cut to the firm's shape; a held document is not named.
+        proceedings: (() => {
+          const travelling = new Set(documentRows.filter((d) => d.matter_id === m.id && !documentHeld(d)).map((d) => d.id as string))
+          const people = proceedingPeople.filter((p) => p.matter_id === m.id).map((p) => ({ id: p.id as string, name: String(p.name ?? ''), role: String(p.role ?? '') }))
+          const mine = proceedingRows.filter((p) => p.matter_id === m.id) as unknown as LegalMatterProceedingRow[]
+          return proceedingsFromRows(mine).map((p) => proceedingForFirm(p, people, travelling, mine.find((r) => r.id === p.id)?.added_at ?? ''))
+        })(),
         narrative: (() => {
           const r = narrativeRows.get(m.id as string)
           return r ? legalNarrativeFromRow(r as { narrative_md?: string | null; narrative_updated_at?: string | null }, (r.narrative_updated_by ? userName.get(r.narrative_updated_by as string) : null) ?? '', (iso) => todayYmdInAppTz(new Date(iso))) : null

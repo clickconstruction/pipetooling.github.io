@@ -29,6 +29,7 @@ import PeopleReviewTab from '../components/people/PeopleReviewTab'
 import PeopleDayBookTab from '../components/people/PeopleDayBookTab'
 import { dropDayBookDoorParams, type DayBookDoor } from '../lib/people/dayBookDoor'
 import PeopleWhosWhereTab from '../components/people/PeopleWhosWhereTab'
+import PeopleUtilizationTab from '../components/people/PeopleUtilizationTab'
 import PeopleSpendingTab from '../components/people/PeopleSpendingTab'
 import { canOpenSpending } from '../lib/people/spendingAccess'
 import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
@@ -203,7 +204,7 @@ const HOURS_TAB_SECTIONS_STACK: CSSProperties = {
 
 const tabStyle = pageTabStyle
 
-/** `PeopleTab` (the 18 view keys) and their six groups live in `src/lib/people/peopleTabGroups.ts` (v2.2811). */
+/** `PeopleTab` (the 22 view keys) and their six groups live in `src/lib/people/peopleTabGroups.ts` (v2.2811). */
 
 /** Users tab: email/phone on its own row below the name line at ≤640px. */
 /** Max UUIDs in Realtime `user_id=in.(...)` for People Hours (avoid oversized filters). */
@@ -1818,6 +1819,8 @@ export default function People() {
     spending: canOpenSpending(authRole),
     day_book: canSeeDayBook,
     whos_where: canSeeWhosWhere,
+    // Utilization (design spike): the hours people said they can work against the clock. Needs the clock's read, like Hours.
+    utilization: canOpenHoursTab,
     hours: canOpenHoursTab,
     pay_stubs: canAccessPay,
     offsets: canAccessPay,
@@ -2675,6 +2678,7 @@ export default function People() {
         <PeopleDayBookTab authUserId={authUser?.id ?? null} authRole={authRole} canPickPerson={canPickDayBookPerson} memory={dayBookMemoryRef} />
       )}
       {activeTab === 'whos_where' && canSeeWhosWhere && <PeopleWhosWhereTab authRole={authRole} />}
+      {activeTab === 'utilization' && canOpenHoursTab && <PeopleUtilizationTab authRole={authRole} authUserId={authUser?.id ?? null} />}
       {activeTab === 'spending' && canOpenSpending(authRole) && <PeopleSpendingTab canSeePayroll={canAccessPay} />}
       {activeTab === 'activity' && (
         <div>

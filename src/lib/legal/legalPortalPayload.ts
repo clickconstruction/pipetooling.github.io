@@ -27,6 +27,8 @@ import { buildJobContractCoverage } from '../jobs/jobContractCoverage'
 import { feeModelOf, type LegalEntryRow, type LegalFirmRow } from './legalMatters'
 import { parseLienBookRaw, type LienBookRaw } from '../jobs/lienTimelineBookAssemble'
 import { parseFirmCoverage, type FirmCoverage } from './legalFirmCoverage'
+import { claimLinesFromRows, type LegalClaimLineRow } from './legalClaimLines'
+import { parseLegalPortalProceedings, type LegalProceedingForFirm } from './legalProceedings'
 
 export type LegalPortalRecipient = { id: string; name: string; email: string; role: string; mode: 'now' | 'digest'; scope: 'all' | 'mine'; digestWeekday: number; digestTime: string; confirmed: boolean; paused: boolean; addedViaPortal: boolean; /** v2.4662: the day emails to this person began failing; null while they go through. */ failingSince: string | null }
 
@@ -53,6 +55,10 @@ export type LegalPortalMatter = {
   gapAnswers: Array<{ gapKey: string; label: string; answer: string; documentId: string | null; answeredOn: string; answeredByName: string }>
   /** Themes on the record (v2.6549): the words, the proof counts and which documents and entries carry each; [] from an older function. */
   themes: LegalPortalTheme[]
+  /** The claim's typed lines (v2.6696, punch list #171): materials, damages, interest, fees, other, as the desk stores them; [] from an older function. */
+  claimLines: LegalClaimLineRow[]
+  /** The proceedings beside the claim (v2.6726, punch list #174): kind, name, agency, reference, the contact's name and role, status, the documents that travelled, keep out; [] from an older function. */
+  proceedings: LegalProceedingForFirm[]
   jobs: Array<JobWithDetails & { collections_by_name?: string | null }>
   customer: LegalCustomerLike
   contacts: LegalContactLike[]
@@ -127,6 +133,25 @@ export function parseLegalPortalThemes(raw: unknown): LegalPortalTheme[] {
   return out
 }
 
+/** The claim's typed lines as the function sends them (v2.6696); a row without an id and a name is dropped, the rest read as the desk's rows do. */
+export function parseLegalPortalClaimLines(raw: unknown): LegalClaimLineRow[] {
+  if (!Array.isArray(raw)) return []
+  const out: LegalClaimLineRow[] = []
+  for (const l of raw) {
+    if (!isRecord(l) || typeof l.id !== 'string' || typeof l.title !== 'string') continue
+    out.push({
+      id: l.id,
+      kind: typeof l.kind === 'string' ? l.kind : 'other',
+      title: l.title,
+      amount: typeof l.amount === 'number' || typeof l.amount === 'string' ? l.amount : 0,
+      basis: typeof l.basis === 'string' ? l.basis : '',
+      document_id: typeof l.document_id === 'string' ? l.document_id : null,
+      added_at: typeof l.added_at === 'string' ? l.added_at : '',
+    })
+  }
+  return out
+}
+
 /** Defensive parse — null when the shape is not the function's. */
 export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null {
   if (!isRecord(raw) || !isRecord(raw.firm) || !Array.isArray(raw.matters)) return null
@@ -147,6 +172,8 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       heldCount: typeof m.heldCount === 'number' && Number.isFinite(m.heldCount) && m.heldCount > 0 ? Math.floor(m.heldCount) : 0,
       documents: parseLegalPortalDocuments(m.documents),
       themes: parseLegalPortalThemes(m.themes),
+      claimLines: parseLegalPortalClaimLines(m.claimLines),
+      proceedings: parseLegalPortalProceedings(m.proceedings),
       heldDocumentCount: typeof m.heldDocumentCount === 'number' && Number.isFinite(m.heldDocumentCount) && m.heldDocumentCount > 0 ? Math.floor(m.heldDocumentCount) : 0,
       narrative: parseLegalNarrative(m.narrative),
       gapAnswers: Array.isArray(m.gapAnswers)
@@ -228,6 +255,12 @@ export function buildMatterPacket(m: LegalPortalMatter, todayYmd: string, fee: L
     fee,
     // Gap answers (v2.5923): the same fold as the desk's, the document's title read off the payload's documents.
     gapAnswers: m.gapAnswers.map((g) => ({ gapKey: g.gapKey, text: g.answer, by: g.answeredByName || null, ymd: g.answeredOn, documentId: g.documentId, documentTitle: (g.documentId ? m.documents.find((d) => d.id === g.documentId)?.title : '') ?? '' })),
+    // The claim's typed lines (v2.6696, punch list #171): the same kernel as the desk's, so the firm's claim, its
+    // demand and its paths read the office's figure. A document not among the ones that travelled is not named.
+    claimLines: claimLinesFromRows(m.claimLines.map((l) => {
+      const doc = l.document_id ? m.documents.find((d) => d.id === l.document_id) : undefined
+      return { ...l, document_id: doc ? l.document_id : null, document: doc ? { title: doc.title } : null }
+    })),
   })
 }
 

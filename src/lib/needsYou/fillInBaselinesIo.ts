@@ -2,6 +2,7 @@ import { supabase } from '../supabase'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { JOB_BUDGET_CHANGED_EVENT } from '../../hooks/useJobBudget'
 import type { AwardBaselineRpcArgs, AwardBidBreakdown } from '../jobs/awardBaseline'
+import { awardJobBaseline } from '../jobs/awardBaselineIo'
 import type { BaselineRate } from '../bids/bidBaselineRates'
 import { projectsWithNoBaseline, type BaselineBidSource, type BaselineBudgetSource, type BaselineCandidates, type BaselineFixtureSource, type BaselineJobSource, type BaselineSources } from './fillInBaselines'
 
@@ -65,9 +66,8 @@ export const baselineFillInIo: BaselineFillInIo = {
     return { jobs, fixtures, budgets, bids, book }
   },
   async save(args) {
-    const { error } = await supabase.rpc('award_job_baseline' as never, args as never)
-    if (error) throw error
-    window.dispatchEvent(new Event(JOB_BUDGET_CHANGED_EVENT))
+    // The shared write: the company rate saved on a bid that has none, then the award (slip 8 of the second walk).
+    await awardJobBaseline(args)
   },
   async undo(jobId) {
     const { error } = await supabase.rpc('clear_job_budget', { p_job_id: jobId })

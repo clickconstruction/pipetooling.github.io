@@ -107,6 +107,8 @@ The statement reads {{chip:green|Signed}}. The signature stays on the scan. The 
 
 A signed row under **Hours statements** carries {{button:outline|Open the signed PDF}}. The same press sits on the window. The PDF opens in a new tab for five minutes. Each open is logged. Only a dev and the controller can open it.
 
+Some browsers block the new tab. The press then shows the link in a small window. Open the link from there. Press {{button:outline|I opened it}} to close the window.
+
 ## A sub's sheet lines
 
 A sub never punches the clock. Their work is on the job's sheets. The **Who** list names each sub on the job's sheets, with the count of sheets. Pick one and the paper reads the sheets' lines. Each sheet is one group. Each line shows the fixture, the agreed hours, the rate and the amount. Paid reads per sheet, with the payments recorded against it. The charged switch is held for a sub. A sub's paper is always as paid. Type the sub's company in **Company** when the paper should name it. The attestation then reads that the sub signs for the company. Leave it blank to name the sub alone.

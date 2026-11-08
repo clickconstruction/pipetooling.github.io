@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { claimFitsDeposit, claimStale, claimSuggestionWords, daysSinceClaim, myStaleClaims, parsePaidClaimsRpc, staleClaimLine, staleClaims, staleWords, type PaidClaim } from './paidClaims'
+import { claimFitsDeposit, claimStale, claimSuggestionWords, daysSinceClaim, myStaleClaims, openClaimByJob, parsePaidClaimsRpc, staleClaimLine, staleClaims, staleWords, type PaidClaim } from './paidClaims'
 
 const raw = (over: Record<string, unknown> = {}) => ({
   id: 'w1', jobId: 'j1', jobNumber: '1032', jobName: 'Whitfield repipe', jobStatus: 'billed', bidId: 'b512', customerId: 'c1', customerName: 'Dana Whitfield', payerCustomerId: 'c1',
@@ -53,5 +53,19 @@ describe('the deposit a claim fits', () => {
     expect(claimSuggestionWords(claim({ heardByName: null, saidBy: null, customerName: null, note: null, method: null }))).toBe('They say they paid, not sure how Oct 20')
     // v2.5956: 01:30 UTC on Oct 22 is 8:30 PM on Oct 21 in Chicago — the claim was written on the 21st.
     expect(claimSuggestionWords(claim({ createdAt: '2026-10-22T01:30:00Z' }))).toBe('Theo wrote Oct 21: Dana says they paid, a check in the mail Oct 20 · “Check #1187”')
+  })
+})
+
+describe('openClaimByJob (v2.6695 — the Billed row’s one claim)', () => {
+  it('per job the open claim with the latest day, ties by the latest written; a met claim draws nothing', () => {
+    const by = openClaimByJob([
+      claim({ id: 'a', paidYmd: '2026-10-20' }),
+      claim({ id: 'b', paidYmd: '2026-10-24' }),
+      claim({ id: 'c', paidYmd: '2026-10-24', createdAt: '2026-10-25T09:00:00Z' }),
+      claim({ id: 'd', jobId: 'j2', landedSince: 2900 }),
+      claim({ id: 'e', jobId: 'j3', paidYmd: '2026-10-01' }),
+    ])
+    expect([...by.entries()].map(([job, c]) => [job, c.id])).toEqual([['j1', 'c'], ['j3', 'e']])
+    expect(openClaimByJob([])).toEqual(new Map())
   })
 })

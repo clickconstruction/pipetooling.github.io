@@ -136,11 +136,32 @@ describe('superintendentLine: the words', () => {
     expect(superintendentLine(base).finishWords).toBe('No planned finish on the job yet.')
   })
 
-  it('stacks the proof: certified, then the checklist, then the crew\'s own percent as provisional', () => {
-    expect(superintendentLine({ ...base, certifiedPct: 40, checklist: { answered: 3, asked: 5 } }).proofWords).toBe(
-      "Certified: pay app at 40% · checklist 3 of 5 ready · the crew's 50% reads provisional until the next pay app.",
+  it("stacks the proof: the office's sign-off, then the checklist, then the crew's own percent as provisional until signed (the owner's first call)", () => {
+    expect(superintendentLine({ ...base, certifiedPct: 40, certifiedOn: '2026-11-08', checklist: { answered: 3, asked: 5 } }).proofWords).toBe(
+      "Signed off by the office at 40% on Nov 8 · checklist 3 of 5 ready · the crew's 50% reads provisional until the office signs it off.",
     )
-    expect(superintendentLine({ ...base, pctDone: null }).proofWords).toBe('No certified pay app yet · no checklist on the stages yet · set the percent to read a pace.')
+    // The office signed the very figure the crew reads: nothing is provisional (the second walk's slip 3 called it so).
+    expect(superintendentLine({ ...base, pctDone: 25, certifiedPct: 25 }).proofWords).toBe("Signed off by the office at 25% · no checklist on the stages yet · the crew's 25% is the signed-off figure.")
+    expect(superintendentLine({ ...base, pctDone: null }).proofWords).toBe('No office sign-off on the percent yet · no checklist on the stages yet · set the percent to read a pace.')
+    expect(superintendentLine(base).proofWords).toContain("No office sign-off on the percent yet · no checklist on the stages yet · the crew's 50% reads provisional until the office signs it off.")
+    // No pay app anywhere in the words: the sign-off is the office's own press.
+    expect(superintendentLine({ ...base, certifiedPct: 40 }).proofWords).not.toMatch(/pay app/)
+  })
+
+  it("counts a sub's sheet hours into the hours in, as the Scoreboard does (the owner's third call; the second walk's slip 4)", () => {
+    // 0 team hours, 9 h on a sub sheet against 70 h: the card read "0 h in · hours 0%" while the score counted the 9 h.
+    const subOnly = superintendentLine({ ...base, hoursBudget: 70, hoursUsed: 0, subHours: 9, pctDone: 25 })
+    expect(subOnly.hoursWords).toBe('70 h budget ◆ from the bid · 9 h in, all on sub sheets')
+    expect(subOnly.hoursPct).toBeCloseTo((9 / 70) * 100, 6)
+    // 9 h in is past the 8 h floor, so the line reads a pace: 25% done against 13% of the hours is under a crew day ahead.
+    expect(subOnly.tone).toBe('even')
+    expect(superintendentLine({ ...base, hoursBudget: 70, hoursUsed: 0, subHours: 7, pctDone: 25 }).tone).toBe('early')
+    const mixed = superintendentLine({ ...base, hoursUsed: 100, subHours: 9 })
+    expect(mixed.hoursWords).toBe('200 h budget ◆ from the bid · 109 h in (9 h on sub sheets)')
+    expect(mixed.hoursPct).toBeCloseTo(54.5, 6)
+    // Sub hours alone, with the team's not yet read, still count.
+    expect(superintendentLine({ ...base, hoursUsed: null, subHours: 9 }).hoursWords).toBe('200 h budget ◆ from the bid · 9 h in, all on sub sheets')
+    expect(superintendentLine({ ...base, subHours: null }).hoursWords).toBe('200 h budget ◆ from the bid · 100 h in')
   })
 
   it('names the one move when behind: the open checklist, else the percent', () => {

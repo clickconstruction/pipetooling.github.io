@@ -19,6 +19,7 @@ import { lienFirmNext } from '../jobs/lienTimeline'
 import type { LegalEntryRow } from './legalMatters'
 import type { LegalPortalParticulars } from './legalPortalPayload'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from './legalMoney'
+import { claimEvidenceWords, claimTable, claimTotalWords } from './legalClaimLines'
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from './legalProperty'
 import { venuePlaces, whereToFileText } from './jpVenue'
 import { legalOfficeContactPrintLines, type LegalOfficeContacts } from './legalOfficeContacts'
@@ -69,7 +70,13 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   // The firm's fees and costs, less the contingency the office books when it applies a recovery (item 5: one rule with the matter card).
   const fees = firmFeeEntries(opts.matter.entries)
   const contingency = contingencyEntries(opts.matter.entries)
-  const { feesTotal, demand } = firmDemand(a.totals.balance, opts.matter.entries)
+  // v2.6696 (punch list #171): the demand reads the claim, and Section A prints the claim's table as the office's packet does.
+  const { feesTotal, demand } = firmDemand(packet.worth.claim, opts.matter.entries)
+  const claim = claimTable(packet.worth, (jobId) => a.jobs.find((j) => j.jobId === jobId)?.label ?? jobId)
+  const claimRows = [
+    ...claim.rows.map((r) => row([`<b>${esc(r.part)}</b>${r.source === 'typed' ? '' : ' <span class="muted">fills in</span>'}`, esc(r.basis || '—'), esc(r.evidence.kind === 'ledger' ? 'the statement below' : claimEvidenceWords(r.evidence)), formatLegalMoney(r.amount)], [false, false, false, true])),
+  ]
+  const claimFoot = `<tr><td colspan="3"><b>${esc(claimTotalWords(claim))}</b></td><td class="num"><b>${formatLegalMoney(claim.total)}</b></td></tr>`
   const stage = legalFirmStageWords(opts.matter.stage)
   // v2.6177 (punch list #218 PR 4): what each path nets, the cards the office reads, as rows the firm keeps.
   const paths = settlementPathsOfMatter(packet.worth, opts.matter.stage, opts.matter.entries)
@@ -178,7 +185,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   </div>
   <div class="sums">
     <span class="muted">Balance owed</span><span class="big">${formatLegalMoney(a.totals.balance)}</span>
-    <span class="muted">Fees and costs to date</span><span>${formatLegalMoney(feesTotal)}</span>
+${packet.worth.claim > a.totals.balance + 0.004 ? `    <span class="muted">The claim</span><span>${formatLegalMoney(packet.worth.claim)}</span>\n` : ''}    <span class="muted">Fees and costs to date</span><span>${formatLegalMoney(feesTotal)}</span>
     <span class="muted">Demand as of ${esc(opts.preparedOn)}</span><span><b>${formatLegalMoney(demand)}</b></span>
   </div>
 </div>
@@ -191,6 +198,8 @@ ${packet.exhibits.length || docs.length ? `<table><thead><tr><th></th><th>Exhibi
 ${table(['Contact', 'Note', 'Email', 'Phone'], a.contacts.map((c) => row([esc(c.name), esc(c.note || '—'), esc(c.email ?? '—'), esc(c.phone ?? '—')])), 'No named contact on file.')}
 <h3>Jobs in this account</h3>
 ${table(['Job', 'Name', 'Address', 'Age', 'On file', 'Balance'], jobsRows, 'No jobs.')}
+<h3>The claim</h3>
+${table(['Part of the claim', 'Grounds', 'Evidence', 'Amount'], claimRows, '', claimFoot)}${claim.note ? `<p class="muted">${esc(claim.note)}</p>` : ''}
 <h3>Statement of account</h3>
 ${table(['Date', 'Job', 'Entry', 'Amount', 'Balance'], ledgerRows, 'No billed lines or payments recorded.', ledgerFoot)}
 <h3>Where to file</h3>

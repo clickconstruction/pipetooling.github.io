@@ -189,5 +189,45 @@ SELECT mts.same('a second line out inside the hold lands, and the hold is gone w
   (SELECT concat_ws('|', state, coalesce(has_user_id::text, '-'), coalesce(has_how, '-'), coalesce(has_until::text, '-')) FROM public.contacts WHERE id = (SELECT id FROM mts.got WHERE label = 'dana')),
   'done|-|-|-');
 
+-- 8 · The usual number's tech door (punch list #118, PR 2, migration *_contact_channel_usual_tech): Luis, on Dana's job,
+-- reads her numbers through contact_channels_tech_read and stars one with contact_channel_make_usual, which writes the
+-- gray line; Kim, on Kevin's job only, reads none of Dana's and is refused in words; Tess in training and anyone signed
+-- out are refused; Rosa's office door still works; a number that sent STOP cannot be the usual.
+UPDATE public.contacts SET has_user_id = NULL, has_since = NULL, has_how = NULL, has_until = NULL WHERE id = (SELECT id FROM mts.got WHERE label = 'dana');
+INSERT INTO public.contact_channels (contact_id, kind, value) SELECT id, 'phone', '(512) 555-0190' FROM mts.got WHERE label = 'dana';
+INSERT INTO public.contact_channels (contact_id, kind, value, opted_out_at) SELECT id, 'phone', '(512) 555-0199', now() FROM mts.got WHERE label = 'dana';
+SELECT mts.as_user('00000000-0000-0000-0000-0000000085d1');
+SET LOCAL ROLE authenticated;
+SELECT mts.same('Luis reads Dana''s three numbers', (SELECT count(*)::text FROM public.contact_channels WHERE contact_id = (SELECT id FROM mts.got WHERE label = 'dana')), '3');
+SELECT public.contact_channel_make_usual((SELECT id FROM public.contact_channels WHERE contact_id = (SELECT id FROM mts.got WHERE label = 'dana') AND key = '5125550190'));
+SELECT mts.refused('Luis cannot star a number that sent STOP',
+  $q$SELECT public.contact_channel_make_usual((SELECT id FROM public.contact_channels WHERE contact_id = (SELECT id FROM mts.got WHERE label = 'dana') AND key = '5125550199'))$q$,
+  'That number sent STOP.');
+RESET ROLE;
+SELECT mts.same('the cell is Dana''s usual, and only it', (SELECT string_agg(key, ',' ORDER BY key) FROM public.contact_channels WHERE contact_id = (SELECT id FROM mts.got WHERE label = 'dana') AND usual_at IS NOT NULL), '5125550190');
+SELECT mts.same('the gray line names Luis', (SELECT body FROM public.messages WHERE contact_id = (SELECT id FROM mts.got WHERE label = 'dana') AND channel = 'event' ORDER BY at DESC LIMIT 1), 'Luis Tech made (512) 555-0190 Tech Send Dana Whitfield''s usual number.');
+SELECT mts.as_user('00000000-0000-0000-0000-0000000085d4');
+SET LOCAL ROLE authenticated;
+SELECT mts.same('Kim, on Kevin''s job only, reads none of Dana''s numbers', (SELECT count(*)::text FROM public.contact_channels WHERE contact_id = (SELECT id FROM mts.got WHERE label = 'dana')), '0');
+SELECT mts.refused('Kim cannot star Dana''s number',
+  $q$SELECT public.contact_channel_make_usual((SELECT id FROM public.contact_channels WHERE key = '5125550182' LIMIT 1))$q$,
+  'Only the office team, or a tech on one of their jobs this week or last, can pick their usual number.');
+RESET ROLE;
+SELECT mts.as_user('00000000-0000-0000-0000-0000000085d6');
+SET LOCAL ROLE authenticated;
+SELECT mts.refused('Tess in training cannot star',
+  $q$SELECT public.contact_channel_make_usual((SELECT id FROM public.contact_channels WHERE contact_id = (SELECT id FROM mts.got WHERE label = 'dana') AND key = '5125550182'))$q$,
+  'A training account cannot pick their usual number.');
+RESET ROLE;
+SELECT mts.as_anon();
+SET LOCAL ROLE anon;
+SELECT mts.refused('nobody signed out can star', $q$SELECT public.contact_channel_make_usual('00000000-0000-0000-0000-000000000000')$q$, 'permission denied');
+RESET ROLE;
+SELECT mts.as_user('00000000-0000-0000-0000-0000000085d7');
+SET LOCAL ROLE authenticated;
+SELECT public.contact_channel_make_usual((SELECT id FROM public.contact_channels WHERE contact_id = (SELECT id FROM mts.got WHERE label = 'dana') AND key = '5125550182'));
+RESET ROLE;
+SELECT mts.same('Rosa moves the usual back to the landline', (SELECT string_agg(key, ',' ORDER BY key) FROM public.contact_channels WHERE contact_id = (SELECT id FROM mts.got WHERE label = 'dana') AND usual_at IS NOT NULL), '5125550182');
+
 DO $$ BEGIN RAISE NOTICE 'messages_tech_send PASSED'; END $$;
 ROLLBACK;
