@@ -235,9 +235,11 @@ export default function JobModeDetailsSection({
       >
         <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span style={sectionLabel}>Customer</span>
-          {!hasContact ? (
+          {contact == null && contactWhyNone ? (
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-faint)' }}>{contactWhyNone}</span>
+          ) : !hasContact ? (
             <span style={{ fontSize: '0.875rem', color: 'var(--text-faint)' }}>
-              {contact == null ? (contactWhyNone ?? 'Loading…') : 'No customer contact on file'}
+              {contact == null ? 'Loading…' : 'No customer contact on file'}
             </span>
           ) : (
             <>
