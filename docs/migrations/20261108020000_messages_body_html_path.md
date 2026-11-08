@@ -11,3 +11,5 @@
 **Apply**: `supabase db push` from a clean checkout of `main` after this merges, **before** `supabase functions deploy gmail-sync`: the reader deployed first uploads each mail's HTML and warns that the marker would not write (PostgREST refuses the unknown column), so those lines stay plain for good; pushed first, nothing changes until the deploy. PR 2's client reads the column, so it merges after the push (`npm run check:calls-ahead` labels it otherwise).
 
 **Check**: `select count(*) from messages where body_html_path is not null` grows from the first mail the deployed reader takes; `select body_html_path from messages where channel = 'email' order by at desc limit 1` reads `<that line's id>/body.html`.
+
+**Applied** to prod on 2026-11-08, read the same day: `npm run check:migration-drift` from the coordinating session's worktree read 1164 local files and 1164 remote versions, fully applied, this file among them; pushed right after #7280 merged, with gmail-sync redeployed in the same minute so the reader wrote the path from its first run. Types regenerated from prod through #7301 (`chore(types)` after the night's six migrations).

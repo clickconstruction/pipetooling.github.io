@@ -7,3 +7,5 @@ One `COMMENT ON COLUMN` and nothing else (punch list #52 follow-up). `people_pay
 **Apply**: `supabase db push` from a clean checkout of `main` after this merges, in any order against the Pages deploy — nothing in the client reads a column comment.
 
 **Check**: `select col_description('public.people_pay_config'::regclass, attnum) from pg_attribute where attrelid = 'public.people_pay_config'::regclass and attname = 'vehicle_rate_override'` reads the new sentence.
+
+**Applied** to prod on 2026-11-08, read the same day: `npm run check:migration-drift` from the coordinating session's worktree read 1164 local files and 1164 remote versions, fully applied, this file among them; pushed right after #7284 merged, the first migration of the night. Types regenerated from prod through #7301 (`chore(types)` after the night's six migrations).

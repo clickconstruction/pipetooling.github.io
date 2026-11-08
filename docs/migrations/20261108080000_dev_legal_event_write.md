@@ -8,3 +8,5 @@ The dev MCP's dry-run wrapper for recording what happened on a legal matter: `pl
 - No table is created, so no fence is owed; training mode is blocked by the entries table's statement trigger inside `legal_event_add`.
 
 Deploy order: push this migration, then `supabase functions deploy dev-mcp` (server 0.40.0). `find_rpc` lists it once `npm run gen-types:linked` and the catalog rebuild land as their own `chore(types)` PR; `dev-mcp` calls it by name and needs neither.
+
+**Applied** to prod on 2026-11-08, read the same day: `npm run check:migration-drift` from the coordinating session's worktree read 1164 local files and 1164 remote versions, fully applied, this file among them; pushed right after #7291 merged, with dev-mcp 0.40.0 deployed in the same minute (the fifty-one-verb server). Types regenerated from prod through #7301 (`chore(types)` after the night's six migrations).

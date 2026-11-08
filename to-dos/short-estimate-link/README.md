@@ -1,8 +1,8 @@
 ---
 name: "The estimate text's link: short, and on a Click Plumbing address"
 number: 281
-group: ready
-status: asked 2026-11-07 · PR 1 merged the same day as v2.6657 (#7252: the share link in the text, 107 → 75 characters) · the owner's three calls made 2026-11-07/08 · PR 2 (v2.6677, #7282: the ten-letter code and the guess guard, one migration to push and three functions to deploy) and PR 3 (v2.6678: the link on my.clickplumbing.com/e/<code>, the Worker edit live 2026-11-08 and answering 301) built 2026-11-08, both armed
+group: waiting
+status: asked 2026-11-07 · PR 1 merged the same day as v2.6657 (#7252: the share link in the text, 107 → 75 characters) · the owner's three calls made 2026-11-07/08 · PR 2 (v2.6677, #7282: the ten-letter code and the guess guard, its migration pushed and the three functions deployed 2026-11-08) and PR 3 (v2.6678: the link on my.clickplumbing.com/e/<code>, the Worker edit live 2026-11-08 and answering 301) built 2026-11-08, both armed
 summary: >
   The text the Tell the customer sheet sends with an estimate ended in a 107-character link, a
   64-hex token on clicktooling.com, and the owner wants it much shorter and looking like it came
@@ -14,8 +14,8 @@ summary: >
   locks a source after N misses. PR 3 (the owner's Cloudflare rule): the text's link on
   clickplumbing.com/e/<code> or my.clickplumbing.com/e/<code>, a 301 to the app, the app emitting
   that host through one constant beside PORTAL_SHORT_ORIGIN once the owner says the rule is live.
-next: After PR 2 merges, `supabase db push` (20261108053000_estimate_short_codes) and deploy get-estimate-for-customer, accept-estimate and log-estimate-option-view; after PR 3 merges and deploys, the owner walks it on a ZZ Test estimate (the text ends in my.clickplumbing.com/e/ and ten letters, opens the accept page, approves an option; Send the link again, then the first text's link still opens). The card closes on that walk.
-size: S (PR 1) + S (PR 2, a migration) + XS (PR 3, the Worker edit); left: the push, the three deploys and the owner's walk
+next: Pushed and deployed 2026-11-08 — 20261108053000_estimate_short_codes applied (the queue carried PR 2 up inside PR 3, so the push followed #7287 with `--include-all`), get-estimate-for-customer, accept-estimate and log-estimate-option-view deployed and booting. Left: the owner walks it on a ZZ Test estimate (the text ends in my.clickplumbing.com/e/ and ten letters, opens the accept page, approves an option; Send the link again, then the first text's link still opens). The card closes on that walk.
+size: S (PR 1) + S (PR 2, a migration) + XS (PR 3, the Worker edit); left: the owner's walk
 blocker: none; the owner's walk closes it
 ver: v2.6657 (PR 1) · v2.6677 (PR 2) · v2.6678 (PR 3)
 mockup: not required — the change is the link's length and host in a text that already goes; the before and after are the two lines under The ask

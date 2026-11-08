@@ -12,7 +12,7 @@ summary: >
   tied yet. And six doors still hand a send to someone's own phone or mail app, so nothing is
   recorded and the answer goes to that person's phone. Texting through Quo has been live since
   2026-10-16, so every send can go from the company number now.
-next: The owner's look at the box, the Customer pill and Reply on the deployed board after the push (How to verify, PRs 1 to 4); then the owner's calls 4 and 5 (the doors: open the box or send in the press; the contract's typed number), and PRs 5 to 7 go.
+next: The owner's look at the box, the Customer pill and Reply on the deployed board (the migration applied and the types regenerated 2026-11-08; How to verify, PRs 1 to 4); then the owner's calls 4 and 5 (the doors: open the box or send in the press; the contract's typed number), and PRs 5 to 7 go.
 size: S (the read) + S (the box) + XS (the filter) + S (Reply and Tie) + 3 × S (the doors)
 blocker: The owner's look; calls 4 and 5 for the doors.
 ver: v2.6683 · 6689 · 6690 · 6691

@@ -10,7 +10,7 @@ summary: >
   goes up through a signed upload URL and is checked before its row is written, and an event is
   the office's new entry from #167.
 next: >
-  The owner's look: from a Claude session with the dev MCP, on a ZZ TEST matter, plan_matter_event with a day last week and one Evidence document, then apply; the event sits on the desk's Timeline tagged dev MCP. Then the migration push and the dev-mcp deploy (the coordinating session's).
+  The owner's look: from a Claude session with the dev MCP, on a ZZ TEST matter, plan_matter_event with a day last week and one Evidence document, then apply; the event sits on the desk's Timeline tagged dev MCP. Migration 20261108080000 was pushed and dev-mcp 0.40.0 deployed on 2026-11-08, so the look is all that is left.
 ver: v2.6004 · 6682
 size: S (the two event verbs and their docs; the document verbs shipped as v2.6004)
 blocker: >
