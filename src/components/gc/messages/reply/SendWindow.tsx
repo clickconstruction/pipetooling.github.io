@@ -266,7 +266,7 @@ export function SendWindow({
               <p style={note}>What {contact.name} sees in their inbox, then opened.</p>
               <div data-send-head style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem', display: 'grid', gap: '0.2rem', fontSize: '0.82rem' }}>
                 <div>
-                  <strong>From:</strong> {fromHeader(company)}
+                  <strong>From:</strong> {fromHeader(company, sender?.name)}
                 </div>
                 {replyToHeader(company) && (
                   <div data-send-reply-to>

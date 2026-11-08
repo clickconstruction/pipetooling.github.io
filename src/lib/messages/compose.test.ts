@@ -149,12 +149,19 @@ describe('the recipient, from the spine’s contact', () => {
 describe('the from line', () => {
   it('names our number, or our name and the box their answer comes back to, never a person’s own', () => {
     expect(fromLine('text', CLICK)).toEqual(['from the company number (210) 555-0100', 'Click Construction'])
-    expect(fromLine('email', CLICK)).toEqual(['from Click Construction', 'replies to bids@clickconstruction.example'])
+    expect(fromLine('email', CLICK)).toEqual(['from Click Construction', 'bids@clickconstruction.example'])
     expect(fromLine('note', CLICK)).toEqual([])
-    // An email goes from the app's own sending address under our name, with the box as its Reply-To (R6).
+    // An email goes through Gmail as the box, under the person's name with the company's (v2.6702, punch list #207 PR 2).
+    expect(fromLine('email', CLICK, 'Wendi Doll')).toEqual(['from Wendi Doll · Click Construction', 'bids@clickconstruction.example'])
     expect(fromHeader(CLICK)).toBe('Click Construction')
+    expect(fromHeader(CLICK, 'Wendi Doll')).toBe('Wendi Doll · Click Construction')
+    expect(fromHeader(CLICK, '  ')).toBe('Click Construction')
     expect(replyToHeader(CLICK)).toBe('bids@clickconstruction.example')
     expect(emailRepliesNote(CLICK)).toBe('Their answer comes to bids@clickconstruction.example.')
+    // With no box set, the email goes from the app's sending address under the company's name alone.
+    const noBox = { ...CLICK, mailbox: '' }
+    expect(fromLine('email', noBox, 'Wendi Doll')).toEqual(['from Click Construction'])
+    expect(fromHeader(noBox, 'Wendi Doll')).toBe('Click Construction')
   })
 
   it('names the bids number when a text goes from it (R6)', () => {

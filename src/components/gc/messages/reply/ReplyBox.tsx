@@ -798,7 +798,7 @@ export function ReplyBox({
               aria-hidden="true"
               style={{ position: 'absolute', right: '0.6rem', bottom: '0.45rem', fontSize: '0.72rem', color: 'var(--text-muted)', pointerEvents: 'none' }}
             >
-              {fromLine(shown, company).join(' · ')}
+              {fromLine(shown, company, open?.userNames[me] ?? auth?.profileName ?? null).join(' · ')}
             </span>
           )}
         </div>
