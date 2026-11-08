@@ -101,7 +101,7 @@ export default function LegalClaimTable({ table, panel }: { table: ClaimTable; p
 
   return (
     <div data-legal-claim-table>
-      <SectionTitle doors={panel.onOpenAccountsReceivable ? <Door label="Accounts Receivable" onClick={panel.onOpenAccountsReceivable} /> : null}>The claim</SectionTitle>
+      <SectionTitle doors={<>{pill('prints with the packet', 'neutral')}{panel.onOpenAccountsReceivable ? <Door label="Accounts Receivable" onClick={panel.onOpenAccountsReceivable} /> : null}</>}>The claim</SectionTitle>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
