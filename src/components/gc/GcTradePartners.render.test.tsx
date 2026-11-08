@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { GcTradePartners, type TradePartnerWrites } from './GcTradePartners'
 import { boardStateFromRows } from '../../lib/gc/boardRows'
 import { clinicBoardRows } from '../../lib/gc/boardTestRows'
-import { installDomShims } from '../../test/renderSmokeMocks'
+import { installDomShims, renderWithProviders as render } from '../../test/renderSmokeMocks'
 
 installDomShims()
 
 function writes(): TradePartnerWrites {
-  return { addCompany: vi.fn(() => Promise.resolve()), vetCompany: vi.fn(() => Promise.resolve()), setCoverage: vi.fn(() => Promise.resolve()) }
+  return { addCompany: vi.fn(() => Promise.resolve()), vetCompany: vi.fn(() => Promise.resolve()), setCoverage: vi.fn(() => Promise.resolve()), removeCompany: vi.fn(() => Promise.resolve()) }
 }
 
 const hillsideForm = { company_id: 'hillside', license: 'TX 4471', insurance: 'Lone Star Mutual, $1M / $2M', years_in_business: 9, reference_list: 'Ana Ruiz 210-555-0120', past_jobs: 'Two clinics in Boerne', sent_on: '2026-10-04' }
@@ -125,5 +125,50 @@ describe('GcTradePartners', () => {
     fireEvent.change(screen.getByLabelText('Their address'), { target: { value: '18 Elm St, Boerne' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(w.setCoverage).toHaveBeenCalledWith('hillside', '18 Elm St, Boerne', null))
+  })
+
+  // v2.6749 (punch list #153): Remove from the bench… on a company with no history only, behind a confirm whose button names the act.
+  function withAlamo() {
+    const base = clinicBoardRows()
+    return clinicBoardRows({
+      companies: [...base.companies, { ...base.companies[0]!, id: 'alamo', name: 'Alamo Concrete', trades: ['Concrete'], address: '9 Main St, Boerne', vetting_status: 'new' }],
+    })
+  }
+
+  it('v2.6749 · Remove from the bench… shows on a company with no history alone, asks first in its words, and removes on the press', async () => {
+    const w = writes()
+    render(<GcTradePartners state={boardStateFromRows(withAlamo())} writes={w} onOpenProject={() => undefined} />)
+    // Lonestar quoted and Hillside was asked and has a contact logged: neither row offers it.
+    expect(document.querySelector('[data-gc-remove="lonestar"]')).toBeNull()
+    expect(document.querySelector('[data-gc-remove="hillside"]')).toBeNull()
+    const row = document.querySelector('[data-gc-partner="alamo"]') as HTMLElement
+    const press = within(row).getByRole('button', { name: 'Remove from the bench…' })
+    fireEvent.click(press)
+    const ask = await screen.findByRole('alertdialog', { name: 'Remove Alamo Concrete from the bench?' })
+    expect(within(ask).getByText('Alamo Concrete has no quote, no ask, no work order and no contact logged. Their row leaves Trade partners.')).toBeTruthy()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(w.removeCompany).not.toHaveBeenCalled()
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove from the bench…' }))
+    const again = await screen.findByRole('alertdialog', { name: 'Remove Alamo Concrete from the bench?' })
+    fireEvent.click(within(again).getByRole('button', { name: 'Remove from the bench' }))
+    await waitFor(() => expect(w.removeCompany).toHaveBeenCalledWith('alamo'))
+  })
+
+  it('v2.6749 · a sub from Prospects is told its card goes back on the lane, and a refusal shows its words on the row', async () => {
+    const w = writes()
+    // A Supabase refusal is a plain object, never an Error: the row must still read its reason.
+    vi.mocked(w.removeCompany).mockRejectedValueOnce({ message: 'Alamo Concrete stays on the bench, since they were asked to quote.', code: 'P0001' })
+    const origins = { alamo: { prospectId: 'pr9', who: 'Marisol', when: '2026-11-08T15:05:00Z', calls: 1, answered: 1 } }
+    render(<GcTradePartners state={boardStateFromRows(withAlamo())} writes={w} onOpenProject={() => undefined} origins={origins} />)
+    const row = document.querySelector('[data-gc-partner="alamo"]') as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove from the bench…' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Remove Alamo Concrete from the bench?' })
+    expect(within(ask).getByText(/Their card goes back on Prospects → Subs to call again\.$/)).toBeTruthy()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove from the bench' }))
+    // The caller's sentence leads the server's reason (formatErrorMessage's shape for a coded refusal).
+    await within(row).findByText('The remove did not go through: Alamo Concrete stays on the bench, since they were asked to quote.')
+    expect(w.removeCompany).toHaveBeenCalledWith('alamo')
   })
 })
