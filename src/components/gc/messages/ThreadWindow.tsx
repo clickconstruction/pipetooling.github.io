@@ -31,6 +31,7 @@ import { OpenThreadContext, type OpenThread } from './openThread'
 import { AppFoldLine, EventLine, ThreadLine } from './ThreadLine'
 import { useThreadSlots, type ThreadMenuRow, type ThreadSlots } from './threadSlots'
 import { useSentLineFacts } from './useSentLineFacts'
+import { numbersOfRecord } from '../../../lib/messages/toChip'
 import { WhoIsThisWindow } from './WhoIsThisWindow'
 import { EmptyState } from '../../EmptyState'
 
@@ -619,6 +620,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
             contact={contact}
             box={lastWroteTo(allLines)}
             writes={writes}
+            knownNumbers={(record) => (view ? numbersOfRecord(view, record) : [])}
+            nowIso={nowIso}
             onNamed={(id) => {
               setNaming(false)
               if (id !== contact.id) onShowContact?.(id)

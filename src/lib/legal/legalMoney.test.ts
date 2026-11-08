@@ -10,7 +10,7 @@ import { sampleLegalPortalResponse } from '../../../supabase/functions/_shared/c
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { buildLegalPacket, groupCollectionsByPayer, jobOpenBalance, legalJobMoney, type LegalAccountSummary, type LegalPacket, type LegalPacketInput } from './legalPacket'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel } from './legalPortalPayload'
-import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmDemand, firmFeeEntries, firmFeeRows, invoiceSentWords, isContingencyEntry, legalRunningLedger, paymentHowWords } from './legalMoney'
+import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmDemand, firmDemandWords, firmFeeEntries, firmFeeRows, invoiceSentWords, isContingencyEntry, legalRunningLedger, paymentHowWords } from './legalMoney'
 import type { LegalEntryRow } from './legalMatters'
 
 const TODAY = '2026-10-05'
@@ -196,5 +196,15 @@ describe('an undone fee (#85 item 18) is out of every total, still listed struck
     expect(firmFeeEntries(rows).map((e) => e.body)).toEqual(['Letter'])
     expect(firmFeeRows(rows).map((e) => e.body)).toEqual(['Letter', 'Filing twice'])
     expect(firmDemand(1000, rows)).toEqual({ feesTotal: 450, demand: 1450 })
+  })
+})
+
+describe('the demand reads the claim (v2.6696, punch list #171)', () => {
+  it('firmDemand adds the firm’s fees to whatever claim figure it is handed, and the words say what the demand is made of', () => {
+    const rows = [entry({ kind: 'fee', body: 'Demand letter', amount: 450 })]
+    expect(firmDemand(16_240, rows)).toEqual({ feesTotal: 450, demand: 16_690 })
+    expect(firmDemandWords({ balance: 14_400, claim: 14_400 }, 450)).toBe('total demand · balance $14,400.00 + fees and costs $450.00')
+    expect(firmDemandWords({ balance: 14_400, claim: 16_240 }, 0)).toBe('total demand · the claim $16,240.00, open bills $14,400.00 inside it')
+    expect(firmDemandWords({ balance: 14_400, claim: 16_240 }, 450)).toBe('total demand · the claim $16,240.00, open bills $14,400.00 inside it + fees and costs $450.00')
   })
 })

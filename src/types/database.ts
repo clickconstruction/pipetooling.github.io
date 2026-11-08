@@ -23037,6 +23037,194 @@ export type Database = {
           },
         ]
       }
+      legal_matter_people: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          email: string
+          id: string
+          mailing_address: string
+          matter_id: string
+          name: string
+          organization: string
+          phone: string
+          reason: string
+          removed_at: string | null
+          removed_by: string | null
+          role: string
+          seeded_from: string | null
+          updated_at: string
+          updated_by: string | null
+          use: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          email?: string
+          id?: string
+          mailing_address?: string
+          matter_id: string
+          name: string
+          organization?: string
+          phone?: string
+          reason?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          role: string
+          seeded_from?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          use?: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          email?: string
+          id?: string
+          mailing_address?: string
+          matter_id?: string
+          name?: string
+          organization?: string
+          phone?: string
+          reason?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          role?: string
+          seeded_from?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          use?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_matter_people_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_people_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_people_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_people_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_matter_proceedings: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          agency: string
+          document_ids: string[]
+          id: string
+          keep_out: boolean
+          kind: string
+          matter_id: string
+          note: string
+          person_id: string | null
+          reference: string
+          removed_at: string | null
+          removed_by: string | null
+          status: string
+          status_on: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          agency?: string
+          document_ids?: string[]
+          id?: string
+          keep_out?: boolean
+          kind: string
+          matter_id: string
+          note?: string
+          person_id?: string | null
+          reference?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          status?: string
+          status_on?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          agency?: string
+          document_ids?: string[]
+          id?: string
+          keep_out?: boolean
+          kind?: string
+          matter_id?: string
+          note?: string
+          person_id?: string | null
+          reference?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          status?: string
+          status_on?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_matter_proceedings_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_proceedings_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_proceedings_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matter_people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_proceedings_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_proceedings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legal_matters: {
         Row: {
           closed_at: string | null
@@ -28418,6 +28606,54 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_available_hours: {
+        Row: {
+          created_at: string
+          days: Json | null
+          effective_from: string
+          hours_per_week: number
+          id: string
+          note: string | null
+          set_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          days?: Json | null
+          effective_from: string
+          hours_per_week: number
+          id?: string
+          note?: string | null
+          set_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          days?: Json | null
+          effective_from?: string
+          hours_per_week?: number
+          id?: string
+          note?: string | null
+          set_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_available_hours_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_available_hours_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -40810,9 +41046,50 @@ export type Database = {
         }
         Returns: Json
       }
+      legal_matter_ensure_open: {
+        Args: {
+          p_customer_id: string
+          p_job_ids: string[]
+          p_payer_key: string
+          p_payer_name: string
+        }
+        Returns: Record<string, unknown>
+      }
       legal_matter_is_person: {
         Args: { p_matter_id: string }
         Returns: boolean
+      }
+      legal_matter_people_seed: {
+        Args: {
+          p_customer_id: string
+          p_job_ids: string[]
+          p_payer_key: string
+          p_payer_name: string
+          p_people: Json
+        }
+        Returns: Json
+      }
+      legal_matter_person_remove: {
+        Args: { p_person_id: string }
+        Returns: Json
+      }
+      legal_matter_person_save: {
+        Args: {
+          p_customer_id: string
+          p_email?: string
+          p_job_ids: string[]
+          p_mailing_address?: string
+          p_name: string
+          p_organization?: string
+          p_payer_key: string
+          p_payer_name: string
+          p_person_id: string
+          p_phone?: string
+          p_reason?: string
+          p_role: string
+          p_use?: string
+        }
+        Returns: Json
       }
       legal_matter_save_review: {
         Args: {
@@ -40911,6 +41188,30 @@ export type Database = {
       legal_portal_link_token_by_id: {
         Args: { p_link_id: string }
         Returns: string
+      }
+      legal_proceeding_remove: {
+        Args: { p_proceeding_id: string }
+        Returns: Json
+      }
+      legal_proceeding_save: {
+        Args: {
+          p_agency?: string
+          p_customer_id: string
+          p_document_ids?: string[]
+          p_job_ids: string[]
+          p_keep_out?: boolean
+          p_kind: string
+          p_note?: string
+          p_payer_key: string
+          p_payer_name: string
+          p_person_id?: string
+          p_proceeding_id: string
+          p_reference?: string
+          p_status?: string
+          p_status_on?: string
+          p_title: string
+        }
+        Returns: Json
       }
       legal_pull_back: {
         Args: { p_matter_id: string; p_note?: string }

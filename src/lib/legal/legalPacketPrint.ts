@@ -7,6 +7,8 @@
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from './legalPacket'
 import { canWeSue, whatCouldGoWrong, whatsLeftForUs } from './deskQuestions'
 import { exhibitDetails } from './exhibitDetail'
+import { agreementCountsForSuit } from './legalContractBasis'
+import { theirPaperWords } from '../jobs/theirPaper'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 import { legalRunningLedger } from './legalMoney'
@@ -29,7 +31,7 @@ function table(head: string[], rows: string[], empty: string): string {
 export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedOn: string; companyName: string; /** v2.6177 (punch list #218 PR 4): what each path nets, on the cover sheet. */ paths?: SettlementPaths }): string {
   const a = packet.account
   const shared = packet.theirWord.timeline.filter((e) => e.shared)
-  const jobsRows = a.jobs.map((j) => row([esc(j.label), esc(j.name), esc(j.address), j.agingDays == null ? '—' : `${j.agingDays}d`, j.contract.kind === 'signed' ? 'signed' : j.swornMissing.length === 0 ? 'sworn account holds' : `needs ${esc(j.swornMissing.join(', '))}`, formatLegalMoney(j.balance)], [false, false, false, true, false, true]))
+  const jobsRows = a.jobs.map((j) => row([esc(j.label), esc(j.name), esc(j.address), j.agingDays == null ? '—' : `${j.agingDays}d`, agreementCountsForSuit(j.contract) ? (j.contract.kind === 'their_paper' ? 'their paper, relied on' : 'signed') : j.swornMissing.length === 0 ? 'sworn account holds' : `needs ${esc(j.swornMissing.join(', '))}`, formatLegalMoney(j.balance)], [false, false, false, true, false, true]))
   const ledgerRows = legalRunningLedger(a.ledger).map((e) => row([esc(e.ymd ?? '—'), esc(e.jobLabel), esc(e.text), formatLegalMoney(e.amount), formatLegalMoney(e.running)], [false, false, false, true, true]))
   // Where each job stands (#41 PR 1): the rail cannot print, so each step is a row — the job on its first.
   const timelineRows = packet.paper.timelines.flatMap((t) => t.timeline.steps.map((s, i) => row([i === 0 ? `<b>${esc(t.jobLabel)}</b>` : '', i === 0 ? formatLegalMoney(t.openBalance) : '', esc(s.label), esc(s.dateWords), esc(s.state), esc(s.words)], [false, true, false, false, false, false])))
@@ -45,7 +47,7 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   })
   const agreementRows = packet.paper.agreements.map((g) => {
     const c = g.coverage
-    const text = c.kind === 'signed' ? `Signed${c.signedAt ? ` ${calendarYmdInAppTzFromIso(c.signedAt)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}` : c.kind === 'sent' ? `Sent ${calendarYmdInAppTzFromIso(c.sentAt)} · viewed ${c.viewCount}× · never signed` : 'Draft'
+    const text = c.kind === 'signed' ? `Signed${c.signedAt ? ` ${calendarYmdInAppTzFromIso(c.signedAt)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}` : c.kind === 'their_paper' ? theirPaperWords(c.record) : c.kind === 'sent' ? `Sent ${calendarYmdInAppTzFromIso(c.sentAt)} · viewed ${c.viewCount}× · never signed` : 'Draft'
     return row([esc(g.jobLabel), esc(text)])
   })
   const saidRows = shared.map((e) => row([esc(e.ymd), esc(e.kind), esc(e.jobLabel ?? ''), esc(e.text), esc(e.by ?? '—')]))

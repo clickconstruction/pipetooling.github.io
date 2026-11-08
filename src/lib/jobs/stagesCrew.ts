@@ -2,8 +2,12 @@
  * Crew names on the Pipeline (v2.3373): the Crew & Dates cell shows the people
  * still with the company and folds archived accounts into one "and N archived"
  * tail; the whole line opens the crew modal — everyone who has been on the job
- * with their hours, days and last day. Pure: rows in, names / rows out.
+ * with their hours, days and last day. Pure: rows in, names / rows out. Since v2.6694 the
+ * modal's rows know the author of the signed estimate the job came from (`jobPeople.ts`):
+ * their row carries the estimate for the E chip, and an author the office never put on the
+ * team is listed with the crew all the same, since `is_job_people` counts them.
  */
+import type { JobEstimateAuthor } from './jobPeople'
 
 export type StagesCrewMember = {
   user_id: string
@@ -88,6 +92,10 @@ export type StagesCrewRow = {
   days: number
   /** The latest work date with hours, YYYY-MM-DD; null when none. */
   lastDay: string | null
+  /** On the job's team; false for the estimate's author listed on the predicate's word alone, and for `others`. */
+  onTeam: boolean
+  /** The signed estimate this person wrote, when the job came from it (v2.6694); the E chip draws from it. */
+  estimate: JobEstimateAuthor | null
 }
 
 export type StagesCrewModel = {
@@ -126,7 +134,10 @@ function byHoursThenName(a: StagesCrewRow, b: StagesCrewRow): number {
 export function buildStagesCrewModel(args: {
   members: ReadonlyArray<StagesCrewMember> | null | undefined
   hours: ReadonlyArray<StagesCrewHours> | null | undefined
+  /** The author of the signed estimate the job came from (v2.6694); absent or null when there is none. */
+  author?: JobEstimateAuthor | null
 }): StagesCrewModel {
+  const author = args.author ?? null
   const hoursByName = new Map<string, StagesCrewHours>()
   for (const h of args.hours ?? []) hoursByName.set(nameKey(h.personName), h)
   const seen = new Set<string>()
@@ -145,8 +156,19 @@ export function buildStagesCrewModel(args: {
       role: m.users?.role ?? null,
       archivedAt: m.users?.archived_at ?? null,
       ...hoursFacts(hoursByName.get(k)),
+      onTeam: true,
+      estimate: author && author.userId === m.user_id ? author : null,
     }
     ;(row.archivedAt ? gone : live).push(row)
+  }
+  // The estimate's author off the team: one of the job's people all the same, listed with the live crew.
+  const authorName = (author?.name ?? '').trim()
+  if (author && authorName && !live.some((r) => r.estimate) && !gone.some((r) => r.estimate)) {
+    const k = nameKey(authorName)
+    if (!seen.has(k)) {
+      seen.add(k)
+      live.push({ key: `e:${author.userId}`, name: authorName, userId: author.userId, role: null, archivedAt: null, ...hoursFacts(hoursByName.get(k)), onTeam: false, estimate: author })
+    }
   }
   const others: StagesCrewRow[] = []
   for (const h of args.hours ?? []) {
@@ -156,7 +178,7 @@ export function buildStagesCrewModel(args: {
     // Under three minutes on the job is a crew-sheet rounding artefact, not a person to list.
     if (!(facts.hours > 0)) continue
     seen.add(k)
-    others.push({ key: `h:${k}`, name: h.personName.trim(), userId: null, role: null, archivedAt: null, ...facts })
+    others.push({ key: `h:${k}`, name: h.personName.trim(), userId: null, role: null, archivedAt: null, ...facts, onTeam: false, estimate: null })
   }
   live.sort(byHoursThenName)
   gone.sort(byHoursThenName)

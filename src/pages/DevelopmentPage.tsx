@@ -1475,7 +1475,7 @@ export default function DevelopmentPage() {
                 }
               />
             ) : moneyViewShown === 'timeline' ? (
-              <DevelopmentTimeline read={timelineView} phone={phone} />
+              <DevelopmentTimeline read={timelineView} phone={phone} openJob={openJob} />
             ) : (
               <DevelopmentMoney model={siteMoney} phone={phone} sort={moneySort} onSort={setMoneySortMode} isFolded={(k, d) => isFolded(moneyFolds, k, d)} onToggleFold={toggleMoneyFold} openJob={openJob} onAskForDate={(jobId) => openJob(jobId)} onLienDesk={() => navigate('/jobs?tab=stages&liendesk=1')} />
             )}
