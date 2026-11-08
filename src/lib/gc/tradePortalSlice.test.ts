@@ -58,6 +58,13 @@ const NEVER = {
   otherPaper: 'paper-THEM-SECRET',
   // Its vetting form (P5b-1): that it sent it and when, never its answers, which the office reads.
   vettingAnswer: 'VETTING-ANSWER-SECRET',
+  // Its files (punch list #205, PR 4): what each is, its name, its link and its day, never the Drive file's id, its record,
+  // its bytes or its type, nor another company's file or one on another project.
+  driveFileId: 'DRIVE-FILE-ID-SECRET',
+  fileRecord: 'FILE-RECORD-SECRET',
+  fileBytes: 31337,
+  otherFile: 'OTHER-COMPANY-FILE-SECRET',
+  otherProjectFile: 'OTHER-PROJECT-FILE-SECRET',
   // Its statement of work's lines (P2c-ii): never another company's, never a cancelled one's, never the signer's image.
   otherSowLine: 'OTHER-SOW-LINE-SECRET',
   otherSowLineAmount: 31313,
@@ -240,6 +247,11 @@ function workRows(): TradePortalRows {
       { id: NEVER.otherPaper, company_id: THEM, doc_type: 'agreement', status: 'signed', sent_at: '2026-08-01T15:00:00Z', signed_at: '2026-08-02', expires_at: null },
     ],
     vettingForm: { company_id: ME, license: NEVER.vettingAnswer, insurance: NEVER.vettingAnswer, years_in_business: 5, reference_list: NEVER.vettingAnswer, past_jobs: NEVER.vettingAnswer, sent_on: '2026-10-09' },
+    files: [
+      { id: 'f-mine', company_id: ME, project_id: 'proj-3', package_id: 'pkg-job', purpose: 'note', paper: null, record_id: NEVER.fileRecord, name: 'Dump ticket.jpg', mime: 'image/jpeg', bytes: NEVER.fileBytes, drive_file_id: NEVER.driveFileId, drive_url: 'https://drive.google.com/file/d/f-mine/view', uploaded_at: '2026-10-10T15:00:00Z', made_by: 'trade' },
+      { id: 'f-them', company_id: THEM, project_id: 'proj-3', package_id: 'pkg-job', purpose: 'change', paper: null, record_id: null, name: NEVER.otherFile, mime: 'image/jpeg', bytes: 1, drive_file_id: 'x', drive_url: 'https://drive.google.com/file/d/f-them/view', uploaded_at: '2026-10-10T15:00:00Z', made_by: 'trade' },
+      { id: 'f-elsewhere', company_id: ME, project_id: 'proj-OTHER', package_id: null, purpose: 'note', paper: null, record_id: null, name: NEVER.otherProjectFile, mime: 'image/jpeg', bytes: 1, drive_file_id: 'y', drive_url: 'https://drive.google.com/file/d/f-elsewhere/view', uploaded_at: '2026-10-10T15:00:00Z', made_by: 'trade' },
+    ],
   }
 }
 
@@ -252,7 +264,7 @@ describe('a trade never sees our price to the customer', () => {
 
   it('names only reviewed fields, never our money', () => {
     const named = Object.values(TRADE_PORTAL_FIELDS).flat()
-    for (const f of ['budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note', 'pct_done', 'days_on_chart', 'created_by', 'settled_by', 'awarded_by', 'signer_ip', 'url', 'form_values', 'signing_body_html', 'person_name', 'public_token_hash', 'signer_signature_storage_path', 'signer_user_agent', 'their_sov', 'recorded_by', 'email_send_log_id', 'asked_by_company_id', 'removed_at', 'removed_by', 'checked_by', 'reference_list', 'past_jobs', 'years_in_business']) {
+    for (const f of ['drive_file_id', 'record_id', 'bytes', 'mime', 'budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note', 'pct_done', 'days_on_chart', 'created_by', 'settled_by', 'awarded_by', 'signer_ip', 'url', 'form_values', 'signing_body_html', 'person_name', 'public_token_hash', 'signer_signature_storage_path', 'signer_user_agent', 'their_sov', 'recorded_by', 'email_send_log_id', 'asked_by_company_id', 'removed_at', 'removed_by', 'checked_by', 'reference_list', 'past_jobs', 'years_in_business']) {
       expect(named).not.toContain(f)
     }
   })
@@ -350,6 +362,12 @@ describe('its own work, and only its part of a change order (P4b-i)', () => {
 
   it('reads where its own papers stand, never their link, body or values, nor another company’s papers', () => {
     expect(slice.papers).toEqual([{ id: 'paper-msa', company_id: ME, doc_type: 'agreement', status: 'signed', sent_at: '2026-08-01T15:00:00Z', signed_at: '2026-08-02', expires_at: null }])
+  })
+
+  it('reads its own files on its own projects, never the Drive id, the record or the bytes, nor another company’s (punch list #205, PR 4)', () => {
+    const slice = tradePortalSlice(workRows(), ME)
+    expect(slice.files).toEqual([{ id: 'f-mine', project_id: 'proj-3', purpose: 'note', paper: null, name: 'Dump ticket.jpg', drive_url: 'https://drive.google.com/file/d/f-mine/view', uploaded_at: '2026-10-10T15:00:00Z', made_by: 'trade' }])
+    expect(tradePortalSlice(rows(), ME).files).toEqual([])
   })
 
   it('reads the day it sent its vetting form, never its answers, nor another company’s form (P5b-1)', () => {
