@@ -2,7 +2,7 @@
 name: "Dev MCP: put documents and past events on a Legal desk matter"
 number: 169
 group: gated
-status: proposed 2026-10-24 · rank 4 of 10 from the review of the Burd matter (job 891) · the document verbs built as v2.6004 (#6355, 2026-10-27: plan_matter_document → apply_matter_document, the file sent as content_base64) · the event verbs not built
+status: Do 2026-11-07 (proposed 2026-10-24) · rank 4 of 10 from the review of the Burd matter (job 891) · the document verbs built as v2.6004 (#6355, 2026-10-27: plan_matter_document → apply_matter_document, the file sent as content_base64) · the event verbs built as v2.6682 (2026-11-08: plan_matter_event → apply_matter_event over dev_legal_event_write, migration 20261108080000, server 0.40.0) · built, the owner's look left
 summary: >
   The dev MCP writes a matter's narrative and its planned steps but cannot add a document or
   record an event, so a Claude session filing a case has to drive the desk in a browser, and a
@@ -10,11 +10,12 @@ summary: >
   goes up through a signed upload URL and is checked before its row is written, and an event is
   the office's new entry from #167.
 next: >
-  The owner picks Do, Later or Drop on the event verbs; #167 shipped as v2.5836, so the event's kind is settled.
+  The owner's look: from a Claude session with the dev MCP, on a ZZ TEST matter, plan_matter_event with a day last week and one Evidence document, then apply; the event sits on the desk's Timeline tagged dev MCP. Then the migration push and the dev-mcp deploy (the coordinating session's).
+ver: v2.6004 · 6682
 size: S (the two event verbs and their docs; the document verbs shipped as v2.6004)
 blocker: >
-  The owner's pick.
-opinion: build — filing job 891 took a session in the browser pane plus the owner picking seven PDFs by hand
+  The owner's look at what shipped.
+opinion: built on the owner's Do of 2026-11-07; the two open decisions below were settled by v2.6004 (base64 in the call) and left as they stand (the MCP may file a document the firm already holds, as the office may)
 mockup: not required — MCP verbs; the desk already shows what they write
 ---
 

@@ -4,12 +4,14 @@
  * upgrade" — not just the final pick. Public (no JWT), token-validated exactly like
  * get-estimate-for-customer: an event is only accepted for a live `sent` estimate whose token
  * hash matches, and the option key must exist in the estimate's own options. Best-effort by
- * design — the response is 200 even when the insert fails; browsing must never break.
+ * design — the response is 200 even when the insert fails; browsing must never break. The one
+ * other answer is #281's 429, for a source past 20 wrong links in the hour (_shared/estimateLinkMisses.ts).
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { insertEstimateCustomerEvent } from '../_shared/logEstimateCustomerEvent.ts'
 import { estimateRefForTokenHash, linkHasExpired, type EstimateLookupClient } from '../_shared/estimateTokenLookup.ts'
+import { ESTIMATE_LINK_LOCKED_CODE, ESTIMATE_LINK_LOCKED_WORDS, recordEstimateLinkMiss, type EstimateMissClient } from '../_shared/estimateLinkMisses.ts'
 import { normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
 import { publicEventGate } from '../_shared/publicEventThrottle.ts'
 
@@ -53,7 +55,18 @@ serve(async (req) => {
     const tokenHash = await sha256HexFromString(raw)
     // #127: the emailed link's hash on the row, or a link shared in a message (estimate_share_links).
     const ref = await estimateRefForTokenHash(admin as unknown as EstimateLookupClient, tokenHash)
-    if (!ref) return ok()
+    if (!ref) {
+      // #281: a link that opens nothing is a miss against its source, counted with the other two functions' misses.
+      // Past 20 in the hour the source hears 429; the page only asks here after a load that opened, so no customer does.
+      const miss = await recordEstimateLinkMiss(admin as unknown as EstimateMissClient, req, 'log-estimate-option-view')
+      if (miss.locked) {
+        return new Response(JSON.stringify({ error: ESTIMATE_LINK_LOCKED_WORDS, code: ESTIMATE_LINK_LOCKED_CODE }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      return ok()
+    }
     const { data: row } = await admin
       .from('estimates')
       .select('id, status, public_token_expires_at, options_snapshot')

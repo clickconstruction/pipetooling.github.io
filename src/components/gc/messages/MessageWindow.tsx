@@ -11,7 +11,9 @@ import { PhoneSheet } from '../../PhoneSheet'
 import { Btn } from '../gcUi'
 import { MessageFiles } from './LineFiles'
 import { MessageBodyContacts, type ContactPointActs } from './MessageBodyContacts'
+import { RichMailView } from './RichMailView'
 import { bodyHtml } from '../../../lib/messages/bodyLinks'
+import { EMAIL_VIEW_WORDS, keepEmailView, readEmailView, type EmailView } from '../../../lib/messages/richMail'
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch] ?? ch)
 
@@ -25,7 +27,11 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&
  * phone (`PhoneSheet`, cut 10). Its words go through `MessageBodyContacts` over `bodyLinks.ts`'s pieces: a web address is one
  * press with a link mark and the sender's `*bold*` reads bold (v2.6508), and a phone number, an email address and a
  * street address are presses, Call ▾, Text, Email and Open the map, each leaving a line on the thread through the
- * window's `contactActs` (v2.6513); the print page draws the words through `bodyHtml`.
+ * window's `contactActs` (v2.6513); the print page draws the words through `bodyHtml`. An email whose HTML part the
+ * reader kept (`bodyHtmlPath`, v2.6675) draws two chips over the words, **Rich text · Plain** (punch list #259 PR 2,
+ * v2.6676): Rich text is `RichMailView`, the sender's layout through DOMPurify with pictures off until pressed; Plain
+ * is the view below. The choice is kept on the device (`readEmailView`), Plain until someone presses. A line with no
+ * kept HTML draws no chips. Copy, Print and Share stay the words.
  */
 export function MessageWindow({
   message,
@@ -50,6 +56,12 @@ export function MessageWindow({
   const { showToast } = useToastContext()
   const fullRef = useRef<HTMLDivElement | null>(null)
   const [selection, setSelection] = useState('')
+  const [view, setView] = useState<EmailView>(() => readEmailView())
+  const pickView = (v: EmailView) => {
+    setView(v)
+    keepEmailView(v)
+  }
+  const richPath = message.channel === 'email' ? (message.bodyHtmlPath ?? null) : null
 
   useEffect(() => {
     const read = () => {
@@ -137,9 +149,39 @@ export function MessageWindow({
             Share…
           </Btn>
         </div>
-        <div ref={fullRef} data-message-full style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', lineHeight: 1.5 }}>
-          <MessageBodyContacts body={message.body} acts={contactActs} />
-        </div>
+        {richPath && (
+          <div role="group" aria-label="Read it as" data-email-view-chips style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, padding: 2, gap: 2, justifySelf: 'start' }}>
+            {(['rich', 'plain'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => pickView(v)}
+                style={{
+                  border: 'none',
+                  borderRadius: 999,
+                  padding: '0.15rem 0.7rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  background: view === v ? 'var(--bg-blue-200)' : 'transparent',
+                  color: view === v ? 'var(--text-blue-800)' : 'var(--text-muted)',
+                }}
+              >
+                {EMAIL_VIEW_WORDS[v]}
+              </button>
+            ))}
+          </div>
+        )}
+        {richPath && view === 'rich' ? (
+          <div ref={fullRef} data-message-full data-email-view="rich" style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>
+            <RichMailView path={richPath} />
+          </div>
+        ) : (
+          <div ref={fullRef} data-message-full data-email-view={richPath ? 'plain' : undefined} style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', lineHeight: 1.5 }}>
+            <MessageBodyContacts body={message.body} acts={contactActs} />
+          </div>
+        )}
       </div>
     </PhoneSheet>
   )

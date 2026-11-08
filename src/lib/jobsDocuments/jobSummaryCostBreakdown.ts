@@ -64,6 +64,18 @@ export type JobSummaryCostBreakdownInput = {
   billedMaterialsSum: number
   invoicesFromSupplyHouses: number
   cardCharges: number
+  /**
+   * Card charges also on a supply-house invoice — the same purchase the invoice allocation
+   * counts, so the table takes them off Parts cost (v2.2692) and the print does too (v2.6670).
+   * Absent = none.
+   */
+  cardChargesLinkedToInvoices?: number
+  /**
+   * The table's cost lines under Parts cost (⛽ Fuel & gas and any tag flagged "show as cost
+   * line"), already clamped to the counted card charges (`clampCostLinesToCounted`). Drawn
+   * under the Parts cost cell and as their own lines in the Parts Cost section (v2.6670).
+   */
+  costLines?: ReadonlyArray<{ tagId: string; name: string; icon: string; usd: number }>
   totalBill: number
   profit: number
   tallyPartsForJob: TallyPartRow[]
@@ -140,14 +152,26 @@ export function buildJobSummaryCostBreakdownHtml(input: JobSummaryCostBreakdownI
   })
   const { rows: personRowsForTablePrint, unattributedCard: unattributedCardPrint } =
     partitionUnattributedFromJobSummaryPersonRows(personRowsPrint)
-  const partsCostPrint = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges
+  // The table's rule (v2.2692): a card charge also on a supply-house invoice is counted once, under the invoice.
+  const cardChargesLinkedToInvoices = Math.min(cardCharges, Math.max(0, input.cardChargesLinkedToInvoices ?? 0))
+  const cardChargesCounted = cardCharges - cardChargesLinkedToInvoices
+  const costLines = (input.costLines ?? []).filter((l) => l.usd > 0)
+  const partsCostPrint = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardChargesCounted
   const subLaborTotalPrint = subLaborJobs.reduce(
     (s, lj) => s + laborJobSubCost(lj, mileageCost, timePerMile),
     0,
   )
   const teamLaborCell = teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`
   const subLaborCell = jobSummaryPartsCostIsZero(subLaborTotalPrint) ? '—' : `$${formatCurrency(subLaborTotalPrint)}`
-  const partsCostCell = jobSummaryPartsCostIsZero(partsCostPrint) ? '—' : `$${formatCurrency(partsCostPrint)}`
+  // The cost lines under the Parts cost figure, as the table draws them: "⛽ fuel & gas $85.00", muted.
+  const costLinesUnderParts = costLines
+    .map(
+      (l) =>
+        `<div class="cost-line"><span aria-hidden="true">${escapeHtml(l.icon)}</span> ${escapeHtml(l.name.toLowerCase())} $${formatCurrency(l.usd)}</div>`,
+    )
+    .join('')
+  const partsCostCell =
+    (jobSummaryPartsCostIsZero(partsCostPrint) ? '—' : `$${formatCurrency(partsCostPrint)}`) + costLinesUnderParts
   const totalBillCell = totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`
   const profitCell = `$${formatCurrency(profit)}`
   const summaryTableHtml = `<h2 class="print-section">Summary</h2>
@@ -409,6 +433,14 @@ export function buildJobSummaryCostBreakdownHtml(input: JobSummaryCostBreakdownI
       partsHtml += `<p class="muted">${cardCharges > 0 ? 'No card allocation rows returned.' : 'No Mercury card allocations.'}</p>`
     }
   }
+  if (!jobSummaryPartsCostIsZero(cardChargesLinkedToInvoices)) {
+    partsHtml += `<p class="muted">$${formatCurrency(cardChargesLinkedToInvoices)} of the card charges is also on a supply-house invoice and is counted there, so Parts cost counts $${formatCurrency(cardChargesCounted)} of card charges.</p>`
+  }
+  // Fuel (and any other cost-line tag) as its own line, the figure the table shows under Parts cost.
+  for (const l of costLines) {
+    partsHtml += `<h3 style="font-size:1rem"><span aria-hidden="true">${escapeHtml(l.icon)}</span> ${escapeHtml(l.name)} — $${formatCurrency(l.usd)}</h3>
+<p class="muted">Card charges in this tag (the purchase's accounting label, else the bank's category). Inside Parts cost, not added to it.</p>`
+  }
 
   if (!jobSummaryPartsCostIsZero(partsFromTally) || !jobSummaryPartsCostIsZero(cardCharges)) {
     if (
@@ -452,6 +484,7 @@ h2 { font-size: 1.05rem; margin: 1rem 0 0.35rem; }
 .print-key-table { max-width: 100%; }
 .print-note { font-size: 0.85rem; margin: 0.25rem 0 0.5rem; }
 .muted { color: #6b7280; margin: 0.35rem 0; }
+.cost-line { color: #6b7280; font-size: 0.75rem; white-space: nowrap; font-weight: 400; }
 table { width: 100%; border-collapse: collapse; margin: 0.35rem 0 0.75rem; font-size: 0.8125rem; }
 th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
 th { background: #f5f5f5; }

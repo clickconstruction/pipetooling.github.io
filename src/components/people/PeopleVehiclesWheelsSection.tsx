@@ -167,7 +167,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig, onAddVehic
                   {snap.fuelTag ? ` · fuel = ${snap.fuelTag.icon} ${snap.fuelTag.name} tag` : ' · no fuel tag found — set one up in Banking → Accounting → Tags'}
                 </span>
                 {snap.unattributedCards.length > 0 ? (
-                  <span title="Card fuel with no person attributed. Click a card to name it, mark it a company card, or link it to its person — past and future purchases fill in.">
+                  <span title="Card fuel that reaches no one: nobody is attributed and the card has no holder. Click a card to name it, mark it a company card, or link it to its holder — past and future purchases fill in. A held card's fuel is its holder's, as on People → Spending and Review.">
                     {usd(snap.unattributedFuelUsd)} of fuel has no person on it:{' '}
                     {snap.unattributedCards.map((c, i) => (
                       <span key={c.cardId ?? `nocard-${i}`}>
@@ -185,7 +185,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig, onAddVehic
                   </span>
                 ) : null}
                 {snap.companyCardSpend.usd > 0 ? (
-                  <span title="Purchases on cards marked as company cards (management tools). Not fuel, not counted.">
+                  <span title="Fuel-tag purchases on cards marked as company cards (management tools) that nobody is attributed to. Not fuel, not counted; an attributed one is that person's.">
                     Not fuel: {usd(snap.companyCardSpend.usd)} on company cards ({snap.companyCardSpend.byCard.map((c) => `${c.label} ${usd(c.usd)}`).join(', ')})
                   </span>
                 ) : null}
@@ -308,7 +308,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig, onAddVehic
                 </div>
               </div>
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '72ch' }}>
-                Fuel is every card charge in the fuel tag attributed to the person (Banking → Accounting): a purchase adds and a refund comes off. Payments that were not on a card never count. Field hours are approved job sessions. A truck's fuel is its holder's fuel; insurance counts only while the truck is on a plan. Wear is the truck's latest replacement value spread over five years, for the 90 days; a truck with no value on file adds none. Fuel stays on the jobs it was put on: Review's vehicle line charges the fixed rate per field hour plus the person's fuel on no job, and Crew P&L charges the fixed rate on each person's field hours.
+                Fuel is every card charge in the fuel tag that is the person's, by the rule People → Spending and Review use: attributed to them in Banking → Accounting, else on a card they hold. A purchase adds and a refund comes off. Payments that were not on a card never count. Field hours are approved job sessions. A truck's fuel is its holder's fuel; insurance counts only while the truck is on a plan. Wear is the truck's latest replacement value spread over five years, for the 90 days; a truck with no value on file adds none. Fuel stays on the jobs it was put on: Review's vehicle line charges the fixed rate per field hour plus the person's fuel on no job, and Crew P&L charges the fixed rate on each person's field hours.
               </p>
             </>
           ) : null}

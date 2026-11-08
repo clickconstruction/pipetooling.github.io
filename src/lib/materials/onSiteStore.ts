@@ -5,15 +5,19 @@
  * `loadJob` fills a job and `loadDesk` every job with a live container. A write lands in the cache at
  * once and goes to the table behind it; when the table refuses, the error handler hears why and the
  * job is read again, so the screen shows the truth. The ledger is append-only: a movement is never
- * edited. Prices typed off an invoice are remembered on this device until the parts book's prices
- * are wired (`priceOf`, `rememberPrice`).
+ * edited. A line's money reads the parts book's price with its checked day (`priceFor`, the rule in
+ * `bookPrice.ts`), read beside each job's ledger; a price typed off an invoice is remembered on this
+ * device (`rememberPrice`) and stands in where the book's price is older than 90 days or missing.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { UNSORTED_LABEL, type Container, type ContainerKind, type ContainerMove, type Movement, type MovementReason, type Place } from './onSite'
 import { boxCode } from './labels'
 import type { PhotoNote, PhotoStatus } from './photo'
+import { loadPartPriceRows } from './partPrices'
+import { bookPartIds, bookPriceRow, priceLookup, type BookPriceRow, type PricePick } from './bookPrice'
 
 // The tables are younger than the generated types; the next types PR removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -138,6 +142,7 @@ export function loadJob(jobId: string, opts: { force?: boolean } = {}): Promise<
       c.photos = ((photos.data ?? []) as PhotoRow[]).map(photoOf)
       c.moves = ((moves.data ?? []) as MoveRow[]).map((r) => moveOf(r, jobId))
       c.loadedAt = Date.now()
+      void loadBookPrices(bookPartIds(c.movements))
     } catch (e) {
       c.error = formatErrorMessage(e, 'The boxes on this job did not load.')
       c.raw = e
@@ -371,6 +376,7 @@ export function addMovement(input: AddMovementInput): Movement {
   }
   c.movements = [...c.movements, m]
   bump()
+  if (m.partId) void loadBookPrices([m.partId])
   afterWrite(input.jobId, `${m.quantity} ${m.partName}`, db.from('job_material_movements').insert({ id: m.id, job_id: m.jobId, part_id: m.partId, part_name: m.partName, manufacturer: m.manufacturer, quantity: m.quantity, reason: m.reason, from_container_id: m.fromContainerId, to_container_id: m.toContainerId, note: m.note, source: m.source, by_user_id: m.byUserId, by_name: m.byName, at: m.at }))
   return m
 }
@@ -399,8 +405,51 @@ export function updatePhoto(id: string, patch: Partial<Pick<PhotoNote, 'status' 
 }
 
 // ---------------------------------------------------------------------------
-// Prices remembered on this device (an invoice's unit price by part key) until the parts book is wired.
+// Prices: the parts book's rows for the parts a ledger names (read once per part, beside the job's
+// load), and the invoice prices remembered on this device by part key. `priceFor` is the one rule.
 // ---------------------------------------------------------------------------
+
+const bookPrices = new Map<string, BookPriceRow[]>()
+const bookPricesAsked = new Set<string>()
+let bookPricesError: string | null = null
+let bookPricesLoading = 0
+
+/** How the parts book's read stands: the reason when a read failed (the money then reads the invoice prices alone), and whether one is running. */
+export function bookPricesState(): { error: string | null; loading: boolean } {
+  return { error: bookPricesError, loading: bookPricesLoading > 0 }
+}
+
+/** The parts book's prices for these parts, the ones not read yet; a failed read is said and asked again on the next call with the same parts. */
+export async function loadBookPrices(partIds: ReadonlyArray<string>): Promise<void> {
+  const ids = partIds.filter((id) => id && !bookPricesAsked.has(id))
+  if (ids.length === 0) return
+  for (const id of ids) bookPricesAsked.add(id)
+  bookPricesLoading += 1
+  try {
+    const rows = await loadPartPriceRows<{ part_id: string; price: number; effective_date: string | null; updated_at: string | null; supply_houses: { name: string } | null }>(supabase, ids, 'part_id, price, effective_date, updated_at, supply_houses(name)', { label: 'read the parts book’s prices', retry: true })
+    for (const id of ids) bookPrices.set(id, [])
+    for (const r of rows) bookPrices.get(r.part_id)?.push(bookPriceRow(r))
+    bookPricesError = null
+  } catch (e) {
+    for (const id of ids) bookPricesAsked.delete(id)
+    bookPricesError = formatErrorMessage(e, 'The parts book’s prices did not load.')
+  } finally {
+    bookPricesLoading -= 1
+    bump()
+  }
+}
+
+/** Read the parts book again for every part the loaded ledgers name, after a failed read. */
+export function retryBookPrices(): Promise<void> {
+  const ids = new Set<string>()
+  for (const c of jobs.values()) for (const id of bookPartIds(c.movements)) if (!bookPrices.has(id)) ids.add(id)
+  return loadBookPrices([...ids])
+}
+
+/** The price a line's money reads, with where it came from and when it was checked; null when nothing is known. */
+export function priceFor(key: string): PricePick | null {
+  return priceLookup((id) => bookPrices.get(id) ?? [], (k) => readPrices()[k] ?? null, todayYmdInAppTz())(key)
+}
 
 let prices: Record<string, number> | null = null
 function readPrices(): Record<string, number> {
@@ -413,10 +462,12 @@ function readPrices(): Record<string, number> {
   return prices
 }
 
+/** The number alone, for the sums (`officeFlow`, `manifestComparison`, `jobMaterialsSummary`). */
 export function priceOf(key: string): number | null {
-  return readPrices()[key] ?? null
+  return priceFor(key)?.price ?? null
 }
 
+/** An invoice's unit price for a part key, kept on this device: the fallback past the book's 90 days, and the only price a typed name has. */
 export function rememberPrice(key: string, price: number): void {
   const next = { ...readPrices(), [key]: price }
   prices = next

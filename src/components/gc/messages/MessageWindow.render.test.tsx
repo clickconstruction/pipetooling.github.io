@@ -6,6 +6,9 @@ import { lineFilesFromRows, type MessageAttachmentRow } from '../../../lib/messa
 import type { OwnLinkState } from '../../../lib/messages/sentLineFiles'
 import { MessageWindow } from './MessageWindow'
 import { renderWithProviders } from '../../../test/renderSmokeMocks'
+import { loadRichMail } from '../../../lib/messages/richMailIo'
+import { recoveryFailureFromError } from '../../../lib/offlineRecoveryState'
+import { EMAIL_VIEW_KEY } from '../../../lib/messages/richMail'
 import { openHtmlPrintWindow } from '../../../lib/jobsDocuments/printWindow'
 import { runJobShare } from '../../../lib/jobShare'
 import { contactById } from '../../../lib/contacts/kernel'
@@ -17,6 +20,16 @@ vi.mock('../../../lib/jobsDocuments/printWindow', () => ({ openHtmlPrintWindow: 
 vi.mock('../../../lib/jobShare', () => ({ runJobShare: vi.fn(() => Promise.resolve('copied')) }))
 // The job's tick under Attachments (cut 10) reads its own row; PhotoSaveTick.render.test covers it.
 vi.mock('../../../lib/photos/photoSavesIo', () => ({ loadPhotoSave: vi.fn(() => Promise.resolve(null)), setPhotoSave: vi.fn() }))
+// The rich view's read (#259) is a bucket download; the tests hand it the HTML. The retry panel reads the signed-in user.
+vi.mock('../../../lib/messages/richMailIo', () => ({ loadRichMail: vi.fn() }))
+vi.mock('../../../lib/supabase', async () => {
+  const { makeSupabaseStub } = await import('../../../test/renderSmokeMocks')
+  return { supabase: makeSupabaseStub() }
+})
+vi.mock('../../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../../test/renderSmokeMocks')
+  return useAuthModuleMock()
+})
 
 const view = spineMessagesView()
 const greg = contactById(view.contacts, 'c-greg')!
@@ -285,5 +298,89 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     fireEvent.click(within(win).getByRole('button', { name: 'Close' }))
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(3)
+  })
+})
+
+/** An invitation as a mail client writes it: a table, a linked word, a logo, a tracking pixel, a script. */
+const RICH_HTML = '<html><body><table width="600"><tr><td style="padding:4px">Scope</td><td>Plumbing</td></tr></table><p>See the <a href="https://plans.example/set" target="_self">plans</a>.</p><img src="https://sender.example/logo.png" width="200" height="60" alt="Sender logo"><img src="https://track.example/o.gif" width="1" height="1"><script>alert(1)</script></body></html>'
+
+describe('MessageWindow: Rich text · Plain over an email the reader kept the HTML of (#259, v2.6676)', () => {
+  const richLine = (): ThreadMessage => ({ ...line('m-greg-email-in'), bodyHtmlPath: 'm-greg-email-in/body.html' })
+  const chips = () => screen.getByRole('group', { name: 'Read it as' })
+  afterEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    cleanup()
+  })
+
+  it('draws no chips on a line with no kept HTML, and the plain words as before', () => {
+    renderWithProviders(<MessageWindow message={line('m-greg-email-in')} contact={greg} tile={undefined} onClose={vi.fn()} />)
+    expect(screen.queryByRole('group', { name: 'Read it as' })).toBeNull()
+    const full = document.querySelector('[data-message-full]') as HTMLElement
+    expect(full.getAttribute('data-email-view')).toBeNull()
+    expect(full.textContent).toBe(line('m-greg-email-in').body)
+    expect(loadRichMail).not.toHaveBeenCalled()
+  })
+
+  it('opens on Plain with the chips over the words, reads nothing from the bucket until Rich text is pressed', () => {
+    renderWithProviders(<MessageWindow message={richLine()} contact={greg} tile={undefined} onClose={vi.fn()} />)
+    const group = chips()
+    expect([...group.querySelectorAll('button')].map((b) => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([
+      ['Rich text', 'false'],
+      ['Plain', 'true'],
+    ])
+    const full = document.querySelector('[data-message-full]') as HTMLElement
+    expect(full.getAttribute('data-email-view')).toBe('plain')
+    expect(full.textContent).toBe(richLine().body)
+    expect(loadRichMail).not.toHaveBeenCalled()
+  })
+
+  it('Rich text reads the kept HTML, draws it cleaned with pictures off, Show pictures turns them on, and the choice is kept', async () => {
+    vi.mocked(loadRichMail).mockResolvedValue({ ok: true, html: RICH_HTML })
+    renderWithProviders(<MessageWindow message={richLine()} contact={greg} tile={undefined} onClose={vi.fn()} />)
+    fireEvent.click(within(chips()).getByRole('button', { name: 'Rich text' }))
+    expect(loadRichMail).toHaveBeenCalledWith('m-greg-email-in/body.html')
+    expect(localStorage.getItem(EMAIL_VIEW_KEY)).toBe('rich')
+    const paper = await screen.findByText('Scope')
+    const rich = paper.closest('[data-rich-mail]') as HTMLElement
+    expect(rich.getAttribute('data-pictures')).toBe('off')
+    expect(rich.closest('[data-theme="light"]')).toBeTruthy()
+    // The table stands, the script is gone, the link opens in a new tab, the pixel is gone, the logo is off.
+    expect(rich.querySelector('table')!.getAttribute('width')).toBe('600')
+    expect(rich.querySelector('script')).toBeNull()
+    expect(rich.textContent).not.toContain('alert')
+    const a = rich.querySelector('a')!
+    expect(a.getAttribute('href')).toBe('https://plans.example/set')
+    expect(a.getAttribute('target')).toBe('_blank')
+    expect(a.getAttribute('rel')).toBe('noopener noreferrer')
+    const imgs = rich.querySelectorAll('img')
+    expect(imgs.length).toBe(1)
+    expect(imgs[0]!.hasAttribute('src')).toBe(false)
+    expect(imgs[0]!.getAttribute('alt')).toBe('Sender logo')
+    expect(screen.getByText('1 picture is off.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show pictures' }))
+    await waitFor(() => expect((document.querySelector('[data-rich-mail] img') as HTMLElement).getAttribute('src')).toBe('https://sender.example/logo.png'))
+    expect(screen.queryByRole('button', { name: 'Show pictures' })).toBeNull()
+    expect((document.querySelector('[data-rich-mail]') as HTMLElement).getAttribute('data-pictures')).toBe('on')
+    expect(document.querySelector('[data-rich-mail]')!.innerHTML).not.toContain('track.example')
+    // Copy still carries the plain words.
+    const write = vi.fn(() => Promise.resolve())
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: write }, configurable: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+    expect(write).toHaveBeenCalledWith(richLine().body)
+    // Plain goes back to the words and keeps that too.
+    fireEvent.click(within(chips()).getByRole('button', { name: 'Plain' }))
+    expect((document.querySelector('[data-message-full]') as HTMLElement).textContent).toBe(richLine().body)
+    expect(localStorage.getItem(EMAIL_VIEW_KEY)).toBe('plain')
+  })
+
+  it('opens on Rich text when the device kept it, and a read that fails draws its reason', async () => {
+    localStorage.setItem(EMAIL_VIEW_KEY, 'rich')
+    vi.mocked(loadRichMail).mockResolvedValue({ ok: false, failure: recoveryFailureFromError(new Error('The bucket said no.'), 'The sender’s layout could not be read.') })
+    renderWithProviders(<MessageWindow message={richLine()} contact={greg} tile={undefined} onClose={vi.fn()} />)
+    expect(within(chips()).getByRole('button', { name: 'Rich text' }).getAttribute('aria-pressed')).toBe('true')
+    expect(loadRichMail).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText('The bucket said no.')).toBeTruthy()
+    expect(document.querySelector('[data-rich-mail]')).toBeNull()
   })
 })

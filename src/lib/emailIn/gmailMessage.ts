@@ -4,7 +4,8 @@
  * an email: its addresses, its subject, its words, the links in it and its files. Pure: the `gmail-sync` edge function
  * fetches the message and passes it here.
  *
- * The words are the plain part when there is one, else the HTML part read as text. A file is any part with a file name,
+ * The words are the plain part when there is one, else the HTML part read as text; the HTML part itself rides along as
+ * `html` (punch list #259) for the reader to keep as `<line id>/body.html`. A file is any part with a file name,
  * or one sent as an attachment, or a picture placed in the body (a signature's logo); its bytes stay in Gmail until the
  * reader fetches them by `attachmentId`.
  */
@@ -69,6 +70,11 @@ export interface EmailIn {
   cc: EmailAddress[]
   subject: string
   text: string
+  /**
+   * The HTML part as it came, for the reader to keep beside the line (punch list #259, v2.6675): the sender's layout, a
+   * table of scope, a linked word. Null when the mail has no HTML part, or when it is longer than `EMAIL_HTML_MAX`.
+   */
+  html: string | null
   /** Every http(s) link in the words or behind the HTML's links, once each, in order. */
   links: string[]
   files: EmailFile[]
@@ -78,6 +84,18 @@ export interface EmailIn {
 
 /** The most words a line keeps: the rest of a very long email stays in Gmail. */
 export const EMAIL_TEXT_MAX = 100_000
+
+/**
+ * The longest HTML part the reader keeps, in characters: a mail's layout runs 20 to 200 KB, and a part past this is a
+ * newsletter's whole page or an attachment written inline. Such a mail keeps its words alone and draws no Rich text.
+ */
+export const EMAIL_HTML_MAX = 2_000_000
+
+/** The HTML part the reader keeps: the mail's HTML parts as they came, one after the other; null when there is none or it is too long. */
+export function htmlPart(parts: readonly string[]): string | null {
+  const html = parts.join('\n').trim()
+  return html.length > 0 && html.length <= EMAIL_HTML_MAX ? html : null
+}
 
 const headerMap = (headers: readonly GmailHeader[] | undefined): Record<string, string> => {
   const out: Record<string, string> = {}
@@ -280,6 +298,7 @@ export function readGmailMessage(m: GmailMessage): EmailIn {
     cc: parseAddressList(headers['cc']),
     subject: decodeHeaderWords(headers['subject'] ?? '').trim(),
     text: text.length > EMAIL_TEXT_MAX ? `${text.slice(0, EMAIL_TEXT_MAX)}\n\n[The rest of this email is in Gmail.]` : text,
+    html: htmlPart(html),
     links,
     files,
     headers,

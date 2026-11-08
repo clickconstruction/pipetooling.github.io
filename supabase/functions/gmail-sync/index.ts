@@ -37,6 +37,9 @@
  * - Each file up to 25 MB is copied into the private `message-attachments` bucket. A bigger one, or one that would
  *   not copy, stays in Gmail. A file host's link stays a link. A trade partner's W-9 or certificate is guessed for the
  *   thread's offer (`emailLine.ts`).
+ * - The mail's HTML part is kept as it came at `<line id>/body.html` in the same bucket once the line is written, and
+ *   `messages.body_html_path` names it (punch list #259, v2.6675), so the message window can draw Rich text. Best
+ *   effort: a part that will not keep leaves the line plain. The words stay the text they were.
  * - The point moves only past records taken whole (`historyWalk.ts`): a message that fails stops the run, keeps the point
  *   at the last record taken whole and writes `last_error`, and the next run starts there; what was taken is passed
  *   over by its label. The run's health is on `gmail_sync_state` (`last_run_at`, `last_ok_at`, `last_error`,
@@ -329,6 +332,26 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
   return took
 }
 
+/** Where a line's HTML part is kept in the bucket: by the line's id, never the Gmail id, since the viewer reads it from the line. */
+const bodyHtmlPath = (lineId: string): string => `${lineId}/body.html`
+
+/**
+ * The mail's HTML part into the bucket at `<line id>/body.html`, then the path onto the line (`messages.body_html_path`,
+ * `20261108020000_messages_body_html_path.sql`). Either step failing is a warning and no marker: the line stands plain,
+ * as every line did before v2.6675, and the run goes on.
+ */
+async function keepHtml(ctx: Ctx, gmailId: string, lineId: string, html: string): Promise<void> {
+  const path = bodyHtmlPath(lineId)
+  try {
+    const up = await ctx.admin.storage.from(BUCKET).upload(path, new TextEncoder().encode(html), { contentType: 'text/html; charset=utf-8', upsert: true })
+    if (up.error) throw new Error(up.error.message)
+    const marked = await ctx.admin.from('messages').update({ body_html_path: path }).eq('id', lineId)
+    if (marked.error) throw new Error(marked.error.message)
+  } catch (e) {
+    console.warn('gmail-sync: the HTML part was not kept', gmailId, lineId, e instanceof Error ? e.message : e)
+  }
+}
+
 /** One message: read, placed, tied, its files copied, written once, then labelled. */
 async function takeMail(ctx: Ctx, id: string, putBack: boolean): Promise<Took> {
   let m
@@ -442,7 +465,12 @@ async function takeMail(ctx: Ctx, id: string, putBack: boolean): Promise<Took> {
   // and the next run's write is a repeat.
   const wrote = await ctx.admin.rpc('email_write_line', { p_gmail_id: email.gmailId, p_row: row, p_files: files, p_note: note })
   if (wrote.error) throw new Error(`Writing ${email.gmailId} failed: ${wrote.error.message}`)
-  const written = (wrote.data as { written: boolean }[] | null)?.[0]?.written !== false
+  const answer = (wrote.data as { written: boolean; id: string | null }[] | null)?.[0]
+  const written = answer?.written !== false
+  // The HTML part, kept beside the line once it is written (punch list #259, v2.6675): the sender's layout for the
+  // message window's Rich text. Best effort after the write, so a bucket that refuses never loses the line; the mail
+  // came whole with the message, so a bare take (v2.6667) keeps it too.
+  if (written && answer?.id && email.html) await keepHtml(ctx, email.gmailId, answer.id, email.html)
   // The rule's estimator holds a Bid it? row (the card's call 6, v2.6222): the trade seat, when nobody has the thread
   // yet. Written as the rule's own hold, so a person can still take it or hand it on.
   if (written && invite && ctx.seats.trade) {

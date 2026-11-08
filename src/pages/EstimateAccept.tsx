@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
-import { useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import EstimateAcceptBody, { type EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
@@ -61,7 +61,9 @@ function PublicEstimateShell({ children }: { children: ReactNode }) {
 
 export default function EstimateAccept() {
   const [params] = useSearchParams()
-  const token = params.get('t')?.trim() ?? ''
+  // The token: `?t=` on /estimate/accept, or the code in the path on /e/:code (v2.6678, #281's short link).
+  const { code: pathCode } = useParams<{ code: string }>()
+  const token = (params.get('t') ?? pathCode ?? '').trim()
   // v2.2873 (journey-map #34/#37): the office's Open customer link appends ?preview=1 so its
   // own look is not stamped as a customer open; a signed-in staff session counts the same way.
   const previewParam = isEstimateViewStaffPreview(params, false)

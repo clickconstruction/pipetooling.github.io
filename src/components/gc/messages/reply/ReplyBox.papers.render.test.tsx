@@ -76,7 +76,10 @@ const fakeIo = (): ReplyIo => ({
 
 function draw(over: { job?: boolean | { key: string; name: string }; contact?: Contact; lines?: QuickReply[]; share?: EstimateLinkIo['share'] } = {}) {
   const papersIo: PapersIo = { load: vi.fn(() => Promise.resolve(PAPERS)) }
-  const estimateLinkIo: EstimateLinkIo = { share: vi.fn(over.share ?? ((id: string) => Promise.resolve(`https://clicktooling.com/estimate/accept?t=new-${id}`))) }
+  const estimateLinkIo: EstimateLinkIo = {
+    share: vi.fn(over.share ?? ((id: string) => Promise.resolve(`https://clicktooling.com/estimate/accept?t=new-${id}`))),
+    shareToken: vi.fn((id: string) => Promise.resolve(`new-${id}`)),
+  }
   const quickIo = fakeQuick()
   if (over.lines) quickIo.loadLines = vi.fn(() => Promise.resolve(over.lines!))
   renderWithProviders(
