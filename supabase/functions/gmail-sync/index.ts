@@ -45,9 +45,14 @@
  *   only when a label press answers that Gmail no longer has the id (someone took the label off the box). Before, every
  *   run opened with `/labels`.
  * - A box whose last run stopped on Gmail's 429 (*User-rate limit exceeded. Retry after …*) is held (v2.6649,
- *   `readerHold`): the run writes nothing and asks Gmail nothing until Google's own time has passed, since every request
- *   inside the window moved the time forward and a minute's cron never got out (bids@, 2026-11-06 20:44Z, twenty hours).
- *   The other box reads as before.
+ *   `readerHold`): the run writes nothing and asks Gmail nothing until Google's own time has passed. The other box reads
+ *   as before.
+ * - A mail whose files killed the run is taken once more without them (v2.6667, `copyStop`). Before a run fetches a
+ *   mail's files it writes the mail's id in `last_error`. A worker that runs out of memory writes nothing on its way out,
+ *   so the words stay; the next run waits out the dead run's lifetime, then takes that mail with its files left in Gmail.
+ *   Before, the next run fetched the same file again, every minute: from 2026-11-06 20:45Z a bid mail to bids@
+ *   (1a1b29b453e52e9b) killed about 190 runs in a row, and the fetches spent bids@'s Gmail download limit, so every
+ *   call as bids@ answered 429 from 00:21Z on 11-07. File bytes are decoded a slice at a time (`base64UrlBytes`).
  *
  *
  * Two boxes since R6's reader (v2.5494, `src/lib/emailIn/readerBoxes.ts`): bids@ as above, and the team box once
@@ -78,6 +83,7 @@ import { loadWalkKit } from '../_shared/walkKit.ts'
 import { readForwarded } from '../_shared/gcKernels/lib/emailIn/forwarded.ts'
 import { walkHistory, type HistoryWalk, type Took } from '../_shared/gcKernels/lib/emailIn/historyWalk.ts'
 import { readerHold } from '../_shared/gcKernels/lib/emailIn/readerHold.ts'
+import { copyMarkWords, copyStop, fetchBytes, keepMark, markOf } from '../_shared/gcKernels/lib/emailIn/copyStop.ts'
 import { base64UrlBytes, parseAddress, readGmailMessage, type EmailIn } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
 import { jobInSubject } from '../_shared/gcKernels/lib/emailIn/jobInSubject.ts'
 import { bulkByBody, leftOut, outsideInbox } from '../_shared/gcKernels/lib/emailIn/leftOut.ts'
@@ -132,6 +138,13 @@ interface Ctx {
   seats: AssignRuleSeats
   /** The bids we are pricing (v2.6231): a subject that names one lands the line on it. */
   liveBids: readonly LiveBid[]
+  /**
+   * The mail the run before died copying (v2.6667, `copyStop`): taken with its files left in Gmail, and null once
+   * taken. `mark` is the row's words for it, carried into this run's own words until then.
+   */
+  bare: { gmailId: string; mark: string | null } | null
+  /** This run's mark for the mail it is on, cleared once that mail is through: a run that throws on it keeps it. */
+  onMark: string | null
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -304,8 +317,20 @@ async function putLabel(ctx: Ctx, messageId: string): Promise<void> {
   }
 }
 
-/** One message: read, placed, tied, its files copied, written once, then labelled. */
+/**
+ * One message, and the guard's bookkeeping (v2.6667): once a message is through, whatever became of it, the run before's
+ * marked mail is done with and this run's own mark is cleared. A message that throws keeps both, so the next run never
+ * fetches its files again.
+ */
 async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
+  const took = await takeMail(ctx, id, putBack)
+  if (ctx.bare?.gmailId === id) ctx.bare = null
+  ctx.onMark = null
+  return took
+}
+
+/** One message: read, placed, tied, its files copied, written once, then labelled. */
+async function takeMail(ctx: Ctx, id: string, putBack: boolean): Promise<Took> {
   let m
   try {
     m = await gmailMessage(ctx.token, id)
@@ -356,8 +381,17 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
   const invite = line.direction === 'in' ? invitation({ subject: line.subject ?? '', text: line.body, links: email.links, at: line.at ?? email.at ?? nowIso() }) : null
   const jobKey = await jobFor(ctx, contactId, line.subject ?? '', starTakes(invite))
 
+  const fileRows = emailFileRows(email, placed.data.placed_kind as string)
+  // The mail the run before died on (v2.6667): no file is fetched, each stays in Gmail. Any other mail with files to
+  // fetch is written down first, so a worker that dies on them leaves its mail's id on the row for the next run.
+  const bare = ctx.bare?.gmailId === email.gmailId
+  const fetch = fetchBytes(fileRows)
+  if (!bare && fetch.files > 0) {
+    ctx.onMark = copyMarkWords(email.gmailId, fetch.bytes)
+    await saveState(ctx.admin, ctx.box, { last_error: ctx.onMark })
+  }
   const files: Record<string, unknown>[] = []
-  for (const f of emailFileRows(email, placed.data.placed_kind as string)) {
+  for (const f of fileRows) {
     if (f.kind === 'link') {
       files.push({ kind: 'link', name: f.name, url: f.url, host: f.host })
       continue
@@ -365,6 +399,10 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
     const base = { kind: 'file', name: f.name, mime: f.mime, size_bytes: f.size, gmail_attachment_id: f.attachmentId, paper: f.paper }
     if (f.keep === 'tooBig') {
       files.push({ ...base, left_in_gmail: 'too_big' })
+      continue
+    }
+    if (bare) {
+      files.push({ ...base, left_in_gmail: 'not_copied' })
       continue
     }
     const path = `${email.gmailId}/${f.partId || files.length}-${safeName(f.name)}`
@@ -417,6 +455,12 @@ async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
 
 /** One box's run: its token, its row, its label, and its walk. A failure here is this box's alone. */
 async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, prefixes: LedgerPrefixMap, notices: readonly LeftOutSenderRow[], seats: AssignRuleSeats, liveBids: readonly LiveBid[]): Promise<Record<string, unknown>> {
+  // The marked mail not yet taken (v2.6667): its mark rides on whatever words this run saves, so a run stopped before
+  // it reached that mail (a 429, a page that failed) never lets the next run fetch its files again.
+  let pending: Ctx['bare'] = null
+  const ctxRef: { ctx: Ctx | null } = { ctx: null }
+  const stillMarked = () => (ctxRef.ctx ? ctxRef.ctx.bare : pending)
+  const withMark = (words: string) => keepMark(ctxRef.ctx?.onMark ?? stillMarked()?.mark ?? null, words)
   try {
     const { data: state, error } = await admin.from('gmail_sync_state').select('history_id, label_id, last_error, updated_at').eq('mailbox', b.mailbox).maybeSingle()
     if (error) throw new Error(`Reading the ${b.mailbox} reader's state failed: ${error.message}`)
@@ -424,6 +468,10 @@ async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, pr
     // The row keeps the 429's words and its time, which Settings' health line reads as before.
     const until = readerHold(state, nowIso())
     if (until) return { ok: true, held: true, until }
+    // The run before died copying a mail's files (v2.6667): wait while it may still be at work, then take that mail bare.
+    const stop = copyStop(state, nowIso())
+    if (stop.kind === 'wait') return { ok: true, held: true, until: stop.until, copying: stop.gmailId }
+    pending = stop.kind === 'bare' ? { gmailId: stop.gmailId, mark: markOf(state?.last_error) } : null
     await saveState(admin, b.mailbox, { last_run_at: nowIso() })
     const token = await googleServiceToken(saJson, GMAIL_SCOPES, b.address)
     // The label by the id the row keeps (v2.6649); found by its name, and made when the box has none, only when the row
@@ -437,7 +485,8 @@ async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, pr
       return { ok: true, started: true }
     }
 
-    const ctx: Ctx = { admin, token, labelId, box: b.mailbox, mailbox: b.words, ...team, prefixes, isNotice: leftOutSenders(notices, b.mailbox), seats, liveBids }
+    const ctx: Ctx = { admin, token, labelId, box: b.mailbox, mailbox: b.words, ...team, prefixes, isNotice: leftOutSenders(notices, b.mailbox), seats, liveBids, bare: pending, onMark: null }
+    ctxRef.ctx = ctx
     // The notices put back (v2.6231): each taken after all, then stamped, so a mail long gone is never asked for again.
     try {
       const backs = await rows<{ id: string; gmail_id: string }>(admin.from('email_set_aside').select('id, gmail_id').eq('mailbox', b.mailbox).not('put_back_at', 'is', null).is('taken_at', null).limit(20), 'the notices put back')
@@ -463,14 +512,15 @@ async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, pr
     if (walk.error) {
       // A message failed: keep the point at the last record taken whole, and say why. The next run starts there.
       const message = walk.error instanceof Error ? walk.error.message : String(walk.error)
-      await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: ctx.labelId, last_error: message.slice(0, 1000), last_taken: walk.counts.taken })
+      await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: ctx.labelId, last_error: withMark(message).slice(0, 1000), last_taken: walk.counts.taken })
       throw walk.error
     }
-    await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: ctx.labelId, last_ok_at: nowIso(), last_error: null, last_taken: walk.counts.taken })
-    return { ok: true, full: walk.full, ...walk.counts }
+    // A run that ends well clears the words, a mark among them, unless the marked mail is still ahead (a full run).
+    await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: ctx.labelId, last_ok_at: nowIso(), last_error: ctx.bare?.mark ?? null, last_taken: walk.counts.taken })
+    return { ok: true, full: walk.full, ...walk.counts, ...(ctx.bare ? { bareAhead: ctx.bare.gmailId } : {}) }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
-    await saveState(admin, b.mailbox, { last_error: message.slice(0, 1000) }).catch(() => undefined)
+    await saveState(admin, b.mailbox, { last_error: withMark(message).slice(0, 1000) }).catch(() => undefined)
     throw e
   }
 }

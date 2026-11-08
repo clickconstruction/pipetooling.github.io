@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { base64UrlBytes, decodeHeaderWords, EMAIL_TEXT_MAX, htmlToText, parseAddress, parseAddressList, readGmailMessage, type GmailPart } from './gmailMessage'
+import { BASE64_SLICE, base64UrlBytes, decodeHeaderWords, EMAIL_TEXT_MAX, htmlToText, parseAddress, parseAddressList, readGmailMessage, type GmailPart } from './gmailMessage'
 
 /** Text as Gmail sends a part's bytes: base64url of its UTF-8, or of the bytes given. */
 const b64url = (text: string | Uint8Array): string => {
@@ -120,5 +120,34 @@ describe('addresses and header words', () => {
   it('reads entities and drops what is not words', () => {
     expect(htmlToText('<!-- x --><script>bad()</script>A&#39;s &#x2014; B')).toBe("A's — B")
     expect(base64UrlBytes('%%%')).toEqual(new Uint8Array(0))
+  })
+})
+
+describe('base64UrlBytes: a slice at a time (v2.6667)', () => {
+  const bytes = Uint8Array.from({ length: 1000 }, (_, i) => (i * 37 + 11) % 256)
+  const b64 = btoa(String.fromCharCode(...bytes))
+  const url = b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+
+  it('reads the same bytes whatever the slice, with padding or without', () => {
+    for (const slice of [4, 7, 12, 64, 999, BASE64_SLICE]) {
+      expect(base64UrlBytes(url, slice)).toEqual(bytes)
+      expect(base64UrlBytes(b64, slice)).toEqual(bytes)
+    }
+  })
+
+  it('reads every length to its last byte, the one Gmail cuts its padding from', () => {
+    for (const len of [0, 1, 2, 3, 4, 5]) {
+      const some = bytes.slice(0, len)
+      const words = btoa(String.fromCharCode(...some)).replace(/=+$/, '')
+      expect(base64UrlBytes(words, 4)).toEqual(some)
+    }
+  })
+
+  it('reads base64 broken over lines', () => {
+    expect(base64UrlBytes(url.replace(/(.{76})/g, '$1\r\n'), 8)).toEqual(bytes)
+  })
+
+  it('reads malformed words in any slice as no bytes', () => {
+    expect(base64UrlBytes(`${url.slice(0, 40)}%%%%${url.slice(44)}`, 8)).toEqual(new Uint8Array(0))
   })
 })
