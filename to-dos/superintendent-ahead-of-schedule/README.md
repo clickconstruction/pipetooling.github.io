@@ -360,9 +360,10 @@ and 4), and its stop *Ready to start PLUM 1113 | ZZ Test Walk Project* (slip 10,
 their tests (no assumed lines and no row-less bid among the rows). Slip 8 was read with the company rate cleared off
 BP398's Labor tab and the rate put back after. Slip 9 did not reproduce: from the Bid window's Job block, *Create another
 job* (the same door as *Open the job* on a bid with no job) opened New Job over the Bid window with the already-exists
-confirm and the carry question, Cancel closed New Job alone, and nothing closed the Bid window; it stays below for the
-owner to show again on a bid with no job. Nothing was created or deleted; the nine fixes are struck below with their
-version.
+confirm and the carry question, Cancel closed New Job alone, and nothing closed the Bid window; on a ZZ Test bid made for the check (BP590,
+marked Won, no job, deleted after) *Open the job* itself opened New Job over the Bid window, which stayed. It stays
+below for the owner to show again on the deployed site. Nothing else was created or deleted; the nine fixes are
+struck below with their version.
 
 2026-11-08, the second walk, in the owner's Chrome signed in as him, on ZZ Test rows that stay for him to look at (bid
 BP398's six Labor rows filled as fixed-hour tasks with the company rate saved on the bid, job J1113 from it with its
@@ -393,8 +394,9 @@ shape (below). Four more:
    own *save it on the bid*), and the strip names the bid's real reason.
 9. **Open the job on the Edit Bid Win/Loss row** closed the bid form and opened no New Job form, twice; New Job → Import
    → the bid was the way in (BidWonJobActions, `openNewJob({ prefillBidId })`). Not reproduced on the dev server
-   2026-11-08 (the fix entry above): the same door opened New Job over the Bid window and closed nothing. To show it
-   again, a won bid with no job yet, on the deployed site, and what the screen did after the press.
+   2026-11-08 (the fix entry above), on B398's *Create another job* and on a fresh won bid with no job: the door
+   opened New Job over the Bid window and closed nothing. To show it again, the deployed site, the bid, and what
+   the screen did after the press.
 10. ~~**The superintendent's Job Mode stop** read *J— · —* and *Ready to start J— | —* for the sample on a job added to
     his own schedule, while the card under it named J1113 (#242's card).~~ Fixed by v2.6706 (#7313): the visit's
     labels fill from the jobs the Dashboard knows; read *Ready to start PLUM 1113 | ZZ Test Walk Project* on the walk.

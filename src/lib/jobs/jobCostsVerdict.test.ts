@@ -71,7 +71,7 @@ describe('buildCostsVerdict', () => {
     expect(fresh.baseline).toMatchObject({ kind: 'bid', bidHours: 70, hoursShare: 0, read: null })
     expect(baselineReadWords(fresh.baseline, 25)).toBe('no hours in yet · the read waits on the first clocked hour')
     // The book baseline read the same before any hour.
-    const book = buildCostsVerdict({ ...fresh, burn: { ...burn, percentDone: 25 }, spend: noSpend, teamHours: 0, teamPeople: 0, bidLabel: null, resolved: { ...costed, source: 'book', glyph: '≈' } })
+    const book = buildCostsVerdict({ ...base, burn: { ...burn, percentDone: 25 }, spend: noSpend, teamHours: 0, teamPeople: 0, bidLabel: null, resolved: { ...costed, source: 'book', glyph: '≈' } })
     expect(book.baseline.kind).toBe('book')
     expect(baselineReadWords(book.baseline, 25)).toBe('no hours in yet · the read waits on the first clocked hour')
     // Hours in and no percent: nothing to judge against until the hours pass the whole bid.

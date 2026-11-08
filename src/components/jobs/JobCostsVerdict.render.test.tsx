@@ -35,7 +35,7 @@ const renderVerdict = (priced: Parameters<typeof buildCostsVerdict>[0]['priced']
 describe("JobCostsVerdict · the second walk's slips (punch list #234)", () => {
   const costed: ResolvedJobBudget = { ...assumed, source: 'bid', glyph: '◆', directUsd: 3_000, components: { laborHours: 70, laborRate: null, laborUsd: 0, materialsUsd: 0, subsUsd: 0, otherUsd: 0 }, targetMarginPct: null, partial: { labor: true, materials: false, subs: false } }
   const noSpend = { teamUsd: 0, subUsd: 0, partsUsd: 0, totalUsd: 0 }
-  const awardedRow = { job_id: 'j', kind: 'bid', awarded_at: '2026-11-08T18:00:00Z', awarded_kind: 'bid', awarded_labor_hours: 70, awarded_labor_usd: 2_031, awarded_materials_usd: 0, awarded_total_direct_usd: 2_031, awarded_detail: {}, awarded_by: null }
+  const awardedRow = { job_id: 'j', kind: 'bid', bid_id: 'b398', labor_hours: 70, labor_rate: 29.01, labor_usd: 2_031, materials_usd: 0, subs_usd: 0, other_usd: 0, total_direct_usd: 2_031, completeness: { rows_total: 6, rows_with_hours: 6, rate_set: true, usable: true }, taken_at: '2026-11-08T18:00:00Z', taken_by: null, note: null, awarded_at: '2026-11-08T18:00:00Z', awarded_kind: 'bid', awarded_labor_hours: 70, awarded_labor_usd: 2_031, awarded_materials_usd: 0, awarded_total_direct_usd: 2_031, awarded_detail: {}, awarded_by: null }
   const noRate = { bid_id: 'b398', bid_number: '398', project_name: 'ZZ Test', bid_value: 56_343, agreed_value: null, has_estimate: true, labor_hours: 70, labor_rate: null, labor_usd: 0, materials_usd: 0, subs_usd: 0, other_usd: 0, total_direct_usd: 0, completeness: { rows_total: 6, rows_with_hours: 6, rate_set: false, materials_source: 'none', usable: false } }
   const bid398 = { id: 'b398', bid_number: '398', project_name: 'ZZ Test' }
 
