@@ -391,10 +391,9 @@ export function pushBackOf(on: string, by: string, note: string): TablesUpdate<'
 /**
  * The rough while we bid (G-45) as its row, whole: a redraw takes the place of the one before. `template_rows` (#210,
  * migration 20261107160000) goes with a template, the copy of its rows or null, and is left out of a rough on the stage
- * days alone, so a rough with no template still saves on a client deployed before the push; the mapper reads the copy
- * only beside a template. Written beside the generated type until the types are regenerated after the push.
+ * days alone, which leaves the column as it was; the mapper reads the copy only beside a template.
  */
-export function roughRowOf(projectId: string, rough: RoughSchedule, by: string): TablesInsert<'gc_rough_schedules'> & { template_rows?: Json | null } {
+export function roughRowOf(projectId: string, rough: RoughSchedule, by: string): TablesInsert<'gc_rough_schedules'> {
   const kept = rough.kept
   const template = rough.template && rough.like ? rough.template : null
   return {

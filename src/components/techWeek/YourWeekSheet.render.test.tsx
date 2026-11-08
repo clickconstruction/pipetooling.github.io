@@ -10,9 +10,12 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { YourWeekIo } from '../../lib/techWeek/yourWeekIo'
 import { weekSheetSeenKey } from '../../lib/techWeek/weekSheet'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { YourWeekSheet, weekSheetAlreadyDealt } from './YourWeekSheet'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
+// The rows are dated in the app's timezone, as the sheet reads the week: a UTC date is a day ahead every evening, and on a
+// Saturday evening that is the next pay week (it failed CI at 6:30 PM Central on 2026-11-07).
 const io = (week: unknown, words: unknown = []): YourWeekIo => ({ myWeek: async () => week, myWords: async () => words })
 
 const week = (signal: string | null) => ({

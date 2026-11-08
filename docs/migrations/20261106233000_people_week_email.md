@@ -16,3 +16,5 @@ Push right after PR 5's merge, before the Pages deploy finishes: the subscribe s
 ## Rollback
 
 Drop the table, the payload function and the cron entry, and re-run `20261010022000`'s two schedule functions.
+
+**Applied** to prod by 2026-11-07, read on 2026-11-07: `npm run check:migration-drift` from the docs worktree read 1153 local files and 1153 remote versions, fully applied, this file among them; the #255 card's note of the same day (#7230) says `people-week-email` and `your-week-email` were redeployed and nothing of the train is behind.

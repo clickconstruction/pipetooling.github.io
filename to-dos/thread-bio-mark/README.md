@@ -2,7 +2,7 @@
 name: "The bio line in Messages wears a small bio mark"
 number: 282
 group: close
-status: in hand 2026-11-07 on claude/114-thread-bio-mark — written and built the morning #114's walk closed, as v2.6659; left: the owner's look at a real thread, then retire the card
+status: built and merged 2026-11-07 as v2.6659 (#7254), the morning #114's walk closed; left: the owner's look at a real thread, then retire the card
 summary: >
   The bio the office writes about a tech goes as the second text after his first On my way to a
   customer. In the customer's thread it reads as a plain outgoing text from the tech, a

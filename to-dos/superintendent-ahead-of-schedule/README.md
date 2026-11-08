@@ -2,7 +2,7 @@
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
 group: ready
-status: in hand 2026-11-07 on claude/234-pr1a-budgets-at-award — the owner's three calls recorded on main (the office's sign-off counts as certified, the bonus is on hours saved, a sub-performed stage counts on the sub's sheet hours), PR 1a the budgets at award open as v2.6646 with its migration · thought through 2026-11-01 with the owner and mocked up in seven boards; PR 1 merged 2026-11-02 as v2.6300 and is live with its migration pushed; the superintendent's line moved to #242's build
+status: PR 1a the budgets at award merged 2026-11-07 as v2.6646 (#7244), its migration `20261107150000` pushed the same day and the types regenerated (#7264) · the owner's three calls recorded on main the same day (the office's sign-off counts as certified, the bonus is on hours saved, a sub-performed stage counts on the sub's sheet hours) · thought through 2026-11-01 with the owner and mocked up in seven boards; PR 1 merged 2026-11-02 as v2.6300 and is live with its migration pushed; the superintendent's line moved to #242's build
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
@@ -19,8 +19,8 @@ summary: >
   what the bid's workbench priced it from, assumed by a company split when the line was typed,
   tuned only by the owner, frozen at award as the sum of the lines; and the gate became #238's
   kind, a job priced before the work.
-next: Merge PR 1a (v2.6646) and push its migration right after. Then PR 1b, PR 2 and PR 4 in the card's order, each with the owner's three calls built in.
-size: L as a train of six (M · M · S · S · M · M), PR 1 shipped; two migrations, the line budgets (pushed with PR 1) and the planned dates; no edge function
+next: PR 1b, PR 2 and PR 4 in the card's order, each with the owner's three calls built in; PR 1a's live check first (a ZZ Test project from a bid with hours on its Labor rows, the award block, the Costs strip's frozen line, Quickfill's *Freeze the book's N h* and its Undo).
+size: L as a train of six (M · M · S · S · M · M), PRs 1 and 1a shipped; two migrations, the line budgets (pushed with PR 1) and the planned dates; no edge function
 blocker: None. The owner's three calls were made 2026-11-07 and are written under Open questions.
 ver: v2.6300 · 3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837
 opinion: build — the three calls are made and PR 1 is live; the train runs from PR 1a to the scoreboard
