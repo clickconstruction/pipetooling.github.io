@@ -1680,9 +1680,21 @@ Phase 1 of [`ONE_COMPANY_PLAN.md`](ONE_COMPANY_PLAN.md): the office is one compa
 
 Unchanged: superintendents (assigned projects only, v2.2836), primaries (`master_primaries`, customer-side), helpers / subcontractors (`jobs_ledger_team_members`), estimators (own rows + service types), the customer / GC / sub portals, and `pay_approved_masters` (pay access stays a grant). The "Ownership, Adoption, Sharing" sections above describe the pre-v2.2967 shape and are rewritten in Phase 3, when the client stops picking owners and the role copy says "leader".
 
+## Pipeline money doors (v2.6759, punch list #188 rows 39, 40, 44, 45)
+
+The owner reads Team labor and profit on every job, so the Pipeline's wage-derived doors that were a dev's and the controller's open to him too; the kernels are `canSeeStagesMoneyCharts`, `canTunePaySpeeds` and `canSetPaySpeedNoCountDate` in `src/lib/jobs/stagesRoleGates.ts`, and the database side is `20261109003500_dev_gates_pipeline_money.sql`.
+
+| Door | Who | Where it is decided |
+|---|---|---|
+| **Weekly money movement** (row 39) | dev · master_technician · controller | `stagesSectionToolsMenu.ts` `canOpenWeeklyMoney`; `Jobs.tsx` `?stagesMoney=1` bounce (an assistant lands on the board with *Weekly money movement is for the owner and the controller*); `get_weekly_money_movement_payload` restated with `is_master_or_dev()` |
+| **Billed aging chart**, **Paid profit chart**, the overview's **Collected** door (row 40) | dev · master_technician · controller | `canSeeStagesMoneyCharts`; `get_billed_aging_costs` and `get_paid_profit_stats` restated with `is_master_or_dev()` |
+| **Pay speeds → Exclude from pay-speed math** (row 44) | dev · master_technician · controller | `canTunePaySpeeds`; `pay_speed_exclusions` insert and delete admit `is_controller()` beside the dev and the master |
+| **Pay speeds → Data health ⚙ No Count Date** (row 44) | dev · controller | `canSetPaySpeedNoCountDate` (`canSetNoCountDate` through the forecast windows; was `isDev`); `pay_speed_no_count_date_v1` insert, update and delete for `is_dev() OR is_controller()` |
+| **Contract coverage floor** (row 45) | dev · master_technician | `PipelineContractCoverageCard` `canEdit`; `job_contract_floor_cents_v1` for `is_master_or_dev()` |
+
 ## Job Summary overhead dials (v2.3259)
 
-The overhead allocation Job Summary charges from (`app_settings.overhead_allocation_v1`: smoothing window · carry share · idle cap · open definition) is **one org-wide setting**. Reads: every authenticated role, through the existing "Authenticated users can read app settings" policy — but the chip that names the constants sits behind the pay lockdown (`showMoney`: dev, master/leader, controller), like every overhead figure. Writes: **dev only** — the ⚙ dials and *Use for everyone* render only for `authRole === 'dev'` on the client, and the "Devs can manage app settings" policy (`is_dev()`) enforces it at the database. A dev's exploration of other settings is per device (localStorage) and never changes what anyone else sees.
+The overhead allocation Job Summary charges from (`app_settings.overhead_allocation_v1`: smoothing window · carry share · idle cap · open definition) is **one org-wide setting**. Reads: every authenticated role, through the existing "Authenticated users can read app settings" policy — but the chip that names the constants sits behind the pay lockdown (`showMoney`: dev, master/leader, controller), like every overhead figure. Writes: the owner or a dev since v2.6759 (punch list #188 row 38; dev only before) — the ⚙ dials and *Use for everyone* render for `isOwnerOrDev(authRole)` on the client, and a key-scoped `is_master_or_dev()` policy on `overhead_allocation_v1` (`20261109003500_dev_gates_pipeline_money.sql`) admits him at the database beside the dev's. A dev's exploration of other settings is per device (localStorage) and never changes what anyone else sees.
 
 ## Legal desk and legal matters (v2.3293, v2.3313)
 

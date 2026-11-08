@@ -39,7 +39,7 @@ export type RoleGateSurface =
   | 'payroll'
   /** People → Hours (`canAccessHours || canAccessPay`). */
   | 'hours'
-  /** Pipeline `?stagesMoney=1` — the Weekly money movement modal (dev / controller). */
+  /** Pipeline `?stagesMoney=1` — the Weekly money movement modal (dev / owner / controller since v2.6759). */
   | 'pipeline-money'
   /** Bids office tabs a superintendent deep-links to (Pricing, Cover letter, …). */
   | 'bids-office-tab'
@@ -77,7 +77,7 @@ const SURFACE_COPY: Record<RoleGateSurface, SurfaceCopy> = {
   'jobs-tab': { subject: 'This page', audience: 'the office' },
   payroll: { subject: 'Payroll', audience: 'the controller' },
   hours: { subject: 'Hours', audience: 'the office' },
-  'pipeline-money': { subject: 'Weekly money movement', audience: 'the controller' },
+  'pipeline-money': { subject: 'Weekly money movement', audience: 'the owner and the controller' },
   'bids-office-tab': { subject: 'This page', audience: 'the office' },
   roadmap: { subject: 'The Roadmap', audience: 'the office' },
   'punch-list': { subject: 'The Punch list', audience: 'the owner and the developers' },

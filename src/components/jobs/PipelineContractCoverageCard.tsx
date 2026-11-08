@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { CONTRACT_STAGES, CONTRACT_STAGE_LABELS, contractStageColumns, type ContractStage, type ContractStageCounts } from '../../lib/jobs/jobContractNudge'
+import { isOwnerOrDev } from '../../lib/doorRoles'
 import { formatContractFloor, parseTypedFloorToCents, setJobContractFloorCents } from '../../lib/jobs/jobContractFloor'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 
@@ -45,7 +46,8 @@ function FloorLine({ coverage }: { coverage: PipelineContractCoverage }) {
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
-  const canEdit = role === 'dev'
+  // Punch list #188 row 45 (v2.6759): the floor is the owner's rule, so he changes it with a dev.
+  const canEdit = isOwnerOrDev(role)
 
   const parts: string[] = []
   parts.push(floorCents > 0 ? `Skipping jobs under ${formatContractFloor(floorCents)}` : 'Counting every dollar')
