@@ -294,7 +294,7 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase â
 | `useDemandOutJobIds` 838 (loader in `hooks/useStagesRowFlags.ts`) | `job_demand_letters` | SELECT live, sent |
 | `useJobContractCoverage` 844 (same hook file) | `job_contracts`, `estimates` (customer-accepted) | SELECT |
 | `useHazmatAndReleaseJobIds` 926 (same hook file) | `job_hazmat_incidents` / `job_lien_releases` | SELECT `voided_at IS NULL` |
-| `useBilledMoneyData` 964 (loaders in `hooks/useBilledMoneyData.ts`) | RPCs `get_billed_customer_pay_speeds`, `list_job_promised_pay_dates`, `list_payment_promise_records`, `list_payment_chase_touches` | read |
+| `useBilledMoneyData` 964 (loaders in `hooks/useBilledMoneyData.ts`) | RPCs `get_billed_customer_pay_speeds`, `list_job_promised_pay_dates` (and beside it since v2.6695 `list_paid_claims`, the Billed row's They say paid), `list_payment_promise_records`, `list_payment_chase_touches` | read |
 | send-back effect 2054 | `job_status_events` (+ `users(name)`) | SELECT latest |
 | `loadStagesManHours` 2085 | RPC `get_man_hours_by_job` | read (RLS-scoped) |
 | `createInvoiceFromModal` 2231 | `jobs_ledger_invoices`; RPC `ensure_single_ready_to_bill_invoice_for_job` | **INSERT**; RPC |
