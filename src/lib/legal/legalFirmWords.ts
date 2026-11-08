@@ -14,6 +14,7 @@ import { askMetaOf, answerMetaOf, isFirmAnswer, isOfficeAsk } from './legalAsks'
 import { statementFirmKindWords, statementMetaOf } from './affidavitPaper'
 import type { LegalEntryRow } from './legalMatters'
 import type { LegalJobLine, LegalSaidEntry, LegalStep } from './legalPacket'
+import { theirPaperCountsAsSigned, theirPaperWords } from '../jobs/theirPaper'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /** The rule's two choices on the Notifications page; they live beside the emails so the welcome email names them the same way. */
@@ -153,6 +154,8 @@ export function firmNotNeededWords(reason: string | null): string {
 /** Paper's *Agreement* cell: signed with date and signer, sent and never signed, not needed per the office, or none on file. `missing` is true when the job lacks an agreement it needs. */
 export function firmAgreementWords(c: LegalJobLine['contract']): { words: string; missing: boolean } {
   if (c.kind === 'signed') return { words: `Signed${c.signedAt ? ` ${calendarYmdInAppTzFromIso(c.signedAt)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}`, missing: false }
+  // v2.6698 (punch list #173): their paper, as it is; missing until they rely on it or countersign.
+  if (c.kind === 'their_paper') return { words: theirPaperWords(c.record), missing: !theirPaperCountsAsSigned(c.record) }
   if (c.kind === 'not_needed') {
     const w = firmNotNeededWords(c.reason)
     return { words: w.charAt(0).toUpperCase() + w.slice(1), missing: false }

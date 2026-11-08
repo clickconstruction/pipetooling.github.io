@@ -29,6 +29,7 @@ import {
   type MessagesView,
 } from '../../../lib/messages/messagesIo'
 import { formatErrorMessage } from '../../../utils/errorHandling'
+import { makeUsualChannel } from '../../../lib/messages/replyIo'
 import type { MessagesWrites } from './messagesWrites'
 
 /** Trade partners on GC projects, where a trade partner's company window opens. */
@@ -91,6 +92,7 @@ export function useMessagesHost({ enabled, closeThread }: { enabled: boolean; cl
       removeJob: (contactId, jobKey) => after(removeContactJob(contactId, jobKey)),
       searchRecords: searchContactRecords,
       searchJobs: (words) => searchJobs(words, new Date().toISOString()),
+      makeUsual: (channelId) => after(makeUsualChannel(channelId)),
     }
   }, [reread])
 

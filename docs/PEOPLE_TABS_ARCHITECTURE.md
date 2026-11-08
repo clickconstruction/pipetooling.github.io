@@ -8,7 +8,7 @@ covers:
   - src/pages/People.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 ---
 
 ## Overview
@@ -115,7 +115,7 @@ Render anchors are line ranges in `People.tsx` at a05cef4c4. Component line coun
 | `vehicles` | 4103–4105 | [`PeopleVehiclesTab`](../src/components/people/PeopleVehiclesTab.tsx) (2,946) | extracted (PR #19; rebuilt v2.1644 as the fleet board). **Own map: [`PEOPLE_VEHICLES_TAB_ARCHITECTURE.md`](./PEOPLE_VEHICLES_TAB_ARCHITECTURE.md)** | 0 | `users`; gate **`canAccessVehicles`** | `PeopleVehiclesTab.render` | Sub-decompose per its map |
 | `housing` | 4107–4109 | [`PeopleHousingTab`](../src/components/people/PeopleHousingTab.tsx) (414) | extracted (PR #20) | 0 | `users`; gate `canAccessPay` | none | Done |
 | `review` | 4153–4172 | [`PeopleReviewTab`](../src/components/people/PeopleReviewTab.tsx) (856 since v2.4914; the person panel is [`review/PeopleReviewPersonPanel.tsx`](../src/components/people/review/PeopleReviewPersonPanel.tsx), 1,219); sub-map [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | extracted | the Review↔Hours bridge: 1 `useState`, 6 refs, load effect 2315–2324 | 16 props (`payConfig`, `archived`, `payRoster`, `authUser`, `isDev`, `users`, `people`, bridge callbacks/refs/tick, `getDaysInRange`) | `derivePersonTeamSummary` + `review*` kernels | Done here |
-| `scoreboard` | 4148 | [`PeopleScoreboardTab`](../src/components/people/PeopleScoreboardTab.tsx) (285) | extracted from birth (v2.1312) | 0 | none; `isDev` at the render site only | `PeopleScoreboardTab.render`, `scoreboardGauge` | Done |
+| `scoreboard` | 4148 | [`PeopleScoreboardTab`](../src/components/people/PeopleScoreboardTab.tsx) (285) | extracted from birth (v2.1312) | 0 | none; `isDev || canAccessPay` at the render site only (v2.6666) | `PeopleScoreboardTab.render`, `superintendentScores` | Done |
 | `activity` | 4184–4197 | [`PeopleAppActivityPanel`](../src/components/people/PeopleAppActivityPanel.tsx) (383) | extracted; the grant UI now lives in the panel | `activityAccessResolved`/`isActivityViewer` (372–373), effect 1048–1086 | `enabled`, `isDev`, `users`, `authUserId` | none | low → **#6** (fold access into `usePeopleAccess`) |
 | `feedback` | 4174–4178 | `TeamFeedbackDevSettingsBlock layout="standalone"` (203) | thin | 0 | `isDev` gate | `feedbackTabRows`, `crewReview` | Done |
 
@@ -429,6 +429,6 @@ The remaining work is the four parent clusters, ranked by value ÷ risk at a05ce
 
 > Already thin or extracted: `writeups`, `feedback`, `activity` (panel), `subs`, `hr`, `scoreboard`, `person`, `day_book`, `whos_where`. Many domain modals are already components (`DraftPayrollModal`, `PayrollForecastModal`, `PayrollCatchUpModal`, `DraftPayrollPersonHoursBreakdownModal`, `PersonOffsetFormModal`, `PayStubViewModal`, `ReviewHoursModal`, `HirePersonModal`). The parent orchestrates the state around them.
 
-## Scoreboard tab (v2.1312, dev-only, sample data)
+## Scoreboard tab (v2.1312; the superintendents' scoreboard since v2.6666)
 
-Second in the Review group (after `review`), `?tab=scoreboard`, rendered at 4148. [`PeopleScoreboardTab.tsx`](../src/components/people/PeopleScoreboardTab.tsx) has been extracted since day one and is self-contained (no page state, no props). Its kernel is [`lib/people/scoreboardGauge.ts`](../src/lib/people/scoreboardGauge.ts). It is gated on `isDev` at the render site only, with deliberately NO gate in the `?tab=` router (867–869): `isDev` resolves async, and a URL gate would bounce cold dev deep links to Users (the activity-tab race). It shows sample data until the band-positions RPC ships; the component header has the production data-spine plan.
+Second in the Review group (after `review`), `?tab=scoreboard`, rendered at 4148. [`PeopleScoreboardTab.tsx`](../src/components/people/PeopleScoreboardTab.tsx) has been extracted since day one and is self-contained (no page state, no props). Since v2.6666 (punch list #234 PR 4) it is the superintendents' scoreboard: the month with ‹ ›, one row per superintendent from `superintendent_scores` through [`lib/people/superintendentScores.ts`](../src/lib/people/superintendentScores.ts) (jobs signed off · hours used against earned with the hours-under words · days against the plan · the labor kept for payroll access · the bonus at the owner's share, `superintendent_bonus_v1`), a name opening its jobs and its held jobs with their reasons, the rule card in six lines; the two sample gauges and `scoreboardGauge.ts` are retired. It is gated `isDev || canAccessPay` at the render site only, with deliberately NO gate in the `?tab=` router (867–869): the roles resolve async, and a URL gate would bounce cold deep links to Users (the activity-tab race).
