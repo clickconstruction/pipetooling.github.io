@@ -91,6 +91,13 @@ export const MATTER_ENTRY_PENDING_COLUMNS: ReadonlyArray<string> = ['voided_at',
  */
 export const MATTER_GAP_ANSWER_COLUMNS = ['matter_id', 'gap_key', 'label', 'answer', 'document_id', 'answered_at', 'answered_by_name'] as const
 
+/**
+ * The typed lines of the claim (v2.6696, punch list #171, the owner's call of 2026-11-08): the kind, the name, the
+ * amount, the basis, the Evidence document's id and the order added. Never who typed it, who changed it or when a
+ * removed line went (the function sends live rows only).
+ */
+export const MATTER_CLAIM_LINE_COLUMNS = ['id', 'kind', 'title', 'amount', 'basis', 'document_id', 'added_at'] as const
+
 /** The select strings: each list, plus the columns only the function reads (the PDF paths it signs, the payer key). */
 export const MATTER_COUNSEL_SELECT = {
   jobs: MATTER_JOB_COLUMNS.join(', '),
@@ -109,6 +116,7 @@ export const MATTER_COUNSEL_SELECT = {
   mailPieces: [...MATTER_MAIL_PIECE_COLUMNS, 'pdf_bucket', 'certification_path'].join(', '),
   entries: MATTER_ENTRY_COLUMNS.filter((c) => !MATTER_ENTRY_PENDING_COLUMNS.includes(c)).join(', '),
   gapAnswers: 'matter_id, gap_key, label, answer, document_id, answered_at, answered_by',
+  claimLines: ['matter_id', ...MATTER_CLAIM_LINE_COLUMNS].join(', '),
 } as const
 
 function isRecord(v: unknown): v is Row {
@@ -182,6 +190,8 @@ export function shapeMatterForCounsel(matter: Row): Row {
   if ('documents' in matter) out.documents = rows(matter.documents).map((d) => pick(d, MATTER_DOCUMENT_PAYLOAD_KEYS))
   // Gap answers (v2.5923): what the office knows, by gap key; the name, never the user id.
   if ('gapAnswers' in matter) out.gapAnswers = rows(matter.gapAnswers).map((g) => pick(g, MATTER_GAP_ANSWER_COLUMNS))
+  // The claim's typed lines (v2.6696): the line as the desk's table reads it, never who typed it.
+  if ('claimLines' in matter) out.claimLines = rows(matter.claimLines).map((l) => pick(l, MATTER_CLAIM_LINE_COLUMNS))
   // The narrative (v2.4812): the office's own words for the firm, who saved them and when; nothing else.
   if ('narrative' in matter) out.narrative = isRecord(matter.narrative) ? pick(matter.narrative, NARRATIVE_PAYLOAD_KEYS) : null
   return out
