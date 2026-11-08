@@ -24,9 +24,12 @@ import { buildJobContractRecordHtml, type JobContractRecordJob } from './JobCont
 import JobContractShareSheet, { type ShareTarget } from './JobContractShareSheet'
 import { RailGroup } from './ContractRailGroup'
 import { signerNamesLine } from '../../lib/jobs/jobContractSigners'
+import { ContractTextDoor } from './ContractTextDoor'
+import { contractSignedTextWords } from '../../lib/jobs/contractTextDoor'
+import { jobBoxJobName } from '../../lib/messages/jobBox'
 
 export type JobContractSignedRailProps = {
-  job: JobContractRecordJob & { id: string; customer_phone?: string | null; customer_email?: string | null }
+  job: JobContractRecordJob & { id: string; customer_phone?: string | null; customer_email?: string | null; customer_id?: string | null; status?: string | null }
   jobNumber: string
   source: SignedSource
   /** The contract row shown (a contract we sent, or a paper / link record); null for an acceptance. */
@@ -72,6 +75,8 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
   const promptDialog = usePromptDialog()
   const navigate = useNavigate()
   const [shareOpen, setShareOpen] = useState(false)
+  /** #125 PR 5 (v2.6700): Text link opens the customer's box with the signed record's link, in place of an `sms:`. */
+  const [textDoorOpen, setTextDoorOpen] = useState(false)
   const [pdfBusy, setPdfBusy] = useState(false)
   /** Latest share, from the job's activity ledger (contract_shared). */
   const [lastShare, setLastShare] = useState<{ to: string[]; at: string; by: string | null } | null>(null)
@@ -143,7 +148,7 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
   }
   const textLink = () => {
     if (!signLink || !phone) return
-    window.location.href = `sms:${phone}?&body=${encodeURIComponent(`Here is your signed agreement for ${job.job_address || 'your project'}: ${signLink}`)}`
+    setTextDoorOpen(true)
   }
   const print = () => {
     // A print counts as a send (docs/SENT_COPIES.md): the signed agreement is filed on the job as it printed.
@@ -272,6 +277,23 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
             </button>
           ) : null}
         </RailGroup>
+      ) : null}
+      {textDoorOpen && signLink ? (
+        <ContractTextDoor
+          title="Text the signed agreement"
+          jobId={job.id}
+          jobName={jobBoxJobName(job)}
+          jobStatus={job.status ?? null}
+          customerId={job.customer_id ?? null}
+          typedPhone={job.customer_phone ?? row?.recipient_phone ?? ''}
+          words={contractSignedTextWords(job.job_address, signLink)}
+          onClose={() => setTextDoorOpen(false)}
+          onCopyLink={() => void copyLink()}
+          onSent={() => {
+            setTextDoorOpen(false)
+            void loadLastShare(job.id)
+          }}
+        />
       ) : null}
 
       {doors.downloadPdf || doors.openUploaded || doors.print || doors.document ? (
