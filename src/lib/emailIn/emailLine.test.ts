@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { emailFileRows, emailLine, emailParty, fileKeep, KEEP_FILE_BYTES, RFC_MESSAGE_ID_MAX, rfcMessageId, SKIP_INLINE_PICTURE_BYTES } from './emailLine'
+import { emailFileRows, emailLine, emailParty, fileKeep, KEEP_FILE_BYTES, RFC_MESSAGE_ID_MAX, rfcMessageId, sentParty, SKIP_INLINE_PICTURE_BYTES } from './emailLine'
 import type { Forwarded } from './forwarded'
 import type { EmailIn } from './gmailMessage'
 import { isOwnAddress, ownChannels } from '../messages/ownChannels'
@@ -80,6 +80,19 @@ describe('emailParty: whose thread, and which way', () => {
   })
 })
 
+describe("sentParty: whose thread a mail the box itself sent is on (v2.6731, punch list #207 PR 3)", () => {
+  it('is the first person named who is not one of us, going out, To before Cc', () => {
+    expect(sentParty(email({ from: bids, to: [greg] }), ours)).toEqual({ address: greg, direction: 'out' })
+    expect(sentParty(email({ from: bids, to: [rosa], cc: [elena, greg] }), ours)).toEqual({ address: elena, direction: 'out' })
+  })
+
+  it('is nobody when the box wrote only to the team, or to itself', () => {
+    expect(sentParty(email({ from: bids, to: [rosa, malachi] }), ours)).toBeNull()
+    expect(sentParty(email({ from: bids, to: [bids] }), ours)).toBeNull()
+    expect(sentParty(email({ from: bids }), ours)).toBeNull()
+  })
+})
+
 describe('emailLine', () => {
   it("names the sender and the box it reached", () => {
     expect(emailLine(email(), null, { address: greg, direction: 'in' }, 'bids@')).toEqual({
@@ -107,6 +120,17 @@ describe('emailLine', () => {
       direction: 'out',
       whoText: 'Rosa Diaz <rosa@clickconstruction.example> to Elena Marchetti <elena@cibolocreek.example> · copied to team@',
     })
+  })
+
+  it("names a mail the box itself sent by its From and the person, going out, sent from the box (v2.6731)", () => {
+    const wendi = { name: 'Wendi Doll', address: 'bids@clickconstruction.example' }
+    expect(emailLine(email({ from: wendi, to: [greg], headers: { 'message-id': '<apple-1@clickconstruction.example>' } }), null, { address: greg, direction: 'out' }, 'bids@', null, 'sent')).toMatchObject({
+      direction: 'out',
+      whoText: 'Wendi Doll <bids@clickconstruction.example> to Greg Paulk <greg@hillside.example> · sent from bids@',
+      rfcMessageId: '<apple-1@clickconstruction.example>',
+    })
+    // The From with no display name names the address alone.
+    expect(emailLine(email({ from: bids, to: [greg] }), null, { address: greg, direction: 'out' }, 'bids@', null, 'sent').whoText).toBe('bids@clickconstruction.example to Greg Paulk <greg@hillside.example> · sent from bids@')
   })
 
   it("takes a forwarded copy's words, subject and time, and says who forwarded it", () => {

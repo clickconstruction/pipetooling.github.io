@@ -60,6 +60,19 @@ export function emailParty(email: Pick<EmailIn, 'from' | 'to' | 'cc'>, fwd: Forw
   return them ? { address: them, direction: 'out' } : null
 }
 
+/**
+ * The person a mail the box itself sent is with (v2.6731, punch list #207 PR 3: an answer sent from bids@ in Apple Mail):
+ * the first To or Cc who is not one of us, and the line is ours, going out. Null when the box wrote only to the team,
+ * or to itself.
+ */
+export function sentParty(email: Pick<EmailIn, 'to' | 'cc'>, ours: Pick<OurAddresses, 'isOurs'>): EmailParty | null {
+  const them = [...email.to, ...email.cc].find((a) => !ours.isOurs(a.address))
+  return them ? { address: them, direction: 'out' } : null
+}
+
+/** How a line of ours going out reached the box: a teammate copied the box, or the box itself sent it (v2.6731). */
+export type EmailLineHow = 'copied' | 'sent'
+
 export interface EmailLine {
   gmailId: string
   gmailThreadId: string | null
@@ -94,11 +107,13 @@ const unforwarded = (subject: string): string => subject.replace(/^\s*(?:(?:fwd?
 /**
  * The line for an email. `mailbox` is how the line names the box it reached (`bids@`); `forwarderName` is the team
  * member's name when the forwarder is one, else the forwarded block's own words name them. A teammate's mail to a
- * customer with the box copied names both: `Rosa <rosa@…> to Greg <greg@…> · copied to bids@`.
+ * customer with the box copied names both: `Rosa <rosa@…> to Greg <greg@…> · copied to bids@`; one the box itself sent
+ * (`how` `'sent'`, v2.6731) names the From as the mail wrote it: `Wendi Doll <bids@…> to Rusty <rusty@…> · sent from bids@`.
  */
-export function emailLine(email: EmailIn, fwd: Forwarded | null, party: EmailParty, mailbox: string, forwarderName: string | null = null): EmailLine {
+export function emailLine(email: EmailIn, fwd: Forwarded | null, party: EmailParty, mailbox: string, forwarderName: string | null = null, how: EmailLineHow = 'copied'): EmailLine {
   if (!fwd) {
     const from = display(email.from ?? party.address)
+    const out = how === 'sent' ? `${from} to ${display(party.address)} · sent from ${mailbox}` : `${from} to ${display(party.address)} · copied to ${mailbox}`
     return {
       gmailId: email.gmailId,
       gmailThreadId: email.threadId,
@@ -106,7 +121,7 @@ export function emailLine(email: EmailIn, fwd: Forwarded | null, party: EmailPar
       at: email.at,
       subject: email.subject || null,
       body: email.text,
-      whoText: party.direction === 'out' ? `${from} to ${display(party.address)} · copied to ${mailbox}` : `${from} to ${mailbox}`,
+      whoText: party.direction === 'out' ? out : `${from} to ${mailbox}`,
       rfcMessageId: rfcMessageId(email),
     }
   }
