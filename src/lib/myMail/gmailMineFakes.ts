@@ -263,6 +263,12 @@ export class FakeDb {
       neq: (c: string, v: unknown) => (where.push((r) => r[c] !== v), chain),
       in: (c: string, vs: unknown[]) => (where.push((r) => vs.includes(r[c])), chain),
       is: (c: string, v: unknown) => (where.push((r) => (r[c] ?? null) === v), chain),
+      // Case-blind, with `%` and `*` as PostgREST reads them: how the seat's door finds a login by its address.
+      ilike: (c: string, pattern: string) => {
+        const re = new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/[%*]/g, '.*')}$`, 'i')
+        where.push((r) => typeof r[c] === 'string' && re.test(r[c] as string))
+        return chain
+      },
       not: (c: string, operator: string, v: unknown) => (where.push((r) => (operator === 'is' ? (r[c] ?? null) !== v : r[c] !== v)), chain),
       gt: (c: string, v: unknown) => (where.push((r) => compared(r[c], v, 'gt')), chain),
       gte: (c: string, v: unknown) => (where.push((r) => compared(r[c], v, 'gte')), chain),
