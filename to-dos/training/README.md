@@ -456,17 +456,7 @@ something wrong. Every
 
 ## Where it stands
 
-2026-11-08: at the owner's word the On, View as, Off proof moves to a session on another computer;
-§ Pick up above is its brief. Nothing was pressed in Settings → Training from this machine; both
-courses stand as they did, the refresher off and required for the five field roles, Intro to
-plumbing off and offered.
-
-2026-11-08, later: #119's read is complete (`to-dos/intro-plumbing/README.md` § Read-through 2026-11-08,
-25 doubted facts for the owner, no fix PR), so the switch proof above can run. `training_courses`, read
-through the dev seat the same day, has Intro to plumbing On since 2026-10-18 16:04Z, offered and required
-of helpers and dev, so the On step is already in place and the owner's correction pass is what is left.
-
-2026-11-08, later: the first 2026-11-08 line was written without a read. The dev seat read `training_courses`
+2026-11-08, afternoon (newest first; the morning's line is at the foot): that morning's line had no read behind it. The dev seat read `training_courses`
 at 13:50 CST and all three courses have been On since 2026-10-18 16:04Z, pressed by a dev account the
 day the fourteen-year-old's reads (v2.5621, v2.5624) landed; Intro to plumbing is required of helpers
 and devs, the refresher of the five field roles, Intro to electrical of devs. No course pass exists
@@ -487,3 +477,8 @@ owner: it is his call whether a course should come off before his correction pas
 
 2026-11-08: #119's read ran at the same time in a sibling session, so this card ships in its own
 docs-only PR, not #119's; that session was told the course already reads On.
+
+2026-11-08: at the owner's word the On, View as, Off proof moves to a session on another computer;
+§ Pick up above is its brief. Nothing was pressed in Settings → Training from this machine; both
+courses stand as they did, the refresher off and required for the five field roles, Intro to
+plumbing off and offered.
