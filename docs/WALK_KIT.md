@@ -1,6 +1,6 @@
 # The walk kit
 
-> One command, `npm run walk`, runs the Messages loop on prod end to end, on the company's own inbox and number, prints what landed where with times, and cleans up after itself; since v2.6652 it also runs every night from GitHub Actions. Punch list #142 (v2.5724 to v2.5740; the first walks' paper cuts fixed in v2.6030; the driver from any checkout, the tester's door and the schedule in v2.6652). The decisions behind it were made in `to-dos/walk-kit/` and are kept here once that folder is gone.
+> One command, `npm run walk`, runs the Messages loop on prod end to end, on the company's own inbox and number, prints what landed where with times, and cleans up after itself; since v2.6652 it also runs every night from GitHub Actions. Punch list #142 (v2.5724 to v2.5740; the first walks' paper cuts fixed in v2.6030; the driver from any checkout, the tester's door and the schedule in v2.6652). The decisions behind it were made on punch list card #142 (retired 2026-11-07) and are kept here and in the fragments v2.5724 to v2.5740.
 
 last_updated: 2026-11-07
 
@@ -8,7 +8,7 @@ last_updated: 2026-11-07
 
 Every Messages train so far ended on a live walk that only the owner could press: a send goes out, a reply comes back by email and by text, and someone reads the thread, the lanes and the strip. The walk kit lets any Claude session do that in about ten minutes after any deploy, touching only the company's own inbox and number, and leaving nothing behind in the app.
 
-The loop it walks (`to-dos/walk-kit/README.md`'s step table, now this page):
+The loop it walks (the card's step table, now this page; the card retired 2026-11-07):
 
 1. **The kit**: a customer *ZZ Walk Messages Desk* whose email is the bids box's address and whose phone is the bids number, its contact with the two channels, a draft estimate of $1.00, and the row `app_settings.walk_kit_v1` that names them (`walk_setup`, `20261022045047_walk_kit.sql`).
 2. **The tester** presses the estimate email and the estimate text through the app's own doors (`send-estimate-to-customer`, `quo-send`): a hidden training-mode assistant, `walk-tester@walk.pipetooling.local`, flagged `users.is_walk_tester`, let through only at the kit's own targets (`src/lib/walk/kitDoor.ts`). It can write nothing else.
