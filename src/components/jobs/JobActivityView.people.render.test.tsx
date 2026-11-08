@@ -39,13 +39,14 @@ function show() {
 describe('Job activity’s people line with the estimate’s author', () => {
   it('reads the team alone when the job came from no estimate', () => {
     show()
-    expect(screen.getByText('Luis', { exact: false })).toBeTruthy()
+    // One run of text, as the joined names were: the hosts' own tests read the crew line whole.
+    expect(screen.getByText('Luis, Marcus')).toBeTruthy()
     expect(screen.queryByRole('link', { name: /Wrote estimate/ })).toBeNull()
   })
   it('adds the author with the E chip, a link to the estimate', () => {
     vi.mocked(useJobEstimateAuthor).mockReturnValue({ userId: 'u-nia', name: 'Nia', estimateId: 'e-1', estimateNumber: 1041 })
     show()
-    expect(screen.getByText('Nia', { exact: false })).toBeTruthy()
+    expect(screen.getByText('Luis, Marcus, Nia')).toBeTruthy()
     const chip = screen.getByRole('link', { name: 'Wrote estimate #1041, the one this job came from. Opens it.' })
     expect(chip.textContent).toBe('E')
     expect(chip.getAttribute('href')).toBe('/estimates/1041')
@@ -55,7 +56,7 @@ describe('Job activity’s people line with the estimate’s author', () => {
     vi.mocked(useJobEstimateAuthor).mockReturnValue({ userId: 'u-luis', name: 'Luis', estimateId: 'e-1', estimateNumber: 1041 })
     show()
     const chip = screen.getByRole('link', { name: /Wrote estimate #1041/ })
-    expect(chip.parentElement?.textContent).toBe('LuisE')
+    expect(chip.parentElement?.textContent).toBe('LuisE, Marcus')
     expect(screen.getAllByRole('link', { name: /Wrote estimate/ })).toHaveLength(1)
   })
 })
