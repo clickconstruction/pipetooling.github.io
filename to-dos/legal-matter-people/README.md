@@ -1,8 +1,8 @@
 ---
 name: "Legal desk: the people on a matter, and the proceedings beside it"
 number: 174
-group: gated
-status: proposed 2026-10-24 · rank 9 of 10 from the review of the Burd matter (job 891) · not built
+group: waiting
+status: BUILDING 2026-11-08 on the owner's Do and his calls (The owner's calls, below) — PR 1 v2.6705 (the people on the matter, seeded from the record, the use and its reason, the demand letter's To from the list; migration `20261108173417_legal_matter_people.sql`, both tables, pushed right after the merge); PR 2 (the proceedings beside the claim, the firm's read, `legal-portal` redeployed) in the same session
 summary: >
   A matter involves more people than the customer record holds: the GC's president and billing
   contact, the owner of record, a tenant, an inspector, a supplier's credit desk, counsel. The
@@ -11,13 +11,13 @@ summary: >
   recipients from it. Beside it, a short list of proceedings that run alongside the claim, such
   as an agency complaint or a records request, each kept out of settlement letters.
 next: >
-  The owner looks at the mock-up (before-after.html beside this to-do: the people list, a
-  letter's To line picking from it, the proceedings) and picks Do, Later or Drop.
-size: M (two small tables, the lists, the letters' recipients)
-blocker: >
-  The owner's pick, and the shape of #118's To chip.
+  The owner walks PR 1 on a ZZ TEST matter (How to verify). Then the letter's own copies line,
+  so the Copies chips travel with the letter instead of by hand.
+size: M (two small tables, the lists, the letters' recipients); left: PR 2 (S) and the letter's copies line (S)
+blocker: none; PR 2 is the same session's
 opinion: >
-  later — build it after #118, so the To chip and the people list are one design
+  built after #118 PR 1 in one session, so the To chip and the people list are one design
+ver: v2.6705
 ---
 
 # Legal desk: the people on a matter, and the proceedings beside it
@@ -58,11 +58,71 @@ and a recorded call and its transcript lived outside the app.
   from anything addressed to the other side.
 - A call with a third party is an event (#167) with its recording as a document (#168).
 
-## Open decisions
+## The owner's calls, 2026-11-08
 
-- Whether People live on the matter or on the customer, since a GC's billing contact is the same
-  on every job.
-- Whether the firm sees the proceedings list.
+Marked Do today, built as the second half of the #118 session so the To chip and the people list
+are one design.
+
+- **The people live on the matter, not on the customer.** Once a customer goes to legal the company
+  does not work with them again, so reuse across jobs is not the point. Seeded from the customer
+  record and the property record's owner, as proposed, each with a use (letters, copies, never) and
+  a reason.
+- **Letters and packets pick their recipients from that list** through the same chip shape as
+  #118's To chip. PR 1 puts the picker on the final demand letter's *Who owes it*: a To fills the
+  recipient; the copies are listed and go by hand until the letter carries a copies line of its own.
+- **The proceedings sit beside the claim** with their agency, reference, contact, status and
+  documents, and **the firm's portal sees the proceedings list** (PR 2).
+
+## Where it stands
+
+- PR 1 (v2.6705): `legal_matter_people` and `legal_matter_proceedings` in one migration; the list on
+  the Account tab with Add the people the record knows, Add a person, Edit, Take them off the
+  matter…; the demand letter's *From the matter's people* strip. The firm does not see the people:
+  the never reasons are the office's own words.
+- PR 2 is ready to build (below). The owner stopped the first session on 2026-11-08 so another
+  machine can pick it up.
+
+## Hand-over: PR 2, ready to build
+
+Everything PR 2 needs is on `main` once PR 1 merges and its migration is pushed. Nothing to design.
+
+1. **The table and the RPCs exist.** `legal_matter_proceedings` (kind `agency_complaint ·
+   records_request · bond_claim · permit · other`, title, agency, reference, `person_id` from
+   `legal_matter_people`, status `open · answered · closed` with `status_on`, note, `document_ids`
+   of the matter's live Evidence rows, `keep_out`, `removed_at`) and `legal_proceeding_save` /
+   `legal_proceeding_remove`, the same shape as `legal_matter_person_save` (the ensure-the-matter
+   upsert, refused once closed; the contact must be on the matter, each document a live row of it).
+   No migration in PR 2.
+2. **Kernel** `src/lib/legal/legalProceedings.ts` (pure, tests beside it), modelled on
+   `legalMatterPeople.ts`: the kinds and statuses and their words, `proceedingsFromRows`, the
+   draft and `proceedingDraftProblem`, `keptOutDocumentIds(proceedings)` (every `document_ids`
+   entry of a live row with `keep_out`), and the portal's shape `proceedingForFirm` (kind, title,
+   agency, reference, the contact's name and role, status, `status_on`, the documents' ids; never
+   the note, never the people's reasons).
+3. **The list** `LegalProceedingsTable.tsx` on the Account tab under **People on the matter**
+   (`LegalDeskPacketTab.tsx`, a `proceedings` prop like `people`), the mock-up's rows: *Agency
+   complaint · State Plumbing Board · open*, under it *ref C-2026-0431 · contact: … · 2 documents ·
+   kept out of settlement letters*; **＋ Add a proceeding** (Kind · Name · Agency · Reference ·
+   Contact from the people · Status and day · Documents from Evidence · Keep its documents out of
+   settlement letters), **Edit**, **Remove the proceeding…** behind a confirm. `useLegalPacketData`
+   reads the live rows into `LegalPacketInput.proceedings` → `LegalPacket.proceedings`;
+   `LegalDesk.tsx` wires `saveProceeding` / `removeProceeding` over the RPCs as `savePerson` is.
+4. **The keep-out hold.** The Evidence tab's document rows wear a chip *kept out of settlement
+   letters* when a held proceeding names them (`LegalMatterDocumentsPanel`), and the document
+   pickers of anything addressed to the other side leave them out: today that is the claim table's
+   Evidence picker (`ClaimPanel.documents`) and the demand letter's exhibits do not read matter
+   documents, so the hold is the chip plus the filter on the pickers that offer matter documents.
+   Say in the fragment which pickers filter.
+5. **The firm's read** (the owner's call): `legal-portal` adds `proceedings` to each matter's
+   payload (`_shared/legalMatterShape.ts`: a `MATTER_COUNSEL_SELECT.proceedings` list and
+   `shapeMatterForCounsel` cutting each to the firm's keys; read fail-soft like `gapAnswers`),
+   `legalPortalPayload.ts` parses it (`[]` from an older function), and `LegalFirmMatterView`'s
+   Account tab draws the list under Property record. `docs/EDGE_FUNCTIONS.md` → legal-portal gets
+   a `v2.NNNN` block; **redeploy after PR 1's push** (`supabase functions deploy legal-portal`).
+6. **Words:** one release note + fragment, the guide *review a collections account before it goes
+   to your attorney* (the Account bullet: a sentence on the proceedings and the keep-out chip),
+   `docs/GLOSSARY.md` (the *People on a matter · proceedings* entry: drop "(PR 2)"), this card's
+   front matter (`status`, `ver`, `next`). `npm run claim` first.
 
 ## Where it plugs in
 

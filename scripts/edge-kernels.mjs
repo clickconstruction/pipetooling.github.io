@@ -212,6 +212,11 @@ export const ENTRIES = {
     values: ['BROWSER_USER_AGENT', 'SEED_WHO', 'TESTER_EMAIL', 'TESTER_NAME', 'WALK_ACTIONS', 'acceptLinkIn', 'estimateMailQuery', 'isEstimateMail', 'lastFour', 'leakedSecret', 'parseWalkAsk', 'replyMessageId', 'replyRaw', 'seedOldColumns'],
     types: ['WalkAction', 'WalkAsk'],
   },
+  // Messages, email out through Gmail as the box (punch list #207 PR 2, v2.6702): the raw mail messages-email sends.
+  'lib/emailOut/rawMail.ts': {
+    values: ['base64OfBytes', 'base64UrlOfBytes', 'encodedWord', 'mailboxHeader', 'messagesEmailMessageId', 'mimeByName', 'rawMailBase64Url', 'rawMailMessage', 'senderDisplayName', 'wrap76'],
+    types: ['RawMailFile', 'RawMailInput'],
+  },
   // The walk tester's doors (punch list #142 PR 5): quo-send, messages-email and send-estimate-to-customer let the
   // tester through only at the kit's own targets.
   'lib/walk/kitDoor.ts': { values: ['KIT_DOOR_WORDS', 'isFixtureAccount', 'isWalkTester', 'kitDoorVerdict'], types: ['DoorCaller', 'DoorTarget', 'KitDoorVerdict'] },

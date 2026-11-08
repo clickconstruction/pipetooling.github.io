@@ -50,7 +50,7 @@ describe('DevelopmentTimeline', () => {
     expect(screen.getByTestId('timeline-chip-all').getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('timeline-chip-j1').getAttribute('aria-pressed')).toBe('false')
     expect(screen.getByTestId('timeline-chip-j1').getAttribute('title')).toBe('JP612: $1,612.50 of cost so far')
-    expect(screen.getByTestId('timeline-scope').textContent).toBe('All 2 jobs on one chart. 2 jobs with no dated charge or payment are left out.')
+    expect(screen.getByTestId('timeline-scope').textContent).toBe('All 2 jobs on one chart. 2 jobs have no dated charge or payment. They are listed under the chart.')
     expect(screen.getByText(/cost to date/).textContent).toContain('Red')
     expect(screen.getByText(/cost to date/).textContent).not.toContain('Value line hidden')
   })
@@ -122,10 +122,48 @@ describe('DevelopmentTimeline', () => {
     expect(printed.html[0]).toContain('Ridgeway Builders · All 2 jobs on one chart.')
     expect(printed.html[0]).toContain('viewBox="0 0 800 320"')
     expect(printed.html[0]).toContain('by Dana')
+    // The strip rides into the print (v2.6711).
+    expect(printed.html[0]).toContain('<p class="head">Not on the chart · 2 jobs with no dated charge or payment</p>')
+    expect(printed.html[0]).toContain('<p>JP960 · 1 tally part with no date · date it and the job joins the chart · $9.00</p>')
+    expect(printed.html[0]).toContain('Together $1,701.50, the Scoreboard’s cost before overhead')
     expect(screen.queryByTestId('timeline-print-note')).toBeNull()
     printed.open = false
     fireEvent.click(screen.getByRole('button', { name: 'Print or save as PDF' }))
     expect(screen.getByTestId('timeline-print-note').textContent).toContain('The print window was blocked.')
+  })
+
+  it('the ledger strip lists the jobs the chart cannot draw with their cost and reason, sums them with the chart’s end, and opens a job from its name (v2.6711)', () => {
+    const openJob = vi.fn()
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null, valueNote: null, siteName: 'Harlow Ranch', customerName: null, printedBy: null }} phone={false} openJob={openJob} />)
+    const strip = screen.getByTestId('timeline-strip')
+    expect(strip.textContent).toContain('Not on the chart · 2 jobs')
+    expect(strip.textContent).toContain('no dated charge or payment')
+    const rows = [screen.getByTestId('timeline-strip-row-j3'), screen.getByTestId('timeline-strip-row-j4')]
+    expect(rows[0]!.textContent).toBe('JP953nothing charged yet$0.00')
+    expect(rows[1]!.textContent).toBe('JP9601 tally part with no date · date it and the job joins the chart$9.00')
+    // The chart ends on the two dated jobs, 1,612.50 + 80; the strip holds the 9 off it.
+    expect(screen.getByTestId('timeline-strip-sum').textContent).toBe('Chart ends at $1,692.50 · Not on the chart $9.00 · Together $1,701.50, the Scoreboard’s cost before overhead')
+    fireEvent.click(within(rows[1]!).getByRole('button', { name: 'JP960' }))
+    expect(openJob).toHaveBeenCalledWith('j4')
+    // The strip sits under the chart and above the print press.
+    const chart = document.querySelector('.recharts-responsive-container')!
+    expect(chart.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(strip.compareDocumentPosition(screen.getByRole('button', { name: 'Print or save as PDF' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('the strip narrows to two columns on a phone with the reason on its own line, and is not drawn when every job is dated', () => {
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs, fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null, valueNote: null, siteName: 'Harlow Ranch', customerName: null, printedBy: null }} phone />)
+    const row = screen.getByTestId('timeline-strip-row-j4') as HTMLElement
+    expect(row.style.gridTemplateColumns).toBe('minmax(0, 1fr) auto')
+    const reason = within(row).getByText(/with no date/) as HTMLElement
+    expect(reason.style.gridColumn).toBe('1 / -1')
+    expect((screen.getByTestId('timeline-strip') as HTMLElement).style.minWidth).toBe('0')
+    // Without openJob the name is plain words, not a press.
+    expect(within(row).queryByRole('button')).toBeNull()
+    cleanup()
+    renderWithProviders(<DevelopmentTimeline read={{ state: 'ready', jobs: jobs.filter((j) => j.jobId === 'j1' || j.jobId === 'j2'), fuelKnown: true, teamLaborNote: null, overheadNote: null, overheadSinceLabel: null, valueNote: null, siteName: 'Harlow Ranch', customerName: null, printedBy: null }} phone={false} />)
+    expect(screen.queryByTestId('timeline-strip')).toBeNull()
+    expect(screen.getByTestId('timeline-scope').textContent).toBe('All 2 jobs on one chart.')
   })
 
   it('reading, failed and nothing dated', () => {

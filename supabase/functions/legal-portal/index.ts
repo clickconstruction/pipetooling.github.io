@@ -460,6 +460,12 @@ serve(async (req) => {
     const gapAnswerRead = await admin.from('legal_matter_gap_answers').select(MATTER_COUNSEL_SELECT.gapAnswers).in('matter_id', matterIds)
     const gapAnswerRows = gapAnswerRead.error ? [] : ((gapAnswerRead.data ?? []) as Row[])
 
+    // The claim's typed lines (v2.6696, punch list #171, the owner's call of 2026-11-08): the firm reads each line,
+    // not only the total, so its page draws the same table the desk keeps and its demand reads the claim. Live rows
+    // only; the read fails soft. A line's document that the office held back travels with no document id.
+    const claimLineRead = await admin.from('legal_matter_claim_lines').select(MATTER_COUNSEL_SELECT.claimLines).in('matter_id', matterIds).is('removed_at', null).order('added_at')
+    const claimLineRows = claimLineRead.error ? [] : ((claimLineRead.data ?? []) as Row[])
+
     // Names for the office people the packet mentions (who flagged, who logged, who heard).
     const userIds = new Set<string>()
     for (const j of jobs) if (j.collections_by) userIds.add(j.collections_by as string)
@@ -563,6 +569,8 @@ serve(async (req) => {
         heldDocumentCount: documentRows.filter((d) => d.matter_id === m.id && documentHeld(d)).length,
         // v2.5923: the answers travel with the name, never the user id; the shaper cuts the row either way.
         gapAnswers: gapAnswerRows.filter((g) => g.matter_id === m.id).map((g) => ({ ...g, answered_by_name: (g.answered_by ? userName.get(g.answered_by as string) : null) ?? '', answered_by: undefined })),
+        // v2.6696: the claim's typed lines; a document the office held back is not named.
+        claimLines: claimLineRows.filter((l) => l.matter_id === m.id).map((l) => ({ ...l, document_id: l.document_id && documentRows.some((d) => d.id === l.document_id && d.matter_id === m.id && !documentHeld(d)) ? l.document_id : null })),
         narrative: (() => {
           const r = narrativeRows.get(m.id as string)
           return r ? legalNarrativeFromRow(r as { narrative_md?: string | null; narrative_updated_at?: string | null }, (r.narrative_updated_by ? userName.get(r.narrative_updated_by as string) : null) ?? '', (iso) => todayYmdInAppTz(new Date(iso))) : null

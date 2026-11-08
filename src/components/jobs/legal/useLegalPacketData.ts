@@ -19,6 +19,7 @@ import {
 import { classifyPromises, parsePaymentPromisesRpc, parsePromiseRecordsRpc } from '../../../lib/jobs/paymentPromises'
 import { parseChaseTouchesRpc } from '../../../lib/jobs/paymentChase'
 import { JOB_CONTRACT_COVERAGE_COLUMNS, type JobContractRowLike, type SignedEstimateLike } from '../../../lib/jobs/jobContractCoverage'
+import { withTheirPaperColumns } from '../../../lib/jobs/theirPaperIo'
 import type { JobDemandLetterRow } from '../../../lib/jobs/demandLetterTracking'
 import type { JobLienFilingRow } from '../../../lib/jobs/lienDeadlines'
 import type { LegalDeskItemLike } from '../../../lib/legal/legalLienPaper'
@@ -26,6 +27,8 @@ import type { CustomerAddressRow } from '../../../lib/jobs/lienProperty'
 import type { LegalJobOwnerRow } from '../../../lib/legal/legalProperty'
 import type { LegalGapAnswerLike } from '../../../lib/legal/legalGapAnswers'
 import { claimLinesFromRows, type LegalClaimLineLike, type LegalClaimLineRow } from '../../../lib/legal/legalClaimLines'
+import { peopleFromRows, type LegalMatterPersonLike, type LegalMatterPersonRow } from '../../../lib/legal/legalMatterPeople'
+import { MATTER_PEOPLE_SELECT } from '../../../lib/legal/legalMatterPeopleIo'
 import { buildHoursStatement, type HoursStatementInput } from '../../../lib/people/hoursStatement'
 
 /**
@@ -137,11 +140,14 @@ export function useLegalPacketData(
             const rows = (await withSupabaseRetry<unknown[]>(() => db.from('customer_addresses').select(ADDRESS_COLUMNS).eq('customer_id', customerId).order('sequence_order'), 'load legal packet property record')) ?? []
             return rows as CustomerAddressRow[]
           }, []),
+          // v2.6698 (punch list #173): their paper's own columns ride along for the rows whose kind says so.
           src<JobContractRowLike[]>('contracts', async () =>
-            (await withSupabaseRetry<JobContractRowLike[]>(
-              () => db.from('job_contracts').select(JOB_CONTRACT_COVERAGE_COLUMNS).in('job_id', jobIds).is('voided_at', null),
-              'load legal packet contracts',
-            )) ?? [], []),
+            withTheirPaperColumns(
+              (await withSupabaseRetry<JobContractRowLike[]>(
+                () => db.from('job_contracts').select(JOB_CONTRACT_COVERAGE_COLUMNS).in('job_id', jobIds).is('voided_at', null),
+                'load legal packet contracts',
+              )) ?? [],
+            ), []),
           src<SignedEstimateLike[]>('accepted estimates', async () =>
             (await withSupabaseRetry<SignedEstimateLike[]>(
               () => db.from('estimates').select('id, job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents').in('job_ledger_id', jobIds).eq('status', 'customer_accepted').not('acceptor_consented_at', 'is', null),
@@ -242,6 +248,15 @@ export function useLegalPacketData(
         )) ?? []
         return claimLinesFromRows(rows)
       }, [])
+      // v2.6705 (punch list #174): the people on the matter, live rows only, for the list and the letters' picker.
+      const people = await src<LegalMatterPersonLike[]>('people on the matter', async () => {
+        if (!matterId) return []
+        const rows = (await withSupabaseRetry<LegalMatterPersonRow[]>(
+          () => db.from('legal_matter_people').select(MATTER_PEOPLE_SELECT).eq('matter_id', matterId).is('removed_at', null).order('added_at').limit(ROW_CAP),
+          'load the people on the matter',
+        )) ?? []
+        return peopleFromRows(rows)
+      }, [])
       // v2.6413 (punch list #212 PR 4): the signed hours statements on the jobs, and the app's first clock day for the gap jobs.
       // The statements' policy is a dev's and the controller's (v2.6450); anyone else reads none, and the tab says so by showing none.
       const [hoursStatements, firstRecordedDay, sheetSubs] = await Promise.all([
@@ -340,6 +355,7 @@ export function useLegalPacketData(
           fee,
           gapAnswers,
           claimLines,
+          people,
         }),
       )
       setFailed(failures)

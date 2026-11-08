@@ -4,6 +4,7 @@ import { planLabel } from '../../lib/gc/lookups'
 import { questionsCloseOn } from '../../lib/gc/planQuestions'
 import { bidIsStale } from '../../lib/gc/bids'
 import { exclusionListWords } from '../../lib/gc/exclusions'
+import { directionsUrlForAddress } from '../../lib/directionsUrl'
 import { bidGoodUntil, bidRanOut, portalClosedWords, portalContacts, portalLeavesOut, portalPlanNews, portalPromiseLine, portalQuestions, portalQuoteDue, portalVetting, unclearLines } from '../../lib/gc/portal'
 import { pDate, pWeekday } from '../../lib/gc/portalI18n'
 import type { PortalSchedule } from '../../lib/gc/schedule/portalSchedule'
@@ -59,6 +60,7 @@ export function GcTradePortalProject({
   const { t } = usePortalLang()
   // No press provider: the portal reads only, and none of the schedule's presses is drawn (P5d-ii-2).
   const pressing = usePortalPress() !== null
+  const directions = directionsUrlForAddress(project.address)
   const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partner.id).map((invite) => ({ pkg, invite })))
   return (
     <div style={{ padding: '0.9rem', display: 'grid', gap: '0.9rem' }}>
@@ -73,6 +75,15 @@ export function GcTradePortalProject({
         <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{project.name}</div>
         <div style={{ fontSize: '0.85rem', color: MUTED }}>
           {[project.address, project.sizeNote].filter((s) => s.trim() !== '').join(' · ')}
+          {/* Directions (punch list #205, row 5): the address in the phone's maps app, one link with no key. Nothing else of a map. */}
+          {directions && (
+            <>
+              {' · '}
+              <a href={directions} target="_blank" rel="noopener noreferrer" style={LINK}>
+                {t('directions')} ↗
+              </a>
+            </>
+          )}
           <br />
           {t('gcLine', { name: GC_COMPANY.name, contact: partner.contact })}
         </div>

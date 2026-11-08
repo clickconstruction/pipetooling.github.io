@@ -2,7 +2,7 @@
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
 group: close
-status: live and walked 2026-11-08 — the train of six merged with every migration pushed (PR 1 v2.6300, 1a v2.6646, 1b v2.6656, 1c v2.6662, 2 v2.6665, 4 v2.6666), the types regenerated (#7264, #7276; #7290 for PRs 2 and 4 in the queue); walked on ZZ Test rows the same night, every one deleted after; left: seven slips the walk found and four calls for the owner (Where it stands)
+status: live and walked 2026-11-08 — the train of six merged with every migration pushed (PR 1 v2.6300, 1a v2.6646, 1b v2.6656, 1c v2.6662, 2 v2.6665, 4 v2.6666), the types regenerated (#7264, #7276; #7290 for PRs 2 and 4 in the queue); walked on ZZ Test rows the same night, every one deleted after, and again 2026-11-08 in the owner's Chrome from a ZZ Test bid with hours on its Labor rows (the award block, the deck's Freeze and Undo, the frozen strip with its planned finish, the Scoreboard's row, the superintendent's card); left: the slips — six of the first seven still stand and the second walk found four more — and four calls for the owner (Where it stands)
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
@@ -19,7 +19,7 @@ summary: >
   what the bid's workbench priced it from, assumed by a company split when the line was typed,
   tuned only by the owner, frozen at award as the sum of the lines; and the gate became #238's
   kind, a job priced before the work.
-next: Fix the walk's seven slips as one small PR (Where it stands, 2026-11-08), then the owner's look at People → Review → Scoreboard and his four calls, then retire the card.
+next: Fix the walks' slips as one small PR (Where it stands, 2026-11-08: six of the first seven still stand, and the second walk's four more, the first of them the award block refusing a bid whose Labor tab reads *rate set*), then the owner's four calls, then retire the card.
 size: L as a train of six (M · M · S · S · M · M), all six shipped; left: the walk's fixes (S)
 blocker: None for the fixes. The four calls under Where it stands are the owner's.
 ver: v2.6300 · 3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837 · 6646 · 6656 · 6662 · 6665 · 6666
@@ -346,6 +346,41 @@ Scoreboard and the same line as the Superintendent sample through View as. Delet
 after.
 
 ## Where it stands
+
+2026-11-08, the second walk, in the owner's Chrome signed in as him, on ZZ Test rows that stay for him to look at (bid
+BP398's six Labor rows filled as fixed-hour tasks with the company rate saved on the bid, job J1113 from it with its
+project #13, the Sample superintendent on the project, a test sub's 9 h sheet, the office's 25% and a schedule visit for
+the sample; the job refused deletion with *This job has costs attached* while every listed cost read $0.00). What it
+proved: **New Job** from the won bid drew the award block with the three sources and the planned finish's three, and
+Create Job froze the pick; the Costs strip read the frozen line with its planned finish and offered a date box where the
+plan was missing; **Freeze the planned finish** wrote a typed Nov 20; Quickfill's deck opened on *13 projects working with
+no hours baseline* from the Needs you line, **Freeze the book's 241 h** wrote it and showed the next card, **Undo** put
+the job back as 1 of 13; **Take B398's estimate · 70 h** on the strip froze a bid baseline that *scores*; the Bridge's
+*Jobs with no %* list set the office's 25%; the Scoreboard drew one row — 25% signed off, 9 h of 18 h earned, 9 h under,
+10 days ahead, −$392 kept and $0 bonus, each figure checked against `superintendent_scores` and by hand (70 h × 25% =
+17.5 h; $2,031 × 25% − $900); and View as the sample read the same scored line on the Job Mode card. The seven slips:
+**1** not reached (no assumed lines to review); **2** still there (the award on Sunday Nov 8 counted as working day one,
+241 h at 24 h a day read Nov 20, not Nov 23); **3** still there (*No certified pay app yet · the crew's 25% reads
+provisional* under the office's sign-off); **4** still there (*0 h in · hours 0%* while the score counts the sub's 9 h);
+**5** still there (*no plan* in the Days column with a planned finish and no hours); **6** still there (*0% of the
+baseline's hours · the baseline was heavy* before any hour, on the book and the bid baselines alike); **7** in a new
+shape (below). Four more:
+
+8. **The award block and the Costs strip read a bid with hours on 6 of 6 rows as not usable** — *No labor rate is set*,
+   then, cleared, *bid B398 was sent without hours* and *has an estimate without hours* — while the bid's Labor tab
+   read *Usable as a job budget · rate set* on the company rate. `bid_estimate_breakdown` reads `rate_set` from the cost
+   estimate's own `labor_rate`, which the company rate never fills; *save it on the bid* made it usable at once. The
+   block should read the rate the Labor tab reads, and the strip's words should say *no rate on the bid*, never *sent
+   without hours*, when the rows carry hours (PR 1a).
+9. **Open the job on the Edit Bid Win/Loss row** closed the bid form and opened no New Job form, twice; New Job → Import
+   → the bid was the way in (BidWonJobActions, `openNewJob({ prefillBidId })`).
+10. **The superintendent's Job Mode stop** read *J— · —* and *Ready to start J— | —* for the sample on a job added to
+    his own schedule, while the card under it named J1113 (#242's card).
+11. **Clear on the Costs strip takes the frozen award with the live row**, so a cleared project re-awards as whatever
+    the next press writes (the deck's book freeze read *Frozen Nov 8* again); the award was meant to be written once.
+
+The four calls below are unchanged; the first asks itself again here (a $56,343 project's book baseline read 241 h
+beside the line budgets' 563 h).
 
 2026-11-08: every PR merged and every migration pushed. The walk ran on the dev server against prod
 as the dev, on ZZ Test rows only, and every one was deleted after (the job, its project and the
