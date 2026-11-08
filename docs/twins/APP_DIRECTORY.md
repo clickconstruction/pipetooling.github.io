@@ -356,6 +356,9 @@ Roles: all (Team for dev, master, assistant/controller; payroll actions gated).
 ### /b/:code — A box label's short address
 The door a printed box label's QR opens: `prts.co/b/7D759246` forwards here (v2.6039, punch list #209). The page finds the box by its eight-character code and opens it on the tally's On site tab; a code no box carries says so and offers the tab. Roles: anyone signed in who can see the job.
 
+### /e/:code — An estimate link's short address
+The door the estimate text's link opens (v2.6678, punch list #281): `my.clickplumbing.com/e/<code>` answers a 301 here through the `portal-link-shell` Worker, and the page is the customer's accept page (`/estimate/accept`) with the code read from the path instead of `?t=`: the estimate, its options, approve or decline. A code that opens nothing says so as a wrong link does. Public, no sign-in. Guide: `send-an-estimate-and-turn-it-into-a-job`.
+
 ### /m/:code — A machine label's short address
 The door a machine's printed label opens (v2.6559, punch list #270): the page finds the machine by its code and opens its pre-use check on the job it is on, asking which job when it is in the yard; once today's walk is signed it opens the leaving check instead. A code no machine carries offers Add this machine with the templates, Ours or Rental since v2.6586 (a rental's agreement number may stay blank until its photo). A rental whose agreement number is not in opens with **The rental agreement** as its first stop, a photo of the paper page by page, and the sign press reads *Photo of the agreement first* until the first page is in; its leaving check adds a *Return slip* tile (v2.6576, punch list #271). Roles: anyone signed in. Guide `check-a-machine-before-you-run-it`.
 

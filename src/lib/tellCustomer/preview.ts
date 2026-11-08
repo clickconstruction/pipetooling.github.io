@@ -17,7 +17,7 @@ export interface PreviewEmail {
 }
 
 /** A sample accept link in the real one's shape. It opens nothing, and the window says so. */
-export const SAMPLE_ACCEPT_LINK = 'https://clicktooling.com/estimate/accept?t=sample'
+export const SAMPLE_ACCEPT_LINK = 'https://my.clickplumbing.com/e/sample'
 
 export interface TextPreview {
   /** The words as they would land, the link filled by the sample. */
