@@ -21507,6 +21507,8 @@ export type Database = {
           budget_labor_pct: number | null
           budget_materials_pct: number | null
           budget_rate_usd: number | null
+          budget_reviewed_at: string | null
+          budget_reviewed_by: string | null
           budget_source: string | null
           budget_tuned_at: string | null
           count: number
@@ -21534,6 +21536,8 @@ export type Database = {
           budget_labor_pct?: number | null
           budget_materials_pct?: number | null
           budget_rate_usd?: number | null
+          budget_reviewed_at?: string | null
+          budget_reviewed_by?: string | null
           budget_source?: string | null
           budget_tuned_at?: string | null
           count?: number
@@ -21561,6 +21565,8 @@ export type Database = {
           budget_labor_pct?: number | null
           budget_materials_pct?: number | null
           budget_rate_usd?: number | null
+          budget_reviewed_at?: string | null
+          budget_reviewed_by?: string | null
           budget_source?: string | null
           budget_tuned_at?: string | null
           count?: number
@@ -21584,6 +21590,13 @@ export type Database = {
           stage_kind?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_fixtures_budget_reviewed_by_fkey"
+            columns: ["budget_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_ledger_fixtures_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -43575,6 +43588,10 @@ export type Database = {
           p_uncosted_usd: number
         }
         Returns: Json
+      }
+      stamp_line_budgets_reviewed: {
+        Args: { p_fixture_ids: string[] }
+        Returns: number
       }
       start_bid_from_message: {
         Args: {
