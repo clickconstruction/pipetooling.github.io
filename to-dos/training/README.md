@@ -381,3 +381,7 @@ refused.
 § Pick up above is its brief. Nothing was pressed in Settings → Training from this machine; both
 courses stand as they did, the refresher off and required for the five field roles, Intro to
 plumbing off and offered.
+
+2026-11-08, later: #119's read is complete (`to-dos/intro-plumbing/README.md` § Read-through 2026-11-08,
+25 doubted facts for the owner, no fix PR), so the switch proof above can run; the owner's own press to
+On still waits on his correction pass over those rows.
