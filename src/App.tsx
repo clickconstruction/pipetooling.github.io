@@ -246,6 +246,8 @@ function AppContent() {
         <Route path="/accept-invite" element={<AcceptInvite />} />
         <Route path="/task" element={<TaskShortcut />} />
         <Route path="/estimate/accept" element={<EstimateAccept />} />
+        {/* #281 (v2.6678): the estimate text's short link, my.clickplumbing.com/e/<code>, lands here with the code in the path. */}
+        <Route path="/e/:code" element={<EstimateAccept />} />
         <Route path="/bid-room" element={<BidRoom />} />
         <Route path="/submittal" element={<SubmittalRoom />} />
         <Route path="/q/:token" element={<SupplyHouseQuotePage />} />

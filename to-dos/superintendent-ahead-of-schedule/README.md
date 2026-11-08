@@ -1,8 +1,8 @@
 ---
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
-group: ready
-status: in hand on claude/234-pr4-scoreboard — PR 1a the budgets at award merged 2026-11-07 as v2.6646 (#7244), its migration `20261107150000` pushed and the types regenerated (#7264) · PR 1b the owner tunes merged 2026-11-08 as v2.6656 (#7256), its migration `20261107210000` pushed · PR 1c the weekly review card merged 2026-11-08 as v2.6662 (#7260), its migration `20261107180000` pushed, the types regenerating (#7276) · PR 2 the planned finish merged 2026-11-08 as v2.6665 (#7261), its migrations `20261107190000` and `20261107190500` to push · the owner's three calls recorded on main 2026-11-07 (the office's sign-off counts as certified, the bonus is on hours saved, a sub-performed stage counts on the sub's sheet hours) · PR 4 the scoreboard (#7263) open with its migration · thought through 2026-11-01 with the owner and mocked up in seven boards; PR 1 merged 2026-11-02 as v2.6300 and is live with its migration pushed; the superintendent's line moved to #242's build
+group: close
+status: live and walked 2026-11-08 — the train of six merged with every migration pushed (PR 1 v2.6300, 1a v2.6646, 1b v2.6656, 1c v2.6662, 2 v2.6665, 4 v2.6666), the types regenerated (#7264, #7276; #7290 for PRs 2 and 4 in the queue); walked on ZZ Test rows the same night, every one deleted after; left: seven slips the walk found and four calls for the owner (Where it stands)
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
@@ -19,11 +19,11 @@ summary: >
   what the bid's workbench priced it from, assumed by a company split when the line was typed,
   tuned only by the owner, frozen at award as the sum of the lines; and the gate became #238's
   kind, a job priced before the work.
-next: Push PR 2's two migrations and regenerate the types; merge PR 4 and push its migration; then the live walk on ZZ Test rows (How to verify), PR 1a's first: a ZZ Test project from a bid with hours on its Labor rows, the award block, the Costs strip's frozen line, Quickfill's *Freeze the book's N h* and its Undo.
-size: L as a train of six (M · M · S · S · M · M), PRs 1, 1a, 1b, 1c and 2 shipped; left: PR 4 (M), open with its migration
-blocker: None. The owner's three calls were made 2026-11-07 and are written under Open questions.
-ver: v2.6300 · 3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837
-opinion: build — the three calls are made and PR 1 is live; the train runs from PR 1a to the scoreboard
+next: Fix the walk's seven slips as one small PR (Where it stands, 2026-11-08), then the owner's look at People → Review → Scoreboard and his four calls, then retire the card.
+size: L as a train of six (M · M · S · S · M · M), all six shipped; left: the walk's fixes (S)
+blocker: None for the fixes. The four calls under Where it stands are the owner's.
+ver: v2.6300 · 3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837 · 6646 · 6656 · 6662 · 6665 · 6666
+opinion: build — the seven slips are small and found; the four calls are the owner's
 mockup: to-dos/superintendent-ahead-of-schedule/mockup-phone.html
 ---
 
@@ -340,17 +340,57 @@ kernel and card; the Schedule column and the bonus setting; the certified-percen
 
 On the dev server as the dev, prod data, nothing written outside ZZ Test rows: make a ZZ Test
 commercial job from a ZZ Test bid with hours on its Labor rows, award it, and read the strip
-(frozen hours, the planned finish); clock ZZ Test hours and set a percent; read the superintendent's
-line as the Superintendent sample through View as; certify a ZZ Test pay app and read the Review
-row. Delete every ZZ Test row after.
+(frozen hours, the planned finish); put the Superintendent sample on its project, add a ZZ Test sub
+sheet with hours on it, and set a percent as the office; read the row on People → Review →
+Scoreboard and the same line as the Superintendent sample through View as. Delete every ZZ Test row
+after.
 
 ## Where it stands
 
+2026-11-08: every PR merged and every migration pushed. The walk ran on the dev server against prod
+as the dev, on ZZ Test rows only, and every one was deleted after (the job, its project and the
+superintendent on it, a Claude Test Sub sheet, a schedule visit). It proved the train end to end: a
+typed 120 h baseline froze at award with its planned finish; the owner's tunes and the weekly review
+card did what they say; with the Superintendent sample on the project, the office's 25% sign-off and
+a 9 h sub sheet, the Scoreboard drew one row reading 9 h of 30 h earned, 21 h under the baseline, 2
+days ahead of the plan, $900 kept and a $90 bonus, each figure checked by hand; and the sample's own
+Job Mode card read the same line through View as.
+
+The seven slips, one small PR:
+
+1. **The weekly review window** re-reads after *Mark reviewed* and says "The other 1 line on these 0
+   projects". It should keep the review it opened (PR 1c).
+2. **The planned finish** counts an award on a weekend day as working day one: a Sunday award at 5
+   working days reads Thursday, not Friday. `finishAfterWorkingDays` should roll a weekend start to
+   Monday (PR 2).
+3. **The superintendent's card** still says "No certified pay app yet" and calls the percent
+   provisional under a percent the office signed off, while the score line under it counts that
+   sign-off. The owner's first call makes the office's sign-off the certified percent (#242's pace
+   kernel).
+4. **The same card** reads "0 h in · hours 0%" while the Scoreboard counts the sub's 9 sheet hours on
+   that job. The owner's third call counts a sub stage on its sheet hours (#242's pace kernel).
+5. **The Scoreboard's Days column** reads "no plan" for a job that has a planned finish and no hours
+   yet. It should say it waits on hours (PR 4).
+6. **The Costs strip** read "0% of the baseline's hours · the baseline was heavy" before any hour or
+   percent was in, and the bid strip did the same. Both should wait (PR 1a).
+7. **A bid with no Labor rows** reads "Not usable: hours on 0 of 0 rows". It should say the bid has no
+   Labor rows (PR 1a).
+
+The owner's four calls:
+
+- **Two hour budgets on one Costs tab.** The hours frozen at award (120 h on the walk) sit beside the
+  line budgets' sum (240 h). Which one does the score read, and does the other still show?
+- **Small jobs on the baseline deck.** A $350 service job sat on *Projects with no baseline*. A price
+  floor for the deck?
+- **The book's fallback.** With no projects of its size it reads every size ("from 133 projects of
+  every size") and gave one large job 3,517 h. Fall back by size band instead?
+- **Two labor rates.** The roster's loaded rate ($29.01) and the line budgets' $45 disagree. Which one
+  prices the labor kept?
+
 2026-11-07: the owner made the three calls (above). PR 1a opened the same day as v2.6646 with its
 migration, PR 1b as v2.6656, PR 1c as v2.6662, PR 2 as v2.6665 and PR 4 as v2.6666, each with its own,
-each to be pushed right after its merge; PR 1a merged the same day and its push is owed. PR 3 builds
-on #242 from the same kernel. What is left after the merges: the pushes, `npm run gen-types`, and the
-live walk on ZZ Test rows (How to verify). The ground for PR 4 is settled: the certified percent is the
+each to be pushed right after its merge. PR 3 builds on #242 from the same kernel. The ground for PR 4
+is settled: the certified percent is the
 office's sign-off, the bonus is a share of labor kept, and sub stages count on their sheet hours.
 
 2026-11-01: thought through with the owner and mocked up; nothing built. The owner asked to keep the

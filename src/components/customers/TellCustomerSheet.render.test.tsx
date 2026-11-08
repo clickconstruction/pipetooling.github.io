@@ -284,7 +284,7 @@ describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () =
     fireEvent.click(screen.getByTestId('tell-preview-text-press'))
     expect(screen.getByRole('dialog', { name: 'What Dana sees' })).toBeTruthy()
     expect(screen.getByTestId('tell-preview').getAttribute('data-kind')).toBe('text')
-    expect(screen.getByTestId('tell-preview-words').textContent).toBe(box.value.replace('{link}', 'https://clicktooling.com/estimate/accept?t=sample'))
+    expect(screen.getByTestId('tell-preview-words').textContent).toBe(box.value.replace('{link}', 'https://my.clickplumbing.com/e/sample'))
     expect(screen.getByTestId('tell-preview-sample')).toBeTruthy()
     fireEvent.click(screen.getByTestId('tell-preview-pill-email'))
     expect(screen.getByTestId('tell-preview').getAttribute('data-kind')).toBe('email')

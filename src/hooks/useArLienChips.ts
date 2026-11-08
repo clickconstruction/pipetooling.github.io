@@ -88,7 +88,7 @@ export function useArLienChips(
       retainage: data.retainage.entries,
       letterTwoByJob: data.letterTwoByJob,
       // The courtesy notice (punch list #231): the same kernel the desk reads, so the chip and the row agree.
-      courtesyByJob: courtesyByJobFrom({ todayYmd, letterTwoByJob: data.letterTwoByJob, items: data.items, entries: data.queue.entries, jobsById: data.jobsById, addressesById: data.addressesById, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob, paymentsByJob: data.paymentsByJob, promisesByJob: data.promisesByJob }),
+      courtesyByJob: courtesyByJobFrom({ todayYmd, letterTwoByJob: data.letterTwoByJob, items: data.items, entries: data.queue.entries, jobsById: data.jobsById, addressesById: data.addressesById, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob, paymentsByJob: data.paymentsByJob, promisesByJob: data.promisesByJob, repliedAtByJob: data.courtesyRepliedAtByJob }),
       serveDue,
       role,
       todayYmd,

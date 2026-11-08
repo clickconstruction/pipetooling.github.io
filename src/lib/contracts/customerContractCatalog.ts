@@ -209,7 +209,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     edit: { kind: 'page', to: '/estimates', label: 'Estimates → open a draft → Terms' },
     copyKept: 'Frozen on the estimate when it is first sent.',
     seenOn: [H('estimate-page')],
-    routes: ['/estimate/accept'],
+    routes: ['/estimate/accept', '/e/:code'],
     guide: 'send-an-estimate-and-turn-it-into-a-job',
   },
   {
@@ -224,7 +224,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     edit: { kind: 'settings', tabId: BIDS_AND_MATERIALS, anchorId: ANCHOR_ESTIMATE_CX_DEFAULTS, label: 'Settings → Bids & materials → Estimate customer experience defaults', devOnly: true },
     copyKept: 'Frozen on the estimate when it is sent. One estimate can carry its own wording.',
     seenOn: [H('estimate-page')],
-    routes: ['/estimate/accept'],
+    routes: ['/estimate/accept', '/e/:code'],
     guide: 'send-an-estimate-and-turn-it-into-a-job',
   },
   // ---- Bids ----
@@ -356,7 +356,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     edit: { kind: 'code', note: 'Fixed in the app.' },
     copyKept: null,
     seenOn: [H('estimate-page'), H('job-contract-page'), G('bid-room')],
-    routes: ['/estimate/accept', '/contract/sign', '/bid-room'],
+    routes: ['/estimate/accept', '/e/:code', '/contract/sign', '/bid-room'],
     pins: [
       { file: 'src/components/estimates/EstimateAcceptBody.tsx', text: 'By signing, you accept this estimate, its associated costs, and the Terms and Conditions. ' },
       { file: 'src/components/estimates/EstimateAcceptBody.tsx', text: 'Additional requests to approve modifications to this estimate will not void this agreement unless otherwise stated.' },
@@ -385,7 +385,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
     edit: { kind: 'code', note: 'Fixed in the app, and versioned: a change to the wording raises the version number.' },
     copyKept: 'The words shown are stored beside each signature, with the version and the language.',
     seenOn: [H('estimate-page'), H('job-contract-page'), G('bid-room'), H('estimate-terms')],
-    routes: ['/estimate/accept', '/contract/sign', '/bid-room', '/estimate/terms'],
+    routes: ['/estimate/accept', '/e/:code', '/contract/sign', '/bid-room', '/estimate/terms'],
   },
   // ---- Notices ----
   {

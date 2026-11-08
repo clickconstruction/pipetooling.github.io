@@ -25,6 +25,7 @@ import type { LegalDeskItemLike } from '../../../lib/legal/legalLienPaper'
 import type { CustomerAddressRow } from '../../../lib/jobs/lienProperty'
 import type { LegalJobOwnerRow } from '../../../lib/legal/legalProperty'
 import type { LegalGapAnswerLike } from '../../../lib/legal/legalGapAnswers'
+import { claimLinesFromRows, type LegalClaimLineLike, type LegalClaimLineRow } from '../../../lib/legal/legalClaimLines'
 import { buildHoursStatement, type HoursStatementInput } from '../../../lib/people/hoursStatement'
 
 /**
@@ -232,6 +233,15 @@ export function useLegalPacketData(
           return { gapKey: r.gap_key, text: r.answer, by: userName(r.answered_by), ymd: calendarYmdInAppTzFromIso(r.answered_at), documentId: r.document_id, documentTitle: (doc?.title ?? '').trim() }
         })
       }, [])
+      // v2.6679 (punch list #171): the typed lines of the claim, live rows only, with each Evidence document's title.
+      const claimLines = await src<LegalClaimLineLike[]>('claim lines', async () => {
+        if (!matterId) return []
+        const rows = (await withSupabaseRetry<LegalClaimLineRow[]>(
+          () => db.from('legal_matter_claim_lines').select('id, kind, title, amount, basis, document_id, added_at, document:legal_matter_documents(title)').eq('matter_id', matterId).is('removed_at', null).order('added_at').limit(ROW_CAP),
+          'load legal packet claim lines',
+        )) ?? []
+        return claimLinesFromRows(rows)
+      }, [])
       // v2.6413 (punch list #212 PR 4): the signed hours statements on the jobs, and the app's first clock day for the gap jobs.
       // The statements' policy is a dev's and the controller's (v2.6450); anyone else reads none, and the tab says so by showing none.
       const [hoursStatements, firstRecordedDay, sheetSubs] = await Promise.all([
@@ -329,6 +339,7 @@ export function useLegalPacketData(
           holdOverrides: holdOverrides ?? {},
           fee,
           gapAnswers,
+          claimLines,
         }),
       )
       setFailed(failures)
