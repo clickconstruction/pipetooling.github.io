@@ -89,9 +89,9 @@ export function windowWaySentence(i: WindowSentenceInput): string {
   const reminders = i.remindersEnabled ? ' Reminders every 3 days until signed, up to 3.' : ' No reminders.'
   switch (i.way) {
     case 'link': {
-      if (email && i.textToo && phone) return `Emails ${email} a Review & sign link from ${i.fromAddress} and opens a text to ${phone} with the same link.${reminders}`
+      if (email && i.textToo && phone) return `Emails ${email} a Review & sign link from ${i.fromAddress} and texts ${phone} the same link from the company number.${reminders}`
       if (email) return `Emails ${email} a Review & sign link from ${i.fromAddress}.${reminders}`
-      if (phone) return `Opens a text to ${phone} with the Review & sign link. Add an email for reminders and their signed copy.`
+      if (phone) return `Opens the customer’s box with the Review & sign link, to text ${phone} from the company number. Add an email for reminders and their signed copy.`
       return 'Add an email or a mobile to send a link.'
     }
     case 'here':
