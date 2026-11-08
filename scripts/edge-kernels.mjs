@@ -254,6 +254,12 @@ export const ENTRIES = {
       'MyMailOpenOk',
       'MyMailOpenRequest',
       'MyMailParty',
+      'MyMailPersonRef',
+      'MyMailPersonTagCounts',
+      'MyMailPersonTagOk',
+      'MyMailPersonTagPlanMail',
+      'MyMailPersonTagPlanOk',
+      'MyMailPersonTagRequest',
       'MyMailRefusal',
       'MyMailRefusalError',
       'MyMailRequest',
@@ -277,6 +283,12 @@ export const ENTRIES = {
     types: ['MyMailKnown', 'MyMailKnownLine', 'MyMailPerson', 'MyMailTagFile', 'MyMailTagLink', 'MyMailTagPlan', 'MyMailTagSkip', 'MyMailTagStep', 'MyMailThread', 'MyMailThreadRow'],
   },
   'lib/myMail/view.ts': { values: ['MY_MAIL_WORDS', 'foldedCount', 'rowsForView', 'viewRows'], types: ['MyMailViewRows'] },
+  // Punch list #289: a conversation onto a person's HR file from the dev seat — one dated entry per mail in a fixed
+  // shape, the file's own entries by Gmail id as the dedupe, which gmail-mine's person tag and its follow both run.
+  'lib/myMail/personTagPlan.ts': {
+    values: ['MY_MAIL_ENTRY_BODY_MAX', 'MY_MAIL_ENTRY_SOURCE', 'fileSizeWords', 'mailEntryContent', 'mailEntryDate', 'mailSentWords', 'personEntryRow', 'planPersonTag'],
+    types: ['MyMailPersonKnown', 'MyMailPersonTagPlan', 'MyMailPersonTagStep'],
+  },
   // Since PR 4 (v2.6279) also the follow, the cron's action: whose tagged conversations it reads, the window and the
   // newest mail it keys on (v2.6289), what it does with each mail, and the tag's grey line on the thread. Since v2.6292
   // the hidden labels by Gmail's ids, the row's record of the tag's ties, and what an untag keeps for the office.
@@ -336,6 +348,7 @@ export const ENTRIES = {
       'newestMailAt',
       'orphanCopies',
       'parseMyMailRequest',
+      'personTagPlanPreview',
       'pipelineIsOpen',
       'planFollow',
       'planUntag',

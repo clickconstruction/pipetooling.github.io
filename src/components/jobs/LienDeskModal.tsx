@@ -47,8 +47,9 @@ import {
 import { addJobPaymentPromise } from '../../lib/jobs/paymentChaseIo'
 import { defaultWordNote, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
-import { confirmLienPenSignature, disownLienPenSignature, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload, type LienSignCodeStatus } from '../../lib/jobs/lienDeskSignIo'
-import { lienChipSigned, lienFieldsHash, lienNoticeSignatureFromRow, lienSignatureWhen, signatureColumnsOf, toFilingSignature } from '../../lib/jobs/lienNoticeSignature'
+import { confirmLienPenSignature, disownLienPenSignature, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
+import { lienCodeRefusalWords, lienCodeSignerFrom, lienCodeStatusStale, lienOtherScreen, type LienCodeStatusRead } from '../../lib/jobs/lienCodeSigner'
+import { lienChipSigned, lienFieldsHash, lienNoticeSignatureFromRow, signatureColumnsOf, toFilingSignature } from '../../lib/jobs/lienNoticeSignature'
 import { LienNoticeSignLine, type LienNoticeSignLineCodeSigner, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
 import { useLienDeskSignatureInks } from '../../hooks/useLienDeskSignatureInks'
 import { LienWordRecordRow } from './LienWordRecordRow'
@@ -978,8 +979,8 @@ export default function LienDeskModal({
   // Someone else's screen (v2.5791, punch list #150): the job has a master and he is not the one signed in here. The
   // signature line is then his — his name in cursive, his signing code or his hand — never the signed-in user's name.
   const masterId = job?.master_user_id ?? null
-  const otherScreen = Boolean(masterId && masterId !== authUserId)
-  const [codeStatus, setCodeStatus] = useState<LienSignCodeStatus | 'not_live' | 'loading' | null>(null)
+  const otherScreen = lienOtherScreen(masterId, authUserId)
+  const [codeStatus, setCodeStatus] = useState<LienCodeStatusRead>(null)
   const [codeStatusTick, setCodeStatusTick] = useState(0)
   const [codeProblem, setCodeProblem] = useState<string | null>(null)
   useEffect(() => {
@@ -1001,13 +1002,7 @@ export default function LienDeskModal({
       live = false
     }
   }, [otherScreen, masterId, open, codeStatusTick, selected?.jobId])
-  const codeSigner: LienNoticeSignLineCodeSigner | null = otherScreen
-    ? {
-        firstName: leaderName.trim().split(/\s+/)[0] || 'The leader',
-        status: codeStatus === 'loading' || codeStatus === null ? 'loading' : codeStatus === 'not_live' ? 'not_live' : !codeStatus.set ? 'none' : codeStatus.lockedUntilIso ? 'locked' : 'ready',
-        lockedUntilClock: codeStatus && typeof codeStatus === 'object' && codeStatus.lockedUntilIso ? lienSignatureWhen(codeStatus.lockedUntilIso).clock : null,
-      }
-    : null
+  const codeSigner: LienNoticeSignLineCodeSigner | null = otherScreen ? lienCodeSignerFrom(leaderName, codeStatus) : null
   const wordPreview = selected
     ? wordRecordPreview({ leaderName, note: wordNote, channel: wordChannel, recorderName: authName, jobLabel: jobLabel(job, selected.jobId), gcName: gc?.name ?? null, amountWords: formatUsdNoCents(openBalance) })
     : undefined
@@ -1415,9 +1410,9 @@ export default function LienDeskModal({
     if (payload.mode === 'code') {
       const r = await signLienDeskItemWithCode({ itemId, fields, signerUserId: masterId ?? '', code: payload.code, approve: approveToo })
       if (!r.ok) {
-        const words = r.reason === 'wrong' && r.triesLeft != null ? `${r.message} ${r.triesLeft} ${r.triesLeft === 1 ? 'try' : 'tries'} left.` : r.message
+        const words = lienCodeRefusalWords(r)
         setCodeProblem(words)
-        if (r.reason === 'locked' || r.reason === 'none' || r.reason === 'not_live') setCodeStatusTick((t) => t + 1)
+        if (lienCodeStatusStale(r.reason)) setCodeStatusTick((t) => t + 1)
         throw new Error(words)
       }
       setCodeProblem(null)
@@ -3220,7 +3215,8 @@ export default function LienDeskModal({
       footer = byHandPane ?? penPane ?? (
         <>
         {leader ? offerBox(saveOffer, itemOffer != null) : null}
-        {leader && readySigned === 'unsigned' ? signLine() : null}
+        {/* v2.6733 (punch list #150): the office's Ready footer carries the master's line too — his code or his hand on this screen, beside the pen record. */}
+        {(leader || (office && otherScreen)) && readySigned === 'unsigned' ? signLine() : null}
         {leader && penAwaits && selected.item ? (
           // The pen train, PR 3: the office wrote down his pen signature; his word strengthens the record, his No clears it.
           <div data-lien-desk-pen-confirm data-lien-desk-confirm-mode={codeAwaits ? 'code' : 'pen'} role="group" aria-label={codeAwaits ? 'A signature by your code, waiting on your word' : 'A pen signature recorded for you'} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', borderRadius: 8, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
@@ -3247,7 +3243,9 @@ export default function LienDeskModal({
           <span className="lienFootSpacer" />
           {leader ? offerSwitch() : null}
           {leader && readySigned === 'unsigned' ? (
-            <button type="button" onClick={signOnly} disabled={busy} style={btn('green', busy)} data-lien-desk-sign title="Approved on your word; your signature goes on the paper">Sign ▸</button>
+            <button type="button" onClick={signOnly} disabled={busy} style={btn('green', busy)} data-lien-desk-sign title={otherScreen ? `Approved on his word; ${codeSigner?.firstName ?? 'the leader'} signs here with his code or his hand, and the record names your screen` : 'Approved on your word; your signature goes on the paper'}>Sign ▸</button>
+          ) : !leader && office && otherScreen && readySigned === 'unsigned' ? (
+            <button type="button" onClick={signOnly} disabled={busy} style={btn('green', busy)} data-lien-desk-office-sign-press title="His code or his hand here. The record names your screen">Sign ▸</button>
           ) : null}
           {office && readySigned === 'unsigned' ? (
             <button type="button" className="lienFootLink" onClick={() => setPenOpen(true)} disabled={busy} data-lien-desk-pen title="He signed the printed paper with a pen: write down who, when, how you know, and add the signed page">
