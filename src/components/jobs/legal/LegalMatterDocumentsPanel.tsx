@@ -361,7 +361,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
                                 doc.state === 'final' ? { label: 'Received…', go: () => { setSentFor(null); setWhoseFor(null); setReceivedFor({ id: d.id, on: todayYmd }) } } : null,
                                 doc.state === 'sent' ? { label: 'Not sent after all', go: () => void act('Could not change the document.', () => setLegalMatterDocumentState(supabase, d.id, 'final')) } : null,
                                 doc.state === 'received' ? { label: 'Not received after all', go: () => void act('Could not change the document.', () => setLegalMatterDocumentState(supabase, d.id, 'final')) } : null,
-                                { label: 'Remove', go: () => void act('Could not remove the document.', () => retireLegalMatterDocument(supabase, d.id, d.text_document_id ?? null)) },
+                                { label: 'Remove', go: () => void act('Could not remove the document.', () => (d.text_document_id ? retireLegalMatterDocument(supabase, d.id, d.text_document_id) : retireLegalMatterDocument(supabase, d.id))) },
                               ] as Array<{ label: string; go: () => void } | null>).filter((m): m is { label: string; go: () => void } => Boolean(m)).map((m) => (
                                 <button key={m.label} type="button" role="menuitem" onClick={() => { setMenuFor(null); m.go() }} style={{ ...btn, border: 'none', justifyContent: 'flex-start', height: 28, borderRadius: 6, ...(m.label === 'Remove' ? { color: 'var(--text-red-700)' } : null) }}>{m.label}</button>
                               ))}
