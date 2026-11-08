@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildJobActivityLines,
   compactChicagoClockTime,
+  countJobActivityLines,
   filterJobActivityLines,
   groupJobActivityLinesByDay,
 } from './jobActivityLine'
@@ -217,5 +218,42 @@ describe('groupJobActivityLinesByDay', () => {
     const groups = groupJobActivityLinesByDay(buildJobActivityLines([note('n1', 'not-a-date', 'mystery note')]), now)
     expect(groups).toHaveLength(1)
     expect(groups[0]).toMatchObject({ dayKey: '', label: '—', agoLabel: '', isToday: false })
+  })
+})
+
+describe('the Customer filter is everything to or from the customer (v2.6690, punch list #125)', () => {
+  const billing = (key: string, at: string, type: 'contract_signed' | 'invoice_sent' | 'payment_added' | 'lien_release_signature_requested', summary: string): JobThreadActivityItem => ({
+    kind: 'event',
+    event: { dedupeKey: key, type, occurredAt: at, actorName: null, summary, financial: true },
+  })
+  const text = {
+    id: 'm-in',
+    contactId: 'c-dana',
+    contact: { name: 'Dana Whitfield', goesBy: null, kind: 'customer' as const },
+    channel: 'text' as const,
+    direction: 'in' as const,
+    at: '2026-08-12T16:00:00Z',
+    who: '',
+    body: 'Signed it, thanks.',
+    tied: true,
+  }
+
+  it('counts the papers the customer got or did under Customer and under Billing both; the payment under Billing alone', () => {
+    const lines = buildJobActivityLines(
+      [
+        billing('e-sent', '2026-08-12T14:00:00Z', 'invoice_sent', 'Invoice sent to customer (stripe)'),
+        billing('e-signed', '2026-08-12T15:00:00Z', 'contract_signed', 'Contract signed by Dana Whitfield — Service agreement'),
+        billing('e-release', '2026-08-12T15:30:00Z', 'lien_release_signature_requested', 'Signature requested — Final release'),
+        billing('e-paid', '2026-08-13T15:00:00Z', 'payment_added', 'Payment $1,200.00 (card)'),
+        note('n1', '2026-08-12T14:30:00Z', 'Sent the agreement.', 'Rosa'),
+      ],
+      { messages: [text] },
+    )
+    const counts = countJobActivityLines(lines)
+    expect(counts).toMatchObject({ all: 6, notes: 1, billing: 4, customer: 4 })
+    expect(filterJobActivityLines(lines, 'customer').map((l) => l.key)).toEqual(['e-sent', 'e-signed', 'e-release', 'm-m-in'])
+    expect(filterJobActivityLines(lines, 'billing').map((l) => l.key)).toEqual(['e-sent', 'e-signed', 'e-release', 'e-paid'])
+    // Numbers were given before the filter, so the signed contract is line 3 under every pill.
+    expect(filterJobActivityLines(lines, 'customer')[1]!.number).toBe(3)
   })
 })

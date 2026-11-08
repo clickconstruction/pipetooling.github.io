@@ -1,6 +1,6 @@
 import type { JobThreadActivityItem } from '../../components/JobThreadNotesPanel'
 import type { JobThreadNoteStats } from '../../hooks/useJobThreadNotes'
-import type { JobActivityEvent } from '../jobActivityEvent'
+import { CUSTOMER_EVENT_TYPES, type JobActivityEvent } from '../jobActivityEvent'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { messageChannelWord, messageLineParts, messageTone, messageWho, type JobActivityMessage } from './jobActivityMessages'
 
@@ -15,9 +15,12 @@ import { messageChannelWord, messageLineParts, messageTone, messageWho, type Job
  * customer (Stripe's email, the app's), the owner's catch on the Palmer row.
  * Since v2.5636 the papers that follow a bill come in too: a paper bill
  * emailed again, a demand letter, a lien or retainage notice. They take no
- * number, so "check note 3" still never shifts. A contract reminder stays
- * out: the cron sends up to three on its own, and the contract's send is not
- * in the box either. Since v2.6689 (punch list #125, the owner's pick of option a) the customer's own
+ * number, so "check note 3" still never shifts. Since v2.6690 (punch list
+ * #125, PR 3) the set is `CUSTOMER_EVENT_TYPES` in `jobActivityEvent.ts`,
+ * the same set the Customer filter reads, so the contract sent, opened and
+ * signed, the release asked for and sent, the courtesy and hazmat notices
+ * and the customer's word on paying come in too. A contract reminder stays
+ * out: the cron sends up to three on its own. Since v2.6689 (punch list #125, the owner's pick of option a) the customer's own
  * conversation comes in too: the job's newest three calls, texts, emails and portal lines between us and
  * the people on it, read once per board load (`pipeline_customer_lines`), each unnumbered under an
  * orange tag that names the channel, the customer's lines orange and a line from them with the bar.
@@ -37,7 +40,11 @@ export type JobActivityBoxEntry = {
   body: string
   /** On a `line` (v2.6689): what the tag says, where it came from and how it reads. */
   line?: JobActivityBoxLine
+  /** On a `sent` (v2.6690): the tag's word, since a contract the customer opened or signed was not sent by us. */
+  sentTag?: JobActivityBoxSentTag
 }
+
+export type JobActivityBoxSentTag = 'Sent' | 'Opened' | 'Signed' | 'Said'
 
 /** The tag in a line's number place: the channel, one word. */
 export type JobActivityBoxLineTag = 'Text' | 'Email' | 'Call' | 'Missed' | 'Voicemail' | 'Portal'
@@ -56,17 +63,13 @@ export interface JobActivityBoxLine {
   waiting: boolean
 }
 
-/**
- * The events that are a word to the customer about their bill: the bill went to them (`invoice_sent`), Stripe's email
- * did (the backfill's kind), the paper bill went again, and since v2.5636 the demand letter and the lien notice.
- */
-export const SENT_EVENT_TYPES: ReadonlySet<JobActivityEvent['type']> = new Set<JobActivityEvent['type']>([
-  'invoice_sent',
-  'invoice_stripe_email_sent',
-  'invoice_resent',
-  'demand_letter_sent',
-  'lien_notice_sent',
-])
+/** The tag in the number's place on an event the customer got or did: Sent, or what they did with it. */
+export function sentTagOf(type: JobActivityEvent['type']): JobActivityBoxSentTag {
+  if (type === 'contract_viewed') return 'Opened'
+  if (type === 'contract_signed') return 'Signed'
+  if (type === 'payment_promise') return 'Said'
+  return 'Sent'
+}
 
 /** Who sent it: the actor off the row, else the app, since Stripe's send runs as the service role with no signed-in name. */
 export const SENT_BY_APP = 'The app'
@@ -80,6 +83,16 @@ export function sentLineBody(event: Pick<JobActivityEvent, 'type' | 'summary' | 
   if (event.type === 'invoice_resent') return 'Bill emailed again'
   if (event.type === 'demand_letter_sent') return 'Demand letter sent'
   if (event.type === 'lien_notice_sent') return event.detail?.kind === 'retainage_53_057' ? 'Retainage notice sent' : 'Lien notice sent'
+  // The customer's contract and release lines, the notices and their word on paying (v2.6690): each in its words.
+  if (event.type === 'contract_sent') return /re-sent/i.test(event.summary ?? '') ? 'Contract sent again' : 'Contract sent'
+  if (event.type === 'contract_shared') return 'Contract link shared'
+  if (event.type === 'contract_viewed') return 'Contract opened by the customer'
+  if (event.type === 'contract_signed') return /\(paper\)/i.test(event.summary ?? '') ? 'Signed contract on file' : 'Contract signed'
+  if (event.type === 'lien_release_signature_requested') return 'Release sent to sign'
+  if (event.type === 'lien_release_sent') return 'Lien release sent'
+  if (event.type === 'lien_courtesy_sent') return 'Courtesy notice sent'
+  if (event.type === 'hazmat_notice_emailed') return 'Hazmat notice emailed'
+  if (event.type === 'payment_promise') return (event.summary ?? '').trim() || 'They said when they would pay'
   const fromDetail = typeof event.detail?.channel === 'string' ? event.detail.channel : ''
   const fromSummary = /\(([a-z_ -]+)\)\s*$/i.exec(event.summary ?? '')?.[1] ?? ''
   const channel = (fromDetail || fromSummary).trim().toLowerCase()
@@ -165,8 +178,11 @@ function entryFromItem(item: JobThreadActivityItem): Omit<JobActivityBoxEntry, '
       body: `Report: ${(item.report.template_name ?? '').trim() || 'Report'}`,
     }
   }
-  if (item.kind === 'event' && SENT_EVENT_TYPES.has(item.event.type)) {
-    return { kind: 'sent', atIso: item.event.occurredAt, authorName: item.event.actorName?.trim() || SENT_BY_APP, body: sentLineBody(item.event) }
+  if (item.kind === 'event' && CUSTOMER_EVENT_TYPES.has(item.event.type)) {
+    // What the customer did themselves (opened, signed, said) is theirs, not the app's.
+    const theirs = item.event.type === 'contract_viewed' || item.event.type === 'contract_signed' || item.event.type === 'payment_promise'
+    const authorName = item.event.actorName?.trim() || (theirs ? 'The customer' : SENT_BY_APP)
+    return { kind: 'sent', atIso: item.event.occurredAt, authorName, body: sentLineBody(item.event), sentTag: sentTagOf(item.event.type) }
   }
   return null
 }
