@@ -1,6 +1,6 @@
 /**
  * Materials on site (punch list #209, v2.6743): the database's summary of a job whose ledger passed
- * the 5,000 rows the store reads (`on_site_job_summary`, migration 20261108221500), read into the
+ * the 5,000 rows the store reads (`on_site_job_summary`, migration 20261109010000), read into the
  * kernel's own shapes so every screen that sums lines or count differences reads the same thing
  * whether the device or the database did the arithmetic. Pure: the server's answer in, the kernel's
  * lines, differences and summary out; the price lookup is handed in.

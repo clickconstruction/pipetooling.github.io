@@ -2,7 +2,7 @@
 name: "Materials on site: cages, boxes and counts"
 number: 209
 group: close
-status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · v2.6366 the manifest print (2026-11-02) · v2.6367 the dev-mcp verbs (migration 20261102100000; docs/MATERIALS_ON_SITE_ARCHITECTURE.md) · v2.6406 bring back a retired box (2026-11-03) · v2.6432 the prints at full size (2026-11-03) · v2.6456 a new cage, box or place records who added it, and the dev seat names the job as JP972 (migration 20261103143000) · v2.6673 the missing money reads the parts book's price with its checked day, call 5 (2026-11-07) · v2.6728 the Needs you lines for the week's missing money and the boxes due a count (2026-11-08) · v2.6740 the Procure step's door (2026-11-08) · v2.6742 the Short press as a tally request (2026-11-08) · v2.6743 the summary RPC past 5,000 rows (migration 20261108221500, 2026-11-08) · left: the end-to-end photo test on test job 972, then a week of use
+status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · v2.6366 the manifest print (2026-11-02) · v2.6367 the dev-mcp verbs (migration 20261102100000; docs/MATERIALS_ON_SITE_ARCHITECTURE.md) · v2.6406 bring back a retired box (2026-11-03) · v2.6432 the prints at full size (2026-11-03) · v2.6456 a new cage, box or place records who added it, and the dev seat names the job as JP972 (migration 20261103143000) · v2.6673 the missing money reads the parts book's price with its checked day, call 5 (2026-11-07) · v2.6728 the Needs you lines for the week's missing money and the boxes due a count (2026-11-08) · v2.6740 the Procure step's door (2026-11-08) · v2.6742 the Short press as a tally request (2026-11-08) · v2.6743 the summary RPC past 5,000 rows (migration 20261109010000, 2026-11-08) · left: the end-to-end photo test on test job 972, then a week of use
 mockup: to-dos/materials-on-site/mockup.html
 summary: >
   Big jobs leave fittings, pipe and fixtures on site in stencilled cages and boxes (A1, A2, B1 …).
@@ -438,7 +438,7 @@ path is held by the parity tests until the live check after the push.
   tell the office (a migration opens it to the job's team if the week of use asks); reading an invoice from
   the Drive folder with the model;
 - ~~a summary RPC for a job past 5,000 ledger rows~~ built 2026-11-08 as v2.6743: `on_site_job_summary` (migration
-  20261108221500) sums the whole ledger in SQL, the store reads newest first and calls it when the read comes
+  20261109010000) sums the whole ledger in SQL, the store reads newest first and calls it when the read comes
   back full, and every summary reader takes the database's sums; a capped job's lists still draw from the newest
   5,000 rows, the next step if a job gets there; the Drive thumbnail on the office panel once the bucket copy is
   gone;

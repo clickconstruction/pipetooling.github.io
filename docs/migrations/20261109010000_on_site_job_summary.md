@@ -1,4 +1,4 @@
-# 20261108221500 — on_site_job_summary (v2.6743)
+# 20261109010000 — on_site_job_summary (v2.6743)
 
 Materials on site (punch list #209): the summary RPC for a job past the client's 5,000-row read. No table is created, so no fence is owed.
 

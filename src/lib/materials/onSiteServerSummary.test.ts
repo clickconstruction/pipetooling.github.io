@@ -25,7 +25,7 @@ const rows: Movement[] = [
   mv({ id: 'r8', reason: 'delivered', quantity: 4, at: '2026-11-01T10:00:00Z', toContainerId: 'b1', partId: 'p1', partName: 'Ball valve', manufacturer: null }),
 ]
 
-/** The server's answer for these rows, as the SQL in 20261108221500 builds it. */
+/** The server's answer for these rows, as the SQL in 20261109010000 builds it. */
 const server: ServerSummary = {
   rows: 8,
   lines: [
