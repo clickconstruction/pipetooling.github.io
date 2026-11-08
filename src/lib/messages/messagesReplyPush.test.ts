@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runReplyPushes, type ReplyPushBody } from '../../../supabase/functions/_shared/messagesReplyPush'
+import { legalSendsForCustomer, runReplyPushes, type ReplyPushBody } from '../../../supabase/functions/_shared/messagesReplyPush'
 import { REPLY_PUSH_ON_KEY } from './notifyPlan'
 import { OFFICE_WAIT_KEY } from './notifyRule'
 
@@ -139,5 +139,34 @@ describe('messages-notify holds a push for a person’s hours (punch list #141 P
     expect(result).toMatchObject({ sent: 1, reached: 2, held: 1 })
     expect(sends).toEqual([ROSA, TOM])
     expect(inserted.flatMap((i) => i.rows).some((r) => r.channel === 'held')).toBe(false)
+  })
+})
+
+describe('the courtesy notice’s grey line reaches the GC’s thread too (punch list #249, row 6)', () => {
+  const record = (who: 'owner' | 'original_contractor', at: string) => ({ at, by: 'Taunya', lienDay: '2026-11-16', claim: 4850, to: [{ who, channel: 'email', ok: true, address: 'x@y.test', name: 'n', id: 'e', reason: '' }] })
+  const items = [
+    // Job A: the owner is customer o1, the GC is g1; the press reached both.
+    { job_id: 'jA', kind: 'notice_53_056', status: 'sent', sent_filing_id: 'fA', voided_at: null, fields: { courtesy: [{ ...record('owner', '2026-10-21T15:00:00Z'), to: [...record('owner', '').to, ...record('original_contractor', '').to] }] } },
+    // Job B: g1 is the owner here and nobody is the GC; the press reached the owner alone.
+    { job_id: 'jB', kind: 'notice_53_056', status: 'sent', sent_filing_id: 'fB', voided_at: null, fields: { courtesy: [record('owner', '2026-10-22T15:00:00Z')] } },
+  ]
+  const jobs = [
+    { id: 'jA', customer_id: 'o1', gc_customer_id: 'g1' },
+    { id: 'jB', customer_id: 'g1', gc_customer_id: null },
+  ]
+
+  it('the GC reads the courtesy on the job it is the GC of and the one it owns; the owner reads only its own', () => {
+    const gc = legalSendsForCustomer({ customer: 'g1', jobs, filings: [], letters: [], items })
+    expect(gc.map((s) => [s.jobId, s.paper])).toEqual([
+      ['jB', 'courtesy'],
+      ['jA', 'courtesy'],
+    ])
+    const owner = legalSendsForCustomer({ customer: 'o1', jobs, filings: [], letters: [], items })
+    expect(owner.map((s) => s.jobId)).toEqual(['jA'])
+  })
+
+  it('a customer that is both owner and GC of one job reads one line per press', () => {
+    const both = legalSendsForCustomer({ customer: 'g1', jobs: [{ id: 'jA', customer_id: 'g1', gc_customer_id: 'g1' }], filings: [], letters: [], items: [items[0]!] })
+    expect(both).toHaveLength(1)
   })
 })
