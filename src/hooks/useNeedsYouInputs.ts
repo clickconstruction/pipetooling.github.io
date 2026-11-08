@@ -32,6 +32,7 @@ import { useUnpricedWorkOrders } from './useUnpricedWorkOrders'
 import { useJobKindGaps } from './useJobKindGaps'
 import { useBaselineGaps } from './useBaselineGaps'
 import { useLineBudgetsReview } from './useLineBudgetsReview'
+import { useMaterialsOnSiteNeeds } from './useMaterialsOnSiteNeeds'
 import { useCapacityUnderNudge } from './useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from './useJobAccountEvidenceGapsNudge'
 import { useSupplyMoveWindowNudge } from './useSupplyMoveWindowNudge'
@@ -170,6 +171,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { gaps: baselineGaps } = useBaselineGaps(baselineGapsEnabled)
   const lineBudgetsReviewEnabled = on('lineBudgetsReview')
   const { review: lineBudgetsReviewRows, reload: reloadLineBudgetsReview } = useLineBudgetsReview(lineBudgetsReviewEnabled)
+  const materialsOnSiteEnabled = on('materialsOnSite')
+  const { needs: materialsOnSite } = useMaterialsOnSiteNeeds(materialsOnSiteEnabled, { hideZzTestJobs, userId: authUserId })
   // The quiet jobs (v2.2487) and the idle ones (v2.5512): one fetch, the deck's kernel. Quickfill's own
   // station carries the quiet jobs; the idle line is the deck's and rides the same read.
   const jobFollowupsEnabled = on('jobFollowups')
@@ -270,6 +273,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     baselineGaps,
     lineBudgetsReviewEnabled,
     lineBudgetsReview: lineBudgetsReviewRows ? { lines: lineBudgetsReviewRows.lines.length, projects: lineBudgetsReviewRows.jobIds.length, assumedUsd: lineBudgetsReviewRows.assumedUsd, totalUsd: lineBudgetsReviewRows.totalUsd } : null,
+    materialsOnSiteEnabled,
+    materialsOnSite,
     staleOpenEnabled,
     staleOpen,
     capacityUnderEnabled,
@@ -385,6 +390,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     lowRatingContactId: lowRatings?.need.first?.contactId ?? null,
     whileOffFirst: whileOff.need?.first ?? null,
     awayBackFirstUserId: awayBackDay.need?.first.userId ?? null,
+    materialsStaleJobId: materialsOnSite?.staleJobId ?? null,
+    materialsMissingJobId: materialsOnSite?.missingJobId ?? null,
   }
 
   return {
