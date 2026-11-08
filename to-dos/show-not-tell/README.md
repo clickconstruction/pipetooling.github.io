@@ -2,7 +2,7 @@
 name: "Show it, don't say it: seven shapes for the 131 places the app still tells"
 number: 217
 group: gated
-status: scanned and drawn 2026-10-30 · eight read-only scans of main at 9e8f233, 131 findings, drawn as seven shapes with 67 before/after pairs and a second pass on each (shapes 1 and 2 drawn whole on the owner's asks the same day; Draft Payroll, the Pricing tab and the Project Board drawn on the pages they land on, on her notes) · waiting on the owner's picks on shapes 3 to 7 · twenty-one PRs from her picks on 1 and 2 (five shipped, v2.6140, v2.6145, v2.6154, v2.6155 and v2.6158; the rest prototypes on their places), each on its pair with the one command that opens it on any machine (`npm run proto -- <id>`)
+status: scanned and drawn 2026-10-30 · eight read-only scans of main at 9e8f233, 131 findings, drawn as seven shapes with 67 before/after pairs and a second pass on each (shapes 1 and 2 drawn whole on the owner's asks the same day; Draft Payroll, the Pricing tab and the Project Board drawn on the pages they land on, on her notes) · deferred by the owner 2026-11-08 ("not today"; the card stays on the punch list, shapes 3 to 7 unpicked) · twenty-one PRs from her picks on 1 and 2 (five shipped, v2.6140, v2.6145, v2.6154, v2.6155 and v2.6158; the rest prototypes on their places), each on its pair with the one command that opens it on any machine (`npm run proto -- <id>`)
 mockup: to-dos/show-not-tell/mockup.html
 summary: >
   Taunya asked for a scan of the whole app for the places it tells instead of shows, so a reader sees
@@ -13,9 +13,9 @@ summary: >
   of seven shapes the app already has since #214 drew the Legal desk's four. The mock-up teaches each
   shape once with its strongest pairs and lists every other place under it, with Build · Later · Drop on
   each, so a yes can be a yes to a shape as much as to a screen.
-next: The owner's picks on shapes 3 to 7 (the claude.ai copy saves them as she presses; the repo copy's Copy my picks pastes them), and her verdict on each prototype once she has seen it live side by side. Then one build session per picked shape, cut by weight, each PR one screen or one kernel plus its places.
+next: Nothing this week; the owner deferred the rest on 2026-11-08. At a later time, on the owner's word: the picks on shapes 3 to 7 (the claude.ai copy saves them as she presses; the repo copy's Copy my picks pastes them), and her verdict on each prototype once she has seen it live side by side. Then one build session per picked shape, cut by weight, each PR one screen or one kernel plus its places.
 size: XL as a program; each pair is XS to M on its own (the pairs say which), five need a function deploy, two a small migration
-blocker: The owner's picks.
+blocker: Deferred by the owner on 2026-11-08 to a later time, not today; nothing on this card waits on anyone this week.
 opinion: build — start with shape 3 (a mark and a door, XS to S each, and field-1 fixes a wrong record), then shape 6 (the verdicts the office and the owner act on daily), then 1 and 2 (one kernel and one drawing each, reused across their places), then 4; 5 and 7 ride along as each surface is touched
 ---
 
@@ -23,11 +23,12 @@ opinion: build — start with shape 3 (a mark and a door, XS to S each, and fiel
 
 ## Pick up here
 
+- **Deferred, 2026-11-08.** The owner: *"We're gonna do all of the show it, don't say it at a later time, not today. Leave this card on the punch list."* So the card stays, and nothing on it is waiting on picks this week: the page, the open prototype PRs and the unpicked shapes stand as they are until the owner comes back to it.
 - **The page** is `mockup.html` beside this file: open it from a clone (double-click; it needs no server) or at `/to-dos/show-not-tell/mockup.html` on the dev server. The owner's live copy is the claude.ai artifact (https://claude.ai/artifact/3f74NuNKDsMAtpGcFgCV1v), whose store keeps her presses as she makes them.
 - **The picks** are `picks.json`: every pick, the owner's note and when it was acted on. The page loads it when built, so a fresh clone opens on the last save. To save: press **Export picks** on the page, put the file here, rebuild and commit, or hand it to a session. Picks pressed in a browser stay in that browser until exported.
 - **The prototypes** are `prototypes.json`, one row each; `npm run proto -- <id>` opens one on any machine (*How to verify*, below).
 - **The parts** are `parts/`; `bash to-dos/show-not-tell/build.sh` concatenates them in name order, injects the two JSON files and writes `mockup.html`. Edit a part, never the built page; rebuild; commit both.
-- **Where it stands**: shapes 1 and 2 are picked and in motion (every bar on the page); shapes 3 to 7 wait on picks, Build · Later · Drop on each pair, with a note line for words. The owner's words on a pair are in its blue box.
+- **Where it stands**: shapes 1 and 2 are picked and in motion (every bar on the page); shapes 3 to 7 wait on picks the owner deferred on 2026-11-08, Build · Later · Drop on each pair, with a note line for words. The owner's words on a pair are in its blue box.
 
 ## The ask
 

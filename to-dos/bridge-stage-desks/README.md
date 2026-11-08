@@ -2,7 +2,7 @@
 name: "The Bridge: a desk behind every stage card"
 number: 192
 group: gated
-status: built 2026-10-26 to 10-27 · the four desks shipped as v2.5929 Build (#6253), v2.5930 Bill (#6252), v2.5931 Market (#6254) and v2.5932 Sales (#6255), read-only, to the defaults drawn below, with the first live look's fixes as v2.5938; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890) · left: the owner's look, and the thresholds as his numbers
+status: built 2026-10-26 to 10-27 · the four desks shipped as v2.5929 Build (#6253), v2.5930 Bill (#6252), v2.5931 Market (#6254) and v2.5932 Sales (#6255), read-only, to the defaults drawn below, with the first live look's fixes as v2.5938; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890) · 2026-11-08 the owner kept the drawn thresholds as his numbers ("Keep the defaults") · left: his live look on /bridge and the two new writes
 summary: >
   The owner asked for a desk behind every stage card, one press from the card, the way the
   Collect desk opens. The first drafts cloned the Collect desk's call-sheet anatomy onto all
@@ -14,10 +14,10 @@ summary: >
   Every figure traces to columns that exist today; no desk needs a migration. The folder
   carries the four approved prototypes, the eight concept wireframes and the three review
   files.
-next: The owner opens each desk live on /bridge and names his numbers for the thresholds below (each is one exported constant); then says whether he wants either of the two new writes.
+next: The owner opens each desk live on /bridge, and says whether he wants either of the two new writes (a Build job marked waits, with a reason; desk plans on bridge_calls with a kind marker).
 size: M per desk — a kernel, a loader widening and the desk component each; no migration except the optional bridge_calls kind marker
-blocker: None for the build. The thresholds stay at the drawn defaults until the owner names his numbers.
-opinion: Built one desk per PR, in parallel from one shared contract, to the drawn defaults, so the owner's numbers drop into the constants without a redesign; retire this folder once he has looked and the thresholds are his.
+blocker: None. The thresholds are the owner's numbers as drawn, picked 2026-11-08.
+opinion: Built one desk per PR, in parallel from one shared contract, to the drawn defaults, so the owner's numbers drop into the constants without a redesign; the thresholds are his since 2026-11-08, so retire this folder once he has looked and answered the two writes.
 ---
 
 # The Bridge: a desk behind every stage card (#192)
@@ -93,10 +93,12 @@ All four desks shipped, one PR each: Build v2.5929 (`src/lib/bridge/build/`, `Br
 
 ## The owner calls
 
-**Thresholds (his numbers, defaults drawn):** Build's quiet-job days (drawn at 14); Bill's
-day-it-finishes tolerance before a row reads late (drawn at same-day); Sales' aging rule (expected
-dollars fade to zero past twice the asker's answer pace; the no-pace fallback 45 days); Market's
-fading rule (asks this quarter under half the quarterly norm) and new-name span.
+**Thresholds — settled 2026-11-08.** The owner picked **"Keep the defaults"**: the drawn numbers are
+his. Build's quiet-job days stay 14; Bill's day-it-finishes tolerance stays same-day; Sales' aging
+rule stays as drawn (expected dollars fade to zero past twice the asker's answer pace, the no-pace
+fallback 45 days); Market's fading rule stays asks this quarter under half the quarterly norm, and
+the new-name span stays 91 days. The exported constants listed under *Where it stands* are the
+numbers as built; nothing moves.
 
 **New writes to decide:** whether a Build job can be marked *waits, with a reason* so the ledger
 stops counting it (no such write exists); whether desk plans ride `bridge_calls` with a kind
