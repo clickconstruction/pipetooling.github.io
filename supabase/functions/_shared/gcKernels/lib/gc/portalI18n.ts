@@ -990,7 +990,7 @@ const S = {
   filesWhat: { en: 'What it is', es: 'Qué es' },
   filesDay: { en: 'Day', es: 'Día' },
   filesOpen: { en: 'Open', es: 'Abrir' },
-  fileSubmittal: { en: 'submittal', es: 'submittal' },
+  fileSubmittal: { en: 'submittal', es: 'documento para aprobación' },
   fileChange: { en: 'change you asked for', es: 'cambio que usted pidió' },
   fileQuote: { en: 'your quote', es: 'su cotización' },
   fileWaiver: { en: 'waiver you signed', es: 'renuncia que usted firmó' },
