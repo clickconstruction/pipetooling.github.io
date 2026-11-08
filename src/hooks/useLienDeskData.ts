@@ -20,6 +20,9 @@ import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/bill
 import { buildLienAffidavitQueue, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom, letterTwoMailClocksFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
+import { lastCourtesyAtByJob } from '../lib/jobs/lienCourtesyReply'
+import { readCourtesyOwnerContacts, readCourtesyRepliesByJob, type CourtesyReplySource } from '../lib/jobs/lienCourtesyReplyIo'
+import { resolveLienProperty } from '../lib/jobs/lienProperty'
 import { ownerCallByJobFrom, type OwnerCall } from '../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import type { CustomerAddressRow, JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
@@ -121,6 +124,8 @@ export type LienDeskData = {
   mailPiecesByFiling?: Record<string, LienMailPieceRow[]>
   /** The pieces behind each approved desk item (v2.5532), from prepare on: the run builds a copy that already went through Docsmit as mailed. Absent in light mode. */
   mailPiecesByItem?: Record<string, LienMailPieceRow[]>
+  /** The newest inbound Messages line after each job's last courtesy, ISO (punch list #249, row 3), for the jobs one came back on — `courtesyByJobFrom` closes on it. Read in light mode too, so the Dashboard's lien month and the desk agree; absent when the read failed. */
+  courtesyRepliedAtByJob?: Record<string, string>
 }
 
 const EMPTY_AFFIDAVITS: LienAffidavitQueue = {
@@ -402,7 +407,27 @@ export function useLienDeskData(
             if (c) claimCorrectionsByJob[c.jobId] = c
           }
         }
-        if (cancelled) return
+        // A reply in Messages closes the courtesy (punch list #249, row 3): one batched read over the sent notices that carry
+        // a courtesy — the GC's contacts and the owner of record's — in light mode too (the Dashboard's lien month reads the
+        // courtesy's state), the owner's number and address from the rows already here, else read for just those jobs.
+        let courtesyRepliedAtByJob: Record<string, string> | undefined
+        const lastCourtesyAt = lastCourtesyAtByJob(letterTwoByJob, items)
+        const courtesyJobIds = Object.keys(lastCourtesyAt)
+        if (courtesyJobIds.length > 0) {
+          const ownerOf = light
+            ? await readCourtesyOwnerContacts(courtesyJobIds.map((jobId) => ({ jobId, customerAddressId: jobsById[jobId]?.customer_address_id ?? null }))).catch(() => null)
+            : Object.fromEntries(
+                courtesyJobIds.map((jobId) => {
+                  const j = jobsById[jobId]
+                  const owner = resolveLienProperty(j?.customer_address_id ? addressesById[j.customer_address_id] ?? null : null, ownerByJob[jobId] ?? null).owner
+                  return [jobId, { phone: owner.phone, email: owner.email }]
+                }),
+              )
+          if (cancelled) return
+          const sources: CourtesyReplySource[] = courtesyJobIds.map((jobId) => ({ jobId, lastCourtesyAt: lastCourtesyAt[jobId]!, gcCustomerId: jobsById[jobId]?.gc_customer_id ?? null, ownerPhone: ownerOf?.[jobId]?.phone ?? '', ownerEmail: ownerOf?.[jobId]?.email ?? '' }))
+          courtesyRepliedAtByJob = await readCourtesyRepliesByJob(sources).catch(() => undefined)
+          if (cancelled) return
+        }
         setData({
           queue,
           summary: summaryWithBatches,
@@ -427,6 +452,7 @@ export function useLienDeskData(
           demandLettersByJob,
           mailPiecesByFiling,
           mailPiecesByItem,
+          courtesyRepliedAtByJob,
         })
       } catch {
         if (!cancelled)

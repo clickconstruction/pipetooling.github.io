@@ -34,6 +34,7 @@ const email = (gmailId: string, over: Partial<EmailIn> = {}): EmailIn => ({
   links: [],
   files: [],
   headers: { 'message-id': `<${gmailId}@mail.example>` },
+  html: null,
   ...over,
 })
 

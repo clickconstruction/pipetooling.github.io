@@ -60,16 +60,6 @@ function costUsd(amount: number): number {
   return Number.isFinite(n) ? 0 - n : 0
 }
 
-/** Fuel spend by user: a purchase adds and a refund comes off, as on every job screen. */
-export function sumFuelByUser(charges: ReadonlyArray<{ amount: number; userId: string | null }>): Map<string, number> {
-  const m = new Map<string, number>()
-  for (const c of charges) {
-    if (!c.userId) continue
-    m.set(c.userId, round2((m.get(c.userId) ?? 0) + costUsd(c.amount)))
-  }
-  return m
-}
-
 /** A transaction in the fuel family, before the card test. */
 export type FuelFamilyTx = {
   id: string
@@ -96,7 +86,9 @@ export type FuelSplit = {
  * house that someone filed under a vehicle label is not anyone's fill-up;
  * before this split it showed up as "fuel with no person on it". A card
  * charge is any row carrying a card (v2.4653): a refund to the card is kind
- * `other` and comes off, as it does on the jobs.
+ * `other` and comes off, as it does on the jobs. Since v2.6671 the loader
+ * uses only `offCard` from this split — whose fuel a card charge is comes
+ * from People → Spending's kernel (`wheelsFuel.ts`).
  */
 export function splitFuelFamily(rows: readonly FuelFamilyTx[], companyCardIds: ReadonlySet<string> = new Set()): FuelSplit {
   const card: FuelFamilyTx[] = []
@@ -128,30 +120,6 @@ export function splitFuelFamily(rows: readonly FuelFamilyTx[], companyCardIds: R
     .slice(0, 3)
   const byCard = [...byCompanyCard.entries()].map(([cardId, u]) => ({ cardId, usd: round2(u) })).sort((a, b) => b.usd - a.usd)
   return { card, offCard: { usd: round2(usd), n, top }, companyCard: { usd: round2(companyUsd), n: companyN, byCard } }
-}
-
-/** Card fuel nobody is attributed to, grouped by card — the list to link. */
-export function unattributedFuelByCard(
-  rows: ReadonlyArray<{ amount: number; cardId: string | null; userId: string | null }>,
-  nicknameByCard: ReadonlyMap<string, string>,
-): Array<{ cardId: string | null; label: string; usd: number; n: number }> {
-  const m = new Map<string, { cardId: string | null; usd: number; n: number }>()
-  for (const r of rows) {
-    if (r.userId) continue
-    const key = r.cardId ?? '(no card)'
-    const e = m.get(key) ?? { cardId: r.cardId, usd: 0, n: 0 }
-    e.usd += costUsd(r.amount)
-    e.n++
-    m.set(key, e)
-  }
-  return [...m.values()]
-    .map((e) => ({
-      cardId: e.cardId,
-      label: e.cardId ? (nicknameByCard.get(e.cardId) ?? `card …${e.cardId.replace(/-/g, '').slice(-4)}`) : 'no card',
-      usd: round2(e.usd),
-      n: e.n,
-    }))
-    .sort((a, b) => b.usd - a.usd)
 }
 
 export type WheelsSessionRow = {

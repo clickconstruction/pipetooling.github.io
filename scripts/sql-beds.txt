@@ -93,3 +93,4 @@ plan-sets-author
 machine-photos-path
 away-notes
 license-expiry-sweep
+pipeline-customer-lines

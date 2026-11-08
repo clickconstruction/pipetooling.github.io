@@ -141,6 +141,7 @@
     "test:pg:away-notes": "bash scripts/pgtest-away-notes.sh",
     "test:pg:plan-sets-author": "bash scripts/pgtest-plan-sets-author.sh",
     "test:pg:license-expiry-sweep": "bash scripts/pgtest-license-expiry-sweep.sh",
+    "test:pg:pipeline-customer-lines": "bash scripts/pgtest-pipeline-customer-lines.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",

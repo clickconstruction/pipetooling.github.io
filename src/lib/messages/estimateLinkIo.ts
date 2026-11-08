@@ -15,6 +15,8 @@ import { checkSupabaseError } from '../../utils/errorHandling'
 export interface EstimateLinkIo {
   /** A new link to the estimate for a message: the accept page's URL with its own token. */
   share(estimateId: string): Promise<string>
+  /** The token alone (v2.6678, #281): the Tell the customer text builds the short host's URL from it. */
+  shareToken(estimateId: string): Promise<string>
 }
 
 /** The accept page for a token: `https://clicktooling.com/estimate/accept?t=…`. */
@@ -32,13 +34,15 @@ export function estimateLinkNote(number: string): string {
 
 export function supabaseEstimateLinkIo(client: unknown = supabase): EstimateLinkIo {
   const db = client as SupabaseClient
+  async function shareToken(estimateId: string): Promise<string> {
+    const result = await db.rpc('share_estimate_link', { p_estimate_id: estimateId })
+    checkSupabaseError(result, 'make a link to the estimate')
+    const token = typeof result.data === 'string' ? result.data.trim() : ''
+    if (!token) throw new Error('The estimate’s link was not made.')
+    return token
+  }
   return {
-    async share(estimateId) {
-      const result = await db.rpc('share_estimate_link', { p_estimate_id: estimateId })
-      checkSupabaseError(result, 'make a link to the estimate')
-      const token = typeof result.data === 'string' ? result.data.trim() : ''
-      if (!token) throw new Error('The estimate’s link was not made.')
-      return estimateAcceptUrl(token)
-    },
+    shareToken,
+    share: async (estimateId) => estimateAcceptUrl(await shareToken(estimateId)),
   }
 }

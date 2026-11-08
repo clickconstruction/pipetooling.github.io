@@ -1,0 +1,13 @@
+# 20261108030000_pipeline_customer_lines.sql (2026-11-08, v2.6683)
+
+**What it does**: the Pipeline board's read of the customer's conversation (punch list #125, PR 1), one function and one index, no table.
+
+- `pipeline_customer_lines(p_job_ids uuid[], p_per_job integer default 3)` — for each job given, the newest `p_per_job` (1 to 10) calls, texts, emails and portal lines between us and the people on it, with who the line is with (the contact's kind, name and the name they go by), who of ours wrote it (`who_name`), the call's length, summary and words, Quo's delivery mark and the app's own-line mark, and `tied` (tied to the job, or an untied line of the customer's). The rule is Job activity's (`loadJobMessages` → `jobActivityMessagesFromRows`) and the customer sheet's (`lastLinesOnJob`): every line tied to the job; while the job is not paid, the untied lines of the customers put on it (`contact_jobs`) since the job began; never a note, an event or a team line. `row_number() over (partition by job order by at desc, id desc)` keeps the newest per job; `body`, `summary` and `transcript` come back cut at 400 characters, since the box clamps a line to two rows and Job activity reads the whole row itself.
+- `SECURITY INVOKER`, `STABLE`: the `messages`, `contacts`, `contact_jobs`, `jobs_ledger`, `customers` and `users` policies decide what the caller reads, as in Job activity. The office (`gc_office_team()`) reads the lines; anyone else gets no rows.
+- Index `messages_job_lines (jobs_ledger_id, at desc) where jobs_ledger_id is not null` — the thread index is by contact; the board asks by job. A plain `CREATE INDEX` under the 3-second lock timeout: `messages` is small enough that it builds in well under a second.
+
+**Tables**: none created, so no fence is owed. **RLS**: none changed.
+
+**Apply**: `supabase db push` from a clean checkout of `main` after PR 1 merges. **Order against the client**: the client calls the function on every load of the board (`useBoardCustomerLines` beside `jobs_ledger_thread_note_stats`), so `npm run check:calls-ahead` labels PR 1 *push right after the merge* and the deploy holds until the push. The client reads PostgREST's *could not find the function* as no lines, never as a failure, so a board that reaches prod before the push draws the box as it did and nothing breaks; the push is what turns the lines on.
+
+**Check**: as the dev, `select job_id, channel, direction, left(body, 40), tied from pipeline_customer_lines(array['<a job id>']::uuid[], 3)` reads the job's newest three lines; the SQL bed `npm run test:pg:pipeline-customer-lines` (`supabase/tests/pipeline_customer_lines/`) runs the same fixture `src/lib/jobs/pipelineCustomerLines.test.ts` folds and asserts the same ids.
