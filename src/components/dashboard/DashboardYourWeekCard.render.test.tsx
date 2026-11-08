@@ -6,6 +6,7 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { YourWeekIo } from '../../lib/techWeek/yourWeekIo'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { DashboardYourWeekCard } from './DashboardYourWeekCard'
 
 const io = (week: unknown, words: unknown = []): YourWeekIo => ({ myWeek: async () => week, myWords: async () => words })
@@ -49,7 +50,10 @@ describe('DashboardYourWeekCard', () => {
   })
 
   it('a lead reads the crew against the target, the no-target note and the dashed line’s words', async () => {
-    const withNone = [...jobs, { job_id: 'c', job_number: '1186', job_name: 'Drain', finished_ymd: '2026-11-04', expected_hours: null, budget_hours: null, crew_hours: 9, my_first_ymd: '2026-11-04' }]
+    // The note counts the jobs finished in the pay week holding today, so this one finishes today: a fixed
+    // date fell out of the week on 2026-11-08 and failed every PR's checks.
+    const today = todayYmdInAppTz()
+    const withNone = [...jobs, { job_id: 'c', job_number: '1186', job_name: 'Drain', finished_ymd: today, expected_hours: null, budget_hours: null, crew_hours: 9, my_first_ymd: today }]
     render(<DashboardYourWeekCard userId="u" io={io({ signal: 'crew_vs_target', name: 'Luis', role: 'superintendent', hours: [], licenses: [], jobs: withNone, callbacks: [] })} />)
     expect(await screen.findByText('Your crew against the target')).toBeTruthy()
     expect(screen.getByText('One more job finished with no target, so it is not counted.')).toBeTruthy()
