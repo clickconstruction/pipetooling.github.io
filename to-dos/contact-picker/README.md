@@ -207,3 +207,29 @@ Three things the first draft missed:
 4. A job with the customer and a person at the customer: the sheet offers both, the starred one
    first; pick the person; their thread gets the line and the receipt names them.
 5. STOP on the usual: the rule drops it; the chip shows the next and marks the stopped one.
+
+### The dev server walk, 2026-11-08 (PR 2, before its push)
+
+As the dev on this worktree's dev server against prod, in the owner's Chrome, on *ZZ TEST Owner On Notice* (one
+number, the owner's own test cell). A second number cannot be inserted on `contact_channels` by hand (the table
+grants SELECT and one UPDATE column), so the walk took Who is this?'s road: `contact_make_for_channel('phone',
+'(830) 555-0191')` then `name_contact(…, 'customers', <the ZZ customer>)`, which folded the test number onto the
+customer's own contact.
+
+- **Step 1, one number** was already the case on PR 1's live look; on the sheet the chip is a label (the smoke holds it).
+- **Step 2, the sheet with two numbers**: a block on *ZZ TEST sink* (its first visit) opened Tell the customer. The row
+  read *Text*, then the chip with the test cell's number and its ▾, then *ZZ reads English*; the chip a press. The menu listed the test cell first with *last
+  line today at 2:06 PM* (the thread's only text went there) and *(830) 555-0191 · no line yet* second, the tick
+  *Make this their usual number* on. Picking the second number turned the chip to *To (830) 555-0191*. **Send in the
+  morning** wrote, in order: `usual_at` on the picked channel, the gray line *Robert made (830) 555-0191 ZZ TEST Owner
+  On Notice's usual number.*, and the offer with `channel_id` the picked channel, *It goes in the morning of Mon Nov 9.*
+- **Step 3, this once** rests on the smoke (the tick off, the offer carries the pick, no star) rather than a second
+  live send: a second offer would have gone to the owner's cell at 9 AM.
+- **On my way**: the dev's role holds the text from the phone (*No text: your role does not text from the phone*),
+  so the chip is not drawn for the dev; the sheet's chip rests on `OnMyWaySheet.toChip.render.test.tsx` and the
+  tech's door on the bed's § 8 (CI). The owner's look as a tech, once the migration is pushed, is How to verify's
+  step 3 for the tech.
+
+Left as they were: the offer dismissed (*not this one*), the test block removed, the usual moved back onto the real
+number (a second gray line), both test numbers deleted from the two ZZ contacts, Job Mode's local switch cleared. The
+two gray lines stay on the ZZ thread.
