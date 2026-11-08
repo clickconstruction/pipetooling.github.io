@@ -60,7 +60,10 @@ our own numbers or addresses never becomes one: the readers place it only while 
 (punch list #142, v2.5726, `walk/kit.ts`'s `numberPlan` and `kitCarries`), and skip or ignore it otherwise.
 
 - `contact_channels` — a phone number or email that is theirs, with the opt-out (`opted_out_at`, and per box since R6,
-  `opted_out_by_box`, because a carrier's STOP is per number pair).
+  `opted_out_by_box`, because a carrier's STOP is per number pair) and, since v2.6699 (punch list #118), the office's
+  star (`usual_at`, set through `contact_channel_make_usual`): the recipient rule (`compose.ts`'s `numberOrder`, the
+  run's `textNumberOf`) reads the usual first, else the number the thread last carried a line on, else the first that
+  can still take a text, and the send window's To chip switches and remembers it.
 - `contact_jobs` — the association to a bid, a GC project or a Pipeline job (`jobs_ledger`), one default per contact.
   A job combine (v2.6423) carries a source job's links once per contact (the default kept), its tagged mail threads, sends, calls, skips and holds to the target, and since v2.6492 the `messages` lines themselves with their `jobs_ledger_id`, so the combined job keeps the conversation (card #252).
   A line's job is its own column; the tie moves with `tie_message`. The jobs a person is on *by the facts* (an invite,

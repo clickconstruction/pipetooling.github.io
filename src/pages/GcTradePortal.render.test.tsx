@@ -74,6 +74,10 @@ describe('GcTradePortal', () => {
     open()
     fireEvent.click(await screen.findByRole('button', { name: /^Sample Retail Shell/ }))
     expect(await screen.findByText(/1 Sample Rd, Boerne · 9,600 sq ft retail shell, four bays/)).toBeTruthy()
+    // Directions (punch list #205, row 5): the address in the phone's maps app, one link with no key and no map canvas.
+    const directions = screen.getByRole('link', { name: 'Directions ↗' }) as HTMLAnchorElement
+    expect(directions.href).toBe('https://www.google.com/maps/dir/?api=1&destination=1%20Sample%20Rd%2C%20Boerne')
+    expect(directions.target).toBe('_blank')
     const plans = block('Electrical · plans')
     // The newest set, and again in the note of what is new for its trade.
     expect(plans.getAllByText('Addendum 1')).toHaveLength(2)

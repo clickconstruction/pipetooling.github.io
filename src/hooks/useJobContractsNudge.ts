@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { JOB_CONTRACT_COVERAGE_COLUMNS, type JobContractRowLike, type SignedEstimateLike } from '../lib/jobs/jobContractCoverage'
+import { withTheirPaperColumns } from '../lib/jobs/theirPaperIo'
 import { fetchJobContractFloorCents } from '../lib/jobs/jobContractFloor'
 import { CONTRACT_NUDGE_STATUSES, summarizeContractNudge, type ContractNudgeJob, type ContractNudgeSummary } from '../lib/jobs/jobContractNudge'
 
@@ -41,7 +42,8 @@ export function useJobContractsNudge(enabled: boolean): { nudge: ContractNudge |
       if (jobsRes.error) throw jobsRes.error
       const summary = summarizeContractNudge(
         (jobsRes.data ?? []) as ContractNudgeJob[],
-        (contractsRes.error ? [] : (contractsRes.data ?? [])) as JobContractRowLike[],
+        // v2.6698 (punch list #173): their paper's own columns ride along for the rows whose kind says so.
+        await withTheirPaperColumns((contractsRes.error ? [] : (contractsRes.data ?? [])) as JobContractRowLike[]),
         (estimatesRes.error ? [] : (estimatesRes.data ?? [])) as SignedEstimateLike[],
         new Date(),
         { floorCents },

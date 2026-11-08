@@ -52,7 +52,16 @@ export type RunNoteRow = StepNoteRow & { contact_id: string }
 /** A `messages` line: whose it is, when, and the number or address it came or went on. */
 export type RunLineRow = ThreadLineRow & { contact_id: string; channel_id: string | null }
 /** `contact_channels`: a number or an address, and when a number sent STOP. */
-export type RunChannelRow = { id: string; contact_id: string; kind: 'phone' | 'email'; value: string; opted_out_at: string | null; created_at: string }
+export type RunChannelRow = {
+  id: string
+  contact_id: string
+  kind: 'phone' | 'email'
+  value: string
+  opted_out_at: string | null
+  created_at: string
+  /** When the office made it their usual (punch list #118, v2.6699); the run reads it first. Unset from an older read. */
+  usual_at?: string | null
+}
 /** `quick_replies`. */
 export type RunQuickReplyRow = {
   id: string
@@ -221,9 +230,11 @@ export function newestLines<T extends ThreadLineRow>(lines: readonly T[], n = PE
 }
 
 /**
- * The number a reminder goes to: of their numbers that never sent STOP, the one their thread last carried a line on,
- * else the first added. With every number stopped, the newest of them, so the run says it was stopped. With none, no
- * number. An address is never a text number.
+ * The number a reminder goes to: of their numbers that never sent STOP, the usual the office starred (punch list
+ * #118, the newest star when two meet), else the one their thread last carried a line on, else the first added. With
+ * every number stopped, the newest of them, so the run says it was stopped. With none, no number. An address is never
+ * a text number. The same order as `replyRecipient`'s (`messages/compose.ts`), so the thread, the sheets and the
+ * morning run agree.
  */
 export function textNumberOf(channels: readonly RunChannelRow[], lines: readonly RunLineRow[] = []): RunNumber {
   const phones = channels.filter((c) => c.kind === 'phone')
@@ -233,6 +244,8 @@ export function textNumberOf(channels: readonly RunChannelRow[], lines: readonly
     const last = [...phones].sort((a, b) => (a.opted_out_at! < b.opted_out_at! ? 1 : -1))[0]!
     return { number: last.value, optedOut: true, channelId: last.id }
   }
+  const usual = open.filter((c) => c.usual_at).sort((a, b) => (a.usual_at! < b.usual_at! ? 1 : -1))[0]
+  if (usual) return { number: usual.value, optedOut: false, channelId: usual.id }
   const lastOn = (id: string) => lines.reduce((t, l) => (l.channel_id === id && l.at > t ? l.at : t), '')
   const pick = [...open].sort((a, b) => {
     const la = lastOn(a.id)
