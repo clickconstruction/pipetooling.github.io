@@ -11,11 +11,11 @@ import {
 } from './jobsBillingGroups'
 
 describe('jobsBillingGroups (punch list #261)', () => {
-  it('holds 26 cards under six headings, every slug and anchor once', () => {
+  it('holds 27 cards under six headings, every slug and anchor once', () => {
     expect(JOBS_BILLING_GROUPS.map((g) => g.id)).toEqual(['money', 'record', 'bill', 'liens', 'notices', 'repairs'])
-    expect(JOBS_BILLING_CARDS).toHaveLength(26)
-    expect(new Set(JOBS_BILLING_CARDS.map((c) => c.slug)).size).toBe(26)
-    expect(new Set(JOBS_BILLING_CARDS.map((c) => c.anchor)).size).toBe(26)
+    expect(JOBS_BILLING_CARDS).toHaveLength(27)
+    expect(new Set(JOBS_BILLING_CARDS.map((c) => c.slug)).size).toBe(27)
+    expect(new Set(JOBS_BILLING_CARDS.map((c) => c.anchor)).size).toBe(27)
     for (const c of JOBS_BILLING_CARDS) {
       expect(c.anchor.startsWith('settings-')).toBe(true)
       expect(c.title.trim()).toBe(c.title)
@@ -36,10 +36,10 @@ describe('jobsBillingGroups (punch list #261)', () => {
   })
 
   it('a dev sees every heading, a master four, the office two, the controller the cut-off too, a tech nothing', () => {
-    expect(jobsBillingGroupsFor('dev').map((g) => g.cards.length)).toEqual([7, 7, 4, 4, 2, 2])
+    expect(jobsBillingGroupsFor('dev').map((g) => g.cards.length)).toEqual([8, 7, 4, 4, 2, 2])
     const master = jobsBillingGroupsFor('master_technician')
     expect(master.map((g) => g.id)).toEqual(['money', 'record', 'liens', 'notices'])
-    expect(master.flatMap((g) => g.cards.map((c) => c.slug))).toEqual(['job-book', 'gc-card', 'gc-cutoff', 'stage-checklists', 'machine-templates', 'photos', 'test-reports', 'owner-of-record', 'gc-office-notices', 'gc-customer-notice'])
+    expect(master.flatMap((g) => g.cards.map((c) => c.slug))).toEqual(['job-book', 'gc-card', 'gc-cutoff', 'line-budgets', 'stage-checklists', 'machine-templates', 'photos', 'test-reports', 'owner-of-record', 'gc-office-notices', 'gc-customer-notice'])
     const office = jobsBillingGroupsFor('assistant')
     expect(office.map((g) => g.id)).toEqual(['money', 'record'])
     expect(office.flatMap((g) => g.cards.map((c) => c.slug))).toEqual(['job-book', 'stage-checklists', 'machine-templates', 'photos', 'test-reports'])
@@ -50,7 +50,7 @@ describe('jobsBillingGroups (punch list #261)', () => {
 
   it('maps every card and heading anchor to the tab for the deep links', () => {
     const map = jobsBillingAnchorToTab()
-    expect(Object.keys(map)).toHaveLength(26 + 6)
+    expect(Object.keys(map)).toHaveLength(27 + 6)
     expect(map['settings-jobs-rates']).toBe('settings-jobs')
     expect(map['settings-legal-firm']).toBe('settings-jobs')
     expect(map['settings-jobs-group-money']).toBe('settings-jobs')

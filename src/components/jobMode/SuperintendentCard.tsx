@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useJobStageChecklists } from '../../hooks/useJobStageChecklists'
 import { useExpectedHours } from '../../hooks/useExpectedHours'
 import { loadProjectBoardRead } from '../../hooks/useProjectsBoard'
-import { DEFAULT_LINE_BUDGET_SETTINGS } from '../../lib/jobs/lineBudgets'
+import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import { isWorkingProject, projectLabel, projectNumber, projectPace } from '../../lib/jobs/projectsBoard'
 import { laborEventsOf, valueEventsOf, type ProjectBoardJob } from '../../lib/jobs/projectBoardRead'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
@@ -63,11 +63,12 @@ function SuperintendentLineCard({ job, onSetPct, rev }: { job: ProjectBoardJob; 
   const checklists = useJobStageChecklists(job.id, undefined, rev)
   const ids = useMemo(() => [job.id], [job.id])
   const targets = useExpectedHours(ids, true)
+  const { settings: lineBudgetSettings } = useLineBudgetSettings()
   const [day, setDay] = useState<string | null>(null)
   const [sheet, setSheet] = useState<JobStageChecklist | null>(null)
   const rows = checklists.rows ?? []
   const checklist = rows.reduce((s, r) => ({ answered: s.answered + r.state.answered, asked: s.asked + r.state.asked }), { answered: 0, asked: 0 })
-  const pace = projectPace({ job, target: targets.byJob.get(job.id) ?? null, checklist, settings: DEFAULT_LINE_BUDGET_SETTINGS })
+  const pace = projectPace({ job, target: targets.byJob.get(job.id) ?? null, checklist, settings: lineBudgetSettings })
   const line = pace.line
   const used = pace.input.hoursUsed ?? 0
   // The next stage with a question left, else the first stage with a checklist at all.

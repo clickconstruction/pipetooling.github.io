@@ -17,6 +17,8 @@ import {
 import { isDiscountRow, totalDiscountDollars, totalWorkDollars, type StandingDiscountOffer } from '../../lib/jobs/discountLine'
 import { JobFormDiscountRow } from './JobFormDiscountRow'
 import { LineBudgetPanel, LineBudgetQuietLine } from './LineBudgetQuietLine'
+import { lineBudgetColumnsFor, lineBudgetEntryOf } from '../../lib/jobs/lineBudgets'
+import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import { useLineBudgets } from '../../hooks/useLineBudgets'
 
 const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
@@ -137,6 +139,7 @@ export function JobFormFixturesSection({
   // work, #238's kind as the form reads it (PR 1a). A caller with no read leaves a Stage Plan
   // with an ordered stage to stand in; a service call's single line shows nothing.
   const { openId: lineBudgetOpenId } = useLineBudgets()
+  const { settings: settingsNow } = useLineBudgetSettings()
   const lineBudgetsOn = isProject ?? fixtures.some((r) => r.stage_kind === 'order')
   // The stacked ×/$ boxes are as wide as the longest value, the same on every
   // row so they line up down the list. commitOnType on the price input means
@@ -662,7 +665,24 @@ export function JobFormFixturesSection({
                       {lineBudgetsOn && lineBudgetOpenId === row.id && !isDiscountRow(row) && (
                         <tr style={{ borderBottom: 'none' }}>
                           <td colSpan={narrowViewport ? 3 : 3} style={{ padding: '0 0.75rem 0.25rem' }}>
-                            <LineBudgetPanel fixtureId={row.id} name={row.name} priceUsd={(row.line_unit_price ?? 0) * (row.count || 1)} row={row} onChange={(columns) => updateFixtureRow(row.id, columns)} />
+                            <LineBudgetPanel
+                              fixtureId={row.id}
+                              name={row.name}
+                              priceUsd={(row.line_unit_price ?? 0) * (row.count || 1)}
+                              row={row}
+                              onChange={(columns) => updateFixtureRow(row.id, columns)}
+                              brush={{
+                                // The brush (punch list #234 PR 1b): the job's other lines still assumed; the undo puts their nothing back.
+                                others: fixtures.filter((r) => r.id !== row.id && !isDiscountRow(r) && lineBudgetEntryOf(r) === undefined).length,
+                                apply: (columns) => {
+                                  const ids = fixtures.filter((r) => r.id !== row.id && !isDiscountRow(r) && lineBudgetEntryOf(r) === undefined).map((r) => r.id)
+                                  for (const id of ids) updateFixtureRow(id, columns)
+                                  return () => {
+                                    for (const id of ids) updateFixtureRow(id, lineBudgetColumnsFor(null, settingsNow))
+                                  }
+                                },
+                              }}
+                            />
                           </td>
                         </tr>
                       )}

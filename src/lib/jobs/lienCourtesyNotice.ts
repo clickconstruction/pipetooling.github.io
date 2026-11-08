@@ -532,3 +532,13 @@ export function courtesyOutcomeWords(to: ReadonlyArray<CourtesySent>): string {
   const tail = failed.length ? ` Not sent: ${failed.map((t) => `${t.channel} to ${WHO_WORDS[t.who]} — ${t.reason || 'no reason given'}`).join('; ')}.` : ''
   return `${head}${tail}`
 }
+
+export const COURTESY_RECORD_AGAIN_BUTTON = 'Write the record again ›'
+
+/**
+ * The words when the messages went but the record did not take (punch list #249, row 1): what went,
+ * why the record failed, and that the press that follows writes alone, so nobody sends a second time.
+ */
+export function courtesyUnrecordedWords(to: ReadonlyArray<CourtesySent>, reason: string): string {
+  return `${courtesyOutcomeWords(to)} The record could not be written: ${reason.trim() || 'no reason given'}. Write the record again. Nothing goes out a second time.`
+}

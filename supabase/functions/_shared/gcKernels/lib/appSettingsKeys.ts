@@ -38,6 +38,13 @@ export const APP_SETTINGS_KEY_DRIVE_FLEET_ROOT_FOLDER_ID = 'drive_fleet_root_fol
 /** `value_text` — the Drive folder a task card's photos go under (`photo-save`, punch list #273: one folder per card, a roadmap card's under its roadmap and stage); missing = no folder yet. */
 export const APP_SETTINGS_KEY_DRIVE_TASKS_FOLDER_ID = 'drive_tasks_folder_id' as const
 
+/**
+ * JSON in `value_text`: `LineBudgetSettings` (punch list #234 PR 1b, v2.6656) — the split a typed line takes per stage kind, the
+ * burdened cost rate and the target margin, saved from Settings → Jobs & billing → Line budgets. Master + dev write (a key-scoped
+ * UPDATE policy); all authenticated read. @see `src/lib/jobs/lineBudgetSettingsStore.ts`
+ */
+export const APP_SETTINGS_KEY_LINE_BUDGET_SETTINGS_V1 = 'line_budget_settings_v1' as const
+
 /** JSON map in `value_text`: Mercury kind → `{ nickname, color }` for Jobs → Bank Payments. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES = 'bank_payments_kind_badges_v1' as const
 

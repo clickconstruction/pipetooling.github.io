@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyLearningLine,
   applyLineSplit,
+  applySettingsRate,
+  applySettingsSplit,
+  applySettingsTarget,
   calcLineBudget,
   DEFAULT_LINE_BUDGET_SETTINGS as S,
+  learningLinesFor,
+  lineBudgetSettingsChanges,
+  lineBudgetSettingsSaveWords,
+  lineBudgetSettingsValueLine,
+  parseLineBudgetSettings,
+  serializeLineBudgetSettings,
+  settingsReadoutWords,
   lineBudgetColumnsFor,
   lineBudgetEntryOf,
   lineBudgetFor,
@@ -66,5 +77,50 @@ describe('lineBudgets (v2.6300, punch list #234)', () => {
     expect(s.earnedLaborUsd).toBe(5400)
     expect(s.earnedMaterialsUsd).toBe(4200)
     expect(s.bySource).toEqual({ workbench: 0, assumed: 1, tuned: 1 })
+  })
+})
+
+describe('the company settings on the wire and on the card (v2.6656, punch list #234 PR 1b)', () => {
+  it('parses the row, filling what is missing or broken from the constants and holding a split under 100', () => {
+    expect(parseLineBudgetSettings(null)).toEqual(S)
+    expect(parseLineBudgetSettings('not json')).toEqual(S)
+    const p = parseLineBudgetSettings('{"rateUsd":"52.5","targetMarginPct":25,"splits":{"rough_in":[50,60],"any":["48",30]}}')
+    expect(p.rateUsd).toBe(52.5)
+    expect(p.targetMarginPct).toBe(25)
+    expect(p.splits).toEqual({ rough_in: [50, 50], top_out: [45, 35], trim_set: [40, 40], any: [48, 30] })
+    expect(parseLineBudgetSettings(serializeLineBudgetSettings(p))).toEqual(p)
+    expect(parseLineBudgetSettings('{"rateUsd":-3}').rateUsd).toBe(45)
+  })
+  it('a drag on the card moves one kind, materials giving way; the rate and the target are held to sense', () => {
+    const a = applySettingsSplit(S, 'any', 'labor', 70)
+    expect(a.splits.any).toEqual([70, 30])
+    expect(a.splits.rough_in).toEqual([45, 35])
+    expect(applySettingsSplit(a, 'any', 'materials', 80).splits.any).toEqual([70, 30])
+    expect(applySettingsRate(S, 44.704).rateUsd).toBe(44.7)
+    expect(applySettingsRate(S, 0).rateUsd).toBe(1)
+    expect(applySettingsRate(S, NaN).rateUsd).toBe(45)
+    expect(applySettingsTarget(S, 130).targetMarginPct).toBe(100)
+  })
+  it('Save names what it writes', () => {
+    expect(lineBudgetSettingsSaveWords(lineBudgetSettingsChanges(S, S))).toBe('Nothing changed yet')
+    const d = applySettingsRate(applySettingsSplit(applySettingsSplit(S, 'any', 'labor', 52), 'trim_set', 'materials', 30), 48)
+    const c = lineBudgetSettingsChanges(S, d)
+    expect(c).toEqual({ kinds: ['trim_set', 'any'], rate: true, target: false, any: true })
+    expect(lineBudgetSettingsSaveWords(c)).toBe('Save · 2 splits and the rate')
+    expect(lineBudgetSettingsSaveWords(lineBudgetSettingsChanges(S, applySettingsTarget(S, 22)))).toBe('Save · the target')
+    expect(lineBudgetSettingsSaveWords({ kinds: ['any'], rate: true, target: true, any: true })).toBe('Save · 1 split, the rate and the target')
+  })
+  it('reads a kind out on a line of a size, and the fold header in one line', () => {
+    expect(settingsReadoutWords(S, 'rough_in', 4_000)).toBe('$1,800 labor · 40 h · $1,400 materials · $800 margin')
+    expect(lineBudgetSettingsValueLine(S)).toBe('45 / 35 rough in · 45 / 35 top out · 40 / 40 trim set · 45 / 35 any line · $45 an hour')
+  })
+  it('the learning line speaks after five tunes on a kind that sit three points or more off the default, and taking it moves labor only', () => {
+    const tuned = [52, 50, 55, 52, 48, 53].map((l) => ({ name: 'Water heater', budget_labor_pct: l }))
+    const few = [60, 61, 62, 63].map((l) => ({ name: 'Rough In', budget_labor_pct: l }))
+    const onDefault = [45, 46, 44, 45, 47].map((l) => ({ name: 'Top Out', budget_labor_pct: String(l) }))
+    const lines = learningLinesFor([...tuned, ...few, ...onDefault], S)
+    expect(lines).toEqual([{ kind: 'any', laborPct: 52, defaultPct: 45, n: 6, words: 'Your Any line lines ran 52% labor on the last 6 tunes, against the 45% default.' }])
+    expect(applyLearningLine(S, lines[0]!).splits.any).toEqual([52, 35])
+    expect(learningLinesFor([], S)).toEqual([])
   })
 })

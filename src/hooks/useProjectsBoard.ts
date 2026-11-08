@@ -14,7 +14,7 @@ import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/
 import { useBidVsActualBurnInputs } from './useBidVsActualBurnInputs'
 import { useStageChecklistStates } from './useStageChecklistStates'
 import { useExpectedHours, type ExpectedHoursApi } from './useExpectedHours'
-import { DEFAULT_LINE_BUDGET_SETTINGS } from '../lib/jobs/lineBudgets'
+import { useLineBudgetSettings } from './useLineBudgetSettings'
 import { checklistCountOf, isWorkingProject, projectPace, sortByPace, type ProjectPace } from '../lib/jobs/projectsBoard'
 import { laborEventsOf, parseProjectBoardRead, valueEventsOf, type ProjectBoardJob, type ProjectBoardRead } from '../lib/jobs/projectBoardRead'
 import type { SuperintendentLine } from '../lib/jobs/superintendentLine'
@@ -82,9 +82,9 @@ export function useProjectsBoard({ dayDetail = true }: { dayDetail?: boolean } =
   const burn = useBidVsActualBurnInputs(wantsDollars && ids.length > 0, ids)
   const checklists = useStageChecklistStates(ids, ids.length > 0)
   const targets = useExpectedHours(ids, ids.length > 0)
+  const { settings } = useLineBudgetSettings()
 
   const cards = useMemo(() => {
-    const settings = DEFAULT_LINE_BUDGET_SETTINGS
     return sortByPace(
       (rows ?? []).map((row) => {
         const inputs = burn.inputsByJob.get(row.id)

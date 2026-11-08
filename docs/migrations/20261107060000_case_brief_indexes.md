@@ -12,3 +12,5 @@ No table, so no fence appliers. Idempotent (`CREATE OR REPLACE`), no locks beyon
 ## Order
 
 After `20261107040000` (the view it replaces). Push, then `supabase functions deploy dev-mcp`; then regenerate the types and the catalog, since `get_case_brief`'s reads of `person_file_index` and the new column are refused by the catalog until it knows them (the brief holds them in `held` and the rest draws).
+
+**Applied** to prod on 2026-11-07, read the same day: `npm run check:migration-drift` from the docs worktree read 1153 local files and 1153 remote versions, fully applied, this file among them; the #278 card's close (#7238) records the five PRs' migrations pushed and the seat deployed at 0.38.0.

@@ -37,3 +37,5 @@ Not yet. Pushed with `supabase db push` by the owner after the PR merges; the ty
 ## Status
 
 - 2026-11-07: cut from main at v2.6643 by the #210 session, PR #7251. The bed ran on GitHub's *SQL beds* workflow of the PR (the local Postgres 15 lacks `vector` for a later migration, and Docker did not come up); the fragment records the walk.
+
+**Applied** to prod on 2026-11-07, read the same day: `npm run check:migration-drift` from the docs worktree read 1153 local files and 1153 remote versions, fully applied, this file among them; `20261107170000`'s page says this file rode along in that push from a clean checkout of main.

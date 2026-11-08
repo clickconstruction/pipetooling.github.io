@@ -2,7 +2,7 @@
 name: "Report by line: how far along each line is, not the job"
 number: 130
 group: close
-status: SHIPPED 2026-10-20 and WALKED 2026-11-07 — the five PRs landed 2026-10-20 (v2.5661, v2.5663, v2.5664, v2.5665 inside #5900's squash, v2.5666); the live walk as a helper passed 2026-11-07 and found the Pipeline bar still pouring, fixed in v2.6653; what is left is the count's second reading
+status: SHIPPED 2026-10-20 and WALKED 2026-11-07 — the five PRs landed 2026-10-20 (v2.5661, v2.5663, v2.5664, v2.5665 inside #5900's squash, v2.5666); the live walk as a helper passed 2026-11-07 and found the Pipeline bar still pouring, fixed in v2.6653 (the lines) and v2.6663 (the stages); what is left is the count's second reading
 summary: >
   A field report asks "How complete is the job?" and a tech who just finished the rough-in types
   50, meaning the piece they stood in, so the job reads 50% everywhere money is counted. The

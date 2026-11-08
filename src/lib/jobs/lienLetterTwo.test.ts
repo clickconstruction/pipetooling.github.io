@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskItemRow } from './lienDesk'
-import { LETTER_TWO_KINDS, letterTwoByJobFrom, letterTwoIsDue, letterTwoStatus, summarizeLetterTwo } from './lienLetterTwo'
+import { LETTER_TWO_KINDS, letterTwoByJobFrom, letterTwoIsDue, letterTwoMailClocksFrom, letterTwoStatus, summarizeLetterTwo } from './lienLetterTwo'
 import { letterTwoTemplate, paidOutOwnerLetter, fillCoverLetter } from './gcOnNotice'
 import { parseLienDeskDraftFields } from './lienNoticeDraft'
 
@@ -138,5 +138,34 @@ describe('the owner’s call rides on the status whatever the state (v2.6383)', 
     expect(s.state).toBe('sent')
     expect(s.ownerCalledAt).toBe('2026-09-16T12:00:00Z')
     expect(letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: TODAY }).ownerCalledAt).toBeNull()
+  })
+})
+
+describe('the clocks from the pieces the desk read (punch list #249, row 4)', () => {
+  const piece = (over: Partial<{ recipient: string; mailed_at: string | null; delivered_at: string | null; status: string | null }>) => ({ recipient: 'owner', mailed_at: '2026-09-06T14:00:00Z', delivered_at: null, status: 'in_transit', ...over })
+  const sent = { id: 'first', kind: 'notice_53_056', status: 'sent', voided_at: null, sent_filing_id: 'f1' } as const
+
+  it('keys the owner’s piece by the item, found under the item’s id or its filing’s, and leaves the GC’s copy out', () => {
+    const byItem = letterTwoMailClocksFrom([sent], { first: [piece({ recipient: 'original_contractor' }), piece({ delivered_at: '2026-09-09T15:00:00Z', status: 'delivered' })] })
+    expect(byItem).toEqual({ first: { mailedAt: '2026-09-06T14:00:00Z', deliveredAt: '2026-09-09T15:00:00Z', status: 'delivered' } })
+    const byFiling = letterTwoMailClocksFrom([sent], { f1: [piece({})] })
+    expect(byFiling.first).toEqual({ mailedAt: '2026-09-06T14:00:00Z', deliveredAt: null, status: 'in_transit' })
+  })
+
+  it('the newest mailing wins when the owner was mailed twice, and one piece under both ids is read once', () => {
+    const older = piece({ mailed_at: '2026-09-06T14:00:00Z', status: 'returned' })
+    const newer = piece({ mailed_at: '2026-09-12T14:00:00Z' })
+    expect(letterTwoMailClocksFrom([sent], { first: [older, newer], f1: [newer] }).first).toEqual({ mailedAt: '2026-09-12T14:00:00Z', deliveredAt: null, status: 'in_transit' })
+  })
+
+  it('an item with no owner’s piece, a voided one and a drafted one have no clock, so the day the run recorded it stands', () => {
+    const out = letterTwoMailClocksFrom(
+      [sent, { ...sent, id: 'v', voided_at: '2026-09-07T00:00:00Z' }, { ...sent, id: 'd', status: 'drafted' }],
+      { v: [piece({})], d: [piece({})] },
+    )
+    expect(out).toEqual({})
+    const clocked = letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-19', formatDay: (d) => d, mailClocks: letterTwoMailClocksFrom([{ ...sent }], { f1: [piece({ delivered_at: '2026-09-09T15:00:00Z', status: 'delivered' })] }) })
+    expect(clocked.clock?.kind).toBe('delivered')
+    expect(clocked.day).toBe(10)
   })
 })

@@ -14,6 +14,8 @@ import {
   courtesyIsDue,
   courtesyMaySend,
   courtesyOutcomeWords,
+  courtesyUnrecordedWords,
+  COURTESY_RECORD_AGAIN_BUTTON,
   courtesyOwnerSubject,
   courtesyPayLine,
   courtesyPlan,
@@ -341,5 +343,19 @@ describe('paying it down (punch list #274, PR 3)', () => {
     expect(parsePromiseRecord(null)).toBeNull()
     expect(parsePromiseRecord({ by: 'Grace' })).toBeNull()
     expect(addDaysYmd('2026-10-28', 7)).toBe('2026-11-04')
+  })
+})
+
+describe('the messages went but the record did not take (punch list #249, row 1)', () => {
+  it('says what went, why the record failed, and that the next press writes alone', () => {
+    const to = [
+      { who: 'original_contractor' as const, name: 'Ridgeway Builders', channel: 'email' as const, address: 'a@b.test', ok: true, id: 're_1', reason: '' },
+      { who: 'original_contractor' as const, name: 'Ridgeway Builders', channel: 'text' as const, address: '(512) 555-0100', ok: false, id: null, reason: 'they sent STOP' },
+    ]
+    expect(courtesyUnrecordedWords(to, 'the row was changed by someone else')).toBe(
+      '1 message went: email to the GC. Not sent: text to the GC — they sent STOP. The record could not be written: the row was changed by someone else. Write the record again. Nothing goes out a second time.',
+    )
+    expect(courtesyUnrecordedWords(to, '  ')).toContain('The record could not be written: no reason given.')
+    expect(COURTESY_RECORD_AGAIN_BUTTON).toBe('Write the record again ›')
   })
 })

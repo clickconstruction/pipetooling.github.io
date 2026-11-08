@@ -11,3 +11,5 @@ No table, so no fence appliers. Idempotent. `dev_person_doc_write` keeps its own
 ## Order
 
 After `20261007235000` (the function it replaces) and `20261107013000` (`hr_doc_headings`). Push, then `supabase functions deploy dev-mcp`.
+
+**Applied** to prod on 2026-11-07, read the same day: `npm run check:migration-drift` from the docs worktree read 1153 local files and 1153 remote versions, fully applied, this file among them; types regenerated from prod through #7225 (`chore(types)` after `20261107090000` and this push).
