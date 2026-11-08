@@ -261,7 +261,9 @@ export function foldedSourceWords(source: JobChargeSource, events: readonly JobC
 
 /**
  * One tooltip line per job and source on a day: *JP603 · 3 card charges*, the day's lines biggest
- * first. The amounts are summed, so the chart's buckets and its end are the same as unfolded.
+ * first. The amounts are summed and left unrounded (v2.6718): the kernel rounds the running sum once at
+ * the end, as a job's own chart does, so a chip's cost and the chart's end for that job agree to the
+ * cent; a per-line rounding here once put the two a cent apart. The tooltip rounds as it draws.
  */
 export function foldSiteChargeEvents(events: readonly JobChargeEvent[], jobLabel: (jobId: string) => string): JobChargeEvent[] {
   const groups = new Map<string, JobChargeEvent[]>()
@@ -277,7 +279,7 @@ export function foldSiteChargeEvents(events: readonly JobChargeEvent[], jobLabel
     const folded: JobChargeEvent = {
       source: first.source,
       dateKey: first.dateKey,
-      amount: round2(list.reduce((s, e) => s + e.amount, 0)),
+      amount: list.reduce((s, e) => s + e.amount, 0),
       label: `${first.jobId ? jobLabel(first.jobId) : 'A job'} · ${foldedSourceWords(first.source, list)}`,
     }
     if (first.jobId) folded.jobId = first.jobId
