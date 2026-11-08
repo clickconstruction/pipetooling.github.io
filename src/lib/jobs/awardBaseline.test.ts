@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { awardBaselineOptions, awardBaselinePick, awardBaselineRpcArgs, awardNotNowSource, awardPressWords, stageHoursWords, workbenchLineBudget, type AwardBaselineInput, type AwardBidBreakdown } from './awardBaseline'
+import { awardBaselineOptions, awardBaselinePick, awardBaselineRpcArgs, awardNotNowSource, awardPressWords, bidBaselineUsable, bidNotUsableWords, bidRateNeeded, bidRowsUsable, stageHoursWords, workbenchLineBudget, type AwardBaselineInput, type AwardBidBreakdown } from './awardBaseline'
 import type { BaselineReading } from '../bids/bidBaselineRates'
 
 const usableBid: AwardBidBreakdown = { has_estimate: true, labor_hours: 480, labor_rate: 42, labor_usd: 20_160, materials_usd: 38_400, completeness: { rows_total: 36, rows_with_hours: 36, rate_set: true, usable: true }, labor_hours_by_stage: { rough: 210, top: 150, trim: 120 } }
@@ -39,6 +39,39 @@ describe('awardBaselineOptions · three sources in order', () => {
     const typed = awardBaselineOptions({ breakdown: null, bidLabel: null, book: thinBook, priceUsd: 50_000, rateUsd: 45, typedHours: 220 })
     expect(typed[2]).toMatchObject({ usable: true, hours: 220, head: '220 h · typed' })
     expect(awardPressWords(typed, 'typed')).toBe('Award it · 220 h typed')
+  })
+  it("a bid with no Labor rows says so, never 'hours on 0 of 0 rows' (the first walk's slip 7)", () => {
+    const o = awardBaselineOptions({ ...base, breakdown: { ...usableBid, labor_hours: 0, labor_usd: 0, completeness: { rows_total: 0, rows_with_hours: 0, rate_set: true, usable: false } }, bidLabel: 'B398' })
+    expect(o[0]).toMatchObject({ usable: false, hours: null, why: 'B398 has no Labor rows yet. Add them on its Labor tab and this becomes the pick.' })
+    expect(bidNotUsableWords({ ...usableBid, completeness: { rows_total: 0, rows_with_hours: 0, rate_set: true, usable: false } }, 'B398')).toBe('B398 has no Labor rows yet.')
+    expect(bidNotUsableWords(null, 'B398')).toBe('')
+  })
+  it("a bid with hours on every row and no rate of its own reads usable at the company rate, as the Labor tab reads it (the second walk's slip 8)", () => {
+    // BP398: six Labor rows filled as fixed-hour tasks, the company rate never saved on the bid, so bid_estimate_breakdown read rate_set false.
+    const noRate: AwardBidBreakdown = { has_estimate: true, labor_hours: 70, labor_rate: null, labor_usd: 0, materials_usd: 0, completeness: { rows_total: 6, rows_with_hours: 6, rate_set: false, usable: false }, labor_hours_by_stage: null }
+    expect(bidRowsUsable(noRate)).toBe(true)
+    expect(bidRateNeeded(noRate)).toBe(true)
+    expect(bidRateNeeded(usableBid)).toBe(false)
+    expect(bidBaselineUsable(noRate)).toBe(false)
+    expect(bidBaselineUsable(noRate, 45)).toBe(true)
+    expect(bidNotUsableWords(noRate, 'B398')).toBe('B398 has hours on its Labor rows but no labor rate.')
+    expect(bidNotUsableWords(noRate, 'B398', 45)).toBe('')
+    expect(bidNotUsableWords(thinBid, 'B917', 45)).toBe('B917 has hours on 9 of 31 Labor rows.')
+    const i = { ...base, breakdown: noRate, bidLabel: 'B398', priceUsd: 56_343 }
+    const o = awardBaselineOptions(i)
+    expect(o[0]).toMatchObject({ usable: true, hours: 70, head: "70 h · from the bid's Labor rows" })
+    expect(o[0]!.why).toBe("6 of 6 rows carry hours. Priced at the company's $45 rate from Settings → Line budgets; the award saves it on B398, as the Labor tab's save it on the bid does. The bid's own number. This is the one that scores.")
+    expect(awardBaselinePick(o)).toBe('bid')
+    // The pick carries the company rate as the cue to save it on the bid; a bid with its own rate carries none.
+    expect(awardBaselineRpcArgs(i, o, 'bid', 'j1', 'b398')).toEqual({ p_job_id: 'j1', p_source: 'bid', p_bid_id: 'b398', p_labor_hours: null, p_labor_rate: 45, p_book: {}, p_note: null })
+    expect(awardBaselineRpcArgs(base, awardBaselineOptions(base), 'bid', 'j1', 'b1')!.p_labor_rate).toBeNull()
+    // With no company rate either, the bid is dead and says so.
+    const dead = awardBaselineOptions({ ...i, rateUsd: 0 })
+    expect(dead[0]).toMatchObject({ usable: false })
+    expect(dead[0]!.why).toBe('Not usable: hours on 6 of 6 rows. No labor rate on the bid and none in Settings. Fill the Labor rows on B398 and this becomes the pick. The 6 rows carry 70 h.')
+    // The carried line's ◆ prices the labor at the company rate when the bid priced it at nothing.
+    expect(workbenchLineBudget(noRate, 56_343, 45)).toEqual({ budget_labor_pct: 6, budget_materials_pct: 0, budget_source: 'workbench', budget_tuned_at: null, budget_rate_usd: 45 })
+    expect(workbenchLineBudget(noRate, 56_343, 0)).toBeNull()
   })
   it('no price: the book needs one; a bid with no estimate says so', () => {
     const o = awardBaselineOptions({ breakdown: { ...usableBid, has_estimate: false }, bidLabel: 'B12', book, priceUsd: 0, rateUsd: 45, typedHours: null })

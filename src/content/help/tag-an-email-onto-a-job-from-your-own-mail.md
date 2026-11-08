@@ -22,6 +22,7 @@ Press **Follow up** to go back to everyone waiting on us.
 ## What the tab reads and keeps
 
 - The tab reads your Inbox and Sent from Gmail when you open it.
+- A job window reads your mail with the job's people when it opens. So does a thread narrowed to one bid.
 - Nothing is kept until you tag a conversation.
 - Drafts, Spam and Trash are never read.
 - A label you leave out is never read either.
@@ -66,6 +67,32 @@ The app never tags anything on a guess alone. Only your press does.
 4. Press the job.
 
 On a phone, the picker opens from the bottom of the screen.
+
+## Tag from the job or the bid
+
+You do not have to open the tab. The job window brings your mail to you.
+
+1. Open a job on Jobs or the Pipeline.
+2. Read the line under **Where it stands**. It says *Your mail with Dale Okafor*.
+3. Each row is one conversation that is not on this job yet.
+4. Press {{button:blue|Yes}} on a row.
+
+The whole conversation lands on the job. The row turns green and names the job. Press **open the thread ›** to see the lines.
+
+:::example The line on a job
+**Your mail with Dale Okafor** &nbsp; 2 conversations not on this job
+↓ &nbsp; Re: 4 Elm Ct water heater &nbsp; Dale Okafor · today · 3 in it · 📎 &nbsp; {{button:blue|Yes}}
+↑ &nbsp; Thursday walk-through &nbsp; you · Mon &nbsp; {{button:blue|Yes}}
+:::
+
+The line shows up to three conversations. Press **All your mail with Dale ›** to see the rest on the tab.
+
+A bid works the same way. Open a GC's thread from the Bid Board. The thread shows that bid alone. The line sits above the reply box.
+
+- The line reads your Gmail as the window opens. Nothing is kept until you press Yes.
+- A job with no mail from its people shows no line.
+- The line never counts anything and never nags you.
+- If your switch is off, no line shows anywhere.
 
 ## Read a mail before you tag it
 
