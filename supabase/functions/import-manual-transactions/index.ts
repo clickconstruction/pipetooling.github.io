@@ -9,7 +9,8 @@ const corsHeaders = {
 }
 
 // Roles allowed to import manual (non-Mercury) transactions.
-const ALLOWED_ROLES = new Set(['dev', 'master_technician'])
+// Punch list #188 row 54 (v2.6761): the controller runs Accounting, so she imports and keeps the manual accounts too.
+const ALLOWED_ROLES = new Set(['dev', 'master_technician', 'controller'])
 const INSERT_BATCH = 500
 
 interface ImportRow {

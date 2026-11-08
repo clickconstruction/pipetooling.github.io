@@ -45,7 +45,7 @@ export function ContractLibraryModal({
   canDeletePeopleContracts,
   onSaved,
   onQuickSend,
-  isDev = false,
+  canUseFormStudio = false,
 }: {
   open: boolean
   onClose: () => void
@@ -58,7 +58,7 @@ export function ContractLibraryModal({
   onSaved: () => void
   onQuickSend: (documentName: string) => void
   /** Contract Forms (v2.2794): devs see the Forms tab (the Form Studio). */
-  isDev?: boolean
+  canUseFormStudio?: boolean
 }) {
   const [tab, setTab] = useState<'documents' | 'packets' | 'scope' | 'forms'>(initialTab)
   const [selectedPacketId, setSelectedPacketId] = useState<string | null>(null)
@@ -443,10 +443,10 @@ export function ContractLibraryModal({
           {tabButton('documents', 'Documents', libraryDocs.length + adHocDocNames.length)}
           {tabButton('packets', 'Packets', sortedPackets.length)}
           {tabButton('scope', 'Scope', null)}
-          {isDev ? tabButton('forms', 'Forms', templateDocuments.filter((d) => d.form_template_id).length) : null}
+          {canUseFormStudio ? tabButton('forms', 'Forms', templateDocuments.filter((d) => d.form_template_id).length) : null}
         </div>
 
-        {tab === 'forms' && isDev ? <FormStudio packets={templates} bookEntries={templateDocuments} onSaved={onSaved} /> : null}
+        {tab === 'forms' && canUseFormStudio ? <FormStudio packets={templates} bookEntries={templateDocuments} onSaved={onSaved} /> : null}
 
         {tab === 'documents' ? (
           <div role="tabpanel">

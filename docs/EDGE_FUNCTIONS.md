@@ -6198,6 +6198,8 @@ Each text goes through `sendText` (`_shared/quoLines.ts`), the path `quo-send` a
 
 ### import-manual-transactions
 
+> **v2.6761** (punch list #188 row 54): `ALLOWED_ROLES` admits the controller beside dev and master_technician.
+
 **Purpose**: Import **manual (non-Mercury) transactions** — e.g. a closed or external bank account's CSV — into `mercury_transactions` with `source = 'manual'`. Creates a new synthetic account (random UUID + `mercury_account_nicknames` row) or appends to an existing one; **refuses to write manual rows onto a real Mercury account** (any `source = 'mercury'` row on the target id → 400). Multiset de-dup by `(postedDate, amount, payee, memo)` against pre-existing manual rows: a re-upload of already-imported rows is skipped, but genuinely-duplicate rows *within* one upload all import. Rows are stamped with a shared `manual_upload_id`, `created_by`, and `posted_at = <date>T12:00:00Z` (noon UTC keeps the America/Chicago calendar day); the original CSV fields ride along in `raw`.
 
 **Endpoint**: `POST /functions/v1/import-manual-transactions`
@@ -6231,6 +6233,8 @@ Each text goes through `sendText` (`_shared/quoLines.ts`), the path `quo-send` a
 ---
 
 ### manage-manual-account
+
+> **v2.6761** (punch list #188 row 54): `ALLOWED_ROLES` admits the controller beside dev and master_technician.
 
 **Purpose**: Rename or delete a **manual (synthetic) account** created by `import-manual-transactions`. Guard: refuses to touch any account with real Mercury rows (`source = 'mercury'` → 400) and 404s when the id has no manual rows. **rename** upserts `mercury_account_nicknames`; **delete** removes the account's `source = 'manual'` transactions (dependents clean up via `ON DELETE CASCADE`; `jobs_ledger_payments` is `SET NULL`) and drops the nickname row.
 

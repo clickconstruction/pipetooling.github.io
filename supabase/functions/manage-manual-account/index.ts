@@ -8,7 +8,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const ALLOWED_ROLES = new Set(['dev', 'master_technician'])
+// Punch list #188 row 54 (v2.6761): the controller runs Accounting, so she imports and keeps the manual accounts too.
+const ALLOWED_ROLES = new Set(['dev', 'master_technician', 'controller'])
 const MAX_NAME = 120
 
 interface Body {
