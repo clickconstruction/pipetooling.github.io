@@ -2,12 +2,12 @@
 // `npm run gen:edge-kernels`. The functions that import the copy are IMPORTERS in that script (the schedule's PR 14b).
 /**
  * Messages, cut 6 (email in): when the bids@ reader (`gmail-sync`) waits instead of asking Gmail again. Gmail answers a
- * box read too fast with 429 *User-rate limit exceeded. Retry after 2026-11-07T16:57:02.324Z*, the time fifteen minutes
- * past the request, and every request inside that window moves the time forward again. A reader that runs every minute
- * never gets out: from 2026-11-06 20:44Z the bids row failed every run for twenty hours on the one `/labels` call each
- * run opened with, while the team row read beside it. So a run that finds the box's last run stopped on a 429 writes
- * nothing and asks Gmail nothing until Google's own time has passed (`readerHold`); the row's `last_error` keeps the
- * words, and Settings' health line reads them as before. Pure.
+ * box past one of its per-user limits with 429 *User-rate limit exceeded. Retry after 2026-11-07T16:57:02.324Z*, the
+ * time always fifteen minutes past the request. On bids@ from 2026-11-07 00:21Z the limit was the mailbox's download
+ * allowance, spent by a run that died copying one mail's files and was tried again every minute (v2.6667, `copyStop`
+ * has the story); the limit outlasts any one retry time. So a run that finds the box's last run stopped on a 429 writes
+ * nothing and asks Gmail nothing until Google's own time has passed (`readerHold`), one knock each window instead of
+ * sixty; the row's `last_error` keeps the words, and Settings' health line reads them as before. Pure.
  */
 
 /** The row's fields the hold reads: the last run's words and when they were written. */

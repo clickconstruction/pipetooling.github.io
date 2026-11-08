@@ -90,14 +90,27 @@ const headerMap = (headers: readonly GmailHeader[] | undefined): Record<string, 
   return out
 }
 
-/** base64url (or plain base64) to bytes. Malformed input reads as no bytes. */
-export function base64UrlBytes(data: string): Uint8Array {
+/** How much of a base64 string is decoded at a time: a multiple of four, so every slice but the last is whole. */
+export const BASE64_SLICE = 1 << 20
+
+/**
+ * base64url (or plain base64) to bytes. Malformed input reads as no bytes. Decoded a slice at a time into one array
+ * (v2.6667): the whole-string way held three more copies of the text and the binary string beside the bytes, so a
+ * 20 MB attachment's 27 MB of text took well over 100 MB, and a worker ran out of memory on a plan file.
+ */
+export function base64UrlBytes(data: string, slice: number = BASE64_SLICE): Uint8Array {
   try {
-    const b64 = data.replace(/-/g, '+').replace(/_/g, '/').replace(/\s+/g, '')
-    const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
-    const bytes = new Uint8Array(bin.length)
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-    return bytes
+    const clean = /\s/.test(data) ? data.replace(/\s+/g, '') : data
+    const step = Math.max(4, slice - (slice % 4))
+    const out = new Uint8Array(Math.floor((clean.length * 3) / 4))
+    let n = 0
+    for (let at = 0; at < clean.length; at += step) {
+      let part = clean.slice(at, at + step).replace(/-/g, '+').replace(/_/g, '/')
+      if (at + step >= clean.length) part += '='.repeat((4 - (part.length % 4)) % 4)
+      const bin = atob(part)
+      for (let i = 0; i < bin.length; i++) out[n++] = bin.charCodeAt(i)
+    }
+    return n === out.length ? out : out.subarray(0, n)
   } catch {
     return new Uint8Array(0)
   }
