@@ -491,7 +491,7 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
     ) : null
     if (!isOpen) {
       const stamp = answerStampWords(a)
-      const second = stamp ? `${waitsOn === 'photo' ? `${stamp} · waits for the photo` : sig ? signedStampWords(stamp) : waitsOn === 'signature' ? `${stamp} · not signed yet` : stamp}` : [q.asksPhoto ? 'asks for a photo' : '', q.needsSignature ? NEEDS_SIGNATURE_WORDS.tag : '', added].filter(Boolean).join(' · ')
+      const second = stamp ? `${waitsOn === 'photo' ? `${stamp} · waits for the photo` : sig ? signedStampWords(stamp) : waitsOn === 'signature' ? `${stamp} · not signed yet` : stamp}` : [q.asksPhoto ? (a?.reportPhotoId ? CHECKLIST_PHOTO_WORDS.onReportTag : 'asks for a photo') : '', q.needsSignature ? NEEDS_SIGNATURE_WORDS.tag : '', added].filter(Boolean).join(' · ')
       return (
         <Fragment key={q.id}>
           <button
@@ -644,7 +644,7 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
               ))}
             </div>
             {a?.pick ? <p style={meta}>{answerStampWords(a)}</p> : null}
-            {q.asksPhoto && a?.pick && a.pick !== 'not_here' ? <PhotoRow stage={stage} question={q} answer={a} jobId={jobId} who={who} io={io} onAnswer={land} /> : null}
+            {q.asksPhoto && ((a?.pick && a.pick !== 'not_here') || a?.reportPhotoId) ? <PhotoRow stage={stage} question={q} answer={a} jobId={jobId} who={who} io={io} onAnswer={land} /> : null}
             {noteOpen === q.id || (a?.note ?? '') ? (
               <input
                 type="text"
