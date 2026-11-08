@@ -89,7 +89,7 @@ import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBa
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
-import { buildLienNextUp, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { buildLienNextUp, lienViewerLeadsJob, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { buildLienMonth, lienMonthZoneHasRow, type LienMonthZoneKey } from '../../lib/jobs/lienMonthRhythm'
 import { LienMonthBar } from './LienMonthBar'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
@@ -728,8 +728,13 @@ export default function LienDeskModal({
       leaderName: (jobId) => leaderNameFor?.(data.jobsById[jobId]?.master_user_id ?? null)?.trim() || null,
       userName: (userId) => leaderNameFor?.(userId)?.trim() || null,
       mailNeedsYou: mailNeedsYouRows(data.filingsByJob, data.mailPiecesByFiling ?? {}, formatYmdMonthDay),
+      // v2.6734 (punch list #150): a leader's own rows are the jobs he is master of; another master's read as the office's.
+      viewerUserId: authUserId,
+      masterUserId: (jobId) => data.jobsById[jobId]?.master_user_id ?? null,
     })
-  }, [data, authRole, todayYmd, leaderNameFor, courtesyByJob, serveDue])
+  }, [data, authRole, authUserId, todayYmd, leaderNameFor, courtesyByJob, serveDue])
+  // Whether this viewer is the leader a row's job waits on (v2.6734): the step tiles and the step card say *you* only then.
+  const leadsRow = (row: LienNextUpRow): boolean => lienViewerLeadsJob({ role: authRole, viewerUserId: authUserId, masterUserId: (jobId) => data?.jobsById[jobId]?.master_user_id ?? null }, row.jobId)
   // The lien month (punch list #235, PR 2): the five zones over the same book Do now reads, drawn as the bar above the list; a pressed zone narrows the list to its work.
   const lienMonth = useMemo(() => (data ? buildLienMonth({ todayYmd, notices: data.queue.entries, affidavits: data.affidavits.entries, courtesyByJob, serveDue, jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId) }) : null), [data, todayYmd, courtesyByJob, serveDue])
   const [monthZone, setMonthZone] = useState<LienMonthZoneKey | null>(null)
@@ -1566,7 +1571,7 @@ export default function LienDeskModal({
   const runTail = runDoorTail(runDoor.count, runPill.words)
   // What a Do now row's card may say about its job (v2.4631): read from what the desk already holds, nothing new.
   const stepFactsFor = (row: LienNextUpRow): LienStepFacts => {
-    const base: LienStepFacts = { readyToSend: counts?.ready ?? 0, viewerIsLeader: leader }
+    const base: LienStepFacts = { readyToSend: counts?.ready ?? 0, viewerIsLeader: leader && leadsRow(row) }
     if (!data || !row.jobId) return base
     const jobId = row.jobId
     const rowJob = data.jobsById[jobId]
@@ -3217,8 +3222,9 @@ export default function LienDeskModal({
         {leader ? offerBox(saveOffer, itemOffer != null) : null}
         {/* v2.6733 (punch list #150): the office's Ready footer carries the master's line too — his code or his hand on this screen, beside the pen record. */}
         {(leader || (office && otherScreen)) && readySigned === 'unsigned' ? signLine() : null}
-        {leader && penAwaits && selected.item ? (
+        {leader && !otherScreen && penAwaits && selected.item ? (
           // The pen train, PR 3: the office wrote down his pen signature; his word strengthens the record, his No clears it.
+          // v2.6734: his word alone — on another master's job the group is not drawn, since the guard takes a confirm only from the signer's own sign-in.
           <div data-lien-desk-pen-confirm data-lien-desk-confirm-mode={codeAwaits ? 'code' : 'pen'} role="group" aria-label={codeAwaits ? 'A signature by your code, waiting on your word' : 'A pen signature recorded for you'} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', borderRadius: 8, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
             <span style={{ flex: '1 1 16rem' }}>
               {codeAwaits ? (
@@ -3658,7 +3664,7 @@ export default function LienDeskModal({
             <div style={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }}>
             {lienMonth ? <LienMonthBar month={lienMonth} on={monthZone} onPick={setMonthZone} isMobile={isMobile} shown={nextUpRowsShown.length} total={nextUpRowsFound.length} /> : <div />}
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
-            <LienDeskNextUp rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
+            <LienDeskNextUp rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} reminders={reminders} timelineFor={timelineFor} onOpenReminder={(r) => actOnNextUp({ key: `reminder:${r.jobId}`, kind: 'notice', jobId: r.jobId, gcId: null, title: r.title, sub: r.words, dueOn: null, daysLeft: null, severity: 'quiet', group: 'reminders', action: 'courtesy', button: null, target: { open: 'notices', jobId: r.jobId, pile: data?.queue.entries.find((e) => e.jobId === r.jobId)?.pile ?? 'sent' } })} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab

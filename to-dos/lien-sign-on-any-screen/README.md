@@ -2,7 +2,7 @@
 name: "Lien desk: a dev's Approve opens a sign block that signs with the dev's name over the master's line — hold the mark to the job's master and give the dev's screen a door"
 number: 150
 group: residual
-status: shipped 2026-10-23 as v2.5788 (the code in Settings, the table, the RPCs, the guard rule; migration pushed) and v2.5791 (the master's line and code field on anyone's screen); notify-lien-approval and dev-mcp deployed; residual A shipped 2026-11-08 as v2.6733 (his code field on the run's held envelope and the office's Ready footer)
+status: shipped 2026-10-23 as v2.5788 (the code in Settings, the table, the RPCs, the guard rule; migration pushed) and v2.5791 (the master's line and code field on anyone's screen); notify-lien-approval and dev-mcp deployed; residuals shipped 2026-11-08 as v2.6733 (his code field on the run's held envelope and the office's Ready footer) and v2.6734 (Do now names the master on his jobs)
 summary: >
   When a dev presses Approve on the Lien desk, the notice opens with the signature block in typed
   mode: the cursive reads the signed-in dev's name (Robert) while the line under it reads the
@@ -13,10 +13,10 @@ summary: >
   rule and fixes the screen (draw mode by default, in the master's name, on the dev's screen);
   B gives the master his own door (Ask Malachi to sign, by text and push, he signs on his phone);
   C lets him type on any screen with a second proof, the record the guard was written to refuse.
-next: residual B — the desk's piles still call every leader *you* on another master's jobs (v2.6734, PR open)
+next: nothing left to build; delete the card once both residual PRs are on main
 size: S (A) + M (B); C would be L with a guard migration
 blocker: none
-ver: v2.5788, v2.5791, v2.6733
+ver: v2.5788, v2.5791, v2.6733, v2.6734
 opinion: A then B. A typed name on someone else's device is the office placing his name unless he proves it is him, and if he has his phone to prove it he has his phone to sign on. Fix the screen so it never shows the wrong name, and send him the notice instead of the laptop.
 ---
 
@@ -176,7 +176,11 @@ under the rule. Never press *Sign and approve* on a live notice; the write would
 
 ## Where it stands
 
-**Residual A (2026-11-08, v2.6733):** the run window's held envelope and the office's Ready footer carry the master's line with his code field, through the one kernel `lienCodeSigner.ts`; the hold's words name the code. Walk recorded below once done.
+**Residual A (2026-11-08, v2.6733):** the run window's held envelope and the office's Ready footer carry the master's line with his code field, through the one kernel `lienCodeSigner.ts`; the hold's words name the code.
+
+**Residual B (2026-11-08, v2.6734):** a leader's own Do now rows are the jobs he is master of (`lienViewerLeadsJob`); another master's read as the office's — *Waiting on Malachi*, out of his count, the step tiles saying *you* only on his own — and his Ready footer draws no confirm group for a signature the other master's code placed. The rail's step-3 *you* chip stays the role's legend.
+
+Walk recorded below once done.
 
 ### The findings (2026-10-23)
 
