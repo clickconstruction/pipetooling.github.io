@@ -111,3 +111,41 @@ describe('buildJobSummaryCostBreakdownHtml', () => {
     expect(html).toContain('2026-07-03')
   })
 })
+
+describe('v2.6670 · the print counts card charges by the table’s rule and draws fuel as its own line', () => {
+  const fuel = { tagId: 'tag-fuel', name: 'Fuel & gas', icon: '⛽', usd: 85 }
+
+  it('takes card charges already on a supply-house invoice off Parts cost, as the table does, and says so', () => {
+    const html = buildJobSummaryCostBreakdownHtml(
+      baseInput({ partsFromTally: 100, invoicesFromSupplyHouses: 300, billedMaterialsSum: 50, cardCharges: 200, cardChargesLinkedToInvoices: 120 }),
+    )
+    // 100 + 300 + 50 + (200 − 120) — never the 650 the old print read.
+    expect(html).toContain('<td style="text-align:right">$530.00</td>')
+    expect(html).not.toContain('$650.00')
+    expect(html).toContain('Card charges — $200.00')
+    expect(html).toContain('$120.00 of the card charges is also on a supply-house invoice and is counted there, so Parts cost counts $80.00 of card charges.')
+  })
+
+  it('a linked figure above the card charges counts only the card charges (the table’s clamp); none says nothing', () => {
+    const clamped = buildJobSummaryCostBreakdownHtml(baseInput({ cardCharges: 50, cardChargesLinkedToInvoices: 90 }))
+    expect(clamped).toContain('<td style="text-align:right">—</td>') // parts cost 50 − 50 = 0
+    const none = buildJobSummaryCostBreakdownHtml(baseInput({ cardCharges: 50 }))
+    expect(none).toContain('<td style="text-align:right">$50.00</td>')
+    expect(none).not.toContain('also on a supply-house invoice')
+  })
+
+  it('draws each cost line under Parts cost as the table does and as its own line in the Parts Cost section', () => {
+    const html = buildJobSummaryCostBreakdownHtml(baseInput({ cardCharges: 200, costLines: [fuel, { tagId: 'tag-zero', name: 'Tolls', icon: '🛣', usd: 0 }] }))
+    expect(html).toContain('<td style="text-align:right">$200.00<div class="cost-line"><span aria-hidden="true">⛽</span> fuel &amp; gas $85.00</div></td>')
+    expect(html).toContain('<h3 style="font-size:1rem"><span aria-hidden="true">⛽</span> Fuel &amp; gas — $85.00</h3>')
+    expect(html).toContain('Inside Parts cost, not added to it.')
+    expect(html).not.toContain('Tolls') // a $0 line is not drawn, as in the table
+    expect(html).toContain('.cost-line {')
+  })
+
+  it('with no cost lines the print reads as before', () => {
+    const html = buildJobSummaryCostBreakdownHtml(baseInput({ cardCharges: 200 }))
+    expect(html).not.toContain('cost-line"')
+    expect(html).not.toContain('Inside Parts cost')
+  })
+})
