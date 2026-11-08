@@ -23,7 +23,7 @@ type Heading = { n: number | null; level: number; heading: string; line: number 
 type EntryRow = { id: string; entry_date: string; content: string; source: string }
 type EvidenceRow = { id: string; dated_on: string; title: string; counsel_only: boolean | null }
 type FileIndexRow = { kind: string; chars: number; sections: number; headings: Heading[] | null; updated_at: string; covered_through: string | null; author_label: string | null }
-type DocIndexRow = { id: string; title: string; counsel_only: boolean; author_label: string | null; updated_at: string; archived_at: string | null; chars: number; sections: number; headings: Heading[] | null }
+type DocIndexRow = { id: string; title: string; counsel_only: boolean; author_label: string | null; updated_at: string; archived_at: string | null; chars: number; sections: number; headings: Heading[] | null; evidence_id?: string | null }
 type MatterRow = { id: string; stage: string | null; narrative_md: string | null; narrative_updated_at: string | null; closed_at: string | null }
 type MatterEntryRow = { id: string; kind: string; occurred_on: string | null; body: string | null; meta: { done_at?: string | null } | null; voided_at: string | null }
 type MatterDocRow = { id: string; title: string; state: string | null; dated_on: string | null; voided_at: string | null; mime: string | null }
@@ -82,7 +82,14 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     read<EntryRow>('entries', () => reader.rows('person_file_entries', { select: 'id,entry_date,content,source', filters: eq('person_id', personId), order: [{ column: 'entry_date', ascending: false }], limit: READ_CAP })),
     read<EvidenceRow>('evidence', () => reader.rows('person_file_evidence', { select: 'id,dated_on,title,counsel_only', filters: eq('person_id', personId), order: [{ column: 'dated_on', ascending: false }], limit: READ_CAP })),
     read<FileIndexRow>('summary and narrative', () => reader.rows('person_file_index', { select: 'kind,chars,sections,headings,updated_at,covered_through,author_label', filters: eq('person_id', personId), limit: 4 })),
-    read<DocIndexRow>('documents', () => reader.rows('person_document_index', { select: 'id,title,counsel_only,author_label,updated_at,archived_at,chars,sections,headings', filters: eq('person_id', personId), limit: READ_CAP })),
+    // v2.6713 (punch list #287): evidence_id, the record a document transcribes; read without it when the catalog does not know the column yet.
+    read<DocIndexRow>('documents', async () => {
+      try {
+        return await reader.rows('person_document_index', { select: 'id,title,counsel_only,author_label,updated_at,archived_at,chars,sections,headings,evidence_id', filters: eq('person_id', personId), limit: READ_CAP })
+      } catch {
+        return await reader.rows('person_document_index', { select: 'id,title,counsel_only,author_label,updated_at,archived_at,chars,sections,headings', filters: eq('person_id', personId), limit: READ_CAP })
+      }
+    }),
     read<MatterRow>('matter', () => reader.rows('legal_matters', { select: 'id,stage,narrative_md,narrative_updated_at,closed_at', filters: eq('person_id', personId), limit: 2 })),
     read<MarkRow>('themes', () => reader.rows('legal_theme_marks', { select: 'theme_id,proposed,removed_at', filters: eq('person_id', personId), limit: 1000 })),
     read<ThemeRow>('themes', () => reader.rows('legal_themes', { select: 'id,name', filters: [{ column: 'retired_at', op: 'is', value: null }], limit: READ_CAP })),
@@ -152,6 +159,9 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     return true
   })
   const summaryText = summaryRows[0]?.content ?? null
+  // v2.6713: the pair from either side — a document names the record it transcribes, a record names its transcript.
+  const transcriptByRecord = new Map<string, string>()
+  for (const d of docs) if (d.evidence_id && !transcriptByRecord.has(d.evidence_id)) transcriptByRecord.set(d.evidence_id, d.id)
 
   return {
     person: { id: person.id, name: person.name, kind: person.kind, start_date: person.start_date, end_date: person.end_date, archived_at: person.archived_at, login: Boolean(userId) },
@@ -163,7 +173,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
       ? { chars: summaryIndex.chars, updated_at: summaryIndex.updated_at, covered_through: summaryIndex.covered_through, kept_by: summaryIndex.author_label ?? '', sections: sections(summaryIndex.headings), text: summaryText }
       : null,
     narrative: narrativeIndex ? { chars: narrativeIndex.chars, updated_at: narrativeIndex.updated_at, kept_by: narrativeIndex.author_label ?? '', sections: sections(narrativeIndex.headings) } : null,
-    documents: docs.filter((d) => d.id !== notesDoc?.id).map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, sections: sections(d.headings) })),
+    documents: docs.filter((d) => d.id !== notesDoc?.id).map((d) => ({ id: d.id, title: d.title, counsel_only: d.counsel_only, kept_by: d.author_label ?? '', updated_at: d.updated_at, chars: d.chars, sections: sections(d.headings), evidence_id: d.evidence_id ?? null })),
     entries: {
       count: entries.length,
       at_cap: entries.length >= READ_CAP,
@@ -172,7 +182,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
       by_source: bySource,
       newest: entries.slice(0, NEWEST_ENTRIES).map((e) => ({ id: e.id, ymd: e.entry_date, source: e.source, first_line: firstLine(e.content) })),
     },
-    evidence: evidence.map((r) => ({ id: r.id, dated_on: r.dated_on, title: r.title, counsel_only: Boolean(r.counsel_only) })),
+    evidence: evidence.map((r) => ({ id: r.id, dated_on: r.dated_on, title: r.title, counsel_only: Boolean(r.counsel_only), document_id: transcriptByRecord.get(r.id) ?? null })),
     matter: matter
       ? {
           id: matter.id,
@@ -190,6 +200,6 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
     developments,
     held: heldOnce,
     read_next:
-      'A document whole: read_rows on person_documents (select content) by id, or the narrative on person_files by kind; a development: get_history; the Timeline whole: get_person_file; a matter document\'s bytes are on its Evidence tab. Change a document by section with plan_person_doc { doc_id | kind, ops }.',
+      'A document whole: read_rows on person_documents (select content) by id, or the narrative on person_files by kind; a development: get_history; the Timeline whole: get_person_file; a matter document\'s bytes are on its Evidence tab. Change a document by section with plan_person_doc { doc_id | kind, ops }. A document\'s evidence_id is the record it transcribes (document_id on the record is the same pair); tie one with plan_person_doc { doc_id, evidence_id }.',
   }
 }
