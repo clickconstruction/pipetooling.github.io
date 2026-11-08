@@ -42,7 +42,9 @@ import {
  * - The record rides the sent item's `fields.courtesy[]` (`withCourtesyRecord`); the job's trail
  *   line (`lien_courtesy_sent`) is a trigger's, on that update (PR 3's migration), since the table
  *   takes no client insert. A press where nothing went writes no record: the office reads why and
- *   tries again.
+ *   tries again. A press whose messages went but whose record did not take comes back with
+ *   `recordError` instead of throwing (punch list #249, row 1), so the window closes and the footer
+ *   offers *Write the record again ›* (`writeCourtesyRecord`) in place of a second send.
  */
 
 export type CourtesyRecipient = CourtesyRecipientPlan & {
@@ -160,7 +162,18 @@ export type CourtesySendInput = {
   by: { userId: string | null; name: string }
 }
 
-export type CourtesySendResult = { record: CourtesyRecord | null; to: CourtesySent[] }
+export type CourtesySendResult = {
+  record: CourtesyRecord | null
+  to: CourtesySent[]
+  /** Set when the messages went but the record did not take (punch list #249, row 1): the window closes, nothing is sent again, and the footer offers to write the record alone. */
+  recordError?: string
+}
+
+/** The record alone, for a press whose messages went but whose record did not take (punch list #249, row 1): nothing is sent. */
+export async function writeCourtesyRecord(item: Pick<LienDeskItemRow, 'id' | 'fields'>, record: CourtesyRecord): Promise<void> {
+  const fields = withCourtesyRecord((item.fields ?? {}) as Record<string, unknown>, record) as unknown as Json
+  await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update({ fields } as never).eq('id', item.id), 'lien desk: record the courtesy notice')
+}
 
 /**
  * The text's door: the recipient's Messages contact and the channel the number sits on. A GC with no
@@ -208,7 +221,11 @@ export async function sendCourtesyNotice(input: CourtesySendInput): Promise<Cour
   }
   if (!to.some((t) => t.ok)) return { record: null, to }
   const record: CourtesyRecord = { at: new Date().toISOString(), by: input.by.name.trim(), lienDay: input.facts.lienDay, claim: input.facts.claim, to }
-  const fields = withCourtesyRecord((input.item.fields ?? {}) as Record<string, unknown>, record) as unknown as Json
-  await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update({ fields } as never).eq('id', input.item.id), 'lien desk: record the courtesy notice')
+  try {
+    await writeCourtesyRecord(input.item, record)
+  } catch (e) {
+    // The messages went; a throw here left the window open with its Send press live, and a second press sent everything twice (punch list #249, row 1).
+    return { record, to, recordError: formatErrorMessage(e, 'the record could not be written') }
+  }
   return { record, to }
 }
