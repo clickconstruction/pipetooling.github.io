@@ -76,7 +76,11 @@ jobs:
           restore-keys: |
             checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-
 
+      # TYPECHECK_NO_LOCK: the script queues typechecks across a machine's worktrees (scripts/typecheck-queued.mjs);
+      # a runner is its own machine, so it runs tsc at once.
       - name: Typecheck
+        env:
+          TYPECHECK_NO_LOCK: '1'
         run: npm run typecheck
 
       - name: Lint

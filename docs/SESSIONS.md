@@ -3,9 +3,9 @@
 ---
 file: docs/SESSIONS.md
 type: Process / Tooling
-purpose: How concurrent Claude sessions (and humans), on any machine or in the cloud, coordinate version numbers, migration stamps, punch-list numbers and surfaces through claims on GitHub (refs/claims/*) mirrored in the gitignored .claude/sessions/ ledger — claim scripts, session cards, staleness rules, the brief for an agent elsewhere.
+purpose: How concurrent Claude sessions (and humans), on any machine or in the cloud, coordinate version numbers, migration stamps, punch-list numbers and surfaces through claims on GitHub (refs/claims/*) mirrored in the gitignored .claude/sessions/ ledger — claim scripts, session cards, the typecheck lock, staleness rules, the brief for an agent elsewhere.
 audience: AI agents, developers
-last_updated: 2026-10-28
+last_updated: 2026-11-08
 ---
 
 ## The problem this solves
@@ -60,6 +60,10 @@ Every PR ships a changelog pair (before the 2026-08-20 fragments cutover: prepen
 - `npm run claim -- --release v2.NNN` (or `--release '#N'` for a punch-list number) — give a number back (abandoned work), locally and on GitHub. Merged claims release themselves; you rarely need this.
 - `npm run sessions` — the at-a-glance board: main's newest version and newest card, claims on GitHub (versions, migrations, punch-list numbers), local claims (flagging any not on GitHub), open PRs by version and the ones writing a new card, with collisions, active session cards, staleness flags. `-- --brief` prefixes the paragraph for an agent elsewhere.
 - The refs can be read with plain git from anywhere: `git ls-remote origin 'refs/claims/*'`; a claim's details with `git fetch origin '+refs/claims/*:refs/claims/*' && git log -1 --format=%B refs/claims/v2.NNNN`.
+
+## One typecheck at a time on a machine
+
+Sessions on one machine share its memory, and the full typecheck (`tsc -p tsconfig.json` under a 10 GB heap) holds about 9.5 GB while it runs: two at once on 2026-11-08 took the Mac to a restart. So `npm run typecheck` runs through `scripts/typecheck-queued.mjs` (v2.6736), which takes a lock before `tsc` and releases it after: an atomic `mkdir` of `.claude/sessions/locks/typecheck.lock/` in the MAIN checkout (shared by every worktree, like the claims mirror), with a `holder.json` naming the holder's pid, folder and start time. A second typecheck waits, printing every 30 seconds who holds the lock, in which worktree, for how long, and how long it has waited, and runs when the holder lets go. A lock whose pid is dead (a killed typecheck) is taken over on the next try; the takeover renames the stale directory away first, so of two waiters only one wins. `TYPECHECK_NO_LOCK=1` runs `tsc` at once (CI sets it: a runner is its own machine), `TYPECHECK_LOCK_DIR` moves the lock, and outside a repo the lock sits under the OS temp folder. The kernel is `scripts/lib/typecheckLock.mjs`, pinned by `src/lib/typecheckLock.test.ts`. The lock covers `npm run typecheck` alone: `npm run build`'s `tsc -b` and `npm test` (thirteen vitest forks here, each with Node's default 4 GB heap limit and no cap) still run as many at once as sessions start them.
 
 ## Staleness rules (advisory)
 
