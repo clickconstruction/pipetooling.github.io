@@ -117,9 +117,35 @@ type Props = {
   onShowAll?: () => void
   /** Puts the cursor in the note box, for a job with no activity yet; absent when there is no composer. */
   onAddNote?: () => void
+  /**
+   * Reply in place (punch list #125, v2.6691): a **Reply** press on a line from the customer, at the line's right on a
+   * wide screen and inside the opened line on a phone, opens the customer's box in the composer's place. The office only;
+   * absent, no press.
+   */
+  onReply?: (line: Extract<JobActivityLine, { kind: 'message' }>) => void
+  /**
+   * Tie in place (v2.6691): on a line tied to no job yet, **Tie to this job** ties it here and **Another job…** opens the
+   * picker, in place of the *not tied yet* word. The office only; absent, the word stands.
+   */
+  onTie?: (line: Extract<JobActivityLine, { kind: 'message' }>, choice: 'this' | 'another') => void
 }
 
-export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenByDefault = false, threadLinks = true, onShowAll, onAddNote }: Props) {
+/** A small press on a line (v2.6691): Reply in the customer's orange, the tie presses in the link blue. */
+const linePressStyle: CSSProperties = {
+  padding: '0 7px',
+  fontSize: '0.6875rem',
+  fontWeight: 600,
+  lineHeight: '18px',
+  borderRadius: 999,
+  background: 'var(--surface)',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
+}
+const replyPressStyle: CSSProperties = { ...linePressStyle, border: '1px solid var(--text-orange-700)', color: 'var(--text-orange-700)' }
+const tiePressStyle: CSSProperties = { ...linePressStyle, border: '1px solid var(--text-link)', color: 'var(--text-link)' }
+
+export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenByDefault = false, threadLinks = true, onShowAll, onAddNote, onReply, onTie }: Props) {
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(() => new Set())
   const scrollRef = useRef<HTMLDivElement | null>(null)
   // Whether the reader is parked at the newest item. New arrivals re-pin only
@@ -180,8 +206,50 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
             </div>
             {g.lines.map((line) => {
               const message = line.kind === 'message' ? line.message : null
-              // A message opens to its words and, for a reader who can open it, the link to its thread.
-              const hasDetail = line.detail.length > 0 || (message !== null && threadLinks)
+              const messageLine = line.kind === 'message' ? line : null
+              // Reply in place (v2.6691): on her lines, for the office. On a phone it sits in the opened line.
+              const reply =
+                messageLine && onReply && messageLine.message.tone === 'customerIn' ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onReply(messageLine)
+                    }}
+                    aria-label={`Reply to ${messageLine.message.withName}’s ${messageLine.message.channel === 'email' ? 'email' : 'text'}`}
+                    style={replyPressStyle}
+                  >
+                    Reply
+                  </button>
+                ) : null
+              // Tie in place (v2.6691): the two presses take the *not tied yet* word's place.
+              const tie =
+                messageLine && onTie && messageLine.message.notTiedYet ? (
+                  <span style={{ display: 'inline-flex', gap: 4, marginLeft: '0.35rem', verticalAlign: 'middle' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onTie(messageLine, 'this')
+                      }}
+                      style={tiePressStyle}
+                    >
+                      Tie to this job
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onTie(messageLine, 'another')
+                      }}
+                      style={tiePressStyle}
+                    >
+                      Another job…
+                    </button>
+                  </span>
+                ) : null
+              // A message opens to its words and, for a reader who can open it, the link to its thread, and on a phone the Reply press.
+              const hasDetail = line.detail.length > 0 || (message !== null && threadLinks) || (narrow && reply !== null)
               const msg = isConversationalLine(line)
               const customer = message ? isCustomerSide(message.tone) : false
               // Report answers fold (they're long) except in full-screen
@@ -256,7 +324,7 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                   ) : null}
                   {line.body}
                   {line.pending ? <span style={pendingChipStyle}>Pending</span> : null}
-                  {message?.notTiedYet ? <span style={{ ...smallWord, marginLeft: '0.35rem', color: 'var(--text-muted)' }}>not tied yet</span> : null}
+                  {message?.notTiedYet ? tie ?? <span style={{ ...smallWord, marginLeft: '0.35rem', color: 'var(--text-muted)' }}>not tied yet</span> : null}
                   {message?.readersWord ? <span style={{ ...smallWord, marginLeft: '0.35rem', color: 'var(--text-muted)' }}>{message.readersWord}</span> : null}
                   {hasDetail && !open && (!message || line.detail.length > 0) ? (
                     <span style={{ color: 'var(--text-link)', fontWeight: 600, fontSize: '0.6875rem', marginLeft: '0.35rem' }}>
@@ -292,6 +360,7 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                         Open the thread with {message.withName} ›
                       </Link>
                     ) : null}
+                    {narrow && reply ? <span style={{ display: 'block', marginTop: 6 }}>{reply}</span> : null}
                   </span>
                 ) : null
 
@@ -324,7 +393,8 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                       : {
                           ...rowShellStyle,
                           display: 'grid',
-                          gridTemplateColumns: '22px 52px 70px minmax(0, 1fr)',
+                          // The fifth column is the Reply press (v2.6691); it takes no room on a line without one.
+                          gridTemplateColumns: reply ? '22px 52px 70px minmax(0, 1fr) auto' : '22px 52px 70px minmax(0, 1fr)',
                           columnGap: 8,
                           alignItems: 'baseline',
                         }
@@ -366,6 +436,7 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                         {body}
                         {detail}
                       </span>
+                      {reply ? <span style={{ justifySelf: 'end', alignSelf: 'start' }}>{reply}</span> : null}
                     </>
                   )}
                 </div>
