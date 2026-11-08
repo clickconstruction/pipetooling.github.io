@@ -2,7 +2,7 @@
 name: "Text the customer from the Pipeline row"
 number: 123
 group: close
-status: BUILT 2026-10-18 and WALKED LIVE 2026-11-08 — PR 1 (v2.5626) made the row's speech bubble the door to the customer's sheet over the board; PR 2 (v2.5627) is the board's ask, a forward move to Working, Ready to Bill or Billed opening Tell the customer with the step's text while the Residential customer flow's step is set to Asks; follow-up v2.5632 shows the thread's last three lines. On 2026-11-08 the owner's session turned Done to Asks in Settings → Flows and moved a ZZ Test job to Ready to Bill: the sheet opened with the work-is-done text, one text went to the owner's own number, and the Pipeline row's Job activity recorded it. The owner's pick, 2026-11-08, is "Done and Billed" — a forward move to Done or to Billed opens Tell the customer with the step's text, Working stays Off; Done already reads Asks, and the coordinating session is flipping the Billed step to Asks on prod, the one setting press
+status: BUILT 2026-10-18 and WALKED LIVE 2026-11-08 — PR 1 (v2.5626) made the row's speech bubble the door to the customer's sheet over the board; PR 2 (v2.5627) is the board's ask, a forward move to Working, Ready to Bill or Billed opening Tell the customer with the step's text while the Residential customer flow's step is set to Asks; follow-up v2.5632 shows the thread's last three lines. On 2026-11-08 the owner's session turned Done to Asks in Settings → Flows and moved a ZZ Test job to Ready to Bill: the sheet opened with the work-is-done text, one text went to the owner's own number, and the Pipeline row's Job activity recorded it. The owner's pick, 2026-11-08, is "Done and Billed" — a forward move to Done or to Billed opens Tell the customer with the step's text, Working stays Off; Done already read Asks, and the Billed step was turned to Asks on prod the same day from the owner's Chrome, the one setting press, read back as Asks after a reload
 summary: >
   One door on the Pipeline row and the phone card that texts or emails the job's customer. Today the
   office can do it only inside the job window, below the activity: open the job, scroll, press Text,
@@ -12,9 +12,9 @@ summary: >
   The three options differ in what the icon opens: the job window already scrolled to the box on
   Text; the box alone in a small window over the board; or the customer's whole thread filtered to
   the job. Every send lands in the customer's thread tied to the job, as the box does now.
-next: The owner's look at a Billed text on his phone — once the Billed step reads Asks, the first Billed move on the Pipeline opens Tell the customer with the billed line, and he sends one to a ZZ Test customer whose number is his own; then delete this folder.
+next: The owner's look at a Billed text on his phone — the Billed step reads Asks, so the first Billed move on the Pipeline opens Tell the customer with the billed line, and he sends one to a ZZ Test customer whose number is his own; then delete this folder.
 size: M + M, both shipped (v2.5626, v2.5627)
-blocker: none; the owner picked Done and Billed on 2026-11-08, and the Billed flip is one setting press, no code
+blocker: none; the owner picked Done and Billed on 2026-11-08, and the Billed flip was made that day, one setting press, no code
 opinion: built and picked; Done and Billed ask, Working stays Off, so nothing is left to build
 ver: v2.5626 · v2.5627
 mockup: to-dos/pipeline-text-customer/mockup.html
@@ -134,6 +134,7 @@ Test row and stays at Ready to Bill. Screenshots in the walk session's scratchpa
 **2026-11-08, the owner's pick.** Asked which steps should ask, the owner answered **"Done and Billed"**: a forward
 move to Done or to Billed opens Tell the customer with the step's text, and Working stays Off. Done already reads
 Asks from the walk. Billed is one press on the Billed step in Settings → Flows → Residential customer, under **The app
-and this move**, from Off to Asks; the coordinating session is making that press on prod. No code changes: the step
-and its text shipped in PR 2 (v2.5627). What is left is the owner's look at a Billed text on his phone, the first Billed
-move on the Pipeline after the flip, on a ZZ Test job whose customer's number is his own; then this folder goes.
+and this move**, from Off to Asks; that press was made on prod the same day, about 22:30Z, from the owner's Chrome, and
+read back as Asks after a reload beside Done's Asks, with Working still Off. No code changes: the step and its text
+shipped in PR 2 (v2.5627). What is left is the owner's look at a Billed text on his phone, the first Billed move on the
+Pipeline since the flip, on a ZZ Test job whose customer's number is his own; then this folder goes.
