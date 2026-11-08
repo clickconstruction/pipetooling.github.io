@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import {
   fetchStreetViewImageBlob,
   fetchStreetViewMeta,
@@ -61,6 +61,9 @@ function googleMapsSearchUrlForAddress(address: string): string {
  * tap-to-email), a Job Detail opener, the address Street View photo, and the
  * job updates thread (same feed + composer as the Job Detail modal).
  */
+/** The customer line for a job the reader cannot read yet: it opens to a superintendent at the clock-in. */
+export const CUSTOMER_CONTACT_AFTER_CLOCK_IN_WORDS = 'Shows once you clock in here.'
+
 export default function JobModeDetailsSection({
   jobId,
   jobAddress,
@@ -81,10 +84,17 @@ export default function JobModeDetailsSection({
   const jobDetailModal = useJobDetailModal()
 
   const [contact, setContact] = useState<CustomerContact | null>(null)
+  /**
+   * Why there is no contact once the read landed (v2.6706): the read came back with no row, which for a
+   * superintendent means a job they have not clocked onto yet (the job opens to them at the clock-in),
+   * or it failed. Null while it reads. Until then the line said *Loading…* for good.
+   */
+  const [contactWhyNone, setContactWhyNone] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     setContact(null)
+    setContactWhyNone(null)
     void (async () => {
       try {
         const row = await withSupabaseRetry(
@@ -96,9 +106,13 @@ export default function JobModeDetailsSection({
               .maybeSingle(),
           'job mode load customer contact',
         )
-        if (!cancelled) setContact((row ?? null) as CustomerContact | null)
-      } catch {
-        if (!cancelled) setContact(null)
+        if (cancelled) return
+        setContact((row ?? null) as CustomerContact | null)
+        if (!row) setContactWhyNone(CUSTOMER_CONTACT_AFTER_CLOCK_IN_WORDS)
+      } catch (e) {
+        if (cancelled) return
+        setContact(null)
+        setContactWhyNone(formatErrorMessage(e, 'Could not read the customer’s contact'))
       }
     })()
     return () => {
@@ -223,7 +237,7 @@ export default function JobModeDetailsSection({
           <span style={sectionLabel}>Customer</span>
           {!hasContact ? (
             <span style={{ fontSize: '0.875rem', color: 'var(--text-faint)' }}>
-              {contact == null ? 'Loading…' : 'No customer contact on file'}
+              {contact == null ? (contactWhyNone ?? 'Loading…') : 'No customer contact on file'}
             </span>
           ) : (
             <>

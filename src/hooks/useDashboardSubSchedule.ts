@@ -12,6 +12,7 @@ import {
   dedupeSubScheduleBlocks,
   partitionSubScheduleBlocksByDay,
   subScheduleJobLabel,
+  withKnownScheduledJobMeta,
   type SubScheduleDayPartition,
   type SubScheduleJobMeta,
 } from '../lib/dashboardSubSchedule'
@@ -34,6 +35,12 @@ export type UseDashboardSubScheduleInput = {
   /** Parent-owned assigned-job lists — read only, for schedule-row labels. */
   assignedJobs: DashboardTeamAssignedJobRow[]
   assignedReadyToBillJobs: DashboardTeamAssignedJobRow[]
+  /**
+   * Every row the Dashboard's three job reads returned, ZZ test jobs and a superintendent's project
+   * jobs kept (`useDashboardAssignedJobs`' `jobsForVisitLabels`, v2.6706): a visit's label and meta
+   * fall back to these when the person's own job read gives no row.
+   */
+  jobsForVisitLabels?: readonly DashboardTeamAssignedJobRow[]
 }
 
 /** The fallback sentence when the schedule read fails with nothing the kernel can name. */
@@ -72,6 +79,7 @@ export function useDashboardSubSchedule({
   role,
   assignedJobs,
   assignedReadyToBillJobs,
+  jobsForVisitLabels,
 }: UseDashboardSubScheduleInput) {
   const [subScheduleRows, setSubScheduleRows] = useState<JobScheduleBlockRow[]>([])
   const [subScheduleLoading, setSubScheduleLoading] = useState(false)
@@ -147,8 +155,8 @@ export function useDashboardSubSchedule({
     const jobIds = [...new Set(subScheduleRows.map((b) => b.job_id).filter((id): id is string => id != null))]
     const bidIds = [...new Set(subScheduleRows.map((b) => b.bid_id).filter((id): id is string => id != null))]
     const labelMap = new Map<string, string>()
-    for (const j of [...assignedJobs, ...assignedReadyToBillJobs]) {
-      if (jobIds.includes(j.id)) {
+    for (const j of [...assignedJobs, ...assignedReadyToBillJobs, ...(jobsForVisitLabels ?? [])]) {
+      if (jobIds.includes(j.id) && !labelMap.has(j.id)) {
         labelMap.set(j.id, subScheduleJobLabel(j.hcp_number, j.click_number, j.job_name))
       }
     }
@@ -216,7 +224,7 @@ export function useDashboardSubSchedule({
     return () => {
       cancelled = true
     }
-  }, [role, authUserId, subScheduleRows, assignedJobs, assignedReadyToBillJobs])
+  }, [role, authUserId, subScheduleRows, assignedJobs, assignedReadyToBillJobs, jobsForVisitLabels])
 
   // One query serves both the phone map and the job-meta map: it already spans
   // every scheduled job id (not just the ones missing from the assigned lists),
@@ -308,6 +316,17 @@ export function useDashboardSubSchedule({
   const keptDay = useMemo(() => (kept.readAt != null && kept.rows ? unpackMyScheduleKeptRows(kept.rows) : null), [kept.readAt, kept.rows])
 
   const rowsShown = keptDay ? keptDay.rows : subScheduleRows
+  // A scheduled job the person's own read gave no row for (a superintendent not yet clocked on) takes its
+  // number, address and pictures link from the Dashboard's job reads (v2.6706).
+  const shownJobMeta = useMemo(
+    () =>
+      withKnownScheduledJobMeta(
+        keptDay ? keptDay.meta : subScheduleJobMeta,
+        [...new Set(rowsShown.map((b) => b.job_id).filter((id): id is string => id != null))],
+        jobsForVisitLabels,
+      ),
+    [keptDay, subScheduleJobMeta, rowsShown, jobsForVisitLabels],
+  )
 
   const subScheduleDayPartition = useMemo(
     (): SubScheduleDayPartition => ({
@@ -336,7 +355,7 @@ export function useDashboardSubSchedule({
     subScheduleLoading: keptDay ? false : subScheduleLoading,
     subScheduleLabels: keptDay ? keptDay.labels : subScheduleLabels,
     subSchedulePhones: keptDay ? keptDay.phones : subSchedulePhones,
-    subScheduleJobMeta: keptDay ? keptDay.meta : subScheduleJobMeta,
+    subScheduleJobMeta: shownJobMeta,
     scheduleReminderNow,
     subScheduleDayPartition,
     leaveReportReminderForJobRow,
