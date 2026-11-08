@@ -121,7 +121,7 @@ describe('read_mail', () => {
   })
 
   it('the reply carries the headers, the words capped, and the files by name alone', () => {
-    const email: EmailIn = { gmailId: 'm1', threadId: 't1', labels: ['INBOX'], at: '2026-08-03T15:00:00.000Z', from: { name: 'Supplier', address: 'ap@supplier.test' }, to: [{ name: null, address: 'dana@example-plumbing.test' }], cc: [], subject: 'Invoice 4471', text: 'x'.repeat(MAIL_READ_TEXT_MAX + 5), links: [], files: [{ partId: '2', name: 'invoice.pdf', mime: 'application/pdf', size: 1200, attachmentId: 'a1', data: null, inline: false }], headers: {} }
+    const email: EmailIn = { gmailId: 'm1', threadId: 't1', labels: ['INBOX'], at: '2026-08-03T15:00:00.000Z', from: { name: 'Supplier', address: 'ap@supplier.test' }, to: [{ name: null, address: 'dana@example-plumbing.test' }], cc: [], subject: 'Invoice 4471', text: 'x'.repeat(MAIL_READ_TEXT_MAX + 5), links: [], files: [{ partId: '2', name: 'invoice.pdf', mime: 'application/pdf', size: 1200, attachmentId: 'a1', data: null, inline: false }], headers: {}, html: null }
     const reply = mailReadReply('dana@example-plumbing.test', email)
     expect(reply.from).toBe('Supplier <ap@supplier.test>')
     expect(reply.to).toEqual(['dana@example-plumbing.test'])

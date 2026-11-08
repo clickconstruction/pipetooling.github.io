@@ -24,7 +24,7 @@ const KNOWN: MailAccount[] = [{ email: 'dana@example-plumbing.test', name: 'Dana
 const JOB = '11111111-1111-4111-8111-111111111111'
 const THREAD = '18f3a2b9c0d1e2f3'
 
-const email = (over: Partial<EmailIn>): EmailIn => ({ gmailId: 'm1', threadId: THREAD, labels: ['INBOX'], at: '2026-08-03T15:00:00.000Z', from: { name: 'Supplier', address: 'ap@supplier.test' }, to: [], cc: [], subject: 'Invoice 4471', text: '', links: [], files: [], headers: {}, ...over })
+const email = (over: Partial<EmailIn>): EmailIn => ({ gmailId: 'm1', threadId: THREAD, labels: ['INBOX'], at: '2026-08-03T15:00:00.000Z', from: { name: 'Supplier', address: 'ap@supplier.test' }, to: [], cc: [], subject: 'Invoice 4471', text: '', links: [], files: [], headers: {}, html: null, ...over })
 const chip = { kind: 'pipeline' as const, id: JOB, key: `pipeline:${JOB}`, num: '912', name: 'Limitless Renovations' }
 const plan: MyMailTagPlan = {
   threadId: THREAD,

@@ -27,6 +27,7 @@ const email = (over: Partial<EmailIn> = {}): EmailIn => ({
   links: [],
   files: [],
   headers: {},
+  html: null,
   ...over,
 })
 
