@@ -139,8 +139,9 @@ describe('the read through Drive, with a stand-in for fetch', () => {
     const url = String(input)
     calls.push(url)
     const key = Object.keys(answers).find((k) => url.includes(k))
-    if (!key) throw new Error(`no answer for ${url}`)
-    return answers[key]()
+    const answer = key === undefined ? undefined : answers[key]
+    if (!answer) throw new Error(`no answer for ${url}`)
+    return answer()
   }) as typeof fetch
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 

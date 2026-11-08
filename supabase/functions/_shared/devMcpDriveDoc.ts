@@ -114,7 +114,7 @@ export function tooBigWords(name: string, bytes: number): string {
 export function firstHeading(text: string): string | null {
   for (const line of text.split('\n')) {
     const m = /^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$/.exec(line)
-    if (m) return m[1].trim()
+    if (m && m[1] !== undefined) return m[1].trim()
   }
   return null
 }
