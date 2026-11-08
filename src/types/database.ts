@@ -18269,6 +18269,12 @@ export type Database = {
           materials_usd: number
           note: string | null
           other_usd: number
+          planned_detail: Json | null
+          planned_finish: string | null
+          planned_set_at: string | null
+          planned_set_by: string | null
+          planned_source: string | null
+          planned_start: string | null
           subs_usd: number
           taken_at: string
           taken_by: string | null
@@ -18296,6 +18302,12 @@ export type Database = {
           materials_usd?: number
           note?: string | null
           other_usd?: number
+          planned_detail?: Json | null
+          planned_finish?: string | null
+          planned_set_at?: string | null
+          planned_set_by?: string | null
+          planned_source?: string | null
+          planned_start?: string | null
           subs_usd?: number
           taken_at?: string
           taken_by?: string | null
@@ -18323,6 +18335,12 @@ export type Database = {
           materials_usd?: number
           note?: string | null
           other_usd?: number
+          planned_detail?: Json | null
+          planned_finish?: string | null
+          planned_set_at?: string | null
+          planned_set_by?: string | null
+          planned_source?: string | null
+          planned_start?: string | null
           subs_usd?: number
           taken_at?: string
           taken_by?: string | null
@@ -18356,6 +18374,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: true
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_budgets_planned_set_by_fkey"
+            columns: ["planned_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -38035,6 +38060,7 @@ export type Database = {
           p_labor_hours?: number
           p_labor_rate?: number
           p_note?: string
+          p_planned?: Json
           p_source: string
         }
         Returns: Json
@@ -43361,6 +43387,17 @@ export type Database = {
         Args: { p_job_id: string; p_note?: string; p_pct: number }
         Returns: Json
       }
+      set_job_planned_finish: {
+        Args: {
+          p_detail?: Json
+          p_finish: string
+          p_job_id: string
+          p_replace?: boolean
+          p_source: string
+          p_start: string
+        }
+        Returns: Json
+      }
       set_job_promised_pay_date: {
         Args: { p_date: string; p_job_id: string }
         Returns: Json
@@ -43687,6 +43724,10 @@ export type Database = {
       superintendent_report_job_anchor_allowed: {
         Args: { p_job_ledger_id: string }
         Returns: boolean
+      }
+      superintendent_scores: {
+        Args: { p_from: string; p_job_ids?: string[]; p_to: string }
+        Returns: Json
       }
       supervised_days_with: {
         Args: { p_month: string; p_subject: string }
