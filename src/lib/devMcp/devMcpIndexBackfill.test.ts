@@ -13,9 +13,19 @@ import {
   cursorLostWords,
   nextBackfillJob,
   parseBackfillPlan,
+  personBackfillApplyReply,
+  personBackfillCommitment,
+  personBackfillPlanReply,
+  recordsBatch,
   statusReading,
   type BackfillJob,
+  type PersonBackfillFile,
 } from '../../../supabase/functions/_shared/devMcpIndexBackfill'
+import { readFileSync } from 'node:fs'
+
+const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
+const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
+const PERSON = '11111111-2222-4333-8444-555555555555'
 
 /** The dev seat's backfill door (punch list #240, PR 2): the plan's shape, its commitment, the cursor and the words. Made-up jobs. */
 const JOB = '00000000-0000-4000-8000-0000000001a1'
@@ -27,9 +37,9 @@ const jobs: BackfillJob[] = [
 
 describe('parseBackfillPlan', () => {
   it('takes the three scopes, a job id with scope job alone, a limit within the cap and the retry switch', () => {
-    expect(parseBackfillPlan({ scope: 'live' })).toEqual({ ok: true, plan: { scope: 'live', job_id: null, limit: BACKFILL_JOBS_MAX, retry: false, after_job: null } })
-    expect(parseBackfillPlan({ scope: 'paid', limit: 20, retry: true })).toEqual({ ok: true, plan: { scope: 'paid', job_id: null, limit: 20, retry: true, after_job: null } })
-    expect(parseBackfillPlan({ scope: 'job', job_id: JOB })).toEqual({ ok: true, plan: { scope: 'job', job_id: JOB, limit: BACKFILL_JOBS_MAX, retry: false, after_job: null } })
+    expect(parseBackfillPlan({ scope: 'live' })).toEqual({ ok: true, plan: { scope: 'live', job_id: null, person_id: null, limit: BACKFILL_JOBS_MAX, retry: false, after_job: null } })
+    expect(parseBackfillPlan({ scope: 'paid', limit: 20, retry: true })).toEqual({ ok: true, plan: { scope: 'paid', job_id: null, person_id: null, limit: 20, retry: true, after_job: null } })
+    expect(parseBackfillPlan({ scope: 'job', job_id: JOB })).toEqual({ ok: true, plan: { scope: 'job', job_id: JOB, person_id: null, limit: BACKFILL_JOBS_MAX, retry: false, after_job: null } })
     expect(parseBackfillPlan({ scope: 'live', limit: 9999 })).toMatchObject({ ok: true, plan: { limit: BACKFILL_JOBS_MAX } })
   })
 
@@ -43,14 +53,14 @@ describe('parseBackfillPlan', () => {
   })
 
   it('reads the jobs by scope: live oldest number first, paid newest first, one job alone', () => {
-    expect(backfillJobsQuery({ scope: 'live', job_id: null, limit: 50, retry: false, after_job: null })).toEqual({ status: 'live', jobId: null, afterJob: null, ascending: true, limit: 50 })
-    expect(backfillJobsQuery({ scope: 'paid', job_id: null, limit: 500, retry: false, after_job: null })).toEqual({ status: 'paid', jobId: null, afterJob: null, ascending: false, limit: 500 })
-    expect(backfillJobsQuery({ scope: 'job', job_id: JOB, limit: 500, retry: true, after_job: null })).toEqual({ status: 'one', jobId: JOB, afterJob: null, ascending: true, limit: 1 })
+    expect(backfillJobsQuery({ scope: 'live', job_id: null, person_id: null, limit: 50, retry: false, after_job: null })).toEqual({ status: 'live', jobId: null, afterJob: null, ascending: true, limit: 50 })
+    expect(backfillJobsQuery({ scope: 'paid', job_id: null, person_id: null, limit: 500, retry: false, after_job: null })).toEqual({ status: 'paid', jobId: null, afterJob: null, ascending: false, limit: 500 })
+    expect(backfillJobsQuery({ scope: 'job', job_id: JOB, person_id: null, limit: 500, retry: true, after_job: null })).toEqual({ status: 'one', jobId: JOB, afterJob: null, ascending: true, limit: 1 })
   })
 })
 
 describe('the plan, the cursor and the apply', () => {
-  const plan = { scope: 'live' as const, job_id: null, limit: 500, retry: false, after_job: null }
+  const plan = { scope: 'live' as const, job_id: null, person_id: null, limit: 500, retry: false, after_job: null }
 
   it('commits to the scope, the switches and the job ids in order, and replies with the counts and the how', () => {
     expect(backfillCommitment(plan, jobs)).toEqual({ scope: 'live', job_id: null, limit: 500, retry: false, after_job: null, job_ids: ['j1', 'j2', 'j3'] })
@@ -111,13 +121,13 @@ describe('the plan, the cursor and the apply', () => {
 describe('the plan’s own start', () => {
   it('reads after_job as a job id on the live and paid scopes, never with scope job, and commits to it', () => {
     const r = parseBackfillPlan({ scope: 'paid', after_job: JOB })
-    expect(r.ok && r.plan).toEqual({ scope: 'paid', job_id: null, limit: BACKFILL_JOBS_MAX, retry: false, after_job: JOB })
+    expect(r.ok && r.plan).toEqual({ scope: 'paid', job_id: null, person_id: null, limit: BACKFILL_JOBS_MAX, retry: false, after_job: JOB })
     expect(r.ok && backfillJobsQuery(r.plan)).toMatchObject({ status: 'paid', afterJob: JOB, ascending: false })
     expect(parseBackfillPlan({ scope: 'live', after_job: 'j9' }).ok).toBe(false)
-    expect(parseBackfillPlan({ scope: 'job', job_id: JOB, after_job: JOB }).ok).toBe(false)
+    expect(parseBackfillPlan({ scope: 'job', job_id: JOB, person_id: null, after_job: JOB }).ok).toBe(false)
     const plan = r.ok ? r.plan : null
     expect(plan && backfillCommitment(plan, jobs)).toMatchObject({ after_job: JOB })
-    const same = { scope: 'paid' as const, job_id: null, limit: BACKFILL_JOBS_MAX, retry: false, after_job: null }
+    const same = { scope: 'paid' as const, job_id: null, person_id: null, limit: BACKFILL_JOBS_MAX, retry: false, after_job: null }
     expect(JSON.stringify(backfillCommitment(same, jobs))).not.toBe(JSON.stringify(plan && backfillCommitment(plan, jobs)))
   })
 
@@ -127,12 +137,73 @@ describe('the plan’s own start', () => {
   })
 
   it('a plan as long as its cap says more may follow and names the last job to plan after; a shorter one does not', () => {
-    const capped = { scope: 'live' as const, job_id: null, limit: 3, retry: false, after_job: null }
+    const capped = { scope: 'live' as const, job_id: null, person_id: null, limit: 3, retry: false, after_job: null }
     const reply = backfillPlanReply(capped, jobs, null)
     expect(reply).toMatchObject({ may_be_more: true, last_job: { id: 'j3', job: '1003' }, after_job: null })
     expect(String(reply.how)).toContain('plan again with after_job = "j3" inside the plan')
     const open = backfillPlanReply({ ...capped, limit: 50, after_job: 'j0' }, jobs, null)
     expect(open).toMatchObject({ may_be_more: false, after_job: 'j0' })
     expect(String(open.how)).not.toContain('plan again')
+  })
+})
+
+describe('the person scope (#285, PR 3, v2.6721)', () => {
+  const plan = { scope: 'person' as const, job_id: null, person_id: PERSON, limit: 500, retry: false, after_job: null }
+  const person = { id: PERSON, name: 'Pat Doe' }
+  const files: PersonBackfillFile[] = [
+    { id: 'a1', source: 'hr_attachment', name: 'Call 2026-10-03.md', record_kind: 'evidence', record_title: 'Recording of the call', where: 'bucket', state: 'due' },
+    { id: 'a2', source: 'hr_attachment', name: 'Transcript', record_kind: 'evidence', record_title: 'Recording of the call', where: 'drive', state: 'read' },
+    { id: 'a3', source: 'hr_attachment', name: 'scan.pdf', record_kind: 'file', record_title: null, where: 'bucket', state: 'held' },
+    { id: 'd1', source: 'matter_document', name: 'claims.eml', record_kind: 'matter_document', record_title: 'Claims matrix', where: 'bucket', state: 'due' },
+  ]
+
+  it('parses scope person with its person_id alone, never with after_job or a job id', () => {
+    expect(parseBackfillPlan({ scope: 'person', person_id: PERSON, retry: true })).toEqual({ ok: true, plan: { ...plan, retry: true } })
+    expect(parseBackfillPlan({ scope: 'person' }).ok).toBe(false)
+    expect(parseBackfillPlan({ scope: 'person', person_id: 'nope' }).ok).toBe(false)
+    expect(parseBackfillPlan({ scope: 'live', person_id: PERSON })).toMatchObject({ ok: false, error: expect.stringContaining('person_id goes with scope person alone') })
+    expect(parseBackfillPlan({ scope: 'person', person_id: PERSON, after_job: JOB })).toMatchObject({ ok: false, error: expect.stringContaining('after_job has no place with scope person') })
+    expect(parseBackfillPlan({ scope: 'person', person_id: PERSON, job_id: JOB })).toMatchObject({ ok: false })
+  })
+
+  it('commits to the person, the switch and every file they carry, sorted, so an apply that indexed files still matches and a new file refuses', () => {
+    expect(personBackfillCommitment(plan, ['d1', 'a1', 'a2'])).toEqual({ scope: 'person', person_id: PERSON, retry: false, file_ids: ['a1', 'a2', 'd1'] })
+    expect(personBackfillCommitment(plan, ['a1', 'a2', 'd1'])).toEqual(personBackfillCommitment(plan, ['d1', 'a2', 'a1']))
+  })
+
+  it('the plan replies with the counts by state, where and record, the first files due, and the how; retry counts the held ones as due', () => {
+    const reply = personBackfillPlanReply(plan, person, files)
+    expect(reply).toMatchObject({ scope: 'person', person, retry: false, files: 4, files_read: 1, files_held: 1, files_due: 2, by_record: { evidence: 2, file: 1, matter_document: 1 }, by_where: { bucket: 3, drive: 1 } })
+    expect(reply.first_due).toEqual([
+      { id: 'a1', name: 'Call 2026-10-03.md', record: 'evidence', title: 'Recording of the call', where: 'bucket' },
+      { id: 'd1', name: 'claims.eml', record: 'matter_document', title: 'Claims matrix', where: 'bucket' },
+    ])
+    expect(String(reply.how)).toContain('batch 10 (at most 25)')
+    expect(personBackfillPlanReply({ ...plan, retry: true }, person, files)).toMatchObject({ files_due: 3 })
+    const nothing = personBackfillPlanReply(plan, person, files.filter((f) => f.state !== 'due'))
+    expect(nothing).toMatchObject({ files_due: 0 })
+    expect(String(nothing.how)).toContain('Nothing to apply')
+    expect(String(nothing.how)).toContain('retry: true')
+  })
+
+  it('the apply answers what it did and where the loop goes: again while files remain, the status and the search once done', () => {
+    const again = personBackfillApplyReply(person, { due: 5, tried: 2, indexed: 2, held: [], remaining: 3 }, 9)
+    expect(again).toMatchObject({ scope: 'person', files: 9, due: 5, tried: 2, indexed: 2, remaining: 3, done: false })
+    expect(String(again.next)).toContain('3 files to go')
+    const done = personBackfillApplyReply(person, { due: 1, tried: 1, indexed: 1, held: [{ id: 'a3', name: 'scan.pdf', why: 'scan' }], remaining: 0 }, 9)
+    expect(done).toMatchObject({ done: true, held: [{ id: 'a3', name: 'scan.pdf', why: 'scan' }] })
+    expect(String(done.next)).toContain('1 held')
+    expect(String(done.next)).toContain('in: files')
+  })
+
+  it('takes a records batch within its cap, and the server and the docs carry the scope', () => {
+    expect(recordsBatch(undefined)).toBe(10)
+    expect(recordsBatch(3)).toBe(3)
+    expect(recordsBatch(99)).toBe(25)
+    expect(SERVER).toContain("if (plan.scope === 'person') {")
+    expect(SERVER).toContain('personBackfillCommitment(plan, allIds)')
+    expect(SERVER).toContain('recordsPass(admin, { n: recordsBatch(args.batch), personId, retry: plan.retry, dropGone: true')
+    expect(SERVER).toContain('scope: live | paid | job | person')
+    expect(README).toContain("scope: 'person'")
   })
 })

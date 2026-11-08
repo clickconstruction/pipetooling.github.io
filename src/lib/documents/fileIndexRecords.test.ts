@@ -195,6 +195,15 @@ describe('recordsPass', () => {
     expect((await recordsPass(folder.client, { n: 5, dropGone: false, google: async () => 'drive-token' })).held).toEqual([{ id: l.source_id, name: l.name, why: 'kind' }])
   })
 
+  it('retry false takes the records with no row alone and leaves a held row to the sweep', async () => {
+    const held = staged({ source_id: DOC, held: true })
+    const r = staged()
+    const { client, calls } = fakeAdmin({ due: [held, r], download: { [r.storage_path!]: 'words' } })
+    const out = await recordsPass(client, { n: 5, dropGone: false, retry: false })
+    expect(out).toMatchObject({ due: 1, tried: 1, indexed: 1, remaining: 0 })
+    expect(calls.filter((c) => c.op === 'upsert').map((c) => (c.payload as { drive_file_id: string }).drive_file_id)).toEqual([ATT, ATT])
+  })
+
   it('a queue the database refuses does nothing this run; a budget already spent takes nothing', async () => {
     const refused = fakeAdmin({ dueError: 'function file_index_records_due does not exist' })
     expect(await recordsPass(refused.client, { n: 5, dropGone: false })).toEqual({ ...EMPTY_RECORDS_PASS, held: [] })

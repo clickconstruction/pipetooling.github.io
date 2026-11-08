@@ -32,9 +32,10 @@ import type { MyMailTagOk, MyMailTagPlanOk } from '../_shared/gcKernels/lib/myMa
 import { GMAIL_READONLY_SCOPE, MAIL_HIT_HEADERS, MAIL_SEARCH_ACCOUNTS_CAP, MAIL_SEARCH_MAX_CAP, MAIL_SEARCH_MAX_DEFAULT, inBatches, mailDomain, mailHit, mailReadArgs, mailReadReply, mailRefusal, mailSearchArgs, mailSearchReply, type MailAccount, type MailAccountOutcome } from '../_shared/devMcpMailSearch.ts'
 import { ROBOT_PLANS_SHARED_DRIVE, divisionBidFolderByKey, driveFolderUrl, robotPlansDivisionFolderName, robotPlansPathWords } from '../_shared/bidPlansFolders.ts'
 import { indexContext, indexFiles, jobFilesToIndex } from '../_shared/fileIndex.ts'
-import { recordsPass } from '../_shared/fileIndexRecords.ts'
+import { recordsDue, recordsPass } from '../_shared/fileIndexRecords.ts'
+import { recordBytesWhere } from '../_shared/fileIndexRecordsKernel.ts'
 import { SWEEP_STAMP_KEY } from '../_shared/fileIndexKernel.ts'
-import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitment, backfillJobPassedReply, backfillJobsQuery, backfillPlanReply, cursorLostWords, nextBackfillJob, parseBackfillPlan, statusReading, type BackfillJob } from '../_shared/devMcpIndexBackfill.ts'
+import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitment, backfillJobPassedReply, backfillJobsQuery, backfillPlanReply, cursorLostWords, nextBackfillJob, parseBackfillPlan, statusReading, type BackfillJob, personBackfillApplyReply, personBackfillCommitment, personBackfillPlanReply, recordsBatch, type PersonBackfillFile } from '../_shared/devMcpIndexBackfill.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
 // DEV's agent reads PipeTooling through. Public address: https://mcp.clicktooling.com/dev
@@ -88,7 +89,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.41.0'
+const SERVER_VERSION = '0.42.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -556,12 +557,12 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_index_backfill',
-    description: "Dry-run the one-time backfill of the file index (v2.6332, punch list #240): the jobs a scope would walk — live (every job with a Drive folder not Paid in Full, oldest first by created_at), paid (the back catalogue, newest first) or job (one job by jobs_ledger.id) — at most 500 a plan (after_job inside the plan starts the list after that job: the next 500, or going on past a job that left the scope), with how many already have rows and the sweep’s last look, under a plan_hash that commits to the job list. Nothing is read from Drive and nothing is written. retry: true takes held rows (slow, error, big, a stopped read) again.",
-    inputSchema: { type: 'object', properties: { plan: { type: 'object', description: '{ scope: live | paid | job, job_id?, limit? (jobs, at most 500), retry?, after_job? (a job id: the list starts after it) }' } }, required: ['plan'] },
+    description: "Dry-run the one-time backfill of the file index (v2.6332, punch list #240): the jobs a scope would walk — live (every job with a Drive folder not Paid in Full, oldest first by created_at), paid (the back catalogue, newest first) or job (one job by jobs_ledger.id) — at most 500 a plan (after_job inside the plan starts the list after that job: the next 500, or going on past a job that left the scope), with how many already have rows and the sweep’s last look, under a plan_hash that commits to the job list. Nothing is read from Drive and nothing is written. retry: true takes held rows (slow, error, big, a stopped read) again. scope person (v2.6721, punch list #285): the files on one person’s HR file and their matter — every evidence file staged or linked, every file from before records, every document on the matter’s Evidence tab — with which have no index row yet (files_due) and which are held, under a plan_hash over the person’s whole file list; apply runs the records pass over them.",
+    inputSchema: { type: 'object', properties: { plan: { type: 'object', description: '{ scope: live | paid | job | person, job_id? (with scope job), person_id? (a people.id, with scope person), limit? (jobs, at most 500), retry?, after_job? (a job id: the list starts after it) }' } }, required: ['plan'] },
   },
   {
     name: 'apply_index_backfill',
-    description: "Run the backfill you planned, one job’s next files per call: the same plan plus the plan_hash from plan_index_backfill, after_job (the next_after of the last answer; leave it out to start at the first job) and batch (files this call takes, 25, at most 40). Lists the job’s Drive folders, indexes the files not in the table or changed since (one at a time inside the request’s budget: walked up to the job, the text read, the row written to file_index as the service role; never a write to Drive) and answers indexed, held with the reason, remaining, job_done and next_after. Call again with the same after_job while remaining is above 0, then with next_after; sleep a few seconds between calls. Every answer is already written, so a stopped loop loses nothing. The plan’s hash is checked on every call: a job added to the scope since refuses it, so plan again. A job whose folder Drive refuses is passed over with its reason (job_passed) and next_after moves on, so one bad folder never strands the loop. An after_job the plan does not hold is refused: plan again with that job as the plan’s own after_job.",
+    description: "Run the backfill you planned, one job’s next files per call: the same plan plus the plan_hash from plan_index_backfill, after_job (the next_after of the last answer; leave it out to start at the first job) and batch (files this call takes, 25, at most 40). With scope person (v2.6721): the person’s next files due (no row, or held with retry) through the records pass — the staged copy from its bucket, a linked file from Drive — batch 10 (at most 25) a call, answering due, indexed, held, remaining and done; call again with the same plan while remaining is above 0, no cursor needed; a file filed or removed on the person since the plan refuses the apply. Lists the job’s Drive folders, indexes the files not in the table or changed since (one at a time inside the request’s budget: walked up to the job, the text read, the row written to file_index as the service role; never a write to Drive) and answers indexed, held with the reason, remaining, job_done and next_after. Call again with the same after_job while remaining is above 0, then with next_after; sleep a few seconds between calls. Every answer is already written, so a stopped loop loses nothing. The plan’s hash is checked on every call: a job added to the scope since refuses it, so plan again. A job whose folder Drive refuses is passed over with its reason (job_passed) and next_after moves on, so one bad folder never strands the loop. An after_job the plan does not hold is refused: plan again with that job as the plan’s own after_job.",
     inputSchema: { type: 'object', properties: { plan: { type: 'object' }, plan_hash: { type: 'string' }, after_job: { type: 'string', description: 'The job id the last answer named as next_after' }, batch: { type: 'number' } }, required: ['plan', 'plan_hash'] },
   },
   {
@@ -1554,6 +1555,58 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (!parsed.ok) return refused(parsed.error)
       const plan = parsed.plan
       const admin = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { autoRefreshToken: false, persistSession: false } })
+      if (plan.scope === 'person') {
+        // v2.6721 (punch list #285, PR 3): one person's files through the records pass, not a Drive walk. The plan lists
+        // every file the person carries (the attachments on their HR file, the documents on their matter) with which
+        // the index has read, and commits to that list; the apply runs the pass over the person until the queue is empty.
+        const personId = plan.person_id!
+        const { data: personRow } = await admin.from('people').select('id, name').eq('id', personId).maybeSingle()
+        const person = personRow as { id: string; name: string } | null
+        if (!person) return refused(`No person has the id the plan names (${personId}).`)
+        const [{ data: attRows, error: attErr }, { data: matterRows }] = await Promise.all([
+          admin.from('person_file_attachments').select('id, filename, storage_path, drive_file_id, evidence_id, entry_id').eq('person_id', personId).order('created_at', { ascending: false }).limit(2000),
+          admin.from('legal_matters').select('id').eq('person_id', personId),
+        ])
+        if (attErr) return refused(`The person's files did not read: ${attErr.message}`)
+        const matterIds = ((matterRows ?? []) as { id: string }[]).map((m) => m.id)
+        const { data: docRows } = matterIds.length > 0 ? await admin.from('legal_matter_documents').select('id, title, original_name, storage_path').in('matter_id', matterIds).is('voided_at', null).limit(2000) : { data: [] }
+        const atts = (attRows ?? []) as { id: string; filename: string; storage_path: string | null; drive_file_id: string | null; evidence_id: string | null; entry_id: string | null }[]
+        const docs = (docRows ?? []) as { id: string; title: string; original_name: string; storage_path: string }[]
+        const allIds = [...atts.map((a) => a.id), ...docs.map((d) => d.id)]
+        const hash = await sha256Hex(JSON.stringify(personBackfillCommitment(plan, allIds)))
+        const target = `person:${personId}`
+        if (name === 'plan_index_backfill') {
+          // Which files the index has read: every row on the person, then the queue (a row held an hour on counts as held).
+          const rowsById = new Map<string, { text_why: string | null }>()
+          for (let from = 0; ; from += 1000) {
+            const { data } = await admin.from('file_index').select('source_id, text_why').eq('person_id', personId).neq('source', 'drive').order('drive_file_id').range(from, from + 999)
+            const rows = (data ?? []) as { source_id: string; text_why: string | null }[]
+            for (const r of rows) rowsById.set(r.source_id, r)
+            if (rows.length < 1000) break
+          }
+          const dueNow = (await recordsDue(admin, 500, { personId })) ?? []
+          const dueIds = new Set(dueNow.map((r) => r.source_id))
+          const heldIds = new Set(dueNow.filter((r) => r.held).map((r) => r.source_id))
+          const titles = new Map<string, string | null>()
+          const evidenceIds = [...new Set(atts.map((a) => a.evidence_id).filter((x): x is string => Boolean(x)))]
+          if (evidenceIds.length > 0) {
+            const { data: ev } = await admin.from('person_file_evidence').select('id, title').in('id', evidenceIds)
+            for (const e of (ev ?? []) as { id: string; title: string }[]) titles.set(e.id, e.title)
+          }
+          const state = (id: string): PersonBackfillFile['state'] => (heldIds.has(id) ? 'held' : dueIds.has(id) ? 'due' : rowsById.has(id) ? 'read' : 'due')
+          const files: PersonBackfillFile[] = [
+            ...atts.map((a) => ({ id: a.id, source: 'hr_attachment' as const, name: a.filename, record_kind: a.evidence_id ? 'evidence' : a.entry_id ? 'entry' : 'file', record_title: a.evidence_id ? titles.get(a.evidence_id) ?? null : null, where: recordBytesWhere(a), state: state(a.id) })),
+            ...docs.map((d) => ({ id: d.id, source: 'matter_document' as const, name: d.original_name || d.title, record_kind: 'matter_document', record_title: d.title, where: recordBytesWhere({ storage_path: d.storage_path, drive_file_id: null }), state: state(d.id) })),
+          ]
+          return ok({ plan_hash: hash, ...personBackfillPlanReply(plan, person, files) }, { target })
+        }
+        const quoted = typeof args.plan_hash === 'string' ? args.plan_hash.trim().toLowerCase() : ''
+        if (!quoted) return refused('apply_index_backfill needs plan_hash — the value plan_index_backfill replied with.')
+        if (quoted !== hash) return refused(`Nothing indexed: the plan you quoted (${quoted.slice(0, 12)}…) is not what this person's files give now (${hash.slice(0, 12)}…) — a file was filed or removed since. Call plan_index_backfill again and read it.`, { target })
+        const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON') ?? null
+        const pass = await recordsPass(admin, { n: recordsBatch(args.batch), personId, retry: plan.retry, dropGone: true, google: async () => (saJson ? await googleAccessToken(saJson) : null) })
+        return ok(personBackfillApplyReply(person, pass, allIds.length), { target, rowCount: pass.indexed })
+      }
       const q = backfillJobsQuery(plan)
       // The walk's order is created_at then id, a total order: a job number ties on '' for every click-only job, and a
       // tie would place the cursor differently on every read. The plan's own after_job starts the list after that job,
