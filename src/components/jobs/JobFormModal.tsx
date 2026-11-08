@@ -68,7 +68,7 @@ import { jobFormAutosaveAggregate, jobFormFooterShowsDelete, type JobFormCloseFl
 import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
 import { AwardBaselineBlock } from './AwardBaselineBlock'
 import { awardBaselineOptions, awardBaselinePick, awardBaselineRpcArgs, awardNotNowSource, type AwardBaselineSource, type AwardBidBreakdown } from '../../lib/jobs/awardBaseline'
-import { DEFAULT_LINE_BUDGET_SETTINGS } from '../../lib/jobs/lineBudgets'
+import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import { baselineReading } from '../../lib/bids/bidBaselineRates'
 import { useJobBaselineRates } from '../../hooks/useJobBaselineRates'
 import { JOB_BUDGET_CHANGED_EVENT } from '../../hooks/useJobBudget'
@@ -612,6 +612,7 @@ export default function JobFormModal({
   const kindRead = useMemo(() => jobKind(kindFacts), [kindFacts])
   const awardOn = mode === 'new' && !editing && kindRead.kind === 'project'
   const bookRates = useJobBaselineRates(awardOn)
+  const { settings: lineBudgetSettings } = useLineBudgetSettings()
   useEffect(() => {
     if (!awardOn || !bidId) {
       setAwardBreakdown(null)
@@ -628,7 +629,7 @@ export default function JobFormModal({
   }, [awardOn, bidId])
   const awardInput = useMemo(() => {
     const breakdown = bidId && awardBreakdown?.bidId === bidId ? awardBreakdown.breakdown : null
-    const rate = Number(breakdown?.labor_rate) > 0 ? Number(breakdown!.labor_rate) : DEFAULT_LINE_BUDGET_SETTINGS.rateUsd
+    const rate = Number(breakdown?.labor_rate) > 0 ? Number(breakdown!.labor_rate) : lineBudgetSettings.rateUsd
     const typed = parseFloat(awardTypedHours)
     return {
       breakdown,
@@ -638,7 +639,7 @@ export default function JobFormModal({
       rateUsd: rate,
       typedHours: Number.isFinite(typed) && typed > 0 ? typed : null,
     }
-  }, [bidId, awardBreakdown, awardTypedHours, linkedBidSummary, bookRates.rates, jobTotalWithRidersDollars])
+  }, [bidId, awardBreakdown, awardTypedHours, linkedBidSummary, bookRates.rates, jobTotalWithRidersDollars, lineBudgetSettings.rateUsd])
   const awardOptions = useMemo(() => awardBaselineOptions(awardInput), [awardInput])
   // The pick: the office's when it chose one that can still be written, else the first usable source.
   const awardPickEffective: AwardBaselineSource = awardPick && awardOptions.find((o) => o.source === awardPick)?.usable ? awardPick : awardPick === 'typed' ? 'typed' : awardBaselinePick(awardOptions)

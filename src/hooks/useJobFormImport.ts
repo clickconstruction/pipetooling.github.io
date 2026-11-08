@@ -21,7 +21,7 @@ import { normalizeEstimateLineItemsFromJson } from '../lib/estimateLineItemNorma
 import { fixturesPayloadForCreateJobFromEstimate } from '../lib/createJobFromEstimateSubmit'
 import type { JobBillToParty } from '../lib/jobs/billToParty'
 import { workbenchLineBudget, type AwardBidBreakdown } from '../lib/jobs/awardBaseline'
-import { DEFAULT_LINE_BUDGET_SETTINGS } from '../lib/jobs/lineBudgets'
+import { readLineBudgetSettings } from '../lib/jobs/lineBudgetSettingsStore'
 import type { FixtureRow, JobFormServiceType, MeServiceTypeColumns } from '../lib/jobs/jobFormTypes'
 import type { WinningGcOption } from '../components/jobs/PickWinningGcModal'
 import type { JobBidLinkOption } from '../components/jobs/JobBidLinkChoiceModal'
@@ -270,7 +270,7 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
             // The ◆ a carried line takes (punch list #234 PR 1a): the bid's workbench priced labor and
             // materials, so the line that carries the price carries their shares. Fail-soft to no budget.
             const breakdown = await readBidBreakdownForImport(b.id)
-            setFixtures([{ id: crypto.randomUUID(), ...bidImportFirstLine({ carryValue, agreedValue, bid: b }), ...(workbenchLineBudget(breakdown, carryValue, DEFAULT_LINE_BUDGET_SETTINGS.rateUsd) ?? {}) }])
+            setFixtures([{ id: crypto.randomUUID(), ...bidImportFirstLine({ carryValue, agreedValue, bid: b }), ...(workbenchLineBudget(breakdown, carryValue, readLineBudgetSettings().rateUsd) ?? {}) }])
             setFixtureScopeExpandedById({})
             if (agreedValue == null) {
               // Conditional carry (`.is('agreed_value', null)`): zero rows is the expected already-set case, not a refused write — no guard on purpose.

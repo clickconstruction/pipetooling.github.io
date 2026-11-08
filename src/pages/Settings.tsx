@@ -108,6 +108,7 @@ import TestReportSettingsBlock from '../components/settings/TestReportSettingsBl
 import StageChecklistSettingsCard from '../components/settings/StageChecklistSettingsCard'
 import MachineTemplatesSettingsCard from '../components/settings/MachineTemplatesSettingsCard'
 import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfirmSettingsBlock'
+import LineBudgetSettingsBlock from '../components/settings/LineBudgetSettingsBlock'
 import GcBillDayCutoffSettingsBlock from '../components/settings/GcBillDayCutoffSettingsBlock'
 import GcCardBillSettingsBlock from '../components/settings/GcCardBillSettingsBlock'
 import GcOfficeNoticesSettingsBlock from '../components/settings/GcOfficeNoticesSettingsBlock'
@@ -1094,6 +1095,7 @@ export default function Settings() {
     'stage-checklists': <StageChecklistSettingsCard />,
     'machine-templates': <MachineTemplatesSettingsCard />,
     'owner-of-record': <OwnerAutoConfirmSettingsBlock />,
+    'line-budgets': <LineBudgetSettingsBlock />,
     'gc-card': <GcCardBillSettingsBlock />,
     'gc-office-notices': <GcOfficeNoticesSettingsBlock />,
     'gc-customer-notice': <GcCustomerDueNoticesSettingsBlock />,

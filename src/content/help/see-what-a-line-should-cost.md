@@ -2,7 +2,7 @@
 title: see what a line should cost and tune it
 category: Billing & Money
 roles: master_technician, assistant
-keywords: line budget, labor budget, materials budget, hours, margin, assumed, tuned, sliders, split, costs tab, where we are, project
+keywords: line budget, labor budget, materials budget, hours, margin, assumed, tuned, sliders, split, costs tab, where we are, project, brush, company split, cost rate, settings, learning line
 order: 12
 ---
 On a project, every line item carries what the company thinks it will cost. You see it under the line's name on the Bill tab. The owner can change it there with two sliders. The Costs tab adds the lines up and reads where the job stands.
@@ -31,6 +31,33 @@ Only the owner tunes a budget. Tap the quiet line and a panel opens under the li
 Every drag saves by itself. The line now reads **✎ tuned**. Press **Back to** and the split goes back to where it was when you opened the panel. On a tuned line, **Back to ≈ the company split** puts it back on the company's numbers.
 
 Anyone else taps the quiet line and sees the same panel with the sliders held still.
+
+## Brush one split across the job
+
+A job often has several assumed lines that should read alike. Tune one, then carry it to the rest.
+
+1. Open a line's panel and drag it where you want it.
+2. Press **Brush onto the 3 other assumed lines**. The panel counts them for you.
+3. Every one of them now reads **✎ tuned** with the same split.
+
+**Undo** sits beside the words until you close the panel. It puts the other lines back on the company split. A workbench line or a line you already tuned is never brushed.
+
+## The company's splits and the cost rate
+
+Open Settings → **Jobs & billing** → **Line budgets**. Only the owner changes it.
+
+- Each stage kind has a **Labor** slider and a **Materials** slider. The margin is what is left. It turns red under the target.
+- **Cost rate** is the burdened rate the hours use. The roster's own rate reads beside it. Press **Use the roster's rate** to take it.
+- **Target margin** is the dashed mark on every bar.
+- Pick a line size, such as $10,000, and every row reads itself out in dollars and hours.
+
+Nothing changes until you press **Save**. The button names what it writes, such as *Save · 2 splits and the rate*. **Back to what you saved** drops the draft. Save moves only the lines still assumed. A workbench line or a line you tuned keeps its own numbers.
+
+:::example The learning line
+Your Any line lines ran 52% labor on the last 6 tunes, against the 45% default. {{button:outline|Use 52%}}
+:::
+
+After five tunes on one kind that sit off its default, the row offers the number they settled on. Nothing moves until you press it and then Save.
 
 ## Where we are on the Costs tab
 

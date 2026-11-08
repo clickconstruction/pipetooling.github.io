@@ -11,13 +11,15 @@ import { CREW_SHAPES, CREW_SHAPE_LOWER, MATERIALS_MARKUP_PCT_KEY, RATE_CARD_KEYS
 import { BILL_DAY_CUTOFF_KEY, cutoffOf } from '../gc/billDay/billDayIo'
 import { GC_CARD_BILL_SETTING_KEY, gcCardBillOn } from '../../../supabase/functions/_shared/gcCardBill'
 import type { JobsBillingSlug } from './jobsBillingGroups'
+import { APP_SETTINGS_KEY_LINE_BUDGET_SETTINGS_V1 } from '../appSettingsKeys'
+import { lineBudgetSettingsValueLine, parseLineBudgetSettings } from '../jobs/lineBudgets'
 
 /** The default labor rate's row (`useSettingsJobsAdmin` reads and writes it by this key). */
 export const DEFAULT_LABOR_RATE_KEY = 'default_labor_rate'
 
-/** The cards that show a live value: the seven under Billing and money. */
-export type JobsBillingValueSlug = 'rates' | 'markup' | 'trip-charges' | 'labor-rate' | 'job-book' | 'gc-card' | 'gc-cutoff'
-export const JOBS_BILLING_VALUE_SLUGS: readonly JobsBillingValueSlug[] = ['rates', 'markup', 'trip-charges', 'labor-rate', 'job-book', 'gc-card', 'gc-cutoff']
+/** The cards that show a live value: the eight under Billing and money (the line budgets since v2.6656). */
+export type JobsBillingValueSlug = 'rates' | 'markup' | 'trip-charges' | 'labor-rate' | 'job-book' | 'gc-card' | 'gc-cutoff' | 'line-budgets'
+export const JOBS_BILLING_VALUE_SLUGS: readonly JobsBillingValueSlug[] = ['rates', 'markup', 'trip-charges', 'labor-rate', 'job-book', 'gc-card', 'gc-cutoff', 'line-budgets']
 
 /** The `app_settings` keys each card reads; the Job Book reads a table instead. */
 export const JOBS_BILLING_VALUE_KEYS: Readonly<Record<JobsBillingValueSlug, readonly string[]>> = {
@@ -28,6 +30,7 @@ export const JOBS_BILLING_VALUE_KEYS: Readonly<Record<JobsBillingValueSlug, read
   'job-book': [],
   'gc-card': [GC_CARD_BILL_SETTING_KEY],
   'gc-cutoff': [BILL_DAY_CUTOFF_KEY],
+  'line-budgets': [APP_SETTINGS_KEY_LINE_BUDGET_SETTINGS_V1],
 }
 
 export function isJobsBillingValueSlug(slug: string): slug is JobsBillingValueSlug {
@@ -129,6 +132,11 @@ export function gcCutoffValueLine(rows: ReadonlyArray<AppSettingValueRow>): stri
   return `${days} days before bill day`
 }
 
+/** `45 / 35 rough in · 45 / 35 top out · 40 / 40 trim set · 45 / 35 any line · $45 an hour`; a missing row reads the constants, as every line does. */
+export function lineBudgetsValueLine(rows: ReadonlyArray<AppSettingValueRow>): string {
+  return lineBudgetSettingsValueLine(parseLineBudgetSettings(rows.find((r) => r.key === APP_SETTINGS_KEY_LINE_BUDGET_SETTINGS_V1)?.value_text ?? null))
+}
+
 /**
  * Pure: one line per card from what was read, for the cards named (every money card by default). A card whose
  * read is not in hand gets no line, and the fold header keeps the static one.
@@ -159,6 +167,9 @@ export function jobsBillingValueLines(values: JobsBillingValues, slugs: Readonly
         break
       case 'gc-cutoff':
         out['gc-cutoff'] = gcCutoffValueLine(rows)
+        break
+      case 'line-budgets':
+        out['line-budgets'] = lineBudgetsValueLine(rows)
         break
     }
   }

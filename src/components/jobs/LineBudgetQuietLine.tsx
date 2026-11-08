@@ -1,10 +1,10 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { useLineBudgets } from '../../hooks/useLineBudgets'
+import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import {
   applyLineSplit,
   calcLineBudget,
-  DEFAULT_LINE_BUDGET_SETTINGS,
   lineBudgetColumnsFor,
   lineBudgetEntryOf,
   lineBudgetFor,
@@ -13,6 +13,7 @@ import {
   LINE_SPLIT_KIND_WORDS,
   type LineBudgetColumns,
   type LineBudgetEntry,
+  type LineBudgetWrite,
 } from '../../lib/jobs/lineBudgets'
 
 /**
@@ -25,7 +26,6 @@ import {
  * them. The owner tunes; the office sees the same sliders read-only. Nothing
  * reaches a customer.
  */
-const settings = DEFAULT_LINE_BUDGET_SETTINGS
 const usd0 = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
 const LABOR = '#2563eb'
 const MATERIALS = '#f59e0b'
@@ -55,6 +55,7 @@ type LineProps = {
 /** The quiet line under the name: tap it and the panel row opens under the line. */
 export function LineBudgetQuietLine({ fixtureId, name, priceUsd, row }: LineProps) {
   const canTune = useCanTune()
+  const { settings } = useLineBudgetSettings()
   const { openId, open } = useLineBudgets()
   const entry = lineBudgetFor(lineBudgetEntryOf(row), name, settings)
   const c = calcLineBudget(priceUsd, entry, settings)
@@ -78,12 +79,19 @@ export function LineBudgetQuietLine({ fixtureId, name, priceUsd, row }: LineProp
 type PanelProps = LineProps & {
   /** Writes the five budget columns onto the row; the grid's `updateFixtureRow`. */
   onChange: (columns: ReturnType<typeof lineBudgetColumnsFor>) => void
+  /**
+   * The brush (punch list #234 PR 1b): how many other assumed lines the job has, and the write that
+   * carries this line's split onto them, answering with the undo. The grid supplies it.
+   */
+  brush?: { others: number; apply: (columns: LineBudgetWrite) => () => void } | null
 }
 
 /** The panel, rendered by the grid as its own row under the line while that line is open. */
-export function LineBudgetPanel({ fixtureId, name, priceUsd, row, onChange }: PanelProps) {
+export function LineBudgetPanel({ fixtureId, name, priceUsd, row, onChange, brush = null }: PanelProps) {
   const canTune = useCanTune()
+  const { settings } = useLineBudgetSettings()
   const { base, open } = useLineBudgets()
+  const [brushed, setBrushed] = useState<{ n: number; undo: () => void } | null>(null)
   const entry = lineBudgetFor(lineBudgetEntryOf(row), name, settings)
   const c = calcLineBudget(priceUsd, entry, settings)
   const kind = lineSplitKindOf(name)
@@ -104,6 +112,15 @@ export function LineBudgetPanel({ fixtureId, name, priceUsd, row, onChange }: Pa
   const backToCompany = () => {
     setEntry(null)
     open(fixtureId, lineBudgetFor(undefined, name, settings))
+  }
+  const runBrush = () => {
+    if (!canTune || !brush || brush.others === 0) return
+    const undo = brush.apply(lineBudgetColumnsFor({ laborPct: entry.laborPct, materialsPct: entry.materialsPct, source: 'tuned', tunedAt: new Date().toISOString() }, settings))
+    setBrushed({ n: brush.others, undo })
+  }
+  const undoBrush = () => {
+    brushed?.undo()
+    setBrushed(null)
   }
 
   const sliderRow = (field: 'labor' | 'materials', label: string, color: string, pct: number, max: number, words: string) => (
@@ -148,6 +165,20 @@ export function LineBudgetPanel({ fixtureId, name, priceUsd, row, onChange }: Pa
           <button type="button" style={link} onClick={close}>{canTune ? 'Done' : 'Close'}</button>
         </span>
       </div>
+      {canTune && brush && (brush.others > 0 || brushed) ? (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.76rem', color: 'var(--text-muted)' }} data-testid="line-budget-brush">
+          {brushed ? (
+            <>
+              <span style={{ fontWeight: 600, color: 'var(--text-green-700)' }}>Brushed onto {brushed.n} {brushed.n === 1 ? 'line' : 'lines'} · each reads ✎ tuned</span>
+              <button type="button" style={link} onClick={undoBrush}>Undo</button>
+            </>
+          ) : (
+            <button type="button" style={link} onClick={runBrush} title="Carry this split onto every other line on the job still assumed; a workbench line or one you tuned keeps its own">
+              Brush onto the {brush.others} other assumed {brush.others === 1 ? 'line' : 'lines'}
+            </button>
+          )}
+        </div>
+      ) : null}
       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{canTune ? 'Every drag saves by itself. The Costs tab reads it at once. The customer never sees this.' : 'Only the owner tunes a budget.'}</div>
     </div>
   )
