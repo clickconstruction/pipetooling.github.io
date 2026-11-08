@@ -2,16 +2,16 @@
 name: People → Utilization and the drawn week
 number: 284
 group: ready
-status: built 2026-11-08 on three branches · PR 1 #7311 in the queue · left: push the migration, the types PR, open PRs 2 and 3, verify live
+status: PR 1 #7311 merged and pushed · types PR #7331 armed · PR 2 #7332 and PR 3 #7333 open, each armed as the one ahead lands · left: verify live
 summary: >
   A People view that reads the hours each person said they can work against the hours the clock
   recorded, by pay week, so the office knows when to add people and when to use the people it has
   more; and the person's side on My Time, where they draw the week they can work, Sunday to
   Saturday, and read their last eight weeks against it. Everything is built and tested; what is
   left is landing it in order.
-next: When #7311 merges, supabase db push, then the chore(types) PR, then rebase and open claude/utilization-2-board, then claude/utilization-3-my-time; verify live as a dev, an assistant and a helper; delete this folder.
+next: When #7331 merges, rebase #7332 onto main and arm it; when #7332 merges, rebase #7333 onto main and arm it; verify live as a dev, an assistant and a helper and record the walk here; delete this folder once the owner has seen it.
 size: S as what is left (the code is done; three PRs to land in order)
-blocker: The merge queue, one PR at a time.
+blocker: The merge queue, one PR at a time; #7332 and #7333 wait for the PR ahead.
 opinion: build — the owner said ship; the branches are ready and the write-up is theirs
 ---
 
@@ -47,9 +47,9 @@ New, on the branches: table `person_available_hours`; kernels `src/lib/people/ut
 
 ## The train (branches on origin, in landing order)
 
-1. **PR 1 — #7311, `claude/utilization-1-available-hours-table`, v2.6707.** The migration `20261108175919_person_available_hours.sql` alone, with its `docs/migrations/` fragment, release note and `docs/recent-features/` fragment. Auto-merge is armed. **After it merges**: `supabase db push` (the owner's standing instruction: the dev runs it, from a clean `main`), then `npm run gen-types:linked` and a `chore(types)` PR.
-2. **PR 2 — `claude/utilization-2-board`, v2.6708** (commit b94c5feaa, cut from main at 6ebad0bf0). Kernels, the tab, the window with the painter, the supabase door, the guide, the docs. It reads the new table, so `check:calls-ahead` wants the push first; typecheck wants the types PR merged. **Rebase onto main after the types PR lands**, push, `gh pr create --fill`, `gh pr merge --auto` (never `--squash`; the queue owns the strategy). Expect a trivial conflict at most in `src/pages/People.tsx` (two added lines) and `peopleTabGroups.ts`.
-3. **PR 3 — `claude/utilization-3-my-time`, v2.6709** (commit e639bac77, stacked on PR 2). My Time's Your hours block, the Job Mode card, the smoke, the guide. **After PR 2 merges**, rebase onto main, push, PR, auto-merge.
+1. **PR 1 — #7311, `claude/utilization-1-available-hours-table`, v2.6707.** The migration `20261108175919_person_available_hours.sql` alone, with its `docs/migrations/` fragment, release note and `docs/recent-features/` fragment. Merged and pushed 2026-11-08; the types regen is **#7331** (armed; `supabase gen types typescript --project-id … --schema graphql_public --schema public`, since `--linked` needs IPv6 here).
+2. **PR 2 — #7332, `claude/utilization-2-board`, v2.6708** (rebased onto #7331's branch; re-rebased onto main and armed when #7331 lands). Kernels, the tab, the window with the painter, the supabase door, the guide, the docs. It reads the new table, so `check:calls-ahead` wants the push first; typecheck wants the types PR merged. **Rebase onto main after the types PR lands**, push, `gh pr create --fill`, `gh pr merge --auto` (never `--squash`; the queue owns the strategy). Expect a trivial conflict at most in `src/pages/People.tsx` (two added lines) and `peopleTabGroups.ts`.
+3. **PR 3 — #7333, `claude/utilization-3-my-time`, v2.6709** (stacked on PR 2's branch as its base; rebased onto main and armed when #7332 lands). My Time's Your hours block, the Job Mode card, the smoke, the guide. **After PR 2 merges**, rebase onto main, push, PR, auto-merge.
 
 Each branch's release note and fragment are in its commit. The versions are claimed; claim nothing new for them. In the desktop app, press Auto-fix on each PR you open.
 
@@ -68,3 +68,5 @@ A Needs You nudge for people who have not drawn their week and for a three-week 
 ## Where it stands
 
 2026-11-08: designed and built in one spike session on the owner's machine (worktree `inspiring-jepsen-35e2f2`); the owner said ship; PR 1 opened and armed; PRs 2 and 3 committed and pushed as branches; this card written for another machine to land the rest. The spike's own branch `claude/people-utilization-tracking-745ad5` holds the WIP commit 8940638e4 and can be deleted once PR 3 is on main.
+
+2026-11-08, afternoon: #7311 merged and its migration is in prod's ledger; the types regen opened as #7331 and armed; #7332 (PR 2) and #7333 (PR 3) opened from the rebased branches, tests and the CI check scripts clean on both, armed in order as each PR ahead lands. The live walk waits for #7333 to deploy.
