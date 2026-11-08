@@ -165,6 +165,7 @@ export type JobsStagesUnifiedTableProps = {
   onOpenJobContract?: StagesRowRenderContext['onOpenJobContract']
   onOpenCustomerDoor?: StagesRowRenderContext['onOpenCustomerDoor']
   boardDotByJobId?: StagesRowRenderContext['boardDotByJobId']
+  customerLinesByJobId?: StagesRowRenderContext['customerLinesByJobId']
   stagesInvoiceUpdatingId: ReturnType<typeof useJobsStagesMutations>['stagesInvoiceUpdatingId']
   invoiceEstimatedBillDateSavingId: ReturnType<typeof useJobsStagesMutations>['invoiceEstimatedBillDateSavingId']
   bumpInvoiceEstimatedBillDate: ReturnType<typeof useJobsStagesMutations>['bumpInvoiceEstimatedBillDate']
@@ -262,6 +263,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     onOpenJobContract,
     onOpenCustomerDoor,
     boardDotByJobId,
+    customerLinesByJobId,
   } = props
   const wideViewport = useWideViewport1100()
   const navigate = useNavigate()
@@ -311,6 +313,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     onOpenJobContract,
     onOpenCustomerDoor,
     boardDotByJobId,
+    customerLinesByJobId,
   }
   const renderStagesFieldAndBillingLines = (job: JobWithDetails, opts?: { datesBilledYmd?: string | null }) => (
     <StagesFieldAndBillingLines ctx={stagesRowSharedCtx} job={job} datesBilledYmd={opts?.datesBilledYmd} />
