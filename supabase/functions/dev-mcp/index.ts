@@ -1366,7 +1366,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       // over the tab's sources and keys, each read as `who` under RLS and fail-soft (devMcpPersonFile.ts). The HR
       // sources are dev-only by RLS and are not read for another role: a view_as of the office sees the papers.
       const out = await getPersonFile(readerAs(await jwt()), { person: String(args.person ?? ''), lane: args.lane, source: args.source, since: args.since, docs: args.docs }, { role: who.role, todayYmd: todayYmdInAppTz() })
-      if ('refused' in out) return refused(out.refused, { target: 'people' })
+      // The refusal is a string on every path; the `??` only keeps deno check quiet where the inferred union widens it (v2.6716).
+      if ('refused' in out) return refused(out.refused ?? 'get_person_file was refused', { target: 'people' })
       return ok(out, { target: out.person.id, rowCount: out.counts.shown })
     }
 
