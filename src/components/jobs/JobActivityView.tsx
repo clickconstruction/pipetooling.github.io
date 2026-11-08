@@ -7,6 +7,10 @@ import { buildJobActivityLines, countJobActivityLines, filterJobActivityLines, t
 import { ACTIVITY_FILTERS, JOB_ACTIVITY_FILTERS, type JobActivityFilter } from '../../lib/jobActivityFilter'
 import { canOpenGcProjects, canOpenMessages, canReadJobMessages } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
+import { useJobEstimateAuthor } from '../../hooks/useJobEstimateAuthor'
+import { jobPeopleRows } from '../../lib/jobs/jobPeople'
+import { JobPeopleNames } from './JobPeopleNames'
+import { EmptyState } from '../EmptyState'
 import { JobCustomerBox } from './JobCustomerBox'
 import { JobPickerWindow } from '../gc/messages/JobPickerWindow'
 import { searchJobs, tieMessage } from '../../lib/messages/messagesIo'
@@ -105,6 +109,9 @@ export function JobActivityView({
 }: JobActivityViewProps) {
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // v2.6694: the author of the signed estimate the job came from wears the E chip on the people line.
+  const estimateAuthor = useJobEstimateAuthor(job.id)
+  const people = useMemo(() => jobPeopleRows(teamMembers ?? [], estimateAuthor), [teamMembers, estimateAuthor])
   const [activityFilter, setActivityFilter] = useState<JobActivityFilter>('all')
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
@@ -222,22 +229,25 @@ export function JobActivityView({
             </svg>
           </button>
         ) : null}
-        <span
-          style={{
-            minWidth: 0,
-            fontSize: '0.8125rem',
-            color: teamMembers && teamMembers.length > 0 ? 'var(--text-700)' : 'var(--text-muted)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {teamMembers && teamMembers.length > 0
-            ? teamMembers.map((m) => (m.name?.trim() ? m.name.trim() : 'Unknown')).join(', ')
-            : peopleAction
-              ? 'No one assigned'
-              : ''}
-        </span>
+        {people.length > 0 ? (
+          <span
+            style={{
+              minWidth: 0,
+              fontSize: '0.8125rem',
+              color: 'var(--text-700)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <JobPeopleNames team={teamMembers ?? []} author={estimateAuthor} />
+          </span>
+        ) : peopleAction ? (
+          // Nobody yet: the empty state names the press (the people button beside it is the same door).
+          <EmptyState compact main="Nobody on this job yet." next={peopleAction.disabled ? undefined : { label: 'Manage people', onPress: peopleAction.onClick }} tail={peopleAction.disabled ? undefined : 'adds them.'} />
+        ) : (
+          <span style={{ minWidth: 0 }} />
+        )}
         {pctComplete != null ? (
           <span
             title="Pipeline % complete for this job"

@@ -90,3 +90,43 @@ describe('officeContacts (v2.4755)', () => {
     expect(parseLegalPortalPayload(base)!.officeContacts).toEqual({ phone: '(512) 360-0599', assistants: [], controllers: [] })
   })
 })
+
+describe('the claim’s typed lines (v2.6696, punch list #171)', () => {
+  const doc = { id: 'd1', title: 'Materials on site — count.pdf', shows: 'the count', mime: 'application/pdf', sizeBytes: 100, addedOn: '2026-10-26', addedByName: 'Taunya', url: 'https://signed.example/d1' }
+  const lines = [
+    { id: 'l1', kind: 'materials', title: 'Materials left on site', amount: '5310.00', basis: 'contract ¶ 9', document_id: 'd1', added_at: '2026-10-26T15:00:00Z' },
+    { id: 'l2', kind: 'damages', title: 'Demobilization', amount: 2800, basis: '', document_id: 'd-held', added_at: '2026-10-27T15:00:00Z' },
+    { junk: true },
+  ]
+  it('parse as the desk’s rows, a row without an id and a name dropped; [] from an older function', () => {
+    const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-11-08', firm, particulars: {}, matters: [{ ...matterRaw(), claimLines: lines }] })!
+    expect(p.matters[0]!.claimLines).toEqual([
+      { id: 'l1', kind: 'materials', title: 'Materials left on site', amount: '5310.00', basis: 'contract ¶ 9', document_id: 'd1', added_at: '2026-10-26T15:00:00Z' },
+      { id: 'l2', kind: 'damages', title: 'Demobilization', amount: 2800, basis: '', document_id: 'd-held', added_at: '2026-10-27T15:00:00Z' },
+    ])
+    expect(parseLegalPortalPayload({ firm, matters: [matterRaw()] })!.matters[0]!.claimLines).toEqual([])
+  })
+  it('ride the worth through the same kernel, the document’s title read off the documents that travelled and a held one not named', () => {
+    const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-11-08', firm, particulars: {}, matters: [{ ...matterRaw(), claimLines: lines, documents: [doc] }] })!
+    const bare = buildMatterPacket(parseLegalPortalPayload({ firm, matters: [matterRaw()] })!.matters[0]!, '2026-11-08', portalFeeModel(p))!
+    const packet = buildMatterPacket(p.matters[0]!, '2026-11-08', portalFeeModel(p))!
+    expect(packet.worth.claimLines).toEqual([
+      { id: 'l1', kind: 'materials', title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', documentId: 'd1', documentTitle: 'Materials on site — count.pdf' },
+      { id: 'l2', kind: 'damages', title: 'Demobilization', amount: 2800, basis: '', documentId: null, documentTitle: '' },
+    ])
+    expect(packet.worth.claimTyped).toBe(8110)
+    expect(packet.worth.claim).toBeCloseTo(bare.worth.claim + 8110, 2)
+  })
+})
+
+describe('the proceedings beside the claim (v2.6726, punch list #174)', () => {
+  it('parse as the firm reads them, a row without an id and a name dropped; [] from an older function', () => {
+    const rows = [
+      { id: 'pr1', kind: 'agency_complaint', title: 'Complaint to the State Plumbing Board', agency: 'State Plumbing Board', reference: 'C-2026-0431', contact_name: 'R. Calloway', contact_role: 'president', status: 'answered', status_on: '2026-11-03', document_ids: ['d1'], keep_out: true, added_at: '2026-10-28T15:00:00Z' },
+      { junk: true },
+    ]
+    const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-11-08', firm, particulars: {}, matters: [{ ...matterRaw(), proceedings: rows }] })!
+    expect(p.matters[0]!.proceedings).toEqual([{ id: 'pr1', kind: 'agency_complaint', title: 'Complaint to the State Plumbing Board', agency: 'State Plumbing Board', reference: 'C-2026-0431', contactName: 'R. Calloway', contactRole: 'president', status: 'answered', statusOn: '2026-11-03', documentIds: ['d1'], keepOut: true }])
+    expect(parseLegalPortalPayload({ firm, matters: [matterRaw()] })!.matters[0]!.proceedings).toEqual([])
+  })
+})

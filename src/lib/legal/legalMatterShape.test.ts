@@ -5,8 +5,10 @@
  */
 import { describe, expect, it } from 'vitest'
 import { MATTER_DOCUMENT_PAYLOAD_KEYS } from '../../../supabase/functions/_shared/legalMatterDocuments'
+import { PROCEEDING_PAYLOAD_KEYS } from '../../../supabase/functions/_shared/legalProceedings'
 import {
   MATTER_ADDRESS_COLUMNS,
+  MATTER_CLAIM_LINE_COLUMNS,
   MATTER_CONTRACT_COLUMNS,
   MATTER_COUNSEL_SELECT,
   MATTER_DEMAND_COLUMNS,
@@ -159,3 +161,23 @@ describe('the narrative (v2.4812)', () => {
   })
 })
 
+
+describe('the claim’s typed lines (v2.6696, punch list #171)', () => {
+  it('keeps the line as the desk’s table reads it and nothing about who typed it', () => {
+    const shaped = shapeMatterForCounsel({ jobs: [], claimLines: [{ matter_id: 'm-SECRET', id: 'l1', kind: 'materials', title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', document_id: 'd1', added_at: '2026-11-01T00:00:00Z', added_by: 'u-SECRET', updated_by: 'u-SECRET', removed_at: null, removed_by: null }] }) as Row & { claimLines: Row[] }
+    expect(Object.keys(shaped.claimLines[0]!).sort()).toEqual([...MATTER_CLAIM_LINE_COLUMNS].sort())
+    expect(JSON.stringify(shaped)).not.toMatch(/SECRET/)
+    expect(MATTER_COUNSEL_SELECT.claimLines).toBe('matter_id, id, kind, title, amount, basis, document_id, added_at')
+  })
+})
+
+describe('the proceedings beside the claim (v2.6726, punch list #174)', () => {
+  it('keeps the firm’s keys and nothing the function did not already cut — never the note, the person’s id or who added it', () => {
+    const shaped = shapeMatterForCounsel({ jobs: [], proceedings: [{ matter_id: 'm-SECRET', id: 'pr1', kind: 'agency_complaint', title: 'Complaint to the State Plumbing Board', agency: 'State Plumbing Board', reference: 'C-2026-0431', contact_name: 'R. Calloway', contact_role: 'president', status: 'open', status_on: null, document_ids: ['d1'], keep_out: true, added_at: '2026-10-28T15:00:00Z', note: 'SECRET-note', person_id: 'p-SECRET', added_by: 'u-SECRET' }] }) as Row & { proceedings: Row[] }
+    expect(Object.keys(shaped.proceedings[0]!).sort()).toEqual([...PROCEEDING_PAYLOAD_KEYS].sort())
+    expect(JSON.stringify(shaped)).not.toMatch(/SECRET/)
+    expect(MATTER_COUNSEL_SELECT.proceedings).toBe('matter_id, id, kind, title, agency, reference, person_id, status, status_on, document_ids, keep_out, added_at')
+    expect(MATTER_COUNSEL_SELECT.proceedings).not.toMatch(/note/)
+    expect(MATTER_COUNSEL_SELECT.proceedingPeople).toBe('id, matter_id, name, role')
+  })
+})

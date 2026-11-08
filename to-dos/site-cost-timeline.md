@@ -2,7 +2,7 @@
 name: "A cost timeline for a development: the site's cost, cash and value over time, for devs and controllers"
 number: 257
 group: ready
-status: built 2026-11-04 · PR 1 the view, the cost and cash lines, the job chips, the job-naming tooltip and the batched reads v2.6493 on claude/site-cost-timeline-e043ae, walked live on the real site as the dev at three widths · PR 2 the amber overhead band v2.6498 · PR 3 value created and Print v2.6499 · walked on prod in the owner's Chrome 2026-11-08 at desktop and 375, two defects noted below · the owner's two picks from the mock-up 2026-11-08: the phone's view switch stays A, and the jobs with no dated event get the ledger strip · PR 4 the ledger strip is ready to build, specified below, for any session on any machine
+status: built 2026-11-04 · PR 1 the view, the cost and cash lines, the job chips, the job-naming tooltip and the batched reads v2.6493 on claude/site-cost-timeline-e043ae, walked live on the real site as the dev at three widths · PR 2 the amber overhead band v2.6498 · PR 3 value created and Print v2.6499 · walked on prod in the owner's Chrome 2026-11-08 at desktop and 375, two defects noted below · the owner's two picks from the mock-up 2026-11-08: the phone's view switch stays A, and the jobs with no dated event get the ledger strip · PR 4 the ledger strip v2.6711 on claude/257-ledger-strip-pr4-f031bd, walked on the dev server as the dev on the real development at 1280 and 375 wide, light and dark, 2026-11-08 · the two walk defects fixed, v2.6718 on claude/257-end-labels-cent-pr5 (stacked on PR 4), the end labels measured apart at both widths
 summary: >
   The owner saw the Job Summary's Charges & Value chart, the step chart of one job's cost to date and
   cash position with an icon on every charge, and asked for the same chart over a whole development,
@@ -13,11 +13,11 @@ summary: >
   more jobs. The kernel is the Job Summary's own, with a job id on its events, so the red line ends at
   the sum of the jobs' Job Summary costs by construction; the reads are the site's batched reads,
   never one round per job.
-next: build PR 4, the ledger strip under the chart (the owner's pick 2026-11-08, every file, word and test named under Ready to build; claim a version on your branch first); the two defects from the 2026-11-08 walk, the end labels colliding and the chip's cent; then delete this card.
+next: nothing left to build. Once v2.6711 and v2.6718 are on main, delete this card.
 size: M (PR 1 the view, the two lines, the chips, the reads) + S (PR 2 the overhead band) + M (PR 3 value created, Print / Save as PDF) + S (PR 4 the ledger strip, one kernel change, one view block, the print's rows, the guide's words)
 blocker: None.
 mockup: site-cost-timeline-before-after.html — the owner's two calls drawn (2026-11-08): the jobs with no dated charge or payment, today's count line beside a grey ledger strip under the chart, and the phone's view switch, A as built beside B, at 375 wide and on a computer; the build itself needed none, the chart is the Job Summary's at the site's scale and the owner approved the written draft in chat on 2026-11-03
-ver: v2.6493 · v2.6498 · v2.6499
+ver: v2.6493 · v2.6498 · v2.6499 · v2.6711 · v2.6718
 opinion: build — the kernel, the chart view and every read exist; the work is a job id on the events, one batched read per source over the site's jobs, and a chip row
 ---
 
@@ -53,8 +53,9 @@ He approved the written draft the same day and asked for it in its own session.
   (`site-cost-timeline-before-after.html`, part 1) draws today's count line beside the strongest other
   way, a grey ledger strip under the chart that lists each such job with its cost and its reason, so
   the chart's end plus the strip is the Scoreboard's cost before overhead; it says why not a bar at
-  the right edge or the kernel's "No date" bucket. **The owner picked the strip on 2026-11-08**: PR 4,
-  under Ready to build.
+  the right edge or the kernel's "No date" bucket. **The owner picked the strip on 2026-11-08**, and
+  PR 4 built it the same day (v2.6711): the strip, a name press opening the job, the sum line, the
+  print's rows and the count line's new words.
 - **The phone's view switch.** With three chips, *Where the money is* stacked four lines tall at 375
   wide. PR 1 lays the three on one full row in the card's head with the GC Review link under them
   (placement A, built); the other placement, a chip row at the top of the card's body at every
@@ -93,14 +94,15 @@ He approved the written draft the same day and asked for it in its own session.
    cost on top, the tooltip's overhead lines.
 3. **PR 3 (v2.6499)** · value created on the right axis from the site's reports and hand-set percents, and
    Print / Save as PDF.
-4. **PR 4 (ready to build)** · the ledger strip under the chart for the jobs with no dated charge or
-   payment, the owner's pick from the mock-up 2026-11-08. The whole brief is the next section.
+4. **PR 4 (v2.6711)** · the ledger strip under the chart for the jobs with no dated charge or
+   payment, the owner's pick from the mock-up 2026-11-08. The brief it was built to is the next section.
 
-## Ready to build: PR 4, the ledger strip
+## PR 4, the ledger strip (built 2026-11-08, v2.6711)
 
-One PR, client only, no migration, no edge function, size S. Any session on any machine: cut from
-fresh `main`, `npm run claim` on the branch (the v2.6706 this card's author claimed was released, take
-your own), drop a session card, one PR with `gh pr merge --auto`. The picture is part 1's AFTER panel
+Built as written below, with two small departures: the reason's nouns are *sub labor sheet*, *team
+labor day* and *fuel charge* where the source's name alone would not read, and the strip holds to the
+whole site's end (`siteEndExpense` on the model) when a chip narrows the chart, the simpler of the two
+ways offered. The picture is part 1's AFTER panel
 of `site-cost-timeline-before-after.html` (open it from the repo, or at
 `clicktooling.com/to-dos/site-cost-timeline-before-after.html`): a grey strip under the chart's key,
 one row per left-out job, a sum line that reconciles to the Scoreboard. What ships today is the one
@@ -181,4 +183,6 @@ count line, *N jobs with no dated charge or payment are left out.*
 
 The owner's two calls, with what the screenshots show: (1) the jobs with no dated event are only a count in the line under the chips (*7 jobs with no dated charge or payment are left out*), and the value line adds every job with no dated percent as one step at the chart's end, a cliff on the last day; (2) placement A at 375 puts the three chips on one row with *Where the money is* on two lines inside its third and the GC Review link under them. The owner picked A from the mock-up on 2026-11-08, so (2) is closed and nothing is built for it; on 2026-11-08 he also picked the ledger strip for (1), specified above under Ready to build.
 
-Two defects, left for the owner: the end labels crowd at the right edge at every width, the *true cost* label over the cash and cost labels and the red label half under the icons, and at 375 the three labels overlap each other; and a chip's title (*JP1091: $8,838.88 of cost so far*) reads a cent under the chart's own end label for the same job ($8,838.89), a rounding of summed cents against the sum rounded once.
+2026-11-08, PR 4 (v2.6711) walked on the dev server as the dev on the same development at 1280 wide: the strip sits under the chart's key with *Not on the chart · 7 jobs* and lists the seven, JP958, JP957, JP956, JP955, JP954, JP568 and JP467, each *nothing charged yet* at $0.00 (none of this site's undated jobs carries a charge, so the strip's cost column is all zeros here; the undated-cost case is held by the tests); the sum line reads *Chart ends at $1,031,650.16 · Not on the chart $0.00 · Together $1,031,650.16*, and the Scoreboard's tiles agree, Labor $136,012 + Subs $0 + Parts $895,638 and Cost $1,054,120 − Overhead $22,470, both $1,031,650 (the tiles show whole dollars; the cent is the parity test's); pressing JP958 opened its Job window; **Print or save as PDF**, with the window captured, carried the head, the seven lines and the sum line under the key. At 375 wide the strip is two columns, the reason under the name, nothing past the edge; the dark theme draws it on the subtle surface with the strong rule. Left as the chart draws them: the two defects below, the next PR's.
+
+Two defects the walk found, fixed the same day as v2.6718 (`docs/recent-features/v2.6718.md`): the end labels crowded at the right edge at every width, the *true cost* label over the cash and cost labels and the red label half under the icons, and at 375 the three overlapped each other, so the shared chart now draws every end label in one layer as a column placed by `src/lib/jobs/chartEndLabels.ts`, apart from each other and from the marks their text reaches (measured on the dev server from the drawn SVG at 1280 and 375: no label touches another or an icon; on the phone the cost labels stand above the end's icon rows); and a chip's title (*JP1091: $8,838.88 of cost so far*) read a cent under the chart's own end label for the same job ($8,838.89), a sum of rounded folded lines against the sum rounded once, so the fold keeps the exact sum and the kernel rounds once (the site's end moved from $…650.16 to $…650.15, the strip's sum with it).

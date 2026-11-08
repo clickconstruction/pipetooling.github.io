@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { PortalTheme } from '../../../lib/legal/legalThemes'
 import type { LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
+import type { LegalProceedingForFirm } from '../../../lib/legal/legalProceedings'
 import type { LegalNarrative } from '../../../lib/legal/legalNarrative'
 import { CARD, COPPER, FAINT, HAIR } from '../../../lib/portal/portalTheme'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
@@ -26,6 +27,8 @@ export type FirmMatterLike = {
   documents?: ReadonlyArray<LegalPortalDocument>; /** Themes on the record (v2.6549), as counsel reads them. */ themes?: ReadonlyArray<PortalTheme>
   /** Documents the office held back; the firm sees the count. */
   heldDocumentCount?: number
+  /** The proceedings beside the claim (v2.6726, punch list #174), as counsel reads them: the portal passes the function's, the desk's preview its own cut the same way. */
+  proceedings?: ReadonlyArray<LegalProceedingForFirm>
   /** The office's account of the matter (v2.4812): the first tab when there is one. */
   narrative?: LegalNarrative | null
 }
