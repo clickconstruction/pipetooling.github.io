@@ -203,3 +203,58 @@ describe('JobsStagesCardList customer line teaser (v2.6689, punch list #125)', (
     expect(onOpenCustomerDoor).toHaveBeenCalledWith(job)
   })
 })
+
+describe('JobsStagesCardList phone row customer teaser (v2.6692, punch list #125)', () => {
+  const dana = { id: 'c-dana', name: 'Dana Whitfield', goesBy: null, kind: 'customer' as const }
+  const quiet = { line: 'open 2 mo', chip: null, needsMe: false, today: false }
+  const phoneRows = { filter: 'all' as const, nextLineFor: () => quiet, advanceConfirm: 'sheet' as const, advanceConsequence: () => '', onChip: vi.fn(), onShowAll: vi.fn() }
+  const stats = (noteAt: string) => ({ note_count: 1, last_note_at: noteAt, last_note_body: 'Inspector confirmed.', last_note_author_name: 'Rosa', last_report_at: null, report_count: 0, last_report_author_name: null, last_report_template_name: null, last_report_preview: null })
+
+  it('a phone row draws the customer’s text as a third line when it is the newest thing on the job, with Nobody has answered. while the dot is on, and its press opens the sheet, not the job', async () => {
+    const onOpenCustomerDoor = vi.fn()
+    const openStagesDetailJobModal = vi.fn()
+    const job = makeJob({ job_name: 'Phone Lines', customer_id: 'cust-dana', customer_name: 'Dana Whitfield' })
+    renderWithProviders(
+      <JobsStagesCardList
+        {...makeProps({
+          jobList: [job],
+          phoneRows,
+          jobThreadStatsByJobId: { [job.id]: stats('2026-08-11T14:28:00Z') },
+          customerLinesByJobId: new Map([[job.id, [{ id: 'm-in', contactId: 'c-dana', contact: dana, channel: 'text' as const, direction: 'in' as const, at: '2026-08-12T01:15:00Z', who: '', body: 'Can you do Thursday after 10 instead?', tied: true }]]]),
+          boardDotByJobId: new Map([[job.id, { who: 'Dana', channel: 'text' as const, when: 'yesterday', line: 'Can you do Thursday after 10 instead?', status: 'Nobody has answered.' as const }]]),
+          onOpenCustomerDoor,
+          openStagesDetailJobModal,
+        })}
+      />,
+    )
+    await settle()
+    expect(screen.getByText(/Can you do Thursday after 10 instead\?/)).toBeTruthy()
+    expect(screen.getByText('Nobody has answered.')).toBeTruthy()
+    expect(screen.queryByText(/Inspector confirmed/)).toBeNull()
+    const press = screen.getByLabelText('Open the conversation with the customer')
+    expect(press.hasAttribute('data-phone-row-chip')).toBe(true)
+    fireEvent.click(press)
+    expect(onOpenCustomerDoor).toHaveBeenCalledWith(job)
+    expect(openStagesDetailJobModal).not.toHaveBeenCalled()
+  })
+
+  it('a phone row keeps its two lines while a note is newer than the customer’s line', async () => {
+    const job = makeJob({ job_name: 'Phone Quiet', customer_id: 'cust-dana', customer_name: 'Dana Whitfield' })
+    renderWithProviders(
+      <JobsStagesCardList
+        {...makeProps({
+          jobList: [job],
+          phoneRows,
+          jobThreadStatsByJobId: { [job.id]: stats('2026-08-13T14:28:00Z') },
+          customerLinesByJobId: new Map([[job.id, [{ id: 'm-in', contactId: 'c-dana', contact: dana, channel: 'text' as const, direction: 'in' as const, at: '2026-08-12T01:15:00Z', who: '', body: 'Can you do Thursday after 10 instead?', tied: true }]]]),
+          onOpenCustomerDoor: vi.fn(),
+        })}
+      />,
+    )
+    await settle()
+    expect(screen.queryByText(/Can you do Thursday/)).toBeNull()
+    expect(screen.queryByText(/Inspector confirmed/)).toBeNull()
+    expect(screen.queryByLabelText('Open the conversation with the customer')).toBeNull()
+    expect(screen.getByText('open 2 mo')).toBeTruthy()
+  })
+})
