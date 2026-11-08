@@ -19,12 +19,14 @@ summary: >
   on purpose and kept here so they were not lost; all four have shipped, and two live steps for the
   Stripe cases are what keeps the card open.
 next: >
-  Grace subscribes the Stripe webhook endpoint (test and live) to `charge.dispute.created`,
-  `charge.dispute.updated`, `charge.dispute.closed` and `payment_intent.payment_failed`; then one
-  test-mode dispute on a ZZ TEST Stripe bill (Stripe's dispute test card: the case opens, the notice
-  goes out, Put the bill back). Delete this card once those are done.
-size: XS (two live steps, no code)
-blocker: The office's and the owner's — a Stripe Dashboard setting and one test dispute.
+  Ready to pick up on any computer where the owner's Chrome is signed in to the app and to Stripe:
+  § Pick up below is the whole brief. Step 1, subscribe the webhook endpoint (test and live) to
+  `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` and
+  `payment_intent.payment_failed`. Step 2, one test-mode dispute on a ZZ TEST Stripe bill (the case
+  opens, the notice goes out, Put the bill back). Delete this card once both are done.
+flagged: true
+size: XS (two live steps, no code; a docs-only PR at the end)
+blocker: A signed-in Stripe Dashboard and the owner's Chrome — a Dashboard setting and one test dispute; the brief is written, nothing is left to decide.
 ver: v2.4902 · 4950 · 5033 · 5091 · 5102
 opinion: your call — the code is done; the two live steps are the office's and the owner's.
 mockup: not required — each piece copies the case and its words, which exist
@@ -46,3 +48,28 @@ The plan, the two critiques and the twelve boards: *Returned checks — #76 mock
 
 - The case: `mercury_transaction_ar_returned` (source bank · hand · rejected), `list_ar_return_cases`, `open_ar_rejected_check_cases` (20261001230000); the pane `src/components/jobs/ar/ArReturnCasePane.tsx`, kernel `src/lib/jobs/arReturnCase.ts`; the notice `supabase/functions/_shared/arReturnCaseNotify.ts`.
 - Clearing: `src/lib/jobs/checkClearing.ts`.
+
+## Where it stands
+
+2026-11-08: the owner asked for the two live steps to run from another computer, so the brief below was written onto the card instead of walking them here. Nothing was pressed in Stripe or in the app; the webhook endpoint still listens for the events the Ops line of `docs/EDGE_FUNCTIONS.md` named before v2.4950, and no dispute case has ever opened on prod.
+
+## Pick up
+
+The two steps, for a session on a computer where the owner's Chrome is signed in to the app (as the owner) and to the Stripe Dashboard. Use Claude in Chrome in a tab of your own; never act in another tab. Drop a session card in `.claude/sessions/active/` (`docs/SESSIONS.md`) and remove it when done. Screenshots to your scratchpad, the key ones named in the report and on this card.
+
+**The rules.** On a test account or reversible, every press. In the Dashboard touch only the webhook endpoint's event list (adding events is reversible) and the test-mode dispute on the ZZ TEST bill; never a live-mode charge, refund, payout, customer or setting. If the Dashboard asks for a sign-in, a code or a password, stop that step, enter nothing, and say so. In the app, write only on ZZ TEST rows whose customer contact is the owner's own number and email, so what the bill sends reaches him and nobody else. The repo is public: no customer or private name, no prod figure, no Stripe id in anything committed.
+
+**Step 1 — the events (Dashboard, both modes).** Developers → Webhooks. The endpoint is the one whose URL ends in `/functions/v1/stripe-webhook` (the Ops line of `stripe-webhook` in `docs/EDGE_FUNCTIONS.md`). Test mode and live mode keep separate endpoint lists, so the step is done twice: open the endpoint, screenshot its events as they are, press the events' edit control, add `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` and `payment_intent.payment_failed`, save, screenshot the list again. Change nothing else on the endpoint: not its URL, its API version, its description or its signing secret. If the endpoint is not visible to the owner's Stripe user, stop here, do step 2 as far as it goes without the events (the bill and the payment; the case cannot open), and say so. If the before list reads other events than the Ops line names, amend that line in the same PR.
+
+**Step 2 — one dispute (test mode only).**
+
+1. In the app, a ZZ TEST job whose customer contact is the owner's own number and email. Open Bill Customer, the Stripe tab, and switch the mode toggle to **test** (dev users only; the per-browser pref `pipetooling-billing-stripe-mode-pref`, see *Stripe integration (test/live mode)* in `docs/BILLING_FLOWS.md`). Create the bill. The row carries `stripe_mode = 'test'`; a test event can touch no live row.
+2. Pay it: **Send Email invoice from Stripe** goes to whoever pressed Send on a test-mode bill, never the customer, and carries the Pay now link to `/pay/<id>`; or open the hosted invoice from the Stripe tab. Pay with Stripe's dispute test card, **4000 0000 0000 0259** (any future expiry, any CVC, any ZIP): the charge succeeds and Stripe opens a dispute on it at once. Screenshot the paid page.
+3. Watch the webhook: `invoice.paid` marks the bill paid, then `charge.dispute.created` opens the case. In the app, Accounts Receivable (the bank payments modal) → **Came back**: a **card disputed** row on the ZZ TEST bill, the story, the stake and *Answer the dispute in Stripe by …* with **Open the dispute in Stripe**. The Dashboard's **Needs you** card counts it. If no case opens within a minute, read the endpoint's delivery log in the Dashboard and the `stripe-webhook` logs; the hourly `ar-returned-checks` tells the office of a case the webhook could not.
+4. The notice: one email and one push to the office through `sendReturnCaseNotice` (*A card dispute opened · ZZ TEST · $N*). Screenshot the email as it arrived.
+5. Lose the dispute, so Put the bill back has something to do: in the Dashboard, test mode, open the dispute and counter it with the additional-information text `losing_evidence` and submit. Stripe closes a test-mode dispute at once as lost on that text (`winning_evidence` wins it). `charge.dispute.closed` arrives, the case turns **dispute lost** (*The $N is gone*), and the office is told a second time.
+6. **Put the bill back**: in the case's pane, read the read-back (the payment comes off the job with a *removed* line in its history, the bill drops its Stripe link and returns to Ready to Bill, a paid job goes back to Billed, the case closes as *put_back*), press once, and confirm each of the four on the job. Stripe is not called; its invoice stays paid in test mode, which is fine.
+7. Leave the ZZ TEST job as the step left it (the bill back on Ready to Bill) and say so in the report.
+
+**Done looks like.** Both steps clean: delete this card and the two drawings beside it, and add the Closed line in `to-dos/README.md` in the style of the others (the dated walk, what each step showed, the screenshot names in git history at the deleting commit). Otherwise the `next` field and this section say which step is done and what remains, dated. One docs-only PR (`gh pr create`, `gh pr merge --auto`; no version claim), `npm run check:todos` passing, named in the wrap-up as waiting for the one press on Auto-fix. The report: one line per screenshot name, one line per defect.
+

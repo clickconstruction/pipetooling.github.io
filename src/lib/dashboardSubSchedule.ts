@@ -79,6 +79,29 @@ export type SubScheduleJobMeta = {
 }
 
 /**
+ * The job meta with the scheduled jobs the person's own job read gave no row for filled from the
+ * jobs the Dashboard already read through definer reads (v2.6706): a superintendent cannot read a job
+ * they have not clocked onto, so its address and number came back blank. Only the ids on the schedule
+ * are filled, and an entry the read gave is never replaced. Hands back the same map when nothing changed.
+ */
+export function withKnownScheduledJobMeta(
+  meta: Map<string, SubScheduleJobMeta>,
+  scheduledJobIds: readonly string[],
+  known: ReadonlyArray<{ id: string; job_pictures_link?: string | null; hcp_number?: string | null; click_number?: string | null; job_address?: string | null }> | null | undefined,
+): Map<string, SubScheduleJobMeta> {
+  if (!known || known.length === 0 || scheduledJobIds.length === 0) return meta
+  let out: Map<string, SubScheduleJobMeta> | null = null
+  for (const id of scheduledJobIds) {
+    if (meta.has(id) || out?.has(id)) continue
+    const j = known.find((k) => k.id === id)
+    if (!j) continue
+    out ??= new Map(meta)
+    out.set(id, { job_pictures_link: j.job_pictures_link ?? null, hcp_number: j.hcp_number ?? null, click_number: j.click_number ?? null, job_address: j.job_address ?? null })
+  }
+  return out ?? meta
+}
+
+/**
  * Job-row values for one schedule block: the assigned-list row wins when it has
  * a non-blank value, otherwise the `subScheduleJobMeta` fallback map. Blank and
  * whitespace-only values count as absent on both sides; the returned value is

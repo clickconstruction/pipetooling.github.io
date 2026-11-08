@@ -25,6 +25,7 @@ import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
 import type { LegalTheme, LegalThemeMark } from '../../../lib/legal/legalThemes'
 import LegalStatementsStrip from './LegalStatementsStrip'
 import LegalClaimTable, { type ClaimPanel } from './LegalClaimTable'
+import LegalMatterPeopleTable, { type PeoplePanel } from './LegalMatterPeopleTable'
 import { claimTable } from '../../../lib/legal/legalClaimLines'
 import { isStatementEntry, statementMetaOf } from '../../../lib/legal/affidavitPaper'
 
@@ -115,7 +116,7 @@ export type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatter
 /** The Timeline tab (v2.5800): the matter's holds (a planned step held back reads held) and the office's acts, null when read only. */
 export type PlanActs = { holds: Record<string, boolean>; holdReasons: Record<string, string>; acts: TimelinePlanActs | null }
 
-export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null, onShowOnEvidence, evidenceDoc = null, onEvidenceLanded, onStatementsChanged, claim = null }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null; /** v2.6166: the Evidence tab opened on a document's row, lit. */ onShowOnEvidence?: (documentId: string) => void; /** v2.6166: the row the Evidence tab lands on, from the address. */ evidenceDoc?: string | null; /** v2.6166: the landed row was pressed. */ onEvidenceLanded?: () => void; /** v2.6413 (punch list #212 PR 4): the packet read again after a statement is asked for or put on the matter. */ onStatementsChanged?: () => void; /** v2.6679 (punch list #171): the claim table's documents, acts and doors; null draws the table read only with the desk's own doors. */ claim?: ClaimPanel | null }) {
+export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null, onShowOnEvidence, evidenceDoc = null, onEvidenceLanded, onStatementsChanged, claim = null, people = null }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null; /** v2.6166: the Evidence tab opened on a document's row, lit. */ onShowOnEvidence?: (documentId: string) => void; /** v2.6166: the row the Evidence tab lands on, from the address. */ evidenceDoc?: string | null; /** v2.6166: the landed row was pressed. */ onEvidenceLanded?: () => void; /** v2.6413 (punch list #212 PR 4): the packet read again after a statement is asked for or put on the matter. */ onStatementsChanged?: () => void; /** v2.6679 (punch list #171): the claim table's documents, acts and doors; null draws the table read only with the desk's own doors. */ claim?: ClaimPanel | null; /** v2.6705 (punch list #174): the people list's acts; null draws it read only. */ people?: PeoplePanel | null }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -191,6 +192,8 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
           <span style={MUTED}>Terms</span><span>{a.paymentTerms}{a.paymentTermsNote ? <span style={MUTED}> — {a.paymentTermsNote}</span> : null}</span>
         </div>
         {a.contacts.length ? (<><SectionTitle doors={customerDoor()}>Contacts</SectionTitle><Table head={['Name', 'Email', 'Phone', 'Note']} rows={a.contacts.map((c) => [c.name, c.email ?? '—', c.phone ?? '—', c.note ?? ''])} empty="" /></>) : null}
+        {/* v2.6705 (punch list #174): the people on the matter — who the letters pick from, with the use and its reason on the row. */}
+        <LegalMatterPeopleTable people={packet.people} panel={{ acts: people?.acts ?? null }} />
         <SectionTitle doors={first ? <Door label="Pipeline row" onClick={() => props.onFocusJob(first.id)} /> : null}>Jobs in this account</SectionTitle>
         <Table head={['Job', 'Name', 'Address', 'Age', 'Basis', 'Balance', '']} numCols={[3, 5]}
           rows={a.jobs.map((j) => [

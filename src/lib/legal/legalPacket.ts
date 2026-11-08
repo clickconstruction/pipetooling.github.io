@@ -49,6 +49,7 @@ import { gapAnswerCounts, gapAnswersByKey, type LegalGapAnswer, type LegalGapAns
 import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, legalLastWorkBasis, type LegalLastWorkSource, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline, type LegalMailPieceLike } from './legalLienPaper'
 import { claimRetainage, claimRetainageForAccount, type LegalPayApplicationLike } from './legalClaimRetainage'
 import { claimTyped, type LegalClaimLineLike } from './legalClaimLines'
+import type { LegalMatterPersonLike } from './legalMatterPeople'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -274,6 +275,8 @@ export type LegalPacketInput = {
   payApplications?: ReadonlyArray<LegalPayApplicationLike>
   /** The typed lines of the matter's claim (v2.6679, punch list #171): materials, damages, interest, fees, other, from `legal_matter_claim_lines`. Absent on an older caller, or while the account has no matter: none. */
   claimLines?: ReadonlyArray<LegalClaimLineLike>
+  /** The people on the matter (v2.6705, punch list #174), from `legal_matter_people`: who the letters pick from. Absent on an older caller, or while the account has no matter: none. */
+  people?: ReadonlyArray<LegalMatterPersonLike>
   /** Promise details (who said it, how) — list_job_payment_promises. */
   promises: ReadonlyArray<PaymentPromise>
   /** Promise outcomes (kept / late / broken / open) — classifyPromises over list_payment_promise_records. */
@@ -612,6 +615,8 @@ export type LegalPacket = {
   evidence: LegalEvidenceJob[]
   feesAndSteps: { steps: LegalStep[] }
   theory: LegalTheory
+  /** The people on the matter (v2.6705, punch list #174), in the order added; [] on an older caller or an account with no matter. */
+  people: LegalMatterPersonLike[]
   worth: LegalWorth
   gaps: LegalGap[]
   /** `warns` counts only the unanswered notes (v2.5920); `answered` is every gap with an answer, red ones included. */
@@ -1257,6 +1262,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     firstRecordedDay: input.firstRecordedDay ?? null,
     feesAndSteps: { steps },
     theory,
+    people: [...(input.people ?? [])],
     worth,
     gaps,
     readiness: { stops, warns, answered, label: readinessLabel },
