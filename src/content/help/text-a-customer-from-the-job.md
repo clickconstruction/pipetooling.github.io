@@ -16,6 +16,8 @@ You can text or email a job's customer right from the job. The message lands in 
 
 The row shows for the office team only. The crew's view of the job keeps the note box as it was.
 
+The customer's email address at the top of the **Job** tab is a door too. Press the address and the customer's sheet opens on **Email**. The small copy press beside it copies the address. Nothing opens your own mail app.
+
 ## From the Pipeline row
 
 The speech bubble beside the customer's name is a shorter way in. It sits on the Pipeline row and on the phone card.
