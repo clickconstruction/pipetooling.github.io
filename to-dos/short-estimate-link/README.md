@@ -2,7 +2,7 @@
 name: "The estimate text's link: short, and on a Click Plumbing address"
 number: 281
 group: ready
-status: asked 2026-11-07 · PR 1 merged the same day as v2.6657 (#7252: the share link in the text, 107 → 75 characters; client only, nothing to push or deploy) · PR 2 and PR 3 planned below
+status: asked 2026-11-07 · PR 1 merged the same day as v2.6657 (#7252: the share link in the text, 107 → 75 characters) · the owner's three calls made 2026-11-07/08 · PR 2 (v2.6677, #7282: the ten-letter code and the guess guard, one migration to push and three functions to deploy) and PR 3 (v2.6678: the link on my.clickplumbing.com/e/<code>, the Worker edit live 2026-11-08 and answering 301) built 2026-11-08, both armed
 summary: >
   The text the Tell the customer sheet sends with an estimate ended in a 107-character link, a
   64-hex token on clicktooling.com, and the owner wants it much shorter and looking like it came
@@ -14,10 +14,10 @@ summary: >
   locks a source after N misses. PR 3 (the owner's Cloudflare rule): the text's link on
   clickplumbing.com/e/<code> or my.clickplumbing.com/e/<code>, a 301 to the app, the app emitting
   that host through one constant beside PORTAL_SHORT_ORIGIN once the owner says the rule is live.
-next: Walk PR 1 on a ZZ Test estimate (the text's link is 75 characters and opens the accept page; Send the link again, then the first text's link still opens). Then the owner's three calls below; PR 2 on call 2, PR 3 on call 1 once his Cloudflare rule answers a curl.
-size: S (PR 1) + S (PR 2, a migration) + XS (PR 3, the owner's Cloudflare rule); left: PR 2 (S) + PR 3 (XS)
-blocker: none for PR 1; PR 3 waits on the owner's host call and his Cloudflare rule
-ver: v2.6657 (PR 1)
+next: After PR 2 merges, `supabase db push` (20261108053000_estimate_short_codes) and deploy get-estimate-for-customer, accept-estimate and log-estimate-option-view; after PR 3 merges and deploys, the owner walks it on a ZZ Test estimate (the text ends in my.clickplumbing.com/e/ and ten letters, opens the accept page, approves an option; Send the link again, then the first text's link still opens). The card closes on that walk.
+size: S (PR 1) + S (PR 2, a migration) + XS (PR 3, the Worker edit); left: the push, the three deploys and the owner's walk
+blocker: none; the owner's walk closes it
+ver: v2.6657 (PR 1) · v2.6677 (PR 2) · v2.6678 (PR 3)
 mockup: not required — the change is the link's length and host in a text that already goes; the before and after are the two lines under The ask
 opinion: build — PR 1 is a kernel and one io method on a link that already exists, PR 2 is one function and one guard, PR 3 is a redirect rule the repo already has a model for
 ---
@@ -98,10 +98,19 @@ PR 2: the pgtest bed for the alphabet, the length and the guard; a live walk as 
 
 ## The owner's calls
 
+Answered 2026-11-07 (calls 2 and 3, the owner's word) and 2026-11-08 (call 1, from the curl, as the owner asked):
+
+1. **`my.clickplumbing.com/e/…`.** The curl of 2026-11-08: the apex and `www` answer `server: GitHub.com` through Fastly with no `cf-ray`, and `dig` reads GitHub Pages' 185.199.x.x addresses and a CNAME to `click-plumbing.github.io`, so the website's DNS is not proxied through Cloudflare and no redirect rule can fire on it; `my.` answers `server: cloudflare` from the Worker. The Worker edit is live (version `0649f1d4`) and `curl -sI https://my.clickplumbing.com/e/abc2def3gh` answers `HTTP/2 301` with `location: https://clicktooling.com/e/abc2def3gh`. Mirrored in `scripts/cloudflare/portal-link-shell.worker.js`.
+2. **10 characters**, with the guard (PR 2, v2.6677).
+3. **The email's link stays long** for now (the lean); one more PR if the owner reads the plain-text link and wants it.
+
+The three as they were put:
+
 1. **The host: `clickplumbing.com/e/…` or `my.clickplumbing.com/e/…`.** The apex is 3 characters shorter and reads as the company; it needs the website's DNS proxied through Cloudflare and no `/e/` page on the site. `my.` is already proxied and worker-fronted (the portal links ride it), one worker edit and nothing on the website. **Lean:** `clickplumbing.com/e/…` if the apex is already proxied, else `my.`; the first curl above says which it is.
 2. **The code's length against guessing: 10 or 12 characters.** With 31 letters, 10 characters is about 8 × 10¹⁴ codes; against a thousand live codes a guesser at a thousand tries a second expects one hit in about 25,000 years, and the guard answers 429 after 20 misses in an hour anyway. 12 characters is a thousand times that. **Lean:** 10, with the guard; the text then reads `clickplumbing.com/e/` and ten letters.
 3. **Should the email's button link go short too?** The button hides the length; the plain-text part of the email shows the URL. Going short there means the email's own token changes shape in `send-estimate-to-customer`, the remail's `findEstimateAcceptUrl` reads the new shape, and the resend's `storeEstimateAcceptUrl` and Copy link show it. **Lean:** not yet; after PR 2 is live, one more PR if the owner reads the plain-text link and wants it.
 
 ## Where it stands
 
+- 2026-11-08: PR 2 built as v2.6677 (#7282): migration `20261108053000_estimate_short_codes.sql` re-states `share_estimate_link` for the ten-letter code and adds `estimate_link_misses` + `estimate_link_miss` with the 429 in the three functions through `_shared/estimateLinkMisses.ts`; the SQL bed extended. PR 3 built as v2.6678 on `claude/281-estimate-short-host`: the Worker's `/e/` lines deployed in the dashboard and mirrored, the `/e/:code` route, `ESTIMATE_SHORT_ORIGIN`, the guide's example. Call 1 settled from the curl (above). Left: the push and the three deploys after PR 2 merges, the `chore(types)` regeneration, and the owner's walk, which closes the card.
 - 2026-11-07: asked; PR 1 built as v2.6657 on `claude/short-estimate-link` (the kernel and its tests, the io method, the sheet, the Estimates page's `estimateId`, the smoke, the band's words, the guide); PR 2 and PR 3 planned above with the owner's Cloudflare steps. Waiting on: the merge and the walk, then the three calls.

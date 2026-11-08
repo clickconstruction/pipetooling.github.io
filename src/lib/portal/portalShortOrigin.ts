@@ -14,3 +14,17 @@ export const PORTAL_SHORT_ORIGIN = 'https://my.clickplumbing.com/'
 export function portalShortUrl(slug: string): string {
   return `${PORTAL_SHORT_ORIGIN}${slug}`
 }
+
+/**
+ * The host the estimate text's link rides (v2.6678, punch list #281 PR 3): the same Worker answers
+ * `my.clickplumbing.com/e/<code>` with a 301 to the app's `/e/:code` route, lower-cased, before the
+ * slug check (the rule went live 2026-11-08 and a curl of `/e/abc` answers 301). Null would send the
+ * text back to the accept page on the app's own origin (`estimateTextShareUrl`). The apex is served
+ * by GitHub Pages with no Cloudflare proxy, so it could not carry a redirect rule.
+ */
+export const ESTIMATE_SHORT_ORIGIN: string | null = 'https://my.clickplumbing.com'
+
+/** `https://my.clickplumbing.com/e/<code>` for a code. */
+export function estimateShortUrl(code: string, origin: string = ESTIMATE_SHORT_ORIGIN ?? PORTAL_SHORT_ORIGIN): string {
+  return `${origin.replace(/\/$/, '')}/e/${encodeURIComponent(code)}`
+}

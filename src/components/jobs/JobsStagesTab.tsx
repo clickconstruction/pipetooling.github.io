@@ -110,6 +110,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobThreadNotes } from '../../hooks/useJobThreadNotes'
 import { useBoardDots } from '../../hooks/useBoardDots'
+import { useBoardCustomerLines } from '../../hooks/useBoardCustomerLines'
 import { canOpenMessages } from '../../lib/gc/access'
 import { useJobsStagesMutations } from '../../hooks/useJobsStagesMutations'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
@@ -852,6 +853,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [customerDoorJob, setCustomerDoorJob] = useState<JobWithDetails | null>(null)
   /** The waiting dots (v2.5632): the jobs whose customer waits in Follow up's Needs a reply, read once per load of the board's jobs. */
   const boardDots = useBoardDots({ enabled: canOpenMessages(authRole), refreshKey: jobs })
+  // The customer's lines on the rows (punch list #125, PR 1): read in the stats' slices below, again when a line lands.
+  const boardCustomerLines = useBoardCustomerLines({ enabled: canOpenMessages(authRole) })
+  const refreshBoardCustomerLines = boardCustomerLines.refresh
   const [lienInstrumentsModal, setLienInstrumentsModal] = useState<{
     job: JobWithDetails
     invoice: JobsLedgerInvoice | null
@@ -2151,9 +2155,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     const ids = threadStatsJobIdsKey ? threadStatsJobIdsKey.split(',') : []
     const t = window.setTimeout(() => {
       void refreshJobThreadStatsForJobIds(ids)
+      // The customer's lines ride the same slices at the same moment (punch list #125, PR 1).
+      void refreshBoardCustomerLines(ids)
     }, THREAD_STATS_STAGES_DEBOUNCE_MS)
     return () => window.clearTimeout(t)
-  }, [authUser?.id, active, jobsListLoading, threadStatsJobIdsKey, refreshJobThreadStatsForJobIds])
+  }, [authUser?.id, active, jobsListLoading, threadStatsJobIdsKey, refreshJobThreadStatsForJobIds, refreshBoardCustomerLines])
 
   function toggleStagesHamMode() {
     setStagesHamMode((prev) => {
@@ -2631,6 +2637,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     onPropertyLinked: propertyKinds.linkJob,
     onOpenCustomerDoor: setCustomerDoorJob,
     boardDotByJobId: boardDots.dotByJobId,
+    customerLinesByJobId: boardCustomerLines.linesByJobId,
     }
   /** The phone rows' kernel input for a job, from the same side maps the cards read. */
   const phoneTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
@@ -4822,6 +4829,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             void loadJobs()
             // Our reply closes their row in Follow up: the dot goes with the next read.
             void boardDots.reload()
+            void boardCustomerLines.reload()
           }}
         />
       ) : null}

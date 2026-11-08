@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { estimateTextLink, pickEstimateTextLink } from './estimateTextLink'
 
 const LONG = `https://clicktooling.com/estimate/accept?t=${'a'.repeat(64)}`
-const SHORT = `https://clicktooling.com/estimate/accept?t=${'b'.repeat(32)}`
+/** The share link since v2.6677 (#281 PR 2): a ten-letter code from the alphabet with no look-alikes. */
+const SHORT = 'https://clicktooling.com/estimate/accept?t=k7mnp2qrst'
 
 describe('the link the estimate text carries (#281 PR 1)', () => {
   it('takes the share link when one came back, and the email’s own when none did', () => {
@@ -12,10 +13,11 @@ describe('the link the estimate text carries (#281 PR 1)', () => {
     expect(pickEstimateTextLink(LONG, '   ')).toEqual({ link: LONG, short: false })
   })
 
-  it('the share link is 32 characters shorter than the email’s: 75 against 107', () => {
+  it('the share link is 54 characters shorter than the email’s: 53 against 107, with a ten-letter code', () => {
     expect(LONG.length).toBe(107)
-    expect(SHORT.length).toBe(75)
-    expect(pickEstimateTextLink(LONG, SHORT).link.length).toBe(75)
+    expect(SHORT.length).toBe(53)
+    expect(SHORT.slice(-10)).toMatch(/^[23456789abcdefghjkmnpqrstuvwxyz]{10}$/)
+    expect(pickEstimateTextLink(LONG, SHORT).link.length).toBe(53)
   })
 
   it('asks the mint once and carries its link', async () => {

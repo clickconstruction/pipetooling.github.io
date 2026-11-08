@@ -34,6 +34,7 @@ import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { BoardDotHover } from '../../lib/flows/stageSends'
+import type { JobActivityMessage } from '../../lib/jobs/jobActivityMessages'
 import CustomerContactCardIcon from '../icons/CustomerContactCardIcon'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
@@ -134,6 +135,12 @@ export type StagesRowRenderContext = {
    * with their newest line on the job (`boardDotsByJob`, read once per board). Absent, or a job not on it, draws none.
    */
   boardDotByJobId?: ReadonlyMap<string, BoardDotHover>
+  /**
+   * The customer's conversation on the row (punch list #125, PR 1): job id → the job's newest three calls, texts, emails
+   * and portal lines between us and the people on it, oldest first, read once per slice of the board beside the thread
+   * stats (`useBoardCustomerLines` over `pipeline_customer_lines`). The office only; absent, or a job not on it, draws none.
+   */
+  customerLinesByJobId?: ReadonlyMap<string, JobActivityMessage[]>
 }
 
 type ContractRowChipOpens = Extract<ContractRowChip, { show: true }>['opens']
