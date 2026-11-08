@@ -225,7 +225,8 @@ describe('LegalPortal — the sample matter', () => {
     await waitFor(() => expect(screen.getByText(/largest balance first/)).toBeTruthy())
     const listed = [...document.querySelectorAll('button b')].map((b) => b.textContent).filter((t) => t === 'Brazos Ridge Contracting' || t === 'Hill Country Dental')
     expect(listed).toEqual(['Brazos Ridge Contracting', 'Hill Country Dental'])
-    expect(document.body.textContent).toMatch(/total demand · balance \$14,400\.00/)
+    // v2.6696 (punch list #171): the demand reads the claim, the open bills inside it (the sample job holds $1,840 of retainage no bill asks for).
+    expect(document.body.textContent).toMatch(/total demand · the claim \$16,240\.00, open bills \$14,400\.00 inside it/)
   })
 
   it('lays the page out by classes the phone query can fold, matters list before the matter (punch list #85 item 8)', async () => {
