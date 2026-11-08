@@ -1,0 +1,5 @@
+# 20261108234500 — development_history_heads (v2.6735)
+
+The Development page's History list read `development_history_entries` whole for a site (punch list #280 PR 1): on the real site 298 KB on every open, two thirds of it the kept mail bodies the page folds at 260 characters. This view hands the list what it draws: every column but the body, `body_head` (`left(body, 400)`) and `body_chars` (`char_length(body)`), so the list folds a long line without carrying its words. The whole body stays on the table and comes down by id when a line's *more ›* is pressed, or once for the site when a search is typed. `security_invoker = true`, so the table's own policies decide what a reader sees; `SELECT` to `authenticated`. No table, so no fences; MCP's `get_history` reads the table whole as before.
+
+Deploy order: the client (v2.6735) reads the view and falls back to the table when PostgREST answers that the view is not there, so either order stands; `check:calls-ahead` holds the Pages deploy until the push regardless. Push, then `npm run gen-types:linked` as its own `chore(types)` PR.

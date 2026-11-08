@@ -76,7 +76,7 @@ The crews' photos draw lines too, at the time they were taken. Photos on one job
 2. Type a name, a number or a word into the search box, marked with a spyglass, to find a line.
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.
 
-A long line shows its first words and a **more** press. Press it and the whole line opens in a window.
+A long line shows its first words and a **more** press. Press it and the whole line opens in a window. The window reads the rest as it opens. A search reads every long line whole.
 
 Three or more like lines on one day fold into one line with the count. Like means the same act on the same record by the same person. Questions, answers and kept entries never fold. A search sees every line.
 
