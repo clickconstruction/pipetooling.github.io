@@ -74,7 +74,7 @@ The button leaves the row once any of these happens.
 - The owner's call is recorded.
 - The GC's written okay is recorded.
 - The affidavit is filed.
-- The GC or the owner answers in Messages and the office records the call or the okay. A reply alone does not close it yet.
+- The GC or the owner answers in Messages. Any line back after the courtesy closes it, on whichever thread they write from.
 
 ## Where the record goes
 

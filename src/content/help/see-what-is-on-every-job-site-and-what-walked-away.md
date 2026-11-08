@@ -2,7 +2,7 @@
 title: see what is on every job site and what walked away
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: materials on site, materials desk, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders
+keywords: materials on site, materials desk, cages, boxes, stencil, missing material, walked away, count, deliveries, land an invoice, manifest, print the manifest, laminate, document holder, print labels, box label, prts.co, map, drive folders, parts book price, price checked, invoice price
 order: 45
 ---
 The Materials tab on Jobs is the office side of the cages and boxes on a big site. It reads the same ledger the crew writes on the phone. You see what came in, what is on site, what was used and what is missing, job by job.
@@ -27,7 +27,7 @@ Press {{button:outline|Add a container}} to add a cage or box with its stencil a
 
 The table holds one row per part. It reads what was bought and what was added on site. Then what was used, returned, taken or damaged, and what the crew could not find. Then what is still on site and what walked away. Below it, **Reported this week** lists each short count and each Can't find with the person and the day.
 
-The money uses the price typed off the invoice that landed the part. A part with no price shows its count alone.
+The money uses the parts book's price. Beside each figure a small chip reads {{chip:gray|parts book · checked Oct 3}}, the day someone last checked that price. The chip turns amber when the check is older than 90 days. Then the price typed off the invoice that landed the part stands in, and the chip reads {{chip:gray|invoice price}}. A part typed in by name on site has no page in the book, so it keeps the invoice price. A part with no price at all shows its count alone.
 
 ## Land a delivery
 

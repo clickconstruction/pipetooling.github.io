@@ -43,6 +43,22 @@ export const APP_SETTINGS_KEY_DRIVE_TASKS_FOLDER_ID = 'drive_tasks_folder_id' as
  */
 export const APP_SETTINGS_KEY_LINE_BUDGET_SETTINGS_V1 = 'line_budget_settings_v1' as const
 
+/**
+ * JSON in `value_text`: `{ sharePct, period: 'month', paidAt: 'office_signoff' }` (punch list #234 PR 4, v2.6666) — the share
+ * of the labor kept a superintendent is paid, on the owner's calls of 2026-11-07. Master + dev write (a key-scoped UPDATE
+ * policy); the scoreboard's function reads it. @see `src/lib/people/superintendentScores.ts`
+ */
+export const APP_SETTINGS_KEY_SUPERINTENDENT_BONUS_V1 = 'superintendent_bonus_v1' as const
+/** The share, 0–100, from the row's JSON; 10 when the row is missing or broken. */
+export function parseSuperintendentBonusShare(valueText: string | null | undefined): number {
+  try {
+    const n = Number((JSON.parse(valueText ?? '') as { sharePct?: unknown }).sharePct)
+    return Number.isFinite(n) && n >= 0 && n <= 100 ? n : 10
+  } catch {
+    return 10
+  }
+}
+
 /** JSON map in `value_text`: Mercury kind → `{ nickname, color }` for Jobs → Bank Payments. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES = 'bank_payments_kind_badges_v1' as const
 
