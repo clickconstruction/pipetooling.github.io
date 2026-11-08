@@ -1,8 +1,9 @@
 ---
 name: "Intro to plumbing: how water comes in and goes out, in drawings"
 number: 119
+flagged: true
 group: close
-status: BUILT 2026-10-18 — the owner said build it, checking the work along the way; PR 1 (the offered state, the pipe drawing language, Start here and all of Water in, eleven lessons and eleven figures shot at three widths in both themes) is v2.5610; PR 2 (Water out, eight lessons and eight figures) is v2.5611; PR 3 (the conditions, eight strips) is v2.5612; PR 4 (Reading the job, three figures, the course whole at thirty lessons) is v2.5613; PR 5 (the owner's read-through, ten more drawings where a fact was words alone and three drawings reused with their own captions) is v2.5619; PR 6 (the fourteen-year-old's read: every trade word taught where it is first met, lessons 15 and 27 each cut to one fact, the trade-word rule in the content test) is v2.5621; left: the owner's read-through and On in Settings → Training; the six calls taken as drawn until the owner says otherwise
+status: BUILT 2026-10-18 — the owner said build it, checking the work along the way; PR 1 (the offered state, the pipe drawing language, Start here and all of Water in, eleven lessons and eleven figures shot at three widths in both themes) is v2.5610; PR 2 (Water out, eight lessons and eight figures) is v2.5611; PR 3 (the conditions, eight strips) is v2.5612; PR 4 (Reading the job, three figures, the course whole at thirty lessons) is v2.5613; PR 5 (the owner's read-through, ten more drawings where a fact was words alone and three drawings reused with their own captions) is v2.5619; PR 6 (the fourteen-year-old's read: every trade word taught where it is first met, lessons 15 and 27 each cut to one fact, the trade-word rule in the content test) is v2.5621; left: the owner's read-through and On in Settings → Training; the six calls taken as drawn until the owner says otherwise · 2026-11-08 the careful read of every lesson is briefed for a session on another computer (§ Pick up), nothing read from this machine
 summary: >
   The second training course: thirty five-minute lessons on how a house's plumbing works, for
   understanding and not for estimating. Part 1 is water in under pressure, from the meter to the
@@ -13,7 +14,7 @@ summary: >
   first-timer's mistakes. The course rides the Training mechanism built for the OSHA 30 refresher
   and adds one thing to it, an offered state so a course can be open to every role and required
   for some. The owner, a master plumber, co-writes and corrects every lesson.
-next: The owner reads the course as a dev preview, corrects any fact or number in place, then presses On in Settings → Training; delete this folder once the first crew member has been through it.
+next: A session on another computer picks up § Pick up — reads the thirty lessons as the dev preview and lists every doubted fact under § Read-through for the owner, fixing only a typo or a plain-words break; the owner's own correction pass and his press to On in Settings → Training stay his; delete this folder once the first crew member has been through it.
 size: L (PR 1 is M; each part is an M PR of eight to ten drawings; the owner's corrections ride each one)
 blocker: none; the six calls are built to the drawn leans and each is one row in Settings or one line in a lesson.
 opinion: build it as outlined once the owner has corrected it; the drawings are the course, the mechanism is one column and one row on the card.
@@ -359,3 +360,58 @@ Not drawn, on purpose: a figure inside a check question (#116's open call 3) and
   green on the spot, with no second pass.
 - Every drawing read at 375, 768 and 1280 px in light and dark, with no sideways scroll and the
   caption under it; VoiceOver reads the caption.
+
+## Pick up (2026-11-08)
+
+The owner asked, 2026-11-08, that the course read-through run from a session on another computer,
+so this section is the whole brief: a session that opens this card cold can start at once. Nothing
+was read or pressed from the session that wrote it. The read comes first; #111's walk
+(`to-dos/training/README.md` § Pick up) follows it, because the switch that walk proves is the one
+the owner presses only after this read.
+
+**The rules, from the owner.** Work in his Chrome on that computer, signed in as the owner, through
+Claude in Chrome: open your own tab, work only in it, never close, select or act in another tab,
+and keep every click inside clicktooling.com. Other sessions may share that Chrome: a View as there
+swaps the whole browser's session for minutes, and a window resize moves every coordinate, so prefer
+element refs over coordinates and hold a write while the tab reads as someone else. Open Settings →
+Release notes first and confirm the top entry is v2.6691 or later; an older one is the stale
+service-worker bundle, so reload until it is current. Every step on a test account or reversible.
+The repo is public: no customer or private name in anything committed.
+
+**Where the course is.** The live page is `/training/intro-to-plumbing`; a course previews while
+it is off, from the dev's Settings → Training (`/settings?tab=settings-training`) through its
+**Preview the course** link (v2.5577) or by the path itself. Its words live in
+`src/content/training/intro-to-plumbing/`: `course.md`, the thirty lessons `01-…` to `30-…`, and
+`final-bank.md`; its drawings are the components under `src/components/training/figures/` named by
+the `{{figure:<name>|<caption>}}` lines. The gates are `src/lib/training/courseContent.test.ts`
+(the shape, the plain words, the trade-word rule, the figure names both ways) and
+`src/lib/training/figures.test.ts`. The plain-words rules are `src/lib/plainWords.ts`.
+
+**The read.** Read every lesson on the live page as a careful plumbing reader would, all five
+sections, the figure and its caption, and the final bank at the end. List each fact, number, code
+reference or drawing label you doubt as one row under a `## Read-through <date>` section on this
+card: the lesson's number and title, the sentence as it stands, and why you doubt it, in one line
+each. The tables under § The outline carry every number the course teaches, so they are the
+checklist; owner's call 5 (the IPC and the UPC give different trap-arm and vent numbers, and the
+owner names the code) is the lens for every code figure, and a drawing whose labels disagree with
+its lesson's words is a row too. Doubt is the bar, not certainty: the list is for the owner's
+correction pass, and a master plumber decides. Fix in place only a plain typo or a sentence that
+breaks `plainWords.ts`, never a fact or a number; a reword never voids a pass, since the content
+version hashes the words (v2.5569). Such a fix is its own small PR with a claimed version
+(`npm run claim`), its release note and its fragment, and the two tests above green.
+
+**Done looks like.** The `## Read-through <date>` section on this card with its rows and the count
+in its first line; the `status` and `next` lines amended, `next` saying the read is done and the
+owner's correction pass and his press to On stay his; a dated line under § Where it stands; the
+card shipped as one docs-only PR (`gh pr create`, `gh pr merge --auto`; no version claim for a
+docs-only change; `npm run check:todos` green), the one press on Auto-fix in the PR bar named in
+the wrap-up for the owner; the second PR for any typo or plain-words fix; a session card dropped in
+the main checkout's `.claude/sessions/active/` while the work runs and removed when it is done
+(`docs/SESSIONS.md`). The report to the owner carries the count of doubted facts and any defect in
+one line each.
+
+## Where it stands
+
+2026-11-08: at the owner's word the read-through moves to a session on another computer; § Pick up
+above is its brief. No lesson was read on the live page and nothing in the course or in Settings
+was touched from this machine. The course stays off and offered, as v2.5610 seeded it.

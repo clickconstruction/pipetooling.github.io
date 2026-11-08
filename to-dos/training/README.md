@@ -1,8 +1,9 @@
 ---
 name: "Training: courses the crew takes at their own pace, with a clock on each"
 number: 111
+flagged: true
 group: close
-status: BUILT and LIVE 2026-10-16; the fourteen-year-old's read over the OSHA refresher, every OSHA word met first where it is explained by adding words only, is v2.5624 (2026-10-18) — the six PRs (#5758, #5757, #5761, #5762, #5763, #5764), the types regen #5759 and the test fix #5768 merged; migration 20261015060000 on prod (drift 925/925), dev-mcp redeployed; walked live as the dev on prod data (the course page previews while off, lesson 19 recorded a pass, the Settings tab flips the policy, the Dashboard card read red with Continue and the People rail read the need while the course was on for devs, then the policy was put back: off, required for the five field roles); left: the owner or a dev presses On in Settings → Training, then the crew walk
+status: BUILT and LIVE 2026-10-16; the fourteen-year-old's read over the OSHA refresher, every OSHA word met first where it is explained by adding words only, is v2.5624 (2026-10-18) — the six PRs (#5758, #5757, #5761, #5762, #5763, #5764), the types regen #5759 and the test fix #5768 merged; migration 20261015060000 on prod (drift 925/925), dev-mcp redeployed; walked live as the dev on prod data (the course page previews while off, lesson 19 recorded a pass, the Settings tab flips the policy, the Dashboard card read red with Continue and the People rail read the need while the course was on for devs, then the policy was put back: off, required for the five field roles); left: the owner or a dev presses On in Settings → Training, then the crew walk · 2026-11-08 the On, View as, Off proof of the switch is briefed for a session on another computer (§ Pick up), nothing pressed from this machine
 summary: >
   A Training section at the bottom of the Dashboard, under My Time, where each person sees the
   courses their role must take, in one of three states: not done (red), done but lapsed or
@@ -12,7 +13,7 @@ summary: >
   everyone take it again. The People rail and the Users row carry a training chip beside the
   paperwork ones. The first course is the OSHA 30 refresher, 30 lessons plus a final check,
   built from the owner's capture of the ClickSafety course.
-next: Press On in Settings → Training (the one press left; it puts the red card in front of every helper, sub, primary, master and superintendent at once), watch the first crew member through a lesson, then use it for a week and answer the seven calls at the mock-up's foot; delete this folder once nothing comes up.
+next: A session on another computer picks up § Pick up after #119's read — On for Intro to plumbing in Settings → Training, the helper's red card and first lesson through View as, Off within minutes, both states shot; the owner's own press to On after his correction pass stays his, then the first crew member through a lesson, a week of use and the seven calls at the mock-up's foot; delete this folder once nothing comes up.
 size: L (six PRs, each S or M; the lesson rewrite into plain words is the biggest single piece)
 blocker: none; the seven calls are built to the drawn leans and each is one constant or one Settings number.
 opinion: build it as drawn; the Dashboard section and the course page are the feature, the rest is wiring the three states into places that already show paperwork state.
@@ -319,3 +320,64 @@ over the inline sizes, the fourth PR):
 - A twin or a View-as sample cannot write a pass (the fence refuses it with the house words).
 - `npm run typecheck`, the content test (plain words, four questions a lesson, no Appendix B
   question), the SQL bed, the render smokes for the card, the page and the Settings tab.
+
+## Pick up (2026-11-08)
+
+The owner asked, 2026-11-08, that the switch be proved from a session on another computer, so this
+section is the whole brief. It runs after #119's read (`to-dos/intro-plumbing/README.md` § Pick up),
+and it proves the switch in its reversible shape: On for minutes, then Off, with the final On left
+to the owner. Nothing was pressed from the session that wrote it.
+
+**The rules, from the owner.** Work in his Chrome on that computer, signed in as the owner, through
+Claude in Chrome: open your own tab, work only in it, never close, select or act in another tab,
+and keep every click inside clicktooling.com. Other sessions may share that Chrome: a View as there
+swaps the whole browser's session for minutes, and a window resize moves every coordinate, so prefer
+element refs over coordinates and hold a write while the tab reads as someone else. Open Settings →
+Release notes first and confirm the top entry is v2.6691 or later; an older one is the stale
+service-worker bundle, so reload until it is current. Every step on a test account or reversible.
+The repo is public: no customer or private name in anything committed.
+
+**What the switch does, and why it is minutes.** The policy is the company's, not a sample's: the
+moment a course is On, every real person of a required role who opens the Dashboard in that window
+sees the red card. Intro to plumbing is required of helpers alone and offered to everyone else
+(#119, owner's call 1 as drawn), so it is the course to press, and the window is kept under ten
+minutes, in an hour the crew is off the app. The OSHA refresher's switch stays as it is.
+
+**The steps, each shot to the session's scratchpad.**
+
+1. As the owner, open Settings → Training (`/settings?tab=settings-training`). Note every course's
+   switch and its Required for chips as they stand, so the end matches the start. Shot
+   `111-settings-before`.
+2. Press **On** on Intro to plumbing. The row's counts line turns live. Shot `111-settings-on`.
+3. Open the View as door, the Settings rail's chip **View as…** (`/settings#view-as`,
+   `docs/ACCESS_CONTROL.md` → Sample accounts), and pick the helper's sample under Roles. Open the
+   Dashboard. Under My Time the Training card reads red, *1 course to do*, with the Intro to
+   plumbing row, its size line and **Start**. Shot `111-helper-card-on`. A View as swaps the whole
+   browser's session, so every other tab in that Chrome reads as the helper until Exit: move
+   through steps 3 to 5 without a pause.
+4. Press **Start**. The course page `/training/intro-to-plumbing` opens with its rail; open lesson 1
+   and answer its four Check yourself questions. Shot `111-helper-lesson-1`. The mark may land or be
+   refused: the fence holds a View as sample off `training_lesson_passes` (§ How to verify), so a
+   refusal in the house words is the fence working, not a defect, and the rail's tick and the
+   card's *1 of 30 lessons* then stay for the owner's first real helper. Record which it was. If the
+   mark lands, it lands on the sample account and nobody's record.
+5. **Exit** View as. As the owner, back in Settings → Training, press **Off** on Intro to plumbing.
+   Shot `111-settings-off`. Then View as the helper's sample again, open the Dashboard and confirm
+   the Training card draws no Intro to plumbing row (with the refresher off too, the card itself is
+   gone). Shot `111-helper-card-off`. Exit View as. Settings → Training must read as shot 1 did.
+
+**Done looks like.** A dated line per step under § Where it stands naming its shot and what it
+read, with any defect in one line; the `status` and `next` lines amended, `next` saying the switch
+is proved both ways and the owner's own press to On, after his correction pass of #119, stays his;
+the card shipped in the same docs-only PR as #119's read (`gh pr create`, `gh pr merge --auto`; no
+version claim; `npm run check:todos` green), the one press on Auto-fix in the PR bar named in the
+wrap-up for the owner; the session card in the main checkout's `.claude/sessions/active/` removed
+when done. The report to the owner names the shots and whether the lesson mark landed or was
+refused.
+
+## Where it stands
+
+2026-11-08: at the owner's word the On, View as, Off proof moves to a session on another computer;
+§ Pick up above is its brief. Nothing was pressed in Settings → Training from this machine; both
+courses stand as they did, the refresher off and required for the five field roles, Intro to
+plumbing off and offered.
