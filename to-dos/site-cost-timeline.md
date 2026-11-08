@@ -16,7 +16,7 @@ summary: >
 next: the owner's two calls, the jobs with no dated event and the phone's view switch (the screenshots for both are named under Where it stands); the two defects from the 2026-11-08 walk, the end labels colliding and the chip's cent; then delete this card.
 size: M (PR 1 the view, the two lines, the chips, the reads) + S (PR 2 the overhead band) + M (PR 3 value created, Print / Save as PDF)
 blocker: None.
-mockup: not required — the chart is the Job Summary's Charges & Value chart at the site's scale, nothing new in shape; the owner approved the written draft in chat on 2026-11-03 and asked for it in its own session
+mockup: site-cost-timeline-before-after.html — the owner's two calls drawn (2026-11-08): the jobs with no dated charge or payment, today's count line beside a grey ledger strip under the chart, and the phone's view switch, A as built beside B, at 375 wide and on a computer; the build itself needed none, the chart is the Job Summary's at the site's scale and the owner approved the written draft in chat on 2026-11-03
 ver: v2.6493 · v2.6498 · v2.6499
 opinion: build — the kernel, the chart view and every read exist; the work is a job id on the events, one batched read per source over the site's jobs, and a chip row
 ---
@@ -49,11 +49,17 @@ He approved the written draft the same day and asked for it in its own session.
   biggest first.
 - **Job chips** above the chart narrow it to one or more jobs; *All jobs* is the default, the chips
   in the Money look's section order. A job with no dated event is left out, and one line counts how
-  many. Open question for the owner: whether those jobs should be shown another way.
+  many. Open question for the owner: whether those jobs should be shown another way. The mock-up
+  (`site-cost-timeline-before-after.html`, part 1) draws today's count line beside the strongest other
+  way, a grey ledger strip under the chart that lists each such job with its cost and its reason, so
+  the chart's end plus the strip is the Scoreboard's Cost figure; it says why not a bar at the right
+  edge or the kernel's "No date" bucket. Awaiting the owner's pick.
 - **The phone's view switch.** With three chips, *Where the money is* stacked four lines tall at 375
   wide. PR 1 lays the three on one full row in the card's head with the GC Review link under them
   (placement A, built); the other placement, a chip row at the top of the card's body at every
-  width (B), was mocked live. Open question for the owner: A or B.
+  width (B), was mocked live. Open question for the owner: A or B. The mock-up (part 2) draws A and
+  B at 375 wide and on a computer, where B costs one more row inside the card, about 30 px, before
+  the job chips. Awaiting the owner's pick.
 - **Reads start only when the view opens**, as the Scoreboard's do, and every one is batched over
   the site's jobs and paged: the cost rows are the ones `useSiteCosts` already reads for the Costs
   column and the Scoreboard (with their dates), so the Timeline, the column and the board say one
