@@ -1,7 +1,7 @@
 /**
  * Materials on site (punch list #209): the facts the desk, the Job window's tab, the ⋯ menu and the
  * Needs you line read about one job, from its containers and movements. Not pure: the money reads
- * the spike's demo prices until the parts book's prices are wired.
+ * the store's `priceOf` (the parts book's price, the invoice's past 90 days — `bookPrice.ts`).
  */
 import { containerLines, countDiffs, countIsDue, lastCountedAt, missingMoney, partKey, type Container, type Movement } from './onSite'
 import { priceOf } from './onSiteStore'
