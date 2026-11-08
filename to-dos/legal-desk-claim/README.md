@@ -2,7 +2,7 @@
 name: "Legal desk: the claim, not only the open balance"
 number: 171
 group: gated
-status: proposed 2026-10-24 · rank 6 of 10 from the review of the Burd matter (job 891) · step 2's tile built as v2.5849 (How much? and What's left for us? read the claim as the open bills plus the retainage held, from the job rows; since v2.6103, #213, only the retainage no sent bill already carries) · steps 1 and 3 not built (the claim table, the floor against the claim, the print)
+status: Do 2026-11-07 · rank 6 of 10 from the review of the Burd matter (job 891) · step 2's tile built as v2.5849 (How much? and What's left for us? read the claim as the open bills plus the retainage held, from the job rows; since v2.6103, #213, only the retainage no sent bill already carries) · step 1 built as v2.6679 (the claim table on the Account tab over legal_matter_claim_lines, the two rows that fill in, add · edit · remove) · steps 2 and 3 in the same train
 summary: >
   The desk sizes a case by its open bills: *How much?* is the balance, and *What's left for us?*
   and the settlement floor work from it. A dispute can claim more than the bills say, such as
@@ -10,7 +10,7 @@ summary: >
   each with an amount, its basis (a statute or a contract clause) and the document behind it. The
   open bills and the retainage held fill in on their own. *How much?* shows the claim with the
   balance inside it, and the floor can be set against either.
-next: The owner's look at the mock-up (mockup.html beside this file, 2026-10-26) — Do, Later or Drop; on Do, PR 1 is the claim table; #165 picked the one source for the retainage row (v2.6010 to v2.6027).
+next: PR 2 folds the typed lines into How much? and What's left for us?; PR 3 prints the table with the packet and answers the floor call (the floor was retired by v2.6170, so the claim feeds the bars and the paths instead); then the owner's look at the desk, with the two open decisions below.
 size: M (a table, the tile, the floor, the packet's print)
 blocker: >
   The owner's pick.
