@@ -145,7 +145,26 @@ The same address may also sit under **Attachments** as a chip. That chip is our 
 
 The link works in the thread too, under the message's line. Press the words beside it to open the message.
 
-An email reads as plain words, not as the sender's own layout. The app does not keep that layout yet.
+An email can also read as the sender laid it out. [Read an email as the sender laid it out](#read-an-email-as-the-sender-laid-it-out) shows the switch.
+
+## Read an email as the sender laid it out
+
+An email that came in after November 8, 2026 keeps the sender's own layout. Two chips sit above its words: {{chip:blue|Rich text}} and {{chip:gray|Plain}}.
+
+1. Press {{chip:blue|Rich text}}. The email reads as the sender laid it out, with its tables, numbered lists and linked words.
+2. Press a linked word. The link opens in a new tab.
+3. Press {{button:outline|Show pictures}} to load the sender's pictures. Pictures stay off until you press it.
+4. Press {{chip:gray|Plain}} to go back to the plain words.
+
+The app remembers your choice on this device. The next email you open reads the same way.
+
+Pictures start off for a reason. A loaded picture tells the sender you opened the email. A tracking pixel is a tiny hidden picture that does only that. The app never loads one.
+
+The rich view keeps nothing that can run. Scripts, forms and the sender's page styles are taken out.
+
+An older email has no chips and reads as plain words only.
+
+{{button:outline|Copy}}, {{button:outline|Print or save as PDF}} and {{button:outline|Share…}} still use the plain words.
 
 ## Call or write to a number in an email's words
 

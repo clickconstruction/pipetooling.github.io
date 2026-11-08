@@ -1,21 +1,30 @@
 ---
 name: "Messages: an email as rich text, the HTML part kept"
 number: 259
-group: gated
-status: proposed 2026-11-04 from Grace's ask on the email viewer · v2.6508 shipped the plain view's one-press links and bold
+group: close
+status: built 2026-11-08 on the owner's yes of 2026-11-07 · PR 1 v2.6675 (#7280, the reader keeps the HTML part, one migration) and PR 2 v2.6676 (the Rich text · Plain switch) queued with auto-merge · the live check is the owner's
 summary: >
   Grace asked to read an email as rich text or as plain words, the reader's choice. The bids@ reader
-  keeps an email's words as text and its links as rows; the HTML part is kept nowhere, so there is
-  nothing to draw yet. Keeping it is a gmail-sync change with a storage cost and a migration, and the
-  owner's call before any switch is built.
-next: The owner says whether every inbound email's HTML is worth keeping. Then PR 1 keeps it and PR 2 draws it behind a Rich text · Plain switch.
+  now keeps each inbound email's HTML part at <line id>/body.html in the message-attachments bucket,
+  messages.body_html_path naming it, and the message window draws Rich text · Plain over the words,
+  the rich view through DOMPurify pinned with pictures off until Show pictures. Older lines stay plain.
+next: The owner's live check once PR 1's migration is pushed and gmail-sync redeployed, then PR 2 deployed. Open one real email in Messages that came in after the redeploy, press Rich text, press Show pictures. Delete nothing, the check reads.
+ver: v2.6675 (PR 1) · v2.6676 (PR 2)
 size: M · PR 1 the reader's write and a migration · PR 2 the switch, a sanitizer and images off until pressed
-blocker: The owner's call on storing the HTML part of every inbound email; the repo holds no sanitizer for mail HTML yet
+blocker: none since the owner's yes of 2026-11-07
 opinion: keep it as `<line id>/body.html` in the private message-attachments bucket, never a column; draw it through DOMPurify pinned, scripts, forms, remote styles and tracking pixels stripped, images off until Show pictures; every link opening in a new tab as the plain view's do
 mockup: not required — the switch is two chips over the words the viewer already draws; the decision is about storage, not a screen
 ---
 
 # Messages: an email as rich text, the HTML part kept (#259)
+
+## Where it stands
+
+Built 2026-11-08, the night after the owner's yes. PR 1 (v2.6675, #7280) is the reader's write: `EmailIn.html`,
+`keepHtml` in `gmail-sync`, the column `messages.body_html_path` (`20261108020000_messages_body_html_path.sql`). PR 2
+(v2.6676) is the switch: `RichMailView.tsx` over `richMailIo.ts`, `richMail.ts` and `richMailDom.ts`, DOMPurify 3.4.17
+pinned, the guide section *Read an email as the sender laid it out*. Order on prod: push the migration, deploy
+`gmail-sync`, then PR 2's client (`check:calls-ahead` holds it until the push). The live check below is the owner's.
 
 ## The ask
 
@@ -63,6 +72,8 @@ doubled `url <url>` reads once, the sender's `*bold*` reads bold.
 
 ## How to verify
 
-Dev server as the dev, a ZZ Test thread with an email that carries a table and a linked word: Plain
-reads the v2.6508 view, Rich text reads the table, the linked word opens in a new tab, pictures stay
-blank until pressed, the choice survives a reload. Delete the ZZ rows after.
+The owner, on the live app once the reader is redeployed: open one real email in Messages that came in
+after the redeploy (an older line draws no chips). Plain reads the v2.6508 view. Press **Rich text**: the
+sender's table and linked words read as laid out, a linked word opens in a new tab, pictures are blank.
+Press **Show pictures**: the sender's pictures load. Reload: the window opens on Rich text. Nothing to
+delete, the check only reads.
