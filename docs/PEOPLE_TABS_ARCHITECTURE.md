@@ -36,7 +36,7 @@ Tabs switch on a single `activeTab` state (330, `useState<PeopleTab>`). The `Peo
 ```
 'scoreboard' | 'review' | 'hr' | 'person' | 'users' | 'subs' | 'overhead' | 'employment'
 | 'pay_stubs' | 'hours' | 'offsets' | 'vehicles' | 'housing' | 'licenses'
-| 'contracts' | 'writeups' | 'feedback' | 'activity' | 'day_book' (v2.3542) | 'whos_where' (v2.3607) | 'spending' (v2.4602)
+| 'contracts' | 'writeups' | 'feedback' | 'activity' | 'day_book' (v2.3542) | 'whos_where' (v2.3607) | 'spending' (v2.4602) | 'utilization' (v2.6708)
 ```
 
 ### Six top-level groups (v2.2811)
@@ -44,7 +44,7 @@ The strip shows **six group tabs** and a **second row** listing the active group
 
 | Group | Views (row order) | Shows when |
 |---|---|---|
-| People | `users` · `subs` · `person` · `spending` · `day_book` · `whos_where` | Always. `person` needs `canOpenPersonDesk(authRole)`. `spending` needs `canOpenSpending(authRole)` (the office roles, v2.4602). `day_book` needs `canSeeDayBook` (devs and controllers since v2.3732). `whos_where` needs `canSeeWhosWhere`. |
+| People | `users` · `subs` · `person` · `spending` · `day_book` · `whos_where` · `utilization` | Always. `utilization` needs `canOpenHoursTab` (v2.6708). `person` needs `canOpenPersonDesk(authRole)`. `spending` needs `canOpenSpending(authRole)` (the office roles, v2.4602). `day_book` needs `canSeeDayBook` (devs and controllers since v2.3732). `whos_where` needs `canSeeWhosWhere`. |
 | Pay | `hours` · `pay_stubs` · `offsets` · `employment` · `overhead` | `canOpenHoursTab` / `canAccessPay` / `canAccessOverheadTab` |
 | Paperwork | `contracts` · `licenses` · `writeups` · `hr` | `canAccessContracts` / `canAccessLicenses` / `isDev` (HR) |
 | Fleet & Housing | `vehicles` · `housing` | `canAccessVehicles` / `canAccessPay` |
