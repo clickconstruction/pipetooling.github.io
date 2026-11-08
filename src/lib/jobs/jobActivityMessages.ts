@@ -48,6 +48,8 @@ export interface JobActivityMessageFacts {
   id: string
   contactId: string
   tone: JobActivityMessageTone
+  /** How it came (v2.6691): a Reply answers an email by email and anything else by text. */
+  channel: MessageChannel
   /** The small word after the name: "text", "email", "call · 3:12", "missed call", "note in Messages". '' on an event. */
   channelWord: string
   /** An email's subject, set in bold before its words. */
@@ -157,6 +159,7 @@ export function messageLineParts(m: JobActivityMessage): { who: string; body: st
       id: m.id,
       contactId: m.contactId,
       tone: messageTone(m),
+      channel: m.channel,
       channelWord: messageChannelWord(m),
       subject: m.channel === 'email' ? m.subject?.trim() || null : null,
       notTiedYet: !m.tied,

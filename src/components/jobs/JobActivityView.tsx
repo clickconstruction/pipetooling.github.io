@@ -3,10 +3,17 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { UserRole } from '../../hooks/useAuth'
 import type { JobThreadActivityItem } from '../JobThreadNotesPanel'
 import { JobActivityFeed } from './JobActivityFeed'
-import { buildJobActivityLines, countJobActivityLines, filterJobActivityLines } from '../../lib/jobs/jobActivityLine'
+import { buildJobActivityLines, countJobActivityLines, filterJobActivityLines, type JobActivityLine } from '../../lib/jobs/jobActivityLine'
 import { ACTIVITY_FILTERS, JOB_ACTIVITY_FILTERS, type JobActivityFilter } from '../../lib/jobActivityFilter'
-import { canOpenGcProjects, canReadJobMessages } from '../../lib/gc/access'
+import { canOpenGcProjects, canOpenMessages, canReadJobMessages } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
+import { JobCustomerBox } from './JobCustomerBox'
+import { JobPickerWindow } from '../gc/messages/JobPickerWindow'
+import { searchJobs, tieMessage } from '../../lib/messages/messagesIo'
+import { jobBoxJobKey } from '../../lib/messages/jobBox'
+import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { replyHeadWords, replyKindFor } from '../../lib/jobs/replyHeadWords'
 import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import type { StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { clampCompletenessPct } from '../../lib/jobs/jobCompleteness'
@@ -35,7 +42,15 @@ import { canOpenMoneyStory, moneyStoryHref } from '../../lib/jobs/moneyStoryDoor
  * pill (`useJobMessages`, `jobActivityMessages.ts`). The read runs under the rows' policies, so a tech gets what R5's
  * door gives them, and the link to a thread shows only to a reader who can open Messages. The feed waits for that
  * read too, so no line's number moves once it shows. Anyone else reads none and sees the feed as before.
+ *
+ * Reply and Tie in place (punch list #125, v2.6691), the office only (`canOpenMessages`): **Reply** on a line from the
+ * customer opens `JobCustomerBox` in the composer's place, tied to this job, an email answered by email and anything
+ * else by text, with a head naming the line and ✕ back to the note pill; a send reads the feed again. **Tie to this
+ * job** on a *not tied yet* line ties it here (`tie_message`, which also puts the job on the person's rail) with Undo
+ * on the toast; **Another job…** opens the job picker. The note pill stays a note the customer never sees.
  */
+
+type MessageLine = Extract<JobActivityLine, { kind: 'message' }>
 
 const ACTION_BTN: CSSProperties = {
   padding: '0.25rem 0.6rem',
@@ -95,9 +110,15 @@ export function JobActivityView({
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
   const [pctNoteError, setPctNoteError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  // Reply and Tie in place (v2.6691): the line being answered, the picker's line, and a count that reads the feed again.
+  const [replyTo, setReplyTo] = useState<MessageLine | null>(null)
+  const [pickerFor, setPickerFor] = useState<MessageLine | null>(null)
+  const [rev, setRev] = useState(0)
+  const { showToast, showActionToast } = useToastContext()
 
   const readsMessages = canReadJobMessages(viewerRole)
-  const messages = useJobMessages(readsMessages ? { id: job.id, status: job.status ?? null, createdAt: job.created_at ?? null } : null)
+  const office = canOpenMessages(viewerRole)
+  const messages = useJobMessages(readsMessages ? { id: job.id, status: job.status ?? null, createdAt: job.created_at ?? null } : null, rev)
   const allLines = useMemo(
     () => (activity && messages ? buildJobActivityLines(activity, { viewerRole, messages }) : null),
     [activity, messages, viewerRole],
@@ -119,6 +140,36 @@ export function JobActivityView({
   )
 
   const jobName = (job.job_name ?? '').trim() || 'this job'
+
+  const reread = () => setRev((n) => n + 1)
+  /** Tie a line here or to the picked job; Undo puts it back on the person. */
+  const tie = async (line: MessageLine, jobKey: string | null, words: string) => {
+    try {
+      await tieMessage(line.message.id, jobKey)
+      reread()
+      if (jobKey) {
+        showActionToast(words, {
+          label: 'Undo',
+          onClick: () => {
+            void tieMessage(line.message.id, null)
+              .then(reread)
+              .catch((e: unknown) => showToast(formatErrorMessage(e, 'untie the line'), 'error'))
+          },
+        })
+      }
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, 'tie the line'), 'error')
+    }
+  }
+  const onTie = (line: MessageLine, choice: 'this' | 'another') => {
+    if (choice === 'another') {
+      setPickerFor(line)
+      return
+    }
+    void tie(line, jobBoxJobKey(job.id), `Tied to ${jobName}.`)
+  }
+  // Reply needs a customer to write to; a job with none keeps the line's thread link alone.
+  const canReply = office && Boolean(job.customer_id)
 
   const post = async () => {
     const body = draft.trim()
@@ -295,9 +346,52 @@ export function JobActivityView({
         threadLinks={canOpenGcProjects(viewerRole)}
         onShowAll={() => setActivityFilter('all')}
         onAddNote={submitNoteWithBody ? () => inputRef.current?.focus() : undefined}
+        onReply={canReply ? (line) => setReplyTo(line) : undefined}
+        onTie={office ? onTie : undefined}
       />
 
-      {submitNoteWithBody ? (
+      {pickerFor ? (
+        <JobPickerWindow
+          title="Tie this line to a job"
+          theirs={[]}
+          searchJobs={(words) => searchJobs(words, new Date().toISOString())}
+          onPick={(key) => {
+            const line = pickerFor
+            setPickerFor(null)
+            if (key) void tie(line, key, 'Tied to the job you picked.')
+          }}
+          onClose={() => setPickerFor(null)}
+        />
+      ) : null}
+
+      {replyTo && canReply ? (
+        /* Reply in place (v2.6691): the customer's box in the composer's place, tied to this job, under a head naming the line. */
+        <div style={{ margin: '0 0.9rem 0.9rem', border: '1.5px solid var(--text-orange-700)', borderRadius: 10, background: 'var(--surface)', padding: '0.5rem 0.65rem' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', marginBottom: 6 }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-orange-700)' }}>{replyHeadWords(replyTo)}</span>
+            <button
+              type="button"
+              onClick={() => setReplyTo(null)}
+              aria-label="Back to the note box"
+              title="Back to the note box"
+              style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: '0.875rem', cursor: 'pointer', padding: '0 4px' }}
+            >
+              ✕
+            </button>
+          </div>
+          <JobCustomerBox
+            kind={replyKindFor(replyTo.message.channel)}
+            jobId={job.id}
+            jobName={jobName}
+            customerId={job.customer_id ?? null}
+            jobStatus={job.status ?? null}
+            onSent={() => {
+              setReplyTo(null)
+              reread()
+            }}
+          />
+        </div>
+      ) : submitNoteWithBody ? (
         pctEditorOpen && canEditPct ? (
           /* % complete editor takes over the composer area: slider on top,
              then [note field | Cancel | Set to N%]. Note required below 100%. */

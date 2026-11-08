@@ -14,9 +14,14 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
-vi.mock('../../lib/messages/messagesIo', () => ({ loadJobMessages: vi.fn() }))
+vi.mock('../../lib/messages/messagesIo', () => ({
+  loadJobMessages: vi.fn(),
+  tieMessage: vi.fn(async () => {}),
+  searchJobs: vi.fn(async () => []),
+  loadCustomerContact: vi.fn(async () => ({ id: 'c-dana', kind: 'customer', name: 'Dana Whitfield', goesBy: null, channels: [], jobs: [], defaultJobId: null })),
+}))
 
-import { loadJobMessages } from '../../lib/messages/messagesIo'
+import { loadJobMessages, tieMessage } from '../../lib/messages/messagesIo'
 import { DANA_JOB_MESSAGES } from '../../test/fixtures/jobActivityMessagesDemo'
 import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { UserRole } from '../../hooks/useAuth'
@@ -30,9 +35,9 @@ afterEach(() => {
   vi.mocked(loadJobMessages).mockReset()
 })
 
-function show(role: UserRole, messages = DANA_JOB_MESSAGES) {
+function show(role: UserRole, messages = DANA_JOB_MESSAGES, over: Record<string, unknown> = {}) {
   vi.mocked(loadJobMessages).mockResolvedValue(messages)
-  const job = makeJob({ id: 'jl-1312', status: 'working', created_at: '2026-10-01T12:00:00Z' } as never)
+  const job = makeJob({ id: 'jl-1312', status: 'working', created_at: '2026-10-01T12:00:00Z', ...over } as never)
   renderWithProviders(<JobActivityView job={job} activity={[note('n-1', '2026-10-06T21:12:00Z', 'Called Dana back. Thursday works for her.')]} upcoming={null} viewerRole={role} narrow={false} />)
 }
 const row = (text: string | RegExp) => screen.getByText(text).closest('[role="button"]') as HTMLElement
@@ -49,7 +54,8 @@ describe('Job activity with a job’s messages (cut 10)', () => {
     expect(within(row('Great. Gate code is 4471.')).getByText('text')).toBeTruthy()
     expect(within(row(/^Asked if Thursday works/)).getByText('call · 3:12')).toBeTruthy()
     expect(within(row('She wants texts after 5, never calls.')).getByText('only the team sees this')).toBeTruthy()
-    expect(within(row('Perfect, thank you. See you Thursday.')).getByText('not tied yet')).toBeTruthy()
+    // The office ties in place since v2.6691: the presses stand where the word did (a tech keeps the word, below).
+    expect(within(row('Perfect, thank you. See you Thursday.')).getByRole('button', { name: 'Tie to this job' })).toBeTruthy()
   })
 
   it('opens a message to its words and a link to her thread', async () => {
@@ -114,5 +120,53 @@ describe('Job activity with a job’s messages (cut 10)', () => {
     expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No activity yet. Add a note starts the thread.')
     fireEvent.click(press)
     expect(document.activeElement).toBe(screen.getByLabelText('Note text'))
+  })
+})
+
+describe('Reply and Tie in place (v2.6691, punch list #125)', () => {
+  it('Reply on her line opens the customer’s box in the composer’s place under a head naming the line, and ✕ closes it', async () => {
+    show('assistant', DANA_JOB_MESSAGES, { customer_id: 'cust-dana' })
+    await screen.findByText('Great. Gate code is 4471.')
+    // Reply sits on her lines alone: none on ours, none on Hector's.
+    expect(screen.getAllByRole('button', { name: /^Reply to Dana’s/ }).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: /^Reply to Hector/ })).toBeNull()
+    fireEvent.click(within(row('Great. Gate code is 4471.')).getByRole('button', { name: 'Reply to Dana’s text' }))
+    expect(screen.getByText(/^Replying to Dana’s text · /)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the note box' }))
+    expect(screen.queryByText(/^Replying to Dana’s text/)).toBeNull()
+  })
+
+  it('no Reply press for a tech, and none on a job with no customer', async () => {
+    show('primary')
+    await screen.findByText('Great. Gate code is 4471.')
+    expect(screen.queryByRole('button', { name: /^Reply to/ })).toBeNull()
+    cleanup()
+    show('assistant', DANA_JOB_MESSAGES, { customer_id: null })
+    await screen.findByText('Great. Gate code is 4471.')
+    expect(screen.queryByRole('button', { name: /^Reply to/ })).toBeNull()
+  })
+
+  it('Tie to this job ties the untied line here and offers Undo; a tech keeps the word', async () => {
+    show('controller')
+    await screen.findByText('Perfect, thank you. See you Thursday.')
+    const untied = row('Perfect, thank you. See you Thursday.')
+    expect(within(untied).queryByText('not tied yet')).toBeNull()
+    fireEvent.click(within(untied).getByRole('button', { name: 'Tie to this job' }))
+    expect(tieMessage).toHaveBeenCalledWith('m-dana-11', 'pipeline:jl-1312')
+    expect(await screen.findByText(/^Tied to /)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy()
+    cleanup()
+    vi.mocked(tieMessage).mockClear()
+    show('primary')
+    await screen.findByText('Perfect, thank you. See you Thursday.')
+    expect(within(row('Perfect, thank you. See you Thursday.')).getByText('not tied yet')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Tie to this job' })).toBeNull()
+  })
+
+  it('Another job… opens the picker', async () => {
+    show('dev')
+    await screen.findByText('Perfect, thank you. See you Thursday.')
+    fireEvent.click(within(row('Perfect, thank you. See you Thursday.')).getByRole('button', { name: 'Another job…' }))
+    expect(await screen.findByText('Tie this line to a job')).toBeTruthy()
   })
 })

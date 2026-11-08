@@ -39,4 +39,26 @@ The job's identity sits at the top. That is the {{chip:blue|Job: 4821}} number b
 **Wed, Aug 12 · 3d ago** — ⑦ `9:45a` **Abraham** — Leaving job · ⑩ `9:57a` **Abraham** — Status Report ▸ 3 answers · ⑪ `9:57a` Abraham — Working → Ready to Bill
 :::
 
+## Answer from the activity
+
+The office can answer the customer without leaving the activity.
+
+1. Find the customer's line. Their lines are orange with the deeper bar.
+2. Press {{button:outline|Reply}} at the line's right. On a phone, open the line first and the press is inside it.
+3. The orange box opens where the note bar was. Its head names the line, like *Replying to Dana's text · 9:05a*.
+4. A text, a call or a voicemail is answered by text. An email is answered by email.
+5. Write the words, or press a quick reply. The lines for the job's stage come first.
+6. Press {{button:blue|Send text…}} or {{button:blue|Send email…}}. The new line lands at the bottom of the feed in orange.
+
+Press the **✕** on the box's head to go back to the note bar. The note bar stays a note. A note never reaches the customer.
+
+## Tie a line to the job
+
+A line from the customer that sits on no job yet shows two presses in place of *not tied yet*.
+
+- Press {{button:outline-blue|Tie to this job}}. The line is tied here and the job goes on the customer's list in Messages. A small message offers **Undo**.
+- Press {{button:outline-blue|Another job…}} to pick a different job. Search by name or number and press the job.
+
+Only the office sees these presses. A tech reads the word *not tied yet* as before.
+
 On a phone the same view fills the screen edge to edge. Each item stays a **single flowing line**: number, time, name, then the text. It wraps neatly past the number column only when you open it.

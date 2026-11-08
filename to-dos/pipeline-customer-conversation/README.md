@@ -1,8 +1,8 @@
 ---
 name: "The customer's conversation on the Pipeline row and in its Job activity"
 number: 125
-group: gated
-status: DRAFTED 2026-10-19 — a review of the Pipeline's Job activity found the customer's conversation split across three places; three options for the row's box, the Customer filter, Reply and Tie in place, and the six phone-app doors drawn at desktop and phone width beside this file for the owner's pick; nothing built
+group: waiting
+status: BUILT 2026-11-08 on the owner's picks of that night — option (a), Customer as everything to or from them, Reply and Tie in place — as four stacked PRs, PR 1 v2.6683 (#7294, the read and its migration `20261108030000_pipeline_customer_lines.sql`, pushed right after its merge), PR 2 v2.6689 (#7297, the box and the phone card), PR 3 v2.6690 (#7298, the Customer filter and the box on one set), PR 4 v2.6691 (Reply and Tie in place); left: the owner's look on the deployed board, and the owner's calls 4 and 5 on the six doors (§ 4), which wait
 summary: >
   The customer's side of a Pipeline job reads in three places and none holds it all. The row's
   activity box shows the team's notes, reports and bill sends but no call, text or email. The
@@ -12,14 +12,21 @@ summary: >
   tied yet. And six doors still hand a send to someone's own phone or mail app, so nothing is
   recorded and the answer goes to that person's phone. Texting through Quo has been live since
   2026-10-16, so every send can go from the company number now.
-next: The owner picks the box's option (a, b or c) and answers the Customer filter's question; PR 1 is the board-wide read.
+next: The owner's look at the box, the Customer pill and Reply on the deployed board after the push (How to verify, PRs 1 to 4); then the owner's calls 4 and 5 (the doors: open the box or send in the press; the contract's typed number), and PRs 5 to 7 go.
 size: S (the read) + S (the box) + XS (the filter) + S (Reply and Tie) + 3 × S (the doors)
-blocker: The owner's pick.
+blocker: The owner's look; calls 4 and 5 for the doors.
+ver: v2.6683 · 6689 · 6690 · 6691
 opinion: build (a), Customer as everything to or from them, Reply and Tie in place, and the doors through the company number; the box is where the office reads what happened last, and v2.5633 already put the bill's send there
 mockup: to-dos/pipeline-customer-conversation/mockup.html
 ---
 
 # The customer's conversation on the Pipeline row and in its Job activity (#125)
+
+## Where it stands
+
+Built 2026-11-08 overnight on the owner's picks of that night, four stacked PRs in the card's order: **PR 1** v2.6683 (#7294) the read, `pipeline_customer_lines(p_job_ids, p_per_job)` in `20261108030000_pipeline_customer_lines.sql` (SECURITY INVOKER, the messages policy decides who reads), called in the thread stats' slices by `useBoardCustomerLines`, carried on the row context as `customerLinesByJobId`, with a SQL bed sharing the kernel test's fixture; the migration is pushed right after the merge, since the client calls it on every load (`check:calls-ahead` holds the deploy). **PR 2** v2.6689 (#7297) the box and the card, option (a) as drawn: unnumbered `line` entries under the orange channel tag, the bar and *Nobody has answered.* on her unanswered newest line, a press opening the sheet, the phone teaser the newest of note, report and line. **PR 3** v2.6690 (#7298) `CUSTOMER_EVENT_TYPES` in `jobActivityEvent.ts`, read by the Customer filter (a lens: the events stay under Billing, counted in their own pass) and by the box in place of `SENT_EVENT_TYPES`, the contract's and release's lines and the promise unnumbered under *Sent*, *Opened*, *Signed*, *Said*; the payment left out as recommended. **PR 4** v2.6691 Reply and Tie in place, the office only: Reply on her lines opens `JobCustomerBox` in the composer's place (an email by email, the rest by text; the box has no subject field yet, so *Re:* waits on one), Tie to this job with Undo on the toast, Another job… through `JobPickerWindow`.
+
+Left: the owner's look (How to verify), and the doors (§ 4, PRs 5 to 7), which wait on the owner's calls 4 and 5 — whether a text door opens the box with its confirm or sends in the press, whether a tech emails from Job Mode at all, and what to do with the contract's typed number when it is not on the contact.
 
 ## What the review found (2026-10-19)
 
