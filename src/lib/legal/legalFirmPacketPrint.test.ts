@@ -87,8 +87,16 @@ describe('buildFirmPacketPrintHtml — the sample matter', () => {
     expect(html).toContain('Balance owed')
     expect(html).toContain('Fees and costs to date')
     expect(html).toContain('Demand as of 2026-10-05')
-    // $14,400 balance + the firm's $450 fee
-    expect(html).toContain('$14,850.00')
+    // v2.6696 (punch list #171): the demand reads the claim — the $14,400 balance plus the $1,840 of retainage the sample job holds that no bill asks for — plus the firm's $450 fee.
+    expect(html).toContain('$16,690.00')
+    expect(html).toContain('<span class="muted">The claim</span><span>$16,240.00</span>')
+    // Section A prints the claim's table, the office's rows marked as filling in, under the jobs and above the statement.
+    expect(html).toContain('<h3>The claim</h3>')
+    expect(html).toContain('<b>Open bills</b> <span class="muted">fills in</span>')
+    expect(html).toContain('<b>Retainage held</b> <span class="muted">fills in</span>')
+    expect(html).toContain('<b>The claim</b></td><td class="num"><b>$16,240.00</b>')
+    expect(html.indexOf('<h3>The claim</h3>')).toBeGreaterThan(html.indexOf('<h3>Jobs in this account</h3>'))
+    expect(html.indexOf('<h3>The claim</h3>')).toBeLessThan(html.indexOf('<h3>Statement of account</h3>'))
   })
 
   it('carries none of the office packet’s own lines', () => {

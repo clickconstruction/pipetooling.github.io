@@ -1,13 +1,15 @@
 /**
  * The Money look's Timeline (v2.6493, punch list #257): the Job Summary's Charges & Value chart over a
  * whole development, for devs and controllers. A chip row narrows the chart to one or more jobs, *All
- * jobs* the default; one line counts the jobs with no dated event; the chart itself is the shared
+ * jobs* the default; one line counts the jobs with no dated event and a grey ledger strip under the chart
+ * lists them with their cost and why they are off it, its sum line the Scoreboard's cost before overhead
+ * (v2.6711, PR 4, the owner's pick 2026-11-08); the chart itself is the shared
  * `JobChargesTimelineChartView`, fed by `lib/developments/siteTimeline.ts`. The selection is a look,
  * forgotten on leaving, as the Scoreboard's order is.
  */
 import { useMemo, useRef, useState, type CSSProperties } from 'react'
 import { JobChargesTimelineChartView } from '../jobs/JobSummaryChargesTimelineChart'
-import { buildSiteTimeline, SITE_TIMELINE_ICON_DAYS_PHONE, siteTimelineEndWords, siteTimelineLeftOutWords, siteTimelinePrintHtml, siteTimelineScopeWords, siteTimelineValueWords, type SiteTimelineJob } from '../../lib/developments/siteTimeline'
+import { buildSiteTimeline, SITE_TIMELINE_ICON_DAYS_PHONE, siteTimelineEndWords, siteTimelineLeftOutReason, siteTimelineLeftOutWords, siteTimelinePrintHtml, siteTimelineScopeWords, siteTimelineStripLines, siteTimelineStripSum, siteTimelineValueWords, type SiteTimelineJob } from '../../lib/developments/siteTimeline'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { EmptyState } from '../EmptyState'
@@ -54,7 +56,7 @@ const chipStyle = (on: boolean): CSSProperties => ({
   textOverflow: 'ellipsis',
 })
 
-export function DevelopmentTimeline({ read, phone }: { read: SiteTimelineViewRead; phone: boolean }) {
+export function DevelopmentTimeline({ read, phone, openJob }: { read: SiteTimelineViewRead; phone: boolean; /** Opens a job from the ledger strip's row (v2.6711); without it the job's name is plain. */ openJob?: (jobId: string) => void }) {
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
   const [printNote, setPrintNote] = useState<string | null>(null)
   const chartRef = useRef<HTMLDivElement>(null)
@@ -89,6 +91,7 @@ export function DevelopmentTimeline({ read, phone }: { read: SiteTimelineViewRea
       return next
     })
   const leftOut = siteTimelineLeftOutWords(model.leftOut)
+  const money = (n: number) => `$${formatCurrency(n)}`
   const valueWords = siteTimelineValueWords(model.valueFallbackJobs)
   // The print (v2.6499): the chart's own SVG as the screen drew it, with the lines around it, into the print window.
   const print = () => {
@@ -106,15 +109,17 @@ export function DevelopmentTimeline({ read, phone }: { read: SiteTimelineViewRea
       siteName: read.siteName,
       customerName: read.customerName,
       scopeLine: document.querySelector('[data-testid="timeline-scope"]')?.textContent ?? '',
-      endWords: siteTimelineEndWords(model.data, (n) => `$${formatCurrency(n)}`),
+      endWords: siteTimelineEndWords(model.data, money),
       keyLines,
       svg: new XMLSerializer().serializeToString(clone),
       printedAt: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
       printedBy: read.printedBy,
+      stripLines: siteTimelineStripLines(model, money),
     })
     setPrintNote(openHtmlPrintWindow(html) ? null : 'The print window was blocked. Allow pop-ups for this site and press again.')
   }
   const jobsWord = model.chips.length === 1 ? 'job' : 'jobs'
+  const strip = model.leftOutJobs.length ? siteTimelineStripSum(model) : null
 
   return (
     <div data-testid="development-timeline" style={{ minWidth: 0 }}>
@@ -145,6 +150,26 @@ export function DevelopmentTimeline({ read, phone }: { read: SiteTimelineViewRea
       <div ref={chartRef}>
         <JobChargesTimelineChartView data={model.data} revenue={null} cardChargesExcluded={false} teamLaborIncluded valueHiddenNote={SITE_VALUE_HIDDEN} valueWords={SITE_VALUE_WORDS} compact={phone} overheadSinceLabel={read.overheadSinceLabel} />
       </div>
+      {strip ? (
+        // The ledger strip (v2.6711): the jobs the chart cannot draw, each with its cost and its reason, and the sum that reconciles to the Scoreboard.
+        <div data-testid="timeline-strip" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px', fontSize: '0.76rem', marginTop: 4, minWidth: 0 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', columnGap: 8, color: 'var(--text-muted)', marginBottom: 2 }}>
+            <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>Not on the chart · {model.leftOutJobs.length} {model.leftOutJobs.length === 1 ? 'job' : 'jobs'}</span>
+            <span>no dated charge or payment</span>
+          </div>
+          {model.leftOutJobs.map((j) => (
+            <div key={j.jobId} data-testid={`timeline-strip-row-${j.jobId}`} style={{ display: 'grid', gridTemplateColumns: phone ? 'minmax(0, 1fr) auto' : 'auto minmax(0, 1fr) auto', columnGap: 10, alignItems: 'baseline', padding: '2px 0' }}>
+              <span style={{ minWidth: 0 }}>{openJob ? <LinkButton onClick={() => openJob(j.jobId)} title="Open the job">{j.label}</LinkButton> : j.label}</span>
+              {phone ? null : <span style={{ color: 'var(--text-muted)', minWidth: 0, overflowWrap: 'anywhere' }}>{siteTimelineLeftOutReason(j)}</span>}
+              <span style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right', color: j.endExpense === 0 ? 'var(--text-muted)' : undefined }}>{money(j.endExpense)}</span>
+              {phone ? <span style={{ color: 'var(--text-muted)', gridColumn: '1 / -1', overflowWrap: 'anywhere' }}>{siteTimelineLeftOutReason(j)}</span> : null}
+            </div>
+          ))}
+          <div data-testid="timeline-strip-sum" style={{ borderTop: '1px solid var(--border-strong)', marginTop: 4, paddingTop: 4, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+            Chart ends at {money(strip.chartEnd)} · Not on the chart {money(strip.offChart)} · <strong>Together {money(strip.together)}</strong>, the Scoreboard’s cost before overhead
+          </div>
+        </div>
+      ) : null}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 4, fontSize: '0.78rem' }}>
         {printNote ? <span style={{ color: 'var(--text-muted)' }} data-testid="timeline-print-note">{printNote}</span> : null}
         <LinkButton onClick={print} title="Opens the chart in a print window; the print window saves it as a PDF too">

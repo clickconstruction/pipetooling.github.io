@@ -15,7 +15,8 @@ import { checkSupabaseError } from '../../utils/errorHandling'
 import { customerLang } from '../messages/customerLang'
 import { contactForCustomer } from '../messages/messagesIo'
 import { jobKey } from '../messages/jobKeys'
-import { supabaseReplyIo } from '../messages/replyIo'
+import type { RecipientLine } from '../messages/compose'
+import { makeUsualChannel, supabaseReplyIo } from '../messages/replyIo'
 import { supabaseEstimateLinkIo } from '../messages/estimateLinkIo'
 import { estimateTextShareUrl } from './estimateTextLink'
 import { supabaseOffersIo } from '../offers/offersIo'
@@ -46,12 +47,16 @@ export interface TellNumber {
   value: string
   /** They sent STOP (the older, every-box stamp). */
   stopped: boolean
+  /** When the office made it their usual (punch list #118); null or unset when never. */
+  usualAt?: string | null
 }
 
 export interface TellContact {
   contactId: string
-  /** Their phone numbers, oldest first. */
+  /** Their phone numbers, oldest first. The sheet orders them by the recipient rule (`numberOrder`). */
   numbers: TellNumber[]
+  /** The thread's texts, in and out, by number and when (punch list #118): the chip's *last line* words. Unset: none read. */
+  lines?: RecipientLine[]
   /** How they asked to hear from us (v2.5597); null when nobody said. */
   prefers: TellPrefers
 }
@@ -92,6 +97,8 @@ export interface TellCustomerIo {
   loadMyWay(userId: string): Promise<MyWays>
   /** Make this the office's line (v2.5597): the edited words, blanks back, as the step's team line; the Spanish when the customer reads it. */
   saveOfficeLine(input: { lineId: string | null; stepKey: string; text: string; lang: PortalLang }): Promise<void>
+  /** The To chip's tick (punch list #118, PR 2): make this number their usual, through `contact_channel_make_usual`. A smoke may leave it out. */
+  makeUsual?(channelId: string): Promise<void>
 }
 
 /** What the residential flow's step says about the call after its text. */
@@ -142,17 +149,21 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
     },
     async loadContact(customerId) {
       const contactId = await contactForCustomer(customerId)
-      const [channels, who] = await Promise.all([
-        db.from('contact_channels').select('id, kind, value, opted_out_at, created_at').eq('contact_id', contactId).order('created_at'),
+      const [channels, who, texts] = await Promise.all([
+        db.from('contact_channels').select('id, kind, value, opted_out_at, usual_at, created_at').eq('contact_id', contactId).order('created_at'),
         // Their say (v2.5597): a column a client ahead of the push reads as null.
         db.from('contacts').select('prefers').eq('id', contactId).maybeSingle(),
+        // The thread's texts by number (punch list #118, PR 2), for the chip's words and the rule's second choice; a read that fails reads as none.
+        db.from('messages').select('channel_id, at, direction').eq('contact_id', contactId).eq('channel', 'text').order('at', { ascending: false }).limit(200),
       ])
       checkSupabaseError(channels, 'read their numbers')
-      const rows = (channels.data ?? []) as Array<{ id: string; kind: string; value: string; opted_out_at: string | null }>
+      const rows = (channels.data ?? []) as Array<{ id: string; kind: string; value: string; opted_out_at: string | null; usual_at?: string | null }>
       const prefers = who.error ? null : ((who.data as { prefers?: string | null } | null)?.prefers ?? null)
+      const lines = texts.error ? [] : ((texts.data ?? []) as Array<{ channel_id: string | null; at: string; direction: string }>)
       return {
         contactId,
-        numbers: rows.filter((r) => r.kind === 'phone' && r.value.trim()).map((r) => ({ channelId: r.id, value: r.value, stopped: r.opted_out_at != null })),
+        numbers: rows.filter((r) => r.kind === 'phone' && r.value.trim()).map((r) => ({ channelId: r.id, value: r.value, stopped: r.opted_out_at != null, usualAt: r.usual_at ?? null })),
+        lines: lines.map((l) => ({ channelId: l.channel_id, at: l.at, direction: l.direction as RecipientLine['direction'] })),
         prefers: prefers === 'text' || prefers === 'email' || prefers === 'either' ? prefers : null,
       }
     },
@@ -209,6 +220,7 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
         channelId: input.channelId,
         sendOn: input.sendOn,
       }),
+    makeUsual: (channelId) => makeUsualChannel(channelId),
     send: (input) =>
       supabaseReplyIo().sendText({
         contactId: input.contactId,

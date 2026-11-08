@@ -48,6 +48,7 @@ import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGap
 import type { GcNeedsYou } from './gc/needsYou'
 import type { CustomerMessagesCounts } from './followUp/customerCounts'
 import { WHAT_WAITED_WORDS, type WhatWaited } from './messages/whatWaited'
+import { STALE_COUNT_DAYS } from './materials/onSite'
 
 /**
  * Residential build, R8 · 14: the Customers line, built, counted and wired. On since R2 PR 3b (v2.5451), with the
@@ -143,6 +144,8 @@ export type NeedsYouItem = {
     | 'jobs-no-kind'
     | 'projects-no-baseline'
     | 'line-budgets-review'
+    | 'materials-count-due'
+    | 'materials-missing-week'
     | 'jobs-stale-open'
     | 'capacity-under'
     | 'dispatch-requests-aged'
@@ -261,6 +264,9 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'projects-no-baseline': 60,
   // The owner's weekly look at the guesses (punch list #234, PR 1c): a review, not a bill.
   'line-budgets-review': 40,
+  // Materials on site (punch list #209, v2.6728): the money that walked away this week sits with billing accuracy; a box due a count is hygiene.
+  'materials-missing-week': 40,
+  'materials-count-due': 60,
   'jobs-stale-open': 40,
   // People/planning tier: a crew running light for three weeks is a scheduling question, not a bill.
   'capacity-under': 50,
@@ -447,6 +453,9 @@ export type NeedsYouInputs = {
   /** The owner's weekly review of the assumed lines on this week's projects (punch list #234, PR 1c). */
   lineBudgetsReviewEnabled?: boolean
   lineBudgetsReview?: { lines: number; projects: number; assumedUsd: number; totalUsd: number } | null
+  /** Materials on site (punch list #209, v2.6728): the boxes due a count and the week's shortfalls across every job with a box, from `useMaterialsOnSiteNeeds`. */
+  materialsOnSiteEnabled?: boolean
+  materialsOnSite?: { staleBoxes: number; staleJobs: number; missingLines: number; missingMoneyWeek: number; missingJobs: number } | null
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
   /**
@@ -1046,6 +1055,38 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       figure: String(r.lines),
       actionLabel: 'Review',
     })
+  }
+
+  if (inputs.materialsOnSiteEnabled && inputs.materialsOnSite) {
+    const m = inputs.materialsOnSite
+    const jobs = (n: number) => (n === 1 ? 'one job' : `${n} jobs`)
+    if (m.missingLines > 0) {
+      const usd = m.missingMoneyWeek.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+      const lines = `${m.missingLines} line${m.missingLines === 1 ? '' : 's'}`
+      items.push({
+        key: 'materials-missing-week',
+        severity: 'amber',
+        kicker: 'Materials on site',
+        title: m.missingMoneyWeek > 0 ? `${usd} of material walked away this week` : `${lines} of material came up short this week`,
+        detail:
+          `${lines} on ${jobs(m.missingJobs)}: a count under what the ledger expected, or a Can't find press on the phone. ` +
+          (m.missingMoneyWeek > 0 ? "The money is the parts book's price. " : 'Nothing short has a price yet. ') +
+          'The desk sorts the jobs losing money to the top, and the job page says who last touched the box.',
+        figure: m.missingMoneyWeek > 0 ? usd : String(m.missingLines),
+        actionLabel: m.missingJobs === 1 ? 'Open the job' : 'Open the desk',
+      })
+    }
+    if (m.staleBoxes > 0) {
+      items.push({
+        key: 'materials-count-due',
+        severity: 'gray',
+        kicker: 'Materials on site',
+        title: m.staleBoxes === 1 ? `A box on ${jobs(m.staleJobs)} has not been counted in ${STALE_COUNT_DAYS} days` : `${m.staleBoxes} boxes on ${jobs(m.staleJobs)} not counted in ${STALE_COUNT_DAYS} days`,
+        detail: 'A crew counts a box from the On site tab on the phone, and the office can press Correct… on a line. The desk lists the boxes due on each job.',
+        figure: String(m.staleBoxes),
+        actionLabel: m.staleJobs === 1 ? 'Open the job' : 'Open the desk',
+      })
+    }
   }
 
   if (inputs.staleOpenEnabled && (inputs.staleOpen?.count ?? 0) > 0) {

@@ -1,10 +1,17 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   HISTORY_BODY_MAX,
   HISTORY_CHIPS,
+  HISTORY_FOLD_AT,
+  HISTORY_HEAD_CHARS,
+  HISTORY_HEAD_COLUMNS,
   aboutIsPiece,
   draftIsKeepable,
+  entryBodyIsHead,
   entryLine,
+  headRowToEntry,
   historyVerb,
   draftToRow,
   rowToEntry,
@@ -14,8 +21,10 @@ import {
   narrowLines,
   narrowedWords,
   onRecordNotes,
+  withBodies,
   type HistoryChip,
   type HistoryEntry,
+  type HistoryHeadRow,
   type HistoryRow,
 } from './history'
 import type { MemberBid, MemberJob } from './overview'
@@ -101,6 +110,42 @@ describe('rowToEntry — a row reads back as an entry with its author named', ()
   })
 })
 
+describe('headRowToEntry, entryBodyIsHead, withBodies — the list reads the first words, the rest comes later (punch list #280)', () => {
+  const head: HistoryHeadRow = { id: 'h1', development_id: 'harlow', job_id: 'j1', bid_id: null, customer_id: null, happened_at: '2026-10-28T14:12:00.000Z', source: 'email', body_head: 'x'.repeat(HISTORY_HEAD_CHARS), body_chars: 7096, author_user_id: null, via: 'mcp', agent_label: 'the inbox robot', link_url: null, file_path: null, created_at: '2026-10-28T20:00:00.000Z' }
+  it('a heads row reads as an entry whose body is the head and whose bodyChars is the whole', () => {
+    const e = headRowToEntry(head, new Map())
+    expect(e).toMatchObject({ id: 'h1', about: { kind: 'job', id: 'j1' }, source: 'email', via: 'mcp', agentLabel: 'the inbox robot', bodyChars: 7096 })
+    expect(e.body).toHaveLength(HISTORY_HEAD_CHARS)
+    expect(entryBodyIsHead(e)).toBe(true)
+  })
+  it('a short line’s head is the whole: nothing waits on a read', () => {
+    const e = headRowToEntry({ ...head, body_head: 'the pour moves', body_chars: 'the pour moves'.length }, new Map())
+    expect(entryBodyIsHead(e)).toBe(false)
+    expect(entryBodyIsHead(entry())).toBe(false)
+  })
+  it('the head always carries the words the fold shows', () => {
+    expect(HISTORY_HEAD_CHARS).toBeGreaterThan(HISTORY_FOLD_AT)
+  })
+  it('withBodies swaps the whole in where it was read and leaves every other entry as it was', () => {
+    const long = headRowToEntry(head, new Map())
+    const short = entry({ id: 'h2' })
+    const swapped = withBodies([long, short], new Map([['h1', 'y'.repeat(7096)], ['h2', 'never read: h2 is whole']]))
+    expect(swapped[0]!.body).toBe('y'.repeat(7096))
+    expect(swapped[0]!.bodyChars).toBe(7096)
+    expect(entryBodyIsHead(swapped[0]!)).toBe(false)
+    expect(swapped[1]).toBe(short)
+    expect(withBodies([long], null)[0]).toBe(long)
+    expect(withBodies([long], new Map([['h9', 'another']]))[0]).toBe(long)
+  })
+  it('the view cuts the body where the kernel says and hands back the columns the read names', () => {
+    const sql = readFileSync(join(__dirname, '../../../supabase/migrations/20261108234500_development_history_heads.sql'), 'utf8')
+    expect(sql).toContain(`left(e.body, ${HISTORY_HEAD_CHARS}) AS body_head`)
+    expect(sql).toContain('char_length(e.body) AS body_chars')
+    expect(sql).toContain('security_invoker = true')
+    for (const col of HISTORY_HEAD_COLUMNS.split(', ')) expect(sql, col).toMatch(new RegExp(`\\b${col}\\b`))
+  })
+})
+
 describe('entryLine — the line the stream draws for an entry', () => {
   it('finds the piece by the page’s own labels, or says it is no longer here', () => {
     expect(entryLine(entry({ about: { kind: 'job', id: 'j1102' } }), labels).about).toEqual(onJob)
@@ -110,6 +155,13 @@ describe('entryLine — the line the stream draws for an entry', () => {
     expect(entryLine(entry({ about: { kind: 'customer', id: 'c-ridgeway' } }), labels).about).toEqual(onCustomer)
     expect(entryLine(entry({ about: { kind: 'customer', id: 'c-other' } }), labels).about).toEqual({ kind: 'customer', id: 'c-other', label: 'the customer' })
     expect(entryLine(entry(), labels).about).toEqual(onSite)
+  })
+  it('carries the row id, and says when its words are a head the window must read past', () => {
+    expect(entryLine(entry(), labels)).toMatchObject({ entryId: 'h1' })
+    expect(entryLine(entry(), labels).detailIsHead).toBeUndefined()
+    const headed = entryLine(entry({ body: 'x'.repeat(HISTORY_HEAD_CHARS), bodyChars: 900 }), labels)
+    expect(headed.detailIsHead).toBe(true)
+    expect(headed.detail).toHaveLength(HISTORY_HEAD_CHARS)
   })
   it('the sender leads; a robot that kept it through MCP is the mark, not the author', () => {
     expect(entryLine(entry(), labels)).toMatchObject({ id: 'history:h1', at: '2026-10-24T14:30:00.000Z', kind: 'entry', verb: 'Email', detail: 'GC asked for a start date', by: 'Dana', waitingDays: null, source: 'email', via: 'app', agent: null, withTime: true })

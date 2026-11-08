@@ -196,6 +196,26 @@ describe('JobStageChecklistStrip', () => {
     expect((await screen.findByRole('img', { name: '2026-10-31 Rough In · Did the water test hold.jpg' })).getAttribute('src')).toBe('blob:report-photo')
   })
 
+  it('shows a report photo before anyone picks Yes or No (punch list #189, PR 6 live run): the open row draws it, a closed row names it', async () => {
+    // A report photo answers q1 at Save; the crew has not pressed a pick yet, so q1 is open with the shot under it.
+    const fromReport = answer(
+      { jobId: JOB, fixtureId: 'f1', questionId: 'q1' },
+      { id: 'a-r0', pick: null, reportPhotoId: 'rp1', photo: { fileName: '2026-11-08 Rough In · Did the water test hold.jpg', takenAt: '2026-11-08T21:23:00.000Z', state: 'waiting', driveFileId: null, failWhy: null } },
+    )
+    const io = fakeIo({ photoUrl: vi.fn(async () => 'blob:report-photo') }, [fromReport])
+    renderWithProviders(<JobStageChecklistStrip jobId={JOB} io={io} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Rough In checklist: 0 of 2 answered, not ready' }))
+    expect(await screen.findByText('Taken on a field report. On its way to the customer’s Drive folder.')).toBeTruthy()
+    expect((await screen.findByRole('img', { name: '2026-11-08 Rough In · Did the water test hold.jpg' })).getAttribute('src')).toBe('blob:report-photo')
+    expect(screen.getByRole('button', { name: 'Take the photo again: Did the water test hold?' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Yes' })).toBeTruthy()
+    // Open the second question: the first closes to a statement that says where its photo came from.
+    fireEvent.click(screen.getByRole('button', { name: 'Are the stub-outs marked?: not answered yet. Open to answer.' }))
+    const closed = await screen.findByRole('button', { name: 'Did the water test hold?: not answered yet. Open to answer.' })
+    expect(closed.textContent).toContain('photo taken on a field report')
+    expect(closed.textContent).not.toContain('asks for a photo')
+  })
+
   it('groups the items added for this job with who added them, and counts them toward ready; the crew sees no add press', async () => {
     const io = fakeIo({}, [], [...Q, ITEM])
     renderWithProviders(<JobStageChecklistStrip jobId={JOB} io={io} />)

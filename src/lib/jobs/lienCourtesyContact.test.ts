@@ -4,7 +4,7 @@ import { courtesyGcChannels, courtesyOwnerChannels, OWNER_NOT_IN_MESSAGES, phone
 
 /** The GC's channels for the courtesy notice, read without making a contact (punch list #243, PR 1). */
 
-const ch = (id: string, kind: 'phone' | 'email', value: string, optedOutAt: string | null = null) => ({ id, kind, value, optedOutAt })
+const ch = (id: string, kind: 'phone' | 'email', value: string, optedOutAt: string | null = null, usualAt: string | null = null) => ({ id, kind, value, optedOutAt, usualAt })
 
 describe('phoneChannelKey — what the spine keeps as a phone channel', () => {
   it('keeps the digits, drops a leading 1 from eleven, and refuses fewer than seven', () => {
@@ -22,6 +22,12 @@ describe('courtesyGcChannels — with a Messages contact', () => {
   it('texts the live phone channel while Send texts is on', () => {
     const r = courtesyGcChannels({ contact: { id: 'c1', channels: [ch('e1', 'email', 'dana@ridgeway.example'), ch('p1', 'phone', '(512) 555-0193')] }, customerPhone: '', customerEmail: '', textsOn: true })
     expect(r).toEqual({ contactId: 'c1', phone: '(512) 555-0193', textHold: '', textChannelId: 'p1', email: 'dana@ridgeway.example' })
+  })
+  it('texts the usual number first, and the live one when the usual sent STOP (punch list #118, PR 2)', () => {
+    const two = [ch('p1', 'phone', '(512) 555-0193'), ch('p2', 'phone', '(512) 555-0144', null, '2026-11-01T00:00:00Z')]
+    expect(courtesyGcChannels({ contact: { id: 'c1', channels: two }, customerPhone: '', customerEmail: '', textsOn: true })).toMatchObject({ phone: '(512) 555-0144', textChannelId: 'p2' })
+    const stoppedUsual = [ch('p1', 'phone', '(512) 555-0193'), ch('p2', 'phone', '(512) 555-0144', '2026-11-02T00:00:00Z', '2026-11-01T00:00:00Z')]
+    expect(courtesyGcChannels({ contact: { id: 'c1', channels: stoppedUsual }, customerPhone: '', customerEmail: '', textsOn: true })).toMatchObject({ phone: '(512) 555-0193', textChannelId: 'p1', textHold: '' })
   })
   it('holds the number with the switch’s words while Send texts is off', () => {
     const r = courtesyGcChannels({ contact: { id: 'c1', channels: [ch('p1', 'phone', '(512) 555-0193')] }, customerPhone: '', customerEmail: '', textsOn: false })

@@ -1,14 +1,17 @@
 /**
  * What went, the reads (v2.5683, punch list #133 PR 2). The customer's thread without making one
  * (`contacts.customer_id`, never the `contact_for_customer` door, which writes), their phones, and the outbound texts
- * carrying this estimate's link: `channel = 'text'`, `direction = 'out'`, a body holding `/estimate/accept`, from ten
- * minutes before the send — then kept only where the link's token hashes to the estimate's `public_token_hash`
- * (`acceptLinkTie.ts`, v2.5697: a body match alone let an older estimate claim a later one's text). Oldest first.
+ * carrying this estimate's link: `channel = 'text'`, `direction = 'out'`, a body holding `/estimate/accept` or a short
+ * link's `/e/`, from ten minutes before the send — then kept only where the link's token hashes to the estimate's
+ * `public_token_hash` or to one of its share links' `estimate_share_links.token_hash` (`acceptLinkTie.ts`, v2.5697: a
+ * body match alone let an older estimate claim a later one's text; v2.6725: the text's link is a share code since
+ * v2.6657, and every text since had read as none). Oldest first.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { textsCarryingLink } from './acceptLinkTie'
+import { loadShareLinkHashes } from './shareLinkHashesIo'
 import { loadSentCopiesForSource } from '../sent/sentCopiesIo'
 import type { WhatWentEmailAgain, WhatWentText } from './whatWent'
 
@@ -47,18 +50,19 @@ export async function loadWhatWent(customerId: string, sentAtIso: string | null,
     .eq('contact_id', contactId)
     .eq('channel', 'text')
     .eq('direction', 'out')
-    .ilike('body', '%/estimate/accept%')
+    .or('body.ilike.%/estimate/accept%,body.ilike.%/e/%')
     .order('at', { ascending: true })
     .limit(50)
   if (!Number.isNaN(sentMs)) lines = lines.gte('at', new Date(sentMs - BEFORE_MS).toISOString())
-  const [channels, texts] = await Promise.all([
+  const [channels, texts, shareHashes] = await Promise.all([
     db.from('contact_channels').select('id, kind, value, opted_out_at').eq('contact_id', contactId),
     lines,
+    loadShareLinkHashes(estimateId, db),
   ])
   checkSupabaseError(channels, 'read their numbers')
   checkSupabaseError(texts, 'read what went')
   const phones = ((channels.data ?? []) as Array<{ id: string; kind: string; value: string; opted_out_at: string | null }>).filter((c) => c.kind === 'phone' && c.value.trim())
-  const mine = await textsCarryingLink((texts.data ?? []) as Array<{ id: string; at: string; channel_id: string | null; body: string }>, tokenHash)
+  const mine = await textsCarryingLink((texts.data ?? []) as Array<{ id: string; at: string; channel_id: string | null; body: string }>, tokenHash, shareHashes)
   return {
     texts: mine.map((m) => ({
       id: m.id,

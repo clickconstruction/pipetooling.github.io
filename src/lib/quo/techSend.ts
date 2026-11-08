@@ -42,6 +42,11 @@ export interface TechSendBody {
   fills: Record<string, string>
   /** The bio's picked lines, by id, in any order. Empty for a line. */
   lineIds: string[]
+  /**
+   * The number the sheet's To chip picked (punch list #118, PR 2), one of the contact's `contact_channels`; null lets
+   * the path pick by the rule (`pickPhone`).
+   */
+  channelId: string | null
 }
 
 /** The tech path's words, each a sentence the sheet shows as it is. */
@@ -58,6 +63,8 @@ export const TECH_SEND_WORDS = {
   nothingToSay: 'Nothing to say yet. Ask the office for a bio.',
   notYourLine: 'That line is not yours to send.',
   alreadyIntroduced: 'They have your bio already.',
+  /** The chip's pick is not one of this contact's numbers (punch list #118, PR 2). */
+  notTheirNumber: 'That number is not one of theirs.',
 } as const
 
 /** Whether a request is Job Mode's: it takes the tech path, not the reply box's. */
@@ -77,6 +84,9 @@ export function parseTechSendBody(json: unknown): { ok: true; body: TechSendBody
   const customerId = id(o.customerId)
   const jobId = id(o.jobId)
   if (!customerId || !jobId) return { ok: false, words: TECH_SEND_WORDS.badRequest }
+  // The chip's pick (punch list #118, PR 2): a channel id, or nothing; anything else is not one of theirs.
+  const channelId = id(o.channelId)
+  if (o.channelId != null && o.channelId !== '' && (channelId === null || !ID.test(channelId))) return { ok: false, words: TECH_SEND_WORDS.notTheirNumber }
   if (kind === 'bio') {
     const raw = o.lineIds ?? []
     if (!Array.isArray(raw) || raw.length > LINE_IDS_MAX) return { ok: false, words: TECH_SEND_WORDS.badPick }
@@ -85,7 +95,7 @@ export function parseTechSendBody(json: unknown): { ok: true; body: TechSendBody
       if (typeof v !== 'string' || !ID.test(v.trim())) return { ok: false, words: TECH_SEND_WORDS.badPick }
       if (!lineIds.includes(v.trim())) lineIds.push(v.trim())
     }
-    return { ok: true, body: { kind, customerId, contactId: id(o.contactId), jobId, quickReplyId: null, fills: {}, lineIds } }
+    return { ok: true, body: { kind, customerId, contactId: id(o.contactId), jobId, quickReplyId: null, fills: {}, lineIds, channelId } }
   }
   const quickReplyId = id(o.quickReplyId)
   if (!quickReplyId) return { ok: false, words: TECH_SEND_WORDS.badRequest }
@@ -98,7 +108,7 @@ export function parseTechSendBody(json: unknown): { ok: true; body: TechSendBody
     if (typed.length > TYPED_MAX || /[\r\n]/.test(typed)) return { ok: false, words: TECH_SEND_WORDS.badFill }
     if (typed) fills[key] = typed
   }
-  return { ok: true, body: { kind, customerId, contactId: id(o.contactId), jobId, quickReplyId, fills, lineIds: [] } }
+  return { ok: true, body: { kind, customerId, contactId: id(o.contactId), jobId, quickReplyId, fills, lineIds: [], channelId } }
 }
 
 /** A phone line as `quick_replies` keeps it. */
@@ -153,14 +163,26 @@ export interface PhoneChannel {
   kind: string
   value: string
   createdAt: string
+  /** When it sent STOP (punch list #118, PR 2); unset or null when it can be texted. */
+  optedOutAt?: string | null
+  /** When the office or the tech made it their usual (punch list #118, PR 2); unset or null when never. */
+  usualAt?: string | null
 }
 
-/** The number the text goes to: the one they last texted from, else their first phone. Null when they have none. */
-export function pickPhone(channels: readonly PhoneChannel[], lastInChannelId: string | null): PhoneChannel | null {
+/**
+ * The number the text goes to. The sheet's pick when it sent one (punch list #118, PR 2: the To chip, one of their
+ * numbers or null when it is not); else the rule in `numberOrder`'s order as this path reads it: the usual the office
+ * or the tech starred, else the one they last texted from, else their first phone that can still take a text, else
+ * their first. Null when they have none. A pick of a number that sent STOP is still the pick: `sendText` refuses it
+ * in words, as the send window's does.
+ */
+export function pickPhone(channels: readonly PhoneChannel[], lastInChannelId: string | null, pickedId: string | null = null): PhoneChannel | null {
   const phones = channels.filter((c) => c.kind === 'phone' && c.value.trim())
-  return (
-    phones.find((c) => c.id === lastInChannelId) ??
-    [...phones].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.id.localeCompare(b.id))[0] ??
-    null
-  )
+  if (pickedId) return phones.find((c) => c.id === pickedId) ?? null
+  const byAdded = (a: PhoneChannel, b: PhoneChannel) => Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.id.localeCompare(b.id)
+  const usual = phones.filter((c) => c.usualAt && !c.optedOutAt).sort((a, b) => (a.usualAt! < b.usualAt! ? 1 : -1))[0]
+  if (usual) return usual
+  const last = phones.find((c) => c.id === lastInChannelId)
+  if (last) return last
+  return [...phones].filter((c) => !c.optedOutAt).sort(byAdded)[0] ?? [...phones].sort(byAdded)[0] ?? null
 }

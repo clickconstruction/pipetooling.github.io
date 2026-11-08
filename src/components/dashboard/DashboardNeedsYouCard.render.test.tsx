@@ -70,6 +70,20 @@ describe('DashboardNeedsYouCard', () => {
     expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ key: 'ar-deposits' }))
   })
 
+  it('materials on site (punch list #209, v2.6728): the two office lines draw their words and press through with their keys', () => {
+    const items: NeedsYouItem[] = [
+      { key: 'materials-missing-week', severity: 'amber', kicker: 'Materials on site', title: '$1,240 of material walked away this week', detail: "3 lines on 2 jobs: a count under what the ledger expected, or a Can't find press on the phone.", figure: '$1,240', actionLabel: 'Open the desk' },
+      { key: 'materials-count-due', severity: 'gray', kicker: 'Materials on site', title: '12 boxes on 3 jobs not counted in 14 days', detail: 'The desk lists the boxes due on each job.', figure: '12', actionLabel: 'Open the job' },
+    ]
+    const { onAction } = renderCard(items)
+    expect(screen.getByText('$1,240 of material walked away this week')).toBeTruthy()
+    expect(screen.getByText('12 boxes on 3 jobs not counted in 14 days')).toBeTruthy()
+    fireEvent.click(screen.getByText('Open the desk'))
+    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ key: 'materials-missing-week' }))
+    fireEvent.click(screen.getByText('Open the job'))
+    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ key: 'materials-count-due' }))
+  })
+
   it('the toggle switches to walk mode and persists per user', () => {
     renderCard()
     fireEvent.click(screen.getByLabelText('Walk the list view'))
