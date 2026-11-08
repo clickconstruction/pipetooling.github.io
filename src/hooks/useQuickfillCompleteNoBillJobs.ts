@@ -6,20 +6,24 @@ import { currentReportPctByJobId, type LatestReportPctRow } from '../lib/jobSumm
 import { withSupabaseRetry } from '../utils/errorHandling'
 import {
   buildJobClockSummaries,
-  buildQuickfillCompleteNoBillList,
+  completeNoBillRows,
   quickfillCompleteNoBillCandidates,
+  type CompleteNoBillRow,
   type QuickfillJobClockSummary,
 } from '../lib/quickfillCompleteNoBill'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
 const ROLES = new Set<string>(['dev', 'master_technician', 'assistant', 'controller'])
 
-/** Quickfill "Complete, no Total Bill": non-paid jobs resolved 100% complete with no
- * `revenue` set. Jobs come from the shared list cache; the latest report % per candidate
- * comes from `list_latest_report_completion_pct` (same RPC as the Job Summary % column). `enabled`
- * (punch list #183 PR 4): false holds every read while the station is off screen on the Roller;
- * `fetchEnabled` still says whether the role sees the station. */
+/** Quickfill "Complete, no Total Bill": non-paid jobs resolved 100% complete whose bill is not
+ * filled in (no Total Bill, no Specific Work, no Other job charges — the Jobs Billing station's three
+ * checks since v2.6750, punch list #176). Jobs come from the shared list cache, whose fixtures and
+ * materials land with its enrichment, so the two line checks wait for `jobsListEnriching` to clear;
+ * the latest report % per candidate comes from `list_latest_report_completion_pct` (same RPC as the
+ * Job Summary % column). `enabled` (punch list #183 PR 4): false holds every read while the station
+ * is off screen on the Roller; `fetchEnabled` still says whether the role sees the station. */
 export function useQuickfillCompleteNoBillJobs(minHcpNumber: number, enabled = true): {
+  rows: CompleteNoBillRow<JobWithDetails>[]
   completeNoBillJobs: JobWithDetails[]
   clockSummaryByJobId: Map<string, QuickfillJobClockSummary>
   loading: boolean
@@ -27,7 +31,7 @@ export function useQuickfillCompleteNoBillJobs(minHcpNumber: number, enabled = t
   fetchEnabled: boolean
 } {
   const { user: authUser, role } = useAuth()
-  const { jobs, jobsListLoading, jobsListRefreshing, runFetchJobs } = useJobsListCache()
+  const { jobs, jobsListLoading, jobsListRefreshing, jobsListEnriching, runFetchJobs } = useJobsListCache()
   const [reportPctByJobId, setReportPctByJobId] = useState<Map<string, number>>(() => new Map())
   const [pctFetchesInFlight, setPctFetchesInFlight] = useState(0)
   const requestedIdsRef = useRef<Set<string>>(new Set())
@@ -38,6 +42,8 @@ export function useQuickfillCompleteNoBillJobs(minHcpNumber: number, enabled = t
 
   const fetchEnabled = Boolean(authUser?.id && role && ROLES.has(role))
   const active = fetchEnabled && enabled
+  // The fixtures and materials are laid over the cache's rows after they paint; until then a job's lines are unknown, not empty.
+  const billLinesKnown = !jobsListEnriching
 
   useEffect(() => {
     if (!active) return
@@ -45,8 +51,8 @@ export function useQuickfillCompleteNoBillJobs(minHcpNumber: number, enabled = t
   }, [active, runFetchJobs])
 
   const candidates = useMemo(
-    () => (active ? quickfillCompleteNoBillCandidates(jobs, minHcpNumber) : []),
-    [active, jobs, minHcpNumber],
+    () => (active ? quickfillCompleteNoBillCandidates(jobs, minHcpNumber, billLinesKnown) : []),
+    [active, jobs, minHcpNumber, billLinesKnown],
   )
 
   useEffect(() => {
@@ -75,11 +81,11 @@ export function useQuickfillCompleteNoBillJobs(minHcpNumber: number, enabled = t
     })()
   }, [active, candidates])
 
-  const completeNoBillJobs = useMemo(
-    () =>
-      active ? buildQuickfillCompleteNoBillList(jobs, reportPctByJobId, minHcpNumber) : [],
-    [active, jobs, reportPctByJobId, minHcpNumber],
+  const rows = useMemo(
+    () => (active ? completeNoBillRows(jobs, reportPctByJobId, minHcpNumber, billLinesKnown) : []),
+    [active, jobs, reportPctByJobId, minHcpNumber, billLinesKnown],
   )
+  const completeNoBillJobs = useMemo(() => rows.map((r) => r.job), [rows])
 
   // Clock rollups for the listed jobs only (Started date · session count · hours).
   useEffect(() => {
@@ -123,8 +129,8 @@ export function useQuickfillCompleteNoBillJobs(minHcpNumber: number, enabled = t
     })()
   }, [active, completeNoBillJobs])
 
-  const loading = active && (jobsListLoading || pctFetchesInFlight > 0)
+  const loading = active && (jobsListLoading || jobsListEnriching || pctFetchesInFlight > 0)
   const jobsListBusy = jobsListLoading || jobsListRefreshing
 
-  return { completeNoBillJobs, clockSummaryByJobId, loading, jobsListBusy, fetchEnabled }
+  return { rows, completeNoBillJobs, clockSummaryByJobId, loading, jobsListBusy, fetchEnabled }
 }
