@@ -10240,6 +10240,24 @@ export type Database = {
           },
         ]
       }
+      estimate_link_misses: {
+        Row: {
+          hour: string
+          misses: number
+          source_hash: string
+        }
+        Insert: {
+          hour: string
+          misses?: number
+          source_hash: string
+        }
+        Update: {
+          hour?: string
+          misses?: number
+          source_hash?: string
+        }
+        Relationships: []
+      }
       estimate_photo_handover: {
         Row: {
           drive_link: string
@@ -18269,6 +18287,12 @@ export type Database = {
           materials_usd: number
           note: string | null
           other_usd: number
+          planned_detail: Json | null
+          planned_finish: string | null
+          planned_set_at: string | null
+          planned_set_by: string | null
+          planned_source: string | null
+          planned_start: string | null
           subs_usd: number
           taken_at: string
           taken_by: string | null
@@ -18296,6 +18320,12 @@ export type Database = {
           materials_usd?: number
           note?: string | null
           other_usd?: number
+          planned_detail?: Json | null
+          planned_finish?: string | null
+          planned_set_at?: string | null
+          planned_set_by?: string | null
+          planned_source?: string | null
+          planned_start?: string | null
           subs_usd?: number
           taken_at?: string
           taken_by?: string | null
@@ -18323,6 +18353,12 @@ export type Database = {
           materials_usd?: number
           note?: string | null
           other_usd?: number
+          planned_detail?: Json | null
+          planned_finish?: string | null
+          planned_set_at?: string | null
+          planned_set_by?: string | null
+          planned_source?: string | null
+          planned_start?: string | null
           subs_usd?: number
           taken_at?: string
           taken_by?: string | null
@@ -18356,6 +18392,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: true
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_budgets_planned_set_by_fkey"
+            columns: ["planned_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -22628,6 +22671,90 @@ export type Database = {
           },
         ]
       }
+      legal_matter_claim_lines: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          amount: number
+          basis: string
+          document_id: string | null
+          id: string
+          kind: string
+          matter_id: string
+          removed_at: string | null
+          removed_by: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          amount: number
+          basis?: string
+          document_id?: string | null
+          id?: string
+          kind: string
+          matter_id: string
+          removed_at?: string | null
+          removed_by?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          amount?: number
+          basis?: string
+          document_id?: string | null
+          id?: string
+          kind?: string
+          matter_id?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_matter_claim_lines_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_claim_lines_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matter_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_claim_lines_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_claim_lines_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_claim_lines_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legal_matter_documents: {
         Row: {
           added_at: string
@@ -25938,6 +26065,7 @@ export type Database = {
           back_words: string | null
           bid_id: string | null
           body: string
+          body_html_path: string | null
           channel: string
           channel_id: string | null
           contact_id: string
@@ -25979,6 +26107,7 @@ export type Database = {
           back_words?: string | null
           bid_id?: string | null
           body?: string
+          body_html_path?: string | null
           channel: string
           channel_id?: string | null
           contact_id: string
@@ -26020,6 +26149,7 @@ export type Database = {
           back_words?: string | null
           bid_id?: string | null
           body?: string
+          body_html_path?: string | null
           channel?: string
           channel_id?: string | null
           contact_id?: string
@@ -38035,6 +38165,7 @@ export type Database = {
           p_labor_hours?: number
           p_labor_rate?: number
           p_note?: string
+          p_planned?: Json
           p_source: string
         }
         Returns: Json
@@ -38774,6 +38905,10 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean; p_file?: Json }
         Returns: Json
       }
+      dev_legal_event_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dev_legal_gap_answer_write: {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
@@ -38969,6 +39104,7 @@ export type Database = {
         Args: { p_candidate_ids: string[]; p_master_user_id: string }
         Returns: string[]
       }
+      estimate_link_miss: { Args: { p_source_hash: string }; Returns: number }
       estimates_thread_note_stats: {
         Args: { p_estimate_ids: string[] }
         Returns: {
@@ -40578,6 +40714,22 @@ export type Database = {
       }
       legal_answer_settlement: {
         Args: { p_entry_id: string; p_note?: string; p_signed_off: boolean }
+        Returns: Json
+      }
+      legal_claim_line_remove: { Args: { p_line_id: string }; Returns: Json }
+      legal_claim_line_save: {
+        Args: {
+          p_amount: number
+          p_basis?: string
+          p_customer_id: string
+          p_document_id?: string
+          p_job_ids: string[]
+          p_kind: string
+          p_line_id: string
+          p_payer_key: string
+          p_payer_name: string
+          p_title: string
+        }
         Returns: Json
       }
       legal_clear_gap_answer: {
@@ -42501,6 +42653,31 @@ export type Database = {
           updated_at: string
         }[]
       }
+      pipeline_customer_lines: {
+        Args: { p_job_ids: string[]; p_per_job?: number }
+        Returns: {
+          at: string
+          auto: boolean
+          body: string
+          channel: string
+          contact_goes_by: string
+          contact_id: string
+          contact_kind: string
+          contact_name: string
+          delivery: string
+          direction: string
+          duration_seconds: number
+          id: string
+          job_id: string
+          subject: string
+          summary: string
+          tied: boolean
+          transcript: string
+          who_name: string
+          who_text: string
+          who_user_id: string
+        }[]
+      }
       plan_job_names_from_work: {
         Args: { p_apply?: boolean }
         Returns: {
@@ -43361,6 +43538,17 @@ export type Database = {
         Args: { p_job_id: string; p_note?: string; p_pct: number }
         Returns: Json
       }
+      set_job_planned_finish: {
+        Args: {
+          p_detail?: Json
+          p_finish: string
+          p_job_id: string
+          p_replace?: boolean
+          p_source: string
+          p_start: string
+        }
+        Returns: Json
+      }
       set_job_promised_pay_date: {
         Args: { p_date: string; p_job_id: string }
         Returns: Json
@@ -43687,6 +43875,10 @@ export type Database = {
       superintendent_report_job_anchor_allowed: {
         Args: { p_job_ledger_id: string }
         Returns: boolean
+      }
+      superintendent_scores: {
+        Args: { p_from: string; p_job_ids?: string[]; p_to: string }
+        Returns: Json
       }
       supervised_days_with: {
         Args: { p_month: string; p_subject: string }
