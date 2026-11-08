@@ -2,7 +2,7 @@
 name: "A named document from a Drive file, through the seat: the server reads the bytes, nothing rides through the agent"
 number: 286
 group: ready
-status: proposed 2026-11-08 · the owner's yes the same day · not built
+status: proposed 2026-11-08 · the owner's yes the same day · built as v2.6712 the same day (plan_person_doc → apply_person_doc take drive_file_id, server 0.41.0, migration 20261108190000) · the live check on a ZZ TEST person owed after the deploy
 summary: >
   A named document on an HR file is made three ways today: written through the seat (the text in
   the call), picked as a .md or .txt in the app, or pasted. A long document a session wants on the
@@ -11,7 +11,8 @@ summary: >
   than the document is worth. The mail door already does the right thing for a mail's attachment:
   the server reads the bytes and files them, the agent sees only the plan. Give named documents the
   same door for a file already in Drive.
-next: Build the one verb pair and its RPC; then a session puts a Drive document on a file in two calls, whatever its size.
+next: After the merge, push the migration and deploy dev-mcp; then run How to verify on a ZZ TEST person and record the result here.
+ver: v2.6712
 size: S
 blocker: None.
 opinion: build — plan_mail_file is the pattern, the Drive read exists in drive-link, and the named-document write exists in dev_person_doc_write; this joins them
