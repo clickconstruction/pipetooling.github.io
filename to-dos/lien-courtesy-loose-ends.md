@@ -38,7 +38,7 @@ fixed in v2.6383. Six rows remain. Each has its own call.
    (`payPage.rows`), bills raised after the notice included, and the email reads *$X for work in
    {months}… unless the $X is paid, we will file*. The guide promises *one number, the notice's claim*.
    Call: name the notice's claim, or keep the job's open billed total and say so in the guide.
-3. **A reply never closes it.** `courtesyStatus` closes on `repliedAt`, and nothing passes it
+3. **A reply never closes it.** (Also #262's call 2, a reply moving the Reminders strip's row to Closed, since that card closed 2026-11-07.) `courtesyStatus` closes on `repliedAt`, and nothing passes it
    (`courtesyByJobFrom` has no reader of Messages lines after the last send). The GC or the owner
    answering in Messages keeps the press live. Needs a per-job read of inbound lines newer than the
    last courtesy, on the GC's and the owner's contacts.
