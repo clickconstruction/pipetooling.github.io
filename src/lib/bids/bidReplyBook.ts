@@ -1,3 +1,4 @@
+import type { UserRole } from '../../hooks/useAuth'
 /**
  * Bid Board → Reply book: the wording the estimators share (v2.4025 the table, the window after).
  *
@@ -7,6 +8,7 @@
  * which buttons are drawn.
  */
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { isOwnerOrDev } from '../doorRoles'
 
 /** The kinds, in the order the chips draw. The keys are the table's CHECK list. */
 export const BID_REPLY_KINDS = [
@@ -61,10 +63,10 @@ export function canPostBidReply(viewer: BidReplyViewer): boolean {
   return !!viewer.userId && !viewer.readOnly
 }
 
-/** Change or delete: the person who posted it, or a dev. */
+/** Change or delete: the person who posted it, the owner or a dev (punch list #188 row 64, v2.6758: the book's wording is the company's). */
 export function canEditBidReply(entry: Pick<BidReplyEntry, 'created_by'>, viewer: BidReplyViewer): boolean {
   if (!viewer.userId || viewer.readOnly) return false
-  if (viewer.role === 'dev') return true
+  if (isOwnerOrDev(viewer.role as UserRole | null | undefined)) return true
   return entry.created_by != null && entry.created_by === viewer.userId
 }
 

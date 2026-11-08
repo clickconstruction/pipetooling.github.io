@@ -82,11 +82,12 @@ export function formatOpenCostSummary(s: OpenCostSummary): string {
 /**
  * Who sees the cost lens (chips, totals, the estimator). Estimates derive
  * from payroll wages, so this mirrors the `checklist_item_costs` RLS:
- * dev or controller — deliberately not `has_payroll_access()`, which would
- * also include pay-approved masters.
+ * dev, controller and, since v2.6758 (punch list #188 row 66), the owner —
+ * he reads wage-derived figures on every job now. Still not
+ * `has_payroll_access()`, which would include every pay-approved leader.
  */
 export function canSeeTaskCosts(role: string | null | undefined): boolean {
-  return role === 'dev' || role === 'controller'
+  return role === 'dev' || role === 'controller' || role === 'master_technician'
 }
 
 /** Whole-dollar actual cost, or null when no actual is recorded. */

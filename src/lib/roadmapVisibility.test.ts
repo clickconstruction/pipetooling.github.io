@@ -23,10 +23,11 @@ describe('canOpenRoadmap — the Roadmap nav entry (journey-map Tier-2 #41)', ()
   })
 })
 
-describe('canSeeRoadmapNeedsYou — the Needs-You card stays the owner’s', () => {
-  it('dev only, and never under Farm Mode', () => {
-    expect(ALL_ROLES.filter((r) => canSeeRoadmapNeedsYou(r, false))).toEqual(['dev'])
+describe('canSeeRoadmapNeedsYou — the Needs-You card is the office’s (punch list #188 row 37)', () => {
+  it('dev, the owner, assistant and controller, and never under Farm Mode', () => {
+    expect(ALL_ROLES.filter((r) => canSeeRoadmapNeedsYou(r, false))).toEqual(['dev', 'master_technician', 'assistant', 'controller'])
     expect(canSeeRoadmapNeedsYou('dev', true)).toBe(false)
+    expect(canSeeRoadmapNeedsYou('master_technician', true)).toBe(false)
   })
 
   it('is a strict subset of who can open the page', () => {

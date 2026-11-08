@@ -62,7 +62,8 @@ describe('canSeeTaskCosts', () => {
     const { canSeeTaskCosts } = await import('./checklistCostEstimate')
     expect(canSeeTaskCosts('dev')).toBe(true)
     expect(canSeeTaskCosts('controller')).toBe(true)
-    for (const r of ['master_technician', 'assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', null, undefined]) {
+    expect(canSeeTaskCosts('master_technician')).toBe(true)
+    for (const r of ['assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', null, undefined]) {
       expect(canSeeTaskCosts(r)).toBe(false)
     }
   })
