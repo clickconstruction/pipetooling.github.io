@@ -12,3 +12,5 @@ One `ALTER TABLE` adds both columns, so the table's lock is taken once; no defau
 **Apply**: `supabase db push` from a clean checkout of `main` after this merges. The Needs you line reads the columns through `select` and the card's Looks right calls the function; until the push the card's read fails soft to no line.
 
 **Check**: `select column_name from information_schema.columns where table_name = 'jobs_ledger_fixtures' and column_name like 'budget_reviewed%'` reads two rows; `select proname from pg_proc where proname = 'stamp_line_budgets_reviewed'` reads one.
+
+**Applied** to prod by 2026-11-08, read the same day through the dev seat's `check_migration_ledger`: 1166 versions applied against the 1166 files on `main`, this one among them (`npm run check:migration-drift` could not reach the database from this worktree — the IPv6-only path — so the ledger was the read).

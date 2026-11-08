@@ -4,7 +4,8 @@ import { formatLegalMoney, legalSessionWords, type LegalPacket } from '../../../
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmExhibitWhere, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
-import { contingencyEntries, firmDemand, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
+import { contingencyEntries, firmDemand, firmDemandWords, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
+import { claimTable, claimTotalWords, type ClaimTableRow } from '../../../lib/legal/legalClaimLines'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
@@ -189,6 +190,42 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
   )
 }
 
+/**
+ * The claim on the firm's Account tab (v2.6696, punch list #171, the owner's call of 2026-11-08: the firm sees each
+ * line, not only the total). The same rows the desk draws, from the same kernel: the open bills and the retainage
+ * held fill in, then each line the office typed with its basis and its document, then the total the demand reads.
+ * A document that travelled is a link; one the office held back is not named.
+ */
+export function FirmClaimTable({ packet, documents }: { packet: LegalPacket; documents: ReadonlyArray<LegalPortalDocument> }) {
+  const claim = claimTable(packet.worth, (jobId) => packet.account.jobs.find((j) => j.jobId === jobId)?.label ?? jobId)
+  const evidence = (r: ClaimTableRow): JSX.Element => {
+    const e = r.evidence
+    if (e.kind === 'ledger') return <span style={{ color: MUTED }}>the statement above</span>
+    if (e.kind === 'job') return <span style={{ color: MUTED }}>the job record</span>
+    if (e.kind === 'document') {
+      const doc = documents.find((d) => d.id === e.documentId)
+      return doc?.url ? <a href={doc.url} target="_blank" rel="noreferrer" style={{ color: COPPER }}>{e.title} ↗</a> : <span>{e.title}</span>
+    }
+    return <span style={{ color: FAINT }}>—</span>
+  }
+  return (
+    <div data-legal-firm-claim>
+      <div style={portalH}>The claim</div>
+      <PortalTable
+        head={['Part of the claim', 'Grounds', 'Evidence', 'Amount']}
+        numCols={[3]}
+        rows={[
+          ...claim.rows.map((r) => [<span key="p"><b>{r.part}</b>{r.source !== 'typed' ? <span style={{ color: FAINT }}> · fills in</span> : null}</span>, r.basis || '—', evidence(r), formatLegalMoney(r.amount)]),
+          [<b key="t">{claimTotalWords(claim)}</b>, '', '', <b key="a" data-legal-firm-claim-total>{formatLegalMoney(claim.total)}</b>],
+        ]}
+        empty=""
+      />
+      {claim.note ? <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>{claim.note}</p> : null}
+      <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>The open bills and the retainage held fill in from the office's records. The typed lines are what the office claims past the bills, each with its grounds and the document that shows it. The demand above reads this total plus your fees and costs.</p>
+    </div>
+  )
+}
+
 export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo, timelineActs }: { tab: FirmTab; packet: LegalPacket; matter: FirmMatterLike; companyName: string; acts?: ReactNode; /** #85 item 18: the firm undoes its own act, with a reason; absent on the desk's preview. */ onUndo?: (entryId: string, reason: string) => Promise<boolean>; /** v2.5800: the firm's own plan form under the Timeline; absent on the desk's preview. */ timelineActs?: ReactNode }) {
   if (tab === 'timeline') {
     // v2.5800: the same line the office reads, on the portal's paper; a held step never arrived, so nothing here is held.
@@ -216,6 +253,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo, 
       <div>
         <PortalTable head={['Date', 'Job', 'Entry', 'Amount', 'Balance']} numCols={[3, 4]} rows={legalRunningLedger(a.ledger).map((e) => [e.ymd ?? '—', e.jobLabel, e.text, <span key="a" style={{ color: e.amount < 0 ? PAPER_GREEN : undefined }}>{formatLegalMoney(e.amount)}</span>, formatLegalMoney(e.running)])} empty="No billed lines or payments on record." />
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, fontSize: 13.5, padding: '8px 8px 0', fontWeight: 700 }}><span style={{ color: MUTED, fontWeight: 400 }}>Balance owed</span><span style={portalNum} data-legal-balance>{formatLegalMoney(a.totals.balance)}</span></div>
+        <FirmClaimTable packet={packet} documents={matter.documents ?? []} />
         <div style={h}>Who owes</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 12px', fontSize: 13.5 }}>
           <span style={{ color: MUTED }}>Payer</span><span>{a.payer.name}{a.payer.viaGc ? ' · general contractor on the job' : ''}{a.customerType ? ` · ${a.customerType}` : ''}</span>
@@ -336,7 +374,8 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
   /** v2.5800: the firm's plan form under the Timeline tab — the portal injects it; the desk's preview passes nothing. */
   timelineActs?: ReactNode
 }) {
-  const { demand: totalDemand, feesTotal } = firmDemand(packet.account.totals.balance, matter.entries)
+  // v2.6696 (punch list #171): the demand reads the claim — the balance, the retainage no bill asks for, the typed lines — plus the firm's fees.
+  const { demand: totalDemand, feesTotal } = firmDemand(packet.worth.claim, matter.entries)
   // Narrative only when the office wrote one (v2.4812); a tab the matter does not show falls back to Account.
   const shownTab = firmTabShown(tab, matter)
   // The parties strip (punch list #219, v2.6175): the same three cells the desk draws, from the same kernel — the firm's portal
@@ -377,7 +416,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
           </div>
           <div className="legalMatterHeadSums" style={{ textAlign: 'right' }}>
             <div style={{ ...portalNum, fontSize: 20, fontWeight: 700 }}>{formatLegalMoney(totalDemand)}</div>
-            <div style={{ fontSize: 12, color: MUTED }} data-legal-demand>total demand · balance {formatLegalMoney(packet.account.totals.balance)}{feesTotal ? ` + fees and costs ${formatLegalMoney(feesTotal)}` : ''}</div>
+            <div style={{ fontSize: 12, color: MUTED }} data-legal-demand>{firmDemandWords(packet.worth, feesTotal)}</div>
             <button type="button" className="legalPortalWide" style={{ ...portalBtn, marginTop: 6, background: COPPER, color: '#fff' }} onClick={onPrint}>
               ⎙ Print packet
             </button>

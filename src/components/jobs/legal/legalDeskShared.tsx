@@ -2,6 +2,7 @@ import { type CSSProperties, type ReactNode } from 'react'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
+import { theirPaperLine } from '../../../lib/jobs/theirPaper'
 import { envelopeAnswersWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 
 import { formatLegalMoney, type LegalGap, type LegalPacket } from '../../../lib/legal/legalPacket'
@@ -118,6 +119,8 @@ export function Table({ head, rows, empty, numCols = [], subRows = [] }: { head:
 
 export function coverageText(c: JobContractCoverage): string {
   if (c.kind === 'signed') return `Signed${c.signedAt ? ` ${calendarYmdInAppTzFromIso(c.signedAt)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}`
+  // v2.6698 (punch list #173): their paper reads as it is — who signed, whether they rely on it.
+  if (c.kind === 'their_paper') return `${c.record.title ? `${c.record.title} · ` : ''}${theirPaperLine(c.record).replace(/^Their paper · /, '')}`
   if (c.kind === 'sent') return `Sent ${calendarYmdInAppTzFromIso(c.sentAt)} · viewed ${c.viewCount}× · never signed`
   if (c.kind === 'draft') return 'Draft, never sent'
   return 'None on file'

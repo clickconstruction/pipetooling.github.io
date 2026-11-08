@@ -81,6 +81,7 @@ import { type CounselRead, type CounselReadDraft } from '../../../lib/legal/coun
 
 import type { LegalDeskProps } from './LegalDesk'
 import { type Tab, TAB_LABELS, MUTED, btn, pill, Door, DeskEnvelopeAnswersBand, SectionTitle, Table, coverageText, type EntryLike } from './legalDeskShared'
+import { agreementCountsForSuit } from '../../../lib/legal/legalContractBasis'
 import { CounselReadPanel, OffersPanel, SettlementAnswer, DeskVoidableText, DeskUndo } from './LegalDeskFirmPanels'
 import { EmptyState } from '../../EmptyState'
 
@@ -233,10 +234,16 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
         <Table head={['Job', 'Agreement', 'Sworn account', '']}
           rows={a.jobs.map((j) => [
             <b key="l">{j.label}</b>,
-            <span key="s" style={j.contract.kind === 'signed' ? undefined : { color: '#b42318' }}>{coverageText(j.contract)}</span>,
+            // v2.6698 (punch list #173): their paper reads blue while it counts and amber until they rely on it; a missing agreement stays red.
+            <span key="s" data-legal-agreement={j.contract.kind} style={agreementCountsForSuit(j.contract) ? (j.contract.kind === 'their_paper' ? { color: 'var(--text-blue-700)' } : undefined) : j.contract.kind === 'their_paper' ? { color: 'var(--text-amber-700)' } : { color: '#b42318' }}>{coverageText(j.contract)}</span>,
             j.swornMissing.length ? pill(`needs ${j.swornMissing.join(', ')}`, 'warn') : pill('holds', 'ok'),
-            <button key="b" type="button" onClick={() => { const job = jobOf(j.jobId); if (job) props.onOpenContract(job) }} style={btn}>{j.contract.kind === 'signed' ? 'View' : 'Contract…'}</button>,
+            <button key="b" type="button" onClick={() => { const job = jobOf(j.jobId); if (job) props.onOpenContract(job) }} style={btn}>{j.contract.kind === 'signed' || j.contract.kind === 'their_paper' ? 'View' : 'Contract…'}</button>,
           ])} empty="No jobs." />
+        {a.jobs.some((j) => j.contract.kind === 'their_paper') ? (
+          <p data-legal-agreement-basis style={{ ...MUTED, fontSize: '0.78rem', margin: '4px 0 0' }}>
+            Basis: <b style={{ color: 'var(--text)' }}>{packet.theory.label}</b> · {packet.theory.basis}
+          </p>
+        ) : null}
         <SectionTitle doors={first ? <Door label="Liens on the job" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Where each job stands</SectionTitle>
         {packet.paper.timelines.length === 0 ? <p style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0' }}>No jobs.</p> : packet.paper.timelines.map((t) => (
           <div key={t.jobId} data-legal-job-timeline={t.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 190px) minmax(0, 1fr)', gap: 12, padding: '8px 0', borderBottom: '1px dotted var(--border)', alignItems: 'start', fontSize: '0.82rem' }}>

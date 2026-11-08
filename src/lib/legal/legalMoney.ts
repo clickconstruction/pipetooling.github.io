@@ -14,6 +14,7 @@
  * Pure: no React, no supabase.
  */
 import type { LegalEntryRow } from './legalMatters'
+import { formatLegalMoney } from './legalPacket'
 import { instrumentWord } from '../jobs/billsAndPayments'
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
@@ -69,10 +70,26 @@ export function contingencyEntries<E extends Pick<LegalEntryRow, 'kind' | 'body'
   return entries.filter((e) => (e.kind === 'fee' || e.kind === 'cost') && isContingencyEntry(e))
 }
 
-/** Balance + the firm's fees and costs = the demand, never below 0 (an overpaid account owes nothing; its credit is a ledger line). One sum for the matter card, the desk and the print. */
-export function firmDemand(balance: number, entries: ReadonlyArray<Pick<LegalEntryRow, 'kind' | 'body' | 'meta' | 'via_portal' | 'amount'> & { voided_at?: string | null }>): { feesTotal: number; demand: number } {
+/**
+ * The claim + the firm's fees and costs = the demand, never below 0 (an overpaid account owes nothing; its credit is a
+ * ledger line). One sum for the matter card, the desk and the print. The first argument was the open balance until
+ * v2.6696 (punch list #171, the owner's call of 2026-11-08): the firm's callers now pass `worth.claim`, the balance
+ * plus the retainage no bill asks for and the office's typed lines, so the firm's demand and the desk's *How much?*
+ * read one figure. With nothing past the bills the claim is the balance, and nothing changes.
+ */
+export function firmDemand(claim: number, entries: ReadonlyArray<Pick<LegalEntryRow, 'kind' | 'body' | 'meta' | 'via_portal' | 'amount'> & { voided_at?: string | null }>): { feesTotal: number; demand: number } {
   const feesTotal = round2(firmFeeEntries(entries).reduce((s, e) => s + Number(e.amount ?? 0), 0))
-  return { feesTotal, demand: Math.max(0, round2(balance + feesTotal)) }
+  return { feesTotal, demand: Math.max(0, round2(claim + feesTotal)) }
+}
+
+/**
+ * The line under the firm's demand figure (v2.6696): what the demand is made of. *balance $14,400.00* when the claim
+ * is the open bills alone, *the claim $16,240.00, open bills $14,400.00 inside it* when it reaches past them, and
+ * *+ fees and costs $450.00* when the firm has any.
+ */
+export function firmDemandWords(worth: { balance: number; claim: number }, feesTotal: number): string {
+  const base = worth.claim > worth.balance + 0.004 ? `the claim ${formatLegalMoney(worth.claim)}, open bills ${formatLegalMoney(worth.balance)} inside it` : `balance ${formatLegalMoney(worth.balance)}`
+  return `total demand · ${base}${feesTotal > 0.004 ? ` + fees and costs ${formatLegalMoney(feesTotal)}` : ''}`
 }
 
 // ---------------------------------------------------------------------------
