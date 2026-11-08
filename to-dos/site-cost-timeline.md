@@ -2,7 +2,7 @@
 name: "A cost timeline for a development: the site's cost, cash and value over time, for devs and controllers"
 number: 257
 group: close
-status: built 2026-11-04 · PR 1 the view, the cost and cash lines, the job chips, the job-naming tooltip and the batched reads v2.6493 on claude/site-cost-timeline-e043ae, walked live on the real site as the dev at three widths · PR 2 the amber overhead band v2.6498 · PR 3 value created and Print v2.6499 · left: the owner's two calls below
+status: built 2026-11-04 · PR 1 the view, the cost and cash lines, the job chips, the job-naming tooltip and the batched reads v2.6493 on claude/site-cost-timeline-e043ae, walked live on the real site as the dev at three widths · PR 2 the amber overhead band v2.6498 · PR 3 value created and Print v2.6499 · the phone's view switch stays A, the owner's pick from the mock-up 2026-11-08 · left: the owner's call on the jobs with no dated event
 summary: >
   The owner saw the Job Summary's Charges & Value chart, the step chart of one job's cost to date and
   cash position with an icon on every charge, and asked for the same chart over a whole development,
@@ -13,7 +13,7 @@ summary: >
   more jobs. The kernel is the Job Summary's own, with a job id on its events, so the red line ends at
   the sum of the jobs' Job Summary costs by construction; the reads are the site's batched reads,
   never one round per job.
-next: the owner's two calls, the jobs with no dated event and the phone's view switch; then delete this card.
+next: the owner's call on the jobs with no dated event, keep the count line or add the ledger strip; then delete this card.
 size: M (PR 1 the view, the two lines, the chips, the reads) + S (PR 2 the overhead band) + M (PR 3 value created, Print / Save as PDF)
 blocker: None.
 mockup: site-cost-timeline-before-after.html — the owner's two calls drawn (2026-11-08): the jobs with no dated charge or payment, today's count line beside a grey ledger strip under the chart, and the phone's view switch, A as built beside B, at 375 wide and on a computer; the build itself needed none, the chart is the Job Summary's at the site's scale and the owner approved the written draft in chat on 2026-11-03
@@ -57,9 +57,9 @@ He approved the written draft the same day and asked for it in its own session.
 - **The phone's view switch.** With three chips, *Where the money is* stacked four lines tall at 375
   wide. PR 1 lays the three on one full row in the card's head with the GC Review link under them
   (placement A, built); the other placement, a chip row at the top of the card's body at every
-  width (B), was mocked live. Open question for the owner: A or B. The mock-up (part 2) draws A and
-  B at 375 wide and on a computer, where B costs one more row inside the card, about 30 px, before
-  the job chips. Awaiting the owner's pick.
+  width (B), was mocked live. The mock-up (part 2) drew A and B at 375 wide and on a computer, where
+  B costs one more row inside the card, about 30 px, before the job chips. **The owner picked A on
+  2026-11-08**: the built placement stays, nothing to build.
 - **Reads start only when the view opens**, as the Scoreboard's do, and every one is batched over
   the site's jobs and paged: the cost rows are the ones `useSiteCosts` already reads for the Costs
   column and the Scoreboard (with their dates), so the Timeline, the column and the board say one
