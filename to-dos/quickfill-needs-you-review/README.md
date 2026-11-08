@@ -2,7 +2,7 @@
 name: "Quickfill and Needs you, read together: what the round holds, what gets stamped, and the five changes"
 number: 176
 group: close
-status: BUILT and LIVE 2026-10-26 · the owner's "I like it, please build it" of 2026-10-25 · change 1 v2.5837 (migration 20261025010000 pushed), change 2 v2.5839, change 4 v2.5841, change 3 v2.5843 and v2.5844, change 5 v2.5845, the first live look's three fixes v2.5868 · left: the owner's two clicks (decisions 4 and 5), the Prospects portion (decision 6), the sign-in-as-an-assistant check (8), the Google admin step (9), and a read of the first week's outcomes
+status: BUILT and LIVE 2026-10-26 · the owner's "I like it, please build it" of 2026-10-25 · change 1 v2.5837 (migration 20261025010000 pushed), change 2 v2.5839, change 4 v2.5841, change 3 v2.5843 and v2.5844, change 5 v2.5845, the first live look's three fixes v2.5868 · the owner's answers of 2026-11-08 built: decision 4 v2.6750 (Jobs Billing folded into Complete, no Total Bill), decision 6 v2.6754 (the three backlogs oldest first, no portion); decisions 5 and 7 recorded as given; decision 8's count check run · left: the Google admin step (9, with #159) and a read of the first week's outcomes
 summary: >
   The owner asked for a holistic look at Quickfill and Needs you: Quickfill was built so an
   assistant with ADHD finishes a daily round knowing everything is done, but they skip what
@@ -16,10 +16,10 @@ summary: >
   count, the duplicates and the dead stations go, the Needs you sources get an actor so the
   assistant's lines and the owner's lines stop sharing one list, and the round ends on a
   close sheet the owner can read from the Dashboard.
-next: the owner's two clicks (decisions 4 and 5) and decisions 6, 8 and 9; after a week of rounds, read the outcomes against the eight weeks here (the share of presses under 20 seconds, the questions filed), then delete this folder
-size: change 1 one PR with a migration · change 2 one PR · change 3 a train of three · change 4 hours · change 5 one PR, all built; left: the owner's picks and the outcomes read (XS)
-blocker: the owner's picks
-ver: v2.5837, v2.5839, v2.5841, v2.5843, v2.5844, v2.5845, v2.5868
+next: the Google admin step for the Email station (decision 9, with #159); after a week of rounds, read the outcomes against the eight weeks here (the share of presses under 20 seconds, the questions filed), then delete this folder
+size: change 1 one PR with a migration · change 2 one PR · change 3 a train of three · change 4 hours · change 5 one PR, all built; decisions 4 and 6 one PR each, built 2026-11-08; left: the outcomes read (XS)
+blocker: none; the Email station's live labels wait on the Google admin step (#159)
+ver: v2.5837, v2.5839, v2.5841, v2.5843, v2.5844, v2.5845, v2.5868, v2.6750, v2.6754
 opinion: do changes 1, 2 and 4 first, in that order; they fix the stamp without moving a line; change 3 is the owner's thesis in code and earns its train once 1 and 2 have shown what the assistant actually works
 ---
 
@@ -92,8 +92,8 @@ open count at the median mark and at the last. A station's words are its default
 | Unreachable Prospects | Can we reach every prospect we promised to? | can't-reach prospects | snapshot; the whole station hides at zero | prospects roles | hidden today (zero) | 0 (last July) | — |
 | Prospects | Did every prospect hear from us on time? | the warmth totals | snapshot | prospects roles | a station | 32 · 81% | 268 · 268 |
 | Supply Houses | Is anything past due with a supply house? | houses 60+ days past due | snapshot · close-week chip | office | a station | 36 · 81% | 4 · 3 |
-| Jobs Billing | Is every finished job billed? | HCP jobs missing specific work, materials or a total | snapshot | office | **hidden by the org** (last mark April) | 0 | — |
-| Complete, no Total Bill | Does every finished job have a bill total? | 100% jobs with no total | snapshot | office | a station | 34 · 74% | 1 · 0 |
+| Jobs Billing | Is every finished job billed? | HCP jobs missing specific work, materials or a total | snapshot | office | **folded into Complete, no Total Bill** (v2.6750, decision 4; hidden by the org since April until then) | 0 | — |
+| Complete, no Total Bill | Does every finished job have its Specific Work and its Total Bill? (since v2.6750) | 100% jobs with no Total Bill or no Specific Work line, a chip for each; no Other job charges a grey note on a listed row | snapshot | office | a station | 34 · 74% | 1 · 0 |
 | Missing bill dates | *(none)* | billed or paid bills with no date | snapshot, the fix typed in the row | office | a station | 36 · 81% | 0 · 0 |
 | Missing job info | Can every job be billed — customer, pictures, email? | jobs missing one of three | snapshot, two fixes typed in the row | office | a station | 36 · 50% | 1 · 2 |
 | Property kinds | Is every unpaid job's property marked residential or commercial? | unset properties | snapshot, the pick in the row | office | a station | 13 · 62% | 1 · 0 |
@@ -130,7 +130,7 @@ showing.
 | tallyStaff | team purchases waiting (`tally-team`) | A O C | ✓ (Warnings counts the same stale rows) | — | sort-for-the-team window | — |
 | arBank | allocate N bank deposits (`ar-deposits`) | A O C | ✓ | — | AR matcher | — |
 | bankReturned | checks came back (`returned-check`) | A O C | ✓ | — | AR / the job | 3 |
-| lostBids | lost bids with no reason (`lost-bids`) | A O C E | ✓ **and** the Lost bid reasons station | lost-bid | Why we lost | 61 |
+| lostBids | lost bids with no reason (`lost-bids`) | A O C E | ✓ (the Lost bid reasons station retired in v2.5841; the deck walks them oldest first since v2.6754) | lost-bid | Why we lost | 61 |
 | bidFollowups | bid follow-ups due | A O C E | ✓ | — | Call queue | — |
 | staleClaims | a customer said they paid | A O C E | ✓ | — | the bid / Stages | — |
 | myMoney | money on your bids | E | — | — | Money lens | — |
@@ -397,7 +397,8 @@ more column, and `needsYouSources.test.ts` holds that every source has one.
   35 times on a dash is not a station.
 - Jobs Billing: hidden by the org since April while *Is every finished job billed?* has no
   owner; the Bridge's bill card found 15 finished-looking jobs on 2026-10-24. Unhide it, or
-  fold its three checks into Complete, no Total Bill. The owner's call (decision 4).
+  fold its three checks into Complete, no Total Bill. The owner's call (decision 4): folded,
+  v2.6750, 2026-11-08; the walk under Where it stands says why the third check is a note.
 - Office Leaving: the one box is the fifth daily; retire the station or make it an afternoon
   station the Roller shows after 3 p.m. only.
 
@@ -447,6 +448,29 @@ ran, and how a skipped station reaches the person who can explain it.
 9. **The Email station**: the Google admin step from #159 is still the owner's; until it is
    done the station is three typed numbers a day.
 
+### The owner's answers, 2026-11-08
+
+Decisions 1 to 3 were taken at their recommended answer with the *"I like it, please build it"*
+of 2026-10-25. The rest, in the owner's words:
+
+4. **Jobs Billing**: *fold it into Complete, no Total Bill.* Built as
+   [v2.6750](../../docs/recent-features/v2.6750.md): the three checks sit on the finished jobs'
+   rows as chips, the station retires into `complete-no-bill`, its marks and its deep link fold.
+   The third check, no Other job charges, is a grey note on a listed row rather than a reason to
+   list: the first cut read 40 open on the dev server, every row that chip alone (pre-tests, post
+   tests and service visits with nothing to charge beyond the work).
+5. **Assistant Dailys**: *"We're gonna keep it as it is."* The station stays as it is; nothing is
+   trimmed or retired.
+6. **The standing backlogs**: *"No portion but I love the idea of oldest first."* Built as
+   [v2.6754](../../docs/recent-features/v2.6754.md): Prospects' folds run by the prospect waiting
+   longest, the lost bids on Fill them in by the day marked lost (else the day sent), and Billed
+   Awaiting Payment already led with the oldest bill. No daily portion; Done lights at zero.
+7. **Who runs the round**: the office's; the owner says who covers a missed day. The close sheet
+   and The office's round card stay the office's and name nobody. Nothing to build.
+8. **The count check**: a session's; run as the Assistant sample through View as on the dev
+   server on 2026-11-08, the two counts under Where it stands.
+9. **The Email station**: rides #159 and stays the owner's Google admin step.
+
 ## How to verify, once built
 
 - Change 1: on the Roller, a station at 50 open offers Worked it and Not sure, never Done;
@@ -474,4 +498,13 @@ Built and live. The owner said *"I like it, please build it"* on 2026-10-25 and 
 
 The first live look, read-only on prod data the night of 2026-10-25, found three things, fixed in [v2.5868](../../docs/recent-features/v2.5868.md): Today's lines counted the owner's calls too, so Done stayed dark for an assistant; the bar offered *Looked* while a station was still counting; and the office's round card said *No round yet today* on a Sunday. No mark was pressed on prod in that look.
 
-Not built, by the decisions list: the Prospects portion (decision 6, the one Next line the station cannot write), the two clicks that are the owner's (decision 4 Jobs Billing unhidden, decision 5 Assistant Dailys trimmed to its one real box), the sign-in-as-an-assistant check (decision 8) and the Google admin step for the Email station (decision 9). After a week of rounds, the outcomes on `quickfill_section_mark_events` say whether the round changed: the share of presses under 20 seconds after the previous one (57% in the eight weeks read), how many were *Worked it* against *Done*, and the questions filed.
+**The owner's answers of 2026-11-08** are recorded under the decisions above. Two PRs carried them, [v2.6750](../../docs/recent-features/v2.6750.md) (decision 4) and [v2.6754](../../docs/recent-features/v2.6754.md) (decision 6), each walked on the dev server against prod data on 2026-11-08, read-only:
+
+- Complete, no Total Bill, as the dev then as the Assistant sample: the Jobs Billing station is gone from the round (26 stations for the sample), the question names Specific Work and the Total Bill, and the count reads **0 open** once the jobs cache and the report percents land, some fifteen seconds as the sample, the body saying *Reading the finished jobs' bills…* until then. The first cut listed a job for a missing Other job charge too and read **40 open**, every row that chip alone, so the third check became a grey note on a listed row.
+- Prospects, Past their days: the top rows read *last touch 255d ago*, then 254d, then 253d, and a warm-1 prospect at 221 days over sits after warm-0 rows at 193 over because its last touch is newer (251d): the oldest touch first, as the owner asked. 260 of 268 past their day.
+- The lost bids on Fill them in, through the page's own io as the dev: 63 rows. Six carry a lost stamp (the oldest two on Sep 11), 56 have only the day they went out and one has neither; the first cut keyed on the stamp alone and ranked the 56 older bids behind the six, so a bid now counts from the day it was marked lost, else the day it went out. The first row is now b2, sent 2025-08-27; the $1.36M bid with no date at all, the old first row, is last.
+- Billed Awaiting Payment: unchanged, already oldest bill first in each fold since v2.5885.
+
+**Decision 8, the count check**, as the Assistant sample through View as on the dev server, 2026-11-08 in the five o'clock hour Central: Quickfill's Today's lines station read **12 open · 1 for others** (the estimators' robot line, folded); the Dashboard's Needs you card for the same sample read **19 · 5 for others**. The seven lines the card shows and the station does not are the sources a station carries (`QUICKFILL_CARRIED_BY_STATION`: hours approvals, aged dispatch requests, job follow-ups and idle jobs, the GC review, the Customers line, Today's sends) or the host holds back; the four more *for others* on the card are other actors' lines the station folds away for an assistant (not listed one by one). The station's count is the assistant's own lines, which is what v2.5868 made it; the 2 to 4 in the mark events were a real assistant's lines on her days.
+
+Not done, by the decisions list: the Google admin step for the Email station (decision 9, with #159). After a week of rounds, the outcomes on `quickfill_section_mark_events` say whether the round changed: the share of presses under 20 seconds after the previous one (57% in the eight weeks read), how many were *Worked it* against *Done*, and the questions filed.
