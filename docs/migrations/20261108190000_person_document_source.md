@@ -14,3 +14,5 @@ Idempotent (`ADD COLUMN IF NOT EXISTS`, `CREATE OR REPLACE`). No `CREATE TABLE`,
 After `20261107040000` (the function it replaces). Push right after the merge, then `supabase functions deploy dev-mcp` (0.41.0 sends the two fields; the old function refuses nothing, it ignores them, so the order matters only for the row remembering its source). Then `npm run gen-types:linked` → `node scripts/build-dev-mcp-catalog.mjs` in the next `chore(types)` PR, so `read_rows` on `person_document_index` can select the two names.
 
 **A sibling's note**: punch list #287 (a document tied to its evidence record) also adds to `person_documents` and may extend `dev_person_doc_write`; its migration is numbered after this one and starts from this body, so the later `CREATE OR REPLACE` keeps both.
+
+**Applied** to prod 2026-11-08 by `scripts/db-push.sh` from the deploy checkout right after #7337 merged (`check:migration-drift`: 1169 local, 1169 remote, fully applied); `dev-mcp` 0.41.0 deployed the same minute; types and the catalog regenerated in the `chore(types)` PR #7350. The live check on ZZ Test Hand is on the card.
