@@ -59,6 +59,7 @@ export const NEEDS_YOU_ITEM_ACTOR: Record<NeedsYouItem['key'], NeedsYouActor> = 
   'lien-notice-batch': 'owner',
   'lien-suit-year': 'owner',
   'lien-waivers-to-sign': 'owner',
+  'line-budgets-review': 'owner',
   'team-reviews': 'owner',
   'legal-review': 'owner',
   'capacity-under': 'owner',

@@ -142,6 +142,7 @@ export type NeedsYouItem = {
     | 'work-orders-unpriced'
     | 'jobs-no-kind'
     | 'projects-no-baseline'
+    | 'line-budgets-review'
     | 'jobs-stale-open'
     | 'capacity-under'
     | 'dispatch-requests-aged'
@@ -258,6 +259,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'jobs-no-kind': 60,
   // A project with no hours baseline: the Costs tab, the Projects board and the superintendent's line read nothing (punch list #234, PR 1a).
   'projects-no-baseline': 60,
+  // The owner's weekly look at the guesses (punch list #234, PR 1c): a review, not a bill.
+  'line-budgets-review': 40,
   'jobs-stale-open': 40,
   // People/planning tier: a crew running light for three weeks is a scheduling question, not a bill.
   'capacity-under': 50,
@@ -441,6 +444,9 @@ export type NeedsYouInputs = {
   /** Working projects with no hours baseline (punch list #234, PR 1a). */
   baselineGapsEnabled?: boolean
   baselineGaps?: { count: number } | null
+  /** The owner's weekly review of the assumed lines on this week's projects (punch list #234, PR 1c). */
+  lineBudgetsReviewEnabled?: boolean
+  lineBudgetsReview?: { lines: number; projects: number; assumedUsd: number; totalUsd: number } | null
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
   /**
@@ -1025,6 +1031,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: "Made before baselines were written at award. Take the bid's estimate or freeze the book's hours, so the Costs tab, the Projects board and the superintendent's line have a number to read against.",
       figure: String(n),
       actionLabel: n === 1 ? 'See it' : 'See them',
+    })
+  }
+
+  if (inputs.lineBudgetsReviewEnabled && (inputs.lineBudgetsReview?.lines ?? 0) > 0) {
+    const r = inputs.lineBudgetsReview!
+    const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
+    items.push({
+      key: 'line-budgets-review',
+      severity: 'gray',
+      kicker: 'Line budgets',
+      title: `${r.lines} assumed line${r.lines === 1 ? '' : 's'} on ${r.projects} project${r.projects === 1 ? '' : 's'} awarded this week`,
+      detail: `${usd(r.assumedUsd)} of ${usd(r.totalUsd)} on the company split. Looks right stamps them with your name and leaves them assumed. Tune opens the job.`,
+      figure: String(r.lines),
+      actionLabel: 'Review',
     })
   }
 
