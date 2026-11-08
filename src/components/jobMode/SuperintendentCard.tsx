@@ -4,6 +4,9 @@ import { useJobStageChecklists } from '../../hooks/useJobStageChecklists'
 import { useExpectedHours } from '../../hooks/useExpectedHours'
 import { loadProjectBoardRead } from '../../hooks/useProjectsBoard'
 import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
+import { useSuperintendentScores } from '../../hooks/useSuperintendentScores'
+import { bonusWords, daysWords, hoursUnderWords, monthOf, monthRange, superintendentScores } from '../../lib/people/superintendentScores'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { isWorkingProject, projectLabel, projectNumber, projectPace } from '../../lib/jobs/projectsBoard'
 import { laborEventsOf, valueEventsOf, type ProjectBoardJob } from '../../lib/jobs/projectBoardRead'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
@@ -64,6 +67,11 @@ function SuperintendentLineCard({ job, onSetPct, rev }: { job: ProjectBoardJob; 
   const ids = useMemo(() => [job.id], [job.id])
   const targets = useExpectedHours(ids, true)
   const { settings: lineBudgetSettings } = useLineBudgetSettings()
+  // The score this month (punch list #234 PR 4): his own row, hours and days and the bonus, no wage.
+  const today = todayYmdInAppTz()
+  const scoreRange = useMemo(() => monthRange(monthOf(today)), [today])
+  const scores = useSuperintendentScores({ fromYmd: scoreRange.fromYmd, toYmd: scoreRange.toYmd, jobIds: ids })
+  const myScore = useMemo(() => (scores.read ? superintendentScores(scores.read, today).find((s) => s.userId === user?.id) ?? null : null), [scores.read, today, user?.id])
   const [day, setDay] = useState<string | null>(null)
   const [sheet, setSheet] = useState<JobStageChecklist | null>(null)
   const rows = checklists.rows ?? []
@@ -88,6 +96,13 @@ function SuperintendentLineCard({ job, onSetPct, rev }: { job: ProjectBoardJob; 
       {line.money?.leads ? <div style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }} data-testid="superintendent-money">{line.money.words}</div> : null}
       {targets.error ? <div style={muted}>{targets.error}</div> : null}
       <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 6 }}>{line.proofWords}</div>
+      {myScore ? (
+        <div style={{ fontSize: '0.8rem', background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.35rem 0.5rem' }} data-testid="superintendent-score">
+          {myScore.jobs.length > 0
+            ? `Scored this month: ${hoursUnderWords(myScore.hoursUnder)}${daysWords(myScore.daysVsPlan) ? ` · ${daysWords(myScore.daysVsPlan)}` : ''}${bonusWords(myScore.bonusUsd, scores.read?.sharePct ?? 10) ? ` · bonus ${bonusWords(myScore.bonusUsd, scores.read?.sharePct ?? 10)}` : ''}`
+            : `Not scored yet this month: ${myScore.held[0]?.why ?? 'waiting on the office’s sign-off'}.`}
+        </div>
+      ) : null}
       {line.move ? (
         <>
           <div style={{ fontSize: '0.85rem' }}>{line.move.why}</div>

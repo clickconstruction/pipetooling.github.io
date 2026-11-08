@@ -21,7 +21,9 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type Container, type ContainerLine } from '../../lib/materials/onSite'
-import { addContainer, addMovement, addPlace, jobIdsWithData, listContainers, listMovements, listPhotos, listPlaces, priceOf, rememberPrice, setOnSiteErrorHandler, unretireContainer, unsortedContainer } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, bookPricesState, jobIdsWithData, listContainers, listMovements, listPhotos, listPlaces, priceFor, priceOf, rememberPrice, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer } from '../../lib/materials/onSiteStore'
+import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { broughtBackWords, unretireVerdict } from '../../lib/materials/unretire'
 import RetiredBoxesFold from '../materials/RetiredBoxesFold'
 import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEXT, type ParsedLine } from '../../lib/materials/manifest'
@@ -100,6 +102,24 @@ function jobLabel(j: MaterialsJob | undefined, id: string): string {
 }
 function unitPrice(line: Pick<ContainerLine, 'partKey'>): number | null {
   return priceOf(line.partKey)
+}
+/** Beside a priced figure: where the price came from and the day it was checked (call 5); amber when the book's check is older than 90 days. */
+function PriceChip({ partKey: key }: { partKey: string }) {
+  const pick = priceFor(key)
+  if (!pick) return null
+  const today = todayYmdInAppTz()
+  return <span style={chip(pick.stale ? 'amber' : 'dim')} title={priceTitle(pick, today)}>{priceWords(pick, today)}</span>
+}
+/** The parts book's read failed: the money reads the invoice prices alone until a retry succeeds. */
+function BookPricesLine() {
+  const { error, loading } = bookPricesState()
+  if (!error) return null
+  return (
+    <div style={{ ...muted, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0 0.9rem 0.5rem' }}>
+      <span>The parts book’s prices could not be read: {error} The money reads the invoice prices alone.</span>
+      <button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem' }} disabled={loading} onClick={() => void retryBookPrices()}>{loading ? 'Reading…' : 'Read the parts book again'}</button>
+    </div>
+  )
 }
 
 export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDetail }: Props) {
@@ -492,7 +512,8 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
       {section === 'missing' ? (
         <div style={{ display: 'grid', gap: '0.9rem' }}>
           <div style={sec}>
-            <h5 style={secH}>Bought · reported · left · walked away<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>per part across the job, at the invoice price where one landed</span></h5>
+            <h5 style={secH}>Bought · reported · left · walked away<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>per part across the job, at the parts book’s price with the day it was checked, or the invoice’s where the book’s is older than {BOOK_PRICE_FRESH_DAYS} days or missing</span></h5>
+            <BookPricesLine />
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <thead><tr><th style={{ ...th, minWidth: 180 }}>Part</th><th style={{ ...th, ...num }}>Bought</th><th style={{ ...th, ...num }}>Added on site</th><th style={{ ...th, ...num }}>Used</th><th style={{ ...th, ...num }}>Returned</th><th style={{ ...th, ...num }}>Taken, damaged</th><th style={{ ...th, ...num }}>Can’t find</th><th style={{ ...th, ...num }}>Left</th><th style={{ ...th, ...num }}>Walked away</th><th style={{ ...th, ...num }}>Money</th><th style={{ ...th, ...num }}>Last count</th></tr></thead>
               <tbody>
@@ -508,7 +529,7 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
                     <td style={{ ...td, ...num }}>{r.cannotFind || ''}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{r.left}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{r.walkedAway > 0 ? r.walkedAway : <span style={chip('green')}>0</span>}</td>
-                    <td style={{ ...td, ...num }}>{r.money != null ? <Money n={r.money} /> : r.walkedAway > 0 ? <span style={muted}>no price</span> : ''}</td>
+                    <td style={{ ...td, ...num }}>{r.money != null ? <><Money n={r.money} /> <PriceChip partKey={r.partKey} /></> : r.walkedAway > 0 ? <span style={muted}>no price</span> : ''}</td>
                     <td style={{ ...td, ...num }}>{r.lastCountAt ? <Stamp iso={r.lastCountAt} /> : <span style={chip('amber')}>never</span>}</td>
                   </tr>
                 ))}
@@ -533,7 +554,7 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
                     <td style={{ ...td, ...num }}>{d.expected}</td>
                     <td style={{ ...td, ...num }}>{d.counted}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{d.diff < 0 ? -d.diff : <span style={chip('blue')}>{d.diff} found</span>}</td>
-                    <td style={{ ...td, ...num }}>{m == null ? <span style={muted}>{price == null ? 'no price' : ''}</span> : <><Money n={m} /> <span style={chip('dim')}>demo price</span></>}</td>
+                    <td style={{ ...td, ...num }}>{m == null ? <span style={muted}>{price == null ? 'no price' : ''}</span> : <><Money n={m} /> <PriceChip partKey={d.partKey} /></>}</td>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{d.byName} <Stamp iso={d.at} inline /></td>
                   </tr>
                 )
@@ -549,7 +570,7 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
                     <td style={{ ...td, ...num }}>—</td>
                     <td style={{ ...td, ...num }}>—</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{m.quantity} <span style={chip('red')}>can't find</span></td>
-                    <td style={{ ...td, ...num }}>{mm == null ? <span style={muted}>no price</span> : <><Money n={mm} /> <span style={chip('dim')}>demo price</span></>}</td>
+                    <td style={{ ...td, ...num }}>{mm == null ? <span style={muted}>no price</span> : <><Money n={mm} /> <PriceChip partKey={pk} /></>}</td>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{m.byName} <Stamp iso={m.at} inline />{m.note ? <span style={muted}> · {m.note}</span> : null}</td>
                   </tr>
                 )
