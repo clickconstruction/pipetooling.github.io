@@ -3,15 +3,15 @@ title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects
-where: /prospects?tab=research
+where: /prospects?tab=permits
 order: 73
 ---
 
-Every city publishes the permits it issues. A building permit says who is about to build what and where. Research under Prospects pulls those permits onto one ledger. You read each one and say what we do about it.
+Every city publishes the permits it issues. A building permit says who is about to build what and where. The Permits tab under Prospects pulls those permits onto one ledger. You read each one and say what we do about it.
 
 ## Open the ledger
 
-Open **Prospects** and press the **Research** tab. Estimators see the tab too, with or without the Prospects flag.
+Open **Prospects** and press the **Permits** tab. Estimators see the tab too, with or without the Prospects flag.
 
 The ledger shows one city at a time. San Antonio is first. Pick the window with **Filed in the last 30 days**. The **Declared value** pick keeps small permits off the list. It starts at $25k and up, or not declared. Tick **Include houses** to see single family permits too.
 

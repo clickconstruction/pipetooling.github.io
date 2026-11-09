@@ -651,7 +651,12 @@ export function HostedStripeBillPanel({
             jobId={job.id}
             customerId={job.customer_id}
             jobStatus={job.status}
-            onSent={() => setStripeDetailsGeneration((g) => g + 1)}
+            onSent={() => {
+              // A send through the row answers the strip's question (v2.6788): the host's own offer goes away here too,
+              // so a re-render of this panel never brings it back once the text or the email went.
+              setTextOffer(null)
+              setStripeDetailsGeneration((g) => g + 1)
+            }}
             textOffer={textOffer}
             emailedAt={inv.sent_to_customer_at}
           />
