@@ -214,6 +214,17 @@ export function HirePersonModal({
     onClose()
   }
 
+  // v2.6789: hired without the invite, the person is a users row with no login. The invite is not the door — it mints
+  // a second id, and invite-user refuses — so the form's end hands straight to the desk's Attach form, this window
+  // closing first, so a dev makes the login in the same sitting with nothing stacked.
+  const hiredWithoutLogin = allDone && isDev && Boolean(context.userId) && plan.steps.some((s) => s.id === 'roster')
+  function attachLoginOnDesk() {
+    if (personDesk && context.userId) {
+      personDesk.open({ userId: context.userId, personId: context.personId, displayName: input.name.trim(), section: 'access', flow: 'attach_login' })
+    }
+    onClose()
+  }
+
   const nameField = input.name.trim()
   const kindOptions: PersonKind[] = KINDS
 
@@ -418,8 +429,15 @@ export function HirePersonModal({
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center', padding: '0.7rem 1rem', background: 'var(--bg-subtle)', borderTop: '1px solid var(--border)' }}>
           {allDone ? (
             <>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginRight: 'auto' }}>{input.name.trim()} is on the roster.</span>
-              <button type="button" style={BTN_BLUE} onClick={openDesk}>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginRight: 'auto' }}>
+                {input.name.trim()} is on the roster{hiredWithoutLogin ? ' with no login.' : '.'}
+              </span>
+              {hiredWithoutLogin && personDesk ? (
+                <button type="button" style={BTN_BLUE} onClick={attachLoginOnDesk} title="Opens their desk on Access & account with the Attach form ready. The login lands on this same person.">
+                  Attach a login
+                </button>
+              ) : null}
+              <button type="button" style={hiredWithoutLogin && personDesk ? BTN_QUIET : BTN_BLUE} onClick={openDesk}>
                 Open their desk
               </button>
             </>

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { canOpenPersonDesk } from '../lib/people/personDeskGates'
 import type { PersonDeskSectionId } from '../lib/people/personDeskSections'
@@ -17,8 +17,11 @@ export type PersonDeskOpenArgs = {
   displayName?: string | null
   /** v2.2810: scroll the Desk to this section once it renders. */
   section?: PersonDeskSectionId | null
-  /** Bring back (v2.6523): Users → Archived opens the desk with the Bring back window already up. */
-  flow?: 'bring_back' | null
+  /**
+   * Bring back (v2.6523): Users → Archived opens the desk with the Bring back window already up. Attach a login
+   * (v2.6789): the Hire form's and the roster form's end open the desk on Access & account with the Attach form open.
+   */
+  flow?: 'bring_back' | 'attach_login' | null
 }
 
 type PersonDeskContextValue = {
@@ -30,12 +33,20 @@ type PersonDeskContextValue = {
   markChanged: () => void
   /** Whether the signed-in viewer may open the Desk at all (office roles) — doors read this instead of useAuth. */
   canOpen: boolean
+  /**
+   * The desk closed last in this session (v2.6789): a first-timer who closed the drawer had no idea how to get back,
+   * so People → Users offers "Back to <name>'s desk" while the desk is shut. Null until one has been closed.
+   */
+  lastClosed: PersonDeskOpenArgs | null
 }
 
 const PersonDeskContext = createContext<PersonDeskContextValue | null>(null)
 
 export function PersonDeskProvider({ children }: { children: ReactNode }) {
   const [payload, setPayload] = useState<PersonDeskOpenArgs | null>(null)
+  const [lastClosed, setLastClosed] = useState<PersonDeskOpenArgs | null>(null)
+  const payloadRef = useRef<PersonDeskOpenArgs | null>(null)
+  payloadRef.current = payload
   const [changeKey, setChangeKey] = useState(0)
   const { role } = useAuth()
   const canOpen = canOpenPersonDesk(role)
@@ -48,10 +59,15 @@ export function PersonDeskProvider({ children }: { children: ReactNode }) {
     setPayload({ userId, personId, payName, displayName: args.displayName?.trim() || payName, section: args.section ?? null, flow: args.flow ?? null })
   }, [])
 
-  const close = useCallback(() => setPayload(null), [])
+  const close = useCallback(() => {
+    const was = payloadRef.current
+    // The way back opens the same person, with no section ring and no window already up.
+    if (was) setLastClosed({ ...was, section: null, flow: null })
+    setPayload(null)
+  }, [])
   const markChanged = useCallback(() => setChangeKey((k) => k + 1), [])
 
-  const value = useMemo(() => ({ open, close, payload, changeKey, markChanged, canOpen }), [open, close, payload, changeKey, markChanged, canOpen])
+  const value = useMemo(() => ({ open, close, payload, changeKey, markChanged, canOpen, lastClosed }), [open, close, payload, changeKey, markChanged, canOpen, lastClosed])
   return <PersonDeskContext.Provider value={value}>{children}</PersonDeskContext.Provider>
 }
 
