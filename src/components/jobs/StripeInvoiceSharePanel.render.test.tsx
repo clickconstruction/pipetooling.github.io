@@ -82,14 +82,16 @@ function fakeIo(over: Partial<ReplyIo> = {}): ReplyIo {
   }
 }
 
-function draw(over: Partial<StripeInvoiceSharePanelProps> & { contact?: Contact; ioOver?: Partial<ReplyIo> } = {}) {
-  const { contact, ioOver, ...rest } = over
+function draw(over: Partial<StripeInvoiceSharePanelProps> & { contact?: Contact; ioOver?: Partial<ReplyIo>; texted?: number | null; prefers?: 'text' | 'email' | 'either' | null } = {}) {
+  const { contact, ioOver, texted = null, prefers = null, ...rest } = over
   /** No code unless a test hands one: the link is the bill id's. */
   const mintPayCode = over.mintPayCode ?? (async () => null)
   const io = fakeIo(ioOver)
   const tellIo = fakeTellIo()
   const load = vi.fn(async (_id: string) => contact ?? SAM)
   const onSent = vi.fn()
+  const loadTexted = vi.fn(async () => texted)
+  const loadPrefers = vi.fn(async () => prefers)
   renderWithProviders(
     <StripeInvoiceSharePanel
       hostedInvoiceUrl={PAY}
@@ -109,10 +111,12 @@ function draw(over: Partial<StripeInvoiceSharePanelProps> & { contact?: Contact;
       io={io}
       tellIo={tellIo}
       mintPayCode={mintPayCode}
+      loadTexted={loadTexted}
+      loadPrefers={loadPrefers}
       {...rest}
     />,
   )
-  return { io, tellIo, load, onSent }
+  return { io, tellIo, load, onSent, loadTexted }
 }
 
 describe('StripeInvoiceSharePanel — the customer’s link is the short pay page (#290)', () => {
@@ -175,6 +179,46 @@ describe('StripeInvoiceSharePanel — the doors through the company (#125 PR 6)'
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Email Bill Draft' })).toBeNull())
     expect(document.body.textContent).toContain('The bill went to sam@example.com from the office.')
     expect(window.location.href).toBe(before)
+    // The strip (v2.6772): the same words, the question and its press under them; Text opens the sheet, Not now puts it away.
+    const strip = await screen.findByTestId('bill-text-offer')
+    expect(within(strip).getByTestId('bill-text-offer-lead').textContent).toBe('The bill went to sam@example.com from the office. It is in their thread and in the job’s activity.')
+    expect(within(strip).getByTestId('bill-text-offer-ask').textContent).toBe('Text Sam the pay link too? A text is read in minutes. Email waits for the evening.')
+    fireEvent.click(within(strip).getByRole('button', { name: 'Text Sam the bill…' }))
+    expect(await screen.findByRole('dialog', { name: 'Tell Sam' })).toBeTruthy()
+    fireEvent.click(screen.getByTestId('tell-skip'))
+    fireEvent.click(within(strip).getByRole('button', { name: 'Not now' }))
+    expect(screen.queryByTestId('bill-text-offer')).toBeNull()
+  })
+
+  it('a host’s offer draws the strip with its lead; a customer who asked for email only reads that in the question’s place (v2.6772)', async () => {
+    draw({ textOffer: { lead: 'The Stripe bill is made. Nothing has gone to the customer yet.', key: 'made' }, prefers: 'email' })
+    const strip = await screen.findByTestId('bill-text-offer')
+    expect(within(strip).getByTestId('bill-text-offer-lead').textContent).toBe('The Stripe bill is made. Nothing has gone to the customer yet.')
+    await waitFor(() => expect(within(strip).getByTestId('bill-text-offer-email-only').textContent).toBe('Sam asked for email only.'))
+    expect(within(strip).queryByTestId('bill-text-offer-text')).toBeNull()
+    fireEvent.click(within(strip).getByRole('button', { name: 'Not now' }))
+    expect(screen.queryByTestId('bill-text-offer')).toBeNull()
+  })
+
+  it('reads Emailed and Texted beside the links off the job’s thread, Not texted until a text went, and reads again after the sheet sends (v2.6772)', async () => {
+    const texted = Date.parse('2026-11-09T21:32:00Z')
+    const { loadTexted } = draw({ emailedAt: '2026-11-09T21:30:00Z', texted })
+    expect((await screen.findByTestId('bill-sent-marks')).textContent).toBe('Emailed 3:30 PM · Texted 3:32 PM')
+    expect(loadTexted).toHaveBeenCalledWith('j1', INVOICE_ID, [PAY, PAY])
+    cleanup()
+    const { loadTexted: again, tellIo } = draw({ emailedAt: '2026-11-09T21:30:00Z', texted: null })
+    expect((await screen.findByTestId('bill-sent-marks')).textContent).toBe('Emailed 3:30 PM · Not texted')
+    fireEvent.click(screen.getByRole('button', { name: 'Text' }))
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-primary'))
+    await waitFor(() => expect(tellIo.send).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(again).toHaveBeenCalledTimes(2))
+  })
+
+  it('no email yet and no text: the row draws no marks', async () => {
+    draw({ texted: null })
+    await screen.findByRole('button', { name: 'Text' })
+    await waitFor(() => expect(screen.queryByTestId('bill-sent-marks')).toBeNull())
   })
 
   it('a contact with no email: the press says so and nothing is sent', async () => {
