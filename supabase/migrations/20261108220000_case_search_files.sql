@@ -99,15 +99,16 @@ BEGIN
       FROM public.legal_matter_entries e
      WHERE e.matter_id = v_matter AND e.voided_at IS NULL AND (p_in IS NULL OR p_in = 'matter') AND to_tsvector('english', COALESCE(e.body, '')) @@ v_q
     UNION ALL
-    SELECT 'matter_document', d.id::text, d.title, NULL, NULL, d.dated_on::text, false,
+    SELECT 'matter_document', d.id::text, d.title, NULL, NULL, d.dated_on::text, d.counsel_only,
            ts_rank_cd(to_tsvector('english', d.title || ' ' || d.shows), v_q),
            ts_headline('english', d.title || ' — ' || d.shows, v_q, v_opts),
            NULL, NULL, NULL
       FROM public.legal_matter_documents d
      WHERE d.matter_id = v_matter AND d.voided_at IS NULL AND (p_in IS NULL OR p_in = 'matter') AND to_tsvector('english', d.title || ' ' || d.shows) @@ v_q
     UNION ALL
-    -- v2.6716 (#288): a matter document kept as text, a section at a time; the hit carries the Evidence row's id and its section.
-    SELECT 'matter_document', d.id::text, d.title, s.n, s.heading, d.dated_on::text, false,
+    -- v2.6716 (#288 PR 1): a matter document kept as text, a section at a time; the hit carries the Evidence row's id and its section.
+    -- v2.6720 (#288 PR 2): marked counsel-only when the row is, never hidden from the dev who calls.
+    SELECT 'matter_document', d.id::text, d.title, s.n, s.heading, d.dated_on::text, d.counsel_only,
            ts_rank_cd(to_tsvector('english', s.body), v_q),
            ts_headline('english', s.body, v_q, v_opts),
            NULL, NULL, NULL
@@ -121,7 +122,7 @@ BEGIN
     -- The record a file hangs on is joined so the hit can name it; a row whose record is gone (an attachment removed,
     -- a document voided) is left out until the sweep drops it.
     SELECT 'file', f.drive_file_id, f.name, NULL, NULL,
-           COALESCE(e.dated_on, en.entry_date, d.dated_on, f.modified_at::date)::text, f.counsel_only,
+           COALESCE(e.dated_on, en.entry_date, d.dated_on, f.modified_at::date)::text, (f.counsel_only OR COALESCE(d.counsel_only, false)),
            ts_rank_cd(to_tsvector('english', coalesce(f.text, '')), v_q),
            ts_headline('english', f.text, v_q, v_opts),
            CASE WHEN f.source = 'matter_document' THEN 'matter_document' WHEN a.evidence_id IS NOT NULL THEN 'evidence' WHEN a.entry_id IS NOT NULL THEN 'entry' ELSE 'file' END,
@@ -136,7 +137,7 @@ BEGIN
        AND (f.person_id = p_person_id OR (v_matter IS NOT NULL AND f.matter_id = v_matter))
        AND (f.source <> 'hr_attachment' OR a.id IS NOT NULL)
        AND (f.source <> 'matter_document' OR d.id IS NOT NULL)
-       -- A .md/.txt kept as text (#288) is read by section above; its bytes are not a second hit.
+       -- a .md or .txt kept as text is searched by section above, not twice through its bytes (#288)
        AND (f.source <> 'matter_document' OR d.text_document_id IS NULL)
        AND (p_in IS NULL OR p_in = 'files')
        AND to_tsvector('english', coalesce(f.text, '')) @@ v_q

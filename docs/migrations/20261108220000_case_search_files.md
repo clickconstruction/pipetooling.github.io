@@ -9,4 +9,4 @@ No table, so no fence appliers. Idempotent (`CREATE INDEX IF NOT EXISTS`, `CREAT
 
 ## Order
 
-After `20261108200000` **and after #288's `20261108210000` is on main** — this body names `public.documents` and `text_document_id`, which a plpgsql function compiles without and fails on at every call, so the push waits for that file and applies both in one `db push`. Then `supabase functions deploy dev-mcp`. Until the push the old body refuses `in: files` in words and finds no file; nothing else changes. #288's PR 2 (`20261108230000`) starts from this body.
+After `20261108200000` **and after #288's `20261108210000` and `20261108230000` are on main** — this body names `public.documents`, `text_document_id` and `legal_matter_documents.counsel_only`, which a plpgsql function compiles without and fails on at every call. #288 PR 2's `20261108230000` (v2.6720) merged first and replaces `dev_case_search` with the file source carried, so this file's body is word for word that stamp's final body: pushed after it (this stamp sits below applied versions, so `supabase db push --include-all`), it adds the GIN index and leaves prod's function as it is.
