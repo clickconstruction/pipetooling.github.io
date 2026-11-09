@@ -21994,6 +21994,7 @@ export type Database = {
           lien_offer_pct: number
           lien_offer_set_by: string | null
           lien_offer_taken_at: string | null
+          pay_code: string | null
           retainage_release: boolean
           sent_by_user_id: string | null
           sent_to_customer_at: string | null
@@ -22038,6 +22039,7 @@ export type Database = {
           lien_offer_pct?: number
           lien_offer_set_by?: string | null
           lien_offer_taken_at?: string | null
+          pay_code?: string | null
           retainage_release?: boolean
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
@@ -22082,6 +22084,7 @@ export type Database = {
           lien_offer_pct?: number
           lien_offer_set_by?: string | null
           lien_offer_taken_at?: string | null
+          pay_code?: string | null
           retainage_release?: boolean
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
@@ -28874,6 +28877,172 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      permit_pulls: {
+        Row: {
+          city: string
+          error: string | null
+          id: string
+          ran_at: string
+          rows_kept: number
+          rows_seen: number
+          since: string | null
+          source: string
+        }
+        Insert: {
+          city: string
+          error?: string | null
+          id?: string
+          ran_at?: string
+          rows_kept?: number
+          rows_seen?: number
+          since?: string | null
+          source: string
+        }
+        Update: {
+          city?: string
+          error?: string | null
+          id?: string
+          ran_at?: string
+          rows_kept?: number
+          rows_seen?: number
+          since?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
+      permit_verdicts: {
+        Row: {
+          decided_at: string
+          decided_by: string
+          id: string
+          look_again_on: string | null
+          permit_id: string
+          prospect_id: string | null
+          reason: string
+          verdict: string
+        }
+        Insert: {
+          decided_at?: string
+          decided_by: string
+          id?: string
+          look_again_on?: string | null
+          permit_id: string
+          prospect_id?: string | null
+          reason: string
+          verdict: string
+        }
+        Update: {
+          decided_at?: string
+          decided_by?: string
+          id?: string
+          look_again_on?: string | null
+          permit_id?: string
+          prospect_id?: string | null
+          reason?: string
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permit_verdicts_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permit_verdicts_permit_id_fkey"
+            columns: ["permit_id"]
+            isOneToOne: false
+            referencedRelation: "permits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permit_verdicts_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permits: {
+        Row: {
+          address: string | null
+          address_key: string | null
+          area_sf: number | null
+          city: string
+          contact: string | null
+          declared_value: number | null
+          first_seen_at: string
+          id: string
+          issued_on: string | null
+          kind: string
+          lat: number | null
+          lng: number | null
+          permit_number: string
+          permit_type: string
+          project_name: string | null
+          pulled_at: string
+          raw: Json | null
+          residential: boolean
+          source: string
+          stage: string
+          submitted_on: string | null
+          work_type: string | null
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          address_key?: string | null
+          area_sf?: number | null
+          city: string
+          contact?: string | null
+          declared_value?: number | null
+          first_seen_at?: string
+          id?: string
+          issued_on?: string | null
+          kind: string
+          lat?: number | null
+          lng?: number | null
+          permit_number: string
+          permit_type: string
+          project_name?: string | null
+          pulled_at?: string
+          raw?: Json | null
+          residential?: boolean
+          source: string
+          stage: string
+          submitted_on?: string | null
+          work_type?: string | null
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          address_key?: string | null
+          area_sf?: number | null
+          city?: string
+          contact?: string | null
+          declared_value?: number | null
+          first_seen_at?: string
+          id?: string
+          issued_on?: string | null
+          kind?: string
+          lat?: number | null
+          lng?: number | null
+          permit_number?: string
+          permit_type?: string
+          project_name?: string | null
+          pulled_at?: string
+          raw?: Json | null
+          residential?: boolean
+          source?: string
+          stage?: string
+          submitted_on?: string | null
+          work_type?: string | null
+          zip?: string | null
+        }
+        Relationships: []
       }
       person_availability: {
         Row: {
@@ -38920,6 +39089,7 @@ export type Database = {
       }
       bid_version_lock_may_override: { Args: never; Returns: boolean }
       bid_version_lock_refusal: { Args: { p_version: string }; Returns: string }
+      bill_pay_code: { Args: { p_invoice_id: string }; Returns: string }
       bio_line_say: {
         Args: { p_id: string; p_say: boolean }
         Returns: undefined
@@ -39633,6 +39803,10 @@ export type Database = {
       }
       dev_legal_statement_write: {
         Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
+      dev_matter_doc_read: {
+        Args: { p_doc_id: string; p_matter_id: string; p_section?: string }
         Returns: Json
       }
       dev_mcp_issue_key: {
@@ -41222,6 +41396,10 @@ export type Database = {
           line_no: number
           n: number
         }[]
+      }
+      hr_doc_slice: {
+        Args: { p_section?: string; p_text: string; p_who?: string }
+        Returns: Json
       }
       humanize_job_status: { Args: { p: string }; Returns: string }
       import_clock_sessions: { Args: { p_rows: Json }; Returns: Json }
@@ -43236,6 +43414,7 @@ export type Database = {
         Args: { p_firm_id: string; p_rotate?: boolean }
         Returns: Json
       }
+      mint_pay_code: { Args: never; Returns: string }
       mint_sub_portal_link: {
         Args: { p_person_id: string; p_rotate?: boolean }
         Returns: Json
@@ -43867,6 +44046,39 @@ export type Database = {
         Returns: string
       }
       request_is_dev_seat: { Args: never; Returns: boolean }
+      research_permits: {
+        Args: { p_city: string; p_residential?: boolean; p_since: string }
+        Returns: {
+          address: string
+          area_sf: number
+          city: string
+          contact: string
+          declared_value: number
+          filed_on: string
+          id: string
+          issued_on: string
+          lat: number
+          lng: number
+          permit_number: string
+          permit_type: string
+          plumber: string
+          plumber_permit_on: string
+          project_name: string
+          residential: boolean
+          source: string
+          stage: string
+          submitted_on: string
+          verdict: string
+          verdict_at: string
+          verdict_by: string
+          verdict_by_name: string
+          verdict_look_again_on: string
+          verdict_prospect_id: string
+          verdict_reason: string
+          work_type: string
+          zip: string
+        }[]
+      }
       resolve_job_ledger_id_by_number: {
         Args: { p_number: string }
         Returns: string
@@ -44962,6 +45174,7 @@ export type Database = {
         Args: { p_master_user_id: string }
         Returns: boolean
       }
+      user_can_research_permits: { Args: never; Returns: boolean }
       user_can_work_team_prospect: {
         Args: { p_prospect_id: string }
         Returns: boolean
