@@ -5,7 +5,8 @@ import { stripeApiKeyForMode } from '../_shared/stripeSecrets.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { lienOfferForPayLink, type LienOfferRow } from '../_shared/lienPayOffer.ts'
-import { buildPayLinkPayload, isPayLinkId, payLinkRowEligible, type PayLinkRow, type PayLinkStripeFacts } from '../_shared/payLink.ts'
+import { buildPayLinkPayload, payLinkRef, payLinkRowEligible, type PayLinkRow, type PayLinkStripeFacts } from '../_shared/payLink.ts'
+import { ESTIMATE_LINK_LOCKED_CODE, ESTIMATE_LINK_LOCKED_WORDS, recordEstimateLinkMiss } from '../_shared/estimateLinkMisses.ts'
 
 /**
  * pay-link (punch list #35, v2.3754): what a scanned pay code opens. `GET ?id=<bill id>`
@@ -22,6 +23,12 @@ import { buildPayLinkPayload, isPayLinkId, payLinkRowEligible, type PayLinkRow, 
  *
  * Rate limit: 60 opens a minute per client address, and 600 a minute across the isolate,
  * in memory — best effort, enough to blunt a scan of random ids without a table.
+ *
+ * Since v2.6769 (punch list #290) the bill's short link rides here too: `GET ?code=<ten letters>` looks the row up by
+ * `pay_code` (`bill_pay_code` mints it) and runs the same flow. 31^10 codes against a few thousand bills, and a code
+ * that opens nothing counts a miss against its source through the estimate link's guard (`estimate_link_miss`,
+ * `_shared/estimateLinkMisses.ts`): past 20 misses in the hour the function answers 429 instead of its 404. A bill id
+ * that opens nothing is a 404 as before.
  */
 
 const corsHeaders = {
@@ -68,8 +75,9 @@ serve(async (req) => {
   if (req.method !== 'GET') return jsonResponse({ error: 'Method not allowed' }, 405)
   try {
     const url = new URL(req.url)
-    const rawId = (url.searchParams.get('id') ?? '').trim().toLowerCase()
-    if (!isPayLinkId(rawId)) return jsonResponse({ error: 'Missing bill' }, 400)
+    const ref = payLinkRef(url.searchParams.get('id') ?? url.searchParams.get('code') ?? '')
+    if (!ref) return jsonResponse({ error: 'Missing bill' }, 400)
+    const rawId = ref.value
 
     const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || 'unknown'
     if (rateLimited(ip, Date.now())) return jsonResponse({ error: 'Too many requests — try again in a minute.' }, 429)
@@ -79,12 +87,17 @@ serve(async (req) => {
     const { data: rowRaw, error: rowErr } = await admin
       .from('jobs_ledger_invoices')
       .select('id, job_id, status, stripe_invoice_id, stripe_mode, hosted_invoice_url, stripe_invoice_status, lien_offer_pct, lien_offer_by, lien_offer_credit_note_id, lien_offer_credit_cents, lien_offer_taken_at, lien_offer_ended_at')
-      .eq('id', rawId)
+      .eq(ref.kind === 'code' ? 'pay_code' : 'id', rawId)
       .maybeSingle()
     if (rowErr) throw new Error(rowErr.message)
     const row = rowRaw as (PayLinkRow & LienOfferRow) | null
     if (!payLinkRowEligible(row)) {
-      console.log(JSON.stringify({ event: 'pay_link_open', id: rawId, state: 'not_found' }))
+      console.log(JSON.stringify({ event: 'pay_link_open', [ref.kind]: rawId, state: 'not_found' }))
+      // A code that opens nothing counts against its source (#290); past the hour's limit the answer is the guard's.
+      if (ref.kind === 'code' && !row) {
+        const miss = await recordEstimateLinkMiss(admin, req, 'pay-link')
+        if (miss.locked) return jsonResponse({ error: ESTIMATE_LINK_LOCKED_WORDS, code: ESTIMATE_LINK_LOCKED_CODE }, 429)
+      }
       return jsonResponse({ error: 'not_found' }, 404)
     }
 
@@ -130,7 +143,7 @@ serve(async (req) => {
     // The pay offer (v2.4704): Stripe already asks for the lower amount while the credit is on; the page says why, and until when.
     const offer = lienOfferForPayLink(row, facts?.amount_remaining ?? null, todayYmdInAppTz())
     const payload = buildPayLinkPayload({ row, facts, jobName, company: PORTAL_COMPANY.name, phone: PORTAL_COMPANY.phone, paidOn, offer })
-    console.log(JSON.stringify({ event: 'pay_link_open', id: row.id, state: payload.state, mode, stripe: facts ? 'answered' : 'skipped', refreshed, offer: offer?.state ?? 'none' }))
+    console.log(JSON.stringify({ event: 'pay_link_open', id: row.id, by: ref.kind, state: payload.state, mode, stripe: facts ? 'answered' : 'skipped', refreshed, offer: offer?.state ?? 'none' }))
     return jsonResponse(payload)
   } catch (e) {
     console.error('pay-link failed', e)
