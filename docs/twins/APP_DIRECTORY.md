@@ -358,7 +358,7 @@ the likely job first), each holder's own card, payroll marks, follow-up. The **O
 Roles: all (Team for dev, master, assistant/controller; payroll actions gated).
 
 ### /b/:code — A box label's short address
-The door a printed box label's QR opens: `prts.co/b/7D759246` forwards here (v2.6039, punch list #209). The page finds the box by its eight-character code and opens it on the tally's On site tab; a code no box carries says so and offers the tab. Roles: anyone signed in who can see the job.
+The door a printed box label's QR opens: `prts.co/b/7D759246` forwards here (v2.6039, punch list #209; the code prints for people as `7D75-9246` and reads either way). Signed in, the page finds the box by its eight-character code and opens it on the tally's On site tab; a code no box carries says so and offers the tab. Signed out (v2.6797, punch list #294) it is the public box page: the stencil and place, the newest photo, the lines with their counts and the day of the last count, never the job or a name, with **Sign in to change a count** coming back here with a session. Roles: anyone with the label; the presses need a signed-in person who can see the job.
 
 ### /e/:code — An estimate link's short address
 The door the estimate text's link opens (v2.6678, punch list #281): `my.clickplumbing.com/e/<code>` answers a 301 here through the `portal-link-shell` Worker, and the page is the customer's accept page (`/estimate/accept`) with the code read from the path instead of `?t=`: the estimate, its options, approve or decline. A code that opens nothing says so as a wrong link does. Public, no sign-in. Guide: `send-an-estimate-and-turn-it-into-a-job`.

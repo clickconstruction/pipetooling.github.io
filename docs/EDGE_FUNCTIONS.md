@@ -3,7 +3,7 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 184 Supabase Edge Functions
+purpose: Complete API documentation for all 185 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
 last_updated: 2026-11-09
 estimated_read_time: 20-25 minutes
@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 184
+total_functions: 185
 
 key_sections:
   - name: "Functions"
@@ -247,6 +247,7 @@ when_to_read:
    - [stripe-webhook](#stripe-webhook)
    - [refresh-stripe-invoice-links](#refresh-stripe-invoice-links)
    - [pay-link](#pay-link)
+   - [box-read](#box-read)
    - [sync-mercury-transactions](#sync-mercury-transactions)
    - [mercury-webhook](#mercury-webhook)
    - [ar-returned-checks](#ar-returned-checks)
@@ -5767,6 +5768,18 @@ interface Body {
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY_LIVE` / `STRIPE_SECRET_KEY_TEST` (legacy `STRIPE_SECRET_KEY`).
 
 **Implementation**: [`supabase/functions/pay-link/index.ts`](../supabase/functions/pay-link/index.ts); the pure part — the id and code checks (`payLinkRef`), which rows open, the state a scan lands in, the payload and its client read — in [`_shared/payLink.ts`](../supabase/functions/_shared/payLink.ts), re-exported by [`src/lib/billing/payLink.ts`](../src/lib/billing/payLink.ts) (which also builds the address, always on the public origin) and tested from [`src/lib/billing/payLink.test.ts`](../src/lib/billing/payLink.test.ts). **Deploy**: `supabase functions deploy pay-link`.
+
+### box-read
+
+**Purpose** (punch list #294, **v2.6797**): what a scanned cage or box label opens with no sign-in. The label's QR reads `PRTS.CO/B/<eight hex>` (`job_containers.code`, the id's first eight characters), prts.co forwards it to the app's `/b/:code`, and signed out the page ([`src/components/materials/BoxPublicPage.tsx`](../src/components/materials/BoxPublicPage.tsx), through [`src/pages/BoxCode.tsx`](../src/pages/BoxCode.tsx)) asks here: the stencil, the place, the newest photo, the lines with their counts and the day of the last count. Never the job, the customer, a price or a person's name. Signed in, the same route opens the box on the On site tab and this function is not asked.
+
+**Request**: `GET /functions/v1/box-read?code=<eight hex>` (a dash in the middle is dropped; anything that is not eight hex characters is a 400 before the database is touched). `GET ?code=<code>&photo=<photo id>` answers the photo's bytes. No auth (`verify_jwt = false`): the code is the capability, as the bill's short code is. **Rate limit**: 60 reads a minute per client address and 600 across the isolate, in memory → 429.
+
+**Response**: `{ ok: true, box: { code, stencil, kind: "cage"|"box"|"pile", place, where, lines: [{ partName, manufacturer, onHand }], lastCountedOn, photo: { id, takenOn, url } | null } }`. The lines come from `on_site_job_summary(job)` (the database's own arithmetic, v2.6743, which the service role may call) cut to the container, with something on hand, in name order; `lastCountedOn` and `takenOn` are app-calendar days. `photo.url` is this function's own address with `&photo=`, which streams the bytes from Drive by `drive_file_id` through the service account (`driveMedia`) once `photo-save` has filed the shot, else from the `box-photos` bucket while it waits, with `Cache-Control: public, max-age=3600`; no Drive link reaches the page. 404 `{ error: "not_found" }` for a code no live box carries, which also counts a miss against its source through the estimate link's guard (`estimate_link_miss`, [`_shared/estimateLinkMisses.ts`](../supabase/functions/_shared/estimateLinkMisses.ts)); past 20 misses in the hour, **429** `{ error, code: "locked" }`. **410** `{ error: "retired", retiredOn }` for a retired box. Each read that opens writes one `public_page_views` row, surface `box_page`, `entity_id` the container id, `via` `token`; a staff session or `?preview=1` is stamped `staff` / `preview` through `publicViewDecision` and not counted.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (the staff stamp), `GOOGLE_SERVICE_ACCOUNT_JSON` (the photo's bytes from Drive; without it a filed photo falls back to the bucket copy, which the sweep has usually deleted, so the page shows no photo).
+
+**Implementation**: [`supabase/functions/box-read/index.ts`](../supabase/functions/box-read/index.ts); the pure part — the code check, the payload and its client read — in [`_shared/boxPage.ts`](../supabase/functions/_shared/boxPage.ts), re-exported by [`src/lib/materials/boxPage.ts`](../src/lib/materials/boxPage.ts) and tested from `src/lib/materials/boxPage.test.ts`. **Deploy**: `supabase functions deploy box-read` right after the merge; until then a signed-out scan reads the gateway's refusal on the page.
 
 ### sync-mercury-transactions
 

@@ -64,6 +64,8 @@ A printed label carries a code. Point your camera at it and the box opens. The o
 
 Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with the dash. Typed with or without the dash, it opens the same box.
 
+Signed out, the scan still opens a page. It shows what is in the box, the newest photo and the day of the last count. It never names the job. To record a part used, moved or counted, press **Sign in to change a count**. After you sign in you land on that box.
+
 A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The press opens the office page on that box's manifest. Write what you add on the page's ruled lines, and press it in the app too.
 
 ## Retire a box
