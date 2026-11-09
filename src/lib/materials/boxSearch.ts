@@ -5,6 +5,7 @@
  * crew lands on the box itself. Pure: the screens hand in what the store holds.
  */
 import type { Door } from '../search/doors'
+import { boxDeskLink } from './boxDeskLink'
 import { containerWords, linesOf, placeName, type Container, type ContainerLine, type Place } from './onSite'
 
 export type BoxSearchJob = { id: string; label: string }
@@ -13,9 +14,7 @@ export function boxOnSiteLink(jobId: string, containerId: string): string {
   return `/tally?tab=on-site&job=${jobId}&container=${containerId}`
 }
 
-export function boxDeskLink(jobId: string): string {
-  return `/jobs?tab=materials&job=${jobId}`
-}
+export { boxDeskLink }
 
 export const BOX_PHONE_SCREEN_WORDS = 'Open on the phone screen'
 
