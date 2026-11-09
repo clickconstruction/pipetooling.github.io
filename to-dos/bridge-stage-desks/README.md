@@ -2,7 +2,7 @@
 name: "The Bridge: a desk behind every stage card"
 number: 192
 group: gated
-status: built 2026-10-26 to 10-27 · the four desks shipped as v2.5929 Build (#6253), v2.5930 Bill (#6252), v2.5931 Market (#6254) and v2.5932 Sales (#6255), read-only, to the defaults drawn below, with the first live look's fixes as v2.5938; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890) · left: the owner's look, and the thresholds as his numbers
+status: built 2026-10-26 to 10-27 · the four desks shipped as v2.5929 Build (#6253), v2.5930 Bill (#6252), v2.5931 Market (#6254) and v2.5932 Sales (#6255), read-only, to the defaults drawn below, with the first live look's fixes as v2.5938; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890) · left: the owner's look, and the thresholds as his numbers · 2026-11-09: the drawn thresholds are the owner's numbers; the two new writes wait on mock-ups he asked to see before answering
 summary: >
   The owner asked for a desk behind every stage card, one press from the card, the way the
   Collect desk opens. The first drafts cloned the Collect desk's call-sheet anatomy onto all
@@ -14,9 +14,9 @@ summary: >
   Every figure traces to columns that exist today; no desk needs a migration. The folder
   carries the four approved prototypes, the eight concept wireframes and the three review
   files.
-next: The owner opens each desk live on /bridge and names his numbers for the thresholds below (each is one exported constant); then says whether he wants either of the two new writes.
+next: The two writes drawn as before-and-after mock-ups beside this card (a session, 2026-11-09), then the owner's yes or no on each. The thresholds are settled: the drawn defaults stand as his numbers (2026-11-09).
 size: M per desk — a kernel, a loader widening and the desk component each; no migration except the optional bridge_calls kind marker
-blocker: None for the build. The thresholds stay at the drawn defaults until the owner names his numbers.
+blocker: The two mock-ups, then the owner's yes or no on each write.
 opinion: Built one desk per PR, in parallel from one shared contract, to the drawn defaults, so the owner's numbers drop into the constants without a redesign; retire this folder once he has looked and the thresholds are his.
 ---
 
