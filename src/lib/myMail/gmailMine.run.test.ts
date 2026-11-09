@@ -347,6 +347,30 @@ describe('gmail-mine: list', () => {
     expect(by['g-jo']).toMatchObject({ guess: null, tagged: null, inMessages: null, folded: null })
   })
 
+  it('guesses the job a mail’s own conversation is on already, before the subject, the party and the domain (punch list #263 PR C)', async () => {
+    // Priya's reply in the clubhouse conversation: bids@ holds the first mail, tied to the clubhouse bid. Her domain alone
+    // would have guessed Cedar Bend HOA's one open Pipeline job; the conversation says the bid outright.
+    const page = listPage()
+    page.splice(
+      1,
+      0,
+      mail('g-priya-2', 't-priya', '2026-11-01T15:30:00.000Z', { From: 'Priya Nair <priya@cedarbend.example>', Subject: 'Re: Clubhouse walk', 'Message-ID': '<priya-2@cedarbend.example>' }, 'Tuesday at 9 then.'),
+    )
+    google.boxes[MARISOL] = { mails: page, labels: [{ id: 'INBOX', name: 'INBOX' }], pages: { '': { ids: page.map((m) => m.id) } } }
+    const res = await post('marisol-jwt', { action: 'list', view: 'all' })
+    expect(res.status).toBe(200)
+    const by = Object.fromEntries((res.body.rows as Row[]).map((r) => [r.gmailId, r]))
+    expect(by['g-priya-2']).toMatchObject({ inMessages: null, tagged: null, guess: { kind: 'bid', id: CLUB, key: `bid:${CLUB}`, num: 'BP523', name: 'Cedar Bend clubhouse', why: 'a mail of this conversation is on BP523 already' } })
+    // The held mail itself still reads as the boxes' line, with no guess; the board's mail, in no held conversation, still guesses by its domain.
+    expect(by['g-priya-1']).toMatchObject({ inMessages: { messageId: 'm-box-club', jobKey: `bid:${CLUB}` }, guess: null })
+    expect(by['g-board']!.guess).toMatchObject({ id: MILL, why: 'cedarbend.example is Cedar Bend HOA' })
+    // Opened, the reply carries the same guess, read from its conversation's rows.
+    const opened = await post('marisol-jwt', { action: 'open', gmailId: 'g-priya-2' })
+    expect(opened.status).toBe(200)
+    expect((opened.body.mail as Row).guess).toMatchObject({ id: CLUB, why: 'a mail of this conversation is on BP523 already' })
+    expect(writes()).toEqual([])
+  })
+
   it('never draws a mail under a label the person leaves out that the search let past, held by Gmail’s id (v2.6296)', async () => {
     // Gmail's search left Jo's mail on the page though it carries Personal, a label Marisol leaves out.
     google.boxes[MARISOL]!.labels.push({ id: 'Label_7', name: 'Personal' })

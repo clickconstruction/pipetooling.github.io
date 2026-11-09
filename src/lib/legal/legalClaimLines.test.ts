@@ -7,6 +7,9 @@ import {
   claimLineDraftProblem,
   claimLineKindWords,
   claimLinesFromRows,
+  claimSettlementOnly,
+  claimSettlementOnlyPrintWords,
+  claimSettlementOnlyWords,
   claimTable,
   claimTotalWords,
   claimTyped,
@@ -17,14 +20,14 @@ import {
 import { plainWordsFailures } from '../plainWords'
 
 const row = (id: string, over: Partial<LegalClaimLineRow> = {}): LegalClaimLineRow => ({ id, kind: 'materials', title: 'Materials left on site', amount: '5310.00', basis: 'contract ¶ 9 · counted on walk-off', document_id: 'd1', added_at: '2026-10-26T15:00:00Z', document: { title: 'Materials on site — count.pdf' }, ...over })
-const line = (id: string, amount: number, over: Partial<LegalClaimLineLike> = {}): LegalClaimLineLike => ({ id, kind: 'damages', title: 'Demobilization damages', amount, basis: 'contract ¶ 14', documentId: null, documentTitle: '', ...over })
+const line = (id: string, amount: number, over: Partial<LegalClaimLineLike> = {}): LegalClaimLineLike => ({ id, kind: 'damages', title: 'Demobilization damages', amount, basis: 'contract ¶ 14', documentId: null, documentTitle: '', settlementOnly: false, ...over })
 const labelOf = (jobId: string) => ({ j1: 'C1412', j2: 'C1419' })[jobId] ?? jobId
 
 describe('claim lines from rows (punch list #171, v2.6679)', () => {
   it('reads the rows in the order added, the amount as a number, the document title resolved, an unknown kind as other', () => {
     const lines = claimLinesFromRows([row('b', { added_at: '2026-10-27T00:00:00Z', kind: 'fees', document: [{ title: 'Fee letter' }] }), row('a'), row('c', { kind: 'bogus', document_id: null, document: null, amount: 12.345, added_at: '2026-10-28T00:00:00Z' })])
     expect(lines.map((l) => l.id)).toEqual(['a', 'b', 'c'])
-    expect(lines[0]).toEqual({ id: 'a', kind: 'materials', title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9 · counted on walk-off', documentId: 'd1', documentTitle: 'Materials on site — count.pdf' })
+    expect(lines[0]).toEqual({ id: 'a', kind: 'materials', title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9 · counted on walk-off', documentId: 'd1', documentTitle: 'Materials on site — count.pdf', settlementOnly: false })
     expect(lines[1]).toMatchObject({ kind: 'fees', documentTitle: 'Fee letter' })
     expect(lines[2]).toMatchObject({ kind: 'other', amount: 12.35, documentId: null, documentTitle: '' })
   })
@@ -47,7 +50,7 @@ describe('the Add form', () => {
     expect(claimAmountOf('')).toBeNull()
   })
   it('names the one thing wrong, in the RPC’s order', () => {
-    const ok = { kind: 'materials' as const, title: 'Materials left on site', amount: '5310', basis: 'contract ¶ 9', documentId: null }
+    const ok = { kind: 'materials' as const, title: 'Materials left on site', amount: '5310', basis: 'contract ¶ 9', documentId: null, settlementOnly: false }
     expect(claimLineDraftProblem(ok)).toBeNull()
     expect(claimLineDraftProblem({ ...ok, kind: 'rent' as never })).toBe('Pick what part of the claim this is.')
     expect(claimLineDraftProblem({ ...ok, title: '  ' })).toBe('Name the line.')
@@ -57,9 +60,9 @@ describe('the Add form', () => {
     expect(claimLineDraftProblem({ ...ok, basis: 'b'.repeat(301) })).toBe('Keep the basis under 300 characters.')
   })
   it('starts a new line named by its kind, other blank, and puts a line back into the form', () => {
-    expect(emptyClaimLineDraft()).toEqual({ kind: 'materials', title: 'Materials left on site', amount: '', basis: '', documentId: null })
+    expect(emptyClaimLineDraft()).toEqual({ kind: 'materials', title: 'Materials left on site', amount: '', basis: '', documentId: null, settlementOnly: false })
     expect(emptyClaimLineDraft('other').title).toBe('')
-    expect(claimLineDraftOf(line('a', 2800, { documentId: 'd2' }))).toEqual({ kind: 'damages', title: 'Demobilization damages', amount: '2800.00', basis: 'contract ¶ 14', documentId: 'd2' })
+    expect(claimLineDraftOf(line('a', 2800, { documentId: 'd2' }))).toEqual({ kind: 'damages', title: 'Demobilization damages', amount: '2800.00', basis: 'contract ¶ 14', documentId: 'd2', settlementOnly: false })
   })
 })
 
@@ -100,5 +103,45 @@ describe('the claim table', () => {
     const t = claimTable({ balance: 0, retainageHeldByJob: {}, retainageAdded: 0, retainageOnBills: 0, openBills: [], claimLines: [line('a', 500)] }, labelOf)
     expect(t.rows[0]).toMatchObject({ source: 'bills', basis: 'nothing open on the ledger', amount: 0 })
     expect(t.total).toBe(500)
+  })
+})
+
+describe('settlement only (v2.6697, punch list #171, the owner’s call of 2026-11-08)', () => {
+  const so = line('s', 400, { kind: 'fees', title: 'Fee waiver', settlementOnly: true })
+  it('reads the flag off the row, false when the column is not there yet', () => {
+    const lines = claimLinesFromRows([row('a', { settlement_only: true }), row('b', { added_at: '2026-10-27T00:00:00Z' }), row('c', { added_at: '2026-10-28T00:00:00Z', settlement_only: null })])
+    expect(lines.map((l) => l.settlementOnly)).toEqual([true, false, false])
+  })
+  it('keeps a settlement-only line out of the typed sum and in its own', () => {
+    expect(claimTyped([line('a', 5310), so])).toBe(5310)
+    expect(claimSettlementOnly([line('a', 5310), so])).toBe(400)
+    expect(claimSettlementOnly([line('a', 5310)])).toBe(0)
+  })
+  it('draws the row with its flag, out of the total, and says so under the table in plain words', () => {
+    const t = claimTable({ balance: 2028.04, retainageHeldByJob: {}, retainageAdded: 0, retainageOnBills: 0, openBills: [{ jobLabel: '891' }], claimLines: [line('a', 5310), so] }, labelOf)
+    expect(t.rows.map((r) => [r.part, r.settlementOnly])).toEqual([['Open bills', false], ['Demobilization damages', false], ['Fee waiver', true]])
+    expect(t.total).toBe(7338.04)
+    expect(t.typed).toBe(5310)
+    expect(t.settlementOnly).toBe(400)
+    expect(t.settlementOnlyCount).toBe(1)
+    expect(claimSettlementOnlyWords(t)).toBe('One line, $400.00, is settlement only. That money is in an offer, not in the demand or the total.')
+    expect(claimSettlementOnlyPrintWords(t)).toBe('One line, $400.00, is marked settlement only and left off this table. That money is claimed in an offer, not in the demand.')
+    const two = claimTable({ balance: 0, retainageHeldByJob: {}, retainageAdded: 0, retainageOnBills: 0, openBills: [], claimLines: [so, line('t', 100, { settlementOnly: true })] }, labelOf)
+    expect(claimSettlementOnlyWords(two)).toBe('2 lines, $500.00, are settlement only. That money is in an offer, not in the demand or the total.')
+    for (const words of [claimSettlementOnlyWords(t), claimSettlementOnlyPrintWords(t), claimSettlementOnlyWords(two), claimSettlementOnlyPrintWords(two)]) expect(plainWordsFailures(words)).toEqual([])
+    expect(claimSettlementOnlyWords(claimTable({ balance: 0, retainageHeldByJob: {}, retainageAdded: 0, retainageOnBills: 0, openBills: [], claimLines: [] }, labelOf))).toBe('')
+  })
+  it('for the demand, leaves the row out altogether; a settlement-only row alone does not reach past the bills', () => {
+    const t = claimTable({ balance: 2028.04, retainageHeldByJob: {}, retainageAdded: 0, retainageOnBills: 0, openBills: [{ jobLabel: '891' }], claimLines: [line('a', 5310), so] }, labelOf, { forDemand: true })
+    expect(t.rows.map((r) => r.part)).toEqual(['Open bills', 'Demobilization damages'])
+    expect(t.total).toBe(7338.04)
+    expect(t.settlementOnlyCount).toBe(0)
+    const alone = claimTable({ balance: 2028.04, retainageHeldByJob: {}, retainageAdded: 0, retainageOnBills: 0, openBills: [{ jobLabel: '891' }], claimLines: [so] }, labelOf)
+    expect(alone.total).toBe(2028.04)
+    expect(claimTotalWords(alone)).toBe('The claim, the open bills alone')
+  })
+  it('the form carries the flag both ways', () => {
+    expect(emptyClaimLineDraft().settlementOnly).toBe(false)
+    expect(claimLineDraftOf(so).settlementOnly).toBe(true)
   })
 })
