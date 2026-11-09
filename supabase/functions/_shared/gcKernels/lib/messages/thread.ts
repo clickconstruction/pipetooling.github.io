@@ -79,6 +79,16 @@ export interface ThreadMessage {
    * when it is set. Null on a line with no kept HTML; unset on a read that leaves it out.
    */
   bodyHtmlPath?: string | null
+  /**
+   * The app put this line here from a person's own Sent, with no press (`messages.placed_by_app`, v2.6751, punch list
+   * #263): the thread draws *from Wendi's mail · put here by the app* under it, with Untag for that person. Unset on
+   * a read that leaves it out.
+   */
+  placedByApp?: boolean
+  /** Whose own box a tagged line came from (`messages.mail_user_id`, v2.6266); null on every other line. */
+  mailUserId?: string | null
+  /** Gmail's id of the conversation the line's mail belongs to (`messages.gmail_thread_id`), for an untag from the line. */
+  gmailThreadId?: string | null
 }
 
 /** The small mark on a bio line (v2.6659): the word and its hover words, naming the tech when the roster knows them. */
