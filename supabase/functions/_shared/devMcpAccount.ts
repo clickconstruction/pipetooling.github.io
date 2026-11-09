@@ -457,7 +457,7 @@ export function loginDryRun(p: LoginPayload, u: AccountUserRow | null, person: A
 }
 
 export function loginAppliedWords(p: LoginPayload, who: string, emailSent: boolean | null): string {
-  if (p.action === 'remove') return `The login behind ${who} is gone; the row reads no login. ${DETACH_WORDS.stays.charAt(0).toUpperCase()}${DETACH_WORDS.stays.slice(1)}. plan_login attaches one again on the same id.`
+  if (p.action === 'remove') return `The login behind ${who} is gone; the row reads no login. What stays: ${DETACH_WORDS.stays}. plan_login attaches one again on the same id.`
   if (p.mode === 'password') return `The login is attached to ${who} with the password you set. Tell them the password yourself; the seat never prints it. get_login_state says when they first sign in.`
   if (emailSent) return `The login is attached to ${who} and the sign-in email went. Call get_login_state in a few minutes: it says whether the link was used.`
   return `The login is attached to ${who}, but the sign-in email did not go. plan_password_reset sends them a link to set a password.`
