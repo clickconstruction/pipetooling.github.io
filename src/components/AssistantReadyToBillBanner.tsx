@@ -5,8 +5,10 @@ import { useAuth } from '../hooks/useAuth'
 import {
   READY_TO_BILL_BANNER_LINK,
   canRoleSeeReadyToBillBanner,
+  readyToBillBannerCount,
   readyToBillBannerLabel,
 } from '../lib/readyToBillBanner'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../lib/orangeUnderWords'
 
 const REFRESH_MS = 5 * 60 * 1000
@@ -17,7 +19,9 @@ const REFRESH_MS = 5 * 60 * 1000
  * Bill. The whole bar is the tap target; it lands on Jobs with the Ready to
  * Bill section opened and scrolled (`?rtb=1`). Disappears at zero — the bar
  * existing IS the signal. Count refreshes on route change, window focus,
- * and a 5-minute tick; RLS scopes it to jobs the assistant can see.
+ * and a 5-minute tick; RLS scopes it to jobs the assistant can see, and ZZ
+ * test jobs leave it as they leave the board (v2.6805), so the count is the
+ * section's own.
  */
 export default function AssistantReadyToBillBanner() {
   const { user: authUser, role } = useAuth()
@@ -25,20 +29,21 @@ export default function AssistantReadyToBillBanner() {
   const location = useLocation()
   const [count, setCount] = useState<number | null>(null)
   const eligible = Boolean(authUser?.id) && canRoleSeeReadyToBillBanner(role)
+  const hideZzTestJobs = useZzTestJobsHidden(role)
 
-  // withSupabaseRetry returns data (null for head-count queries) and drops the
-  // count, so this query runs directly with a quiet failure path instead.
+  // The rows' names ride along so the count can drop ZZ test jobs by the board's rule; the stage holds
+  // a handful of jobs. A failed read keeps the last count (the quiet failure path).
   const load = useCallback(async () => {
     if (!eligible) {
       setCount(null)
       return
     }
-    const { count: n, error } = await supabase
+    const { data, error } = await supabase
       .from('jobs_ledger')
-      .select('id', { count: 'exact', head: true })
+      .select('id, job_name, customer_name')
       .eq('status', 'ready_to_bill')
-    if (!error) setCount(n ?? 0)
-  }, [eligible])
+    if (!error) setCount(readyToBillBannerCount(data ?? [], hideZzTestJobs))
+  }, [eligible, hideZzTestJobs])
 
   useEffect(() => {
     void load()

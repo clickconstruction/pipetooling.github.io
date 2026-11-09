@@ -46,6 +46,7 @@ import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
 import { useArBankUnallocatedCount } from '../../hooks/useArBankUnallocatedCount'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
+import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { EmptyState } from '../EmptyState'
 import { dayBookEmptyWords } from '../../lib/people/peopleEmptyWords'
 
@@ -202,7 +203,7 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson, 
   const showsToday = range.from <= today && today <= range.to
   const { approvals } = usePendingHoursApprovalsNudge(showsToday)
   const { count: depositsLeft } = useArBankUnallocatedCount({ enabled: showsToday, authUserId: authUserId ?? undefined, authRole })
-  const { nudge: contracts } = useJobContractsNudge(showsToday)
+  const { nudge: contracts } = useJobContractsNudge(showsToday, useZzTestJobsHidden(authRole))
   const leftFor = useCallback(
     (line: DayBookLine, day: string): string | null => {
       if (day !== today) return payload ? dayBookHistoryLeft(payload, line, day) : null
