@@ -113,9 +113,10 @@ export const BILL_SCHEMA = {
   type: 'object',
   properties: {
     house_name: { type: 'string', description: 'The supply house on the letterhead, as printed. Empty when none is printed.' },
-    document_kind: { type: 'string', enum: ['invoice', 'credit_memo', 'statement', 'other'], description: 'invoice for an invoice or a counter ticket with a total; credit_memo for a credit, a return or a price correction; statement for a paper that lists several invoices with a balance; other for anything else.' },
-    number: { type: 'string', description: "The document's own number, as printed: the invoice number, the credit memo number, or the statement number. Empty when none." },
+    document_kind: { type: 'string', enum: ['invoice', 'credit_memo', 'ship_ticket', 'acknowledgement', 'quote', 'bid', 'statement', 'other'], description: 'invoice for an invoice or a counter ticket with a total; credit_memo for a credit, a return or a price correction; ship_ticket for a packing list, pick ticket or delivery ticket that prices nothing or says it is not an invoice; acknowledgement for an order acknowledgement or sales order confirmation; quote for a quote or proposal; bid for a bid; statement for a paper that lists several invoices with a balance; other for anything else.' },
+    number: { type: 'string', description: "The document's own number, as printed: the invoice number, the credit memo number, the ticket, order, quote or statement number. Empty when none." },
     date: { type: 'string', description: 'The document date as YYYY-MM-DD. Empty when none is printed.' },
+    order_number: { type: 'string', description: "The supplier's sales order number, as printed, when the paper carries one apart from its own number: the order an acknowledgement, a ship ticket and an invoice share. Empty when none." },
     po_text: { type: 'string', description: 'The purchase order, PO, job or reference text printed on the paper, as printed. Empty when none.' },
     account_ref: { type: 'string', description: "The customer's account number or job account reference printed on the paper, as printed. Empty when none." },
     ship_to: { type: 'string', description: 'The ship-to or job-site address and name, in one line. Empty when none.' },
@@ -124,27 +125,36 @@ export const BILL_SCHEMA = {
     references_number: { type: 'string', description: 'For a credit memo: the invoice number it credits, from an RE, original invoice or reference line. Empty otherwise.' },
     lines: {
       type: 'array',
-      description: 'Every line item on the paper, in order. Not the subtotal, tax or total rows.',
+      description: 'Every line item on the paper, in order, each printed line its own entry: a part, a charge such as freight or a restock fee, or a component of a kit printed under the kit line with no price of its own. Not the subtotal, tax or total rows.',
       items: {
         type: 'object',
         properties: {
+          line_kind: { type: 'string', enum: ['part', 'charge', 'component'], description: 'part for an item; charge for freight, delivery, fuel, a restock fee or any other charge that is not an item; component for a line printed under a kit or a bundle that carries no price of its own.' },
+          house_code: { type: 'string', description: "The supply house's own part code for the line, as printed in its item, product, SKU or code column. Empty when none." },
+          mfr_number: { type: 'string', description: "The manufacturer's part number when the paper prints one apart from the house's code. Empty when none." },
           description: { type: 'string', description: 'The item as printed, in one line.' },
-          quantity: { type: 'string', description: 'The quantity as printed, digits only. Empty when none.' },
-          unit_price: { type: 'string', description: 'The unit price as printed, digits and a decimal point. Empty when none.' },
+          unit: { type: 'string', description: 'The unit of measure as printed: EA, FT, BX, C, M, LF. Empty when none.' },
+          quantity: { type: 'string', description: 'The quantity the line is priced for, as printed, digits only: the quantity shipped when the paper prints shipped and ordered apart. Empty when none.' },
+          qty_ordered: { type: 'string', description: 'The quantity ordered when the paper prints it in its own column, digits only. Empty when none.' },
+          qty_shipped: { type: 'string', description: 'The quantity shipped when the paper prints it in its own column, digits only. Empty when none.' },
+          qty_backordered: { type: 'string', description: 'The quantity back ordered when the paper prints it in its own column, digits only. Empty when none.' },
+          unit_price: { type: 'string', description: 'The unit price as printed, digits and a decimal point, with every decimal the paper prints. Empty when none.' },
+          pricing_unit: { type: 'string', enum: ['each', 'per_hundred', 'per_thousand'], description: 'What the unit price is for: each when it is for one; per_hundred when the paper marks the price per C or per 100; per_thousand when it marks it per M or per 1000.' },
           extended: { type: 'string', description: 'The extended price of the line as printed, digits and a decimal point. A credit or a return is still a positive number. Empty when none.' },
         },
-        required: ['description', 'quantity', 'unit_price', 'extended'],
+        required: ['line_kind', 'house_code', 'mfr_number', 'description', 'unit', 'quantity', 'qty_ordered', 'qty_shipped', 'qty_backordered', 'unit_price', 'pricing_unit', 'extended'],
         additionalProperties: false,
       },
     },
     subtotal: { type: 'string', description: 'The subtotal before tax as printed, digits and a decimal point. Empty when none.' },
     tax: { type: 'string', description: 'The sales tax as printed, digits and a decimal point. Empty when none.' },
+    freight: { type: 'string', description: 'Freight, delivery or shipping printed as its own row below the lines and outside the subtotal, digits and a decimal point. Empty when none, or when freight is a line of its own.' },
     total: { type: 'string', description: 'The total, amount due, or credit total as printed, digits and a decimal point, always positive. Empty when none.' },
     page_count: { type: 'integer', description: 'How many pages the document has.' },
     statement_numbers: { type: 'array', items: { type: 'string' }, description: 'For a statement: every invoice and credit number it lists, in order. Empty otherwise.' },
     notes: { type: 'string', description: 'Anything on the paper a person should know that the fields above cannot hold, in one short sentence. Empty when nothing.' },
   },
-  required: ['house_name', 'document_kind', 'number', 'date', 'po_text', 'account_ref', 'ship_to', 'job_text', 'terms', 'references_number', 'lines', 'subtotal', 'tax', 'total', 'page_count', 'statement_numbers', 'notes'],
+  required: ['house_name', 'document_kind', 'number', 'date', 'order_number', 'po_text', 'account_ref', 'ship_to', 'job_text', 'terms', 'references_number', 'lines', 'subtotal', 'tax', 'freight', 'total', 'page_count', 'statement_numbers', 'notes'],
   additionalProperties: false,
 } as const
 
@@ -154,6 +164,9 @@ export const BILL_SYSTEM = [
   'Amounts and quantities are the digits as printed, with a decimal point and no currency sign or thousands separator.',
   'A credit memo\'s amounts are still positive numbers.',
   'The lines are the item rows only. The subtotal, tax and total rows go in their own fields.',
+  'Every printed line is its own entry, with the house\'s own part code copied exactly as printed, letter for letter and digit for digit.',
+  'A line printed under a kit or a bundle with no price of its own is a component; a freight, delivery or restock row among the lines is a charge.',
+  'When a unit price is marked per C, per 100, per M or per 1000, copy it as printed and set pricing_unit; never divide it.',
   'A paper that lists several invoices with a balance forward is a statement: set document_kind to statement and list every number it shows.',
 ].join(' ')
 
@@ -169,15 +182,30 @@ export function billUserMessage(houseName: string): string {
 // The answer, read
 // ---------------------------------------------------------------------------
 
-export type BillKind = 'invoice' | 'credit' | 'statement' | 'other'
+/** What the paper is. Only an invoice and a credit are bills; the rest are read for their lines (punch list #298) and never fill a bill's row. */
+export type BillKind = 'invoice' | 'credit' | 'ship_ticket' | 'acknowledgement' | 'quote' | 'bid' | 'statement' | 'other'
+
+export type BillLineKind = 'part' | 'charge' | 'component'
+export type BillPricingUnit = 'each' | 'per_hundred' | 'per_thousand'
 
 export interface BillLine {
   description: string
   /** Null when the paper prints none. */
   quantity: number | null
-  /** Cents; null when the paper prints none. */
+  /** Cents; null when the paper prints none. Rounded: a wholesaler's 2.159 is kept whole in `unitPrice`. */
   unitPriceCents: number | null
   extendedCents: number | null
+  /** The paper's own columns (v2.6817): the house's part code, the manufacturer's number, the unit, the three quantities, the price as printed with its pricing unit, the kind of line. */
+  lineKind: BillLineKind
+  houseCode: string
+  mfrNumber: string
+  unit: string
+  qtyOrdered: number | null
+  qtyShipped: number | null
+  qtyBackordered: number | null
+  /** The unit price as printed, in dollars with every decimal the paper prints; null when none. */
+  unitPrice: number | null
+  pricingUnit: BillPricingUnit
 }
 
 /** The paper, read: what the model said, held to the schema and turned into cents and a kind. */
@@ -187,6 +215,8 @@ export interface BillRead {
   number: string
   /** YYYY-MM-DD, or '' when the paper prints no date the reader could place. */
   dateYmd: string
+  /** The supplier's sales order number when printed apart from the paper's own number; '' when none. */
+  orderNumber: string
   poText: string
   accountRef: string
   shipTo: string
@@ -196,6 +226,8 @@ export interface BillRead {
   lines: BillLine[]
   subtotalCents: number | null
   taxCents: number | null
+  /** Freight printed as its own row outside the subtotal; null when none. */
+  freightCents: number | null
   totalCents: number | null
   pageCount: number
   statementNumbers: string[]
@@ -212,9 +244,20 @@ export function moneyCents(printed: unknown): number | null {
   if (typeof printed === 'number') return Number.isFinite(printed) ? Math.round(Math.abs(printed) * 100) : null
   if (typeof printed !== 'string') return null
   const s = printed.replace(/[\s$,()]/g, '').replace(/^-/, '').replace(/^USD/i, '')
-  if (!/^\d+(?:\.\d{1,2})?$/.test(s)) return null
+  if (!/^\d+(?:\.\d{1,4})?$/.test(s)) return null
   const [whole, frac = ''] = s.split('.')
+  // Two decimals are read as digits; a wholesaler's 2.159 (three or four, v2.6817) is rounded to the cent, the whole price kept by priceNumber.
+  if (frac.length > 2) return Math.round(Number(s) * 100)
   return Number(whole) * 100 + Number((frac + '00').slice(0, 2))
+}
+
+/** A printed unit price kept whole, in dollars: '2.159' → 2.159, '$48.10' → 48.1, '' → null. Four decimals at most, the column's width. */
+export function priceNumber(printed: unknown): number | null {
+  if (typeof printed === 'number') return Number.isFinite(printed) ? Math.round(Math.abs(printed) * 10000) / 10000 : null
+  if (typeof printed !== 'string') return null
+  const s = printed.replace(/[\s$,()]/g, '').replace(/^-/, '').replace(/^USD/i, '')
+  if (!/^\d+(?:\.\d{1,4})?$/.test(s)) return null
+  return Number(s)
 }
 
 /** A printed quantity: '12' → 12, '2.5' → 2.5, '' → null. */
@@ -238,7 +281,9 @@ export function dateYmd(printed: unknown): string {
   return `${year}-${us[1]!.padStart(2, '0')}-${us[2]!.padStart(2, '0')}`
 }
 
-const KINDS: Record<string, BillKind> = { invoice: 'invoice', credit_memo: 'credit', credit: 'credit', statement: 'statement', other: 'other' }
+const KINDS: Record<string, BillKind> = { invoice: 'invoice', credit_memo: 'credit', credit: 'credit', ship_ticket: 'ship_ticket', acknowledgement: 'acknowledgement', quote: 'quote', bid: 'bid', statement: 'statement', other: 'other' }
+const LINE_KINDS: Record<string, BillLineKind> = { part: 'part', charge: 'charge', component: 'component' }
+const PRICING_UNITS: Record<string, BillPricingUnit> = { each: 'each', per_hundred: 'per_hundred', per_thousand: 'per_thousand' }
 
 /** The model's answer as a read; null when it is not the shape asked for. */
 export function readBillAnswer(json: unknown): BillRead | null {
@@ -253,7 +298,22 @@ export function readBillAnswer(json: unknown): BillRead | null {
       const description = text(l.description, 240)
       const extendedCents = moneyCents(l.extended)
       if (!description && extendedCents === null) continue
-      lines.push({ description, quantity: quantityNumber(l.quantity), unitPriceCents: moneyCents(l.unit_price), extendedCents })
+      const qtyShipped = quantityNumber(l.qty_shipped)
+      lines.push({
+        description,
+        quantity: quantityNumber(l.quantity) ?? qtyShipped,
+        unitPriceCents: moneyCents(l.unit_price),
+        extendedCents,
+        lineKind: LINE_KINDS[text(l.line_kind, 20).toLowerCase()] ?? 'part',
+        houseCode: text(l.house_code, 60),
+        mfrNumber: text(l.mfr_number, 60),
+        unit: text(l.unit, 12),
+        qtyOrdered: quantityNumber(l.qty_ordered),
+        qtyShipped,
+        qtyBackordered: quantityNumber(l.qty_backordered),
+        unitPrice: priceNumber(l.unit_price),
+        pricingUnit: PRICING_UNITS[text(l.pricing_unit, 20).toLowerCase()] ?? 'each',
+      })
     }
   }
   const pageRaw = o.page_count
@@ -264,6 +324,7 @@ export function readBillAnswer(json: unknown): BillRead | null {
     kind,
     number: text(o.number, 60),
     dateYmd: dateYmd(o.date),
+    orderNumber: text(o.order_number, 60),
     poText: text(o.po_text, 160),
     accountRef: text(o.account_ref, 80),
     shipTo: text(o.ship_to, 200),
@@ -273,6 +334,7 @@ export function readBillAnswer(json: unknown): BillRead | null {
     lines,
     subtotalCents: moneyCents(o.subtotal),
     taxCents: moneyCents(o.tax),
+    freightCents: moneyCents(o.freight),
     totalCents: moneyCents(o.total),
     pageCount,
     statementNumbers,
