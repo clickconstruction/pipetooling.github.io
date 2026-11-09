@@ -84,6 +84,7 @@ legal-firm-coverage
 job-warranty
 combine-rows
 dev-clock-session-write
+on-site-move
 employment-stints
 logbook-shares
 stage-check-self-close

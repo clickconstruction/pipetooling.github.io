@@ -22,6 +22,7 @@ const STATEMENT_MIGRATION = readFileSync('supabase/migrations/20261031190000_dev
 const CLOCK_MIGRATION = readFileSync('supabase/migrations/20261103050000_dev_clock_session_write.sql', 'utf8')
 const ON_SITE_MIGRATION = readFileSync('supabase/migrations/20261102100000_dev_on_site_write.sql', 'utf8')
 const ON_SITE_FIXES_MIGRATION = readFileSync('supabase/migrations/20261103143000_on_site_small_fixes.sql', 'utf8')
+const ON_SITE_MOVE_MIGRATION = readFileSync('supabase/migrations/20261109160000_on_site_move_job.sql', 'utf8')
 /** The newest migration that (re)defines a function: a later CREATE OR REPLACE replaces the body, so its rules are held there. */
 function newestDefinition(fn: string): { file: string; body: string } {
   const files = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort().reverse()
@@ -48,7 +49,7 @@ describe('devMcpWrites — the allowlist', () => {
     const tableVerbs = Object.entries(WRITE_VERBS).filter(([, v]) => v.rpc === null).map(([k]) => k)
     expect(tableVerbs).toEqual(['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper', 'plan_person_report', 'apply_person_report', 'plan_matter_open_person', 'apply_matter_open_person', 'plan_job', 'apply_job', 'plan_account', 'apply_account', 'plan_login', 'apply_login', 'plan_password_reset', 'apply_password_reset']) // v2.6430: the report verbs POST the HR queue's own RPCs after the server's read of the report (devMcpPersonReport.test.ts); v2.6582: the person-matter verbs POST the HR file's own legal_person_matter_open (devMcpPersonMatter.test.ts)
     const rpcs = new Set(Object.values(WRITE_VERBS).flatMap((v) => (v.rpc === null ? [] : [v.rpc])))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_clock_session_write', 'dev_history_entry_write', 'dev_hours_statement_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_event_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_write', 'dev_person_doc_write', 'dev_person_evidence_write', 'dev_person_license_write', 'dev_theme_marks_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_clock_session_write', 'dev_history_entry_write', 'dev_hours_statement_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_event_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_move_job', 'dev_on_site_write', 'dev_person_doc_write', 'dev_person_evidence_write', 'dev_person_license_write', 'dev_theme_marks_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -206,9 +207,9 @@ describe('the event verbs (v2.6682, punch list #169)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.51.0'")
     expect(SERVER).toContain('plan_matter_event → apply_matter_event')
-    expect(SERVER).toContain('fifty-nine verbs')
+    expect(SERVER).toContain('sixty-one verbs')
   })
 })
 
@@ -324,7 +325,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.51.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -433,7 +434,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.51.0'")
   })
 })
 
@@ -533,7 +534,7 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
     expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
     expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
-    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.51.0'")
   })
 })
 
@@ -582,8 +583,8 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
-    expect(SERVER).toContain('Writes are fifty-nine verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.51.0'")
+    expect(SERVER).toContain('Writes are sixty-one verbs and nothing else')
   })
 })
 
@@ -806,9 +807,101 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
-    expect(SERVER).toContain('Writes are fifty-nine verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.51.0'")
+    expect(SERVER).toContain('Writes are sixty-one verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
+  })
+})
+
+describe('the Materials on site move (v2.6808, punch list #209)', () => {
+  const FROM = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  const TO = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+  const sql = ON_SITE_MOVE_MIGRATION
+  it('is a pair on the allowlist over one dev-gated RPC that refuses a training account and a twin, with the dry-run default', () => {
+    expect(WRITE_VERBS.plan_materials_move).toEqual({ rpc: 'dev_on_site_move_job', step: 'plan' })
+    expect(WRITE_VERBS.apply_materials_move).toEqual({ rpc: 'dev_on_site_move_job', step: 'apply' })
+    expect(planVerbFor('apply_materials_move')).toBe('plan_materials_move')
+    expect(sql.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(sql).not.toMatch(/CREATE TABLE/i) // no table, so no fence call is owed
+    const wrapper = newestDefinition('dev_on_site_move_job').body
+    expect(wrapper).toContain('dev_on_site_move_job(p jsonb, p_dry_run boolean DEFAULT true)')
+    // SECURITY DEFINER, unlike dev_on_site_write: the ledger has no UPDATE policy, so no caller's RLS could move a row.
+    expect(wrapper).toContain('SECURITY DEFINER')
+    expect(wrapper).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(wrapper).toContain('IF public.is_read_only() THEN')
+    expect(wrapper).toContain('IF public.is_digital_twin() THEN')
+    expect(wrapper).toContain("from_job and to_job are the same job")
+    expect(wrapper).toContain('has nothing on site to move')
+    // Do it, report, unwind: the dry run raises its own state after the reply is built, and only that state is caught.
+    expect(wrapper).toContain("RAISE EXCEPTION USING ERRCODE = 'P0DRY', MESSAGE = 'dry run';")
+    expect(wrapper).toContain("WHEN SQLSTATE 'P0DRY' THEN")
+    expect(sql).toContain('REVOKE ALL ON FUNCTION public.dev_on_site_move_job(jsonb, boolean) FROM anon;')
+    expect(sql).toContain('GRANT EXECUTE ON FUNCTION public.dev_on_site_move_job(jsonb, boolean) TO authenticated;')
+  })
+  it('the rule lives once: the wrapper and the whole-job combine both call on_site_carry_job, which no client may call', () => {
+    const wrapper = newestDefinition('dev_on_site_move_job').body
+    expect(wrapper).toContain('v_carried := public.on_site_carry_job(v_from, v_to);')
+    expect(wrapper).not.toMatch(/UPDATE public\.job_(containers|material_movements|box_photos|places)/)
+    // The combine's newest body is this migration's, with one PERFORM where its own copy of the block stood.
+    const files = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort()
+    const combines = files.filter((f) => readFileSync(`supabase/migrations/${f}`, 'utf8').includes('CREATE OR REPLACE FUNCTION public.migrate_job_ledger_costs_and_delete('))
+    const newest = readFileSync(`supabase/migrations/${combines[combines.length - 1]}`, 'utf8')
+    const combine = newest.slice(newest.indexOf('CREATE OR REPLACE FUNCTION public.migrate_job_ledger_costs_and_delete('))
+    const body = combine.slice(0, combine.indexOf('$function$;'))
+    expect(body).toContain('PERFORM public.on_site_carry_job(p_from, p_to);')
+    expect(body).not.toMatch(/UPDATE public\.job_(containers|material_movements|box_photos|places|container_moves)/)
+    const carry = newestDefinition('on_site_carry_job').body
+    expect(carry).toContain('SECURITY INVOKER')
+    for (const table of ['job_places', 'job_containers', 'job_material_movements', 'job_box_photos']) expect(carry).toContain(`UPDATE public.${table} SET job_id = p_to WHERE job_id = p_from;`)
+    expect(carry).toContain("IF r.kind = 'unsorted' AND r.tgt_kind = 'unsorted' THEN") // Unsorted folds into Unsorted
+    expect(carry).toContain("v_label := left(trim(r.label), 24 - length(v_suffix)) || v_suffix;") // a numbered label within the stencil's 24
+    expect(carry).not.toContain('SET code') // a container's code is generated from its id and never written
+    expect(sql).toContain('REVOKE ALL ON FUNCTION public.on_site_carry_job(uuid, uuid) FROM authenticated;')
+    expect(sql).toContain('REVOKE ALL ON FUNCTION public.on_site_carry_job(uuid, uuid) FROM anon;')
+    // A new ledger row or photo takes its container's job, so a phone that still holds the old job cannot strand a press.
+    expect(sql).toContain('CREATE OR REPLACE TRIGGER job_material_movements_take_container_job BEFORE INSERT ON public.job_material_movements')
+    expect(sql).toContain('CREATE OR REPLACE TRIGGER job_box_photos_take_container_job BEFORE INSERT ON public.job_box_photos')
+  })
+  it('a plan names two different jobs by id and nothing else; apply needs the plan hash', () => {
+    const built = writeRpcBody('plan_materials_move', { move: { from_job: FROM.toUpperCase(), to_job: ` ${TO} ` } })
+    expect(built).toMatchObject({ ok: true, rpc: 'dev_on_site_move_job', step: 'plan', target: `${FROM} ${TO}`, body: { p: { from_job: FROM, to_job: TO }, p_dry_run: true }, dryRunBody: { p: { from_job: FROM, to_job: TO }, p_dry_run: true } })
+    expect(pOf(writeRpcBody('plan_materials_move', { move: { from_job: FROM, to_job: TO, agent_label: 'x', job_id: FROM } }))).toEqual({ from_job: FROM, to_job: TO })
+    expect(writeRpcBody('apply_materials_move', { move: { from_job: FROM, to_job: TO }, plan_hash: HASH })).toMatchObject({ ok: true, step: 'apply', body: { p_dry_run: false }, dryRunBody: { p_dry_run: true }, planHash: HASH })
+    expect(writeRpcBody('apply_materials_move', { move: { from_job: FROM, to_job: TO } })).toMatchObject({ ok: false, error: expect.stringContaining('needs plan_hash') })
+    expect(writeRpcBody('plan_materials_move', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs move') })
+    expect(writeRpcBody('plan_materials_move', { move: { from_job: FROM } })).toMatchObject({ ok: false, error: expect.stringContaining('needs move') })
+    expect(writeRpcBody('plan_materials_move', { move: { from_job: 'JP972', to_job: TO } })).toMatchObject({ ok: false, error: expect.stringContaining('find_job') })
+    expect(writeRpcBody('plan_materials_move', { move: { from_job: FROM, to_job: FROM.toUpperCase() } })).toMatchObject({ ok: false, error: expect.stringContaining('the same job') })
+  })
+  it('the plan hash commits to both jobs\' counts, the labels renumbered and the places joined, never to dry_run', async () => {
+    const move = { from_job: FROM, to_job: TO }
+    const counts = (containers: number, movements: number) => ({ places: 2, containers, retired_containers: 0, movements, container_moves: 4, photos: 91, lines_on_hand: 117, parts_on_hand: 900 })
+    const reply = { ok: true, dry_run: true, from: { id: FROM, label: 'JP972', name: 'ZZ wrong job' }, to: { id: TO, label: 'JP1091', name: 'ZZ right job' }, moved: { containers: 92, movements: 280 }, places_merged: [{ name: 'Arena', containers: 90 }], unsorted_folded: null, labels_renamed: [{ code: '7D759246', kind: 'cage', from: 'G6', to: 'G6 (2)' }], before: { from: counts(92, 280), to: counts(2, 2) }, after: { from: counts(0, 0), to: counts(94, 282) } }
+    const built = writeRpcBody('plan_materials_move', { move })
+    const h1 = await planHash('plan_materials_move', pOf(built), reply)
+    expect(h1).toBe(await planHash('apply_materials_move', pOf(writeRpcBody('apply_materials_move', { move, plan_hash: HASH })), { ...reply, dry_run: false }))
+    // A press on the source since the plan, a box added on the target, a label that now collides: each is another plan.
+    expect(h1).not.toBe(await planHash('plan_materials_move', pOf(built), { ...reply, before: { ...reply.before, from: counts(92, 281) } }))
+    expect(h1).not.toBe(await planHash('plan_materials_move', pOf(built), { ...reply, before: { ...reply.before, to: counts(3, 2) } }))
+    expect(h1).not.toBe(await planHash('plan_materials_move', pOf(built), { ...reply, labels_renamed: [] }))
+    expect(h1).not.toBe(await planHash('plan_materials_move', pOf(writeRpcBody('plan_materials_move', { move: { from_job: TO, to_job: FROM } })), reply))
+    expect(planCommitment('plan_materials_move', reply)).not.toHaveProperty('dry_run')
+    // The reply the wrapper builds carries no clock and no made id, so the same plan hashes the same a minute later.
+    const wrapper = newestDefinition('dev_on_site_move_job').body
+    expect(wrapper).not.toMatch(/now\(\)|gen_random_uuid|clock_timestamp/)
+  })
+  it('the plan points at its apply, a replay is refused by the source\'s own state rather than the log, and the server declares the pair', () => {
+    expect(String(planReply('plan_materials_move', {}, 'e'.repeat(64)).next)).toContain('apply_materials_move')
+    expect(stateGuarded('apply_materials_move')).toBe(true)
+    expect(stateGuarded('plan_materials_move')).toBe(false)
+    for (const verb of ['plan_materials_move', 'apply_materials_move']) {
+      expect(SERVER).toContain(`name: '${verb}'`)
+      expect(SERVER).toContain(`case '${verb}':`)
+    }
+    expect(SERVER).toContain('plan_materials_move → apply_materials_move')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.51.0'")
+    expect(SERVER).toContain('Writes are sixty-one verbs and nothing else')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(61)
   })
 })
 
@@ -1119,9 +1212,9 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.51.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
-    expect(SERVER).toContain('fifty-nine verbs')
+    expect(SERVER).toContain('sixty-one verbs')
   })
 })
 
@@ -1203,7 +1296,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.50.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.51.0'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')

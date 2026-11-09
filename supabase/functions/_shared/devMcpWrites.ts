@@ -10,7 +10,7 @@
 // makes it (action create) and, v2.6185, the plan set onto it (action file_plans); since v2.6244 dev_legal_statement_write, a sworn
 // statement drafted onto a matter's Timeline (punch list #220); since v2.6367 dev_on_site_write, the Materials on site
 // ledger's presses (punch list #209: a container, a delivery, a movement, a count), SECURITY INVOKER so every row lands
-// under the dev's own RLS; since v2.6426 dev_person_evidence_write, a piece of evidence
+// under the dev's own RLS, and since v2.6808 dev_on_site_move_job, a whole job's on-site rows moved to another job; since v2.6426 dev_person_evidence_write, a piece of evidence
 // on a person's HR file, whose apply stages the files in the hr-files bucket before the rows and asks hr-evidence-drive
 // after them. The verb grammar is plan_ (a dry run, its own call) →
 // apply_ (the real write, which must quote the plan). Pure: no env reads, no network; the
@@ -127,6 +127,12 @@ export const WRITE_VERBS = {
   apply_movement: { rpc: 'dev_on_site_write', step: 'apply' },
   plan_count: { rpc: 'dev_on_site_write', step: 'plan' },
   apply_count: { rpc: 'dev_on_site_write', step: 'apply' },
+  // v2.6808 (punch list #209): everything a job holds on site moved to another job — a count recorded under the wrong
+  // job — through dev_on_site_move_job. SECURITY DEFINER, unlike the wrapper above: the ledger takes no update under
+  // anyone's RLS. It runs the whole-job combine's own on-site rule (on_site_carry_job), so every cage and box keeps its
+  // id and the code printed on its label; the plan counts both jobs before and after.
+  plan_materials_move: { rpc: 'dev_on_site_move_job', step: 'plan' },
+  apply_materials_move: { rpc: 'dev_on_site_move_job', step: 'apply' },
   // v2.6414 / 0.20.0 (punch list #212 PR 5): a signed hours statement — the row the window saves from a snapshot the
   // server reads through the shared kernel (dev_hours_statement_write, action make), its signing link through the
   // signing functions as the dev (send), and a signed copy onto a matter's Evidence tab (action file_on_matter).
@@ -882,6 +888,18 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${jobId} ${container}`, planHash }
   }
+  if (verb === 'plan_materials_move' || verb === 'apply_materials_move') {
+    const move = obj(input.move)
+    const shape = `${verb} needs move — { from_job (the jobs_ledger.id the material is recorded under — find_job), to_job (the jobs_ledger.id it belongs on) }. Everything the job holds on site moves: its places, cages and boxes, the ledger, the boxes' own moves and their photos, every box keeping its id and printed code. One box or one line is plan_container or plan_movement; read_on_site reads both jobs first.`
+    if (!move) return { ok: false, error: shape }
+    const str = (k: string) => (typeof move[k] === 'string' ? (move[k] as string).trim().toLowerCase() : '')
+    const fromJob = str('from_job')
+    const toJob = str('to_job')
+    if (!UUID_RE.test(fromJob) || !UUID_RE.test(toJob)) return { ok: false, error: shape }
+    if (fromJob === toJob) return { ok: false, error: `${verb}: from_job and to_job are the same job, so there is nothing to move.` }
+    const p: Json = { from_job: fromJob, to_job: toJob }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${fromJob} ${toJob}`, planHash }
+  }
   if (verb === 'plan_person_evidence' || verb === 'apply_person_evidence') {
     const evidence = obj(input.evidence)
     const shape = `${verb} needs evidence — { person_id (a people.id; get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, the day it is about, not ahead of today), title (under ${EVIDENCE_TITLE_MAX} characters), memo (what it shows and why it matters, under ${EVIDENCE_MEMO_MAX}), entry_id? (the person_file_entries.id it proves), counsel_only? (true keeps the record here only: never filed in Drive, never read back by this seat or by the HR agent — a dev reads it on People → HR), files: [{ name (with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), mime? } | { name, drive_url (a file already in Drive, linked, never staged) }] — at least one, at most ${EVIDENCE_MAX_FILES}, each sent file under ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB }.`
@@ -1038,10 +1056,12 @@ export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
  * state their write changes, so the wrapper refuses a replay itself — the stencil is live, the box is
  * already at that place, already retired or already back, or the box's row count moved and the hash no
  * longer matches. The log's rule would only refuse a real second act whose plan reads like an old one:
- * G4 added, retired, and added again on the same job.
+ * G4 added, retired, and added again on the same job. A whole job's move (v2.6808) commits to both jobs' row counts
+ * and is refused by the wrapper once the source holds nothing; a count moved there, back, and there again is a
+ * second act too.
  */
 export function stateGuarded(verb: string): boolean {
-  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count'
+  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count' || verb === 'apply_materials_move'
 }
 
 /**
