@@ -1576,6 +1576,8 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "reporting_window_for_recurring_job_email": [{"args":{"p_anchor_date?":"string","p_preset":"string","p_timezone":"string"},"returns":"{ reporting_date: string window_end_utc: string window_start_utc: string }[]"}],
   "request_field_job": [{"args":{"p_customer_email":"string","p_customer_name":"string","p_customer_phone":"string","p_gc_name":"string","p_job_address":"string","p_job_name":"string","p_line_items":"string[]","p_time_end":"string","p_time_start":"string","p_work_date":"string"},"returns":"string"}],
   "request_is_dev_seat": [{"args":{},"returns":"boolean"}],
+  "research_contact_history": [{"args":{"p_keys":"string[]"},"returns":"{ bids: number key: string last_bid_on: string on_deck: boolean won: number }[]"}],
+  "research_name_key": [{"args":{"p_name":"string"},"returns":"string"}],
   "research_permits": [{"args":{"p_city":"string","p_residential?":"boolean","p_since":"string"},"returns":"{ address: string area_sf: number city: string contact: string declared_value: number filed_on: string id: string issued_on: string lat: number lng: number perm…"}],
   "resolve_job_ledger_id_by_number": [{"args":{"p_number":"string"},"returns":"string"}],
   "resolve_noncard_transaction_attribution": [{"args":{"p_mercury_transaction_id":"string","p_note?":"string","p_resolution_kind":"string"},"returns":"undefined"}],
