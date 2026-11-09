@@ -65,6 +65,8 @@ import { changeEmail, chargeEmail, drawEmailFor, lessEmail, paidEmail, type Draw
 import { retainageHeldNow } from '../lib/gc/building'
 import { acceptedEmail, finalInEmail } from '../lib/gc/closeoutEmail'
 import { GcCloseoutWindow } from '../components/gc/GcCloseoutWindow'
+import { GcWordToTrades } from '../components/gc/GcWordToTrades'
+import { sendWordToTrades } from '../lib/gc/wordToTradesIo'
 import { GcStartWindow, type StartPresses, type StartTold } from '../components/gc/GcStartWindow'
 import { acceptWork, approveRetainage, changeSignedIn, closeJob, finalPayAppCameIn } from '../lib/gc/closeoutIo'
 import { addPunchItem, checkPunchItem, loadGcPunch, punchFixedIn, removePunchItem } from '../lib/gc/punchIo'
@@ -326,6 +328,7 @@ export default function GcProjects() {
   const tourFurthest = useRef(0)
   const { showToast } = useToastContext()
   const [params, setParams] = useSearchParams()
+  const [wordProjectId, setWordWindow] = useState<string | null>(null)
   // The call script's new tab (v2.5556): `?script=1` is read once on mount, before any write to the URL drops it.
   const [scriptAtStart] = useState(() => params.get('script') === '1')
   const [loaded, setLoaded] = useState<Loaded | null>(null)
@@ -2013,6 +2016,9 @@ export default function GcProjects() {
     else next.delete('plans')
     setParams(next, { replace: true })
   }
+  // Word to every trade (punch list #205, PR 6): one email to every company awarded a trade on a job being built. Its state is
+  // declared with the page's first hooks; the window writes no URL.
+  const wordProject = wordProjectId && canSendGcTradeEmail(role) ? (board?.projects.find((x) => x.id === wordProjectId) ?? null) : null
   const setScheduleWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('schedule', projectId)
@@ -2241,6 +2247,8 @@ export default function GcProjects() {
                   submittals: canUseGcBuilding(role) && Boolean(board),
                   rfis: canUseGcBuilding(role) && Boolean(board),
                   draws: canUseGcBuilding(role) && canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  // Word to every trade (punch list #205, PR 6): whoever may email a trade partner, on a job being built.
+                  word: canSendGcTradeEmail(role) && Boolean(board),
                   changes: canSeeGcMoney(role) && Boolean(boardWithChanges),
                   bill: canSeeGcMoney(role) && Boolean(boardWithChanges),
                   // Bill day (Messages cut 9): the money team's, on a job being built with a signed trade.
@@ -2276,6 +2284,7 @@ export default function GcProjects() {
                   submittals: () => setSubmittalsWindow(p.id),
                   rfis: () => setRfisWindow(p.id),
                   draws: () => setDrawsWindow(p.id),
+                  word: () => setWordWindow(p.id),
                   changes: () => setChangesWindow(p.id),
                   bill: () => setBillWindow(p.id),
                   billDay: () => openBillDay(p.id),
@@ -2500,6 +2509,7 @@ export default function GcProjects() {
       )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
+      {wordProject && board && <GcWordToTrades key={wordProject.id} state={board} project={wordProject} onSend={(recipients, subject, text) => sendWordToTrades(wordProject, recipients, subject, text)} onClose={() => setWordWindow(null)} />}
       {startProject && startState && (
         <GcStartWindow
           key={startProject.id}

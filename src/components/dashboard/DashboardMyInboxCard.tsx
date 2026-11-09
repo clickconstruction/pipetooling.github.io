@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ComingUpWaitingGroupList, useComingUpWaitingGroups } from '../checklist/ChecklistComingUpSection'
 import { buildWaitingForStripSummary } from '../../lib/dashboardWaitingForStrip'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
@@ -82,7 +83,8 @@ export function DashboardMyInboxCard({
   loadOnMount?: boolean
 }) {
   const { showToast } = useToastContext()
-  const isDev = role === 'dev'
+  // Punch list #188 row 35 (v2.6758): forwarding a task and the Recently completed list are office work (a dev's alone before).
+  const canForward = isOfficeRole(role)
   const canOpenVehiclesPage = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
 
@@ -161,7 +163,7 @@ export function DashboardMyInboxCard({
   }, [authUserId])
 
   useEffect(() => {
-    if (!authUserId || !isDev) return
+    if (!authUserId || !canForward) return
     setCompletedItemsLoading(true)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
     Promise.all([
@@ -211,7 +213,7 @@ export function DashboardMyInboxCard({
       }
       setCompletedItemsLoading(false)
     })
-  }, [authUserId, isDev])
+  }, [authUserId, canForward])
 
   async function markCompletedItemAsRead(inst: ChecklistInstance) {
     if (!authUserId || markingReadId) return
@@ -625,7 +627,7 @@ export function DashboardMyInboxCard({
   }
   const showChecklist = checklistLoading || todayChecklist.length > 0
   /** Recently Completed only earns its corner link when something was actually completed (dev-only feature). */
-  const showRecentlyCompleted = isDev && completedItems.length > 0
+  const showRecentlyCompleted = canForward && completedItems.length > 0
   /** My Inbox card: Due Today / Overdue / Waiting For / Recently Completed Tasks (dev) grouped as one unit. */
   const showMyInboxCard =
     userLoading || showChecklist || outstandingLoading || outstandingItems.length > 0 || showRecentlyCompleted || waitingGroups.length > 0
@@ -735,7 +737,7 @@ export function DashboardMyInboxCard({
                           🔕
                         </button>
                       )}
-                      {isDev && (
+                      {canForward && (
                         <button
                           type="button"
                           onClick={(e) => { e.preventDefault(); openFwd(inst) }}

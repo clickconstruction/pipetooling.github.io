@@ -23,7 +23,8 @@ import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/us
 import { addMarks, authUserIdNow, loadThemes } from '../../../lib/legal/legalThemesIo'
 import { markedWords, type LegalTheme, type LegalThemeMark } from '../../../lib/legal/legalThemes'
 import { supabase } from '../../../lib/supabase'
-import { addLegalMatterDocument, listLegalMatterDocuments, openLegalMatterDocument, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
+import { addLegalMatterDocument, listLegalMatterDocuments, openLegalMatterDocument, readLegalMatterDocumentTexts, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
+import { previewDocumentsForFirm, previewTextIds } from '../../../lib/legal/legalDeskPreviewDocuments'
 import { theirPaperNarrativeMarkdown } from '../../../lib/jobs/theirPaper'
 import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 import { claimAmountOf, type LegalClaimLineDraft } from '../../../lib/legal/legalClaimLines'
@@ -33,8 +34,6 @@ import { seedPeople, type LegalPersonDraft } from '../../../lib/legal/legalMatte
 import type { ProceedingsPanel } from './LegalProceedingsTable'
 import { keptOutDocumentIds, parseLegalPortalProceedings, proceedingForFirm, type LegalProceedingDraft } from '../../../lib/legal/legalProceedings'
 
-import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
-import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import { type NarrativeDesk } from './LegalNarrativeEditor'
 
 import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocumentsFromRows, type LegalEventDraft, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
@@ -243,6 +242,8 @@ export default function LegalDesk(props: LegalDeskProps) {
   const [holdFor, setHoldFor] = useState<{ key: string; reason: string } | null>(null)
   /** The Mark attorney ready sheet's preview: the firm's own view of this account, held entries left out (v2.3363). */
   const [previewOpen, setPreviewOpen] = useState(false)
+  /** v2.6770 (punch list #288): the text documents' words the preview shows under Read here, read when it opens. */
+  const [previewTexts, setPreviewTexts] = useState<Record<string, string>>({})
   const [previewTab, setPreviewTab] = useState<FirmTab>('account')
 
   useEffect(() => {
@@ -829,6 +830,17 @@ export default function LegalDesk(props: LegalDeskProps) {
     return Boolean(ok)
   }
   const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []
+  const previewTextKey = previewOpen ? previewTextIds(matterDocuments).join(',') : ''
+  useEffect(() => {
+    if (!previewTextKey) return
+    let live = true
+    void readLegalMatterDocumentTexts(supabase, previewTextKey.split(',')).then((t) => {
+      if (live) setPreviewTexts(t)
+    })
+    return () => {
+      live = false
+    }
+  }, [previewTextKey])
   // Below matterDocuments on purpose: a const read before its line throws at render (the Bridge's lesson).
   // v2.6726 (punch list #174 PR 2): a document a held proceeding names stays out of the claim table's picker — the claim
   // is what a settlement letter to the other side carries.
@@ -1419,7 +1431,7 @@ export default function LegalDesk(props: LegalDeskProps) {
             <FirmMatterView
               packet={packet}
               companyName={companyName}
-              matter={{ payerName: selected.name, noteToFirm: sheet.note, stage: matter?.stage ?? null, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []).filter((e) => e.kind !== 'plan' || holdOverrides[planHoldKey(e.id)] !== true) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null, proceedings: parseLegalPortalProceedings(packet.proceedings.map((p) => proceedingForFirm(p, packet.people, new Set(matterDocuments.filter((d) => !d.held_reason).map((d) => d.id))))) }}
+              matter={{ payerName: selected.name, noteToFirm: sheet.note, stage: matter?.stage ?? null, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []).filter((e) => e.kind !== 'plan' || holdOverrides[planHoldKey(e.id)] !== true) : [], ...previewDocumentsForFirm(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users, calendarYmdInAppTzFromIso, previewTexts), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null, proceedings: parseLegalPortalProceedings(packet.proceedings.map((p) => proceedingForFirm(p, packet.people, new Set(matterDocuments.filter((d) => !d.held_reason).map((d) => d.id))))) }}
               tab={previewTab}
               onTab={setPreviewTab}
               onPrint={printPacket}
@@ -1572,10 +1584,3 @@ export default function LegalDesk(props: LegalDeskProps) {
   )
 }
 
-function previewDocuments(rows: ReadonlyArray<LegalMatterDocumentRow>, users: ReadonlyArray<{ id: string; name: string | null }>): { documents: LegalPortalDocument[]; heldDocumentCount: number } {
-  const nameOf = (id: string | null) => (id ? users.find((u) => u.id === id)?.name ?? '' : '')
-  return {
-    documents: rows.filter((r) => !r.held_reason.trim()).map((r) => legalPortalDocumentFromRow(r, nameOf(r.added_by), '', calendarYmdInAppTzFromIso)),
-    heldDocumentCount: rows.filter((r) => r.held_reason.trim()).length,
-  }
-}

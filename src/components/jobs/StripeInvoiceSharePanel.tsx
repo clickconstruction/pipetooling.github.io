@@ -23,6 +23,9 @@ import {
   buildStripeInvoiceEmailSubject,
   buildStripeInvoiceSmsText,
 } from '../../lib/stripeInvoiceShareCopy'
+import { billPayCode } from '../../lib/billing/billPayCodeIo'
+import { billTextLink } from '../../lib/billing/billTextLink'
+import { isPayLinkId } from '../../lib/billing/payLink'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { ContractTextDoor } from './ContractTextDoor'
 import { EmailBillDraftModal } from './EmailBillDraftModal'
@@ -93,12 +96,14 @@ export type StripeInvoiceSharePanelProps = {
   /** For a smoke: the customer's contact and the sends. */
   load?: (customerId: string) => Promise<Contact>
   io?: ReplyIo
+  /** The bill's ten-letter code (#290, v2.6769), asked once per bill; a smoke hands a fake. Null = no code, the id's link. */
+  mintPayCode?: (invoiceId: string) => Promise<string | null>
 }
 
-function shareCopyFromProps(p: StripeInvoiceSharePanelProps) {
+function shareCopyFromProps(p: StripeInvoiceSharePanelProps, payCode: string | null) {
   return {
     customerName: p.customerName,
-    payUrl: p.hostedInvoiceUrl,
+    payUrl: billTextLink({ invoiceId: p.invoiceId, payCode, hostedInvoiceUrl: p.hostedInvoiceUrl }),
     amountLabel: p.amountLabel,
     jobName: p.jobName,
     hcpNumber: p.hcpNumber,
@@ -124,24 +129,43 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const [emailDraftBody, setEmailDraftBody] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
+  /** The bill's short code (#290): asked once when the row draws with a bill id; until it answers the link is the id's. */
+  const [payCode, setPayCode] = useState<string | null>(null)
+  const mintPayCode = p.mintPayCode ?? billPayCode
+  const invoiceIdForCode = isPayLinkId(p.invoiceId) ? p.invoiceId.trim().toLowerCase() : null
+  useEffect(() => {
+    if (!invoiceIdForCode) return
+    let live = true
+    void mintPayCode(invoiceIdForCode).then((code) => {
+      if (live) setPayCode(code)
+    })
+    return () => {
+      live = false
+    }
+    // The minter is stable per caller; the bill's id is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoiceIdForCode])
   const emailLabel = (p.emailButtonLabel ?? 'Send email…').trim() || 'Send email…'
   /** The doors through the company: the job and its customer at hand. */
   const doors = billShareDoorsOffered(p)
   const load = p.load ?? loadCustomerContact
+  /** Stripe's own link: what the office's Customer pay page opens. */
   const url = p.hostedInvoiceUrl.trim()
+  /** The customer's link (#290): the short pay page on my.clickplumbing.com when the bill's id is at hand. */
+  const shareUrl = billTextLink({ invoiceId: p.invoiceId, payCode, hostedInvoiceUrl: p.hostedInvoiceUrl })
 
   function openSmsBillDraft() {
     if (doors) {
       setTextDoorOpen(true)
       return
     }
-    setSmsDraftText(buildStripeInvoiceSmsText(shareCopyFromProps(p)))
+    setSmsDraftText(buildStripeInvoiceSmsText(shareCopyFromProps(p, payCode)))
     setSmsDraftOpen(true)
   }
 
   function openEmailBillDraft() {
     setEmailDraftSubject(buildStripeInvoiceEmailSubject(p.jobName))
-    setEmailDraftBody(buildStripeInvoiceEmailBody(shareCopyFromProps(p)))
+    setEmailDraftBody(buildStripeInvoiceEmailBody(shareCopyFromProps(p, payCode)))
     setEmailDraftOpen(true)
   }
 
@@ -225,7 +249,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         </svg>
         Text
       </button>
-      <button type="button" onClick={() => void copyText(url, showToast, 'Payment link copied')} title="Copy the payment link">
+      <button type="button" onClick={() => void copyText(shareUrl, showToast, 'Payment link copied')} title="Copy the payment link">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
           <rect x="9" y="9" width="11" height="11" rx="2" />
           <path d="M5 15V5a2 2 0 0 1 2-2h10" />
@@ -275,7 +299,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
           type="button"
           title="Copy payment link"
           aria-label="Copy payment link"
-          onClick={() => void copyText(url, showToast, 'Payment link copied')}
+          onClick={() => void copyText(shareUrl, showToast, 'Payment link copied')}
           style={iconBtnStyle}
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={iconSize} height={iconSize} aria-hidden>
@@ -329,7 +353,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
     </span>
   ) : (
     <>
-      <button type="button" onClick={() => void copyText(url, showToast, 'Payment link copied')} style={btnStyle}>
+      <button type="button" onClick={() => void copyText(shareUrl, showToast, 'Payment link copied')} style={btnStyle}>
         Copy payment link
       </button>
       <button type="button" onClick={openSmsBillDraft} style={btnStyle}>
@@ -430,13 +454,13 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
               jobStatus={p.jobStatus ?? null}
               customerId={(p.customerId ?? '').trim()}
               typedPhone=""
-              words={buildStripeInvoiceSmsText(shareCopyFromProps(p))}
+              words={buildStripeInvoiceSmsText(shareCopyFromProps(p, payCode))}
               onClose={() => setTextDoorOpen(false)}
               onSent={() => {
                 setTextDoorOpen(false)
                 p.onSent?.()
               }}
-              onCopyLink={() => void copyText(url, showToast, 'Payment link copied')}
+              onCopyLink={() => void copyText(shareUrl, showToast, 'Payment link copied')}
               load={p.load}
               io={p.io}
             />

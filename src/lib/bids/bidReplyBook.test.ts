@@ -76,9 +76,10 @@ describe('who may do what', () => {
     expect(canEditBidReply(entry(), { userId: 'alex', role: 'estimator' })).toBe(false)
   })
 
-  it('a dev changes anybody’s; a master or an assistant does not', () => {
+  it('a dev or the owner changes anybody’s (punch list #188 row 64); the controller or an assistant does not', () => {
     expect(canEditBidReply(entry(), { userId: 'd', role: 'dev' })).toBe(true)
-    expect(canEditBidReply(entry(), { userId: 'm', role: 'master_technician' })).toBe(false)
+    expect(canEditBidReply(entry(), { userId: 'o', role: 'master_technician' })).toBe(true)
+    expect(canEditBidReply(entry(), { userId: 'c', role: 'controller' })).toBe(false)
     expect(canEditBidReply(entry(), { userId: 'a', role: 'assistant' })).toBe(false)
   })
 

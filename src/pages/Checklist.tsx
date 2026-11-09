@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
+import { isOfficeRole, isOwnerOrDev } from '../lib/doorRoles'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DndContext, closestCenter, type DragEndEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -424,14 +425,15 @@ export default function Checklist() {
         <h1 className="checklist-tab-title">Checklist</h1>
       </div>
 
+      {/* Punch list #188 rows 35 and 65 (v2.6758): forwarding and Upcoming are office work; History's edit mode and Review's acts for others are the owner's with a dev. */}
       {activeTab === 'today' && (
-        <ChecklistTodayTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canOpenVehiclesPage={role === 'dev' || role === 'master_technician' || isAssistantLike(role)} setError={setError} />
+        <ChecklistTodayTab authUserId={authUser?.id ?? null} canForward={isOfficeRole(role)} canOpenVehiclesPage={role === 'dev' || role === 'master_technician' || isAssistantLike(role)} setError={setError} />
       )}
       {activeTab === 'history' && (
-        <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={role === 'dev'} setError={setError} />
+        <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={isOwnerOrDev(role)} setError={setError} />
       )}
       {activeTab === 'review' && canManageChecklists && (
-        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canSeeCosts={canSeeTaskCosts(role)} canManageChecklists={canManageChecklists} canEditRoadmapTasks={canEditTechTree} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
+        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} canActForOthers={isOwnerOrDev(role)} canSeeCosts={canSeeTaskCosts(role)} canManageChecklists={canManageChecklists} canEditRoadmapTasks={canEditTechTree} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
       )}
       {activeTab === 'manage' && canManageChecklists && (
         <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
@@ -451,7 +453,7 @@ export default function Checklist() {
   )
 }
 
-function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }: { authUserId: string | null; isDev: boolean; canOpenVehiclesPage: boolean; setError: (s: string | null) => void }) {
+function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, setError }: { authUserId: string | null; canForward: boolean; canOpenVehiclesPage: boolean; setError: (s: string | null) => void }) {
   const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
   const [todayInstances, setTodayInstances] = useState<ChecklistInstance[]>([])
   const [upcomingInstances, setUpcomingInstances] = useState<ChecklistInstance[]>([])
@@ -509,14 +511,14 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
   }, [authUserId])
 
   useEffect(() => {
-    if (isDev) {
+    if (canForward) {
       // Tier-2 #19 (J30-2): person pickers = active people (no twins); dev rows stay.
       activeUsersQuery('id, name, email', { includeDev: true, withLogin: true })
         .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
     }
-  }, [isDev])
+  }, [canForward])
 
   async function loadToday() {
     if (!authUserId) return
@@ -654,7 +656,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
   async function loadUpcoming() {
     // Upcoming (future-dated instances) is dev-only since v2.2269 — it was
     // empty for nearly everyone and its name collided with the waiting list.
-    if (!authUserId || !isDev) return
+    if (!authUserId || !canForward) return
     const today = toLocalDateString(new Date())
     const { data, error: e } = await supabase
       .from('checklist_instances')
@@ -841,7 +843,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
           // A read is safe to repeat: when the signal returns the day reads again by itself.
           <OfflineRetryPanel failure={dayFailure} onRetry={loadDay} surface="checklist-today" idempotent busy={loading} />
         ) : todayInstances.length === 0 ? (
-          <EmptyState {...checklistTodayEmptyWords(isDev ? () => setUpcomingExpanded(true) : null)} />
+          <EmptyState {...checklistTodayEmptyWords(canForward ? () => setUpcomingExpanded(true) : null)} />
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {todayInstances.map((inst) => {
@@ -915,7 +917,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
                           🔕
                         </button>
                       )}
-                      {isDev && (
+                      {canForward && (
                         <button
                           type="button"
                           className="fwd-btn-desktop"
@@ -1010,7 +1012,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
 
       <ChecklistComingUpSection authUserId={authUserId} />
 
-      {isDev ? (
+      {canForward ? (
       <section>
         <button
           type="button"
@@ -1071,7 +1073,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
                             🔕
                           </button>
                         )}
-                        {isDev && (
+                        {canForward && (
                           <button
                             type="button"
                             className="fwd-btn-desktop"
@@ -1633,7 +1635,7 @@ function OutstandingByPersonSortableRow({
   userId,
   dragDisabled,
   canManageChecklists,
-  isDev,
+  canActForOthers,
   canSeeCosts,
   authUserId,
   completingInstanceId,
@@ -1654,7 +1656,7 @@ function OutstandingByPersonSortableRow({
   userId: string
   dragDisabled: boolean
   canManageChecklists: boolean
-  isDev: boolean
+  canActForOthers: boolean
   canSeeCosts: boolean
   authUserId: string | null
   completingInstanceId: string | null
@@ -1747,7 +1749,7 @@ function OutstandingByPersonSortableRow({
           the meta cluster (roadmap chip · age · notes · 🗑) drops to its own line. Styles: .obp-* in
           OutstandingByPersonSortableList. Hold-to-lift: drag listeners live on the <li> itself —
           the grip below is a desktop affordance, not the only handle. */}
-      <div className={`obp-row${isDev ? '' : ' obp-row--nocheck'}`}>
+      <div className={`obp-row${canActForOthers ? '' : ' obp-row--nocheck'}`}>
         {canManageChecklists && (
           <button
             type="button"
@@ -1774,7 +1776,7 @@ function OutstandingByPersonSortableRow({
             </svg>
           </button>
         )}
-        {isDev && (
+        {canActForOthers && (
           <span className="obp-check" style={{ display: 'inline-flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
             <button
               type="button"
@@ -1878,7 +1880,7 @@ function OutstandingByPersonSortableRow({
               />
             )}
             <span className="obp-sp" aria-hidden />
-            {isDev && (
+            {canActForOthers && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -1935,7 +1937,7 @@ function OutstandingByPersonSortableRow({
               })
             }
             footerActions={
-              isDev ? (
+              canActForOthers ? (
                 <>
                   {footerLink('Edit', () => setEditItemId(inst.checklist_item_id))}
                   {footerLink('Forward', () => onOpenFwd(inst, userId))}
@@ -1955,7 +1957,7 @@ export function OutstandingByPersonSortableList({
   instances,
   reorderingUserId,
   canManageChecklists,
-  isDev,
+  canActForOthers,
   canSeeCosts,
   authUserId,
   onDragEnd,
@@ -1977,7 +1979,7 @@ export function OutstandingByPersonSortableList({
   instances: OutstandingInstance[]
   reorderingUserId: string | null
   canManageChecklists: boolean
-  isDev: boolean
+  canActForOthers: boolean
   canSeeCosts: boolean
   onDragEnd: (e: DragEndEvent) => void
   completingInstanceId: string | null
@@ -2058,7 +2060,7 @@ export function OutstandingByPersonSortableList({
               userId={userId}
               dragDisabled={dragDisabled}
               canManageChecklists={canManageChecklists}
-              isDev={isDev}
+              canActForOthers={canActForOthers}
               canSeeCosts={canSeeCosts}
               authUserId={authUserId}
               completingInstanceId={completingInstanceId}
@@ -2082,7 +2084,7 @@ export function OutstandingByPersonSortableList({
   )
 }
 
-function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChecklists, canEditRoadmapTasks, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; isDev: boolean; /** Cost lens (dev or controller — mirrors checklist_item_costs RLS). */ canSeeCosts: boolean; canManageChecklists: boolean; /** Roadmap structure editors (v2.2182) — may edit tasks from the Where-this-fits sheet. */ canEditRoadmapTasks: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
+function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, canManageChecklists, canEditRoadmapTasks, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; canActForOthers: boolean; /** Cost lens (dev, controller or the owner — mirrors checklist_item_costs RLS). */ canSeeCosts: boolean; canManageChecklists: boolean; /** Roadmap structure editors (v2.2182) — may edit tasks from the Where-this-fits sheet. */ canEditRoadmapTasks: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
@@ -2159,14 +2161,14 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
   }, [])
 
   useEffect(() => {
-    if (isDev) {
+    if (canActForOthers) {
       // Tier-2 #19 (J30-2): person pickers = active people (no twins); dev rows stay.
       activeUsersQuery('id, name, email', { includeDev: true, withLogin: true })
         .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
     }
-  }, [isDev])
+  }, [canActForOthers])
 
   function openFwd(inst: OutstandingInstance, rowUserId: string) {
     const title = inst.checklist_items?.title ?? 'Untitled'
@@ -2903,7 +2905,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
                         instances={instances}
                         reorderingUserId={reorderingUserId}
                         canManageChecklists={canManageChecklists}
-                        isDev={isDev}
+                        canActForOthers={canActForOthers}
                         canSeeCosts={canSeeCosts}
                         authUserId={authUserId}
                         onDragEnd={onOutstandingDragEnd(userId, instances)}
@@ -2921,7 +2923,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
                         setEditItemId={setEditItemId}
                         setError={setError}
                       />
-                      {isDev && (
+                      {canActForOthers && (
                         <button
                           type="button"
                           onClick={() => checklistAddModal?.openAddModal(userId)}

@@ -53,6 +53,8 @@ function fakeIo(over: Partial<ReplyIo> = {}): ReplyIo {
 
 function draw(over: Partial<StripeInvoiceSharePanelProps> & { contact?: Contact; ioOver?: Partial<ReplyIo> } = {}) {
   const { contact, ioOver, ...rest } = over
+  /** No code unless a test hands one: the link is the bill id's. */
+  const mintPayCode = over.mintPayCode ?? (async () => null)
   const io = fakeIo(ioOver)
   const load = vi.fn(async (_id: string) => contact ?? SAM)
   const onSent = vi.fn()
@@ -73,11 +75,49 @@ function draw(over: Partial<StripeInvoiceSharePanelProps> & { contact?: Contact;
       onSent={onSent}
       load={load}
       io={io}
+      mintPayCode={mintPayCode}
       {...rest}
     />,
   )
   return { io, load, onSent }
 }
+
+describe('StripeInvoiceSharePanel — the customer’s link is the short pay page (#290)', () => {
+  const BILL_ID = '8f3c2a1e-6b7d-4c9a-9e21-5d0f7a3b1c44'
+  const SHORT = `https://my.clickplumbing.com/pay/${BILL_ID}`
+
+  it('Text fills the box with the short link when the bill’s id is at hand, and Copy link copies the same', async () => {
+    const writeText = vi.fn(() => Promise.resolve())
+    Object.assign(navigator, { clipboard: { writeText } })
+    draw({ invoiceId: BILL_ID })
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(SHORT))
+    fireEvent.click(screen.getByRole('button', { name: 'Text' }))
+    const door = await screen.findByTestId('contract-text-door')
+    await waitFor(() => expect((within(door).getByRole('textbox') as HTMLTextAreaElement).value).toBe(`Your invoice for Oak Street ($2,200.00): ${SHORT}`))
+  })
+
+  it('the bill’s ten-letter code comes first once it answers (v2.6769): Text and Copy link carry /pay/<code>', async () => {
+    const writeText = vi.fn(() => Promise.resolve())
+    Object.assign(navigator, { clipboard: { writeText } })
+    const mintPayCode = vi.fn(async () => 'abc2def3gh')
+    draw({ invoiceId: BILL_ID, mintPayCode })
+    await waitFor(() => expect(mintPayCode).toHaveBeenCalledWith(BILL_ID))
+    fireEvent.click(screen.getByRole('button', { name: 'Text' }))
+    const door = await screen.findByTestId('contract-text-door')
+    await waitFor(() => expect((within(door).getByRole('textbox') as HTMLTextAreaElement).value).toBe('Your invoice for Oak Street ($2,200.00): https://my.clickplumbing.com/pay/abc2def3gh'))
+    fireEvent.click(within(door).getByRole('button', { name: 'Copy link' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://my.clickplumbing.com/pay/abc2def3gh'))
+  })
+
+  it('falls back to Stripe’s own link when the caller hands no bill id', async () => {
+    const writeText = vi.fn(() => Promise.resolve())
+    Object.assign(navigator, { clipboard: { writeText } })
+    draw({ invoiceId: undefined })
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(PAY))
+  })
+})
 
 describe('StripeInvoiceSharePanel — the doors through the company (#125 PR 6)', () => {
   it('Email shows the draft, and Send the email sends it from the office with the draft’s subject and words, no mailto', async () => {
