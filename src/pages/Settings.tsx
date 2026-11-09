@@ -1263,8 +1263,9 @@ export default function Settings() {
         <div className="settingsContent">
 
       <div style={{ display: activeSettingsTab === 'settings-recent-push' ? undefined : 'none' }}>
+        {/* Punch list #188 row 31 (v2.6762): did it go is a question the owner asks, so he reads the log with a dev. */}
         <SettingsRecentEmailsSent
-          isDev={myRole === 'dev'}
+          canRead={isOwnerOrDev(myRole)}
           onOpenStream={(key) => {
             setEmailStreamFocus({ key, nonce: Date.now() })
             setActiveSettingsTab('settings-emails')
@@ -1336,7 +1337,7 @@ export default function Settings() {
           title={settingsGroupTitle('settings-company', 'Company')}
           description={settingsGroupHint('settings-company')}
         >
-          <SettingsCompanyDocumentsSection isDev={myRole === 'dev'} />
+          <SettingsCompanyDocumentsSection canManage={isOwnerOrDev(myRole)} />
           {myRole === 'dev' || myRole === 'master_technician' ? <SettingsOrgDefaultsSection /> : null}
           {myRole === 'dev' || myRole === 'master_technician' ? <BankTransferDetailsSettingsBlock /> : null}
           {/* Punch list #188 rows 14 and 15 (v2.6753): the shop's address is the owner's, where the Map opens is the office's. */}
@@ -1565,7 +1566,7 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-usage" hidden={activeSettingsTab !== 'settings-usage'} title={settingsGroupTitle('settings-usage', 'Usage')} description={settingsGroupHint('settings-usage')}>
-        {activeSettingsTab === 'settings-usage' && myRole === 'dev' && <SettingsUsageTab />}
+        {activeSettingsTab === 'settings-usage' && isOwnerOrDev(myRole) && <SettingsUsageTab />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-what-customers-see" hidden={activeSettingsTab !== 'settings-what-customers-see'} title={settingsGroupTitle('settings-what-customers-see', 'What customers see')} description={settingsGroupHint('settings-what-customers-see')}>
@@ -1651,8 +1652,8 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-training" hidden={activeSettingsTab !== 'settings-training'} title={settingsGroupTitle('settings-training', 'Training')} description={settingsGroupHint('settings-training')}>
-        {/* Training (punch list #111, v2.5569): a dev's. Mounted while open, so the counts are read each time. */}
-        {activeSettingsTab === 'settings-training' && myRole === 'dev' && <SettingsTrainingTab />}
+        {/* Training (punch list #111, v2.5569): the owner's with a dev since v2.6762 (punch list #188 row 6). Mounted while open, so the counts are read each time. */}
+        {activeSettingsTab === 'settings-training' && isOwnerOrDev(myRole) && <SettingsTrainingTab />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>

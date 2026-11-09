@@ -134,6 +134,19 @@ describe('getZonedSettingsGroups', () => {
     }
   })
 
+  it('Training and Usage open to the owner with a dev, and to nobody else (punch list #188 rows 6 and 7)', () => {
+    for (const role of ['dev', 'master_technician'] as const) {
+      const ids = getZonedSettingsGroups(role).map((g) => g.id)
+      expect(ids, role).toContain('settings-training')
+      expect(ids, role).toContain('settings-usage')
+    }
+    for (const role of ['assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const) {
+      const ids = getZonedSettingsGroups(role).map((g) => g.id)
+      expect(ids, role).not.toContain('settings-training')
+      expect(ids, role).not.toContain('settings-usage')
+    }
+  })
+
   it('Data & recovery opens to the controller for HCP reconcile, and to nobody else but a dev (punch list #188 row 25)', () => {
     expect(getZonedSettingsGroups('controller').map((g) => g.id)).toContain('settings-data')
     for (const role of ['master_technician', 'assistant', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const) {

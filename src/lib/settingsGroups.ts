@@ -74,8 +74,9 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (isOfficeRole(r)) {
     groups.push({ id: 'settings-people', label: 'People & teams', zone: 'company', pagesHint: 'Shows on: People — accounts, teams, and review cadence.' })
   }
-  // Training (punch list #111, v2.5569): the courses the crew must take and how long a pass is good for. A dev's.
-  if (r === 'dev') {
+  // Training (punch list #111, v2.5569): the courses the crew must take and how long a pass is good for. The owner's with a
+  // dev since v2.6762 (punch list #188 row 6): which courses the crew must take is his policy.
+  if (isOwnerOrDev(r)) {
     groups.push({ id: 'settings-training', label: 'Training', zone: 'company', pagesHint: 'Shows on: the Dashboard under My Time, and People. Which courses each role must take, how long a pass is good for, and where everyone stands.' })
   }
   // Emails & reports (punch list #188 row 5, v2.6753): who gets which stream is the owner's call, so the owner reads it with a dev.
@@ -119,6 +120,9 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (r === 'dev') {
     // Dev doors (v2.5882, punch list #188): the map of every door only a dev or the controller may open today, each a link.
     groups.push({ id: 'settings-dev-doors', label: 'Dev doors', zone: 'system', pagesHint: 'Every page, window and switch only a dev or the controller can open today. Each one is a link.' })
+  }
+  // Usage (punch list #188 row 7, v2.6762): how the company uses the app is the owner's to read, with a dev.
+  if (isOwnerOrDev(r)) {
     groups.push({ id: 'settings-usage', label: 'Usage', zone: 'system', pagesHint: 'How the company actually uses the app — pages, clicks, and customer opens.' })
   }
   // Data & recovery: a dev's backups and Recently deleted; since v2.6756 (punch list #188 row 25) the controller opens it for HCP reconcile.

@@ -14,7 +14,7 @@ const PAGE_SIZE = 25
 
 type Props = {
   /** Render nothing unless the viewer is a dev — the log is org-wide. */
-  isDev: boolean
+  canRead: boolean
   /**
    * Opens the email's stream card on Email & notifications (v2.1754). Rows
    * whose subject maps to a stream become clickable; one-off transactional
@@ -36,7 +36,7 @@ function chipStyle(tone: 'good' | 'bad' | 'neutral'): React.CSSProperties {
   }
 }
 
-export default function SettingsRecentEmailsSent({ isDev, onOpenStream }: Props) {
+export default function SettingsRecentEmailsSent({ canRead, onOpenStream }: Props) {
   const [rows, setRows] = useState<EmailSendLogDisplayRow[]>([])
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -71,9 +71,9 @@ export default function SettingsRecentEmailsSent({ isDev, onOpenStream }: Props)
   )
 
   useEffect(() => {
-    if (!isDev) return
+    if (!canRead) return
     void load(limit)
-  }, [isDev, limit, load])
+  }, [canRead, limit, load])
 
   const refreshFromResend = useCallback(async () => {
     setSyncing(true)
@@ -89,7 +89,7 @@ export default function SettingsRecentEmailsSent({ isDev, onOpenStream }: Props)
     }
   }, [limit, load])
 
-  if (!isDev) return null
+  if (!canRead) return null
 
   return (
     <div

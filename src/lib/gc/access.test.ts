@@ -260,9 +260,10 @@ describe('canEditClause and canApproveClause (Messages, cut 4c)', () => {
     expect(canEditClause(null)).toBe(false)
   })
 
-  it('lets a dev or a controller approve, and nobody else (the owner, 2026-10-12)', () => {
-    expect([...GC_CLAUSE_APPROVE_TEAM].sort()).toEqual(['controller', 'dev'])
-    for (const role of ['master_technician', 'assistant', 'estimator', 'superintendent', 'subcontractor'] as UserRole[]) expect(canApproveClause(role)).toBe(false)
+  it('lets a dev, the owner or a controller approve, and nobody else (the owner, 2026-10-12; himself added 2026-11-08, punch list #188 row 30)', () => {
+    expect([...GC_CLAUSE_APPROVE_TEAM].sort()).toEqual(['controller', 'dev', 'master_technician'])
+    for (const role of ['dev', 'master_technician', 'controller'] as UserRole[]) expect(canApproveClause(role)).toBe(true)
+    for (const role of ['assistant', 'estimator', 'superintendent', 'subcontractor'] as UserRole[]) expect(canApproveClause(role)).toBe(false)
     expect(canApproveClause(null)).toBe(false)
   })
 
