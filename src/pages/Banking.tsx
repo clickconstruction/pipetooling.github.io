@@ -478,7 +478,8 @@ export default function Banking() {
   }, [searchParams, setSearchParams])
 
   useEffect(() => {
-    if (!isStaffBankingRole(myRole)) return
+    // The owner keeps the staff tabs; the controller opens the Ledger and Stripe since v2.6761 (punch list #188 rows 51, 52).
+    if (myRole !== 'master_technician') return
     const product = searchParams.get('product')
     const tab = mercuryTabFromParam(searchParams.get('tab'))
     if (tab !== null && tab !== 'ledger' && product !== 'stripe' && (product === null || product === 'mercury')) {
@@ -1572,7 +1573,7 @@ export default function Banking() {
                     >
                       Visuals
                     </button>
-                    {isBankingAdmin ? (
+                    {isDevBanking ? (
                       <button
                         type="button"
                         role="tab"
