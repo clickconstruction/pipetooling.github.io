@@ -162,7 +162,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled, hideZzTestJobs, authUserId)
 
   const contractNudgeEnabled = on('contracts')
-  const { nudge: contractNudge } = useJobContractsNudge(contractNudgeEnabled)
+  const { nudge: contractNudge } = useJobContractsNudge(contractNudgeEnabled, hideZzTestJobs)
   const unpricedWorkOrdersEnabled = on('unpricedWorkOrders')
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
   const jobKindGapsEnabled = on('jobKindGaps')

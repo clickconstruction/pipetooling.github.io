@@ -11,13 +11,16 @@ import { test, expect, type Page } from '@playwright/test'
  * Each case pins one of the gaps that was measured on 2026-10-02: a window
  * with its own older lock left the page frozen after it closed (Pay history);
  * a window that stops above the Dispatch / Job mode bar covered under 90% of a
- * short screen and was never locked (the Lien desk); the public pages had no
- * lock at all. READ-ONLY: windows are opened and closed, nothing is saved.
+ * short screen and was never locked (the Lien desk then, Put a GC on notice
+ * since the desk became a page); the public pages had no lock at all.
+ * READ-ONLY: windows are opened and closed, nothing is saved.
  */
 
 const PHONE = { width: 375, height: 812 }
 /** Short enough that a window ending above the 60 px bottom bar covers under 90% of it. */
 const SHORT_PHONE = { width: 375, height: 590 }
+/** No customer has this id: Put a GC on notice opens with no job in it, so the case reads nobody's claims. */
+const NO_GC_ID = '00000000-0000-0000-0000-000000000000'
 
 test.use({ viewport: PHONE })
 
@@ -95,17 +98,19 @@ test('Pay history leaves nothing on the page after it closes, and the page is wh
 test.describe('a short phone', () => {
   test.use({ viewport: SHORT_PHONE })
 
-  test('the Lien desk holds the page still even when it stops above the bottom bar (v2.4400)', async ({ page }) => {
-    await page.goto('/jobs?tab=stages&liendesk=1')
-    const desk = page.getByRole('dialog', { name: 'Lien desk' })
-    await expect(desk).toBeVisible({ timeout: 30000 })
-    await expectLocked(page, 'Lien desk')
+  test('Put a GC on notice holds the page still even when it stops above the bottom bar (v2.4400)', async ({ page }) => {
+    // The Lien desk carried this case until it became the page /lien-desk (v2.6781): a page has no
+    // window to lock behind. Put a GC on notice is one of the windows that still ends above the bar.
+    await page.goto(`/jobs?tab=stages&gcnotice=${NO_GC_ID}`)
+    const notice = page.getByRole('dialog', { name: 'Put a GC on notice' })
+    await expect(notice).toBeVisible({ timeout: 30000 })
+    await expectLocked(page, 'Put a GC on notice')
     // The lock re-checks itself every 3 s while held; a window it does not count is let go then.
     await page.waitForTimeout(4000)
-    expect((await lockState(page)).locked, 'Lien desk: the lock let go after its own re-check').toBe(true)
-    await desk.getByRole('button', { name: 'Close', exact: true }).first().click()
-    await expect(desk).toBeHidden()
-    await expectFree(page, 'Lien desk closed')
+    expect((await lockState(page)).locked, 'Put a GC on notice: the lock let go after its own re-check').toBe(true)
+    await notice.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(notice).toBeHidden()
+    await expectFree(page, 'Put a GC on notice closed')
   })
 })
 

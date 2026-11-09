@@ -100,6 +100,8 @@ Off on day one. When it is on, every night the app looks up every open GC job wi
 
 The **Mechanic's lien** tab refuses to generate until the paper trail is real. It needs the owner of record with mailing address ✓. It needs the county and legal description ✓, from the property record. It needs the notice recorded ✓ on sub jobs. And it needs **not a homestead**. A homestead lien needs a pre-work contract signed by both spouses and recorded with the county. That is attorney territory the app will not paper over.
 
+The affidavit states the dates of the work. They run from the first approved clock day through the last. A job with no clock hours states its last work month, from its first day to its last. Read that line before you print. If the dates are wider than the work, press **change ›** under **Last work**. It is at the top of the window. Set the real last day there, and the paper follows.
+
 When the gate clears, click {{button:outline-blue|Print for notarization}}. Sign before a notary. File it with the County Clerk in the property's county. Then click {{button:red|Record filing…}} with the recording number. The **serve-by date stamps itself**. A copy must reach the owner and contractor within 5 days. A red Dashboard card nags until you {{button:red|Record service…}}.
 
 Was the lien filed without this tab, by counsel or on paper from elsewhere? The gate does not stop the record. Press {{button:outline|Already filed — record it…}} under the gate list. Type the county, the recording number and the day it was filed. The serve-by day and the year to sue count from that day.

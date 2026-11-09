@@ -4,7 +4,7 @@
  * share. Pure: the panel draws these, `procurementLog.ts` keeps the rows.
  */
 import { daysBetween, shortDate, type OrderBlockers, type ProcurementRow, type ProcurementStatus } from './procurementLog'
-import { boxDeskLink } from '../materials/boxSearch'
+import { boxDeskLink } from '../materials/boxDeskLink'
 
 export type ProcurementStepKey = 'gc' | 'to_order' | 'on_order' | 'on_site'
 export const PROCUREMENT_STEP_KEYS: ReadonlyArray<ProcurementStepKey> = ['gc', 'to_order', 'on_order', 'on_site']

@@ -140,6 +140,14 @@ export const ENTRIES = {
   'lib/charges/adjustments.ts': { values: ['chargeAdjustmentFromRow', 'indexAdjustments'], types: ['ChargeAdjustment'] },
   'lib/charges/chargeStandings.ts': { values: ['standingsById'], types: ['ChargeStandingRow'] },
   'lib/people/hoursStatementSheets.ts': { values: ['hoursStatementSheetCounts', 'hoursStatementSheetPayGroups', 'hoursStatementSheetRows'], types: ['HoursStatementSheet', 'HoursStatementSheetLine', 'HoursStatementSheetPayment'] },
+  // Submittals through the dev seat (v2.6804): get_submittals reads a bid's rows and its order log through the tab's own
+  // kernels — the rows that stand, each row as the log's lines, the log, its four steps and the Next line, the status
+  // against the plans — so where a part stands on the seat is where it stands on Bids → Submittals.
+  'lib/submittals/standingRows.ts': { values: ['rowsThatStand', 'revisionWasRead'], types: ['StandingRevision'] },
+  'lib/submittals/procurementItemSources.ts': { values: ['procurementItemSources', 'procurementSourceIds'], types: ['ProcurementItemLike', 'ProcurementSourceFacts'] },
+  'lib/submittals/procurementLog.ts': { values: ['buildProcurementLog', 'lineStatus', 'orderBlockers', 'tagStagesFrom', 'PROCUREMENT_STATUS_LABELS'], types: ['ProcurementItemSource', 'ProcurementRecord', 'ProcurementRow', 'ProcurementStage', 'ProcurementStatus'] },
+  'lib/submittals/procurementBoard.ts': { values: ['procurementSteps', 'procurementNextLine', 'stepOfRow', 'PROCUREMENT_STEP_LABELS'], types: ['ProcurementStep', 'ProcurementStepKey'] },
+  'lib/submittals/productStatus.ts': { values: ['deriveProductStatus', 'needsReason', 'STATUS_LABELS', 'STATUS_MEANINGS', 'REASON_LABELS'], types: ['ProductStatus', 'ReasonKind'] },
   // v2.6406's way back from a retire: read_on_site lists a job's retired boxes with the screens' own Bring back verdict.
   'lib/materials/unretire.ts': { values: ['retiredContainers', 'unretireVerdict'], types: ['UnretireVerdict'] },
   // Messages, cut 5 (v2.5261 to v2.5268 and this): the Quo link's webhook and send. The thread is here for its types,
