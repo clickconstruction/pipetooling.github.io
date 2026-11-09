@@ -2,7 +2,7 @@
 title: work Today's sends
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: today's sends, todays sends, offers, prepared text, morning run, send all, hold until, stop reminding, not this one, send in the morning, dashboard, needs you, flows
+keywords: today's sends, todays sends, offers, prepared text, morning run, send all, hold until, stop reminding, not this one, send later, send in the morning, change the time, dashboard, needs you, flows
 where: /dashboard
 order: 41
 ---
@@ -20,7 +20,7 @@ The line only shows when a text waits.
 
 A step in Flows can be set to **Offers**. Each morning at 9 AM the app prepares that step's text for every customer who is due. It writes the words and puts them here. See [let the app send a reminder](/help/set-up-the-steps-a-person-goes-through#let-the-app-send-a-reminder). The owner can also set it on Phone and texts, under **Reminders the app offers**. See [offer the app's reminders](/help/offer-the-apps-reminders).
 
-The office can also hand a text to the morning. On the Tell the customer sheet, press **Send in the morning**. The text waits here until 9 AM on its day, then the app sends it. See [schedule a job and tell the customer](/help/schedule-a-job-and-tell-the-customer#send-it-in-the-morning-instead).
+The office can also hand a text to a time. On the Tell the customer sheet, press **Send later** and pick when. The text waits here until that time, then the app sends it. See [schedule a job and tell the customer](/help/schedule-a-job-and-tell-the-customer#send-it-later-instead).
 
 A first visit moved to another day or window puts its Rescheduled text here too. Press it when the move is settled. Once the new day has passed, the text is held, and the app puts it away the next morning.
 
@@ -38,7 +38,7 @@ Dana, any word on the estimate? Happy to walk through it.
 {{button:green|Send}}
 :::
 
-A text you prepared for a morning shows its day instead of a Send button. The app sends it then.
+A text you prepared for later shows its time instead of a Send button, like *Goes Tue 9:00 AM*. The app sends it then. Press **Change the time** to pick another day or time. Texts go between 8 AM and 9 PM only. Press **Not this one** to take the text back.
 
 ## Put one away
 

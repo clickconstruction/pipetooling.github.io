@@ -6,7 +6,7 @@
  * no Booked line; a customer with no number, texts off, STOP and a job with no customer each read their hold; a tech
  * sees the hold and no box.
  */
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { QuickReply } from '../../lib/quickReplies/kernel'
 import type { TellBlock } from '../../lib/tellCustomer/tellCustomer'
@@ -137,12 +137,27 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
     expect(screen.queryByTestId('tell-receipt')).toBeNull()
   })
 
-  it('Send in the morning hands the text to the 9 AM run and says when it goes (v2.5595)', async () => {
+  it('Send later names the time, opens the picker, and hands the text to that time (v2.6774; Send in the morning before it)', async () => {
     const io = fakeIo()
     const { onSent } = mount(io)
     await screen.findByTestId('tell-body')
-    fireEvent.click(screen.getByTestId('tell-morning'))
-    // AT is 2:41 PM Central on Fri Oct 16, after the run: it goes Sat Oct 17.
+    // AT is 2:41 PM Central on Fri Oct 16, after 9 AM: the default is tomorrow 9:00 AM.
+    const press = screen.getByTestId('tell-morning')
+    expect(press.textContent).toBe('Send later · Tomorrow 9:00 AM')
+    fireEvent.click(press)
+    const picker = await screen.findByTestId('send-later')
+    expect(screen.getByRole('dialog', { name: 'When it goes' })).toBeTruthy()
+    expect(within(picker).getByTestId('send-later-day')).toHaveProperty('value', '2026-10-17')
+    expect(within(picker).getByTestId('send-later-time')).toHaveProperty('value', '09:00')
+    expect(within(picker).getByTestId('send-later-goes').textContent).toBe('Goes Saturday, Oct 17 at 9:00 AM Central, in about 18 hours.')
+    expect(within(picker).getAllByRole('button', { pressed: true }).map((b) => b.textContent)).toEqual(['Tomorrow 9:00 AM'])
+    // Today 6:00 PM: the chip fills the fields and the words follow.
+    fireEvent.click(within(picker).getByTestId('send-later-chip-today-evening'))
+    expect(within(picker).getByTestId('send-later-time')).toHaveProperty('value', '18:00')
+    expect(within(picker).getByTestId('send-later-goes').textContent).toBe('Goes Friday, Oct 16 at 6:00 PM Central, in about 3 hours.')
+    const go = screen.getByTestId('send-later-go')
+    expect(go.textContent).toBe('Send today 6:00 PM')
+    fireEvent.click(go)
     await waitFor(() =>
       expect(io.makeOffer).toHaveBeenCalledWith({
         contactId: 'contact-dana',
@@ -150,14 +165,35 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
         jobId: 'job-512',
         stepKey: 'booked',
         body: 'Dana, this is Rosa with Click Plumbing. We have you booked for Friday, October 23, 2026, 10:00 AM to 12:00 PM. Luis will text you when on the way.',
-        sendOn: '2026-10-17',
+        sendOn: '2026-10-16',
+        sendAt: '2026-10-16T23:00:00.000Z',
       }),
     )
     expect(await screen.findByTestId('tell-morning-receipt')).toBeTruthy()
-    expect(screen.getByRole('dialog', { name: 'Ready for the morning' })).toBeTruthy()
-    expect(screen.getByTestId('tell-morning-line').textContent).toMatch(/^Goes at 9 AM on Sat.*17 from the company number\.$/)
+    expect(screen.getByRole('dialog', { name: 'Ready to go later' })).toBeTruthy()
+    expect(screen.getByTestId('tell-morning-line').textContent).toBe('Goes Friday, Oct 16 at 6:00 PM Central from the company number.')
     expect(io.send).not.toHaveBeenCalled()
     expect(onSent).not.toHaveBeenCalled()
+  })
+
+  it('the picker holds a time that has passed, fences the field to 8 AM to 9 PM, and Now sends the text itself', async () => {
+    const io = fakeIo()
+    mount(io)
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-morning'))
+    const picker = await screen.findByTestId('send-later')
+    fireEvent.change(within(picker).getByTestId('send-later-day'), { target: { value: '2026-10-16' } })
+    fireEvent.change(within(picker).getByTestId('send-later-time'), { target: { value: '09:00' } })
+    expect(within(picker).getByTestId('send-later-past').textContent).toBe('That time has passed. Pick a later one, or press Now.')
+    expect((screen.getByTestId('send-later-go') as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(within(picker).getByTestId('send-later-time'), { target: { value: '22:30' } })
+    fireEvent.focusOut(within(picker).getByTestId('send-later-time'), { target: { value: '22:30' } })
+    expect(within(picker).getByTestId('send-later-time')).toHaveProperty('value', '21:00')
+    expect(within(picker).getByTestId('send-later-goes').textContent).toBe('Goes Friday, Oct 16 at 9:00 PM Central, in about 6 hours.')
+    fireEvent.click(within(picker).getByTestId('send-later-chip-now'))
+    await waitFor(() => expect(io.send).toHaveBeenCalledTimes(1))
+    expect(io.makeOffer).not.toHaveBeenCalled()
+    expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
   })
 
   it('Add to my calls on the receipt makes the call a task for tomorrow with the script as filled (v2.5596)', async () => {
