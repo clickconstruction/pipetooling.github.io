@@ -12,6 +12,7 @@ import {
   truncateStripeMetadataValue,
 } from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { IN_KIND_CUSTOMER_WORD, IN_KIND_PAYMENT_TYPE, isInKindPaymentType } from '../_shared/inKindPayment.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,13 +39,15 @@ function isInvoiceAlreadyPaidStripeError(e: unknown): boolean {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** The line the customer reads on the pay link and the invoice PDF (mirrors src/lib/jobs/stripePartPayment.ts). */
+/** Mirrors `stripeCreditLineText` in src/lib/jobs/stripePartPayment.ts: an in-kind payment (v2.6816) is a credit applied, never money received. */
 function partPaymentCreditLine(paymentType: string, paidOn: string, amount: number, reference?: string): string {
-  const type = paymentType.trim() || 'Payment'
-  const ref = (reference ?? '').trim()
-  const who = type === 'Check' && ref ? `Check #${ref}` : type
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(paidOn)
   const when = m ? `${MONTHS[Number(m[2]) - 1]} ${Number(m[3])}` : paidOn
   const money = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  if (isInKindPaymentType(paymentType)) return `${IN_KIND_CUSTOMER_WORD} applied ${when} · $${money}`
+  const type = paymentType.trim() || 'Payment'
+  const ref = (reference ?? '').trim()
+  const who = type === 'Check' && ref ? `Check #${ref}` : type
   return `${who} received ${when} · $${money}`
 }
 
@@ -95,6 +98,7 @@ type ExistingPaymentRow = {
 function customerPaymentTypeWord(paymentType: string | null | undefined): string {
   const t = (paymentType ?? '').trim().toLowerCase()
   if (!t) return 'Payment'
+  if (isInKindPaymentType(t)) return IN_KIND_PAYMENT_TYPE
   if (/che(ck|que)/.test(t)) return 'Check'
   if (/card/.test(t)) return 'Card'
   if (/wire/.test(t)) return 'Wire'

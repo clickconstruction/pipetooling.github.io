@@ -1,4 +1,5 @@
 import type { PortalBill } from './portalPayload'
+import { IN_KIND_CUSTOMER_WORD, isInKindPaymentType } from '../../../supabase/functions/_shared/inKindPayment'
 
 /**
  * Job grouping for the portal statement (v2.2318). The edge function sends a
@@ -53,11 +54,13 @@ export const PORTAL_GENERIC_PAYMENT_METHOD = 'Payment'
 /**
  * Customer-facing method label. The raw payment_type lands here verbatim from
  * the edge function; `other` (HCP's catch-all) reads like a shrug on customer
- * paper, so it becomes the generic label alongside the blank case.
+ * paper, so it becomes the generic label alongside the blank case. An in-kind
+ * payment (v2.6816) reads Credit: what the customer was given for, never cash.
  */
 export function portalPaymentMethodLabel(method: string): string {
   const m = method.trim()
   if (!m || m.toLowerCase() === 'other') return PORTAL_GENERIC_PAYMENT_METHOD
+  if (isInKindPaymentType(m)) return IN_KIND_CUSTOMER_WORD
   return m
 }
 
