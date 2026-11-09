@@ -43336,10 +43336,6 @@ export type Database = {
         Returns: string
       }
       on_site_can_touch_job: { Args: { p_job_id: string }; Returns: boolean }
-      on_site_job_summary: {
-        Args: { p_job_id: string; p_since?: string }
-        Returns: Json
-      }
       on_site_line_on_hand: {
         Args: {
           p_container_id: string

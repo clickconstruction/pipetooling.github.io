@@ -2,7 +2,7 @@
 name: "Subs: the board by trade, built for the moment a set of plans lands"
 number: 153
 group: close
-status: built 2026-10-24 on the owner's yes of 2026-10-23 ("Build it all and push any migrations"); all four PRs merged: PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run), PR 3 v2.5809 (the migration, pushed to prod 2026-10-24; the drag; the priority), PR 4 v2.5810 (the ask on landing); the run's first text starts the sub's Messages thread v2.6032 (2026-10-28; its migration 20261028220000 is on prod, the drift check reading fully applied on 2026-11-01); the board's first text walked live 2026-11-08 in the owner's Chrome on a ZZ Test sub (Didn't Answer set the 3 pm callback, Text them started the thread and the text reached the owner's number, the receipt read *1 to call back today 3 pm, 1 texted*); no screen removed a bench company until the Remove press v2.6749 (built 2026-11-08 on the owner's word that day): **Remove from the bench…** on a Trade partners row with no history, behind a confirm whose button reads *Remove from the bench*, through `gc_remove_bench_company` (migration 20261109004500, **pushed after the merge**); a company with any history shows no press and keeps the ask's Will not do it and Cannot do it
+status: built 2026-10-24 on the owner's yes of 2026-10-23 ("Build it all and push any migrations"); all four PRs merged: PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run), PR 3 v2.5809 (the migration, pushed to prod 2026-10-24; the drag; the priority), PR 4 v2.5810 (the ask on landing); the run's first text starts the sub's Messages thread v2.6032 (2026-10-28; its migration 20261028220000 is on prod, the drift check reading fully applied on 2026-11-01); the board's first text walked live 2026-11-08 in the owner's Chrome on a ZZ Test sub (Didn't Answer set the 3 pm callback, Text them started the thread and the text reached the owner's number, the receipt read *1 to call back today 3 pm, 1 texted*); no screen removed a bench company until the Remove press v2.6749 (built 2026-11-08 on the owner's word that day): **Remove from the bench…** on a Trade partners row with no history, behind a confirm whose button reads *Remove from the bench*, through `gc_remove_bench_company` (migration 20261109004500, pushed 2026-11-09); a company with any history shows no press and keeps the ask's Will not do it and Cannot do it; the first live press ran 2026-11-09 in the owner's Chrome and took the ZZ Test Remove Walk row off, and the function's refusal on the ZZ Test Sprinkler Co read in words through the dev seat (nothing written); left: the owner's call on that company's ask and contact rows
 summary: >
   Prospects → Subs holds 104 trade companies found on 2026-10-23, one card at a time on the deck
   and a table on the Prospect List sorted by how long since a touch. Nothing on the page says how
@@ -16,7 +16,7 @@ summary: >
   callback and a text offer when one does not answer; a yes lands on the bench and is asked on
   the job in one press. A's stage strip, sentence and press per card and C's record and priority
   (the rank's reason and the column's default order, a drag pinning a card over it) are folded in.
-next: use the board on the next set of plans. After the push of 20261109004500: press **Remove from the bench…** on the *ZZ Test Remove Walk* row (the 2026-11-08 walk's company, no history) as the first live press; the ZZ Test Sprinkler Co can then go too, but it carries an ask and a logged contact, so the press refuses it in words — a dev deletes its `gc_invites` row and its `gc_company_contacts` row by hand first, then the press takes the company, or deletes all three by hand.
+next: use the board on the next set of plans. The first live Remove press ran 2026-11-09 (ZZ Test Remove Walk is gone, under *Where it stands*). The ZZ Test Sprinkler Co stays: it shows no press, and the function refuses it in words (*ZZ Test Sprinkler Co stays on the bench, since they were asked to quote.*). The owner's call: a dev deletes its `gc_invites` row and its `gc_company_contacts` row by hand and the press takes the company, or deletes all three by hand, or it stays as the GC test bidding project's test sub. Nothing else is left but the owner's look.
 size: built: PR 1 S · PR 2 M · PR 3 M · PR 4 S
 blocker: none; the owner said build it all on 2026-10-23
 ver: v2.5807, v2.5808, v2.5809, v2.5810, v2.6032, v2.6749
@@ -389,3 +389,17 @@ cache*, the right refusal before the push. **The ZZ Test Remove Walk company sta
 after the push** (it has no history, so the press takes it); the ZZ Test Sprinkler Co still needs a dev's hand on its
 ask and its contact first. Guide: *add a trade partner* § Remove a company with no history; *find subs for the bench* one
 paragraph.
+
+**2026-11-09, the first live press** (the deployed client, signed in through the pane magic link in the Chrome the owner
+handed the session, the migration in prod). Trade partners, Fire sprinkler (2 companies): the *ZZ Test Remove Walk* row read
+*not vetted yet · Pat Test · address not set · Remove from the bench… · new to us · never asked · not asked on anything live*;
+the *ZZ Test Sprinkler Co* rows (under *New to us* and under Fire sprinkler) read *new to us · quoted 0 of 1 asks* with no
+press, as designed. **Remove from the bench…** opened *Remove ZZ Test Remove Walk from the bench? ZZ Test Remove Walk has no
+quote, no ask, no work order and no contact logged. Their row leaves Trade partners.* with **Cancel** and the red **Remove
+from the bench**; the press ran and the row was gone, Fire sprinkler reading *1 company*; `gc_companies` holds one ZZ Test
+row now, the Sprinkler Co. The company came from Add a company, not a prospect, so no card went back on the lane. The
+refusal was read without the screen: `gc_remove_bench_company` called over the dev seat's GET on the Sprinkler Co raised
+before any write, *ZZ Test Sprinkler Co stays on the bench, since they were asked to quote.* (P0001), and the read-only
+transaction wrote nothing. Its `gc_invites` row and its `gc_company_contacts` row were not touched: the owner decides whether
+a dev deletes them by hand so the press can take the company, deletes all three, or leaves the company as the GC test
+bidding project's test sub. Screenshots `153-1` to `153-3` in the walk session's scratchpad.

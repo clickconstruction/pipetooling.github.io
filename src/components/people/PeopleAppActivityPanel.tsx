@@ -104,12 +104,13 @@ export function usePeopleAppActivityRows(enabled: boolean) {
 
 type PeopleAppActivityPanelProps = {
   enabled: boolean
-  isDev: boolean
+  /** Punch list #188 row 58 (v2.6757): who grants the tab — the owner or a dev (`canManageActivityGrants`). */
+  canManageGrants: boolean
   users: ActivityGrantUserRow[]
   authUserId: string | null
 }
 
-export default function PeopleAppActivityPanel({ enabled, isDev, users, authUserId }: PeopleAppActivityPanelProps) {
+export default function PeopleAppActivityPanel({ enabled, canManageGrants, users, authUserId }: PeopleAppActivityPanelProps) {
   const { showToast } = useToastContext()
   const { rows, loading, error } = usePeopleAppActivityRows(enabled)
 
@@ -121,7 +122,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
   const [activityDetailPerson, setActivityDetailPerson] = useState<{ userId: string; name: string } | null>(null)
 
   useEffect(() => {
-    if (!isDev) return
+    if (!canManageGrants) return
     let cancelled = false
     setActivityGrantListLoading(true)
     void (async () => {
@@ -139,7 +140,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
     return () => {
       cancelled = true
     }
-  }, [isDev])
+  }, [canManageGrants])
 
   return (
     <>
@@ -154,7 +155,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
         }}
       >
         <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>App activity</h2>
-        {isDev && (
+        {canManageGrants && (
           <button
             type="button"
             aria-expanded={activityGrantsSectionOpen}
@@ -177,7 +178,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
           </button>
         )}
       </div>
-      {isDev && activityGrantsSectionOpen && (
+      {canManageGrants && activityGrantsSectionOpen && (
         <div
           id="people-activity-grants-panel"
           style={{

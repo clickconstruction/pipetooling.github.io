@@ -1460,7 +1460,6 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "nudge_offer_sent": [{"args":{"p_message":"string","p_offer":"string"},"returns":"undefined"}],
   "nudge_record_sent": [{"args":{"p_contact":"string","p_how":"string","p_job_id":"string","p_job_kind":"string","p_message":"string","p_round":"string","p_step":"string"},"returns":"string"}],
   "on_site_can_touch_job": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
-  "on_site_job_summary": [{"args":{"p_job_id":"string","p_since?":"string"},"returns":"Json"}],
   "on_site_line_on_hand": [{"args":{"p_container_id":"string","p_part_id?":"string","p_part_name?":"string"},"returns":"number"}],
   "open_ar_rejected_check_cases": [{"args":{},"returns":"Json"}],
   "open_ar_unbanked_check_cases": [{"args":{"p_days?":"number","p_floor?":"string","p_quiet?":"boolean"},"returns":"Json"}],

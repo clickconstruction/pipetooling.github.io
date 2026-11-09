@@ -54,6 +54,8 @@ type EditingUserNote = { id: string; name: string; notes: string; phone: string 
 
 interface PeopleUsersTabProps {
   isDev: boolean
+  /** Punch list #188 row 57 (v2.6757): the Tags switch and the tag org panel — the owner or a dev (`canUseUsersTags`). */
+  canUseTags: boolean
   /** Hire (v2.3701): the one form for a new person — login, roster row, pay, workday, packet. An empty group's press passes its kind (punch list #184, sweep C). */
   onOpenHire?: (kind?: PersonKind) => void
   /** v2.3702 lenses: the Pay lens's inputs — the `usePayConfig` cluster; undefined for viewers without pay access. */
@@ -105,6 +107,7 @@ interface PeopleUsersTabProps {
 
 export function PeopleUsersTab({
   isDev,
+  canUseTags,
   onOpenHire,
   payLens,
   setTrainingMode,
@@ -479,7 +482,7 @@ export function PeopleUsersTab({
         menu={menuFor(sectionKind, item)}
         createdBy={person && person.master_user_id !== authUserId ? (creatorNames[person.master_user_id] ?? 'Unknown') : null}
         below={
-          isDev && usersTabTags.showUsersTabTags ? (
+          canUseTags && usersTabTags.showUsersTabTags ? (
             <PeopleUserTagsPanel anchor={resolveUsersTabTagAnchor({ source: item.source, id: item.id, email: item.email }, sectionKind === 'dev' ? null : sectionKind)} people={people} tags={usersTabTags} showToast={showToast} />
           ) : null
         }
@@ -521,7 +524,7 @@ export function PeopleUsersTab({
         swipeOpen={swipeOpenId === rowId}
         onSwipeChange={(open) => setSwipeOpenId((cur) => (open ? rowId : cur === rowId ? null : cur))}
         below={
-          isDev && usersTabTags.showUsersTabTags ? (
+          canUseTags && usersTabTags.showUsersTabTags ? (
             <PeopleUserTagsPanel anchor={resolveUsersTabTagAnchor({ source: item.source, id: item.id, email: item.email }, sectionKind === 'dev' ? null : sectionKind)} people={people} tags={usersTabTags} showToast={showToast} />
           ) : null
         }
@@ -1073,7 +1076,7 @@ export function PeopleUsersTab({
           onChanged={() => void loadArchivedLogins()}
         />
       ) : null}
-      {isDev && (
+      {canUseTags && (
         <>
           <div
             style={{

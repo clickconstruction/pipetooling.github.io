@@ -2,7 +2,7 @@
 name: "Counsel-only on a matter document, and the matter's documents as text the search can read"
 number: 288
 group: ready
-status: proposed 2026-11-08 · the owner's yes the same day · the shape picked the same day (the shared documents table) · PR 1 built as v2.6716 (migration 20261108210000, legal-portal and dev-mcp 0.44.0 to deploy after the push) · PR 2 and PR 3 next
+status: proposed 2026-11-08 · the owner's yes the same day · the shape picked the same day (the shared documents table) · PR 1 built as v2.6716 (migration 20261108210000, legal-portal and dev-mcp 0.44.0 to deploy after the push) · PR 2 built as v2.6720 (migration 20261108230000, stacked on PR 1; dev-mcp 0.45.0) · PR 3 next
 summary: >
   The Legal desk's matter is what the firm reads, so it is the natural home for anything written
   for the attorney. Two things keep that from working for a case on a person: a matter document
@@ -47,12 +47,13 @@ hold on the matter.
   words where the row points at one, sectioned through `hr_doc_sections`' grammar, beside `title`
   and `shows` (PR 1).
 - **A counsel-only mark on the document.** `legal_matter_documents.counsel_only boolean`, set
-  on filing (the desk's tick, the seat's field, the mail door's `to.counsel_only`). What it binds:
-  the portal lists the document to the firm's logins only when the matter's firm is counsel of
-  record and never includes it in a packet or a print for a third party; the agent role's policy
-  refuses the row; the seat's reads mark it to a dev as the HR file's does. The limit is stated as
-  on the HR file: it holds the document from the agent as deployed and from any print, not from a
-  dev's own session.
+  on filing (the desk's tick, the seat's field, the mail door's `to.counsel_only`) or from the
+  row's menu (PR 2, v2.6720). What it binds: the portal lists the document to the firm's logins,
+  who are counsel of record, with a lock, and the printed packet (a paper for a third party) leaves
+  it out; the seat as deployed is refused the row and its words by restrictive policies and told
+  the count, and the agent role has no policy on either table; the seat's search marks the hit, as
+  the HR file's does. The limit is stated as on the HR file: it holds the document from the seat
+  and the agent as deployed and from any print, not from a dev's own session.
 - **The merge of the two tables, done.** #277 weighed one documents table for people and matters
   and built the person table first with nothing that fights the later merge; the owner's pick made
   PR 1 that merge. `dev_person_doc_write`, `dev_doc_read` and `dev_doc_history` still read through
@@ -72,7 +73,7 @@ hold on the matter.
 | PR | What | Size |
 |---|---|---|
 | 1 | The shared `documents` table (the rename, `matter_id`, the views with the old names) and `legal_matter_documents.text_document_id`; the desk, the seat and the mail door keep text for a text file; the desk and the portal render it; `dev_case_search` searches it by section. Migration, `legal-portal` and `dev-mcp` redeployed. **Built: v2.6716.** | M |
-| 2 | `counsel_only` on a matter document: the tick on the desk's add form, the seat's and the mail door's field, the portal's list and packet refusing it, the agent role's policy, the lock chip on the row, `ACCESS_CONTROL.md` and `docs/HR_FILES.md` stating the limit. | S |
+| 2 | `counsel_only` on a matter document: the tick on the desk's add form, the seat's and the mail door's field, the portal's list wearing the lock and the packet leaving it out, the seat refused the row and its words by policy (the agent role has none), the lock chip on the row and the menu's on and off, `ACCESS_CONTROL.md` and `docs/HR_FILES.md` stating the limit. **Built: v2.6720.** | S |
 | 3 | The seat reads a matter document by section (`get_matter_document { matter_id, doc_id, section? }`) and `search_case` hits on it carry the section, as a named document's do. | S |
 
 ## How to verify
