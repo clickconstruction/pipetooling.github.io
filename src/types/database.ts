@@ -7844,6 +7844,225 @@ export type Database = {
           },
         ]
       }
+      counter_ticket_pages: {
+        Row: {
+          by_user_id: string | null
+          bytes: number
+          created_at: string
+          drive_file_id: string | null
+          drive_folder_id: string | null
+          fail_why: string | null
+          filed_at: string | null
+          height: number
+          id: string
+          mime: string
+          original_bytes: number
+          page_no: number
+          storage_path: string | null
+          taken_at: string
+          ticket_id: string
+          width: number
+        }
+        Insert: {
+          by_user_id?: string | null
+          bytes?: number
+          created_at?: string
+          drive_file_id?: string | null
+          drive_folder_id?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
+          height?: number
+          id?: string
+          mime?: string
+          original_bytes?: number
+          page_no?: number
+          storage_path?: string | null
+          taken_at?: string
+          ticket_id: string
+          width?: number
+        }
+        Update: {
+          by_user_id?: string | null
+          bytes?: number
+          created_at?: string
+          drive_file_id?: string | null
+          drive_folder_id?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
+          height?: number
+          id?: string
+          mime?: string
+          original_bytes?: number
+          page_no?: number
+          storage_path?: string | null
+          taken_at?: string
+          ticket_id?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counter_ticket_pages_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_ticket_pages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "counter_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      counter_tickets: {
+        Row: {
+          added_at: string | null
+          also_job_ids: string[]
+          created_at: string
+          declined_transaction_ids: string[]
+          id: string
+          job_id: string | null
+          match_kind: string | null
+          matched_at: string | null
+          matched_by: string | null
+          mercury_transaction_id: string | null
+          no_one_job: boolean
+          note: string
+          paid_other: string | null
+          paid_other_note: string
+          po_entry_id: string | null
+          removed_at: string | null
+          removed_by: string | null
+          source: string
+          supply_house_invoice_id: string | null
+          taken_at: string
+          taken_at_from: string
+          taken_by: string | null
+          taken_by_name: string
+          total: number | null
+          updated_at: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          added_at?: string | null
+          also_job_ids?: string[]
+          created_at?: string
+          declined_transaction_ids?: string[]
+          id?: string
+          job_id?: string | null
+          match_kind?: string | null
+          matched_at?: string | null
+          matched_by?: string | null
+          mercury_transaction_id?: string | null
+          no_one_job?: boolean
+          note?: string
+          paid_other?: string | null
+          paid_other_note?: string
+          po_entry_id?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          source?: string
+          supply_house_invoice_id?: string | null
+          taken_at?: string
+          taken_at_from?: string
+          taken_by?: string | null
+          taken_by_name?: string
+          total?: number | null
+          updated_at?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          added_at?: string | null
+          also_job_ids?: string[]
+          created_at?: string
+          declined_transaction_ids?: string[]
+          id?: string
+          job_id?: string | null
+          match_kind?: string | null
+          matched_at?: string | null
+          matched_by?: string | null
+          mercury_transaction_id?: string | null
+          no_one_job?: boolean
+          note?: string
+          paid_other?: string | null
+          paid_other_note?: string
+          po_entry_id?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          source?: string
+          supply_house_invoice_id?: string | null
+          taken_at?: string
+          taken_at_from?: string
+          taken_by?: string | null
+          taken_by_name?: string
+          total?: number | null
+          updated_at?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counter_tickets_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_tickets_matched_by_fkey"
+            columns: ["matched_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_tickets_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_tickets_po_entry_id_fkey"
+            columns: ["po_entry_id"]
+            isOneToOne: false
+            referencedRelation: "material_po_generator_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_tickets_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_tickets_supply_house_invoice_id_fkey"
+            columns: ["supply_house_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_tickets_taken_by_fkey"
+            columns: ["taken_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_tickets_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       counts_fixture_group_items: {
         Row: {
           created_at: string | null
@@ -34480,6 +34699,188 @@ export type Database = {
         }
         Relationships: []
       }
+      supply_paper_lines: {
+        Row: {
+          description: string
+          extended_cents: number | null
+          house_code: string
+          id: string
+          line_kind: string
+          line_no: number
+          matched_how: string
+          mfr_number: string
+          paper_id: string
+          part_id: string | null
+          pricing_unit: string
+          qty_backordered: number | null
+          qty_ordered: number | null
+          qty_shipped: number | null
+          unit: string
+          unit_price: number | null
+        }
+        Insert: {
+          description?: string
+          extended_cents?: number | null
+          house_code?: string
+          id?: string
+          line_kind?: string
+          line_no: number
+          matched_how?: string
+          mfr_number?: string
+          paper_id: string
+          part_id?: string | null
+          pricing_unit?: string
+          qty_backordered?: number | null
+          qty_ordered?: number | null
+          qty_shipped?: number | null
+          unit?: string
+          unit_price?: number | null
+        }
+        Update: {
+          description?: string
+          extended_cents?: number | null
+          house_code?: string
+          id?: string
+          line_kind?: string
+          line_no?: number
+          matched_how?: string
+          mfr_number?: string
+          paper_id?: string
+          part_id?: string | null
+          pricing_unit?: string
+          qty_backordered?: number | null
+          qty_ordered?: number | null
+          qty_shipped?: number | null
+          unit?: string
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_paper_lines_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "supply_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_paper_lines_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_papers: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          check_note: string
+          check_state: string
+          created_at: string
+          dated_on: string | null
+          drive_file_id: string | null
+          file_path: string | null
+          freight_cents: number | null
+          id: string
+          invoice_id: string | null
+          kind: string
+          number: string
+          order_number: string
+          page_from: number | null
+          page_to: number | null
+          po_text: string
+          read_at: string | null
+          read_by: string
+          read_id: string | null
+          subtotal_cents: number | null
+          supply_house_id: string | null
+          tax_cents: number | null
+          total_cents: number | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          check_note?: string
+          check_state?: string
+          created_at?: string
+          dated_on?: string | null
+          drive_file_id?: string | null
+          file_path?: string | null
+          freight_cents?: number | null
+          id?: string
+          invoice_id?: string | null
+          kind: string
+          number?: string
+          order_number?: string
+          page_from?: number | null
+          page_to?: number | null
+          po_text?: string
+          read_at?: string | null
+          read_by?: string
+          read_id?: string | null
+          subtotal_cents?: number | null
+          supply_house_id?: string | null
+          tax_cents?: number | null
+          total_cents?: number | null
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          check_note?: string
+          check_state?: string
+          created_at?: string
+          dated_on?: string | null
+          drive_file_id?: string | null
+          file_path?: string | null
+          freight_cents?: number | null
+          id?: string
+          invoice_id?: string | null
+          kind?: string
+          number?: string
+          order_number?: string
+          page_from?: number | null
+          page_to?: number | null
+          po_text?: string
+          read_at?: string | null
+          read_by?: string
+          read_id?: string | null
+          subtotal_cents?: number | null
+          supply_house_id?: string | null
+          tax_cents?: number | null
+          total_cents?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_papers_accepted_by_fkey"
+            columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_read_id_fkey"
+            columns: ["read_id"]
+            isOneToOne: false
+            referencedRelation: "supply_bill_reads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       takeoff_book_entries: {
         Row: {
           alias_names: string[] | null
@@ -38672,6 +39073,61 @@ export type Database = {
           },
         ]
       }
+      supply_purchase_lines: {
+        Row: {
+          check_state: string | null
+          dated_on: string | null
+          description: string | null
+          extended_cents: number | null
+          house_code: string | null
+          id: string | null
+          invoice_id: string | null
+          kind: string | null
+          line_kind: string | null
+          line_no: number | null
+          matched_how: string | null
+          mfr_number: string | null
+          number: string | null
+          paper_id: string | null
+          part_id: string | null
+          pricing_unit: string | null
+          quantity: number | null
+          sign: number | null
+          supply_house_id: string | null
+          unit: string | null
+          unit_price: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_paper_lines_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "supply_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_paper_lines_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       uploaded_photos: {
         Row: {
           bid_id: string | null
@@ -39582,6 +40038,14 @@ export type Database = {
       count_unlinked_mercury_transactions_for_tally_stale: {
         Args: { min_age_days?: number }
         Returns: number
+      }
+      counter_ticket_charge_is_mine: {
+        Args: { p_transaction_id: string }
+        Returns: boolean
+      }
+      counter_ticket_visible: {
+        Args: { p_ticket_id: string }
+        Returns: boolean
       }
       create_bid_version: {
         Args: {
