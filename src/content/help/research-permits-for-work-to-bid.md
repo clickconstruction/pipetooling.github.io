@@ -27,7 +27,7 @@ Pulled 6:10 AM · 14 new since you looked · 9 wait on a look · 3 approached ·
 
 Each row is one permit. The columns say when it was filed, where, what work, who pulled it, and whether a plumber already has it.
 
-The **Plumber** column is the signal. **none yet** means no plumbing permit sits on that number or address. A plumber's name means the job is taken.
+The **Plumber** column is the signal. **none yet** means no plumbing permit sits on that number or address. A plumber's name means the job is taken. **on file, no plumber named** means a plumbing permit sits there under the applicant's own name. That job is taken too.
 
 Press **map** beside an address to see the site in Google Maps.
 

@@ -85,15 +85,27 @@ export function windowSinceYmd(todayYmd: string, days: ResearchWindow): string {
   return ymdPlusDays(todayYmd, -days)
 }
 
-/** A row has a plumber when a plumbing permit on its number or address names one, or the office said so. */
-export function rowHasPlumber(row: Pick<ResearchPermitRow, 'plumber' | 'verdict'>): boolean {
-  return row.plumber != null || row.verdict === 'taken'
+/** A plumbing permit sits on the row's number or address: named when it names someone other than the applicant, else on file unnamed. */
+export function plumbingOnFile(row: Pick<ResearchPermitRow, 'plumber' | 'plumber_permit_on'>): boolean {
+  return row.plumber != null || row.plumber_permit_on != null
 }
 
-/** Which lens a row sits on: a row with no verdict and no plumber waits; a plumber on the feed is taken even with no verdict. */
-export function rowLens(row: Pick<ResearchPermitRow, 'plumber' | 'verdict'>): Exclude<ResearchShowing, 'all'> {
+/** A row has a plumber when a plumbing permit sits on its number or address, or the office said so. */
+export function rowHasPlumber(row: Pick<ResearchPermitRow, 'plumber' | 'plumber_permit_on' | 'verdict'>): boolean {
+  return plumbingOnFile(row) || row.verdict === 'taken'
+}
+
+/** Which lens a row sits on: a row with no verdict and no plumbing permit waits; a plumbing permit on the feed is taken even with no verdict. */
+export function rowLens(row: Pick<ResearchPermitRow, 'plumber' | 'plumber_permit_on' | 'verdict'>): Exclude<ResearchShowing, 'all'> {
   if (row.verdict) return row.verdict
-  return row.plumber != null ? 'taken' : 'waiting'
+  return plumbingOnFile(row) ? 'taken' : 'waiting'
+}
+
+/** The Plumber cell's words: the plumber's name, or the permit on file with no name, or none yet. */
+export function plumberWords(row: Pick<ResearchPermitRow, 'plumber' | 'plumber_permit_on'>): { kind: 'named' | 'unnamed' | 'none'; chip: string; under: string | null } {
+  if (row.plumber) return { kind: 'named', chip: row.plumber, under: `plumbing permit ${shortDay(row.plumber_permit_on)}` }
+  if (row.plumber_permit_on) return { kind: 'unnamed', chip: 'on file, no plumber named', under: `pulled under the applicant's own name, ${shortDay(row.plumber_permit_on)}` }
+  return { kind: 'none', chip: 'none yet', under: null }
 }
 
 export function rowsShowing(rows: readonly ResearchPermitRow[], showing: ResearchShowing): ResearchPermitRow[] {
