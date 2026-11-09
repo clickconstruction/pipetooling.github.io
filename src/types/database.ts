@@ -28881,6 +28881,50 @@ export type Database = {
           },
         ]
       }
+      permit_lookups: {
+        Row: {
+          error: string | null
+          facts: Json
+          found: boolean
+          id: string
+          kind: string
+          looked_up_at: string
+          looked_up_by: string | null
+          lookup_key: string
+          query: string
+        }
+        Insert: {
+          error?: string | null
+          facts?: Json
+          found?: boolean
+          id?: string
+          kind: string
+          looked_up_at?: string
+          looked_up_by?: string | null
+          lookup_key: string
+          query: string
+        }
+        Update: {
+          error?: string | null
+          facts?: Json
+          found?: boolean
+          id?: string
+          kind?: string
+          looked_up_at?: string
+          looked_up_by?: string | null
+          lookup_key?: string
+          query?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permit_lookups_looked_up_by_fkey"
+            columns: ["looked_up_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permit_pulls: {
         Row: {
           city: string
@@ -39707,6 +39751,10 @@ export type Database = {
       }
       delete_billed_invoice_on_send_back: {
         Args: { p_invoice_id: string }
+        Returns: Json
+      }
+      delete_fresh_person: {
+        Args: { p_dry_run?: boolean; p_user_id: string }
         Returns: Json
       }
       delete_hazmat_fee_incident: {

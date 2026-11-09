@@ -329,6 +329,8 @@ export type LienAffidavitJobFacts = {
   openBalance?: number
   /** 'YYYY-MM' — the last month worked, as the desk's RPC names it; the span's fallback when the job carries no day — its first to its last day (v2.6061). */
   lastMonth: string
+  /** 'YYYY-MM' — the first month with a session, when the caller knows it (the Lien window's months, v2.6809); the start's fallback while the job has no first day. */
+  firstMonth?: string | null
   /** The job's work days (v2.6061): the first and last approved clock day as the ledger keeps them (`first_work_date`, `last_work_date`) and the last day set by hand (`lien_last_work_on`); paragraph 5 swears the span from them. Absent, the month's. */
   workDays?: LienWorkSpanJob | null
   /** Today, 'YYYY-MM-DD' — a month still running ends today on the paper. */
@@ -343,7 +345,7 @@ export type LienAffidavitJobFacts = {
 export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAffidavitFields {
   const unpaid = Math.max(0, (f.openBalance ?? f.revenue - f.paymentsMade) - (f.claimAmountOff ?? 0))
   // The period paragraph 5 swears (v2.6061): the first approved day through the last, or the day set by hand; the month's first to last day as the fallback. Until v2.6061 both ends were the 28th of the last month.
-  const span = lienWorkSpan(f.workDays, { lastMonth: f.lastMonth, todayYmd: f.todayYmd })
+  const span = lienWorkSpan(f.workDays, { firstMonth: f.firstMonth, lastMonth: f.lastMonth, todayYmd: f.todayYmd })
   return {
     county: f.county,
     claimantPersonName: f.contactPerson,

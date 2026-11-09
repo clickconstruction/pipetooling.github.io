@@ -12,7 +12,7 @@
  * instant read as its day in the company's zone. The reads live in `./procurementLogIo.ts`;
  * the sheet and the text of an update are built here too.
  */
-import { escapeHtml } from '../bidDocuments/htmlDoc'
+import { escapeHtml } from '../bidDocuments/escapeHtml'
 import { isPlausibleDate } from '../dateBoxEntry'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { compareTags } from './buildSubmittalRows'
