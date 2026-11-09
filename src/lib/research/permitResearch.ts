@@ -180,16 +180,21 @@ export function pulledWords(input: { ranAt: string | null; error: string | null;
 export type PermitLeadRole = 'gc' | 'owner' | 'architect'
 export const PERMIT_LEAD_ROLE_WORDS: Record<PermitLeadRole, string> = { gc: 'A GC', owner: 'The owner', architect: 'An architect or engineer' }
 
+/** What the Who pulled it card found, carried onto the lead the Approach press makes. */
+export type LeadFacts = { companyName?: string | null; contactName?: string | null; phone?: string | null; website?: string | null; companyAddress?: string | null; ownerOfRecord?: string | null }
+
 /** The GC lead and the job the Approach press makes from a permit. */
 export function leadFromPermit(
   row: Pick<ResearchPermitRow, 'contact' | 'address' | 'city' | 'zip' | 'permit_number' | 'permit_type' | 'work_type' | 'area_sf' | 'declared_value' | 'project_name' | 'filed_on' | 'stage'>,
   role: PermitLeadRole,
   by: { userId: string; masterUserId: string },
+  facts: LeadFacts = {},
 ): { prospect: Record<string, unknown>; job: Record<string, unknown>; companyName: string } {
-  const companyName = (row.contact ?? '').trim() || 'Who pulled the permit'
-  const address = [row.address, row.city, row.zip].filter(Boolean).join(', ')
+  const companyName = (facts.companyName ?? '').trim() || (row.contact ?? '').trim() || 'Who pulled the permit'
+  const siteAddress = [row.address, row.city, row.zip].filter(Boolean).join(', ')
   const work = workWords(row)
-  const note = `From the permit ledger: ${row.permit_type} ${row.permit_number}, ${row.stage} ${row.filed_on ?? ''}. ${work.main}. ${work.detail}.`
+  const owner = facts.ownerOfRecord ? ` The county's owner of record: ${facts.ownerOfRecord}.` : ''
+  const note = `From the permit ledger: ${row.permit_type} ${row.permit_number}, ${row.stage} ${row.filed_on ?? ''}. ${work.main}. ${work.detail}.${owner}`
   return {
     companyName,
     prospect: {
@@ -198,8 +203,10 @@ export function leadFromPermit(
       created_by: by.userId,
       warmth_count: 0,
       company_name: companyName,
-      contact_name: null,
-      address,
+      contact_name: facts.contactName ?? null,
+      phone_number: facts.phone ?? null,
+      links_to_website: facts.website ?? null,
+      address: facts.companyAddress ?? siteAddress,
       notes: note,
       source: 'A permit',
       company_role: role,
@@ -208,7 +215,7 @@ export function leadFromPermit(
     },
     job: {
       name: [work.main, row.address].filter(Boolean).join(' at '),
-      address,
+      address: siteAddress,
       sq_ft: row.area_sf != null && row.area_sf >= 50 ? Math.round(row.area_sf) : null,
       note,
       status: 'open',

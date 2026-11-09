@@ -41,6 +41,40 @@ Press **Map** beside **Ledger**. The same rows draw as pins, coloured by their l
 
 Click a pin to read the permit beside the map. Press {{button:blue|Decide…}} there the same as on the ledger.
 
+## Find out who pulled it
+
+Press the name under **Who pulled it**. A card opens with four parts.
+
+:::cards
+
+:::card The company, on Google
+
+The phone, the website, the office address and what kind of business it is. When Google is only guessing, the card says so.
+
+:::
+
+:::card The property, at the county
+
+The owner of record, their mailing address and the appraised value, from Bexar County's own parcel map. Open at the appraisal district shows the full record.
+
+:::
+
+:::card Our history with the name
+
+The same word as on the ledger, with the count behind it.
+
+:::
+
+:::card The city's own record
+
+Press **Copy** for the permit number, then **Open the city's permit search** and paste it. The city lists the applicant, the contractor and the licensed plumber there.
+
+:::
+
+:::
+
+Press **Approach them with these facts** to make the lead with the phone and the website already on it. Each name and each address is looked up once a month. **Look again** asks fresh.
+
 ## Decide on a row
 
 Press {{button:blue|Decide…}} on a row. One sheet opens with four verdicts.

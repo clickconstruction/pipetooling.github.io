@@ -8,7 +8,8 @@
 import { supabase } from '../supabase'
 import { resolveCompanyOwnerUserId } from '../companyOwner'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { leadFromPermit, type ContactHistory, type PermitLeadRole, type PermitVerdict, type ResearchPermitRow } from './permitResearch'
+import { leadFromPermit, type ContactHistory, type LeadFacts, type PermitLeadRole, type PermitVerdict, type ResearchPermitRow } from './permitResearch'
+import type { CompanyFacts, ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
 
 function failed(error: unknown, doing: string): never {
   throw new Error(`Could not ${doing}: ${formatErrorMessage(error)}`)
@@ -67,9 +68,9 @@ export async function recordVerdict(input: {
  * Approach them: the company on the permit as a GC lead on the GCs deck (an open lead of the same
  * name is reused), with the permit as a job on it. Returns the lead to tie the verdict to.
  */
-export async function approachFromPermit(row: ResearchPermitRow, role: PermitLeadRole, userId: string): Promise<{ prospectId: string; companyName: string; reused: boolean }> {
+export async function approachFromPermit(row: ResearchPermitRow, role: PermitLeadRole, userId: string, facts: LeadFacts = {}): Promise<{ prospectId: string; companyName: string; reused: boolean }> {
   const masterUserId = await resolveCompanyOwnerUserId(supabase, userId)
-  const { prospect, job, companyName } = leadFromPermit(row, role, { userId, masterUserId })
+  const { prospect, job, companyName } = leadFromPermit(row, role, { userId, masterUserId }, facts)
   const { data: live, error: liveError } = await supabase
     .from('prospects')
     .select('id')
@@ -109,4 +110,23 @@ export async function loadContactHistory(keys: readonly string[]): Promise<Map<s
   if (error) failed(error, 'read our history with these names')
   for (const r of (data ?? []) as ContactHistory[]) out.set(r.key, r)
   return out
+}
+
+export type LookupAnswer<F> = { found: boolean; facts: F | null; error: string | null; cached: boolean; lookedUpAt: string | null }
+
+async function lookup<F>(body: Record<string, unknown>): Promise<LookupAnswer<F>> {
+  const { data, error } = await supabase.functions.invoke('permit-lookup', { body })
+  if (error) failed(error, 'look it up')
+  const a = (data ?? {}) as { found?: boolean; facts?: F; error?: string | null; cached?: boolean; looked_up_at?: string | null }
+  return { found: a.found === true, facts: a.found === true ? (a.facts ?? null) : null, error: a.error ?? null, cached: a.cached === true, lookedUpAt: a.looked_up_at ?? null }
+}
+
+/** The company on the permit, on Google Places: phone, website, address, what kind of business. Cached a month. */
+export function lookupCompany(contact: string, city: string, refresh = false): Promise<LookupAnswer<CompanyFacts>> {
+  return lookup<CompanyFacts>({ kind: 'company', contact, city, refresh })
+}
+
+/** The parcel at the permit's address, at the county: the owner of record, their mailing address, the DBA, the values. Cached a month. */
+export function lookupParcel(address: string, city: string, refresh = false): Promise<LookupAnswer<ParcelFacts>> {
+  return lookup<ParcelFacts>({ kind: 'parcel', address, city, refresh })
 }
