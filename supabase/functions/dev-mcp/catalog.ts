@@ -1796,6 +1796,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "bid-basis-grant",
   "bill-read",
   "billed-report-email",
+  "box-read",
   "bridge-sheet-email",
   "bridge-weekly-sheet",
   "change-user-email",
