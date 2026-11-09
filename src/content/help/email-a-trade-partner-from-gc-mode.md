@@ -44,7 +44,7 @@ A reminder is a new message, so it goes out.
 
 ## See what was sent
 
-The company's portal lists every email we sent it under **Messages from Click**, newest first. Press **Open it as the office** on the company's portal block to read them.
+The company's portal shows every email we sent it on its **Messages** tab, in its thread with us. Press **Open it as the office** on the company's portal block to read them.
 
 Each email is also kept as a sent copy. The kept copy never shows the company's link, so nobody can open the portal from it.
 

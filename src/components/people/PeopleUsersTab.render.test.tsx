@@ -73,6 +73,7 @@ function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => v
   const ui = () => (
     <PeopleUsersTab
       isDev={false}
+      canUseTags={false}
       narrowViewport={false}
       users={USERS}
       people={[]}
