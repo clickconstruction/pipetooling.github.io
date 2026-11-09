@@ -10,8 +10,24 @@ const io = vi.hoisted(() => ({
   recordVerdict: vi.fn(),
   approachFromPermit: vi.fn(),
   pullPermitsNow: vi.fn(),
+  loadContactHistory: vi.fn(),
 }))
 vi.mock('../../lib/research/permitResearchIo', () => io)
+vi.mock('../../hooks/useOfficeAnchor', () => ({ useOfficeAnchor: () => null }))
+vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
+// The map canvases are lazy and heavy; a list of pin buttons drives the same callbacks (the Bid Board smoke's stand-in).
+vi.mock('../map/PinsMapGoogleCanvas', () => ({ default: () => <div data-testid="google-canvas" /> }))
+vi.mock('../map/PinsMapCanvas', () => ({
+  default: (p: { pins: Array<{ id: string; title: string; color: string }>; onSelect: (id: string) => void }) => (
+    <div data-testid="canvas">
+      {p.pins.map((pin) => (
+        <button key={pin.id} type="button" onClick={() => p.onSelect(pin.id)} data-color={pin.color}>
+          pin {pin.title}
+        </button>
+      ))}
+    </div>
+  ),
+}))
 
 import { ProspectsResearchTab } from './ProspectsResearchTab'
 
@@ -57,6 +73,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     io.recordVerdict.mockReset().mockResolvedValue(undefined)
     io.approachFromPermit.mockReset().mockResolvedValue({ prospectId: 'lead-1', companyName: 'Ridgeway Builders', reused: false })
     io.pullPermitsNow.mockReset().mockResolvedValue({ ok: true, feeds: [{ source: 'sa-issued', seen: 3, kept: 2, error: null }] })
+    io.loadContactHistory.mockReset().mockResolvedValue(new Map([['ridgewaybuilders', { key: 'ridgewaybuilders', bids: 5, won: 3, last_bid_on: '2026-09-01', on_deck: false }]]))
   })
   afterEach(cleanup)
 
@@ -68,6 +85,29 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     expect(screen.getByText(/1 wait on a look/)).toBeTruthy()
     expect(screen.getByText(/1 already have a plumber/)).toBeTruthy()
     expect(io.loadResearchPermits).toHaveBeenCalledWith('San Antonio', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), false)
+    // The hint under who pulled it, from our bid history with the name.
+    await waitFor(() => expect(screen.getByText('warm')).toBeTruthy())
+    expect(screen.getByText('warm').getAttribute('title')).toBe('we won 3 of 5 bids with this name')
+  })
+
+  it("Map draws the lens as pins; a pin opens the row's card with its Decide press", async () => {
+    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }))
+    await waitFor(() => expect(screen.getByTestId('canvas')).toBeTruthy())
+    const pin = screen.getByRole('button', { name: /pin 100 SAMPLE ST/ })
+    expect(pin.getAttribute('data-color')).toBe('#2563eb')
+    fireEvent.click(pin)
+    expect(screen.getByText('Selected pin')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Decide…' })).toBeTruthy()
+  })
+
+  it('Already have a plumber shows who wins what in the window', async () => {
+    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('Showing'), { target: { value: 'taken' } })
+    expect(screen.getByText(/Who wins what in San Antonio/)).toBeTruthy()
+    expect(screen.getByText('Lone Star Plumbing Co. · 1')).toBeTruthy()
   })
 
   it('opens the sheet on Decide…, refuses an empty reason, then keeps an Approach with the lead it made', async () => {
