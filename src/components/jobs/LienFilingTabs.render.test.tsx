@@ -224,3 +224,23 @@ describe('LienFilingTabs · the kind of work is the trade (v2.6118)', () => {
     expect(paper()).not.toContain('was: ATI Schertz')
   })
 })
+
+describe('LienFilingTabs · the affidavit is the desk’s paper (v2.6809)', () => {
+  // A sub's job never clocked, no day set by hand, created in August: the desk's draft swore the month, this tab printed blanks.
+  const unclocked = makeJob({ id: 'job-853', click_number: '853', job_name: 'Service Visit', job_address: '100 Main St, Schertz, TX 78154', status: 'billed', revenue: 595, payments_made: 0, created_at: '2026-08-18T05:40:28Z', first_work_date: null, last_work_date: null, lien_last_work_on: null })
+  // The sub's gate: a § 53.056 notice on record.
+  const notice = { id: 'f-n', job_id: 'job-853', kind: 'notice_53_056', filed_at: '2026-10-14', serve_due: null, served_at: null, voided_at: null, county: '', recording_number: null, months_covered: ['2026-08'], sends: [], fields: {}, created_at: '2026-10-14T15:00:00Z' }
+  const paper = () => document.body.textContent ?? ''
+
+  it('paragraph 5 swears the creation month, and the original contractor line carries the address on file', () => {
+    renderWithProviders(<LienFilingTabs {...props({ job: unclocked, activeTab: 'affidavit', isSub: true, filings: [notice as never], originalContractorName: 'Harborline Builders', originalContractorAddress: '9 Yard St, Devine TX 78016' })} />)
+    expect(paper()).toContain('The work was performed and/or materials delivered during the period from August 1, 2026 through August 31, 2026.')
+    expect(paper()).not.toContain('from — through —')
+    expect(paper()).toContain('The name and address of the original contractor is: Harborline Builders, 9 Yard St, Devine TX 78016.')
+  })
+
+  it('the window’s fresh last-day read reaches the paper: the first of that month through the day set by hand', () => {
+    renderWithProviders(<LienFilingTabs {...props({ job: unclocked, activeTab: 'affidavit', isSub: true, filings: [notice as never], workDays: { lien_last_work_on: '2026-08-15' } })} />)
+    expect(paper()).toContain('during the period from August 1, 2026 through August 15, 2026.')
+  })
+})

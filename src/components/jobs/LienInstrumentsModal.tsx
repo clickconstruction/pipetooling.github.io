@@ -59,7 +59,6 @@ import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import { type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
 import { readJobPropertyRecord, type JobPropertyRead } from '../../lib/jobs/jobPropertyRecordIo'
 import LienFilingTabs from './LienFilingTabs'
-import { lienWorkSpan } from '../../lib/jobs/lienWorkSpan'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage } from '../../lib/jobs/lienStopPaperPages'
@@ -743,11 +742,11 @@ export default function LienInstrumentsModal({
         : null,
     [job, property, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows],
   )
-  // The period the affidavit tab swears (v2.6061): the fresh last-day read (a day set by hand reaches the paper the moment it is saved), the job's first day, and the window's months as the fallback.
-  const affidavitWorkSpan = useMemo(() => {
-    const months = job ? windowWorkMonths?.[job.id] ?? null : null
-    return lienWorkSpan(lastWorkJob, { firstMonth: months?.months[0]?.key ?? null, lastMonth: months?.lastMonthKey ?? null, todayYmd: todayYmdLocal() })
-  }, [job, lastWorkJob, windowWorkMonths])
+  // The period the affidavit tab swears (v2.6061): the tab gets the fresh last-day read (a day set by hand reaches the paper the moment it is
+  // saved) and the window's months, and fills the paper by the desk's own recipe (v2.6809); a job with no sessions swears its creation month.
+  const affidavitWorkMonths = job ? windowWorkMonths?.[job.id] ?? null : null
+  // The GC's address on file (v2.6809), for the affidavit's original contractor line; the desk's draft always carried it.
+  const originalContractorAddress = isSub && job?.gc_customer_id ? payerRows[job.gc_customer_id]?.address ?? '' : ''
 
   // A stop's paper (v2.4793): what the window shows for each stop, from the job's Lien window — a filing's own snapshot once it
   // went out, else the tab here that prints it; the notice and the retainage notice are drafted and sent on the Lien desk.
@@ -1686,7 +1685,8 @@ export default function LienInstrumentsModal({
           <LienFilingTabs
             noticeMonths={noticeMonths ?? null}
             job={linkedJob ?? job}
-            workSpan={affidavitWorkSpan}
+            workDays={lastWorkJob}
+            workMonths={affidavitWorkMonths}
             jobNumber={jobNumber}
             activeTab={activeTab}
             issuer={issuer}
@@ -1698,6 +1698,7 @@ export default function LienInstrumentsModal({
             clock={clock}
             isSub={isSub}
             originalContractorName={originalContractorName}
+            originalContractorAddress={originalContractorAddress}
             ownerEmail={(jobOwnerRow?.owner_email ?? '').trim()}
             originalContractorEmail={isSub ? gcEmail : ''}
             onChanged={() => {
