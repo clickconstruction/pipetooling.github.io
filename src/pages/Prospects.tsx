@@ -79,6 +79,8 @@ import { GC_WORK_LABELS, NOTHING_BIDDING, SOONEST_BID_NOTE, biddingDueWords, dec
 import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
 import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
+import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchTab'
+import { canResearchPermits } from '../lib/research/permitResearch'
 import { SubsBoard } from '../components/prospects/SubsBoard'
 import { subRecords } from '../lib/prospects/subRecord'
 import { BY_RANK_NOTE, PRIORITY_CHOICES, orderColumn, priorityWord } from '../lib/prospects/subsBoard'
@@ -136,7 +138,7 @@ const EditIcon = () => (
   </svg>
 )
 
-type ProspectsTopTab = 'customers' | 'team'
+type ProspectsTopTab = 'customers' | 'team' | 'research'
 
 type ProspectsTab = 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity'
 
@@ -420,6 +422,8 @@ export default function Prospects() {
   // v2.3805: a column share opens the Hiring pill too — the board then renders trimmed (`shared`).
   const { sharedRoleIds: myHiringShares, loading: hiringSharesLoading } = useMyHiringShares(authUser?.id)
   const canOpenHiring = teamProspectsAccess || myHiringShares.length > 0
+  // Research (punch list #292): the permit ledger opens to the office and every estimator, flagged or not.
+  const canResearch = canResearchPermits(authRole)
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const promptDialog = usePromptDialog()
@@ -666,6 +670,18 @@ export default function Prospects() {
         setTopTab('customers')
         setActiveTab('follow-up')
       }
+    } else if (tab === 'research') {
+      if (canResearch) {
+        setTopTab('research')
+      } else {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'follow-up')
+          return next
+        }, { replace: true })
+        setTopTab('customers')
+        setActiveTab('follow-up')
+      }
     } else if (tab && PROSPECTS_TABS.includes(tab as ProspectsTab)) {
       if ((tab === 'activity' && !canAccessActivityTab) || (tab === 'convert' && urlKind !== 'customer') || (tab === 'board' && urlKind !== 'sub')) {
         setSearchParams((p) => {
@@ -683,18 +699,21 @@ export default function Prospects() {
       // No tab named (the nav link): a Hiring holder who cannot work the
       // customer deck lands on Hiring, not a live prospect card with a timer
       // (v2.2910, J25-F1). Kernel: resolveProspectsLanding.
+      const followUpOk = !!authUser && canAccessProspectPipeline(authRole, estimatorProspectsAccess)
       const landing = resolveProspectsLanding({
-        canAccessFollowUp: !!authUser && canAccessProspectPipeline(authRole, estimatorProspectsAccess),
+        canAccessFollowUp: followUpOk,
         teamProspectsAccess: canOpenHiring,
         remembered: readRememberedProspectsTopTab(),
       })
+      // An estimator with no Prospects flag has one door here: Research (punch list #292).
+      const dest = landing === 'follow-up' && !followUpOk && canResearch ? 'research' : landing
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', landing)
+        next.set('tab', dest)
         return next
       }, { replace: true })
     }
-  }, [location.search, setSearchParams, authLoading, hiringSharesLoading, authUser, authRole, estimatorProspectsAccess, canAccessActivityTab, canOpenHiring, kind])
+  }, [location.search, setSearchParams, authLoading, hiringSharesLoading, authUser, authRole, estimatorProspectsAccess, canAccessActivityTab, canOpenHiring, canResearch, kind])
 
   // Open New Prospect modal when navigating from Dashboard button
   useEffect(() => {
@@ -929,6 +948,16 @@ export default function Prospects() {
         params.delete('for')
       }
       return params
+    })
+  }
+
+  const openResearchTab = () => {
+    setTopTab('research')
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', 'research')
+      next.delete('prospect_id')
+      return next
     })
   }
 
@@ -3163,11 +3192,14 @@ export default function Prospects() {
     )
   }
 
-  if (authRole === 'estimator' && !estimatorProspectsAccess) {
+  if (authRole === 'estimator' && !estimatorProspectsAccess && topTab !== 'research') {
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
         <p style={{ color: 'var(--text-muted)' }}>
           You don’t have access to Prospects. Ask a dev to open your desk in People and tick Prospects under Extra access.
+        </p>
+        <p style={{ color: 'var(--text-muted)' }}>
+          The permit ledger is open to you: <Link to="/prospects?tab=research">Research</Link>.
         </p>
       </div>
     )
@@ -3179,7 +3211,7 @@ export default function Prospects() {
       <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', marginBottom: '1rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'max-content' }}>
-            {PROSPECT_KINDS.map((k) => (
+            {canAccessFollowUp && PROSPECT_KINDS.map((k) => (
               <button key={k} type="button" onClick={() => setKindTab(k)} style={pageTabStyle(topTab === 'customers' && kind === k)}>
                 {PROSPECT_KIND_WORDS[k].tab}
               </button>
@@ -3187,6 +3219,11 @@ export default function Prospects() {
             {canOpenHiring && (
               <button type="button" onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
                 Hiring
+              </button>
+            )}
+            {canResearch && (
+              <button type="button" onClick={openResearchTab} style={pageTabStyle(topTab === 'research')}>
+                Research
               </button>
             )}
           </div>
@@ -3258,6 +3295,8 @@ export default function Prospects() {
       {topTab === 'team' && canOpenHiring && authUser?.id && (
         <TeamProspectsTab authUserId={authUser.id} isDev={authRole === 'dev'} canEditOnboarding={isOwnerOrDev(authRole)} resolveMasterId={getEffectiveMasterId} shared={!teamProspectsAccess} />
       )}
+
+      {topTab === 'research' && canResearch && authUser?.id && <ProspectsResearchTab authUserId={authUser.id} />}
 
       {topTab === 'customers' && activeTab === 'follow-up' && (
         <>

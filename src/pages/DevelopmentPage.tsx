@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { LIEN_DESK_PATH } from '../lib/lien/lienDeskRoute'
 import DevelopmentHouseIcon from '../components/icons/DevelopmentHouseIcon'
 import { DevelopmentFeed } from '../components/developments/DevelopmentFeed'
 import { HistoryLegendPress } from '../components/developments/HistoryLegendWindow'
@@ -1507,7 +1508,7 @@ export default function DevelopmentPage() {
             ) : moneyViewShown === 'timeline' ? (
               <DevelopmentTimeline read={timelineView} phone={phone} openJob={openJob} />
             ) : (
-              <DevelopmentMoney model={siteMoney} phone={phone} sort={moneySort} onSort={setMoneySortMode} isFolded={(k, d) => isFolded(moneyFolds, k, d)} onToggleFold={toggleMoneyFold} openJob={openJob} onAskForDate={(jobId) => openJob(jobId)} onLienDesk={() => navigate('/jobs?tab=stages&liendesk=1')} />
+              <DevelopmentMoney model={siteMoney} phone={phone} sort={moneySort} onSort={setMoneySortMode} isFolded={(k, d) => isFolded(moneyFolds, k, d)} onToggleFold={toggleMoneyFold} openJob={openJob} onAskForDate={(jobId) => openJob(jobId)} onLienDesk={() => navigate(LIEN_DESK_PATH)} />
             )}
           </Card>
         ) : (

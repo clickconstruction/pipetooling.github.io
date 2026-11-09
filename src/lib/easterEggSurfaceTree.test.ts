@@ -57,7 +57,8 @@ describe('eggSurfaceVisibleForRole', () => {
     expect(eggSurfaceVisibleForRole('p:/bids', 'estimator', false)).toBe(true)
     expect(eggSurfaceVisibleForRole('p:/projects', 'estimator', false)).toBe(false)
     expect(eggSurfaceVisibleForRole('p:/banking', 'estimator', false)).toBe(false)
-    expect(eggSurfaceVisibleForRole('p:/prospects', 'estimator', false)).toBe(false)
+    // Research (punch list #292): /prospects is open to every estimator; the page keeps the calling deck behind the flag.
+    expect(eggSurfaceVisibleForRole('p:/prospects', 'estimator', false)).toBe(true)
     expect(eggSurfaceVisibleForRole('p:/prospects', 'estimator', true)).toBe(true)
     expect(eggSurfaceVisibleForRole('t:/bids:pricing', 'estimator', false)).toBe(true)
     expect(eggSurfaceVisibleForRole('p:/job-mode', 'subcontractor', false)).toBe(true)

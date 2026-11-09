@@ -130,7 +130,7 @@ function mount(over: Partial<Props> = {}) {
     setBilledAgingFilter: vi.fn(),
     focusStagesSection: vi.fn(),
     tryOpenEditJob: vi.fn(),
-    setLienDesk: vi.fn(),
+    onOpenLienDesk: vi.fn(),
     setCollectionsConfirm: vi.fn(),
     showToast: vi.fn(),
     loadJobs: vi.fn(),
@@ -236,7 +236,7 @@ describe('who owes what, the aging chart and the forecast: the unfiltered board,
     expect(p.tryOpenEditJob).toHaveBeenLastCalledWith('j-2', { initialTab: 'bill', onSaved })
     expect(p.setBilledPaymentForecastOpen).not.toHaveBeenCalled()
     call('forecast', 'onOpenLienNotice', 'j-1')
-    expect(p.setLienDesk).toHaveBeenCalledWith({ jobId: 'j-1' })
+    expect(p.onOpenLienDesk).toHaveBeenCalledWith('j-1')
     call('forecast', 'onPaySpeedsChanged')
     expect(p.refreshBilledPaySpeeds).toHaveBeenCalled()
     expect(h.seen.forecast!.canExcludePayments).toBe(false)
