@@ -28,7 +28,8 @@ INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number,
   ('00000000-0000-0000-0000-0000000b9d01', '00000000-0000-0000-0000-0000000b9a05', '00000000-0000-0000-0000-0000000b9f01', '990', 'Pay code walk', 'Code Customer', '00000000-0000-0000-0000-0000000b9c01', 'customer', 1500, 0, 'billed');
 INSERT INTO public.jobs_ledger_invoices (id, job_id, sequence_order, status, amount, stripe_invoice_id, stripe_mode, hosted_invoice_url, stripe_invoice_status, external_send_channel) VALUES
   ('00000000-0000-0000-0000-0000000b9e01', '00000000-0000-0000-0000-0000000b9d01', 0, 'billed', 1000, 'in_pc1', 'test', 'https://invoice.stripe.com/pc1', 'open', 'stripe'),
-  ('00000000-0000-0000-0000-0000000b9e02', '00000000-0000-0000-0000-0000000b9d01', 1, 'billed', 500, 'in_pc2', 'test', 'https://invoice.stripe.com/pc2', 'open', 'stripe');
+  ('00000000-0000-0000-0000-0000000b9e02', '00000000-0000-0000-0000-0000000b9d01', 1, 'billed', 500, 'in_pc2', 'test', 'https://invoice.stripe.com/pc2', 'open', 'stripe'),
+  ('00000000-0000-0000-0000-0000000b9e03', '00000000-0000-0000-0000-0000000b9d01', 2, 'billed', 250, 'in_pc3', 'test', 'https://invoice.stripe.com/pc3', 'open', 'stripe');
 
 CREATE SCHEMA bpc;
 CREATE FUNCTION bpc.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
@@ -78,18 +79,24 @@ SELECT bpc.same('a second ask answers the same code; the two bills differ',
           ((SELECT code FROM bpc.codes WHERE n = 1) <> (SELECT code FROM bpc.codes WHERE n = 2))::text), 'true true');
 SELECT bpc.refused('a bill not there', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9eff')$q$, 'not there');
 
--- 2 · The refusals: a subcontractor (the table's policies), a training account (the read-only fence), a twin, anon.
+-- 2 · The refusals, on the third bill, which has no code yet (minting is the write the fences refuse): a subcontractor
+--     (the table's policies), a training account (the read-only fence), a twin, anon. A training account asking for a
+--     bill whose code the office already minted reads it back: a read, not a write.
 SELECT bpc.as_user('00000000-0000-0000-0000-0000000b9a02');
-SELECT bpc.refused('a subcontractor', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9e02')$q$, '');
+SELECT bpc.refused('a subcontractor', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9e03')$q$, '');
 SELECT bpc.as_user('00000000-0000-0000-0000-0000000b9a03');
-SELECT bpc.refused('a training account', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9e02')$q$, '');
+SELECT bpc.refused('a training account minting', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9e03')$q$, '');
+SELECT bpc.same('a training account reads a code the office already minted',
+  (SELECT (public.bill_pay_code('00000000-0000-0000-0000-0000000b9e02') = (SELECT code FROM bpc.codes WHERE n = 2))::text), 'true');
 SELECT bpc.as_user('00000000-0000-0000-0000-0000000b9a04');
-SELECT bpc.refused('a digital twin', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9e02')$q$, '');
+SELECT bpc.refused('a digital twin minting', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9e03')$q$, '');
 RESET ROLE;
 SET LOCAL ROLE anon;
 SELECT bpc.as_anon();
-SELECT bpc.refused('anon', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9e02')$q$, 'permission denied');
+SELECT bpc.refused('anon', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9e03')$q$, 'permission denied');
 RESET ROLE;
+SELECT bpc.same('the third bill still has no code after the refusals',
+  (SELECT (pay_code IS NULL)::text FROM public.jobs_ledger_invoices WHERE id = '00000000-0000-0000-0000-0000000b9e03'), 'true');
 
 -- 3 · The row keeps the code, the unique index holds, and the shape check refuses a look-alike.
 SELECT bpc.same('the rows carry the codes the office got',
