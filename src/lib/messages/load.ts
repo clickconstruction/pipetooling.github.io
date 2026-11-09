@@ -50,6 +50,12 @@ export type MessageRow = Pick<
   introduces_user_id?: string | null
   /** Where the reader kept the email's HTML part (v2.6675, punch list #259). Optional until the types regenerate; a read may leave it out. */
   body_html_path?: string | null
+  /** The app placed the line from a person's Sent (v2.6751, punch list #263). Optional until the types regenerate; absent reads false. */
+  placed_by_app?: boolean | null
+  /** Whose own box a tagged line came from (v2.6266). Optional: a read may leave it out. */
+  mail_user_id?: string | null
+  /** Gmail's id of the line's conversation. Optional: a read may leave it out. */
+  gmail_thread_id?: string | null
 }
 
 export interface MessageLoadContext {
@@ -98,6 +104,9 @@ export function threadMessageFromRow(row: MessageRow, ctx: MessageLoadContext = 
     invitation: row.invitation ?? null,
     introducesUserId: row.introduces_user_id ?? null,
     bodyHtmlPath: row.body_html_path ?? null,
+    placedByApp: row.placed_by_app === true,
+    mailUserId: row.mail_user_id ?? null,
+    gmailThreadId: row.gmail_thread_id ?? null,
   }
 }
 

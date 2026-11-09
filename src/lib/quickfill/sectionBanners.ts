@@ -35,8 +35,9 @@ export const QUICKFILL_DEFAULT_SECTION_BANNERS: Readonly<Record<string, string>>
   'cant-reach': 'Can we reach every prospect we promised to?',
   prospects: 'Did every prospect hear from us on time?',
   'supply-houses': 'Is anything past due with a supply house?',
-  'jobs-billing': 'Is every finished job billed?',
-  'complete-no-bill': 'Does every finished job have a bill total?',
+  // Complete, no Total Bill asks for the three fields since v2.6750 (punch list #176, decision 4): the Jobs Billing
+  // station's question retired under it.
+  'complete-no-bill': 'Does every finished job have its Specific Work and its Total Bill?',
   'my-inbox': 'Anything due today or overdue?',
   'office-leaving': 'Is the office closed up for the night?',
 }
@@ -59,6 +60,9 @@ export const RETIRED_QUICKFILL_SECTION_BANNERS: Readonly<Record<string, readonly
   warnings: ['Is anything flashing that nobody owns?'],
   'jobs-cleanup': ["Is every sub labor sheet attached to a job, and is today's money moving? Link each sheet, then work the cards — they're the same ones on Jobs → Pipeline."],
   'billed-awaiting': ['Who owes us, and who do we lean on first?'],
+  // v2.6750 (punch list #176, decision 4): the station asks for all three fields; Jobs Billing's question folded in.
+  'complete-no-bill': ['Does every finished job have a bill total?', 'Is every finished job billed?'],
+  'jobs-billing': ['Is every finished job billed?'],
 }
 
 export function isRetiredQuickfillSectionBanner(sectionId: string, text: string): boolean {

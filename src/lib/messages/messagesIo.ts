@@ -55,9 +55,13 @@ const CONTACT_COLS =
   'prospect_id, supply_house_id, supply_house_contact_id, team_prospect_id'
 const CHANNEL_COLS = 'id, contact_id, kind, value, opted_out_at, usual_at, created_at'
 const JOB_COLS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at'
-/** `mailbox` is R6's column (20261014003000_messages_two_boxes.sql): the box a line came in on or went out from. */
+/**
+ * `mailbox` is R6's column (20261014003000_messages_two_boxes.sql): the box a line came in on or went out from. The
+ * last three are My email's (v2.6751, punch list #263 PR B: `placed_by_app` from `20261108223000_my_email_sent_side.sql`,
+ * so that migration is pushed right after the merge), for the mark and Untag under a line the app put on a job.
+ */
 const MESSAGE_COLS =
-  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, mailbox, delivery, auto, invitation, introduces_user_id, body_html_path'
+  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, mailbox, delivery, auto, invitation, introduces_user_id, body_html_path, placed_by_app, mail_user_id, gmail_thread_id'
 /**
  * A job's lines also read cut 5's call columns (20261012170000_quo_messages.sql), a call's length, summary and words,
  * and R5's office-only mark on a team note (20261013190000_messages_tech_door.sql).

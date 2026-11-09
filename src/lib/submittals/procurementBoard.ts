@@ -4,6 +4,7 @@
  * share. Pure: the panel draws these, `procurementLog.ts` keeps the rows.
  */
 import { daysBetween, shortDate, type OrderBlockers, type ProcurementRow, type ProcurementStatus } from './procurementLog'
+import { boxDeskLink } from '../materials/boxSearch'
 
 export type ProcurementStepKey = 'gc' | 'to_order' | 'on_order' | 'on_site'
 export const PROCUREMENT_STEP_KEYS: ReadonlyArray<ProcurementStepKey> = ['gc', 'to_order', 'on_order', 'on_site']
@@ -71,6 +72,20 @@ export function procurementSteps(rows: ReadonlyArray<ProcurementRow>, draftRev: 
     step('on_order', ordered.length, late > 0 ? `${late} late` : nextIn ? `next arrives ${shortDate(nextIn)}` : '', late > 0 ? 'late' : 'quiet'),
     step('on_site', site.length, lastIn ? `last ${shortDate(lastIn)}` : '', 'quiet'),
   ]
+}
+
+/**
+ * The On site step's door to Materials on site (punch list #209, v2.6740): once the bid is a job,
+ * the step's count says how many parts were marked delivered, and the job's Materials page says
+ * where each sits now, by cage and box, and what has walked away. Null until the bid has a job.
+ */
+export function onSiteDoor(jobId: string | null | undefined, onSite: number): { href: string; words: string; press: string } | null {
+  if (!jobId) return null
+  return {
+    href: boxDeskLink(jobId),
+    words: onSite === 0 ? 'Nothing is marked delivered yet. The cages and boxes on the site:' : `Where the ${onSite === 1 ? 'part' : `${onSite} parts`} on site ${onSite === 1 ? 'sits' : 'sit'} now, by cage and box, and what walked away:`,
+    press: 'Materials on site',
+  }
 }
 
 /** The lines one step holds; no step is the whole log. */
