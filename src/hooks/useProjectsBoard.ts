@@ -93,8 +93,9 @@ export function useProjectsBoard({ dayDetail = true }: { dayDetail?: boolean } =
   const today = todayYmdInAppTz()
   const scores = useSuperintendentScores({ fromYmd: SCORES_SINCE_YMD, toYmd: today, jobIds: ids, enabled: ids.length > 0 })
   const scoreByJob = useMemo(() => {
-    const m = new Map<string, { certifiedPct: number | null; signedOn: string | null; subHours: number }>()
-    for (const r of scores.read?.rows ?? []) if (!m.has(r.jobId)) m.set(r.jobId, { certifiedPct: r.certifiedPct, signedOn: r.signedOn, subHours: r.subHours })
+    const m = new Map<string, { certifiedPct: number | null; signedOn: string | null; subHours: number; awardedHours: number | null; awardedKind: string | null }>()
+    // The award's hours ride along: the line's budget is the number the score reads (the owner's call of 2026-11-09).
+    for (const r of scores.read?.rows ?? []) if (!m.has(r.jobId)) m.set(r.jobId, { certifiedPct: r.certifiedPct, signedOn: r.signedOn, subHours: r.subHours, awardedHours: r.awardedHours, awardedKind: r.awardedKind })
     return m
   }, [scores.read])
 

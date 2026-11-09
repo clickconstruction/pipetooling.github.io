@@ -2,7 +2,7 @@
 name: "Search reaches the text of a linked file: a transcript, a mail or a PDF on an evidence record or a matter document is found by its words"
 number: 285
 group: ready
-status: building 2026-11-08 · PR 1 v2.6714 (the index's reach: `file_index.source`, the records pass, the sweep's step, the filers' hooks; PR open) · PR 2 and PR 3 next
+status: building 2026-11-08 · PR 1 v2.6714 (the index's reach: `file_index.source`, the records pass, the sweep's step, the filers' hooks; PR open) · PR 2 v2.6719 (the `file` source on `dev_case_search`, `in: files`, the hit's record fields; PR open) · PR 3 next
 summary: >
   A person's case search (v2.6620) reads the entries, the memos, the named documents, the two
   fixed documents and the matter's narrative, titles and what-it-shows lines. It does not read the
@@ -12,8 +12,8 @@ summary: >
   with none of their words searchable. The file text index already exists for the Jobs drive
   (#240, file_index); point it at the files the HR file and the matter link or store, and let the
   case search union it, each hit naming the record and the file.
-next: Merge PR 1, push `20261108200000`, deploy file-index-sweep, hr-evidence-drive, dev-mcp and drive-link; then PR 2 (the case search unions file text, with the seat's hit shape) and PR 3 (the backfill verb); then the case's records need no retyping.
-ver: v2.6714
+next: Merge PR 1, push `20261108200000`, deploy file-index-sweep, hr-evidence-drive, dev-mcp and drive-link; merge PR 2, push `20261108220000`, deploy dev-mcp; then PR 3 (the backfill verb); then the case's records need no retyping. The HR file has filters and no search box in the app, so the seat's `search_case` is the door; an app-side case search is a card of its own if wanted.
+ver: v2.6714 · 6719
 size: M · PR 1 the index's reach (S) · PR 2 the search union and the hit shape (S) · PR 3 the backfill verb for the records already filed (XS)
 blocker: None.
 opinion: build — the index, the extractor and the OCR exist; this is three small joins, and it removes the one reason an agent had to carry a quarter-megabyte of text through a chat

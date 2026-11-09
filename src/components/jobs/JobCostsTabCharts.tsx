@@ -239,7 +239,7 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
           <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>{inputsState.kind === 'error' ? 'Could not load the job’s costs.' : 'Loading…'}</p>
         )
       ) : null}
-      {includeTeamLabor && inputs ? <JobCostsLineBudgets fixtures={job.fixtures ?? []} teamHours={inputs.teamHours ?? null} spend={spendByComponent(inputs.chargeEvents)} jobPctDone={pctDone} jobId={job.id} isProject={isProject} /> : null}
+      {includeTeamLabor && inputs ? <JobCostsLineBudgets fixtures={job.fixtures ?? []} teamHours={inputs.teamHours ?? null} spend={spendByComponent(inputs.chargeEvents)} jobPctDone={pctDone} jobId={job.id} isProject={isProject} award={verdict?.baseline.award ? { hours: verdict.baseline.award.laborHours, kind: verdict.baseline.award.kind } : null} /> : null}
       {includeTeamLabor ? <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} mode="chart" /> : null}
       <div>
         <button type="button" onClick={toggleDetail} aria-expanded={detailOpen} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.7rem', fontSize: '0.78rem', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit' }} data-testid="costs-detail-toggle">

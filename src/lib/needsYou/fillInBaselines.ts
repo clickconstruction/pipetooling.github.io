@@ -1,6 +1,7 @@
 import { jobKindOfRow, type JobKindFixture, type JobKindRowLike } from '../jobs/jobKind'
 import { awardBaselineOptions, awardBaselinePick, awardBaselineRpcArgs, type AwardBaselineInput, type AwardBaselineOption, type AwardBaselineRpcArgs, type AwardBaselineSource, type AwardBidBreakdown } from '../jobs/awardBaseline'
 import { baselineReading, type BaselineRate } from '../bids/bidBaselineRates'
+import { underBaselinePriceFloor } from '../jobs/baselinePriceFloor'
 import { contractJobLabel } from './fillInContracts'
 import { fillInRowKey, type FillInRowBase } from './fillIn'
 
@@ -64,11 +65,14 @@ function byJob<T>(rows: readonly T[], jobOf: (row: T) => string): Map<string, T[
   return out
 }
 
-/** The working projects with no hours baseline, in the order given. A blank status reads as working. */
+/**
+ * The working projects with no hours baseline, in the order given. A blank status reads as working. A project priced
+ * under the $2,500 floor never appears (the owner's second call of 2026-11-09); one with no price yet still does.
+ */
 export function projectsWithNoBaseline<T extends BaselineJobSource>(jobs: readonly T[], fixtures: readonly BaselineFixtureSource[], budgets: readonly BaselineBudgetSource[]): T[] {
   const fixturesOf = byJob(fixtures, (f) => f.job_id)
   const withHours = new Set(budgets.filter((b) => dollars(b.labor_hours) > 0).map((b) => b.job_id))
-  return jobs.filter((j) => (j.status ?? 'working') === 'working' && !j.billing_only && !withHours.has(j.id) && jobKindOfRow({ ...j, fixtures: fixturesOf.get(j.id) ?? [] }).kind === 'project')
+  return jobs.filter((j) => (j.status ?? 'working') === 'working' && !j.billing_only && !withHours.has(j.id) && !underBaselinePriceFloor(j.revenue) && jobKindOfRow({ ...j, fixtures: fixturesOf.get(j.id) ?? [] }).kind === 'project')
 }
 
 const madeWords = (createdAt: string | null): string => {
