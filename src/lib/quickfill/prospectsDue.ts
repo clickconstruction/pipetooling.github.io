@@ -7,7 +7,11 @@
  * when a promised callback is past and nothing has touched them since, **past** when its last touch
  * (or, never touched, its arrival) is older than the days for its warmth, the owner's numbers, and
  * **on time** otherwise. The count is missed plus past, the Next line names the first, the
- * since-last-look line says what moved, and the Mark's note is written from the rows. Pure.
+ * since-last-look line says what moved, and the Mark's note is written from the rows. Since v2.6754
+ * (punch list #176, decision 6: *no portion but I love the idea of oldest first*) each fold runs
+ * oldest first, the prospect waiting longest on top: the oldest promised day among the missed, the
+ * longest since the last touch among the rest, a never-touched prospect counting from the day it
+ * was added. There is no daily portion; Done lights at zero as on every station. Pure.
  */
 
 export const PROSPECT_DAYS_SETTING_KEY = 'quickfill_prospect_days_v1'
@@ -122,7 +126,11 @@ export function prospectName(p: Pick<DueProspect, 'company_name' | 'contact_name
   return company || contact || 'Unknown prospect'
 }
 
-/** The rows for the active prospects: missed first, most over first; then past; then on time. */
+/**
+ * The rows for the active prospects: missed first, then past, then on time; inside each fold the one
+ * waiting longest first (v2.6754): the oldest promised day among the missed, the longest since the last
+ * touch, or since it was added, among the rest; ties to the warmest, then the name.
+ */
 export function prospectDueRows(input: ProspectDueInput): ProspectDueRow[] {
   const byProspect = new Map<string, DueCallback[]>()
   for (const c of input.callbacks) {
@@ -161,7 +169,13 @@ export function prospectDueRows(input: ProspectDueInput): ProspectDueRow[] {
     rows.push({ prospect: p, state, name: prospectName(p), warmth, dueDays, sinceDays, neverTouched, overDays, callback, words })
   }
   const order: Record<ProspectDueState, number> = { missed: 0, past: 1, ontime: 2 }
-  return rows.sort((a, b) => order[a.state] - order[b.state] || b.overDays - a.overDays || b.warmth - a.warmth || a.name.localeCompare(b.name))
+  return rows.sort((a, b) => order[a.state] - order[b.state] || prospectWaitDays(b) - prospectWaitDays(a) || b.warmth - a.warmth || a.name.localeCompare(b.name))
+}
+
+/** How long a prospect has waited: days past its promised day when missed, else days since the last touch or its arrival. */
+export function prospectWaitDays(row: Pick<ProspectDueRow, 'state' | 'overDays' | 'sinceDays'>): number {
+  if (row.state === 'missed') return row.overDays
+  return row.sinceDays ?? -1
 }
 
 export type ProspectDueCounts = { missed: number; past: number; ontime: number; total: number; due: number }

@@ -5,7 +5,7 @@ SET lock_timeout = '3s';
 -- Team only → From trades → the company, and its gc_trade_files row carries purpose 'note', so the company's own list of
 -- what it sent us (Your files on this job) names it. The P5b migration's way: drop, add NOT VALID, validate, so the check
 -- never scans the table under a lock. Nothing else: no table, so no fence calls.
--- Doc: docs/migrations/20261108220804_gc_trade_files_note.md.
+-- Doc: docs/migrations/20261109011500_gc_trade_files_note.md.
 
 ALTER TABLE public.gc_trade_files DROP CONSTRAINT IF EXISTS gc_trade_files_purpose_known;
 ALTER TABLE public.gc_trade_files ADD CONSTRAINT gc_trade_files_purpose_known
