@@ -78,4 +78,15 @@ describe('get_matter_document (a matter\'s text document a piece at a time, v2.6
     expect(MIGRATION).not.toContain('CREATE TABLE')
     expect(MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_matter_doc_read(uuid, uuid, text) FROM PUBLIC, anon;')
   })
+
+  it('every function in the migration is whole: one header, one DECLARE, one BEGIN and one END (the SQL beds caught a doubled header and a lost DECLARE)', () => {
+    const fns = [...MIGRATION.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)\(([\s\S]*?)\n\$fn\$;/g)]
+    expect(fns.map((m) => m[1])).toEqual(['hr_doc_slice', 'dev_doc_read', 'dev_matter_doc_read', 'dev_doc_history'])
+    for (const m of fns) {
+      const body = m[2]!
+      expect(body, m[1]).not.toContain('CREATE OR REPLACE FUNCTION')
+      expect(body.split('AS $fn$').length - 1, m[1]).toBe(1)
+      for (const kw of ['DECLARE', 'BEGIN', 'END;']) expect((body.match(new RegExp(`^${kw}$`, 'gm')) ?? []).length, `${m[1]} ${kw}`).toBe(1)
+    }
+  })
 })

@@ -16,7 +16,6 @@ LANGUAGE plpgsql
 STABLE
 AS $fn$
 DECLARE
-DECLARE
   v_lines text[];
   v_total int;
   v_heads jsonb;
@@ -114,12 +113,13 @@ $fn$;
 REVOKE EXECUTE ON FUNCTION public.hr_doc_slice(text, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.hr_doc_slice(text, text, text) TO authenticated;
 
-CREATE OR REPLACE FUNCTION public.dev_doc_read(CREATE OR REPLACE FUNCTION public.dev_doc_read(p_person_id uuid, p_doc_id uuid DEFAULT NULL, p_kind text DEFAULT NULL, p_section text DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.dev_doc_read(p_person_id uuid, p_doc_id uuid DEFAULT NULL, p_kind text DEFAULT NULL, p_section text DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $fn$
+DECLARE
   v_text text;
   v_target jsonb;
 BEGIN
@@ -211,7 +211,7 @@ $fn$;
 REVOKE EXECUTE ON FUNCTION public.dev_matter_doc_read(uuid, uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.dev_matter_doc_read(uuid, uuid, text) TO authenticated;
 
-CREATE OR REPLACE FUNCTION public.dev_doc_history(CREATE OR REPLACE FUNCTION public.dev_doc_history(p_person_id uuid, p_doc_id uuid DEFAULT NULL, p_kind text DEFAULT NULL, p_from uuid DEFAULT NULL, p_to uuid DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.dev_doc_history(p_person_id uuid, p_doc_id uuid DEFAULT NULL, p_kind text DEFAULT NULL, p_from uuid DEFAULT NULL, p_to uuid DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
