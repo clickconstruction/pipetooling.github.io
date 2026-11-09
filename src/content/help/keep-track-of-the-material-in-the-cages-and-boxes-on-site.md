@@ -62,6 +62,8 @@ Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map** an
 
 A printed label carries a code. Point your camera at it and the box opens. The office prints labels from Jobs → Materials. Each label prints on its own sheet.
 
+Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with the dash. Typed with or without the dash, it opens the same box.
+
 A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The press opens the office page on that box's manifest. Write what you add on the page's ruled lines, and press it in the app too.
 
 ## Retire a box

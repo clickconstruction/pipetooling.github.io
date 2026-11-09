@@ -36,7 +36,23 @@ export function boxAddress(containerId: string): string {
   return `${BOX_LINK_HOST}/b/${boxCode(containerId)}`
 }
 
-/** The code typed or scanned, read the way `boxCode` prints it. Empty when it cannot be a code. */
+/** The code as a person reads it: four characters, a dash, four characters (v2.6796, punch list #294), so it relays over the phone. */
+export function dashedCode(code: string): string {
+  const c = code.replace(/[^0-9a-z]/gi, '').toUpperCase()
+  return c.length === 8 ? `${c.slice(0, 4)}-${c.slice(4)}` : c
+}
+
+/** The label's line under the QR: `7D75-9246`. The QR itself keeps the bare `boxUrl`. */
+export function boxCodeWords(containerId: string): string {
+  return dashedCode(boxCode(containerId))
+}
+
+/** The address as a person reads or relays it: `prts.co/b/7D75-9246`; typed with or without the dash it opens the same box. */
+export function boxAddressWords(containerId: string): string {
+  return `${BOX_LINK_HOST}/b/${boxCodeWords(containerId)}`
+}
+
+/** The code typed or scanned, read the way `boxCode` prints it, the dash dropped. Empty when it cannot be a code. */
 export function normalizeBoxCode(code: string): string {
   const c = code.replace(/[^0-9a-z]/gi, '').toUpperCase().slice(0, 8)
   return c.length === 8 ? c : ''

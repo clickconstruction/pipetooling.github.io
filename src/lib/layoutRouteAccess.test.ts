@@ -160,3 +160,13 @@ describe('Banking is controller and above (v2.3305)', () => {
     expect(isPathAllowedForRole('dev', '/banking', false)).toBe(true)
   })
 })
+
+describe('the box label\'s door /b/:code (v2.6796, punch list #294: every field role was bounced to the Dashboard)', () => {
+  it('lets a helper, a subcontractor, a primary and a superintendent land on a scanned box, with or without the dash', () => {
+    for (const role of ['subcontractor', 'helpers', 'primary', 'superintendent'] as const) {
+      for (const p of ['/b/4f2a9c18', '/b/4f2a-9c18', '/b/4F2A9C18']) {
+        expect(isPathAllowedForRole(role, p, false), `${role} ${p}`).toBe(true)
+      }
+    }
+  })
+})
