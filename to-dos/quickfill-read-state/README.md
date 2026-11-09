@@ -1,7 +1,7 @@
 ---
 name: "Quickfill: read the thing itself, not the retyped note"
 number: 180
-group: gated
+group: waiting
 status: built 2026-10-26 (the owner's "build it all"): v2.5884 #6191 (Assistant Dailys), v2.5885 #6201 (Billed Awaiting), v2.5886 #6203 (Prospects), v2.5887 #6204 (Vehicle check-ins), v2.5888 #6205 (Field photos) · the five picks on the Dailys' live list made 2026-11-09 · left: a week of use, the owner's look at the three numbers, then delete the folder
 summary: >
   The owner's lens from the Email station, "replace typed notes with read state", run over
