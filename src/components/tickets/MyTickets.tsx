@@ -161,7 +161,7 @@ export function MyTickets({ userId, io = ticketScreensIo, onMatched, charges = l
             </span>
           </button>
           {ask?.kind === 'ask' && askCharge ? (
-            <div data-testid="my-ticket-ask" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', margin: '-0.2rem 0 0.45rem', padding: '0.4rem 0.6rem', fontSize: '0.8125rem', color: 'var(--text-strong)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 10px 10px', background: 'var(--bg)' }}>
+            <div data-testid="my-ticket-ask" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', margin: '-0.2rem 0 0.45rem', padding: '0.4rem 0.6rem', fontSize: '0.8125rem', color: 'var(--text-strong)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 10px 10px', background: 'var(--bg-subtle)' }}>
               <span>{ticketAskWords({ takerName: '', takenAtWords: formatDenverTimeOnly(Date.parse(t.taken_at)), charge: { amount: Number(askCharge.amount), counterparty_name: askCharge.counterparty_name } })}</span>
               <button type="button" disabled={answering === t.id} onClick={() => void answer(t, ask.chargeId, true)} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '0.3rem 0.8rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
                 It is
