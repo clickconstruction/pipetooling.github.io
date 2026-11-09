@@ -13,6 +13,7 @@ import { boxPageCodeWords, boxPageDayWords, boxPageNoun, boxPagePath, boxPageVie
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../../lib/portal/portalTheme'
 import { portalFailure } from '../../lib/portal/portalFailure'
 import { PortalFailureNote } from '../portal/PortalFailureNote'
+import { EmptyState } from '../EmptyState'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../../lib/publicViewCounting'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
@@ -87,8 +88,8 @@ export function BoxPublicPage({ code }: { code: string }) {
             <section>
               <h2 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: MUTED }}>What is in it</h2>
               {payload.box.lines.length === 0 ? (
-                <div style={{ padding: '12px 14px', border: `1px dashed ${HAIR}`, borderRadius: 12, color: MUTED, fontSize: 15 }} data-testid="box-page-empty">
-                  Nothing is recorded in this {boxPageNoun(payload.box.kind, false)} yet. The crew records parts from the app.
+                <div style={{ border: `1px dashed ${HAIR}`, borderRadius: 12 }} data-testid="box-page-empty">
+                  <EmptyState main={`Nothing is recorded in this ${boxPageNoun(payload.box.kind, false)} yet.`} next={{ label: 'Sign in', onPress: signIn }} tail="to add a part." />
                 </div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', background: CARD, border: `1px solid ${HAIR}`, borderRadius: 12, overflow: 'hidden' }} data-testid="box-page-lines">
