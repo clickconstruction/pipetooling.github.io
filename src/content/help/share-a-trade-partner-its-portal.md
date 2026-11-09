@@ -25,7 +25,9 @@ A job it passed on leaves the list. So does a trade we gave another company.
 
 Below that the home shows who at the company gets our emails. **Before** lists the asks it passed on, jobs we did not win, and trades we gave another company.
 
-A project opens its own page. The page shows the latest plans and the questions about them. It also shows the lines the quote should cover and who to call. Messages lists every email we sent the company.
+A project opens its own page. The page shows the latest plans and the questions about them. It also shows the lines the quote should cover and who to call.
+
+The **Messages** tab is the company's conversation with us. It holds the same lines the office reads on Messages. Those are its texts, our emails and what it wrote from the portal. Under the lines sits a box. The company picks the job it is about, or no job, and presses **Send**. The line lands on Messages under the company's contact. The tab says we answer in office hours and names who to call for something urgent.
 
 The job's address sits at the top of the page with a **Directions** link beside it. The link opens the address in the phone's maps app.
 

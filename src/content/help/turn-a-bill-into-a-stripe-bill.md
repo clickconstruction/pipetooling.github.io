@@ -26,7 +26,7 @@ Press **View** on the bill's row. {{button:purple|stripe}}{{button:amber|Send Em
 **Your account, any time** — a QR code beside `my.clickplumbing.com/sam-sample-k7x2`
 :::
 
-- **Pay now** keeps working after Stripe's own link expires.
+- **Pay now** keeps working after Stripe's own link expires. The row's **Text** and **Copy link** carry the same page on a short address, my.clickplumbing.com/pay/ and the bill's id.
 - The **QR code and short address** open their statement. The code and address appear only for a customer who has a portal. A bill addressed to someone else never shows either one. A customer with a portal and no short address is given one on their first bill. The short address is their name plus a random tail. You can change it from the globe.
 - Replies come to whoever pressed Send.
 - In **test mode** the email comes to you, marked as a test, and never to the customer. Test mode is Stripe's practice setting, where no real money moves. The people copied on the bill get nothing either. One copy comes to you, naming who it would have gone to.
