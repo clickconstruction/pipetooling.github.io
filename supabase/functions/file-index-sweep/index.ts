@@ -36,9 +36,15 @@ import { indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_OCR_ROWS, SWEEP_REC
  *        missing or older than the text (the RPC file_index_embed_due, v2.6491) get their vectors, so every file
  *        indexed before the key catches up, and one indexed again while its chunks were made is embedded again.
  *
+ *     7. Records (punch list #285, v2.6714): `records` (10) files a person's HR file or a legal matter holds that the
+ *        index has no row for — an evidence file staged in hr-files or linked from Drive, a document in the matter's
+ *        bucket — through the records pass (`_shared/fileIndexRecords.ts`): the queue is `file_index_records_due`,
+ *        newest first, held rows an hour on; the rows whose record is gone or voided are dropped first. Steps 2, 4, 5
+ *        and the reconcile step read Drive rows alone, since a record's row is keyed on its own id.
+ *
  *   → { success, since, listed, more, indexed, held: [{ id, name, why }], remaining, rechecked, dropped, ocr: { set_up,
  *     tried, read, refused, gone }, retake: { tried, read, held }, embed: { set_up, tried, embedded, chunks, refused },
- *     stamp, line }
+ *     records: { dropped, due, tried, indexed, held, remaining }, stamp, line }
  *
  * Refusals: 401 without the secret, 405 for anything but POST, 503 without the Drive secret, 409 `{ noRoot }` when
  * the jobs root is not set anywhere (nothing to list). Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET,
@@ -55,6 +61,9 @@ import { indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_OCR_ROWS, SWEEP_REC
 // The step's imports sit under the header so PR 3's lines above (#6894, the OCR step) merge untouched.
 import { reconcileStepWords, type ReconcileStep } from '../_shared/fileIndexCheckKernel.ts'
 import { reconcileSweep } from '../_shared/fileIndexReconcile.ts'
+// The records step (#285, v2.6714): the files a person's HR file and a matter hold, through their own queue.
+import { recordsPass } from '../_shared/fileIndexRecords.ts'
+import { EMPTY_RECORDS_PASS, SWEEP_RECORD_ROWS, recordsPassWords } from '../_shared/fileIndexRecordsKernel.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,7 +77,8 @@ function json(body: unknown, status = 200): Response {
 
 /** The rows with the oldest check asked about in Drive: gone or trashed → the row goes; changed → indexed again. */
 async function recheckRows(ctx: IndexContext, n: number): Promise<{ rechecked: number; dropped: number; changed: number; held: HeldFile[] }> {
-  const { data } = await ctx.admin.from('file_index').select('drive_file_id, modified_at').order('checked_at', { ascending: true }).limit(n)
+  // Drive rows alone (#285): a record's row is keyed on its own id, which Drive would answer 404 for and the step would drop.
+  const { data } = await ctx.admin.from('file_index').select('drive_file_id, modified_at').eq('source', 'drive').order('checked_at', { ascending: true }).limit(n)
   const rows = (data ?? []) as { drive_file_id: string; modified_at: string | null }[]
   let dropped = 0
   let changed = 0
@@ -112,12 +122,13 @@ serve(async (req) => {
     const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
     if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 503)
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
-    const body = (await req.json().catch(() => ({}))) as { sweep?: { limit?: unknown; recheck?: unknown; ocr?: unknown; retake?: unknown; embed?: unknown } }
+    const body = (await req.json().catch(() => ({}))) as { sweep?: { limit?: unknown; recheck?: unknown; ocr?: unknown; retake?: unknown; embed?: unknown; records?: unknown } }
     const limit = Math.min(200, Math.max(1, Number(body.sweep?.limit) || SWEEP_MAX_FILES))
     const recheck = Math.min(100, Math.max(0, Number.isFinite(Number(body.sweep?.recheck)) && body.sweep?.recheck != null ? Number(body.sweep.recheck) : SWEEP_RECHECK_ROWS))
     const ocrN = Math.min(50, Math.max(0, Number.isFinite(Number(body.sweep?.ocr)) && body.sweep?.ocr != null ? Number(body.sweep.ocr) : SWEEP_OCR_ROWS))
     const retakeN = Math.min(50, Math.max(0, Number.isFinite(Number(body.sweep?.retake)) && body.sweep?.retake != null ? Number(body.sweep.retake) : SWEEP_RETAKE_ROWS))
     const embedN = Math.min(100, Math.max(0, Number.isFinite(Number(body.sweep?.embed)) && body.sweep?.embed != null ? Number(body.sweep.embed) : SWEEP_EMBED_ROWS))
+    const recordsN = Math.min(50, Math.max(0, Number.isFinite(Number(body.sweep?.records)) && body.sweep?.records != null ? Number(body.sweep.records) : SWEEP_RECORD_ROWS))
     const started = Date.now()
     const google = await googleAccessToken(saJson)
     const ctx = await indexContext(admin, google, saJson)
@@ -136,6 +147,17 @@ serve(async (req) => {
     const retake = retakeN > 0 ? await retakePass(ctx, retakeN, { startedMs: started }) : { tried: 0, read: 0, held: [] as HeldFile[] }
     const embed = ctx.embed && embedN > 0 ? await embedPass(ctx, embedN, { startedMs: started }) : { tried: 0, embedded: 0, chunks: 0, refused: [] as { id: string; name: string; error: string }[] }
     const answer = { indexed: pass.indexed + re.changed, held: [...pass.held, ...re.held], remaining: pass.remaining }
+    // The records step (#285): its own queue and its own catch, so a bucket read that fails costs the Drive steps nothing.
+    let records = EMPTY_RECORDS_PASS
+    if (recordsN > 0) {
+      try {
+        records = await recordsPass(admin, { n: recordsN, google: async () => google, spend: ctx.spend, startedMs: started })
+        const words = recordsPassWords(records)
+        if (words) console.log(words)
+      } catch (e) {
+        console.warn('file-index-sweep records step failed', e)
+      }
+    }
     let reconcile: ReconcileStep | null = null
     if (left <= 0) {
       try {
@@ -156,10 +178,11 @@ serve(async (req) => {
       ocr: { set_up: Boolean(ctx.ocr), ...ocr },
       retake,
       embed: { set_up: Boolean(ctx.embed), ...embed },
+      records,
       stamp: next ?? stamp,
       reconcile,
       ms: Date.now() - started,
-      line: `${indexPassWords(answer)}${re.dropped ? ` Dropped ${re.dropped} gone.` : ''}${ocr.tried ? ` OCR read ${ocr.read} of ${ocr.tried} scans.` : ''}${retake.tried ? ` Retook ${retake.read} of ${retake.tried} held files.` : ''}${embed.tried ? ` Embedded ${embed.embedded} of ${embed.tried} files.` : ''}`,
+      line: `${indexPassWords(answer)}${re.dropped ? ` Dropped ${re.dropped} gone.` : ''}${ocr.tried ? ` OCR read ${ocr.read} of ${ocr.tried} scans.` : ''}${retake.tried ? ` Retook ${retake.read} of ${retake.tried} held files.` : ''}${embed.tried ? ` Embedded ${embed.embedded} of ${embed.tried} files.` : ''}${recordsPassWords(records) ? ` ${recordsPassWords(records)}` : ''}`,
     })
   } catch (e) {
     console.error('file-index-sweep failed', e)
