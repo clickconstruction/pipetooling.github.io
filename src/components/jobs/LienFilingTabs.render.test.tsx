@@ -116,6 +116,30 @@ describe('LienFilingTabs · record steps', () => {
     })
   })
 
+  it('a job contracted with the owner names our own company as the original contractor, at its own address', () => {
+    // The window always named the company here; it now gives the address too, as the desk's draft does (`lienOriginalContractor`).
+    const issuer = { companyName: 'Sample Plumbing LLC', addressText: '1 Shop Rd\nSan Antonio, TX 78201' } as never
+    renderWithProviders(<LienFilingTabs {...props({ activeTab: 'affidavit', isSub: false, issuer, originalContractorName: 'Sample Plumbing LLC' })} />)
+    expect(document.body.textContent).toContain('The name and address of the original contractor is: Sample Plumbing LLC, 1 Shop Rd, San Antonio, TX 78201.')
+  })
+
+  it('the notice claims what the sent bills owe less the claim set by hand, and prints the months a person split it by', () => {
+    const staged = makeJob({ id: 'job-651', hcp_number: '651', job_name: 'Sample Remodel', status: 'working', revenue: 5000, payments_made: 0, invoices: [{ id: 'i1', job_id: 'job-651', status: 'billed', amount: 4000, sequence_order: 1, billed_at: '2026-08-20T15:00:00Z' }] as never, payments: [] })
+    const correction = { jobId: 'job-651', amountOff: 1000, perMonth: { '2026-07': 1200 }, reason: 'GC disputes a fixture', carry: true, setByName: 'Rey', setAt: '2026-10-20T16:00:00Z', lookedAt: null, lookedByName: '' }
+    renderWithProviders(<LienFilingTabs {...props({ job: staged, jobNumber: '651', noticeMonths: ['2026-07', '2026-08'], claimCorrection: correction })} />)
+    expect(document.body.textContent).toContain('Claim amount: $3,000.00 (what the sent bills still owe, with the claim set by hand)')
+    expect(document.querySelector('[data-lien-window-claim-note="by_hand"]')!.textContent).toContain('Claim set by hand on the Lien desk: $3,000 · $1,000 under the $4,000 unpaid in the app')
+    expect(document.querySelector('[data-lien-window-claim-note="unbilled"]')!.textContent).toBe('Not billed yet · $1,000 of the job’s $5,000 · not claimed until it is billed')
+    // The paper: the corrected claim, and the split as typed (July its own figure, August the rest).
+    expect(document.body.textContent).toContain('$3,000.00')
+    expect(document.body.textContent).toContain('Jul 2026 $1,200.00 · Aug 2026 $1,800.00')
+  })
+
+  it('says so when the claim set by hand could not be read', () => {
+    renderWithProviders(<LienFilingTabs {...props({ claimCorrectionUnread: true })} />)
+    expect(document.querySelector('[data-lien-window-claim-note="unread"]')!.textContent).toContain('Check the job on the Lien desk before you print.')
+  })
+
   it('Already filed — record it… (v2.4835): with a gate still ✗ the door is drawn under the list, and opens the same record box with Filed on', () => {
     // No legal description and no owner mailing address: the paper cannot be drawn, but a lien filed by counsel is on record all the same.
     const bare = { ...address, legal_description: '', owner_mailing_address: '' }

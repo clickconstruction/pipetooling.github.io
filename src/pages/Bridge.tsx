@@ -172,7 +172,7 @@ export default function Bridge() {
   const [recording, setRecording] = useState(false)
   const [answering, setAnswering] = useState(false)
   const fin = useDashboardFinancials(isOwnerOrDev(role), refreshKey, role, user?.id ?? null)
-  /** ZZ test jobs leave the Bill pile for everyone but a dev who shows them, as on the Dashboard (v2.5834). */
+  /** ZZ test jobs leave the Bridge's own reads, the Bill pile and the Bill desk for everyone but a dev who shows them, as on the Dashboard (v2.5834, v2.6807). */
   const hideZz = useZzTestJobsHidden(role)
 
   useEffect(() => {
@@ -201,7 +201,9 @@ export default function Bridge() {
     setError(null)
     void (async () => {
       try {
-        const d = await loadBridgeData(supabase)
+        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        if (cancelled) return
+        const d = await loadBridgeData(supabase, { zzTestJobIds })
         if (cancelled) return
         setData(d)
         setCashDraft(d.cashSetting ? String(d.cashSetting.usd) : '')
@@ -215,7 +217,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [role, user?.id, refreshKey])
+  }, [role, user?.id, refreshKey, hideZz])
 
   useEffect(() => {
     if (!isOwnerOrDev(role) || !user?.id) return
@@ -417,7 +419,7 @@ export default function Bridge() {
   const [billOpen, setBillOpen] = useState(false)
   const [billReads, setBillReads] = useState<{ forKey: string; reads: BillDeskReads } | null>(null)
   const [billReadsError, setBillReadsError] = useState<string | null>(null)
-  const billReadKey = data && billPile ? `${data.todayYmd}:${billPile.items.length}:${Math.round(billPile.knownUsd)}` : ''
+  const billReadKey = data && billPile ? `${data.todayYmd}:${billPile.items.length}:${Math.round(billPile.knownUsd)}:${hideZz ? 'hide' : 'show'}` : ''
   useEffect(() => {
     if (!billOpen || !data || !billPile) return
     if (billReads && billReads.forKey === billReadKey) return
@@ -426,7 +428,9 @@ export default function Bridge() {
     setBillReadsError(null)
     void (async () => {
       try {
-        const reads = await loadBillDeskReads(supabase, { sinceYmd: scorecardStart(data.todayYmd), pileJobIds: billPile.items.map((i) => i.id) })
+        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        if (cancelled) return
+        const reads = await loadBillDeskReads(supabase, { sinceYmd: scorecardStart(data.todayYmd), pileJobIds: billPile.items.map((i) => i.id), zzTestJobIds })
         if (!cancelled) setBillReads({ forKey: key, reads })
       } catch (e) {
         if (!cancelled) setBillReadsError(formatErrorMessage(e))
@@ -435,7 +439,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [billOpen, data, billPile, billReads, billReadKey])
+  }, [billOpen, data, billPile, billReads, billReadKey, hideZz, user?.id])
 
   // The Build desk (punch list #192, v2.5929): hours in against work out per open job. The Schedule's blocks and the jobs' lifetime hours are read on the first open; the kernel runs below, once the stage flow is in.
   const [buildOpen, setBuildOpen] = useState(false)

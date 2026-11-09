@@ -23,6 +23,7 @@ opinion: build — start with shape 3 (a mark and a door, XS to S each, and fiel
 
 ## Pick up here
 
+- **Parked, on the owner's word.** *"We're gonna do all of the show it, don't say it at a later time, not today. Leave this card on the punch list."* So the card stays, and nothing on it waits on picks this week: the page, the open prototype PRs and the unpicked shapes stand as they are until the owner comes back to it.
 - **The page** is `mockup.html` beside this file: open it from a clone (double-click; it needs no server) or at `/to-dos/show-not-tell/mockup.html` on the dev server. The owner's live copy is the claude.ai artifact (https://claude.ai/artifact/3f74NuNKDsMAtpGcFgCV1v), whose store keeps her presses as she makes them.
 - **The picks** are `picks.json`: every pick, the owner's note and when it was acted on. The page loads it when built, so a fresh clone opens on the last save. To save: press **Export picks** on the page, put the file here, rebuild and commit, or hand it to a session. Picks pressed in a browser stay in that browser until exported.
 - **The prototypes** are `prototypes.json`, one row each; `npm run proto -- <id>` opens one on any machine (*How to verify*, below).

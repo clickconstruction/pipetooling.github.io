@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { cleanStoredAddress } from '../../lib/displayAddress'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
-import { buildLienAffidavitBlocks, buildLienNoticeBlocks, buildReleaseOfRecordBlocks, filingDocFooter, filingDocHtml, filingDocPdfBlob, filingDocPrintHtml, filingLetterheadFromIssuer, filingPdfFilename, type FilingDocBlock, type FilingDocExtras, type LienAffidavitFields, type LienNoticeFields, type ReleaseOfRecordFields } from '../../lib/jobsDocuments/lienFilingDocuments'
+import { appendToFilingPrintHtml, buildLienAffidavitBlocks, buildLienNoticeBlocks, buildReleaseOfRecordBlocks, filingDocFooter, filingDocHtml, filingDocPdfBlob, filingDocPrintHtml, filingLetterheadFromIssuer, filingPdfFilename, type FilingDocBlock, type FilingDocExtras, type LienAffidavitFields, type LienNoticeFields, type ReleaseOfRecordFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
@@ -33,7 +33,9 @@ import { useAuth } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import type { LienWorkSpanJob } from '../../lib/jobs/lienWorkSpan'
-import { buildLienWindowAffidavitFields } from '../../lib/jobs/lienWindowAffidavit'
+import { buildLienWindowAffidavitFields, lienWindowClaim, lienWindowClaimNotes } from '../../lib/jobs/lienWindowAffidavit'
+import { claimSplit, claimSplitWords, type LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
+import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import type { JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { lienTradeWords } from '../../lib/jobs/lienTradeWords'
 
@@ -43,8 +45,9 @@ import { lienTradeWords } from '../../lib/jobs/lienTradeWords'
  * the § 53.054 affidavit behind the readiness gate (owner / county+legal /
  * recorded notice / homestead hard-stop), and the release of a recorded lien
  * once a filing exists. Documents come from `lienFilingDocuments.ts`; records
- * land in `job_lien_filings`. Amounts are job-level (contract = revenue, paid
- * = payments_made) — the affidavit swears the whole-job claim.
+ * land in `job_lien_filings`. The contract and paid amounts are the job's
+ * (revenue, payments_made); the claim is the desk's: what the sent bills still
+ * owe, less a claim set by hand (`lienWindowClaim`).
  */
 
 const SEND_METHODS = ['certified_mail', 'traceable_courier', 'email', 'hand'] as const
@@ -63,10 +66,6 @@ const NO_INVOICE_DOCS: NoticeInvoiceDoc[] = []
 
 function todayYmd(): string {
   return todayYmdInAppTz()
-}
-
-function jobOpenBalance(job: JobWithDetails): number {
-  return Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
 }
 
 export default function LienFilingTabs({
@@ -89,6 +88,8 @@ export default function LienFilingTabs({
   invoiceDocs = NO_INVOICE_DOCS,
   workDays,
   workMonths,
+  claimCorrection = null,
+  claimCorrectionUnread = false,
   onClose,
 }: {
   job: JobWithDetails
@@ -117,6 +118,10 @@ export default function LienFilingTabs({
   workDays?: LienWorkSpanJob | null
   /** The forecast's months for the job (v2.6809): the first month's fallback for the period's start. A job with no sessions has none, and the period falls to its creation month, as the desk's draft does. */
   workMonths?: Pick<JobWorkMonths, 'months' | 'lastMonthKey'> | null
+  /** The claim set by hand on the job (`job_lien_claim_corrections`), as the Lien desk reads it: an amount off what the sent bills owe, carried to the notice and the affidavit. */
+  claimCorrection?: LienClaimCorrection | null
+  /** The correction's read failed: the papers carry the bills' figure and the tab says to check the desk first. */
+  claimCorrectionUnread?: boolean
   /** Closes the Lien window: the × on a phone's record sheet (v2.4422). */
   onClose?: () => void
 }) {
@@ -148,7 +153,16 @@ export default function LienFilingTabs({
   const liveNotices = live.filter((f) => f.kind === 'notice_53_056')
   const filedAffidavit = live.find((f) => f.kind === 'affidavit' && f.filed_at) ?? null
   const anyAffidavit = live.find((f) => f.kind === 'affidavit') ?? null
-  const openBalance = jobOpenBalance(job)
+  // The claim is the desk's: what the sent bills still owe, less a claim set by hand. This tab counted the job's whole balance and read no correction.
+  const claim = useMemo(() => lienWindowClaim(job, claimCorrection), [job, claimCorrection])
+  const claimNotes = useMemo(() => lienWindowClaimNotes(claim, job, claimCorrection, formatYmdMonthDay, { correctionUnread: claimCorrectionUnread }), [claim, job, claimCorrection, claimCorrectionUnread])
+  const claimedAmount = claim.claimed.claim
+  // Under the claim on both tabs: where the figure came from, so nobody prints it blind.
+  const claimNoteLines = claimNotes.map((n) => (
+    <span key={n.key} data-lien-window-claim-note={n.key} style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: n.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-700)' }}>
+      {n.text}
+    </span>
+  ))
   const ownerName = lienPropertyOwnerDisplayName(property.owner)
 
   useEffect(() => {
@@ -164,6 +178,9 @@ export default function LienFilingTabs({
   const tradeName = job.serviceType?.name
   const laborMaterials = useMemo(() => lienTradeWords(tradeName).laborMaterials, [tradeName])
 
+  // The months this notice names, and the split a person typed for them on the desk (v2.3682): printed as *Of which, by month:*, as the desk's notice does.
+  const noticeMonthKeys = useMemo(() => (noticeMonths && noticeMonths.length > 0 ? noticeMonths : clock.workMonth ? [clock.workMonth] : []), [noticeMonths, clock.workMonth])
+  const claimSplitLine = useMemo(() => claimSplitWords(claimSplit(noticeMonthKeys, claimedAmount, claimCorrection?.perMonth)), [noticeMonthKeys, claimedAmount, claimCorrection])
   const noticeFields: LienNoticeFields = useMemo(
     () => ({
       noticeDate: todayYmd(),
@@ -172,12 +189,13 @@ export default function LienFilingTabs({
       laborMaterialsType: laborMaterials,
       originalContractorName,
       contractedWithIfDifferent: '',
-      claimAmount: openBalance.toFixed(2),
+      claimAmount: claimedAmount.toFixed(2),
+      ...(claimSplitLine ? { claimSplit: claimSplitLine } : {}),
       contactPerson: signerNameFallback,
       claimantAddress: (issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim(),
       ...(homesteadStatementApplies(property) ? { homesteadStatement: true } : {}),
     }),
-    [job, issuer, laborMaterials, originalContractorName, openBalance, signerNameFallback, property],
+    [job, issuer, laborMaterials, originalContractorName, claimedAmount, claimSplitLine, signerNameFallback, property],
   )
 
   // The desk's own recipe fills the paper (v2.6809): this tab filled the fields by hand beside it, and a job with no clock hours printed
@@ -199,7 +217,8 @@ export default function LienFilingTabs({
       customerName: job.customer_name,
       revenue: Number(job.revenue ?? 0),
       paymentsMade: Number(job.payments_made ?? 0),
-      openBalance,
+      openBalance: claim.openBalance,
+      claimAmountOff: claimCorrection?.amountOff,
       job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null },
       workMonths,
       todayYmd: todayYmd(),
@@ -207,7 +226,7 @@ export default function LienFilingTabs({
       contactPerson: signerNameFallback,
       issuer,
     })
-  }, [property, signerNameFallback, issuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, openBalance, liveNotices.length, workDays, workMonths])
+  }, [property, signerNameFallback, issuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths])
 
   const releaseFields: ReleaseOfRecordFields = useMemo(
     () => ({
@@ -309,7 +328,7 @@ export default function LienFilingTabs({
       const sections = noticeInvoicePrintSections(enclosedDocs)
         .map((sec) => `<section style="page-break-before:always;margin-top:3rem">${sec}</section>`)
         .join('')
-      return html.replace('</body>', `${pay}${sections}</body>`)
+      return appendToFilingPrintHtml(html, `${pay}${sections}`)
     },
     [currentDoc, enclosedDocs, payBlocks],
   )
@@ -436,8 +455,8 @@ export default function LienFilingTabs({
               job_id: job.id,
               created_by: authUser?.id ?? null,
               kind: 'notice_53_056',
-              amount: openBalance,
-              months_covered: noticeMonths && noticeMonths.length > 0 ? noticeMonths : clock.workMonth ? [clock.workMonth] : [],
+              amount: claimedAmount,
+              months_covered: noticeMonthKeys,
               fields: JSON.parse(JSON.stringify(noticeFields)),
               sends: finalSends,
               ...filingDocumentPayload({ url: docUrl, note: docNote }),
@@ -456,13 +475,14 @@ export default function LienFilingTabs({
     } finally {
       setBusy(false)
     }
-  }, [busy, ownerSend, ocSend, ownerEmail, originalContractorEmail, emailNoticeTo, job.id, authUser?.id, openBalance, clock.workMonth, noticeMonths, noticeFields, docUrl, docNote, showToast, onChanged])
+  }, [busy, ownerSend, ocSend, ownerEmail, originalContractorEmail, emailNoticeTo, job.id, authUser?.id, claimedAmount, noticeMonthKeys, noticeFields, docUrl, docNote, showToast, onChanged])
 
   const recordAffidavitFiling = () =>
     insertFiling(
       {
         kind: 'affidavit',
-        amount: openBalance,
+        // The amount the recorded paper swears, to the cent.
+        amount: Number(affidavitFields.unpaidAmount),
         fields: JSON.parse(JSON.stringify(affidavitFields)),
         county: filingCounty.trim(),
         recording_number: filingNumber.trim(),
@@ -714,7 +734,7 @@ export default function LienFilingTabs({
     <LienRecordSheet
       kind="notice_sends"
       title="Record the sends"
-      headline={`§ 53.056 notice · ${demandMoney(String(openBalance))}`}
+      headline={`§ 53.056 notice · ${demandMoney(noticeFields.claimAmount)}`}
       lines={[jobLine, 'The statute names both recipients.']}
       action={{ label: 'Record both sends', busyLabel: 'Saving…', busy, onClick: () => void recordNoticeSends(), fill: '#b45309' }}
       onBack={() => setRecordStep(null)}
@@ -786,8 +806,9 @@ export default function LienFilingTabs({
                 {clock.noticeDeadline ? ` — ${clock.workMonth} is due ${demandDate(clock.noticeDeadline)}` : ''}.
               </div>
               <div style={{ fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
-                <b>Claim amount:</b> {demandMoney(String(openBalance))} (open on the job)
-                <br />
+                <b>Claim amount:</b> {demandMoney(noticeFields.claimAmount)} (what the sent bills still owe{claim.claimed.corrected ? ', with the claim set by hand' : ''})
+                {claimNoteLines}
+
                 <b>Owner of record:</b> {ownerName || '—'} {property.owner.mailingAddress ? `· ${property.owner.mailingAddress}` : '· mailing address missing'}
                 <br />
                 <b>Original contractor:</b> {originalContractorName || '—'}
@@ -818,9 +839,9 @@ export default function LienFilingTabs({
                 </div>
               ) : recordStep === 'notice_by_hand' ? (
                 <LienNoticeByHandPane
-                  job={{ id: job.id, label: `${jobNumber} · ${(job.job_name ?? '').trim() || (job.job_address ?? '').trim()}`, jobAddress: job.job_address ?? null, customerAddressId: job.customer_address_id ?? null, amount: openBalance, itemId: null }}
+                  job={{ id: job.id, label: `${jobNumber} · ${(job.job_name ?? '').trim() || (job.job_address ?? '').trim()}`, jobAddress: job.job_address ?? null, customerAddressId: job.customer_address_id ?? null, amount: claimedAmount, itemId: null }}
                   fields={noticeFields}
-                  appClaim={openBalance}
+                  appClaim={claimedAmount}
                   appClaimIsTimely={false}
                   defaultMonths={noticeMonths && noticeMonths.length > 0 ? noticeMonths : clock.workMonth ? [clock.workMonth] : []}
                   todayYmd={todayYmd()}
@@ -910,6 +931,7 @@ export default function LienFilingTabs({
             <>
               <div style={{ fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
                 <b>Sworn amounts (¶8):</b> contract {demandMoney(affidavitFields.contractAmount)} · paid {demandMoney(affidavitFields.paidAmount)} · <b>unpaid {demandMoney(affidavitFields.unpaidAmount)}</b>
+                {claimNoteLines}
               </div>
               {recordStep === 'affidavit_filing' && !isMobile ? (
                 filingRecordBox

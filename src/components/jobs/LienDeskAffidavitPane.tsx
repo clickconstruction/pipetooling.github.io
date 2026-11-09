@@ -27,7 +27,8 @@ import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
-import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienNoticeFieldsForJob, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienDeskAffidavitFields } from '../../lib/jobs/lienDeskAffidavitFields'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords, reservationHoldEndsOn, type OwnerCall } from '../../lib/jobs/lienOwnerCall'
 import type { LienPaymentBond } from '../../lib/jobs/lienDeskRetainage'
@@ -164,30 +165,21 @@ export default function LienDeskAffidavitPane({
   const correction = data.claimCorrectionsByJob[entry.jobId] ?? null
   const claimed = correctedClaim(entry.openBalance, correction)
 
+  // The desk's one recipe: the same call the paper preview and a stop's window make, so the three cannot drift.
   const fields = useMemo(
     () =>
-      buildLienAffidavitFieldsForJob({
-        jobName: job?.job_name,
-        jobAddress: job?.job_address,
-        serviceTypeName: job?.service_type?.name,
-        isSub: entry.isSub,
-        originalContractorName: gc?.name ?? '',
-        originalContractorAddress: gc?.address ?? '',
+      buildLienDeskAffidavitFields({
+        job,
+        entry,
+        gc,
         ownerName,
         ownerAddress: property.owner.mailingAddress,
         county: property.county,
         legalDescription: property.legalDescription,
-        customerName: job?.customer_name,
-        revenue: Number(job?.revenue ?? 0),
-        paymentsMade: Number(job?.payments_made ?? 0),
-        openBalance: entry.openBalance,
-        claimAmountOff: correction?.amountOff,
-        lastMonth: entry.lastMonth,
-        workDays: job ?? null,
-        todayYmd,
-        noticesRecorded: entry.gates.find((g) => g.key === 'notice')?.ok ?? false,
+        correction,
         contactPerson: signerNameFor(job?.master_user_id ?? null),
         issuer,
+        todayYmd,
       }),
     [job, entry, gc, ownerName, property, signerNameFor, issuer, correction, todayYmd],
   )

@@ -11,9 +11,14 @@ class FakeJsPDF {
   images: Array<{ data: string; type: string; x: number; y: number; w: number; h: number }> = []
   rects: Array<{ x: number; y: number; w: number; h: number; style?: string }> = []
   texts: string[] = []
+  /** The page each text was drawn on, beside `texts` (v2.6810: the keep-together passes). */
+  textPages: number[] = []
+  /** How many papers were drawn since a test last set it to 0: one, or one more per run moved to a new page. */
+  static made = 0
   pages = 1
   constructor() {
     FakeJsPDF.last = this
+    FakeJsPDF.made += 1
   }
   setFont() {}
   setFontSize() {}
@@ -33,6 +38,7 @@ class FakeJsPDF {
   }
   text(t: string | string[]) {
     this.texts.push(Array.isArray(t) ? t.join('\n') : t)
+    this.textPages.push(this.pages)
   }
   line() {}
   rect(x: number, y: number, w: number, h: number, style?: string) {
@@ -123,3 +129,36 @@ describe('the window envelope on the PDF (the Docsmit train, PR 4)', () => {
   })
 })
 
+describe('a signature travels with its statement and the notary’s block (v2.6810)', () => {
+  // The office's printed affidavit put item 10 at the foot of page 1 and the signature alone at the head of page 2.
+  const pageOf = (pdf: FakeJsPDF, text: string) => pdf.textPages[pdf.texts.findIndex((t) => t.startsWith(text))]
+  const paper = (fillers: number): Parameters<typeof filingDocPdfBlob>[0] => [
+    ...Array.from({ length: fillers }, (_, i) => ({ kind: 'numbered' as const, n: i + 1, text: `Filler statement ${i + 1}.` })),
+    { kind: 'numbered', n: 99, text: 'Claimant claims a lien.' },
+    { kind: 'signature', lines: ['Rey Master, Master Plumber', 'Sample Plumbing'] },
+    { kind: 'notarial', who: 'Rey Master, Master Plumber' },
+  ]
+
+  it('at every length the last item, the signature and the notary’s line are on one page, and some lengths needed the run moved', async () => {
+    let moved = 0
+    for (let fillers = 20; fillers <= 45; fillers++) {
+      FakeJsPDF.made = 0
+      await filingDocPdfBlob(paper(fillers))
+      const pdf = FakeJsPDF.last!
+      const page = pageOf(pdf, '99. Claimant claims a lien.')
+      expect(page, `${fillers} fillers`).toBeGreaterThanOrEqual(1)
+      expect(pageOf(pdf, 'Rey Master, Master Plumber'), `${fillers} fillers: the signature`).toBe(page)
+      expect(pageOf(pdf, 'Notary Public, State of Texas'), `${fillers} fillers: the notary`).toBe(page)
+      if (FakeJsPDF.made > 1) moved += 1
+    }
+    // The sweep crosses the foot of page 1: without the passes some of these split.
+    expect(moved).toBeGreaterThan(0)
+  })
+
+  it('a paper whose closing already fits is drawn once', async () => {
+    FakeJsPDF.made = 0
+    await filingDocPdfBlob(paper(3))
+    expect(FakeJsPDF.made).toBe(1)
+    expect(FakeJsPDF.last!.pages).toBe(1)
+  })
+})

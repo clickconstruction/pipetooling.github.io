@@ -25,6 +25,11 @@ const walk = walkBundle as (root: string, entry: string, io: Io) => { files: str
 
 const ROOT = resolve(__dirname, '../../..')
 const disk: Io = { readFile: (p) => readFileSync(p, 'utf8'), exists: existsSync }
+/** The entries the index exports nothing of: the dev seat reads them by their own path. */
+const offIndexEntries = () =>
+  Object.entries(g.ENTRIES as Record<string, { values: string[]; types: string[] }>)
+    .filter(([, e]) => e.values.length === 0 && e.types.length === 0)
+    .map(([entry]) => entry)
 
 describe('the copy of the kernels', () => {
   const { files, problems, typeFiles } = g.generateEdgeKernels(ROOT)
@@ -64,11 +69,35 @@ describe('the copy of the kernels', () => {
     const io: Io = { readFile: (p) => files.get(inCopy(p)) ?? (onEdge(p) && existsSync(p) ? readFileSync(p, 'utf8') : ''), exists: (p) => files.has(inCopy(p)) || (onEdge(p) && existsSync(p)) }
     const bundle = walk(ROOT, `${g.OUT_DIR}/index.ts`, io)
     expect(bundle.unresolved).toEqual([])
-    expect(bundle.files.filter((f) => f.startsWith(`${g.OUT_DIR}/`))).toHaveLength(files.size - typeFiles.length)
+    // An entry the index exports nothing of is read by its own path (the dev seat's submittal kernels), so the walk
+    // starts there too: every file of the copy still resolves, from the index or from one of those.
+    const offIndex = offIndexEntries()
+    const byPath = offIndex.map((entry) => walk(ROOT, `${g.OUT_DIR}/${entry}`, io))
+    expect(byPath.flatMap((b) => b.unresolved)).toEqual([])
+    const reached = new Set([...bundle.files, ...byPath.flatMap((b) => b.files)].filter((f) => f.startsWith(`${g.OUT_DIR}/`)))
+    expect(reached.size).toBe(files.size - typeFiles.length)
     expect(bundle.files.some((f) => f === 'supabase/functions/_shared/billTruth.ts')).toBe(true)
     // The thread's file type sits in its own types file, so the Quo kernels take it without lineFiles.ts's code.
     // The Bids row aliases are types alone (v2.6804): the submittal kernels the dev seat reads take them from src's own file.
     expect(typeFiles).toEqual(['lib/gc/types.ts', 'lib/messages/lineFileTypes.ts', 'types/bids.ts'])
+  })
+})
+
+describe('what the index does not carry', () => {
+  it('reaches no submittal kernel: the dev seat reads them by path, so a portal that imports the index uploads none of them (customer-portal went over the 5 MB a deploy may send)', () => {
+    const offIndex = offIndexEntries()
+    expect(offIndex).toEqual([
+      'lib/submittals/standingRows.ts',
+      'lib/submittals/procurementItemSources.ts',
+      'lib/submittals/procurementLog.ts',
+      'lib/submittals/procurementBoard.ts',
+      'lib/submittals/productStatus.ts',
+    ])
+    const fromIndex = walk(ROOT, `${g.OUT_DIR}/index.ts`, disk).files
+    expect(fromIndex.filter((f) => f.includes('/lib/submittals/') || f.includes('/lib/bids/') || f.includes('/lib/rfq/'))).toEqual([])
+    // And the seat still reaches every one of them by its own import.
+    const seat = walk(ROOT, 'supabase/functions/dev-mcp/index.ts', disk).files
+    for (const entry of offIndex) expect(seat).toContain(`${g.OUT_DIR}/${entry}`)
   })
 })
 

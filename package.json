@@ -141,6 +141,7 @@
     "test:pg:lien-release-sign": "bash scripts/pgtest-lien-release-sign.sh",
     "test:pg:archived-seal": "bash scripts/pgtest-archived-seal.sh",
     "test:pg:away-notes": "bash scripts/pgtest-away-notes.sh",
+    "test:pg:counter-tickets": "bash scripts/pgtest-counter-tickets.sh",
     "test:pg:plan-sets-author": "bash scripts/pgtest-plan-sets-author.sh",
     "test:pg:license-expiry-sweep": "bash scripts/pgtest-license-expiry-sweep.sh",
     "test:pg:pipeline-customer-lines": "bash scripts/pgtest-pipeline-customer-lines.sh",
