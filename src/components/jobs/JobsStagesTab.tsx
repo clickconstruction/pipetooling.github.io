@@ -1,4 +1,4 @@
-import { listPayer, paySpeedPayer, stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
+import { paySpeedPayer, stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
 import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
@@ -31,8 +31,8 @@ import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
 import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPaymentsNudge'
 import { bankReturnedBadgeTitle, bankReturnedBadgeWords, bankReturnedByJob } from '../../lib/jobs/bankReturnedDeposits'
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
-import { buildLienPayRunway, type LienPayRunway as LienPayRunwayModel } from '../../lib/jobs/lienPayRunway'
-import { lienBilledOpen } from '../../lib/jobs/lienBilledOpen'
+import type { LienPayRunway as LienPayRunwayModel } from '../../lib/jobs/lienPayRunway'
+import { billedLienClockJobsOf, buildLienCalendarRows, lienRunwayForJob, paceContextPayerIds } from '../../lib/jobs/lienCalendarRows'
 import { useBilledLienClocks } from '../../hooks/useBilledLienClocks'
 import { usePropertyKinds } from '../../hooks/usePropertyKinds'
 import { useBilledMoneyData } from '../../hooks/useBilledMoneyData'
@@ -73,7 +73,6 @@ import {
   stageRowBilledAgeDays,
   stageRowBilledAgeReference,
   billedRowsRemainingTotal,
-  stageRowBilledRemainingAmount,
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
 import { billedExpectedPayModel } from '../../lib/jobs/billedExpectedPay'
@@ -989,11 +988,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   )
   const canSeeBilledExpectedPay = stagesGates.canSeeBilledExpectedPay(authRole)
   // The lien runway's facts for every billed job (v2.4051): the property kind (a house's clock is a month shorter) and any affidavit or release already on file.
-  const billedLienClockJobs = useMemo(
-    // v2.4788: a job marked Uncollectible is off the Lien desk — no clock, no calendar row (punch list #94).
-    () => jobs.filter((j) => j.status === 'billed' && !jobUncollectible(j)).map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, gc_customer_id: j.gc_customer_id ?? null })),
-    [jobs],
-  )
+  // v2.4788: a job marked Uncollectible is off the Lien desk — no clock, no calendar row (punch list #94). The kernel is shared with `/lien-desk` (punch list #182).
+  const billedLienClockJobs = useMemo(() => billedLienClockJobsOf(jobs), [jobs])
   // v2.4153: the Lien calendar's pen bumps this after it writes a property kind, so the clocks re-read the kind.
   const [lienClocksRefresh, setLienClocksRefresh] = useState(0)
   const billedLienClocks = useBilledLienClocks(billedLienClockJobs, lienClocksRefresh)
@@ -1036,11 +1032,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // board, Billed and Collections, filed under whoever owes them (`listPayer`), the way the Collect desk rests it on
   // the GC payers in its pile, so the board and the desk read one GC's bill at one pace.
   const billedPaceContext = useMemo(() => {
-    const payerIds: Array<string | null> = []
-    for (const r of [...unfilteredBoardLists.billedActiveRows, ...unfilteredBoardLists.collectionsRows]) {
-      if (r.kind === 'job' || !(stageRowBilledRemainingAmount(r) > 0)) continue
-      payerIds.push(listPayer(r.job, r.inv).id)
-    }
+    const payerIds = paceContextPayerIds([...unfilteredBoardLists.billedActiveRows, ...unfilteredBoardLists.collectionsRows])
     return paceContextFor({ facts: paceFacts, paySpeeds: billedPaySpeeds, payerIds })
   }, [unfilteredBoardLists, paceFacts, billedPaySpeeds])
   // v2.4328 (punch list #76): the payer's checks the bank sent back this past year, for the pay history.
@@ -1053,41 +1045,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   } | null>(null)
   /** The lien runway for a Billed / Collections row (v2.4051): the expected-pay date the chip reads, against the § 53.052 clock. Null until the clocks load. */
   const lienRunwayFor = useCallback(
-    (job: JobWithDetails, inv: JobsLedgerInvoice | null): LienPayRunwayModel | null => {
-      const clock = billedLienClocks?.[job.id]
-      if (!clock) return null
-      const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
-      // v2.4365: the bill's payer's pace (the GC on a GC-billed bill), the history pay_speed_samples keys on.
-      const payer = inv ? paySpeedPayer(job, inv) : null
-      const model = inv && payer
-        ? billedExpectedPayModel(
-            { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name },
-            billedPaySpeeds,
-            todayYmd,
-            promisedPayDates?.[job.id] ?? null,
-            paceInputFor(billedPaceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds),
-          )
-        : null
-      return buildLienPayRunway({
-        todayYmd,
-        // What the sent bills owe (v2.4970), as the desk counts it — never the job's whole balance.
-        openBalance: lienBilledOpen(job, job.invoices ?? [], job.payments ?? []),
-        lastWorkYmd: job.last_work_date ?? null,
-        // The last day of work set by hand (v2.4676) counts first, as on the desk (v2.4830).
-        handLastWorkYmd: job.lien_last_work_on ?? null,
-        createdAt: job.created_at ?? null,
-        propertyKind: clock.propertyKind,
-        expectedPayYmd: model?.expectedYmd ?? null,
-        filedYmd: clock.filedYmd,
-        releasedYmd: clock.releasedYmd,
-        isSub: Boolean(job.gc_customer_id),
-        noticedMonths: clock.noticedMonths,
-        anyNoticeOnFile: clock.noticeOnFile,
-        // v2.5522: the months printed and in the mail draw the In the mail mark instead of a hollow flag.
-        mailedMonths: clock.mailedMonths,
-        workMonths: clock.workMonths,
-      })
-    },
+    // The runway's read is `lienCalendarRows.ts`'s (punch list #182): the Lien desk's page reads the same one.
+    (job: JobWithDetails, inv: JobsLedgerInvoice | null): LienPayRunwayModel | null =>
+      lienRunwayForJob(job, inv, { clocks: billedLienClocks, paySpeeds: billedPaySpeeds, promisedPayDates, paceContext: billedPaceContext, todayYmd: calendarYmdInAppTzFromIso(new Date().toISOString()) }),
     [billedLienClocks, billedPaySpeeds, promisedPayDates, billedPaceContext],
   )
   // The notice's state under the ledger's lien row (v2.5491): the AR chip kernel over the desk's light data, built
@@ -1154,29 +1114,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    */
   const lienCalendarRows = useMemo<LienCalendarJob[] | null>(() => {
     if (!cacheMergedScopes.has(scopeForStagesSection('billed')) || !billedLienClocks) return null
-    const out: LienCalendarJob[] = []
-    for (const job of jobs) {
-      if (job.status !== 'billed') continue
-      if (jobUncollectible(job)) continue // v2.4788: given up on — off the calendar and the Deadlines list
-      const billed = (job.invoices ?? []).filter((i) => i.status === 'billed')
-      const runway = lienRunwayFor(job, billed.length === 1 ? billed[0]! : null)
-      if (!runway || runway.state === 'none') continue
-      out.push({
-        jobId: job.id,
-        number: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
-        name: (job.job_name ?? '').trim() || 'Job',
-        customer: (job.customer_name ?? '').trim(),
-        gcId: job.gc_customer_id ?? null,
-        gcName: job.gcCustomer?.name?.trim() || null,
-        address: (job.job_address ?? '').trim(),
-        openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
-        isSub: Boolean(job.gc_customer_id),
-        runway,
-        lastWorkYmd: job.lien_last_work_on || job.last_work_date || null,
-        addressId: job.customer_address_id ?? null,
-      })
-    }
-    return out
+    return buildLienCalendarRows(jobs, lienRunwayFor)
   }, [jobs, billedLienClocks, lienRunwayFor, cacheMergedScopes])
   const billedBillLineRenderer = useCallback(
     (row: StageRow): BilledRowBillLine | null => {
@@ -1369,19 +1307,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       },
       gcReview: () => setGcReviewModalOpen(true),
       gcNotice: (gcId) => setGcNotice({ gcId }),
-      lienDesk: (link) => setLienDesk(link),
       // The board may not hold the job yet (or at all): read it, as the desk's book rows do.
       lienWindow: ({ jobId, tab }) => {
         void fetchJobWithDetailsById(jobId).then((job) => {
           if (job) setLienInstrumentsModal({ job, invoice: null, initialTab: tab })
           else showToast('That job could not be loaded. Open it from the Pipeline board.', 'error')
         })
-      },
-      // The Dashboard's "signed for the records" line (punch list #86): the window over the desk, as its own door opens it.
-      ownerRecords: (jobId) => {
-        setLienDesk({ jobId: null, kind: 'next', pile: null })
-        setOwnerRecordsJobId(jobId)
-        setOwnerRecordsOpen(true)
       },
       round: (gcId) => {
         setGcReviewRoundGcId(gcId)

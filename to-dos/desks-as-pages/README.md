@@ -358,6 +358,16 @@ way." The rule is taken, and the plan as written.
 | 4 · the live walk's fix | on a phone the Map is one column with *Who covers what* under it, and the list's Map is an address | v2.5984 | #6316, merged 2026-10-27 |
 | 5 · a door on the phone's cards | the Pipeline's ⋯ menu lists the Legal desk under the Lien desk, a link to the page | v2.5990 | #6333, merged and live 2026-10-27 |
 
+### The Lien desk, the same way
+
+The owner's call of 2026-11-09, after two weeks with the Legal desk as a page: the Lien desk moves the same way, in PRs of its own.
+
+| PR | What | Version | State |
+|---|---|---|---|
+| 1 · the route, behind a redirect | `/lien-desk`, `lienDeskRoute.ts`, the `frame` prop, the `?liendesk=` and `?ownerrecords=` redirects, the Deadlines rows' kernel, the directory and the guide | v2.6777 | open |
+| 2 · the doors go to the page | the gavel a link, the ☰ row, the Dashboard's cards, the forecast, the Materials lines, the Legal desk's door; the mount leaves `JobsStagesTab` | | not started |
+| 3 · the window frame goes | the overlay, the toggle and the ✕ go; the phone's list, then one notice with ← on top | | not started |
+
 **The live walk, 2026-10-27.** On clicktooling.com as the dev, at 375, 768 and 1024 px, against
 `mockup.html` frame by frame. `docs/recent-features/v2.5984.md` holds it in full.
 
