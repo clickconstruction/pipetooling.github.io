@@ -27,8 +27,13 @@ Job: ${job} (HCP ${hcp})
 Thank you!`
 }
 
+/**
+ * The copy-only text (v2.6771, punch list #291): the Billed line's shape without its opening, since no person sends it
+ * from here, the link last. A caller with the job and its customer opens the Tell the customer sheet instead, whose
+ * line says who is writing (`tellCustomer.ts`, `DEFAULT_LINES.billed`).
+ */
 export function buildStripeInvoiceSmsText(p: StripeInvoiceShareCopyInput): string {
   const url = p.payUrl.trim()
   const job = (p.jobName ?? '').trim() || 'your job'
-  return `Your invoice for ${job} (${p.amountLabel}): ${url}`
+  return `Your bill for ${job} is ready, ${p.amountLabel}. Pay it here: ${url}`
 }
