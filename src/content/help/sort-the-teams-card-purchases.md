@@ -2,7 +2,7 @@
 title: sort the team's card purchases from the office
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: team purchases, follow-up, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo
+keywords: team purchases, follow-up, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo, day strip, strip, hours, swipe
 where: /tally?tab=transactions
 order: 60
 ---
@@ -57,6 +57,18 @@ Nothing is picked until you tap. A purchase can go somewhere else than the rest 
 On a day with two jobs, {{chip:blue|Split evenly}} splits each purchase between them. Under the amounts, **Split by hours instead** splits by the hours on each job.
 
 If a purchase cannot be saved, it stays picked and says why. The rest of the day is saved. {{chip:gray|Sorted}} at the top is the same 30-day list as in the window. {{chip:gray|My card}} shows only the purchases on your own card.
+
+## See the day as a strip
+
+{{button:outline|Day strip}} sits at the right of {{chip:blue|To sort}} and {{chip:gray|Sorted}}. Press it to draw each card's day as a strip of hours. The strip is off until you press the button. Your device remembers your choice.
+
+- Each clock session is a bar in its job's colour, with the job's number on it.
+- A scheduled block is a hollow bar above the sessions.
+- Each purchase is a tick at the time the card was swiped, with its amount over it. Press a tick to jump to its line.
+
+A purchase inside a session's bar gets a chip that names the job, like *in JP101's hours*. Press the chip to pick that job for that purchase. The purchase's **Pick a job** list starts with that job. A purchase in a gap says how far it fell from the clock, like *3 h after clock-out*. Nothing is picked for it.
+
+The strip changes words and an order only. The likely job, the day's chips and {{button:green|Sort the day}} work as before. Press {{button:outline|Day strip}} again to turn it off.
 
 ## Undo a sort in Job Parts Tally
 
