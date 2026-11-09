@@ -8,6 +8,8 @@ import {
 } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { isOwnerOrDev } from '../lib/doorRoles'
+import { canSeeStagesMoneyCharts } from '../lib/jobs/stagesRoleGates'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
 import { legalDeskRedirect } from '../lib/legal/legalDeskRoute'
 import { pageTabStyle } from '../lib/pageTabStyle'
@@ -1069,10 +1071,11 @@ export default function Jobs() {
       )
     }
     if (stagesMoneyRole == null) return
-    if (stagesMoneyRole !== 'dev' && stagesMoneyRole !== 'controller') {
+    // The money team (punch list #188 row 39, v2.6759: the owner too).
+    if (!canSeeStagesMoneyCharts(stagesMoneyRole)) {
       // Roles with no Pipeline board at all (primary, superintendent) are already
       // spoken to by the tab gate above — don't stack a second sentence.
-      const onTheBoard = stagesMoneyRole === 'master_technician' || isAssistantLike(stagesMoneyRole)
+      const onTheBoard = isAssistantLike(stagesMoneyRole)
       if (onTheBoard) roleGateBounce('pipeline-money', '/jobs?tab=stages&stagesMoney=1')
       strip()
       return
@@ -2185,7 +2188,7 @@ export default function Jobs() {
           setPrintCostBreakdownJobId={setPrintCostBreakdownJobId}
           canAccessBankingForParts={canAccessBankingForParts}
           showTeamLaborAndProfit={authRole === 'dev' || authRole === 'master_technician' || authRole === 'controller'}
-          canEditOverheadDials={authRole === 'dev'}
+          canEditOverheadDials={isOwnerOrDev(authRole)}
           onOpenCharges={(jobId) => setChargesWindowJobId(jobId)}
           chargesChip={chargesRateCard ? rateCardChipWords(chargesRateCard) : null}
           nicknameByDebitCard={nicknameByDebitCard}

@@ -54,7 +54,7 @@ export default function PaySpeedDataHealthModal({
   onOpenJobDetail,
   onOpenJobStacked,
   canExclude,
-  isDev = false,
+  canSetNoCountDate = false,
   onChanged,
 }: {
   onClose: () => void
@@ -69,7 +69,7 @@ export default function PaySpeedDataHealthModal({
   /** Devs + master techs can exclude/include and type missing bill dates; everyone else just reads. */
   canExclude: boolean
   /** Devs only: the ⚙ No Count Date setting (v2.2303). */
-  isDev?: boolean
+  canSetNoCountDate?: boolean
   /** Fired after an exclude/include or bill-date save lands so the medians refresh live. */
   onChanged?: () => void
 }) {
@@ -119,7 +119,7 @@ export default function PaySpeedDataHealthModal({
 
 
   async function saveNoCountDate(value: string | null) {
-    if (!isDev || savingNoCount) return
+    if (!canSetNoCountDate || savingNoCount) return
     setSavingNoCount(true)
     const { error } =
       value == null
@@ -293,7 +293,7 @@ export default function PaySpeedDataHealthModal({
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Data health — the payments behind the numbers</h2>
-          {isDev && (
+          {canSetNoCountDate && (
             <button
               type="button"
               aria-label="Data health settings"
@@ -312,7 +312,7 @@ export default function PaySpeedDataHealthModal({
             type="button"
             onClick={onClose}
             aria-label="Close data health transactions"
-            style={{ marginLeft: isDev ? 0 : 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: '1.05rem', cursor: 'pointer', lineHeight: 1, padding: '0.15rem' }}
+            style={{ marginLeft: canSetNoCountDate ? 0 : 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: '1.05rem', cursor: 'pointer', lineHeight: 1, padding: '0.15rem' }}
           >
             ✕
           </button>
@@ -322,7 +322,7 @@ export default function PaySpeedDataHealthModal({
           opening the job is where dates and bill links get fixed.
         </p>
 
-        {gearOpen && isDev && (
+        {gearOpen && canSetNoCountDate && (
           <div
             style={{
               display: 'flex',
@@ -372,7 +372,7 @@ export default function PaySpeedDataHealthModal({
         {data?.noCountDate && !gearOpen && (
           <p style={{ margin: '-0.3rem 0 0.6rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             Not counting payments received before <b style={{ color: 'var(--text-700)' }}>{data.noCountDate}</b>
-            {isDev ? ' — change it under ⚙' : ''}.
+            {canSetNoCountDate ? ' — change it under ⚙' : ''}.
           </p>
         )}
 

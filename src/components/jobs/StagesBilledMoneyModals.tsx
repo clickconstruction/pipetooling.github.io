@@ -263,8 +263,8 @@ export default function StagesBilledMoneyModals({
             setBilledPaymentForecastOpen(false)
             tryOpenEditJob(jobId, { initialTab: 'bill' })
           }}
-          canExcludePayments={stagesGates.isStagesOwnerRole(authRole)}
-          isDev={authRole === 'dev'}
+          canExcludePayments={stagesGates.canTunePaySpeeds(authRole)}
+          canSetNoCountDate={stagesGates.canSetPaySpeedNoCountDate(authRole)}
           canEmailMoneyWaiting={stagesGates.isStagesOfficeRole(authRole)}
           onOpenJobStacked={(jobId, onSaved) => {
             // v2.2311: the Job window (z 1010) stacks above the drill-down
