@@ -53,6 +53,8 @@ function fakeIo(over: Partial<ReplyIo> = {}): ReplyIo {
 
 function draw(over: Partial<StripeInvoiceSharePanelProps> & { contact?: Contact; ioOver?: Partial<ReplyIo> } = {}) {
   const { contact, ioOver, ...rest } = over
+  /** No code unless a test hands one: the link is the bill id's. */
+  const mintPayCode = over.mintPayCode ?? (async () => null)
   const io = fakeIo(ioOver)
   const load = vi.fn(async (_id: string) => contact ?? SAM)
   const onSent = vi.fn()
@@ -73,6 +75,7 @@ function draw(over: Partial<StripeInvoiceSharePanelProps> & { contact?: Contact;
       onSent={onSent}
       load={load}
       io={io}
+      mintPayCode={mintPayCode}
       {...rest}
     />,
   )
@@ -92,6 +95,19 @@ describe('StripeInvoiceSharePanel — the customer’s link is the short pay pag
     fireEvent.click(screen.getByRole('button', { name: 'Text' }))
     const door = await screen.findByTestId('contract-text-door')
     await waitFor(() => expect((within(door).getByRole('textbox') as HTMLTextAreaElement).value).toBe(`Your invoice for Oak Street ($2,200.00): ${SHORT}`))
+  })
+
+  it('the bill’s ten-letter code comes first once it answers (v2.6769): Text and Copy link carry /pay/<code>', async () => {
+    const writeText = vi.fn(() => Promise.resolve())
+    Object.assign(navigator, { clipboard: { writeText } })
+    const mintPayCode = vi.fn(async () => 'abc2def3gh')
+    draw({ invoiceId: BILL_ID, mintPayCode })
+    await waitFor(() => expect(mintPayCode).toHaveBeenCalledWith(BILL_ID))
+    fireEvent.click(screen.getByRole('button', { name: 'Text' }))
+    const door = await screen.findByTestId('contract-text-door')
+    await waitFor(() => expect((within(door).getByRole('textbox') as HTMLTextAreaElement).value).toBe('Your invoice for Oak Street ($2,200.00): https://my.clickplumbing.com/pay/abc2def3gh'))
+    fireEvent.click(within(door).getByRole('button', { name: 'Copy link' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://my.clickplumbing.com/pay/abc2def3gh'))
   })
 
   it('falls back to Stripe’s own link when the caller hands no bill id', async () => {

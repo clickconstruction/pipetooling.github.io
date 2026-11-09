@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { publicFunctionHeaders, SAMPLE_BANNER_TEXT } from '../lib/customerSampleMode'
 import { SAMPLE_TOKEN } from '../lib/customerSample'
-import { formatPayLinkCents, isPayLinkId } from '../lib/billing/payLink'
+import { formatPayLinkCents, payLinkRef } from '../lib/billing/payLink'
 import { PAY_LINK_FORWARD_MS, payLinkView, type PayLinkView } from '../lib/billing/payLinkView'
 import { lienOfferPayLinkWords } from '../lib/jobs/lienPayOffer'
 import { mailOpenCodeFrom } from '../lib/mail/windowEnvelope'
@@ -15,7 +15,9 @@ import { PortalFailureNote } from '../components/portal/PortalFailureNote'
  * knows the bill — it names it, shows what is left, and forwards to Stripe's payment page a
  * moment later, with a button in case the forward is blocked. A paid bill says so and stops,
  * so the same code found on a letter a year on never asks for money twice. Public, light,
- * the portal's paper; the `pay-link` function answers from Stripe at scan time.
+ * the portal's paper; the `pay-link` function answers from Stripe at scan time. Since v2.6769
+ * (punch list #290) the same route takes the bill's ten-letter short code, the texted link
+ * `my.clickplumbing.com/pay/<code>` forwarded here by the Worker, and asks the function by `code`.
  */
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
@@ -34,7 +36,8 @@ function longDate(ymd: string): string {
 export default function PayLink() {
   const { id = '' } = useParams<{ id: string }>()
   const sample = id === SAMPLE_TOKEN
-  const [view, setView] = useState<PayLinkView>(() => (sample ? SAMPLE_VIEW : isPayLinkId(id) ? { kind: 'loading' } : { kind: 'not_found' }))
+  const ref = payLinkRef(id)
+  const [view, setView] = useState<PayLinkView>(() => (sample ? SAMPLE_VIEW : ref ? { kind: 'loading' } : { kind: 'not_found' }))
   /** Bumped by Try again: the bill reads again. */
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -58,11 +61,11 @@ export default function PayLink() {
   }, [sample])
 
   useEffect(() => {
-    if (sample || !isPayLinkId(id)) return
+    if (sample || !ref) return
     let live = true
     ;(async () => {
       try {
-        const res = await fetch(`${supabaseUrl}/functions/v1/pay-link?id=${encodeURIComponent(id.trim().toLowerCase())}`, { headers: await publicFunctionHeaders(null) })
+        const res = await fetch(`${supabaseUrl}/functions/v1/pay-link?${ref.kind}=${encodeURIComponent(ref.value)}`, { headers: await publicFunctionHeaders(null) })
         const body: unknown = await res.json().catch(() => null)
         if (live) setView(payLinkView(res.status, body))
       } catch (e) {
@@ -72,6 +75,8 @@ export default function PayLink() {
     return () => {
       live = false
     }
+    // `ref` is derived from `id`, which is in the list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, sample, reloadKey])
 
   // The forward: `replace`, so the back button on Stripe's page returns to wherever the
