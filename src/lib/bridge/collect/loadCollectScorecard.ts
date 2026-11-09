@@ -5,21 +5,26 @@ import type { Database } from '../../../types/database'
  * since the plan, each filed under the payer its job bills (the GC when the
  * job's bills go to the GC, else the customer), so a payer that paid off and
  * left the sheet still scores; and the lien papers that moved since the plan
- * on the pile's jobs: drafted, signed, mailed, affidavits filed.
+ * on the pile's jobs: drafted, signed, mailed, affidavits filed. A payment on
+ * a ZZ test job is no payer's (v2.6813): the caller passes the ZZ ids, or
+ * null to keep them, and the payments' jobs carry their names
+ * (`../zzTestJobs.ts`). The lien papers are read over the pile's jobs, which
+ * the money owed already filters.
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { startOfYmdInAppTzMs } from '../../../utils/dateUtils'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
 import type { CollectNoticesSince, CollectPaymentSince } from './collectScorecard'
+import { bridgeZzJobIds, withoutZzBridgeJobs, withoutZzJobKeyedRows, type BridgeZzTestJobIds } from '../zzTestJobs'
 
 type PaymentRow = { job_id: string; amount: number | null; paid_on: string | null }
-type JobRow = { id: string; bill_to_party: string | null; customer_id: string | null; gc_customer_id: string | null; customer: { name: string | null } | null; gc: { name: string | null } | null }
+type JobRow = { id: string; job_name: string | null; customer_name: string | null; bill_to_party: string | null; customer_id: string | null; gc_customer_id: string | null; customer: { name: string | null } | null; gc: { name: string | null } | null }
 type DeskItemRow = { job_id: string; kind: string; drafted_at: string | null; approved_at: string | null; sent_at: string | null }
 type FilingRow = { job_id: string; kind: string; created_at: string | null }
 
 export type CollectScorecardReads = { payments: CollectPaymentSince[]; notices: CollectNoticesSince }
 
-export async function loadCollectScorecardReads(db: SupabaseClient<Database>, args: { sinceYmd: string; jobIds: ReadonlyArray<string> }): Promise<CollectScorecardReads> {
+export async function loadCollectScorecardReads(db: SupabaseClient<Database>, args: { sinceYmd: string; jobIds: ReadonlyArray<string>; zzTestJobIds: BridgeZzTestJobIds }): Promise<CollectScorecardReads> {
   const since = args.sinceYmd
   // The call's day starts at midnight Central, not midnight UTC (7 PM Central the evening before): a paper filed or signed
   // that evening is not since the call.
@@ -27,7 +32,7 @@ export async function loadCollectScorecardReads(db: SupabaseClient<Database>, ar
   const sinceMs = Number.isFinite(startMs) ? startMs : Date.parse(`${since}T00:00:00Z`)
   const sinceIso = new Date(sinceMs).toISOString()
   const jobIds = [...new Set(args.jobIds)]
-  const [payRows, deskItems, filings] = await Promise.all([
+  const [payRead, deskItems, filings] = await Promise.all([
     fetchAllRows(
       async (from, to) => ({
         data: (await withSupabaseRetry(async () => db.from('jobs_ledger_payments').select('job_id, amount, paid_on').gte('paid_on', since).order('id').range(from, to), 'collect scorecard payments')) as PaymentRow[] | null,
@@ -56,17 +61,22 @@ export async function loadCollectScorecardReads(db: SupabaseClient<Database>, ar
         )
       : Promise.resolve([] as FilingRow[]),
   ])
-  const payJobIds = [...new Set(payRows.map((p) => p.job_id))]
-  const jobs = payJobIds.length
+  const paySeen = withoutZzJobKeyedRows(payRead, (p) => p.job_id, args.zzTestJobIds)
+  const payJobIds = [...new Set(paySeen.map((p) => p.job_id))]
+  const jobRead = payJobIds.length
     ? await fetchAllRowsChunkedIn<JobRow, string>(
         payJobIds,
         async (chunk, from, to) => ({
-          data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select('id, bill_to_party, customer_id, gc_customer_id, customer:customers!jobs_ledger_customer_id_fkey(name), gc:customers!jobs_ledger_gc_customer_id_fkey(name)').in('id', chunk).order('id').range(from, to), 'collect scorecard payment jobs')) as unknown as JobRow[] | null,
+          data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select('id, job_name, customer_name, bill_to_party, customer_id, gc_customer_id, customer:customers!jobs_ledger_customer_id_fkey(name), gc:customers!jobs_ledger_gc_customer_id_fkey(name)').in('id', chunk).order('id').range(from, to), 'collect scorecard payment jobs')) as unknown as JobRow[] | null,
           error: null,
         }),
         'collect scorecard payment jobs',
       )
     : []
+  // The payments' jobs carry their names: a ZZ job the ids missed leaves here, and its payments with it.
+  const zz = bridgeZzJobIds(jobRead, args.zzTestJobIds)
+  const jobs = withoutZzBridgeJobs(jobRead, zz)
+  const payRows = withoutZzJobKeyedRows(paySeen, (p) => p.job_id, zz)
   const jobById = new Map(jobs.map((j) => [j.id, j]))
   const payments: CollectPaymentSince[] = []
   for (const p of payRows) {
