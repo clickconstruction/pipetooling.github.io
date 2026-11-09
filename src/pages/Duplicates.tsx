@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { isEstimatorOrDev } from '../lib/doorRoles'
 import { useAuth } from '../hooks/useAuth'
 import { Database } from '../types/database'
 import { loadWholePartPricesCatalog, loadWholePartsCatalog } from '../lib/materials/partsCatalog'
@@ -61,7 +62,8 @@ export default function Duplicates() {
   }, [user?.id])
 
   useEffect(() => {
-    if (myRole !== 'dev') {
+    // Punch list #188 row 75 (v2.6766): merging duplicate parts is catalog work, so an estimator opens the page with a dev.
+    if (!isEstimatorOrDev(myRole)) {
       setLoading(false)
       return
     }
@@ -136,16 +138,16 @@ export default function Duplicates() {
   }
 
   useEffect(() => {
-    if (myRole && myRole !== 'dev') {
+    if (myRole && !isEstimatorOrDev(myRole)) {
       navigate('/settings', { replace: true })
     }
   }, [myRole, navigate])
 
-  if (myRole !== 'dev' && myRole !== null) {
+  if (!isEstimatorOrDev(myRole) && myRole !== null) {
     return null
   }
 
-  if (myRole !== 'dev') {
+  if (!isEstimatorOrDev(myRole)) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 

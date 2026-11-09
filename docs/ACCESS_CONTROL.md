@@ -1689,7 +1689,7 @@ Unchanged: superintendents (assigned projects only, v2.2836), primaries (`master
 
 The rules that decide which card charges count as payroll (`mercury_tally_payroll_rules`, the **Payroll rules** window on Tally → Transactions and **Create a rule** from a transaction) are the controller's with a dev since v2.6761 (`canEditPayrollRules` in `JobTally.tsx`; `dev_all_payroll_rules` and `bulk_apply_tally_payroll_rule_flags` admit `is_controller()`, `20261109005000_dev_gates_banking_tally_forms.sql`). Marking a transaction payroll stays payroll access (`canMarkTallyPayroll`, v2.3837).
 
-## Typed confirms (v2.6765, punch list #188 rows 72, 73, 78, 79)
+## Typed confirms (v2.6765–v2.6766, punch list #188 rows 72–79)
 
 A door the owner opened wider keeps a pause: the window names a word and the press waits until it is typed (`typedWordMatches` in `src/lib/typedConfirm.ts`; `useTypedConfirm` over the shared prompt window; a wrong word toasts *That was not …, so nothing changed.*). Each act stays reversible or audited (Recently deleted, `deleted_records_archive`).
 
@@ -1699,6 +1699,10 @@ A door the owner opened wider keeps a pause: the window names a word and the pre
 | Jobs → Reports → **delete a report** (row 73) | dev · master_technician | DELETE | `reports` delete for `is_master_or_dev()` (`20261109007000_dev_gates_typed_confirm_deletes.sql`) |
 | People → Payroll → **delete a pay report** (row 78) | dev · controller | the period's last day, month/day | `pay_stubs` delete for `is_controller()` |
 | People → Write-ups → **delete a submitted write-up** (row 79) | dev · master_technician | DELETE | `writeups` delete of a submitted row for `is_master_or_dev()` |
+| Settings → Data & recovery → **Draft bills on paid jobs**, Retire (row 74, v2.6766) | dev · controller | the job's number (a Retire is one bill) | `delete_ready_to_bill_invoice` admitted the controller already |
+| **Duplicate materials** (`/duplicates`, row 75, v2.6766; the estimator's route list gains the path) | dev · estimator | the part's name, as the page already asked | `material_parts` delete admitted the estimator already |
+| Settings → Bids & materials → **Delete** and **Remove all unused** part and assembly types (row 76, v2.6766) | dev · estimator | the type's name, or the count for Remove all unused | `part_types` and `assembly_types` delete admitted the estimator already |
+| Settings → Data & recovery → **Link jobs to their bids** (row 77, v2.6766) | dev · master_technician | the match count, for Link all | `snapshot_job_budget_from_bid` (`can_write_job_budget`) admitted the owner already |
 
 ## Pipeline money doors (v2.6759, punch list #188 rows 39, 40, 44, 45)
 

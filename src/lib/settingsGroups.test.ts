@@ -156,9 +156,10 @@ describe('getZonedSettingsGroups', () => {
     }
   })
 
-  it('Data & recovery opens to the controller for HCP reconcile, and to nobody else but a dev (punch list #188 row 25)', () => {
+  it('Data & recovery opens to the controller and the owner for their sweeps, and to nobody else but a dev (punch list #188 rows 25, 74, 77)', () => {
     expect(getZonedSettingsGroups('controller').map((g) => g.id)).toContain('settings-data')
-    for (const role of ['master_technician', 'assistant', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const) {
+    expect(getZonedSettingsGroups('master_technician').map((g) => g.id)).toContain('settings-data')
+    for (const role of ['assistant', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const) {
       expect(getZonedSettingsGroups(role).map((g) => g.id), role).not.toContain('settings-data')
     }
   })

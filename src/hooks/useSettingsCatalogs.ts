@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { loadWholePartPricesCatalog } from '../lib/materials/partsCatalog'
 import { DEFAULT_ORDER_INCREMENT_UNIT, parseOrderIncrementUnit, parseTypedOrderIncrement, type OrderIncrementUnitKey } from '../lib/materials/orderIncrement'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { useTypedConfirm } from './useTypedConfirm'
+import { countWord } from '../lib/typedConfirm'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import {
   classifyOrphanMaterialPrices,
@@ -32,6 +34,7 @@ import { formatErrorMessage } from '../utils/errorHandling'
  */
 export function useSettingsCatalogs({ setError }: { setError: (message: string | null) => void }) {
   const confirmDialog = useConfirmDialog()
+  const typedConfirm = useTypedConfirm()
   const { reload: reloadLedgerPrefixMap } = useLedgerDisplayPrefixes()
 
   // Service Types state
@@ -857,13 +860,7 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
   }
 
   async function deletePartType(partType: PartType) {
-    if (
-      !(await confirmDialog({
-        message: `Are you sure you want to delete "${partType.name}"? This will fail if any parts are assigned to this material part type.`,
-        confirmLabel: 'Delete',
-        danger: true,
-      }))
-    ) {
+    if (!(await typedConfirm({ title: `Delete the material part type "${partType.name}"?`, act: 'delete this material part type', word: partType.name, confirmLabel: 'Delete the material part type' }))) {
       return
     }
     
@@ -894,11 +891,7 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
     
     // Confirm with user
     const partTypeNames = unusedPartTypes.map(pt => pt.name).join(', ')
-    const confirmed = await confirmDialog({
-      message: `This will delete ${unusedPartTypes.length} unused material part type(s):\n\n${partTypeNames}\n\nAre you sure?`,
-      confirmLabel: 'Delete',
-      danger: true,
-    })
+    const confirmed = await typedConfirm({ title: `Delete ${unusedPartTypes.length} unused material part types: ${partTypeNames}?`, act: `delete these unused material part types`, word: countWord(unusedPartTypes.length), confirmLabel: `Delete ${unusedPartTypes.length} material part types` })
     
     if (!confirmed) return
     
@@ -1081,13 +1074,7 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
   }
 
   async function deleteAssemblyType(assemblyType: AssemblyType) {
-    if (
-      !(await confirmDialog({
-        message: `Are you sure you want to delete "${assemblyType.name}"? This will remove the type from any assemblies using it.`,
-        confirmLabel: 'Delete',
-        danger: true,
-      }))
-    ) {
+    if (!(await typedConfirm({ title: `Delete the assembly type "${assemblyType.name}"?`, act: 'delete this assembly type', word: assemblyType.name, confirmLabel: 'Delete the assembly type' }))) {
       return
     }
     
@@ -1118,11 +1105,7 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
     
     // Confirm with user
     const assemblyTypeNames = unusedAssemblyTypes.map(at => at.name).join(', ')
-    const confirmed = await confirmDialog({
-      message: `This will delete ${unusedAssemblyTypes.length} unused assembly type(s):\n\n${assemblyTypeNames}\n\nAre you sure?`,
-      confirmLabel: 'Delete',
-      danger: true,
-    })
+    const confirmed = await typedConfirm({ title: `Delete ${unusedAssemblyTypes.length} unused assembly types: ${assemblyTypeNames}?`, act: `delete these unused assembly types`, word: countWord(unusedAssemblyTypes.length), confirmLabel: `Delete ${unusedAssemblyTypes.length} assembly types` })
     
     if (!confirmed) return
     

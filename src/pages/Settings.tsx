@@ -1161,7 +1161,8 @@ export default function Settings() {
   const visibleServiceTypesForMaterials = myRole === 'estimator' && estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0
     ? pickableServiceTypes(serviceTypes).filter((st) => estimatorServiceTypeIds.includes(st.id))
     : pickableServiceTypes(serviceTypes)
-  const canDeleteMaterialTypes = myRole === 'dev'
+  // Punch list #188 row 76 (v2.6766): the same catalog, the same pause — an estimator deletes behind a typed name or count.
+  const canDeleteMaterialTypes = isEstimatorOrDev(myRole)
 
 
   return (
@@ -1658,8 +1659,10 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>
-      {myRole === 'dev' && (
+      {/* Punch list #188 rows 74 and 77 (v2.6766): the controller's and the owner's sweeps; each block in the tab gates itself. */}
+      {(isControllerOrDev(myRole) || isOwnerOrDev(myRole)) && (
         <SettingsDataTab
+          myRole={myRole}
           dataBackupSectionOpen={dataBackupSectionOpen}
           setDataBackupSectionOpen={setDataBackupSectionOpen}
           exportError={exportError}

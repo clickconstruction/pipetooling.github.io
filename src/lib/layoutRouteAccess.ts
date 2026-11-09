@@ -76,6 +76,8 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
     '/my-logbook',
     '/map',
     '/materials',
+    // Duplicate materials (punch list #188 row 75, v2.6766): the catalog's own clean-up, behind the typed part name.
+    '/duplicates',
     '/estimates',
     '/documents',
     '/bids',
