@@ -12,6 +12,7 @@ import { isOwnerOrDev } from '../lib/doorRoles'
 import { canSeeStagesMoneyCharts } from '../lib/jobs/stagesRoleGates'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
 import { legalDeskRedirect } from '../lib/legal/legalDeskRoute'
+import { lienDeskRedirect } from '../lib/lien/lienDeskRoute'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useAuth } from '../hooks/useAuth'
@@ -1161,6 +1162,16 @@ export default function Jobs() {
     if (!legalRedirect) return
     navigate(legalRedirect, { replace: true })
   }, [legalRedirect, navigate])
+
+  // `?liendesk=1` (+ `&kind=`, `&liendeskJob=`, `&liendeskPile=`) and `?ownerrecords=<job id>` (the Lien desk, v2.3405; Records
+  // for an owner, punch list #86): until punch list #182 these opened the ⏱ Lien desk as a window over the board. The desk
+  // is a page now, `/lien-desk`, and every one of these links lands there (`lienDeskRedirect`), with `replace` so Back
+  // never returns to the redirect. The page gates the roles itself.
+  const lienRedirect = lienDeskRedirect(searchParams)
+  useEffect(() => {
+    if (!lienRedirect) return
+    navigate(lienRedirect, { replace: true })
+  }, [lienRedirect, navigate])
 
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
   const editLaborHcp = searchParams.get('editLabor')

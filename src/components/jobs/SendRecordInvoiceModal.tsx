@@ -59,6 +59,7 @@ import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedS
 import { StripeInvoiceLinesSummary } from './StripeInvoiceLinesSummary'
 import { StripeInvoicePreviewMeta } from './StripeInvoicePreviewMeta'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
+import { BILL_TEXT_OFFER_WORDS } from '../../lib/jobs/billTextOffer'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import { PhysicalInvoicePreview } from './PhysicalInvoicePreview'
 import BillCustomerPreviewLineEditModal, {
@@ -3297,6 +3298,7 @@ export default function SendRecordInvoiceModal({
                   onAfterVoidStripeInvoiceSuccess={handleAfterVoidStripeInvoiceSuccess}
                   viewBillOnClose={onClose}
                   voidConfirmOverlayZIndex={overlayZIndex + 1}
+                  justMade
                 />
               </>
             ) : stripeResult ? (
@@ -3319,6 +3321,7 @@ export default function SendRecordInvoiceModal({
                   amountLabel={`$${Number(billAmountStr).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   jobId={job.id}
                   customerId={job.customer_id}
+                  textOffer={{ lead: BILL_TEXT_OFFER_WORDS.leadMade, key: 'made' }}
                 />
                 {stripeFallbackLedgerInvoiceId ? (
                   <StripeInvoiceSendFromStripeButton
