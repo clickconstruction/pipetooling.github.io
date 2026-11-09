@@ -6,15 +6,7 @@ Status: written 2026-11-09 00:30 UTC (the evening of 2026-11-08 in Austin) by th
 
 ## 1. Owed now, in order
 
-1. **Five edge functions wait on #285's migration.** Thirteen were behind main at 00:20 UTC. Six were deployed by their own sessions, and the coordinating session deployed five more from `origin/main` at 00:47 UTC (`customer-portal`, `gc-trade-portal`, `messages-nudge-dispatch`, `photo-save`, `quo-send`), each answering an OPTIONS probe with 200. Left, held back on purpose: #285 PR 1 (#7343, v2.6714) merged at about 00:40 with `20261108200000_file_index_reach`, which was not in prod's ledger at 00:45 (main 1,179 files, prod 1,178), and these five carry its code:
-
-   | Function | Behind for |
-   |---|---|
-   | `dev-mcp` | v2.6713 (#287), v2.6714 (#285), v2.6715 (#289), v2.6731 |
-   | `drive-link` | the shared kernel copy, and v2.6714 |
-   | `file-index-sweep`, `hr-evidence-drive`, `plan-set-files` | v2.6714 |
-
-   Push the migration first, then deploy the five, then read `npm run check:edge-drift` clean. #285's session was asked to do both. After `dev-mcp` is up, #287's and #289's live checks on a ZZ TEST person can run (their cards say how).
+1. **Done: every edge function is current** (`npm run check:edge-drift` at 01:05 UTC: all 182 deployed and current; every migration on main in prod's ledger, 1,180 of 1,180). Thirteen were behind at 00:20. Their own sessions deployed the Gmail six (`gmail-sync`, `gmail-mine`, `gmail-count`, `messages-email`, `quo-webhook`, `walk`), and #285's session pushed `20261108200000_file_index_reach` and deployed `drive-link`, `file-index-sweep`, `hr-evidence-drive` and `plan-set-files` before the usage limit stopped it. The coordinating session deployed the rest from `origin/main`: `customer-portal`, `gc-trade-portal`, `messages-nudge-dispatch`, `photo-save` and `quo-send` at 00:47, then `customer-portal`, `gc-trade-portal` (for #205 PR 3, v2.6744) and `dev-mcp` (v2.6713, v2.6714, v2.6715, v2.6735) at 01:00. Each answers an OPTIONS probe with 200. With `dev-mcp` up, #287's and #289's live checks on a ZZ TEST person can run (their cards say how). Each PR still open deploys its own functions after it merges (item 2).
 
 2. **Migrations to push right after their PRs merge**, from a clean checkout of main, each with its Applied line:
 
@@ -24,7 +16,7 @@ Status: written 2026-11-09 00:30 UTC (the evening of 2026-11-08 in Austin) by th
    | #7375 | #205 PR 4 | `20261108220804_gc_trade_files_note`, then `gc-trade-portal` and `submit-gc-trade-portal` |
    | #7376 | #207 the press | `20261108224500_answered_from_own_mailbox` |
    | #7384, #7377 | #263 B and C | `20261108223000_my_email_sent_side`, then `gmail-mine` |
-   | #7343 (merged), #7344 | #285 PRs 1 and 2 | `20261108200000_file_index_reach` (owed now, item 1), then `20261108220000_case_search_files` with PR 2, each followed by `dev-mcp`, `file-index-sweep`, `hr-evidence-drive` |
+   | #7344 | #285 PR 2 | `20261108220000_case_search_files`, then `dev-mcp`, `file-index-sweep`, `hr-evidence-drive` (PR 1's push and deploys are done) |
    | #7346, #7347, #7348 | #288 PRs 1 to 3 | `20261108210000_shared_documents`, `…230000_matter_document_counsel_only`, `…233000_matter_document_read_by_section`, then `dev-mcp`, `legal-portal` |
    | #7386 to #7400 | #188 PRs 2 to 10 | `20261109001000` to `20261109006000`, the `dev_gates_*` set, then `paid-job-email`, `import-manual-transactions`, `manage-manual-account` |
 
@@ -61,7 +53,7 @@ Started from this coordinating session; reach each with `SendMessage` to its id.
 | #188 dev gates | `local_9f38557d-b4b5-47ac-aebd-eb57edecc78e` | working, PRs 2 to 10 open |
 | #207 mailbox | `local_0e9e1681-9af5-4f2c-80f1-02b7451514aa` | told to deploy `gmail-sync` and see #7376 through |
 | #263 My email doors | `local_11d5fdb3-4d12-430a-8d9d-cb4dabfe2724` | B and C in the queue; push and deploy after |
-| #285 file text | `local_6822bdc5-8c08-4a70-aaf2-5d331219ae36` | stack of three; the beds caught and fixed a vector-parameter defect |
+| #285 file text | `local_6822bdc5-8c08-4a70-aaf2-5d331219ae36` | PR 1 merged, pushed and deployed; stopped on the Fable usage limit with PRs 2 and 3 as drafts; switch it to Opus 5.5 to resume |
 | #288 matter documents | `local_6c403fd2-0c9d-43bf-a57b-765cfa2dcd19` | waiting to ready PR 1 now #287 is in |
 | #209 materials | `local_023fb113-2dab-484e-94b9-9ab5faa7d4c8` | arms PR 4 when PR 3 lands, then the push |
 | #205 trade portal | `local_8a98019e-e014-4db7-afd8-2ea0eaf94571` | PR 3 armed; deploys owed after each merge |
