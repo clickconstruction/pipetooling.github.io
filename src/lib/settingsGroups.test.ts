@@ -134,6 +134,13 @@ describe('getZonedSettingsGroups', () => {
     }
   })
 
+  it('Data & recovery opens to the controller for HCP reconcile, and to nobody else but a dev (punch list #188 row 25)', () => {
+    expect(getZonedSettingsGroups('controller').map((g) => g.id)).toContain('settings-data')
+    for (const role of ['master_technician', 'assistant', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id), role).not.toContain('settings-data')
+    }
+  })
+
   it('master keeps People & teams and Company; deep-linked ids all survive the reorg', () => {
     const ids = getZonedSettingsGroups('master_technician').map((g) => g.id)
     expect(ids).toContain('settings-people')

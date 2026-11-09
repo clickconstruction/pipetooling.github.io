@@ -414,7 +414,8 @@ export default function Settings() {
     saveJobOwnerOverrides,
     confirmReassignJobs,
     saveDefaultLaborRate,
-  } = useSettingsJobsAdmin({ enabled: myRole === 'dev', users, setError })
+  // Punch list #188 row 20 (v2.6756): the default labor rate is the owner's; the company owner account inside the hook stays a dev's by the kernel, and its dev-only count read is caught.
+  } = useSettingsJobsAdmin({ enabled: isOwnerOrDev(myRole), users, setError })
 
   // Prospects/estimate copy engine — extracted to useSettingsProspectsCatalog (v2.856).
   // Parent-instantiated because SettingsCatalogsProspectsTab is conditional-mount
@@ -1071,26 +1072,24 @@ export default function Settings() {
   const issuerFocus = settingsFocus?.startsWith('issuer.') ? settingsFocus.slice('issuer.'.length) : null
   // PR 3 (v2.6638): each Billing and money card's live value on its folded row, read again when a card folds.
   const jobsBillingValues = useJobsBillingValueLines(myRole)
+  // Punch list #188 (v2.6756): every card is built here and the kernel mounts each for its row's audience, so a card
+  // a role is not shown never renders (jobsBillingCardVisible); before, this block was built for a dev alone.
   const jobsBillingCards: JobsBillingCardElements = {
-    ...(myRole === 'dev'
-      ? {
-          ...jobsDevCards.cards,
-          rates: <RatesChargedByCrewSettingsBlock />,
-          markup: <MaterialsMarkupSettingsBlock />,
-          'trip-charges': <TripChargeAmountsSettingsBlock />,
-          developments: <DevelopmentsSettingsBlock />,
-          'city-lines': <JobAddressCityListSettingsBlock />,
-          'county-suggestions': <TxCountyMapSettingsBlock />,
-          'invoice-issuer': <PhysicalInvoiceIssuerDevSettingsBlock focusField={issuerFocus} />,
-          'invoice-footer': <PhysicalInvoiceFooterDevSettingsBlock />,
-          'stripe-footer': <StripeInvoiceFooterDevSettingsBlock />,
-          'bill-memo': <BillCustomerMemoDevSettingsBlock />,
-          'legal-firm': <LegalFirmSettingsBlock />,
-          uncollectible: <UncollectibleListSettingsBlock />,
-          docsmit: <DocsmitDevSettingsBlock />,
-          'hide-hcp': <HideHcpFieldSettingsBlock />,
-        }
-      : {}),
+    ...jobsDevCards.cards,
+    rates: <RatesChargedByCrewSettingsBlock />,
+    markup: <MaterialsMarkupSettingsBlock />,
+    'trip-charges': <TripChargeAmountsSettingsBlock />,
+    developments: <DevelopmentsSettingsBlock />,
+    'city-lines': <JobAddressCityListSettingsBlock />,
+    'county-suggestions': <TxCountyMapSettingsBlock />,
+    'invoice-issuer': <PhysicalInvoiceIssuerDevSettingsBlock focusField={issuerFocus} />,
+    'invoice-footer': <PhysicalInvoiceFooterDevSettingsBlock />,
+    'stripe-footer': <StripeInvoiceFooterDevSettingsBlock />,
+    'bill-memo': <BillCustomerMemoDevSettingsBlock />,
+    'legal-firm': <LegalFirmSettingsBlock />,
+    uncollectible: <UncollectibleListSettingsBlock />,
+    docsmit: <DocsmitDevSettingsBlock />,
+    'hide-hcp': <HideHcpFieldSettingsBlock />,
     'job-book': <JobBookSettingsSection onDbError={(msg) => setError(msg)} />,
     photos: <ReportPhotoSizeSettingsBlock canSet={myRole === 'dev' || myRole === 'master_technician'} />,
     'test-reports': <TestReportSettingsBlock />,
@@ -1685,8 +1684,9 @@ export default function Settings() {
           exportAllLoading={exportAllLoading}
         />
       )}
-      {/* Punch list #261 PR 2: HCP reconcile under Data & recovery, off Jobs, bills and liens; its old anchor still lands here. */}
-      {myRole === 'dev' && (
+      {/* Punch list #261 PR 2: HCP reconcile under Data & recovery, off Jobs, bills and liens; its old anchor still lands here.
+          Punch list #188 row 25 (v2.6756): reconciling HCP against the books is the controller's, with a dev. */}
+      {isControllerOrDev(myRole) && (
         <SettingsFoldCard card={MOVED_SETTINGS_CARDS['hcp-reconcile']} track="settings-data">
           <SettingsHcpReconcileSection />
         </SettingsFoldCard>

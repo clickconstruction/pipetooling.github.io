@@ -11,6 +11,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
+import type { ServerSummary } from './onSiteServerSummary'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { UNSORTED_LABEL, type Container, type ContainerKind, type ContainerMove, type Movement, type MovementReason, type Place } from './onSite'
@@ -32,6 +33,9 @@ type JobCache = {
   moves: ContainerMove[]
   movements: Movement[]
   photos: PhotoNote[]
+  /** The ledger read came back full (v2.6743): `movements` holds the newest `MOVEMENTS_LIMIT` rows and `summary` the database's sums over them all. */
+  capped: boolean
+  summary: ServerSummary | null
   loadedAt: number | null
   loading: boolean
   error: string | null
@@ -59,7 +63,7 @@ function bump(): void {
 function cacheOf(jobId: string): JobCache {
   let c = jobs.get(jobId)
   if (!c) {
-    c = { places: [], containers: [], moves: [], movements: [], photos: [], loadedAt: null, loading: false, error: null, raw: null }
+    c = { places: [], containers: [], moves: [], movements: [], photos: [], capped: false, summary: null, loadedAt: null, loading: false, error: null, raw: null }
     jobs.set(jobId, c)
   }
   return c
@@ -128,7 +132,8 @@ export function loadJob(jobId: string, opts: { force?: boolean } = {}): Promise<
       const [places, containers, movements, photos] = await Promise.all([
         db.from('job_places').select(PLACE_COLS).eq('job_id', jobId).order('name'),
         db.from('job_containers').select(CONTAINER_COLS).eq('job_id', jobId).order('created_at'),
-        db.from('job_material_movements').select(MOVEMENT_COLS).eq('job_id', jobId).order('at', { ascending: true }).limit(MOVEMENTS_LIMIT),
+        // Newest first (v2.6743): a job past the cap keeps its newest rows — the counts that reset its lines — not its oldest.
+        db.from('job_material_movements').select(MOVEMENT_COLS).eq('job_id', jobId).order('at', { ascending: false }).order('id', { ascending: false }).limit(MOVEMENTS_LIMIT),
         db.from('job_box_photos').select(PHOTO_COLS).eq('job_id', jobId).order('taken_at', { ascending: true }),
       ])
       for (const r of [places, containers, movements, photos]) if (r.error) throw r.error
@@ -138,7 +143,11 @@ export function loadJob(jobId: string, opts: { force?: boolean } = {}): Promise<
       if (moves.error) throw moves.error
       c.places = ((places.data ?? []) as PlaceRow[]).map(placeOf)
       c.containers = containerRows.map(containerOf)
-      c.movements = ((movements.data ?? []) as MovementRow[]).map(movementOf)
+      const movementRows = ((movements.data ?? []) as MovementRow[]).map(movementOf).reverse()
+      c.movements = movementRows
+      c.capped = movementRows.length >= MOVEMENTS_LIMIT
+      // Past the cap the device's sums would read a part of the ledger, so the database sums it whole (on_site_job_summary, v2.6743).
+      c.summary = c.capped ? await loadServerSummary(jobId) : null
       c.photos = ((photos.data ?? []) as PhotoRow[]).map(photoOf)
       c.moves = ((moves.data ?? []) as MoveRow[]).map((r) => moveOf(r, jobId))
       c.loadedAt = Date.now()
@@ -154,6 +163,13 @@ export function loadJob(jobId: string, opts: { force?: boolean } = {}): Promise<
   })()
   inflight.set(jobId, p)
   return p
+}
+
+/** The database's summary of a capped job (v2.6743). A refused or failed read throws, so the job's load reports it like any other. */
+async function loadServerSummary(jobId: string): Promise<ServerSummary> {
+  const { data, error } = await db.rpc('on_site_job_summary' as never, { p_job_id: jobId } as never)
+  if (error) throw error
+  return data as unknown as ServerSummary
 }
 
 /** Every job with a live container, each loaded: the desk across jobs, the tools menu's count, the header's box search. */
@@ -199,6 +215,16 @@ export function listContainers(jobId: string): Container[] {
 
 export function listMovements(jobId: string): Movement[] {
   return cacheOf(jobId).movements
+}
+
+/** Whether the job's ledger read came back full, so `listMovements` is the newest 5,000 rows and the sums are the database's (v2.6743). */
+export function jobLedgerCapped(jobId: string): boolean {
+  return jobs.get(jobId)?.capped ?? false
+}
+
+/** The database's summary of a capped job, or null when the device read the whole ledger (v2.6743). */
+export function serverSummary(jobId: string): ServerSummary | null {
+  return jobs.get(jobId)?.summary ?? null
 }
 
 export function listContainerMoves(jobId: string): ContainerMove[] {

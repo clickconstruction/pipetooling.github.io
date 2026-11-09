@@ -28,6 +28,7 @@ import {
 } from '../../lib/legal/firmCounties'
 import type { LegalFirmRow } from '../../lib/legal/legalMatters'
 import { saveCountyChanges } from '../../lib/legal/firmCountiesSave'
+import { isOwnerOrDev } from '../../lib/doorRoles'
 import { useLegalFirmMapCases } from '../../hooks/useLegalFirmMapCases'
 import type { LegalMapCase } from '../../lib/legal/firmMap'
 import LegalFirmCard from './LegalFirmCard'
@@ -98,7 +99,7 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
   const hues = useMemo(() => firmHues(activeFirms), [activeFirms])
   const firmNames = useMemo(() => new Map(firms.map((f) => [f.id, f.name] as const)), [firms])
   const legend = useMemo(() => firmLegend(activeFirms, draftFirst), [activeFirms, draftFirst])
-  const { cases } = useLegalFirmMapCases(role === 'dev' && !inWindow && loaded && available, firmNames)
+  const { cases } = useLegalFirmMapCases(isOwnerOrDev(role) && !inWindow && loaded && available, firmNames)
 
   const load = useCallback(async () => {
     const q = db.from('legal_firms').select(FIRM_COLUMNS).eq('active', true).order('created_at')
@@ -120,12 +121,12 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
   }, [inWindow, firmId])
 
   useEffect(() => {
-    if (role !== 'dev') return
+    if (!isOwnerOrDev(role)) return
     void load()
   }, [role, load])
 
   useEffect(() => {
-    if (role !== 'dev') return
+    if (!isOwnerOrDev(role)) return
     void (async () => {
       const { data } = await db.from('app_settings').select('value_text').eq('key', PARTICULARS_KEY).maybeSingle()
       try {
@@ -143,7 +144,8 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
     })()
   }, [role, pDraft, showToast])
 
-  if (role !== 'dev') return null
+  // Punch list #188 row 26 (v2.6756): he engages the firms and colors the counties, so the owner holds the card with a dev.
+  if (!isOwnerOrDev(role)) return null
 
   const firmSaved = (row: LegalFirmRow) => {
     setFirms((list) => (list.some((f) => f.id === row.id) ? list.map((f) => (f.id === row.id ? { ...f, ...row } : f)) : [...list, row]))
