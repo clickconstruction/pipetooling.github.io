@@ -204,7 +204,7 @@ describe('the event verbs (v2.6682, punch list #169)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
     expect(SERVER).toContain('plan_matter_event → apply_matter_event')
     expect(SERVER).toContain('fifty-one verbs')
   })
@@ -322,7 +322,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -386,7 +386,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
   })
 })
 
@@ -486,7 +486,7 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
     expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
     expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
   })
 })
 
@@ -535,7 +535,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
     expect(SERVER).toContain('Writes are fifty-one verbs and nothing else')
   })
 })
@@ -759,7 +759,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
     expect(SERVER).toContain('Writes are fifty-one verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
@@ -1072,7 +1072,7 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
     expect(SERVER).toContain('fifty-one verbs')
   })
@@ -1156,7 +1156,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.40.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.43.0'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')
@@ -1255,6 +1255,21 @@ describe("the person document verbs (v2.6608)", () => {
     expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary', ops: [] } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'summary', ops: Array.from({ length: 21 }, () => ({ op: 'append', markdown: 'x' })) } })).toMatchObject({ ok: false })
+  })
+
+  it('v2.6713: evidence_id ties a named document to the record it transcribes — alone with doc_id, null to untie, never on the fixed two', () => {
+    const docId = '22222222-3333-4444-8555-666666666666'
+    const recordId = '33333333-4444-4555-8666-777777777777'
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: docId, evidence_id: recordId } })).toMatchObject({
+      ok: true, target: docId, body: { p: { person_id: PERSON, doc_id: docId, evidence_id: recordId }, p_dry_run: true },
+    })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: docId, evidence_id: null } })).toMatchObject({ ok: true, body: { p: { person_id: PERSON, doc_id: docId, evidence_id: null } } })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, title: 'Transcript of the call', markdown: '## The call', evidence_id: recordId, counsel_only: true } })).toMatchObject({
+      ok: true, body: { p: { person_id: PERSON, title: 'Transcript of the call', markdown: '## The call', counsel_only: true, evidence_id: recordId } },
+    })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, kind: 'narrative', markdown: 'x', evidence_id: recordId } })).toMatchObject({ ok: false, error: expect.stringContaining('evidence_id') })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, doc_id: docId, evidence_id: 'not-a-uuid' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_person_doc', { doc: { person_id: PERSON, title: 'New', evidence_id: recordId } })).toMatchObject({ ok: false })
   })
 
   it('the plan reply points at apply_person_doc, and a repeat apply says the document already reads that way', () => {

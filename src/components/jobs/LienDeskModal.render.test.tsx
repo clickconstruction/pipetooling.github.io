@@ -13,6 +13,7 @@ import type { CourtesyRecord } from '../../lib/jobs/lienCourtesyNotice'
 import { ownerCallByJobFrom } from '../../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { lienFieldsHash } from '../../lib/jobs/lienNoticeSignature'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDeskModal from './LienDeskModal'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
@@ -2104,6 +2105,57 @@ describe('LienDeskModal · the master signs on someone else’s screen with his 
     // The spoken word is still a door.
     expect(screen.getByRole('button', { name: /Leader here, Approve/ })).toBeTruthy()
     codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+  })
+
+  it('the office’s Ready footer carries his line and its own Sign ▸ (v2.6733): the code goes to the RPC as the master with no approval, and He signed the paper stays', async () => {
+    codeState.signs = []
+    codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+    // Approved on his word (unsigned), the job's master Malachi, the office signed in.
+    const approved = {
+      id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-taunya', approved_at: '2026-09-14T15:00:00Z', approval_mode: 'word', word_note: 'Malachi said send it', word_channel: 'phone', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T15:00:00Z', voided_at: null,
+    } as LienDeskItemRow
+    const d = data(J650, [approved], true)
+    d.jobsById.j650 = { ...d.jobsById.j650!, master_user_id: 'u-malachi' } as NonNullable<typeof d.jobsById.j650>
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" authName="Wendi" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Wendi')} data={d} initialPile="ready" />)
+    await settle()
+    const foot = document.querySelector('[data-lien-desk-foot="ready"]') as HTMLElement
+    expect(foot).toBeTruthy()
+    await waitFor(() => expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('code'))
+    expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi Whites')
+    expect(foot.querySelector('[data-lien-desk-sign]')).toBeNull()
+    expect(foot.querySelector('[data-lien-desk-pen]')).toBeTruthy()
+    const press = foot.querySelector('[data-lien-desk-office-sign-press]') as HTMLButtonElement
+    expect(press.textContent).toBe('Sign ▸')
+    fireEvent.change(screen.getByLabelText('Malachi’s signing code'), { target: { value: '1357' } })
+    fireEvent.click(press)
+    await waitFor(() => expect(codeState.signs).toHaveLength(1))
+    expect(codeState.signs[0]).toMatchObject({ itemId: 'it1', signerUserId: 'u-malachi', code: '1357', approve: false })
+  })
+
+  it('a dev on another master’s job reads Do now as the office does (v2.6734): the row waits on Malachi, out of his count, and his code signature’s confirm group is not drawn on the dev’s Ready footer', async () => {
+    const d = awaitingOn({ master_user_id: 'u-malachi' })
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="dev" authUserId="u-robert" authName="Robert" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Robert')} data={d} initialKind="next" />)
+    await settle()
+    const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
+    expect(titles).toEqual(['Waiting on Malachi Whites · 1'])
+    expect((document.querySelector('[data-lien-next-up-row="notice:j650"]') as HTMLElement).textContent).toContain('Waiting on Malachi Whites · since Sep 14')
+    expect(screen.getByRole('tab', { name: /^Do now/ }).textContent).toBe('Do now · 0')
+    cleanup()
+    // Ready, signed by Malachi's code on Robert's screen and not yet confirmed: Robert's footer draws no Yes, it was me; Malachi's own does.
+    const signedByCode = {
+      id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-malachi', approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T15:00:00Z', voided_at: null,
+      signed_by: 'u-malachi', signed_at: '2026-10-23T19:14:00Z', signer_printed_name: 'Malachi Whites', signer_signature_mode: 'code', signed_on_device_of: 'u-robert', signed_fields_hash: lienFieldsHash({}), signed_leader_confirmed_at: null,
+    } as unknown as LienDeskItemRow
+    const ready = data(J650, [signedByCode], true)
+    ready.jobsById.j650 = { ...ready.jobsById.j650!, master_user_id: 'u-malachi' } as NonNullable<typeof ready.jobsById.j650>
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="dev" authUserId="u-robert" authName="Robert" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Robert')} data={ready} initialPile="ready" />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-foot="ready"]')).toBeTruthy()
+    expect(document.querySelector('[data-lien-desk-pen-confirm]')).toBeNull()
+    cleanup()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" authUserId="u-malachi" authName="Malachi" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Robert')} data={ready} initialPile="ready" />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-pen-confirm]')?.getAttribute('data-lien-desk-confirm-mode')).toBe('code')
   })
 
   it('the master on his own screen is unchanged: his own name, a press', async () => {

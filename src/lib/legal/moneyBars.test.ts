@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { moneyBarDayWords, moneyBars, offerStands, type MoneyBarsInput } from './moneyBars'
+import { moneyBarDayWords, moneyBars, moneyBarsDraw, offerStands, type MoneyBarsInput } from './moneyBars'
 
 // A subcontract job terminated for convenience: a pay application billed whole and paid 90% (the open remainder is the retainage), a trip charge, a materials bill; the GC's written counter at the bills, our offer past the claim.
 const base: MoneyBarsInput = {
@@ -84,6 +84,25 @@ describe('moneyBars — the Legal desk’s money as bars (v2.6105)', () => {
     const alone = moneyBars({ ...base, retainageOnBillsByJob: new Map(), claimTyped: 500, claim: 3620.5, offers: [] })
     expect(alone.bars.find((b) => b.key === 'claim')!.segments.map((s) => s.kind)).toEqual(['bills', 'typed'])
     expect(alone.bars.map((b) => b.key)).toEqual(['bills', 'claim', 'left_claim', 'left_bills'])
+  })
+
+  it('the gate reads the claim, not the balance (punch list #171): a claim typed onto a matter with no open bill draws', () => {
+    // The 2026-11-08 walk on the ZZ TEST matter: no open bill, two typed lines ($500 materials, $250 damages), nothing offered.
+    const typedAlone: MoneyBarsInput = { ...base, bills: [], retainageOnBillsByJob: new Map(), retainageAdded: 0, claimTyped: 750, balance: 0, claim: 750, fee: 247.5, filingCost: 350, net: 152.5, offers: [] }
+    expect(moneyBarsDraw(typedAlone)).toBe(true)
+    const { bars, words } = moneyBars(typedAlone)
+    expect(bars.map((b) => b.key)).toEqual(['claim', 'left_claim'])
+    expect(bars[0]!.segments.map((s) => [s.kind, s.amount, s.fraction])).toEqual([['typed', 750, 1]])
+    expect(bars[0]!.caption).toBe('The claim · $750.00')
+    expect(bars[1]!.caption).toBe('What’s left, on the claim · $152.50 left')
+    expect(words).toBe('Nothing open on the bills. The office typed $750.00 onto the claim.')
+    // The balance alone still draws; a standing offer with nothing on record draws too; an empty matter draws nothing.
+    expect(moneyBarsDraw({ claim: 3120.5, offers: [] })).toBe(true)
+    expect(moneyBarsDraw({ claim: 0, offers: [{ key: 'o', direction: 'received', amount: 500, status: 'open', ymd: '2026-11-08', expiresOn: null }] })).toBe(true)
+    expect(moneyBarsDraw({ claim: 0, offers: [{ key: 'o', direction: 'received', amount: 500, status: 'withdrawn', ymd: '2026-11-08', expiresOn: null }] })).toBe(false)
+    expect(moneyBarsDraw({ claim: 0, offers: [] })).toBe(false)
+    // With a bill open the typed sentence keeps its "more" (v2.6680's words).
+    expect(moneyBars({ ...base, retainageOnBillsByJob: new Map(), claimTyped: 500, claim: 3620.5, offers: [] }).words).toBe('3 open bills, $3,120.50. The office typed $500.00 more onto the claim.')
   })
 
   it('no claim bar when the claim is the bills and nothing is offered: the bills bar says it all', () => {

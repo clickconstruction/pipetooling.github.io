@@ -199,13 +199,13 @@ describe('the from line', () => {
     expect(emailRepliesNote(blank)).toBe(EMAIL_REPLIES_NOTE)
   })
 
-  it('tells whoever answers from their own mailbox which box to copy, and links the guide (punch list #230 PR 0)', () => {
+  it('tells whoever answers from their own mailbox to answer from the box or copy it, and links the guide (punch list #230 PR 0, #207 PR 3)', () => {
     expect(ownMailboxNote(CLICK)).toEqual({
-      words: 'Answering from your own mailbox? Copy bids@clickconstruction.example, and this thread gets it too.',
+      words: 'Answering from your own mailbox? Answer from bids@clickconstruction.example in Apple Mail, or copy it, and this thread hears it.',
       link: 'How to tag an email onto a job',
     })
     // No box in Settings: bids@, which the reader always reads.
-    expect(ownMailboxNote({ mailbox: ' ' }).words).toBe('Answering from your own mailbox? Copy bids@, and this thread gets it too.')
+    expect(ownMailboxNote({ mailbox: ' ' }).words).toBe('Answering from your own mailbox? Answer from bids@ in Apple Mail, or copy it, and this thread hears it.')
     const slug = new URLSearchParams(OWN_MAILBOX_GUIDE_HREF.split('?')[1]).get('g')
     expect(slug).toBe('tag-an-email-onto-a-job-from-gmail')
     expect(existsSync(join(__dirname, '../../content/help', `${slug}.md`)), 'the guide the line links to is in src/content/help').toBe(true)

@@ -35,9 +35,18 @@ describe('the tech path’s request', () => {
     expect(isJobModeSend({ ...REQUEST, from: 'box' })).toBe(false)
     expect(parseTechSendBody({ ...REQUEST, body: 'Anything at all' })).toEqual({
       ok: true,
-      body: { kind: 'line', customerId: 'cust-dana', contactId: null, jobId: 'job-1312', quickReplyId: 'r2', fills: { minutes: '15' }, lineIds: [] },
+      body: { kind: 'line', customerId: 'cust-dana', contactId: null, jobId: 'job-1312', quickReplyId: 'r2', fills: { minutes: '15' }, lineIds: [], channelId: null },
     })
     expect(parseTechSendBody({ ...REQUEST, contactId: ' c-dana ', fills: undefined })).toMatchObject({ ok: true, body: { contactId: 'c-dana', fills: {} } })
+  })
+
+  it('reads the To chip’s pick as a channel id, none as the rule’s, and anything else as not theirs (punch list #118, PR 2)', () => {
+    expect(parseTechSendBody({ ...REQUEST, channelId: ' ch-cell ' })).toMatchObject({ ok: true, body: { channelId: 'ch-cell' } })
+    expect(parseTechSendBody({ ...REQUEST, channelId: null })).toMatchObject({ ok: true, body: { channelId: null } })
+    expect(parseTechSendBody({ ...REQUEST, channelId: '' })).toMatchObject({ ok: true, body: { channelId: null } })
+    expect(parseTechSendBody({ ...REQUEST, channelId: 'not an id!' })).toEqual({ ok: false, words: TECH_SEND_WORDS.notTheirNumber })
+    expect(parseTechSendBody({ ...REQUEST, channelId: 12 })).toEqual({ ok: false, words: TECH_SEND_WORDS.notTheirNumber })
+    expect(plainWordsFailures(TECH_SEND_WORDS.notTheirNumber)).toEqual([])
   })
 
   it('refuses a missing id, and a typed blank that is long, broken over lines, or not a blank', () => {
@@ -97,6 +106,24 @@ describe('the number it goes to', () => {
     expect(pickPhone(phones.filter((c) => c.kind === 'email'), null)).toBeNull()
     expect(pickPhone([{ id: 'p3', kind: 'phone', value: ' ', createdAt: '2026-10-01T00:00:00.000Z' }], null)).toBeNull()
   })
+
+  it('reads the usual first, the newest of two, never one that sent STOP, and a STOP last of all (punch list #118, PR 2)', () => {
+    const usual = phones.map((c) => (c.id === 'p2' ? { ...c, usualAt: '2026-11-01T00:00:00.000Z' } : c))
+    expect(pickPhone(usual, 'p1')?.id).toBe('p2')
+    const two = usual.map((c) => (c.id === 'p1' ? { ...c, usualAt: '2026-11-02T00:00:00.000Z' } : c))
+    expect(pickPhone(two, null)?.id).toBe('p1')
+    const stoppedUsual = usual.map((c) => (c.id === 'p2' ? { ...c, optedOutAt: '2026-11-03T00:00:00.000Z' } : c))
+    expect(pickPhone(stoppedUsual, null)?.id).toBe('p1')
+    const oldStopped = phones.map((c) => (c.id === 'p1' ? { ...c, optedOutAt: '2026-11-03T00:00:00.000Z' } : c))
+    expect(pickPhone(oldStopped, null)?.id).toBe('p2')
+    expect(pickPhone(oldStopped.filter((c) => c.id === 'p1'), null)?.id).toBe('p1')
+  })
+
+  it('takes the sheet’s pick when it is one of theirs, and answers none when it is not', () => {
+    expect(pickPhone(phones, 'p2', 'p1')?.id).toBe('p1')
+    expect(pickPhone(phones, null, 'e1')).toBeNull()
+    expect(pickPhone(phones, null, 'ch-someone-else')).toBeNull()
+  })
 })
 
 describe('plain words', () => {
@@ -111,7 +138,7 @@ describe('the bio kind (v2.5590)', () => {
   it('reads a bio request: the ids once each, trimmed, with no line and no fills', () => {
     expect(parseTechSendBody({ ...BIO_REQUEST, body: 'Anything at all', fills: { minutes: '9' } })).toEqual({
       ok: true,
-      body: { kind: 'bio', customerId: 'cust-dana', contactId: 'contact-dana', jobId: 'job-512', quickReplyId: null, fills: {}, lineIds: ['b1', 'b2'] },
+      body: { kind: 'bio', customerId: 'cust-dana', contactId: 'contact-dana', jobId: 'job-512', quickReplyId: null, fills: {}, lineIds: ['b1', 'b2'], channelId: null },
     })
     expect(parseTechSendBody({ ...BIO_REQUEST, lineIds: undefined })).toMatchObject({ ok: true, body: { kind: 'bio', lineIds: [] } })
     expect(parseTechSendBody({ ...BIO_REQUEST, contactId: null })).toMatchObject({ ok: true, body: { contactId: null } })

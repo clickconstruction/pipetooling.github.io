@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { JobEstimateAuthor } from '../lib/jobs/jobPeople'
+import { JobPeopleNames } from './jobs/JobPeopleNames'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { activityPillStyle } from '../lib/phonePress'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
@@ -95,6 +97,8 @@ type JobThreadNotesPanelProps = {
   onLeaveReport?: () => void
   /** People assigned to the job (jobs_ledger_team_members). Shown top-left. */
   teamMembers?: Array<{ user_id: string; name: string | null }>
+  /** The author of the signed estimate the job came from (v2.6694): the E chip beside their name on the people line. */
+  estimateAuthor?: JobEstimateAuthor | null
   /**
    * Residential R2: Text and Email to the job's customer beside the note, through a kinds row over the composer (the
    * job's window, for the office team). Note is this composer, as it was; Text and Email draw `render`'s box in its place.
@@ -177,6 +181,7 @@ export function JobThreadNotesPanel({
   onCommitPct,
   onLeaveReport,
   teamMembers,
+  estimateAuthor = null,
   customerBox,
   customerLines,
 }: JobThreadNotesPanelProps) {
@@ -332,7 +337,7 @@ export function JobThreadNotesPanel({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
           {teamMembers && teamMembers.length > 0 ? (
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-              {teamMembers.map((m) => (m.name?.trim() ? m.name.trim() : 'Unknown')).join(', ')}
+              <JobPeopleNames team={teamMembers} author={estimateAuthor} />
             </span>
           ) : null}
           {showSectionTitle ? (

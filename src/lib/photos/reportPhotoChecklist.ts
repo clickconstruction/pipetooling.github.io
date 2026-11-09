@@ -37,6 +37,8 @@ export const CHECKLIST_PHOTO_WORDS = {
   answers: 'Answers',
   /** On the sheet, beside a photo that came from a report. */
   onReport: 'Taken on a field report.',
+  /** On a closed row of the sheet whose question a report photo answered before anyone picked Yes or No. */
+  onReportTag: 'photo taken on a field report',
 } as const
 
 function cutOnWord(text: string, max: number): string {

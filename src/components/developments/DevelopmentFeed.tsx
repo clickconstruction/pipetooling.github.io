@@ -4,6 +4,7 @@
  * moving the line to now. The lines come from `lib/developments/whatChanged.ts`.
  */
 import { useState, type CSSProperties } from 'react'
+import { HISTORY_FOLD_AT } from '../../lib/developments/history'
 import { filterChangeLines, searchWords, splitForHighlight, type ChangeLine } from '../../lib/developments/whatChanged'
 import { historyMark, type MarkTone } from '../../lib/developments/historyLegend'
 import { lineTiles } from '../../lib/developments/photoLines'
@@ -33,8 +34,8 @@ const MARK_TONE: Record<MarkTone, { bg: string; fg: string }> = {
 const PAGE = 12
 /** The *+ N* tile opens the viewer on the first photo the line did not draw. */
 const LINE_TILES_SHOWN = 3
-/** A line's words past this many fold behind *more ›*, which opens the whole of it in a window (the owner, 2026-10-29: *only show so much and show the rest in a modal if the user clicks on it*). */
-const FOLD_AT = 260
+/** A line's words past this many fold behind *more ›*, which opens the whole of it in a window (the owner, 2026-10-29; the number lives with the heads read, punch list #280). */
+const FOLD_AT = HISTORY_FOLD_AT
 
 /** The text with the searched words lit. */
 function Lit({ text, words }: { text: string; words: readonly string[] }) {

@@ -1,12 +1,13 @@
 /** Settings → Your account: salary-workday + time-off sections (render outside the SettingsGroup,
  * conditional-mount). Presentational; all state/handlers live in the parent and arrive as props.
- * The shared activeSettingsTab/authUser gate stays in the parent; the dev/self-salaried sub-gate
- * is preserved inside. */
+ * The shared activeSettingsTab/authUser gate stays in the parent; the owner-or-dev/self-salaried sub-gate
+ * is preserved inside (punch list #188 row 17, v2.6753: the pointer was a dev's). */
 import type { Dispatch, SetStateAction } from 'react'
 import type { UserRole } from '../../hooks/useAuth'
 import { Link } from 'react-router-dom'
 import { SalaryWorkScheduleSettings } from '../SalaryWorkScheduleSettings'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { isOwnerOrDev } from '../../lib/doorRoles'
 
 type SettingsAccountSchedulingTabProps = {
   authUser: { id: string }
@@ -29,7 +30,7 @@ export default function SettingsAccountSchedulingTab({
 }: SettingsAccountSchedulingTabProps) {
   return (
     <>
-      {(myRole === 'dev' || (selfPaySalaryLoaded && selfIsSalariedInPayConfig)) && (
+      {(isOwnerOrDev(myRole) || (selfPaySalaryLoaded && selfIsSalariedInPayConfig)) && (
         <section
           id="settings-salary-workday"
           aria-labelledby="settings-salary-workday-heading"
@@ -81,7 +82,7 @@ export default function SettingsAccountSchedulingTab({
             </div>
           )}
 
-          {myRole === 'dev' && (
+          {isOwnerOrDev(myRole) && (
             <div style={{ marginTop: selfPaySalaryLoaded && selfIsSalariedInPayConfig ? '1rem' : 0, border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 1rem', display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Everyone&rsquo;s salaried workday</span>
               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>

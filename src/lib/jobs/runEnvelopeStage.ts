@@ -118,7 +118,7 @@ export function runEnvelopeChip(state: RunEnvelopeStageState, env: { tracking: s
   const leader = (opts.leaderName ?? '').trim() || 'the leader'
   const held = (opts.held ?? state.waiting ?? '').trim()
   if (held) {
-    if (/^Unsigned/.test(held)) return { tone: 'amber', words: `Waiting on ${leader}’s signature`, next: 'He signs from his phone, or draws it here with Leader here, sign ▸.' }
+    if (/^Unsigned/.test(held)) return { tone: 'amber', words: `Waiting on ${leader}’s signature`, next: 'He signs from his phone, or types his code or draws it here with Leader here, sign ▸.' }
     const short = held.replace(/^[^:]+: /, '')
     return { tone: 'amber', words: `Held · ${short}`, next: null }
   }

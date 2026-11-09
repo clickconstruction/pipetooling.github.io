@@ -2,7 +2,10 @@
  * Messages, cut 6 (email in): how far one run of the bids@ reader (`gmail-sync`) got through Gmail's history, and where
  * the next run starts. The records come oldest first, each with the messages it added to the Inbox and, since v2.5982,
  * the messages that reached the Inbox by a label change (out of Spam, out of a filter's hold: the owner's own reply on
- * 2026-10-26 sat in Primary unread by the app because Gmail never recorded it as added). The point moves past a record
+ * 2026-10-26 sat in Primary unread by the app because Gmail never recorded it as added), and since v2.6731 (punch list
+ * #207 PR 3) the messages the box itself sent, by the Sent label. Gmail's history takes one label at most and the walk
+ * wants two, so the function asks for every record and `recordMessageIds` keeps a message by the labels the record
+ * names: a draft, a chat, a Spam mail never counts against the run's cap. The point moves past a record
  * only once every message in it was taken, so a run stopped by a failure, or by its cap, leaves the point at the last
  * record it took whole, and the next run starts there. What it already took is passed over then by its label. Reading
  * every page moves the point to the box's newest. Pure: the function passes Gmail's calls in.
@@ -10,18 +13,32 @@
 
 export interface HistoryRecord {
   id: string
-  messagesAdded?: { message: { id: string } }[]
+  /** A message added to the box, with the labels it wears: the Inbox's, or the Sent label on one the box sent. */
+  messagesAdded?: { message: { id: string; labelIds?: string[] } }[]
   /** A label put on a message after it arrived; the Inbox's among them is a message that reached the Inbox late. */
   labelsAdded?: { message: { id: string }; labelIds?: string[] }[]
 }
 
 /** The Gmail label a record's label change must carry for the message to count as reaching the Inbox. */
 export const INBOX_LABEL = 'INBOX'
+/** The Gmail label on a message the box itself sent (v2.6731, punch list #207 PR 3): the reader takes those too. */
+export const SENT_LABEL = 'SENT'
+/** The labels a message must wear, one of them, for the walk to take it: the Inbox's or Sent. */
+export const WALK_LABELS: readonly string[] = [INBOX_LABEL, SENT_LABEL]
 
-/** The messages one record brought to the Inbox: added, or given the Inbox label, each once. */
+/** Whether a message's labels carry one the walk reads. Labels unnamed read as yes: the take decides by the mail itself. */
+const walkTakes = (labelIds: string[] | undefined): boolean => labelIds === undefined || labelIds.some((l) => WALK_LABELS.includes(l))
+
+/**
+ * The messages one record brought to the Inbox or the Sent folder: added wearing one of the two labels, or given the
+ * Inbox label later, each once. A draft, a chat or a Spam mail added is passed over, so none counts against the cap.
+ */
 export function recordMessageIds(record: Omit<HistoryRecord, 'id'> & { id?: string }): string[] {
   const ids: string[] = []
-  for (const added of record.messagesAdded ?? []) if (!ids.includes(added.message.id)) ids.push(added.message.id)
+  for (const added of record.messagesAdded ?? []) {
+    if (!walkTakes(added.message.labelIds)) continue
+    if (!ids.includes(added.message.id)) ids.push(added.message.id)
+  }
   for (const labelled of record.labelsAdded ?? []) {
     if (!(labelled.labelIds ?? []).includes(INBOX_LABEL)) continue
     if (!ids.includes(labelled.message.id)) ids.push(labelled.message.id)

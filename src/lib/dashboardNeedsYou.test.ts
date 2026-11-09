@@ -224,6 +224,27 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ lineBudgetsReviewEnabled: true, lineBudgetsReview: null }))).toEqual([])
   })
 
+  it('materials on site (punch list #209, v2.6728): the week’s shortfalls with the money, the boxes due a count, gated by the flag', () => {
+    const both = buildNeedsYouItems(inputs({ materialsOnSiteEnabled: true, materialsOnSite: { staleBoxes: 12, staleJobs: 3, missingLines: 3, missingMoneyWeek: 1_240, missingJobs: 2 } }))
+    expect(both.map((i) => i.key)).toEqual(['materials-missing-week', 'materials-count-due'])
+    expect(both[0]).toMatchObject({ severity: 'amber', kicker: 'Materials on site', title: '$1,240 of material walked away this week', figure: '$1,240', actionLabel: 'Open the desk' })
+    expect(both[0]!.detail).toBe("3 lines on 2 jobs: a count under what the ledger expected, or a Can't find press on the phone. The money is the parts book's price. The desk sorts the jobs losing money to the top, and the job page says who last touched the box.")
+    expect(both[1]).toMatchObject({ severity: 'gray', kicker: 'Materials on site', title: '12 boxes on 3 jobs not counted in 14 days', figure: '12', actionLabel: 'Open the desk' })
+    expect(NEEDS_YOU_RANK['materials-missing-week']).toBe(40)
+    expect(NEEDS_YOU_RANK['materials-count-due']).toBe(60)
+    // One job, one line, no price: the line counts the lines and opens the job.
+    const one = buildNeedsYouItems(inputs({ materialsOnSiteEnabled: true, materialsOnSite: { staleBoxes: 1, staleJobs: 1, missingLines: 1, missingMoneyWeek: 0, missingJobs: 1 } }))
+    expect(one[0]).toMatchObject({ key: 'materials-missing-week', title: '1 line of material came up short this week', figure: '1', actionLabel: 'Open the job' })
+    expect(one[0]!.detail).toContain('Nothing short has a price yet.')
+    expect(one[1]).toMatchObject({ key: 'materials-count-due', title: 'A box on one job has not been counted in 14 days', actionLabel: 'Open the job' })
+    // Each fact alone, and quiet when off, null or empty.
+    expect(buildNeedsYouItems(inputs({ materialsOnSiteEnabled: true, materialsOnSite: { staleBoxes: 0, staleJobs: 0, missingLines: 2, missingMoneyWeek: 80, missingJobs: 1 } })).map((i) => i.key)).toEqual(['materials-missing-week'])
+    expect(buildNeedsYouItems(inputs({ materialsOnSiteEnabled: true, materialsOnSite: { staleBoxes: 2, staleJobs: 1, missingLines: 0, missingMoneyWeek: 0, missingJobs: 0 } })).map((i) => i.key)).toEqual(['materials-count-due'])
+    expect(buildNeedsYouItems(inputs({ materialsOnSiteEnabled: false, materialsOnSite: { staleBoxes: 2, staleJobs: 1, missingLines: 2, missingMoneyWeek: 80, missingJobs: 1 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ materialsOnSiteEnabled: true, materialsOnSite: null }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ materialsOnSiteEnabled: true, materialsOnSite: { staleBoxes: 0, staleJobs: 0, missingLines: 0, missingMoneyWeek: 0, missingJobs: 0 } }))).toEqual([])
+  })
+
   it('working jobs with no kind (punch list #238): one gray hygiene line, gated by the flag', () => {
     const one = buildNeedsYouItems(inputs({ jobKindGapsEnabled: true, jobKindGaps: { count: 1 } }))
     expect(one.map((i) => i.key)).toEqual(['jobs-no-kind'])

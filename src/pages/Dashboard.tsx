@@ -101,6 +101,7 @@ import { useDashboardBoot } from '../hooks/useDashboardBoot'
 import { formatDatetime } from '../lib/dashboardProjectsCard'
 import { isDashboardRecentReportsRole } from '../lib/dashboardRecentReports'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
+import { DashboardMyHoursBlock } from '../components/dashboard/DashboardMyHoursBlock'
 import { fetchSelfSalaryClockState } from '../lib/selfSalaryClockState'
 import { fetchHoursDaysCorrectWorkDates } from '../lib/fetchHoursDaysCorrectWorkDates'
 import { resolveReadyToBillBillCustomerTarget } from '../lib/buildReadyToBillDashboardUnits'
@@ -1227,6 +1228,8 @@ export default function Dashboard() {
         <DashboardYourWeekCard userId={authUser.id} />
         {/* Your record (v2.3368): the three things only this person can put right, no money on it. */}
         <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} />
+        {/* Your hours (design spike): Job Mode shows no My Time, so the ask and the eight weeks sit here as a card. */}
+        <DashboardMyHoursBlock userId={authUser.id} displayName={clockDisplayName ?? ''} role={role ?? ''} isSalary={dashboardSelfIsSalary} framed />
         {/* A day the clock missed (v2.4257): Job Mode shows no My Time, so the door sits under the card. */}
         {dashboardSelfIsSalary ? null : <MissedClockInDoor userId={authUser.id} variant="link" />}
         <div style={{ marginTop: '0.75rem' }}>{myScheduleSection}</div>
