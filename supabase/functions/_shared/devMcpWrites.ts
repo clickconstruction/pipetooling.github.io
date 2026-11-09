@@ -33,6 +33,7 @@ import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isBillVerb } from './devMcpBill.ts'
+import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -156,6 +157,13 @@ export const WRITE_VERBS = {
   // shape is checked there since it needs the day.
   plan_bill: { rpc: null, step: 'plan' },
   apply_bill: { rpc: null, step: 'apply' },
+  // v2.6795 / 0.52.0 (PR 4): two marks on a job — the Collections flag through the Job window's own
+  // set_job_collections_flag, and the Lien contract row's own save of a contract's end as one PATCH under RLS; rpc is
+  // null, the dry run the server's read of the job (devMcpJobMarks.ts).
+  plan_collections_flag: { rpc: null, step: 'plan' },
+  apply_collections_flag: { rpc: null, step: 'apply' },
+  plan_contract_ended: { rpc: null, step: 'plan' },
+  apply_contract_ended: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -262,6 +270,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isPersonMatterVerb(verb)) {
     // v2.6582: the shape check is devMcpPersonMatter's; the dry run is the server's read of the person and the standing matter.
     const built = personMatterInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isJobMarkVerb(verb)) {
+    // v2.6795: the shape check is devMcpJobMarks'; the dry run is the server's read of the job.
+    const built = jobMarkInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1068,6 +1082,8 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const personMatter = verb === 'apply_matter_open_person'
   const personDoc = verb === 'apply_person_doc'
   const job = verb === 'apply_job'
+  if (verb === 'apply_collections_flag') return `Nothing written: this plan was already applied on this job${when}. The flag already reads that way; get_job shows it. A plan commits to the job's updated_at, so a further change needs a new plan from the fresh row.`
+  if (verb === 'apply_contract_ended') return `Nothing written: this plan was already applied on this job${when}. The contract's end already reads that way on the Lien desk; get_job shows the row. A further change needs a new plan from the fresh row.`
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
