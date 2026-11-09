@@ -31,6 +31,8 @@ export function tallyCategoryWords(category: string): string {
 export function tallySuggestionWhy(s: TallySuggestion): string {
   const f = s.facts
   switch (s.rule) {
+    case 'ticket':
+      return 'the ticket says so'
     case 'office-category':
       return `${tallyCategoryWords(f.category ?? '')} is an office cost`
     case 'store-streak':

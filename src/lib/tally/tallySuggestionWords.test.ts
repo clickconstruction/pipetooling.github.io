@@ -18,6 +18,7 @@ const s = (rule: TallyRuleId, facts: TallyFacts = {}): TallySuggestion => ({
 
 // Made-up stores; Chicago daylight time.
 const SAMPLES: Record<TallyRuleId, TallySuggestion> = {
+  ticket: s('ticket'),
   'office-category': s('office-category', { category: 'InternetAndTelephone' }),
   'store-streak': s('store-streak', { store: 'Ridge Supply', count: 4 }),
   'store-last': s('store-last', { store: 'Ridge Supply', count: 1 }),
@@ -38,6 +39,7 @@ const words = (x: TallySuggestion) => tallySuggestionWhy(x).replace(/\s/g, ' ')
 describe('tallySuggestionWhy', () => {
   it('says each rule in a few words', () => {
     expect(Object.fromEntries(Object.entries(SAMPLES).map(([rule, x]) => [rule, words(x)]))).toEqual({
+      ticket: 'the ticket says so',
       'office-category': 'Internet and telephone is an office cost',
       'store-streak': 'Ridge Supply, last 4 times',
       'store-last': 'Ridge Supply, last time',
