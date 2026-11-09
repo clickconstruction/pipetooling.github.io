@@ -78,6 +78,8 @@ Each ticket shows its job, when you took it, and where it stands.
 - **On account, waiting for the bill** means you bought on a PO code. The bill comes later by mail.
 - **Matched to** a store and an amount means the app found the charge.
 
+Sometimes one charge fits loosely, like a ticket you took hours after the swipe. The row then asks a question, like **is it $228.58 at Ridgeway Supply?** Press {{button:blue|It is}} or {{button:outline|It is not}}.
+
 ## Fix a ticket
 
 Open the ticket from **My tickets**.
@@ -92,4 +94,4 @@ Once the office has used a ticket, you can no longer change its job or remove it
 
 ## What the office does with it
 
-The office sorts card charges on the **Team** view, as [sort the team's card purchases from the office](/help/sort-the-teams-card-purchases) explains. Your ticket's job is the office's first choice for that charge. Your own purchases are in [sort my card purchases to jobs](/help/sort-card-purchases-to-jobs).
+The office sorts card charges on the **Team** view, as [sort the team's card purchases from the office](/help/sort-the-teams-card-purchases#a-ticket-on-the-charge) explains. Your ticket's job is the office's first choice for that charge. Your own purchase wears a green **Ticket** chip. Your ticket's job comes first when you sort the purchase yourself. Read [sort my card purchases to jobs](/help/sort-card-purchases-to-jobs) for that.
