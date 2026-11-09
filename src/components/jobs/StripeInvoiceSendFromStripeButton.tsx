@@ -44,6 +44,8 @@ export type StripeInvoiceSendFromStripeButtonProps = {
   hideInlineSuccessLine?: boolean
   /** Shown in the confirm modal when the send log is empty (e.g. sends before the log table existed). */
   recordedLastSendAt?: string | null
+  /** The success line, handed to a host that draws it in its own strip with the text offer (v2.6772, punch list #291); pair with `hideInlineSuccessLine`. */
+  onSentLine?: (line: string) => void
 }
 
 const DEFAULT_BUTTON_LABEL = 'Send Email invoice'
@@ -65,6 +67,7 @@ export function StripeInvoiceSendFromStripeButton({
   micro = false,
   hideInlineSuccessLine = false,
   recordedLastSendAt = null,
+  onSentLine,
 }: StripeInvoiceSendFromStripeButtonProps) {
   const { showToast } = useToastContext()
   const [sending, setSending] = useState(false)
@@ -252,6 +255,7 @@ export function StripeInvoiceSendFromStripeButton({
         /* private mode */
       }
       setSentLine(line)
+      onSentLine?.(line)
       onSent?.()
     } catch (e) {
       const msg = formatErrorMessage(e, 'Could not send the bill email')
