@@ -5,7 +5,7 @@
  * code under drive-link's `index_job` and the sweep; this file only decides which job comes next and what to say.
  */
 
-export const BACKFILL_SCOPES = ['live', 'paid', 'job'] as const
+export const BACKFILL_SCOPES = ['live', 'paid', 'job', 'person'] as const
 export type BackfillScope = (typeof BACKFILL_SCOPES)[number]
 
 /** How many files one apply call takes at most, and the cap on a plan's jobs. */
@@ -17,6 +17,8 @@ export interface BackfillPlan {
   scope: BackfillScope
   /** The one job, when the scope is `job`. */
   job_id: string | null
+  /** The one person, when the scope is `person` (#285, PR 3): their HR file's files and their matter's documents, through the records pass. */
+  person_id: string | null
   /** At most this many jobs, oldest first (by `created_at`, then id) for the live jobs, newest first for the paid ones. */
   limit: number
   /** Held rows (slow, error, big, reading) taken again, when their last check is an hour old. */
@@ -27,7 +29,7 @@ export interface BackfillPlan {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const SHAPE =
-  'plan_index_backfill needs plan — { scope: live | paid | job, job_id? (a jobs_ledger.id, with scope job), limit? (jobs, at most 500), retry? (held rows again), after_job? (a jobs_ledger.id: the list starts after it) }.'
+  'plan_index_backfill needs plan — { scope: live | paid | job | person, job_id? (a jobs_ledger.id, with scope job), person_id? (a people.id, with scope person: the files on their HR file and their matter), limit? (jobs, at most 500), retry? (held rows again), after_job? (a jobs_ledger.id: the list starts after it) }.'
 
 /** The plan's input, read strictly; refused in words when it is not the shape the door takes. */
 export function parseBackfillPlan(input: unknown): { ok: true; plan: BackfillPlan } | { ok: false; error: string } {
@@ -38,21 +40,25 @@ export function parseBackfillPlan(input: unknown): { ok: true; plan: BackfillPla
   const jobId = typeof o.job_id === 'string' ? o.job_id.trim() : ''
   if (scope === 'job' && !UUID_RE.test(jobId)) return { ok: false, error: SHAPE }
   if (scope !== 'job' && jobId) return { ok: false, error: `${SHAPE} job_id goes with scope job alone.` }
+  const personId = typeof o.person_id === 'string' ? o.person_id.trim() : ''
+  if (scope === 'person' && !UUID_RE.test(personId)) return { ok: false, error: SHAPE }
+  if (scope !== 'person' && personId) return { ok: false, error: `${SHAPE} person_id goes with scope person alone.` }
   const afterJob = typeof o.after_job === 'string' ? o.after_job.trim() : ''
   if (afterJob && !UUID_RE.test(afterJob)) return { ok: false, error: SHAPE }
-  if (afterJob && scope === 'job') return { ok: false, error: `${SHAPE} after_job has no place with scope job.` }
+  if (afterJob && (scope === 'job' || scope === 'person')) return { ok: false, error: `${SHAPE} after_job has no place with scope ${scope}.` }
   const limitRaw = o.limit == null ? BACKFILL_JOBS_MAX : Number(o.limit)
   if (!Number.isFinite(limitRaw) || limitRaw < 1) return { ok: false, error: SHAPE }
   return {
     ok: true,
-    plan: { scope: scope as BackfillScope, job_id: scope === 'job' ? jobId : null, limit: Math.min(BACKFILL_JOBS_MAX, Math.floor(limitRaw)), retry: o.retry === true, after_job: afterJob || null },
+    plan: { scope: scope as BackfillScope, job_id: scope === 'job' ? jobId : null, person_id: scope === 'person' ? personId : null, limit: Math.min(BACKFILL_JOBS_MAX, Math.floor(limitRaw)), retry: o.retry === true, after_job: afterJob || null },
   }
 }
 
-/** Which jobs a scope reads: the status filter, the order and the start, as the function's query takes them. */
+/** Which jobs a scope reads: the status filter, the order and the start, as the function's query takes them. The person scope never comes here: it walks records, not jobs (`personBackfill*`). */
 export function backfillJobsQuery(plan: BackfillPlan): { status: 'live' | 'paid' | 'one'; jobId: string | null; afterJob: string | null; ascending: boolean; limit: number } {
   if (plan.scope === 'job') return { status: 'one', jobId: plan.job_id, afterJob: null, ascending: true, limit: 1 }
-  return { status: plan.scope, jobId: null, afterJob: plan.after_job, ascending: plan.scope === 'live', limit: plan.limit }
+  // The person scope never comes here (the server branches on it first); read as live so the type stays honest.
+  return { status: plan.scope === 'paid' ? 'paid' : 'live', jobId: null, afterJob: plan.after_job, ascending: plan.scope !== 'paid', limit: plan.limit }
 }
 
 /**
@@ -78,6 +84,91 @@ export interface BackfillJob {
 /** What the plan hash commits to: the scope, the switches, the start and the job ids in order. A job added to the scope since changes it. */
 export function backfillCommitment(plan: BackfillPlan, jobs: readonly BackfillJob[]): Record<string, unknown> {
   return { scope: plan.scope, job_id: plan.job_id, limit: plan.limit, retry: plan.retry, after_job: plan.after_job, job_ids: jobs.map((j) => j.id) }
+}
+
+// ── the person scope (#285, PR 3, v2.6721) ───────────────────────────────────────────────────────────────────────
+// A person's HR file and their matter hold files the index reads through the records pass (`fileIndexRecords.ts`),
+// not a Drive walk: the plan lists every file they carry and which have no row (or a held one), and the apply runs
+// the pass over the person, a batch at a time, until the queue is empty. The commitment is the person's whole file
+// list, so a file filed or removed since the plan refuses the apply while an apply that indexed files does not.
+
+/** A record file as the person's plan lists it: the attachment or matter document, where its bytes are, the record it hangs on, and whether the index has read it. */
+export interface PersonBackfillFile {
+  id: string
+  source: 'hr_attachment' | 'matter_document'
+  name: string
+  record_kind: string
+  record_title: string | null
+  where: 'bucket' | 'drive' | 'none'
+  /** `due` has no row (or a held one an hour on); `held` has a held row the plan's `retry` would take; `read` has its words or a settled hold. */
+  state: 'due' | 'held' | 'read'
+}
+
+/** The person as the plan names them. */
+export interface PersonBackfillPerson {
+  id: string
+  name: string
+}
+
+/** What the person plan's hash commits to: the person, the switch, and every file they carry (ids sorted), read or not. */
+export function personBackfillCommitment(plan: BackfillPlan, fileIds: readonly string[]): Record<string, unknown> {
+  return { scope: 'person', person_id: plan.person_id, retry: plan.retry, file_ids: [...fileIds].sort() }
+}
+
+/** The person plan as the agent reads it: the counts by state, by where and by record, the first few files due, and the how. */
+export function personBackfillPlanReply(plan: BackfillPlan, person: PersonBackfillPerson, files: readonly PersonBackfillFile[]): Record<string, unknown> {
+  const due = files.filter((f) => f.state === 'due' || (plan.retry && f.state === 'held'))
+  const count = (pick: (f: PersonBackfillFile) => string) => {
+    const out: Record<string, number> = {}
+    for (const f of files) out[pick(f)] = (out[pick(f)] ?? 0) + 1
+    return out
+  }
+  return {
+    scope: 'person',
+    person: { id: person.id, name: person.name },
+    retry: plan.retry,
+    files: files.length,
+    files_read: files.filter((f) => f.state === 'read').length,
+    files_held: files.filter((f) => f.state === 'held').length,
+    files_due: due.length,
+    by_record: count((f) => f.record_kind),
+    by_where: count((f) => f.where),
+    first_due: due.slice(0, 8).map((f) => ({ id: f.id, name: f.name, record: f.record_kind, title: f.record_title, where: f.where })),
+    reads: 'Per file: the staged copy read from its bucket, or a linked file read from Drive by the id its link names (its kind and size from Drive first). A text PDF through its text layer until its time is spent, a .eml decoded, a text file whole; a scan is held for OCR, which does not reach the bucket yet; a link that names no file is held as a kind the index does not read.',
+    how:
+      due.length === 0
+        ? `Every file on ${person.name}'s file has its row${files.some((f) => f.state === 'held') ? ' (some held — plan again with retry: true to take them)' : ''}. Nothing to apply.`
+        : `apply_index_backfill with the same plan and this plan_hash, batch ${RECORDS_BATCH_DEFAULT_WORDS} (at most ${RECORDS_BATCH_MAX_WORDS}): each call takes the next files due and answers indexed / held / remaining. Call again with the same plan while remaining is above 0; sleep a few seconds between calls. Every answer is written to file_index as it goes, so a stopped loop loses nothing. A file filed or removed on the person since the plan refuses the apply — plan again.`,
+  }
+}
+
+/** The person apply's answer: what this call did and where the loop goes next. */
+export function personBackfillApplyReply(person: PersonBackfillPerson, pass: { due: number; tried: number; indexed: number; held: readonly { id: string; name: string; why: string }[]; remaining: number }, filesInPlan: number): Record<string, unknown> {
+  const done = pass.remaining === 0
+  return {
+    scope: 'person',
+    person: { id: person.id, name: person.name },
+    files: filesInPlan,
+    due: pass.due,
+    tried: pass.tried,
+    indexed: pass.indexed,
+    held: pass.held,
+    remaining: pass.remaining,
+    done,
+    next: done
+      ? `${person.name}'s files are indexed${pass.held.length > 0 ? `, ${pass.held.length} held with their reasons above` : ''}. Read read_file_index_status (records_without_rows) and search_case with in: files; write the counts into the card.`
+      : `${pass.remaining} files to go on ${person.name}. Call apply_index_backfill again with the same plan and plan_hash (${pass.indexed} indexed this call).`,
+  }
+}
+
+const RECORDS_BATCH_DEFAULT_WORDS = 10
+const RECORDS_BATCH_MAX_WORDS = 25
+
+/** The batch a person apply takes, within the records cap (10, at most 25: each is a bucket or Drive read). */
+export function recordsBatch(v: unknown): number {
+  const n = Number(v)
+  if (!Number.isFinite(n) || n < 1) return RECORDS_BATCH_DEFAULT_WORDS
+  return Math.min(RECORDS_BATCH_MAX_WORDS, Math.floor(n))
 }
 
 /** The plan as the agent reads it. */

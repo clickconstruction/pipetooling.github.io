@@ -32,6 +32,7 @@ import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 import { convertToStripeEligibility } from '../../lib/jobs/convertBillToStripe'
 import { ConvertBillToStripeModal } from './ConvertBillToStripeModal'
+import { BILL_TEXT_OFFER_WORDS } from '../../lib/jobs/billTextOffer'
 import { compareInvoiceLedgerRows, invoiceLedgerRow, invoiceLedgerTotals, type InvoiceLedgerState, ledgerDollars } from '../../lib/jobs/invoiceLedgerRow'
 import { useJobBilledExpectedPay } from '../../hooks/useJobBilledExpectedPay'
 import { invoiceRowMenuSide, type InvoiceRowMenuSide } from '../../lib/jobs/invoiceRowMenuSide'
@@ -178,6 +179,8 @@ export function JobFormInvoiceList({
   const [sendBackAcknowledged, setSendBackAcknowledged] = useState(false)
   const [sendingBack, setSendingBack] = useState(false)
   const [convertInvoice, setConvertInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
+  /** Make Stripe bill just converted this bill (v2.6772, punch list #291): its row's share panel opens with the strip offering the text. */
+  const [convertedOffer, setConvertedOffer] = useState<{ invoiceId: string; key: number } | null>(null)
   const dialogOpen = confirmDeleteInvoice != null || confirmRemoveMarkedPaid != null || confirmSendBackInvoice != null || convertInvoice != null
   useEffect(() => {
     onOverlayOpenChange?.(dialogOpen)
@@ -832,6 +835,8 @@ export function JobFormInvoiceList({
                 customerId={editing.customer_id}
                 jobStatus={editing.status}
                 onSent={() => refreshEditingJobAndHydratePayments(editing.id)}
+                textOffer={convertedOffer?.invoiceId === inv.id ? { lead: BILL_TEXT_OFFER_WORDS.leadConverted, key: convertedOffer.key } : null}
+                emailedAt={inv.sent_to_customer_at}
               />
             ) : null}
             {!isDraft && hasStripeShare ? (
@@ -1175,6 +1180,7 @@ export function JobFormInvoiceList({
           zIndex={nestedOverlayZIndex}
           onClose={() => setConvertInvoice(null)}
           onConverted={() => {
+            setConvertedOffer({ invoiceId: convertInvoice.id, key: Date.now() })
             setConvertInvoice(null)
             void (async () => {
               const found = await fetchJobWithDetailsById(editing.id)

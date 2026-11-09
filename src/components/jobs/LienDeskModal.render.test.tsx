@@ -221,6 +221,38 @@ const baseProps = {
 }
 
 describe('LienDeskModal', () => {
+  it('as a page (punch list #182): no overlay, no ✕, no full screen button, the door back before the title, and the address told once the rows are in', async () => {
+    const onAddressChange = vi.fn()
+    const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={null} frame="page" backDoor={<button type="button">← Pipeline</button>} onAddressChange={onAddressChange} initialKind="next" />)
+    await settle()
+    expect(screen.queryByRole('dialog', { name: 'Lien desk' })).toBeNull()
+    expect(screen.getByRole('region', { name: 'Lien desk' })).toBeTruthy()
+    expect(screen.queryByLabelText('Close')).toBeNull()
+    expect(screen.queryByLabelText('Full screen')).toBeNull()
+    expect(document.querySelector('[data-lien-desk-panel="page"]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: '← Pipeline' })).toBeTruthy()
+    // An empty desk writes nothing: a pasted address must not be dropped before the rows arrive.
+    expect(onAddressChange).not.toHaveBeenCalled()
+    view.rerender(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} frame="page" backDoor={<button type="button">← Pipeline</button>} onAddressChange={onAddressChange} initialKind="next" />)
+    await settle()
+    await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ kind: 'next', job: null, pile: null }))
+    fireEvent.click(screen.getByRole('tab', { name: 'All filings' }))
+    // Notices opens on its first notice on a computer, and the address names it.
+    await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ kind: 'notice', job: 'j650', pile: null }))
+    // The address is the truth: a view word changed from outside moves the desk.
+    view.rerender(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} frame="page" backDoor={<button type="button">← Pipeline</button>} onAddressChange={onAddressChange} initialKind="calendar" />)
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Deadlines' }).getAttribute('aria-selected')).toBe('true'))
+  })
+
+  it('as a window the frame is as it was: a dialog with ✕, and nothing told to an address', async () => {
+    const onAddressChange = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onAddressChange={onAddressChange} />)
+    await settle()
+    expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
+    expect(screen.getByLabelText('Close')).toBeTruthy()
+    expect(onAddressChange).not.toHaveBeenCalled()
+  })
+
   it('the ? after § Rules opens the card of what each part holds, with the guide as its door (punch list #187 PR 3)', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
     await settle()
