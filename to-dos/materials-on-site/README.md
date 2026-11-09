@@ -2,7 +2,7 @@
 name: "Materials on site: cages, boxes and counts"
 number: 209
 group: close
-status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · v2.6366 the manifest print (2026-11-02) · v2.6367 the dev-mcp verbs (migration 20261102100000; docs/MATERIALS_ON_SITE_ARCHITECTURE.md) · v2.6406 bring back a retired box (2026-11-03) · v2.6432 the prints at full size (2026-11-03) · v2.6456 a new cage, box or place records who added it, and the dev seat names the job as JP972 (migration 20261103143000) · v2.6673 the missing money reads the parts book's price with its checked day, call 5 (2026-11-07) · v2.6728 the Needs you lines for the week's missing money and the boxes due a count (2026-11-08) · v2.6740 the Procure step's door (2026-11-08) · v2.6742 the Short press as a tally request (2026-11-08) · v2.6743 the summary RPC past 5,000 rows (migration 20261109010000, 2026-11-08) · the end-to-end photo test on test job 972 read complete 2026-11-09 (every box photo filed in the job's Drive folder, 92 rows, none waiting; the crew's counts of Nov 1–2 are the week of use under way) · left: what the week of use asks for
+status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · v2.6366 the manifest print (2026-11-02) · v2.6367 the dev-mcp verbs (migration 20261102100000; docs/MATERIALS_ON_SITE_ARCHITECTURE.md) · v2.6406 bring back a retired box (2026-11-03) · v2.6432 the prints at full size (2026-11-03) · v2.6456 a new cage, box or place records who added it, and the dev seat names the job as JP972 (migration 20261103143000) · v2.6673 the missing money reads the parts book's price with its checked day, call 5 (2026-11-07) · v2.6728 the Needs you lines for the week's missing money and the boxes due a count (2026-11-08) · v2.6740 the Procure step's door (2026-11-08) · v2.6742 the Short press as a tally request (2026-11-08) · v2.6743 the summary RPC past 5,000 rows (migration 20261109010000 pushed 2026-11-09, types #7411) · the end-to-end photo test on test job 972 read complete 2026-11-09 (every box photo filed in the job's Drive folder, 92 rows, none waiting; the crew's counts of Nov 1–2 are the week of use under way) · left: what the week of use asks for
 mockup: to-dos/materials-on-site/mockup.html
 summary: >
   Big jobs leave fittings, pipe and fixtures on site in stencilled cages and boxes (A1, A2, B1 …).
@@ -14,7 +14,7 @@ summary: >
   Mode card. The office gets a Materials tab on the Jobs page with a door in the Job window, the
   Pipeline's ⋯ tools and the bid's Procure step. Photos of a count are V2 through the Drive path
   the owner chose; engraved parts are V3 on the same table.
-next: The end-to-end photo test is done (read 2026-11-09: the sweep has filed every box photo on job 972 since Oct 29, the office page reads *in the job's folder* on each and the Documents tab lists them from Drive; no Make the job's Drive folders press is offered, since the three links are set and the app writes there). The week of use is under way on the crew's counts of Nov 1–2 with the parts-book price on the Missing section (v2.6673); what it asks for is the next PR; the leftovers under Where it stands are one small PR each, the Needs you line (v2.6728), the Procure step's door (v2.6740), the Short press (v2.6742) and the summary RPC (v2.6743, push its migration after the merge) shipped; the sent copy of the manifest waits on the week of use.
+next: The end-to-end photo test is done (read 2026-11-09: the sweep has filed every box photo on job 972 since Oct 29, the office page reads *in the job's folder* on each and the Documents tab lists them from Drive; no Make the job's Drive folders press is offered, since the three links are set and the app writes there). The week of use is under way on the crew's counts of Nov 1–2 with the parts-book price on the Missing section (v2.6673); what it asks for is the next PR; the leftovers under Where it stands are one small PR each, the Needs you line (v2.6728), the Procure step's door (v2.6740), the Short press (v2.6742) and the summary RPC (v2.6743, its migration pushed and checked live) shipped; the sent copy of the manifest waits on the week of use.
 size: L, shipped as four PRs and four fixes; each leftover is S
 blocker: none. The owner's week of use on test job 972; nothing left but his word on it.
 ver: v2.6039 · 6041 · 6043 · 6045 · 6049 · 6050 · 6054 · 6055 · 6366 · 6367 · 6406 · 6432 · 6456 · 6673 · 6728 · 6740 · 6742 · 6743
@@ -424,12 +424,15 @@ JP1113. The row stays on the test job until the job is deleted.
 pass (a count opens a segment, a segment's total is the count plus the changes after it); `onSiteServerSummary.ts`
 reads it into the kernel's shapes with parity tests against the kernel over one ledger; the store reads the ledger
 newest first, marks a full read `capped` and fetches the function, and `jobMaterialsSummaryFor` hands the desk, the
-job's page, the Job window, the ⋯ menu and the Needs you lines the database's sums; the job's page says so. Push the
-migration right after the merge (`check:calls-ahead` holds the deploy until then); then the live check is `call_read`
-on JP972 against `read_on_site`. No job is near the cap today.
+job's page, the Job window, the ⋯ menu and the Needs you lines the database's sums; the job's page says so. The migration
+was pushed 2026-11-09 at 02:34Z, right after the merge, and the ledger reads fully applied. No job is near the cap today.
 Walked 2026-11-08 on the dev server as the dev in Chrome before the push: the desk's three rows and JP1113's page read as
 before under the newest-first read (no job is capped, so the note is absent and the function is not called); the capped
 path is held by the parity tests until the live check after the push.
+Checked live after the push, read only through the management API: the function's answer against the app's kernel over the
+same raw ledger on JP1113, JP972 (284 rows, 120 lines, 160 counts) and JP1091 — every line's on hand, last count
+difference, last touch and Can't find, every count's expected, the Can't find presses and the returns agree; a control with
+one count dropped from the kernel's copy disagreed on that line. The types and the dev seat's catalog land in #7411.
 
 **Left, each one small PR** (the fragments' own lists):
 
