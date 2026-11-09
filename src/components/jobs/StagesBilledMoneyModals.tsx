@@ -80,7 +80,8 @@ export type StagesBilledMoneyModalsProps = {
   setBilledAgingFilter: Dispatch<SetStateAction<'30_90' | '90' | 'no_line' | null>>
   focusStagesSection: (key: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections') => void
   tryOpenEditJob: (jobId: string, options?: OpenEditJobOptions) => void
-  setLienDesk: (next: { jobId: string }) => void
+  /** The Lien desk's page on the job's notice (punch list #182). */
+  onOpenLienDesk: (jobId: string) => void
   setCollectionsConfirm: (next: { job: JobWithDetails; direction: 'to' }) => void
   showToast: StagesRowRenderContext['showToast']
   loadJobs: () => Promise<JobWithDetails[] | undefined>
@@ -130,7 +131,7 @@ export default function StagesBilledMoneyModals({
   setBilledAgingFilter,
   focusStagesSection,
   tryOpenEditJob,
-  setLienDesk,
+  onOpenLienDesk,
   setCollectionsConfirm,
   showToast,
   loadJobs,
@@ -279,10 +280,9 @@ export default function StagesBilledMoneyModals({
           }
           workMonths={forecastWorkMonths}
           onOpenLienNotice={(jobId) => {
-            // The Lien desk on that job (v2.3405) — draft, approve, send; the
-            // forecast closes so the desk has the screen.
+            // The Lien desk on that job (v2.3405) — draft, approve, send; the forecast closes and the desk's page opens (punch list #182).
             setBilledPaymentForecastOpen(false)
-            setLienDesk({ jobId })
+            onOpenLienDesk(jobId)
           }}
         />
       )}

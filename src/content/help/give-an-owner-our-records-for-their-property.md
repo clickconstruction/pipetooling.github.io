@@ -3,7 +3,7 @@ title: give an owner our records for their property
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: owner asked for records, records request, statement, payments, what the GC paid, acknowledgment, written request, lien desk, packet, homeowner, property, contract check, GC not paying
-where: /jobs?tab=stages&liendesk=1
+where: /lien-desk
 ---
 An owner whose builder has not paid us may ask what we billed and what was paid on their property. The Lien desk answers with one packet for that property, behind four checks.
 
@@ -11,7 +11,7 @@ The packet is for one owner and one property. It never shows another owner's job
 
 ## Open it
 
-1. Open the [Lien desk](/jobs?tab=stages&liendesk=1).
+1. Open the [Lien desk](/lien-desk).
 2. Press {{button:outline|An owner asked for records ›}} on the desk's title line, just before § Rules.
 3. Pick the owner. Type a name, an address or a GC to narrow the list.
 

@@ -500,69 +500,6 @@ describe('JobsStagesTab render smoke', () => {
     expect(marks).not.toMatch(/[⚙📊📅💵⇪⏱⚖]/u)
   })
 
-  it('the Lien desk asks for the billed jobs the board has not loaded; its Calendar reads the board until they land (v2.4321)', async () => {
-    // The phone board's shape: one stage loaded, Billed folded, no map asking for every scope.
-    localStorage.setItem(
-      'pipetooling_stages_sections_v2',
-      JSON.stringify({ waiting: false, working: true, readyToBill: false, billed: false, collections: false, paid: false }),
-    )
-    localStorage.setItem('pipetooling_jobs_map_hidden', '1')
-    cache.merged = ['working']
-    const ref = createRef<JobsStagesTabHandle>()
-    const props = makeProps({ jobs: boardJobs() })
-    const view = renderWithProviders(<JobsStagesTab ref={ref} {...props} />)
-    await settle()
-    expect(cache.asked).not.toContain('billed_all')
-    await act(async () => {
-      ref.current!.openLienDesk()
-    })
-    // A plain open lands on Do now (punch list #82); Deadlines is one tab over.
-    fireEvent.click(await screen.findByRole('tab', { name: 'Deadlines' }))
-    expect(cache.asked).toContain('billed_all')
-    expect(screen.getByText('Reading the board…')).toBeTruthy()
-    expect(screen.queryByText('Nothing billed is on a lien clock.')).toBeNull()
-    // The scope lands: the billed job is on the board and the Calendar counts it.
-    cache.merged = ['working', 'billed_all']
-    // v2.4788 (punch list #94): the job the office gave up on is billed and open, and on no clock.
-    // A Collections job still chased stays on its clock (the control); the one given up on does not.
-    const parked = makeJob({ job_name: 'Parked', status: 'billed', revenue: 500, collections_at: '2026-08-01T00:00:00Z' })
-    const givenUp = makeJob({ job_name: 'Given Up', status: 'billed', revenue: 2000, collections_at: '2026-08-01T00:00:00Z', uncollectible_at: '2026-10-07T00:00:00Z' })
-    view.rerender(<JobsStagesTab ref={ref} {...props} jobs={[...boardJobs(), makeJob({ job_name: 'Billed Lennox', status: 'billed' }), parked, givenUp]} />)
-    expect(await screen.findByRole('button', { name: 'All · 2 jobs · $1,500' })).toBeTruthy()
-    expect(screen.queryByText('Reading the board…')).toBeNull()
-    localStorage.removeItem('pipetooling_jobs_map_hidden')
-  })
-
-  it('a Lien desk row opens the job’s lien window over the desk; closing it lands back on the desk, not the board (v2.4523)', async () => {
-    cache.merged = ['working', 'billed_all']
-    const ref = createRef<JobsStagesTabHandle>()
-    renderWithProviders(<JobsStagesTab ref={ref} {...makeProps({ jobs: [...boardJobs(), makeJob({ job_name: 'Billed Lennox', status: 'billed' })] })} />)
-    await settle()
-    await act(async () => {
-      ref.current!.openLienDesk()
-    })
-    // A plain open lands on Do now (punch list #82); Deadlines is one tab over.
-    fireEvent.click(await screen.findByRole('tab', { name: 'Deadlines' }))
-    const desk = await screen.findByRole('dialog', { name: 'Lien desk' })
-    await within(desk).findByRole('button', { name: 'All · 1 job · $1,000' })
-    // The calendar folds its groups: open Overdue, then the job's row is there to click.
-    fireEvent.click([...desk.querySelectorAll('button')].find((b) => b.textContent?.startsWith('▸Overdue'))!)
-    await settle()
-    const row = [...desk.querySelectorAll<HTMLElement>('button, [role="button"]')].find((b) => b.textContent?.includes('Billed Lennox'))
-    expect(row).toBeTruthy()
-    fireEvent.click(row!)
-    await settle()
-    const lienWindow = document.querySelector('[aria-labelledby="lien-instruments-title"]') as HTMLElement
-    expect(lienWindow).toBeTruthy()
-    // The desk is still there, under the window.
-    expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
-    fireEvent.click(within(lienWindow).getAllByRole('button', { name: 'Close' })[0]!)
-    await settle()
-    expect(document.querySelector('[aria-labelledby="lien-instruments-title"]')).toBeNull()
-    expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
-    expect(within(screen.getByRole('dialog', { name: 'Lien desk' })).getByRole('button', { name: 'All · 1 job · $1,000' })).toBeTruthy()
-  })
-
   it('a Collections job with no bill line wears the shell pill — In Collections N days · no bill line (B6 / J4-10, wired in v2.4758)', async () => {
     const flaggedDaysAgo = 12
     // The pill counts calendar days in the app's zone, so the flag is set on that calendar day at midday, never

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Research · the map lens (punch list #292)</title>
+<style>
+body{margin:0;padding:24px;background:#e5e7eb;font-family:-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;font-size:14px}
+a{color:#2563eb;text-decoration:none}a:hover{color:#1d4ed8}
+.chip{border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+.press{border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:8px;padding:7px 12px;font-size:13px;min-height:34px;font:inherit}
+.press.blue{background:#2563eb;color:#fff;border-color:#2563eb;font-weight:600}
+.muted{color:#6b7280;font-size:12.5px}
+.legend span{display:inline-flex;align-items:center;gap:6px;margin-right:14px;font-size:12.5px;color:#374151}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+</style>
+</head>
+<body>
+<div style="width:1040px;box-sizing:border-box;background:#f0f2f5;padding:24px 28px;display:flex;flex-direction:column;gap:14px">
+  <div style="display:flex;align-items:baseline;gap:12px">
+    <h1 style="margin:0;font-size:18px;font-weight:600">Prospects · Research · Map</h1>
+    <span class="muted">Mock-up · the streets and pins are drawn, not a real map</span>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-weight:600;font-size:16px">Permits · all cities · last 30 days</span>
+      <button class="press">City · all ▾</button>
+      <button class="press">Showing · waiting on a look, look into it ▾</button>
+      <span style="flex:1 1 auto"></span>
+      <a href="ledger.html" class="press" style="display:inline-flex;align-items:center">Ledger</a>
+      <button class="press">Fit all</button>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:#2563eb"></i> waiting on a look</span>
+      <span><i class="dot" style="background:#1e40af"></i> look into it</span>
+      <span><i class="dot" style="background:#16a34a"></i> approached</span>
+      <span><i class="dot" style="background:#9ca3af"></i> already has a plumber</span>
+      <span class="muted">· a pin's size is the permit's declared value · a number is a cluster, click to open it</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:14px">
+      <div style="position:relative;height:460px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;background:#eef2ea">
+        <svg viewBox="0 0 700 460" width="100%" height="100%" aria-label="A drawn map of the corridor between San Antonio and San Marcos with permit pins">
+          <rect width="700" height="460" fill="#eef2ea"/>
+          <path d="M40 440 C 180 360, 300 300, 420 200 S 600 60, 690 20" stroke="#f6d78a" stroke-width="10" fill="none"/>
+          <path d="M40 440 C 180 360, 300 300, 420 200 S 600 60, 690 20" stroke="#fbbf24" stroke-width="2" fill="none" stroke-dasharray="14 10"/>
+          <path d="M0 300 L 700 250" stroke="#fff" stroke-width="6" fill="none"/>
+          <path d="M120 0 L 220 460" stroke="#fff" stroke-width="5" fill="none"/>
+          <path d="M380 0 L 520 460" stroke="#fff" stroke-width="5" fill="none"/>
+          <path d="M0 120 L 700 170" stroke="#fff" stroke-width="4" fill="none"/>
+          <path d="M300 460 C 330 380, 360 330, 470 300 S 640 290, 700 320" stroke="#bfdbfe" stroke-width="6" fill="none"/>
+          <g font-size="12" fill="#6b7280" font-family="system-ui">
+            <text x="72" y="430">San Antonio</text><text x="250" y="340">Schertz</text><text x="300" y="275">Cibolo</text>
+            <text x="440" y="190">New Braunfels</text><text x="560" y="110">San Marcos</text><text x="640" y="40">Kyle</text><text x="610" y="300">Seguin</text>
+          </g>
+          <g font-family="system-ui" font-weight="700" font-size="12" fill="#fff">
+            <circle cx="100" cy="410" r="16" fill="#2563eb" stroke="#fff" stroke-width="2"/><text x="100" y="414" text-anchor="middle">7</text>
+            <circle cx="265" cy="325" r="13" fill="#2563eb" stroke="#fff" stroke-width="2"/><text x="265" y="329" text-anchor="middle">3</text>
+            <circle cx="455" cy="205" r="14" fill="#9ca3af" stroke="#fff" stroke-width="2"/><text x="455" y="209" text-anchor="middle">5</text>
+          <g stroke="#fff" stroke-width="2">
+            <circle cx="320" cy="262" r="7" fill="#16a34a"/>
+            <circle cx="350" cy="248" r="9" fill="#2563eb"/>
+            <circle cx="480" cy="175" r="6" fill="#1e40af"/>
+            <circle cx="582" cy="98" r="14" fill="#2563eb"/>
+            <circle cx="600" cy="130" r="8" fill="#1e40af"/>
+            <circle cx="560" cy="80" r="6" fill="#9ca3af"/>
+            <circle cx="615" cy="85" r="7" fill="#16a34a"/>
+            <circle cx="655" cy="55" r="9" fill="#2563eb"/>
+            <circle cx="520" cy="330" r="7" fill="#9ca3af"/>
+          </g>
+          <circle cx="582" cy="98" r="22" fill="none" stroke="#2563eb" stroke-width="2" opacity=".5"/>
+          
+            
+          </g>
+        </svg>
+      </div>
+
+      <div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;background:#fff">
+        <div class="muted">Selected pin</div>
+        <div style="font-weight:600;font-size:15px">BP-26-04471 · New commercial</div>
+        <div>100 Sample St, San Marcos</div>
+        <div class="muted">Filed Nov 8 · $1.4M declared · 6,200 sq ft retail shell</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="chip" style="background:#ecfdf5;color:#166534">no plumber yet</span>
+          <span class="chip" style="background:#fef3c7;color:#92400e">warm · won 3 of 5 with this GC</span>
+        </div>
+        <div><strong>Pulled by</strong> Ridgeway Builders <span class="muted">· GC · 28 miles from the office</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+          <a href="decide.html" class="press blue" style="min-height:40px;display:inline-flex;align-items:center;justify-content:center">Decide…</a>
+        </div>
+        <a href="ledger.html" class="muted">Open the row on the ledger</a>
+      </div>
+    </div>
+    <div class="muted">The same rows as the ledger, through the pins canvas the Bid Board already uses. The frame opens on the Inspections tab's cities. The grey cluster at New Braunfels is five jobs other plumbers already hold: the <em>who wins what</em> lens.</div>
+  </div>
+</div>
+</body>
+</html>

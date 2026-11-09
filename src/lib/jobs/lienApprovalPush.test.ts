@@ -8,11 +8,11 @@ describe('the leader’s push (v2.4872)', () => {
     const p = lienApprovalPush({ jobLabel: '891 · Take 5 Liberty Hill', jobId: 'j891', claim: 27_198.65, gcName: 'Burd & Assoc.', dueYmd: '2026-10-15', todayYmd: '2026-10-07', senderName: 'Taunya Smith' })
     expect(p.title).toBe('Approve a lien notice')
     expect(p.body).toBe('891 · Take 5 Liberty Hill · $27,199 owed by Burd & Assoc. · mail by Oct 15 · 8 days')
-    expect(p.url).toBe('/jobs?tab=stages&liendesk=1&liendeskPile=awaiting&liendeskJob=j891')
+    expect(p.url).toBe('/lien-desk?tab=notices&job=j891&pile=awaiting')
     expect(p.tag).toBe('lien-approval-j891')
     expect(p.subject).toBe('Approve a lien notice · 891 · Take 5 Liberty Hill')
     expect(p.emailText).toBe('Taunya sent a lien notice for your approval.\n\n891 · Take 5 Liberty Hill\n$27,199 owed by Burd & Assoc.\nMail by Oct 15, 8 days from now.\n\nOpen the Lien desk to approve it or hold it.')
-    expect(lienApprovalUrl('a b')).toBe('/jobs?tab=stages&liendesk=1&liendeskPile=awaiting&liendeskJob=a%20b')
+    expect(lienApprovalUrl('a b')).toBe('/lien-desk?tab=notices&job=a%20b&pile=awaiting')
   })
 
   it('leaves out what it does not know, and never says a day that passed', () => {

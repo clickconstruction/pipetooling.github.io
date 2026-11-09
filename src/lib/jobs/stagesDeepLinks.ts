@@ -6,28 +6,20 @@
  * sweep II, v2.3865); this is the one table. `hooks/useStagesDeepLinkParams` applies it
  * (consume-once, `replace` navigation, the `rtb` window arm — map quirk 2).
  */
-import type { LienDeskPile } from './lienDesk'
-
-export type StagesDeepLinkKey = 'followups' | 'gcReview' | 'gcNotice' | 'lienDesk' | 'lienWindow' | 'ownerRecords' | 'round' | 'chase' | 'forecast' | 'rtb'
+/** `lienDesk` and `ownerRecords` left with punch list #182: the Lien desk is a page, and `Jobs.tsx` sends `?liendesk=` and `?ownerrecords=` to it (`lienDeskRedirect`). */
+export type StagesDeepLinkKey = 'followups' | 'gcReview' | 'gcNotice' | 'lienWindow' | 'round' | 'chase' | 'forecast' | 'rtb'
 
 /** The params each door consumes — stripped together, so a door's whole address leaves the URL at once. */
 export const STAGES_DEEP_LINK_PARAMS: Record<StagesDeepLinkKey, readonly string[]> = {
   followups: ['followups'],
   gcReview: ['gcReview'],
   gcNotice: ['gcnotice'],
-  lienDesk: ['liendesk', 'liendeskJob', 'liendeskPile', 'kind'],
   lienWindow: ['lienwindow', 'lientab'],
-  ownerRecords: ['ownerrecords'],
   round: ['round', 'gc'],
   chase: ['chase'],
   forecast: ['forecast'],
   rtb: ['rtb'],
 }
-
-/** Every pile the desk's Notices tab can open on (v2.4561): a door may name any of them. */
-const LIEN_DESK_PILES: readonly LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'ready', 'printed', 'held', 'sent', 'missed']
-
-export type StagesLienDeskLink = { jobId: string | null; kind: 'next' | 'notice' | 'affidavit' | 'timeline'; pile: LienDeskPile | null }
 
 /** The tabs of a job's Lien window a door may land on. */
 export type StagesLienWindowTab = 'demand' | 'notice' | 'affidavit' | 'release_record'
@@ -40,11 +32,6 @@ export function lienWindowHref(jobId: string, tab: StagesLienWindowTab = 'demand
   return `/jobs?tab=stages&lienwindow=${encodeURIComponent(jobId)}&lientab=${tab}`
 }
 
-/** The Lien desk with Records for an owner open on the property holding the job (punch list #86, the Dashboard's line). */
-export function ownerRecordsHref(jobId: string): string {
-  return `/jobs?tab=stages&ownerrecords=${encodeURIComponent(jobId)}`
-}
-
 export type StagesDeepLinks = {
   /** `?followups=1` (v2.1720): the follow-up deck; `?followups=idle` (v2.5511) opens it on its Idle lens. */
   followups: boolean
@@ -54,12 +41,8 @@ export type StagesDeepLinks = {
   gcReview: boolean
   /** `?gcnotice=<customer id>` (v2.3470): Put a GC on notice for that GC. */
   gcNoticeGcId: string | null
-  /** `?liendesk=1` (+ `liendeskJob`, `kind`, `liendeskPile`) (v2.3405): the Lien desk on a job, pane and pile. */
-  lienDesk: StagesLienDeskLink | null
   /** `?lienwindow=<job id>` (+ `lientab`): that job's Lien window on a tab (the demand letter unless named). */
   lienWindow: StagesLienWindowLink | null
-  /** `?ownerrecords=<job id>` (punch list #86): the Lien desk with Records for an owner open on that job's property. */
-  ownerRecordsJobId: string | null
   /** `?round=1` (+ `gc`) (v2.2771): GC Review straight into the round overlay. */
   round: { gcId: string | null } | null
   /** `?chase=1` (v2.2025): payment follow-up call mode. */
@@ -72,23 +55,13 @@ export type StagesDeepLinks = {
 
 export function parseStagesDeepLinks(search: URLSearchParams): StagesDeepLinks {
   const flag = (k: string) => search.get(k) === '1'
-  const kindParam = search.get('kind')
   const lienWindowJobId = search.get('lienwindow')
   return {
     followups: flag('followups') || search.get('followups') === 'idle',
     followupsLens: search.get('followups') === 'idle' ? 'idle' : null,
     gcReview: flag('gcReview'),
     gcNoticeGcId: search.get('gcnotice') || null,
-    lienDesk: flag('liendesk')
-      ? {
-          jobId: search.get('liendeskJob'),
-          // A link that names nothing lands on Next up, as the desk's buttons do (punch list #82); one that names a job or a pile lands on Notices, as before.
-          kind: kindParam === 'affidavit' ? 'affidavit' : kindParam === 'timeline' ? 'timeline' : kindParam === 'notice' || search.get('liendeskJob') || LIEN_DESK_PILES.some((p) => p === search.get('liendeskPile')) ? 'notice' : 'next',
-          pile: LIEN_DESK_PILES.find((p) => p === search.get('liendeskPile')) ?? null,
-        }
-      : null,
     lienWindow: lienWindowJobId ? { jobId: lienWindowJobId, tab: LIEN_WINDOW_TABS.find((t) => t === search.get('lientab')) ?? 'demand' } : null,
-    ownerRecordsJobId: search.get('ownerrecords') || null,
     round: flag('round') ? { gcId: search.get('gc') || null } : null,
     chase: flag('chase'),
     forecast: flag('forecast'),

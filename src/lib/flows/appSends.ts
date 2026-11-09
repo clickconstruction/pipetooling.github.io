@@ -52,11 +52,17 @@ export const MOVE_MODE_HINT: Readonly<Record<AppSendMode, string>> = {
 export function isMoveStep(kind: FlowKind, stepId: string): stepId is MoveMoment {
   return kind === 'residential' && (MOVE_MOMENTS as readonly string[]).includes(stepId)
 }
-/** The text a move would ask about, to the sample homeowner: the team's line on the step, else the app's own words. */
+/** The sample bill the Billed step's words fill with (v2.6773, punch list #291): the mock-up's amount and short pay page. */
+export const SAMPLE_BILL = { amount: '$1,850.00', bill: 'https://my.clickplumbing.com/pay/k7x2m9pq4n' } as const
+
+/**
+ * The text a move would ask about, to the sample homeowner: the team's line on the step, else the app's own words. The
+ * Billed line (v2.6771) carries the bill's amount and its pay page, so the sample fills those too.
+ */
 export function moveSampleWords(step: FlowStep, quickReplies: readonly QuickReply[] = []): string {
   const line = stepLine(quickReplies, flowContactKind('residential'), step.id, '')
   const words = line?.text ?? (isMoveStep('residential', step.id) ? DEFAULT_LINES[step.id].text : '')
-  return fillLine(words, { first: SAMPLE_FIRST.residential, me: 'Rosa', job: 'the water heater' }).text
+  return fillLine(words, { first: SAMPLE_FIRST.residential, me: 'Rosa', job: 'the water heater', ...SAMPLE_BILL }).text
 }
 
 /** On a step whose reminder the app sends, but only in the unsaved draft. */

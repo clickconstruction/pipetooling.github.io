@@ -128,7 +128,8 @@ describe('estimator (v2.2920: /people gate matches the ACCESS_CONTROL matrix —
     }
   })
   it('keeps the Prospects flag behaviour', () => {
-    expect(isPathAllowedForRole('estimator', '/prospects', false)).toBe(false)
+    // Research (punch list #292): the path is open to every estimator; the page keeps the calling deck behind the flag.
+    expect(isPathAllowedForRole('estimator', '/prospects', false)).toBe(true)
     expect(isPathAllowedForRole('estimator', '/prospects', true)).toBe(true)
   })
 })

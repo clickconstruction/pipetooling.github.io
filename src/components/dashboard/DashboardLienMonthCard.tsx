@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { LIEN_DESK_PATH } from '../../lib/lien/lienDeskRoute'
 import { Link } from 'react-router-dom'
 import { lienMonthSpanWords, lienMonthWords, lienMonthZoneLine, type LienMonth, type LienMonthZoneKey } from '../../lib/jobs/lienMonthRhythm'
 
@@ -11,7 +12,8 @@ import { lienMonthSpanWords, lienMonthWords, lienMonthZoneLine, type LienMonth, 
  * writes, sends or files.
  */
 
-export const LIEN_DESK_HREF = '/jobs?tab=stages&liendesk=1'
+/** The desk's page (punch list #182). */
+export const LIEN_DESK_HREF = LIEN_DESK_PATH
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 

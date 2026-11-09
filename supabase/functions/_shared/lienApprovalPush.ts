@@ -34,7 +34,7 @@ export type LienApprovalPush = { title: string; body: string; url: string; tag: 
 
 /** The door that exists: the desk, narrowed to what waits on him, opened on this job (v2.4586 / v2.4854). */
 export function lienApprovalUrl(jobId: string): string {
-  return `/jobs?tab=stages&liendesk=1&liendeskPile=awaiting&liendeskJob=${encodeURIComponent(jobId)}`
+  return `/lien-desk?tab=notices&job=${encodeURIComponent(jobId)}&pile=awaiting`
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -94,7 +94,7 @@ export type LienPenRecordedPushInput = {
 
 /** The door that exists: the desk opened on this job in the Ready pile, where Yes, I signed it ▸ sits (the pen train, PR 3). */
 export function lienPenRecordedUrl(jobId: string): string {
-  return `/jobs?tab=stages&liendesk=1&liendeskPile=ready&liendeskJob=${encodeURIComponent(jobId)}`
+  return `/lien-desk?tab=notices&job=${encodeURIComponent(jobId)}&pile=ready`
 }
 
 /**
