@@ -2,9 +2,11 @@ import { useState, type CSSProperties, type ReactNode } from 'react'
 import ConfirmDialog from '../../ConfirmDialog'
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
 import {
+  CLAIM_SETTLEMENT_ONLY_CHIP,
   CLAIM_TYPED_EMPTY_WORDS,
   LEGAL_CLAIM_LINE_KINDS,
   claimEvidenceWords,
+  claimSettlementOnlyWords,
   claimLineDraftOf,
   claimLineDraftProblem,
   claimLineKindWords,
@@ -119,6 +121,7 @@ export default function LegalClaimTable({ table, panel }: { table: ClaimTable; p
                 <td style={TD}>
                   <b>{r.part}</b>
                   {r.source !== 'typed' ? <> {pill('fills in', 'neutral')}</> : null}
+                  {r.settlementOnly ? <> {pill(CLAIM_SETTLEMENT_ONLY_CHIP, 'warn')}</> : null}
                 </td>
                 <td style={{ ...TD, ...(r.source !== 'typed' ? MUTED : null) }}>{r.basis || <span style={MUTED}>—</span>}</td>
                 <td style={TD}>{evidenceCell(r)}</td>
@@ -139,6 +142,7 @@ export default function LegalClaimTable({ table, panel }: { table: ClaimTable; p
         </table>
       </div>
       {table.note ? <p style={{ ...MUTED, fontSize: '0.78rem', margin: '6px 0 0' }}>{table.note}</p> : null}
+      {table.settlementOnlyCount > 0 ? <p data-legal-claim-settlement-only style={{ ...MUTED, fontSize: '0.78rem', margin: '6px 0 0' }}>{claimSettlementOnlyWords(table)}</p> : null}
       {typedRows.length === 0 && acts && !form ? <p style={{ ...MUTED, fontSize: '0.78rem', margin: '6px 0 0' }}>{CLAIM_TYPED_EMPTY_WORDS}</p> : null}
       {acts && !form ? (
         <div style={{ marginTop: 8 }}>
@@ -174,6 +178,11 @@ export default function LegalClaimTable({ table, panel }: { table: ClaimTable; p
               <option value="">None yet</option>
               {panel.documents.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
             </select>
+          </label>
+          {/* v2.6697 (punch list #171, the owner's call of 2026-11-08): a line claimed in an offer but not in the demand. */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem' }}>
+            <input type="checkbox" checked={form.draft.settlementOnly} onChange={(e) => patch({ settlementOnly: e.target.checked })} data-legal-claim-settlement-only-box />
+            Settlement only. The line goes in an offer, not in the demand or the printed packet.
           </label>
           {error ? <p role="alert" style={{ color: '#9a6700', fontSize: '0.8rem', margin: 0 }}>{error}</p> : null}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

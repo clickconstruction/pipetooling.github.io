@@ -109,3 +109,12 @@ describe('settlementPaths — what each path nets (v2.6176, punch list #218 PR 3
     expect(settlementPathsOfMatter({ claim: 16350, contingencyPct: 0.33, filingCost: 350 }, 'suit', entries).line?.amount).toBe(12170.9)
   })
 })
+
+describe('settlementPathsOfMatter with settlement-only lines (v2.6697, punch list #171)', () => {
+  it('starts the trial path and the line from the claim as settled, and from the claim alone on an older worth', () => {
+    const settled = settlementPathsOfMatter({ claim: 16350, claimSettlement: 16750, contingencyPct: 0.33, filingCost: 350 }, 'demand', [])
+    expect(settled.paths.find((p) => p.kind === 'trial')!.gross).toBe(16750)
+    expect(settled.line!.amount).toBe(settlementLineAmount({ claim: 16750, contingencyPct: 0.33, filingCost: 350, filed: false, read: null }))
+    expect(settlementPathsOfMatter({ claim: 16350, contingencyPct: 0.33, filingCost: 350 }, 'demand', []).paths.find((p) => p.kind === 'trial')!.gross).toBe(16350)
+  })
+})
