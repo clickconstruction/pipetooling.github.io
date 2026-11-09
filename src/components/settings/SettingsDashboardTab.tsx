@@ -30,6 +30,7 @@ import type { PinnedUserCounts } from '../../hooks/useSettingsFinancialPins'
 import type { ReportForEdit } from '../ReportEditModal'
 import type { ReportForMyReports } from '../MyReportsModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { isOwnerOrDev } from '../../lib/doorRoles'
 import { isQuickEstimateRole } from '../estimates/QuickEstimateWizard'
 import { EmptyState } from '../EmptyState'
 
@@ -540,7 +541,8 @@ export default function SettingsDashboardTab({
                 )}
               </div>
 
-              {myRole === 'dev' && (
+              {/* Punch list #188 row 18 (v2.6753): pinning money cards on others' dashboards is a leader's choice, so the owner holds it with a dev. */}
+              {isOwnerOrDev(myRole) && (
               <>
               <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
                 <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Billed to Dashboard</h2>

@@ -128,6 +128,8 @@ Press {{button:outline|Open}} on a document to read it. Long ones have a **Jump 
 
 A file picked off your desk is read in your browser. Nothing leaves it until you press Add. The agent can change a named document too, one section at a time.
 
+A transcript can name the recording it transcribes. Open the document and press {{button:outline|Transcribes…}}. Pick the evidence record from the list. The header then shows the record's title, its day and the start of its file's hash. Press it to open the record. The audio's chip sits beside it. The record's row on **Evidence** and its line on the **Timeline** show {{chip:gray|Transcript on file ›}}. Press it to open the document. A counsel-only record's transcript must be counsel-only too. The app says so and ties nothing.
+
 ## Keeping the summary fresh
 
 When you add entries, the summary falls behind. The person's dot turns amber. The Documents view shows how many entries it has not covered. You ask the agent to bring the file current. It rewrites the summary and extends the narrative from the raw entries.

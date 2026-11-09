@@ -13,8 +13,7 @@ import { GC_COMPANY } from './company'
 import { WAIVER_SIGN_LIVE } from './drawEmail'
 import { portalQuoteDue, portalTodos, type PortalAsk, type PortalTodo } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
-import type { PortalSchedule } from './schedule/portalSchedule'
-import type { ScheduleWork, WorkWaiting } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
+import type { ScheduleWork, TradePortalChart, WorkWaiting } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { GcState } from './types'
 import { daysUntil, money } from './words'
 
@@ -37,8 +36,11 @@ export type TradePortalAnswer =
       today: string
       slice: TradePortalSlice
       sample: boolean
-      /** The company's chart on each job being built, by the job's id (the schedule's PR 14b). None: no chart. */
-      schedules: Record<string, PortalSchedule>
+      /**
+       * The company's chart on each job being built, by the job's id (the schedule's PR 14b), with the day we plan to
+       * finish beside it (punch list #205, PR 2). None: no chart.
+       */
+      schedules: Record<string, TradePortalChart>
       /** Its side of the schedule on each job being built (the Portal's P5d-ii). None: nothing to show. */
       scheduleWork: Record<string, ScheduleWork>
       /** The home's schedule to-dos, worked out where the schedule is (P5d-ii, call 5). */
@@ -116,12 +118,15 @@ function scheduleTodosOf(v: unknown): PortalTodo[] {
  * The charts beside the slice (the schedule's PR 14b): each job's that reads as one. A function deployed before the
  * chart sends none, and the page then draws none, so the function and the page deploy in either order.
  */
-function schedulesOf(v: unknown): Record<string, PortalSchedule> {
+function schedulesOf(v: unknown): Record<string, TradePortalChart> {
   if (!isObject(v)) return {}
   const bars = (b: unknown) => Array.isArray(b) && b.every((x) => isObject(x) && typeof x.lineId === 'string' && typeof x.start === 'string' && typeof x.finish === 'string')
   return Object.fromEntries(
-    Object.entries(v).filter(([, s]) => isObject(s) && bars(s.before) && bars(s.mine) && bars(s.after) && typeof s.first === 'string' && typeof s.last === 'string'),
-  ) as Record<string, PortalSchedule>
+    Object.entries(v)
+      .filter(([, s]) => isObject(s) && bars(s.before) && bars(s.mine) && bars(s.after) && typeof s.first === 'string' && typeof s.last === 'string')
+      // The planned finish (punch list #205, PR 2) is a day or nothing; an older function sends none.
+      .map(([id, s]) => [id, { ...(s as TradePortalChart), finish: typeof (s as TradePortalChart).finish === 'string' ? (s as TradePortalChart).finish : null }]),
+  ) as Record<string, TradePortalChart>
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')

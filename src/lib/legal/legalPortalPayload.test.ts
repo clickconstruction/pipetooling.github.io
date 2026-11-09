@@ -118,3 +118,15 @@ describe('the claim’s typed lines (v2.6696, punch list #171)', () => {
     expect(packet.worth.claim).toBeCloseTo(bare.worth.claim + 8110, 2)
   })
 })
+
+describe('the proceedings beside the claim (v2.6726, punch list #174)', () => {
+  it('parse as the firm reads them, a row without an id and a name dropped; [] from an older function', () => {
+    const rows = [
+      { id: 'pr1', kind: 'agency_complaint', title: 'Complaint to the State Plumbing Board', agency: 'State Plumbing Board', reference: 'C-2026-0431', contact_name: 'R. Calloway', contact_role: 'president', status: 'answered', status_on: '2026-11-03', document_ids: ['d1'], keep_out: true, added_at: '2026-10-28T15:00:00Z' },
+      { junk: true },
+    ]
+    const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-11-08', firm, particulars: {}, matters: [{ ...matterRaw(), proceedings: rows }] })!
+    expect(p.matters[0]!.proceedings).toEqual([{ id: 'pr1', kind: 'agency_complaint', title: 'Complaint to the State Plumbing Board', agency: 'State Plumbing Board', reference: 'C-2026-0431', contactName: 'R. Calloway', contactRole: 'president', status: 'answered', statusOn: '2026-11-03', documentIds: ['d1'], keepOut: true }])
+    expect(parseLegalPortalPayload({ firm, matters: [matterRaw()] })!.matters[0]!.proceedings).toEqual([])
+  })
+})

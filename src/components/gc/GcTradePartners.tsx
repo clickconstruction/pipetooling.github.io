@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent } from 'react'
 import { BIDS_WANTED } from '../../lib/gc/bids'
 import type { NewCompanyDraft } from '../../lib/gc/gcIo'
 import { assistantRules, itemsByTrade, partnerAsks, toldAheadWords, tradeBenches, tradeTodoCounts, type AssistantRule, type TradeBench, type TradeNeed } from '../../lib/gc/bench'
+import { BENCH_REMOVE_FAILED, BENCH_REMOVE_PRESS, BENCH_REMOVE_PRESS_TITLE, benchRemoveConfirmWords, canRemoveFromBench } from '../../lib/gc/benchRemove'
 import { declinedTitle, declinedWords } from '../../lib/gc/decline'
 import { askPromise, promiseWords } from '../../lib/gc/followUp'
 import { townFromAddress, travelFor, travelWords } from '../../lib/gc/map'
@@ -19,6 +20,7 @@ import { PartnerName } from './GcPartnerName'
 import { benchAnchor } from '../../lib/gc/tradeViews'
 import { subsLaneHref } from '../../lib/prospects/subsLane'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 
 /**
  * GC mode, the real build (the Board's B3-b): Trade partners on real data, from the design spike's
@@ -35,6 +37,8 @@ export interface TradePartnerWrites {
   addCompany: (draft: NewCompanyDraft) => Promise<void>
   vetCompany: (companyId: string, status: 'approved' | 'declined', limit: number | null, note: string) => Promise<void>
   setCoverage: (companyId: string, address: string, maxMiles: number | null) => Promise<void>
+  /** Remove from the bench (v2.6749): a company with no history leaves through `gc_remove_bench_company`, which refuses in words when it finds any. */
+  removeCompany: (companyId: string) => Promise<void>
 }
 
 const RECORD_WORDS: Record<AnswerRecord, { tone: Tone; word: string }> = {
@@ -790,8 +794,24 @@ function PartnerLine({ state, partner, bench, writes, origin }: { state: GcState
   const [base, setBase] = useState(partner.address || partner.base || '')
   const [maxMiles, setMaxMiles] = useState(partner.maxMiles === null ? '' : String(partner.maxMiles))
   const [problem, setProblem] = useState<string | null>(null)
+  const [removing, setRemoving] = useState(false)
+  const confirmDialog = useConfirmDialog()
   const record = RECORD_WORDS[answerRecord(partner)]
   const asks = partnerAsks(state, partner.id, bench.trade)
+  // Remove from the bench (v2.6749, punch list #153): only on a company with no history; the server holds the same rule.
+  const remove = async () => {
+    const words = benchRemoveConfirmWords(partner.company, !!origin)
+    if (!(await confirmDialog({ ...words, danger: true }))) return
+    setProblem(null)
+    setRemoving(true)
+    try {
+      await writes.removeCompany(partner.id)
+    } catch (e: unknown) {
+      setProblem(formatErrorMessage(e, BENCH_REMOVE_FAILED))
+    } finally {
+      setRemoving(false)
+    }
+  }
   const coverage = partner.address || partner.base ? `${partner.address || `from ${partner.base}`}${partner.maxMiles === null ? '' : ` · goes up to ${partner.maxMiles} mi`}` : 'address not set'
   const save = () => {
     setProblem(null)
@@ -836,6 +856,31 @@ function PartnerLine({ state, partner, bench, writes, origin }: { state: GcState
                 }}
               >
                 {coverage}
+              </button>
+            </div>
+          )}
+          {canRemoveFromBench(partner) && (
+            <div style={{ marginTop: '0.2rem' }}>
+              <button
+                type="button"
+                data-gc-remove={partner.id}
+                disabled={removing}
+                onClick={remove}
+                title={BENCH_REMOVE_PRESS_TITLE}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  font: 'inherit',
+                  fontSize: '0.8rem',
+                  cursor: removing ? 'default' : 'pointer',
+                  textAlign: 'left',
+                  color: 'var(--text-muted)',
+                  textDecoration: 'underline dotted',
+                  textUnderlineOffset: 3,
+                }}
+              >
+                {removing ? 'Removing…' : BENCH_REMOVE_PRESS}
               </button>
             </div>
           )}

@@ -30,6 +30,8 @@ import { claimAmountOf, type LegalClaimLineDraft } from '../../../lib/legal/lega
 import type { ClaimPanel } from './LegalClaimTable'
 import type { PeoplePanel } from './LegalMatterPeopleTable'
 import { seedPeople, type LegalPersonDraft } from '../../../lib/legal/legalMatterPeople'
+import type { ProceedingsPanel } from './LegalProceedingsTable'
+import { keptOutDocumentIds, parseLegalPortalProceedings, proceedingForFirm, type LegalProceedingDraft } from '../../../lib/legal/legalProceedings'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
@@ -505,6 +507,24 @@ export default function LegalDesk(props: LegalDeskProps) {
     reload()
     return null
   }
+  // v2.6726 (punch list #174 PR 2): the proceedings beside the claim — added, edited or removed through the matter's own
+  // RPCs; the first save makes the matter when the account has none, so the list is read again for it.
+  const saveProceeding = async (draft: LegalProceedingDraft, proceedingId: string | null): Promise<string | null> => {
+    if (!selected) return 'Pick an account first.'
+    const r = await legalRpcData('legal_proceeding_save', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_proceeding_id: proceedingId, p_kind: draft.kind, p_title: draft.title.trim(), p_agency: draft.agency.trim(), p_reference: draft.reference.trim(), p_person_id: draft.personId, p_status: draft.status, p_status_on: draft.statusOn.trim() || null, p_note: draft.note.trim(), p_document_ids: draft.documentIds, p_keep_out: draft.keepOut })
+    if (r.error) return r.error
+    showToast(proceedingId ? 'The proceeding is saved.' : 'The proceeding is beside the claim.', 'success')
+    if (!matter) await legal?.reload()
+    reload()
+    return null
+  }
+  const removeProceeding = async (proceedingId: string): Promise<string | null> => {
+    const err = await legalRpc('legal_proceeding_remove', { p_proceeding_id: proceedingId })
+    if (err) return err
+    showToast('The proceeding is off the matter.', 'info')
+    reload()
+    return null
+  }
   const clearGapAnswer = async (g: LegalGap) => {
     if (!matter?.id) return
     const err = await legalRpc('legal_clear_gap_answer', { p_matter_id: matter.id, p_gap_key: g.key })
@@ -810,8 +830,11 @@ export default function LegalDesk(props: LegalDeskProps) {
   }
   const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []
   // Below matterDocuments on purpose: a const read before its line throws at render (the Bridge's lesson).
+  // v2.6726 (punch list #174 PR 2): a document a held proceeding names stays out of the claim table's picker — the claim
+  // is what a settlement letter to the other side carries.
+  const keptOut = keptOutDocumentIds(packet?.proceedings ?? [])
   const claimPanel: ClaimPanel = {
-    documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })),
+    documents: matterDocuments.filter((d) => !keptOut.has(d.id)).map((d) => ({ id: d.id, title: d.title })),
     acts: stored && canEditReview && !closed ? { save: saveClaimLine, remove: removeClaimLine } : null,
     onOpenDocument: (id) => {
       const row = matterDocuments.find((d) => d.id === id)
@@ -820,6 +843,12 @@ export default function LegalDesk(props: LegalDeskProps) {
   }
   const peoplePanel: PeoplePanel = {
     acts: stored && canEditReview && !closed ? { save: savePerson, remove: removePerson, seed: seedMatterPeople, canSeed: Boolean(packet && seedPeople(packet.account).length > 0) } : null,
+  }
+  const proceedingsPanel: ProceedingsPanel = {
+    people: packet?.people ?? [],
+    documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })),
+    onOpenDocument: claimPanel.onOpenDocument,
+    acts: stored && canEditReview && !closed ? { save: saveProceeding, remove: removeProceeding } : null,
   }
   // v2.6588: who marked what, by user id, for the By theme window.
   const namesById = useMemo(() => Object.fromEntries(users.map((u) => [u.id, u.name ?? ''])), [users])
@@ -1317,7 +1346,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, setCounselRead, counselRead, moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, canPull: stored && canEditReview && !closed, reload: () => void legal?.reload(), themes: themeCatalog.themes.length > 0 ? themeCatalog.themes : undefined, marks: themeCatalog.marks, onMarksChanged: () => void reloadThemes() } : null}
-                    narrative={narrativeDesk} busy={busy} planActs={planActs} onStatementsChanged={reload} claim={claimPanel} people={peoplePanel} />
+                    narrative={narrativeDesk} busy={busy} planActs={planActs} onStatementsChanged={reload} claim={claimPanel} people={peoplePanel} proceedings={proceedingsPanel} />
                 ) : null}
                 </div>
               </>
@@ -1389,7 +1418,7 @@ export default function LegalDesk(props: LegalDeskProps) {
             <FirmMatterView
               packet={packet}
               companyName={companyName}
-              matter={{ payerName: selected.name, noteToFirm: sheet.note, stage: matter?.stage ?? null, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []).filter((e) => e.kind !== 'plan' || holdOverrides[planHoldKey(e.id)] !== true) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null }}
+              matter={{ payerName: selected.name, noteToFirm: sheet.note, stage: matter?.stage ?? null, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []).filter((e) => e.kind !== 'plan' || holdOverrides[planHoldKey(e.id)] !== true) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null, proceedings: parseLegalPortalProceedings(packet.proceedings.map((p) => proceedingForFirm(p, packet.people, new Set(matterDocuments.filter((d) => !d.held_reason).map((d) => d.id))))) }}
               tab={previewTab}
               onTab={setPreviewTab}
               onPrint={printPacket}

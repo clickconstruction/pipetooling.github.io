@@ -18,6 +18,8 @@ export type PersonDocumentIndexRow = {
   archived_at: string | null
   chars: number
   sections: number
+  /** v2.6713 (punch list #287): the evidence record this document transcribes, or null. Null too before the column is pushed. */
+  evidence_id: string | null
 }
 
 /** A document read whole, for the reading pane and the editor. */
@@ -78,4 +80,42 @@ export function checkDocumentFile(name: string, text: string): DocumentFileCheck
 /** A title typed or proposed, trimmed and bounded; '' when there is nothing to save under. */
 export function cleanDocumentTitle(title: string): string {
   return title.replace(/\s+/g, ' ').trim().slice(0, PERSON_DOCUMENT_TITLE_MAX)
+}
+
+/** What a transcript needs of its record (`personEvidence.ts`), for the chip on the document's header. */
+export type TranscribedRecord = { id: string; title: string; dated_on: string; counsel_only?: boolean; files: ReadonlyArray<{ sha256?: string | null }> }
+
+/**
+ * The chip on a document's header (v2.6713, punch list #287): the record's title, its day and the first twelve
+ * characters of its hash — the same number a folder's SHA256 list carries — so a reader matches the transcript to the
+ * recording without opening either. `dayWords` is the panel's own day formatter. A record of linked files alone has
+ * no hash, so the chip stops at the day.
+ */
+export function transcribedRecordWords(record: TranscribedRecord, dayWords: (ymd: string) => string): string {
+  const hash = record.files.map((f) => (f.sha256 ?? '').trim().toLowerCase()).find((h) => /^[0-9a-f]{64}$/.test(h))
+  const parts = [`Transcribes ${record.title.trim() || 'a record'}`, dayWords(record.dated_on)]
+  if (hash) parts.push(`sha256 ${hash.slice(0, 12)}…`)
+  return parts.join(' · ')
+}
+
+/** The documents by the record each transcribes, for *Transcript on file* on the record's row and its Timeline line. */
+export function documentsByEvidenceId<T extends { evidence_id: string | null; archived_at: string | null; updated_at: string }>(rows: readonly T[]): Map<string, T> {
+  const m = new Map<string, T>()
+  const kept = rows.filter((r) => !r.archived_at && r.evidence_id).sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0))
+  for (const r of kept) if (r.evidence_id && !m.has(r.evidence_id)) m.set(r.evidence_id, r)
+  return m
+}
+
+/**
+ * Why a document may not be tied to a record, before the function says the same: a counsel-only record's transcript is
+ * counsel-only too. Null when the pair is fine. The function holds the rule as well (`dev_person_doc_write`).
+ */
+export function tieToRecordProblem(doc: { counsel_only: boolean }, record: { counsel_only?: boolean } | null): string | null {
+  if (record?.counsel_only && !doc.counsel_only) return 'That record is counsel-only, so its transcript is counsel-only too. Mark the document counsel-only first.'
+  return null
+}
+
+/** A record as the picker lists it: the day, the title, the lock when counsel-only, and the document already on it. */
+export function recordPickWords(record: { title: string; dated_on: string; counsel_only?: boolean }, dayWords: (ymd: string) => string, takenBy: { title: string } | null): string {
+  return `${dayWords(record.dated_on)} · ${record.title.trim() || 'untitled'}${record.counsel_only ? ' · 🔒 counsel-only' : ''}${takenBy ? ` · transcript: ${takenBy.title}` : ''}`
 }

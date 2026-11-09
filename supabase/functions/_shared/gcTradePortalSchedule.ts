@@ -15,6 +15,7 @@
  */
 import {
   boardStateFromRows,
+  customerSchedulePicture,
   datesNotices,
   gcProjectFromRows,
   lateDoor,
@@ -163,14 +164,35 @@ function jobStates(rows: TradeScheduleRows, companyId: string, today: string): {
 }
 
 /**
- * The company's chart on each of its jobs being built, by the job's id: `portalSchedule`'s answer and nothing else. A
- * job with no bar of the company's has none.
+ * The company's chart as `gc-trade-portal` answers it (punch list #205, PR 2): `portalSchedule`'s answer, and the day we
+ * plan to finish the job (`projectedFinish` as the customer's picture reads it, `standing.finish`), for the job head.
+ * Unset on an answer from a function deployed before it, or when the picture did not read.
  */
-export function portalSchedulesFromRows(rows: TradeScheduleRows, companyId: string, today: string): Record<string, PortalSchedule> {
-  const out: Record<string, PortalSchedule> = {}
+export interface TradePortalChart extends PortalSchedule {
+  finish?: string | null
+}
+
+/**
+ * The day we plan to finish a job, from the customer's picture of its schedule. Nothing else of the picture leaves: the
+ * contract's day, the percent planned and the whole job's done percent would name the other trades' pace.
+ */
+function plannedFinish(state: GcState, project: GcProject): string | null {
+  try {
+    return customerSchedulePicture(state, project).standing.finish
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The company's chart on each of its jobs being built, by the job's id: `portalSchedule`'s answer with the planned finish
+ * beside it, and nothing else. A job with no bar of the company's has none.
+ */
+export function portalSchedulesFromRows(rows: TradeScheduleRows, companyId: string, today: string): Record<string, TradePortalChart> {
+  const out: Record<string, TradePortalChart> = {}
   for (const { projectId, state, project } of jobStates(rows, companyId, today)) {
     const chart = portalSchedule(state, companyId, project)
-    if (chart) out[projectId] = chart
+    if (chart) out[projectId] = { ...chart, finish: plannedFinish(state, project) }
   }
   return out
 }
