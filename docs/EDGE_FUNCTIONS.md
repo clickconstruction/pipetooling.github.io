@@ -3,7 +3,7 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 183 Supabase Edge Functions
+purpose: Complete API documentation for all 184 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
 last_updated: 2026-11-09
 estimated_read_time: 20-25 minutes
@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 183
+total_functions: 184
 
 key_sections:
   - name: "Functions"
@@ -187,6 +187,7 @@ when_to_read:
    - [owner-confirm-nightly](#owner-confirm-nightly)
    - [court-precinct-nightly](#court-precinct-nightly)
    - [permit-pull](#permit-pull)
+   - [permit-lookup](#permit-lookup)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
    - [send-bid-pricing-package](#send-bid-pricing-package)
@@ -1010,6 +1011,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 ---
 
 ### dev-mcp
+
+> **v2.6792 (server 0.50.0, numbered behind v2.6790's 0.49.0, which merged first) — a teammate's account, from the seat** (punch list #260's seat door; the day the owner made an office account on People → Users and ended with a row named wrong and no login, and a session at the seat could see it but act on none of it): six write verbs and one read in `_shared/devMcpAccount.ts`, each `rpc: null` in `WRITE_VERBS` — the dry run is the server's own read of the users row (`ACCOUNT_USER_SELECT`), the linked roster row and who else holds the name or the address (`readAccount`, `readHolders`), hashed with the ask through the same `planHash`, so a save on the row since the plan refuses the apply. `plan_account` → `apply_account` makes a person as the Hire form does (`new`: `add_worker` over `restPost` for a row with no login, `invite-user` for the invite link, `create-user` for a dictated password; the pay row upserted into `people_pay_config` by the pay name and a salaried hire's `salary_work_schedule_templates` row, both through `restRows` with `Prefer: resolution=merge-duplicates` — the helper took a `prefer` argument for it — never the paperwork packet) or changes one (`rename` patches `users` and the roster row and carries the name-keyed pay rows, `NAME_KEYED_PAY_TABLES`, the desk's `renameAccount` cascade; `role` patches `users.role`; `email` calls `change-user-email` where a login stands, else the app's copy), each step reported done or held. `plan_login` → `apply_login` is the desk's *Attach a login…* (`create-user` with `user_id`, then `send-sign-in-email` to `/dashboard`; `mode: password` sets one instead) and *Remove the login…* (`detach-login`), the two doors' own kernels (`attachLoginDoor.ts`, `detachLoginDoor.ts`) deciding the refusals. `plan_password_reset` → `apply_password_reset` sends the sign-in page's own Forgot password email (`resetPasswordForEmail` with the anon client, landing on `/reset-password-confirm`) or calls `set-user-password`; one send per address per `RECOVERY_RESEND_MINUTES` (ten), read off `recovery_sent_at`; never the caller's own row. `get_login_state(person)` answers the stage, the words a session says to the person and the next press, from the row and the auth account's stamps. The stamps come from `auth.admin.getUserById` as the service role (`authStateById`, the `Hooks.authState` hook) — **the fourth thing the service role is used for**, timestamps picked by name (`authStateOf`), so a view_as can never reach them (the read refuses a non-dev first). Every function is called with `invokeAsDev`, so the functions' own dev gates and `refuseArchivedCaller` hold. A password never comes back and never reaches `dev_mcp_calls` (`argsForLog` → `argsWithoutPasswords`). The guide's new section: [connect my coding agent → Get a teammate online with the seat](../src/content/help/connect-a-coding-agent.md). **Redeploy after the merge** (`supabase functions deploy dev-mcp`); no migration, no catalog change — `add_worker` and the two tables are in the catalog already.
 
 > **v2.6790 (server 0.49.0) — a job from a dev's agent** (punch list #293, PR 1 of three; the owner, 2026-11-09: "I would like to add verbs for devs to setup and update jobs and send bills", and long term "I want MCP to do everything a user can"): `plan_job(job)` / `apply_job(job, plan_hash)` make the row the New Job form makes (`JobFormModal.createJob`) — `job = { job_name, job_address, customer_id, service_type_id, revenue?, hcp_number?, click_number?, customer_name? / customer_email? / customer_phone? (the customer's own when left out), development_id?, project_id?, bid_id?, kind? (service | project), bill_to_party? (customer | gc) + gc_customer_id?, google_drive_link? / job_pictures_link? / job_plans_link?, allow_duplicate_name? }`. **No RPC and no migration**: the app writes `jobs_ledger` as a row under RLS, so the seat does too, as the dev (`restRows` POST, the table's insert policy, training mode's blocks, the twin fence and the archived fence all holding as on the screen), then the kind as a second PATCH (punch list #238's order; a refused kind is said and the job stands). `WRITE_VERBS` marks them `rpc: null`; the dry run is the server's own read (`_shared/devMcpJobs.ts`: `readNewJobWorld` — the customer with its `contact_info`, the service type, the development, the project with its master, the bid, the owner rule's three `app_settings` keys and the live jobs on the customer wearing the name — then `newJobDryRun`, which refuses a row not visible to the dev or a second job of the name without `allow_duplicate_name`), hashed with the payload; the plan shows the row as it will land (`newJobRow`: the address Title-Cased by the form's own `titleCaseAddress`, now in the kernel copy; `master_user_id` by `jobMasterUser`, the New Job form's rule — the project's master, else the company owner account, else the dev's or the org's override, else the dev), who it belongs to and why, the readiness a bill will need and what the verb does not do (child rows, the award baseline, the Drive folder). The apply re-reads, refuses on a changed hash or a prior apply, and replies with the job id, its label (`jobShortLabel`) and the next press (`plan_job_update`, PR 2; `plan_bill`, PR 3). Tests: `src/lib/devMcp/devMcpJobs.test.ts` (the shape, the door's queries pinned, the owner rule held to `chooseJobOwnerFromOverrideRows` on every branch, every column of the form's insert present on the row, the refusals, the hash). **Redeploy after the merge** (no migration to wait on).
 
@@ -3508,6 +3511,12 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Purpose** (v2.6782, punch list #292): pull a city's permits into `permits` for the Permits tab under Prospects (named Research until v2.6787). San Antonio first: two CKAN datastores on the city's open-data portal (issued permits, submitted applications) read through the SQL door (`_shared/permitFeed.ts` writes the page query), the kept building types and every plumbing type filed since ten days before the newest row held (75 days back on a first run), paged oldest first, upserted on (city, source, number, type) so a re-read changes nothing; a State Plane point converted to degrees (`_shared/permitCoords.ts`). Each feed's run lands in `permit_pulls` with its counts or its error, and a stopped feed never stops the other.
 
 **Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `permit-pull`, 11:30 UTC, migration `20261109070000`), or a signed-in researcher — the function checks `user_can_research_permits()` under the caller's JWT, which is how the ledger's **Pull now** calls it. `verify_jwt = false` in `config.toml`. **Body**: `{ since?: 'YYYY-MM-DD', dry_run?: boolean }`. **Answer**: `{ ok, dryRun, feeds: [{ source, since, seen, kept, pages, error }], ms }`. **Deploy**: `supabase functions deploy permit-pull` after the migration is pushed.
+
+### permit-lookup
+
+**Purpose** (v2.6786, punch list #292 PR 4): the two lookups behind the Research ledger's Who pulled it card, cached in `permit_lookups` for thirty days per key. `company`: the contact's company (or the person) on Google Places Text Search with the server-side `GOOGLE_MAPS_API_KEY`, biased to the service area; an exact match when the name keys the same, else Google's first flagged loose. `parcel`: the permit's street address on Bexar County's parcel layer (`maps.bexar.org`, no key): owner of record, mailing address, DBA, values, year built, building area, the appraisal district's detail link. A source's failure is cached with its reason.
+
+**Auth**: a researcher's JWT checked in-body (`auth.getUser`, then `user_can_research_permits()`), the archived-caller guard. `verify_jwt = false` in `config.toml`. **Body**: `{ kind: 'company', contact, city?, refresh? }` or `{ kind: 'parcel', address, city?, refresh? }`. **Answer**: `{ ok, kind, key, found, facts, error, cached, looked_up_at }`. **Deploy**: `supabase functions deploy permit-lookup` after the migration is pushed.
 
 ### owner-confirm-nightly
 

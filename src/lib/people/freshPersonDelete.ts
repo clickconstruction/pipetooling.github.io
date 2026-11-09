@@ -60,6 +60,7 @@ export function readFreshDeleteAnswer(data: unknown): FreshDeleteAnswer {
 /** The plain words for a table that points at the person: one (with its article) and many. */
 const HOLD_WORDS: Record<string, [string, string]> = {
   clock_sessions: ['a clock session', 'clock sessions'],
+  employment_stints: ['an employment stint', 'employment stints'],
   imported_clock_sessions: ['an imported day', 'imported days'],
   people_pay_stubs: ['a pay report', 'pay reports'],
   pay_stubs: ['a pay report', 'pay reports'],

@@ -191,3 +191,13 @@ describe('plumberWords', () => {
     expect(plumberWords(row())).toEqual({ kind: 'none', chip: 'none yet', under: null })
   })
 })
+
+describe('the lead carries the card\'s facts', () => {
+  it('takes the phone, the website, the company address and the owner of record when the card found them', async () => {
+    const { leadFromPermit } = await import('./permitResearch')
+    const { prospect, job } = leadFromPermit(row(), 'gc', { userId: 'u1', masterUserId: 'm1' }, { companyName: 'Ridgeway Builders LLC', contactName: 'Dana Whitfield', phone: '(210) 555-0199', website: 'https://example.com', companyAddress: '1 Office Park, San Antonio, TX 78201', ownerOfRecord: 'SAMPLE HOLDINGS LLC' })
+    expect(prospect).toMatchObject({ company_name: 'Ridgeway Builders LLC', contact_name: 'Dana Whitfield', phone_number: '(210) 555-0199', links_to_website: 'https://example.com', address: '1 Office Park, San Antonio, TX 78201' })
+    expect(String(prospect.notes)).toContain('owner of record: SAMPLE HOLDINGS LLC')
+    expect(job).toMatchObject({ address: '100 SAMPLE ST, San Antonio, 78245' })
+  })
+})

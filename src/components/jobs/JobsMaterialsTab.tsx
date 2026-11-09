@@ -29,7 +29,7 @@ import RetiredBoxesFold from '../materials/RetiredBoxesFold'
 import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEXT, type ParsedLine } from '../../lib/materials/manifest'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
-import { boxAddress, boxCode, boxUrl, labelRows } from '../../lib/materials/labels'
+import { boxAddressWords, boxCodeWords, boxUrl, labelRows } from '../../lib/materials/labels'
 import { printRootCss } from '../../lib/printRoot'
 import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
@@ -764,7 +764,7 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
                   </div>
                   <div style={{ display: 'grid', justifyItems: 'center', gap: 2 }}>
                     <QRCodeSVG value={boxUrl(c.id)} size={96} level="M" bgColor="#ffffff" fgColor="#111111" marginSize={1} />
-                    <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-700)' }}>{boxCode(c.id)}</div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-700)' }}>{boxCodeWords(c.id)}</div>
                   </div>
                 </div>
                 <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -779,7 +779,7 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
                     ))}
                   </tbody>
                 </table>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Scan the code to open this {kind} on your phone, or go to {boxAddress(c.id)}. Write what you add on a blank line.</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Scan the code to open this {kind} on your phone, or go to {boxAddressWords(c.id)}. Write what you add on a blank line.</div>
               </div>
             )
           })}
