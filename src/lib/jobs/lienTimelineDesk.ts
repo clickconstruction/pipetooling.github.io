@@ -169,6 +169,30 @@ export function lienRetainageClockFromDesk(data: unknown, jobId: string): NonNul
 }
 
 /**
+ * The last month worked as the Lien window knows it (v2.6809), with what named it: the forecast's last month with a
+ * session, the later month of a day set by hand (v2.4676), and for a job with no sessions the ledger's last day,
+ * else its creation month (v2.3747), the desk's RPC's rule. One read for the window's strip and for the period its
+ * affidavit swears: the strip said *Last work Aug 2026* while paragraph 5 printed blanks, because the paper read
+ * the session months alone.
+ */
+export function lienWindowLastMonth(src: {
+  workMonths: Pick<JobWorkMonths, 'months' | 'lastMonthKey'> | null | undefined
+  job: { created_at?: string | null; last_work_date?: string | null; lien_last_work_on?: string | null }
+}): { lastMonth: string; fromCreation: boolean; byHand: boolean } {
+  const fromLedger = (src.job.last_work_date ?? '').slice(0, 7)
+  const hand = (src.job.lien_last_work_on ?? '').slice(0, 7)
+  const wm = src.workMonths
+  if (wm && wm.months.length) {
+    const lastMonth = wm.lastMonthKey || fromLedger
+    // The last day of work set by hand (v2.4676) extends the months when it is later than the sessions.
+    return hand && hand > lastMonth ? { lastMonth: hand, fromCreation: false, byHand: true } : { lastMonth, fromCreation: false, byHand: false }
+  }
+  const created = calendarYmdInAppTzFromIso(src.job.created_at ?? '').slice(0, 7)
+  const lastMonth = hand && hand >= fromLedger ? hand : fromLedger || created
+  return { lastMonth, fromCreation: !fromLedger && !hand && Boolean(created), byHand: Boolean(hand) && lastMonth === hand }
+}
+
+/**
  * The Lien window's view of a job (v2.3781): it has no desk rows or items —
  * only the forecast's work months (approved sessions), the job's filings, the
  * job row and the property kind. Sent months come from the notice filings'
@@ -193,9 +217,8 @@ export function buildLienTimelineFromWindow(src: {
   const sentMonths = new Map<string, string>()
   for (const f of live) if (f.kind === 'notice_53_056') for (const m of f.months_covered ?? []) if (!sentMonths.has(m)) sentMonths.set(m, f.filed_at ?? calendarYmdInAppTzFromIso(f.created_at))
   let months: LienTimelineMonth[] = []
-  let lastMonth = ''
-  let lastMonthFromCreation = false
-  let lastMonthByHand = false
+  // The last month and what named it: one rule with the affidavit's period (v2.6809).
+  const { lastMonth, fromCreation: lastMonthFromCreation, byHand: lastMonthByHand } = lienWindowLastMonth(src)
   const wm = src.workMonths
   if (wm && wm.months.length) {
     months = wm.months.map((m) => {
@@ -204,26 +227,11 @@ export function buildLienTimelineFromWindow(src: {
       const outcome: LienTimelineMonth['outcome'] = sentAt != null ? 'sent' : deadline < src.todayYmd ? 'missed' : 'open'
       return { key: m.key, deadline, fromCreation: false, outcome, at: sentAt ?? '', noteUnknown: outcome === 'missed' }
     })
-    lastMonth = wm.lastMonthKey || (src.job.last_work_date ?? '').slice(0, 7)
-    // The last day of work set by hand (v2.4676) extends the months when it is later than the sessions.
-    const hand = (src.job.lien_last_work_on ?? '').slice(0, 7)
-    if (hand && hand > lastMonth) {
-      lastMonth = hand
-      lastMonthByHand = true
-    }
-  } else {
-    const created = calendarYmdInAppTzFromIso(src.job.created_at ?? '').slice(0, 7)
-    const fromLedger = (src.job.last_work_date ?? '').slice(0, 7)
-    const hand = (src.job.lien_last_work_on ?? '').slice(0, 7)
-    lastMonth = hand && hand >= fromLedger ? hand : fromLedger || created
-    lastMonthByHand = Boolean(hand) && lastMonth === hand
-    lastMonthFromCreation = !fromLedger && !hand && Boolean(created)
-    if (lastMonth && src.isSub) {
-      const deadline = noticeDeadlineForMonth(`${lastMonth}-01`, src.propertyKind)
-      const sentAt = sentMonths.get(lastMonth)
-      const outcome: LienTimelineMonth['outcome'] = sentAt != null ? 'sent' : deadline < src.todayYmd ? 'missed' : 'open'
-      months = [{ key: lastMonth, deadline, fromCreation: lastMonthFromCreation, outcome, at: sentAt ?? '', noteUnknown: outcome === 'missed' }]
-    }
+  } else if (lastMonth && src.isSub) {
+    const deadline = noticeDeadlineForMonth(`${lastMonth}-01`, src.propertyKind)
+    const sentAt = sentMonths.get(lastMonth)
+    const outcome: LienTimelineMonth['outcome'] = sentAt != null ? 'sent' : deadline < src.todayYmd ? 'missed' : 'open'
+    months = [{ key: lastMonth, deadline, fromCreation: lastMonthFromCreation, outcome, at: sentAt ?? '', noteUnknown: outcome === 'missed' }]
   }
   const affidavitFiling = live.filter((f) => f.kind === 'affidavit' && f.filed_at).sort((a, b) => (b.filed_at ?? '').localeCompare(a.filed_at ?? ''))[0] ?? null
   const releaseFiling = live.filter((f) => f.kind === 'release_of_record').sort((a, b) => (b.filed_at ?? b.created_at).localeCompare(a.filed_at ?? a.created_at))[0] ?? null

@@ -8,8 +8,22 @@
  * (`/jobs?rtb=1`, the Stages one-shot deep-link family).
  */
 
+import { withoutZzTestJobs } from './jobs/zzTestJobVisibility'
+
 export function canRoleSeeReadyToBillBanner(role: string | null): boolean {
   return role === 'assistant'
+}
+
+/**
+ * How many jobs the banner counts: the Ready to Bill rows the Pipeline's own section lists. The board
+ * hides ZZ test jobs (`zzTestJobVisibility.ts`), so the banner drops them by the same rule. A raw count
+ * of the stage read one more than the section held while a test job sat in it (v2.6805).
+ */
+export function readyToBillBannerCount(
+  rows: ReadonlyArray<{ job_name?: string | null; customer_name?: string | null }>,
+  hideZzTestJobs: boolean,
+): number {
+  return hideZzTestJobs ? withoutZzTestJobs([...rows]).length : rows.length
 }
 
 /** "3 ready to bill — send them" / "1 ready to bill — send it"; null hides the banner. */

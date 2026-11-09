@@ -4,6 +4,9 @@
  * e-signed estimates) plus the floor setting, folded by the nudge kernel;
  * null while loading, zero on error so the card stays quiet. Refreshes on
  * `job-contract-changed` (a send, a filing, a Not needed answer, a new floor).
+ *
+ * `hideZzTestJobs` (v2.6805): ZZ test jobs leave every count, by the names on the job rows, for every
+ * role but a dev who shows them. The stage counts open the board, and the board hides those jobs.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
@@ -14,7 +17,7 @@ import { CONTRACT_NUDGE_STATUSES, summarizeContractNudge, type ContractNudgeJob,
 
 export type ContractNudge = Pick<ContractNudgeSummary, 'missing' | 'stale' | 'byStage' | 'liveTotal' | 'underFloor' | 'notNeeded' | 'floorCents'>
 
-export function useJobContractsNudge(enabled: boolean): { nudge: ContractNudge | null } {
+export function useJobContractsNudge(enabled: boolean, hideZzTestJobs = false): { nudge: ContractNudge | null } {
   const [nudge, setNudge] = useState<ContractNudge | null>(null)
 
   const load = useCallback(async () => {
@@ -26,7 +29,7 @@ export function useJobContractsNudge(enabled: boolean): { nudge: ContractNudge |
       const [jobsRes, contractsRes, estimatesRes, floorCents] = await Promise.all([
         supabase
           .from('jobs_ledger')
-          .select('id, bid_id, status, revenue, collections_at, uncollectible_at, contract_not_needed_at, contract_not_needed_reason')
+          .select('id, bid_id, status, revenue, collections_at, uncollectible_at, contract_not_needed_at, contract_not_needed_reason, job_name, customer_name')
           .in('status', [...CONTRACT_NUDGE_STATUSES]),
         supabase
           .from('job_contracts')
@@ -46,7 +49,7 @@ export function useJobContractsNudge(enabled: boolean): { nudge: ContractNudge |
         await withTheirPaperColumns((contractsRes.error ? [] : (contractsRes.data ?? [])) as JobContractRowLike[]),
         (estimatesRes.error ? [] : (estimatesRes.data ?? [])) as SignedEstimateLike[],
         new Date(),
-        { floorCents },
+        { floorCents, hideZzTestJobs },
       )
       setNudge({
         missing: summary.missing,
@@ -60,7 +63,7 @@ export function useJobContractsNudge(enabled: boolean): { nudge: ContractNudge |
     } catch {
       setNudge(null)
     }
-  }, [enabled])
+  }, [enabled, hideZzTestJobs])
 
   useEffect(() => {
     void load()
