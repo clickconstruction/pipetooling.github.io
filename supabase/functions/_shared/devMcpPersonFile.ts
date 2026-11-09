@@ -18,6 +18,7 @@ import {
   groupPersonTimelineByMonth,
   personFileFactChips,
   personFileFacts,
+  signedPapers,
   splitPersonTimeline,
   type PersonTimelineContract,
   type PersonTimelineEntry,
@@ -144,7 +145,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
 
   const devOnly = 'dev only'
   const noLogin = 'needs a login'
-  const CONTRACT_SELECT = 'id,document_name,status,created_at,sent_at,signed_at,office_completed_at,signer_printed_name,expires_at,doc_type'
+  const CONTRACT_SELECT = 'id,document_name,status,created_at,sent_at,signed_at,office_completed_at,signer_printed_name,expires_at,doc_type,signer_consented_at,signer_signature_storage_path,form_scan_storage_path,form_source'
   const [entries, attachments, docRows, evidenceRows, reports, contractsById, contractsByName, licenses, writeupRows, ncns, excuseRows] = await Promise.all([
     read<PersonTimelineEntry>('file', isDev, devOnly, 'person_file_entries', () => reader.rows('person_file_entries', { select: 'id,entry_date,content,source,created_by,created_at,author_label', filters: eq('person_id', personId), order: [{ column: 'entry_date', ascending: false }], limit: PERSON_FILE_READ_CAP })),
     read<AttachmentRow>('file', isDev, devOnly, 'person_file_attachments', () => reader.rows('person_file_attachments', { select: 'id,entry_id,evidence_id,filename,mime_type,size_bytes,storage_path,drive_file_id,drive_url,filed_at,fail_why,created_at,sha256', filters: eq('person_id', personId), order: [{ column: 'created_at', ascending: false }], limit: PERSON_FILE_READ_CAP })),
@@ -284,6 +285,10 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     source: 'buildPersonTimeline + personFileFacts — the People → HR tab\'s own kernel (supabase/functions/_shared/personTimeline.ts) over the tab\'s sources and keys',
     facts,
     chips: personFileFactChips(facts),
+    // v2.6820: what they signed, as a list — the paper, the day, signed as, how, and the door to the signed record — so an agent
+    // reads it without walking the months; the same rows the Timeline's contract source draws, newest first.
+    signed_papers: signedPapers(input),
+    signed_papers_note: 'The papers this person signed in the app (person_contract_documents, status signed), newest first; door.to opens the signed record on People → Contracts. A paper made for them and never sent stands on the Timeline as owed; a hours statement signed through the app is here too (doc_type hours_statement); a statement only printed is not a signature.',
     counts: { ...countPersonTimeline(all), shown: lines.length },
     lanes: PERSON_TIMELINE_LANES,
     sources: PERSON_TIMELINE_SOURCES,

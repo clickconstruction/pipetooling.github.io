@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { PERSON_FILE_READ_CAP, getPersonFile, personFileFilter } from '../../../supabase/functions/_shared/devMcpPersonFile'
-import { buildPersonTimeline, personFileFactChips, personFileFacts, type PersonTimelineInput } from '../people/personTimeline'
+import { buildPersonTimeline, personFileFactChips, personFileFacts, signedPapers, type PersonTimelineInput } from '../people/personTimeline'
 import { catalogReader } from './catalogReader'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
@@ -75,6 +75,10 @@ describe('get_person_file (the person file from the dev seat)', () => {
     expect(out.facts).toEqual(facts)
     expect(out.chips).toEqual(personFileFactChips(facts))
     expect(out.chips.map((c) => c.key)).toEqual(['reports', 'ncns', 'signed', 'licenses', 'writeups', 'entries', 'evidence'])
+    // v2.6820: what they signed, as a list, with the door the signed line carries.
+    expect(out.signed_papers).toEqual(signedPapers(input))
+    expect(out.signed_papers.map((p) => [p.paper, p.signed_on, p.how, p.door.to])).toEqual([['Helper agreement', '2026-02-02', 'electronically', '/people?tab=contracts&doc=c1']])
+    expect(expected.find((l) => l.key === 'contract:c1:signed')!.door).toEqual({ label: 'Open the signed record', to: '/people?tab=contracts&doc=c1' })
     expect(out.counts.total).toBe(expected.length)
     expect(out.counts.shown).toBe(expected.length)
     // The evidence records with their files and Drive state, the older file apart, the docs whole.
@@ -174,7 +178,7 @@ describe('get_person_file (the person file from the dev seat)', () => {
     expect(SERVER).toContain("case 'get_person_file':")
     expect(SERVER.indexOf("case 'get_person_file':")).toBeGreaterThan(SERVER.indexOf("case 'get_history':"))
     expect(SERVER).toContain("getPersonFile(readerAs(await jwt())")
-    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.52\.0'/)
+    expect(SERVER).toMatch(/const SERVER_VERSION = '0\.53\.0'/)
     expect(README).toContain('`get_person_file(person')
   })
 })

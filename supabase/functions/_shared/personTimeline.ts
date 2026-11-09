@@ -112,6 +112,11 @@ export type PersonTimelineContract = {
   signer_printed_name: string | null
   expires_at: string | null
   doc_type: string
+  /** v2.6820: how it was signed — the e-sign consent's clock, the drawn mark's file, a scan keyed in from paper. Optional: an older caller reads without them. */
+  signer_consented_at?: string | null
+  signer_signature_storage_path?: string | null
+  form_scan_storage_path?: string | null
+  form_source?: string | null
 }
 export type PersonTimelineLicense = { id: string; license_type: string; date_of_expiry: string; created_at: string | null; note: string | null }
 export type PersonTimelineWriteup = {
@@ -175,6 +180,23 @@ const ENTRY_KIND_WORDS: Record<string, string> = {
 }
 
 const CONTRACTS_DOOR = { label: 'Contracts', to: '/people?tab=contracts' }
+/** v2.6820: a signed paper's door opens its own record — the Contracts tab's deep link to the signed-record window — not the tab. */
+export function contractRecordDoor(id: string): { label: string; to: string } {
+  return { label: 'Open the signed record', to: `/people?tab=contracts&doc=${encodeURIComponent(id)}` }
+}
+
+/** How a signed paper was signed, in the words the line and the seat's list share (v2.6820). */
+export type PersonSignedHow = 'electronically' | 'on paper' | 'recorded by the office'
+export function contractSignedHow(c: Pick<PersonTimelineContract, 'sent_at' | 'signer_consented_at' | 'signer_signature_storage_path' | 'form_scan_storage_path' | 'form_source'>): PersonSignedHow {
+  if ((c.form_scan_storage_path ?? '').trim() || c.form_source === 'paper' || c.form_source === 'scan') return 'on paper'
+  if (c.signer_consented_at || (c.signer_signature_storage_path ?? '').trim() || c.sent_at) return 'electronically'
+  return 'recorded by the office'
+}
+const SIGNED_HOW_WORDS: Record<PersonSignedHow, string> = {
+  electronically: 'Signed electronically.',
+  'on paper': 'Signed on paper; the scan is the record.',
+  'recorded by the office': 'Recorded by the office as signed; no copy from the signing.',
+}
 const LICENSES_DOOR = { label: 'Licenses', to: '/people?tab=licenses' }
 const WRITEUPS_DOOR = { label: 'Write-ups', to: '/people?tab=writeups' }
 
@@ -269,19 +291,23 @@ export function buildPersonTimeline(input: PersonTimelineInput): PersonTimelineL
     const sentYmd = dayOf(c.sent_at)
     const madeYmd = dayOf(c.created_at)
     if (c.status === 'signed' && signedYmd) {
+      // The notes say how it was signed, the day it was sent, and the day the office recorded it when that was later (a paper
+      // signed in April and keyed in in August reads both days).
+      const how = contractSignedHow(c)
+      const notes = [SIGNED_HOW_WORDS[how], sentYmd ? `Sent ${sentYmd}.` : '', madeYmd && madeYmd > signedYmd ? `Recorded ${madeYmd}.` : ''].filter(Boolean).join(' ')
       out.push({
         key: `contract:${c.id}:signed`,
         lane: 'paper',
         source: 'contract',
         ymd: signedYmd,
         loggedAt: c.signed_at,
-        kindWords: 'signed',
+        kindWords: c.doc_type === 'hours_statement' ? 'hours statement · signed' : 'signed',
         what: c.document_name,
-        notes: sentYmd ? `Sent ${sentYmd}.` : '',
+        notes,
         byName: (c.signer_printed_name ?? '').trim() || (input.person?.name ?? ''),
         state: 'live',
         ref: { table: 'person_contract_documents', id: c.id },
-        door: CONTRACTS_DOOR,
+        door: contractRecordDoor(c.id),
         attachmentIds: [],
       })
       const officeYmd = dayOf(c.office_completed_at)
@@ -298,7 +324,7 @@ export function buildPersonTimeline(input: PersonTimelineInput): PersonTimelineL
           byName: 'the office',
           state: 'live',
           ref: { table: 'person_contract_documents', id: c.id },
-          door: CONTRACTS_DOOR,
+          door: contractRecordDoor(c.id),
           attachmentIds: [],
         })
       }
@@ -641,18 +667,73 @@ export function ymdShift(ymd: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-/** The strip's chips in reading order; a zero is left out so the strip says only what is there. */
-export function personFileFactChips(f: PersonFileFacts): Array<{ key: string; label: string; tone: 'gray' | 'green' | 'amber' | 'red' }> {
-  const out: Array<{ key: string; label: string; tone: 'gray' | 'green' | 'amber' | 'red' }> = []
-  if (f.reportsPending > 0) out.push({ key: 'reports', label: `${f.reportsPending} report${f.reportsPending === 1 ? '' : 's'} waiting to be filed`, tone: 'amber' })
-  if (f.licensesExpired > 0) out.push({ key: 'expired', label: `${f.licensesExpired} license${f.licensesExpired === 1 ? '' : 's'} expired`, tone: 'red' })
-  if (f.papersOwed > 0) out.push({ key: 'owed', label: `${f.papersOwed} paper${f.papersOwed === 1 ? '' : 's'} owed`, tone: 'amber' })
-  if (f.papersWaiting > 0) out.push({ key: 'waiting', label: `${f.papersWaiting} sent, waiting`, tone: 'amber' })
-  if (f.ncns90 > 0) out.push({ key: 'ncns', label: `${f.ncns90} no-show${f.ncns90 === 1 ? '' : 's'} in 90 days`, tone: 'red' })
-  if (f.papersSigned > 0) out.push({ key: 'signed', label: `${f.papersSigned} paper${f.papersSigned === 1 ? '' : 's'} signed`, tone: 'green' })
-  if (f.licensesLive > 0) out.push({ key: 'licenses', label: `${f.licensesLive} license${f.licensesLive === 1 ? '' : 's'} on file`, tone: 'green' })
-  if (f.writeups > 0) out.push({ key: 'writeups', label: `${f.writeups} write-up${f.writeups === 1 ? '' : 's'}`, tone: 'gray' })
-  if (f.entries > 0) out.push({ key: 'entries', label: `${f.entries} HR entr${f.entries === 1 ? 'y' : 'ies'}`, tone: 'gray' })
-  if (f.evidence > 0) out.push({ key: 'evidence', label: `${f.evidence} piece${f.evidence === 1 ? '' : 's'} of evidence`, tone: 'gray' })
+export type PersonFileFactChip = {
+  key: string
+  label: string
+  tone: 'gray' | 'green' | 'amber' | 'red'
+  /** v2.6820: the Timeline filter the chip narrows to when pressed — the papers behind *1 paper signed*, the licenses behind *4 licenses on file*. */
+  filter: PersonTimelineFilter
+}
+
+const PAPERS: PersonTimelineFilter = { lane: 'paper', source: 'contract' }
+
+/** The strip's chips in reading order; a zero is left out so the strip says only what is there. Each names the filter it opens. */
+export function personFileFactChips(f: PersonFileFacts): PersonFileFactChip[] {
+  const out: PersonFileFactChip[] = []
+  if (f.reportsPending > 0) out.push({ key: 'reports', label: `${f.reportsPending} report${f.reportsPending === 1 ? '' : 's'} waiting to be filed`, tone: 'amber', filter: { source: 'report' } })
+  if (f.licensesExpired > 0) out.push({ key: 'expired', label: `${f.licensesExpired} license${f.licensesExpired === 1 ? '' : 's'} expired`, tone: 'red', filter: { lane: 'missed', source: 'license' } })
+  if (f.papersOwed > 0) out.push({ key: 'owed', label: `${f.papersOwed} paper${f.papersOwed === 1 ? '' : 's'} owed`, tone: 'amber', filter: PAPERS })
+  if (f.papersWaiting > 0) out.push({ key: 'waiting', label: `${f.papersWaiting} sent, waiting`, tone: 'amber', filter: PAPERS })
+  if (f.ncns90 > 0) out.push({ key: 'ncns', label: `${f.ncns90} no-show${f.ncns90 === 1 ? '' : 's'} in 90 days`, tone: 'red', filter: { lane: 'missed', source: 'attendance' } })
+  if (f.papersSigned > 0) out.push({ key: 'signed', label: `${f.papersSigned} paper${f.papersSigned === 1 ? '' : 's'} signed`, tone: 'green', filter: PAPERS })
+  if (f.licensesLive > 0) out.push({ key: 'licenses', label: `${f.licensesLive} license${f.licensesLive === 1 ? '' : 's'} on file`, tone: 'green', filter: { source: 'license' } })
+  if (f.writeups > 0) out.push({ key: 'writeups', label: `${f.writeups} write-up${f.writeups === 1 ? '' : 's'}`, tone: 'gray', filter: { source: 'writeup' } })
+  if (f.entries > 0) out.push({ key: 'entries', label: `${f.entries} HR entr${f.entries === 1 ? 'y' : 'ies'}`, tone: 'gray', filter: { source: 'file' } })
+  if (f.evidence > 0) out.push({ key: 'evidence', label: `${f.evidence} piece${f.evidence === 1 ? '' : 's'} of evidence`, tone: 'gray', filter: { source: 'evidence' } })
+  return out
+}
+
+/** One signed paper, as the seat's `signed_papers` lists it and as the Timeline's signed line reads (v2.6820). */
+export type PersonSignedPaper = {
+  id: string
+  paper: string
+  doc_type: string
+  /** The day it was signed, YYYY-MM-DD. */
+  signed_on: string
+  signed_as: string
+  how: PersonSignedHow
+  sent_on: string | null
+  /** The day the office made the record, when that was after the signing (a scan keyed in later); null when the same day or before. */
+  recorded_on: string | null
+  office_completed_on: string | null
+  expires_on: string | null
+  door: { label: string; to: string }
+}
+
+/**
+ * The papers a person signed, newest first — a short list beside the Timeline so a reader or an agent sees what was signed
+ * without walking the months. Pure; the same rows the Timeline's `contract` source draws from.
+ */
+export function signedPapers(input: Pick<PersonTimelineInput, 'contracts' | 'person'>): PersonSignedPaper[] {
+  const out: PersonSignedPaper[] = []
+  for (const c of input.contracts) {
+    const signedOn = dayOf(c.signed_at)
+    if (c.status !== 'signed' || !signedOn) continue
+    const madeOn = dayOf(c.created_at)
+    out.push({
+      id: c.id,
+      paper: c.document_name,
+      doc_type: c.doc_type,
+      signed_on: signedOn,
+      signed_as: (c.signer_printed_name ?? '').trim() || (input.person?.name ?? ''),
+      how: contractSignedHow(c),
+      sent_on: dayOf(c.sent_at),
+      recorded_on: madeOn && madeOn > signedOn ? madeOn : null,
+      office_completed_on: dayOf(c.office_completed_at),
+      expires_on: dayOf(c.expires_at),
+      door: contractRecordDoor(c.id),
+    })
+  }
+  out.sort((a, b) => (a.signed_on < b.signed_on ? 1 : a.signed_on > b.signed_on ? -1 : a.paper < b.paper ? -1 : a.paper > b.paper ? 1 : 0))
   return out
 }

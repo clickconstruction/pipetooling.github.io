@@ -114,13 +114,13 @@ export async function loadPersonFileSources(args: {
     read<PersonTimelineContract>('contract', viewer.canAccessContracts && Boolean(personId), 'contracts are office work', () =>
       supabase
         .from('person_contract_documents')
-        .select('id, document_name, status, created_at, sent_at, signed_at, office_completed_at, signer_printed_name, expires_at, doc_type')
+        .select('id, document_name, status, created_at, sent_at, signed_at, office_completed_at, signer_printed_name, expires_at, doc_type, signer_consented_at, signer_signature_storage_path, form_scan_storage_path, form_source')
         .eq('person_id', personId as string),
     ),
     read<PersonTimelineContract>('contract', viewer.canAccessContracts && name !== '', 'contracts are office work', () =>
       supabase
         .from('person_contract_documents')
-        .select('id, document_name, status, created_at, sent_at, signed_at, office_completed_at, signer_printed_name, expires_at, doc_type')
+        .select('id, document_name, status, created_at, sent_at, signed_at, office_completed_at, signer_printed_name, expires_at, doc_type, signer_consented_at, signer_signature_storage_path, form_scan_storage_path, form_source')
         .eq('person_name', name),
     ),
     read<PersonTimelineLicense>('license', viewer.canAccessLicenses && name !== '', 'licenses need the pay gate', () =>

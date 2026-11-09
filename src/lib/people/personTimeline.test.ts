@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPersonTimeline,
+  contractRecordDoor,
+  contractSignedHow,
   countPersonTimeline,
   filterPersonTimeline,
   groupPersonTimelineByMonth,
@@ -8,6 +10,7 @@ import {
   personFileFactChips,
   personFileFacts,
   personTimelineEmptyWords,
+  signedPapers,
   splitPersonTimeline,
   ymdShift,
   type PersonTimelineInput,
@@ -90,9 +93,40 @@ describe('buildPersonTimeline · one line per thing on record, on the day it is 
     expect(c1.lane).toBe('paper')
     expect(c1.ymd).toBe('2026-04-21')
     expect(c1.byName).toBe('Pat Doe')
-    expect(c1.notes).toBe('Sent 2026-04-21.')
+    expect(c1.notes).toBe('Signed electronically. Sent 2026-04-21.')
+    // v2.6820: a signed paper's door opens its own record, not the tab; the unsigned ones keep the tab.
+    expect(c1.door).toEqual({ label: 'Open the signed record', to: '/people?tab=contracts&doc=c1' })
     expect(lines.find((l) => l.key === 'contract:c2:sent')!.state).toBe('waiting')
+    expect(lines.find((l) => l.key === 'contract:c2:sent')!.door).toEqual({ label: 'Contracts', to: '/people?tab=contracts' })
     expect(lines.find((l) => l.key === 'contract:c3:owed')!.kindWords).toBe('owed · not sent yet')
+  })
+
+  it('a signed line says how it was signed and when the office recorded it after the day it was signed (v2.6820)', () => {
+    const base = { status: 'signed', sent_at: null, office_completed_at: null, expires_at: null, doc_type: 'agreement' }
+    const lines = buildPersonTimeline(
+      input({
+        contracts: [
+          // Signed in April, keyed in in August: the e-sign consent's clock says electronically; the record's day is named.
+          { ...base, id: 'k1', document_name: 'Subcontractor agreement', created_at: '2026-08-05T08:32:04Z', signed_at: '2026-04-02', signer_printed_name: 'pat doe', signer_consented_at: '2026-04-02T15:53:00Z', signer_signature_storage_path: null, form_scan_storage_path: null, form_source: null },
+          // A scan keyed in from paper.
+          { ...base, id: 'k2', document_name: 'Form I-9', created_at: '2026-09-05T02:32:33Z', signed_at: '2026-09-04', signer_printed_name: 'Pat Doe', signer_consented_at: null, signer_signature_storage_path: null, form_scan_storage_path: 'scans/k2.pdf', form_source: 'paper' },
+          // Marked signed by the office with nothing from a signing.
+          { ...base, id: 'k3', document_name: 'W-9', created_at: '2026-03-01T10:00:00Z', signed_at: '2026-03-01', signer_printed_name: null, signer_consented_at: null, signer_signature_storage_path: null, form_scan_storage_path: null, form_source: null },
+          // An hours statement signed through the app reads as one.
+          { ...base, id: 'k4', document_name: 'Hours statement HS-629-0001', created_at: '2026-11-03T04:21:00Z', signed_at: '2026-11-04', signer_printed_name: 'Pat Doe', signer_consented_at: '2026-11-04T16:00:00Z', doc_type: 'hours_statement' },
+        ],
+      }),
+    )
+    const k1 = lines.find((l) => l.key === 'contract:k1:signed')!
+    expect(k1.notes).toBe('Signed electronically. Recorded 2026-08-05.')
+    expect(k1.byName).toBe('pat doe')
+    expect(lines.find((l) => l.key === 'contract:k2:signed')!.notes).toBe('Signed on paper; the scan is the record.')
+    expect(lines.find((l) => l.key === 'contract:k3:signed')!.notes).toBe('Recorded by the office as signed; no copy from the signing.')
+    expect(lines.find((l) => l.key === 'contract:k3:signed')!.byName).toBe('Pat Doe')
+    expect(lines.find((l) => l.key === 'contract:k4:signed')!.kindWords).toBe('hours statement · signed')
+    expect(contractSignedHow({ sent_at: '2026-04-21T19:07:29Z' })).toBe('electronically')
+    expect(contractSignedHow({ sent_at: null })).toBe('recorded by the office')
+    expect(contractRecordDoor('a b').to).toBe('/people?tab=contracts&doc=a%20b')
   })
 
   it('a two-party form adds the office section as its own line on the day the office finished', () => {
@@ -295,6 +329,25 @@ describe('personFileFacts · the strip says only what is there', () => {
       '1 HR entry',
     ])
   })
+  it('each chip names the Timeline filter it narrows to (v2.6820): the paper chips open the papers, a license chip the licenses', () => {
+    const facts = personFileFacts(
+      input({
+        contracts: [
+          { id: 'c1', document_name: 'A', status: 'signed', created_at: '2026-04-21T05:49:09Z', sent_at: null, signed_at: '2026-04-21', office_completed_at: null, signer_printed_name: 'Pat Doe', expires_at: null, doc_type: 'agreement' },
+          { id: 'c3', document_name: 'B', status: 'unsent', created_at: '2026-08-05T06:39:45Z', sent_at: null, signed_at: null, office_completed_at: null, signer_printed_name: null, expires_at: null, doc_type: 'w9' },
+        ],
+        licenses: [{ id: 'l1', license_type: 'Journeyman', date_of_expiry: '2027-01-15', created_at: '2026-03-01T10:00:00Z', note: null }],
+      }),
+      [],
+    )
+    const chips = personFileFactChips(facts)
+    expect(chips.map((c) => [c.key, c.filter])).toEqual([
+      ['owed', { lane: 'paper', source: 'contract' }],
+      ['signed', { lane: 'paper', source: 'contract' }],
+      ['licenses', { source: 'license' }],
+    ])
+  })
+
   it('an empty file has no chips and no last day', () => {
     const inp = input({ person: null })
     const facts = personFileFacts(inp, buildPersonTimeline(inp))
@@ -304,6 +357,25 @@ describe('personFileFacts · the strip says only what is there', () => {
   it('ymdShift moves on the calendar, across a month end and a year end', () => {
     expect(ymdShift('2026-11-02', -90)).toBe('2026-08-04')
     expect(ymdShift('2026-12-31', 1)).toBe('2027-01-01')
+  })
+})
+
+describe('signedPapers · what they signed, as a list', () => {
+  it('one entry per signed paper, newest first, with the day, who signed, how, the sent and recorded days and the door; unsigned papers are left out', () => {
+    const list = signedPapers(
+      input({
+        contracts: [
+          { id: 'c1', document_name: 'Subcontractor Handbook', status: 'signed', created_at: '2026-04-21T05:49:09Z', sent_at: '2026-04-21T19:07:29Z', signed_at: '2026-04-21', office_completed_at: '2026-04-22T15:00:00Z', signer_printed_name: 'Pat Doe', expires_at: '2027-04-21', doc_type: 'agreement' },
+          { id: 'k1', document_name: 'Subcontractor agreement', status: 'signed', created_at: '2026-08-05T08:32:04Z', sent_at: null, signed_at: '2026-04-02', office_completed_at: null, signer_printed_name: '', expires_at: null, doc_type: 'agreement', signer_consented_at: '2026-04-02T15:53:00Z' },
+          { id: 'c3', document_name: 'W-9', status: 'unsent', created_at: '2026-08-05T06:39:45Z', sent_at: null, signed_at: null, office_completed_at: null, signer_printed_name: null, expires_at: null, doc_type: 'w9' },
+        ],
+      }),
+    )
+    expect(list).toEqual([
+      { id: 'c1', paper: 'Subcontractor Handbook', doc_type: 'agreement', signed_on: '2026-04-21', signed_as: 'Pat Doe', how: 'electronically', sent_on: '2026-04-21', recorded_on: null, office_completed_on: '2026-04-22', expires_on: '2027-04-21', door: { label: 'Open the signed record', to: '/people?tab=contracts&doc=c1' } },
+      { id: 'k1', paper: 'Subcontractor agreement', doc_type: 'agreement', signed_on: '2026-04-02', signed_as: 'Pat Doe', how: 'electronically', sent_on: null, recorded_on: '2026-08-05', office_completed_on: null, expires_on: null, door: { label: 'Open the signed record', to: '/people?tab=contracts&doc=k1' } },
+    ])
+    expect(signedPapers(input())).toEqual([])
   })
 })
 
