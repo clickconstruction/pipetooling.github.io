@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { canSetFleetRules } from '../../lib/people/peopleDoorGates'
 import { quickfillStationHref } from '../../lib/quickfill/stationDeepLink'
 import { fetchUserDisplayNames, missingUserIds, userDisplayLabel } from '../../lib/userDisplayNames'
 import { formatCurrency } from '../../lib/format'
@@ -1198,7 +1199,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     loadPanel(selectedVehicleId)
   }
 
-  const isDev = useMemo(() => users.find((u) => u.id === authUser?.id)?.role === 'dev', [users, authUser?.id])
+  // Punch list #188 row 59 (v2.6757): the fleet is the owner's, so Check-in settings and Wheels open to him with a dev.
+  const fleetRules = useMemo(() => canSetFleetRules(users.find((u) => u.id === authUser?.id)?.role), [users, authUser?.id])
 
   async function openCheckinSettings() {
     setCheckinSettingsDraft(await fetchVehicleCheckinSettings())
@@ -1389,7 +1391,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         <VehiclesFleetSummary
           facts={fleetFactsLine({ total: summary.total, motorPool: summary.motorPool, weeklyInsReg: weeklyTotal }, formatCurrency)}
           onInsurancePlans={() => setPlansOpen(true)}
-          onCheckinSettings={isDev ? () => void openCheckinSettings() : undefined}
+          onCheckinSettings={fleetRules ? () => void openCheckinSettings() : undefined}
           items={buildFleetAttentionItems({
             unassigned: summary.unassigned,
             uninsured: uninsuredCount,
@@ -2085,7 +2087,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
           })()
         )}
         {/* Wheels (v2.2733): vehicle cost per field hour, dev-only like Review. */}
-        {isDev && !loading && !selectedVehicle ? <PeopleVehiclesWheelsSection users={users} onAddVehicle={() => openVehicleForm()} /> : null}
+        {fleetRules && !loading && !selectedVehicle ? <PeopleVehiclesWheelsSection users={users} onAddVehicle={() => openVehicleForm()} /> : null}
       </div>
 
       {vehicleFormOpen && (
