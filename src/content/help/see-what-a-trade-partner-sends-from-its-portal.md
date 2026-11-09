@@ -43,6 +43,10 @@ The company can ask about the plans until questions close. The question shows in
 
 The company can add people and tick the kinds of email each one gets. Every kind always keeps someone. The people show in the company's window. [Look up a trade partner](/help/look-up-a-trade-partner) says where.
 
+## A line from its Messages tab
+
+The company can write to us from the **Messages** tab of its portal. The line lands on [Messages](/messages) under the company's contact, the way a text does. It carries the job the company picked. Answer it there by text or by email. The company reads your answer in the same tab on its next visit.
+
 ## A charge's answer, or a change it asks for
 
 On a job of ours, the company can press **Agree** on a charge from us. It can also press **Dispute it** and say why. It can press **Ask for a change** to the work it signed for. Each one is saved with the job. No office screen shows them yet.

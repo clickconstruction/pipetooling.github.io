@@ -74,7 +74,7 @@ export const DOOR_GROUP_WORDS: Record<DoorGroup, string> = {
   money: 'Money',
 }
 
-export type DoorKey = 'plans' | 'papers' | 'questions' | 'newSet' | 'schedule' | 'start' | 'log' | 'punch' | 'submittals' | 'rfis' | 'draws' | 'changes' | 'bill' | 'billDay' | 'closeout' | 'number' | 'tabs' | 'prospects'
+export type DoorKey = 'plans' | 'papers' | 'questions' | 'newSet' | 'schedule' | 'start' | 'log' | 'punch' | 'submittals' | 'rfis' | 'draws' | 'word' | 'changes' | 'bill' | 'billDay' | 'closeout' | 'number' | 'tabs' | 'prospects'
 
 export interface CardDoor {
   key: DoorKey
@@ -109,6 +109,8 @@ export interface DoorFacts {
     tabs: boolean
     /** Send the owner back to Prospects (v2.5561): the prospects staff, on a lost job. */
     prospects?: boolean
+    /** Word to every trade (punch list #205, PR 6): whoever may email a trade partner, on a job being built. */
+    word?: boolean
   }
   counts: {
     questionsOpen: number
@@ -146,6 +148,7 @@ export function cardDoors(f: DoorFacts): CardDoor[] {
   if (f.can.submittals && building) doors.push({ key: 'submittals', group: 'work', label: 'Submittals' })
   if (f.can.rfis && building) doors.push({ key: 'rfis', group: 'work', label: 'RFIs' })
   if (f.can.draws && building) doors.push({ key: 'draws', group: 'work', label: 'Draws' })
+  if (f.can.word && building && !f.lost) doors.push({ key: 'word', group: 'work', label: 'Word to every trade', title: 'One email to every company awarded a trade on this job. Each reads it in its portal too.' })
   // The money team's: the contract's changes, the bills, Bill day, closeout, our number and the bid tabs.
   if (f.can.changes && f.stage !== 'bidding' && !f.lost)
     doors.push({ key: 'changes', group: 'money', label: 'Change orders', ...(f.counts.changeOrders > 0 ? { count: String(f.counts.changeOrders) } : {}) })
