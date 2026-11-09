@@ -19,6 +19,8 @@ import { TallyJobTransactionsModal } from '../components/tally/TallyJobTransacti
 import { TallyClockWindowAllocateModal } from '../components/tally/TallyClockWindowAllocateModal'
 import { TallySortModeCardList } from '../components/tally/TallySortModeCardList'
 import { TallyTeamQueue } from '../components/tally/TallyTeamQueue'
+import { TicketPress } from '../components/tickets/TicketPress'
+import { MyTickets } from '../components/tickets/MyTickets'
 import { mercurySwipeAtIso } from '../lib/mercurySwipeTime'
 import { TallySortPurchaseModal } from '../components/tally/TallySortPurchaseModal'
 import TallyOnSiteTab, { type OnSitePart } from '../components/tally/TallyOnSiteTab'
@@ -1022,6 +1024,9 @@ export default function JobTally() {
         </button>
       </div>
 
+      {/* A photo of a supply house ticket, from every tab (punch list #295): the camera first, the job after. */}
+      {authUser?.id ? <TicketPress userId={authUser.id} byName={profileName ?? authUser.email?.split('@')[0] ?? 'someone'} /> : null}
+
       {activeTab === 'transactions' && isTallyOffice ? (
         <div role="group" aria-label="Whose card charges" style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.25rem' }}>
           {(['team', 'mine'] as const).map((v) => (
@@ -1049,6 +1054,8 @@ export default function JobTally() {
       ) : null}
 
       {activeTab === 'transactions' && showTallyTeam && <TallyTeamQueue canMarkPayroll={canMarkPayroll} />}
+
+      {activeTab === 'transactions' && !showTallyTeam && authUser?.id ? <MyTickets userId={authUser.id} /> : null}
 
       {activeTab === 'transactions' && !showTallyTeam && (
         <div style={{ padding: '0.5rem 0 1rem' }}>

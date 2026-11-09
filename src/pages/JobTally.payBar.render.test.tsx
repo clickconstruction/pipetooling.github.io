@@ -117,7 +117,8 @@ describe('JobTally → My card’s empty states name their press', () => {
     mockTxRows = [linkedCharge('t1', 'c1')]
     const view = renderWithProviders(<JobTally />)
     await openTransactions()
-    const empty = () => document.querySelector('[data-empty-state]') as HTMLElement | null
+    // The transactions' own empty state: My tickets (punch list #295) draws one of its own above the list.
+    const empty = () => (Array.from(document.querySelectorAll('[data-empty-state]')).find((el) => !el.closest('[aria-label="My tickets"]')) as HTMLElement | undefined) ?? null
     // Every charge has a job, so the unlinked scope (the default) is empty.
     await waitFor(() => expect(empty()?.textContent).toBe('No unlinked transactions. Show all'), { timeout: 20000 })
     fireEvent.click(within(empty()!).getByRole('button', { name: 'Show all' }))
