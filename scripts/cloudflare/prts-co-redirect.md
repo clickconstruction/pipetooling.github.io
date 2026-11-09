@@ -60,6 +60,41 @@ along through the rule's own *Preserve query string* setting rather than being
 built into the expression. `concat` over `http.request.uri.path` is Cloudflare's
 own example for forwarding a domain that has no origin.
 
+## The second rule: bare prts.co lands on Scan a label (v2.6799, punch list #294)
+
+Until v2.6799 `prts.co/` forwarded to `clicktooling.com/`, the sign-in page. The app now serves
+**Scan a label** at `/b` (type the code under a QR, or find a part on the site this phone last
+scanned), so a second redirect rule, **ahead of the first** in the same ruleset, sends the bare
+host there. Mirrored here first; the live rule is made in the dashboard (Rules → Overview →
+Redirect Rules) or through the API with the same four permissions as above.
+
+| | |
+|---|---|
+| Name | Bare prts.co to the Scan a label page |
+| When incoming requests match | Custom filter expression: `((http.host eq "prts.co") or (http.host eq "www.prts.co")) and (http.request.uri.path eq "/")` |
+| Then | URL redirect, type **Static**, `https://clicktooling.com/b`, status 301, preserve query string off |
+| Order | First, above *Forward every path to clicktooling.com, lower-cased*; rules run in order and the first match wins |
+
+The API form is one `PUT` of the whole entrypoint with both rules, this one first:
+
+```text
+PUT   /zones/<zone>/rulesets/phases/http_request_dynamic_redirect/entrypoint
+      {"rules":[
+        {"action":"redirect","description":"Bare prts.co to the Scan a label page","enabled":true,
+         "expression":"((http.host eq \"prts.co\") or (http.host eq \"www.prts.co\")) and (http.request.uri.path eq \"/\")",
+         "action_parameters":{"from_value":{"status_code":301,"target_url":{"value":"https://clicktooling.com/b"},"preserve_query_string":false}}},
+        {"action":"redirect","description":"Forward every path to clicktooling.com, lower-cased","enabled":true,
+         "expression":"(http.host eq \"prts.co\") or (http.host eq \"www.prts.co\")",
+         "action_parameters":{"from_value":{"status_code":301,"target_url":{"expression":"concat(\"https://clicktooling.com\", lower(http.request.uri.path))"},"preserve_query_string":true}}}
+      ]}
+```
+
+Verify: `curl -sI https://prts.co/` answers `301` with `location: https://clicktooling.com/b`, and
+`curl -sI https://prts.co/B/7D759246` still answers `location: https://clicktooling.com/b/7d759246`.
+**State**: mirrored 2026-11-09 with v2.6799; the live rule waits on the owner (or a session in his
+Chrome signed in to Cloudflare). Until it is live the bare host lands on the sign-in page as before,
+and nothing else in v2.6799 depends on it.
+
 ## SSL/TLS
 
 SSL/TLS → Edge Certificates → **Always Use HTTPS**: on, so `http://prts.co/…`

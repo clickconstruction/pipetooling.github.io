@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createKeptPhotos, keptPhotosOf, sendKeptPhotos, unsentKeptPhotos, withPhoto } from './keptPhotos'
-import { newPress, type KeptJobPhoto, type KeptReportPhoto, type KeptTaskPhoto, type OutboxPress } from './outbox'
+import { createKeptPhotos, keptPhotosOf, sendKeptPhotos, ticketDraftOf, unsentKeptPhotos, withPhoto } from './keptPhotos'
+import { newPress, type KeptJobPhoto, type KeptReportPhoto, type KeptTaskPhoto, type KeptTicketPage, type OutboxPress } from './outbox'
 import { createOutboxState } from './outboxState'
 
 const T = 1_780_000_000_000
@@ -138,5 +138,61 @@ describe('keptPhotos', () => {
     const out = await sendKeptPhotos(press, s, { bytes, sendTask: async () => Promise.reject(new TypeError('Failed to fetch')) })
     expect(out.ok).toBe(false)
     expect(unsentKeptPhotos(s.presses()[0]!).map((p) => p.id)).toEqual(['tp-2'])
+  })
+})
+
+// Punch list #295, PR 2: a counter ticket's row goes first, then each page under its kept id.
+describe('a counter ticket kept on the phone', () => {
+  const pageOf = (id: string, pageNo: number, sent = false): KeptTicketPage => ({ id, sent, pageNo, mime: pageNo === 2 ? 'application/pdf' : 'image/jpeg', takenAt: '2026-11-04T16:02:00Z', bytes: 900_000, originalBytes: 4_000_000, width: 2400, height: 1800, byName: 'Jordan' })
+  const ticket = (photos: KeptTicketPage[]) =>
+    newPress({ id: 'p-ct', seq: 1, kind: 'counter-ticket', userId: 'u1', pressedAt: T, payload: { ticketId: 'tk-1', takenAt: '2026-11-04T16:02:00Z', takenAtFrom: 'press', source: 'camera', jobId: 'j1', alsoJobIds: ['j2'], noOneJob: false, poEntryId: 'po1', total: 228.58, note: 'fittings', byName: 'Jordan', photos } })
+
+  it('reads the row the replay writes from the press', () => {
+    expect(ticketDraftOf(ticket([]))).toEqual({ id: 'tk-1', takenBy: 'u1', takenByName: 'Jordan', takenAt: '2026-11-04T16:02:00Z', takenAtFrom: 'press', source: 'camera', jobId: 'j1', alsoJobIds: ['j2'], noOneJob: false, poEntryId: 'po1', total: 228.58, note: 'fittings' })
+  })
+
+  it('writes the row once, then sends each page in order under its kept id, and drops the bytes', async () => {
+    const press = ticket([pageOf('pg-1', 1), pageOf('pg-2', 2)])
+    expect(keptPhotosOf(press).map((p) => p.id)).toEqual(['pg-1', 'pg-2'])
+    const bytes = memory()
+    const one = new Blob([new Uint8Array(3)], { type: 'image/jpeg' })
+    const two = new Blob([new Uint8Array(4)], { type: 'application/pdf' })
+    await bytes.keep('pg-1', one, T)
+    await bytes.keep('pg-2', two, T)
+    const s = store([press])
+    const calls: string[] = []
+    const out = await sendKeptPhotos(press, s, {
+      bytes,
+      sendTicketRow: async (p) => void calls.push(`row:${p.id}`),
+      sendTicketPage: async (a) => void calls.push(`page:${a.ticketId}/${a.uploaderId}/${a.page.id}/${a.page.pageNo}/${a.page.mime}/${a.page.blob.size}`),
+      send: async () => void calls.push('job'),
+      sendTask: async () => void calls.push('task'),
+    })
+    expect(out).toEqual({ ok: true })
+    expect(calls).toEqual(['row:p-ct', 'page:tk-1/u1/pg-1/1/image/jpeg/3', 'page:tk-1/u1/pg-2/2/application/pdf/4'])
+    expect(unsentKeptPhotos(s.presses()[0]!)).toEqual([])
+    expect(await bytes.read('pg-1')).toBeNull()
+  })
+
+  it('stops at a row that does not send, and at a page that does not, leaving the rest on the phone', async () => {
+    const press = ticket([pageOf('pg-1', 1), pageOf('pg-2', 2)])
+    const bytes = memory()
+    await bytes.keep('pg-1', new Blob([new Uint8Array(1)]), T)
+    await bytes.keep('pg-2', new Blob([new Uint8Array(1)]), T)
+    const s = store([press])
+    const noRow = await sendKeptPhotos(press, s, { bytes, sendTicketRow: async () => Promise.reject(new TypeError('Failed to fetch')), sendTicketPage: async () => undefined })
+    expect(noRow.ok).toBe(false)
+    expect(unsentKeptPhotos(s.presses()[0]!).map((p) => p.id)).toEqual(['pg-1', 'pg-2'])
+    let n = 0
+    const onePage = await sendKeptPhotos(press, s, { bytes, sendTicketRow: async () => undefined, sendTicketPage: async () => (++n === 2 ? Promise.reject(new TypeError('Failed to fetch')) : undefined) })
+    expect(onePage.ok).toBe(false)
+    expect(unsentKeptPhotos(s.presses()[0]!).map((p) => p.id)).toEqual(['pg-2'])
+  })
+
+  it('writes no row when every page was already sent', async () => {
+    const press = ticket([pageOf('pg-1', 1, true)])
+    const calls: string[] = []
+    expect(await sendKeptPhotos(press, store([press]), { bytes: memory(), sendTicketRow: async () => void calls.push('row'), sendTicketPage: async () => void calls.push('page') })).toEqual({ ok: true })
+    expect(calls).toEqual([])
   })
 })

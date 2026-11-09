@@ -223,6 +223,8 @@ The agent shows a plan first. The plan says how each row will read. Nothing is w
 
 Ask the agent where a bid's submittals stand. It answers with each row, each part and the next step. It can hand you the status in plain words to paste.
 
+Ask the agent to leave the word on the job when a part moves. It writes one line in the job's activity, with the dev as its author. It can leave a note on the bid instead. The team reads it where they read every note.
+
 The agent never shares with the GC. It never emails or texts anyone. To set one up, read [connect a coding agent](/help/connect-a-coding-agent).
 
 ## The procurement log

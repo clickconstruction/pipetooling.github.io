@@ -87,3 +87,46 @@ describe('BoxPublicPage', () => {
     expect(screen.getByRole('button', { name: /try again/i })).toBeTruthy()
   })
 })
+
+describe('BoxPublicPage · Find a part on this site (v2.6799)', () => {
+  const found = { ok: true, find: { words: ['copper'], total: 2, boxes: [
+    { code: '4F2A9C18', stencil: 'B3', kind: 'cage', place: 'Level 2', where: '', thisBox: true, lines: [{ partName: '3/4" copper 90° elbows', manufacturer: 'Mueller', onHand: 42 }] },
+    { code: 'AAAA1111', stencil: 'A1', kind: 'cage', place: 'Laydown yard', where: '', thisBox: false, lines: [{ partName: '3/4" copper pipe, 20 ft', manufacturer: 'Cerro', onHand: 24 }] },
+  ] } }
+
+  it('opens the search from the press, asks the function with the words and the code, lists the hits with a door to each other box', async () => {
+    const fetchMock = vi.fn(async (url: string) => ({ status: 200, ok: true, json: async () => (url.includes('&find=') ? found : box) }))
+    vi.stubGlobal('fetch', fetchMock)
+    mount()
+    fireEvent.click(await screen.findByTestId('box-page-find-open-press'))
+    expect(await screen.findByTestId('box-page-find')).toBeTruthy()
+    fireEvent.change(screen.getByTestId('box-page-find-input'), { target: { value: '3/4 copper' } })
+    fireEvent.click(screen.getByTestId('box-page-find-go'))
+    expect((await screen.findByTestId('box-page-find-count')).textContent).toBe('2 boxes hold a line that matches.')
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('box-read?code=4F2A9C18&find=3%2F4%20copper'))).toBe(true)
+    const hits = screen.getAllByTestId('box-page-find-hit')
+    expect(hits).toHaveLength(2)
+    expect(hits[0]!.textContent).toContain('this cage')
+    expect(screen.getAllByTestId('box-page-find-open')).toHaveLength(1)
+    expect(screen.getByTestId('box-page-find-open').getAttribute('href')).toBe('/b/aaaa1111')
+    fireEvent.click(screen.getByTestId('box-page-find-back'))
+    expect(await screen.findByTestId('box-page-title')).toBeTruthy()
+  })
+
+  it('nothing matching says so in words', async () => {
+    const fetchMock = vi.fn(async (url: string) => ({ status: 200, ok: true, json: async () => (url.includes('&find=') ? { ok: true, find: { words: ['wax', 'ring'], boxes: [], total: 0 } } : box) }))
+    vi.stubGlobal('fetch', fetchMock)
+    mount()
+    fireEvent.click(await screen.findByTestId('box-page-find-open-press'))
+    fireEvent.change(screen.getByTestId('box-page-find-input'), { target: { value: 'wax ring' } })
+    fireEvent.click(screen.getByTestId('box-page-find-go'))
+    expect((await screen.findByTestId('box-page-find-empty')).textContent).toContain('Nothing on this site matches wax ring')
+  })
+
+  it('remembers the box this phone scanned', async () => {
+    answer(200, box)
+    mount()
+    await screen.findByTestId('box-page-title')
+    expect(JSON.parse(localStorage.getItem('pt.boxPage.last') ?? '{}')).toMatchObject({ code: '4F2A9C18', stencil: 'B3', kind: 'cage' })
+  })
+})

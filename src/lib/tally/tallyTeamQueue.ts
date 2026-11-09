@@ -43,6 +43,8 @@ export type TallyTeamQueueInput = {
   schedule: readonly TallyQueueScheduleRow[]
   officeJobId: string | null
   nowMs: number
+  /** The job a counter ticket on a charge names, by charge id (punch list #295, PR 3): the line's first chip. */
+  ticketJobByCharge?: ReadonlyMap<string, string>
 }
 
 /** One unsorted charge on a card: the staff row (for the windows) and the kernel's charge. */
@@ -235,6 +237,7 @@ export function buildTallyTeamQueue(input: TallyTeamQueueInput): TallyTeamQueue 
       history: historyByHolder.get(holderId) ?? [],
       officeJobId: input.officeJobId,
       nowMs: input.nowMs,
+      ticketJobByCharge: input.ticketJobByCharge,
     })
     const sorted = (sortedByCard.get(key) ?? [])
       .slice()

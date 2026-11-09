@@ -1,5 +1,5 @@
 import { DatabaseError, databaseErrorFromResult, errorKindOf, formatErrorMessage, OperationTimeoutError, withOperationTimeout, type SupabaseResultError } from '../../utils/errorHandling'
-import { failureQueues, type ChecklistSignPayload, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OutboxKind, type OutboxPress, type OutboxRefusal, type TaskPhotoPayload } from './outbox'
+import { failureQueues, type CounterTicketPayload, type ChecklistSignPayload, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OutboxKind, type OutboxPress, type OutboxRefusal, type TaskPhotoPayload } from './outbox'
 
 /**
  * The send (punch list #163 PR 2): one press to the `land_field_press` RPC, which takes the
@@ -27,6 +27,8 @@ export const RPC_KIND: Record<OutboxKind, string> = {
   'checklist-sign': 'checklist_sign',
   /** Never sent to the RPC: the replay sent the row itself, and landing ties a finishing shot to its line (`landTaskPhoto`). */
   'task-photo': 'task_photo',
+  /** Never sent to the RPC: a counter ticket lands through its table's own policies and guard (`landCounterTicket`). */
+  'counter-ticket': 'counter_ticket',
 }
 
 /** The press's payload as the RPC reads it. */
@@ -60,6 +62,10 @@ export function rpcPayload(press: OutboxPress): Record<string, unknown> {
       const p = press.payload as TaskPhotoPayload
       return { instance_id: p.instanceId, photo_ids: p.photos.map((ph) => ph.id) }
     }
+    case 'counter-ticket': {
+      const p = press.payload as CounterTicketPayload
+      return { ticket_id: p.ticketId, job_id: p.jobId, page_ids: p.photos.map((ph) => ph.id) }
+    }
   }
 }
 
@@ -84,6 +90,37 @@ export async function landTaskPhoto(press: OutboxPress, io: LandTaskPhotoIo = {}
       await withOperationTimeout(Promise.all(proving.map((ph) => attach(p.instanceId, ph.criterionId!, ph.id))), LAND_TIMEOUT_MS, 'Add the photo')
     }
     return { kind: 'landed', result: { instance_id: p.instanceId, photo_ids: p.photos.filter((ph) => ph.sent).map((ph) => ph.id) } }
+  } catch (e) {
+    return outcomeOfFailure(e)
+  }
+}
+
+export type LandCounterTicketIo = {
+  row?: (press: OutboxPress) => Promise<unknown>
+  land?: (ticketId: string) => Promise<unknown>
+}
+
+/**
+ * A counter ticket lands without the RPC (punch list #295, PR 2): the replay sent its row and its pages first
+ * (`sendKeptPhotos`), so what is left is the Save press itself, `added_at` on a row that has none, under the table's
+ * own policies. The row is written again first, the same write on every try, so a ticket whose every page was lost
+ * with the phone's data still lands as a ticket with no page rather than vanishing. A repeat changes nothing and
+ * counts once. The outcome is classed as any press's.
+ */
+export async function landCounterTicket(press: OutboxPress, io: LandCounterTicketIo = {}): Promise<LandOutcome> {
+  try {
+    const p = press.payload as CounterTicketPayload
+    const run = async () => {
+      if (io.row) await io.row(press)
+      else {
+        const [{ sendTicketRow }, { ticketDraftOf }] = await Promise.all([import('../tickets/ticketsIo'), import('./keptPhotos')])
+        await sendTicketRow(ticketDraftOf(press))
+      }
+      const land = io.land ?? (await import('../tickets/ticketsIo')).landTicket
+      return land(p.ticketId)
+    }
+    const result = await withOperationTimeout(run(), LAND_TIMEOUT_MS, 'Save the ticket')
+    return { kind: 'landed', result: { ticket_id: p.ticketId, ...(result && typeof result === 'object' ? result : {}) } }
   } catch (e) {
     return outcomeOfFailure(e)
   }
@@ -151,6 +188,7 @@ export async function landFieldPress(press: OutboxPress): Promise<LandOutcome> {
   if (press.kind === 'job-photos') return landJobPhotos(press)
   if (press.kind === 'checklist-sign') return landChecklistSign(press)
   if (press.kind === 'task-photo') return landTaskPhoto(press)
+  if (press.kind === 'counter-ticket') return landCounterTicket(press)
   try {
     // The client is read here, not at import, so the kernels that take this send as a default load without it (a test, a worker).
     const { supabase } = await import('../supabase')
