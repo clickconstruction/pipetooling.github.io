@@ -1,7 +1,7 @@
 ---
 title: see which jobs made or lost money this week
 category: Office
-roles: dev, controller
+roles: dev, master_technician, controller
 keywords: weekly money movement, money out, money in, job cost this week, value created, earned, cash, lost money, made money
 order: 75
 ---
@@ -11,7 +11,7 @@ Money out is team labor, sub sheets and materials. Money in is payments. **Weekl
 
 ## Open it
 
-On **Jobs → Pipeline**, you open the hamburger menu at the left of the stage strip. The **Pipeline** group holds {{button:outline|Weekly money movement}}. Only devs and controllers see it.
+On **Jobs → Pipeline**, you open the hamburger menu at the left of the stage strip. The **Pipeline** group holds {{button:outline|Weekly money movement}}. The owner, a dev and the controller see it.
 
 The report opens on the **close week**. That is the previous complete Monday–Sunday week, the same week Moneyfill's picker shows. The header says so. It reads *Week of Aug 24 – 30 · close week*. You use ‹ › to move. You step into the week still in progress and it shows *still running*. Its close cannot be final yet. Moneyfill's {{button:outline|See the week's report}} opens the report pinned to whichever week you were closing.
 
@@ -37,7 +37,7 @@ The **Not on jobs** line at the bottom holds office and bid labor plus office-jo
 
 ## Email it weekly
 
-The **Email this report** box schedules sends to another dev or controller. You pick the person and a first-send date. The date defaults to next Monday 7:00 AM Central. You leave **Repeat weekly** on for a standing copy. Each send covers the previous complete week, rebuilt fresh at send time. It lists on the recipient's **Settings → My email schedule**. You cancel the pending row to end a weekly chain.
+The **Email this report** box schedules sends to the owner, another dev or the controller. You pick the person and a first-send date. The date defaults to next Monday 7:00 AM Central. You leave **Repeat weekly** on for a standing copy. Each send covers the previous complete week, rebuilt fresh at send time. It lists on the recipient's **Settings → My email schedule**. You cancel the pending row to end a weekly chain.
 
 ## Print it
 

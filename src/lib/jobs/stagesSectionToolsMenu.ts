@@ -27,6 +27,7 @@
  *   office as its badge. Hidden, not disabled, for everyone else.
  */
 import { isAssistantLike } from '../subcontractorLikeRole'
+import { canSeeStagesMoneyCharts } from './stagesRoleGates'
 
 export type StagesSectionToolKey =
   | 'recently-added'
@@ -103,10 +104,10 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
 
   const groups: StagesSectionToolsGroup[] = []
 
-  // Weekly money movement is dev/controller only — wage-derived job costs
-  // (mirrors the get_weekly_money_movement_payload RPC gate). Hidden, not
-  // disabled, for everyone else.
-  const canOpenWeeklyMoney = authRole === 'dev' || authRole === 'controller'
+  // Weekly money movement is the money team's — wage-derived job costs (mirrors the
+  // get_weekly_money_movement_payload RPC gate: the owner too since v2.6759, punch list
+  // #188 row 39). Hidden, not disabled, for everyone else.
+  const canOpenWeeklyMoney = canSeeStagesMoneyCharts(authRole)
   groups.push({
     section: 'Pipeline',
     items: [
@@ -215,7 +216,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
   }
   // Bubble sizes are wage-derived job costs — same dev/controller gate as
   // Weekly money movement. Hidden, not disabled, for everyone else.
-  if (authRole === 'dev' || authRole === 'controller') {
+  if (canSeeStagesMoneyCharts(authRole)) {
     billedItems.push({
       key: 'billed-aging-chart',
       label: 'Chart',
@@ -266,8 +267,8 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
   }
 
   const paidItems: StagesSectionToolItem[] = []
-  // Profit chart is wage-derived (dev/controller, like the billed aging chart).
-  if (authRole === 'dev' || authRole === 'controller') {
+  // Profit chart is wage-derived (the money team, like the billed aging chart; the owner since v2.6759, row 40).
+  if (canSeeStagesMoneyCharts(authRole)) {
     paidItems.push({
       key: 'paid-profit-chart',
       label: 'Chart',

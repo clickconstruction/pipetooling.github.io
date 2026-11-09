@@ -36,10 +36,10 @@ describe('roleGateRedirect — role × surface → landing + sentence (v2.2882, 
     expect(d.toast).toBe("Hours is for the office — you're on Users.")
   })
 
-  it('the Pipeline money-view link keeps a master on the board and names the controller (J5-6)', () => {
-    const d = roleGateRedirect({ from: '/jobs?tab=stages&stagesMoney=1', role: 'master_technician', surface: 'pipeline-money' })
+  it('the Pipeline money-view link keeps an assistant on the board and names the owner and the controller (J5-6; the owner opens it since v2.6759)', () => {
+    const d = roleGateRedirect({ from: '/jobs?tab=stages&stagesMoney=1', role: 'assistant', surface: 'pipeline-money' })
     expect(d.to).toBe('/jobs?tab=stages')
-    expect(d.toast).toBe("Weekly money movement is for the controller — you're on the Pipeline board.")
+    expect(d.toast).toBe("Weekly money movement is for the owner and the controller — you're on the Pipeline board.")
   })
 
   it('a superintendent on an office Bids tab lands on the Bid board with the spec sentence (J10-F12)', () => {
