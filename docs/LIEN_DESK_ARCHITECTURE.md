@@ -314,7 +314,7 @@ What the run records also reaches Messages (v2.5404): [`messages/legalLines.ts`]
 | `lienProperty.ts` | 131 | 12 | owner + property resolution |
 | `propertyKind.ts` / `propertyKindWrite.ts` | 47 / 49 | 4 / 0 (mocked) | kind words, shared property / write |
 | `rollMailingLines.ts`, `lienWord.ts`, `forecastWorkMonths.ts` | 59, 134, 311 | 6, 10, 11 | owner envelope, spoken word and `lienFyiStrip` (v2.5028; the leader's title-bar line it fed left in v2.6569 — the strip stays for the word-record card), month labels |
-| `lienFilingDocuments.ts`, `demandLetter.ts`, `legal/legalAsks.ts` | 901, 1,243, 325 | 17 (+2 pdf), 47, 9 | paper HTML (since v2.5077 the signed frame on the page, in the PDF and in plain text when the `signature` block carries `signed`; the cursive face loads only when a page has a pressed signature), dates/money words, counsel sign-off |
+| `lienFilingDocuments.ts`, `demandLetter.ts`, `legal/legalAsks.ts` | 901, 1,243, 325 | 17 (+2 pdf), 47, 9 | paper HTML (since v2.5077 the signed frame on the page, in the PDF and in plain text when the `signature` block carries `signed`; the cursive face loads only when a page has a pressed signature; since v2.6810 the print page has zero margins so the browser's header and footer have no room, its own margins repeat on every page, and a signature keeps on one page with the statement above it and the notary's block under it, in print and in the PDF — `filingKeepTogetherRuns`), dates/money words, counsel sign-off |
 
 **Still inline (move to `src/lib/jobs/*` + tests):**
 
