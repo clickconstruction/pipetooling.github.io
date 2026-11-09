@@ -72,6 +72,9 @@ export const TRADE_SUBMIT_KINDS = [
   'mark_lookahead',
   // P5b-2: the company's insurance certificate, from its own upload (the file kind's answer), received until the office looks.
   'coi',
+  // Punch list #205, PR 5: a line from the portal's Messages tab onto the company's thread (gcTradeThread.ts); the
+  // function writes it, with no verb, under the thread's own hourly cap.
+  'portal_message',
 ] as const
 
 export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
@@ -210,12 +213,21 @@ export interface TradeSignature {
   printedName: string
 }
 
+/** A line for the company's thread (punch list #205, PR 5): its words, and the job it is about or none. */
+export interface TradeMessage {
+  text: string
+  projectId: string | null
+}
+
+/** The longest line the Messages tab sends; a copy of `TRADE_PORTAL_LINE_MAX` in `gcTradeThread.ts`. */
+export const TRADE_MESSAGE_MAX = 2000
+
 /**
  * The request read. A signature carries `sign`; a file (P5a-1) carries `file` and no verb (its `call` is empty), since
- * the function places it in Drive itself.
+ * the function places it in Drive itself; a line for the thread (PR 5) carries `message` and no verb the same way.
  */
 export type TradeSubmitParsed =
-  | { ok: true; token: string; kind: TradeSubmitKind; call: TradeCall; sign?: TradeSignature; file?: TradeFileUpload }
+  | { ok: true; token: string; kind: TradeSubmitKind; call: TradeCall; sign?: TradeSignature; file?: TradeFileUpload; message?: TradeMessage }
   | { ok: false; key?: 'consentNeeded' | 'fileType' | 'fileTooBig' }
 
 /** The most a drawn signature may weigh, as `accept-contract` holds it. */
@@ -476,7 +488,8 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
     case 'final_pay_app':
       return { rpc: 'gc_trade_final_pay_app', params: { p_package_id: uuid(b.packageId), p_app: payAppOf(b.app, false) } }
     case 'file':
-      // Read by parseTradeFile before callOf; never reached.
+    case 'portal_message':
+      // Read by parseTradeFile and messageOf before callOf; never reached.
       throw new Bad()
     case 'vetting_form': {
       // A blank line or no years reaches the SQL, which says formIncomplete; years in part is not the form's.
@@ -568,6 +581,15 @@ function signatureOf(kind: TradeSubmitKind, b: Record<string, unknown>, record: 
   return { png, consent, record, printedName }
 }
 
+/** A line for the thread (PR 5): one to 2,000 characters once trimmed, about one of the company's jobs or none. */
+function messageOf(b: Record<string, unknown>): TradeMessage {
+  if (typeof b.text !== 'string') throw new Bad()
+  const line = b.text.trim()
+  if (line === '' || line.length > TRADE_MESSAGE_MAX) throw new Bad()
+  const projectId = b.projectId === undefined || b.projectId === null || b.projectId === '' ? null : uuid(b.projectId)
+  return { text: line, projectId }
+}
+
 /** The request read: its token, its kind and the verb's call, or not a shape the portal sends. */
 export function parseTradeSubmit(body: unknown): TradeSubmitParsed {
   if (!isObject(body)) return { ok: false }
@@ -582,6 +604,7 @@ export function parseTradeSubmit(body: unknown): TradeSubmitParsed {
       if (typeof file === 'string') return { ok: false, key: file }
       return { ok: true, token, kind: 'file', call: { rpc: '', params: {} }, file }
     }
+    if (k === 'portal_message') return { ok: true, token, kind: k, call: { rpc: '', params: {} }, message: messageOf(body) }
     const call = callOf(k, body)
     const record = SIGNED[k]
     if (!record) return { ok: true, token, kind: k, call }
