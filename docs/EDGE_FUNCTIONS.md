@@ -3,7 +3,7 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 183 Supabase Edge Functions
+purpose: Complete API documentation for all 184 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
 last_updated: 2026-11-09
 estimated_read_time: 20-25 minutes
@@ -187,6 +187,7 @@ when_to_read:
    - [owner-confirm-nightly](#owner-confirm-nightly)
    - [court-precinct-nightly](#court-precinct-nightly)
    - [permit-pull](#permit-pull)
+   - [permit-lookup](#permit-lookup)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
    - [send-bid-pricing-package](#send-bid-pricing-package)
@@ -3508,6 +3509,12 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Purpose** (v2.6782, punch list #292): pull a city's permits into `permits` for the Research tab under Prospects. San Antonio first: two CKAN datastores on the city's open-data portal (issued permits, submitted applications) read through the SQL door (`_shared/permitFeed.ts` writes the page query), the kept building types and every plumbing type filed since ten days before the newest row held (75 days back on a first run), paged oldest first, upserted on (city, source, number, type) so a re-read changes nothing; a State Plane point converted to degrees (`_shared/permitCoords.ts`). Each feed's run lands in `permit_pulls` with its counts or its error, and a stopped feed never stops the other.
 
 **Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `permit-pull`, 11:30 UTC, migration `20261109070000`), or a signed-in researcher — the function checks `user_can_research_permits()` under the caller's JWT, which is how the ledger's **Pull now** calls it. `verify_jwt = false` in `config.toml`. **Body**: `{ since?: 'YYYY-MM-DD', dry_run?: boolean }`. **Answer**: `{ ok, dryRun, feeds: [{ source, since, seen, kept, pages, error }], ms }`. **Deploy**: `supabase functions deploy permit-pull` after the migration is pushed.
+
+### permit-lookup
+
+**Purpose** (v2.6786, punch list #292 PR 4): the two lookups behind the Research ledger's Who pulled it card, cached in `permit_lookups` for thirty days per key. `company`: the contact's company (or the person) on Google Places Text Search with the server-side `GOOGLE_MAPS_API_KEY`, biased to the service area; an exact match when the name keys the same, else Google's first flagged loose. `parcel`: the permit's street address on Bexar County's parcel layer (`maps.bexar.org`, no key): owner of record, mailing address, DBA, values, year built, building area, the appraisal district's detail link. A source's failure is cached with its reason.
+
+**Auth**: a researcher's JWT checked in-body (`auth.getUser`, then `user_can_research_permits()`), the archived-caller guard. `verify_jwt = false` in `config.toml`. **Body**: `{ kind: 'company', contact, city?, refresh? }` or `{ kind: 'parcel', address, city?, refresh? }`. **Answer**: `{ ok, kind, key, found, facts, error, cached, looked_up_at }`. **Deploy**: `supabase functions deploy permit-lookup` after the migration is pushed.
 
 ### owner-confirm-nightly
 

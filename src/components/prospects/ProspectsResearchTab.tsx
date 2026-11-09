@@ -34,6 +34,7 @@ import {
   workWords,
   type ContactHistory,
   type Hint,
+  type LeadFacts,
   type ResearchPermitRow,
   type ResearchShowing,
   type ResearchWindow,
@@ -43,6 +44,7 @@ import {
 import { approachFromPermit, loadContactHistory, loadLatestPull, loadResearchPermits, pullPermitsNow, recordVerdict, type LatestPull } from '../../lib/research/permitResearchIo'
 import { PermitDecideSheet, type PermitDecision } from './PermitDecideSheet'
 import { ResearchMapCard } from './ResearchMapCard'
+import { WhoPulledItSheet } from './WhoPulledItSheet'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
@@ -109,6 +111,9 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [lastLooked] = useState<string | null>(() => readLastLooked(lastLookedKey(authUserId, DEFAULT_RESEARCH_CITY)))
   const [deciding, setDeciding] = useState<ResearchPermitRow | null>(null)
+  const [whoRow, setWhoRow] = useState<ResearchPermitRow | null>(null)
+  const [leadFacts, setLeadFacts] = useState<LeadFacts>({})
+  const [startVerdict, setStartVerdict] = useState<'approach' | null>(null)
   const [saving, setSaving] = useState(false)
   const [decideError, setDecideError] = useState<string | null>(null)
   const [pulling, setPulling] = useState(false)
@@ -144,10 +149,13 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const line = pulledWords({ ranAt: pull.ranAt, error: pull.error, newCount: newSinceLooked(sized, lastLooked), lastLookedYmd: lastLooked, counts })
   const tally = useMemo(() => (showing === 'taken' || showing === 'all' ? plumberTally(sized) : []), [sized, showing])
   const selected = useMemo(() => visible.find((r) => r.id === selectedId) ?? null, [visible, selectedId])
-  const openDecide = (row: ResearchPermitRow) => {
+  const openDecide = (row: ResearchPermitRow, facts: LeadFacts = {}, start: 'approach' | null = null) => {
     setDecideError(null)
+    setLeadFacts(facts)
+    setStartVerdict(start)
     setDeciding(row)
   }
+  const namePress: CSSProperties = { background: 'transparent', border: 0, padding: 0, font: 'inherit', fontSize: 'inherit', color: 'var(--text-link)', textAlign: 'left', cursor: 'pointer' }
 
   const decide = async (row: ResearchPermitRow, d: PermitDecision) => {
     setSaving(true)
@@ -155,7 +163,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
     try {
       let prospectId: string | null = null
       if (d.verdict === 'approach') {
-        const lead = await approachFromPermit(row, d.role, authUserId)
+        const lead = await approachFromPermit(row, d.role, authUserId, leadFacts)
         prospectId = lead.prospectId
         showToast(lead.reused ? `Put the permit on ${lead.companyName}’s lead on the GCs deck.` : `GC lead made: ${lead.companyName}, on the GCs deck.`, 'success')
       }
@@ -288,7 +296,14 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                 <HintChip hint={hintFor(selected.contact, history)} />
               </div>
               <div>
-                <strong>Pulled by</strong> {selected.contact ?? 'nobody named'}
+                <strong>Pulled by</strong>{' '}
+                {selected.contact ? (
+                  <button type="button" onClick={() => setWhoRow(selected)} style={namePress}>
+                    {selected.contact}
+                  </button>
+                ) : (
+                  'nobody named'
+                )}
               </div>
               {selected.verdict && (
                 <div style={mutedStyle}>
@@ -356,7 +371,13 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                       <span style={mutedStyle}>{work.detail}</span>
                     </td>
                     <td style={tdStyle}>
-                      {row.contact ?? <span style={mutedStyle}>nobody named</span>}
+                      {row.contact ? (
+                        <button type="button" onClick={() => setWhoRow(row)} style={namePress} title="Who pulled it: the company on Google, the owner at the county, our history, the city's record">
+                          {row.contact}
+                        </button>
+                      ) : (
+                        <span style={mutedStyle}>nobody named</span>
+                      )}
                       <br />
                       <HintChip hint={hintFor(row.contact, history)} />
                     </td>
@@ -426,7 +447,19 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         <strong>Decide…</strong> opens one sheet: the four verdicts, a reason that cannot be empty, a look-again day. <strong>Approach them</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. A plumber's name means a plumbing permit on the same number or address names someone other than the applicant; <em>on file, no plumber named</em> means the applicant pulled it under their own name. The word under who pulled it reads our own bid history with that name and is never the verdict.
       </div>
 
-      {deciding && <PermitDecideSheet row={deciding} todayYmd={todayYmd} saving={saving} error={decideError} onDecide={(d) => void decide(deciding, d)} onCancel={() => !saving && setDeciding(null)} />}
+      {whoRow && !deciding && (
+        <WhoPulledItSheet
+          row={whoRow}
+          hint={hintFor(whoRow.contact, history)}
+          onClose={() => setWhoRow(null)}
+          onApproach={(facts) => {
+            const r = whoRow
+            setWhoRow(null)
+            openDecide(r, facts, 'approach')
+          }}
+        />
+      )}
+      {deciding && <PermitDecideSheet row={deciding} todayYmd={todayYmd} saving={saving} error={decideError} initialVerdict={startVerdict ?? undefined} facts={leadFacts} onDecide={(d) => void decide(deciding, d)} onCancel={() => !saving && setDeciding(null)} />}
     </div>
   )
 }

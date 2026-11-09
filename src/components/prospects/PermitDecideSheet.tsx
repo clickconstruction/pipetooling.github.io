@@ -10,6 +10,7 @@ import {
   shortDay,
   verdictHold,
   workWords,
+  type LeadFacts,
   type PermitLeadRole,
   type PermitVerdict,
   type ResearchPermitRow,
@@ -29,6 +30,8 @@ export function PermitDecideSheet({
   error,
   onDecide,
   onCancel,
+  initialVerdict,
+  facts = {},
 }: {
   row: ResearchPermitRow
   todayYmd: string
@@ -36,8 +39,13 @@ export function PermitDecideSheet({
   error: string | null
   onDecide: (decision: PermitDecision) => void
   onCancel: () => void
+  /** The verdict to open on, when a door chose one (Who pulled it's Approach them). */
+  initialVerdict?: PermitVerdict
+  /** What the Who pulled it card found; the lead carries it. */
+  facts?: LeadFacts
 }) {
-  const [verdict, setVerdict] = useState<PermitVerdict>(row.verdict ?? (plumbingOnFile(row) ? 'taken' : 'approach'))
+  const [verdict, setVerdict] = useState<PermitVerdict>(initialVerdict ?? row.verdict ?? (plumbingOnFile(row) ? 'taken' : 'approach'))
+  const carried = [facts.phone ? 'the phone' : null, facts.website ? 'the website' : null, facts.companyAddress ? 'the office address' : null, facts.ownerOfRecord ? 'the owner of record' : null].filter(Boolean)
   const [reason, setReason] = useState(row.verdict ? row.verdict_reason ?? '' : '')
   const [lookAgainOn, setLookAgainOn] = useState(row.verdict_look_again_on ?? defaultLookAgainYmd(todayYmd))
   const [role, setRole] = useState<PermitLeadRole>('gc')
@@ -142,7 +150,7 @@ export function PermitDecideSheet({
             <div style={{ fontWeight: 600 }}>The lead</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ background: 'var(--bg-200)', color: 'var(--text)', borderRadius: 999, padding: '3px 10px', fontSize: '0.8125rem', fontWeight: 600 }}>
-                {row.contact ?? 'Who pulled the permit'} · GC lead · source: A permit
+                {facts.companyName ?? row.contact ?? 'Who pulled the permit'} · GC lead · source: A permit
               </span>
               <label htmlFor="permit-decide-role" style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                 They are
@@ -155,7 +163,10 @@ export function PermitDecideSheet({
                 ))}
               </select>
             </div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Opens on the GCs deck with the permit as a job on it. A lead of the same name is reused.</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+              Opens on the GCs deck with the permit as a job on it. A lead of the same name is reused.
+              {carried.length > 0 ? ` The lead carries ${carried.join(', ')} from Who pulled it.` : ''}
+            </div>
           </div>
         )}
 
