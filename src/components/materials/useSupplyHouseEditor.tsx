@@ -2,9 +2,9 @@ import { useState, type ReactNode } from 'react'
 import { describeLeadTime } from '../../lib/submittals/leadTime'
 
 import { supabase } from '../../lib/supabase'
-import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { SupplyHouseForm, type SupplyHouseFormData } from '../SupplyHouseForm'
 import type { Database } from '../../types/database'
+import { useTypedConfirm } from '../../hooks/useTypedConfirm'
 import { jobAccountPolicyOf } from '../../lib/materials/jobSupplyHouseAccounts'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -35,7 +35,7 @@ export function useSupplyHouseEditor({
   error: string | null
   modal: ReactNode
 } {
-  const confirmDialog = useConfirmDialog()
+  const typedConfirm = useTypedConfirm()
 
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<SupplyHouse | null>(null)
@@ -148,13 +148,14 @@ export function useSupplyHouseEditor({
     return null
   }
 
-  async function handleDelete(houseId: string) {
+  async function handleDelete(houseId: string, houseName: string) {
     const { data: prices } = await supabase.from('material_part_prices').select('id').eq('supply_house_id', houseId).limit(1)
     const hasPrices = prices && prices.length > 0
     const message = hasPrices
       ? 'Delete this supply house? All prices associated with it will also be removed.'
       : 'Delete this supply house?'
-    if (!(await confirmDialog({ message, confirmLabel: 'Delete', danger: true }))) return
+    // Punch list #188 row 72 (v2.6765): type the house's name, as Delete customer and Delete project already do.
+    if (!(await typedConfirm({ title: message, act: 'delete this supply house', word: houseName.trim() || 'DELETE', confirmLabel: 'Delete the supply house' }))) return
     setError(null)
     const { error: e } = await supabase.from('supply_houses').delete().eq('id', houseId)
     if (e) setError(e.message)
@@ -178,7 +179,7 @@ export function useSupplyHouseEditor({
       onChange={handleChange}
       onSubmit={handleSubmit}
       onClose={close}
-      onDelete={editing ? () => handleDelete(editing.id) : undefined}
+      onDelete={editing ? () => handleDelete(editing.id, editing.name ?? '') : undefined}
       saving={saving}
       myRole={myRole}
       variant="modal"

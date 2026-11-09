@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useTypedConfirm } from '../../hooks/useTypedConfirm'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import NewReportModal from '../NewReportModal'
 import { JobsReportsListView } from './JobsReportsListView'
@@ -80,6 +81,7 @@ export default function JobsReportsTab({
   onError,
 }: JobsReportsTabProps) {
   const confirmDialog = useConfirmDialog()
+  const typedConfirm = useTypedConfirm()
   const isMobile = useIsMobile()
   const [reportsList, setReportsList] = useState<ReportWithJob[]>([])
   const [reportsLoading, setReportsLoading] = useState(false)
@@ -134,7 +136,8 @@ export default function JobsReportsTab({
   }
 
   async function deleteReport(id: string) {
-    if (!(await confirmDialog({ message: 'Delete this report?', confirmLabel: 'Delete', danger: true }))) return
+    // Punch list #188 row 73 (v2.6765): the row lands in Recently deleted, and the typed word is the pause.
+    if (!(await typedConfirm({ title: 'Delete this report?', act: 'delete this report', word: 'DELETE', confirmLabel: 'Delete the report' }))) return
     setReportsDeletingId(id)
     const { error: err } = await supabase.from('reports').delete().eq('id', id)
     if (err) onError(`Failed to delete report: ${err.message}`)
@@ -457,7 +460,7 @@ export default function JobsReportsTab({
                 rows={filtered}
                 viewMode={reportsViewMode}
                 authRole={authRole}
-                isDev={myRole === 'dev'}
+                canDelete={myRole === 'dev' || myRole === 'master_technician'}
                 deletingId={reportsDeletingId}
                 onDelete={(id) => void deleteReport(id)}
                 onOpenFiles={(row) => {

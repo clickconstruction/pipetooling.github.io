@@ -1257,7 +1257,7 @@ Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superint
 | **Statements of charges** (the job window's Documents tab, v2.6447, punch list #254): the window, Save the statement and Print, Print and Open on a row; the customer copy carries no pay, but the gate is the hours statement's (`can_touch_hours_statement(false)`: a dev or the controller) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **The standings every charge reader shares** (`charge_standings()`, v2.6490, punch list #254): every login's Charged as, people who left included, for the Job Summary's Charges and Premium columns, the Charges window and the charged hours statement; `is_dev() OR has_payroll_access()`, refused otherwise | ✅ | ✅ If Pay Approved | ❌ (controller ✅) | ❌ | ❌ | ❌ | ❌ |
 | Contracts tab (templates, assignments, document status per person) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Writeups tab (`?tab=writeups`): custom form templates, writeups about a subject user, Discussed vs Withheld disclosure; submitted rows immutable; dev-only delete submitted; **unified list** also shows **read-only** NCNS rows from **`attendance_incidents`** (same RLS as incidents); legacy `?tab=contracts&contracts_sub=writeups` redirects to `tab=writeups` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Writeups tab (`?tab=writeups`): custom form templates, writeups about a subject user, Discussed vs Withheld disclosure; submitted rows immutable; the owner or a dev deletes a submitted one behind the typed word DELETE since v2.6765 (punch list #188 row 79, `20261109007000_dev_gates_typed_confirm_deletes.sql`; dev-only before); **unified list** also shows **read-only** NCNS rows from **`attendance_incidents`** (same RLS as incidents); legacy `?tab=contracts&contracts_sub=writeups` redirects to `tab=writeups` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Activity tab (first-party app usage: org-wide UTC table; the owner or a dev grants assistant / primary since v2.6757, punch list #188 row 58, `20261109002500_dev_gates_people_page.sql`: `user_app_activity_viewers` and `user_app_activity_daily` admit `is_master_or_dev()`) | ✅ + manage grants | ✅ + manage grants | ✅ if granted | ❌ | ❌ | ✅ if granted | ❌ |
 | Day book tab (what each office person and estimator got done per day, from actor-stamped records — v2.3542, estimators v2.3727; estimators have no door into People themselves (route dropped v2.2920), their rows are read by the roles below; `get_day_book_payload` enforces the same gate server-side; **devs and controllers only since v2.3732 — the owner's decision 2, 2026-09-22 — the rest is refused, the tab, the Crew Day line and the Bids door hidden**) | ✅ everyone, with amounts | ❌ | ❌ (controller: ✅ everyone, with amounts) | ❌ | ❌ | ❌ | ❌ |
 | Who's where tab (`?tab=whos_where`, v2.3607 / v2.3609): the week as crews (heads clustered by who shared a job, the lead read off the schedule — a crown, not a button) and, on a strip tap, the day as job islands with a head per person (solid = clocked in at the minute under the scrubber, hollow = listed but not clocked in) with the lanes below; nothing written, the Team leads list untouched. Reads `clock_sessions` + `job_schedule_blocks` under their existing SELECT policies, no wages; assistants floored by `assistant_hours_window_weeks_v1` like Hours | ✅ | ✅ | ✅ (controller too) | ❌ | ❌ | ❌ | ❌ |
@@ -1688,6 +1688,17 @@ Unchanged: superintendents (assigned projects only, v2.2836), primaries (`master
 ## Tally payroll rules (v2.6761, punch list #188 row 62)
 
 The rules that decide which card charges count as payroll (`mercury_tally_payroll_rules`, the **Payroll rules** window on Tally → Transactions and **Create a rule** from a transaction) are the controller's with a dev since v2.6761 (`canEditPayrollRules` in `JobTally.tsx`; `dev_all_payroll_rules` and `bulk_apply_tally_payroll_rule_flags` admit `is_controller()`, `20261109005000_dev_gates_banking_tally_forms.sql`). Marking a transaction payroll stays payroll access (`canMarkTallyPayroll`, v2.3837).
+
+## Typed confirms (v2.6765, punch list #188 rows 72, 73, 78, 79)
+
+A door the owner opened wider keeps a pause: the window names a word and the press waits until it is typed (`typedWordMatches` in `src/lib/typedConfirm.ts`; `useTypedConfirm` over the shared prompt window; a wrong word toasts *That was not …, so nothing changed.*). Each act stays reversible or audited (Recently deleted, `deleted_records_archive`).
+
+| Door | Who | The word | The database |
+|---|---|---|---|
+| **Delete a supply house** (`/materials`, row 72) | dev · master_technician · assistant · controller | the house's name | `can_manage_supply_house_directory()` admitted the office already |
+| Jobs → Reports → **delete a report** (row 73) | dev · master_technician | DELETE | `reports` delete for `is_master_or_dev()` (`20261109007000_dev_gates_typed_confirm_deletes.sql`) |
+| People → Payroll → **delete a pay report** (row 78) | dev · controller | the period's last day, month/day | `pay_stubs` delete for `is_controller()` |
+| People → Write-ups → **delete a submitted write-up** (row 79) | dev · master_technician | DELETE | `writeups` delete of a submitted row for `is_master_or_dev()` |
 
 ## Pipeline money doors (v2.6759, punch list #188 rows 39, 40, 44, 45)
 

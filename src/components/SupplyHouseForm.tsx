@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { supabase } from '../lib/supabase'
+import { isOfficeRole } from '../lib/doorRoles'
 import { SupplyHouseContactsSection } from './SupplyHouseContactsSection'
 import type { Database } from '../types/database'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
@@ -308,7 +309,8 @@ export function SupplyHouseForm({
         )}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-        {editingSupplyHouse && myRole === 'dev' && onDelete ? (
+        {/* Punch list #188 row 72 (v2.6765): the office deletes a house behind a typed name (useSupplyHouseEditor). */}
+        {editingSupplyHouse && isOfficeRole(myRole) && onDelete ? (
           <button
             type="button"
             onClick={onDelete}
