@@ -1,8 +1,8 @@
 ---
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
-group: close
-status: the walks' slips fixed 2026-11-08 as v2.6737 (one PR, no migration) and walked on the dev server on the owner's ZZ Test rows — nine of the ten put right (slip 10 by v2.6706), slip 9 not reproduced and left for the owner to show again; the train of six is live with every migration pushed (PR 1 v2.6300, 1a v2.6646, 1b v2.6656, 1c v2.6662, 2 v2.6665, 4 v2.6666) and the types regenerated (#7264, #7276, then #7301 for PRs 2 and 4, #7290 closed as superseded); left: four calls for the owner (Where it stands)
+group: ready
+status: the walks' slips fixed 2026-11-08 as v2.6737 (one PR, no migration) and walked on the dev server on the owner's ZZ Test rows — nine of the ten put right (slip 10 by v2.6706), slip 9 not reproduced and left for the owner to show again; the train of six is live with every migration pushed (PR 1 v2.6300, 1a v2.6646, 1b v2.6656, 1c v2.6662, 2 v2.6665, 4 v2.6666) and the types regenerated (#7264, #7276, then #7301 for PRs 2 and 4, #7290 closed as superseded); left: four calls for the owner (Where it stands) · the four calls made 2026-11-09 (Where it stands); left: the build on them, PR 3's ground and PR 4's reward
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
@@ -19,9 +19,9 @@ summary: >
   what the bid's workbench priced it from, assumed by a company split when the line was typed,
   tuned only by the owner, frozen at award as the sum of the lines; and the gate became #238's
   kind, a job priced before the work.
-next: The owner's four calls under Where it stands — two hour budgets on one Costs tab, a price floor for the baseline deck, the book's fallback by size band, which labor rate prices the labor kept — and slip 9 shown again on a bid with no job if it comes back; then retire the card.
+next: Build on the four calls of 2026-11-09: the score reads the hours frozen at award with the line budgets shown beside them, a $2,500 price floor on the baseline deck, the book falls back by size band, the roster's loaded rate prices the labor kept. Then PR 3's ground and PR 4's reward; slip 9 shown again on a bid with no job if it comes back.
 size: L as a train of six (M · M · S · S · M · M), all six shipped, the walks' fixes shipped (S, v2.6737); left: the owner's four calls
-blocker: None to build. The four calls under Where it stands are the owner's.
+blocker: None. The four calls are made (2026-11-09).
 ver: v2.6300 · 3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837 · 6646 · 6656 · 6662 · 6665 · 6666 · 6706 · 6737
 opinion: decide — the slips are fixed (v2.6737); what is left is the owner's four calls
 mockup: to-dos/superintendent-ahead-of-schedule/mockup-phone.html
@@ -450,6 +450,8 @@ The owner's four calls:
   every size") and gave one large job 3,517 h. Fall back by size band instead?
 - **Two labor rates.** The roster's loaded rate ($29.01) and the line budgets' $45 disagree. Which one
   prices the labor kept?
+
+**2026-11-09, the owner's four calls:** the score reads the hours frozen at award, and the line budgets' sum still shows beside them; the baseline deck takes a $2,500 price floor, so a job under it never appears on the deck or in the score; the book falls back by size band, the band named on the card; the roster's loaded rate prices the labor kept, the line budgets' rate staying the bid's price.
 
 2026-11-07: the owner made the three calls (above). PR 1a opened the same day as v2.6646 with its
 migration, PR 1b as v2.6656, PR 1c as v2.6662, PR 2 as v2.6665 and PR 4 as v2.6666, each with its own,

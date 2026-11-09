@@ -92,6 +92,11 @@ describe('buildCostsVerdict', () => {
     expect(w.sections.find((s) => s.key === 'labor')!.budgetWords).toBe('≈ the book')
     expect(baselineHeadWords(w.baseline)).toBe('≈ Baseline assumed from the book at award · 470 h')
     expect(baselineFrozenWords(w.baseline, (iso) => iso.slice(0, 10))).toBe('Frozen 2026-11-01 · 4.2 h per $1k × $112,000 · 12 similar projects · a guess, read as one')
+    // A row that widened to its size band names the band (the owner's call of 2026-11-09); one frozen before the bands reads 'projects'.
+    const banded = buildCostsVerdict({ ...base, resolved: book, budgetRow: { ...row, completeness: { usable: false, book: { hours_per_thousand: 4.2, n: 7, price_usd: 112_000, scope: 'band', band: '$100k–$1M' } } } })
+    expect(baselineFrozenWords(banded.baseline, (iso) => iso.slice(0, 10))).toBe('Frozen 2026-11-01 · 4.2 h per $1k × $112,000 · 7 projects in the $100k–$1M band · a guess, read as one')
+    const before = buildCostsVerdict({ ...base, resolved: book, budgetRow: { ...row, completeness: { usable: false, book: { hours_per_thousand: 4.2, n: 133, price_usd: 112_000, scope: 'all' } } } })
+    expect(baselineFrozenWords(before.baseline, (iso) => iso.slice(0, 10))).toBe('Frozen 2026-11-01 · 4.2 h per $1k × $112,000 · 133 projects · a guess, read as one')
     // The plan frozen beside it (PR 2) closes the line.
     const planned = buildCostsVerdict({ ...base, burn: { ...burn, percentDone: 50 }, priceUsd: 112_000, teamHours: 212, resolved: book, bidLabel: '917', budgetRow: { ...row, planned_finish: '2026-12-02', planned_source: 'assumed', planned_start: '2026-11-01', planned_detail: { working_days: 20, crew_hours_per_day: 24 } } })
     expect(planned.baseline.planned).toMatchObject({ finishYmd: '2026-12-02', source: 'assumed', startYmd: '2026-11-01' })
