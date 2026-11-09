@@ -4,11 +4,19 @@ import type { BaselineReading } from '../bids/bidBaselineRates'
 
 const usableBid: AwardBidBreakdown = { has_estimate: true, labor_hours: 480, labor_rate: 42, labor_usd: 20_160, materials_usd: 38_400, completeness: { rows_total: 36, rows_with_hours: 36, rate_set: true, usable: true }, labor_hours_by_stage: { rough: 210, top: 150, trim: 120 } }
 const thinBid: AwardBidBreakdown = { has_estimate: true, labor_hours: 71, labor_rate: 42, labor_usd: 2_982, materials_usd: 0, completeness: { rows_total: 31, rows_with_hours: 9, rate_set: true, usable: false }, labor_hours_by_stage: null }
-const book: BaselineReading = { n: 12, medianHoursPerThousand: 4.2, p25: 3.5, p75: 5.1, impliedHours: 470.4, billed: 10, scope: 'similar' }
-const thinBook: BaselineReading = { n: 2, medianHoursPerThousand: 4.2, p25: null, p75: null, impliedHours: 470.4, billed: 2, scope: 'all' }
+const book: BaselineReading = { n: 12, medianHoursPerThousand: 4.2, p25: 3.5, p75: 5.1, impliedHours: 470.4, billed: 10, scope: 'similar', band: '$100k–$1M', total: 12 }
+// Two in the band, three more in the book at other sizes: the book never reads them across sizes (the owner's call of 2026-11-09).
+const thinBook: BaselineReading = { n: 2, medianHoursPerThousand: 4.2, p25: null, p75: null, impliedHours: 470.4, billed: 2, scope: 'band', band: '$10k–$100k', total: 5 }
 const base: AwardBaselineInput = { breakdown: usableBid, bidLabel: 'B874', book, priceUsd: 120_000, rateUsd: 45, typedHours: null }
 
 describe('awardBaselineOptions · three sources in order', () => {
+  it('a book that widened to the size band names the band (the owner\'s call of 2026-11-09)', () => {
+    const banded: BaselineReading = { ...book, n: 7, scope: 'band', band: '$100k–$1M', total: 40 }
+    const o = awardBaselineOptions({ ...base, breakdown: null, bidLabel: null, book: banded })
+    expect(o[1]!.why).toBe('4.2 h per $1k × $120,000, from 7 projects in the $100k–$1M band. A guess, read as one. The line draws grey and the score skips it until a bid baseline or a typed one replaces it.')
+    expect(awardBaselineRpcArgs({ ...base, breakdown: null, bidLabel: null, book: banded }, o, 'book', 'j1', null)!.p_book).toMatchObject({ scope: 'band', band: '$100k–$1M', n: 7 })
+  })
+
   it('the bid with usable hours is the pick, with the stages and the book beside it as a second opinion', () => {
     const o = awardBaselineOptions(base)
     expect(o.map((x) => x.source)).toEqual(['bid', 'book', 'typed'])
@@ -32,7 +40,7 @@ describe('awardBaselineOptions · three sources in order', () => {
   it('no bid and a thin book leave only the typed box; the dead ones say why', () => {
     const o = awardBaselineOptions({ breakdown: null, bidLabel: null, book: thinBook, priceUsd: 50_000, rateUsd: 45, typedHours: null })
     expect(o[0]!.why).toBe('No bid is linked to this job.')
-    expect(o[1]).toMatchObject({ usable: false, why: '2 baselines in the book so far · needs 3.' })
+    expect(o[1]).toMatchObject({ usable: false, why: '2 baselines in the $10k–$100k band so far · needs 3. The other 3 in the book are other sizes and are not read.' })
     expect(awardBaselinePick(o)).toBe('typed')
     expect(awardPressWords(o, 'typed')).toBe('Award it · no baseline yet')
     expect(awardNotNowSource(o)).toBeNull()
@@ -90,7 +98,7 @@ describe('awardBaselineRpcArgs · what the press writes', () => {
   it('the book pick carries the hours, the rate and the reading it came from', () => {
     const i = { ...base, breakdown: thinBid }
     const o = awardBaselineOptions(i)
-    expect(awardBaselineRpcArgs(i, o, 'book', 'j1', 'b1')).toEqual({ p_job_id: 'j1', p_source: 'book', p_bid_id: null, p_labor_hours: 470.4, p_labor_rate: 45, p_book: { hours_per_thousand: 4.2, n: 12, price_usd: 120_000, scope: 'similar', billed: 10 }, p_note: null })
+    expect(awardBaselineRpcArgs(i, o, 'book', 'j1', 'b1')).toEqual({ p_job_id: 'j1', p_source: 'book', p_bid_id: null, p_labor_hours: 470.4, p_labor_rate: 45, p_book: { hours_per_thousand: 4.2, n: 12, price_usd: 120_000, scope: 'similar', band: '$100k–$1M', billed: 10 }, p_note: null })
   })
   it('the typed pick carries the hours and the note; a dead pick writes nothing', () => {
     const i = { ...base, typedHours: 220 }

@@ -12,7 +12,7 @@ Every project leaves award with one number for the hours it should take. The app
 The app tries three sources in order and picks the first one it can use.
 
 - **◆ From the bid's Labor rows.** The bid's own hours. They count when hours sit on nine rows in ten and a labor rate is set. This is the one that scores.
-- **≈ From the book, assumed.** Hours per $1,000 from similar projects, times the job's price. A guess, read as one. It needs three kept baselines in the book.
+- **≈ From the book, assumed.** Hours per $1,000 from similar projects, times the job's price. A guess, read as one. It needs three kept baselines in the book. Similar means a quarter to four times the job's price. With fewer than three, the book widens to the job's size band. The bands are under $10k, $10k to $100k, $100k to $1M, and over $1M. With fewer than three in the band, the book reads nothing and says so. The book never reads every size at once.
 - **✎ Typed.** Your own figure, with your name on it. Use it when you know better than the book.
 
 ## Set it when you create the job
