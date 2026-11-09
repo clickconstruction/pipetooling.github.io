@@ -65,9 +65,10 @@ describe('canResearchPermits', () => {
 })
 
 describe('the lenses', () => {
-  it('puts a bare row on waiting, a plumber on taken, a verdict on its own lens', () => {
+  it('puts a bare row on waiting, a plumbing permit on taken (named or not), a verdict on its own lens', () => {
     expect(rowLens(row())).toBe('waiting')
     expect(rowLens(row({ plumber: 'Lone Star Plumbing Co.' }))).toBe('taken')
+    expect(rowLens(row({ plumber: null, plumber_permit_on: '2026-11-04' }))).toBe('taken')
     expect(rowLens(row({ verdict: 'look' }))).toBe('look')
     expect(rowLens(row({ plumber: 'Someone', verdict: 'approach' }))).toBe('approach')
   })
@@ -179,5 +180,14 @@ describe('the value floor', () => {
     expect(rowsAboveFloor(rows, 0)).toHaveLength(3)
     expect(valueFloorWords(25_000)).toBe('$25k and up, or not declared')
     expect(valueFloorWords(0)).toBe('Any value')
+  })
+})
+
+describe('plumberWords', () => {
+  it('names the plumber, or says the permit is on file under the applicant, or none yet', async () => {
+    const { plumberWords } = await import('./permitResearch')
+    expect(plumberWords(row({ plumber: 'Lone Star Plumbing Co.', plumber_permit_on: '2026-11-04' }))).toEqual({ kind: 'named', chip: 'Lone Star Plumbing Co.', under: 'plumbing permit Nov 4' })
+    expect(plumberWords(row({ plumber: null, plumber_permit_on: '2026-11-04' }))).toEqual({ kind: 'unnamed', chip: 'on file, no plumber named', under: "pulled under the applicant's own name, Nov 4" })
+    expect(plumberWords(row())).toEqual({ kind: 'none', chip: 'none yet', under: null })
   })
 })

@@ -5,6 +5,8 @@ import {
   PERMIT_VERDICTS,
   VERDICT_WORDS,
   defaultLookAgainYmd,
+  plumberWords,
+  plumbingOnFile,
   shortDay,
   verdictHold,
   workWords,
@@ -35,7 +37,7 @@ export function PermitDecideSheet({
   onDecide: (decision: PermitDecision) => void
   onCancel: () => void
 }) {
-  const [verdict, setVerdict] = useState<PermitVerdict>(row.verdict ?? (row.plumber ? 'taken' : 'approach'))
+  const [verdict, setVerdict] = useState<PermitVerdict>(row.verdict ?? (plumbingOnFile(row) ? 'taken' : 'approach'))
   const [reason, setReason] = useState(row.verdict ? row.verdict_reason ?? '' : '')
   const [lookAgainOn, setLookAgainOn] = useState(row.verdict_look_again_on ?? defaultLookAgainYmd(todayYmd))
   const [role, setRole] = useState<PermitLeadRole>('gc')
@@ -73,7 +75,7 @@ export function PermitDecideSheet({
             </div>
             <div style={{ fontSize: '0.875rem' }}>
               Pulled by <strong>{row.contact ?? 'nobody named'}</strong>
-              {row.plumber ? <span style={{ color: 'var(--text-muted)' }}> · plumbing permit by {row.plumber}</span> : <span style={{ color: 'var(--text-green-700)' }}> · no plumber yet</span>}
+              {plumbingOnFile(row) ? <span style={{ color: 'var(--text-muted)' }}> · {row.plumber ? `plumbing permit by ${row.plumber}` : `a plumbing permit on file, ${plumberWords(row).under}`}</span> : <span style={{ color: 'var(--text-green-700)' }}> · no plumber yet</span>}
             </div>
           </div>
           <span style={{ flex: '1 1 auto' }} />
