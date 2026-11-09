@@ -87,7 +87,10 @@ export function lineBudgetsReviewDetail(r: LineBudgetsReview): string {
 export function lineBudgetsReviewSettledWords(r: LineBudgetsReview): string {
   if (r.settledLines === 0) return ''
   const p = r.jobIds.length
-  return `The other ${r.settledLines} line${r.settledLines === 1 ? '' : 's'} on ${p === 1 ? 'this project' : `these ${p} projects`} came from the workbench, were tuned, or were stamped, and need nothing.`
+  const n = `${r.settledLines} line${r.settledLines === 1 ? '' : 's'}`
+  // With no assumed line left there is no "other": the week's lines are all settled (a read after the stamp).
+  if (p === 0) return `${n} on this week's projects came from the workbench, were tuned, or were stamped, and need nothing.`
+  return `The other ${n} on ${p === 1 ? 'this project' : `these ${p} projects`} came from the workbench, were tuned, or were stamped, and need nothing.`
 }
 
 /** One row's reading: "J1042 · Water heater, 50 gal, added · $4,000 · ≈ 45 / 35". */

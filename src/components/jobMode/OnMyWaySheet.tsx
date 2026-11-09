@@ -41,6 +41,8 @@ import {
   type PhonePress,
 } from '../../lib/jobMode/onMyWay'
 import { BioPickWindow } from './BioPickWindow'
+import { ToChip } from '../gc/messages/reply/ToChip'
+import { numberChoices, usualToSet } from '../../lib/messages/toChip'
 import * as S from './sheetStyles'
 
 /** The press's row in `ui_nav_clicks`: `#text`, `#text-bio`, `#no-text` or `#start-here`. */
@@ -112,6 +114,9 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
   const [picked, setPicked] = useState<string[] | null>(null)
   const [bioHeld, setBioHeld] = useState(false)
   const [pickOpen, setPickOpen] = useState(false)
+  // The To chip (punch list #118, PR 2, the card's call 5): the tech's switch this once, and the tick that makes it the usual.
+  const [pickedNumberId, setPickedNumberId] = useState<string | null>(null)
+  const [usualTick, setUsualTick] = useState(true)
 
   // Once: the phone's lines, the switch, the phone's own point, the tech's bio.
   useEffect(() => {
@@ -146,6 +151,20 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
 
   const theirs = customer?.jobId === jobId ? customer.customer : null
   const first = firstOf(theirs?.customerName ?? null)
+  // Their numbers in the rule's order (`numberOrder`), the picked one first. None read (the door not pushed yet, or no
+  // contact): no chip, and quo-send picks by the same rule.
+  const choices = useMemo(
+    () =>
+      numberChoices(
+        { channels: (theirs?.numbers ?? []).map((n) => ({ id: n.channelId, kind: 'phone' as const, value: n.value, optedOutAt: n.optedOutAt, usualAt: n.usualAt })) },
+        theirs?.lines ?? [],
+        new Date(now()).toISOString(),
+      ),
+    [theirs, now],
+  )
+  const toChannelId = (pickedNumberId && choices.some((c) => c.id === pickedNumberId) ? pickedNumberId : null) ?? choices[0]?.id ?? null
+  /** What the sends carry: the chip's number when the sheet read any, else nothing, and quo-send picks. */
+  const toChannel = toChannelId ? { channelId: toChannelId } : {}
   /** The tech's own first name, for the bio's opener. */
   const myFirst = firstOf(me)
 
@@ -207,6 +226,8 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
     setTyped('')
     setPicked(null)
     setBioHeld(false)
+    setPickedNumberId(null)
+    setUsualTick(true)
   }
 
   /** The press: clock first, then the text, then the bio the first time, each said in the toast. */
@@ -227,14 +248,17 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
       let bioSaid: string | null = null
       if (texting) {
         try {
-          await io.send({ from: 'job_mode', customerId: theirs.customerId!, contactId: theirs.contactId, jobId: dest.jobId, quickReplyId: line.id, fills: typedFills })
+          // The tick first (punch list #118), so the gray line sits above the text it explains; a refusal stops the text and is said.
+          const star = usualToSet(choices, pickedNumberId, usualTick)
+          if (star && io.makeUsual) await io.makeUsual(star)
+          await io.send({ from: 'job_mode', customerId: theirs.customerId!, contactId: theirs.contactId, jobId: dest.jobId, quickReplyId: line.id, fills: typedFills, ...toChannel })
           sent = ON_MY_WAY_WORDS.sent(first)
         } catch (e) {
           showToast(formatErrorMessage(e, ON_MY_WAY_WORDS.textFailed), 'error')
         }
         if (sent && withBio) {
           try {
-            await io.send({ from: 'job_mode', kind: 'bio', customerId: theirs.customerId!, contactId: theirs.contactId, jobId: dest.jobId, lineIds: pickedIds })
+            await io.send({ from: 'job_mode', kind: 'bio', customerId: theirs.customerId!, contactId: theirs.contactId, jobId: dest.jobId, lineIds: pickedIds, ...toChannel })
             bioSaid = ON_MY_WAY_WORDS.bioSent
           } catch (e) {
             showToast(formatErrorMessage(e, ON_MY_WAY_WORDS.bioFailed), 'error')
@@ -317,6 +341,11 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
         {preview ? (
           <>
             <p style={S.label}>{ON_MY_WAY_WORDS.gets(first)}</p>
+            {choices.length ? (
+              <div style={{ margin: '0 0 0.4rem' }} data-testid="on-my-way-to">
+                <ToChip choices={choices} pickedId={pickedNumberId} onPick={setPickedNumberId} tick={usualTick} onTick={setUsualTick} />
+              </div>
+            ) : null}
             <p style={S.bubble} data-testid="on-my-way-preview">
               {preview.text}
             </p>

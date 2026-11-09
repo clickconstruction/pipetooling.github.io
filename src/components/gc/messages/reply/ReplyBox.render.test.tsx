@@ -133,7 +133,7 @@ describe('ReplyBox: the reply box at the foot of a thread (Messages, cut 3)', ()
     expect(win.textContent).toContain('To: Greg Paulk <greg@hillside.example>')
     // Under the head (punch list #230 PR 0): no box in Settings, so the line names bids@, and links the guide.
     const own = win.querySelector('[data-send-own-mailbox]')
-    expect(own?.textContent).toBe('Answering from your own mailbox? Copy bids@, and this thread gets it too. How to tag an email onto a job')
+    expect(own?.textContent).toBe('Answering from your own mailbox? Answer from bids@ in Apple Mail, or copy it, and this thread hears it. How to tag an email onto a job')
     expect(within(own as HTMLElement).getByRole('link', { name: 'How to tag an email onto a job' }).getAttribute('href')).toBe('/help?g=tag-an-email-onto-a-job-from-gmail')
     const send = within(win).getByRole('button', { name: 'Send as email' }) as HTMLButtonElement
     await waitFor(() => expect(send.disabled).toBe(false))
@@ -205,7 +205,7 @@ describe('ReplyBox: the reply box at the foot of a thread (Messages, cut 3)', ()
     expect(win.querySelector('[data-send-reply-to]')?.textContent).toBe('Replies to: bids@clickconstruction.example')
     expect(win.textContent).toContain('From: Robert · Click Construction')
     expect(win.textContent).toContain('Their answer comes to bids@clickconstruction.example.')
-    expect(win.querySelector('[data-send-own-mailbox]')?.textContent).toContain('Copy bids@clickconstruction.example, and this thread gets it too.')
+    expect(win.querySelector('[data-send-own-mailbox]')?.textContent).toContain('Answer from bids@clickconstruction.example in Apple Mail, or copy it, and this thread hears it.')
   })
 })
 

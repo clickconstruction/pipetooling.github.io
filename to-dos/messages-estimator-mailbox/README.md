@@ -2,7 +2,7 @@
 name: "Messages and the estimator's own mailbox: an answer the app never saw, the email's shape, the noreply sender and the Sent folder (Wendi's findings, 2026-10-27)"
 number: 207
 group: gated
-status: proposed 2026-10-27 from Wendi's five findings on the Messages page · finding 5 built as its own PR the same day · findings 1 to 4 read against the code, the email's shape mocked up, six calls at the foot with a recommendation each · PR 1, the shape and the words, built 2026-10-28 as v2.6038 (calls 3 and 4 at their recommendation) · the owner answered calls 1, 5 and 6 on 2026-11-08 · PR 2, the sender through Gmail as the box, built 2026-11-08 as v2.6702
+status: proposed 2026-10-27 from Wendi's five findings on the Messages page · finding 5 built as its own PR the same day · findings 1 to 4 read against the code, the email's shape mocked up, six calls at the foot with a recommendation each · PR 1, the shape and the words, built 2026-10-28 as v2.6038 (calls 3 and 4 at their recommendation) · the owner answered calls 1, 5 and 6 on 2026-11-08 · PR 2, the sender through Gmail as the box, built 2026-11-08 as v2.6702 · PR 3, the boxes' own Sent read as ours, built 2026-11-08 as v2.6731
 summary: >
   Wendi tested Messages on 2026-10-27, emailing herself from the app and replying from her own
   mailbox. She found four things the code confirms. A bid request she already answered from
@@ -14,10 +14,10 @@ summary: >
   reply box's email through Gmail as the box the answer comes back to, the way the walk kit
   already replies. The rest is the shape of the email and how the app learns of an answer sent
   from a teammate's own mailbox.
-next: READY TO BUILD on another computer (the session of 2026-11-08 ran out of credits after PR 2): PR 3, the boxes' Sent read as ours, then the thread's *Answered from my own mailbox* press in place of PR 4, both drawn step by step under *Ready to build* at the foot. After PR 2 merges, the lead redeploys `messages-email`.
+next: PR 3 (v2.6731) is open; after it merges the lead deploys `gmail-sync --no-verify-jwt`, then Wendi answers one bid request from bids@ in Apple Mail and reads the thread a minute later. The thread's *Answered from my own mailbox* press, in place of PR 4, is being built next, drawn step by step under *Ready to build* at the foot. `messages-email` was redeployed after PR 2 (`check:edge-drift` on 2026-11-08 named it current).
 size: M (four PRs, S to M; one small migration for the signature's two lines; a second migration only if call 1 picks reading each estimator's own Sent)
 blocker: The owner's calls. Nothing else. Finding 5 is already its own PR.
-ver: v2.5496 · 5504 · 5541 · 5686 · 5699 · 5707 · 5722 · 5739 · 6038 · 6702
+ver: v2.5496 · 5504 · 5541 · 5686 · 5699 · 5707 · 5722 · 5739 · 6038 · 6702 · 6731
 opinion: build — every door it needs exists (the Gmail send the walk kit uses, the boxes' tokens, the signature columns, the Message-ID fence); what is missing is the decision on the sender and the shape, and the reader looking one label further
 ---
 
@@ -272,6 +272,22 @@ and land one after the other. The two pairs are independent.
   the same. Where the code parted from the card: the fallback to Resend on Google's refusal is new (the card had the
   Gmail path alone), so a delegation hiccup never loses an email. The lead redeploys `messages-email` after the merge;
   no migration. PR 3 (the boxes' Sent) is next, then the thread's press in place of PR 4.
+- 2026-11-08, later: **PR 3 built**, v2.6731: `gmail-sync` reads each box's own Sent folder beside its Inbox. The history is
+  asked with no label (Gmail takes one at most) and `recordMessageIds` keeps the Inbox's and Sent's messages alone, so a
+  draft, a chat or a Spam mail never fills the run's 40; a mail the box itself sent (`sentByTheBox`) lands on the first
+  To or Cc not ours as ours, going out (`sentParty`), `who_text` *Wendi Doll <bids@…> to Rusty Cottar <rusty@…> · sent
+  from bids@*, `who_user_id` the one team member whose name is the From's display name; one sent only to the team is
+  left; the app's own send as the box is held by its Message-ID and only labelled. The reply box's grey line now reads
+  *Answering from your own mailbox? Answer from bids@ in Apple Mail, or copy it, and this thread hears it.* The guide
+  *turn on reading the bids inbox* gains **An email sent from the inbox**. Where the code parted from the card: a label
+  added later counts by the Inbox's label alone, never Sent's (Gmail writes Sent at the add; a Sent label put on by hand
+  is a filed copy, not a send). **Walked on the dev server** (2026-11-08, the owner's Chrome, a ZZ Test Walk thread):
+  Email → Send email… opens the window; under its head the grey line reads the new words with the team box the thread
+  replies to named, and *How to tag an email onto a job* links `/help?g=tag-an-email-onto-a-job-from-gmail`; closed
+  with Escape, nothing sent. The reader itself cannot be walked by a session (no agent opens a clickplumbing.com
+  mailbox): after the deploy, Wendi's one answer from bids@ in Apple Mail is the live check, read against *How to
+  verify* → PR 3. `messages-email` is already redeployed since PR 2 (`check:edge-drift` names it current). The lead
+  deploys `gmail-sync --no-verify-jwt` after the merge; no migration. The thread's press (in place of PR 4) is next.
 
 ## Ready to build (hand-over of 2026-11-08, after PR 2)
 

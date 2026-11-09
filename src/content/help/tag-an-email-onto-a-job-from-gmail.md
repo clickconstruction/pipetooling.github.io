@@ -62,7 +62,7 @@ The guide [find every message with a person in one place](/help/find-every-messa
 
 ## An email you send from your own mailbox
 
-The app never sees an email you send from your own Gmail. Two ways bring it to the thread.
+The app never sees an email you send from your own Gmail. An email you send from team@ or bids@ itself lands on its own. Two ways bring your own to the thread.
 
 - Copy team@ or bids@ when you write. Your email lands on the thread of the person you wrote to, under your name. A job's number in your subject ties it to that job.
 - Or forward it from your **Sent** folder, the same way as above. The forward lands on the thread of the person you wrote to.

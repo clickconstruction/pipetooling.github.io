@@ -159,3 +159,33 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
     expect(none.verdict).toBeNull()
   })
 })
+
+describe('They say paid (v2.6695 — the customer’s word that they already paid takes the money row)', () => {
+  const said = { paidYmd: '2026-09-28', method: 'check_mailed' as const, amount: null, saidBy: 'Dana', customerName: 'Dana Whitfield', heardByName: 'Theo', landedSince: 0 }
+  const runway = buildLienPayRunway(runwayInput({ isSub: false, lastWorkYmd: '2026-09-20', expectedPayYmd: null }))
+  it('fresh: a green They say paid row in the Expected row’s place, how they paid under it, no ask', () => {
+    const l = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, claim: said, runway, inCollections: false })
+    expect(l.rows.map(line)).toEqual(['Billed Sep 23 7d ago', 'They say paid Sep 28 2d ago', 'Lien by Dec 15 76d'])
+    expect(l.rows[1]).toMatchObject({ key: 'claim', tone: 'green', action: 'they-said', sub: 'a check in the mail', dot: 'filled', bold: false })
+    expect(l.rows[1]?.title).toBe('Dana says they paid Sep 28, a check in the mail, heard by Theo. The office pairs it with the deposit when it lands.')
+    expect(l.rows.some((r) => r.key === 'money')).toBe(false)
+    expect(l.verdict).toBeNull()
+  })
+  it('stale: amber after a week with nothing landed, the days under it, and the verdict asks', () => {
+    const l = buildBilledDatesLedger({ todayYmd: '2026-10-07', row, data, promise: null, claim: { ...said, amount: 4200 }, runway: buildLienPayRunway(runwayInput({ todayYmd: '2026-10-07', isSub: false, lastWorkYmd: '2026-09-20', expectedPayYmd: null })), inCollections: false })
+    expect(l.rows.map(line)).toEqual(['Billed Sep 23 14d ago', 'They say paid Sep 28 9d ago', 'Lien by Dec 15 69d'])
+    expect(l.rows[1]).toMatchObject({ tone: 'amber', sub: 'nothing landed in 9 days', subTone: 'amber', subTitle: 'a check in the mail · $4,200 · nothing landed in 9 days' })
+    expect(l.verdict).toMatchObject({ label: 'Nothing landed', value: '9d', tone: 'amber', action: 'they-said' })
+  })
+  it('a claim something landed against, or a bill given up on, draws the row as before', () => {
+    const met = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, claim: { ...said, landedSince: 4200 }, runway, inCollections: false })
+    expect(met.rows.map((r) => r.key)).toEqual(['billed', 'money', 'lien'])
+    const gone = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, claim: said, runway, inCollections: false, uncollectible: true })
+    expect(gone.rows.some((r) => r.key === 'claim' || r.key === 'money')).toBe(false)
+  })
+  it('a claim beats a promise: the customer’s last word is that they paid', () => {
+    const l = buildBilledDatesLedger({ todayYmd: today, row, data, promise: { promisedYmd: '2026-10-03', markedByName: 'Rosa' }, claim: said, runway, inCollections: false })
+    expect(l.rows.map((r) => r.key)).toEqual(['billed', 'claim', 'lien'])
+    expect(l.full).toBe('Billed Sep 23 · 7d ago · They say paid Sep 28 · 2d ago · Lien by Dec 15 · 76d')
+  })
+})

@@ -8,6 +8,8 @@ import {
   type PromisedPayDate,
 } from '../lib/jobs/billedExpectedPay'
 import { parseChaseTouchesRpc, type ChaseTouch } from '../lib/jobs/paymentChase'
+import { openClaimByJob, type PaidClaim } from '../lib/jobs/paidClaims'
+import { loadPaidClaims } from '../lib/jobs/paidClaimsIo'
 import type { PaceFacts } from '../lib/jobs/payPace'
 import { loadPaceFacts } from '../lib/jobs/payPaceIo'
 import {
@@ -30,6 +32,8 @@ export type BilledMoneyData = {
   refreshBilledPaySpeeds: () => Promise<void>
   promisedPayDates: Record<string, PromisedPayDate> | null
   loadPromisedPayDates: () => Promise<void>
+  /** The job's open paid claim (v2.6695, `list_paid_claims` → `openClaimByJob`): the Billed row's They say paid; null until read. Reloads with the promised dates. */
+  paidClaimsByJob: Map<string, PaidClaim> | null
   promiseRecordsByCustomer: Map<string, CustomerPromiseRecord> | null
   loadPromiseRecords: () => Promise<void>
   promiseSlipByCustomer: Record<string, number> | null
@@ -42,7 +46,8 @@ export type BilledMoneyData = {
 /**
  * The billed-money reads behind Stages' Billed Awaiting Payment money
  * (moved out of JobsStagesTab, punch list #46 row 2): customer pay speeds,
- * promised pay dates, the per-customer promise record, the chase call log
+ * promised pay dates (and, since v2.6695, the open paid claims beside them),
+ * the per-customer promise record, the chase call log
  * and, since v2.6034, the GC facts the pace rule reads (`loadPaceFacts`).
  * Each loads at mount when its gate allows and exposes its reloader for the
  * windows that change it. All fail-soft — a glanceable extra never blocks
@@ -69,6 +74,9 @@ export function useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay
   // they override the statistical estimate (chip turns green, forecast
   // buckets by the promise). Same fail-soft posture as the pay-speed fetch.
   const [promisedPayDates, setPromisedPayDates] = useState<Record<string, PromisedPayDate> | null>(null)
+  // The customer's word that they paid (v2.6695) rides the same reload: the Write down their word sheet
+  // writes either kind and asks for the promised dates again when it closes.
+  const [paidClaimsByJob, setPaidClaimsByJob] = useState<Map<string, PaidClaim> | null>(null)
   const loadPromisedPayDates = useCallback(async () => {
     if (!canSeeBilledExpectedPay) return
     try {
@@ -77,6 +85,8 @@ export function useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay
     } catch {
       // glanceable extra — never block the tab
     }
+    // Fail-soft on its own: a read that fails gives none, and the board keeps the rows it has.
+    setPaidClaimsByJob(openClaimByJob(await loadPaidClaims(supabase)))
   }, [canSeeBilledExpectedPay])
   useEffect(() => {
     void loadPromisedPayDates()
@@ -144,6 +154,7 @@ export function useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay
     refreshBilledPaySpeeds,
     promisedPayDates,
     loadPromisedPayDates,
+    paidClaimsByJob,
     promiseRecordsByCustomer,
     loadPromiseRecords,
     promiseSlipByCustomer,

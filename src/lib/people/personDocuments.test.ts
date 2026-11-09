@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PERSON_DOCUMENT_MAX_CHARS, checkDocumentFile, cleanDocumentTitle, documentFileIsText, documentKeptByWords, documentSizeWords, documentsTabCount, sortDocumentsNewestFirst, titleFromFileName } from './personDocuments'
+import { PERSON_DOCUMENT_MAX_CHARS, checkDocumentFile, cleanDocumentTitle, documentFileIsText, documentKeptByWords, documentSizeWords, documentsByEvidenceId, documentsTabCount, recordPickWords, sortDocumentsNewestFirst, tieToRecordProblem, titleFromFileName, transcribedRecordWords } from './personDocuments'
 
 describe('personDocuments (named documents on the HR file, v2.6614)', () => {
   it('sorts newest first and leaves archived ones out', () => {
@@ -32,5 +32,28 @@ describe('personDocuments (named documents on the HR file, v2.6614)', () => {
     expect(checkDocumentFile('.md', '## x')).toEqual({ ok: true, title: 'Untitled document', text: '## x' })
     expect(cleanDocumentTitle('  Counsel   memo ')).toBe('Counsel memo')
     expect(cleanDocumentTitle('t'.repeat(200)).length).toBe(160)
+  })
+
+  it('a document names the record it transcribes (v2.6713): the chip words, the pair by record, the counsel rule and the picker rows', () => {
+    const day = (ymd: string) => `day ${ymd}`
+    const hash = '3f9a1c2b4d5e' + '0'.repeat(52)
+    const record = { id: 'r1', title: ' Recording of the call ', dated_on: '2026-10-28', files: [{ sha256: null }, { sha256: hash.toUpperCase() }] }
+    expect(transcribedRecordWords(record, day)).toBe('Transcribes Recording of the call · day 2026-10-28 · sha256 3f9a1c2b4d5e…')
+    expect(transcribedRecordWords({ ...record, title: '', files: [] }, day)).toBe('Transcribes a record · day 2026-10-28')
+    const docs = [
+      { id: 'd-old', title: 'Old transcript', evidence_id: 'r1', archived_at: null, updated_at: '2026-10-01T00:00:00Z' },
+      { id: 'd-new', title: 'Transcript', evidence_id: 'r1', archived_at: null, updated_at: '2026-11-01T00:00:00Z' },
+      { id: 'd-gone', title: 'Retired', evidence_id: 'r2', archived_at: '2026-11-02T00:00:00Z', updated_at: '2026-11-01T00:00:00Z' },
+      { id: 'd-none', title: 'Memo', evidence_id: null, archived_at: null, updated_at: '2026-11-03T00:00:00Z' },
+    ]
+    const byRecord = documentsByEvidenceId(docs)
+    expect([...byRecord.keys()]).toEqual(['r1'])
+    expect(byRecord.get('r1')?.id).toBe('d-new')
+    expect(tieToRecordProblem({ counsel_only: false }, { counsel_only: true })).toBe('That record is counsel-only, so its transcript is counsel-only too. Mark the document counsel-only first.')
+    expect(tieToRecordProblem({ counsel_only: true }, { counsel_only: true })).toBeNull()
+    expect(tieToRecordProblem({ counsel_only: false }, { counsel_only: false })).toBeNull()
+    expect(tieToRecordProblem({ counsel_only: false }, null)).toBeNull()
+    expect(recordPickWords({ title: 'Call K', dated_on: '2026-10-28', counsel_only: true }, day, { title: 'Transcript' })).toBe('day 2026-10-28 · Call K · 🔒 counsel-only · transcript: Transcript')
+    expect(recordPickWords({ title: '  ', dated_on: '2026-10-28' }, day, null)).toBe('day 2026-10-28 · untitled')
   })
 })

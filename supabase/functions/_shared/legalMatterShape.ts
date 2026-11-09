@@ -22,6 +22,7 @@
 import { LIEN_BOOK_ADDRESS_COLUMNS, LIEN_BOOK_OWNER_COLUMNS } from './legalLienBookShape.ts'
 import { MATTER_DOCUMENT_PAYLOAD_KEYS } from './legalMatterDocuments.ts'
 import { NARRATIVE_PAYLOAD_KEYS } from './legalNarrative.ts'
+import { PROCEEDING_PAYLOAD_KEYS } from './legalProceedings.ts'
 
 type Row = Record<string, unknown>
 
@@ -117,6 +118,10 @@ export const MATTER_COUNSEL_SELECT = {
   entries: MATTER_ENTRY_COLUMNS.filter((c) => !MATTER_ENTRY_PENDING_COLUMNS.includes(c)).join(', '),
   gapAnswers: 'matter_id, gap_key, label, answer, document_id, answered_at, answered_by',
   claimLines: ['matter_id', ...MATTER_CLAIM_LINE_COLUMNS].join(', '),
+  // The proceedings beside the claim (v2.6726, punch list #174): never the note; the person's id is traded for the name and role before it travels.
+  proceedings: 'matter_id, id, kind, title, agency, reference, person_id, status, status_on, document_ids, keep_out, added_at',
+  // The people the proceedings name, live rows only: the name and the role, never the reach or a reason.
+  proceedingPeople: 'id, matter_id, name, role',
 } as const
 
 function isRecord(v: unknown): v is Row {
@@ -192,6 +197,8 @@ export function shapeMatterForCounsel(matter: Row): Row {
   if ('gapAnswers' in matter) out.gapAnswers = rows(matter.gapAnswers).map((g) => pick(g, MATTER_GAP_ANSWER_COLUMNS))
   // The claim's typed lines (v2.6696): the line as the desk's table reads it, never who typed it.
   if ('claimLines' in matter) out.claimLines = rows(matter.claimLines).map((l) => pick(l, MATTER_CLAIM_LINE_COLUMNS))
+  // The proceedings beside the claim (v2.6726): kind, name, agency, reference, the contact's name and role, status, documents, keep out; never the note.
+  if ('proceedings' in matter) out.proceedings = rows(matter.proceedings).map((p) => pick(p, PROCEEDING_PAYLOAD_KEYS))
   // The narrative (v2.4812): the office's own words for the firm, who saved them and when; nothing else.
   if ('narrative' in matter) out.narrative = isRecord(matter.narrative) ? pick(matter.narrative, NARRATIVE_PAYLOAD_KEYS) : null
   return out
