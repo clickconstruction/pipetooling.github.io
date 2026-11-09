@@ -2,7 +2,7 @@
 name: "Materials on site: cages, boxes and counts"
 number: 209
 group: close
-status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · v2.6366 the manifest print (2026-11-02) · v2.6367 the dev-mcp verbs (migration 20261102100000; docs/MATERIALS_ON_SITE_ARCHITECTURE.md) · v2.6406 bring back a retired box (2026-11-03) · v2.6432 the prints at full size (2026-11-03) · v2.6456 a new cage, box or place records who added it, and the dev seat names the job as JP972 (migration 20261103143000) · v2.6673 the missing money reads the parts book's price with its checked day, call 5 (2026-11-07) · v2.6728 the Needs you lines for the week's missing money and the boxes due a count (2026-11-08) · v2.6740 the Procure step's door (2026-11-08) · v2.6742 the Short press as a tally request (2026-11-08) · v2.6743 the summary RPC past 5,000 rows (migration 20261109010000, 2026-11-08) · left: the end-to-end photo test on test job 972, then a week of use
+status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · v2.6366 the manifest print (2026-11-02) · v2.6367 the dev-mcp verbs (migration 20261102100000; docs/MATERIALS_ON_SITE_ARCHITECTURE.md) · v2.6406 bring back a retired box (2026-11-03) · v2.6432 the prints at full size (2026-11-03) · v2.6456 a new cage, box or place records who added it, and the dev seat names the job as JP972 (migration 20261103143000) · v2.6673 the missing money reads the parts book's price with its checked day, call 5 (2026-11-07) · v2.6728 the Needs you lines for the week's missing money and the boxes due a count (2026-11-08) · v2.6740 the Procure step's door (2026-11-08) · v2.6742 the Short press as a tally request (2026-11-08) · v2.6743 the summary RPC past 5,000 rows (migration 20261109010000, 2026-11-08) · the end-to-end photo test on test job 972 read complete 2026-11-09 (every box photo filed in the job's Drive folder, 92 rows, none waiting; the crew's counts of Nov 1–2 are the week of use under way) · left: what the week of use asks for
 mockup: to-dos/materials-on-site/mockup.html
 summary: >
   Big jobs leave fittings, pipe and fixtures on site in stencilled cages and boxes (A1, A2, B1 …).
@@ -14,9 +14,9 @@ summary: >
   Mode card. The office gets a Materials tab on the Jobs page with a door in the Job window, the
   Pipeline's ⋯ tools and the bid's Procure step. Photos of a count are V2 through the Drive path
   the owner chose; engraved parts are V3 on the same table.
-next: Finish the end-to-end photo test on test job 972 (clear the hand-made pictures link or share it with the app's account, press Make the job's Drive folders on the Documents tab, and the waiting box photo files on the sweep's next run), then use it for a week with the parts-book price on the Missing section (v2.6673); the leftovers under Where it stands are one small PR each, the Needs you line (v2.6728), the Procure step's door (v2.6740), the Short press (v2.6742) and the summary RPC (v2.6743, push its migration after the merge) shipped; the sent copy of the manifest waits on the week of use.
+next: The end-to-end photo test is done (read 2026-11-09: the sweep has filed every box photo on job 972 since Oct 29, the office page reads *in the job's folder* on each and the Documents tab lists them from Drive; no Make the job's Drive folders press is offered, since the three links are set and the app writes there). The week of use is under way on the crew's counts of Nov 1–2 with the parts-book price on the Missing section (v2.6673); what it asks for is the next PR; the leftovers under Where it stands are one small PR each, the Needs you line (v2.6728), the Procure step's door (v2.6740), the Short press (v2.6742) and the summary RPC (v2.6743, push its migration after the merge) shipped; the sent copy of the manifest waits on the week of use.
 size: L, shipped as four PRs and four fixes; each leftover is S
-blocker: none. The owner's live test on test job 972.
+blocker: none. The owner's week of use on test job 972; nothing left but his word on it.
 ver: v2.6039 · 6041 · 6043 · 6045 · 6049 · 6050 · 6054 · 6055 · 6366 · 6367 · 6406 · 6432 · 6456 · 6673 · 6728 · 6740 · 6742 · 6743
 opinion: your call — the code is done, the parts-book price with it; the live test and the week of use are yours
 ---
@@ -357,6 +357,17 @@ Drive folders under the jobs folder from the Documents tab, with a backfill; v2.
 offered while any of the job's three links is missing, not only the job folder). What is left of
 the test: clear the hand-made pictures link or share it with the app's account, press Make the
 job's Drive folders, and the waiting box photo files on the sweep's next run. Then a week of use.
+
+**2026-11-09, the photo test read complete** (the deployed client, signed in through the pane magic link in the Chrome the
+owner handed the session; read-only). The dev seat read `job_box_photos` for job 972: 92 rows, every one `filed` with a
+`drive_file_id` and a `filed_at`, none with a `fail_why`, and no row anywhere waits (`filed_at` null returns nothing). The
+first filed photo is the 2026-10-29 walk's T8678, filed at 15:15 UTC that day, so the Drive block cleared the same day
+v2.6054 shipped; the rest are the crew's 91 photos of Nov 1 and Nov 2, each filed within five minutes of its count. The
+materials page reads *1 photo 7 days ago by Malachi · in the job's folder* on every card (92 containers, 2,181 came in,
+2,210 on site, 9 used, 0 missing), and the Job window's Documents tab reads *Photos · 91* from the Drive folder with *91 in
+Drive · the newest Nov 2* under Job folders; the job's three links are set, so no **Make the job's Drive folders** press is
+offered. Nothing was pressed. Screenshots `209-1` and `209-2` in the walk session's scratchpad. The week of use is under
+way; what it asks for is the next PR.
 
 **The manifest print** (v2.6366, 2026-11-02, the owner's ask that morning): **Print the manifest** beside Print labels prints one Letter page per container picked, to laminate and hang on the box — the stencil, the job and the site, the box's QR code, the day printed, the day something was last recorded in it, what is in it with each number, and ruled lines for what is added on site by hand; the phone's box links to it. A plain print like the label (no sent copy); the fragment lists the calls. The same PR found that the body scroll lock clips a print to its first sheet. Measuring the live PDF found the bigger fault: both prints came out at about two thirds size, because the hidden page behind still took its width. v2.6432 puts both windows on `<body>` and takes the rest of the page out of the print layout (`lib/printRoot.ts`), so each prints at full size, the manifest fills its sheet with 11 ruled lines, and the labels print every sheet, one a label.
 

@@ -26,7 +26,7 @@ next: >
   opens, the notice goes out, Put the bill back). Delete this card once both are done.
 flagged: true
 size: XS (two live steps, no code; a docs-only PR at the end)
-blocker: A signed-in Stripe Dashboard and the owner's Chrome — a Dashboard setting and one test dispute; the brief is written, nothing is left to decide.
+blocker: A signed-in Stripe Dashboard in the Chrome the extension drives — the 2026-11-09 pick-up met the Dashboard's sign-in page and entered nothing; a Dashboard setting and one test dispute; the brief is written, nothing is left to decide.
 ver: v2.4902 · 4950 · 5033 · 5091 · 5102
 opinion: your call — the code is done; the two live steps are the office's and the owner's.
 mockup: not required — each piece copies the case and its words, which exist
@@ -52,6 +52,8 @@ The plan, the two critiques and the twelve boards: *Returned checks — #76 mock
 ## Where it stands
 
 2026-11-08: the owner asked for the two live steps to run from another computer, so the brief below was written onto the card instead of walking them here. Nothing was pressed in Stripe or in the app; the webhook endpoint still listens for the events the Ops line of `docs/EDGE_FUNCTIONS.md` named before v2.4950, and no dispute case has ever opened on prod.
+
+2026-11-09: picked up in the Chrome the owner handed the session. The Dashboard answered `/test/webhooks` with its sign-in page (email, password, Google, Passkey, SSO), and the one Chrome the extension reaches carried no Stripe session (the app's own session came from the pane magic link, not the owner's sign-in). Per the rule above nothing was entered, and both steps are held: step 1 (the events, both modes) and step 2 (the test-mode dispute) wait for a Chrome window that is signed in to the Stripe Dashboard, where the session shows the endpoint's event list before saving and asks the owner once per endpoint. The brief below stands unchanged.
 
 ## Pick up
 
