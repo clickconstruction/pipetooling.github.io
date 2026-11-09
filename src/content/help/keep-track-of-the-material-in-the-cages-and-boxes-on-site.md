@@ -64,6 +64,8 @@ A printed label carries a code. Point your camera at it and the box opens. The o
 
 Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with the dash. Typed with or without the dash, it opens the same box.
 
+Printing a tape label at the cage? Under a box's parts, press **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window on Jobs → Materials. That file has one row per box for a label editor.
+
 Signed out, the scan still opens a page. The page shows what is in the box, the newest photo and the day of the last count. The page never names the job. To record a part used, moved or counted, press **Sign in to change a count**. After you sign in you land on that box.
 
 Looking for a part that is not in that box? Press **Find a part on this site**. Type the part, the maker or a stencil and press **Find**. The page lists the boxes on that site that hold it, with their counts. It never searches another site. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code, or search the site you scanned today.

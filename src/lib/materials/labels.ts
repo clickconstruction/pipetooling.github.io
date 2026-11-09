@@ -52,6 +52,16 @@ export function boxAddressWords(containerId: string): string {
   return `${BOX_LINK_HOST}/b/${boxCodeWords(containerId)}`
 }
 
+/** What Copy the label code puts on the clipboard (v2.6800): the address in capitals with its dash, for a QR typed into Brother's app; the dash reads either way. */
+export function boxClipboardWords(containerId: string): string {
+  return boxAddressWords(containerId).toUpperCase()
+}
+
+/** The toast after the copy. */
+export function copiedLabelWords(containerId: string): string {
+  return `Copied ${boxClipboardWords(containerId)}. Paste it into the Brother app as a QR code.`
+}
+
 /** The code typed or scanned, read the way `boxCode` prints it, the dash dropped. Empty when it cannot be a code. */
 export function normalizeBoxCode(code: string): string {
   const c = code.replace(/[^0-9a-z]/gi, '').toUpperCase().slice(0, 8)
