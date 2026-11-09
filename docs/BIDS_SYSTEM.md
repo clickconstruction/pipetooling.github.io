@@ -209,7 +209,7 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 
 #### Weekly bids sent (below board sections)
 - Inside **Estimating Health** (since v2.2215; it used to sit between the **Lost** section and Health): **Weekly bids sent** buckets bids with **`bid_date_sent`** into **Sunday–Saturday** weeks in the company calendar (`America/Chicago`). **One table**: each **column** is a week (newest first); **sticky** left column lists **estimators** (union across weeks; **Unassigned** last); **Outcomes** row shows **Won** and **Lost** only per week (**W** · **L**); **haven’t heard back** is still counted and remains on each cell’s **`aria-label`**. Each body cell is one compact **$K-n** string (**$** in **thousands K**, hyphen, **sent** count; see **[`formatDollarsAsThousandsK`](../src/lib/format.ts)**). **Click** a non-zero cell to open a list of bids for that week and estimator; choose a row to open **Bid preview**. Uses **`buildBidBoardWeeklySentSummaries`** + **`buildBidBoardWeeklySentPivot`** in **[`bidBoardWeeklySentStats.ts`](../src/lib/bidBoardWeeklySentStats.ts)**. Same **service type** filter and Bid Board **search** as the main table; last **26** weeks. Rendered by **[`BidBoardEstimatingHealthSection.tsx`](../src/components/bids/BidBoardEstimatingHealthSection.tsx)** (the standalone `BidBoardWeeklySentSection` retired with the Old view, v2.2215) with **[`BidBoardWeeklySentCellModal.tsx`](../src/components/bids/BidBoardWeeklySentCellModal.tsx)**. See `RECENT_FEATURES.md` **v2.437**–**v2.441**.
-- **Dev only — estimator labor cost** (below **Weekly bids sent**, **`role` `dev` only**): a second bordered section uses the **same weeks and estimator rows** as the weekly-sent pivot (**Unassigned** excluded). Each cell stacks **Labor $ / estimate** (all **`clock_sessions`** hours for that user and company week × **`people_pay_config.hourly_wage`**, keyed by **`trim(users.name)`** ↔ **`person_name`**, divided by **sent count**) and **cents per $ of bid value sent** (same labor cost ÷ sum of **`bid_value`** for sent bids). Open sessions contribute through “now”; rejected/revoked sessions are excluded; missing pay config shows **—**. Internal snapshot only—not payroll or billing. **[`bidBoardWeeklyEstimatorLaborCost.ts`](../src/lib/bidBoardWeeklyEstimatorLaborCost.ts)**, **[`BidBoardWeeklyEstimatorLaborDevSection.tsx`](../src/components/bids/BidBoardWeeklyEstimatorLaborDevSection.tsx)**; **`RECENT_FEATURES.md`** **v2.442**.
+- **Owner or dev — estimator labor cost** (below **Weekly bids sent**; `canSeeEstimatingLabor`, the owner since v2.6764, a dev alone before): a second bordered section uses the **same weeks and estimator rows** as the weekly-sent pivot (**Unassigned** excluded). Each cell stacks **Labor $ / estimate** (all **`clock_sessions`** hours for that user and company week × **`people_pay_config.hourly_wage`**, keyed by **`trim(users.name)`** ↔ **`person_name`**, divided by **sent count**) and **cents per $ of bid value sent** (same labor cost ÷ sum of **`bid_value`** for sent bids). Open sessions contribute through “now”; rejected/revoked sessions are excluded; missing pay config shows **—**. Internal snapshot only—not payroll or billing. **[`bidBoardWeeklyEstimatorLaborCost.ts`](../src/lib/bidBoardWeeklyEstimatorLaborCost.ts)**, **[`BidBoardWeeklyEstimatorLaborDevSection.tsx`](../src/components/bids/BidBoardWeeklyEstimatorLaborDevSection.tsx)**; **`RECENT_FEATURES.md`** **v2.442**.
 
 #### Notes (first column, expandable)
 - Expanding a row opens bid and customer notes inline. Tabs (left to right): **All notes** (default when the row opens), **Bid notes**, **Customer notes**. **All notes** shows a single timeline of `bids_submission_entries` and `customer_contacts` (when the bid has a linked customer), with **Add bid note** / **Add customer note**. **Bid notes** and **Customer notes** show only that source. See `RECENT_FEATURES.md` v2.148 and `src/components/bidBoard/UnifiedBidCustomerNotes.tsx`.
@@ -313,7 +313,7 @@ URL: **`?tab=estimators`**. Sits to the **right of Bid Costs** in the tab strip 
 Pivot of **`clock_sessions`** linked to **bids** over the last **30 days**, organised as **days (rows) × estimators (columns)**. Each cell stacks one chip per bid the column user clocked into on that row's day, with their share of the bid's lifetime team clock time so anyone can see at a glance where estimator time is going across the pipeline.
 
 ### Layout
-- **Title** **`Estimators`**. Beside it: **Cost mode** toggle (dev only) and **Manage columns** (dev / master_technician / assistant).
+- **Title** **`Estimators`**. Beside it: **Cost mode** toggle (the owner or a dev) and **Manage columns** (dev / master_technician / assistant).
 - **Search bar** (**v2.534**, full-width below the title row) — see [Search](#search).
 - **Sticky-left day column** with **MM/DD** + short weekday (`America/Chicago`); today's row gets a soft amber tint (**`#fffbeb`**).
 - **Estimator columns**, sticky to the corner header; column count is `estimator-role users + extras list` (see [Columns](#columns)).
@@ -348,8 +348,8 @@ When a query is active:
 
 Pure predicate **[`bidEstimatorsBidMatchesSearch`](../src/lib/bidEstimatorsTab.ts)** + **`normalizeBidEstimatorsSearchQuery`** are covered by **12** unit tests in **[`bidEstimatorsTab.test.ts`](../src/lib/bidEstimatorsTab.test.ts)** (label, prefix, digits, project, GC/builder, null fields, whitespace query). See **`RECENT_FEATURES.md`** **v2.534**.
 
-### Cost mode (dev only)
-Toggle above the search bar (gated on **`viewerRole === 'dev'`**). When **on**, each chip appends a suffix:
+### Cost mode (the owner or a dev)
+Toggle above the search bar (gated on **`viewerRole`** `dev` or `master_technician` since v2.6764). When **on**, each chip appends a suffix:
 
 ```
 … {scaled}k | {total}k
@@ -1236,7 +1236,7 @@ The Old / New pills (key `bids_cover_letter_view_v1`) and the Old mode — step 
 
 ### Default Values
 
-The Cover Letter provides sensible defaults that can be customized per bid. Defaults are **org-editable** via `app_settings` — a dev edits them in **Settings** through [`BidCoverLetterDefaultsSettingsBlock.tsx`](../src/components/settings/BidCoverLetterDefaultsSettingsBlock.tsx); all authenticated users read them. Keys (in [`src/lib/appSettingsKeys.ts`](../src/lib/appSettingsKeys.ts)):
+The Cover Letter provides sensible defaults that can be customized per bid. Defaults are **org-editable** via `app_settings` — an estimator or a dev edits them in **Settings** (since v2.6764) through [`BidCoverLetterDefaultsSettingsBlock.tsx`](../src/components/settings/BidCoverLetterDefaultsSettingsBlock.tsx); all authenticated users read them. Keys (in [`src/lib/appSettingsKeys.ts`](../src/lib/appSettingsKeys.ts)):
 
 - **`bid_cover_letter_terms_default_v1`** — org default for the Terms & warranty paragraph (used when a bid's Terms box is empty)
 - **`bid_cover_letter_exclusions_default_v1`** — org default for the Exclusions list (one per line)

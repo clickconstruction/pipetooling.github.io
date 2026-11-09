@@ -78,7 +78,7 @@ A request from the portal is a **customer waiting**. The request lands at the to
 
 The **Dispatch inbox** gets visit requests, a GC's *Need other dates?*, and a GC's **Ask the office** on a shared bill. **Ask the office ›** offers *Bill this to us instead* and *Remind the owner for us*. **Ask us to bid** goes to the **Estimator inbox**. Ask us to bid goes to Dispatch when nobody is in the estimating group. Working one is its own guide: *answer a customer who sent a request from their portal*.
 
-The form already knows their number. The form shows ***We'll call you at (512) 555-0142***. The number comes from the customer record, or else the newest job's phone. A *use a different number* link sits beside it. A number is required, because it is what your Call button dials. After sending, they read *We'll call you at … as soon as we can during office hours*. So keep that promise. Push notifications go to the group. To also email specific people, a dev adds them under **Settings → Emails & reports → Portal requests**.
+The form already knows their number. The form shows ***We'll call you at (512) 555-0142***. The number comes from the customer record, or else the newest job's phone. A *use a different number* link sits beside it. A number is required, because it is what your Call button dials. After sending, they read *We'll call you at … as soon as we can during office hours*. So keep that promise. Push notifications go to the group. To also email specific people, the owner or a dev adds them. That is under **Settings → Emails & reports → Portal requests**.
 
 ## More on the portal
 

@@ -1,11 +1,11 @@
 ---
 title: put a cost estimate on a task
 category: Office
-roles: dev, controller
+roles: dev, master_technician, controller
 keywords: cost, estimate, price, hours, rate, calculator, gold chip, stage total, roadmap, budget, actual, took, sign off, calibration
 order: 44
 ---
-Devs and the controller can price any checklist or roadmap task. Nobody else sees any of it.
+Devs, the owner and the controller can price any checklist or roadmap task. Nobody else sees any of it.
 
 An estimate says who would do it, at their hourly rate, for how many hours. Estimates show as **gold dollar chips**. They roll up, so a whole stage or the whole roadmap reads as money.
 

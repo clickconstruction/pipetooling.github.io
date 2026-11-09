@@ -1,7 +1,7 @@
 ---
 title: make job addresses wrap at the city name
 category: Office
-roles: dev
+roles: dev, master_technician, assistant, controller
 keywords: address, city, line break, wrap, stages, devine, locality, two lines, settings
 order: 75
 ---
@@ -15,8 +15,8 @@ The app ships with a list of Central Texas cities. San Antonio, Seguin, New Brau
 
 ## Add a missing city
 
-1. Open {{icon:gear}} **Settings → Jobs & dispatch**.
-2. Expand ***Job address city line breaks (dev)***.
+1. Open {{icon:gear}} **Settings → Jobs, bills and liens**.
+2. Expand ***Job address city line breaks***.
 3. Type the missing city names, one per line, and click {{button:blue|Save}}.
 
 :::example "1875 Co Rd 777 Devine TX"

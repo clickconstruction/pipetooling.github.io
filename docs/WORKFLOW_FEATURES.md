@@ -214,7 +214,7 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 
 ### Role-Based Visibility
 
-The gates in `src/pages/Workflow.tsx` (`canManageStages`, `canSeePrivateNotesAndApprove`, `isDevOrMaster`, `canAssignSuperintendents`) drive this. `canManageStages` and `canSeePrivateNotesAndApprove` both cover dev, master_technician, assistant-like roles (assistant, controller — `isAssistantLike`), and superintendent; Projections and the `Left:` total are `isDevOrMaster`-only.
+The gates in `src/pages/Workflow.tsx` (`canManageStages`, `canSeePrivateNotesAndApprove`, `canEditProjections`, `canAssignSuperintendents`) drive this. `canManageStages` and `canSeePrivateNotesAndApprove` both cover dev, master_technician, assistant-like roles (assistant, controller — `isAssistantLike`), and superintendent; Projections and the `Left:` total follow `canEditProjections` (dev, master_technician and, since v2.6760, the controller).
 
 **Owners (dev) and Master Technicians**:
 - See all stages in all workflows

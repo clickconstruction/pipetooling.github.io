@@ -34,11 +34,11 @@ Card holders sort their own purchases to jobs in **Job Parts Tally → Transacti
 
 ## What is not on Banking
 
-Money that leaves by **ACH, wire or check** is labeled on **Moneyfill → Bank transfers needing attribution**, not here. Moneyfill opens for a dev or a controller. Examples are rent, insurance, contract labor and the card bill. An ACH is a direct bank-to-bank transfer. See *label bank transfers and wires*. Bank **deposits** are matched to the bills they pay in **Accounts Receivable**, not here. See *match bank deposits to the bills they pay*.
+Money that leaves by **ACH, wire or check** is labeled on **Moneyfill → Bank transfers needing attribution**, not here. Moneyfill opens for the owner, a dev or a controller. Examples are rent, insurance, contract labor and the card bill. An ACH is a direct bank-to-bank transfer. See *label bank transfers and wires*. Bank **deposits** are matched to the bills they pay in **Accounts Receivable**, not here. See *match bank deposits to the bills they pay*.
 
 ## Where the sorting shows up
 
-Sorted charges are job costs on the job window's **Costs** tab and in the weekly money report. Labels feed the overhead numbers and Banking → **Visuals**. Overhead is the cost not tied to any one job. Quickfill's **Banking sorting** station carries a {{chip:yellow|Close week: $1,206 open}} chip. The chip stays while the previous week still has unsorted charges or unlabeled transfers. The chip reads *Close week: clear* once both are empty. Anyone but a dev or a controller sees *Feeds the weekly close* there instead. See *close the money week*.
+Sorted charges are job costs on the job window's **Costs** tab and in the weekly money report. Labels feed the overhead numbers and Banking → **Visuals**. Overhead is the cost not tied to any one job. Quickfill's **Banking sorting** station carries a {{chip:yellow|Close week: $1,206 open}} chip. The chip stays while the previous week still has unsorted charges or unlabeled transfers. The chip reads *Close week: clear* once both are empty. Anyone but the owner, a dev or a controller sees *Feeds the weekly close* there instead. See *close the money week*.
 
 ## Who can open Banking
 

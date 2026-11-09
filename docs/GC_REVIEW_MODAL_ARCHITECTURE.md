@@ -64,7 +64,7 @@ The office opens GC Review from the Stages board's Billed section. There they:
 | `onCopyForEmail(group, groupBy, {portalUrl})` | subject + `buildGcStatementEmailHtml/Text` → `copyRichHtmlToClipboard` | `groupBy` is ignored by the parent (`_groupBy`) |
 | `emailForGc(gcId)` | `extractContactFromCustomer(customer).email` | To prefill + GC chip |
 | `users` | office roster | three role-filtered cohorts built inline (Stage A) |
-| `isDev` | `authRole === 'dev'` | gates Standing copies only |
+| `isDev` | `authRole === 'dev'` | decides who cancels anyone's scheduled send; Standing copies read `canEditStandingCopies` (`isStagesOfficeRole`, the office since v2.6760) |
 | `canCertify` | `stagesGates.isStagesOfficeRole(authRole)`: dev · master_technician · assistant · controller | gates certify, assign, Mark sent, round-email edits for others |
 | `onOpenJob?` | `tryOpenEditJob(jobId, { onSaved: loadJobs + refreshCustomers… })` | Edit Job (z 1010) stacks over GC Review (z 60), and the refetch re-derives the rollup in place |
 | `onOpenJobDetail?` | `jobDetailModal.openJobDetail` | passed through to `GcReviewCertifyModal` and `GcCallSheetModal` |
@@ -77,7 +77,7 @@ The office opens GC Review from the Stages board's Billed section. There they:
 | GC groups list (`rollup.groups.length === 0 ? … : map`) | 1268–1636 | 369 |
 | ↳ per-group actions (Certify + Share menu + portal) | 1376–1551 | 176 |
 | Share all dialog (`shareAllOpen`) | 2034–2346 | 313 |
-| ↳ Standing copies (`isDev`) | 2201–2343 | 143 |
+| ↳ Standing copies (`canEditStandingCopies`) | 2201–2343 | 143 |
 | Weekly statement rounds card | 900–1195 | 296 |
 | ↳ Round email ("Email me my round") | 1054–1193 | 140 |
 | Draft Message dialog (`emailDialogGroup`) | 1652–1895 | 244 |
@@ -126,7 +126,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 | 10 | Call sheet (replaced the round overlay) | `callSheetGroupKey && …` IIFE → `<GcCallSheetModal>`; `saveCallSheet` | modal 215 | `worklist`, `boardRowByGc`, `promisedPayDates`, `collectionsByGc`, `wordSources`, `onOpenJobDetail`, `roundBusy`, `roundError` | `gcCallSheet` ✓ (10), `payPromise` ✓ (7), render ✓ (4) | med | **extracted** |
 | 10a | ↳ Find a check + the sheet (v2.4046, v2.4050; by development v2.4912; a PDF v2.4913) | `findCheckGroup ?` → `<GcFindCheckModal>` from a group's Share menu (a GC, or a development); Print the sheet / CSV inside it | modal ~230 | `findCheckGroup` | `gcChecksApplied` ✓ (22), `gcChecksAppliedReport` ✓ (8), `gcChecksAppliedPdf` ✓ (3), render ✓ (4) | low | **extracted** |
 | 11 | Share all dialog | `shareAllOpen ?` 2034–2346 (Email once 2080–2200) | 170 | 17 · 13 · 7 (whole block, incl. 11a) | builders ✓; payload ✗ | **med-high** | inline |
-| 11a | ↳ Standing copies (dev) | `isDev ?` 2201–2343 + handlers 415–485 | 143 + 71 | 7 · 4 · 6 | `planStandingCopyEdit` ✓; `applyStandingPlan` ✗ | med | inline |
+| 11a | ↳ Standing copies (the office) | `canEditStandingCopies ?` 2201–2343 + handlers 415–485 | 143 + 71 | 7 · 4 · 6 | `planStandingCopyEdit` ✓; `applyStandingPlan` ✗ | med | inline |
 | 12 | Certify modal | `<GcReviewCertifyModal>` 2347–2362 | 16 | `certifyGroup` | render ✓ (3) | low | **extracted** (167, over `GcBillLines`) |
 | 13 | Mark sent dialog | `markSentGroup && …` 2363–2395 | 33 | 3 · 1 · 1 · `GcStatementMarkSentForm` | form ✓ | low | inline host |
 | 14 | ~~Sender card~~ | retired with the rounds panel — nothing opened it once the chips went | — | — | — | — | **retired** |
@@ -273,7 +273,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
     - schedule → `buildGcStatementRequestInsert({entityId: null, entityName: 'All GCs'|'All developments', includeCollections, …})`
     - now → `onSendStatement({groupBy:'all', total: bulk.grandTotal, jobCount: <inline reduce over bulk.going 2177>, html/text via buildGcReviewShareAll*({ groups: bulk.going, grandTotal, held })})`, then the `gcBulkHeldSummary` toast for the held GCs (v2.5022)
   - **No $0 guard** on this path.
-- **11a Standing copies (2201–2343, `isDev`):** per-recipient rows (Edit / Remove), and a form (person select *or* outside email, 7-day Mon…Sun toggles `[1,2,3,4,5,6,0]`, **unsorted** (2294), time, Add/Save, Cancel) → `submitStanding` → `planStandingCopyEdit` → `applyStandingPlan`.
+- **11a Standing copies (2201–2343, `canEditStandingCopies`, the office since v2.6760):** per-recipient rows (Edit / Remove), and a form (person select *or* outside email, 7-day Mon…Sun toggles `[1,2,3,4,5,6,0]`, **unsorted** (2294), time, Add/Save, Cancel) → `submitStanding` → `planStandingCopyEdit` → `applyStandingPlan`.
 - **Owned (moves with 11):** `shareAllOpen`\*, `shareAllTo`, `shareAllSubject`, `shareAllSending`, `shareAllError`, `shareAllWhen`, `shareAllSendDate`, `shareAllSendTime`, `shareAllRepeatWeekly` (\* the opener flag stays). **11a** owns the standing form states but shares `pendingSends` / `removeStanding` / `standingBusy` with region 6 (region 6's Cancel runs `removeStanding`, which reads `standingEditingEmail` and can call `resetStandingForm`), and `submitStanding` reads the view state (`includeCollections`, `byDevelopment`), so it goes through a hook.
 - **Data:** `gc_statement_email_requests` insert. Standing: **`applyStandingPlan` 428–431 cancels (delete) first, then inserts, sequentially and unguarded.** A mid-loop failure leaves the recipient's chain partly or entirely cancelled. `removeStanding` swallows errors (480–483).
 - **Tests:** `buildGcReviewShareAllEmailHtml/Text` + subject (in `gcStatementEmail.test`), `planStandingCopyEdit` / `groupStandingCopies` (10). **Untested:** the payload, `applyStandingPlan`'s order, `standingPickableUsers` (5-role cohort incl. `primary`).
@@ -394,8 +394,8 @@ Per the playbook, Stage A comes before Stage B for each unit, and the lowest cou
 8. **RLS / role gates:**
    - `canCertify` (dev · master_technician · assistant · controller) matches the insert/update/delete policies on `gc_statement_round_marks` and the insert policy on `gc_review_certifications` (it has no update/delete policy; migration `20260821190000`). `primary` can read both but not write.
    - The round overlay's Sent it / Skip and **Start round are not `canCertify`-gated**, so RLS is the wall (error via `roundError`).
-   - Standing copies are `isDev` UI-only. The insert policy admits dev, assistant-like roles, master_technician and primary with `requested_by = auth.uid()`, so the dev-only rule is not enforced server-side.
-   - Cancel is enforced by RLS ("own unsent OR is_dev"), mirrored client-side by the untested `canCancelStatementRequest`.
+   - Standing copies are the office's since v2.6760 (`canEditStandingCopies`, a dev's before). The insert policy admits dev, assistant-like roles, master_technician and primary with `requested_by = auth.uid()`, and the office deletes an unsent standing request anyone wrote (`20261109004000`).
+   - Cancel is enforced by RLS ("own unsent OR is_dev", and the office for an unsent standing row since v2.6760), mirrored client-side by the untested `canCancelStatementRequest`.
    - The assign-sender select lists 4 roles with no email check; the standing picker adds `primary`.
 9. **Side effect on Copy portal link.** `mark_customer_portal_slug_shared` permanently locks the short address on first share (569). Keep it before the clipboard write.
 10. **Portal staleness.** `CustomerPortalGlobeButton` takes only `customerId` / `customerName` / `size` (no change callback). A link minted in the globe modal does not show in the Share menu or Draft Message until GC Review is closed and reopened. This is from a code read, not verified in the browser.

@@ -1,12 +1,12 @@
 ---
 title: see what we owe each person on payroll
 category: Office
-roles: dev
+roles: dev, controller
 keywords: payroll, pay run, balances, ledger, balance, owe, back-charge, credit, offset, pay stub, paid out, unpaid, partial, residue, overpaid, pay to here, settle up, open reports
 ---
 **Balances** shows where each person on payroll stands with us over all time. The view opens on the pay reports that are still owed.
 
-Balances is one of two views on People → **Payroll**. Only devs see the two views for now. **Pay run** is the other view, for this week's work. On Pay run you draft the reports, record the payments and catch the weeks still waiting.
+Balances is one of two views on People → **Payroll**. Only a dev and the controller see the two views. **Pay run** is the other view, for this week's work. On Pay run you draft the reports, record the payments and catch the weeks still waiting.
 
 ## The roster
 

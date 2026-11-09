@@ -43,6 +43,6 @@ You see the same mark on your own day. Open the day on **My Time** and the entry
 
 You can fix the words afterwards, but not stretch the entry. To record a longer call, add another one or ask the office.
 
-## Changing who and how much (dev)
+## Changing who and how much (owner or dev)
 
 Go to **Settings → People & teams → Quick time add**. Tick the roles that get the link under the clock. Out of the box those are assistant, controller, estimator and dev. Primary and master technician can be added for leaders who take after-hours calls. Set the most minutes of quick adds one person can add in a day. Out of the box that is 120. {{button:blue|Save}} applies the next time each person's Dashboard loads. The database checks the same settings when the time is saved, so the link and the refusal always agree. Salaried people and anyone in training mode never get the link, whatever is ticked.

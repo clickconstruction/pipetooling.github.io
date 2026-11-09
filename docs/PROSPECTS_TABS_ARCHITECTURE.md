@@ -299,7 +299,7 @@ Access gates:
   - Owned state: `onboardingItems`, `onboardingStatuses` (a Map keyed `` `${prospectId}:${itemId}` ``; a missing key means pending), `onboardingSettingsOpen`, `newItemLabel`, `newItemLink`, `itemDrafts`.
   - Handlers: `cycleOnboardingStatus` 1302–1316 (optimistic upsert, `ONBOARDING_STATUS_META` 120–124), `addOnboardingItem` 1318–1335, `saveOnboardingItem` 1337–1356, `moveOnboardingItem` 1358–1373 (index-based two-row position swap), `deleteOnboardingItem` 1375–1385.
   - Settings modal 2276–2368. The roster hand-off (`hireTarget`, `hireKind`; `openRosterHandoff` 1232–1236 pre-selects `suggestRosterKind(roleName)`; `addHireToRoster` 1280–1299; modal 2228–2274) is opened from `setStatus('hired')` too, so it **stays at TPT level**.
-  - The onboarding legend renders only when items exist or `isDev`. The ⚙ Onboarding settings button and the "no items yet" pointer are dev-only.
+  - The onboarding legend renders only when items exist or `canEditOnboarding`. The ⚙ Onboarding settings button is the owner's and a dev's since v2.6763 (`canEditOnboarding`, with the Team review weights as `canSetWeights`); the "no items yet" pointer is dev-only.
 - **Review** (2044–2051): `<TeamReviewSection authUserId isDev initialRateUserId={rateUserIdFromUrl} onOpenScreenBoard={() => setStage('screen')} />`. Done.
 - **Cross-stage modals:** Add 2103–2128 (`addOpen`/`addDraft`); Edit 2130–2177 (`editTarget`/`editDraft`/`confirmingDelete`; delete gated by `powers.canDelete`, opened from Screen cards, Try-out, Hire rows and the Passed bucket); My review; Hire-to-roster; Onboarding settings; Share (`ShareColumnDialog` 2369–2380).
 

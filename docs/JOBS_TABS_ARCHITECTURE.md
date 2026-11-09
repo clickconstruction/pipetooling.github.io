@@ -107,7 +107,7 @@ Two role sources are checked in parallel almost everywhere: `authRole` (`useAuth
 
 | Tab | dev | master_technician | assistant | controller | estimator | primary | superintendent |
 |---|---|---|---|---|---|---|---|
-| Crew P&L (`showTeamsTab`) | ✓ | — | — | — | ✓ | — | — |
+| Crew P&L (`showTeamsTab`; the owner since v2.6757) | ✓ | ✓ | — | — | ✓ | — | — |
 | Reports | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Pipeline, Billing (`showStagesAndBillingTabs`) | ✓ | ✓ | ✓ | ✓ | ✓ | — | — |
 | Team (`showTeamLaborTab`) | ✓ | ✓ | — | ✓ (quirk #5) | ✓ | — | — |
@@ -116,7 +116,7 @@ Two role sources are checked in parallel almost everywhere: `authRole` (`useAuth
 
 `null`+`null` roles count as primary-restricted (`isPrimaryOrUnknown`, 1687) so the bar never flashes wrong tabs.
 
-**The URL router** (761–922) enforces the same on deep links, in this order: `SUBS_TAB_ALIASES` rewrite → `?edit=` forces `stages` → `?editLabor=` forces `subs&view=pay` → `?editParts=` forces `parts` → `?openBankPayments=` forces `stages` when `canRoleSeeArBankUnallocatedOrgNudge(authRole)` (`?legal=` left with punch list #182: it redirects to `/legal-desk`) → legacy `receivables`→`reports`, `ledger`→`billing` → role bounces through `useRoleGate` (v2.2882: toast once, then land; keys `team-labor` for assistants on `combined-labor`, `crew-pnl` for master/assistant-like on `teams-summary`, both for superintendents, `jobs-tab` for any other disallowed tab) → superintendent allowed `reports`/`subs`, default `reports` → primary allowed `reports` only → `billed`→`stages` → any `JOBS_TABS` member → no tab defaults to `stages`.
+**The URL router** (761–922) enforces the same on deep links, in this order: `SUBS_TAB_ALIASES` rewrite → `?edit=` forces `stages` → `?editLabor=` forces `subs&view=pay` → `?editParts=` forces `parts` → `?openBankPayments=` forces `stages` when `canRoleSeeArBankUnallocatedOrgNudge(authRole)` (`?legal=` left with punch list #182: it redirects to `/legal-desk`) → legacy `receivables`→`reports`, `ledger`→`billing` → role bounces through `useRoleGate` (v2.2882: toast once, then land; keys `team-labor` for assistants on `combined-labor`, `crew-pnl` for assistant-like on `teams-summary` (the owner is let in since v2.6757), both for superintendents, `jobs-tab` for any other disallowed tab) → superintendent allowed `reports`/`subs`, default `reports` → primary allowed `reports` only → `billed`→`stages` → any `JOBS_TABS` member → no tab defaults to `stages`.
 
 ### Page-side gates (in `Jobs.tsx`)
 
@@ -124,13 +124,13 @@ Two role sources are checked in parallel almost everywhere: `authRole` (`useAuth
 |---|---|---|
 | Parts / Job Summary banking + mercury quick-add (`canAccessBankingForParts`) | dev / master / assistant-like on `authRole` **or** `myRole` | 335–344 |
 | Pipeline burn card (`pipelineBurnWanted`) | `activeTab === 'stages' && showJobCostBreakdownTeamLabor(authRole)` (dev / master / controller) | 162 |
-| `?stagesMoney=` | `authRole ?? myRole` ∈ dev / controller; master + assistant-like get a `pipeline-money` bounce | 1062–1070 |
+| `?stagesMoney=` | `canSeeStagesMoneyCharts(authRole ?? myRole)`: dev / master / controller (the owner since v2.6759); an assistant gets a `pipeline-money` bounce | 1062–1070 |
 | `?openBankPayments=` | `canRoleSeeArBankUnallocatedOrgNudge(authRole)` (dev / master / assistant-like); waits while `authRole == null` | 1126 |
 | `?legal=` (+ `&legalTab=`) | no gate here since v2.5894 (punch list #182): `legalDeskRedirect` sends the link to `/legal-desk` with `replace`, and the page gates the roles | 1157 |
 | `?liendesk=` (+ `&kind=`, `&liendeskJob=`, `&liendeskPile=`) and `?ownerrecords=` | no gate here since v2.6777 (punch list #182): `lienDeskRedirect` sends the link to `/lien-desk` with `replace`, and the page gates the roles; the board's deep-link hook no longer answers either | 1167 |
 | Job Summary Session notes (`canOpenSessionNotes`) | `['dev','master_technician','assistant','controller'].some(r => r === authRole \|\| r === myRole)` | 2126 |
 | Job Summary Team Labor + Profit columns (`showTeamLaborAndProfit`) | `authRole` ∈ dev / master / **controller** (not assistant) | 2151 |
-| Job Summary overhead dials (`canEditOverheadDials`) | `authRole === 'dev'` | 2152 |
+| Job Summary overhead dials (`canEditOverheadDials`) | `isOwnerOrDev(authRole)` (the owner since v2.6759) | 2152 |
 | Subs Work view (`canSeeWork`) | `showSuperintendentExtraTabs` | 1981 |
 
 ### Pipeline in-tab gates

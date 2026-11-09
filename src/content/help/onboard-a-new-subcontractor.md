@@ -22,7 +22,7 @@ Have these from the sub, or know you will be asking for them:
 
 There are two doors, depending on where the person came from:
 
-- **From the hiring board**. You go to Prospects → **Hiring** → the **Hire** stage. Advancing a candidate offers *Add to the People roster?*. You pick **Subcontractor**. Their name, phone, and email carry over. The Hire stage also has the company **onboarding checklist**. Each item's box goes red, then yellow, then green. Devs edit the items under {{icon:gear}} **Onboarding settings**. So you can track the documents you are still waiting on right there.
+- **From the hiring board**. You go to Prospects → **Hiring** → the **Hire** stage. Advancing a candidate offers *Add to the People roster?*. You pick **Subcontractor**. Their name, phone, and email carry over. The Hire stage also has the company **onboarding checklist**. Each item's box goes red, then yellow, then green. The owner or a dev edits the items under {{icon:gear}} **Onboarding settings**. So you can track the documents you are still waiting on right there.
 - **Straight to People**. You go to People → **Users** → {{button:blue|+ Add to roster}}. You pick **Subcontractor** and save. That is a roster row with no login. It is all the portal, paperwork and sub sheets need. A dev ticks *Also attach a login* on the same dialog if they should have a login. Will they not click an invite? Then {{button:outline|Accounts · dev}} → {{button:outline|Manually add user}} creates the login now, with a password you hand them. The invite link is single-use for setting a password. Re-opening it while signed in shows *You're already set up* and a Sign in button, nothing else.
 
 :::example External vs. account

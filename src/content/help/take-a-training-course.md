@@ -42,4 +42,4 @@ The office can see where everyone stands. A red or amber course shows beside you
 
 ## Reference
 
-A dev turns each course on and sets who must take it and how long a pass is good for. That is done in Settings. A dev can also open a course to everyone. If your Training card says a course is not on yet, the office has not turned it on.
+The owner or a dev turns each course on. They set who must take it and how long a pass is good for. That is done in Settings. They can also open a course to everyone. If your Training card says a course is not on yet, the office has not turned it on.

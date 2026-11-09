@@ -1,13 +1,13 @@
 ---
 title: close the money week
 category: Billing & Money
-roles: dev, controller
+roles: dev, master_technician, controller
 keywords: moneyfill, weekly close, close week, money week, queues, bank transfers, card charges, deposits, supply invoices, pending approval, time without job, no job total, week picker, weekly money movement, close week chip, controller
 order: 74
 ---
 Every Monday the previous week gets closed. Moneyfill is the page for that close.
 
-A closed week means every dollar that moved is on a job or a label. Every hour is approved and assigned. Only then does the week's profit report mean anything. **Moneyfill** is the money-bill icon next to the Quickfill heart in the header. It is for **devs and controllers**. Until someone holds the controller role, this is the owner's Monday job.
+A closed week means every dollar that moved is on a job or a label. Every hour is approved and assigned. Only then does the week's profit report mean anything. **Moneyfill** is the money-bill icon next to the Quickfill heart in the header. It is for **the owner, devs and controllers**. Until someone holds the controller role, this is the owner's Monday job.
 
 ## The week
 
@@ -51,7 +51,7 @@ Quickfill's stations have a **Mark … up to date!** button. Pressing it means s
 {{chip:green|Supply Houses — Marked 8:41 AM by Dana}} &nbsp; {{chip:yellow|Close week: $239 open}}
 :::
 
-Tap the chip and Moneyfill opens on that week. Only devs and controllers can tap it. {{chip:green|Close week: clear}} means every queue that station feeds is at zero. Everyone else sees a plain **Feeds the weekly close** label. The assistant's mark keeps its meaning, and nobody is sent to a page that would turn them away.
+Tap the chip and Moneyfill opens on that week. Only the owner, devs and controllers can tap it. {{chip:green|Close week: clear}} means every queue that station feeds is at zero. Everyone else sees a plain **Feeds the weekly close** label. The assistant's mark keeps its meaning, and nobody is sent to a page that would turn them away.
 
 ## Fewer approvals to clear
 

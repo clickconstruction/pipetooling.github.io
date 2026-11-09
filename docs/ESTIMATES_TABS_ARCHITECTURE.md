@@ -116,7 +116,7 @@ Consequences for extraction:
 
 ### `EstimateList` — Pipeline + Ledger tabs (1872–2536)
 
-- **Render location:** whole component when the route has no `:id`; render 2153–2535. Header (⚙ dev-master 2159–2181, New change order, New estimate; ~2156–2195) + settings modal 2196–2198; tablist 2199–~2230; `?customer=` banner 2231–2268; Ledger panel 2270–2333 (`aria-labelledby="estimates-tab-ledger"`); Pipeline panel 2335–2501; four modals 2503–2535.
+- **Render location:** whole component when the route has no `:id`; render 2153–2535. Header (⚙ `canOpenBillingNotifications`: dev, master and, since v2.6760, the controller; 2159–2181, New change order, New estimate; ~2156–2195) + settings modal 2196–2198; tablist 2199–~2230; `?customer=` banner 2231–2268; Ledger panel 2270–2333 (`aria-labelledby="estimates-tab-ledger"`); Pipeline panel 2335–2501; four modals 2503–2535.
 - **Owned local state (14):** `listTab` (default `'followup'`), `ledgerKind` (`LedgerKindFilter`, `'all'`), `ledgerDays` (90), `ledgerIncludeClosed`, `acceptNotifySettingsOpen`, `listSearch` (**one state for both tabs**), `rows`, `loading`, `creating`, `acceptanceModalEstimateId`, `createJobFromListRow`, `customerSnapshotId`, `listCustomerEvents` (1951), `cleaningEmpties` (2009). Ref `newEstimateParamFiredRef` 2063.
 - **Shared engine (extracted hook):** `useEstimateThreadNotes(showToast, user?.id, profileName)` (1895) → bundled into `estimatesStagesThread` (2140–2151) and passed only to Pipeline buckets.
 - **Derived memos:** `filteredRows` 1941, `followupBuckets` 1946 (`splitFollowupRows`: Unsent / Sent / **Declined** (own bucket, rendered only when non-empty) / Accepted; superseded omitted; signed bid-room proposals skipped), `eventRowIdsKey` 1952, `sentOpenStateById` 1986, `declinedLabelById` 1993, `emptyDraftIds`/`unsentVisibleRows` 2001–2008 (`isEmptyEstimateDraft`), `ledgerRows` 2011 (`ledgerRowPasses` kind / closed / window), `ledgerTotals` 2017 (`computeLedgerTotals`: accepted this month, outstanding sent, accepted-not-on-a-job).
@@ -237,7 +237,7 @@ The API surface extracted regions must be handed.
 
 ### Role gating
 
-- No page-level access gate (primary scoping is RLS; the list's empty label explains it). `ESTIMATE_CATALOG_EDITOR_ROLES` (dev, master_technician, assistant, controller, estimator, primary, superintendent) gates catalog **editing**; the ⚙ Accepted-notifications button is dev/master only; `resolveMasterUserId` returns the company owner for every role (v2.2972).
+- No page-level access gate (primary scoping is RLS; the list's empty label explains it). `ESTIMATE_CATALOG_EDITOR_ROLES` (dev, master_technician, assistant, controller, estimator, primary, superintendent) gates catalog **editing**; the ⚙ Accepted-notifications button is dev/master/controller since v2.6760 (`canOpenBillingNotifications`; inside, the controller or a dev edits the recipients); `resolveMasterUserId` returns the company owner for every role (v2.2972).
 
 ### Supabase inventory (whole file)
 

@@ -42,7 +42,7 @@ The step finishes once the paper is on file. A paper that runs out also needs it
 
 The e-sign consent is the app's own words on every sign page, so you never write it here.
 
-A dev's or a controller's clauses publish as version 1 right away. Anyone else's clauses wait for a dev or a controller to approve them. Those approvers get a push and an email. The window says which happened, and who it reached.
+The owner's, a dev's or a controller's clauses publish as version 1 right away. Anyone else's clauses wait for one of those three to approve them. Those approvers get a push and an email. The window says which happened, and who it reached.
 
 ## Add a notice
 

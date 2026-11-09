@@ -14,7 +14,7 @@ The tab is the other side of *What customers see*. The emails include these:
 - the weekly reports
 - the sign-in and invitation emails
 
-Each row shows when the email arrives, who gets it and the From line. The row shows the **subject with sample values filled in**. The row opens to the email itself where the app can build one. Devs see the tab.
+Each row shows when the email arrives, who gets it and the From line. The row shows the **subject with sample values filled in**. The row opens to the email itself where the app can build one. The owner and devs see the tab.
 
 ## Whose week
 
