@@ -45452,6 +45452,15 @@ export type Database = {
         Args: { p_month: string; p_subject: string }
         Returns: number
       }
+      supply_paper_accept: {
+        Args: { p_note?: string; p_paper_id: string }
+        Returns: undefined
+      }
+      supply_paper_gap_words: { Args: { p_off_cents: number }; Returns: string }
+      supply_paper_save: {
+        Args: { p_invoice_id: string; p_lines: Json; p_paper: Json }
+        Returns: string
+      }
       sync_company_access_grants: { Args: never; Returns: undefined }
       sync_controller_banking_attributors: { Args: never; Returns: undefined }
       sync_crew_bids_from_clock: {
