@@ -55,6 +55,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/portal', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-schedule'), G('gc-portal-sign-contract'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
   { kind: 'route', ref: '/p/:slug', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-schedule'), G('gc-portal-sign-contract'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
   { kind: 'route', ref: '/pay/:id', audience: 'homeowner', steps: [H('pay-code')] },
+  // #294 (v2.6797): a cage or box label's QR, prts.co/b/<code>. Whoever stands at the box reads what is in it; no customer journey has it.
+  { kind: 'route', ref: '/b/:code', audience: 'staff', exempt: 'The box label page: what is in a cage or box on a job site, for whoever scans its QR. Not a customer surface.' },
   { kind: 'route', ref: '/rate', audience: 'homeowner', steps: [H('rating-ask'), H('rating-thanks'), H('rating-better')] },
   { kind: 'route', ref: '/bid-room', audience: 'gc', steps: [G('bid-room'), G('bid-room-signed')] },
   { kind: 'route', ref: '/submittal', audience: 'gc', steps: [G('submittal-room'), G('submittal-decided')] },
