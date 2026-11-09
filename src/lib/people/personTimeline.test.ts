@@ -12,6 +12,8 @@ import {
   personTimelineEmptyWords,
   signedPapers,
   splitPersonTimeline,
+  statementDoor,
+  statementRows,
   ymdShift,
   type PersonTimelineInput,
 } from './personTimeline'
@@ -311,6 +313,7 @@ describe('personFileFacts · the strip says only what is there', () => {
       papersSigned: 1,
       papersWaiting: 1,
       papersOwed: 1,
+      statementsOpen: 0,
       licensesLive: 1,
       licensesExpired: 1,
       writeups: 1,
@@ -357,6 +360,74 @@ describe('personFileFacts · the strip says only what is there', () => {
   it('ymdShift moves on the calendar, across a month end and a year end', () => {
     expect(ymdShift('2026-11-02', -90)).toBe('2026-08-04')
     expect(ymdShift('2026-12-31', 1)).toBe('2027-01-01')
+  })
+})
+
+describe('hours statements on the line (v2.6820)', () => {
+  const stmt = (over: Record<string, unknown>) => ({ id: 's1', record_id: 'HS-629-0001', job_ledger_id: 'j629', job_label: 'Job 629 · Rough-in', state: 'printed', basis: 'paid', period_start: '2026-03-31', period_end: '2026-06-30', prepared_at: '2026-11-03T04:21:00Z', updated_at: '2026-11-03T04:21:00Z', contract_document_id: null, drive_file_id: null, matter_document_id: null, ...over })
+
+  it('a printed statement reads not signed back on the day it was prepared, names the job, the period and the basis, and opens the job', () => {
+    const lines = buildPersonTimeline(input({ statements: [stmt({})] }))
+    const l = lines.find((x) => x.key === 'statement:s1')!
+    expect(l.lane).toBe('paper')
+    expect(l.source).toBe('statement')
+    expect(l.ymd).toBe('2026-11-02') // 04:21 UTC on the 3rd is the evening of the 2nd in Central
+    expect(l.kindWords).toBe('hours statement · printed, not signed back')
+    expect(l.what).toBe('Hours statement HS-629-0001')
+    expect(l.notes).toBe("Job 629 · Rough-in · 2026-03-31 to 2026-06-30 · hours paid. The sheet is on the job's Documents tab.")
+    expect(l.state).toBe('owed')
+    expect(l.byName).toBe('the office')
+    expect(l.door).toEqual({ label: 'Open the job', to: '/jobs?tab=stages&edit=j629' })
+  })
+
+  it('a signed statement carries the signed day and the signed record\'s door, and its copy draws no second line; a draft, a sent one and one in Drive read their own way', () => {
+    const copy = { id: 'c9', document_name: 'Hours statement HS-629-0002', status: 'signed', created_at: '2026-11-04T10:00:00Z', sent_at: '2026-11-04T10:00:00Z', signed_at: '2026-11-05', office_completed_at: null, signer_printed_name: 'Pat Doe', expires_at: null, doc_type: 'hours_statement', signer_consented_at: '2026-11-05T16:00:00Z' }
+    const lines = buildPersonTimeline(
+      input({
+        contracts: [copy],
+        statements: [
+          stmt({ id: 's2', record_id: 'HS-629-0002', state: 'signed', contract_document_id: 'c9', prepared_at: '2026-11-04T10:00:00Z', matter_document_id: 'm1' }),
+          stmt({ id: 's3', record_id: 'HS-629-0003', state: 'draft', prepared_at: '2026-11-06T10:00:00Z' }),
+          stmt({ id: 's4', record_id: 'HS-629-0004', state: 'sent', prepared_at: '2026-11-07T10:00:00Z', basis: 'charged' }),
+          stmt({ id: 's5', record_id: 'HS-629-0005', state: 'printed', prepared_at: '2026-11-08T10:00:00Z', drive_file_id: 'd1' }),
+        ],
+      }),
+    )
+    expect(lines.find((x) => x.key === 'contract:c9:signed')).toBeUndefined()
+    const s2 = lines.find((x) => x.key === 'statement:s2')!
+    expect(s2.kindWords).toBe('hours statement · signed back')
+    expect(s2.notes).toBe("Job 629 · Rough-in · 2026-03-31 to 2026-06-30 · hours paid. Signed 2026-11-05. On a matter's Evidence tab.")
+    expect(s2.byName).toBe('Pat Doe')
+    expect(s2.state).toBe('live')
+    expect(s2.door).toEqual({ label: 'Open the signed record', to: '/people?tab=contracts&doc=c9' })
+    expect(lines.find((x) => x.key === 'statement:s3')!.kindWords).toBe('hours statement · draft')
+    expect(lines.find((x) => x.key === 'statement:s3')!.state).toBe('draft')
+    const s4 = lines.find((x) => x.key === 'statement:s4')!
+    expect(s4.kindWords).toBe('hours statement · sent for signature · waiting')
+    expect(s4.notes).toContain('hours charged')
+    expect(s4.state).toBe('waiting')
+    const s5 = lines.find((x) => x.key === 'statement:s5')!
+    expect(s5.door).toEqual({ label: 'Open in Drive', to: 'https://drive.google.com/file/d/d1/view' })
+    expect(s5.notes).toBe("Job 629 · Rough-in · 2026-03-31 to 2026-06-30 · hours paid. In the job's Drive folder.")
+    // The signed copy still draws when the statements were held (an older caller, a refused read).
+    expect(buildPersonTimeline(input({ contracts: [copy] })).find((x) => x.key === 'contract:c9:signed')!.kindWords).toBe('hours statement · signed')
+    expect(countPersonTimeline(lines).bySource.statement).toBe(4)
+  })
+
+  it('the strip counts the statements not signed back, and the list names each standing with its door', () => {
+    const inp = input({ statements: [stmt({}), stmt({ id: 's3', record_id: 'HS-629-0003', state: 'draft', prepared_at: '2026-11-06T10:00:00Z' }), stmt({ id: 's4', record_id: 'HS-629-0004', state: 'sent', prepared_at: '2026-11-07T10:00:00Z' })] })
+    const facts = personFileFacts(inp, buildPersonTimeline(inp))
+    expect(facts.statementsOpen).toBe(2)
+    expect(personFileFactChips(facts).find((c) => c.key === 'statements')).toEqual({ key: 'statements', label: '2 hours statements not signed back', tone: 'amber', filter: { source: 'statement' } })
+    const rows = statementRows(inp)
+    expect(rows.map((r) => [r.record_id, r.standing, r.standing_words, r.prepared_on, r.door.label])).toEqual([
+      ['HS-629-0004', 'sent', 'sent for signature · waiting', '2026-11-07', 'Open the job'],
+      ['HS-629-0003', 'draft', 'draft', '2026-11-06', 'Open the job'],
+      ['HS-629-0001', 'printed', 'printed, not signed back', '2026-11-02', 'Open the job'],
+    ])
+    expect(rows[2]).toMatchObject({ job: 'Job 629 · Rough-in', period: { from: '2026-03-31', to: '2026-06-30' }, basis: 'paid', signed_on: null, signed_copy_id: null, in_drive: false, on_matter: false })
+    expect(statementDoor({ job_ledger_id: 'j', contract_document_id: 'c', drive_file_id: 'd', state: 'printed' }).label).toBe('Open in Drive')
+    expect(statementDoor({ job_ledger_id: 'j', contract_document_id: 'c', drive_file_id: 'd', state: 'signed' }).label).toBe('Open the signed record')
   })
 })
 

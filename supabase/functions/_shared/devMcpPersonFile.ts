@@ -31,7 +31,9 @@ import {
   type PersonTimelineNcns,
   type PersonTimelineReport,
   type PersonTimelineSource,
+  type PersonTimelineStatement,
   type PersonTimelineWriteup,
+  statementRows,
 } from './personTimeline.ts'
 import { evidenceDriveWords, sortEvidenceNewestFirst, type PersonEvidenceFile } from './personEvidence.ts'
 
@@ -67,6 +69,8 @@ type DocIndexRow = { id: string; title: string; counsel_only: boolean; author_la
 type EvidenceRow = { id: string; person_id: string; entry_id: string | null; dated_on: string; title: string; memo: string; created_by: string | null; author_label: string | null; created_at: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null }
 type WriteupRow = { id: string; template_id: string; status: string; disclosure: string | null; submitted_at: string | null; created_at: string; filled_by_user_id: string | null }
 type ExcuseRow = { id: string; work_date: string; note: string; created_at: string; author: unknown }
+type StatementRow = Omit<PersonTimelineStatement, 'job_label'>
+type JobNameRow = { id: string; click_number: string | null; job_name: string | null }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v))
 /** PostgREST `ilike` wildcard is `*`; a literal `*`, `,` or a paren in the text would change the pattern. */
@@ -146,7 +150,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const devOnly = 'dev only'
   const noLogin = 'needs a login'
   const CONTRACT_SELECT = 'id,document_name,status,created_at,sent_at,signed_at,office_completed_at,signer_printed_name,expires_at,doc_type,signer_consented_at,signer_signature_storage_path,form_scan_storage_path,form_source'
-  const [entries, attachments, docRows, evidenceRows, reports, contractsById, contractsByName, licenses, writeupRows, ncns, excuseRows] = await Promise.all([
+  const [entries, attachments, docRows, evidenceRows, reports, contractsById, contractsByName, statementRowsRaw, licenses, writeupRows, ncns, excuseRows] = await Promise.all([
     read<PersonTimelineEntry>('file', isDev, devOnly, 'person_file_entries', () => reader.rows('person_file_entries', { select: 'id,entry_date,content,source,created_by,created_at,author_label', filters: eq('person_id', personId), order: [{ column: 'entry_date', ascending: false }], limit: PERSON_FILE_READ_CAP })),
     read<AttachmentRow>('file', isDev, devOnly, 'person_file_attachments', () => reader.rows('person_file_attachments', { select: 'id,entry_id,evidence_id,filename,mime_type,size_bytes,storage_path,drive_file_id,drive_url,filed_at,fail_why,created_at,sha256', filters: eq('person_id', personId), order: [{ column: 'created_at', ascending: false }], limit: PERSON_FILE_READ_CAP })),
     read<DocRow>('file', isDev, devOnly, 'person_files', () => reader.rows('person_files', { select: 'kind,content,updated_at,covered_through,author_label', filters: eq('person_id', personId), limit: 10 })),
@@ -154,6 +158,8 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     read<PersonTimelineReport>('report', isDev, devOnly, 'person_reports', () => reader.rows('person_reports', { select: 'id,status,occurred_date,created_at,author_name,content,resolution_note,resolved_at,filed_entry_id', filters: eq('subject_person_id', personId), order: [{ column: 'occurred_date', ascending: false }], limit: PERSON_FILE_READ_CAP })),
     read<PersonTimelineContract>('contract', true, '', 'person_contract_documents', () => reader.rows('person_contract_documents', { select: CONTRACT_SELECT, filters: eq('person_id', personId), limit: PERSON_FILE_READ_CAP })),
     read<PersonTimelineContract>('contract', name !== '', 'needs a name on the roster', 'person_contract_documents', () => reader.rows('person_contract_documents', { select: CONTRACT_SELECT, filters: eq('person_name', name), limit: PERSON_FILE_READ_CAP })),
+    // v2.6820: hours statements — payroll data, a dev's or the controller's by RLS; read as the dev alone, held for a view_as.
+    read<StatementRow>('statement', isDev, 'dev or controller', 'hours_statements', () => reader.rows('hours_statements', { select: 'id,record_id,job_ledger_id,state,basis,period_start,period_end,prepared_at,updated_at,contract_document_id,drive_file_id,matter_document_id', filters: eq('person_id', personId), order: [{ column: 'prepared_at', ascending: false }], limit: PERSON_FILE_READ_CAP })),
     read<PersonTimelineLicense>('license', name !== '', 'needs a name on the roster', 'person_licenses', () => reader.rows('person_licenses', { select: 'id,license_type,date_of_expiry,created_at,note', filters: eq('person_name', name), limit: PERSON_FILE_READ_CAP })),
     read<WriteupRow>('writeup', Boolean(userId), noLogin, 'writeups', () => reader.rows('writeups', { select: 'id,template_id,status,disclosure,submitted_at,created_at,filled_by_user_id', filters: eq('subject_user_id', userId as string), limit: PERSON_FILE_READ_CAP })),
     read<PersonTimelineNcns>('attendance', Boolean(userId), noLogin, 'attendance_incidents', () => reader.rows('attendance_incidents', { select: 'id,work_date,created_at,created_by_user_id,details', filters: [...eq('subject_user_id', userId as string), ...eq('incident_type', 'no_call_no_show')], limit: PERSON_FILE_READ_CAP })),
@@ -179,10 +185,15 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
       return []
     }
   }
-  const [templates, users] = await Promise.all([
+  const statementJobIds = [...new Set(statementRowsRaw.map((s) => s.job_ledger_id))]
+  const [templates, users, statementJobs] = await Promise.all([
     templateIds.length > 0 ? quiet(() => reader.rows('writeup_templates', { select: 'id,name', filters: [{ column: 'id', op: 'in', value: templateIds }], limit: PERSON_FILE_READ_CAP })) : Promise.resolve([] as Row[]),
     userIds.size > 0 ? quiet(() => reader.rows('users', { select: 'id,name', filters: [{ column: 'id', op: 'in', value: [...userIds] }], limit: PERSON_FILE_READ_CAP })) : Promise.resolve([] as Row[]),
+    statementJobIds.length > 0 ? quiet(() => reader.rows('jobs_ledger', { select: 'id,click_number,job_name', filters: [{ column: 'id', op: 'in', value: statementJobIds }], limit: PERSON_FILE_READ_CAP })) : Promise.resolve([] as Row[]),
   ])
+  // The job in words, as the tab's io writes it (statementJobLabel): the number, then the name.
+  const jobLabel = new Map((statementJobs as unknown as JobNameRow[]).map((j) => [j.id, [(j.click_number ?? '').trim() ? `Job ${(j.click_number ?? '').trim()}` : '', (j.job_name ?? '').trim()].filter(Boolean).join(' · ')]))
+  const statements: PersonTimelineStatement[] = statementRowsRaw.map((s) => ({ ...s, job_label: jobLabel.get(s.job_ledger_id) ?? '' }))
   const templateName = new Map(templates.map((t) => [str(t.id), str(t.name)]))
   const namesById: Record<string, string> = {}
   for (const u of users) if (typeof u.name === 'string' && u.name) namesById[str(u.id)] = u.name
@@ -235,6 +246,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     evidence,
     reports,
     contracts: [...contracts.values()],
+    statements,
     licenses,
     writeups,
     ncns,
@@ -288,7 +300,11 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     // v2.6820: what they signed, as a list — the paper, the day, signed as, how, and the door to the signed record — so an agent
     // reads it without walking the months; the same rows the Timeline's contract source draws, newest first.
     signed_papers: signedPapers(input),
-    signed_papers_note: 'The papers this person signed in the app (person_contract_documents, status signed), newest first; door.to opens the signed record on People → Contracts. A paper made for them and never sent stands on the Timeline as owed; a hours statement signed through the app is here too (doc_type hours_statement); a statement only printed is not a signature.',
+    signed_papers_note: 'The papers this person signed in the app (person_contract_documents, status signed), newest first; door.to opens the signed record on People → Contracts. A paper made for them and never sent stands on the Timeline as owed; an hours statement signed through the app is here too (doc_type hours_statement); a statement only printed is not a signature.',
+    // v2.6820 (Diane: "Statements too"): every hours statement with where it stands — draft, printed and not signed back, sent and
+    // waiting, signed back — the job, the period, the basis, and the door: the signed record, the file in Drive, or the job window.
+    hours_statements: statementRows(input),
+    hours_statements_note: 'The person\'s hours statements (hours_statements, punch list #212), newest first, each with its standing: draft · printed, not signed back · sent for signature · signed back. A signed one names its signed copy (signed_copy_id, a person_contract_documents row, also in signed_papers) and its door opens that record, where the signed PDF opens; an unsigned one\'s door opens the file in Drive when the office put it there, else the job window, whose Documents tab holds the sheet. A printed statement is not a signature.',
     counts: { ...countPersonTimeline(all), shown: lines.length },
     lanes: PERSON_TIMELINE_LANES,
     sources: PERSON_TIMELINE_SOURCES,

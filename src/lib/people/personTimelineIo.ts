@@ -11,6 +11,7 @@ import type {
   PersonTimelinePerson,
   PersonTimelineReport,
   PersonTimelineSource,
+  PersonTimelineStatement,
   PersonTimelineWriteup,
 } from './personTimeline'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -21,6 +22,13 @@ import { formatErrorMessage } from '../../utils/errorHandling'
  * that fails is named the same way, and the rest of the file still draws. The kernel
  * (`personTimeline.ts`) turns what comes back into the line.
  */
+
+/** *Job 629 · Gun Dog rough-in*: the number the statement's record id already carries, and the name beside it. */
+export function statementJobLabel(j: { click_number: string | null; job_name: string | null }): string {
+  const number = (j.click_number ?? '').trim()
+  const name = (j.job_name ?? '').trim()
+  return [number ? `Job ${number}` : '', name].filter(Boolean).join(' · ')
+}
 
 export type PersonFileViewer = { isDev: boolean; canAccessContracts: boolean; canAccessLicenses: boolean }
 
@@ -88,7 +96,7 @@ export async function loadPersonFileSources(args: {
   const noLogin = 'needs a login'
 
   const evidenceLoad = viewer.isDev && personId ? loadPersonEvidence(personId) : Promise.resolve({ records: [] as PersonEvidenceRecord[], heldWhy: null as string | null })
-  const [personRows, entries, attachments, docRows, reports, contractsById, contractsByName, licenses, writeupRows, ncns, excuseRows] = await Promise.all([
+  const [personRows, entries, attachments, docRows, reports, contractsById, contractsByName, statementRows, licenses, writeupRows, ncns, excuseRows] = await Promise.all([
     read<PersonTimelinePerson>('employment', Boolean(personId), noRoster, () =>
       supabase.from('people').select('id, name, start_date, end_date, archived_at').eq('id', personId as string),
     ),
@@ -122,6 +130,13 @@ export async function loadPersonFileSources(args: {
         .from('person_contract_documents')
         .select('id, document_name, status, created_at, sent_at, signed_at, office_completed_at, signer_printed_name, expires_at, doc_type, signer_consented_at, signer_signature_storage_path, form_scan_storage_path, form_source')
         .eq('person_name', name),
+    ),
+    // v2.6820: the person's hours statements (payroll data: a dev, the controller or a pay-approved master by RLS; the HR tab is a dev's).
+    read<Omit<PersonTimelineStatement, 'job_label'>>('statement', viewer.isDev && Boolean(personId), personId ? devOnly : noRoster, () =>
+      supabase
+        .from('hours_statements')
+        .select('id, record_id, job_ledger_id, state, basis, period_start, period_end, prepared_at, updated_at, contract_document_id, drive_file_id, matter_document_id')
+        .eq('person_id', personId as string),
     ),
     read<PersonTimelineLicense>('license', viewer.canAccessLicenses && name !== '', 'licenses need the pay gate', () =>
       supabase.from('person_licenses').select('id, license_type, date_of_expiry, created_at, note').eq('person_name', name),
@@ -166,10 +181,14 @@ export async function loadPersonFileSources(args: {
   for (const r of evidence.records) if (r.created_by) userIds.add(r.created_by)
   for (const w of writeupRows) if (w.filled_by_user_id) userIds.add(w.filled_by_user_id)
   for (const n of ncns) if (n.created_by_user_id) userIds.add(n.created_by_user_id)
-  const [templates, users] = await Promise.all([
+  const statementJobIds = [...new Set(statementRows.map((s) => s.job_ledger_id))]
+  const [templates, users, statementJobs] = await Promise.all([
     templateIds.length > 0 ? supabase.from('writeup_templates').select('id, name').in('id', templateIds) : Promise.resolve({ data: [] as Array<{ id: string; name: string }>, error: null }),
     userIds.size > 0 ? supabase.from('users').select('id, name').in('id', [...userIds]) : Promise.resolve({ data: [] as Array<{ id: string; name: string | null }>, error: null }),
+    statementJobIds.length > 0 ? supabase.from('jobs_ledger').select('id, click_number, job_name').in('id', statementJobIds) : Promise.resolve({ data: [] as Array<{ id: string; click_number: string | null; job_name: string | null }>, error: null }),
   ])
+  const jobLabel = new Map((statementJobs.data ?? []).map((j) => [j.id, statementJobLabel(j)]))
+  const statements: PersonTimelineStatement[] = statementRows.map((s) => ({ ...s, job_label: jobLabel.get(s.job_ledger_id) ?? '' }))
   const templateName = new Map((templates.data ?? []).map((t) => [t.id, t.name]))
   const namesById: Record<string, string> = {}
   for (const u of (users.data ?? []) as Array<{ id: string; name: string | null }>) if (u.name) namesById[u.id] = u.name
@@ -230,6 +249,7 @@ export async function loadPersonFileSources(args: {
       })),
       reports,
       contracts: [...contracts.values()],
+      statements,
       licenses,
       writeups,
       ncns,

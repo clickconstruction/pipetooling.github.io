@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { PERSON_FILE_READ_CAP, getPersonFile, personFileFilter } from '../../../supabase/functions/_shared/devMcpPersonFile'
-import { buildPersonTimeline, personFileFactChips, personFileFacts, signedPapers, type PersonTimelineInput } from '../people/personTimeline'
+import { buildPersonTimeline, personFileFactChips, personFileFacts, signedPapers, statementRows, type PersonTimelineInput } from '../people/personTimeline'
 import { catalogReader } from './catalogReader'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
@@ -30,6 +30,8 @@ function rows() {
     person_file_evidence: [{ id: RECORD, person_id: PERSON, entry_id: null, dated_on: '2026-10-28', title: 'Left a mess at the site', memo: 'Two photos from the super.', created_by: DEV, author_label: null, created_at: '2026-10-29T09:00:00Z', drive_folder_id: 'fo', drive_folder_url: 'https://drive.google.com/drive/folders/fo', filed_at: '2026-10-29T10:00:00Z', fail_why: null }],
     person_reports: [{ id: 'r1', status: 'pending', occurred_date: '2026-10-25', created_at: '2026-10-26T12:00:00Z', author_name: 'Sam Boss', content: 'Late twice this week.', resolution_note: null, resolved_at: null, filed_entry_id: null }],
     person_contract_documents: [{ id: 'c1', document_name: 'Helper agreement', status: 'signed', created_at: '2026-02-01T10:00:00Z', sent_at: '2026-02-01T10:00:00Z', signed_at: '2026-02-02T10:00:00Z', office_completed_at: null, signer_printed_name: 'Pat Doe', expires_at: null, doc_type: 'agreement' }],
+    hours_statements: [{ id: 'hs1', record_id: 'HS-629-0001', job_ledger_id: 'j629', state: 'printed', basis: 'paid', period_start: '2026-03-31', period_end: '2026-06-30', prepared_at: '2026-10-15T04:21:00Z', updated_at: '2026-10-15T04:21:00Z', contract_document_id: null, drive_file_id: null, matter_document_id: null, person_id: PERSON }],
+    jobs_ledger: [{ id: 'j629', click_number: '629', job_name: 'Rough-in' }],
     person_licenses: [{ id: 'l1', license_type: 'Journeyman', date_of_expiry: '2027-01-15', created_at: '2026-03-01T10:00:00Z', note: null }],
     writeups: [{ id: 'w1', template_id: 't1', status: 'submitted', disclosure: 'discussed_with_subject', submitted_at: '2026-09-10T10:00:00Z', created_at: '2026-09-10T09:00:00Z', filled_by_user_id: DEV }],
     writeup_templates: [{ id: 't1', name: 'Safety' }],
@@ -48,7 +50,7 @@ describe('get_person_file (the person file from the dev seat)', () => {
     const reader = catalogReader({ rows: data })
     const out = (await getPersonFile(reader, { person: PERSON }, dev)) as Reply
     expect('refused' in out).toBe(false)
-    expect(reader.asked).toEqual(expect.arrayContaining(['rows:people', 'rows:person_file_entries', 'rows:person_file_attachments', 'rows:person_files', 'rows:person_file_evidence', 'rows:person_reports', 'rows:person_contract_documents', 'rows:person_licenses', 'rows:writeups', 'rows:attendance_incidents', 'rows:attendance_annotations', 'rows:writeup_templates', 'rows:users']))
+    expect(reader.asked).toEqual(expect.arrayContaining(['rows:people', 'rows:person_file_entries', 'rows:person_file_attachments', 'rows:person_files', 'rows:person_file_evidence', 'rows:person_reports', 'rows:person_contract_documents', 'rows:hours_statements', 'rows:jobs_ledger', 'rows:person_licenses', 'rows:writeups', 'rows:attendance_incidents', 'rows:attendance_annotations', 'rows:writeup_templates', 'rows:users']))
     expect(out.held).toEqual([])
     // What the tab would build from the same sources (personTimelineIo's shape), line for line.
     const input: PersonTimelineInput = {
@@ -59,6 +61,7 @@ describe('get_person_file (the person file from the dev seat)', () => {
       evidence: [{ ...data.person_file_evidence[0]!, fileIds: ['f-1'] }],
       reports: data.person_reports,
       contracts: data.person_contract_documents,
+      statements: [{ id: 'hs1', record_id: 'HS-629-0001', job_ledger_id: 'j629', job_label: 'Job 629 · Rough-in', state: 'printed', basis: 'paid', period_start: '2026-03-31', period_end: '2026-06-30', prepared_at: '2026-10-15T04:21:00Z', updated_at: '2026-10-15T04:21:00Z', contract_document_id: null, drive_file_id: null, matter_document_id: null }],
       licenses: data.person_licenses,
       writeups: [{ id: 'w1', template_name: 'Safety', status: 'submitted', disclosure: 'discussed_with_subject', submitted_at: '2026-09-10T10:00:00Z', created_at: '2026-09-10T09:00:00Z', filled_by_user_id: DEV }],
       ncns: data.attendance_incidents,
@@ -74,7 +77,10 @@ describe('get_person_file (the person file from the dev seat)', () => {
     const facts = personFileFacts(input, expected)
     expect(out.facts).toEqual(facts)
     expect(out.chips).toEqual(personFileFactChips(facts))
-    expect(out.chips.map((c) => c.key)).toEqual(['reports', 'ncns', 'signed', 'licenses', 'writeups', 'entries', 'evidence'])
+    expect(out.chips.map((c) => c.key)).toEqual(['reports', 'statements', 'ncns', 'signed', 'licenses', 'writeups', 'entries', 'evidence'])
+    // v2.6820: the statements with their standing and door.
+    expect(out.hours_statements).toEqual(statementRows(input))
+    expect(out.hours_statements.map((s) => [s.record_id, s.standing, s.job, s.door.to])).toEqual([['HS-629-0001', 'printed', 'Job 629 · Rough-in', '/jobs?tab=stages&edit=j629']])
     // v2.6820: what they signed, as a list, with the door the signed line carries.
     expect(out.signed_papers).toEqual(signedPapers(input))
     expect(out.signed_papers.map((p) => [p.paper, p.signed_on, p.how, p.door.to])).toEqual([['Helper agreement', '2026-02-02', 'electronically', '/people?tab=contracts&doc=c1']])
@@ -149,8 +155,8 @@ describe('get_person_file (the person file from the dev seat)', () => {
   it('read as the office (view_as), the HR sources are not read and are named dev only; the papers still draw', async () => {
     const reader = catalogReader({ rows: rows() })
     const out = (await getPersonFile(reader, { person: PERSON }, { role: 'assistant', todayYmd: TODAY })) as Reply
-    expect(out.held.map((h) => `${h.source}:${h.reason}`)).toEqual(['file:dev only', 'evidence:dev only', 'report:dev only'])
-    for (const t of ['person_file_entries', 'person_file_attachments', 'person_files', 'person_file_evidence', 'person_reports']) expect(reader.asked).not.toContain(`rows:${t}`)
+    expect(out.held.map((h) => `${h.source}:${h.reason}`)).toEqual(['file:dev only', 'evidence:dev only', 'report:dev only', 'statement:dev or controller'])
+    for (const t of ['person_file_entries', 'person_file_attachments', 'person_files', 'person_file_evidence', 'person_reports', 'hours_statements']) expect(reader.asked).not.toContain(`rows:${t}`)
     expect(out.counts.bySource.contract).toBe(1)
     expect(out.counts.bySource.file).toBe(0)
     expect(out.docs).toEqual({ summary: null, narrative: null })

@@ -43,7 +43,9 @@ The strip at the top of the file counts their papers. {{chip:green|1 paper signe
 
 Press the chip again to see the whole record. Every chip on the strip works the same way. {{chip:green|4 licenses on file}} narrows the Timeline to the licenses.
 
-An agent reads the same list through the dev seat. The reply to get_person_file carries signed_papers with each paper, its day and its door.
+Their hours statements are on the Timeline too. Each line names the statement's number and its job. The chip says where it stands. {{chip:gray|hours statement · printed, not signed back}} means the paper went out and never came back. {{chip:gray|hours statement · signed back}} means it did. Press **Open the signed record ›** on a signed one. Press **Open the job ›** on the rest and find the sheet under Documents. {{chip:yellow|1 hours statement not signed back}} on the strip narrows the Timeline to them.
+
+An agent reads the same list through the dev seat. The reply to get_person_file carries signed_papers with each paper, its day and its door. The reply carries hours_statements too, each with where it stands.
 
 ## Open a matter on a person
 
