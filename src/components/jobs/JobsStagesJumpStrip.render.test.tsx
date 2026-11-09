@@ -86,30 +86,32 @@ describe('JobsStagesJumpStrip', () => {
 })
 
 describe('the Lien desk shortcut (v2.4520)', () => {
-  it('rides beside the last stage, shows the count while there is one, and opens the desk', () => {
-    const onOpen = vi.fn()
+  it('rides beside the last stage, shows the count while there is one, and links to the desk’s page (punch list #182)', () => {
     const view = render(
-      <JobsStagesJumpStrip
-        counts={{ ...counts, collections: '7' }}
-        totals={{ ...totals, collections: '19.3k' }}
-        onFocusSection={vi.fn()}
-        sectionElementId={sectionElementId}
-        tail={<StagesLienDeskShortcut count={23} onOpen={onOpen} />}
-      />,
+      <MemoryRouter>
+        <JobsStagesJumpStrip
+          counts={{ ...counts, collections: '7' }}
+          totals={{ ...totals, collections: '19.3k' }}
+          onFocusSection={vi.fn()}
+          sectionElementId={sectionElementId}
+          tail={<StagesLienDeskShortcut count={23} to="/lien-desk" />}
+        />
+      </MemoryRouter>,
     )
-    const gavel = screen.getByRole('button', { name: 'Open the Lien desk, 23 to work' })
+    const gavel = screen.getByRole('link', { name: 'Open the Lien desk, 23 to work' })
+    expect(gavel.getAttribute('href')).toBe('/lien-desk')
     expect(gavel.textContent).toBe('23')
     const group = gavel.parentElement!
     expect(group.className).toContain('stagesStageSegTail')
     expect(group.firstElementChild).toBe(screen.getByLabelText('Jump to Collections, 7 rows'))
-    fireEvent.click(gavel)
-    expect(onOpen).toHaveBeenCalledTimes(1)
 
     // Collections empty: the shortcut moves beside Billed Awaiting Payment, the last stage drawn.
     view.rerender(
-      <JobsStagesJumpStrip counts={counts} totals={totals} onFocusSection={vi.fn()} sectionElementId={sectionElementId} tail={<StagesLienDeskShortcut count={0} onOpen={onOpen} />} />,
+      <MemoryRouter>
+        <JobsStagesJumpStrip counts={counts} totals={totals} onFocusSection={vi.fn()} sectionElementId={sectionElementId} tail={<StagesLienDeskShortcut count={0} to="/lien-desk" />} />
+      </MemoryRouter>,
     )
-    const quiet = screen.getByRole('button', { name: 'Open the Lien desk' })
+    const quiet = screen.getByRole('link', { name: 'Open the Lien desk' })
     expect(quiet.textContent).toBe('')
     expect(quiet.parentElement!.firstElementChild).toBe(screen.getByLabelText('Jump to Billed Awaiting Payment, 66 rows'))
     expect(quiet.parentElement!.className).toContain('isWide')
@@ -123,7 +125,6 @@ describe('the Lien desk shortcut (v2.4520)', () => {
 
 describe('the Legal desk shortcut (v2.5750)', () => {
   it('rides after the gavel in the same square, wears the firm\u2019s waiting count, and links to the desk\u2019s page (punch list #182)', () => {
-    const onLien = vi.fn()
     const strip = (tail: ReactNode) => (
       <MemoryRouter>
         <JobsStagesJumpStrip counts={{ ...counts, collections: '7' }} totals={{ ...totals, collections: '19.3k' }} onFocusSection={vi.fn()} sectionElementId={sectionElementId} tail={tail} />
@@ -132,14 +133,15 @@ describe('the Legal desk shortcut (v2.5750)', () => {
     const view = render(
       strip(
         <>
-          <StagesLienDeskShortcut count={23} onOpen={onLien} />
+          <StagesLienDeskShortcut count={23} to="/lien-desk" />
           <StagesLegalDeskShortcut count={2} to="/legal-desk" />
         </>,
       ),
     )
-    // The Legal desk is a page, so the scales are a link (a ⌘-click opens it beside the board); the gavel still opens its window.
+    // Both desks are pages, so both are links (a ⌘-click opens either beside the board).
     const scales = screen.getByRole('link', { name: 'Open the Legal desk, 2 from the firm waiting on you' })
-    const gavel = screen.getByRole('button', { name: 'Open the Lien desk, 23 to work' })
+    const gavel = screen.getByRole('link', { name: 'Open the Lien desk, 23 to work' })
+    expect(gavel.getAttribute('href')).toBe('/lien-desk')
     expect(scales.getAttribute('href')).toBe('/legal-desk')
     expect(scales.textContent).toBe('2')
     expect(scales.className).toBe('stagesDeskShortcut')
@@ -150,8 +152,6 @@ describe('the Legal desk shortcut (v2.5750)', () => {
     const group = scales.parentElement!
     expect(group.className).toContain('stagesStageSegTail')
     expect([...group.children]).toEqual([screen.getByLabelText('Jump to Collections, 7 rows'), gavel, scales])
-    fireEvent.click(gavel)
-    expect(onLien).toHaveBeenCalledTimes(1)
 
     // Nothing waiting: no badge, the plain name.
     view.rerender(strip(<StagesLegalDeskShortcut count={null} to="/legal-desk" />))

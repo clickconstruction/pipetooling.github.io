@@ -1,6 +1,7 @@
 import type { NeedsYouItem } from './dashboardNeedsYou'
 import { CUSTOMER_MESSAGES_HREF } from './dashboardNeedsYou'
-import { lienWindowHref, ownerRecordsHref } from './jobs/stagesDeepLinks'
+import { lienWindowHref } from './jobs/stagesDeepLinks'
+import { LIEN_DESK_PATH, lienDeskHref } from './lien/lienDeskRoute'
 import { roadmapPath } from './roadmapVisibility'
 import { clausePaperHref } from './contracts/clauseRows'
 import { legalDeskHref } from './legal/legalDeskRoute'
@@ -70,7 +71,8 @@ export type NeedsYouDoorData = {
 }
 
 const STAGES = '/jobs?tab=stages'
-const LIEN_DESK = '/jobs?tab=stages&liendesk=1'
+// The Lien desk is a page since punch list #182: its doors are its own address, on the pile or the list each line names.
+const LIEN_DESK = LIEN_DESK_PATH
 
 export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorData, host: NeedsYouHost): NeedsYouDoor {
   const href = (h: string): NeedsYouDoor => ({ kind: 'href', href: h })
@@ -194,21 +196,21 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return href(d.lienBatchGcId ? `/jobs?tab=stages&gcnotice=${encodeURIComponent(d.lienBatchGcId)}` : LIEN_DESK)
     case 'lien-notice-sign':
     case 'docsmit-credit':
-      return href(`${LIEN_DESK}&liendeskPile=ready`)
+      return href(lienDeskHref({ kind: 'notice', pile: 'ready' }))
     case 'lien-window-missed':
-      return href(`${LIEN_DESK}&liendeskPile=missed`)
+      return href(lienDeskHref({ kind: 'notice', pile: 'missed' }))
     case 'lien-notice-approve':
-      return href(`${LIEN_DESK}&liendeskPile=awaiting`)
+      return href(lienDeskHref({ kind: 'notice', pile: 'awaiting' }))
     case 'lien-notice-draft':
       return href(LIEN_DESK)
     case 'lien-file-window':
-      return href(`${LIEN_DESK}&kind=affidavit`)
+      return href(lienDeskHref({ kind: 'affidavit' }))
     case 'lien-suit-year':
-      return href(`${LIEN_DESK}&kind=timeline`)
+      return href(lienDeskHref({ kind: 'timeline' }))
     case 'lien-tracking-owed':
-      return href(`${LIEN_DESK}&liendeskPile=sent`)
+      return href(lienDeskHref({ kind: 'notice', pile: 'sent' }))
     case 'owner-records-signed':
-      return href(d.ownerRecordsJobId ? ownerRecordsHref(d.ownerRecordsJobId) : LIEN_DESK)
+      return href(d.ownerRecordsJobId ? lienDeskHref({ records: { jobId: d.ownerRecordsJobId } }) : LIEN_DESK)
     case 'lien-serve-copy':
       return href(d.lienServeFirstJobId ? lienWindowHref(d.lienServeFirstJobId, 'affidavit') : STAGES)
     case 'hours-approvals':
@@ -239,8 +241,8 @@ export function needsYouSecondaryDoor(item: Pick<NeedsYouItem, 'key'>, key: stri
   if (item.key === 'bulk-delete' || item.key === 'bulk-hours' || item.key === 'claim-dev' || item.key === 'robot-backlog' || item.key === 'robot-asleep') {
     return action ? { kind: 'nudge', nudge: item.key, action } : null
   }
-  if (item.key === 'lien-notice-draft' && key === 'missed') return { kind: 'href', href: `${LIEN_DESK}&liendeskPile=missed` }
+  if (item.key === 'lien-notice-draft' && key === 'missed') return { kind: 'href', href: lienDeskHref({ kind: 'notice', pile: 'missed' }) }
   // Letter two is sent from a notice's Sent row (v2.4561).
-  if (item.key === 'lien-notice-draft' && key === 'letter-two') return { kind: 'href', href: `${LIEN_DESK}&liendeskPile=sent` }
+  if (item.key === 'lien-notice-draft' && key === 'letter-two') return { kind: 'href', href: lienDeskHref({ kind: 'notice', pile: 'sent' }) }
   return null
 }
