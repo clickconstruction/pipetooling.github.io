@@ -1,8 +1,8 @@
 ---
 name: "A photo of the supply house ticket, taken at the counter"
 number: 295
-group: gated
-status: asked 2026-11-09 · Tally read on main, in prod and live · three shapes put to Diane, the second picked for a mock-up the same day · drawn as thirteen frames · waiting on her critique and six calls · nothing built
+group: ready
+status: asked 2026-11-09 · Tally read on main, in prod and live · three shapes put to Diane, the second picked for a mock-up the same day · drawn as thirteen frames · her "is this the best we can do, did we cover the edge cases" the same day: the cases checked against the code and redrawn as fifteen frames · Diane said build as drawn the same day, with the picks she was shown on the calls · PR 1 (the ground, v2.6812) is in review · no screen yet
 mockup: to-dos/ticket-photo/mockup.html
 summary: >
   Two papers leave a supply house counter. A card receipt is the only list of what was bought, and
@@ -12,13 +12,14 @@ summary: >
   receipts between them. The office sorts each charge to a job from the clock and the schedule
   without seeing what was bought. The design is one Photo of a ticket press on Tally and on the Job
   Mode card: the camera, then the job in one tap, the shot kept on the phone until it sends and
-  filed in the job's Drive folder. The ticket is its own row. A pure matcher ties it to the card
-  charge once the bank settles the charge, or to the PO Generator code and later the bill. The
-  Team queue shows the ticket on the charge and offers its job first. Reading the ticket's lines
+  filed in the job's Drive folder under Team only, never in Customer Pictures. The ticket is its
+  own row. A pure matcher ties it to the card charge by the minute of the swipe, or to the PO
+  Generator code and later the bill. The Team queue shows the ticket on the charge, offers its job
+  first, and lists the tickets that have no charge. Reading the ticket's lines
   with the bill reader is a later step.
-next: Diane's critique of the mock-up and her word on the six calls at its foot; then PR 1, the ground (the table, the bucket, the sweep's ninth source, the matcher kernel), which draws no screen.
+next: PR 1, the ground (the table, the bucket, the sweep's ninth source, the matcher kernel), which draws no screen; then its push and the photo-save deploy; then PR 2, the tech's press on Tally.
 size: L as a train of four (M · M · M · S), the reading step apart
-blocker: The owner's pick on the mock-up and the six calls.
+blocker: None for the build. Call 6 (does a cash ticket mean money owed to the tech) is still the owner's; the build only records how such a ticket was paid.
 opinion: build — it is the only shape a tech can press at the counter, and it turns the office's guess into a fact
 ---
 
@@ -63,39 +64,101 @@ What 90 days of production say (read 2026-11-09 through the dev seat, counts onl
 
 1. **A receipt on the charge.** A camera chip on each purchase card. Small. Rejected as the first
    door: the charge is not on the tech's list at the counter, and it does nothing for an account
-   ticket. Its press survives as the late door (*+ ticket* on a purchase with none, frame G).
+   ticket. Its press survives as the late door (*+ ticket* on a purchase with none, frame H).
 2. **Snap the ticket, match it later.** Picked for the mock-up. Drawn in `mockup.html`.
 3. **A receipt is a job photo.** The press files a job photo marked Receipt. One PR and no table,
    and the office still sorts blind, since nothing ties the photo to the charge.
 
 ## The mock-up
 
-[`mockup.html`](./mockup.html), thirteen frames, every name and number made up.
+[`mockup.html`](./mockup.html), fifteen frames, every name and number made up.
 
 - **Today**: the tech's Transactions tab, with nothing to take the ticket.
-- **A · B · C, at the counter**: the press under the tab row on every tab; the sheet after the
-  shutter (the job clocked in now first, Another job…, Shop or truck stock, an optional total); the
-  same sheet when the office made a PO code for this tech today, the code first.
-- **D · E · F, afterwards**: saved and My tickets (Waiting for the card charge · On account, waiting
-  for the bill · Matched); no signal (the ticket is on this phone, Send now); a ticket with no total
-  and one charge that fits, asked as Yes or No.
-- **G · H**: the settled purchase wearing its ticket with *Sort to JP1042* as one press, and the
-  late door; the Job Mode card's Ticket line beside Photos.
-- **I · J · K, the office**: the Team day card (1 with a ticket; the ticket's job as the first
-  choice on its charge, never picked for the sorter); the ticket window (Open in Drive, Not this
-  charge, Record as a bill); Add invoice's *Start from* with the tech's ticket beside the mail.
-- **L, later**: the sheet once the app reads the ticket.
+- **A · B · C, at the counter**: the press under the tab row on every tab, with a small link for a
+  photo or a PDF the tech already has; the sheet after the shutter (the job clocked in now first, a
+  second tap for a second job, Another job…, Not for one job, Retake, + Another page, the total and
+  a note behind two links); the same sheet when the office made a PO code for this tech today.
+- **D · E · F · G, afterwards**: saved and My tickets (Waiting for its charge or its bill · On
+  account, waiting for the bill · Matched · a return matched to money back); no signal; a ticket
+  taken hours later and one charge that fits, asked as Yes or No; the tech's own ticket (Change the
+  job, Add a page, Remove this ticket).
+- **H · I**: the settled purchase wearing its ticket with *Sort to JP1042* as one press, and the
+  late door *+ ticket*; the Job Mode card's Ticket line beside Photos.
+- **J · K · L · M, the office**: the Team day card (the ticket's job first on its charge, a loose
+  match asked as *It is* / *It is not*, *+ Ticket* for a paper handed in); the ticket window; the
+  Tickets list (no charge yet, and a ticket that disagrees with where its charge went); Add
+  invoice's *Start from* with the tech's ticket beside the mail.
+- **N, later**: the sheet once the app reads the ticket.
 
 ## The calls that are the owner's
 
-1. Shop or truck stock: to the Office job, or held for the office to place?
-2. The match that makes itself: same card holder, same amount to the cent, within a day of the
-   swipe. Sure enough to tie the photo with no press? The sort to a job takes a tap either way.
-3. Who may see a ticket: the tech who took it, the office, the job's team through its folder.
-4. The total: an optional field as drawn, or left out until the app can read it?
+1. Not for one job: to the Office job by itself, or held for the office to place (frame L)?
+2. The matches that make themselves: the only swipe on that person's card in the half hour before
+   the photo; a typed total equal to the charge within a day. Both, one or neither with no press?
+   The sort to a job takes a tap either way.
+3. Who may see a ticket: the tech who took it, the office, whoever can open the job's Team only
+   folder.
+4. Any receipt, or material only: the press takes fuel, a meal, a tool. Wanted, or should the
+   words say supply house only?
 5. The Job Mode door: in the first build, or after the Tally press has been used?
-6. A ticket that never meets a charge (cash, the tech's own money): how long it waits, and whether
-   the office then reads it as money owed to the tech.
+6. A ticket that never meets a charge (cash, the tech's own money): *Paid another way…* records
+   which; does the office then read it as money owed to the tech?
+
+**Answered 2026-11-09: build as drawn, with the picks she was shown.** 1 held for the office to
+place. 2 both, and each only when exactly one charge fits. 3 as written, and the holder of the card
+that paid. 4 any receipt. 5 in the first build. 6 is still open, so the build records how such a
+ticket was paid and nothing about money owed.
+
+**The half hour, measured the same day** (the dev seat, 200 card charges from 2026-10-10 to 10-23):
+the feed's `created_at` is the swipe itself and is on the row while the charge is still pending. A
+field card's swipes mostly stand alone. Two cards ran five and more charges inside ten minutes, and
+a few visits made two charges seconds apart, so the match makes itself only when exactly one charge
+is in the window; two that fit are told apart by a typed total, or the office picks. Many rows had
+failed, a card declined and run again, and a failed charge is never a candidate.
+
+## The edge cases
+
+Checked 2026-11-09 against the code and the feed. *Drawn* names the frame; *rule* is a rule of the
+build the mock-up does not need a frame for; *call* is the owner's.
+
+| The case | What happens | Where |
+|---|---|---|
+| No signal at the counter | The shot is kept on the phone and sent by itself; the waiting presses bar counts it | drawn E |
+| Still unsent the next morning | It says so in red and offers Share instead (the outbox's own next-morning rule) | drawn E's words |
+| The charge is not on the tech's list yet | The ticket never needs it: the feed holds the swipe's minute (`raw.createdAt`, `mercurySwipeAtIso`) the day it is made, so the match can land while the charge is still pending | rule |
+| The tech skips the total | The swipe's minute matches instead; the total sits behind a link | drawn B, F |
+| The ticket is taken hours later, at the truck | No minute to go on: one fitting charge is asked as a question, to the tech or the office | drawn F, J |
+| The photo is taken from the phone's library | Its own taken time is read (`readTakenAt`), not the press's | rule |
+| The store emailed the receipt | The small link takes a photo or a PDF already on the phone | drawn A |
+| The paper is handed in at the office | *+ Ticket* on the charge's line takes a scan, a photo or a PDF | drawn J |
+| A long receipt or a two-page ticket | + Another page, at the counter or later | drawn B, G |
+| A blurred shot | Retake before the save; the Large size keeps small print | drawn B |
+| The wrong job | The tech changes it until the office has used the ticket; the office changes it in the window | drawn G, K |
+| The same ticket taken twice | A resend carries the same id and counts once; a second press is a second ticket, which the tech removes | drawn G |
+| A ticket taken by mistake | Remove this ticket, kept out of sight and never deleted | drawn G |
+| One ticket for two jobs | A second tap adds the job; the office splits the charge, the even split first | drawn B |
+| A purchase for no one job | Not for one job, with a note; the office places it | drawn B, L · call 1 |
+| A helper takes the photo, the lead's card pays | The match looks past the card holder as a question, never by itself; the lead's purchase names whose ticket it is | drawn H's words |
+| A card the app has tied to no one | The same: a question to the office | rule |
+| An account ticket with a PO code | The code is the first choice and carries the job and the house; the bill's printed code closes it | drawn C, M |
+| An account ticket with a job's name as its PO and no code | Many bills print one. Add invoice offers the tickets taken for that job in the days before the bill | drawn M's words |
+| Cash, or the tech's own money | No charge ever fits: the ticket sits in Tickets as *No charge fits* with Pick the charge and Paid another way… | drawn L · call 6 |
+| A return | The ticket matches the money that came back, by the same rules | drawn D |
+| One ticket, two payments (part cash, two cards) | No exact match; Pick the charge ties it to one, and the note says the rest | drawn L |
+| A charge that fails and is run again | A failed charge never matches; the ticket takes the one that goes through | rule |
+| The total typed wrong | No match on the total; the minute or the question still finds it | rule |
+| The app matched the wrong charge | Not this charge takes it off and the ticket waits again | drawn K |
+| The office sorted the charge before the ticket arrived | Nothing is changed behind the office's back: the Tickets list shows the disagreement with both choices | drawn L |
+| The ticket's job is not the clock's guess | The ticket's job is offered first on that charge; the sorter still taps | drawn J |
+| A personal purchase on the company card | Backcharge works as today, and now with the receipt in front of the office | rule |
+| Prices in a folder a customer may see | Phone photos file into the job's Customer Pictures folder today. A ticket files under Team only › Tickets | drawn K's words |
+| A job with no Drive folder | The photo sweep makes one, as it does for a job photo | rule |
+| A training account, a twin, a teammate who left | The table's four fences refuse the save, and the press says why | rule |
+| The office on a desk with no camera | The press opens the file picker | rule |
+| The camera refused by the phone | The small link's file picker still takes a photo from the library | drawn A |
+| A job the tech is not on | Another job… searches every job, as sorting a purchase does | drawn B |
+| The phone is replaced or its data cleared before the send | The photo is gone with it. Share instead on the waiting ticket is the only guard | not covered |
+| Nothing makes a tech take the photo | *No ticket yet* on the Team line is the only pressure in the first build; a reminder is a later step | not covered |
 
 ## Where it plugs in
 
@@ -107,8 +170,10 @@ Exists, to reuse:
 - The wait with no signal: the outbox (`lib/offline/outbox.ts`, a new kind beside `job-photos` and
   `task-photo`; `keptPhotos.ts`, `useOutboxReplay`, `OutboxDoor`). A photo may queue; nothing here
   writes money, so `NEVER_QUEUES` is untouched.
-- The filing: `photo-save`'s `sweepNamedPhotos`, a ninth source, into the job's Drive photo folder;
-  the `uploaded_photos` view gains the source.
+- The filing: `photo-save`'s `sweepNamedPhotos`, a ninth source, into Team only › Tickets under the
+  job's folder (`driveJobFolder.ts`'s path under the job's folder), never Customer Pictures; the
+  `uploaded_photos` view gains the source.
+- The swipe's minute: `lib/mercurySwipeTime.ts` (`mercurySwipeAtIso`, the feed's `raw.createdAt`).
 - The job in one tap: `lib/tally/fetchSortModeDayJobs.ts`, `sortModeDayJobsOrder.ts`,
   `TallyChooseJobSheet`, `PhoneSheet`; the PO codes from `material_po_generator_entries`
   (`for_user_id`, today).
@@ -127,9 +192,11 @@ New:
   a second shot; a private bucket; RLS (the taker, the office, the job's team); the migration
   opening with the lock timeout and closing with the four fence calls.
 - `src/lib/tickets/`: `ticket.ts` (the states and their words, the file's name), `ticketMatch.ts`
-  (pure: exact, offered, none; a refund matches a charge that reads *back*), `ticketJobs.ts` (the
+  (pure: made by itself, offered, none; by the swipe's minute, then the total, then the day; a
+  failed charge never, a refund against money that came back, another person's card only as an offer), `ticketJobs.ts` (the
   sheet's choices in order), each with tests.
-- The press and the sheet, My tickets, the ticket window, with render smokes.
+- The press and the sheet, My tickets and the tech's own ticket, the ticket window, the Team
+  queue's Tickets list, with render smokes.
 - A guide, `take-a-photo-of-a-supply-house-ticket`, and a section in *sort the team's card
   purchases from the office*.
 
@@ -139,9 +206,10 @@ New:
    their tests. No screen. Push the migration and deploy `photo-save` after the merge.
 2. **PR 2, the tech's press** (M): the press on Tally's three tabs, the sheet, the outbox kind, My
    tickets, the guide.
-3. **PR 3, the match and the office** (M): the match written when a charge settles and on a Yes;
-   the Team day card's ticket and its first choice; the ticket window; the tech's settled purchase
-   (*Sort to JP1042*, *+ ticket*).
+3. **PR 3, the match and the office** (M): the match written when a charge reaches the feed and on
+   a Yes; the Team day card's ticket, its first choice, its question and *+ Ticket*; the ticket
+   window; the Tickets list with the disagreement; the tech's settled purchase (*Sort to JP1042*,
+   *+ ticket*).
 4. **PR 4, the other doors** (S): the Job Mode card's Ticket line, the job's Documents tab, a
    charge on the job's cost rows, Add invoice's *Start from*.
 
