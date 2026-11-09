@@ -9,16 +9,22 @@
  * too, which PR 1 had kept open). The usage ledger holds no per-card count yet (no Settings
  * card wrote a press until PR 1), so the fold header counts from now on. The three cards the
  * owner moved off the tab (call 2) live in `settingsFoldCards.ts` with their old anchors.
+ *
+ * Who sees a card follows punch list #188's audit table since v2.6756 (the owner took every recommendation on
+ * 2026-11-08): the owner's prices and switches are `dev-master`, the office's filing `dev-master-office`, the
+ * books' words and lists `dev-controller`; a dev alone keeps the company owner account, the rate card, the markup
+ * and Docsmit. The database side of each card is the key-scoped policy in `20261109002000_dev_gates_jobs_billing.sql`.
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { canSeeGcMoney } from '../gc/access'
 import { isAssistantLike } from '../subcontractorLikeRole'
+import { isControllerOrDev } from '../doorRoles'
 import { SETTINGS_CARD_CHILD_ANCHORS, settingsCardIsTarget, type SettingsFoldCardSpec } from './settingsFoldCards'
 
 export const JOBS_BILLING_TAB = 'settings-jobs'
 
 /** Who a card is mounted for. */
-export type JobsBillingWho = 'dev' | 'dev-master' | 'dev-master-office' | 'money-team'
+export type JobsBillingWho = 'dev' | 'dev-master' | 'dev-master-office' | 'dev-controller' | 'money-team'
 
 export type JobsBillingSlug =
   | 'rates'
@@ -83,8 +89,8 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
     cards: [
       card('rates', 'Rates charged by crew', 'the rate card by who was out, and who counts as what', 'dev'),
       card('markup', 'Markup on materials', 'percent over cost', 'dev'),
-      card('trip-charges', 'Turnaway Trip Charges', 'the amount per turnaway reason', 'dev'),
-      card('labor-rate', 'Default labor rate', 'what a new labor job starts at, in dollars an hour', 'dev'),
+      card('trip-charges', 'Turnaway Trip Charges', 'the amount per turnaway reason', 'dev-master'),
+      card('labor-rate', 'Default labor rate', 'what a new labor job starts at, in dollars an hour', 'dev-master'),
       card('job-book', 'Job Book', 'the Collect Payment line items', 'dev-master-office'),
       card('gc-card', 'GC jobs · pay by card', 'the Pay by card switch on certified bills', 'dev-master'),
       card('gc-cutoff', 'GC jobs · the trades’ cut-off', 'days before bill day', 'money-team'),
@@ -102,9 +108,9 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
       card('machine-templates', 'Machine templates', 'the gauges and the walk for small, medium and large excavators, skid steers and drills', 'dev-master-office'),
       card('photos', 'Photos', 'the size a report photo is shrunk to', 'dev-master-office'),
       card('test-reports', 'Test reports', 'who certifies, the words on the paper, who sends', 'dev-master-office'),
-      card('developments', 'Manage developments', 'the list: rename, the default GC, archive', 'dev'),
-      card('city-lines', 'Job address city line breaks', 'extra city names the address reader knows', 'dev'),
-      card('county-suggestions', 'Property county suggestions', 'extra city = county pairs', 'dev'),
+      card('developments', 'Manage developments', 'the list: rename, the default GC, archive', 'dev-master-office'),
+      card('city-lines', 'Job address city line breaks', 'extra city names the address reader knows', 'dev-master-office'),
+      card('county-suggestions', 'Property county suggestions', 'extra city = county pairs', 'dev-master-office'),
     ],
   },
   {
@@ -114,10 +120,10 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
     short: 'The bill',
     line: 'The company block, the footers and the memo that print on a bill.',
     cards: [
-      card('invoice-issuer', 'Physical invoice — company on PDF', 'the company block on paper bills, and who signs for the company', 'dev'),
-      card('invoice-footer', 'Physical invoice footer presets', 'the paper bill’s footers', 'dev'),
-      card('stripe-footer', 'Stripe invoice footer presets', 'the plumbing and electrical footers', 'dev'),
-      card('bill-memo', 'Bill Customer memo presets', 'the memo presets on Bill Customer', 'dev'),
+      card('invoice-issuer', 'Physical invoice — company on PDF', 'the company block on paper bills, and who signs for the company', 'dev-controller'),
+      card('invoice-footer', 'Physical invoice footer presets', 'the paper bill’s footers', 'dev-controller'),
+      card('stripe-footer', 'Stripe invoice footer presets', 'the plumbing and electrical footers', 'dev-controller'),
+      card('bill-memo', 'Bill Customer memo presets', 'the memo presets on Bill Customer', 'dev-controller'),
     ],
   },
   {
@@ -128,8 +134,8 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
     line: 'Owners of record, the law firms, the county and certified mail.',
     cards: [
       card('owner-of-record', 'Liens · owner of record', 'the nightly save-from-the-roll switch', 'dev-master'),
-      card('legal-firm', '⚖ Collections law firms', 'each firm, its people, its fee model and the counties it covers', 'dev'),
-      card('uncollectible', "Uncollectible: the accountant's list", 'the bills the office gave up on, by year, with a CSV for the books', 'dev'),
+      card('legal-firm', '⚖ Collections law firms', 'each firm, its people, its fee model and the counties it covers', 'dev-master'),
+      card('uncollectible', "Uncollectible: the accountant's list", 'the bills the office gave up on, by year, with a CSV for the books', 'dev-controller'),
       card('docsmit', 'Docsmit · certified mail from the app', 'the service’s secrets and switches, and a test of the connection', 'dev'),
     ],
   },
@@ -152,7 +158,7 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
     line: 'One-time fixes and what is left of HouseCall Pro.',
     cards: [
       card('company-owner', 'Company owner account', 'the account company rows are filed under, and re-assign jobs', 'dev'),
-      card('hide-hcp', 'Hide the HCP field on New/Edit Job', 'the empty HCP box off the job form', 'dev'),
+      card('hide-hcp', 'Hide the HCP field on New/Edit Job', 'the empty HCP box off the job form', 'dev-master'),
     ],
   },
 ]
@@ -172,6 +178,8 @@ export function jobsBillingCardVisible(c: JobsBillingCard, role: UserRole | null
       return role === 'dev' || role === 'master_technician'
     case 'dev-master-office':
       return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+    case 'dev-controller':
+      return isControllerOrDev(role)
     case 'money-team':
       return canSeeGcMoney(role)
   }

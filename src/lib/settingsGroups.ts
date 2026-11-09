@@ -2,7 +2,7 @@ import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
 import { canEditClause, canEditFlows, canOpenGcProjects } from './gc/access'
 import { canSeePhoneAndTexts } from './messages/assignRule'
-import { isOfficeRole, isOwnerOrDev } from './doorRoles'
+import { isControllerOrDev, isOfficeRole, isOwnerOrDev } from './doorRoles'
 
 /**
  * Zoned Settings groups (v2.2088, reorg mockup A). The tab bar answers the
@@ -120,7 +120,12 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
     // Dev doors (v2.5882, punch list #188): the map of every door only a dev or the controller may open today, each a link.
     groups.push({ id: 'settings-dev-doors', label: 'Dev doors', zone: 'system', pagesHint: 'Every page, window and switch only a dev or the controller can open today. Each one is a link.' })
     groups.push({ id: 'settings-usage', label: 'Usage', zone: 'system', pagesHint: 'How the company actually uses the app — pages, clicks, and customer opens.' })
-    groups.push({ id: 'settings-data', label: 'Data & recovery', zone: 'system', pagesHint: 'Backups, exports, and Recently deleted.' })
+  }
+  // Data & recovery: a dev's backups and Recently deleted; since v2.6756 (punch list #188 row 25) the controller opens it for HCP reconcile.
+  if (isControllerOrDev(r)) {
+    groups.push({ id: 'settings-data', label: 'Data & recovery', zone: 'system', pagesHint: 'Backups, exports and Recently deleted for a dev; HCP reconcile for the controller.' })
+  }
+  if (r === 'dev') {
     groups.push({ id: 'settings-templates', label: 'Email templates & testing', zone: 'system', pagesHint: 'The emails the app sends, test tools, and easter eggs.' })
     groups.push({ id: 'settings-digital-twins', label: 'Digital twins & samples', zone: 'system', pagesHint: 'Fleet admin: mint twins, issue keys, safety rungs, endpoints, who the robots calibrate to — and the View-as sample accounts. Running and watching the robots is on Bids → Robots → Console.' })
   }

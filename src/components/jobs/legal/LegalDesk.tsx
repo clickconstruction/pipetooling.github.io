@@ -463,7 +463,7 @@ export default function LegalDesk(props: LegalDeskProps) {
   // RPCs; the matter is made by the first save when the account has none, so the list is read again for it.
   const saveClaimLine = async (draft: LegalClaimLineDraft, lineId: string | null): Promise<string | null> => {
     if (!selected) return 'Pick an account first.'
-    const r = await legalRpcData('legal_claim_line_save', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_line_id: lineId, p_kind: draft.kind, p_title: draft.title.trim(), p_amount: claimAmountOf(draft.amount), p_basis: draft.basis.trim(), p_document_id: draft.documentId || null })
+    const r = await legalRpcData('legal_claim_line_save', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_line_id: lineId, p_kind: draft.kind, p_title: draft.title.trim(), p_amount: claimAmountOf(draft.amount), p_basis: draft.basis.trim(), p_document_id: draft.documentId || null, p_settlement_only: draft.settlementOnly })
     if (r.error) return r.error
     showToast(lineId ? 'The claim line is saved.' : 'The line is on the claim.', 'success')
     if (!matter) await legal?.reload()
@@ -1221,7 +1221,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                     ))}
                   </div>
                 ) : null}
-                {packet && w && moneyBarsDraw({ claim: w.claim, offers: standingOffers }) ? (() => {
+                {packet && w && moneyBarsDraw({ claim: w.claim, claimSettlementOnly: w.claimSettlementOnly, offers: standingOffers }) ? (() => {
                   // v2.6105 (punch list #214, PR 2): the same money as bars — the open bills by part, the claim with every standing offer marked, what is left after the firm's cut.
                   // v2.6727 (punch list #171): the gate reads the claim, not the balance — a claim typed onto a matter with no open bill draws too.
                   // v2.6176 (punch list #218, PR 3): what each path nets, with the walk-away line derived from the cost to continue and marked on the claim bar.
@@ -1234,6 +1234,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                           retainageOnBillsByJob: new Map(Object.entries(w.retainageOnBillsByJob)),
                           retainageAdded: w.retainageAdded,
                           claimTyped: w.claimTyped,
+                          claimSettlementOnly: w.claimSettlementOnly,
                           balance: w.balance,
                           claim: w.claim,
                           contingencyPct: w.contingencyPct,
