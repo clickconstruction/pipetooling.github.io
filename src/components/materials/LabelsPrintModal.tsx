@@ -98,7 +98,7 @@ export default function LabelsPrintModal({ jobLabel: jl, containers, lines, plac
             const kind = c.kind === 'box' ? 'box' : c.kind === 'cage' ? 'cage' : 'pile'
             if (tape) {
               return (
-                <div key={c.id} className="on-site-tape" data-testid="labels-tape" style={{ width: `${layout.lengthMm}mm`, height: `${layout.widthMm}mm`, boxSizing: 'border-box', padding: `${layout.padMm}mm`, display: 'grid', gridTemplateColumns: `${layout.qrMm}mm 1fr`, alignItems: 'center', gap: `${layout.padMm}mm`, background: '#fff', color: '#000', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                <div key={c.id} className="on-site-tape" data-testid="labels-tape" style={{ width: `${layout.lengthMm}mm`, height: `${layout.widthMm}mm`, boxSizing: 'border-box', padding: `${layout.padMm}mm`, display: 'grid', gridTemplateColumns: `${layout.qrMm}mm 1fr`, alignItems: 'center', gap: `${layout.padMm}mm`, background: 'var(--surface)', color: '#000', border: '1px solid var(--border)', overflow: 'hidden' }}>
                   <QRCodeSVG value={boxUrl(c.id)} size={96} level="M" bgColor="#ffffff" fgColor="#000000" marginSize={4} style={{ width: `${layout.qrMm}mm`, height: `${layout.qrMm}mm`, display: 'block' }} />
                   <div style={{ minWidth: 0, display: 'grid', alignContent: 'center' }}>
                     <div style={{ fontSize: `${layout.stencilMm}mm`, lineHeight: 1, fontWeight: 900, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</div>
