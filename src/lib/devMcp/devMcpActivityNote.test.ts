@@ -1,0 +1,217 @@
+import { readFileSync } from 'node:fs'
+import { describe, expect, it } from 'vitest'
+import {
+  ACTIVITY_NOTE_LATEST,
+  ACTIVITY_NOTE_MAX,
+  ACTIVITY_NOTE_VERBS,
+  activityNoteAppliedWords,
+  activityNoteDryRun,
+  activityNoteInput,
+  activityNoteLands,
+  activityNoteRow,
+  isActivityNoteVerb,
+  noonInAppTz,
+  readActivityNoteWorld,
+  realDay,
+  type ActivityNotePayload,
+  type ActivityNoteWorld,
+} from '../../../supabase/functions/_shared/devMcpActivityNote'
+import type { Reader, Row, RowsQuery } from '../../../supabase/functions/_shared/devMcpComposites'
+import { WRITE_VERBS, alreadyApplied, isWriteVerb, planHash, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+
+const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
+const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
+const HOOK = readFileSync('src/hooks/useJobThreadNotes.ts', 'utf8')
+const POPOVER = readFileSync('src/components/bids/BidGcNotesPopover.tsx', 'utf8')
+
+const JOB = 'dddddddd-1111-4111-8111-111111111111'
+const BID = 'aaaaaaaa-1111-4111-8111-111111111111'
+const GC = 'aaaaaaaa-2222-4222-8222-222222222222'
+const DEV = 'ffffffff-1111-4111-8111-111111111111'
+const HASH = 'a'.repeat(64)
+const TODAY = '2026-11-09'
+const NOW = '2026-11-09T21:30:00.000Z'
+const ME = { userId: DEV, name: 'Robert' }
+
+const jobWorld = (latest: ActivityNoteWorld['latest'] = []): ActivityNoteWorld => ({
+  on: 'job',
+  job: { id: JOB, label: 'JP1113', name: 'ZZ Test Walk Project', status: 'working', customer: 'ZZ Test Customer' },
+  gc: null,
+  latest,
+})
+const bidWorld = (gc: { id: string; name: string | null } | null = null): ActivityNoteWorld => ({
+  on: 'bid',
+  bid: { id: BID, label: 'BP398', projectName: 'ZZ Test', status: 'bidding' },
+  gc,
+  latest: [{ id: 'e1', at: '2026-09-29T16:00:00Z', by: 'Robert', text: 'email · ZZ test line' }],
+})
+
+const p = (over: Record<string, unknown> = {}, verb: 'plan_activity_note' | 'apply_activity_note' = 'plan_activity_note'): ActivityNotePayload => {
+  const built = activityNoteInput(verb, { note: { job: 'JP1113', text: 'WC-1 carriers ordered today, PO 119.', ...over }, ...(verb === 'apply_activity_note' ? { plan_hash: HASH } : {}) })
+  if (!built.ok) throw new Error(built.error)
+  return built.p
+}
+
+describe('devMcpActivityNote — the verbs on the allowlist', () => {
+  it('are two write verbs with no RPC, plan before apply, and the server and the README name both', () => {
+    expect(ACTIVITY_NOTE_VERBS).toEqual(['plan_activity_note', 'apply_activity_note'])
+    for (const v of ACTIVITY_NOTE_VERBS) {
+      expect(isActivityNoteVerb(v)).toBe(true)
+      expect(isWriteVerb(v)).toBe(true)
+      expect(WRITE_VERBS[v].rpc).toBeNull()
+      expect(SERVER).toContain(`case '${v}':`)
+      expect(SERVER).toContain(`name: '${v}',`)
+    }
+    expect(planVerbFor('apply_activity_note')).toBe('plan_activity_note')
+    expect(isActivityNoteVerb('plan_job')).toBe(false)
+    expect(SERVER).toContain("const SERVER_VERSION = '0.55.0'")
+    expect(SERVER).toContain('Writes are sixty-seven verbs and nothing else:')
+    expect(SERVER).toContain('plan_activity_note → apply_activity_note')
+    expect(README).toContain('`plan_activity_note(note)` · `apply_activity_note(note, plan_hash)`')
+    expect(README).toContain('sixty-seven `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('the two note verbs (v2.6822)')
+  })
+  it('writes the rows the app writes: the thread note the hook inserts and the entry the popover inserts, column for column', () => {
+    expect(HOOK).toContain(".from('jobs_ledger_thread_notes')")
+    expect(HOOK).toMatch(/job_id: jobId,\s+author_user_id: authUserId,\s+body: trimmed,/)
+    expect(POPOVER).toContain("supabase.from('bids_submission_entries').insert({")
+    for (const col of ['bid_id: bidId', 'gc_customer_id: gcId', 'notes,', 'contact_method: method', 'occurred_at: occurredAtIso', 'created_by: authUser?.id ?? null']) expect(POPOVER).toContain(col)
+    const job = activityNoteRow(p(), jobWorld(), ME, NOW)
+    expect(job).toEqual({ table: 'jobs_ledger_thread_notes', select: 'id,created_at', row: { job_id: JOB, author_user_id: DEV, body: 'WC-1 carriers ordered today, PO 119.' } })
+    const bid = activityNoteRow(p({ job: undefined, bid: 'BP398', gc_customer_id: GC }), bidWorld({ id: GC, name: 'Dana Whitfield' }), ME, NOW)
+    expect(bid).toEqual({ table: 'bids_submission_entries', select: 'id,occurred_at', row: { bid_id: BID, gc_customer_id: GC, notes: 'WC-1 carriers ordered today, PO 119.', contact_method: null, occurred_at: NOW, created_by: DEV } })
+    // The bid's own note carries no GC; the GC comes from the world, never from the payload alone.
+    expect(activityNoteRow(p({ job: undefined, bid: 'BP398' }), bidWorld(), ME, NOW).row).toMatchObject({ gc_customer_id: null })
+  })
+})
+
+describe('activityNoteInput — the shape', () => {
+  it('takes one of job or bid, trims the text, keeps a day and a GC, and apply needs the hash', () => {
+    expect(activityNoteInput('plan_activity_note', { note: { job: ' JP1113 ', text: '  Ordered.  \r\nPO 119. ' } })).toMatchObject({ ok: true, target: 'JP1113', planHash: null, p: { action: 'note', on: 'job', ref: 'JP1113', text: 'Ordered.  \nPO 119.' } })
+    expect(activityNoteInput('plan_activity_note', { note: { bid: BID, text: 'x', on: '2026-11-01', gc_customer_id: GC.toUpperCase() } })).toMatchObject({ ok: true, p: { on: 'bid', ref: BID, on_day: '2026-11-01', gc_customer_id: GC } })
+    expect(activityNoteInput('apply_activity_note', { note: { job: 'JP1113', text: 'x' }, plan_hash: HASH.toUpperCase() })).toMatchObject({ ok: true, planHash: HASH })
+    expect(activityNoteInput('apply_activity_note', { note: { job: 'JP1113', text: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('plan_activity_note replied with') })
+    const built = writeRpcBody('plan_activity_note', { note: { bid: 'BP398', text: 'Rev 2 shared.' } })
+    expect(built).toMatchObject({ ok: true, rpc: null, step: 'plan', target: 'BP398', body: { p: { action: 'note', on: 'bid', ref: 'BP398', text: 'Rev 2 shared.' } } })
+  })
+  it('refuses both or neither, empty or long text, a day that is not one, and a GC on a job note', () => {
+    const bad = (note: unknown) => activityNoteInput('plan_activity_note', { note })
+    expect(bad({ text: 'x' })).toMatchObject({ ok: false, error: expect.stringContaining('one of job or bid') })
+    expect(bad({ job: 'a', bid: 'b', text: 'x' })).toMatchObject({ ok: false, error: expect.stringContaining('not both') })
+    expect(bad({ job: 'a', text: '   ' })).toMatchObject({ ok: false, error: expect.stringContaining('empty') })
+    expect(bad({ job: 'a', text: 'x'.repeat(ACTIVITY_NOTE_MAX + 1) })).toMatchObject({ ok: false, error: expect.stringContaining(`the most is ${ACTIVITY_NOTE_MAX}`) })
+    expect(bad({ job: 'a', text: 'x', on: '2026-02-30' })).toMatchObject({ ok: false, error: expect.stringContaining('is not one') })
+    expect(bad({ job: 'a', text: 'x', on: '11/09/2026' })).toMatchObject({ ok: false })
+    expect(bad({ job: 'a', text: 'x', gc_customer_id: GC })).toMatchObject({ ok: false, error: expect.stringContaining('no GC lane') })
+    expect(bad({ bid: 'a', text: 'x', gc_customer_id: 'dana' })).toMatchObject({ ok: false, error: expect.stringContaining('customers.id') })
+    expect(bad(null)).toMatchObject({ ok: false, error: expect.stringContaining('needs note') })
+    expect(realDay('2026-11-09')).toBe(true)
+    expect(realDay('2026-11-31')).toBe(false)
+  })
+})
+
+describe('noonInAppTz — the stamp of a day', () => {
+  it('reads as that day in the app’s calendar on both sides of the clock change, and null for today', () => {
+    expect(noonInAppTz(undefined)).toBeNull()
+    expect(noonInAppTz('2026-11-01')).toBe('2026-11-01T18:00:00.000Z') // CDT: 13:00
+    expect(noonInAppTz('2026-11-09')).toBe('2026-11-09T18:00:00.000Z') // CST: 12:00
+    expect(noonInAppTz('2026-07-04')).toBe('2026-07-04T18:00:00.000Z')
+  })
+})
+
+describe('readActivityNoteWorld — the reads', () => {
+  const fake = (tables: Record<string, Row[]>, log: Array<{ table: string; q: RowsQuery }> = []): Reader => ({
+    rpc: async (name, args) => {
+      if (name === 'search_jobs_ledger') return (args?.search_text as string).includes('1113') ? [{ id: JOB, job_name: 'ZZ Test Walk Project', click_number: '1113', hcp_number: '', service_type_id: 's1' }] : []
+      if (name === 'search_bids_for_clock') return (args?.p_search_text as string).includes('398') ? [{ id: BID, bid_number: '398', project_name: 'ZZ Test', service_type_id: 's1' }] : []
+      return []
+    },
+    rows: async (table, q) => {
+      log.push({ table, q })
+      return tables[table] ?? []
+    },
+  })
+  const TABLES: Record<string, Row[]> = {
+    service_types: [{ id: 's1', ledger_job_prefix: 'JP', ledger_bid_prefix: 'BP' }],
+    jobs_ledger: [{ id: JOB, hcp_number: '', click_number: '1113', job_name: 'ZZ Test Walk Project', status: 'working', customer_name: 'ZZ Test Customer', service_type_id: 's1' }],
+    jobs_ledger_thread_notes: [
+      { id: 'n2', body: 'Second', created_at: '2026-11-08T10:00:00Z', author_user_id: DEV, author: { name: 'Robert' } },
+      { id: 'n1', body: 'First', created_at: '2026-11-07T10:00:00Z', author_user_id: DEV, author: null },
+    ],
+    bids: [{ id: BID, bid_number: '398', project_name: 'ZZ Test', status: 'bidding', service_type_id: 's1' }],
+    bids_submission_entries: [
+      { id: 'e3', notes: null, occurred_at: '2026-10-02T10:00:00Z', contact_method: 'call', gc_customer_id: null, creator: null },
+      { id: 'e2', notes: 'Walked the plans', occurred_at: '2026-10-01T10:00:00Z', contact_method: 'email', gc_customer_id: GC, creator: { name: 'Robert' } },
+      { id: 'e1', notes: 'Bid note', occurred_at: '2026-09-29T10:00:00Z', contact_method: null, gc_customer_id: null, creator: { name: 'Dev' } },
+    ],
+    customers: [{ id: GC, name: 'Dana Whitfield' }],
+  }
+  it('finds the job by its number, labels it with the prefix and hands back its latest lines newest first', async () => {
+    const log: Array<{ table: string; q: RowsQuery }> = []
+    const world = await readActivityNoteWorld(fake(TABLES, log), p({ job: 'JP1113' }))
+    expect(world).toMatchObject({ on: 'job', job: { id: JOB, label: 'JP1113', name: 'ZZ Test Walk Project', status: 'working', customer: 'ZZ Test Customer' }, gc: null })
+    expect((world as ActivityNoteWorld).latest).toEqual([
+      { id: 'n2', at: '2026-11-08T10:00:00Z', by: 'Robert', text: 'Second' },
+      { id: 'n1', at: '2026-11-07T10:00:00Z', by: null, text: 'First' },
+    ])
+    const notes = log.find((l) => l.table === 'jobs_ledger_thread_notes')!
+    expect(notes.q).toMatchObject({ filters: [{ column: 'job_id', op: 'eq', value: JOB }], order: [{ column: 'created_at', ascending: false }], limit: ACTIVITY_NOTE_LATEST })
+    expect(log.map((l) => l.table)).not.toContain('bids')
+  })
+  it('finds the bid, keeps only the entries with words, names the GC, and refuses a GC it cannot see', async () => {
+    const world = await readActivityNoteWorld(fake(TABLES), p({ job: undefined, bid: 'BP398', gc_customer_id: GC }))
+    expect(world).toMatchObject({ on: 'bid', bid: { id: BID, label: 'BP398', projectName: 'ZZ Test' }, gc: { id: GC, name: 'Dana Whitfield' } })
+    expect((world as ActivityNoteWorld).latest.map((l) => l.id)).toEqual(['e2', 'e1'])
+    expect((world as ActivityNoteWorld).latest[0]).toMatchObject({ text: 'email · Walked the plans', by: 'Robert' })
+    const noGc = await readActivityNoteWorld(fake({ ...TABLES, customers: [] }), p({ job: undefined, bid: 'BP398', gc_customer_id: GC }))
+    expect(noGc).toMatchObject({ refused: expect.stringContaining('find_customer') })
+  })
+  it('refuses in words what nothing finds or RLS hides', async () => {
+    expect(await readActivityNoteWorld(fake(TABLES), p({ job: 'nothing here' }))).toMatchObject({ refused: 'No job matches "nothing here".' })
+    expect(await readActivityNoteWorld(fake({ ...TABLES, jobs_ledger: [] }), p({ job: JOB }))).toMatchObject({ refused: expect.stringContaining('RLS hides it') })
+    expect(await readActivityNoteWorld(fake({ ...TABLES, bids: [] }), p({ job: undefined, bid: BID }))).toMatchObject({ refused: expect.stringContaining('RLS hides it') })
+  })
+})
+
+describe('activityNoteDryRun — the plan', () => {
+  it('says where the line lands, shows the latest lines, the row and what it does not do; the hash moves with a new line', async () => {
+    const world = jobWorld([{ id: 'n1', at: '2026-11-08T10:00:00Z', by: 'Robert', text: 'x'.repeat(200) }])
+    const dry = activityNoteDryRun(p(), world, ME, TODAY, NOW)
+    expect(dry.ok).toBe(true)
+    if (!dry.ok) return
+    expect(dry.reply).toMatchObject({
+      action: 'note',
+      on: 'job',
+      job: { id: JOB, label: 'JP1113' },
+      reads: 'WC-1 carriers ordered today, PO 119.',
+      by: 'Robert',
+      at: 'now',
+      lands: expect.stringContaining("JP1113's Job activity / notes"),
+      writes: { table: 'jobs_ledger_thread_notes', row: { job_id: JOB, author_user_id: DEV, body: 'WC-1 carriers ordered today, PO 119.' } },
+    })
+    expect((dry.reply.latest as Array<{ text: string }>)[0]?.text).toHaveLength(161)
+    expect(dry.reply.not_done).toEqual(expect.arrayContaining([expect.stringContaining('tells nobody')]))
+    const h1 = await planHash('plan_activity_note', p(), dry.reply)
+    const later = activityNoteDryRun(p(), jobWorld([{ id: 'n2', at: NOW, by: 'Taunya', text: 'Landed.' }, ...world.latest]), ME, TODAY, NOW)
+    expect(later.ok).toBe(true)
+    if (!later.ok) return
+    expect(await planHash('plan_activity_note', p(), later.reply)).not.toBe(h1)
+    const reply = planReply('plan_activity_note', dry.reply, h1)
+    expect(reply.plan_hash).toBe(h1)
+    expect(String(reply.next)).toContain('apply_activity_note')
+  })
+  it('stamps a past day at noon and refuses a day ahead of today', () => {
+    const dated = activityNoteDryRun(p({ on: '2026-11-01' }), jobWorld(), ME, TODAY, NOW)
+    expect(dated).toMatchObject({ ok: true, reply: { at: "2026-11-01 (noon, the app's calendar)", writes: { row: { created_at: '2026-11-01T18:00:00.000Z' } } } })
+    const bidDated = activityNoteDryRun(p({ job: undefined, bid: 'BP398', on: '2026-11-01' }), bidWorld(), ME, TODAY, NOW)
+    expect(bidDated).toMatchObject({ ok: true, reply: { writes: { table: 'bids_submission_entries', row: { occurred_at: '2026-11-01T18:00:00.000Z', contact_method: null } } } })
+    expect(activityNoteDryRun(p({ on: '2026-11-10' }), jobWorld(), ME, TODAY, NOW)).toMatchObject({ ok: false, refused: expect.stringContaining('ahead of today') })
+  })
+  it('names the bid’s Notes, or the GC line, and the apply says what landed and the read that lists it', () => {
+    expect(activityNoteLands(bidWorld())).toContain("BP398's Notes (the bid's own)")
+    expect(activityNoteLands(bidWorld({ id: GC, name: 'Dana Whitfield' }))).toContain('notes for Dana Whitfield')
+    expect(activityNoteAppliedWords(jobWorld(), { id: 'n9', at: NOW })).toMatchObject({ note_id: 'n9', on: 'job', label: 'JP1113', at: NOW, next: expect.stringContaining('jobs_ledger_thread_notes by job_id') })
+    expect(activityNoteAppliedWords(bidWorld(), { id: 'e9', at: null })).toMatchObject({ note_id: 'e9', on: 'bid', label: 'BP398', next: expect.stringContaining('bids_submission_entries by bid_id') })
+    expect(alreadyApplied('apply_activity_note', { target: JOB, at: NOW })).toContain('the line is on the thread')
+  })
+})

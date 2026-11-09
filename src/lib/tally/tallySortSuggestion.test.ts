@@ -474,6 +474,7 @@ describe('rule set v2', () => {
 
   it('pins the rule ids PR 5 measures, each with its one level', () => {
     expect(TALLY_RULE_CONFIDENCE).toEqual({
+      ticket: 'likely',
       'office-category': 'likely',
       'store-streak': 'none',
       'store-last': 'none',
@@ -606,5 +607,24 @@ describe('tallyStoreKey', () => {
     expect(tallyStoreKey('66')).toBe('66')
     expect(tallyStoreKey('  ')).toBe('')
     expect(tallyStoreKey(null)).toBe('')
+  })
+})
+
+// Punch list #295, PR 3: a counter ticket on a charge names the job, and that chip leads the line.
+describe('suggestTallyDay · a ticket on the charge', () => {
+  it('puts the ticket’s job first on the line as a likely chip, before the store’s run', () => {
+    const out = day({
+      ymd: '2026-09-30',
+      charges: [charge('c1', '2026-09-30', '09:00', -228.58, 'Ridge Supply', null), charge('c2', '2026-09-30', '10:00', -41.17, 'Ridge Supply', null)],
+      sessions: [],
+      scheduled: [],
+      history: [sorted('h1', '2026-09-20', '09:00', 'Ridge Supply', JOB_B)],
+      ticketJobByCharge: new Map([['c1', JOB_A]]),
+    })
+    const l1 = out.lines.find((l) => l.chargeId === 'c1')!
+    expect(l1.own[0]).toEqual({ choice: job(JOB_A), rule: 'ticket', confidence: 'likely', facts: {} })
+    expect(l1.best).toEqual(l1.own[0])
+    const l2 = out.lines.find((l) => l.chargeId === 'c2')!
+    expect(l2.own.map((o) => o.rule)).toEqual(['store-last'])
   })
 })

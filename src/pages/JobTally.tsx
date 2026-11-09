@@ -40,6 +40,7 @@ import {
   tallyUniqueJobSplitEntries,
 } from '../lib/mercuryTxRowFromTally'
 import { fetchTallyLinkedMercuryRows } from '../lib/tally/fetchTallyLinkedMercuryRows'
+import { listMyTicketJobsByCharge } from '../lib/tickets/ticketMatchIo'
 import { mercuryBankDescriptionFromRaw } from '../lib/mercuryBankDescriptionFromRaw'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
@@ -304,6 +305,8 @@ export default function JobTally() {
   const [showMyJobsOnly, setShowMyJobsOnly] = useState(false)
   const [myJobIds, setMyJobIds] = useState<Set<string> | null>(null)
   const [tallyTxRows, setTallyTxRows] = useState<TallyLinkedMercuryRow[]>([])
+  /** Counter tickets (punch list #295, PR 3): the holder's own ticket on each charge, by charge id. */
+  const [tallyTicketByTx, setTallyTicketByTx] = useState<ReadonlyMap<string, { ticketId: string; jobId: string | null }>>(() => new Map())
   const [linkedDebitCards, setLinkedDebitCards] = useState<TallyLinkedDebitCardRow[]>([])
   const [tallyTxLoading, setTallyTxLoading] = useState(false)
   /** The transactions read's failure with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
@@ -403,6 +406,7 @@ export default function JobTally() {
       }
       setTallyTxRows(rows)
       setLinkedDebitCards((cardData ?? []) as TallyLinkedDebitCardRow[])
+      if (authUser?.id) void listMyTicketJobsByCharge(authUser.id).then(setTallyTicketByTx).catch(() => undefined)
     } catch (e) {
       setTallyTxError(recoveryFailureFromError(e, "Couldn't load transactions"))
       setTallyTxRows([])
@@ -528,6 +532,18 @@ export default function JobTally() {
     }
     return m
   }, [jobs, tallyTxRowsGlobalFiltered])
+
+  /** The ticket chips on the purchase cards and the ticket's job first in the sort window (punch list #295, PR 3). */
+  const tallyTicketChips = useMemo(() => {
+    const out = new Map<string, { jobLabel: string | null }>()
+    for (const [txId, t] of tallyTicketByTx) out.set(txId, { jobLabel: t.jobId ? (tallyJobLabelById[t.jobId] ?? null) : null })
+    return out
+  }, [tallyTicketByTx, tallyJobLabelById])
+  const tallyTicketJobs = useMemo(() => {
+    const out = new Map<string, { jobId: string; main: string }>()
+    for (const [txId, t] of tallyTicketByTx) if (t.jobId) out.set(txId, { jobId: t.jobId, main: tallyJobLabelById[t.jobId] ?? 'The job on your ticket' })
+    return out
+  }, [tallyTicketByTx, tallyJobLabelById])
 
   const tallyNicknameByDebitCard = useMemo(() => {
     const m: Record<string, string> = {}
@@ -1055,7 +1071,7 @@ export default function JobTally() {
 
       {activeTab === 'transactions' && showTallyTeam && <TallyTeamQueue canMarkPayroll={canMarkPayroll} />}
 
-      {activeTab === 'transactions' && !showTallyTeam && authUser?.id ? <MyTickets userId={authUser.id} /> : null}
+      {activeTab === 'transactions' && !showTallyTeam && authUser?.id ? <MyTickets userId={authUser.id} onMatched={() => void loadTallyTransactions()} /> : null}
 
       {activeTab === 'transactions' && !showTallyTeam && (
         <div style={{ padding: '0.5rem 0 1rem' }}>
@@ -1398,6 +1414,7 @@ export default function JobTally() {
                     }}
                     onOpenAllocations={(row) => setTallyAllocModalRow(row)}
                     onSaveMyNote={saveTallyUserNoteForCard}
+                    ticketByTx={tallyTicketChips}
                   />
                 ) : (
                 <div
@@ -2373,6 +2390,7 @@ export default function JobTally() {
             setTallySortModeOpen(false)
             setTallyAllocModalRow(row)
           }}
+          ticketJobByTx={tallyTicketJobs}
         />
       ) : null}
 

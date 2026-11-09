@@ -2,7 +2,7 @@
 name: "Every supply house bill's lines as rows: what we buy, how often, at what price"
 number: 298
 group: gated
-status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question (the PDFs are private files in an office login's My Drive, not shared with the app) and reshaped the reader's checks and the order of the PRs · waiting on the critique and two gating calls · nothing built
+status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question (the PDFs are private files in an office login's My Drive, not shared with the app) and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · split between two sessions, the pipe (PR 1 in PR, then PR 2 and the measure) and the screens (1b in PR: the Lines cell and the Look window) · left: step 0, PR 2, the measure, then 2a, 2b and the views
 mockup: to-dos/supply-bill-lines/mockup.html
 summary: >
   A supply house bill is recorded with its total, its job and a link to its PDF. The lines on the
@@ -14,9 +14,9 @@ summary: >
   backfill reads the 539 bills on file, about 520 of which link a PDF. Three views follow: what we
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
-next: Two calls from the owner (does a bill read itself after Save; the price default), then PR 1, the tables, the view, the check kernel and the widened reader, which draws no screen, with its live check on one real bill from each of the three main houses. Step 0, the owner's door, before PR 2 can read a bill on file: share the bills' Drive folder with the app's account, or move the bills into the Shared Drive.
+next: PR 1 and 1b to main, both migrations pushed, the live check on one real bill from each of the three main houses through the form's upload path. Step 0, the owner's door, before PR 2 can read a bill on file: share the bills' Drive folder with the app's account, or move the bills into the Shared Drive.
 size: XL as a train of about nine (PR 1 M · PR 2 M · then measure · 1b M · 2a M · 2b S · 4a M · 4b M · 4c S), the parsers optional and the joins of stage 5 apart
-blocker: Two gating calls. For PR 2 and the backfill, step 0, the owner's door: the bills' folder is private to an office login and the app cannot open one of them today.
+blocker: For PR 2 and the backfill, step 0, the owner's door: the bills' folder is private to an office login and the app cannot open one of them today.
 opinion: build PR 1 and PR 2 first — the reader, the sum check and the PDFs all exist, and the real lines are what the matching list and the views should be designed from; the rest after a week of measured data
 ver: v2.6088 · v2.6095 (the bill reader this builds on)
 ---
