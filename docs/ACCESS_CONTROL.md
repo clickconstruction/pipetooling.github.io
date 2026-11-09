@@ -1689,6 +1689,58 @@ Unchanged: superintendents (assigned projects only, v2.2836), primaries (`master
 
 The rules that decide which card charges count as payroll (`mercury_tally_payroll_rules`, the **Payroll rules** window on Tally → Transactions and **Create a rule** from a transaction) are the controller's with a dev since v2.6761 (`canEditPayrollRules` in `JobTally.tsx`; `dev_all_payroll_rules` and `bulk_apply_tally_payroll_rule_flags` admit `is_controller()`, `20261109005000_dev_gates_banking_tally_forms.sql`). Marking a transaction payroll stays payroll access (`canMarkTallyPayroll`, v2.3837).
 
+## Gates kept (v2.6767, punch list #188 rows 80–124)
+
+On 2026-11-08 the owner took every recommendation of the dev-gates audit (`to-dos/dev-gates/README.md`). These 45 doors keep their gate; each line names the risk it guards, so a gate that was never argued for now has its reason here. Rows 92–96, 100, 104, 109, 114, 118 and 120 are already the owner's and are listed so the map is whole. The Dev doors card (`src/lib/settings/devDoors.ts`) lists each with its link.
+
+| # | Door | Who | The risk it guards |
+|---|---|---|---|
+| 80 | Settings rail → **View as…** · `/settings#view-as` | dev (not while imitating) | imitation is a real session as another person, with their writes |
+| 81 | Settings → Your account → **Dev MCP keys** · `/settings#settings-dev-mcp-keys` | dev | a key lets a coding agent read the app as the dev |
+| 82 | Settings → Your account → **Export all backup** (the title's trailing icon) | dev | a full JSON pull of the company's data |
+| 83 | Settings → **Data & recovery**: JSON backups, **ZZ test jobs**, **Recently deleted**, **Bulk-deletion alert** · `/settings?tab=settings-data` | dev | restores rows across 86 tables and pulls every table; rows 74 and 77 are the two sweeps inside worth a confirm |
+| 84 | Settings → **Email templates & testing** (Open Templates, dispatch phone, Tally minimum date, workflow email test, notification and email templates, report review, Easter eggs) | dev | test sends, template HTML and the catalog: plumbing |
+| 85 | Settings → **Digital twins & samples** (fleet admin, sample accounts, the walk tester) | dev | mints robot keys and sample accounts |
+| 86 | Settings → People & teams → **Pay approved leaders** (and Show in Hours) | dev | grants wage visibility; the trigger enforces it, so a client change alone would not open it |
+| 87 | Settings → People & teams → **Role visibility** | dev | what each role can see is the permission map itself |
+| 88 | Settings → Jobs & billing → **Company owner account**, **Re-assign jobs** | dev | refiles every row under another account; one-company plumbing |
+| 89 | Settings → Bids & materials → **Service types** | dev | each type carries the ledger prefix the job numbers hang on |
+| 90 | Settings → Jobs & billing → **Docsmit** | dev | secrets in Vault and the switch that sends certified mail |
+| 91 | Settings → Advanced → **Email domain monitoring** | dev | DNS and the mail provider's dashboards |
+| 92 | Settings → Phone and texts → **Send texts**, **Who gets a new message**, **Quo connection**, **Company phone seats**, **Inboxes**, **Read bids@**, **Mail the app counts**, **Reply push**, **Office hours**, **Reminders the app offers** · `/settings?tab=settings-phone-texts#…` | owner or dev | already the owner's; the risks are the company number, Quo's key and the reply push |
+| 93 | Settings → Flows → **a step's app reminder** (Off / Offers / Sends) | owner or dev | already the owner's |
+| 94 | Settings → Company → **Defaults for everyone**, **Bank transfer details** | owner or dev | already the owner's; the remittance details are what customers pay to |
+| 95 | Settings → Jobs & billing → **Save owners from the appraisal roll**, **GC pay by card**, **the office's notices**, **the customer's notice before a bill is due** | owner or dev | already the owner's switches |
+| 96 | Settings → Your account → **Your signing code** · `/settings#settings-lien-sign-code` | owner or dev | the code signs lien notices on anyone's screen |
+| 97 | Gear menu → **Global reload** | dev | forces every open copy of the app to reload |
+| 98 | Settings → Your dashboard → **Ignored task types** | dev | a dev's own dashboard filter, nobody else's |
+| 99 | **Partnerships** · `/partnerships`; Job window → **Partner split panel** | dev | partner deal terms and profit-share posts; nobody in the office runs them |
+| 100 | **Punch list** · `/punch-list` | owner or dev | already the owner's; the board names unbuilt work and open decisions |
+| 101 | People → **HR** · `/people?tab=hr`; the person desk's **Records** row; End employment → **Note to HR file**; Needs you → **HR reports pending** | dev | confidential HR files, held by RLS |
+| 102 | People → **Feedback** · `/people?tab=feedback` | dev | anonymity promised to the crew |
+| 103 | People → **Day book**; Bids → **Day book**; the Crew Day line · `/people?tab=day_book` | dev and controller | the owner's decision 2 of 2026-09-22 stands until he says otherwise |
+| 104 | People → **Payroll**, **Offsets**, **Employment**, **Housing** · `/people?tab=pay_stubs` | dev, controller, pay-approved owner | already a role (pay approval); the Tally pay bar reads the same gate |
+| 105 | People → Users → **Invite as user**; Hire → **Send the invite** | dev | makes a login; the edge function holds the line |
+| 106 | People → **Imitate**; the person desk's **account rows** (role, sign-in email, password, access flags) and **Merge a duplicate…** | dev | a role change or a merge is not undone by a confirm |
+| 107 | Person desk → **CountTooling** row | dev | the takeoff tool's seat is a dev's to issue |
+| 108 | Legal desk → **Mark attorney-ready**, **Pull back** · `/jobs?tab=stages&legal=1` | dev | his own call of 2026-09-11; if he reopens it, a typed confirm for himself is the shape |
+| 109 | Lien desk → the **leader's acts** (Sign and approve, Hold, Standing rule, the affidavit and retainage panes, GC on notice) | owner or dev | already the owner's; the leader approves what the office wrote |
+| 110 | Accounts Receivable → **Mercury filter…** (the sorting window, the kind badges) | dev | the matching rules behind every unlinked payment |
+| 111 | Banking → **Sync from Mercury**, **Backfill from Mercury** | dev | pulls from the bank's API; a double run makes duplicates |
+| 112 | Pipeline → **ZZ test jobs** switch and the ZZ sweep | dev | test residue only a dev makes |
+| 113 | Bids → Robots → **Queue**, **Console** (the rounds, the keys, Stop the rounds); the **envelope door**; **Show robot notes**; orphan shells; the Audits' problem links | dev (Stop the rounds: dev or master in the RPC) | the robots' admin and support views |
+| 114 | Bids → Labor book → **reset any override**, **Set** | owner or dev | already the owner's; Set rewrites the book against the jobs |
+| 115 | GC projects → **Award and draft the statement of work**; **Get started** · `/gc` | dev | *award's door* is a planned door, the owner's call W in `src/lib/gc/doors.ts`; opening it is that decision, not this list |
+| 116 | GC projects → **email a trade partner** (invitations, answers, the SOW email, draw and closeout emails); the company window's **Their portal**, **Papers**; the trade card's **Send to their portal to sign**; the **customer window**, **send our contract**, **Open the contract file**; Messages → **file a paper from an email** | dev | each names the door it waits on (the portal's, award's); the trade wave opens them together |
+| 117 | GC projects → **Building**: Daily log, Punch list, Submittals, RFIs, Draws, Closeout, the schedule's Pull work in · `/gc?log=`, `?punch=`, `?submittals=`, `?rfis=`, `?draws=`, `?closeout=` | dev | Building is still being built; its door is one list and one migration when it is |
+| 118 | Messages → **Finish switching Messages on** · `/messages` | owner or dev | already the owner's; the switches are rows 92 and 93 |
+| 119 | Needs you → the owner-or-dev cards (**lien waivers wait for your signature**, **lien notices to approve and sign**, **robots made no round**) and the dev-only cards (**robots have work waiting**, **Collections accounts await your review**, **claim-dev attempts**, **bulk delete**) | owner or dev; dev | each card follows its door's gate (rows 108, 109, 113, 83) |
+| 120 | Dashboard → **HR report** card, **Overhead** card, the **My Team pending** banner | owner or dev; dev or pay-approved owner | already the owner's |
+| 121 | Dashboard → stale Tally follow-up → **hide dev transactions** | dev | a dev's own purchases |
+| 122 | Quickfill → **Active sections (dev only)** panel | dev | hides and reorders every office member's stations |
+| 123 | The GC tables' policies: the Board's award lane, the Portal lane, the Building lane (`src/lib/gc/doors.ts`) | dev | they open with the doors in rows 115–117, by the test that holds them |
+| 124 | The dev MCP's write verbs (`cost_batch_apply`, `dev_hr_entry_write`, `dev_legal_plan_write`, the matter narrative) | dev, or the `cost_agent` / `hr_agent` roles | agents' verbs, not doors in the app |
+
 ## Typed confirms (v2.6765–v2.6766, punch list #188 rows 72–79)
 
 A door the owner opened wider keeps a pause: the window names a word and the press waits until it is typed (`typedWordMatches` in `src/lib/typedConfirm.ts`; `useTypedConfirm` over the shared prompt window; a wrong word toasts *That was not …, so nothing changed.*). Each act stays reversible or audited (Recently deleted, `deleted_records_archive`).
