@@ -2,7 +2,7 @@
 name: "Dev gates — every door only a dev, the controller or the owner may open, and what each should become"
 number: 188
 group: gated
-status: built 2026-11-08 — every row of the table in a PR, v2.6753 to v2.6767, each PR stacked on the one before it and armed in order; the owner took every recommendation as written
+status: shipped 2026-11-09 — every row of the table merged as v2.6753 to v2.6767, each migration pushed after its merge; the owner took every recommendation as written
 summary: >
   Many doors in the app open only to a dev, only to a dev and the controller, or only to the owner or a
   dev: pages (the Bridge, Moneyfill, Partnerships), Settings tabs and cards, buttons and windows on the
@@ -10,7 +10,7 @@ summary: >
   gates, some are the day they shipped, and nothing listed them in one place. This audit lists every one
   with the code that gates it, why it was gated when it shipped, and a recommendation: keep the gate, open
   it to a named role, or open it wider behind a typed confirm. The owner decides each row.
-next: Land the chain in order, push each migration after its merge, then the owner's look at the doors he now opens (the walk below names the sample checked).
+next: The owner's look at the doors he now opens (the walk below names the sample checked).
 size: S per row (one gate, one doc line, one test); the audit itself is done
 blocker: None. The owner decided every row on 2026-11-08: each recommendation as written.
 mockup: not required — an audit
