@@ -9,7 +9,7 @@ Every bid cover letter is built from a few standard text blocks. Three of them a
 
 ## Where to edit
 
-Open **Settings → Bids & materials → Bid Cover Letter Defaults**. The section is marked dev. You see three boxes:
+Open **Settings → Bids & materials → Bid Cover Letter Defaults**. An estimator or a dev sees the section. You see three boxes:
 
 :::example The three editable blocks
 **Terms & warranty** — the long paragraph, used when a bid's own Terms box is empty

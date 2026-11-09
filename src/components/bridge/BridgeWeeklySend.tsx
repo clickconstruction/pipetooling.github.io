@@ -1,7 +1,7 @@
 /**
- * The weekly email's switch on the Monday sheet (v2.5883): a dev turns the Monday 6 AM send on or off here, after a
+ * The weekly email's switch on the Monday sheet (v2.5883): the owner or a dev turns the Monday 6 AM send on or off here, after a
  * confirm when turning it on, and reads when the sheet last went and to how many people. The words and the keys are
- * `weeklySend.ts`'s; the read and the write are `weeklySendIo.ts`'s. It ships off, so nothing mails until a dev turns
+ * `weeklySend.ts`'s; the read and the write are `weeklySendIo.ts`'s. It ships off, so nothing mails until one of them turns
  * it on.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
@@ -46,7 +46,7 @@ export function BridgeWeeklySend({ io = DEFAULT_IO }: { io?: WeeklySendIo }) {
   const flip = async () => {
     if (on === null) return
     const next = !on
-    // Turning it on starts mailing every dev on Monday, so it asks first. Turning it off does not.
+    // Turning it on starts mailing the owner and every dev on Monday, so it asks first. Turning it off does not.
     if (next && !(await confirm({ ...WEEKLY_SEND_CONFIRM, cancelIsSafe: true }))) return
     setSaving(true)
     setProblem(null)
