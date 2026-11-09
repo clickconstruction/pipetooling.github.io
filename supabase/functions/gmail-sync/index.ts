@@ -8,10 +8,15 @@
  * Cron only, every minute (`20261021130000_gmail_sync_every_minute.sql`; every 3 before), with X-Cron-Secret. With the switch
  * (`app_settings` `gmail_sync_on_v1`) off, nothing.
  * - The first run after the switch keeps the mailbox's history point and reads nothing older (no backfill).
- * - Each run reads the Inbox's new messages since the last point, oldest first, up to 40: the ones added to it, and
+ * - Each run reads the box's new messages since the last point, oldest first, up to 40: the ones added to the Inbox,
  *   since v2.5982 the ones that reached it later by a label change (out of Spam, out of a filter's hold), which
- *   Gmail records as a label added and the walk reads beside the adds (`historyWalk.ts`'s `recordMessageIds`).
+ *   Gmail records as a label added and the walk reads beside the adds (`historyWalk.ts`'s `recordMessageIds`), and
+ *   since v2.6731 (punch list #207 PR 3) the ones the box itself sent, by the Sent label.
  *   - A message already labelled is passed over.
+ *   - A mail the box itself sent (v2.6731: an answer sent from bids@ in Apple Mail) lands on the thread of the first
+ *     person named on it as ours, going out, `who_text` from the From as the mail wrote it and `who_user_id` the team
+ *     member of that name (`leftOut.ts`'s `sentByTheBox`, `emailLine.ts`'s `sentParty`). One the box sent only to the
+ *     team is left. The app's own send as the box (v2.6702) is held by its Message-ID and only gets the label.
  *   - A forwarded copy one of us sent on lands on its first sender, with the forwarder's note as a team note
  *     (`src/lib/emailIn/forwarded.ts`).
  *   - A teammate's own mail (v2.5722, the owner's call of 2026-10-21): to the box, with nobody outside named, it lands
@@ -77,7 +82,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { GMAIL_SCOPES, GmailError, gmailAddLabel, gmailAttachment, gmailHistory, gmailLabelId, gmailMessage, gmailProfile, gmailSearch } from '../_shared/gmail.ts'
 import { googleServiceToken } from '../_shared/googleToken.ts'
-import { emailFileRows, emailLine, emailParty, rfcMessageId } from '../_shared/gcKernels/lib/emailIn/emailLine.ts'
+import { emailFileRows, emailLine, emailParty, rfcMessageId, sentParty } from '../_shared/gcKernels/lib/emailIn/emailLine.ts'
 import { readerBoxes, type ReaderBox } from '../_shared/gcKernels/lib/emailIn/readerBoxes.ts'
 import { BOXES_SETTINGS_KEY, parseBoxSettings, type BoxSettings, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import { isOwnAddress, ownChannels } from '../_shared/gcKernels/lib/messages/ownChannels.ts'
@@ -89,7 +94,7 @@ import { readerHold } from '../_shared/gcKernels/lib/emailIn/readerHold.ts'
 import { copyMarkWords, copyStop, fetchBytes, keepMark, markOf } from '../_shared/gcKernels/lib/emailIn/copyStop.ts'
 import { base64UrlBytes, parseAddress, readGmailMessage, type EmailIn } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
 import { jobInSubject } from '../_shared/gcKernels/lib/emailIn/jobInSubject.ts'
-import { bulkByBody, leftOut, outsideInbox } from '../_shared/gcKernels/lib/emailIn/leftOut.ts'
+import { bulkByBody, leftOut, outsideInbox, sentByTheBox } from '../_shared/gcKernels/lib/emailIn/leftOut.ts'
 import { bidInSubject, type LiveBid } from '../_shared/gcKernels/lib/emailIn/bidInSubject.ts'
 import { leftOutSenders, type LeftOutSenderMatch, type LeftOutSenderRow } from '../_shared/gcKernels/lib/emailIn/leftOutSenders.ts'
 import { invitation, starTakes } from '../_shared/gcKernels/lib/emailIn/invitation.ts'
@@ -128,6 +133,8 @@ interface Ctx {
   /** The boxes and the app's sender alone: mail from these is a copy of ours and is left out. */
   isTheBox: (address: string) => boolean
   member: (address: string) => TeamMember | null
+  /** The one team member of this name, case-blind (v2.6731): who sent a mail from the box, by its From's display name. */
+  memberByName: (name: string | null | undefined) => TeamMember | null
   /**
    * The walk kit (punch list #142), while one is set up: an address of our own the kit's contact carries is a person
    * writing in, so `isOurs` and `isTheBox` answer false for it, and `carried` says which it is.
@@ -166,7 +173,7 @@ async function saveState(admin: Admin, box: Mailbox, fields: Record<string, unkn
   if (error) throw new Error(`Saving the ${box} reader's state failed: ${error.message}`)
 }
 
-type Team = Pick<Ctx, 'isOurs' | 'isTheBox' | 'member' | 'kit' | 'carried'>
+type Team = Pick<Ctx, 'isOurs' | 'isTheBox' | 'member' | 'memberByName' | 'kit' | 'carried'>
 
 /**
  * Our addresses: the boxes, the app's sender and the staff's, each to its team member when one is. The walk kit's rule
@@ -177,9 +184,16 @@ async function loadTeam(admin: Admin, settings: BoxSettings | null, boxes: reado
   const { data, error } = await admin.from('users').select('id, name, email, role').in('role', STAFF_ROLES).not('email', 'is', null).eq('is_walk_tester', false)
   if (error) throw new Error(`Reading the team failed: ${error.message}`)
   const byAddress = new Map<string, TeamMember>()
+  // By name (v2.6731): a mail the box sent names its sender in the From's display name alone. Two members of one name
+  // name nobody, so a line is never put under the wrong person.
+  const byName = new Map<string, TeamMember | null>()
   for (const u of (data ?? []) as { id: string; name: string | null; email: string | null }[]) {
     const key = (u.email ?? '').trim().toLowerCase()
-    if (key) byAddress.set(key, { id: u.id, name: (u.name ?? '').trim() || key })
+    if (!key) continue
+    const member = { id: u.id, name: (u.name ?? '').trim() || key }
+    byAddress.set(key, member)
+    const nameKey = (u.name ?? '').trim().toLowerCase()
+    if (nameKey) byName.set(nameKey, byName.has(nameKey) ? null : member)
   }
   const appFrom = parseAddress(EMAIL_FROM)?.address.trim().toLowerCase()
   const own = ownChannels(settings, appFrom, boxes)
@@ -191,6 +205,7 @@ async function loadTeam(admin: Admin, settings: BoxSettings | null, boxes: reado
     isOurs: (address) => !carried(address) && ours.has(address.trim().toLowerCase()),
     isTheBox: (address) => !carried(address) && theBox.has(address.trim().toLowerCase()),
     member: (address) => byAddress.get(address.trim().toLowerCase()) ?? null,
+    memberByName: (name) => byName.get((name ?? '').trim().toLowerCase()) ?? null,
     kit,
     carried,
   }
@@ -363,15 +378,18 @@ async function takeMail(ctx: Ctx, id: string, putBack: boolean): Promise<Took> {
   }
   if (m.labelIds?.includes(ctx.labelId)) return 'already'
   const email = readGmailMessage(m)
-  const fwd = readForwarded(email, ctx.isOurs)
+  // A mail the box itself sent (v2.6731, punch list #207 PR 3): ours, going out, to the first person named on it. Read
+  // before the forward and the leaving-out rules, which are about mail that came in. To the team alone, it is left.
+  const sent = sentByTheBox(email, ctx.isTheBox)
+  const fwd = sent ? null : readForwarded(email, ctx.isOurs)
   // A mail put back (v2.6231) is read with its foot's cue and the marked list set aside; the headers' rules still hold.
-  const left = fwd ? (outsideInbox(email) ? 'notInbox' : null) : leftOut(putBack ? { ...email, text: '' } : email, ctx.isTheBox)
+  const left = sent ? null : fwd ? (outsideInbox(email) ? 'notInbox' : null) : leftOut(putBack ? { ...email, text: '' } : email, ctx.isTheBox)
   if (left) {
     // A notice by its foot alone (v2.6200) is written down, so New can count it and Put back can take it.
     if (!fwd && left === 'bulk' && !leftOut({ ...email, text: '' }, ctx.isTheBox) && bulkByBody(email.text)) await setAside(ctx, email, 'body_cue')
     return 'left'
   }
-  const party = emailParty(email, fwd, { isOurs: ctx.isOurs, isTheBox: ctx.isTheBox })
+  const party = sent ? sentParty(email, { isOurs: ctx.isOurs }) : emailParty(email, fwd, { isOurs: ctx.isOurs, isTheBox: ctx.isTheBox })
   if (!party) return 'left'
   // A sender the office marked a notice (v2.6202): left in Gmail with no label, and never placed, so the done thread stays done.
   const notice = party.direction === 'in' && !putBack ? ctx.isNotice(party.address.address) : null
@@ -379,7 +397,8 @@ async function takeMail(ctx: Ctx, id: string, putBack: boolean): Promise<Took> {
     await setAside(ctx, email, notice.kind === 'domain' ? 'marked_domain' : 'marked_address')
     return 'left'
   }
-  // The same mail, read first in the other box: no address placed, no file copied, no line. Only this box's label.
+  // The same mail, read first in the other box, or the app's own send as the box (v2.6702 writes the line's Message-ID
+  // before the box's Sent shows it): no address placed, no file copied, no line. Only this box's label.
   if (await heldLine(ctx, rfcMessageId(email))) {
     await putLabel(ctx, email.gmailId)
     return 'already'
@@ -397,7 +416,7 @@ async function takeMail(ctx: Ctx, id: string, putBack: boolean): Promise<Took> {
   }
 
   const by = fwd ? ctx.member(fwd.by.address) : null
-  const line = emailLine(email, fwd, party, ctx.mailbox, by?.name ?? null)
+  const line = emailLine(email, fwd, party, ctx.mailbox, by?.name ?? null, sent ? 'sent' : 'copied')
   // An invitation to bid (punch list #223 PR 3, v2.6222): what the line's subject, words and links say, kept on the
   // line so the New lane asks *Bid it?* and the card never reads the body again. Null on every other line. Read before
   // the job, since v2.6647: a new invitation or a solicitation is never handed to the sender's star.
@@ -442,8 +461,9 @@ async function takeMail(ctx: Ctx, id: string, putBack: boolean): Promise<Took> {
     }
   }
 
-  // Our line going out: the forwarded copy's first sender, or the teammate who copied the box (v2.5722).
-  const ourSender = party.direction === 'out' ? ctx.member((fwd ? fwd.from : email.from)?.address ?? '') : null
+  // Our line going out: the forwarded copy's first sender, the teammate who copied the box (v2.5722), or, on a mail the
+  // box itself sent (v2.6731), the team member the From's display name names, else nobody.
+  const ourSender = sent ? ctx.memberByName(email.from?.name) : party.direction === 'out' ? ctx.member((fwd ? fwd.from : email.from)?.address ?? '') : null
   const row = {
     invitation: invite,
     contact_id: contactId,
@@ -531,9 +551,10 @@ async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, pr
       walk = await walkHistory(state.history_id, (pageToken) => gmailHistory(token, state.history_id, pageToken), (id) => takeOne(ctx, id), MAX_PER_RUN)
     } catch (e) {
       if (!(e instanceof GmailError && e.status === 404)) throw e
-      // Gmail no longer keeps that history point: the Inbox's untaken mail of the last week, then the box's newest point.
+      // Gmail no longer keeps that history point: the untaken mail of the last week, the Inbox's and since v2.6731 the
+      // Sent folder's, then the box's newest point.
       const counts: Record<Took, number> = { taken: 0, already: 0, left: 0, gone: 0 }
-      const found = await gmailSearch(token, `in:inbox -label:"${LABEL_NAME}" newer_than:7d`)
+      const found = await gmailSearch(token, `(in:inbox OR in:sent) -label:"${LABEL_NAME}" newer_than:7d`)
       for (const m of (found.messages ?? []).slice(0, MAX_PER_RUN).reverse()) counts[await takeOne(ctx, m.id)]++
       walk = { cursor: (await gmailProfile(token)).historyId, counts, full: false, error: null }
     }

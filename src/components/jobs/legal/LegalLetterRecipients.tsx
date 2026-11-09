@@ -3,14 +3,17 @@ import { letterRecipients, refusedWords, type LegalMatterPersonLike, type Letter
 /**
  * A letter's recipients from the matter's people (punch list #174, v2.6705), in the To chip's shape (#118): the To
  * rows as presses, the copies beside them, and the rows that refuse greyed with why — a *never* says its reason, a row
- * with no email and no address has nowhere to go. A press on a To fills the letter's recipient. The copies are read
- * here and typed into the letter's copies by hand until the letter carries them itself.
+ * with no email and no address has nowhere to go. A press on a To fills the letter's recipient. Since v2.6741 each copy
+ * chip is a press that puts the person on the letter's *Copies to* line or takes them off (every copy starts on).
  */
-export default function LegalLetterRecipients({ people, pickedName, onPick }: {
+export default function LegalLetterRecipients({ people, pickedName, onPick, copies, onToggleCopy }: {
   people: ReadonlyArray<LegalMatterPersonLike>
   /** The recipient the letter names now, so its chip reads as the pick. */
   pickedName: string
   onPick: (person: LegalMatterPersonLike) => void
+  /** v2.6741: the people on the letter's *Copies to* line, by id; with `onToggleCopy`, each copy chip is a press that puts them on or takes them off. */
+  copies?: ReadonlySet<string>
+  onToggleCopy?: (person: LegalMatterPersonLike) => void
 }) {
   if (!people.length) return null
   const r = letterRecipients(people)
@@ -19,7 +22,15 @@ export default function LegalLetterRecipients({ people, pickedName, onPick }: {
     const on = kind === 'to' && !refused && row.person.name.trim().toLowerCase() === pickedName.trim().toLowerCase()
     const base = { display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--border)', borderRadius: 999, padding: '2px 10px', fontSize: '0.78rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-base)' } as const
     if (refused) return <span key={row.person.id} data-legal-recipient={row.person.id} data-legal-recipient-refused title={row.refused ?? undefined} style={{ ...base, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{row.label}</span>
-    if (kind === 'copy') return <span key={row.person.id} data-legal-recipient={row.person.id} style={base}>{row.label}</span>
+    if (kind === 'copy') {
+      if (!onToggleCopy || row.person.use !== 'copies') return <span key={row.person.id} data-legal-recipient={row.person.id} style={base}>{row.label}</span>
+      const onLetter = copies?.has(row.person.id) ?? false
+      return (
+        <button key={row.person.id} type="button" data-legal-recipient={row.person.id} data-legal-copy-on={onLetter ? 'yes' : 'no'} aria-pressed={onLetter} title={onLetter ? 'On the letter’s Copies to line. Press to take them off.' : 'Not on the letter. Press to put them on its Copies to line.'} onClick={() => onToggleCopy(row.person)} style={{ ...base, cursor: 'pointer', borderColor: onLetter ? 'var(--text-700)' : 'var(--border)', background: onLetter ? 'var(--bg-muted)' : 'var(--surface)', color: onLetter ? 'var(--text)' : 'var(--text-muted)', fontWeight: onLetter ? 600 : 400, textDecoration: onLetter ? 'none' : 'line-through' }}>
+          {row.label}
+        </button>
+      )
+    }
     return (
       <button key={row.person.id} type="button" data-legal-recipient={row.person.id} aria-pressed={on} onClick={() => onPick(row.person)} style={{ ...base, cursor: 'pointer', borderColor: on ? 'var(--text-blue-700)' : 'var(--border-blue)', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'var(--text-blue-700)', fontWeight: on ? 600 : 400 }}>
         {row.label}
@@ -41,6 +52,7 @@ export default function LegalLetterRecipients({ people, pickedName, onPick }: {
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ color: 'var(--text-muted)', minWidth: 44 }}>Copies</span>
           {r.copies.map((row) => chip(row, 'copy'))}
+          {onToggleCopy ? <span data-legal-copies-count style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}>{(() => { const n = r.copies.filter((row) => copies?.has(row.person.id)).length; return n ? `${n} on the letter’s Copies to line` : 'nobody on the letter’s Copies to line' })()}</span> : null}
         </div>
       ) : null}
       {r.never.length ? (

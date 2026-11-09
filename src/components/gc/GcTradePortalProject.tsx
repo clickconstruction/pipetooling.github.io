@@ -6,9 +6,10 @@ import { bidIsStale } from '../../lib/gc/bids'
 import { exclusionListWords } from '../../lib/gc/exclusions'
 import { directionsUrlForAddress } from '../../lib/directionsUrl'
 import { bidGoodUntil, bidRanOut, portalClosedWords, portalContacts, portalLeavesOut, portalPlanNews, portalPromiseLine, portalQuestions, portalQuoteDue, portalVetting, unclearLines } from '../../lib/gc/portal'
+import type { PortalTodo } from '../../lib/gc/portal'
 import { pDate, pWeekday } from '../../lib/gc/portalI18n'
-import type { PortalSchedule } from '../../lib/gc/schedule/portalSchedule'
-import type { ScheduleWork } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
+import { jobHead, jobHeadShown } from '../../lib/gc/tradePortalHead'
+import type { ScheduleWork, TradePortalChart } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { GcProject, Invite, Partner, TradePackage } from '../../lib/gc/types'
 import { daysUntil, money } from '../../lib/gc/words'
 import { HAIR, MUTED } from '../../lib/portal/portalTheme'
@@ -19,6 +20,7 @@ import { GcTradePortalBackCharges } from './GcTradePortalBackCharges'
 import { GcTradePortalChanges } from './GcTradePortalChanges'
 import { GcTradePortalDatesMoved } from './GcTradePortalDatesMoved'
 import { GcTradePortalJob } from './GcTradePortalJob'
+import { GcTradePortalJobHead, GcTradePortalNeedsHere } from './GcTradePortalJobHead'
 import { GcTradePortalLate } from './GcTradePortalLate'
 import { GcTradePortalLookAhead } from './GcTradePortalLookAhead'
 import { GcTradePortalSchedule } from './GcTradePortalSchedule'
@@ -32,6 +34,11 @@ import { PortalBlock, PortalNote } from './GcTradePortalUi'
  * `GcTradePortal.tsx` (its ProjectPage, PackageBlock and BidBlock) and `GcPortalQuestions.tsx`. The company sees its
  * plans, the questions it may read, where its ask stands and who to call. The presses (a quote, a day, a question,
  * pass) come with the submit function (P2b); until then the page says who to email.
+ *
+ * Since punch list #205's PR 2 a job being built that is awarded to the company opens on its head (`GcTradePortalJobHead`):
+ * the start, the planned finish and the days left, the company's own work as one bar, then **Who to call** moved up from
+ * the foot and **Needs you on this job**, the home's to-dos for this job, each opening its block. On any other project
+ * Who to call stays at the foot.
  */
 
 const GC = GC_COMPANY.shortName
@@ -45,6 +52,8 @@ export function GcTradePortalProject({
   onHome,
   schedule = null,
   work = null,
+  todos = [],
+  onTodo,
 }: {
   project: GcProject
   partner: Partner
@@ -52,16 +61,21 @@ export function GcTradePortalProject({
   /** The Drive link of a set by its number; empty when it has none. */
   planUrl: (rev: number) => string
   onHome: () => void
-  /** Its chart on this job, as the portal's read worked it out (the schedule's PR 14b). Null: none. */
-  schedule?: PortalSchedule | null
+  /** Its chart on this job, as the portal's read worked it out (the schedule's PR 14b), with the planned finish (#205, PR 2). Null: none. */
+  schedule?: TradePortalChart | null
   /** Its side of the schedule on this job (the Portal's P5d-ii): dates to answer, late doors, look-ahead, crew. Null: none. */
   work?: ScheduleWork | null
+  /** The home's Needs you lines for this job (#205, PR 2), drawn under the head; a press opens the line's block. */
+  todos?: PortalTodo[]
+  onTodo?: (todo: PortalTodo) => void
 }) {
   const { t } = usePortalLang()
   // No press provider: the portal reads only, and none of the schedule's presses is drawn (P5d-ii-2).
   const pressing = usePortalPress() !== null
   const directions = directionsUrlForAddress(project.address)
   const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partner.id).map((invite) => ({ pkg, invite })))
+  // The job head (#205, PR 2): on a job being built that is the company's own.
+  const head = jobHeadShown(project, partner.id) ? jobHead(project, partner.id, today, schedule?.finish) : null
   return (
     <div style={{ padding: '0.9rem', display: 'grid', gap: '0.9rem' }}>
       <div>
@@ -88,6 +102,13 @@ export function GcTradePortalProject({
           {t('gcLine', { name: GC_COMPANY.name, contact: partner.contact })}
         </div>
       </div>
+      {head && (
+        <>
+          <GcTradePortalJobHead head={head} today={today} />
+          <Contacts project={project} />
+          <GcTradePortalNeedsHere todos={todos} onOpen={(todo) => onTodo?.(todo)} />
+        </>
+      )}
       {/* Its chart first, under the job's name (the schedule's PR 14b, gc 3's pick): its dates frame everything below. Under
           each of its own bars, the late door (P5d-ii-2). Then the two blocks that ask something of it (amendment 2). */}
       {schedule && project.stage === 'building' && (
@@ -110,7 +131,7 @@ export function GcTradePortalProject({
       {mine.map(({ pkg, invite }) => (
         <TradeBlocks key={invite.id} project={project} pkg={pkg} invite={invite} partner={partner} today={today} planUrl={planUrl} />
       ))}
-      <Contacts project={project} />
+      {!head && <Contacts project={project} />}
     </div>
   )
 }

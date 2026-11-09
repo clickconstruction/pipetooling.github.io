@@ -209,5 +209,13 @@ export function refusedWords(rows: ReadonlyArray<LetterRecipient>): string[] {
   return rows.filter((r) => r.refused).map((r) => `${r.person.name} cannot be picked: ${r.refused}.`)
 }
 
+/** One copy of a letter as the letter's *Copies to* line reads it (v2.6741): the person, the role in words, where. */
+export type LetterCopy = { personId: string; name: string; role: string; address: string }
+
+/** The letter's copies from the matter's people: every row marked *copies*, in the list's order; a *never* and a To are not copies. */
+export function letterCopies(people: ReadonlyArray<LegalMatterPersonLike>): LetterCopy[] {
+  return people.filter((p) => p.use === 'copies').map((p) => ({ personId: p.id, name: p.name, role: personRoleWords(p.role), address: p.mailingAddress }))
+}
+
 export const PEOPLE_EMPTY_WORDS = 'Nobody on the matter yet. Add the people the record knows, or add a person.'
 export const PEOPLE_SEED_LABEL = 'Add the people the record knows'
