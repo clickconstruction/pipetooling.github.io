@@ -21994,6 +21994,7 @@ export type Database = {
           lien_offer_pct: number
           lien_offer_set_by: string | null
           lien_offer_taken_at: string | null
+          pay_code: string | null
           retainage_release: boolean
           sent_by_user_id: string | null
           sent_to_customer_at: string | null
@@ -22038,6 +22039,7 @@ export type Database = {
           lien_offer_pct?: number
           lien_offer_set_by?: string | null
           lien_offer_taken_at?: string | null
+          pay_code?: string | null
           retainage_release?: boolean
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
@@ -22082,6 +22084,7 @@ export type Database = {
           lien_offer_pct?: number
           lien_offer_set_by?: string | null
           lien_offer_taken_at?: string | null
+          pay_code?: string | null
           retainage_release?: boolean
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
@@ -38920,6 +38923,7 @@ export type Database = {
       }
       bid_version_lock_may_override: { Args: never; Returns: boolean }
       bid_version_lock_refusal: { Args: { p_version: string }; Returns: string }
+      bill_pay_code: { Args: { p_invoice_id: string }; Returns: string }
       bio_line_say: {
         Args: { p_id: string; p_say: boolean }
         Returns: undefined
@@ -43236,6 +43240,7 @@ export type Database = {
         Args: { p_firm_id: string; p_rotate?: boolean }
         Returns: Json
       }
+      mint_pay_code: { Args: never; Returns: string }
       mint_sub_portal_link: {
         Args: { p_person_id: string; p_rotate?: boolean }
         Returns: Json
