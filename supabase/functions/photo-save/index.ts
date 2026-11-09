@@ -9,6 +9,9 @@ import { roadmapTaskFolderPath, taskFolderName, taskPhotoDriveName, type TaskPho
 import type { PdfLibLike } from '../_shared/jobContractPdf.ts'
 import { buildStageChecklistPdf, recordPdfFileName, type RecordPdfRow } from '../_shared/stageChecklistPdf.ts'
 import { machineFolderOrWhy } from '../_shared/driveMachineFolder.ts'
+import { ticketFolderOrWhy } from '../_shared/driveTicketFolder.ts'
+import { moveFolder } from '../_shared/jobFolders.ts'
+import { COUNTER_TICKETS_BUCKET, ticketDriveName } from '../_shared/ticketNames.ts'
 import { NO_TASKS_FOLDER_WORDS, driveFailWords } from '../_shared/whereFilesGo.ts'
 import type { JobRef } from '../_shared/driveLink.ts'
 import {
@@ -35,7 +38,8 @@ import {
  * job later is caught then. The design is quo-messages-mockup.html drafts 8 and 9 on branch spike/gc-mode.
  *
  *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }], boxes: { saved, failed }, reports: { saved, failed },
- *     checklists: { saved, failed }, jobPhotos: { saved, failed }, records: { saved, failed } }
+ *     checklists: { saved, failed }, jobPhotos: { saved, failed }, machines: { saved, failed }, records: { saved, failed },
+ *     taskPhotos: { saved, failed }, tickets: { saved, failed } }
  *
  * Materials on site (punch list #209, v2.6045): a second source after the Messages pass. A photo a crew takes of a box on
  * the On site tab waits in the box-photos bucket with a row in job_box_photos; the sweep files it in the same photo folder
@@ -64,6 +68,14 @@ import {
  * (`roadmapTaskFolderPath`), as *2026-11-04 Mateo · 67%.jpg* (`taskPhotoDriveName`, `_shared/taskPhotoNames.ts`), keeps
  * drive_file_id and filed_at on the row and clears fail_why. The bucket copy stays, the app's own thumbnail (the
  * hr-evidence-drive rule). No Tasks folder set answers NO_TASKS_FOLDER_WORDS on every row until the office sets one.
+ *
+ * Counter tickets (punch list #295, PR 1): a ninth source after the task photos. A page of a supply house ticket or a
+ * receipt waits in the counter-tickets bucket with a `counter_ticket_pages` row; once the ticket is saved (added_at set),
+ * has a job and is not removed, the sweep files the page under Team only › Tickets in the job's Drive folder
+ * (`ticketFolderOrWhy`), never Customer Pictures, since a ticket shows prices, as *2026-11-04 Jordan · Ticket $228.58.jpg*
+ * (`ticketDriveName`, `_shared/ticketNames.ts`), and keeps drive_file_id, drive_folder_id and filed_at on the row. A
+ * ticket moved to another job has its pages' filed_at cleared by a trigger, and the sweep moves the Drive file to the
+ * new job's folder instead of copying it again. The bucket copy stays, the app's own picture of the ticket.
  *
  * The cron calls only while one of these waits: each source is a clause of its WHERE, so a migration that adds a
  * source re-schedules it with every clause (20261030070000_photo_save_cron_all_sources.sql holds all four).
@@ -762,6 +774,118 @@ async function sweepTaskPhotos(admin: SupabaseClient): Promise<{ saved: number; 
   return { saved, failed }
 }
 
+/* ------------------------------------------------------------------ a ninth source: a counter ticket's pages */
+
+type TicketPageRow = {
+  id: string
+  ticket_id: string
+  page_no: number
+  mime: string
+  storage_path: string
+  drive_file_id: string | null
+  drive_folder_id: string | null
+  counter_tickets: { job_id: string; taken_by_name: string; taken_at: string; total: number | null } | null
+}
+
+const TICKET_PAGE_BATCH = 20
+
+/**
+ * Counter tickets (punch list #295, PR 1): up to twenty `counter_ticket_pages` rows with a `storage_path` and no
+ * `filed_at`, oldest first, whose ticket is saved, has a job and is not removed. A page with no `drive_file_id` is
+ * copied from the counter-tickets bucket into Team only › Tickets under the job's folder, named by the day, the taker
+ * and the total, *(2)* when the folder holds the name. A page that has one already is a ticket moved to another job:
+ * its Drive file moves to the new job's folder. Either way the row keeps drive_file_id, drive_folder_id and filed_at
+ * and fail_why is cleared; the bucket copy stays. A failure writes fail_why and the row is tried again next run.
+ */
+async function sweepTickets(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
+  const { data, error } = await admin
+    .from('counter_ticket_pages')
+    .select('id, ticket_id, page_no, mime, storage_path, drive_file_id, drive_folder_id, counter_tickets!inner(job_id, taken_by_name, taken_at, total)')
+    .is('filed_at', null)
+    .not('storage_path', 'is', null)
+    .not('counter_tickets.job_id', 'is', null)
+    .not('counter_tickets.added_at', 'is', null)
+    .is('counter_tickets.removed_at', null)
+    .order('taken_at', { ascending: true })
+    .limit(TICKET_PAGE_BATCH)
+  if (error) return { saved: 0, failed: [{ id: '', why: `the ticket pages did not read: ${error.message}` }] }
+  const rows = (data ?? []) as unknown as TicketPageRow[]
+  if (rows.length === 0) return { saved: 0, failed: [] }
+  let saved = 0
+  const failed: { id: string; why: string }[] = []
+  const fail = async (r: TicketPageRow, why: string) => {
+    failed.push({ id: r.id, why })
+    await admin.from('counter_ticket_pages').update({ fail_why: why.slice(0, 300) }).eq('id', r.id).is('filed_at', null)
+  }
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  if (!saJson) {
+    for (const r of rows) await fail(r, 'Drive is not set up here yet.')
+    return { saved, failed }
+  }
+  let google: string
+  try {
+    google = await googleAccessToken(saJson)
+  } catch (e) {
+    for (const r of rows) await fail(r, `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`)
+    return { saved, failed }
+  }
+  const folders = new Map<string, { id: string } | { why: string }>()
+  for (const r of rows) {
+    try {
+      const ticket = r.counter_tickets
+      if (!ticket?.job_id) continue
+      const jobId = ticket.job_id
+      if (!folders.has(jobId)) folders.set(jobId, await ticketFolderOrWhy(admin, google, jobId))
+      const landing = folders.get(jobId)!
+      if ('why' in landing) {
+        await fail(r, landing.why)
+        continue
+      }
+      const into = landing.id
+      let driveFileId = r.drive_file_id
+      if (driveFileId) {
+        // A ticket moved to another job: the one file moves; its id and every link to it stay.
+        if (r.drive_folder_id !== into) await moveFolder(google, driveFileId, r.drive_folder_id, into)
+      } else {
+        const { data: blob, error: dl } = await admin.storage.from(COUNTER_TICKETS_BUCKET).download(r.storage_path)
+        if (dl || !blob) {
+          await fail(r, 'Our copy of that page did not read.')
+          continue
+        }
+        const mime = r.mime || blob.type || 'image/jpeg'
+        const nameInput = { dayYmd: calendarYmdInAppTzFromIso(ticket.taken_at), byName: ticket.taken_by_name, total: ticket.total, pageNo: r.page_no, mime }
+        const name = await freeName(google, into, (taken) => {
+          let n = 1
+          let candidate = ticketDriveName(nameInput, n)
+          while (taken.has(candidate) && n < 50) candidate = ticketDriveName(nameInput, ++n)
+          return candidate
+        })
+        driveFileId = (await uploadBytes(google, into, new Uint8Array(await blob.arrayBuffer()), name, mime)).id
+      }
+      const { error: kept } = await admin
+        .from('counter_ticket_pages')
+        .update({ drive_file_id: driveFileId, drive_folder_id: into, filed_at: new Date().toISOString(), fail_why: null })
+        .eq('id', r.id)
+        .is('filed_at', null)
+      if (kept) {
+        await fail(r, 'Saved to Drive, but the row did not keep it.')
+        continue
+      }
+      // The job changed while this ran: the page is in the old job's folder, so it files again next run.
+      const { data: now } = await admin.from('counter_tickets').select('job_id').eq('id', r.ticket_id).maybeSingle()
+      if ((now as { job_id: string | null } | null)?.job_id !== jobId) {
+        await admin.from('counter_ticket_pages').update({ filed_at: null }).eq('id', r.id)
+        continue
+      }
+      saved += 1
+    } catch (e) {
+      await fail(r, driveFailWords(e instanceof Error ? e.message : String(e)))
+    }
+  }
+  if (failed.length) console.warn('photo-save: some ticket pages were not filed', failed)
+  return { saved, failed }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405)
@@ -778,8 +902,9 @@ serve(async (req) => {
     const machines = await sweepMachinePhotos(admin)
     const records = await sweepRecords(admin)
     const taskPhotos = await sweepTaskPhotos(admin)
+    const tickets = await sweepTickets(admin)
     const body = (await messages.json()) as Record<string, unknown>
-    return json({ ...body, boxes, reports, checklists, jobPhotos, machines, records, taskPhotos }, messages.status)
+    return json({ ...body, boxes, reports, checklists, jobPhotos, machines, records, taskPhotos, tickets }, messages.status)
   } catch (e) {
     console.error('photo-save', e)
     return json({ error: e instanceof Error ? e.message : 'The sweep failed.' }, 500)
