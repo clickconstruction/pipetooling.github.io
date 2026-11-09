@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { paymentLabelWords } from '../../../supabase/functions/_shared/billPaidBy'
 import {
   billPaidByWords,
   buildGcChecksReport,
@@ -66,6 +67,10 @@ describe('paymentKind / checkLabel / labels', () => {
     expect(paymentKind('stripe card')).toBe('card')
     expect(paymentKind('other')).toBe('other')
     expect(paymentKind(null)).toBe('other')
+    // v2.6816: the rent credit on the statement reads Credit, never a cash word.
+    expect(paymentKind('In kind')).toBe('in-kind')
+    expect(checkLabel('in-kind', '')).toBe('Credit')
+    expect(paymentLabelWords({ invoice_id: null, amount: 1000, paid_on: '2026-03-03', payment_type: 'In kind', reference_number: null })).toBe('Credit on Mar 3')
   })
   it('names a check by its number, and says when the number is missing', () => {
     expect(checkLabel('check', '48211')).toBe('#48211')

@@ -31,6 +31,11 @@ describe('words', () => {
     expect(stripeCreditLineText('', 'today', 5)).toBe('Payment received today · $5.00')
   })
 
+  it('an in-kind payment is a credit applied, never money received (v2.6816)', () => {
+    expect(stripeCreditLineText('In kind', '2026-03-03', 1000)).toBe('Credit applied Mar 3 · $1,000.00')
+    expect(stripeCreditLineText('in-kind', '2026-03-03', 1000, 'rent')).toBe('Credit applied Mar 3 · $1,000.00')
+  })
+
   it('explains a part payment and labels the button with both numbers', () => {
     if (part.kind !== 'part') throw new Error('expected part')
     expect(stripePartPaymentNote(part, 'Cash received Sep 21 · $1,000.00')).toBe(
