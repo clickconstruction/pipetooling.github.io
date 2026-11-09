@@ -32,7 +32,9 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
-import { lienWorkSpan, type LienWorkSpan } from '../../lib/jobs/lienWorkSpan'
+import type { LienWorkSpanJob } from '../../lib/jobs/lienWorkSpan'
+import { buildLienWindowAffidavitFields } from '../../lib/jobs/lienWindowAffidavit'
+import type { JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { lienTradeWords } from '../../lib/jobs/lienTradeWords'
 
 /**
@@ -79,12 +81,14 @@ export default function LienFilingTabs({
   clock,
   isSub,
   originalContractorName,
+  originalContractorAddress = '',
   ownerEmail,
   originalContractorEmail,
   onChanged,
   noticeMonths,
   invoiceDocs = NO_INVOICE_DOCS,
-  workSpan,
+  workDays,
+  workMonths,
   onClose,
 }: {
   job: JobWithDetails
@@ -99,6 +103,8 @@ export default function LienFilingTabs({
   isSub: boolean
   /** The GC when we're the sub; our own company when original contractor. */
   originalContractorName: string
+  /** The GC's address on file, for the affidavit's original contractor line (v2.6809); '' when we are the original contractor or none is on file. */
+  originalContractorAddress?: string
   /** Courtesy-email addresses when known ('' hides the email option for that recipient). */
   ownerEmail: string
   originalContractorEmail: string
@@ -107,8 +113,10 @@ export default function LienFilingTabs({
   noticeMonths?: string[] | null
   /** The unpaid bills as documents (v2.3437) — enclosed behind the § 53.056 notice (§ 53.056(a-3)). */
   invoiceDocs?: NoticeInvoiceDoc[]
-  /** The period the affidavit's paragraph 5 swears (v2.6061), from the Lien window's fresh last-day read and its months; absent, read from the job row alone. */
-  workSpan?: LienWorkSpan
+  /** The job's work days for the period the affidavit's paragraph 5 swears (v2.6061): the Lien window's fresh last-day read, so a day set by hand reaches the paper the moment it is saved; absent, the job row's own. */
+  workDays?: LienWorkSpanJob | null
+  /** The forecast's months for the job (v2.6809): the first month's fallback for the period's start. A job with no sessions has none, and the period falls to its creation month, as the desk's draft does. */
+  workMonths?: Pick<JobWorkMonths, 'months' | 'lastMonthKey'> | null
   /** Closes the Lien window: the × on a phone's record sheet (v2.4422). */
   onClose?: () => void
 }) {
@@ -172,31 +180,34 @@ export default function LienFilingTabs({
     [job, issuer, laborMaterials, originalContractorName, openBalance, signerNameFallback, property],
   )
 
-  // The real period of the work (v2.6061): the first approved day through the last, or the day set by hand. This tab swore the last day twice.
-  const affidavitSpan = useMemo(() => workSpan ?? lienWorkSpan(job), [workSpan, job])
-  const affidavitFields: LienAffidavitFields = useMemo(
-    () => ({
-      county: property.county,
-      claimantPersonName: signerNameFallback,
-      claimantCompany: (issuer?.companyName ?? '').trim() || 'Click Plumbing and Electrical',
-      claimantAddress: (issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim(),
-      legalDescription: property.legalDescription,
-      propertyAddress: cleanStoredAddress(job.job_address),
-      contractedWithName: isSub ? originalContractorName : ownerName || (job.customer_name ?? '').trim(),
-      workDescription: laborMaterials,
-      workStart: affidavitSpan.workStart,
-      workEnd: affidavitSpan.workEnd,
+  // The desk's own recipe fills the paper (v2.6809): this tab filled the fields by hand beside it, and a job with no clock hours printed
+  // *from — through —* where the desk's draft swore its month; the original contractor's address was never handed over. The period is the
+  // first approved day through the last, or the day set by hand (v2.6061), else the month the window's strip names.
+  const affidavitFields: LienAffidavitFields = useMemo(() => {
+    const days = workDays ?? job
+    return buildLienWindowAffidavitFields({
+      jobName: job.job_name,
+      jobAddress: job.job_address,
+      serviceTypeName: tradeName,
+      isSub,
+      originalContractorName,
+      originalContractorAddress,
       ownerName,
       ownerAddress: property.owner.mailingAddress,
-      originalContractorName,
-      originalContractorAddress: '',
-      contractAmount: Number(job.revenue ?? 0).toFixed(2),
-      paidAmount: Number(job.payments_made ?? 0).toFixed(2),
-      unpaidAmount: openBalance.toFixed(2),
-      includeNoticesSworn: !isSub || liveNotices.length > 0,
-    }),
-    [property, signerNameFallback, issuer, job, isSub, originalContractorName, ownerName, openBalance, liveNotices.length, affidavitSpan, laborMaterials],
-  )
+      county: property.county,
+      legalDescription: property.legalDescription,
+      customerName: job.customer_name,
+      revenue: Number(job.revenue ?? 0),
+      paymentsMade: Number(job.payments_made ?? 0),
+      openBalance,
+      job: { created_at: job.created_at ?? null, first_work_date: days.first_work_date ?? null, last_work_date: days.last_work_date ?? null, lien_last_work_on: days.lien_last_work_on ?? null },
+      workMonths,
+      todayYmd: todayYmd(),
+      noticesRecorded: liveNotices.length > 0,
+      contactPerson: signerNameFallback,
+      issuer,
+    })
+  }, [property, signerNameFallback, issuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, openBalance, liveNotices.length, workDays, workMonths])
 
   const releaseFields: ReleaseOfRecordFields = useMemo(
     () => ({
