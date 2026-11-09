@@ -1,4 +1,4 @@
-# 20261108220804 — gc_trade_files_note (v2.6746)
+# 20261109011500 — gc_trade_files_note (v2.6746)
 
 Punch list #205, row 3 (PR 4): a trade partner company's **Send Click a file** from its portal, a photo or a ticket that belongs to no record, with a one-line note as its name. The file lands in the job's Drive folder under Team only → From trades → the company, and its `gc_trade_files` row carries `purpose = 'note'`.
 

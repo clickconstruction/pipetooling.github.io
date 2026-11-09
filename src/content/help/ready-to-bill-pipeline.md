@@ -330,7 +330,7 @@ The detailed version ends with a **Cost & payment timeline**. It is the same sto
 
 - **Dashboard**: Ready to Bill and Billed Waiting for Payment queues, plus the Financials cards. Those are Accounts Receivable, Accounts Payable and Not Billed Out.
 - **Jobs → Pipeline**: the full board, every status.
-- **Quickfill**: the **Jobs Billing** and **Billed Awaiting Payment** sections put billing review into the office's daily loop.
+- **Quickfill**: the **Complete, no Total Bill** and **Billed Awaiting Payment** sections put billing review into the office's daily loop.
 
 ## Sending to more than one person
 

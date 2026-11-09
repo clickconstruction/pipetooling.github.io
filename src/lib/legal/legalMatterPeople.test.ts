@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import {
   emptyPersonDraft,
+  letterCopies,
   letterRecipients,
   peopleFromRows,
   personDraftProblem,
@@ -108,5 +109,21 @@ describe('letterRecipients: the picker from the list', () => {
       'legal@sableridgebuild.example cannot be picked: never — bounces (Oct 3).',
       'J. Trinh cannot be picked: no email or mailing address on file.',
     ])
+  })
+})
+
+describe('letterCopies: the letter’s Copies to line (v2.6741)', () => {
+  it('takes every row marked copies, in order, with the role in words and the mailing address; never a To or a never', () => {
+    const people: LegalMatterPersonLike[] = [
+      { id: 'p1', name: 'R. Calloway', role: 'president', organization: '', email: 'r@x.test', phone: '', mailingAddress: '', use: 'letters', reason: '', seededFrom: null },
+      { id: 'p2', name: 'Pecan Hollow Holdings LLC', role: 'owner', organization: '', email: '', phone: '', mailingAddress: 'PO Box 418, Brenham TX', use: 'copies', reason: '', seededFrom: 'property' },
+      { id: 'p3', name: 'D. Marsh', role: 'inspector', organization: '', email: '', phone: '', mailingAddress: '', use: 'never', reason: 'a witness', seededFrom: null },
+      { id: 'p4', name: 'T. Nguyen', role: 'tenant', organization: '', email: '', phone: '', mailingAddress: '', use: 'copies', reason: '', seededFrom: null },
+    ]
+    expect(letterCopies(people)).toEqual([
+      { personId: 'p2', name: 'Pecan Hollow Holdings LLC', role: 'owner of record', address: 'PO Box 418, Brenham TX' },
+      { personId: 'p4', name: 'T. Nguyen', role: 'tenant', address: '' },
+    ])
+    expect(letterCopies([])).toEqual([])
   })
 })
