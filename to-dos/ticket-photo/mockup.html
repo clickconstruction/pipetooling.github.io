@@ -103,6 +103,17 @@
   .field .in.ph { color: #9ca3af; }
   .field .in.read { border-color: #86efac; background: #f0fdf4; }
   .sheet .foot { margin-top: 14px; display: grid; gap: 8px; }
+  .two { margin: 8px 2px 0; font-size: .75rem; color: var(--muted); }
+  .more { margin-top: 2px; display: flex; gap: 16px; }
+  .more .lnk { font-size: .75rem; min-height: 32px; margin: 0; }
+  .acts2 { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .acts2 .press { width: auto; }
+  .tkr { display: grid; grid-template-columns: 44px 1fr; gap: 10px; padding: .6rem 0; border-top: 1px solid var(--border); align-items: start; }
+  .tkr:first-of-type { border-top: 0; }
+  .tkr .shot { width: 44px; height: 58px; }
+  .tkr b { font-size: .8125rem; color: var(--strong); }
+  .tkr .sub { display: block; font-size: .75rem; color: var(--muted); margin: 1px 0 5px; }
+  .conf { margin-top: 12px; padding: .6rem .75rem; border: 1px solid var(--amber-200); background: var(--amber-50); border-radius: 10px; font-size: .8125rem; color: var(--ink); }
   /* the office, Team queue */
   .sub2 { display: flex; gap: 8px; margin-top: 12px; }
   .sub2 span { flex: 0 0 auto; padding: .45rem 1.6rem; border-radius: 6px; font-size: .8125rem; color: var(--muted); }
@@ -155,7 +166,7 @@
   <p class="eyebrow">Punch list #295 · mock-up · every name and number is made up</p>
   <h1>A photo of the supply house ticket, taken at the counter</h1>
   <p>Two papers leave a counter. A card receipt is the only list of what was bought, and no invoice ever follows it. An account ticket is followed days later by the bill in the mail. Neither reaches the app from the tech today. In the last 90 days the company cards were swiped about 176 times at material houses, and 2 of those charges have a receipt behind them. The office sorts each charge to a job from the clock and the schedule, without seeing what was bought.</p>
-  <p>The shape drawn here: one <b>Photo of a ticket</b> press on Job Parts Tally, pressed before the tech leaves the counter. The tech names the job in one tap. The photo goes to the job's folder. The app ties it to the card charge when the bank settles the charge, or to the PO code and later the bill. A dashed copper outline marks what is new on a screen that exists today.</p>
+  <p>The shape drawn here: one <b>Photo of a ticket</b> press on Job Parts Tally, pressed before the tech leaves the counter. The tech names the job in one tap. The photo goes to the job's folder. The app ties it to the card charge by the minute of the swipe, often within the hour, or to the PO code and later the bill. A dashed copper outline marks what is new on a screen that exists today.</p>
 </header>
 
 <h2>1 · Today</h2>
@@ -188,7 +199,7 @@
 </div>
 
 <h2>2 · At the counter</h2>
-<p class="lede">Three taps: the press, the shutter, the job. The job the tech is clocked in on is first. A PO code the office made for this tech today is offered above it, since it already names the job and the house. The total is optional: it makes the match to the charge exact.</p>
+<p class="lede">Three taps: the press, the shutter, the job. The job the tech is clocked in on is first. A PO code the office made for this tech today is offered above it, since it already names the job and the house. A second tap adds a second job. Nothing is typed: the swipe's own minute usually finds the charge, so the total and a note sit behind two small links.</p>
 <div class="row">
   <div class="col p375">
     <span class="cap"><b>A</b> · the press, on every tab of Tally</span>
@@ -198,6 +209,7 @@
       <div class="ticketpress new">
         <button class="press line"><svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Photo of a ticket</button>
         <small>A receipt or a counter ticket. Take it before you leave the counter.</small>
+        <button class="lnk" style="font-size:.75rem;margin:4px 2px 0">or choose a photo or a PDF you already have</button>
       </div>
       <p class="count">1 unlinked · 14 linked</p>
       <button class="press blue" style="margin-top:10px">Sort 1 purchase →</button>
@@ -208,7 +220,7 @@
         <button class="lnk">+ memo</button>
       </div>
     </div></div></div>
-    <p class="say">The press opens the phone's camera. It sits under the tab row, so it is there on On site too, where the page opens.</p>
+    <p class="say">The press opens the phone's camera. It sits under the tab row, so it is there on On site too, where the page opens. The small link is for a receipt the store emailed, or a photo already in the phone. The grey line shows until the first ticket is saved.</p>
   </div>
 
   <div class="col p375">
@@ -218,19 +230,20 @@
         <div class="grab"></div>
         <div class="lead">
           <div class="shot"></div>
-          <div><h4>Which job is this ticket for?</h4><p>Taken 9:52 AM. 310 KB.</p><button class="lnk" style="font-size:.75rem">+ Another page</button></div>
+          <div><h4>Which job is this ticket for?</h4><p>Taken 9:52 AM. 310 KB.</p><button class="lnk" style="font-size:.75rem">+ Another page</button><button class="lnk" style="font-size:.75rem">Retake</button></div>
         </div>
         <div class="chips">
           <button class="chip on"><b>JP1042 · Oak Hollow Bldg C</b><span>You are clocked in on it now.</span></button>
           <button class="chip"><b>JP1038 · Cedar Bend water heater</b><span>You are scheduled on it today.</span></button>
           <button class="chip plain"><b>Another job…</b></button>
-          <button class="chip plain"><b>Shop or truck stock</b><span>Not for one job.</span></button>
+          <button class="chip plain"><b>Not for one job</b><span>Stock, tools, the shop.</span></button>
         </div>
-        <div class="field"><label>Total on the ticket, if you want</label><div class="in ph">$0.00</div></div>
+        <p class="two">For two jobs? Tap the second one too.</p>
+        <div class="more"><button class="lnk">+ total</button><button class="lnk">+ note</button></div>
         <div class="foot"><button class="press blue">Save the ticket to JP1042</button></div>
       </div>
     </div></div>
-    <p class="say">Nothing is picked until the tech taps. Before a tap the button is grey and reads <i>Pick a job to save</i>.</p>
+    <p class="say">Nothing is picked until the tech taps. Before a tap the button is grey and reads <i>Pick a job to save</i>. With two jobs picked it reads <i>Save the ticket to 2 jobs</i>, and the office splits the charge.</p>
   </div>
 
   <div class="col p375">
@@ -240,15 +253,16 @@
         <div class="grab"></div>
         <div class="lead">
           <div class="shot"></div>
-          <div><h4>Which job is this ticket for?</h4><p>Taken 1:40 PM. 284 KB.</p><button class="lnk" style="font-size:.75rem">+ Another page</button></div>
+          <div><h4>Which job is this ticket for?</h4><p>Taken 1:40 PM. 284 KB.</p><button class="lnk" style="font-size:.75rem">+ Another page</button><button class="lnk" style="font-size:.75rem">Retake</button></div>
         </div>
         <div class="chips">
           <button class="chip on"><b>PO 41207 · Ridgeway Supply<span class="tag">YOUR PO CODE</span></b><span>For JP1042 · Oak Hollow Bldg C. Made for you at 1:12 PM.</span></button>
           <button class="chip"><b>JP1042 · Oak Hollow Bldg C</b><span>You are clocked in on it now.</span></button>
           <button class="chip plain"><b>Another job…</b></button>
-          <button class="chip plain"><b>Shop or truck stock</b><span>Not for one job.</span></button>
+          <button class="chip plain"><b>Not for one job</b><span>Stock, tools, the shop.</span></button>
         </div>
-        <div class="field"><label>Total on the ticket, if you want</label><div class="in ph">$0.00</div></div>
+        <p class="two">For two jobs? Tap the second one too.</p>
+        <div class="more"><button class="lnk">+ total</button><button class="lnk">+ note</button></div>
         <div class="foot"><button class="press blue">Save the ticket to PO 41207</button></div>
       </div>
     </div></div>
@@ -272,7 +286,7 @@
         <p class="h4" style="margin-top:0">My tickets</p>
         <div class="trow">
           <div class="shot"></div>
-          <div class="t"><b>JP1042 · Oak Hollow Bldg C</b><span class="sub">Today 9:52 AM</span><span class="pill wait">Waiting for the card charge</span></div>
+          <div class="t"><b>JP1042 · Oak Hollow Bldg C</b><span class="sub">Today 9:52 AM</span><span class="pill wait">Waiting for its charge or its bill</span></div>
         </div>
         <div class="trow">
           <div class="shot"></div>
@@ -282,9 +296,13 @@
           <div class="shot"></div>
           <div class="t"><b>JP1038 · Cedar Bend water heater</b><span class="sub">Tue Nov 3</span><span class="pill ok">Matched · $228.58 at Ridgeway Supply</span></div>
         </div>
+        <div class="trow">
+          <div class="shot"></div>
+          <div class="t"><b>JP1038 · Cedar Bend water heater</b><span class="sub">Mon Nov 2 · a return</span><span class="pill ok">Matched · $41.17 back from Cedar Bend Hardware</span></div>
+        </div>
       </div>
     </div></div></div>
-    <p class="say">The list keeps two weeks. With none it reads <i>No tickets yet. Take a photo of the ticket before you leave the counter.</i></p>
+    <p class="say">A swipe a few minutes before the photo usually ties the ticket within the hour, while the bank still holds the charge as pending. A return matches the money that came back. The list keeps two weeks. With none it reads <i>No tickets yet. Take a photo of the ticket before you leave the counter.</i></p>
   </div>
 
   <div class="col p375">
@@ -302,23 +320,39 @@
         <div class="t"><b>JP1042 · Oak Hollow Bldg C</b><span class="sub">Today 9:52 AM</span><span class="pill grey">On this phone</span></div>
       </div>
     </div></div></div>
-    <p class="say">The tech can close the app and drive off. The same waiting presses bar the clock uses counts it at the top of every page.</p>
+    <p class="say">The tech can close the app and drive off. The same waiting presses bar the clock uses counts it at the top of every page. A ticket still on the phone the next morning says so in red and offers <i>Share instead</i>, so the photo can go by text.</p>
   </div>
 
   <div class="col p375">
-    <span class="cap"><b>F</b> · a ticket with no total, and one charge that fits</span>
+    <span class="cap"><b>F</b> · a ticket taken hours later, and one charge that fits</span>
     <div class="frame"><div class="screen"><div class="pad">
       <p class="h4" style="margin-top:0">My tickets</p>
       <div class="trow new">
         <div class="shot"></div>
-        <div class="t"><b>JP1042 · Oak Hollow Bldg C</b><span class="sub">Sat Nov 7 · 9:52 AM</span>
-          <div class="ask">Is this the ticket for <b style="display:inline">$163.96 at The Home Depot</b> on Saturday?
+        <div class="t"><b>JP1042 · Oak Hollow Bldg C</b><span class="sub">Sat Nov 7 · 4:10 PM</span>
+          <div class="ask">Is this the ticket for <b style="display:inline">$163.96 at The Home Depot</b> at 9:41 AM?
             <div class="yn"><button class="press sm blue">Yes</button><button class="press sm line">No</button></div>
           </div>
         </div>
       </div>
     </div></div></div>
-    <p class="say">A typed total that equals the charge to the cent, on the same card holder within a day, matches by itself. Anything looser is a question, to the tech here or to the office on the Team queue.</p>
+    <p class="say">Two matches make themselves. One is the only swipe on that person's card in the half hour before the photo. The other is a typed total equal to the charge within a day. Anything looser is a question, to the tech here or to the office on the Team queue.</p>
+  </div>
+
+  <div class="col p375">
+    <span class="cap"><b>G</b> · the tech opens one of their tickets</span>
+    <div class="frame"><div class="screen dim">
+      <div class="sheet new" style="outline-offset:-4px">
+        <div class="grab"></div>
+        <div class="shot big" style="height:190px"></div>
+        <h4 style="margin-top:10px">JP1042 · Oak Hollow Bldg C</h4>
+        <p style="margin:2px 0 6px;font-size:.8125rem;color:var(--muted)">Taken today at 9:52 AM. 1 page.</p>
+        <span class="pill wait">Waiting for its charge or its bill</span>
+        <div class="foot"><button class="press line sm">Change the job</button><button class="press line sm">Add a page</button><button class="press line sm" style="color:var(--red-700);border-color:var(--red-700)">Remove this ticket</button></div>
+        <p class="two">You can remove a ticket until the office has used it.</p>
+      </div>
+    </div></div>
+    <p class="say">A wrong job or a ticket taken twice is the tech's to fix. A removed ticket is kept out of sight, never deleted.</p>
   </div>
 </div>
 
@@ -326,7 +360,7 @@
 <p class="lede">The tech's purchase card wears its ticket, and the job the tech already named is one press. A purchase that has no ticket offers the late door.</p>
 <div class="row">
   <div class="col p375">
-    <span class="cap"><b>G</b> · the tech's purchases, two days later</span>
+    <span class="cap"><b>H</b> · the tech's purchases, two days later</span>
     <div class="frame"><div class="screen"><div class="pad">
       <div class="hdr"><a>← Dashboard</a><h3>Job Parts Tally</h3></div>
       <div class="tabs"><span>On site</span><span class="on">Transactions</span><span>Materials Estimate</span></div>
@@ -348,11 +382,11 @@
         <button class="lnk">+ memo</button><button class="lnk new" style="outline-offset:2px;border-radius:4px">+ ticket</button>
       </div>
     </div></div></div>
-    <p class="say"><i>+ ticket</i> opens the camera for this purchase. The job is asked only if the purchase has none.</p>
+    <p class="say"><i>+ ticket</i> opens the camera for this purchase. The job is asked only if the purchase has none. When a helper took the photo and the lead's card paid, the lead's purchase reads <i>Sam's ticket names JP1042</i>.</p>
   </div>
 
   <div class="col p375">
-    <span class="cap"><b>H</b> · a second door: the Job Mode card on the Dashboard</span>
+    <span class="cap"><b>I</b> · a second door: the Job Mode card on the Dashboard</span>
     <div class="frame"><div class="screen"><div class="pad">
       <div class="card" style="margin-top:0">
         <div style="font-size:.6875rem;font-weight:700;letter-spacing:.06em;color:var(--muted)">YOUR JOB TODAY</div>
@@ -372,14 +406,15 @@
 <p class="lede">The Team queue's day card. A charge with a ticket shows it, and the job on the ticket is the first choice, ahead of the clock's guess. It is still a choice: nothing is picked until the sorter taps. The card says how many of the day's charges have a ticket.</p>
 <div class="row">
   <div class="col p760">
-    <span class="cap"><b>I</b> · Team queue · one person's day</span>
+    <span class="cap"><b>J</b> · Team queue · one person's day</span>
     <div class="frame"><div class="screen w760"><div class="pad">
       <div class="hdr"><a>← Dashboard</a><h3>Job Parts Tally</h3></div>
       <div class="tabs" style="max-width:420px"><span>On site</span><span class="on">Transactions</span><span>Materials Estimate</span></div>
       <div class="sub2"><span class="on">Team</span><span>My card</span></div>
+      <div class="sbs" style="margin-top:10px"><span class="sb" style="border-color:var(--blue);color:var(--blue);border-radius:999px;padding:.3rem .8rem">To sort (3)</span><span class="sb" style="border-radius:999px;padding:.3rem .8rem">Sorted (300)</span><span class="sb new" style="border-radius:999px;padding:.3rem .8rem;outline-offset:2px">Tickets (3)</span></div>
       <p class="daylabel">SAT, NOV 7</p>
       <div class="dcard">
-        <div class="top"><div><b>Jordan</b><span> · 2 charges · <span class="new" style="color:var(--ink);outline-offset:2px;border-radius:4px">1 with a ticket</span></span></div><b class="amt">$205.13</b></div>
+        <div class="top"><div><b>Jordan</b><span> · 3 charges · <span class="new" style="color:var(--ink);outline-offset:2px;border-radius:4px">1 with a ticket</span></span></div><b class="amt">$263.53</b></div>
         <p class="ev">Clocked on JP1038 Cedar Bend water heater from 7:30 AM to 9:20 AM. Clocked on JP1042 Oak Hollow Bldg C from 10:05 AM to 4:00 PM.</p>
         <div class="sugs">
           <div class="sug"><b>JP1042 · Oak Hollow Bldg C</b><span>clocked that day</span></div>
@@ -400,19 +435,29 @@
         </div>
         <div class="line">
           <div class="l1"><div><span class="tm">12:18 PM</span><b>Cedar Bend Hardware</b><span class="cat">Retail</span></div><div class="a">$41.17</div></div>
-          <div class="none new" style="display:inline-block;outline-offset:2px;border-radius:4px">No ticket yet.</div>
+          <div class="with new">
+            <div class="shot" style="width:44px;height:58px"></div>
+            <div class="words">Jordan took a ticket at 2:40 PM for JP1042. Is it this charge?
+              <div class="sbs"><span class="sb" style="border-color:var(--blue);color:var(--blue);font-weight:600">It is</span><span class="sb">It is not</span></div>
+            </div>
+          </div>
           <div class="sbs"><span class="sb">Pick a job ▾</span><span class="sb">Another job…</span><span class="sb">Invoices</span><span class="sb">Backcharge</span></div>
+        </div>
+        <div class="line">
+          <div class="l1"><div><span class="tm">3:05 PM</span><b>Ridgeway Supply</b><span class="cat">Retail</span></div><div class="a">$58.40</div></div>
+          <div class="none">No ticket yet.</div>
+          <div class="sbs"><span class="sb">Pick a job ▾</span><span class="sb">Another job…</span><span class="sb">Invoices</span><span class="sb">Backcharge</span><span class="sb new" style="outline-offset:2px">+ Ticket</span></div>
         </div>
         <div class="sortday"><button class="press dead">Sort the day</button></div>
       </div>
     </div></div></div>
-    <p class="say" style="max-width:96ch">The small photo opens the ticket window below. The ticket's job matters most on the day the clock cannot tell: here Jordan bought between two jobs, clocked on neither, and the ticket says which one it was for.</p>
+    <p class="say" style="max-width:96ch">The small photo opens the ticket window below. The ticket's job matters most on the day the clock cannot tell: here Jordan bought between two jobs, clocked on neither, and the ticket says which one it was for. <i>+ Ticket</i> on a line is for the paper a tech hands in at the office: a scan, a photo or a PDF.</p>
   </div>
 </div>
 
 <div class="row">
   <div class="col p760">
-    <span class="cap"><b>J</b> · the ticket window</span>
+    <span class="cap"><b>K</b> · the ticket window</span>
     <div class="frame"><div class="screen w760">
       <div class="win">
         <div class="shot big"></div>
@@ -424,7 +469,7 @@
             <dt>Job</dt><dd>JP1042 · Oak Hollow Bldg C</dd>
             <dt>Total</dt><dd>$163.96, typed by Jordan</dd>
             <dt>Charge</dt><dd>Jordan's card, Sat Nov 7, The Home Depot</dd>
-            <dt>File</dt><dd>2026-11-07 Jordan · ticket The Home Depot.jpg, in the job's folder</dd>
+            <dt>File</dt><dd>2026-11-07 Jordan · ticket The Home Depot.jpg, in the job's folder under Team only › Tickets</dd>
           </dl>
           <div class="acts">
             <button class="press sm line">Open in Drive</button>
@@ -434,13 +479,34 @@
         </div>
       </div>
     </div></div>
-    <p class="say" style="max-width:96ch"><i>Not this charge</i> takes the match off and the ticket waits again. <i>Record as a bill</i> opens Add invoice on this photo. The same window opens from the job's Documents tab and from a card charge on the job's cost rows.</p>
+    <p class="say" style="max-width:96ch"><i>Not this charge</i> takes the match off and the ticket waits again. <i>Record as a bill</i> opens Add invoice on this photo. The same window opens from the job's Documents tab and from a card charge on the job's cost rows. A ticket shows prices, so it is filed under Team only and never in Customer Pictures, where a job's other phone photos go.</p>
   </div>
 </div>
 
 <div class="row">
   <div class="col p760">
-    <span class="cap"><b>K</b> · an account ticket meets its bill: Add invoice, The bill</span>
+    <span class="cap"><b>L</b> · Team queue · Tickets: the ones with no charge, and the ones that disagree</span>
+    <div class="frame"><div class="screen w760"><div class="pad new" style="outline-offset:-6px">
+      <div class="sbs" style="margin-top:0"><span class="sb" style="border-radius:999px;padding:.3rem .8rem">To sort (3)</span><span class="sb" style="border-radius:999px;padding:.3rem .8rem">Sorted (300)</span><span class="sb" style="border-color:var(--blue);color:var(--blue);border-radius:999px;padding:.3rem .8rem">Tickets (3)</span></div>
+      <p class="count">3 tickets have no charge yet. 1 ticket disagrees with where its charge went.</p>
+      <div class="conf">The $228.58 at Ridgeway Supply on Tue Nov 3 went to JP1038, sorted by the office. Sam's ticket names <b>JP1042 · Oak Hollow Bldg C</b>.
+        <div class="acts2"><button class="press sm line">Change it to JP1042</button><button class="press sm line">Leave it on JP1038</button></div></div>
+      <div style="margin-top:12px">
+        <div class="tkr"><div class="shot"></div><div><b>Jordan · PO 41207 · Ridgeway Supply · JP1042</b><span class="sub">Wed Nov 4, 1:40 PM</span><span class="pill blue">On account · waiting for the bill</span>
+          <div class="acts2"><button class="press sm line">Record as a bill</button></div></div></div>
+        <div class="tkr"><div class="shot"></div><div><b>Sam · JP1038 · Cedar Bend water heater</b><span class="sub">Mon Nov 2, 4:15 PM · note: paid cash, the card was declined</span><span class="pill wait">No charge fits · 5 days</span>
+          <div class="acts2"><button class="press sm line">Pick the charge</button><button class="press sm line">Paid another way…</button></div></div></div>
+        <div class="tkr"><div class="shot"></div><div><b>Jordan · Not for one job</b><span class="sub">Tue Nov 3, 11:20 AM · note: drill bits for the shop</span><span class="pill grey">Waiting for the office to place it</span>
+          <div class="acts2"><button class="press sm line">Pick a job</button><button class="press sm line">It is stock</button></div></div></div>
+      </div>
+    </div></div></div>
+    <p class="say" style="max-width:96ch">The queue is built on charges, so a ticket with no charge needs a home of its own: an account ticket, cash, a card the app cannot see. A sort is never changed behind the office's back. A ticket that lands after its charge was sorted somewhere else is shown here as a disagreement, with both choices.</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col p760">
+    <span class="cap"><b>M</b> · an account ticket meets its bill: Add invoice, The bill</span>
     <div class="frame"><div class="screen w760">
       <div class="fromrow">
         <h4>The bill</h4>
@@ -452,7 +518,7 @@
         </div>
       </div>
     </div></div>
-    <p class="say" style="max-width:96ch">The form already reads a picture of a counter ticket. A ticket nobody has recorded shows beside the house's mail, and it leaves the row once a bill carries its PO code.</p>
+    <p class="say" style="max-width:96ch">The form already reads a picture of a counter ticket. A ticket nobody has recorded shows beside the house's mail, and it leaves the row once a bill carries its PO code. Many account tickets carry a job's name where the PO goes and no code at all, so the row also offers the tickets taken for that job in the days before the bill.</p>
   </div>
 </div>
 
@@ -460,7 +526,7 @@
 <p class="lede">The bill reader behind Add invoice costs about a cent a read. Pointed at a tech's ticket it fills the house, the total, the day and the PO code, so the tech types nothing and the match is exact. Its lines can then be offered to the job's Materials on site as a delivery. This waits for the owner's word, since a field press would spend a read.</p>
 <div class="row">
   <div class="col p375">
-    <span class="cap"><b>L</b> · the sheet once the ticket is read</span>
+    <span class="cap"><b>N</b> · the sheet once the ticket is read</span>
     <div class="frame"><div class="screen dim">
       <div class="sheet">
         <div class="grab"></div>
@@ -484,12 +550,12 @@
 
 <h2>The calls that are the owner's</h2>
 <ol class="calls">
-  <li><b>Shop or truck stock.</b> Does a ticket for no one job go to the Office job, or wait for the office to place it?</li>
-  <li><b>The match that makes itself.</b> Same card holder, same amount to the cent, within a day of the swipe. Is that sure enough to tie the photo to the charge with no press? The sort to a job still takes the sorter's tap either way.</li>
-  <li><b>Who may see a ticket.</b> The tech who took it, the office, and the job's team through the job's folder. Anyone else?</li>
-  <li><b>The total.</b> Asked as an optional field, as drawn, or left out until the app can read it?</li>
-  <li><b>The second door.</b> Frame H puts a Ticket line on the Job Mode card beside Photos. In the first build, or after the Tally press has been used for a while?</li>
-  <li><b>A ticket that never meets a charge.</b> The tech paid cash, or with their own money. After how many days does the ticket stop waiting, and does the office then see it as money owed to the tech?</li>
+  <li><b>Not for one job.</b> Does such a ticket go to the Office job by itself, or wait for the office to place it, as frame L draws?</li>
+  <li><b>The matches that make themselves.</b> The only swipe on that person's card in the half hour before the photo. A typed total equal to the charge within a day. Are both sure enough to tie the photo to the charge with no press? The sort to a job takes the sorter's tap either way.</li>
+  <li><b>Who may see a ticket.</b> The tech who took it, the office, and whoever can open the job's Team only folder. Anyone else, or fewer?</li>
+  <li><b>Any receipt, or material only.</b> The press takes whatever is photographed: fuel, a meal, a tool. Is that wanted, or should the words say supply house only?</li>
+  <li><b>The second door.</b> The Job Mode card's Ticket line beside Photos. In the first build, or after the Tally press has been used for a while?</li>
+  <li><b>A ticket that never meets a charge.</b> The tech paid cash, or with their own money. <i>Paid another way…</i> in frame L records which. Does the office then read it as money owed to the tech?</li>
 </ol>
 
 </div>
