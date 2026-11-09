@@ -2,7 +2,7 @@
 name: "Materials on site: cages, boxes and counts"
 number: 209
 group: close
-status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · v2.6366 the manifest print (2026-11-02) · v2.6367 the dev-mcp verbs (migration 20261102100000; docs/MATERIALS_ON_SITE_ARCHITECTURE.md) · v2.6406 bring back a retired box (2026-11-03) · v2.6432 the prints at full size (2026-11-03) · v2.6456 a new cage, box or place records who added it, and the dev seat names the job as JP972 (migration 20261103143000) · v2.6673 the missing money reads the parts book's price with its checked day, call 5 (2026-11-07) · v2.6728 the Needs you lines for the week's missing money and the boxes due a count (2026-11-08) · left: the end-to-end photo test on test job 972, then a week of use
+status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · v2.6366 the manifest print (2026-11-02) · v2.6367 the dev-mcp verbs (migration 20261102100000; docs/MATERIALS_ON_SITE_ARCHITECTURE.md) · v2.6406 bring back a retired box (2026-11-03) · v2.6432 the prints at full size (2026-11-03) · v2.6456 a new cage, box or place records who added it, and the dev seat names the job as JP972 (migration 20261103143000) · v2.6673 the missing money reads the parts book's price with its checked day, call 5 (2026-11-07) · v2.6728 the Needs you lines for the week's missing money and the boxes due a count (2026-11-08) · v2.6740 the Procure step's door (2026-11-08) · v2.6742 the Short press as a tally request (2026-11-08) · v2.6743 the summary RPC past 5,000 rows (migration 20261109010000, 2026-11-08) · left: the end-to-end photo test on test job 972, then a week of use
 mockup: to-dos/materials-on-site/mockup.html
 summary: >
   Big jobs leave fittings, pipe and fixtures on site in stencilled cages and boxes (A1, A2, B1 …).
@@ -14,10 +14,10 @@ summary: >
   Mode card. The office gets a Materials tab on the Jobs page with a door in the Job window, the
   Pipeline's ⋯ tools and the bid's Procure step. Photos of a count are V2 through the Drive path
   the owner chose; engraved parts are V3 on the same table.
-next: Finish the end-to-end photo test on test job 972 (clear the hand-made pictures link or share it with the app's account, press Make the job's Drive folders on the Documents tab, and the waiting box photo files on the sweep's next run), then use it for a week with the parts-book price on the Missing section (v2.6673); the leftovers under Where it stands are one small PR each, the Needs you line shipped (v2.6728), the Procure step's door next.
+next: Finish the end-to-end photo test on test job 972 (clear the hand-made pictures link or share it with the app's account, press Make the job's Drive folders on the Documents tab, and the waiting box photo files on the sweep's next run), then use it for a week with the parts-book price on the Missing section (v2.6673); the leftovers under Where it stands are one small PR each, the Needs you line (v2.6728), the Procure step's door (v2.6740), the Short press (v2.6742) and the summary RPC (v2.6743, push its migration after the merge) shipped; the sent copy of the manifest waits on the week of use.
 size: L, shipped as four PRs and four fixes; each leftover is S
 blocker: none. The owner's live test on test job 972.
-ver: v2.6039 · 6041 · 6043 · 6045 · 6049 · 6050 · 6054 · 6055 · 6366 · 6367 · 6406 · 6432 · 6456 · 6673 · 6728
+ver: v2.6039 · 6041 · 6043 · 6045 · 6049 · 6050 · 6054 · 6055 · 6366 · 6367 · 6406 · 6432 · 6456 · 6673 · 6728 · 6740 · 6742 · 6743
 opinion: your call — the code is done, the parts-book price with it; the live test and the week of use are yours
 ---
 
@@ -232,7 +232,7 @@ recommended, with the exceptions under the table.
 
 **As built.** Calls 1 to 4 as recommended: v2.6041 the tally's On site tab and the Job Mode card's
 link; v2.6043 the Jobs-page tab beside Parts, the Job window's Materials tab and the Pipeline tools
-menu's row (the Procure step's door is not built); v2.6039 containers per job with the stencil, a
+menu's row, and v2.6740 the Procure step's door (2026-11-08); v2.6039 containers per job with the stencil, a
 place and an eight-character code; the job's team and the office press with a reason, Correct… on
 the office page in the office's name. Call 5 as recommended since v2.6673 (2026-11-07): the missing
 money reads the parts book's price with the day it was checked beside it, and the price the office
@@ -319,11 +319,11 @@ says where it went.
 4. **PR 4 · the field tab (M)** — shipped as v2.6041 (PR 2 of the built train): the On site tab
    with the containers, the search, the presses and their sheets, Add a part, the map, the photo
    press and the Job Mode link; the guide *keep track of the material in the cages and boxes on
-   site*. The Short press is out until the tally request behind it is real.
+   site*. The Short press shipped 2026-11-08 as v2.6742, filing the Job Parts Tally's own request.
 5. **PR 5 · counts, labels, the line (S)** — the counts and Retire shipped in v2.6041, the labels
    with the QR in v2.6043; the Needs you lines for stale containers and missing money shipped
    2026-11-08 as v2.6728 (two keys, `materials-missing-week` and `materials-count-due`, over the
-   desk's own store); the Procure step's link is not built.
+   desk's own store); the Procure step's link shipped the same day as v2.6740.
 6. **V2** — the photo on a count shipped first, as v2.6045 (the photo sweep's second source,
    migration 20261029020000) with the live test's fixes v2.6049, v2.6050, v2.6054 and v2.6055; the
    takeoff guess, loss by week and the queue wait as drawn (after #189 PR 5b and #163). **V3:**
@@ -388,6 +388,38 @@ material came up short this week* with Open the job landing on that job's page, 
 station read the same two lines. The ledger takes no delete, so the two ZZ cages and their three rows stay on the
 test job until it is deleted.
 
+**The Procure step's door** (v2.6740, 2026-11-08): under the four steps, once the log's stage-dates read
+finds the bid's job, one quiet line reads *Where the 3 parts on site sit now, by cage and box, and what walked
+away:* (or *Nothing is marked delivered yet. The cages and boxes on the site:*) with **Materials on site**
+opening `/jobs?tab=materials&job=<id>` (`onSiteDoor` in `lib/submittals/procurementBoard.ts`). The step itself
+stays a filter press; the count is the log's, the ledger's numbers one press away.
+Walked 2026-11-08 on the dev server as the dev in Chrome on the ZZ Test bid (BP398, job JP1113): the line read
+*Nothing is marked delivered yet. The cages and boxes on the site: Materials on site* and the press landed on
+the job's Materials page with ZZ1 and ZZ2.
+
+**The Short press** (v2.6742, 2026-11-08): the fourth press on every line of a box, and beside *A2 has none
+left.* on an empty line, opens *How many more do you need?* with the quick presses and **Ask the office for 4**;
+the save writes the Job Parts Tally's own request (`lib/materials/shortRequest.ts`, `shortRequestIo.ts`): a
+`jobs_tally_parts` row in the presser's name and, for a book part, the draft purchase order
+`create_po_from_job_tally` makes, the toast naming the job's Parts tab. Nothing in the ledger moves. The
+table's policy lets the office set and a primary insert, so a helper on the team is refused with the words
+to say instead; opening it to the job's team is a migration for the week of use to ask for.
+Walked 2026-11-08 on the dev server as the dev in Chrome on ZZ1 (JP1113): Short → *How many more do you need?* →
+5 → *Ask the office for 5* → the toast *Asked the office for 5 more ZZ test elbow. The request is on the job's Parts
+tab.*; the row is on `jobs_tally_parts` with no purchase order (a typed name) and Jobs → Parts counts 1 part on
+JP1113. The row stays on the test job until the job is deleted.
+
+**The summary RPC** (v2.6743, 2026-11-08): `on_site_job_summary(job, since)` is the kernel's arithmetic in one SQL
+pass (a count opens a segment, a segment's total is the count plus the changes after it); `onSiteServerSummary.ts`
+reads it into the kernel's shapes with parity tests against the kernel over one ledger; the store reads the ledger
+newest first, marks a full read `capped` and fetches the function, and `jobMaterialsSummaryFor` hands the desk, the
+job's page, the Job window, the ⋯ menu and the Needs you lines the database's sums; the job's page says so. Push the
+migration right after the merge (`check:calls-ahead` holds the deploy until then); then the live check is `call_read`
+on JP972 against `read_on_site`. No job is near the cap today.
+Walked 2026-11-08 on the dev server as the dev in Chrome before the push: the desk's three rows and JP1113's page read as
+before under the newest-first read (no job is capped, so the note is absent and the function is not called); the capped
+path is held by the parity tests until the live check after the push.
+
 **Left, each one small PR** (the fragments' own lists):
 
 - ~~prices from the parts book for the missing money, with its checked date (call 5), instead of the
@@ -397,11 +429,19 @@ test job until it is deleted.
   `dev_on_site_write` (`docs/MATERIALS_ON_SITE_ARCHITECTURE.md` → The agent's door);
 - ~~the Needs you line for stale containers and missing money~~ built 2026-11-08 as v2.6728: two lines on
   the office's Needs you card, the week's shortfalls with the parts book's money (amber) and the boxes not
-  counted in 14 days (gray), each opening the desk or the one job that holds every row; the Procure
-  step's door;
-- the Short press as a tally request; reading an invoice from the Drive folder with the model;
-- a summary RPC for a job past 5,000 ledger rows; the Drive thumbnail on the office panel once the
-  bucket copy is gone;
+  counted in 14 days (gray), each opening the desk or the one job that holds every row; ~~the Procure
+  step's door~~ built 2026-11-08 as v2.6740: a line under the Procure step's four steps, once the bid is a
+  job, naming the delivered parts and opening the job's Materials page;
+- ~~the Short press as a tally request~~ built 2026-11-08 as v2.6742: the fourth press on a line files a
+  `jobs_tally_parts` row in the presser's name and a draft purchase order for a book part, as Send to Office
+  does; the table lets the office set and a primary insert, so a helper's ask is refused with the words to
+  tell the office (a migration opens it to the job's team if the week of use asks); reading an invoice from
+  the Drive folder with the model;
+- ~~a summary RPC for a job past 5,000 ledger rows~~ built 2026-11-08 as v2.6743: `on_site_job_summary` (migration
+  20261109010000) sums the whole ledger in SQL, the store reads newest first and calls it when the read comes
+  back full, and every summary reader takes the database's sums; a capped job's lists still draw from the newest
+  5,000 rows, the next step if a job gets there; the Drive thumbnail on the office panel once the bucket copy is
+  gone;
 - the real-phone checks: the camera scan of a printed label and the share sheet on iPhone and
   Android;
 - a sent-copy record of the manifest if the week of use asks for it;

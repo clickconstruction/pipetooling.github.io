@@ -39,6 +39,13 @@ describe('lineBudgetsReview (punch list #234 PR 1c)', () => {
     expect(lineBudgetsReviewSettledWords(r)).toBe('The other 3 lines on these 2 projects came from the workbench, were tuned, or were stamped, and need nothing.')
     expect(reviewLineWords(r.lines[3]!)).toBe('#1042 Job 1042 · Water heater, 50 gal, added · $4,000 · ≈ 45 / 35')
   })
+  it('a read after the stamp, with nothing assumed left, names the settled lines without "these 0 projects" (the first walk\'s slip 1)', () => {
+    const r = lineBudgetsReview([job('1', '2026-11-07T10:00:00Z')], [line('x', '1', 'Water heater', 500, { budget_reviewed_at: '2026-11-07T11:00:00Z' })], S, now)
+    expect(r.lines).toEqual([])
+    expect(r.jobIds).toEqual([])
+    expect(r.settledLines).toBe(1)
+    expect(lineBudgetsReviewSettledWords(r)).toBe("1 line on this week's projects came from the workbench, were tuned, or were stamped, and need nothing.")
+  })
   it('one line, one project, nothing settled', () => {
     const r = lineBudgetsReview([job('1', '2026-11-07T10:00:00Z')], [line('x', '1', 'Water heater', 500)], S, now)
     expect(lineBudgetsReviewTitle(r)).toBe('1 assumed line on 1 project awarded this week')

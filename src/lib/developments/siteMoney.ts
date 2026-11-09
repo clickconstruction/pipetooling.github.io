@@ -101,6 +101,20 @@ export type SiteMoneyInputs = {
   todayYmd: string
 }
 
+/**
+ * The payers whose pace the Money look reads (punch list #280 PR 2, v2.6739): each job's GC when it has
+ * one, else its customer, as `datesFor` picks the payer; each once, in the jobs' order. The page asks
+ * `get_customer_pay_speeds` for these alone instead of every billed customer's pace.
+ */
+export function paySpeedPayerIds(jobs: ReadonlyArray<Pick<MemberJob, 'gc_customer_id' | 'customer_id'>>): string[] {
+  const out: string[] = []
+  for (const j of jobs) {
+    const id = j.gc_customer_id ?? j.customer_id
+    if (id && !out.includes(id)) out.push(id)
+  }
+  return out
+}
+
 const SECTION_ORDER = ['billed', 'ready_to_bill', 'working', 'waiting', 'other', 'paid']
 const SECTION_LABEL: Record<string, string> = { billed: 'Billed', ready_to_bill: 'Ready to bill', working: 'Working', waiting: 'Waiting', other: 'Other', paid: 'Paid' }
 

@@ -25,7 +25,10 @@ type Props = {
 const row: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 10, padding: '0.45rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.86rem' }
 const btn = (primary: boolean, dead: boolean): CSSProperties => ({ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 600, borderRadius: 6, cursor: dead ? 'default' : 'pointer', border: `1px solid ${primary && !dead ? '#2563eb' : 'var(--border-strong)'}`, background: dead ? DEAD_PRESS_FILL : primary ? '#2563eb' : 'var(--surface)', color: dead ? DEAD_PRESS_TEXT : primary ? '#fff' : 'inherit' })
 
-export function LineBudgetsReviewWindow({ review, onClose, onChanged, io = lineBudgetsReviewIo }: Props) {
+export function LineBudgetsReviewWindow({ review: opened, onClose, onChanged, io = lineBudgetsReviewIo }: Props) {
+  // The window keeps the review it opened on: the stamp makes the line re-read, and the re-read (no assumed
+  // lines left) must not redraw this window as "The other 1 line on these 0 projects" (the first walk's slip 1).
+  const [review] = useState(opened)
   const navigate = useNavigate()
   const { showToast } = useToastContext()
   const [busy, setBusy] = useState(false)

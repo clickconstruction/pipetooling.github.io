@@ -9858,6 +9858,7 @@ export type Database = {
           last_error: string | null
           last_mail_at: string | null
           last_read_at: string | null
+          person_id: string | null
           project_id: string | null
           tagged_at: string
           tagged_by: string | null
@@ -9873,6 +9874,7 @@ export type Database = {
           last_error?: string | null
           last_mail_at?: string | null
           last_read_at?: string | null
+          person_id?: string | null
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
@@ -9888,6 +9890,7 @@ export type Database = {
           last_error?: string | null
           last_mail_at?: string | null
           last_read_at?: string | null
+          person_id?: string | null
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
@@ -9908,6 +9911,13 @@ export type Database = {
             columns: ["jobs_ledger_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tag_threads_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
           {
@@ -28997,6 +29007,7 @@ export type Database = {
           counsel_only: boolean
           created_at: string
           created_by: string | null
+          evidence_id: string | null
           id: string
           person_id: string
           source_drive_file_id: string | null
@@ -29012,6 +29023,7 @@ export type Database = {
           counsel_only?: boolean
           created_at?: string
           created_by?: string | null
+          evidence_id?: string | null
           id?: string
           person_id: string
           source_drive_file_id?: string | null
@@ -29027,6 +29039,7 @@ export type Database = {
           counsel_only?: boolean
           created_at?: string
           created_by?: string | null
+          evidence_id?: string | null
           id?: string
           person_id?: string
           source_drive_file_id?: string | null
@@ -29041,6 +29054,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_evidence"
             referencedColumns: ["id"]
           },
           {
@@ -29152,6 +29172,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           entry_date: string
+          gmail_message_id: string | null
+          gmail_thread_id: string | null
           id: string
           person_id: string
           source: string
@@ -29162,6 +29184,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           entry_date: string
+          gmail_message_id?: string | null
+          gmail_thread_id?: string | null
           id?: string
           person_id: string
           source?: string
@@ -29172,6 +29196,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           entry_date?: string
+          gmail_message_id?: string | null
+          gmail_thread_id?: string | null
           id?: string
           person_id?: string
           source?: string
@@ -37759,6 +37785,96 @@ export type Database = {
         }
         Relationships: []
       }
+      development_history_heads: {
+        Row: {
+          agent_label: string | null
+          author_user_id: string | null
+          bid_id: string | null
+          body_chars: number | null
+          body_head: string | null
+          created_at: string | null
+          customer_id: string | null
+          development_id: string | null
+          file_path: string | null
+          happened_at: string | null
+          id: string | null
+          job_id: string | null
+          link_url: string | null
+          source: string | null
+          via: string | null
+        }
+        Insert: {
+          agent_label?: string | null
+          author_user_id?: string | null
+          bid_id?: string | null
+          body_chars?: never
+          body_head?: never
+          created_at?: string | null
+          customer_id?: string | null
+          development_id?: string | null
+          file_path?: string | null
+          happened_at?: string | null
+          id?: string | null
+          job_id?: string | null
+          link_url?: string | null
+          source?: string | null
+          via?: string | null
+        }
+        Update: {
+          agent_label?: string | null
+          author_user_id?: string | null
+          bid_id?: string | null
+          body_chars?: never
+          body_head?: never
+          created_at?: string | null
+          customer_id?: string | null
+          development_id?: string | null
+          file_path?: string | null
+          happened_at?: string | null
+          id?: string | null
+          job_id?: string | null
+          link_url?: string | null
+          source?: string | null
+          via?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_history_entries_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_change_orders_office: {
         Row: {
           answered_on: string | null
@@ -37874,6 +37990,7 @@ export type Database = {
           counsel_only: boolean | null
           created_at: string | null
           created_by: string | null
+          evidence_id: string | null
           headings: Json | null
           id: string | null
           person_id: string | null
@@ -37891,6 +38008,7 @@ export type Database = {
           counsel_only?: boolean | null
           created_at?: string | null
           created_by?: string | null
+          evidence_id?: string | null
           headings?: never
           id?: string | null
           person_id?: string | null
@@ -37908,6 +38026,7 @@ export type Database = {
           counsel_only?: boolean | null
           created_at?: string | null
           created_by?: string | null
+          evidence_id?: string | null
           headings?: never
           id?: string | null
           person_id?: string | null
@@ -37924,6 +38043,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_documents_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_evidence"
             referencedColumns: ["id"]
           },
           {
@@ -40481,6 +40607,10 @@ export type Database = {
       get_crew_day_payload: { Args: { p_day: string }; Returns: Json }
       get_crew_day_payload_for_user: {
         Args: { p_day: string; p_user_id: string }
+        Returns: Json
+      }
+      get_customer_pay_speeds: {
+        Args: { p_customer_ids: string[] }
         Returns: Json
       }
       get_customers_list_bundle: { Args: never; Returns: Json }

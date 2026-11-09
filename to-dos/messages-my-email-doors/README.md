@@ -1,8 +1,8 @@
 ---
 name: "Messages → My email: a door on the job and the bid, where the person already works, and the Sent side with no press"
 number: 263
-group: gated
-status: proposed 2026-11-04 from Grace's review of #230, four days after the tab went live with no visit by a clickplumbing.com person and no tag · two design calls drawn Now beside the suggestion · the owner answered 2026-11-08 (calls 1, 2 and 5 yes, now; call 3 no) · READY TO BUILD, drawn step by step at the foot, nothing built yet (the session ran out of credits)
+group: close
+status: proposed 2026-11-04 from Grace's review of #230 · the owner answered 2026-11-08 (calls 1, 2 and 5 yes, now; call 3 no) · SHIPPED 2026-11-08/09 as three PRs — PR A #7374 (call 1, v2.6730), PR B #7384 (call 2, v2.6751, its migration pushed 2026-11-09 right after the merge, gmail-mine deployed), PR C #7377 (call 5, v2.6747, gmail-mine redeployed) — each walked on the dev server as far as the dev's seat allows; the live reads and the live send are Grace's
 summary: >
   My email (#230) shipped 2026-11-01 as a tab on Messages, the person's own Inbox and Sent with one
   press to tag a conversation onto a job. Four days on, the usage ledger shows no office member on
@@ -15,10 +15,10 @@ summary: >
   Sent side with no press at all, the shape #230 called option C and #207 called call 1: a mail the
   person sends from their own box to an address on exactly one open job lands on it by itself,
   marked as put there by the app, with Untag on the line.
-next: Build calls 1, 2 and 5 as three PRs from the *Ready to build* section at the foot, on any computer. Grace's first live tag as grace@clickplumbing.com on a ZZ Test job still proves the read no agent can.
+next: Grace walks § How to verify as grace@clickplumbing.com on a ZZ Test job: the line on the job window, a sent mail landing by itself within five minutes, Untag under it, the thread rule's guess. No agent can read a Workspace box, so her walk is the first live proof.
 size: S (call 1 as drawn: one Gmail search per window open through gmail-mine's list, one kernel, the line on JobThreadSummary and the bid's thread rail, the guide) + M (call 2: the follow widened to the person's Sent, a per-person fence, a marked line with Untag)
-blocker: The owner's calls. No agent can read a Workspace mailbox, so the guess's quality on real rows is still unmeasured: Grace's walk comes first.
-ver: proposed · the owner's answers 2026-11-08
+blocker: Grace's walk. No agent can read a Workspace mailbox, so the dev's walks proved the gate, the refusal and the screens, never the read.
+ver: v2.6730 (PR A, the door) · v2.6747 (PR C, the thread rule) · v2.6751 (PR B, the Sent side, migration 20261108223000)
 opinion: build call 1 — the tab's one assumption, that a person will go and look, is the one the ledger refutes; a door at the job costs one read on open and keeps the person's press; call 2 after a month of call 1
 mockup: to-dos/messages-my-email-doors/mockup.html
 ---
@@ -149,6 +149,32 @@ Untag.
 - 2026-11-04: written from Grace's review of #230 (the ledger, the code, the live tab as the dev). The
   mock-up draws the job window's Where it stands card and a thread line, each Now beside the
   suggestion, at a desk and on a phone. Nothing built. Waiting on the five calls, and on Grace's walk.
+- 2026-11-08: built as three PRs from § Ready to build, each armed in order.
+  - **PR A** #7374, v2.6730 (call 1): `MyMailJobLine.tsx` under the job window's Where it stands card and above the box
+    of a thread narrowed to a job (`useMyMailJobLineThreadSlots.tsx`), over `myMail/jobDoor.ts` and `jobDoorIo.ts`;
+    the guide's *Tag from the job or the bid*. Walked on the dev server: opening ZZ Test JP1113's window fires one
+    `gmail-mine` `list` with `q = from:<address> OR to:<address> OR "JP1113"` (the ledger-prefixed number, a fix the
+    walk found: the first cut sent the bare `1113`), the dev's address answers `offWorkspace`, and no line and no alert
+    draw. Narrowing the dev's thread to a job fires the same read with the tile's number. StrictMode doubles the read
+    in dev only.
+  - **PR C** #7377, v2.6747 (call 5): `conversationJobs` / `conversationGuess` in `mineFunction.ts`, tried in
+    `fillRows` before `guessJob`; a run test puts Priya's reply on the clubhouse bid over her domain's job. Deploy
+    `gmail-mine` after the merge. No screen to walk as the dev: the run test is the proof.
+  - **PR B** #7384, v2.6751 (call 2): `followSent` / `placeSentMail` in `gmail-mine`'s follow, the migration
+    `20261108223000_my_email_sent_side.sql` (the cursor, `placed_by_app` on the row and the line, the tombstone
+    `email_tag_threads_off` with the four fences), the `underLine` slot `useMyMailPlacedLineThreadSlots.tsx` with
+    **Untag**; six run-test scenarios. Walked on the dev server against prod before the push: the thread read refuses
+    *column messages.placed_by_app does not exist*, as `check:calls-ahead` expects of a *push right after the merge*
+    PR; the mark and Untag are proved by the render smoke until the push.
+  - 2026-11-09, after the merges: `20261108223000_my_email_sent_side.sql` pushed right after #7384 landed (00:22Z; the
+    push retried with `--include-all`, as its stamp is older than ones already applied, and no newer migration names
+    its objects), the ledger fully applied; `gmail-mine` deployed after the push and again after #7377, its preflight
+    200 and a signed-out call refused `signIn`; the seventeen functions PR B's copied `thread.ts` moved, a type-only
+    change, redeployed, and after #7377 the four that import the whole copy (`customer-portal`, `drive-link`,
+    `gc-trade-portal`, `photo-save`); one `chore(types)` PR (#7406) from the prod regeneration, `dev-mcp` deployed after it. The first follow run after the deploy set
+    each office member's Sent cursor and placed nothing, so only mail sent from then on lands by itself.
+  - The owner's call 2 words, *sent and received mail in line on a bid at a moment's notice*: received mail is PR A's
+    Yes on the bid's thread; sent mail is PR B's placement within five minutes.
 
 ## The owner's answers (2026-11-08)
 

@@ -275,7 +275,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const kind = doc && typeof doc.kind === 'string' ? doc.kind.trim() : ''
     const docId = doc && typeof doc.doc_id === 'string' ? doc.doc_id.trim() : ''
     const title = doc && typeof doc.title === 'string' ? doc.title.trim() : ''
-    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20) — or, for a named document, drive_file_id (or drive_url): a .md, .txt or Google Doc in Drive whose text the server reads itself (v2.6712); for a named document also counsel_only? (true | false, the mark) and archive? (true retires it, false brings it back), either alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
+    const shape = `${verb} needs doc — { person_id (a people.id: find_person), one target: kind: summary | narrative (the fixed two) | doc_id (a named document: get_person_file lists them) | title (a new named document, under 160); markdown (the whole text) or ops ([{ op: replace_section, heading, markdown } | { op: insert_after, heading, markdown } | { op: append, markdown }], at most 20) — or, for a named document, drive_file_id (or drive_url): a .md, .txt or Google Doc in Drive whose text the server reads itself (v2.6712); for a named document also counsel_only? (true | false, the mark), archive? (true retires it, false brings it back) and evidence_id? (a person_file_evidence.id the document transcribes — get_person_file lists the records — or null to untie; a counsel-only record needs counsel_only: true), any alone with no text; expect_updated_at? (the updated_at you read; refused when the document was saved since), covered_through? (the fixed two) }.`
     if (!doc || !UUID_RE.test(personId)) return { ok: false, error: shape }
     const targets = [kind !== '', docId !== '', title !== ''].filter(Boolean).length
     if (targets !== 1) return { ok: false, error: shape }
@@ -288,9 +288,13 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (ops && (ops.length === 0 || ops.length > 20)) return { ok: false, error: shape }
     const counselOnly = typeof doc.counsel_only === 'boolean' ? doc.counsel_only : null
     const archive = typeof doc.archive === 'boolean' ? doc.archive : null
+    // v2.6713 (punch list #287): the record the document transcribes — a uuid, or null to untie; a named document only.
+    const evidenceSet = 'evidence_id' in doc && doc.evidence_id !== undefined
+    const evidenceId = evidenceSet ? (doc.evidence_id === null ? null : typeof doc.evidence_id === 'string' ? doc.evidence_id.trim() : '') : null
+    if (evidenceSet && (kind || (evidenceId !== null && !UUID_RE.test(evidenceId)))) return { ok: false, error: shape }
     if ((counselOnly !== null || archive !== null) && !docId && !(title && counselOnly !== null && archive === null)) return { ok: false, error: shape }
-    // A named document may take the mark or the archive alone; the fixed two and a new title need the text.
-    if (!hasMarkdown && !ops && !(docId && (counselOnly !== null || archive !== null))) return { ok: false, error: shape }
+    // A named document may take the mark, the archive or the record alone; the fixed two and a new title need the text.
+    if (!hasMarkdown && !ops && !(docId && (counselOnly !== null || archive !== null || evidenceSet))) return { ok: false, error: shape }
     // v2.6712 (punch list #286): the server read a Drive file and put its text in as markdown; the source rides to the row.
     // The two come together, on a named document, with the whole text — the RPC holds the same rule.
     const sourceId = typeof doc.source_drive_file_id === 'string' ? doc.source_drive_file_id.trim() : ''
@@ -305,6 +309,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (ops) p.ops = ops
     if (counselOnly !== null) p.counsel_only = counselOnly
     if (archive !== null) p.archive = archive
+    if (evidenceSet) p.evidence_id = evidenceId
     if (sourceId) {
       p.source_drive_file_id = sourceId
       p.source_sha256 = sourceSha
@@ -499,7 +504,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   }
   if (verb === 'plan_matter_document' || verb === 'apply_matter_document') {
     const document = obj(input.document)
-    const shape = `${verb} needs document — { matter_id (a legal_matters.id), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), and for a sent paper sent_on? (YYYY-MM-DD, today when left out), sent_how (email | certified_mail | mail | hand | other) and sent_to (who it went to) }.`
+    const shape = `${verb} needs document — { matter_id (a legal_matters.id), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256) or markdown (a text document's words, kept as text and searched by section; the server makes the .md file), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), and for a sent paper sent_on? (YYYY-MM-DD, today when left out), sent_how (email | certified_mail | mail | hand | other) and sent_to (who it went to) }.`
     if (!document) return { ok: false, error: shape }
     const str = (k: string) => (typeof document[k] === 'string' ? (document[k] as string).trim() : '')
     const matterId = str('matter_id')
@@ -511,6 +516,13 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const sizeBytes = typeof document.size_bytes === 'number' && Number.isInteger(document.size_bytes) ? document.size_bytes : NaN
     if (!UUID_RE.test(matterId) || !title || !shows || !originalName || !mime || !HASH_RE.test(sha256) || !(sizeBytes > 0)) return { ok: false, error: shape }
     const p: Json = { matter_id: matterId, title, shows, original_name: originalName, mime, size_bytes: sizeBytes, sha256 }
+    // v2.6716 (punch list #288): a text document's words ride beside the file facts; the RPC keeps them in documents.
+    if (document.markdown !== undefined) {
+      if (typeof document.markdown !== 'string' || document.markdown.trim() === '') return { ok: false, error: `${verb}: markdown must be the document's words, not empty.` }
+      if (document.markdown.length > 1_000_000) return { ok: false, error: `${verb}: markdown is longer than 1,000,000 characters.` }
+      if (mime !== 'text/plain' && mime !== 'text/markdown') return { ok: false, error: `${verb}: markdown goes with a text file (.md or .txt); a ${mime} keeps its bytes alone.` }
+      p.markdown = document.markdown
+    }
     const state = str('state') || 'final'
     if (!(DOCUMENT_STATES as readonly string[]).includes(state)) return { ok: false, error: shape }
     p.state = state

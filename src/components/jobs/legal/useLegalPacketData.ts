@@ -246,7 +246,7 @@ export function useLegalPacketData(
       const claimLines = await src<LegalClaimLineLike[]>('claim lines', async () => {
         if (!matterId) return []
         const rows = (await withSupabaseRetry<LegalClaimLineRow[]>(
-          () => db.from('legal_matter_claim_lines').select('id, kind, title, amount, basis, document_id, added_at, document:legal_matter_documents(title)').eq('matter_id', matterId).is('removed_at', null).order('added_at').limit(ROW_CAP),
+          () => db.from('legal_matter_claim_lines').select('id, kind, title, amount, basis, document_id, added_at, settlement_only, document:legal_matter_documents(title)').eq('matter_id', matterId).is('removed_at', null).order('added_at').limit(ROW_CAP),
           'load legal packet claim lines',
         )) ?? []
         return claimLinesFromRows(rows)

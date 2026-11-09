@@ -11,13 +11,21 @@ export const LEGAL_MATTER_DOCUMENTS_BUCKET = 'legal-matter-documents'
 export const LEGAL_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024
 
 /** What the office may put on a matter. An email thread goes as .eml or printed to PDF. */
-export const LEGAL_DOCUMENT_MIMES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'message/rfc822', 'text/plain'] as const
+export const LEGAL_DOCUMENT_MIMES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'message/rfc822', 'text/plain', 'text/markdown'] as const
 
-/** The row as the firm may hold it: never the storage path, the hold reason or who held it. Since v2.5846 the paper's own day and its state. */
-export const MATTER_DOCUMENT_COUNSEL_COLUMNS = ['id', 'title', 'shows', 'mime', 'size_bytes', 'added_at', 'dated_on', 'state', 'sent_on', 'sent_how', 'sent_to', 'proof_document_id', 'received_on'] as const
+/** A text document (v2.6716, punch list #288): a `.md` or `.txt` whose words are kept in `documents` beside the bytes, rendered and searched by section. */
+export function legalDocumentIsText(mime: string): boolean {
+  return mime === 'text/plain' || mime === 'text/markdown'
+}
+
+/** The most words a text document keeps, `dev_legal_document_write`'s own limit. */
+export const LEGAL_TEXT_DOCUMENT_MAX_CHARS = 1_000_000
+
+/** The row as the firm may hold it: never the storage path, the hold reason or who held it. Since v2.5846 the paper's own day and its state; since v2.6716 the text document it points at. */
+export const MATTER_DOCUMENT_COUNSEL_COLUMNS = ['id', 'title', 'shows', 'mime', 'size_bytes', 'added_at', 'dated_on', 'state', 'sent_on', 'sent_how', 'sent_to', 'proof_document_id', 'received_on', 'text_document_id'] as const
 
 /** The keys of a document on the firm's payload; `shapeMatterForCounsel` cuts each document to these. */
-export const MATTER_DOCUMENT_PAYLOAD_KEYS = ['id', 'title', 'shows', 'mime', 'sizeBytes', 'addedOn', 'addedByName', 'url', 'datedOn', 'state', 'sentOn', 'sentHow', 'sentTo', 'proofDocumentId', 'receivedOn'] as const
+export const MATTER_DOCUMENT_PAYLOAD_KEYS = ['id', 'title', 'shows', 'mime', 'sizeBytes', 'addedOn', 'addedByName', 'url', 'datedOn', 'state', 'sentOn', 'sentHow', 'sentTo', 'proofDocumentId', 'receivedOn', 'text'] as const
 
 // ---------- the paper's own day, and draft · final · sent · received (punch list #168, v2.5846) ----------
 
@@ -65,6 +73,8 @@ export type LegalPortalDocument = {
   proofDocumentId: string
   /** The day a received paper came in; '' otherwise. */
   receivedOn: string
+  /** The paper's words when it is a text document (v2.6716): markdown or plain text the page renders; '' on a file alone. */
+  text: string
 }
 
 export type LegalDocumentDraft = {
@@ -78,6 +88,8 @@ export type LegalDocumentDraft = {
   receivedOn?: string
   /** Whose paper it is (v2.6108); absent or null is our own record. */
   whose?: LegalDocumentWhose | null
+  /** The words of a `.md` or `.txt` read in the browser (v2.6716): kept as a text document beside the file. */
+  text?: string
 }
 
 /** What *Mark sent…* asks (v2.5846). */
@@ -102,9 +114,10 @@ export function legalDocumentProblem(d: LegalDocumentDraft, file?: { size: numbe
   if (d.state === 'received' && d.receivedOn && !DAY.test(d.receivedOn)) return 'Pick the day it was received.'
   if (file) {
     const mime = legalDocumentMime(file)
-    if (!mime) return `${file.name} is not a kind the portal takes: PDF, an image, an email (.eml) or plain text.`
+    if (!mime) return `${file.name} is not a kind the portal takes: PDF, an image, an email (.eml), plain text or markdown.`
     if (file.size > LEGAL_DOCUMENT_MAX_BYTES) return `${file.name} is over ${LEGAL_DOCUMENT_MAX_BYTES / 1024 / 1024} MB.`
   }
+  if (d.text !== undefined && d.text.length > LEGAL_TEXT_DOCUMENT_MAX_CHARS) return `The text is longer than ${LEGAL_TEXT_DOCUMENT_MAX_CHARS.toLocaleString('en-US')} characters.`
   return null
 }
 
@@ -113,7 +126,7 @@ export function legalDocumentMime(file: { type: string; name: string }): string 
   const t = (file.type || '').toLowerCase()
   if ((LEGAL_DOCUMENT_MIMES as ReadonlyArray<string>).includes(t)) return t
   const ext = (file.name.split('.').pop() ?? '').toLowerCase()
-  const byExt: Record<string, string> = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', eml: 'message/rfc822', txt: 'text/plain' }
+  const byExt: Record<string, string> = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', eml: 'message/rfc822', txt: 'text/plain', md: 'text/markdown', markdown: 'text/markdown' }
   return byExt[ext] ?? ''
 }
 
@@ -135,7 +148,7 @@ export function legalDocumentKindWords(mime: string): string {
   if (mime === 'application/pdf') return 'PDF'
   if (mime.startsWith('image/')) return 'Image'
   if (mime === 'message/rfc822') return 'Email'
-  if (mime === 'text/plain') return 'Text'
+  if (legalDocumentIsText(mime)) return 'Text'
   return 'File'
 }
 
@@ -150,6 +163,8 @@ export function legalPortalDocumentFromRow(
   addedByName: string,
   url: string,
   dayOf: (iso: string) => string,
+  /** The text document's words (v2.6716), read by the caller when the row points at one; '' on a file alone. */
+  text = '',
 ): LegalPortalDocument {
   return {
     id: row.id,
@@ -167,6 +182,7 @@ export function legalPortalDocumentFromRow(
     sentTo: (row.sent_to ?? '').trim(),
     proofDocumentId: (row.proof_document_id ?? '').trim(),
     receivedOn: (row.received_on ?? '').slice(0, 10),
+    text,
   }
 }
 
@@ -400,6 +416,7 @@ export function parseLegalPortalDocuments(raw: unknown): LegalPortalDocument[] {
       sentTo: typeof r.sentTo === 'string' ? r.sentTo : '',
       proofDocumentId: typeof r.proofDocumentId === 'string' ? r.proofDocumentId : '',
       receivedOn: typeof r.receivedOn === 'string' ? r.receivedOn : '',
+      text: typeof r.text === 'string' ? r.text : '',
     })
   }
   return out
