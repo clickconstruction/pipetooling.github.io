@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { isOwnerOrDev } from '../lib/doorRoles'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import type { UserRole } from './useAuth'
 
@@ -62,7 +63,8 @@ export function useRecurringReportScopeMasters(input: {
         return
       }
 
-      if (authRole === 'dev') {
+      // Punch list #188 row 47 (v2.6758): scheduling a report on a leader's scope is the owner's, with a dev.
+      if (isOwnerOrDev(authRole)) {
         const { data: masters } = await supabase
           .from('users')
           .select('id,name')

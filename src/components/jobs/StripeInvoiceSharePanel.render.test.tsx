@@ -84,6 +84,8 @@ function fakeIo(over: Partial<ReplyIo> = {}): ReplyIo {
 
 function draw(over: Partial<StripeInvoiceSharePanelProps> & { contact?: Contact; ioOver?: Partial<ReplyIo> } = {}) {
   const { contact, ioOver, ...rest } = over
+  /** No code unless a test hands one: the link is the bill id's. */
+  const mintPayCode = over.mintPayCode ?? (async () => null)
   const io = fakeIo(ioOver)
   const tellIo = fakeTellIo()
   const load = vi.fn(async (_id: string) => contact ?? SAM)
@@ -106,6 +108,7 @@ function draw(over: Partial<StripeInvoiceSharePanelProps> & { contact?: Contact;
       load={load}
       io={io}
       tellIo={tellIo}
+      mintPayCode={mintPayCode}
       {...rest}
     />,
   )
@@ -125,6 +128,20 @@ describe('StripeInvoiceSharePanel — the customer’s link is the short pay pag
     fireEvent.click(screen.getByRole('button', { name: 'Text' }))
     const words = (await screen.findByTestId('tell-body')) as HTMLTextAreaElement
     expect(words.value).toBe(`Hi Sam, this is Rosa with Click Plumbing. Your bill for Oak Street is ready, $2,200.00. Text me here with any question. Pay it here: ${SHORT}`)
+  })
+
+  it('the bill’s ten-letter code comes first once it answers (v2.6769): Text and Copy link carry /pay/<code>', async () => {
+    const writeText = vi.fn(() => Promise.resolve())
+    Object.assign(navigator, { clipboard: { writeText } })
+    const mintPayCode = vi.fn(async () => 'abc2def3gh')
+    draw({ invoiceId: BILL_ID, mintPayCode })
+    await waitFor(() => expect(mintPayCode).toHaveBeenCalledWith(BILL_ID))
+    fireEvent.click(screen.getByRole('button', { name: 'Text' }))
+    const words = (await screen.findByTestId('tell-body')) as HTMLTextAreaElement
+    expect(words.value).toBe('Hi Sam, this is Rosa with Click Plumbing. Your bill for Oak Street is ready, $2,200.00. Text me here with any question. Pay it here: https://my.clickplumbing.com/pay/abc2def3gh')
+    fireEvent.click(screen.getByTestId('tell-skip'))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://my.clickplumbing.com/pay/abc2def3gh'))
   })
 
   it('falls back to Stripe’s own link when the caller hands no bill id', async () => {

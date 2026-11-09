@@ -1,5 +1,6 @@
 import type { UserRole } from '../hooks/useAuth'
 import type { SubmittalNudge } from './submittals/submittalNeedsYou'
+import { isOfficeRole } from './doorRoles'
 import { lowRatingsWords } from './ratings/ratingsOffice'
 import { describeBacklogAge } from './bids/robotBacklog'
 import { robotAsleepWords, robotBlockedWords } from './bids/robotSilence'
@@ -84,10 +85,10 @@ export type NeedsYouSeverity = 'blue' | 'amber' | 'gray' | 'red'
 
 /**
  * Which product an item belongs to (journey-map Tier-2 #41). `company` is the
- * default — the office's worst-first stack. `roadmap` is the owner's planning
- * work (the "N roadmap tasks need a person" card): it never shows to a non-dev
- * viewer, and for the dev it groups AFTER the company stack instead of ranking
- * inside it at tier 50 — personal-farm planning was sitting between lien
+ * default — the office's worst-first stack. `roadmap` is the planning
+ * work (the "N roadmap tasks need a person" card): it shows to the office
+ * (punch list #188 row 37, v2.6758; a dev alone before), and groups AFTER the
+ * company stack instead of ranking inside it at tier 50 — personal-farm planning was sitting between lien
  * deadlines and team reviews.
  */
 export type NeedsYouKind = 'company' | 'roadmap'
@@ -359,7 +360,7 @@ export function rankNeedsYouItems(items: NeedsYouItem[]): NeedsYouItem[] {
  * roadmap card on an office dashboard.
  */
 export function visibleNeedsYouItems(items: NeedsYouItem[], role: UserRole | null | undefined): NeedsYouItem[] {
-  if (role === 'dev') return items
+  if (isOfficeRole(role)) return items
   return items.filter((i) => needsYouKind(i) !== 'roadmap')
 }
 

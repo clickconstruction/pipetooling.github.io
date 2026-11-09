@@ -1,8 +1,8 @@
 ---
 name: "A named document from a Drive file, through the seat: the server reads the bytes, nothing rides through the agent"
 number: 286
-group: ready
-status: proposed 2026-11-08 · the owner's yes the same day · built as v2.6712 the same day (plan_person_doc → apply_person_doc take drive_file_id, server 0.41.0, migration 20261108190000, pushed and deployed 2026-11-08) · verified live on ZZ Test Hand the same evening (below) · left: the changed-bytes refusal, which needs a person to edit the file in Drive
+group: close
+status: proposed 2026-11-08 · the owner's yes the same day · built as v2.6712 the same day (plan_person_doc → apply_person_doc take drive_file_id, server 0.41.0, migration 20261108190000, pushed and deployed 2026-11-08) · verified live on ZZ Test Hand the same evening (below) · the changed-bytes refusal ran 2026-11-09 (the file edited in Drive from the dev's Chrome, the old plan refused naming the bytes as they read now; below) · nothing left but the owner's look
 summary: >
   A named document on an HR file is made three ways today: written through the seat (the text in
   the call), picked as a .md or .txt in the app, or pasted. A long document a session wants on the
@@ -11,7 +11,7 @@ summary: >
   than the document is worth. The mail door already does the right thing for a mail's attachment:
   the server reads the bytes and files them, the agent sees only the plan. Give named documents the
   same door for a file already in Drive.
-next: Edit zz-test-knowledge-base.md in the People drive (ZZ Test Hand › 2026-11-08 · ZZ TEST #286 Drive document source) and apply plan 844e0d3e4ae7… again from a dev MCP session: it should refuse naming the bytes as they read now. Then close the card.
+next: Nothing left but the owner's look; then delete the file. The test file in Drive now reads its edited 282 bytes, with the 177,592-byte original kept as version 1 under Manage versions for thirty days; restore it there if the made-up knowledge base is wanted again (the named document on the file keeps the whole text either way).
 ver: v2.6712
 size: S
 blocker: None.
@@ -87,3 +87,19 @@ On ZZ Test Hand (a made-up person), from a Claude session through the seat's HTT
   where punch list #285 searches its text as a file.*
 - Not run: editing the file in Drive and applying the old plan (the session has no Drive write; the unit test proves
   the hash moves with the text, and the server's refusal names the bytes read now). A person's one edit closes it.
+
+## The changed-bytes refusal (2026-11-09, dev MCP 0.45.0)
+
+The one check the evening of 2026-11-08 could not run, from a Claude session through the seat and the dev's own Chrome:
+
+- `plan_person_doc { person_id, drive_file_id, title }` on ZZ Test Hand read the file as it was: 177,592 bytes, sha256
+  `c75c870f61ba…`, sixty sections, plan `5f8f1f931f03…`.
+- The file was then given a new version in Drive (the folder's row › File information › Manage versions › Upload new
+  version, the same file id): a six-line `.md` of 282 bytes with the same first heading, sha256 `33b8c76713cf…`.
+- `apply_person_doc` with the old plan: refused, nothing written — *the plan you quoted (5f8f1f931f03…) is not what this
+  dry run gives now (762d3e221eb6…) — the payload differs, or the rows it touches changed since. Call plan_person_doc again
+  and read it. The file read now: zz-test-knowledge-base.md, 1 KB, 282 characters, sha256 33b8c76713cf… (modified
+  2026-11-09T04:25:35Z) — when the plan read other bytes, the file changed in Drive since.*
+- A fresh plan on the same id read the new bytes (282 characters, one heading, sha256 `33b8c76713cf…`) and was not applied,
+  so the file carries no second document from it. The evidence record's file row still names the original's sha256,
+  which is the point of the row: it says which bytes were filed.

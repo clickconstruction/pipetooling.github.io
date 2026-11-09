@@ -9,7 +9,7 @@
  * hands the words to the person's own phone or mail app any more. A caller that hands no job keeps the copy-only drafts.
  */
 import type { CSSProperties } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { firstName, type Contact } from '../../lib/contacts/kernel'
@@ -25,7 +25,9 @@ import {
   buildStripeInvoiceEmailSubject,
   buildStripeInvoiceSmsText,
 } from '../../lib/stripeInvoiceShareCopy'
+import { billPayCode } from '../../lib/billing/billPayCodeIo'
 import { billTextLink } from '../../lib/billing/billTextLink'
+import { isPayLinkId } from '../../lib/billing/payLink'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { TellCustomerSheet } from '../customers/TellCustomerSheet'
 import { EmailBillDraftModal } from './EmailBillDraftModal'
@@ -98,13 +100,14 @@ export type StripeInvoiceSharePanelProps = {
   io?: ReplyIo
   /** For a smoke: the Tell the customer sheet's reads and send (v2.6771). */
   tellIo?: TellCustomerIo
+  /** The bill's ten-letter code (#290, v2.6769), asked once per bill; a smoke hands a fake. Null = no code, the id's link. */
+  mintPayCode?: (invoiceId: string) => Promise<string | null>
 }
 
-
-function shareCopyFromProps(p: StripeInvoiceSharePanelProps) {
+function shareCopyFromProps(p: StripeInvoiceSharePanelProps, payCode: string | null) {
   return {
     customerName: p.customerName,
-    payUrl: billTextLink({ invoiceId: p.invoiceId, hostedInvoiceUrl: p.hostedInvoiceUrl }),
+    payUrl: billTextLink({ invoiceId: p.invoiceId, payCode, hostedInvoiceUrl: p.hostedInvoiceUrl }),
     amountLabel: p.amountLabel,
     jobName: p.jobName,
     hcpNumber: p.hcpNumber,
@@ -132,6 +135,22 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const [emailDraftBody, setEmailDraftBody] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
+  /** The bill's short code (#290): asked once when the row draws with a bill id; until it answers the link is the id's. */
+  const [payCode, setPayCode] = useState<string | null>(null)
+  const mintPayCode = p.mintPayCode ?? billPayCode
+  const invoiceIdForCode = isPayLinkId(p.invoiceId) ? p.invoiceId.trim().toLowerCase() : null
+  useEffect(() => {
+    if (!invoiceIdForCode) return
+    let live = true
+    void mintPayCode(invoiceIdForCode).then((code) => {
+      if (live) setPayCode(code)
+    })
+    return () => {
+      live = false
+    }
+    // The minter is stable per caller; the bill's id is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoiceIdForCode])
   const emailLabel = (p.emailButtonLabel ?? 'Send email…').trim() || 'Send email…'
   /** The doors through the company: the job and its customer at hand. */
   const doors = billShareDoorsOffered(p)
@@ -141,20 +160,20 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   /** Stripe's own link: what the office's Customer pay page opens. */
   const url = p.hostedInvoiceUrl.trim()
   /** The customer's link (#290): the short pay page on my.clickplumbing.com when the bill's id is at hand. */
-  const shareUrl = billTextLink({ invoiceId: p.invoiceId, hostedInvoiceUrl: p.hostedInvoiceUrl })
+  const shareUrl = billTextLink({ invoiceId: p.invoiceId, payCode, hostedInvoiceUrl: p.hostedInvoiceUrl })
 
   function openSmsBillDraft() {
     if (tellDoor) {
       setTellOpen(true)
       return
     }
-    setSmsDraftText(buildStripeInvoiceSmsText(shareCopyFromProps(p)))
+    setSmsDraftText(buildStripeInvoiceSmsText(shareCopyFromProps(p, payCode)))
     setSmsDraftOpen(true)
   }
 
   function openEmailBillDraft() {
     setEmailDraftSubject(buildStripeInvoiceEmailSubject(p.jobName))
-    setEmailDraftBody(buildStripeInvoiceEmailBody(shareCopyFromProps(p)))
+    setEmailDraftBody(buildStripeInvoiceEmailBody(shareCopyFromProps(p, payCode)))
     setEmailDraftOpen(true)
   }
 

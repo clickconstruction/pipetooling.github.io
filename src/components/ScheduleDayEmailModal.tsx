@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useModalStackEntry } from '../hooks/useModalStackEntry'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { schedulePreviewLines, type SchedulePreviewBlockRow, type SchedulePreviewLine } from '../lib/scheduleSharePreview'
+import { isOfficeRole } from '../lib/doorRoles'
 import { ScheduleEmailPreviewPanel } from './schedule/ScheduleEmailPreviewPanel'
 import { salaryZonedWallClockToUtcMs } from '../lib/salaryZonedWallClock'
 import { supabase } from '../lib/supabase'
@@ -43,7 +44,8 @@ export function ScheduleDayEmailModal({
 }) {
   const { showToast } = useToastContext()
   const { role } = useAuth()
-  const isDev = role === 'dev'
+  // Punch list #188 row 36 (v2.6758): dispatchers send the day's schedule, so any office role picks the recipient (a dev alone before).
+  const canPickRecipient = isOfficeRole(role)
 
   const [timeLocal, setTimeLocal] = useState('17:00')
   const [busy, setBusy] = useState(false)
@@ -55,7 +57,7 @@ export function ScheduleDayEmailModal({
   const [previewLines, setPreviewLines] = useState<SchedulePreviewLine[]>([])
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
-  const previewRecipientId = isDev ? recipientUserId : authUserId
+  const previewRecipientId = canPickRecipient ? recipientUserId : authUserId
 
   const dateLabel = useMemo(() => {
     const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(workDateYmd.trim())
@@ -84,7 +86,7 @@ export function ScheduleDayEmailModal({
   }, [open, workDateYmd, authUserId])
 
   useEffect(() => {
-    if (!open || !isDev) {
+    if (!open || !canPickRecipient) {
       setUserOptions([])
       setUsersLoadError(null)
       return
@@ -121,7 +123,7 @@ export function ScheduleDayEmailModal({
     return () => {
       cancelled = true
     }
-  }, [open, isDev])
+  }, [open, canPickRecipient])
 
   const resetAndClose = useCallback(() => {
     setError(null)
@@ -221,7 +223,7 @@ export function ScheduleDayEmailModal({
       setError('Choose a time in the future (Central).')
       return
     }
-    const targetId = isDev ? recipientUserId : authUserId
+    const targetId = canPickRecipient ? recipientUserId : authUserId
     setBusy(true)
     setError(null)
     try {
@@ -250,7 +252,7 @@ export function ScheduleDayEmailModal({
     onScheduled,
     resetAndClose,
     showToast,
-    isDev,
+    canPickRecipient,
     recipientUserId,
     authUserId,
     recipientLabel,
@@ -258,7 +260,7 @@ export function ScheduleDayEmailModal({
   ])
 
   const handleSendSoon = useCallback(async () => {
-    const targetId = isDev ? recipientUserId : authUserId
+    const targetId = canPickRecipient ? recipientUserId : authUserId
     setBusy(true)
     setError(null)
     try {
@@ -285,7 +287,7 @@ export function ScheduleDayEmailModal({
     onScheduled,
     resetAndClose,
     showToast,
-    isDev,
+    canPickRecipient,
     recipientUserId,
     authUserId,
     recipientLabel,
@@ -316,7 +318,7 @@ export function ScheduleDayEmailModal({
         style={{
           background: 'var(--surface)',
           borderRadius: 8,
-          maxWidth: isDev ? 480 : 420,
+          maxWidth: canPickRecipient ? 480 : 420,
           width: '100%',
           boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
           padding: '1rem 1.1rem',
@@ -327,7 +329,7 @@ export function ScheduleDayEmailModal({
           Email schedule
         </h2>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--text-600)', lineHeight: 1.4 }}>
-          {isDev && recipientUserId !== authUserId ? (
+          {canPickRecipient && recipientUserId !== authUserId ? (
             <>
               Send a copy of the dispatch schedule for <strong>{dateLabel}</strong> to the selected user’s
               email at the wall time below. Content matches what they can see on Schedule Dispatch. Times are{' '}
@@ -341,7 +343,7 @@ export function ScheduleDayEmailModal({
             </>
           )}
         </p>
-        {isDev ? (
+        {canPickRecipient ? (
           <div style={{ marginBottom: '0.65rem' }}>
             <span
               style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}
@@ -397,7 +399,7 @@ export function ScheduleDayEmailModal({
           multiDay={false}
           groupByPerson={false}
           caption={
-            isDev && recipientUserId !== authUserId
+            canPickRecipient && recipientUserId !== authUserId
               ? 'What that person can see on the schedule right now; the email is built again at send time.'
               : 'What you can see on the schedule right now; the email is built again at send time.'
           }
@@ -441,7 +443,7 @@ export function ScheduleDayEmailModal({
               color: 'var(--text-blue-700)',
               cursor: busy ? 'not-allowed' : 'pointer',
             }}
-            disabled={busy || (isDev && userOptions.length === 0)}
+            disabled={busy || (canPickRecipient && userOptions.length === 0)}
             onClick={() => void handleSendSoon()}
           >
             Queue soon
@@ -458,7 +460,7 @@ export function ScheduleDayEmailModal({
               fontWeight: 600,
               cursor: busy ? 'not-allowed' : 'pointer',
             }}
-            disabled={busy || (isDev && userOptions.length === 0)}
+            disabled={busy || (canPickRecipient && userOptions.length === 0)}
             onClick={() => void handleSchedule()}
           >
             Schedule

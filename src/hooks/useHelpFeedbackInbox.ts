@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { isOwnerOrDev } from '../lib/doorRoles'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from './useAuth'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -41,7 +42,8 @@ export function useHelpFeedbackInbox() {
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
 
-  const helpFeedbackEligible = role === 'dev' && !!authUser?.id
+  // Punch list #188 row 34 (v2.6758): the guides' feedback is about his crew's confusion, so the owner reads it with a dev.
+  const helpFeedbackEligible = isOwnerOrDev(role) && !!authUser?.id
   const [rows, setRows] = useState<HelpFeedbackInboxRow[]>([])
   const [loading, setLoading] = useState(false)
   const [closingId, setClosingId] = useState<string | null>(null)
