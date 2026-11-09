@@ -300,7 +300,9 @@ export function buildPersonTimeline(input: PersonTimelineInput): PersonTimelineL
         lane: 'paper',
         source: 'contract',
         ymd: signedYmd,
-        loggedAt: c.signed_at,
+        // signed_at is a date with no clock; the clock of the signing is the consent's. A bare date read as an instant would
+        // say "written" the evening before in Central, so it is not kept as one.
+        loggedAt: c.signer_consented_at ?? (c.signed_at && c.signed_at.length > 10 ? c.signed_at : null),
         kindWords: c.doc_type === 'hours_statement' ? 'hours statement · signed' : 'signed',
         what: c.document_name,
         notes,
