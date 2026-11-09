@@ -108,7 +108,7 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(chip.words).toBe('Waiting on Robert · by Oct 15 · 2d')
     expect(chip.sentence).toBe('August’s § 53.056 notice · Waiting on Robert · since Oct 7')
     expect(chip.door).toEqual({ to: 'desk', jobId: 'j273', kind: 'notice', pile: 'awaiting' })
-    expect(lienArChipHref(chip.door)).toBe('/jobs?tab=stages&liendesk=1&liendeskJob=j273&kind=notice&liendeskPile=awaiting')
+    expect(lienArChipHref(chip.door)).toBe('/lien-desk?tab=notices&job=j273&pile=awaiting')
     // The leader’s own row says approve.
     expect(lienArChipFor(input({ nextUp: [row({ sub: 'Waiting on your approval' })], entry: entry() }))!.words).toBe('Approve the notice · by Oct 15 · 2d')
   })
