@@ -100,7 +100,10 @@ interface PeopleUsersTabProps {
   restoringId: string | null
   isAlreadyUser: (email: string | null) => boolean
   invitingId: string | null
-  setInviteConfirm: (person: Person | null) => void
+  /** The ⋯ menu's Invite as user on a roster record with no users row (a straggler): the page confirms and calls invite-user. */
+  inviteAsUser: (person: Person) => void
+  /** v2.6789: Delete… on a users row with no login, for the people who may archive; undefined hides the press. */
+  deleteFreshPerson?: (row: { userId: string; name: string }) => void
   /** Account on the desk, PR D1: reload the roster after an archived login is restored here. */
   reloadRoster?: () => void
 }
@@ -137,7 +140,8 @@ export function PeopleUsersTab({
   restoringId,
   isAlreadyUser,
   invitingId,
-  setInviteConfirm,
+  inviteAsUser,
+  deleteFreshPerson,
   reloadRoster,
 }: PeopleUsersTabProps) {
   const { pushEnabledUserIds, contractSigningStatusByPersonName, personProjects } = useUsersTabRowSignals({ canSeePushStatus, canAccessContracts })
@@ -160,6 +164,14 @@ export function PeopleUsersTab({
   const [combineSource, setCombineSource] = useState<Person | null>(null)
   // Person Desk door (v2.2701): the name opens the per-person drawer for office roles.
   const personDesk = useOptionalPersonDesk()
+  // v2.6789: the way back to the desk closed last — the dotted name and ⋯ → Open desk are there, but a first-timer who
+  // closed the drawer after a hire did not find them. Shown while the desk is shut.
+  const lastClosedDesk = personDesk?.lastClosed ?? null
+  const backToDesk = useMemo(() => {
+    if (!personDesk?.canOpen || !lastClosedDesk || personDesk.payload) return null
+    const who = lastClosedDesk.displayName?.trim() || 'their'
+    return { label: `Back to ${who === 'their' ? 'their' : `${who}'s`} desk`, open: () => personDesk.open(lastClosedDesk) }
+  }, [personDesk, lastClosedDesk])
   const access = usePeopleAccess(authUserId)
   // Archived logins (PR D1): who may restore one is who may archive one (archive-user / restore-user).
   const { role: authRole, readOnly: authReadOnly } = useAuth()
@@ -387,12 +399,23 @@ export function PeopleUsersTab({
         })
       }
       // Punch list #260 (v2.6518): a person with no sign-in behind their row gets one from their desk, on the same id.
+      // v2.6789: the door opens the desk with the Attach form already up.
       if (isDev && item.login_attached_at === null && personDesk?.canOpen) {
         out.push({
           key: 'attach',
           label: 'Attach a login',
           title: 'Give them a sign-in on this same person: their hours, Charged as and pay stay where they are',
-          onClick: () => personDesk.open({ userId: item.id, displayName: item.name, section: 'access' }),
+          onClick: () => personDesk.open({ userId: item.id, displayName: item.name, section: 'access', flow: 'attach_login' }),
+        })
+      }
+      // v2.6789: a row made by mistake goes for good when nothing points at it; a row with history is handed to Archive.
+      if (deleteFreshPerson && item.login_attached_at === null && item.id !== authUserId) {
+        out.push({
+          key: 'delete',
+          label: 'Delete…',
+          danger: true,
+          title: 'For a row made by mistake: the person goes for good when nothing points at them yet. Someone with hours or pay is archived instead.',
+          onClick: () => deleteFreshPerson({ userId: item.id, name: item.name }),
         })
       }
       return out
@@ -406,7 +429,7 @@ export function PeopleUsersTab({
         label: invitingId === person.id ? 'Sending…' : 'Invite as user',
         disabled: !person.email?.trim() || invitingId === person.id,
         title: !person.email?.trim() ? 'Add an email first' : 'Give them a login by email',
-        onClick: () => setInviteConfirm(person),
+        onClick: () => inviteAsUser(person),
       })
     }
     out.push({ key: 'edit', label: 'Edit', onClick: () => openEdit(person) })
@@ -686,6 +709,11 @@ export function PeopleUsersTab({
               aria-label="Search people on Users tab"
               style={{ flex: '1 1 8rem', minWidth: 0, padding: '0.45rem 0.7rem', fontSize: '0.9375rem', lineHeight: 1.35, border: '1px solid var(--border-strong)', borderRadius: 8, boxSizing: 'border-box' }}
             />
+            {backToDesk ? (
+              <button type="button" onClick={backToDesk.open} className="activeAccountsCard__btnSecondary" style={{ whiteSpace: 'nowrap', padding: '0.45rem 0.8rem', fontSize: '0.9375rem', borderRadius: 8 }} title="Reopen the desk you closed last">
+                {backToDesk.label}
+              </button>
+            ) : null}
             {canCreatePeopleInRoster && onOpenHire ? (
               <button type="button" onClick={() => onOpenHire()} title="Hire someone — login, roster row, pay, workday, packet" style={{ whiteSpace: 'nowrap', padding: '0.45rem 0.8rem', fontSize: '0.9375rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
                 + Hire
@@ -786,6 +814,11 @@ export function PeopleUsersTab({
           >
             Archived ({archivedCount})
           </button>
+          {backToDesk ? (
+            <button type="button" onClick={backToDesk.open} className="activeAccountsCard__btnSecondary" style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem' }} title="Reopen the desk you closed last">
+              {backToDesk.label}
+            </button>
+          ) : null}
           {canCreatePeopleInRoster && onOpenHire ? (
             <button type="button" onClick={() => onOpenHire()} style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }} title="One form: the person, their login, pay, workday and paperwork (v2.3701)">
               + Hire

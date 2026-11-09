@@ -23,6 +23,8 @@ Sign-in banned · hidden from active lists and assignment pickers · taken off o
 
 A person with no login is archived the same way. Their row leaves every list even though there is no sign-in to ban.
 
+A person made by mistake is deleted, not archived. While nothing points at them yet, their desk's **Status** row shows {{button:outline|Delete…}} beside Archive. The row and the roster record go for good. See [made a mistake](/help/hire-someone#made-a-mistake).
+
 An Away note changes one thing. When one is on for the person, their sign-in stays open to that one screen instead of being banned. They list under **Away** on People → Users, above Archived, with the day back. See [leave a note for a teammate who is away](/help/leave-a-note-for-a-teammate-who-is-away).
 
 ## Restore

@@ -2,7 +2,7 @@
 title: add someone to the roster
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: add person, roster, no login, external sub, external helper, invite as user, users tab, login chip, no login chip, needs attention, filter, add to roster, attach a login, day labor
+keywords: add person, roster, no login, external sub, external helper, invite as user, users tab, login chip, no login chip, needs attention, filter, add to roster, attach a login, day labor, delete a person, back to desk
 order: 19
 ---
 People → **Users** lists everyone the company works with. That means the ones who sign in to the app and the ones who do not.
@@ -19,7 +19,7 @@ Every row reads the same way, left to right:
 - {{chip:gray|login}} or {{chip:gray|no login}} says whether they can sign in. A person with no login still has everything else: hours, a portal for subs, paperwork, pay, a truck. A sub is a subcontractor.
 - Contact, then the **status column**. On a wide screen it is three small cells under a ***Hours · Paper · Acct*** header. The clock shows how many sessions wait for approval. The document shows how many paperwork items need you: unsent, expiring, expired or unsigned. That cell goes red when something has expired. The person is for the account: no roster row, no login, no push, portal on. Hover a cell for the words. Tap the clock to open **Hours approvals** pinned to that person, ready to approve. Tap the document or the person to open their desk at that section. Empty cells stay faint so the columns line up.
 - On a phone the same facts fold into two controls. One is the clock counter. The other is a {{chip:yellow|Needs you · 2}} pill or **Clear**. Tap the pill and the row unfolds one line per item. Each line has a button that opens the right desk section. The buttons are {{button:blue|Send ›}}, {{button:blue|Create roster row ›}}, {{button:outline|How to enable ›}}.
-- The **⋯** menu holds Open desk, Edit, Link account, Combine and Archive, depending on the row. A dev also sees **Invite as user** on a row with no login.
+- The **⋯** menu holds Open desk, Edit, Link account, Combine and Archive, depending on the row. A dev also sees **Attach a login** on a row with no login. The people who may archive also see **Delete…** on a row with no login. Delete is for a person made by mistake. See [made a mistake](/help/hire-someone#made-a-mistake).
 
 Groups are still by kind. Each header says how many have a login, for example *Subcontractors 16 · 2 with a login*. Long groups fold the rows with no login behind **+ N more without a login**. Searching or the **No login** filter opens every fold.
 
@@ -27,8 +27,10 @@ Groups are still by kind. Each header says how many have a login, for example *S
 
 Tap {{button:blue|+ Add to roster}} in the toolbar, or **Add** on a group. Pick what they are, type the name, and add an email and phone if you have them. A person with an account gets the account's phone when you leave it blank. Add makes the person with **no login**. The person can hold clock sessions, a Charged as, a portal, paperwork, sub sheets and pay from that day. A login can be attached to the same person later. Two boxes on the same dialog do the usual next steps:
 
-- **Also invite them to sign in** sends the invite email. It needs an email. The link in that email opens a **Welcome to ClickTooling** page where they choose a password once. Say they come back to that page later while already signed in. Then it says **You're already set up** with a {{button:blue|Sign in}} button and *Not you? Sign out*. It never asks for a new password, so nobody can reset an account by re-opening the link. There is no self-service sign-up page. Everyone joins through this invite or through ***Accounts · dev*** → Manually add user.
-- **Open their desk after saving** lands you on their desk. For a sub, that is where the portal globe and {{button:blue|Copy link}} are.
+- **Also attach a login** is a dev's box. It needs an email. Right after the save, the login is attached to the same person and a sign-in email goes out. The link in that email opens a page where they choose a password once. Say they come back to that page later while already signed in. Then it says **You're already set up** with a {{button:blue|Sign in}} button and *Not you? Sign out*. It never asks for a new password, so nobody can reset an account by re-opening the link. There is no self-service sign-up page. Everyone joins through a login a dev attaches, or through the Hire form's invite.
+- **Open their desk after saving** lands you on their desk. For a sub, that is where the portal globe and {{button:blue|Copy link}} are. The desk opens once the form has closed, so only one window is open at a time.
+
+Closed the desk and want it back? The toolbar shows {{button:outline|Back to Rio's desk}} until you open it again.
 
 :::example A new external sub
 Add to roster → **Subcontractor** → name and phone → leave *invite* unticked → Add. Their desk opens; tap the globe on the Portal row, copy the link, text it. Assign the Subs packet on the Paperwork row. Done. No login was needed, and one can be attached later.

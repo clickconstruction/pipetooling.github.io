@@ -23,6 +23,8 @@ import {
 } from '../../../lib/people/accountWrites'
 import type { PersonDeskUserRow } from '../../../hooks/usePersonDesk'
 import { attachEmailProblem, attachLogin, removeLogin } from '../../../lib/people/attachLogin'
+import { canOfferFreshDelete, runFreshDelete } from '../../../lib/people/freshPersonDelete'
+import { useOptionalPersonDesk } from '../../../contexts/PersonDeskContext'
 import { MergeDuplicateDialog } from './MergeDuplicateDialog'
 import { useHiringColumnShares } from '../../../hooks/useHiringColumnShares'
 import { sharedColumnsLine } from '../../../lib/hiring/columnShares'
@@ -67,6 +69,7 @@ export function PersonDeskAccessSection({
   onChanged,
   onOpenFlow,
   onBringBack,
+  openAttach,
 }: {
   user: PersonDeskUserRow | null
   viewer: PersonDeskViewer
@@ -77,8 +80,11 @@ export function PersonDeskAccessSection({
   onOpenFlow?: (mode: 'start' | 'end') => void
   /** Bring back (v2.6523): on an archived account whose employment ended, Bring back… takes Restore's place. */
   onBringBack?: () => void
+  /** v2.6789: a door that hands a person with no login straight to the Attach form (the Hire form's and the roster form's end). */
+  openAttach?: boolean
 }) {
   const { showToast } = useToastContext()
+  const personDesk = useOptionalPersonDesk()
   const confirmDialog = useConfirmDialog()
   const [busy, setBusy] = useState<string | null>(null)
   /** null = not editing. */
@@ -132,6 +138,17 @@ export function PersonDeskAccessSection({
   // Attach a login (punch list #260, v2.6518): null = the form is closed.
   const [attachDraft, setAttachDraft] = useState<string | null>(null)
   const [attachError, setAttachError] = useState<string | null>(null)
+  // v2.6789: a door that names the Attach step opens the form with the address filled, once per person, so the dev who
+  // just hired without the invite lands on the one press left and nothing else opens on top.
+  const attachUserId = user?.id ?? null
+  const attachNoLogin = user?.login_attached_at === null
+  const attachEmail = user?.email ?? ''
+  const attachEditable = canEditAccount(viewer)
+  useEffect(() => {
+    if (!openAttach || !attachUserId || !attachNoLogin || !attachEditable) return
+    setAttachError(null)
+    setAttachDraft((d) => d ?? attachEmail)
+  }, [openAttach, attachUserId, attachNoLogin, attachEditable, attachEmail])
   // PR D2: the Hiring columns shared with them, the line the Active Accounts window's Edit showed (dev reads).
   const { shares: hiringShares, roles: hiringColumns } = useHiringColumnShares(viewer.isDev)
 
@@ -274,6 +291,30 @@ export function PersonDeskAccessSection({
       },
       `${displayName} archived`,
     )
+  }
+
+  // v2.6789: a row made by mistake goes for good — the dry run first, the typed confirm, then the delete; a row with
+  // history is named with what points at it and handed to Archive instead. One window at a time.
+  async function deleteFresh() {
+    setBusy('delete')
+    try {
+      const outcome = await runFreshDelete({
+        client: supabase,
+        userId: u.id,
+        name: displayName,
+        confirm: (opts) => confirmDialog(opts),
+        archiveInstead: () => (onOpenFlow ? onOpenFlow('end') : void archiveDirect()),
+      })
+      if (outcome === 'deleted') {
+        showToast(`${displayName} deleted. The roster row went with them.`, 'success')
+        personDesk?.close()
+        onChanged()
+      }
+    } catch (e) {
+      showToast(await fnErrorMessage(e), 'error')
+    } finally {
+      setBusy(null)
+    }
   }
 
   async function restore() {
@@ -615,6 +656,18 @@ export function PersonDeskAccessSection({
             {canArchiveAccount(viewer) && !isSelf && (u.archived_at || awayNoteOn) ? (
               <button type="button" style={deskBtn(BTN_QUIET, busy != null)} disabled={busy != null} onClick={() => setAwayNoteOpen(true)} title="The one screen they see while they are away: a note, a countdown to the day back, where we are and the office line.">
                 {awayNoteOn ? 'Edit the note…' : 'Leave a note…'}
+              </button>
+            ) : null}
+            {canOfferFreshDelete({ loginAttachedAt: u.login_attached_at, isSelf, archived: Boolean(u.archived_at), viewer }) ? (
+              <button
+                type="button"
+                style={deskBtn(BTN_QUIET, busy != null)}
+                disabled={busy != null}
+                onClick={() => void deleteFresh()}
+                data-testid="delete-fresh"
+                title="For a row made by mistake: the person goes for good when nothing points at them yet. Someone with hours or pay is archived instead."
+              >
+                {busy === 'delete' ? 'Deleting…' : 'Delete…'}
               </button>
             ) : null}
             {canArchiveAccount(viewer) && !isSelf ? (
