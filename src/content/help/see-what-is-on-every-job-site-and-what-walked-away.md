@@ -19,6 +19,8 @@ The Needs you card on the Dashboard carries two lines for the office. One names 
 
 Under the job's name one row reads the material's path left to right. It reads {{chip:blue|1,250 came in}} → {{chip:green|1,105 on site}} → {{chip:gray|120 used}} → {{chip:yellow|25 missing}}. Each figure is in its own colour. An amber badge counts what waits for a hand. A red badge is the money that walked away this week. Press a figure to open its section.
 
+A very large job can pass 5,000 rows in its ledger. Then History and the boxes show the newest 5,000 rows. The totals come from the database, and a line under the job's name says so.
+
 ## On site
 
 The boxes sit grouped by their place on the site. **All**, **Due a count** and **Can't find** narrow them. **List** and **Map** at the row's end switch between the boxes and the site map with their pins.

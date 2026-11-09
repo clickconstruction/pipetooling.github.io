@@ -39,6 +39,16 @@ describe('buildFirmPacketPrintHtml — the sample matter', () => {
     expect(html).toContain('a settlement nets the office more than a full win at trial')
     expect(html).toContain(`after your ${Math.round(packet.worth.contingencyPct * 100)}%`)
   })
+  it('leaves a counsel-only document out of the print and says so (v2.6720, punch list #288)', () => {
+    const { payload, m, packet } = sample()
+    const docs = m.documents.map((d, i) => (i === 0 ? { ...d, counselOnly: true } : d))
+    const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries, documents: docs, heldDocumentCount: 0 }, particulars: payload.particulars })
+    expect(docs.length).toBeGreaterThan(1)
+    expect(html).not.toContain(docs[0]!.title)
+    expect(html).toContain(docs[1]!.title)
+    expect(html).toContain('1 document for counsel alone is on the portal, not in this print.')
+    expect(html).toContain(`<td class="num">${docs.length - 1}</td>`)
+  })
   it('lists the documents from the office under Section D and letters them as one exhibit (v2.4810)', () => {
     const { payload, m, packet } = sample()
     const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries, documents: m.documents, heldDocumentCount: m.heldDocumentCount }, particulars: payload.particulars })

@@ -436,7 +436,9 @@ serve(async (req) => {
     // v2.5846: the paper's own day and its state travel too; before migration 20261025150000 is pushed the read falls back to the old columns.
     // v2.6716 (punch list #288): a text document's words travel too (`text_document_id` → `documents`); before migration 20261108210000 the read falls back once more.
     const docSelect = (cols: string) => admin.from('legal_matter_documents').select(cols).in('matter_id', matterIds).is('voided_at', null).order('added_at')
-    let docRead = await docSelect('id, matter_id, title, shows, storage_path, mime, size_bytes, added_by, added_at, held_reason, dated_on, state, sent_on, sent_how, sent_to, proof_document_id, received_on, text_document_id')
+    // v2.6720: the counsel-only mark travels (the firm is who it is for; the page wears the lock, the print leaves it out); one more fallback before migration 20261108230000.
+    let docRead = await docSelect('id, matter_id, title, shows, storage_path, mime, size_bytes, added_by, added_at, held_reason, dated_on, state, sent_on, sent_how, sent_to, proof_document_id, received_on, text_document_id, counsel_only')
+    if (docRead.error) docRead = await docSelect('id, matter_id, title, shows, storage_path, mime, size_bytes, added_by, added_at, held_reason, dated_on, state, sent_on, sent_how, sent_to, proof_document_id, received_on, text_document_id')
     if (docRead.error) docRead = await docSelect('id, matter_id, title, shows, storage_path, mime, size_bytes, added_by, added_at, held_reason, dated_on, state, sent_on, sent_how, sent_to, proof_document_id, received_on')
     if (docRead.error) docRead = await docSelect('id, matter_id, title, shows, storage_path, mime, size_bytes, added_by, added_at, held_reason')
     const { data: docRows, error: docErr } = docRead
