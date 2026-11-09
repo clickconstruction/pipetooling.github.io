@@ -6,6 +6,7 @@
  * nothing to say: at zero, or a count with no row behind it (the warmth totals, the GC week).
  * Pure: rows in, one line or null out.
  */
+import { completeNoBillJobNumber, type CompleteBillGap } from '../quickfillCompleteNoBill'
 
 function money(n: number): string {
   return `$${Math.round(Math.abs(n)).toLocaleString('en-US')}`
@@ -122,11 +123,14 @@ export function undatedBillsNextLine(bills: ReadonlyArray<{ customerName: string
   return `Date ${who}'s ${money(b.amount)} bill${on ? ` on ${on}` : ''}`
 }
 
-/** Complete, no Total Bill: the lowest job number first. */
-export function completeNoBillNextLine(jobs: ReadonlyArray<{ hcp_number: string | null; job_name: string | null }>): string | null {
-  const j = [...jobs].sort((a, b) => (a.hcp_number ?? '').localeCompare(b.hcp_number ?? '', undefined, { numeric: true }))[0]
-  if (!j) return null
-  return `Set the Total Bill on ${[j.hcp_number, j.job_name].filter((s) => (s ?? '').trim()).join(' ') || 'the job'}`
+/** Complete, no Total Bill: the first row (no Total Bill first, then the lowest number), led by what its bill lacks. */
+export function completeNoBillNextLine(rows: ReadonlyArray<{ job: { hcp_number: string | null; click_number?: string | null; job_name: string | null }; gaps: ReadonlyArray<CompleteBillGap> }>): string | null {
+  const r = rows[0]
+  if (!r) return null
+  const job = [completeNoBillJobNumber(r.job), r.job.job_name].filter((s) => (s ?? '').trim()).join(' ') || 'the job'
+  // The rows come no Total Bill first (v2.6750, punch list #176): a row's first gap is the verb; the charges note never lists a job alone.
+  if (r.gaps[0] === 'work') return `Add the Specific Work lines to ${job}`
+  return `Set the Total Bill on ${job}`
 }
 
 /** Unassigned field time: the oldest day with hours on no job. */

@@ -84,6 +84,10 @@ describe('SubmittalProcurementPanel', () => {
     // v2.4581 · four steps, every line counted once: WH-1 is approved and not ordered, BFP-1 is on order and late.
     await waitFor(() => expect(stepWords()).toEqual(['Waiting on the GC0', 'To order1first by 10/06', 'On order11 late', 'On site0']))
     expect(screen.getByTestId('procurement-next').textContent).toMatch(/^Order 1 part by 10\/06.*\. 1 part on order arrives late\.$/)
+    // v2.6740 (punch list #209): the bid is job j1, so the On site step's note opens the job's Materials page.
+    const door = screen.getByTestId('procurement-on-site-door')
+    expect(door.textContent).toBe('Nothing is marked delivered yet. The cages and boxes on the site: Materials on site')
+    expect(within(door).getByRole('link', { name: 'Materials on site' }).getAttribute('href')).toBe('/jobs?tab=materials&job=j1')
     expect(screen.getByTestId('procurement-last-update').textContent).toBe('No update sent yet. The first one sends every row.')
     expect(screen.getByTestId('procurement-send').textContent).toBe('Send update…')
     // Before the first update no row is painted as changed.
