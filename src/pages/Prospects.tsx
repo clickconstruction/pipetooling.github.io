@@ -670,9 +670,17 @@ export default function Prospects() {
         setTopTab('customers')
         setActiveTab('follow-up')
       }
-    } else if (tab === 'research') {
+    } else if (tab === 'permits' || tab === 'research') {
+      // The Permits tab (punch list #292; named Research until v2.6787, so the old key still opens it).
       if (canResearch) {
         setTopTab('research')
+        if (tab === 'research') {
+          setSearchParams((p) => {
+            const next = new URLSearchParams(p)
+            next.set('tab', 'permits')
+            return next
+          }, { replace: true })
+        }
       } else {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
@@ -705,8 +713,8 @@ export default function Prospects() {
         teamProspectsAccess: canOpenHiring,
         remembered: readRememberedProspectsTopTab(),
       })
-      // An estimator with no Prospects flag has one door here: Research (punch list #292).
-      const dest = landing === 'follow-up' && !followUpOk && canResearch ? 'research' : landing
+      // An estimator with no Prospects flag has one door here: Permits (punch list #292).
+      const dest = landing === 'follow-up' && !followUpOk && canResearch ? 'permits' : landing
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', dest)
@@ -955,7 +963,7 @@ export default function Prospects() {
     setTopTab('research')
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
-      next.set('tab', 'research')
+      next.set('tab', 'permits')
       next.delete('prospect_id')
       return next
     })
@@ -3199,7 +3207,7 @@ export default function Prospects() {
           You don’t have access to Prospects. Ask a dev to open your desk in People and tick Prospects under Extra access.
         </p>
         <p style={{ color: 'var(--text-muted)' }}>
-          The permit ledger is open to you: <Link to="/prospects?tab=research">Research</Link>.
+          The permit ledger is open to you: <Link to="/prospects?tab=permits">Permits</Link>.
         </p>
       </div>
     )
@@ -3223,7 +3231,7 @@ export default function Prospects() {
             )}
             {canResearch && (
               <button type="button" onClick={openResearchTab} style={pageTabStyle(topTab === 'research')}>
-                Research
+                Permits
               </button>
             )}
           </div>
