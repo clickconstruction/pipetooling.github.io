@@ -176,9 +176,9 @@ describe('the subject, the link and the groups', () => {
   })
 
   it('opens the desk, or the desk on a GC’s first job', () => {
-    expect(lienStatusDeskPath(OCT1)).toBe('/jobs?tab=stages&liendesk=1')
+    expect(lienStatusDeskPath(OCT1)).toBe('/lien-desk')
     const k = knight()
-    expect(lienStatusDeskPath(k)).toBe(`/jobs?tab=stages&liendesk=1&liendeskJob=${k.jobs.find((j) => j.number === '898')!.jobId}`)
+    expect(lienStatusDeskPath(k)).toBe(`/lien-desk?tab=notices&job=${k.jobs.find((j) => j.number === '898')!.jobId}`)
   })
 
   it('groups by GC, most money first, each GC soonest first then biggest', () => {
@@ -198,7 +198,7 @@ describe('the team email', () => {
     expect(html).toContain('We are about to send lien notices on 23 jobs.')
     expect(html).toContain('Waiting for your approval')
     expect(html).toContain('since Sep 24')
-    expect(html).toContain('href="https://clicktooling.com/jobs?tab=stages&amp;liendesk=1"')
+    expect(html).toContain('href="https://clicktooling.com/lien-desk"')
     expect(html).toContain('Past the window')
     expect(html).toContain('18 jobs passed their lien window. $43,022 is still owed on them. Collections has them.')
     expect(html).toContain('Grace sent this from the Lien desk in ClickTooling.')
@@ -234,7 +234,7 @@ describe('the team email', () => {
     expect(text).toContain('RMC- Dudley Mason, 9 jobs, $46,391, first by Oct 15')
     expect(text).toContain('  • 853 Service Visit, 628 Terrell Rd, Aug, $595, to draft')
     expect(text).toContain('• 838 Bruce Hall, $350. We contracted with the owner. It needs the owner of record and the legal description.')
-    expect(text).toContain('Open the Lien desk: https://clicktooling.com/jobs?tab=stages&liendesk=1')
+    expect(text).toContain('Open the Lien desk: https://clicktooling.com/lien-desk')
   })
 })
 
@@ -312,7 +312,7 @@ describe('the houses list — lien jobs where a supply house is also owed (v2.44
     const text = lienStatusEmailText(P, { appUrl: 'https://clicktooling.com', senderName: 'Grace', note: 'For Friday.' })
     expect(text).toContain('Grace wrote: For Friday.')
     expect(text).toContain('4 lien jobs still owe a supply house.')
-    expect(text).toContain('Open the Lien desk: https://clicktooling.com/jobs?tab=stages&liendesk=1')
+    expect(text).toContain('Open the Lien desk: https://clicktooling.com/lien-desk')
     expect(text).not.toContain('about to send')
     const html = lienStatusEmailHtml(P, { appUrl: 'https://clicktooling.com', senderName: 'Grace' })
     expect(html).toContain('4 lien jobs still owe a supply house.')

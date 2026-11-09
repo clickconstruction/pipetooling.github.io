@@ -16,12 +16,12 @@ describe('buildHeldLienLines', () => {
       [],
       TODAY,
     )
-    expect(lines.get('a')).toEqual({ words: 'On the Lien desk · our notice is due by Oct 15 · $18,400 unpaid', href: '/jobs?tab=stages&liendesk=1&liendeskJob=a', kind: 'notice', urgent: false })
+    expect(lines.get('a')).toEqual({ words: 'On the Lien desk · our notice is due by Oct 15 · $18,400 unpaid', href: '/lien-desk?tab=notices&job=a', kind: 'notice', urgent: false })
   })
 
   it('falls to the lien date when no notice is owed, and opens the Affidavits pane', () => {
     const lines = buildHeldLienLines([{ job_id: 'b', deadline: '2026-10-15', noticed: true, open_balance: 900 }], [{ job_id: 'b', deadline: '2026-10-08', filed: false, open_balance: 900 }], TODAY)
-    expect(lines.get('b')).toEqual({ words: 'On the Lien desk · our lien is due by Oct 8 · $900 unpaid', href: '/jobs?tab=stages&liendesk=1&liendeskJob=b&kind=affidavit', kind: 'lien', urgent: true })
+    expect(lines.get('b')).toEqual({ words: 'On the Lien desk · our lien is due by Oct 8 · $900 unpaid', href: '/lien-desk?tab=affidavits&job=b', kind: 'lien', urgent: true })
   })
 
   it('a notice owed speaks before the lien date', () => {

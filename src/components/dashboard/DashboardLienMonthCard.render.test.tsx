@@ -42,7 +42,7 @@ describe('DashboardLienMonthCard', () => {
     expect(screen.getByTestId('lien-month-card-now').textContent).toBe('Noticesdays 6 to 91 to send · 0 sent1 to draft')
     expect(screen.getByTestId('lien-month-card-slipped').textContent).toBe('1 slippedRidgeway Builders · 650· 1 copy to mail')
     expect(screen.getByTestId('lien-month-card-next').textContent).toBe('Next month1 notice')
-    expect(screen.getByTestId('lien-month-card-desk').getAttribute('href')).toBe('/jobs?tab=stages&liendesk=1')
+    expect(screen.getByTestId('lien-month-card-desk').getAttribute('href')).toBe('/lien-desk')
   })
 
   it('a clean quiet zone reads green', () => {

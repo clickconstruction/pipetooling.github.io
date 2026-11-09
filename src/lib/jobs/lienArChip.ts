@@ -19,6 +19,7 @@
  * release) — the rule the Lien window's own next-step card follows (`lienWindowNextStep.ts`).
  */
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
+import { lienDeskHref } from '../lien/lienDeskRoute'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { JobLienFilingRow } from './lienDeadlines'
 import type { LetterTwoStatus } from './lienLetterTwo'
@@ -461,9 +462,6 @@ export function lienArLedgerTone(tone: LienArTone): LedgerTone {
 /** Where the chip goes: the Lien desk on the job's pane and pile, or the job's Lien window on a tab. */
 export function lienArChipHref(door: LienArDoor): string {
   if (door.to === 'window') return lienWindowHref(door.jobId, door.tab)
-  const p = new URLSearchParams({ tab: 'stages', liendesk: '1' })
-  if (door.jobId) p.set('liendeskJob', door.jobId)
-  p.set('kind', door.kind)
-  if (door.pile) p.set('liendeskPile', door.pile)
-  return `/jobs?${p.toString()}`
+  // The desk is a page since punch list #182: its address names the list, the notice and the pile.
+  return lienDeskHref({ kind: door.kind, job: door.jobId, pile: door.pile })
 }

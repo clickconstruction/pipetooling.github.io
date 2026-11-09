@@ -3,13 +3,13 @@ title: share where our liens stand
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: share, lien desk, office only, masters, not customers, who it is for, to, lien status, who we are about to lien, how much, by when, text, email a teammate, send, copy, notices due, waiting for approval, counsel, firm's link, portal, snapshot
-where: /jobs?tab=stages&liendesk=1
+where: /lien-desk
 ---
 The Lien desk can tell someone in the office where our liens stand in two taps. The message says who we are about to lien, for how much, and by when. Send it as a text, or email it to someone on the team. It is never for a customer or a GC.
 
 ## Open Share
 
-Open the [Lien desk](/jobs?tab=stages&liendesk=1). Press {{button:outline|Share}} at the end of its title line. It sits in the same place on every tab. On a phone or a narrow screen, it shows only its square with an arrow.
+Open the [Lien desk](/lien-desk). Press {{button:outline|Share}} at the end of its title line. It sits in the same place on every tab. On a phone or a narrow screen, it shows only its square with an arrow.
 
 ## Who it is for
 

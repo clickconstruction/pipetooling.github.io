@@ -3,7 +3,7 @@ title: read the Texas lien rules the app follows
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: lien, Texas, rules, Property Code, chapter 53, 53.056, 53.052, affidavit, notice, release, waiver, demand letter, presentment, sworn account, interest, prompt payment, 28.004, 302.002, debt collection, 392, theft of service, 31.04, justice court, certified mail, cite, statute, deadline, homestead, residential, find a rule, when is the notice due, when is the lien due
-where: /jobs?tab=stages&liendesk=1
+where: /lien-desk
 ---
 Every lien deadline and every line in a demand letter comes from a rule in Texas law. This page lists each rule the app follows. Each rule is named by the question it answers. Under the question comes a one-line answer, then the rule, then what you do in the app.
 
@@ -84,7 +84,7 @@ Aug 15 and Nov 15 fall on a weekend, so they move to Monday. In the § Rules win
 
 :::
 
-**What you do.** Nothing by hand. The Lien desk, the Payment forecast and the notice's *months covered* line all count from the work month for you. [Open the Lien desk](/jobs?tab=stages&liendesk=1).
+**What you do.** Nothing by hand. The Lien desk, the Payment forecast and the notice's *months covered* line all count from the work month for you. [Open the Lien desk](/lien-desk).
 
 **Cite.** *Prop. Code § 53.056(a-1), § 53.052*
 
@@ -94,7 +94,7 @@ A house, a duplex, a triplex, a fourplex or a condo its owner lives in is reside
 
 **What it says.** Some properties are residential. They are a house, a duplex, a triplex, a fourplex and a condo unit its owner lives in. On a residential property every deadline moves a month earlier.
 
-**What you do.** Set the kind on the property record. A commercial pick moves the notice date and the filing date a month later on their own. When the kind is not set, the app shows the residential dates, the earlier ones, and says so. [Open the Lien desk](/jobs?tab=stages&liendesk=1) and press a red *Fix the property* gate to set it.
+**What you do.** Set the kind on the property record. A commercial pick moves the notice date and the filing date a month later on their own. When the kind is not set, the app shows the residential dates, the earlier ones, and says so. [Open the Lien desk](/lien-desk) and press a red *Fix the property* gate to set it.
 
 **Cite.** *§ 53.001(10), § 53.052(b), § 53.056(a-1)*
 
@@ -118,7 +118,7 @@ Only when there is a GC. No GC means we contracted with the owner, and the affid
 
 **What it says.** A GC on the job means we are a subcontractor. GC means the general contractor. Then every unpaid month needs a notice before any lien. The notice goes to the owner and to the GC. No GC means we contracted with the owner. Then no monthly notice is needed. The affidavit stands alone.
 
-**What you do.** Name the GC on the job. The Lien desk's Notices list then shows the job. A job with no GC is never on that list. The notice tab shows a *Role* line that says which one the job is. [Open the Lien desk](/jobs?tab=stages&liendesk=1&kind=notice).
+**What you do.** Name the GC on the job. The Lien desk's Notices list then shows the job. A job with no GC is never on that list. The notice tab shows a *Role* line that says which one the job is. [Open the Lien desk](/lien-desk?tab=notices).
 
 **Cite.** *§ 53.056, § 53.052*
 
@@ -128,7 +128,7 @@ A form the statute sets. It goes to the owner of record and to the GC, by certif
 
 **What it says.** The notice is a form the statute sets. It goes to the owner of record and to the original contractor. The owner of record is the owner the county's records name. It is due by the 15th of the third month after the work month. On a residential property it is due by the 15th of the second month. It goes by certified mail or another service that can be traced. It may include the invoice.
 
-**What you do.** Draft it on the Lien desk under Notices. The desk picks the months and the owner of record, prints the form, and encloses the invoice behind it. [Open the Notices list](/jobs?tab=stages&liendesk=1&kind=notice).
+**What you do.** Draft it on the Lien desk under Notices. The desk picks the months and the owner of record, prints the form, and encloses the invoice behind it. [Open the Notices list](/lien-desk?tab=notices).
 
 **Cite.** *§ 53.056(a-1) to (a-3), § 53.003*
 
@@ -169,7 +169,7 @@ The affidavit needs four things.
 - A recorded notice, on a sub job.
 - A property that is not a homestead.
 
-**What you do.** Open the job's Lien window on the Mechanic's lien tab. It checks the four facts first. Press {{button:outline|Record filing}} to record the filing. A red Needs you card watches the serve-by date. Press {{button:outline|Record service}} to record the service. [Open the Affidavits list](/jobs?tab=stages&liendesk=1&kind=affidavit).
+**What you do.** Open the job's Lien window on the Mechanic's lien tab. It checks the four facts first. Press {{button:outline|Record filing}} to record the filing. A red Needs you card watches the serve-by date. Press {{button:outline|Record service}} to record the service. [Open the Affidavits list](/lien-desk?tab=affidavits).
 
 **Cite.** *§ 53.052, § 53.054, § 53.055*
 
@@ -181,7 +181,7 @@ As soon as the work is done and the steps are taken. The 15th dates are the last
 
 **Counsel has not read this.** Filing while still on the job, for months already finished, is the app's reading. Counsel has not confirmed it.
 
-**What you do.** On a sub job, send the month's notice first. Then file the affidavit as soon as the four facts are in hand. On a direct job there is no notice to wait for. File as soon as the four facts are in hand. The Lien desk's timeline prints each paper's first day as *open since*. [Open the Affidavits list](/jobs?tab=stages&liendesk=1&kind=affidavit).
+**What you do.** On a sub job, send the month's notice first. Then file the affidavit as soon as the four facts are in hand. On a direct job there is no notice to wait for. File as soon as the four facts are in hand. The Lien desk's timeline prints each paper's first day as *open since*. [Open the Affidavits list](/lien-desk?tab=affidavits).
 
 **Cite.** *§ 53.052, § 53.056*
 
@@ -208,7 +208,7 @@ While the affidavit window is open, a notice sent after its own 15th still count
 
 **What it says.** A month's notice is due by its 15th. The affidavit is due a month later. The owner reads the statute to let a notice sent in that last month still support the affidavit.
 
-**What you do.** Nothing extra. A missed month stays on the Lien desk while the affidavit window is open. Its notice goes out in the next run. [Open the Notices list](/jobs?tab=stages&liendesk=1&kind=notice).
+**What you do.** Nothing extra. A missed month stays on the Lien desk while the affidavit window is open. Its notice goes out in the next run. [Open the Notices list](/lien-desk?tab=notices).
 
 **Cite.** *§ 53.056, § 53.052*
 
