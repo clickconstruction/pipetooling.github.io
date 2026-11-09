@@ -46,6 +46,8 @@ Press **Follow up** to go back to everyone waiting on us.
 
 The last column of a row says what the app thinks. A guess shows a job with a question mark.
 
+A conversation that is already on a job guesses that job for its newer mail. The row says *a mail of this conversation is on JP1077 already*.
+
 :::example A guess on Dale's mail
 ↓ &nbsp; **Dale Okafor** &nbsp; Re: 4 Elm Ct water heater &nbsp; 9:12 AM &nbsp; {{chip:blue|JP1077 · 4 Elm Ct?}} {{button:blue|Yes}} {{button:outline|other…}}
 :::

@@ -13,7 +13,7 @@ import { GC_COMPANY } from './company'
 import { WAIVER_SIGN_LIVE } from './drawEmail'
 import { portalQuoteDue, portalTodos, type PortalAsk, type PortalTodo } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
-import type { ScheduleWork, TradePortalChart, WorkWaiting } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
+import type { PortalStage, ScheduleWork, TradePortalChart, WorkWaiting } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { GcState } from './types'
 import { daysUntil, money } from './words'
 
@@ -124,9 +124,32 @@ function schedulesOf(v: unknown): Record<string, TradePortalChart> {
   return Object.fromEntries(
     Object.entries(v)
       .filter(([, s]) => isObject(s) && bars(s.before) && bars(s.mine) && bars(s.after) && typeof s.first === 'string' && typeof s.last === 'string')
-      // The planned finish (punch list #205, PR 2) is a day or nothing; an older function sends none.
-      .map(([id, s]) => [id, { ...(s as TradePortalChart), finish: typeof (s as TradePortalChart).finish === 'string' ? (s as TradePortalChart).finish : null }]),
+      // The planned finish (punch list #205, PR 2) is a day or nothing, and the whole job's stages (PR 3) each read as one;
+      // an older function sends neither.
+      .map(([id, s]) => {
+        const chart = s as TradePortalChart
+        const stages = Array.isArray(chart.stages) ? chart.stages.filter(stageReads) : []
+        return [id, { ...chart, finish: typeof chart.finish === 'string' ? chart.finish : null, ...(stages.length > 0 ? { stages } : { stages: undefined }) }]
+      }),
   ) as Record<string, TradePortalChart>
+}
+
+const STAGE_STATES = ['done', 'underway', 'behind', 'notStarted']
+
+/** One stage of the whole job that reads as one (punch list #205, PR 3): its name, dates, percent, state and the company's own labels. */
+function stageReads(x: unknown): x is PortalStage {
+  return (
+    isObject(x) &&
+    typeof x.key === 'string' &&
+    typeof x.label === 'string' &&
+    typeof x.start === 'string' &&
+    typeof x.finish === 'string' &&
+    typeof x.pct === 'number' &&
+    typeof x.state === 'string' &&
+    STAGE_STATES.includes(x.state) &&
+    Array.isArray(x.yours) &&
+    x.yours.every((y) => typeof y === 'string')
+  )
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')

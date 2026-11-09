@@ -11,7 +11,7 @@ import { claimTable, type LegalClaimLineLike } from '../../../lib/legal/legalCla
 
 afterEach(cleanup)
 
-const line: LegalClaimLineLike = { id: 'l1', kind: 'materials', title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', documentId: 'd1', documentTitle: 'Materials on site — count.pdf' }
+const line: LegalClaimLineLike = { id: 'l1', kind: 'materials', title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', documentId: 'd1', documentTitle: 'Materials on site — count.pdf', settlementOnly: false }
 const table = (lines: LegalClaimLineLike[] = [line]) =>
   claimTable({ balance: 14980, retainageHeldByJob: { j1: 6420 }, retainageAdded: 6420, retainageOnBills: 0, openBills: [{ jobLabel: 'C1412' }, { jobLabel: 'C1419' }], claimLines: lines }, (id) => (id === 'j1' ? 'C1412' : id))
 const panel = (over: Partial<ClaimPanel> = {}): ClaimPanel => ({ documents: [{ id: 'd1', title: 'Materials on site — count.pdf' }, { id: 'd2', title: 'Change order 6 — refused.pdf' }], acts: { save: vi.fn(async () => null), remove: vi.fn(async () => null) }, onOpenDocument: vi.fn(), onOpenJob: vi.fn(), ...over })
@@ -51,7 +51,7 @@ describe('LegalClaimTable', () => {
     fireEvent.change(container.querySelector('[data-legal-claim-basis]') as HTMLInputElement, { target: { value: 'contract ¶ 14' } })
     fireEvent.change(container.querySelector('[data-legal-claim-document]') as HTMLSelectElement, { target: { value: 'd2' } })
     fireEvent.click(container.querySelector('[data-legal-claim-save]') as HTMLElement)
-    await waitFor(() => expect(p.acts!.save).toHaveBeenCalledWith({ kind: 'damages', title: 'Demobilization damages', amount: '$2,800.00', basis: 'contract ¶ 14', documentId: 'd2' }, null))
+    await waitFor(() => expect(p.acts!.save).toHaveBeenCalledWith({ kind: 'damages', title: 'Demobilization damages', amount: '$2,800.00', basis: 'contract ¶ 14', documentId: 'd2', settlementOnly: false }, null))
     await waitFor(() => expect(container.querySelector('[data-legal-claim-form]')).toBeNull())
   })
 
@@ -85,5 +85,23 @@ describe('LegalClaimTable', () => {
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
     expect(screen.queryByText(/Nothing typed yet/)).toBeNull()
     expect(screen.getByRole('button', { name: /Materials on site — count.pdf/ })).toBeTruthy()
+  })
+})
+
+describe('settlement only (v2.6697, punch list #171)', () => {
+  it('wears the chip, stays out of the total, says so under the table, and the form sends the flag', async () => {
+    const so: LegalClaimLineLike = { ...line, id: 'l2', kind: 'fees', title: 'Fee waiver', amount: 400, documentId: null, documentTitle: '', settlementOnly: true }
+    const p = panel()
+    const { container } = render(<LegalClaimTable table={table([line, so])} panel={p} />)
+    const rows = container.querySelectorAll('[data-legal-claim-row]')
+    expect(within(rows[3] as HTMLElement).getByText('settlement only')).toBeTruthy()
+    expect(within(rows[2] as HTMLElement).queryByText('settlement only')).toBeNull()
+    expect((container.querySelector('[data-legal-claim-total]') as HTMLElement).textContent).toContain('$26,710.00')
+    expect((container.querySelector('[data-legal-claim-settlement-only]') as HTMLElement).textContent).toContain('One line, $400.00, is settlement only.')
+    fireEvent.click(container.querySelector('[data-legal-claim-add]') as HTMLElement)
+    fireEvent.change(container.querySelector('[data-legal-claim-amount]') as HTMLInputElement, { target: { value: '250' } })
+    fireEvent.click(container.querySelector('[data-legal-claim-settlement-only-box]') as HTMLInputElement)
+    fireEvent.click(container.querySelector('[data-legal-claim-save]') as HTMLElement)
+    await waitFor(() => expect(p.acts!.save).toHaveBeenCalledWith({ kind: 'materials', title: 'Materials left on site', amount: '250', basis: '', documentId: null, settlementOnly: true }, null))
   })
 })
