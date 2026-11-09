@@ -34,6 +34,7 @@ import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
 import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './devMcpAccount.ts'
 import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { isJobVerb, jobInput } from './devMcpJobs.ts'
+import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -165,6 +166,14 @@ export const WRITE_VERBS = {
   apply_login: { rpc: null, step: 'apply' },
   plan_password_reset: { rpc: null, step: 'plan' },
   apply_password_reset: { rpc: null, step: 'apply' },
+  // v2.6804 / 0.51.0: submittals — rows onto a bid's draft revision (one or many, added or changed by tag) and the
+  // order log's facts on its lines (ordered, PO, expected, delivered, a note), the rows Bids → Submittals writes under
+  // RLS; no RPC exists for either, so rpc is null — the dry run is the server's read of the bid's submittal world
+  // through the tab's own kernels (devMcpSubmittals.ts).
+  plan_submittal_rows: { rpc: null, step: 'plan' },
+  apply_submittal_rows: { rpc: null, step: 'apply' },
+  plan_submittal_log: { rpc: null, step: 'plan' },
+  apply_submittal_log: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -283,6 +292,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isAccountVerb(verb)) {
     // v2.6792: the shape check is devMcpAccount's; the dry run is the server's read of the account, its roster row and the auth stamps.
     const built = verb === 'plan_account' || verb === 'apply_account' ? accountInput(verb, input, todayYmd()) : verb === 'plan_login' || verb === 'apply_login' ? loginInput(verb, input) : passwordResetInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isSubmittalVerb(verb)) {
+    // v2.6804: the shape check is devMcpSubmittals'; the dry run is the server's read of the bid's submittal world.
+    const built = submittalInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1092,6 +1107,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const personMatter = verb === 'apply_matter_open_person'
   const personDoc = verb === 'apply_person_doc'
   const job = verb === 'apply_job'
+  if (verb === 'apply_submittal_rows' || verb === 'apply_submittal_log') return `Nothing written: this plan was already applied on this bid${when}. get_submittals reads it back; a further change needs a new plan from the bid as it stands.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
   // v2.6792: the account verbs' plans commit to the row as it read, so a landed change hashes differently; this answers the odd replay.
   if (verb === 'apply_account') return `Nothing written: this plan was already applied${when}. get_login_state names the account as it reads now; plan again from that for a further change.`

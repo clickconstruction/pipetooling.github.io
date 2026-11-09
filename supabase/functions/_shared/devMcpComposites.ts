@@ -128,8 +128,9 @@ export async function findPerson(reader: Reader, text: string) {
   return { matches: rows }
 }
 
-type Resolved = { id: string } | { refused: string }
-async function resolve(ref: string, find: () => Promise<{ matches: Row[] }>, what: string): Promise<Resolved> {
+export type Resolved = { id: string } | { refused: string }
+/** An id as given, else the one match of a find; exported for devMcpSubmittals.ts (v2.6804). */
+export async function resolve(ref: string, find: () => Promise<{ matches: Row[] }>, what: string): Promise<Resolved> {
   if (UUID_RE.test(ref.trim())) return { id: ref.trim().toLowerCase() }
   const { matches } = await find()
   if (matches.length === 1) return { id: str(matches[0]!.id) }
