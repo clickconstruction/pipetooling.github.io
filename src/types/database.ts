@@ -23032,6 +23032,7 @@ export type Database = {
         Row: {
           added_at: string
           added_by: string | null
+          counsel_only: boolean
           dated_on: string | null
           held_reason: string
           id: string
@@ -23057,6 +23058,7 @@ export type Database = {
         Insert: {
           added_at?: string
           added_by?: string | null
+          counsel_only?: boolean
           dated_on?: string | null
           held_reason?: string
           id?: string
@@ -23082,6 +23084,7 @@ export type Database = {
         Update: {
           added_at?: string
           added_by?: string | null
+          counsel_only?: boolean
           dated_on?: string | null
           held_reason?: string
           id?: string
@@ -43146,6 +43149,14 @@ export type Database = {
         Args: { p_bid_id: string; p_name: string }
         Returns: string
       }
+      matter_counsel_only_count: {
+        Args: { p_matter_id: string }
+        Returns: number
+      }
+      matter_text_document_is_counsel_only: {
+        Args: { p_document_id: string }
+        Returns: boolean
+      }
       mercury_bank_return_reason: {
         Args: {
           p_amount: number
@@ -43336,6 +43347,10 @@ export type Database = {
         Returns: string
       }
       on_site_can_touch_job: { Args: { p_job_id: string }; Returns: boolean }
+      on_site_job_summary: {
+        Args: { p_job_id: string; p_since?: string }
+        Returns: Json
+      }
       on_site_line_on_hand: {
         Args: {
           p_container_id: string

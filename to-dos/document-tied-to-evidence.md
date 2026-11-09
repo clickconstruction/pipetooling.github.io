@@ -1,8 +1,8 @@
 ---
 name: "A document names the evidence record it transcribes, so a search hit on a line of a call opens the call"
 number: 287
-group: ready
-status: proposed 2026-11-08 · the owner's yes the same day · built the same day as v2.6713 on claude/287-document-tied-to-evidence-f4804f (the column, the two chips, the picker, the seat's evidence_id, the brief's and the search's pair) · merged 2026-11-08 (#7341) with its migration `20261108193000` in prod's ledger · left: the `dev-mcp` deploy (`check:edge-drift` names it for v2.6713 on 2026-11-09 00:20 UTC) and the live check on a ZZ TEST person
+group: close
+status: proposed 2026-11-08 · the owner's yes the same day · built the same day as v2.6713 on claude/287-document-tied-to-evidence-f4804f (the column, the two chips, the picker, the seat's evidence_id, the brief's and the search's pair) · merged 2026-11-08 (#7341) with its migration `20261108193000` in prod's ledger · `dev-mcp` deployed (drift clean 2026-11-09, server 0.45.0) · verified live on ZZ Test Hand 2026-11-09 (below) · left: the owner's word on tying the week's transcripts, then the owner's look
 ver: v2.6713
 summary: >
   A transcript on an HR file is a named document; the recording it transcribes is an evidence
@@ -11,7 +11,7 @@ summary: >
   named document name its evidence record: the document shows the record's date, hash and audio
   door, the record shows "transcript on file" with a door to the document, and the case brief and
   search carry the pair.
-next: Deploy dev-mcp (the migration is pushed), run How to verify on a ZZ TEST person, then set the link on this week's documents through the seat (a section-free plan per transcript), applied on the owner's word.
+next: Nothing left to build or deploy. On the owner's word, the link goes on this week's transcripts through the seat (a section-free `plan_person_doc { doc_id, evidence_id }` per transcript, `counsel_only: true` where the record is); then the owner's look and delete the file.
 size: S
 blocker: None.
 opinion: build — one nullable column and two chips, and it turns a pile of transcripts into evidence a reader can open from either side
@@ -65,3 +65,23 @@ link; the document's header shows the record's date and hash and opens the recor
 row shows *Transcript on file* and opens the document; `search_case` for a word in the document
 returns the hit with the record's id. Tie a document to a counsel-only record without the tick:
 refused.
+
+## Verified (2026-11-09, dev MCP 0.45.0, migration `20261108193000` on prod)
+
+On ZZ Test Hand (a made-up person), from a Claude session through the seat:
+
+- `plan_person_doc { person_id, title, markdown, evidence_id }` with the record *ZZ TEST #286 Drive document source (made
+  up)* planned a three-section made-up transcript; the plan's `document.evidence` named the record's id, title, day and
+  counsel mark. `apply_person_doc` wrote document `dc4c7d20…` with the same `evidence` block; `person_documents.evidence_id`
+  reads the record's id on the row.
+- Both sides carry the pair through the seat: `get_case_brief` lists `evidence_id` on the document and `document_id` on
+  the record (`dc4c7d20…` on the record's row, null on the other record). `get_person_file`'s documents and evidence lists
+  do not carry it; the brief and the search are the seat's doors to the pair, as the card decided.
+- `search_case` for a two-word phrase from the document's body returned one hit, on the document's *Call notes* section,
+  with `evidence_id`, `evidence_day` (2026-11-08) and `evidence_title` beside the snippet, as the brief said it would.
+- A made-up counsel-only evidence record was filed (`plan_person_evidence` → `apply_person_evidence` with
+  `counsel_only: true`; kept out of Drive and out of the seat's reads, as #269 holds) and a plain document planned
+  against it: refused — *dev_person_doc_write: the evidence record of 2026-11-08 is counsel-only, so a document that
+  transcribes it is counsel-only too: send counsel_only: true with evidence_id, or pick another record.*
+- Not walked in the app: the two chips themselves (the document header's record chip, the record row's *Transcript on
+  file*); their render smokes hold them, and the owner's look on People → HR for ZZ Test Hand sees both on the pair above.

@@ -51,6 +51,20 @@ describe('PayLink page', () => {
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toContain(`/functions/v1/pay-link?id=${ID}`)
   })
 
+  it('a ten-letter code (#290, v2.6769) asks the function by code and draws the same bill', async () => {
+    answer(200, open)
+    mount('ABC2DEF3GH')
+    expect((await screen.findByTestId('pay-link-amount')).textContent).toBe('$4,660.00')
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toContain('/functions/v1/pay-link?code=abc2def3gh')
+  })
+
+  it('something that is neither an id nor a code is not found without asking', async () => {
+    answer(200, open)
+    mount('abc1def0gh')
+    expect(await screen.findByText(/We could not find that bill/)).toBeTruthy()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('the pay offer (v2.4704): the full amount struck through and the day while live; the ended line after; the offer named once paid', async () => {
     const offer = { pct: 10, by: '2026-11-15', state: 'live', fullCents: 624000 }
     answer(200, { ...open, amountRemainingCents: 561600, offer })

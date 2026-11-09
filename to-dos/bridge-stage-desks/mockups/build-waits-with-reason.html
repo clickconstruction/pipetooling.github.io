@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Write A · a Build job waits, with a reason</title>
+<style>
+  :root { --surface:#fff; --bg:#f1f5f9; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --red:#b91c1c; --amber:#92400e; --green:#15803d; --blue:#2563eb; --redtint:#fef2f2; --ambertint:#fffbeb; --greentint:#f0fdf4; --bluetint:#eff6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding:24px 16px 48px; }
+  .page { max-width:1180px; margin:0 auto; }
+  .tag { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  h1 { font-size:1.5rem; margin:4px 0 6px; }
+  .ask { font-size:1rem; margin:0 0 6px; }
+  .ask b { color:var(--red); }
+  .lead { color:var(--muted); font-size:0.9rem; margin:0 0 18px; max-width:860px; }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+  .col h2 { font-size:0.8rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin:0 0 8px; color:var(--muted); }
+  .col h2 b { color:var(--text); }
+  .desk { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:0 12px 32px rgba(0,0,0,0.08); margin-bottom:12px; }
+  .desk .tag { margin-bottom:6px; display:block; }
+  .verdict { font-weight:700; font-size:0.95rem; margin:0 0 10px; }
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .tile { border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-size:0.8rem; background:var(--bg); }
+  .tile b.big { font-size:1.05rem; display:block; margin:2px 0; }
+  .green { color:var(--green); } .amber { color:var(--amber); } .red { color:var(--red); } .grey { color:var(--muted); }
+  .job { border:1px solid var(--border); border-radius:10px; margin-bottom:8px; background:var(--surface); border-left:4px solid var(--red); }
+  .job.waits { border-left-color:#94a3b8; }
+  .jhead { display:flex; align-items:center; gap:10px; width:100%; padding:8px 12px; min-height:44px; font:inherit; color:inherit; text-align:left; flex-wrap:wrap; }
+  .jname { font-weight:700; flex:1 1 180px; min-width:0; }
+  .jname .sub { display:block; font-weight:400; font-size:0.78rem; color:var(--muted); }
+  .figs { display:flex; gap:14px; align-items:baseline; font-size:0.82rem; color:var(--muted); flex-wrap:wrap; }
+  .figs b { color:var(--text); }
+  .chip { display:inline-block; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .c-red { background:var(--redtint); color:var(--red); } .c-amber { background:var(--ambertint); color:var(--amber); } .c-green { background:var(--greentint); color:var(--green); } .c-grey { background:var(--bg); color:var(--muted); } .c-blue { background:var(--bluetint); color:var(--blue); }
+  .jdetail { padding:2px 12px 12px; border-top:1px solid var(--border); font-size:0.85rem; }
+  .jdetail p { margin:8px 0; }
+  .doors { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .door { font:inherit; font-size:0.82rem; font-weight:600; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0 12px; min-height:40px; display:inline-flex; align-items:center; gap:6px; cursor:pointer; text-decoration:none; }
+  .door.amber { border-color:var(--amber); color:var(--amber); }
+  .door.new { border-color:var(--amber); color:var(--amber); box-shadow:0 0 0 3px var(--ambertint); }
+  .door.primary { border-color:var(--blue); color:var(--blue); }
+  .step { display:flex; gap:10px; align-items:baseline; margin:14px 0 6px; }
+  .step .n { width:24px; height:24px; border-radius:999px; background:var(--text); color:#fff; font-weight:700; font-size:0.78rem; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+  .step b { font-size:0.9rem; }
+  .cap { font-size:0.82rem; color:var(--muted); margin:6px 0 0; }
+  .cap.red { color:var(--red); }
+  .win { border:1px solid var(--border); border-radius:12px; background:var(--surface); box-shadow:0 16px 40px rgba(0,0,0,0.18); padding:14px 16px; max-width:460px; }
+  .win h3 { margin:0 0 2px; font-size:1rem; }
+  .win .sub { font-size:0.82rem; color:var(--muted); margin:0 0 10px; }
+  .reasons { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .reasons label { font-size:0.82rem; font-weight:600; border:1px solid var(--border); border-radius:999px; padding:7px 12px; min-height:36px; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:var(--surface); }
+  .reasons input { margin:0; }
+  .reasons label:has(input:checked) { border-color:var(--amber); color:var(--amber); background:var(--ambertint); }
+  .win textarea { width:100%; font:inherit; font-size:0.85rem; padding:8px 10px; border:1px solid var(--border); border-radius:8px; resize:vertical; min-height:44px; color:var(--text); }
+  .win .foot { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap; align-items:center; }
+  .win .foot .note { flex:1 1 100%; font-size:0.75rem; color:var(--muted); }
+  .btn { font:inherit; font-size:0.85rem; font-weight:700; border-radius:8px; min-height:40px; padding:0 14px; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text); }
+  .btn.go { background:var(--amber); border-color:var(--amber); color:#fff; }
+  .elsewhere { margin-top:20px; }
+  .elsewhere h2 { font-size:1rem; margin:0 0 4px; }
+  .elsewhere .lead { margin-bottom:10px; }
+  .where { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+  .card .tag { display:block; margin-bottom:6px; }
+  .scard { border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+  .scard .title { display:flex; gap:8px; align-items:center; font-weight:700; }
+  .scard .num { font-size:0.7rem; font-weight:800; letter-spacing:0.06em; background:var(--bluetint); color:var(--blue); padding:2px 7px; border-radius:6px; }
+  .scard .meta { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .fact { display:grid; grid-template-columns:90px 1fr; gap:6px 12px; font-size:0.85rem; align-items:baseline; }
+  .fact .k { color:var(--muted); font-size:0.78rem; }
+  .act { font-size:0.85rem; border-left:3px solid var(--border); padding:4px 10px; margin:6px 0; }
+  .act .when { color:var(--muted); font-size:0.75rem; }
+  .cost { margin-top:20px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+  .cost h2 { font-size:1rem; margin:0 0 6px; }
+  .cost ul { margin:0; padding-left:1.2rem; font-size:0.88rem; }
+  .cost li { margin:3px 0; }
+  .yesno { margin-top:16px; padding:14px 16px; border-radius:12px; background:var(--text); color:#fff; font-size:1rem; }
+  .yesno b { color:#fde68a; }
+  .yesno .rec { font-size:0.85rem; color:#cbd5e1; margin-top:4px; }
+  .pill { position:fixed; left:12px; bottom:12px; background:var(--ambertint); color:var(--amber); border:1px solid #fcd34d; font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:999px; z-index:60; }
+  #toast { position:fixed; left:50%; transform:translateX(-50%); bottom:52px; background:#0f172a; color:#fff; font-size:0.82rem; padding:8px 14px; border-radius:8px; opacity:0; transition:opacity 0.15s; z-index:70; max-width:90vw; }
+  #toast.on { opacity:1; }
+  @media (max-width:760px) {
+    .cols { grid-template-columns:1fr; }
+    .tiles { grid-template-columns:1fr; }
+    .desk { padding:12px; }
+    .fact { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <span class="tag">Punch list #192 · the Bridge · the two writes, drawn · write A</span>
+  <h1>A Build job waits, with a reason</h1>
+  <p class="ask">The question: <b>can a Build job be marked waits, with a reason, so the desk stops counting it against the crew?</b></p>
+  <p class="lead">Left is the Build desk as it runs today. Right is the same desk with the write. Invented jobs and names. Nothing here saves.</p>
+
+  <div class="cols">
+    <!-- TODAY -->
+    <div class="col">
+      <h2><b>Today</b> · the desk says name why it waits. There is nowhere to name it.</h2>
+      <div class="desk">
+        <span class="tag">Build · hours in, work out · last 14 days · read Mon, Oct 26</span>
+        <p class="verdict">2 jobs hold $77.9k and saw nobody. That is the week.</p>
+        <div class="tiles">
+          <div class="tile"><span class="tag">Stalled</span><b class="big red">$77.9k, nobody on it</b>2 jobs with no field hours in 14 days.</div>
+          <div class="tile"><span class="tag">Ate hours, moved nothing</span><b class="big amber">53h on 3 jobs</b>A stale % or work going nowhere.</div>
+        </div>
+        <div class="job">
+          <div class="jhead">
+            <span class="jname">878 · Take 5 Seguin<span class="sub">$47.1k left of $124k · 62%</span></span>
+            <span class="figs"><span><b>0h</b> · 19 d quiet</span><span>% <b>62 → 62</b></span><span>moved <b>$0</b></span><span class="chip c-red">stalled · biggest money idle</span></span>
+          </div>
+          <div class="jdetail">
+            <p>$47.1k of sold work has had nobody on it for 19 days. The Schedule shows nobody this week either. Crew it, or name why it waits.</p>
+            <p><span class="chip c-red">Nobody scheduled, all week</span></p>
+            <div class="doors">
+              <span class="door">Open the Schedule ›</span>
+              <span class="door">Open the job ›</span>
+              <span class="door amber">Set the % ›</span>
+            </div>
+          </div>
+        </div>
+        <div class="job">
+          <div class="jhead">
+            <span class="jname">912 · Limitless Renovations<span class="sub">$30.8k left of $44k · 30%</span></span>
+            <span class="figs"><span><b>0h</b> · 24 d quiet</span><span>% <b>30 → 30</b></span><span>moved <b>$0</b></span><span class="chip c-red">stalled</span></span>
+          </div>
+        </div>
+      </div>
+      <p class="cap red">The GC is not ready for us on 878. The desk cannot know that. Every Monday it counts the $47.1k against the crew, and the row stays the biggest money idle.</p>
+      <p class="cap">The job's status today is Working. The app has Waiting too, but that means not started. Neither says why a started job sits.</p>
+    </div>
+
+    <!-- WITH THE WRITE -->
+    <div class="col">
+      <h2><b>With the write</b> · one press, one reason, and the row leaves the crew's count.</h2>
+
+      <div class="step"><span class="n">1</span><b>The press, on the stalled row</b></div>
+      <div class="desk">
+        <div class="job">
+          <div class="jhead">
+            <span class="jname">878 · Take 5 Seguin<span class="sub">$47.1k left of $124k · 62%</span></span>
+            <span class="figs"><span><b>0h</b> · 19 d quiet</span><span>% <b>62 → 62</b></span><span>moved <b>$0</b></span><span class="chip c-red">stalled · biggest money idle</span></span>
+          </div>
+          <div class="jdetail">
+            <p>$47.1k of sold work has had nobody on it for 19 days. The Schedule shows nobody this week either. Crew it, or name why it waits.</p>
+            <p><span class="chip c-red">Nobody scheduled, all week</span></p>
+            <div class="doors">
+              <span class="door">Open the Schedule ›</span>
+              <span class="door">Open the job ›</span>
+              <span class="door amber">Set the % ›</span>
+              <button type="button" class="door new" id="press" title="Opens the small window below">Name why it waits ›</button>
+            </div>
+          </div>
+        </div>
+        <p class="cap">A fourth door, beside Set the %, only on a stalled row. The sentence the desk already says becomes a press.</p>
+      </div>
+
+      <div class="step"><span class="n">2</span><b>The small window</b></div>
+      <div class="win" id="win">
+        <h3>878 · Take 5 Seguin waits</h3>
+        <p class="sub">Pick the reason. The desk stops counting the $47.1k against the crew until someone lifts the wait.</p>
+        <div class="reasons" id="reasons">
+          <label><input type="radio" name="r" value="The GC is not ready for us" checked> The GC is not ready for us</label>
+          <label><input type="radio" name="r" value="Waiting on materials"> Waiting on materials</label>
+          <label><input type="radio" name="r" value="Waiting on an inspection"> Waiting on an inspection</label>
+          <label><input type="radio" name="r" value="The customer asked us to hold"> The customer asked us to hold</label>
+          <label><input type="radio" name="r" value="Weather"> Weather</label>
+          <label><input type="radio" name="r" value="Something else"> Something else</label>
+        </div>
+        <textarea id="words" placeholder="A few words, if any. Who said so, and when it can go again." aria-label="A few words on the wait"></textarea>
+        <div class="foot">
+          <span class="note">Written on the job with your name and today's date.</span>
+          <button type="button" class="btn" id="cancel">Cancel</button>
+          <button type="button" class="btn go" id="confirm">Mark it waiting</button>
+        </div>
+      </div>
+      <p class="cap">Six reasons and a line to type. The button names the act. The reason list is six words each, so a phone fits them.</p>
+
+      <div class="step"><span class="n">3</span><b>Afterwards</b> <span class="cap" style="margin:0">· the desk, next open</span></div>
+      <div class="desk" id="after">
+        <span class="tag">Build · hours in, work out · last 14 days · read Mon, Oct 26</span>
+        <p class="verdict">1 job holds $30.8k and saw nobody. 1 job waits with a reason. That is the week.</p>
+        <div class="tiles">
+          <div class="tile"><span class="tag">Stalled</span><b class="big red">$30.8k, nobody on it</b>1 job with no field hours in 14 days.</div>
+          <div class="tile"><span class="tag">Waits, with a reason</span><b class="big grey">$47.1k on 1 job</b>Out of the crew's count. Still sold work.</div>
+        </div>
+        <div class="job">
+          <div class="jhead">
+            <span class="jname">912 · Limitless Renovations<span class="sub">$30.8k left of $44k · 30%</span></span>
+            <span class="figs"><span><b>0h</b> · 24 d quiet</span><span>% <b>30 → 30</b></span><span>moved <b>$0</b></span><span class="chip c-red">stalled · biggest money idle</span></span>
+          </div>
+        </div>
+        <div class="job waits">
+          <div class="jhead">
+            <span class="jname">878 · Take 5 Seguin<span class="sub">$47.1k left of $124k · 62%</span></span>
+            <span class="figs"><span><b>0h</b> · 19 d quiet</span><span>% <b>62 → 62</b></span><span>moved <b>$0</b></span><span class="chip c-grey" id="after-chip">waits · the GC is not ready for us · since Oct 26</span></span>
+          </div>
+          <div class="jdetail">
+            <p id="after-why">Waits since Oct 26: the GC is not ready for us. Dana marked it. The desk does not count the $47.1k against the crew while it waits. The Bridge's Build pile still counts it as sold work.</p>
+            <div class="doors">
+              <button type="button" class="door primary" id="lift">Lift the wait ›</button>
+              <span class="door">Open the job ›</span>
+            </div>
+          </div>
+        </div>
+        <p class="cap">The row moves to the end of the ledger, grey, with the reason on it. The biggest money idle chip moves to 912. Lift the wait puts the row back the moment the GC is ready.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="elsewhere">
+    <h2>Where the mark shows elsewhere</h2>
+    <p class="lead">The job carries the wait, not the desk. So the two places the office already reads a job show it too.</p>
+    <div class="where">
+      <div class="card">
+        <span class="tag">Jobs → Stages · the job's card, Working section</span>
+        <div class="scard">
+          <div class="title"><span class="num">878 PLUM</span> Take 5 Seguin</div>
+          <div class="meta"><span class="chip c-blue">62%</span><span class="chip c-grey">j: $124k</span><span class="chip c-grey">hours 212</span><span class="chip c-amber" id="card-chip">Waits · the GC is not ready for us · since Oct 26</span></div>
+        </div>
+        <p class="cap">One chip on the card. Dispatch sees why the job has no crew before anyone asks.</p>
+      </div>
+      <div class="card">
+        <span class="tag">The job window · Edit Job</span>
+        <div class="fact">
+          <span class="k">Status</span><span>Working</span>
+          <span class="k">Waits</span><span id="fact-waits">Since Oct 26 · the GC is not ready for us · Dana <button type="button" class="btn" style="min-height:32px; padding:0 10px; font-size:0.78rem; margin-left:8px">Lift the wait</button></span>
+          <span class="k">Percent</span><span>62%</span>
+        </div>
+        <p class="cap">A fact row with the same Lift press, so the office can end a wait without opening the Bridge.</p>
+      </div>
+      <div class="card">
+        <span class="tag">The job's Activity</span>
+        <div class="act"><div class="when">Mon, Oct 26 · 7:12 AM · Dana</div>Marked the job waiting: <span id="act-reason">the GC is not ready for us</span>. <span id="act-words" style="color:var(--muted)"></span></div>
+        <div class="act" style="opacity:0.55"><div class="when">later</div>Lifted the wait. The job counts on the Build desk again.</div>
+        <p class="cap">Two lines in the job's own record, like a status change. Friday can read when the wait began and ended.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cost">
+    <h2>What the desk stops counting, and what it costs</h2>
+    <ul>
+      <li><b>Stops counting:</b> the waiting job leaves the Stalled tile, the verdict's "hold $X and saw nobody" and the biggest money idle chip. The job's dollars show in their own tile, Waits with a reason, so nothing hides.</li>
+      <li><b>Keeps counting:</b> the Bridge's Build card. Its pile is sold work not finished, and the job is still that. The wait changes who the desk blames, not what is sold.</li>
+      <li><b>Costs:</b> one migration. A small table, one row per wait: the job, the reason, the words, who, since, and lifted when. The desk's kernel gains a fifth group and the write. The Stages card and the job window gain the chip and the fact row.</li>
+      <li><b>Not a status change.</b> The job stays Working. Waiting already means not started, and the Pipeline's counts keep meaning what they mean today.</li>
+    </ul>
+  </div>
+
+  <div class="yesno">
+    <b>Yes or no:</b> can a Build job be marked waits, with a reason, so the desk stops counting it against the crew?
+    <div class="rec">The recommendation is yes. The desk already tells the owner to name why it waits. This gives that sentence a press, one migration, and the Stalled tile stops blaming the crew for a GC's delay.</div>
+  </div>
+</div>
+<div class="pill">mock-up · nothing saves</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+function toast(msg){
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.classList.add('on')
+  clearTimeout(toast._h)
+  toast._h = setTimeout(() => t.classList.remove('on'), 2600)
+}
+const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1)
+document.getElementById('press').onclick = () => {
+  document.getElementById('win').scrollIntoView({ behavior:'smooth', block:'center' })
+  toast('In the app this opens the small window.')
+}
+document.getElementById('cancel').onclick = () => toast('Cancel closes the window. Nothing is written.')
+document.getElementById('confirm').onclick = () => {
+  const r = document.querySelector('input[name="r"]:checked').value
+  const words = document.getElementById('words').value.trim()
+  const reason = lower(r)
+  document.getElementById('after-chip').textContent = 'waits · ' + reason + ' · since Oct 26'
+  document.getElementById('after-why').textContent = 'Waits since Oct 26: ' + reason + '.' + (words ? ' "' + words + '"' : '') + ' Dana marked it. The desk does not count the $47.1k against the crew while it waits. The Bridge’s Build pile still counts it as sold work.'
+  document.getElementById('card-chip').textContent = 'Waits · ' + reason + ' · since Oct 26'
+  document.getElementById('fact-waits').firstChild.textContent = 'Since Oct 26 · ' + reason + ' · Dana '
+  document.getElementById('act-reason').textContent = reason
+  document.getElementById('act-words').textContent = words ? '“' + words + '”' : ''
+  document.getElementById('after').scrollIntoView({ behavior:'smooth', block:'start' })
+  toast('Would write one wait on 878: ' + reason + '. The row below shows it.')
+}
+document.getElementById('lift').onclick = () => toast('Lift the wait ends it. The row goes back to Stalled, and the Activity gets its second line.')
+</script>
+</body>
+</html>
