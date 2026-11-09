@@ -7,6 +7,7 @@
  */
 import type { PortalTodo } from './gcKernels/index.ts'
 import type { ScheduleWork, TradePortalChart } from './gcTradePortalSchedule.ts'
+import type { PortalThreadLine } from './gcTradeThread.ts'
 import { NO_FLOW_EXTRA, tradeFlowRowsOf, type TradeFlowRows } from './gcTradeFlow.ts'
 import { tradePortalSlice, type TradePortalRows, type TradePortalSlice } from './gcTradePortalSlice.ts'
 
@@ -60,6 +61,10 @@ export const SAMPLE_TRADE_IDS = {
   file1: '00000000-5a00-4000-8000-000000000041',
   file2: '00000000-5a00-4000-8000-000000000042',
   file3: '00000000-5a00-4000-8000-000000000043',
+  // Its thread (punch list #205, PR 5): a text from Dana, our email, a line from the portal.
+  thread1: '00000000-5a00-4000-8000-000000000044',
+  thread2: '00000000-5a00-4000-8000-000000000045',
+  thread3: '00000000-5a00-4000-8000-000000000046',
 } as const
 
 const ID = SAMPLE_TRADE_IDS
@@ -155,6 +160,7 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
         lines: ['We would like your quote for Electrical on Sample Retail Shell.', '1 Sample Rd, Boerne. 9,600 sq ft retail shell, four bays.', { items: ['Service and gear', 'Panels and feeders'] }],
         to_names: ['Dana Ortiz'],
         sent_on: d(-8),
+        sent_at: `${d(-8)}T15:00:00Z`,
       },
     ],
     setSends: [{ set_id: ID.set1, company_id: COMPANY, touched: true }],
@@ -269,6 +275,19 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
       { id: ID.file3, company_id: COMPANY, project_id: ID.job, package_id: ID.jobTrade, purpose: 'waiver', paper: 'conditional_progress', record_id: ID.draw1, name: 'Conditional waiver - Electrical - draw 1.pdf', mime: 'application/pdf', bytes: 60211, drive_file_id: 'never-passes-3', drive_url: 'https://drive.google.com/file/d/sample-waiver/view', uploaded_at: `${d(-14)}T15:00:00Z`, made_by: 'portal' },
     ],
   }
+}
+
+/**
+ * The sample company's thread (punch list #205, PR 5), as `gc-trade-portal` returns it beside the slice: a text from
+ * Dana, an email from our project manager and a line from the portal, in the answer's own shape with no row behind it.
+ */
+export function gcTradePortalSampleThread(today: string): PortalThreadLine[] {
+  const d = (n: number) => addDays(today, n)
+  return [
+    { id: ID.thread1, at: `${d(-9)}T14:12:00Z`, dir: 'in', door: 'text', who: null, subject: null, body: 'We can start the rough-in Monday if the drywall is clear.' },
+    { id: ID.thread2, at: `${d(-9)}T15:40:00Z`, dir: 'out', door: 'email', who: 'Avery', subject: 'Rough-in start on Sample Dental Office', body: 'Monday works. The framing inspection passed this morning, so the walls are yours.' },
+    { id: ID.thread3, at: `${d(-3)}T16:05:00Z`, dir: 'in', door: 'portal', who: null, subject: null, body: 'The panel ships three days late. We will keep the rough-in on its day with a temporary panel.' },
+  ]
 }
 
 /** The sample company's slice, as `gc-trade-portal` returns it for the sample token. */

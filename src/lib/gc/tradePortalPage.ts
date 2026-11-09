@@ -14,6 +14,7 @@ import { WAIVER_SIGN_LIVE } from './drawEmail'
 import { portalQuoteDue, portalTodos, type PortalAsk, type PortalTodo } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
 import type { PortalStage, ScheduleWork, TradePortalChart, WorkWaiting } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
+import { parseTradeThread, type PortalThreadLine } from './tradePortalThread'
 import type { GcState } from './types'
 import { daysUntil, money } from './words'
 
@@ -47,6 +48,8 @@ export type TradePortalAnswer =
       scheduleTodos: PortalTodo[]
       /** The company's trade flow rows, for its first page (Messages cut 8c). Null: an older function, or a flow that did not read. */
       flow: TradeFlowRows | null
+      /** Its thread on Messages (punch list #205, PR 5). Null: an older function, or a thread that did not read, and the tab keeps its list. */
+      thread: PortalThreadLine[] | null
     }
   | { kind: 'error'; key: TradePortalErrorKey }
 
@@ -70,6 +73,7 @@ export function readTradePortalAnswer(ok: boolean, body: unknown): TradePortalAn
     scheduleWork: scheduleWorkOf(body.scheduleWork),
     scheduleTodos: scheduleTodosOf(body.scheduleTodos),
     flow: parseTradeFlow(body.flow),
+    thread: parseTradeThread(body.thread),
   }
 }
 
@@ -205,6 +209,8 @@ export type SentLine = string | { title?: string; items: string[] }
 export interface SentMessage {
   id: string
   on: string
+  /** The instant it went (`sent_at`, punch list #205 PR 5), for its place among the thread's lines. Unset on an older slice. */
+  at?: string
   subject: string
   lines: SentLine[]
   /** The names it went to. */
@@ -225,6 +231,7 @@ export function sentMessages(slice: TradePortalSlice): SentMessage[] {
     .map((m: SliceRow) => ({
       id: str(m.id),
       on: str(m.sent_on),
+      ...(str(m.sent_at) ? { at: str(m.sent_at) } : {}),
       subject: str(m.subject),
       lines: (Array.isArray(m.lines) ? m.lines : []).map(lineOf).filter((l): l is SentLine => l !== null),
       to: (Array.isArray(m.to_names) ? m.to_names : []).filter((n): n is string => typeof n === 'string' && n.trim() !== ''),
