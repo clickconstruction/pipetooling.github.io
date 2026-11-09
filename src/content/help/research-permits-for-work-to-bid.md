@@ -15,7 +15,7 @@ Open **Prospects** and press the **Research** tab. Estimators see the tab too, w
 
 The ledger shows one city at a time. San Antonio is first. Pick the window with **Filed in the last 30 days**. Tick **Include houses** to see single family permits too.
 
-The line under the filters says when the feed was last pulled and what is new since you last looked. It also counts the rows on each lens.
+The line under the filters says when the feed was last pulled and what is new since you last looked. The same line counts the rows on each lens.
 
 :::example The Pulled line
 

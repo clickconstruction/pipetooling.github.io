@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { feedPageSql, permitRowFromSanAntonio, pullSinceDay, SAN_ANTONIO_CKAN, SAN_ANTONIO_FEEDS, type PermitFeed, type PermitRow } from '../_shared/permitFeed.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 /**
  * Research (punch list #292, v2.6782): pull a city's permits into `permits`. San Antonio first:
@@ -72,7 +73,7 @@ serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey)
   const dryRun = body.dry_run === true
   const sinceOverride = typeof body.since === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.since) ? body.since : null
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayYmdInAppTz()
   const started = Date.now()
   const outcomes: FeedOutcome[] = []
 
