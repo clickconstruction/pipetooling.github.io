@@ -242,7 +242,8 @@ const PAGE_DOORS: readonly Door[] = [
   p({ label: 'Dashboard', where: 'Your day', words: ['home', 'today', 'needs you', 'my schedule', 'clock in', 'pins', 'nudges', 'dashboard'], to: '/dashboard', gate: everyone }),
   ...jobsTabDoors(),
   p({ label: 'New job', kind: 'window', where: 'Jobs · Stages, the job form', words: ['add job', 'create job', 'new job', 'add a job'], to: '/jobs?tab=stages&newJob=true', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('newJob')" } }),
-  p({ label: 'Lien desk', kind: 'window', where: 'Jobs · Stages, the orange gavel', words: ['lien desk', 'lien notice', 'lien notices', 'send a lien notice', 'notices', '53.056', 'gavel', 'retainage', 'affidavit', 'do now', 'piles', 'owner records'], to: '/jobs?tab=stages&liendesk=1', gate: office, reads: { file: 'src/lib/jobs/stagesDeepLinks.ts', text: "lienDesk: ['liendesk'" } }),
+  // The Lien desk is a page since punch list #182 (v2.6777): its door is its own address, the office's gate.
+  p({ label: 'Lien desk', where: 'The notices, affidavits and retainage notices on every job with money open', words: ['lien desk', 'lien notice', 'lien notices', 'send a lien notice', 'notices', '53.056', 'gavel', 'retainage', 'affidavit', 'do now', 'piles', 'owner records'], to: '/lien-desk', gate: office }),
   // The Legal desk is a page since punch list #182 (v2.5894): its doors are its own address, the collections roles' gate
   // (`canManageCollections`, the office set). The old `/jobs?tab=stages&legal=…` links redirect there.
   p({ label: 'Legal desk', where: 'Collections accounts before they go to the firm', words: ['collections', 'legal desk', 'attorney', 'law firm', 'collections account', 'demand letter', 'run it in house', 'settlement', 'counsel', 'owner of record', 'supply houses owed'], to: '/legal-desk', gate: office }),

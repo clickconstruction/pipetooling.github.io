@@ -127,6 +127,7 @@ Two role sources are checked in parallel almost everywhere: `authRole` (`useAuth
 | `?stagesMoney=` | `authRole ?? myRole` ∈ dev / controller; master + assistant-like get a `pipeline-money` bounce | 1062–1070 |
 | `?openBankPayments=` | `canRoleSeeArBankUnallocatedOrgNudge(authRole)` (dev / master / assistant-like); waits while `authRole == null` | 1126 |
 | `?legal=` (+ `&legalTab=`) | no gate here since v2.5894 (punch list #182): `legalDeskRedirect` sends the link to `/legal-desk` with `replace`, and the page gates the roles | 1157 |
+| `?liendesk=` (+ `&kind=`, `&liendeskJob=`, `&liendeskPile=`) and `?ownerrecords=` | no gate here since v2.6777 (punch list #182): `lienDeskRedirect` sends the link to `/lien-desk` with `replace`, and the page gates the roles; the board's deep-link hook no longer answers either | 1167 |
 | Job Summary Session notes (`canOpenSessionNotes`) | `['dev','master_technician','assistant','controller'].some(r => r === authRole \|\| r === myRole)` | 2126 |
 | Job Summary Team Labor + Profit columns (`showTeamLaborAndProfit`) | `authRole` ∈ dev / master / **controller** (not assistant) | 2151 |
 | Job Summary overhead dials (`canEditOverheadDials`) | `authRole === 'dev'` | 2152 |

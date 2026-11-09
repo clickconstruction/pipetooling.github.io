@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
+import type { LienDeskKind } from '../../lib/lien/lienDeskRoute'
 import { EmptyState } from '../EmptyState'
 import { LIEN_SHOW_EVERY_PILE, lienAffidavitsEmptyWords, lienListFindEmptyWords, lienPileEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
 import { buildLienAffidavitBlocks, buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
@@ -228,6 +229,16 @@ export type LienDeskModalProps = {
   aimKey?: number
   /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
   onPutGcOnNotice?: (gcId: string) => void
+  /**
+   * How the desk is drawn (punch list #182): `window` is the overlay over the Pipeline with its ✕ and full-screen toggle;
+   * `page` is `/lien-desk` — no overlay, no ✕, no toggle, the page's `backDoor` before the title, and every change of
+   * view, notice and pile told to `onAddressChange` once the rows are in, so the page can write the address.
+   */
+  frame?: 'page' | 'window'
+  /** The page's way back, drawn before the title (`frame: 'page'`). */
+  backDoor?: ReactNode
+  /** The page's address follows the desk: the view, and on Notices the open notice and the pile (never from an empty desk). */
+  onAddressChange?: (address: { kind: LienDeskKind; job: string | null; pile: LienDeskPile | null }) => void
 }
 
 const PILE_ORDER: LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'ready', 'printed', 'held', 'sent', 'missed']
@@ -341,13 +352,17 @@ export default function LienDeskModal({
   aimKey,
   onPutGcOnNotice,
   onOpenCompanySettings,
+  frame = 'window',
+  backDoor = null,
+  onAddressChange,
 }: LienDeskModalProps) {
+  const onPage = frame === 'page'
   const { showToast } = useToastContext()
   // Bill Customer over the desk (v2.4969): the same window the Pipeline's Bill button opens, above every other window; null outside its provider.
   const billCustomer = useBillCustomerModal()
   const isMobile = useIsMobile()
   /** v2.4065: the title-bar toggle — the desk fills the screen above the app's bottom bar, and remembers the choice. */
-  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('lien-desk')
+  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen(onPage ? undefined : 'lien-desk')
   const leader = isLeader(authRole)
   const office = isOffice(authRole)
   const [gcPickerOpen, setGcPickerOpen] = useState(false)
@@ -467,6 +482,11 @@ export default function LienDeskModal({
   })
   // The Timeline tab (v2.3768): the book is read the first time the tab opens and kept for the modal's life.
   const [bookOpened, setBookOpened] = useState(initialKind === 'timeline')
+  // On the page the address is the truth (punch list #182): a view word changed from outside (Back, a pasted link) moves the
+  // desk, and the desk's own press writes the same word back, so this never fights it.
+  useEffect(() => {
+    if (onPage) setKind(initialKind ?? 'next')
+  }, [onPage, initialKind])
   // The desk stays mounted between opens, so a door's kind (the Dashboard's filing-window card, `?kind=timeline`) lands on each open, not only the first (v2.3781).
   const wasOpenRef = useRef(open)
   useEffect(() => {
@@ -643,6 +663,18 @@ export default function LienDeskModal({
 
   const selected = visible.find((e) => e.jobId === selectedJobId) ?? entries.find((e) => e.jobId === selectedJobId) ?? null
   useEffect(() => setStopOpen(null), [selectedJobId])
+  // The page's address (punch list #182): the view, and on Notices the open notice and the pile. The notice a door named
+  // counts before the selection catches up to it, so a pasted `&job=` is never dropped on the way in; the callback is read
+  // through a ref so a changed callback alone never rewrites the address.
+  const onAddressChangeRef = useRef(onAddressChange)
+  onAddressChangeRef.current = onAddressChange
+  const addressJob = kind === 'notice' ? (selectedJobId ?? (initialJobId && entries.some((e) => e.jobId === initialJobId) ? initialJobId : null)) : null
+  const addressPile = kind === 'notice' ? pile : null
+  const hasData = data != null
+  useEffect(() => {
+    if (!onPage || !hasData) return
+    onAddressChangeRef.current?.({ kind, job: addressJob, pile: addressPile })
+  }, [onPage, hasData, kind, addressJob, addressPile])
   const job = selected ? data?.jobsById[selected.jobId] : undefined
   const gc = selected?.gcCustomerId ? data?.gcsById[selected.gcCustomerId] : undefined
   const address = job?.customer_address_id ? data?.addressesById[job.customer_address_id] ?? null : null
@@ -3424,7 +3456,7 @@ export default function LienDeskModal({
   // when the window was narrower than about 1,250 px, with the leader's FYI sentence under that). On a phone they keep their places.
   // Share (v2.4311) is the last of them: beside × on a phone, the end of the tool row on a computer.
   const headerTools = (
-    <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+    <span style={isMobile ? { position: 'absolute', right: onPage ? '0.8rem' : '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       {isMobile ? null : rulesAndCaller}
       {isMobile ? null : <LegendButton legend={LIEN_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />}
       <button
@@ -3456,32 +3488,45 @@ export default function LienDeskModal({
       ) : null}
     </span>
   )
+  // The frame (punch list #182): on the page the panel is the whole screen under the app's chrome, a named region with no
+  // overlay, no ✕ and no toggle; as a window it is the overlay over the Pipeline, as it was.
+  const panelStyle: React.CSSProperties = onPage
+    ? { position: 'relative', background: 'var(--surface)', width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }
+    : { position: 'relative', background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }
+  const titleRightPad = onPage ? '1.25rem' : isMobile ? '1rem' : showToggle ? '6.2rem' : '2.6rem'
   return (
     <div
-      role="dialog"
-      aria-modal="true"
+      role={onPage ? 'region' : 'dialog'}
+      aria-modal={onPage ? undefined : 'true'}
       aria-label="Lien desk"
+      data-lien-desk-page={onPage ? '' : undefined}
       // The overlay ends above the Dispatch / Job mode footer (--app-bottom-chrome, v2.2184) so the buttons are never under the bar (v2.3522).
       // The top pads by the status bar (--app-top-chrome, v2.4397) so the title, Share and × are never under an iPhone's clock.
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780 }}
-      onClick={onClose}
+      // On the page (punch list #182) the frame draws no box of its own: the panel fills the page's cell and the desk's windows stand where they are.
+      style={onPage ? { display: 'contents' } : { position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780 }}
+      // The window closes on the dim alone (the panel below stops its own clicks); on the page the frame closes nothing.
+      onClick={(e) => {
+        if (!onPage && e.target === e.currentTarget) onClose()
+      }}
     >
       <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ position: 'relative', background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden' }}
-        data-lien-desk-panel
+        onClick={onPage ? undefined : (e) => e.stopPropagation()}
+        style={panelStyle}
+        data-lien-desk-panel={frame}
       >
         {/* v2.4355: the spacing between the title, the tabs and the doors is the class's column gap (no margins), so a desk narrower than 1,100 px can close it up. */}
-        <div className="lienDeskTitleBar" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: `0.7rem ${isMobile ? '1rem' : showToggle ? '6.2rem' : '2.6rem'} 0.6rem 1.25rem`, rowGap: isMobile ? undefined : '0.45rem', borderBottom: '1px solid var(--border)' }}>
+        <div className="lienDeskTitleBar" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: `0.7rem ${titleRightPad} 0.6rem 1.25rem`, rowGap: isMobile ? undefined : '0.45rem', borderBottom: '1px solid var(--border)' }}>
+          {/* The page's way back (punch list #182), before the title. */}
+          {onPage ? backDoor : null}
           <h2
             // On a phone the title has its line to itself, its right end kept clear for Share and × (v2.4311); the rows under it get the card's width.
-            style={{ margin: 0, fontSize: '1.125rem', cursor: 'help', ...(isMobile ? { flexBasis: '100%', paddingRight: '5.2rem', boxSizing: 'border-box' } : {}) }}
+            style={{ margin: 0, fontSize: '1.125rem', cursor: 'help', ...(isMobile ? { flexBasis: onPage ? undefined : '100%', flex: onPage ? '1 1 auto' : undefined, paddingRight: onPage ? '3rem' : '5.2rem', boxSizing: 'border-box' } : {}) }}
             title="Every unpaid work month on a job with a GC needs its own § 53.056 notice — the office readies and drafts, the leader approves once per GC or per notice, the run goes out and is recorded. The help guide “send lien notices from the Lien desk” has the whole flow."
           >
             ⏱ Lien desk
           </h2>
           {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem', border: 'none', color: 'var(--text-muted)' }} /> : null}
-          <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
+          {onPage ? null : <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>}
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
           {/* Three views (punch list #82, PR 5): Do now, Deadlines, All filings (named Next up, Calendar, All paper until v2.4630; only Do now carries a count). All filings holds the four lists that were tabs of their own, as a second row. */}
           <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="View" data-lien-desk-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
@@ -3550,7 +3595,7 @@ export default function LienDeskModal({
             : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, Do now doors) and the title offers *show every pile*. */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
-          <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: isMobile ? 0 : showToggle ? 'calc(1.25rem - 6.2rem)' : 'calc(1.25rem - 2.6rem)', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
+          <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: onPage || isMobile ? 0 : showToggle ? 'calc(1.25rem - 6.2rem)' : 'calc(1.25rem - 2.6rem)', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
           {kind === 'notice' && office && onPutGcOnNotice && gcPickerOptions.length > 0 ? (
             <div style={{ position: 'relative' }}>
               <button type="button" onClick={() => setGcPickerOpen((o) => !o)} aria-haspopup="menu" aria-expanded={gcPickerOpen} style={{ ...btn('plain'), ...headDoor, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' }} title="Every owner on every job with a failing GC gets the § 53.056 notice for every unnoticed month, in one approved run">

@@ -26,6 +26,8 @@ export interface RecordsPassOpts {
   matterId?: string | null
   /** Whether to drop the rows whose record is gone first (the sweep does; a hook after one filing need not). */
   dropGone?: boolean
+  /** Whether a held row an hour on is taken again (the sweep's default); false takes records with no row alone (a backfill without retry, #285 PR 3). */
+  retry?: boolean
   spend?: PassSpend
   startedMs?: number
   budgetMs?: number
@@ -79,8 +81,9 @@ export async function recordsPass(admin: SupabaseClient, opts: RecordsPassOpts):
     if (gone.error) console.warn('file index records drop failed', gone.error.message)
     else out.dropped = Number(gone.data) || 0
   }
-  const due = await recordsDue(admin, recordsWindow(opts.n), { personId: opts.personId, matterId: opts.matterId })
-  if (!due) return out
+  const listed = await recordsDue(admin, recordsWindow(opts.n), { personId: opts.personId, matterId: opts.matterId })
+  if (!listed) return out
+  const due = opts.retry === false ? listed.filter((r) => !r.held) : listed
   out.due = due.length
   const spend = opts.spend ?? newPassSpend()
   const started = opts.startedMs ?? Date.now()
