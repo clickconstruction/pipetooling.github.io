@@ -289,7 +289,7 @@ export function newJobDryRun(p: NewJobPayload, world: NewJobWorld): DryRun {
   const master = jobMasterUser(world, p)
   const email = row.customer_email as string | null
   const readiness: Json = {
-    status: 'waiting — the Pipeline moves it; plan_job_update { status: "ready_to_bill" } when the work is done',
+    status: 'working — a new job starts there (the table\'s default since 20260722264000); plan_job_update { status: "ready_to_bill" } when the work is done',
     revenue: (row.revenue as number) > 0 ? `${row.revenue} — the amount a bill will carry` : 'none — set revenue (the price) before a bill, or the bill has nothing to carry',
     customer_email: email ? `${email} — a Stripe bill goes here` : 'none — a Stripe bill needs the customer\'s email (customer_email, or on the customer)',
     customer_phone: row.customer_phone ? `${row.customer_phone}` : 'none on the job; a text goes to a number on the customer\'s contact (plan_bill reads it)',
@@ -326,7 +326,7 @@ export function jobAppliedWords(job: { id: string; click_number?: string | null;
     job_id: job.id,
     label,
     kind: kind.asked ? (kind.saved ? kind.asked : `not saved: ${kind.why ?? 'the row refused the kind'}`) : null,
-    next: `${label} is on the Pipeline at Waiting; get_job reads it. plan_job_update { job_id, status: "ready_to_bill" } when the work is done, then plan_bill bills it and hands the customer the link.`,
+    next: `${label} is on the Pipeline at Working (a new job's default); get_job reads it. plan_job_update { job_id, status: "ready_to_bill" } when the work is done, then plan_bill bills it and hands the customer the link.`,
   }
 }
 

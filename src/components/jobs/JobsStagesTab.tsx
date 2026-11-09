@@ -879,7 +879,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** The contract sweep (PR 4): every live job with nothing on file, one row each. ?contractSweep=1 deep-links it. */
   // Contract coverage card (v2.2738): company-wide counts per stage — the
   // board loads Billed/Collections lazily, so the card never reads off loaded rows.
-  const { nudge: contractNudge } = useJobContractsNudge(canSeeJobContracts)
+  const { nudge: contractNudge } = useJobContractsNudge(canSeeJobContracts, zzTestJobsHiddenForNudges)
   // v2.3419: where the crew is, per row (clock-ins, sub sheets, reports) — the Progress & payment cell reads it.
   const crewJobIds = useMemo(() => jobs.map((j) => j.id), [jobs])
   // Held until the list has loaded (v2.3569): the ids grow as scopes merge, and each growth re-ran the RPC.

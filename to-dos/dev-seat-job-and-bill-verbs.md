@@ -28,7 +28,7 @@ mockup: not required — the verbs have no screen; the plan replies are the desi
 
 Three verb pairs in the seat's own grammar (`plan_<x>` shows exactly what would land under a `plan_hash`; `apply_<x>` re-reads and writes only when the hash still matches; one apply per plan), each routed through what the app itself calls. No new RPC, no migration, no table the app does not write, so a verb can do nothing the signed-in dev could not do on the screen.
 
-1. **`plan_job` → `apply_job`** — the row New Job makes (`JobFormModal.createJob`): one `jobs_ledger` insert under RLS as the dev, then the kind. The dry run is the server's read of the customer (its email and phone fill the job's when left out), the service type, the development, the project, the bid, the owner rule's settings and the live jobs on the customer already wearing the name (refused unless `allow_duplicate_name`). The plan shows the row as it will land, who it belongs to and why, what a bill will still need and what the verb does not do (child rows, the award baseline, the Drive folder). The job starts at Waiting.
+1. **`plan_job` → `apply_job`** — the row New Job makes (`JobFormModal.createJob`): one `jobs_ledger` insert under RLS as the dev, then the kind. The dry run is the server's read of the customer (its email and phone fill the job's when left out), the service type, the development, the project, the bid, the owner rule's settings and the live jobs on the customer already wearing the name (refused unless `allow_duplicate_name`). The plan shows the row as it will land, who it belongs to and why, what a bill will still need and what the verb does not do (child rows, the award baseline, the Drive folder). The job starts at Working, the table's default since `20260722264000` (the first walk read it there).
 2. **`plan_job_update` → `apply_job_update`** — the Edit Job form's own columns, shown before → after, plus the status. Status moves go through the Pipeline's own `update_job_status`, one step at a time in the RPC's order, stopping where the database refuses. The plan commits to the touched columns' before values, the status and `updated_at`, so a change since refuses the apply.
 3. **`plan_bill` → `apply_bill`** — Bill Customer's steps in order: `ensure_single_ready_to_bill_invoice_for_job` (refused when its amount is not the plan's remainder, the modal's own rule), `create-stripe-invoice` as the dev with an explicit `stripe_mode`, the ten-letter `pay_code` read back (`bill_pay_code` asked once when missing), the job to Billed when fully invoiced, then the text through `quo-send` with the Billed line's words and the short link last, and the email through `messages-email` with the share row's draft. A refused send leaves the bill standing and names the reason; `action: send` on an existing bill retries or texts a bill made in the app. The whole remainder, as Bill Customer bills it; partial and split bills are a later verb.
 
@@ -49,8 +49,8 @@ Rejected: a `dev_job_write` definer wrapper (a migration for rows the app alread
 | PR | Verbs | Server | What it touches |
 |---|---|---|---|
 | 1 | `plan_job` / `apply_job` | 0.49.0 | `devMcpJobs.ts`, `devMcpWrites.ts`, `index.ts`, the address kernel into the copy, the docs, this card |
-| 2 | `plan_job_update` / `apply_job_update` | 0.51.0 | `devMcpJobs.ts` (the update's dry run, the status chain), `index.ts` |
-| 3 | `plan_bill` / `apply_bill` | 0.52.0 | `devMcpBill.ts`, the Billed line lifted into `lib/tellCustomer/billedLine.ts` and five kernels into the copy, `index.ts` |
+| 2 | `plan_job_update` / `apply_job_update` | 0.52.0 | `devMcpJobs.ts` (the update's dry run, the status chain), `index.ts` |
+| 3 | `plan_bill` / `apply_bill` | 0.53.0 | `devMcpBill.ts`, the Billed line lifted into `lib/tellCustomer/billedLine.ts` and five kernels into the copy, `index.ts` |
 
 Each merges alone (`gh pr merge N --auto`); after each merge, `supabase functions download dev-mcp --use-api` into a scratch folder and hash-compare to main before `supabase functions deploy dev-mcp`. No migration, so no push and no calls-ahead hold.
 
@@ -59,7 +59,7 @@ Each merges alone (`gh pr merge N --auto`); after each merge, `supabase function
 From an MCP client as the dev (the key in `PT_DEV_MCP_TOKEN`):
 
 1. `find_customer` the owner's test customer; `read_rows` on `service_types` for Plumbing's id.
-2. `plan_job { job: { job_name: 'ZZ TEST seat walk', job_address, customer_id, service_type_id, revenue: 1, kind: 'service' } }` → read the row, the owner, the readiness → `apply_job` with the plan_hash → the job on the Pipeline at Waiting; `get_job` reads it.
+2. `plan_job { job: { job_name: 'ZZ TEST seat walk', job_address, customer_id, service_type_id, revenue: 1, kind: 'service' } }` → read the row, the owner, the readiness → `apply_job` with the plan_hash → the job on the Pipeline at Working (a new job's default); `get_job` reads it.
 3. `plan_job_update { update: { job_id, status: 'ready_to_bill' } }` → the two steps → `apply_job_update` → Ready to Bill.
 4. `plan_bill { bill: { job_id, stripe_mode: 'test', send: { text: true } } }` → the amount, the number, the text's words → `apply_bill` → a one-dollar test-mode bill, its 43-character link in the test contact's thread, the link opening Stripe's test page.
 5. A second `apply_job` with the same plan is refused as already applied; a `plan_job` of the same name is refused without `allow_duplicate_name`.

@@ -6,6 +6,7 @@
 import { buildJobContractCoverage, daysSinceIso, isContractGap, type JobContractCoverage, type JobContractRowLike, type SignedEstimateLike } from './jobContractCoverage'
 import { isUnderContractFloor } from './jobContractFloor'
 import { jobUncollectible } from '../jobsStagesBoard'
+import { withoutZzTestJobs } from './zzTestJobVisibility'
 
 /** Owner decision 2 (proposed): every non-paid stage is in scope. */
 export const CONTRACT_NUDGE_STATUSES = ['waiting', 'working', 'ready_to_bill', 'billed'] as const
@@ -22,6 +23,9 @@ export type ContractNudgeJob = {
   /** Contract sweep PR 0: the office's "no agreement of ours needed" answer. */
   contract_not_needed_at?: string | null
   contract_not_needed_reason?: string | null
+  /** The names the ZZ test-job rule reads (`isZzTestJob`); a row without them is never a test job. */
+  job_name?: string | null
+  customer_name?: string | null
 }
 
 export const CONTRACT_STAGES = ['waiting', 'working', 'ready_to_bill', 'billed', 'collections'] as const
@@ -61,7 +65,14 @@ export type ContractNudgeSummary = {
   coverage: Map<string, JobContractCoverage>
 }
 
-export type ContractNudgeOptions = { floorCents?: number }
+export type ContractNudgeOptions = {
+  floorCents?: number
+  /**
+   * Drop ZZ test jobs before counting, as the board does for every role but a dev who shows them
+   * (v2.6805). The card's stage counts open the board filtered to those jobs, so they count its rows.
+   */
+  hideZzTestJobs?: boolean
+}
 
 export function summarizeContractNudge(
   jobs: ReadonlyArray<ContractNudgeJob>,
@@ -71,7 +82,8 @@ export function summarizeContractNudge(
   options: ContractNudgeOptions = {},
 ): ContractNudgeSummary {
   const floorCents = options.floorCents ?? 0
-  const live = jobs.filter((j) => (CONTRACT_NUDGE_STATUSES as ReadonlyArray<string>).includes(j.status ?? '') && !jobUncollectible(j))
+  const inView = options.hideZzTestJobs ? withoutZzTestJobs([...jobs]) : jobs
+  const live = inView.filter((j) => (CONTRACT_NUDGE_STATUSES as ReadonlyArray<string>).includes(j.status ?? '') && !jobUncollectible(j))
   const coverage = buildJobContractCoverage(live, contracts, estimates)
   const missingIds: string[] = []
   let revenueTotal = 0

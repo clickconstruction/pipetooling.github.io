@@ -12,14 +12,9 @@
  * Pure except for `printHtmlInNewWindow`, which touches `window`.
  */
 
-export function escapeHtml(s: string): string {
-  return (s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
+// v2.6804: the function lives in a file with no browser global, so a kernel the edge copies can import it.
+import { escapeHtml } from './escapeHtml'
+export { escapeHtml }
 
 /** Split address on first comma into [street, city/state/zip] for combined documents. */
 export function addressLines(addr: string): string[] {
