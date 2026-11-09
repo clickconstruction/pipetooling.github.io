@@ -94,6 +94,8 @@ export const TALLY_OFFICE_CATEGORIES: readonly string[] = ['Advertising', 'Insur
 export type TallyConfidence = 'sure' | 'likely' | 'none'
 
 export type TallyRuleId =
+  /** Line: a counter ticket on the charge names the job (punch list #295, PR 3). */
+  | 'ticket'
   /** Line: Mercury's category is one that goes to Office. */
   | 'office-category'
   /** Line: the holder's last 3+ charges at this store went wholly to one job. */
@@ -123,6 +125,7 @@ export type TallyRuleId =
 
 /** Each rule's one level. A rule moves level only with a new rules version and a new measurement. */
 export const TALLY_RULE_CONFIDENCE: Readonly<Record<TallyRuleId, TallyConfidence>> = {
+  ticket: 'likely',
   'office-category': 'likely',
   'store-streak': 'none',
   'store-last': 'none',
@@ -199,6 +202,8 @@ export type TallyDayInput = {
   nowMs: number
   /** Chips kept on the day; defaults to `TALLY_DAY_CHIP_CAP`. */
   chipCap?: number
+  /** The job a counter ticket on a charge names, by charge id (punch list #295, PR 3): the line's first chip. */
+  ticketJobByCharge?: ReadonlyMap<string, string>
 }
 
 export type TallyChoice =
@@ -557,7 +562,10 @@ export function suggestTallyDay(input: TallyDayInput): TallyDaySuggestion {
   const multi = clock.jobs.length > 1
   const lines: TallyLineSuggestion[] = charges.map((c) => {
     const own: TallySuggestion[] = []
-    if (officeJobId && c.category && TALLY_OFFICE_CATEGORIES.includes(c.category)) {
+    // The ticket the holder took at the counter names the job; it leads the line, and the sorter still taps.
+    const ticketJob = input.ticketJobByCharge?.get(c.id)
+    if (ticketJob) own.push(suggestion(jobChoice(ticketJob), 'ticket'))
+    if (officeJobId && c.category && TALLY_OFFICE_CATEGORIES.includes(c.category) && !own.some((o) => o.choice.kind === 'job' && o.choice.jobId === officeJobId)) {
       own.push(suggestion(jobChoice(officeJobId), 'office-category', { category: c.category }))
     }
     if (c.category !== TALLY_FUEL_CATEGORY) {

@@ -34699,6 +34699,188 @@ export type Database = {
         }
         Relationships: []
       }
+      supply_paper_lines: {
+        Row: {
+          description: string
+          extended_cents: number | null
+          house_code: string
+          id: string
+          line_kind: string
+          line_no: number
+          matched_how: string
+          mfr_number: string
+          paper_id: string
+          part_id: string | null
+          pricing_unit: string
+          qty_backordered: number | null
+          qty_ordered: number | null
+          qty_shipped: number | null
+          unit: string
+          unit_price: number | null
+        }
+        Insert: {
+          description?: string
+          extended_cents?: number | null
+          house_code?: string
+          id?: string
+          line_kind?: string
+          line_no: number
+          matched_how?: string
+          mfr_number?: string
+          paper_id: string
+          part_id?: string | null
+          pricing_unit?: string
+          qty_backordered?: number | null
+          qty_ordered?: number | null
+          qty_shipped?: number | null
+          unit?: string
+          unit_price?: number | null
+        }
+        Update: {
+          description?: string
+          extended_cents?: number | null
+          house_code?: string
+          id?: string
+          line_kind?: string
+          line_no?: number
+          matched_how?: string
+          mfr_number?: string
+          paper_id?: string
+          part_id?: string | null
+          pricing_unit?: string
+          qty_backordered?: number | null
+          qty_ordered?: number | null
+          qty_shipped?: number | null
+          unit?: string
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_paper_lines_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "supply_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_paper_lines_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_papers: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          check_note: string
+          check_state: string
+          created_at: string
+          dated_on: string | null
+          drive_file_id: string | null
+          file_path: string | null
+          freight_cents: number | null
+          id: string
+          invoice_id: string | null
+          kind: string
+          number: string
+          order_number: string
+          page_from: number | null
+          page_to: number | null
+          po_text: string
+          read_at: string | null
+          read_by: string
+          read_id: string | null
+          subtotal_cents: number | null
+          supply_house_id: string | null
+          tax_cents: number | null
+          total_cents: number | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          check_note?: string
+          check_state?: string
+          created_at?: string
+          dated_on?: string | null
+          drive_file_id?: string | null
+          file_path?: string | null
+          freight_cents?: number | null
+          id?: string
+          invoice_id?: string | null
+          kind: string
+          number?: string
+          order_number?: string
+          page_from?: number | null
+          page_to?: number | null
+          po_text?: string
+          read_at?: string | null
+          read_by?: string
+          read_id?: string | null
+          subtotal_cents?: number | null
+          supply_house_id?: string | null
+          tax_cents?: number | null
+          total_cents?: number | null
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          check_note?: string
+          check_state?: string
+          created_at?: string
+          dated_on?: string | null
+          drive_file_id?: string | null
+          file_path?: string | null
+          freight_cents?: number | null
+          id?: string
+          invoice_id?: string | null
+          kind?: string
+          number?: string
+          order_number?: string
+          page_from?: number | null
+          page_to?: number | null
+          po_text?: string
+          read_at?: string | null
+          read_by?: string
+          read_id?: string | null
+          subtotal_cents?: number | null
+          supply_house_id?: string | null
+          tax_cents?: number | null
+          total_cents?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_papers_accepted_by_fkey"
+            columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_read_id_fkey"
+            columns: ["read_id"]
+            isOneToOne: false
+            referencedRelation: "supply_bill_reads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       takeoff_book_entries: {
         Row: {
           alias_names: string[] | null
@@ -38887,6 +39069,61 @@ export type Database = {
             columns: ["master_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_purchase_lines: {
+        Row: {
+          check_state: string | null
+          dated_on: string | null
+          description: string | null
+          extended_cents: number | null
+          house_code: string | null
+          id: string | null
+          invoice_id: string | null
+          kind: string | null
+          line_kind: string | null
+          line_no: number | null
+          matched_how: string | null
+          mfr_number: string | null
+          number: string | null
+          paper_id: string | null
+          part_id: string | null
+          pricing_unit: string | null
+          quantity: number | null
+          sign: number | null
+          supply_house_id: string | null
+          unit: string | null
+          unit_price: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_paper_lines_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "supply_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_paper_lines_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_papers_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
             referencedColumns: ["id"]
           },
         ]

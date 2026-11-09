@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from 'react'
+import { ticketChipWords } from '../../lib/tickets/ticketOffice'
 import { formatTallyCurrency, formatTallyPostedParts } from '../../lib/tally/formatTallyPosted'
 import {
   tallyRowIsResolved,
@@ -16,6 +17,8 @@ export type TallySortModeCardListProps = {
   onOpenAllocations: (row: TallyLinkedMercuryRow) => void
   /** Personal memo save (empty string clears); resolves to an error message or null. */
   onSaveMyNote: (txId: string, note: string) => Promise<string | null>
+  /** Counter tickets (punch list #295, PR 3): the ticket on a charge with its job's label, by charge id. */
+  ticketByTx?: ReadonlyMap<string, { jobLabel: string | null }>
 }
 
 const cardStyle: CSSProperties = {
@@ -39,6 +42,7 @@ export function TallySortModeCardList({
   onStartSort,
   onOpenAllocations,
   onSaveMyNote,
+  ticketByTx,
 }: TallySortModeCardListProps) {
   const [memoTxId, setMemoTxId] = useState<string | null>(null)
   const [memoDraft, setMemoDraft] = useState('')
@@ -112,6 +116,11 @@ export function TallySortModeCardList({
             </div>
             <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 1 }}>
               {posted ? `${posted.weekday} ${posted.date}` : '—'}
+              {ticketByTx?.has(txId) ? (
+                <span data-testid="tally-card-ticket-chip" style={{ marginLeft: 6, background: 'var(--bg-green-100)', color: 'var(--text-green-700)', borderRadius: 999, padding: '0.05rem 0.45rem', fontWeight: 700 }}>
+                  {ticketChipWords(ticketByTx.get(txId)?.jobLabel ?? null)}
+                </span>
+              ) : null}
             </div>
             {mercuryMemo ? (
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 3, wordBreak: 'break-word' }}>{mercuryMemo}</div>

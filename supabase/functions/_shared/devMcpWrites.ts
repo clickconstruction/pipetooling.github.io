@@ -36,6 +36,7 @@ import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isBillVerb } from './devMcpBill.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
+import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
@@ -179,6 +180,12 @@ export const WRITE_VERBS = {
   apply_submittal_rows: { rpc: null, step: 'apply' },
   plan_submittal_log: { rpc: null, step: 'plan' },
   apply_submittal_log: { rpc: null, step: 'apply' },
+  // v2.6822 / 0.54.0: a note on a job's Activity (jobs_ledger_thread_notes, the Pipeline's Note press) or on a bid
+  // (bids_submission_entries with notes, the Bid Board's Notes popover), the rows the app writes under RLS; no RPC
+  // exists for either, so rpc is null — the dry run is the server's read of the job or the bid and its latest lines
+  // (devMcpActivityNote.ts). It tells nobody.
+  plan_activity_note: { rpc: null, step: 'plan' },
+  apply_activity_note: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -308,6 +315,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isSubmittalVerb(verb)) {
     // v2.6804: the shape check is devMcpSubmittals'; the dry run is the server's read of the bid's submittal world.
     const built = submittalInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isActivityNoteVerb(verb)) {
+    // v2.6822: the shape check is devMcpActivityNote's; the dry run is the server's read of the job or the bid and its latest lines.
+    const built = activityNoteInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1105,6 +1118,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const job = verb === 'apply_job'
   if (verb === 'apply_bill') return `Nothing written: this plan was already applied${when}${prior.target ? ` (bill ${prior.target})` : ''}. The bill stands; get_job lists it with its link, and plan_bill { action: "send", invoice_id, send } hands it over again. A second bill on the job is a new plan once the job has a remainder.`
   if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`
+  if (verb === 'apply_activity_note') return `Nothing written: this plan was already applied${when}; the line is on the thread (read_rows on jobs_ledger_thread_notes by job_id, or on bids_submission_entries by bid_id, newest first). A second line with the same words is a duplicate; if you mean another, change its words or its day and plan again.`
   if (verb === 'apply_submittal_rows' || verb === 'apply_submittal_log') return `Nothing written: this plan was already applied on this bid${when}. get_submittals reads it back; a further change needs a new plan from the bid as it stands.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
   // v2.6792: the account verbs' plans commit to the row as it read, so a landed change hashes differently; this answers the odd replay.

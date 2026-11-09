@@ -2,7 +2,7 @@
 name: "A photo of the supply house ticket, taken at the counter"
 number: 295
 group: ready
-status: asked 2026-11-09 · Tally read on main, in prod and live · three shapes put to Diane, the second picked for a mock-up the same day · drawn as thirteen frames · her "is this the best we can do, did we cover the edge cases" the same day: the cases checked against the code and redrawn as fifteen frames · Diane said build as drawn the same day, with the picks she was shown on the calls · PR 1 (the ground, pull request 7495) is in review · no screen yet
+status: asked 2026-11-09 · Tally read on main, in prod and live · three shapes put to Diane, the second picked for a mock-up the same day · drawn as thirteen frames · her "is this the best we can do, did we cover the edge cases" the same day: the cases checked against the code and redrawn as fifteen frames · Diane said build as drawn the same day, with the picks she was shown on the calls · PR 1 (the ground, v2.6812) merged, pushed and the sweep deployed 2026-11-09 · PR 2 (the tech's press, v2.6815) and PR 3 (the match and the office's queue, v2.6818) in review · the text door is its own card, #299
 mockup: to-dos/ticket-photo/mockup.html
 summary: >
   Two papers leave a supply house counter. A card receipt is the only list of what was bought, and
@@ -17,7 +17,7 @@ summary: >
   Generator code and later the bill. The Team queue shows the ticket on the charge, offers its job
   first, and lists the tickets that have no charge. Reading the ticket's lines
   with the bill reader is a later step.
-next: PR 1, the ground (the table, the bucket, the sweep's ninth source, the matcher kernel), which draws no screen; then its push and the photo-save deploy; then PR 2, the tech's press on Tally.
+next: PR 2's merge and push (two read policies), PR 3's merge; then PR 4, the other doors (the Job Mode line, + Ticket at the desk, Add invoice's Start from, Record as a bill).
 size: L as a train of four (M · M · M · S), the reading step apart
 blocker: None for the build. Call 6 (does a cash ticket mean money owed to the tech) is still the owner's; the build only records how such a ticket was paid.
 opinion: build — it is the only shape a tech can press at the counter, and it turns the office's guess into a fact

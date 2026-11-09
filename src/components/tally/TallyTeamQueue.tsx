@@ -39,6 +39,20 @@ import MercuryTransactionInvoiceLinkModal from '../MercuryTransactionInvoiceLink
 import { TeamPurchasesSortedList } from '../TeamPurchasesSortedList'
 import { PersonOffsetFormModal, type PersonOffsetInitialDraft } from '../pay/PersonOffsetFormModal'
 import { TallyTeamDayCard } from './TallyTeamDayCard'
+import { TeamTicketsList } from './TeamTicketsList'
+import { TicketWindow } from '../tickets/TicketWindow'
+import { TallyChooseJobSheet } from './TallyChooseJobSheet'
+import { ticketJobIds, type TicketPaidOther } from '../../lib/tickets/ticket'
+import type { TicketJobFacts } from '../../lib/tickets/ticketJobs'
+import { officeTicketRows, ticketJobByCharge as ticketJobByChargeOf, ticketsByCharge, ticketsTabLabel, type ChargeSplit } from '../../lib/tickets/ticketOffice'
+import type { TicketMatch } from '../../lib/tickets/ticketMatch'
+import { answerTicketNo, answerTicketYes, listOfficeTickets, markTicketUsed, markTicketsUsedByCharge, matchChargeFromStaffRow, matchChargeFromWindowRow, mergeMatchCharges, runTicketMatches, setTicketPaidOther } from '../../lib/tickets/ticketMatchIo'
+import { loadJobsForTicketPick, loadTicketJobFacts } from '../../lib/tickets/ticketSheetIo'
+import { ticketScreensIo } from '../../lib/tickets/ticketScreensIo'
+import type { TicketWithPages } from '../../lib/tickets/ticketsIo'
+import type { ChooseJobRow } from '../../lib/tally/chooseJobSearch'
+import { tallyDayKey } from '../../lib/tally/tallySortSuggestion'
+import { formatTallyCurrency } from '../../lib/tally/formatTallyPosted'
 import { TallyPayBar } from './TallyPayBar'
 
 /**
@@ -90,7 +104,15 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
   const askedLabels = useRef(new Set<string>())
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [view, setView] = useState<'to-sort' | 'sorted'>('to-sort')
+  const [view, setView] = useState<'to-sort' | 'sorted' | 'tickets'>('to-sort')
+  /** Counter tickets (punch list #295, PR 3): every live ticket in the queue's window, the matcher's answers, and the jobs they name. */
+  const [tickets, setTickets] = useState<TicketWithPages[]>([])
+  const [ticketMatches, setTicketMatches] = useState<ReadonlyMap<string, TicketMatch>>(new Map())
+  const [ticketJobs, setTicketJobs] = useState<ReadonlyMap<string, TicketJobFacts>>(new Map())
+  const [openTicket, setOpenTicket] = useState<TicketWithPages | null>(null)
+  const [ticketBusy, setTicketBusy] = useState<string | null>(null)
+  const [pickJobFor, setPickJobFor] = useState<TicketWithPages | null>(null)
+  const [pickJobs, setPickJobs] = useState<ChooseJobRow[] | null>(null)
   const [person, setPerson] = useState<string | null>(null)
   const [selections, setSelections] = useState<Map<string, TallyLineSelection>>(() => new Map())
   const [lineErrors, setLineErrors] = useState<Map<string, string>>(() => new Map())
@@ -113,12 +135,27 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
       setReads(next)
       setSortedRows(sorted)
       setLoadedAt(Date.now())
+      // The tickets in the window, and the matcher over every charge the queue read: a match it makes is written here.
+      try {
+        // The tickets from the oldest charge the window read, so a ticket meets any charge the queue can show.
+        const since = next.history.reduce((m, r) => (r.postedAt < m ? r.postedAt : m), new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString())
+        let list = await listOfficeTickets(since)
+        const held = ticketsByCharge(list)
+        const charges = mergeMatchCharges([next.queue.map(matchChargeFromStaffRow), next.history.map(matchChargeFromWindowRow)], held)
+        const { matches, written } = await runTicketMatches(list, charges)
+        if (written > 0) list = await listOfficeTickets(since)
+        setTickets(list)
+        setTicketMatches(matches)
+        void loadTicketJobFacts(list.flatMap(ticketJobIds), prefixMap).then(setTicketJobs).catch(() => undefined)
+      } catch {
+        // the tickets are a layer on the queue; a read that fails leaves the queue as it was
+      }
     } catch (e) {
       setLoadError(formatErrorMessage(e, 'Could not load the team’s card charges.'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [prefixMap])
 
   useEffect(() => {
     void load()
@@ -130,9 +167,70 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
     return () => window.removeEventListener('focus', onFocus)
   }, [load])
 
+  const ticketJobByCharge = useMemo(() => ticketJobByChargeOf(tickets), [tickets])
   const queue = useMemo(
-    () => (reads ? buildTallyTeamQueue({ ...reads, officeJobId, nowMs: loadedAt }) : null),
-    [reads, officeJobId, loadedAt],
+    () => (reads ? buildTallyTeamQueue({ ...reads, officeJobId, nowMs: loadedAt, ticketJobByCharge }) : null),
+    [reads, officeJobId, loadedAt, ticketJobByCharge],
+  )
+  const ticketByCharge = useMemo(() => {
+    const out = new Map<string, { ticket: TicketWithPages; jobLabel: string | null }>()
+    for (const [chargeId, t] of ticketsByCharge(tickets)) {
+      const jobId = ticketJobIds(t)[0]
+      out.set(chargeId, { ticket: t, jobLabel: jobId ? (ticketJobs.get(jobId)?.label ?? null) : null })
+    }
+    return out
+  }, [tickets, ticketJobs])
+  const asksByCharge = useMemo(() => {
+    const out = new Map<string, TicketWithPages>()
+    const byId = new Map(tickets.map((t) => [t.id, t]))
+    for (const [ticketId, m] of ticketMatches) {
+      const t = byId.get(ticketId)
+      if (t && m.kind === 'ask' && !out.has(m.chargeId)) out.set(m.chargeId, t)
+    }
+    return out
+  }, [tickets, ticketMatches])
+  const splitsByCharge = useMemo(() => {
+    const out = new Map<string, ChargeSplit[]>()
+    for (const r of reads?.history ?? []) if (r.splits.length > 0) out.set(r.id, r.splits.map((sp) => ({ jobId: sp.jobId, amount: sp.amount })))
+    return out
+  }, [reads])
+  const ticketRows = useMemo(() => officeTicketRows(tickets, { matches: ticketMatches, splitsByCharge }), [tickets, ticketMatches, splitsByCharge])
+  const chargeWords = useCallback(
+    (chargeId: string) => {
+      const w = reads?.history.find((r) => r.id === chargeId)
+      if (w) return `${formatTallyCurrency(Math.abs(w.amount))} at ${w.counterpartyName ?? 'a store'}, ${formatWorkDateYmdWeekdayShortFriendly(tallyDayKey(w.purchasedAt ?? w.postedAt) ?? '')}`
+      const q = reads?.queue.find((r) => r.mercury_transaction_id === chargeId)
+      return q ? `${formatTallyCurrency(Math.abs(Number(q.amount)))} at ${q.counterparty_name ?? 'a store'}` : 'that charge'
+    },
+    [reads],
+  )
+  const chargesFor = useCallback(
+    (t: TicketWithPages) => {
+      const taken = Date.parse(t.taken_at)
+      const span = 4 * 24 * 60 * 60 * 1000
+      const out: { id: string; words: string; at: number }[] = []
+      for (const r of reads?.history ?? []) {
+        if (r.holderUserId !== t.taken_by || ticketByCharge.has(r.id)) continue
+        const at = Date.parse(r.purchasedAt ?? r.postedAt)
+        if (Math.abs(at - taken) <= span) out.push({ id: r.id, words: chargeWords(r.id), at })
+      }
+      return out.sort((a, b) => Math.abs(a.at - taken) - Math.abs(b.at - taken)).map(({ id, words }) => ({ id, words }))
+    },
+    [reads, ticketByCharge, chargeWords],
+  )
+  const ticketAct = useCallback(
+    async (t: TicketWithPages, act: () => Promise<void>, words: string) => {
+      setTicketBusy(t.id)
+      try {
+        await act()
+        void load()
+      } catch (e) {
+        showToast(formatErrorMessage(e, words), 'error')
+      } finally {
+        setTicketBusy(null)
+      }
+    },
+    [load, showToast],
   )
 
   useEffect(() => {
@@ -323,11 +421,13 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
         showActionToast(`Sorted ${done.length} of ${done.length + errors.size}. The rest need another look.`, undo, { type: 'error' })
       else if (errors.size > 0) showToast('Nothing was sorted. The charges need another look.', 'error')
       if (done.length > 0) {
+        // The tickets on these charges were in front of the sorter: the office has used them.
+        void markTicketsUsedByCharge(done.filter((id) => ticketByCharge.has(id))).catch(() => undefined)
         void load()
         void refetchStale()
       }
     },
-    [selections, showToast, showActionToast, undoLines, load, refetchStale],
+    [selections, showToast, showActionToast, undoLines, load, refetchStale, ticketByCharge],
   )
 
   const backcharge = useCallback(
@@ -389,6 +489,9 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
         <button type="button" aria-pressed={view === 'sorted'} style={segmentStyle(view === 'sorted')} onClick={() => setView('sorted')}>
           {sortedRows ? `Sorted (${sortedRows.length})` : 'Sorted'}
         </button>
+        <button type="button" aria-pressed={view === 'tickets'} style={segmentStyle(view === 'tickets')} onClick={() => setView('tickets')} data-testid="tally-team-tickets-tab">
+          {ticketsTabLabel(reads ? ticketRows.length : null)}
+        </button>
       </div>
 
       {loadError ? (
@@ -400,7 +503,45 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
         </div>
       ) : null}
 
-      {view === 'sorted' ? (
+      {view === 'tickets' ? (
+        <TeamTicketsList
+          rows={ticketRows}
+          jobs={ticketJobs}
+          chargeWords={chargeWords}
+          chargesFor={chargesFor}
+          busyId={ticketBusy}
+          onOpen={setOpenTicket}
+          onAnswer={(t, chargeId, yes) => void ticketAct(t, () => (yes ? answerTicketYes(t.id, chargeId) : answerTicketNo(t, chargeId)), 'The answer did not save.')}
+          onPickCharge={(t, chargeId) => void ticketAct(t, () => answerTicketYes(t.id, chargeId, 'picked'), 'The charge did not save.')}
+          onPaidOther={(t, how: TicketPaidOther) => void ticketAct(t, () => setTicketPaidOther(t.id, how), 'That did not save.')}
+          onChangeCharge={(t, toJobId) =>
+            void ticketAct(
+              t,
+              async () => {
+                const w = reads?.history.find((r) => r.id === t.mercury_transaction_id)
+                const holder = w?.holderUserId
+                if (!w || !holder) throw new Error('That charge is not in the window any more.')
+                await withSupabaseRetry(
+                  async () =>
+                    supabase.rpc('replace_mercury_job_splits_for_linked_card_as_staff', {
+                      p_for_user_id: holder,
+                      p_mercury_transaction_id: w.id,
+                      p_rows: [{ job_id: toJobId, amount: w.amount }] as unknown as Json,
+                    }),
+                  'tally team queue change to the ticket job',
+                )
+                await markTicketUsed(t.id)
+              },
+              'The charge did not move.',
+            )
+          }
+          onLeave={(t) => void ticketAct(t, () => markTicketUsed(t.id), 'That did not save.')}
+          onPickJob={(t) => {
+            setPickJobFor(t)
+            if (pickJobs === null) void loadJobsForTicketPick().then(setPickJobs)
+          }}
+        />
+      ) : view === 'sorted' ? (
         <TeamPurchasesSortedList
           rows={sortedRows ?? []}
           isNarrow={isNarrow}
@@ -478,6 +619,10 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
                   onInvoices={setInvoiceRow}
                   onBackcharge={(row) => void backcharge(row)}
                   onUndo={(line) => void undoLines([line])}
+                  ticketByCharge={ticketByCharge}
+                  asksByCharge={asksByCharge}
+                  onAnswerAsk={(t, chargeId, yes) => void ticketAct(t, () => (yes ? answerTicketYes(t.id, chargeId) : answerTicketNo(t, chargeId)), 'The answer did not save.')}
+                  onOpenTicket={setOpenTicket}
                 />
               ))}
             </div>
@@ -519,6 +664,21 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
         }}
       />
 
+      {openTicket ? <TicketWindow ticket={openTicket} jobs={ticketJobs} userId={authUser?.id ?? ''} io={ticketScreensIo} onClose={() => setOpenTicket(null)} onChanged={() => void load()} /> : null}
+      {pickJobFor ? (
+        <TallyChooseJobSheet
+          jobs={pickJobs ?? []}
+          onlyIds={null}
+          selectedJobId={pickJobFor.job_id}
+          viewerUserId={authUser?.id ?? null}
+          onPick={(id) => {
+            const t = pickJobFor
+            setPickJobFor(null)
+            void ticketAct(t, () => ticketScreensIo.changeJob(t.id, { job_id: id, also_job_ids: [], no_one_job: false, po_entry_id: null }), 'The job did not save.')
+          }}
+          onClose={() => setPickJobFor(null)}
+        />
+      ) : null}
       <PersonOffsetFormModal
         open={offsetDraft !== null}
         onClose={() => {

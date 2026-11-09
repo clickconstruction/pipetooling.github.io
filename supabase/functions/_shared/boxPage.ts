@@ -142,3 +142,122 @@ export function parseBoxPageResponse(body: unknown): BoxPagePayload | null {
 
 /** The 429's words when a source has guessed too often. The page shows them as they are. */
 export const BOX_PAGE_LOCKED_WORDS = 'Too many wrong codes from this connection in the last hour. Wait an hour and scan the label again.'
+
+// ---------------------------------------------------------------------------
+// Find a part on this site (PR 3, v2.6799): the search a scanned code opens, over that box's job and no other.
+// ---------------------------------------------------------------------------
+
+/** At most this many boxes come back; a site with more matches is told to type one more word. */
+export const BOX_PAGE_FIND_MAX = 30
+
+/** The words typed, folded: lower-cased, split on spaces, empty ones dropped, at most six. */
+export function boxPageFindWords(raw: unknown): string[] {
+  if (typeof raw !== 'string') return []
+  return raw.toLowerCase().split(/\s+/).map((w) => w.trim()).filter(Boolean).slice(0, 6)
+}
+
+export type BoxPageFindBox = {
+  code: string
+  stencil: string
+  kind: BoxPageKind
+  place: string
+  where: string
+  /** The lines that matched a word; every line on hand when the box matched by its stencil or place alone. */
+  lines: BoxPageLine[]
+  /** True for the box the code named, so the page can mark it. */
+  thisBox: boolean
+}
+
+export type BoxPageFindPayload = {
+  ok: true
+  find: {
+    words: string[]
+    boxes: BoxPageFindBox[]
+    /** How many boxes matched before the cap. */
+    total: number
+  }
+}
+
+export type BoxPageFindInput = {
+  /** The code the scan opened: its box lists first and is marked. */
+  thisCode: string
+  words: string[]
+  containers: ReadonlyArray<BoxPageContainerRow>
+  places: ReadonlyArray<{ id: string; name: string }>
+  lines: ReadonlyArray<BoxPageServerLine>
+}
+
+function fold(s: string | null | undefined): string {
+  return (s ?? '').toLowerCase()
+}
+
+/**
+ * The boxes of the job whose stencil, place, where-note or lines hold every word typed: the scanned box first, then
+ * stencil order. A box that matched on a line carries the matching lines; one that matched on its name alone carries
+ * every line on hand, so a person who typed a stencil sees what is in it. Retired boxes and the Unsorted row never match.
+ */
+export function boxPageFind(input: BoxPageFindInput): BoxPageFindPayload['find'] {
+  const words = input.words.filter(Boolean)
+  const placeName = new Map(input.places.map((p) => [p.id, p.name] as const))
+  const out: BoxPageFindBox[] = []
+  if (words.length > 0) {
+    for (const c of input.containers) {
+      if (c.retired_at || c.kind === 'unsorted') continue
+      const place = (c.place_id && placeName.get(c.place_id)) || ''
+      const own = `${fold(c.label)} ${fold(place)} ${fold(c.where_note)}`
+      const all = boxPageLines(input.lines, c.id)
+      const byLine = all.filter((l) => words.every((w) => `${fold(l.partName)} ${fold(l.manufacturer)}`.includes(w)))
+      const byName = words.every((w) => own.includes(w))
+      // A word on the box and the rest on a line counts too: "b3 copper".
+      const mixed = !byName && byLine.length === 0 ? all.filter((l) => words.every((w) => own.includes(w) || `${fold(l.partName)} ${fold(l.manufacturer)}`.includes(w))) : []
+      if (!byName && byLine.length === 0 && mixed.length === 0) continue
+      out.push({
+        code: c.code,
+        stencil: c.label,
+        kind: boxPageKind(c.kind),
+        place,
+        where: (c.where_note ?? '').trim(),
+        lines: byLine.length > 0 ? byLine : mixed.length > 0 ? mixed : all,
+        thisBox: c.code === input.thisCode,
+      })
+    }
+  }
+  out.sort((a, b) => (a.thisBox === b.thisBox ? compareStencils(a.stencil, b.stencil) : a.thisBox ? -1 : 1))
+  return { words, boxes: out.slice(0, BOX_PAGE_FIND_MAX), total: out.length }
+}
+
+/** A1 before A2 before A10, then B1: the letters, then the number. */
+export function compareStencils(a: string, b: string): number {
+  const ra = /^([A-Za-z]*)(\d*)(.*)$/.exec(a.trim()) ?? []
+  const rb = /^([A-Za-z]*)(\d*)(.*)$/.exec(b.trim()) ?? []
+  const la = (ra[1] ?? '').toUpperCase()
+  const lb = (rb[1] ?? '').toUpperCase()
+  if (la !== lb) return la < lb ? -1 : 1
+  const na = ra[2] ? Number(ra[2]) : Number.POSITIVE_INFINITY
+  const nb = rb[2] ? Number(rb[2]) : Number.POSITIVE_INFINITY
+  if (na !== nb) return na < nb ? -1 : 1
+  return a.localeCompare(b)
+}
+
+/** The search's answer read back on the client; null when it is not the shape. */
+export function parseBoxPageFindResponse(body: unknown): BoxPageFindPayload | null {
+  if (!body || typeof body !== 'object') return null
+  const b = body as { ok?: unknown; find?: unknown }
+  if (b.ok !== true || !b.find || typeof b.find !== 'object') return null
+  const f = b.find as Record<string, unknown>
+  if (!Array.isArray(f.boxes)) return null
+  const boxes: BoxPageFindBox[] = []
+  for (const x of f.boxes as unknown[]) {
+    if (!x || typeof x !== 'object') return null
+    const r = x as Record<string, unknown>
+    if (typeof r.code !== 'string' || typeof r.stencil !== 'string' || !Array.isArray(r.lines)) return null
+    const lines: BoxPageLine[] = []
+    for (const l of r.lines as unknown[]) {
+      const q = (l ?? {}) as Record<string, unknown>
+      if (typeof q.partName !== 'string' || typeof q.onHand !== 'number') return null
+      lines.push({ partName: q.partName, manufacturer: typeof q.manufacturer === 'string' ? q.manufacturer : null, onHand: q.onHand })
+    }
+    boxes.push({ code: r.code, stencil: r.stencil, kind: boxPageKind(typeof r.kind === 'string' ? r.kind : ''), place: typeof r.place === 'string' ? r.place : '', where: typeof r.where === 'string' ? r.where : '', lines, thisBox: r.thisBox === true })
+  }
+  return { ok: true, find: { words: Array.isArray(f.words) ? (f.words as unknown[]).filter((w): w is string => typeof w === 'string') : [], boxes, total: typeof f.total === 'number' ? f.total : boxes.length } }
+}

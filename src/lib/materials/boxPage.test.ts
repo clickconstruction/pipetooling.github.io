@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { boxPageCode, boxPageCodeWords, boxPageDayWords, boxPageLines, boxPageNoun, boxPagePath, boxPagePhotoUrl, boxPageView, buildBoxPagePayload, parseBoxPageResponse } from './boxPage'
+import { BOX_PAGE_FIND_MAX, boxPageCode, boxPageCodeWords, boxPageDayWords, boxPageFind, boxPageFindPath, boxPageFindView, boxPageFindWords, boxPageFoundWords, boxPageLines, boxPageNoun, boxPagePath, boxPagePhotoUrl, boxPageView, buildBoxPagePayload, compareStencils, parseBoxPageFindResponse, parseBoxPageResponse } from './boxPage'
+import { LAST_BOX_MS, readLastBox, rememberLastBox, typedCodeWords } from './boxPageMemory'
 
 const CONTAINER = { id: '4f2a9c18-1111-4222-8333-444455556666', job_id: 'j1', label: 'B3', kind: 'cage', where_note: ' by the north stair ', place_id: 'p1', retired_at: null, code: '4F2A9C18' }
 
@@ -69,5 +70,84 @@ describe('the page state from the answer', () => {
   it('reads a day for a person', () => {
     expect(boxPageDayWords('2026-11-05')).toBe('Thursday, Nov 5')
     expect(boxPageDayWords('')).toBe('')
+  })
+})
+
+describe('find a part on this site (PR 3, v2.6799)', () => {
+  const boxes = [
+    { ...CONTAINER },
+    { id: 'c-a1', job_id: 'j1', label: 'A1', kind: 'cage', where_note: '', place_id: 'p2', retired_at: null, code: 'AAAA1111' },
+    { id: 'c-c2', job_id: 'j1', label: 'C2', kind: 'box', where_note: 'mech room', place_id: 'p3', retired_at: null, code: 'CCCC2222' },
+    { id: 'c-a10', job_id: 'j1', label: 'A10', kind: 'cage', where_note: '', place_id: null, retired_at: null, code: 'AAAA1010' },
+    { id: 'c-old', job_id: 'j1', label: 'D1', kind: 'box', where_note: '', place_id: null, retired_at: '2026-11-01T00:00:00Z', code: 'DDDD1111' },
+    { id: 'c-uns', job_id: 'j1', label: 'Unsorted', kind: 'unsorted', where_note: '', place_id: null, retired_at: null, code: 'UUUU0000' },
+  ]
+  const places = [{ id: 'p1', name: 'Level 2' }, { id: 'p2', name: 'Laydown yard' }, { id: 'p3', name: 'Level 3' }]
+  const lines = [
+    { container_id: CONTAINER.id, part_name: '3/4" copper 90° elbows', manufacturer: 'Mueller', on_hand: 42 },
+    { container_id: CONTAINER.id, part_name: '1/2" PEX crimp rings', manufacturer: 'Sioux Chief', on_hand: 200 },
+    { container_id: 'c-a1', part_name: '3/4" copper pipe, 20 ft', manufacturer: 'Cerro', on_hand: 24 },
+    { container_id: 'c-c2', part_name: '3/4" copper tees', manufacturer: 'Mueller', on_hand: 15 },
+    { container_id: 'c-a10', part_name: 'wax rings', manufacturer: null, on_hand: 6 },
+    { container_id: 'c-old', part_name: '3/4" copper tees', manufacturer: 'Mueller', on_hand: 9 },
+    { container_id: 'c-uns', part_name: '3/4" copper caps', manufacturer: null, on_hand: 3 },
+  ]
+
+  it('folds the words typed', () => {
+    expect(boxPageFindWords('  3/4 Copper  ')).toEqual(['3/4', 'copper'])
+    expect(boxPageFindWords(null)).toEqual([])
+  })
+
+  it('finds the boxes whose lines hold every word, the scanned box first, then stencil order, never a retired box or Unsorted', () => {
+    const f = boxPageFind({ thisCode: '4F2A9C18', words: ['3/4', 'copper'], containers: boxes, places, lines })
+    expect(f.boxes.map((b) => [b.stencil, b.thisBox, b.lines.map((l) => l.partName)])).toEqual([
+      ['B3', true, ['3/4" copper 90° elbows']],
+      ['A1', false, ['3/4" copper pipe, 20 ft']],
+      ['C2', false, ['3/4" copper tees']],
+    ])
+    expect(f.boxes[1]).toMatchObject({ code: 'AAAA1111', kind: 'cage', place: 'Laydown yard' })
+    expect(f.total).toBe(3)
+  })
+
+  it('a stencil or a place matches the box and brings every line; a word on the box and one on a line match together', () => {
+    expect(boxPageFind({ thisCode: 'X', words: ['a10'], containers: boxes, places, lines }).boxes.map((b) => [b.stencil, b.lines.length])).toEqual([['A10', 1]])
+    expect(boxPageFind({ thisCode: 'X', words: ['laydown'], containers: boxes, places, lines }).boxes.map((b) => b.stencil)).toEqual(['A1'])
+    expect(boxPageFind({ thisCode: 'X', words: ['b3', 'pex'], containers: boxes, places, lines }).boxes.map((b) => [b.stencil, b.lines.map((l) => l.partName)])).toEqual([['B3', ['1/2" PEX crimp rings']]])
+    expect(boxPageFind({ thisCode: 'X', words: ['wax', 'copper'], containers: boxes, places, lines }).boxes).toEqual([])
+    expect(boxPageFind({ thisCode: 'X', words: [], containers: boxes, places, lines })).toEqual({ words: [], boxes: [], total: 0 })
+  })
+
+  it('caps the boxes and says how many there were, and the answer round-trips', () => {
+    const many = Array.from({ length: 40 }, (_, i) => ({ id: `m${i}`, job_id: 'j1', label: `M${i + 1}`, kind: 'box', where_note: '', place_id: null, retired_at: null, code: `M${String(i).padStart(7, '0')}` }))
+    const manyLines = many.map((c) => ({ container_id: c.id, part_name: 'copper', manufacturer: null, on_hand: 1 }))
+    const f = boxPageFind({ thisCode: 'X', words: ['copper'], containers: many, places: [], lines: manyLines })
+    expect(f.boxes).toHaveLength(BOX_PAGE_FIND_MAX)
+    expect(f.total).toBe(40)
+    expect(f.boxes.map((b) => b.stencil).slice(0, 3)).toEqual(['M1', 'M2', 'M3'])
+    expect(boxPageFoundWords(40, BOX_PAGE_FIND_MAX)).toBe('30 boxes hold a line that matches, the first 30 of 40. Type one more word to narrow it.')
+    expect(boxPageFoundWords(1, BOX_PAGE_FIND_MAX)).toBe('1 box holds a line that matches.')
+    expect(boxPageFoundWords(0, BOX_PAGE_FIND_MAX)).toBe('')
+    const payload = { ok: true as const, find: f }
+    expect(parseBoxPageFindResponse(JSON.parse(JSON.stringify(payload)))).toEqual(payload)
+    expect(boxPageFindView(200, payload)).toEqual({ kind: 'found', payload })
+    expect(boxPageFindView(500, null).kind).toBe('error')
+  })
+
+  it('sorts stencils by letters then number', () => {
+    expect(['B1', 'A10', 'A2', 'A1', 'G76 TOILETS', 'G8'].sort(compareStencils)).toEqual(['A1', 'A2', 'A10', 'B1', 'G8', 'G76 TOILETS'])
+  })
+})
+
+describe('the last box this phone scanned (boxPageMemory)', () => {
+  it('remembers a box for a day, folds the typed code with its dash, and makes the search path', () => {
+    const m = new Map<string, string>()
+    const s = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) }
+    rememberLastBox({ code: '4F2A9C18', stencil: 'B3', kind: 'cage' }, 1_000, s)
+    expect(readLastBox(1_000 + 60_000, s)).toEqual({ code: '4F2A9C18', stencil: 'B3', kind: 'cage', at: 1_000 })
+    expect(readLastBox(1_000 + LAST_BOX_MS + 1, s)).toBeNull()
+    expect(readLastBox(500, s)).toBeNull()
+    expect(typedCodeWords('4f2a9c18x')).toBe('4F2A-9C18')
+    expect(typedCodeWords('4f2')).toBe('4F2')
+    expect(boxPageFindPath('4F2A9C18')).toBe('/b/4f2a9c18?find=1')
   })
 })

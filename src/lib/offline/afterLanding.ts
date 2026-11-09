@@ -1,4 +1,5 @@
-import type { FieldReportPayload, JobPhotosPayload, KeptReportPhoto, MovedLineStamp, OutboxPress, TaskPhotoPayload } from './outbox'
+import type { CounterTicketPayload, FieldReportPayload, JobPhotosPayload, KeptReportPhoto, MovedLineStamp, OutboxPress, TaskPhotoPayload } from './outbox'
+import { announceTickets } from '../tickets/ticketEvents'
 import { announceTaskPhotos } from '../taskPhotos'
 import { checklistAnswerWrites, type ChecklistAnswerWrite } from '../photos/reportPhotoChecklist'
 import { threadLineWords } from '../photos/jobPhotoNotes'
@@ -30,6 +31,8 @@ export interface AfterLandingIo {
   postThreadLine?: (jobId: string, userId: string, body: string) => Promise<boolean>
   /** A task photo press (punch list #273, v2.6628): the card's strips hear the landed photos and read again. */
   announceTaskPhotos?: (ids: ReadonlyArray<string>) => void
+  /** A counter ticket (punch list #295, PR 2): My tickets hears the landed ticket and reads again. */
+  announceTickets?: (ids: ReadonlyArray<string>) => void
 }
 
 async function defaultIo(): Promise<AfterLandingIo> {
@@ -50,6 +53,7 @@ async function defaultIo(): Promise<AfterLandingIo> {
     dropKeptPhotos: (ids) => keptPhotos.drop(ids),
     postThreadLine: (jobId, userId, body) => postJobThreadNoteBody(jobId, userId, body),
     announceTaskPhotos: (ids) => announceTaskPhotos(ids),
+    announceTickets: (ids) => announceTickets(ids),
   }
 }
 
@@ -66,6 +70,22 @@ export function reportIdOf(result: unknown): string | null {
 }
 
 export async function afterLanding(press: OutboxPress, result: unknown, io?: AfterLandingIo): Promise<void> {
+  if (press.kind === 'counter-ticket') {
+    // The replay wrote the row and the pages and the landing saved it; the bytes go, and My tickets hears it. Best effort.
+    const payload = press.payload as CounterTicketPayload
+    const run = io ?? (await defaultIo().catch(() => null))
+    if (!run) return
+    const sent = (payload.photos ?? []).filter((p) => p.sent).map((p) => p.id)
+    if (run.dropKeptPhotos && sent.length > 0) await run.dropKeptPhotos(sent).catch(() => undefined)
+    if (run.announceTickets) {
+      try {
+        run.announceTickets([payload.ticketId])
+      } catch {
+        // a list that is not mounted hears nothing, and loses nothing: it reads on its next open
+      }
+    }
+    return
+  }
   if (press.kind === 'task-photo') {
     // The replay wrote the row and the landing tied it to its line; the bytes go, and the card's strip hears it. Best effort.
     const payload = press.payload as TaskPhotoPayload
