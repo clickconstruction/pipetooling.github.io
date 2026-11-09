@@ -30,10 +30,10 @@ function freshnessLabel(iso: string | null): string {
 }
 
 export default function SettingsCompanyDocumentsSection({
-  isDev,
+  canManage,
   showManage = false,
 }: {
-  isDev: boolean
+  canManage: boolean
   /** Documents → Company tab: render the dev ⚙ manage button (top-right). */
   showManage?: boolean
 }) {
@@ -122,7 +122,7 @@ export default function SettingsCompanyDocumentsSection({
     await load()
   }
 
-  if (loaded && docs.length === 0 && !isDev) return null
+  if (loaded && docs.length === 0 && !canManage) return null
 
   return (
     <div style={{ marginTop: showManage ? 0 : '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem 1.25rem' }}>
@@ -131,10 +131,10 @@ export default function SettingsCompanyDocumentsSection({
           <h2 style={{ margin: '0 0 0.25rem', fontSize: '1.125rem' }}>Company documents</h2>
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             The current copy of each document — click to open.
-            {isDev && !showManage ? ' Manage the list on Documents → Company (⚙).' : ''}
+            {canManage && !showManage ? ' Manage the list on Documents → Company (⚙).' : ''}
           </p>
         </div>
-        {isDev && showManage ? (
+        {canManage && showManage ? (
           <button
             type="button"
             onClick={() => setManageOpen(true)}
@@ -151,7 +151,7 @@ export default function SettingsCompanyDocumentsSection({
       ) : docs.length === 0 ? (
         <EmptyState
           compact
-          {...(isDev && showManage
+          {...(canManage && showManage
             ? { main: 'No documents yet.', next: { label: 'Manage company documents', onPress: () => setManageOpen(true) }, tail: 'adds the first.' }
             : showManage
               ? { main: 'No documents yet. A dev adds them here.' }

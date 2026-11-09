@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { isOwnerOrDev } from '../lib/doorRoles'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { useAuth } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
@@ -1863,7 +1864,7 @@ export default function Documents() {
       {documentsTab === 'company' && companyTabVisible ? (
         <>
           <DocumentsCompanyFolder />
-          <SettingsCompanyDocumentsSection isDev={documentsAuthRole === 'dev'} showManage />
+          <SettingsCompanyDocumentsSection canManage={isOwnerOrDev(documentsAuthRole)} showManage />
         </>
       ) : null}
       {documentsTab === 'search' ? (

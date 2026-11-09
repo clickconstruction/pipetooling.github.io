@@ -226,8 +226,11 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
       const door = doors.find((d) => d.id === `dev:${row.id}`) ?? doors.find((d) => d.to === row.to && d.label.toLowerCase() === row.label.toLowerCase())
       expect(door, row.id).toBeTruthy()
     }
+    const twins = doors.find((d) => d.to === '/settings?tab=settings-digital-twins')!
+    expect(isDevOnly(twins)).toBe(true)
+    // Training opened to the owner in v2.6762 (punch list #188 row 6), so it is no longer a dev's alone.
     const training = doors.find((d) => d.to === '/settings?tab=settings-training')!
-    expect(isDevOnly(training)).toBe(true)
+    expect(isDevOnly(training)).toBe(false)
     const dashboard = doors.find((d) => d.id === 'page:/dashboard')!
     expect(isDevOnly(dashboard)).toBe(false)
     // A card the office reads and the owner sets is not dev-only in the box: the office can get there.

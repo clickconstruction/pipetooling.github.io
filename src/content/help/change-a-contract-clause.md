@@ -6,7 +6,7 @@ keywords: clause, clauses, contract, contracts and clauses, exhibit, trade exhib
 where: /settings?tab=settings-clauses
 order: 99
 ---
-A contract we send a trade partner is made of clauses. Anyone in the office can change one. A controller or a dev approves the change before it goes out.
+A contract we send a trade partner is made of clauses. Anyone in the office can change one. The owner, a controller or a dev approves the change before it goes out.
 
 ## Open the clauses
 
@@ -24,7 +24,7 @@ The clauses for everyone come first, under **Everyone**. A clause for one trade 
 5. Say why under **Why**.
 6. Press {{button:blue|Send for approval}}.
 
-The change waits under the clause until a controller or a dev approves it. It shows on their Needs you card.
+The change waits under the clause until the owner, a controller or a dev approves it. It shows on their Needs you card.
 
 Each of them gets a push on their phone and an email with the change. The push opens the paper's card. The message after you save says who it reached.
 
