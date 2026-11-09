@@ -47,7 +47,7 @@ const chipStyle = (tone: 'green' | 'grey' | 'blue'): CSSProperties => ({
   fontSize: '0.75rem',
   fontWeight: 600,
   whiteSpace: 'nowrap',
-  background: tone === 'green' ? 'var(--bg-green-50, #ecfdf5)' : tone === 'blue' ? 'var(--bg-blue-50, #dbeafe)' : 'var(--bg-200)',
+  background: tone === 'green' ? 'var(--bg-green-tint)' : tone === 'blue' ? 'var(--bg-blue-tint)' : 'var(--bg-200)',
   color: tone === 'green' ? 'var(--text-green-700)' : tone === 'blue' ? 'var(--text-blue-800)' : 'var(--text-700)',
 })
 
