@@ -1,5 +1,6 @@
 import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike } from './subcontractorLikeRole'
+import { isOfficeRole } from './doorRoles'
 
 /**
  * Who can open the Roadmap page (journey-map Tier-2 #41) — and anything that
@@ -25,13 +26,13 @@ export function canOpenRoadmap(role: UserRole | null | undefined, farmModeEnable
 
 /**
  * The roadmap "needs a person" card on the Dashboard / Quickfill Needs-You
- * stack stays the owner's (dev) — the roadmap is planning work, and the
- * office's worst-first stack is company work (Tier-2 #41 adj-2). Widening the
- * page did not widen the card; `dashboardNeedsYou.ts` enforces the same rule
- * structurally through `kind: 'roadmap'`.
+ * stack: the office's since v2.6758 (punch list #188 row 37; the page widened
+ * in v2.2916 and the card did not, a dev's alone until then). Never under Farm
+ * Mode; `dashboardNeedsYou.ts` enforces the same rule structurally through
+ * `kind: 'roadmap'`.
  */
 export function canSeeRoadmapNeedsYou(role: UserRole | null | undefined, farmModeEnabled: boolean): boolean {
-  return role === 'dev' && canOpenRoadmap(role, farmModeEnabled)
+  return isOfficeRole(role) && canOpenRoadmap(role, farmModeEnabled)
 }
 
 export const ROADMAP_PATH = '/roadmap'
