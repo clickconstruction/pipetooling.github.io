@@ -1889,6 +1889,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "pay-link",
   "payment-forecast-email-dispatch",
   "people-week-email",
+  "permit-lookup",
   "permit-pull",
   "photo-save",
   "plan-fetch",
