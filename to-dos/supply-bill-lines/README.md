@@ -2,8 +2,8 @@
 name: "Every supply house bill's lines as rows: what we buy, how often, at what price"
 number: 298
 group: gated
-status: asked 2026-11-09 · researched in the code and in prod the same day · a design card, nothing built · waiting on the owner's nine calls
-mockup: not required — stages 1 to 3 draw one line on a bill's row, a check window and a matching list; the views of stage 4 want a mock-up before they are built, and this card says so there
+status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question (the PDFs are private files in an office login's My Drive, not shared with the app) and reshaped the reader's checks and the order of the PRs · waiting on the critique and two gating calls · nothing built
+mockup: to-dos/supply-bill-lines/mockup.html
 summary: >
   A supply house bill is recorded with its total, its job and a link to its PDF. The lines on the
   paper are not rows anywhere, so nobody can ask how many of a part the company buys, how often, or
@@ -14,10 +14,10 @@ summary: >
   backfill reads the 539 bills on file, about 520 of which link a PDF. Three views follow: what we
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
-next: The owner's word on the nine calls. Then stage 1a, which draws no screen, and its live check on one real bill from each of the three main houses.
-size: XL as a train of about nine (1a M · 1b M · 1c S · 2a M · 2b S · 3 M · 4a M · 4b M · 4c S), the joins of stage 5 apart
-blocker: The owner's nine calls, the reader's shape first. Before the backfill, a probe of whether the app can open the bills' Drive links.
-opinion: build stages 1 to 3 — the reader, the sum check and the PDFs all exist, and the lines are worth having before anyone draws a view; hold stage 4 for a mock-up
+next: Two calls from the owner (does a bill read itself after Save; the price default), then PR 1, the tables, the view, the check kernel and the widened reader, which draws no screen, with its live check on one real bill from each of the three main houses. Step 0, the owner's door, before PR 2 can read a bill on file: share the bills' Drive folder with the app's account, or move the bills into the Shared Drive.
+size: XL as a train of about nine (PR 1 M · PR 2 M · then measure · 1b M · 2a M · 2b S · 4a M · 4b M · 4c S), the parsers optional and the joins of stage 5 apart
+blocker: Two gating calls. For PR 2 and the backfill, step 0, the owner's door: the bills' folder is private to an office login and the app cannot open one of them today.
+opinion: build PR 1 and PR 2 first — the reader, the sum check and the PDFs all exist, and the real lines are what the matching list and the views should be designed from; the rest after a week of measured data
 ver: v2.6088 · v2.6095 (the bill reader this builds on)
 ---
 
@@ -32,6 +32,23 @@ helps us gauge what we should stack up on."*
 The question this card answers: how does every supply house bill's line items get into the app as
 rows, matched to parts, so the office can see what the company buys, how often and at what price,
 and decide what to stock?
+
+## The mock-up
+
+[`mockup.html`](./mockup.html), nine frames, every name, code, part, price and count made up. The
+same frames are on the design canvas, where each can be switched to the dark theme:
+*Supply bill lines mock-up* — https://claude.ai/artifact/4K2iapynV38jpWUuzTYUpc
+
+- **A**: the Supply houses tab today, a bill as a total and a link.
+- **B · C**, stage 1: the Lines column on a house's bills (adds up, a gap with *Look*, no PDF,
+  reading, a credit); the *Look* window with the paper beside the lines read, the gap in words,
+  the missing line typed in, and *Count it as read anyway*.
+- **D · E**, stage 2: *Codes with no part* on the Parts Book, by dollars, with the app's offers and
+  the four presses; what one *This is it* does (the unit factor, the book's price moved with the
+  bill as the note, the lines regrouped) and a tenfold price offered, not written.
+- **F**, stage 3: the backfill's screen, read · held · no PDF · ready, each held reason with its
+  count and its door, the Drive-link probe first.
+- **G · H · I**, stage 4: What we buy, Price over time, What to stock, with the limits on the page.
 
 ## The evidence
 
@@ -93,11 +110,13 @@ Read 2026-11-09. Prod figures are counts through the dev seat, read-only.
 - **One file often stands behind several rows.** Twice, a single Drive file is the link on 19 rows.
   A scan of a stack of bills, or a statement's worth of invoices, is one PDF. The reader must
   expect several bills in a file.
-- **The linked PDFs are not in the file index.** Eight sampled Drive ids have no `file_index` row.
-  The index walks the jobs Shared Drive (`supabase/functions/file-index-sweep/index.ts`), a
-  person's HR file and a legal matter. The bills live somewhere else in Drive, shared by link.
-  **Whether the app's service account can open those links was not tested.** It is the first live
-  check of the backfill.
+- **The linked PDFs are private files the app cannot open.** Eight sampled Drive ids have no
+  `file_index` row: the index walks the jobs Shared Drive
+  (`supabase/functions/file-index-sweep/index.ts`), a person's HR file and a legal matter, and the
+  bills are elsewhere. A measurement run on the evening of 2026-11-09 settled where: a folder in
+  an office login's My Drive, shared with five named office users and **not with the app's
+  service account**. So the backfill cannot read a single bill on file today. That is step 0,
+  below, and it is the one thing that blocks the backfill.
 - **Mail.** `gmail-sync` puts each mail that reaches the one mailbox it reads on its sender's
   thread, with our copy of each attachment. `src/lib/materials/bills/billsToRecord.ts` offers a
   thread's PDFs under *Start from* on the Add invoice window. Bills that suppliers' billing
@@ -137,7 +156,22 @@ Read 2026-11-09. Prod figures are counts through the dev seat, read-only.
   PDF's text layer through unpdf, a page at a time inside a time budget. 1,624 files are held as
   scans, and no file has been read by OCR: `supabase/functions/_shared/ocr.ts` waits on a Document
   AI processor that is not set up.
-- The text it keeps is flat, for search. It has no columns and no positions.
+- **The index's text is not a parser's input.** It is flat, for search: the measurement run found
+  a bill's columns come out as separate lists, and one house's quantities run together. The
+  reader reads the PDF's bytes. The flat text is good for one thing here, the code check below.
+
+### What the measurement run on real bills found
+
+Read on the evening of 2026-11-09 across the main houses' papers, in general terms:
+
+- **Every house prints its own code on every line**, and most print the manufacturer's number
+  too. The crosswalk's key, house plus code, is sound, and the manufacturer's number is a usable
+  second key across houses.
+- **Kits and bundles.** Two of the main houses print a kit's component lines with no price; one
+  prints bundle sub-lines at a zero price under one bundle amount. A per-line arithmetic check that
+  does not know a component line marks every such bill off.
+- **Pricing units are real**: at least one house prices some lines per hundred or per thousand
+  beside each. The column stays.
 - `src/lib/materials/manifest.ts` (`parseInvoiceLine`) is a rule-based reader of pasted invoice
   text, built for Materials on site's Deliveries panel. Its own header says the build should send
   the text to a model. It reads a quantity, a name, a unit and a price, and no part code.
@@ -163,8 +197,10 @@ names are proposals; the builder may rename them.
 - **`supply_paper_lines`**, one row per printed line: the paper; the line number; the house's part
   code; the manufacturer's number when printed; the description as printed; the unit; quantity
   ordered, shipped and back ordered; the unit price and its pricing unit (each, per hundred, per
-  thousand); the extension in cents; the kind of line (`part`, or `charge` for freight, fuel, a
-  restock fee); `part_id` and how it was matched, both empty until stage 2.
+  thousand); the extension in cents; the kind of line (`part`, `charge` for freight, fuel or a
+  restock fee, or `component` for a kit's or bundle's sub-line, which belongs to the priced line
+  above it); whether the code was read from a text layer or a scan; `part_id` and how it was
+  matched, both empty until stage 2.
 - **One view says what a purchase is: `supply_purchase_lines`.** It returns the lines of papers
   whose kind is `invoice` or `credit` and whose check is `adds_up` or `accepted`, a credit's lines
   signed negative. Every count and every chart reads this view. A quote cannot be counted because
@@ -184,32 +220,39 @@ names are proposals; the builder may rename them.
 | Long bills | no limit | must be read in page ranges past 200 lines |
 | Exists today | a hand-built one outside the app, and `manifest.ts`'s rule reader | `bill-read`, deployed, with its key, cap and ledger |
 
-**Recommended:** one interface, `readPaperLines(file) → papers with lines`, and two readers behind
-it. Stage 1a widens the model reader, since it is deployed and reads every house on day one. Stage
-1c adds parsers for the two layouts that carry most of the bills, tried first when the house has
-one and the file has a text layer. Both go through the same check, so neither is trusted on its own
-word. The parsers are worth having for long stock orders, for a backfill that costs nothing to
-run twice, and because a second reader that disagrees with the first is itself a check.
+**Recommended:** the model reader, widened, behind one interface `readPaperLines(file) → papers
+with lines`, with the five checks below. A read costs about a cent, and the code check gives most of
+what a parser's exactness would. Parsers per layout are **optional**, a later PR if the model's
+reads keep failing a check on one house's long bills; a second reader that disagrees with the first
+would itself be a check. The reader reads the PDF's bytes, never the index's flattened text.
 
-**What changes in the reader (stage 1a):**
+**What changes in the reader (PR 1):**
 
-- `BILL_SCHEMA` gains, per line, the part code, the manufacturer's number, the unit, quantity
-  ordered, shipped and back ordered, and the pricing unit; per paper, the order number and freight.
-  `document_kind` gains ship ticket, acknowledgement, quote and bid.
+- `BILL_SCHEMA` gains, per line, the house's part code, the manufacturer's number, the unit,
+  quantity ordered, shipped and back ordered, the pricing unit, and a kit-component flag; per
+  paper, the order number and freight. `document_kind` gains ship ticket, acknowledgement, quote
+  and bid.
 - A file may answer with several papers, each with its number and its pages.
 - A paper past 200 lines is read in page ranges and joined.
-- The reader takes a Drive link as well as a bucket file, downloading as the service account the
-  way the file index does (`driveMedia` in `supabase/functions/_shared/driveJobFolder.ts`).
 - The office's fill of the Add invoice window is untouched. It reads the same answer.
+- PR 2 adds the Drive read: a bill's `link` downloaded as the service account the way the file
+  index does (`driveMedia` in `supabase/functions/_shared/driveJobFolder.ts`), once step 0 lets it.
 
-**How a read is verified.** Four sums, in cents, held in a pure kernel with tests:
+**How a read is verified.** Five checks, held in a pure kernel with tests:
 
-1. Each line: quantity shipped × unit price ÷ pricing unit = its extension, within a cent.
+1. Each priced line: quantity shipped × unit price ÷ pricing unit = its extension, within a cent.
+   A component line (no price, a kit's or bundle's sub-line) belongs to the priced line above it
+   and is not checked on its own.
 2. The extensions sum to the printed subtotal.
 3. Subtotal + tax + freight = the printed total.
 4. For a bill on file, the printed total = the row's `amount`, which a person typed from the paper.
+5. **Every house code the model returns is found word for word in the paper's own text**
+   (`textFromBytes` on the same bytes), where the PDF has a text layer. The four sums protect the
+   money and say nothing about the code, and the code is the crosswalk's key. A scan has no text to
+   check against: its codes are marked as read from a scan, and the first time such a code is
+   taught to the crosswalk a person confirms it against the picture.
 
-All four hold: the paper `adds_up` and its lines count. Any fails: the paper is `off`, its lines
+All five hold: the paper `adds_up` and its lines count. Any fails: the paper is `off`, its lines
 are kept and **do not count** until a person looks.
 
 **What a person sees when it does not add up (stage 1b).** A bill's row on the Supply houses tab
@@ -224,11 +267,18 @@ counts by itself while a sum is off. The window follows the house rules: a faile
 today. So a bill is read from the link already on its row, after Save, by a background sweep. No
 one presses anything for the lines to appear.
 
+**The order, for first value and a small gate.** PR 1 and PR 2 draw no screen and need two calls.
+Then the real lines are measured (how many codes, how much spend behind each, how often a check
+fails and why) **before** the matching list and the views are built, so both are designed from
+real data and not from this card's guesses.
+
 | PR | What | Size | Live check |
 | --- | --- | --- | --- |
-| 1a | The two tables, the view, the widened reader, the check kernel, the Drive read, the sweep reading new rows. No screen. | M | Push the migration, deploy `bill-read`. As a dev, read one real bill from each of the three main houses. Each has its rows, each `adds_up`, each matches a hand count of the paper's lines. A made-up bill with one line removed reads `off` with the right gap. |
+| 1 | The two tables, the view, the check kernel with the five checks, the widened reader schema. No screen. | M | Push the migration, deploy `bill-read`. As a dev, read one real bill from each of the three main houses through the form's upload path. Each has its rows, each `adds_up`, each matches a hand count of the paper's lines, every code is found in the text. A made-up bill with one line removed reads `off` with the right gap; one with a kit reads `adds_up`. |
+| 2 | The Drive read as the service account, and the sweep that reads new rows after Save and is also the backfill, with its held list and its own cap. | M | After step 0: the sweep reads twenty real bills on file; each is read or held with a reason; ten picked at random match their PDFs. |
+| — | **Measure.** A week of lines: codes by spend, the share the top forty cover, scans against text layers, checks failed by kind. | — | A short note on the card with the counts. The matching list and the views are drawn from it. |
 | 1b | The row's line and the *Look* window, with a render smoke and a guide. | M | On a made-up bill that is `off`, fix the line in the window and see the row read *adds up*. On a real bill, open *Look* and compare ten lines to the PDF. |
-| 1c | The two layout parsers as pure kernels with made-up fixtures, tried before the model. | S | Read the same three real bills through the parsers. The rows equal the model's rows line for line. Any difference is listed and looked at. |
+| opt. | Layout parsers as pure kernels with made-up fixtures, tried before the model, only if the measure shows a house whose long bills keep failing a check. | S | Read the same real bills through the parsers. The rows equal the model's rows line for line. |
 
 ### Stage 2: part identity
 
@@ -261,11 +311,12 @@ percent by hand. A house's code for a part is stable and printed on every line.
 
 **A bill refreshes the book's price (stage 2b).** When a line `adds_up`, is matched through the
 crosswalk and is newer than the book's price for that part at that house, its unit price (through
-the pricing unit and the unit factor) becomes `material_part_prices.price`, with the bill's date as
-`effective_date`. The existing trigger writes the history row. The trigger is widened to carry a
-note (*from a bill*, with the paper's id) and an author for a background change. A price that moves
-more than a set share is offered, not written, because a unit mix-up looks like a tenfold price
-change.
+the pricing unit and the unit factor) is **offered** as `material_part_prices.price`, with the
+bill's date as `effective_date`; for the first month nothing is written without a press, because
+the book feeds bid pricing. The existing trigger writes the history row; it is widened to carry a
+note (*from a bill*, with the paper's id) and an author for a background change. If the month shows
+the offers are always taken, the owner may switch small moves to automatic; a move past a set share
+stays an offer either way, because a unit mix-up looks like a tenfold price change.
 
 The book keeps one price per part per house: the last one paid. **The lines themselves are the
 real price history**, since every purchase is a point with its date and its quantity. Stage 4's
@@ -276,13 +327,21 @@ price view reads the lines.
 | 2a | The crosswalk, the matcher kernel, the list on the Parts Book, the guide. | M | Teach five real codes. Every past line with each code now carries the part. A newly read bill with one of them is matched with no press. |
 | 2b | The price refresh, the widened trigger, the offer on a big move. | S | On a ZZ test house and part, a bill with a higher price moves the book's price and writes a history row that names the bill. A tenfold price is offered and not written. |
 
+### Step 0: the owner's door
+
+The bills' PDFs are private files in an office login's My Drive folder, shared with five office
+users and not with the app's service account. Until that changes the app cannot open one of them,
+and PR 2's sweep has nothing to read. **This is the one thing that blocks the backfill**, and it is
+a press of the owner's, not code: share that folder with the app's account, or move the bills into
+the jobs Shared Drive, where the file index already walks. The sweep's probe (below) reads yes the
+moment either is done.
+
 ### Stage 3: the backfill
 
-The bills on file, read by the sweep stage 1 built, as a batch that does what is ready.
+The bills on file, read by the sweep PR 2 built, as a batch that does what is ready.
 
 - **First, a probe.** Before any reading: try to open 20 of the linked files as the service
-  account. If the links open, go on. If they do not, the door is the owner's: share the bills'
-  Drive folder with the service account, or move it into the Shared Drive.
+  account. While step 0 is not done, the probe reads no, and the screen says so with the door.
 - **A sweep, not a browser loop.** A cron reads a few files each run inside a time budget, as
   `file-index-sweep` does, newest bills first. The reader's daily cap of 150 is a tripwire for the
   office's fill; the backfill gets its own, higher, stated cap.
@@ -309,12 +368,12 @@ The bills on file, read by the sweep stage 1 built, as a batch that does what is
 
 | PR | What | Size | Live check |
 | --- | --- | --- | --- |
-| 3 | The probe, the queue, the sweep's cap, the progress line and the held list. | M | Run it on prod. Every bill is either read or held with a reason. Ten read bills picked at random match their PDFs. The held list's counts equal a hand count for one house. |
+| 3 | The progress line and the held list as a screen, over PR 2's sweep. | S | Run it on prod. Every bill is either read or held with a reason. The held list's counts equal a hand count for one house. |
 
 ### Stage 4: the views
 
-**This stage wants a mock-up before it is built**, drawn with made-up parts and prices, since it is
-the part the owner will look at. A new tab on Materials is the likely home; the mock-up settles it.
+Drawn as frames G, H and I of the mock-up, as a new tab on Materials, *What we buy*, with the three
+views as its own tabs. The owner's critique of those frames comes before the build.
 
 - **4a · What we buy.** Per part, or per house and code where no part is matched: quantity and
   spend by month, how many bills, which houses, which jobs. Filters for a house, a job, a service
@@ -380,18 +439,23 @@ Later stages, each its own card or PR once stages 1 to 3 are live. None is this 
 
 ## The calls that are the owner's
 
-Each has a default. The build goes ahead on the default where the owner has no preference.
+Each has a default. **Two gate PR 1**; the rest can be answered later, and the build goes ahead on
+the default where the owner has no preference.
 
-1. **The reader.** *Default:* the model reader first, behind the sum check, then parsers for the
-   two main layouts. The other way round costs nothing per read and leaves every other house and
-   every scan unread until OCR is set up.
-2. **Does a bill read by itself?** *Default:* yes. Every bill with a PDF is read after Save, about
+Gating:
+
+1. **Does a bill read by itself?** *Default:* yes. Every bill with a PDF is read after Save, about
    a cent each, with no press. The other choice is a *Read the lines* press on each row.
-3. **Who matches codes to parts.** *Default:* whoever keeps the Parts Book, from the list sorted
+2. **Does a bill change the book's price by itself?** *Default:* no, for the first month: the
+   price is offered, with the bill beside it, because the book feeds bid pricing. After a month of
+   offers the owner may switch small moves to automatic.
+
+Later:
+
+3. **The reader.** *Default:* the model reader behind the five checks; parsers per layout only if
+   the measure shows a house that needs one.
+4. **Who matches codes to parts.** *Default:* whoever keeps the Parts Book, from the list sorted
    by dollars. The office may see the list and not press on it.
-4. **Does a bill change the book's price by itself?** *Default:* yes, when the line adds up, is
-   matched through the crosswalk and moves the price by less than 25 percent. A bigger move is
-   offered.
 5. **How far back the backfill goes.** *Default:* every bill on file, newest first. It is cheap,
    and a year of history is what makes the price view worth opening.
 6. **Freight, fuel and fees.** *Default:* counted as spend under *Charges*, never as a part.
@@ -401,6 +465,9 @@ Each has a default. The build goes ahead on the default where the owner has no p
    4. The other papers are read in stage 5.
 9. **Ask the houses for a file of lines.** *Default:* not now. Ask the house with the most bills
    once the views show what a feed would save.
+
+And step 0, which is not a call but a press: the bills' folder shared with the app's account, or
+the bills moved into the Shared Drive.
 
 ## Where it plugs in
 
@@ -446,7 +513,9 @@ New:
 
 ## Where it stands
 
-A design card. Nothing is built. The research above was read on 2026-11-09; the prod counts will
-drift. Three things were not checked and are named where they matter: whether the service account
-can open the bills' Drive links, how many supplier mails with a bill reach a mailbox the app does
-not read, and how much of the spend the top unmatched codes cover.
+A design card with its mock-up. Nothing is built. The owner said on 2026-11-09 they want to build
+it; the nine frames were drawn the same day for their critique, and a measurement run on real bills
+the same evening answered the Drive question and reshaped the checks and the order of the PRs. The
+research above was read on 2026-11-09; the prod counts will drift. Two things were not checked and
+are named where they matter: how many supplier mails with a bill reach a mailbox the app does not
+read, and how much of the spend the top unmatched codes cover, which the measure after PR 2 answers.
