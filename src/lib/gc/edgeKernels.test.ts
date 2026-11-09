@@ -25,6 +25,11 @@ const walk = walkBundle as (root: string, entry: string, io: Io) => { files: str
 
 const ROOT = resolve(__dirname, '../../..')
 const disk: Io = { readFile: (p) => readFileSync(p, 'utf8'), exists: existsSync }
+/** The entries the index exports nothing of: the dev seat reads them by their own path. */
+const offIndexEntries = () =>
+  Object.entries(g.ENTRIES as Record<string, { values: string[]; types: string[] }>)
+    .filter(([, e]) => e.values.length === 0 && e.types.length === 0)
+    .map(([entry]) => entry)
 
 describe('the copy of the kernels', () => {
   const { files, problems, typeFiles } = g.generateEdgeKernels(ROOT)
@@ -66,7 +71,7 @@ describe('the copy of the kernels', () => {
     expect(bundle.unresolved).toEqual([])
     // An entry the index exports nothing of is read by its own path (the dev seat's submittal kernels), so the walk
     // starts there too: every file of the copy still resolves, from the index or from one of those.
-    const offIndex = Object.entries(g.ENTRIES).filter(([, e]) => e.values.length === 0 && e.types.length === 0).map(([entry]) => entry)
+    const offIndex = offIndexEntries()
     const byPath = offIndex.map((entry) => walk(ROOT, `${g.OUT_DIR}/${entry}`, io))
     expect(byPath.flatMap((b) => b.unresolved)).toEqual([])
     const reached = new Set([...bundle.files, ...byPath.flatMap((b) => b.files)].filter((f) => f.startsWith(`${g.OUT_DIR}/`)))
@@ -80,7 +85,7 @@ describe('the copy of the kernels', () => {
 
 describe('what the index does not carry', () => {
   it('reaches no submittal kernel: the dev seat reads them by path, so a portal that imports the index uploads none of them (customer-portal went over the 5 MB a deploy may send)', () => {
-    const offIndex = Object.entries(g.ENTRIES).filter(([, e]) => e.values.length === 0 && e.types.length === 0).map(([entry]) => entry)
+    const offIndex = offIndexEntries()
     expect(offIndex).toEqual([
       'lib/submittals/standingRows.ts',
       'lib/submittals/procurementItemSources.ts',
