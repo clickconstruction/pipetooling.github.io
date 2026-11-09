@@ -593,7 +593,11 @@ export default function BilledPaymentConfirmationModal({
         <textarea
           id="billed-payment-memo"
           value={internalNote}
-          onChange={(e) => setInternalNote(e.target.value)}
+          onChange={(e) => {
+            setInternalNote(e.target.value)
+            // v2.6825: the blank-memo refusal lifts as soon as the memo is typed, not on the next press.
+            if (error === IN_KIND_MEMO_REQUIRED && e.target.value.trim()) setError(null)
+          }}
           placeholder={inKind ? IN_KIND_MEMO_PLACEHOLDER : 'e.g. Picked up'}
           rows={2}
           style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box', resize: 'vertical' }}
