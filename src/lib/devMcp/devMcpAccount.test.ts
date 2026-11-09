@@ -35,6 +35,7 @@ import {
 } from '../../../supabase/functions/_shared/devMcpAccount'
 import { WRITE_VERBS, alreadyApplied, planHash, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 import { CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
+import { APP_CALENDAR_TZ } from '../../../supabase/functions/_shared/appTimeZone'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
@@ -227,7 +228,7 @@ describe('plan_account — the dry run', () => {
     expect(createLoginBody(n, 'https://clicktooling.com/accept-invite')).toEqual({ email: 'zz@example.com', role: 'helpers', name: 'ZZ Test', read_only: true, start_date: TODAY, password: 'hunter22' })
     expect(createLoginBody({ ...n, sign_in: 'email', password: undefined }, 'https://clicktooling.com/accept-invite')).toEqual({ email: 'zz@example.com', role: 'helpers', name: 'ZZ Test', read_only: true, start_date: TODAY, redirectTo: 'https://clicktooling.com/accept-invite' })
     expect(payConfigRow(p.p.pay!, 'ZZ Test', PERSON)).toEqual({ person_name: 'ZZ Test', person_id: PERSON, hourly_wage: 30, office_hourly_wage: null, is_salary: true, record_hours_but_salary: false })
-    expect(salaryTemplateRow(USER, '07:30', 'America/Chicago')).toMatchObject({ user_id: USER, timezone: 'America/Chicago', exclude_weekends: true, mode: 'continuous', segment_a_start_local: '07:30:00', segment_a_duration_minutes: 480, segment_b_start_local: null, use_split_focus: false })
+    expect(salaryTemplateRow(USER, '07:30', APP_CALENDAR_TZ)).toMatchObject({ user_id: USER, timezone: APP_CALENDAR_TZ, exclude_weekends: true, mode: 'continuous', segment_a_start_local: '07:30:00', segment_a_duration_minutes: 480, segment_b_start_local: null, use_split_focus: false })
     expect(accountAppliedWords([{ step: 'person', ok: true, words: 'x' }], 'zz@example.com')).toContain('get_login_state("zz@example.com")')
     expect(accountAppliedWords([{ step: 'rename', ok: true, words: 'x' }, { step: 'pay_rows', ok: false, words: 'RLS' }], USER)).toContain('1 of 2 done; held: pay_rows (RLS)')
   })
