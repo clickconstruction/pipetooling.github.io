@@ -286,9 +286,11 @@ describe('a known scan costs one download, and a row held slow is taken again (d
     const out = await retakePass(context(client), 5)
     expect(out).toEqual({ tried: 1, read: 1, held: [] })
     const q = calls[0]!
-    expect(q.filters[0]).toBe('text_why=in.(slow,reading)')
-    expect(q.filters[1]!.startsWith('checked_at=lt.')).toBe(true)
-    expect(Date.parse(q.filters[1]!.slice('checked_at=lt.'.length))).toBeLessThanOrEqual(now - RETRY_HOLD_MS + 1000)
+    // Drive rows alone (#285): a record's held row is the records queue's to take again.
+    expect(q.filters[0]).toBe('source=eq.drive')
+    expect(q.filters[1]).toBe('text_why=in.(slow,reading)')
+    expect(q.filters[2]!.startsWith('checked_at=lt.')).toBe(true)
+    expect(Date.parse(q.filters[2]!.slice('checked_at=lt.'.length))).toBeLessThanOrEqual(now - RETRY_HOLD_MS + 1000)
     expect(hits).toEqual({ meta: 1, media: 1, ocr: 0, embed: 0 })
     const row = calls.filter((c) => c.op === 'upsert').pop()!.payload as { text: string; text_why: string | null }
     expect(row).toMatchObject({ text: 'Rock clause: the GC pays for rock over 2 ft.', text_why: null })
