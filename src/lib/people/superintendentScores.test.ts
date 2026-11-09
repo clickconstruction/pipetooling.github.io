@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bonusWords, daysColumnWords, daysVsPlanHoldOf, daysVsPlanOf, daysWords, holdReason, hoursUnderWords, jobScoreWords, keptWords, monthOf, monthRange, monthShift, monthWords, parseScoreRead, superintendentScores, type ScoreRow } from './superintendentScores'
+import { bonusWords, daysColumnWords, daysVsPlanHoldOf, daysVsPlanOf, daysWords, holdReason, hoursUnderWords, jobScoreWords, keptWords, monthOf, monthRange, monthShift, monthWords, parseScoreRead, rateRuleWords, SCORE_RULE_LINES, superintendentScores, type ScoreRow } from './superintendentScores'
 
 const raw = {
   reads_wages: true,
@@ -38,6 +38,31 @@ describe('superintendentScores (punch list #234 PR 4)', () => {
     expect(sam.held[0]!.why).toBe('no office sign-off on the percent yet')
     expect(sam.bonusUsd).toBeNull()
   })
+  it("parses the roster's rate and each row's price; a project priced under the $2,500 floor never appears (the owner's calls of 2026-11-09)", () => {
+    const withRate = parseScoreRead({ ...raw, rate_usd: 29.01, rate_source: 'roster', rows: [...raw.rows.map((r) => ({ ...r, price_usd: 56_343, awarded_usd: 2_031, rate_usd: 29.01 })), { ...raw.rows[0], job_id: 'j5', job_name: 'Small repair', hcp_number: '1099', price_usd: 350, kept_usd: 900, bonus_usd: 90, hours_under: 20 }] })
+    expect(withRate).toMatchObject({ rateUsd: 29.01, rateSource: 'roster' })
+    expect(withRate.rows[0]).toMatchObject({ priceUsd: 56_343, awardedUsd: 2_031, rateUsd: 29.01 })
+    expect(withRate.rows[4]!.priceUsd).toBe(350)
+    const pat = superintendentScores(withRate, '2026-10-31')[0]!
+    // The $350 job is dropped whole: not scored, not held, its $900 and its 20 h never on Pat's line.
+    expect(pat.jobs.map((j) => j.jobId)).toEqual(['j1'])
+    expect(pat.held.map((h) => h.row.jobId)).toEqual(['j2'])
+    expect(pat.keptUsd).toBe(2_130)
+    expect(pat.hoursUnder).toBeCloseTo(41.7, 1)
+    // The old read, with no rate keys, reads as the award's rate and no price: nothing is dropped.
+    const old = parseScoreRead(raw)
+    expect(old).toMatchObject({ rateUsd: null, rateSource: 'award' })
+    expect(old.rows[0]!.priceUsd).toBeNull()
+    expect(superintendentScores(old, '2026-10-31')[0]!.jobs).toHaveLength(1)
+  })
+  it('the rate line names the roster\'s rate to payroll access, keeps the figure from others, and says when the award\'s rate stood in', () => {
+    expect(rateRuleWords({ readsWages: true, rateUsd: 29.01, rateSource: 'roster', burden: 1.2 })).toBe("Labor kept is priced at the roster's loaded rate, $29.01 an hour: the last 90 days of field wages at the 1.2 burden factor. The line budgets' rate stays the bid's price.")
+    expect(rateRuleWords({ readsWages: false, rateUsd: null, rateSource: 'roster', burden: 1.2 })).toBe("Labor kept is priced at the roster's loaded rate: the last 90 days of field wages at the 1.2 burden factor. The line budgets' rate stays the bid's price.")
+    expect(rateRuleWords({ readsWages: true, rateUsd: null, rateSource: 'award', burden: 1.2 })).toContain("priced at its award's own rate")
+    expect(SCORE_RULE_LINES).toHaveLength(7)
+    expect(SCORE_RULE_LINES[6]).toBe('A project priced under $2,500 is never on the board, as it is never on the baseline deck.')
+    expect(SCORE_RULE_LINES[3]).toContain("priced at the roster's loaded rate")
+  })
   it('without payroll access the dollars are null and the words stay quiet', () => {
     const read = parseScoreRead({ ...raw, reads_wages: false, rows: raw.rows.map((r) => ({ ...r, earned_usd: null, actual_usd: null, kept_usd: null, bonus_usd: r.user_id === 'pat' ? r.bonus_usd : null })) })
     const lines = superintendentScores(read, '2026-10-31')
@@ -47,7 +72,7 @@ describe('superintendentScores (punch list #234 PR 4)', () => {
     expect(bonusWords(lines[0]!.bonusUsd, 10)).toBe('$213 · 10% of the labor kept')
   })
   it('the hold reasons in order', () => {
-    const base: ScoreRow = { userId: 'u', userName: 'U', jobId: 'j', jobLabel: 'J', status: 'working', awardedKind: 'bid', awardedAt: null, plannedFinish: null, awardedHours: 100, certifiedPct: 40, signedOn: '2026-10-10', signedBy: 'T', teamHours: 10, subHours: 0, hoursUnder: 30, scored: true, signedInPeriod: true, earnedUsd: null, actualUsd: null, keptUsd: null, bonusUsd: null }
+    const base: ScoreRow = { userId: 'u', userName: 'U', jobId: 'j', jobLabel: 'J', status: 'working', priceUsd: null, awardedUsd: null, rateUsd: null, awardedKind: 'bid', awardedAt: null, plannedFinish: null, awardedHours: 100, certifiedPct: 40, signedOn: '2026-10-10', signedBy: 'T', teamHours: 10, subHours: 0, hoursUnder: 30, scored: true, signedInPeriod: true, earnedUsd: null, actualUsd: null, keptUsd: null, bonusUsd: null }
     expect(holdReason(base)).toBeNull()
     expect(holdReason({ ...base, awardedKind: 'book' })).toContain("the book's hours")
     expect(holdReason({ ...base, awardedHours: 0 })).toBe('no hours on the award')
@@ -55,7 +80,7 @@ describe('superintendentScores (punch list #234 PR 4)', () => {
     expect(holdReason({ ...base, signedInPeriod: false, signedOn: '2026-09-02' })).toBe('signed off Sep 2, not in this period')
   })
   it('days against the plan read the finish at this pace against the planned day', () => {
-    const r: ScoreRow = { userId: 'u', userName: 'U', jobId: 'j', jobLabel: 'J', status: 'working', awardedKind: 'bid', awardedAt: null, plannedFinish: '2026-11-14', awardedHours: 516, certifiedPct: 50, signedOn: null, signedBy: null, teamHours: 200, subHours: 0, hoursUnder: 58, scored: true, signedInPeriod: true, earnedUsd: null, actualUsd: null, keptUsd: null, bonusUsd: null }
+    const r: ScoreRow = { userId: 'u', userName: 'U', jobId: 'j', jobLabel: 'J', status: 'working', priceUsd: null, awardedUsd: null, rateUsd: null, awardedKind: 'bid', awardedAt: null, plannedFinish: '2026-11-14', awardedHours: 516, certifiedPct: 50, signedOn: null, signedBy: null, teamHours: 200, subHours: 0, hoursUnder: 58, scored: true, signedInPeriod: true, earnedUsd: null, actualUsd: null, keptUsd: null, bonusUsd: null }
     // 200 h at 50% → 200 h left → 8.3 crew days → 12 calendar days from Oct 31 = Nov 12; the plan is Nov 14: two days ahead.
     expect(daysVsPlanOf(r, '2026-10-31')).toBe(2)
     expect(daysVsPlanOf({ ...r, plannedFinish: null }, '2026-10-31')).toBeNull()
@@ -66,12 +91,12 @@ describe('superintendentScores (punch list #234 PR 4)', () => {
     expect(daysWords(null)).toBe('')
   })
   it('the Days column says what it waits on: a plan with no hours yet waits on hours, never "no plan" (the second walk\'s slip 5)', () => {
-    const r: ScoreRow = { userId: 'u', userName: 'U', jobId: 'j', jobLabel: 'J', status: 'working', awardedKind: 'bid', awardedAt: null, plannedFinish: '2026-11-20', awardedHours: 70, certifiedPct: 25, signedOn: '2026-11-08', signedBy: 'Taunya', teamHours: 0, subHours: 0, hoursUnder: 17.5, scored: true, signedInPeriod: true, earnedUsd: null, actualUsd: null, keptUsd: null, bonusUsd: null }
+    const r: ScoreRow = { userId: 'u', userName: 'U', jobId: 'j', jobLabel: 'J', status: 'working', priceUsd: null, awardedUsd: null, rateUsd: null, awardedKind: 'bid', awardedAt: null, plannedFinish: '2026-11-20', awardedHours: 70, certifiedPct: 25, signedOn: '2026-11-08', signedBy: 'Taunya', teamHours: 0, subHours: 0, hoursUnder: 17.5, scored: true, signedInPeriod: true, earnedUsd: null, actualUsd: null, keptUsd: null, bonusUsd: null }
     expect(daysVsPlanHoldOf(r)).toBe('no-hours')
     expect(daysVsPlanHoldOf({ ...r, plannedFinish: null })).toBe('no-plan')
     expect(daysVsPlanHoldOf({ ...r, certifiedPct: null })).toBe('no-sign-off')
     expect(daysVsPlanHoldOf({ ...r, teamHours: 9 })).toBeNull()
-    const read = { readsWages: false, sharePct: 10, burden: 1.2, fromYmd: '2026-11-01', toYmd: '2026-11-30', rows: [r] }
+    const read = { readsWages: false, sharePct: 10, burden: 1.2, rateUsd: null, rateSource: 'award' as const, fromYmd: '2026-11-01', toYmd: '2026-11-30', rows: [r] }
     const [line] = superintendentScores(read, '2026-11-08')
     expect(line!.daysVsPlan).toBeNull()
     expect(line!.daysHold).toBe('no-hours')

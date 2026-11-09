@@ -60,7 +60,7 @@ On a book baseline, **Fill the Labor rows on B917 →** opens the bid's Labor ta
 
 ## Catch the projects awarded before
 
-Projects made before this shipped have no baseline. The Needs You card counts them. The line reads *7 projects working with no hours baseline*. On Quickfill it opens **Fill them in**.
+Projects made before this shipped have no baseline. The Needs You card counts them. The line reads *7 projects working with no hours baseline*. On Quickfill it opens **Fill them in**. A project priced under $2,500 never appears on the deck or on the Scoreboard. A project with no price yet still does.
 
 1. Open Quickfill's **Today's lines** station.
 2. Read the card. It says when the project was made, what its bid carries and what the book says.
