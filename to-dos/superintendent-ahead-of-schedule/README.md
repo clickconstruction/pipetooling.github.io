@@ -2,7 +2,7 @@
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
 group: ready
-status: the walks' slips fixed 2026-11-08 as v2.6737 (one PR, no migration) and walked on the dev server on the owner's ZZ Test rows — nine of the ten put right (slip 10 by v2.6706), slip 9 not reproduced and left for the owner to show again; the train of six is live with every migration pushed (PR 1 v2.6300, 1a v2.6646, 1b v2.6656, 1c v2.6662, 2 v2.6665, 4 v2.6666) and the types regenerated (#7264, #7276, then #7301 for PRs 2 and 4, #7290 closed as superseded); left: four calls for the owner (Where it stands) · the four calls made 2026-11-09 (Where it stands); left: the build on them, PR 3's ground and PR 4's reward
+status: the owner's four calls of 2026-11-09 built and merged as three PRs — v2.6776 (the score reads the hours frozen at award, the lines' sum beside them), v2.6778 (the book falls back by size band, never every size), v2.6779 (the roster's loaded rate prices the labor kept, a $2,500 floor on the deck and the board; its migration pushed, Applied on docs/migrations/20261109040000) — and walked on the dev server on the owner's ZZ Test rows (Where it stands); the train of six and the walks' fixes live since 2026-11-08 (v2.6300, 6646, 6656, 6662, 6665, 6666, 6737); left: the owner's live walk on the deployed site, and slip 9 shown again if it comes back
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
@@ -19,11 +19,11 @@ summary: >
   what the bid's workbench priced it from, assumed by a company split when the line was typed,
   tuned only by the owner, frozen at award as the sum of the lines; and the gate became #238's
   kind, a job priced before the work.
-next: Build on the four calls of 2026-11-09: the score reads the hours frozen at award with the line budgets shown beside them, a $2,500 price floor on the baseline deck, the book falls back by size band, the roster's loaded rate prices the labor kept. Then PR 3's ground and PR 4's reward; slip 9 shown again on a bid with no job if it comes back.
-size: L as a train of six (M · M · S · S · M · M), all six shipped, the walks' fixes shipped (S, v2.6737); left: the owner's four calls
-blocker: None. The four calls are made (2026-11-09).
-ver: v2.6300 · 3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837 · 6646 · 6656 · 6662 · 6665 · 6666 · 6706 · 6737
-opinion: decide — the slips are fixed (v2.6737); what is left is the owner's four calls
+next: The owner's live walk on the deployed site — J1113's Costs tab (the frozen 70 h with the lines' 563 h beside it), the Scoreboard's rule card naming the roster's rate and the row re-priced at it, the Job Mode card through View as reading frozen at award — then retire the card; slip 9 shown again on a bid with no job if it comes back.
+size: L as a train of six (M · M · S · S · M · M), all six shipped, the walks' fixes shipped (S, v2.6737), the four calls shipped as three PRs (S · S · M, v2.6776 · v2.6778 · v2.6779); left: the owner's live walk
+blocker: None. Left: the owner's live walk on the deployed site.
+ver: v2.6300 · 3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837 · 6646 · 6656 · 6662 · 6665 · 6666 · 6706 · 6737 · 6776 · 6778 · 6779 · 6783
+opinion: retire once the owner's live walk reads what the dev-server walk read (Where it stands, 2026-11-09)
 mockup: to-dos/superintendent-ahead-of-schedule/mockup-phone.html
 ---
 
@@ -323,7 +323,10 @@ kernel and card; the Schedule column and the bonus setting; the certified-percen
    builds the line with the office's board from the same kernel; its card is the spec. Its kernel
    and pace strip (#6769) and the expected hours (#6771) merged 2026-11-02; the board and the phone
    card were in review. What stays here is the line's ground: days against the planned finish once
-   PR 2 lands, and the certified percent as the proof.
+   PR 2 lands, and the certified percent as the proof. The proof became the office's sign-off and the
+   hours in took the subs' sheet hours in v2.6737; the ground closed with the owner's first call of
+   2026-11-09 as v2.6776: the line's budget is the hours frozen at award, read off the Scoreboard's own
+   read, so the card and the score read one number, and the card says *frozen at award*.
 6. **PR 4 · the scoreboard** (M), open 2026-11-07 as v2.6666 with its migration
    (`20261107200000_superintendent_scores.sql`: `superintendent_scores(from, to, job_ids)`, SECURITY
    DEFINER, and the `superintendent_bonus_v1` row with the owner's write policy), on the owner's three
@@ -334,7 +337,10 @@ kernel and card; the Schedule column and the bonus setting; the certified-percen
    pay-approved master) reads one row per superintendent for a month with the jobs signed off, hours
    used of earned, days against the plan, labor kept and the bonus, the held jobs named with their
    reason, and the rule; the superintendent's card on Job Mode reads his own row, no wage; Settings →
-   People → Superintendent bonus holds the share.
+   People → Superintendent bonus holds the share. The reward's pricing closed with the owner's calls of 2026-11-09 as v2.6779
+   (migration `20261109040000_superintendent_scores_floor_rate.sql`): labor kept is the award's hours at the signed-off
+   percent priced at the roster's loaded rate, minus the actual labor cost, and a project priced under $2,500 is never on
+   the board, as it is never on the baseline deck.
 
 ## How to verify
 
@@ -346,6 +352,35 @@ Scoreboard and the same line as the Superintendent sample through View as. Delet
 after.
 
 ## Where it stands
+
+2026-11-09: the four calls built as three PRs off fresh main, each with its kernel tests, release note and fragment, and the
+guides' words; merged through the queue the same night. **v2.6776** (the first call): the Projects board's `projectPace` and the
+Job Mode card read their hours budget from the award's hours on the `superintendent_scores` read the board already made for
+the sign-off and the sub hours, the live `job_budgets` row standing in only with no award, a leader's target still over
+both; the line and the board's card say *frozen at award*; the Costs tab's Where we are card reads the Labor bar against the
+frozen hours with *the lines sum to N h* beside them and a note naming which hours the score reads. The Scoreboard's SQL had
+read `awarded_labor_hours` since v2.6666, so the database did not move. **v2.6778** (the third call): `baselineReading` never
+reads every size — the window a quarter to four times the price first, then widened to the job's whole size band, **the
+bands under $10k · $10k to $100k · $100k to $1M · over $1M**, and a band with fewer than three kept baselines reads nothing
+and says so (*1 baseline in the $100k–$1M band so far · needs 3 · 121 in the book, none read across sizes*), so the pick
+moves on to a typed figure; the award block, the Costs strip, the deck and Bids → Labor name the band; rows frozen before
+keep *N projects*. On the live book the walk's $250k and $500k readings, which read every size before, now read the thin
+band. **v2.6779** (the second and fourth calls, one migration, `supabase db push` after the merge — applied 2026-11-09 shortly after 06:30Z through scripts/db-push.sh, drift 1195 of 1195; the rate's window slip the walk found is v2.6783, #7437, its own migration to push after its merge):
+`superintendent_scores` computes the roster's loaded rate inside the database with the Labor tab's arithmetic (recorded
+field sessions over the 90 days ending the period at each person's field wage, Σ$ ÷ Σh × the burden factor) and prices
+labor earned as the award's hours × the signed-off percent × that rate, the award's own rate standing in with no field
+hours and the read saying so; the award's dollars still leave for the Costs tab and never score. `BASELINE_PRICE_FLOOR_USD`
+($2,500, `src/lib/jobs/baselinePriceFloor.ts`) is read by the deck's kernel and the Scoreboard's fold, so a project priced
+under it is on neither; one with no price yet still is. The rule card gains the floor and a line naming the rate the month
+was priced at. Walked on the dev server as the dev on the owner's ZZ Test rows before the merges: J1113's Costs tab read
+*0 h of 70 h frozen at award (0%) · the lines sum to 563 h* and *The score reads the 70 h frozen at award ◆ from the bid. The
+lines sum to 563 h: the line-by-line view, shown beside the award and never scored.* under *◆ Baseline from B398 at award ·
+70 h*; the Projects board's large card read J1113 at 70 h with the office's 25% sign-off (the glyph's *frozen at award*
+words were added from that read); Bids → Labor on B398 kept its similar-size reading (10 jobs within the window); the
+Scoreboard's rule card read the seven lines and its row the walk's figures. The walk did not create or delete anything.
+**Left: the owner's live walk** on the deployed site — the Scoreboard's rate line with the roster's figure and J1113's row
+re-priced at it (70 h × 25% × the rate − $900), the Job Mode card through View as reading *70 h budget ◆ from the bid,
+frozen at award* — and slip 9 if it comes back.
 
 2026-11-08, later: the ten slips taken as one PR, v2.6737 (`docs/recent-features/v2.6737.md`), no migration, and walked on
 the dev server as the dev on the ZZ Test rows the owner left (bid BP398, job J1113 and its project, the Sample
