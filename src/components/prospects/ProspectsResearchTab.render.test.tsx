@@ -11,6 +11,8 @@ const io = vi.hoisted(() => ({
   approachFromPermit: vi.fn(),
   pullPermitsNow: vi.fn(),
   loadContactHistory: vi.fn(),
+  lookupCompany: vi.fn(),
+  lookupParcel: vi.fn(),
 }))
 vi.mock('../../lib/research/permitResearchIo', () => io)
 vi.mock('../../hooks/useOfficeAnchor', () => ({ useOfficeAnchor: () => null }))
@@ -73,6 +75,8 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     io.recordVerdict.mockReset().mockResolvedValue(undefined)
     io.approachFromPermit.mockReset().mockResolvedValue({ prospectId: 'lead-1', companyName: 'Ridgeway Builders', reused: false })
     io.pullPermitsNow.mockReset().mockResolvedValue({ ok: true, feeds: [{ source: 'sa-issued', seen: 3, kept: 2, error: null }] })
+    io.lookupCompany.mockReset().mockResolvedValue({ found: true, facts: { name: 'Ridgeway Builders', phone: '(210) 555-0199', website: 'https://example.com', address: '1 Office Park, San Antonio, TX 78201', kind: 'General contractor', maps_url: null, place_id: 'p', match: 'exact' }, error: null, cached: true, lookedUpAt: '2026-11-09T00:00:00Z' })
+    io.lookupParcel.mockReset().mockResolvedValue({ found: true, facts: { prop_id: '1', situs: '100 SAMPLE ST', owner: 'SAMPLE HOLDINGS LLC', owner_address: 'PO BOX 1, SAN ANTONIO TX 78201', dba: null, land_value: 1, improvement_value: 2, total_value: 1_400_000, use_code: '205', year_built: '2001', building_sf: 6200, acres: 0.9, detail_url: 'https://bexar.trueautomation.com/clientdb/Property.aspx?cid=110&prop_id=1' }, error: null, cached: false, lookedUpAt: null })
     io.loadContactHistory.mockReset().mockResolvedValue(new Map([['ridgewaybuilders', { key: 'ridgewaybuilders', bids: 5, won: 3, last_bid_on: '2026-09-01', on_deck: false }]]))
   })
   afterEach(cleanup)
@@ -122,7 +126,7 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     fireEvent.change(screen.getByLabelText('Why'), { target: { value: 'Our size, and we have won with them.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Approach them · make the lead' }))
     await waitFor(() => expect(io.recordVerdict).toHaveBeenCalled())
-    expect(io.approachFromPermit).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }), 'gc', 'u1')
+    expect(io.approachFromPermit).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }), 'gc', 'u1', {})
     expect(io.recordVerdict).toHaveBeenCalledWith(expect.objectContaining({ permitId: 'p1', verdict: 'approach', prospectId: 'lead-1', userId: 'u1' }))
   })
 
@@ -149,5 +153,21 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
     await waitFor(() => expect(screen.getByText('No permits yet.')).toBeTruthy())
     expect(screen.getByText(/Not pulled yet/)).toBeTruthy()
+  })
+
+  it("the name opens the card with Google's facts and the county's owner, and Approach them carries them onto the lead", async () => {
+    renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+    await waitFor(() => expect(screen.getByText('100 SAMPLE ST')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Ridgeway Builders' }))
+    await waitFor(() => expect(screen.getByText('(210) 555-0199')).toBeTruthy())
+    expect(screen.getByText('SAMPLE HOLDINGS LLC')).toBeTruthy()
+    expect(io.lookupCompany).toHaveBeenCalledWith('Ridgeway Builders', 'San Antonio', false)
+    expect(io.lookupParcel).toHaveBeenCalledWith('100 SAMPLE ST', 'San Antonio', false)
+    fireEvent.click(screen.getByRole('button', { name: 'Approach them with these facts…' }))
+    expect(screen.getByText(/The lead carries the phone, the website, the office address, the owner of record/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Why'), { target: { value: 'Found the phone; calling Monday.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Approach them · make the lead' }))
+    await waitFor(() => expect(io.approachFromPermit).toHaveBeenCalled())
+    expect(io.approachFromPermit).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }), 'gc', 'u1', expect.objectContaining({ phone: '(210) 555-0199', website: 'https://example.com', ownerOfRecord: 'SAMPLE HOLDINGS LLC' }))
   })
 })

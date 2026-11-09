@@ -4,7 +4,7 @@ import { CATALOG_RPCS, CATALOG_TABLES, EDGE_FUNCTIONS } from './catalog.ts'
 import { DENIED_TABLES, FILTER_OPS, ROWS_DEFAULT_LIMIT, ROWS_MAX_LIMIT, buildRowsQuery, buildRpcQuery, isSafeIdent, redactSecrets, replyText, rpcArgNames, searchNames } from '../_shared/devMcpDoor.ts'
 import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_shared/mcpJsonRpc.ts'
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
-import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { getPersonFile } from '../_shared/devMcpPersonFile.ts'
 import { getCaseBrief } from '../_shared/devMcpCaseBrief.ts'
 import { getDocumentHistory } from '../_shared/devMcpDocHistory.ts'
@@ -43,6 +43,7 @@ import { indexContext, indexFiles, jobFilesToIndex } from '../_shared/fileIndex.
 import { recordsDue, recordsPass } from '../_shared/fileIndexRecords.ts'
 import { recordBytesWhere } from '../_shared/fileIndexRecordsKernel.ts'
 import { SWEEP_STAMP_KEY } from '../_shared/fileIndexKernel.ts'
+import { ACCOUNT_PERSON_SELECT, ACCOUNT_USER_SELECT, NAME_KEYED_PAY_TABLES, accountAppliedWords, accountDryRun, accountFacts, addWorkerArgs, argsWithoutPasswords, authStateOf, createLoginBody, isAccountVerb, likeTerm as accountLikeTerm, loginAppliedWords, loginDryRun, loginStateReading, passwordResetAppliedWords, passwordResetDryRun, payConfigRow, personRefKind, pickByName, salaryTemplateRow, type AccountPayload, type AccountPersonRow, type AccountStep, type AccountUserRow, type AccountWorld, type AuthState, type LoginPayload, type PasswordResetPayload } from '../_shared/devMcpAccount.ts'
 import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitment, backfillJobPassedReply, backfillJobsQuery, backfillPlanReply, cursorLostWords, nextBackfillJob, parseBackfillPlan, statusReading, type BackfillJob, personBackfillApplyReply, personBackfillCommitment, personBackfillPlanReply, recordsBatch, type PersonBackfillFile } from '../_shared/devMcpIndexBackfill.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
@@ -94,10 +95,19 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // as the Job window's profit band counts them, from the window's own lookups, and the man-hours read asks the server for
 // the one job — an RPC result filter, checked as read_rows' filters are (buildRpcQuery).
 //
+// A teammate's account, from the seat (v2.6792 / 0.50.0, punch list #260's seat door; numbered behind v2.6790's 0.49.0, which merged first): plan_account → apply_account makes a person as
+// the Hire form does or renames one, changes their role or address; plan_login → apply_login attaches a login to a row with none and
+// sends the sign-in email (or sets a password, or removes the login); plan_password_reset → apply_password_reset sends the app's own
+// Forgot password email or sets a dictated password; get_login_state reads where getting them online stands. Every write is the edge
+// function or RPC the desk itself calls, as the dev (invokeAsDev / restPost), so the functions' own dev gates hold; the dry run is
+// this server's read of the users row, the roster row and the auth account's stamps (devMcpAccount.ts) — the FOURTH thing the service
+// role is used for, timestamps by id and nothing else, since no other door reads auth.users. A password never comes back and never
+// reaches the log (argsWithoutPasswords).
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.52.0'
+const SERVER_VERSION = '0.53.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -317,6 +327,41 @@ const TOOLS: McpTool[] = [
     name: 'apply_matter_open_person',
     description: "Open the matter you planned: the same matter plus the plan_hash from plan_matter_open_person. Reads the person and the matters standing on them again first and writes only when nothing changed — a matter opened on them since refuses; plan again. Opens it as you through legal_person_matter_open (devs only; restrictive policies keep a person matter's rows to devs on every legal table): the HR file's Matter view draws it and the file's fact strip wears Matter · Under review. Then write the narrative, the documents, the steps and the themes on its matter_id.",
     inputSchema: { type: 'object', properties: { matter: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['matter', 'plan_hash'] },
+  },
+  {
+    name: 'get_login_state',
+    description: "Where getting a teammate online stands (v2.6792, devs only): whether the users row exists, whether a login is attached, when the invite or the sign-in or reset link went and whether it was used, whether they have signed in and when, in one stage with words you can say to the person and the next press — 'the email went 3 minutes ago, not opened yet', 'signed in once, 10:14'. The row and the roster row are read as you; the auth account's stamps (invited_at, confirmation_sent_at, email_confirmed_at, recovery_sent_at, last_sign_in_at) are read by id, timestamps alone. person is a users.id, a people.id, an address or a name that matches one account.",
+    inputSchema: { type: 'object', properties: { person: { type: 'string', description: 'users.id, people.id, an email address, or a name matching exactly one account' } }, required: ['person'] },
+  },
+  {
+    name: 'plan_account',
+    description: "Dry-run a teammate's app account (v2.6792, punch list #260's seat door): make a person as the Hire form does — new: { name, kind, email?, start_date?, sign_in? (email: the invite link; password: one you set, no mail; none: on the roster, a login attached later), password?, training?, phone?, notes? } with pay?: { hourly_wage, is_salary?, workday_start? } — or change one that exists — person (a users.id, a people.id, an address or a name) with rename: { name?, title?, phone? } (the name-keyed pay rows follow), role, email (refused when another row holds it). Through add_worker, invite-user, create-user and change-user-email as you, so every rule holds: a name a live row carries is refused, an archived teammate with the name or address is refused with Bring back, two accounts never share an address. Replies with what each write becomes and a plan_hash; the plan commits to the row as it reads, so a save by anyone since refuses the apply. Never the paperwork packet. A password is never printed back or logged.",
+    inputSchema: { type: 'object', properties: { account: { type: 'object', description: '{ person, rename?, role?, email? } or { new: { name, kind, email?, start_date?, sign_in?, password?, training?, phone?, notes? }, pay? }' } }, required: ['account'] },
+  },
+  {
+    name: 'apply_account',
+    description: 'Make or change the account you planned: the same account plus the plan_hash from plan_account. Reads the row again first and writes only when it still matches. Each change is reported done or held with its reason; what landed stays. Then get_login_state says where they stand.',
+    inputSchema: { type: 'object', properties: { account: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['account', 'plan_hash'] },
+  },
+  {
+    name: 'plan_login',
+    description: "Dry-run attaching a login to a users row with none (v2.6792; the desk's Attach a login…): login = { person, mode? (email, the default: create-user makes the login on the row's own id with an unguessable password and send-sign-in-email emails them the link; password: a password you set, at least 6 characters, no mail), password?, email? (the address to attach on when the row carries none) }. Nothing that points at the person moves — hours, Charged as, pay, paperwork. remove: true is the desk's Remove the login… through detach-login: the sign-in, any password and their push devices go, the person stays. Refused on a row that already has a login (plan_password_reset sends a link), a sample or twin, an archived person, your own row for remove. The plan commits to the row as it reads.",
+    inputSchema: { type: 'object', properties: { login: { type: 'object', description: '{ person, mode?: email | password, password?, email?, remove?: true }' } }, required: ['login'] },
+  },
+  {
+    name: 'apply_login',
+    description: 'Attach or remove the login you planned: the same login plus the plan_hash from plan_login. Reads the row again first and writes only when it still matches. Then get_login_state tells when the email went and whether they have signed in.',
+    inputSchema: { type: 'object', properties: { login: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['login', 'plan_hash'] },
+  },
+  {
+    name: 'plan_password_reset',
+    description: "Dry-run a password reset on a teammate's login (v2.6792): reset = { person, mode? (email, the default: the app's own Forgot password email with the reset link, as the sign-in page sends it; password: a password you set, at least 6 characters, through set-user-password, no mail), password? }. One send per address per ten minutes: the plan says when the last link went and when the next may. Refused for your own account, a sample, a twin, an archived person, and a row with no login (plan_login attaches one).",
+    inputSchema: { type: 'object', properties: { reset: { type: 'object', description: '{ person, mode?: email | password, password? }' } }, required: ['reset'] },
+  },
+  {
+    name: 'apply_password_reset',
+    description: 'Send the reset email or set the password you planned: the same reset plus the plan_hash from plan_password_reset. Reads the account again first and writes only when it still matches. Then get_login_state says whether the link was used.',
+    inputSchema: { type: 'object', properties: { reset: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['reset', 'plan_hash'] },
   },
   {
     name: 'plan_person_doc',
@@ -650,7 +695,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. search_mail runs one Gmail search across the company's own mailboxes under the service account's delegation, as each login, read-only by scope, and read_mail reads one hit whole; every search is logged with its query and its accounts, never a mail's words, and neither verb can label, trash or delete a mail. read_mail_file hands one file off a hit back as base64, and plan_mail_file → apply_mail_file files one straight where it belongs — a job's Drive folder as the Documents tab's Add a file does, a person's HR file as evidence, or a matter's Evidence tab — under the same plan then apply rule, the bytes read on the server and never passing through you. plan_mail_tag → apply_mail_tag tags a whole conversation out of any login's box onto a job's Activity and notes, as that person, through the My email press's own planner, every mail at its own time and later mail following by itself — the plan shows what each mail would become before anything lands. Since 0.42.0 (punch list #289) tag.person: { person_id } lands the conversation on a person's HR file instead, one dated entry per mail with its Gmail id, written as you, later mail following as entries, and stop: true lifts that follow. Secret columns (tokens, hashes, passwords) come back redacted. Writes are sixty-one verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_person_doc → apply_person_doc (a person's HR summary or narrative, or a named document on the file by doc_id or a new title, the whole text or a section at a time against its own headings, or copied from a .md, .txt or Google Doc in Drive by drive_file_id with the bytes read on the server, refused when the document was saved since the plan), plan_license → apply_license (a teammate's license added, or its level, number, expiry or note changed, the words written the logbook's way; check_license reads TDLR's record of an electrical or HVAC number first, and never writes), plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64, or as a Drive link for one already there — staged in hr-files and filed into the People Shared Drive), plan_person_report → apply_person_report (a waiting field report filed onto a person's HR file as the entry it becomes, or dismissed with a reason, through the queue's own RPCs), plan_matter_open_person → apply_matter_open_person (a matter opened on a person's HR file — the analysis for counsel standing on the person instead of a payer, one a person, devs only — through the file's own RPC; a person who already has one is named with its stage instead), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_event → apply_matter_event (something that already happened on a matter — the day, what, notes and the Evidence documents that prove it — never ahead of today), plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_theme_marks → apply_theme_marks (themes on the record: a theme from the catalog on an HR entry, a piece of evidence, a matter document or a matter event, with why it fits and how it proves the theme, up to 100 a call, kept or proposed; read_rows on legal_themes for the catalog, get_person_file for the entries and records), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_job → apply_job (a new job as the New Job form makes it: one jobs_ledger row as you under the form's own RLS, the customer's email and phone filled in, the kind after; since 0.49.0, punch list #293), plan_job_update → apply_job_update (a job changed as Edit Job and the Pipeline change it: the form's columns as one write under RLS, each shown before → after, and the status through update_job_status one step at a time; since 0.50.0), plan_bill → apply_bill (a bill as Bill Customer and the share row make and hand it over: the primary Ready to Bill row, create-stripe-invoice as you with an explicit stripe_mode, the ten-letter code, the job to Billed, then the Billed line texted through quo-send and the draft emailed through messages-email, each step's outcome named; action send hands over a bill that already exists; since 0.51.0), plan_collections_flag → apply_collections_flag (a Billed job into Collections with a note, or back, through the Job window's own set_job_collections_flag; since 0.52.0) and plan_contract_ended → apply_contract_ended (the end of our contract on a job as the Lien contract row records it: the day, how it ended, the retainage held and the payment bond, or cleared; since 0.52.0), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil; plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. search_mail runs one Gmail search across the company's own mailboxes under the service account's delegation, as each login, read-only by scope, and read_mail reads one hit whole; every search is logged with its query and its accounts, never a mail's words, and neither verb can label, trash or delete a mail. read_mail_file hands one file off a hit back as base64, and plan_mail_file → apply_mail_file files one straight where it belongs — a job's Drive folder as the Documents tab's Add a file does, a person's HR file as evidence, or a matter's Evidence tab — under the same plan then apply rule, the bytes read on the server and never passing through you. plan_mail_tag → apply_mail_tag tags a whole conversation out of any login's box onto a job's Activity and notes, as that person, through the My email press's own planner, every mail at its own time and later mail following by itself — the plan shows what each mail would become before anything lands. Since 0.42.0 (punch list #289) tag.person: { person_id } lands the conversation on a person's HR file instead, one dated entry per mail with its Gmail id, written as you, later mail following as entries, and stop: true lifts that follow. Secret columns (tokens, hashes, passwords) come back redacted. Writes are sixty-seven verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_account → apply_account (a teammate's app account made as the Hire form makes it — the users row, the roster row, the pay row, the invite or a set password — or an account renamed, its role or sign-in address changed, through add_worker, invite-user, create-user and change-user-email as you), plan_login → apply_login (a login attached to a users row with none, on the row's own id, and the sign-in email sent, or a password set, or the login removed — the desk's Attach a login… and Remove the login…), plan_password_reset → apply_password_reset (the app's own Forgot password email, one per address per ten minutes, or a password you dictate; never your own account), with get_login_state reading where getting someone online stands — the row, the login, when the email went, whether they have signed in — and the next press (a password is never printed back or logged), plan_person_doc → apply_person_doc (a person's HR summary or narrative, or a named document on the file by doc_id or a new title, the whole text or a section at a time against its own headings, or copied from a .md, .txt or Google Doc in Drive by drive_file_id with the bytes read on the server, refused when the document was saved since the plan), plan_license → apply_license (a teammate's license added, or its level, number, expiry or note changed, the words written the logbook's way; check_license reads TDLR's record of an electrical or HVAC number first, and never writes), plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64, or as a Drive link for one already there — staged in hr-files and filed into the People Shared Drive), plan_person_report → apply_person_report (a waiting field report filed onto a person's HR file as the entry it becomes, or dismissed with a reason, through the queue's own RPCs), plan_matter_open_person → apply_matter_open_person (a matter opened on a person's HR file — the analysis for counsel standing on the person instead of a payer, one a person, devs only — through the file's own RPC; a person who already has one is named with its stage instead), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_event → apply_matter_event (something that already happened on a matter — the day, what, notes and the Evidence documents that prove it — never ahead of today), plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_theme_marks → apply_theme_marks (themes on the record: a theme from the catalog on an HR entry, a piece of evidence, a matter document or a matter event, with why it fits and how it proves the theme, up to 100 a call, kept or proposed; read_rows on legal_themes for the catalog, get_person_file for the entries and records), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_job → apply_job (a new job as the New Job form makes it: one jobs_ledger row as you under the form's own RLS, the customer's email and phone filled in, the kind after; since 0.49.0, punch list #293), plan_job_update → apply_job_update (a job changed as Edit Job and the Pipeline change it: the form's columns as one write under RLS, each shown before → after, and the status through update_job_status one step at a time; since 0.51.0), plan_bill → apply_bill (a bill as Bill Customer and the share row make and hand it over: the primary Ready to Bill row, create-stripe-invoice as you with an explicit stripe_mode, the ten-letter code, the job to Billed, then the Billed line texted through quo-send and the draft emailed through messages-email, each step's outcome named; action send hands over a bill that already exists; since 0.52.0), plan_collections_flag → apply_collections_flag (a Billed job into Collections with a note, or back, through the Job window's own set_job_collections_flag; since 0.53.0) and plan_contract_ended → apply_contract_ended (the end of our contract on a job as the Lien contract row records it: the day, how it ended, the retainage held and the payment bond, or cleared; since 0.53.0), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil; plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -745,10 +790,10 @@ async function restPost(jwt: string, path: string, body: Record<string, unknown>
  * plan_parts, a lane's requests table — as the dev, the rows the job window's Plans section writes under the same
  * RLS. Reached only from that branch and apply_file_plans' part leg; every other write is restPost to a named RPC.
  */
-async function restRows(jwt: string, method: 'POST' | 'PATCH', table: string, query: string, body: Record<string, unknown>): Promise<{ ok: boolean; status: number; body: unknown }> {
+async function restRows(jwt: string, method: 'POST' | 'PATCH', table: string, query: string, body: Record<string, unknown>, prefer?: string): Promise<{ ok: boolean; status: number; body: unknown }> {
   const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${table}${query ? `?${query}` : ''}`, {
     method,
-    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', Accept: 'application/json', 'Content-Type': 'application/json', Prefer: method === 'POST' ? 'return=representation' : 'return=minimal' },
+    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', Accept: 'application/json', 'Content-Type': 'application/json', Prefer: prefer ?? (method === 'POST' ? 'return=representation' : 'return=minimal') },
     body: JSON.stringify(body),
   })
   const text = await res.text()
@@ -928,6 +973,8 @@ function evidenceDriveNext(drive: Record<string, unknown>): string {
 
 /** A document's bytes never reach the log (v2.6004), nor an evidence file's (v2.6426): the base64 is replaced by its length. */
 function argsForLog(name: string, args: Record<string, unknown>): Record<string, unknown> {
+  // v2.6792: a password an account verb carries never reaches the log; its key reads "(set, not logged)".
+  if (isAccountVerb(name)) return argsWithoutPasswords(args)
   if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {
     const ev = args.evidence && typeof args.evidence === 'object' && !Array.isArray(args.evidence) ? (args.evidence as Record<string, unknown>) : null
     if (!ev || !Array.isArray(ev.files)) return args
@@ -1090,8 +1137,114 @@ const composite = (out: unknown, target: string): Outcome =>
   out && typeof out === 'object' && 'refused' in (out as object) ? refused(String((out as { refused: string }).refused), { target }) : ok(out, { target })
 
 /** What the server knows that a verb may not read for itself: the call log, for the one-apply-per-plan rule. */
-type Hooks = { priorApply: (verb: string, hash: string) => Promise<{ target: string | null; at: string | null } | null> }
-const NO_HOOKS: Hooks = { priorApply: () => Promise.resolve(null) }
+type Hooks = {
+  priorApply: (verb: string, hash: string) => Promise<{ target: string | null; at: string | null } | null>
+  /** v2.6792: the auth account's stamps by id (service role, timestamps alone) — the account verbs' and get_login_state's read; null where no account stands. */
+  authState: (userId: string) => Promise<AuthState | null>
+}
+const NO_HOOKS: Hooks = { priorApply: () => Promise.resolve(null), authState: () => Promise.resolve(null) }
+
+/**
+ * v2.6792: the account named by an account verb — a users.id or a people.id (its account_user_id), an address, or a name that
+ * matches one live human account — read as the dev, with its roster row. `null` user with no refusal means "no such account",
+ * which a create is allowed to find.
+ */
+async function readAccount(jwt: string, ref: string): Promise<{ user: AccountUserRow | null; person: AccountPersonRow | null; refused?: string }> {
+  const first = <T,>(body: unknown): T | null => (Array.isArray(body) ? ((body[0] as T | undefined) ?? null) : null)
+  const kind = personRefKind(ref)
+  const key = ref.trim()
+  if (kind === 'empty') return { user: null, person: null, refused: 'person is required — a users.id, a people.id, an address or a name.' }
+  let userId: string | null = null
+  let person: AccountPersonRow | null = null
+  if (kind === 'uuid') {
+    const byId = await restGet(jwt, 'users', `select=${ACCOUNT_USER_SELECT}&id=eq.${key.toLowerCase()}&limit=1`)
+    if (!byId.ok) return { user: null, person: null, refused: restError(byId.status, byId.body) }
+    const u = first<AccountUserRow>(byId.body)
+    if (u) userId = u.id
+    else {
+      const p = await restGet(jwt, 'people', `select=${ACCOUNT_PERSON_SELECT}&id=eq.${key.toLowerCase()}&limit=1`)
+      if (!p.ok) return { user: null, person: null, refused: restError(p.status, p.body) }
+      person = first<AccountPersonRow>(p.body)
+      if (!person) return { user: null, person: null }
+      if (!person.account_user_id) return { user: null, person, refused: `${person.name} is a roster row with no users row behind it (people ${person.id}); the Users tab's Create account fix links one.` }
+      userId = person.account_user_id
+    }
+  } else if (kind === 'email') {
+    const byEmail = await restGet(jwt, 'users', `select=${ACCOUNT_USER_SELECT}&email=ilike.${encodeURIComponent(key.toLowerCase().replace(/[\\%_*]/g, (c) => `\\${c}`))}&limit=2`)
+    if (!byEmail.ok) return { user: null, person: null, refused: restError(byEmail.status, byEmail.body) }
+    const rows = (Array.isArray(byEmail.body) ? byEmail.body : []) as AccountUserRow[]
+    if (rows.length === 0) return { user: null, person: null }
+    userId = rows[0]!.id
+  } else {
+    const byName = await restGet(jwt, 'users', `select=${ACCOUNT_USER_SELECT}&name=ilike.${encodeURIComponent(accountLikeTerm(key))}&archived_at=is.null&is_digital_twin=eq.false&is_sample=eq.false&order=name&limit=25`)
+    if (!byName.ok) return { user: null, person: null, refused: restError(byName.status, byName.body) }
+    const rows = (Array.isArray(byName.body) ? byName.body : []) as AccountUserRow[]
+    // No account wears the name: not a refusal — get_login_state reads it as no_account, and a create may go ahead.
+    if (rows.length === 0) return { user: null, person: null }
+    const picked = pickByName(rows, key)
+    if ('refused' in picked) return { user: null, person: null, refused: picked.refused }
+    userId = picked.id
+  }
+  const u = await restGet(jwt, 'users', `select=${ACCOUNT_USER_SELECT}&id=eq.${userId}&limit=1`)
+  if (!u.ok) return { user: null, person: null, refused: restError(u.status, u.body) }
+  const user = first<AccountUserRow>(u.body)
+  if (!user) return { user: null, person }
+  if (!person) {
+    const p = await restGet(jwt, 'people', `select=${ACCOUNT_PERSON_SELECT}&account_user_id=eq.${user.id}&order=created_at&limit=1`)
+    person = p.ok ? first<AccountPersonRow>(p.body) : null
+  }
+  return { user, person }
+}
+
+/** v2.6792: who else holds a name or an address — the Hire form's collision reads (findNameCollision, listArchivedPeople + findArchivedMatch, the address check). */
+async function readHolders(jwt: string, args: { exceptUserId: string | null; name: string | null; email: string | null }): Promise<Pick<AccountWorld, 'nameHolder' | 'emailHolder' | 'archivedMatch'>> {
+  const out: Pick<AccountWorld, 'nameHolder' | 'emailHolder' | 'archivedMatch'> = { nameHolder: null, emailHolder: null, archivedMatch: null }
+  const eqName = (n: string) => `name=eq.${encodeURIComponent(n)}`
+  if (args.name) {
+    const [u, p] = await Promise.all([
+      restGet(jwt, 'users', `select=id,name&${eqName(args.name)}&archived_at=is.null&limit=5`),
+      restGet(jwt, 'people', `select=id,name,account_user_id&${eqName(args.name)}&archived_at=is.null&limit=5`),
+    ])
+    const user = ((u.ok && Array.isArray(u.body) ? u.body : []) as { id: string; name: string }[]).find((r) => r.id !== args.exceptUserId)
+    if (user) out.nameHolder = { where: 'account', id: user.id, name: user.name }
+    else {
+      const person = ((p.ok && Array.isArray(p.body) ? p.body : []) as { id: string; name: string; account_user_id: string | null }[]).find((r) => r.account_user_id !== args.exceptUserId || !args.exceptUserId)
+      if (person) out.nameHolder = { where: 'roster', id: person.id, name: person.name }
+    }
+  }
+  if (args.email) {
+    const e = await restGet(jwt, 'users', `select=id,name&email=ilike.${encodeURIComponent(args.email.replace(/[\\%_*]/g, (c) => `\\${c}`))}&limit=5`)
+    const holder = ((e.ok && Array.isArray(e.body) ? e.body : []) as { id: string; name: string | null }[]).find((r) => r.id !== args.exceptUserId)
+    if (holder) out.emailHolder = { id: holder.id, name: holder.name }
+  }
+  // v2.6525: an archived teammate carrying the name or the address — Bring back, never a second row. Fixture accounts are not teammates.
+  if (!args.exceptUserId && (args.name || args.email)) {
+    const ors: string[] = []
+    if (args.name) ors.push(`name.eq.${JSON.stringify(args.name)}`)
+    if (args.email) ors.push(`email.ilike.${JSON.stringify(args.email.replace(/[\\%_*]/g, (c) => `\\${c}`))}`)
+    const a = await restGet(jwt, 'users', `select=id,name,email,archived_at,is_sample,is_digital_twin,is_walk_tester&archived_at=not.is.null&or=(${encodeURIComponent(ors.join(','))})&limit=5`)
+    const rows = ((a.ok && Array.isArray(a.body) ? a.body : []) as { id: string; name: string | null; email: string | null; archived_at: string | null; is_sample: boolean | null; is_digital_twin: boolean | null; is_walk_tester: boolean | null }[]).filter((r) => !r.is_sample && !r.is_digital_twin && !r.is_walk_tester)
+    const hit = rows[0]
+    if (hit) {
+      const byName = !!args.name && (hit.name ?? '').trim().toLowerCase() === args.name.trim().toLowerCase()
+      const byEmail = !!args.email && (hit.email ?? '').trim().toLowerCase() === args.email
+      out.archivedMatch = { id: hit.id, name: hit.name, by: byName && byEmail ? 'both' : byName ? 'name' : 'email', left: hit.archived_at ? hit.archived_at.slice(0, 10) : null }
+    }
+  }
+  return out
+}
+
+/** v2.6792: the app's origin the account emails land on (invite-user's /accept-invite, send-sign-in-email's /dashboard, the reset's /reset-password-confirm). */
+function appOrigin(): string {
+  return (Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com').replace(/\/+$/, '') // domain-cutover flip point (docs/DOMAIN_CUTOVER.md)
+}
+
+/** The words a function's refusal carries, for a step that was held. */
+function fnWords(r: { ok: boolean; status: number; body: unknown }): string {
+  const b = r.body as { error?: unknown; message?: unknown } | null
+  const e = b && typeof b === 'object' ? (typeof b.error === 'string' ? b.error : typeof b.message === 'string' ? b.message : '') : ''
+  return e || `answered ${r.status}`
+}
 
 /** The job a mail file lands on, in words, and whether it has a Drive folder yet (0.29.0). Read as the dev: RLS applies. */
 async function jobWordsFor(reader: Reader, job: MailFileJobRef): Promise<{ label: string; folder: string } | { error: string }> {
@@ -1916,6 +2069,223 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (typeof reply.error === 'string' && reply.error) return refused(reply.error, { target: built.target })
       return ok({ ...reply, person: { id: person!.id, name: person!.name }, next: personMatterAppliedWords(reply, person!.name) }, { target: typeof reply.matter_id === 'string' ? reply.matter_id : built.target })
     }
+    case 'get_login_state': {
+      // v2.6792: where getting a teammate online stands. The row and the roster row are read as you; the auth account's
+      // stamps are read by id as the service role (authStateById), so the verb is a dev's alone — never through view_as.
+      if (who.role !== 'dev') return refused('get_login_state is for devs: it reads the auth account\'s stamps, which no role sees in the app.', { target: 'users' })
+      const ref = String(args.person ?? '')
+      const read = await readAccount(await jwt(), ref)
+      if (read.refused) return refused(read.refused, { target: ref })
+      let auth: AuthState | null = null
+      try {
+        auth = read.user?.login_attached_at ? await hooks.authState(read.user.id) : null
+      } catch (e) {
+        return { log: { status: 'error', target: read.user?.id ?? ref, error: e instanceof Error ? e.message : String(e) }, text: `The auth account could not be read: ${e instanceof Error ? e.message : String(e)}`, isError: true }
+      }
+      const reading = loginStateReading(ref, read.user, read.person, auth, new Date().toISOString())
+      return ok(reading, { target: read.user?.id ?? ref })
+    }
+    case 'plan_account':
+    case 'apply_account': {
+      // v2.6792 (punch list #260's seat door): a teammate's account made as the Hire form makes it, or renamed, its role or
+      // address changed — through add_worker, invite-user, create-user and change-user-email as you, so every function's own
+      // dev gate and rule holds. No wrapper RPC: the dry run is this server's read of the row, its roster row and who else
+      // holds the name or the address (devMcpAccount.ts), hashed with the ask. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as AccountPayload
+      let world: AccountWorld
+      if (p.new) {
+        world = { user: null, person: null, ...(await readHolders(session, { exceptUserId: null, name: p.new.name, email: p.new.email })) }
+      } else {
+        const read = await readAccount(session, p.person ?? '')
+        if (read.refused) return refused(read.refused, { target: built.target })
+        world = { user: read.user, person: read.person, ...(await readHolders(session, { exceptUserId: read.user?.id ?? null, name: p.rename?.name ?? null, email: p.email ?? null })) }
+      }
+      const dry = accountDryRun(p, world, { userId: who.userId })
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const steps: AccountStep[] = []
+      const rowsOf = (body: unknown): number => (Array.isArray(body) ? body.length : 0)
+      let userId: string | null = world.user?.id ?? null
+      let personId: string | null = world.person?.id ?? null
+      if (p.new) {
+        const n = p.new
+        // The person: the Hire form's three doors, one per sign_in.
+        if (n.sign_in === 'none') {
+          const made = await restPost(session, 'rpc/add_worker', addWorkerArgs(n))
+          const ids = made.ok && made.body && typeof made.body === 'object' ? (made.body as { user_id?: unknown; person_id?: unknown }) : null
+          if (!made.ok || typeof ids?.user_id !== 'string') return refused(`Nothing made: add_worker ${made.ok ? 'answered no ids' : restError(made.status, made.body)}`, { target: built.target })
+          userId = ids.user_id
+          personId = typeof ids.person_id === 'string' ? ids.person_id : null
+          steps.push({ step: 'person', ok: true, words: `${n.name} is on the roster with no login (users ${userId}${personId ? `, people ${personId}` : ''}).` })
+          if (n.training) {
+            const t = await restRows(session, 'PATCH', 'users', `id=eq.${userId}`, { read_only: true }, 'return=representation')
+            steps.push({ step: 'training_mode', ok: t.ok && rowsOf(t.body) === 1, words: t.ok && rowsOf(t.body) === 1 ? 'training mode on' : `training mode not set: ${fnWords(t)}` })
+          }
+        } else {
+          const fn = n.sign_in === 'email' ? 'invite-user' : 'create-user'
+          const r = await invokeAsDev(session, fn, createLoginBody(n, `${appOrigin()}/accept-invite`))
+          const b = (r.body && typeof r.body === 'object' ? r.body : {}) as { user_id?: unknown; person_id?: unknown; user?: { id?: unknown; person_id?: unknown } }
+          const madeId = typeof b.user_id === 'string' ? b.user_id : typeof b.user?.id === 'string' ? b.user.id : null
+          if (!r.ok || !madeId) return refused(`Nothing made: ${fn} refused — ${fnWords(r)}`, { target: built.target })
+          userId = madeId
+          personId = typeof b.person_id === 'string' ? b.person_id : typeof b.user?.person_id === 'string' ? b.user.person_id : null
+          steps.push({ step: n.sign_in === 'email' ? 'invite' : 'login', ok: true, words: n.sign_in === 'email' ? `the login is made and the invite email went to ${n.email} (users ${userId}${personId ? `, people ${personId}` : ''}).` : `the login is made on ${n.email} with the password you set (users ${userId}${personId ? `, people ${personId}` : ''}).` })
+        }
+        if (p.pay) {
+          const pay = await restRows(session, 'POST', 'people_pay_config', 'on_conflict=person_name', payConfigRow(p.pay, n.name, personId), 'resolution=merge-duplicates,return=representation')
+          steps.push({ step: 'pay', ok: pay.ok, words: pay.ok ? `the pay row reads ${p.pay.hourly_wage.toFixed(2)}/h${p.pay.is_salary ? ', salaried' : ''}.` : `the pay row was not written: ${fnWords(pay)}` })
+          if (p.pay.is_salary && p.pay.workday_start && userId) {
+            const tpl = await restRows(session, 'POST', 'salary_work_schedule_templates', 'on_conflict=user_id', salaryTemplateRow(userId, p.pay.workday_start, APP_CALENDAR_TZ), 'resolution=merge-duplicates,return=representation')
+            steps.push({ step: 'workday', ok: tpl.ok, words: tpl.ok ? `the salaried workday is 8 hours from ${p.pay.workday_start}, weekdays; today's sessions appear with the next sync.` : `the workday template was not written: ${fnWords(tpl)}` })
+          }
+        }
+      } else if (world.user) {
+        const u = world.user
+        if (p.rename) {
+          const patch: Record<string, unknown> = {}
+          if (p.rename.name !== undefined) patch.name = p.rename.name
+          if (p.rename.title !== undefined) patch.title = p.rename.title
+          if (p.rename.phone !== undefined) patch.phone = p.rename.phone
+          const r = await restRows(session, 'PATCH', 'users', `id=eq.${u.id}`, patch, 'return=representation')
+          const landed = r.ok && rowsOf(r.body) === 1
+          steps.push({ step: 'rename', ok: landed, words: landed ? `the account reads ${JSON.stringify(p.rename.name ?? u.name)}${p.rename.title !== undefined ? `, title ${JSON.stringify(p.rename.title ?? '')}` : ''}${p.rename.phone !== undefined ? `, phone ${JSON.stringify(p.rename.phone ?? '')}` : ''}.` : `the row did not change: ${r.ok ? 'RLS let no row through' : fnWords(r)}` })
+          if (landed && p.rename.name !== undefined) {
+            const newName = p.rename.name
+            if (world.person && world.person.name !== newName) {
+              const pr = await restRows(session, 'PATCH', 'people', `id=eq.${world.person.id}`, { name: newName }, 'return=representation')
+              steps.push({ step: 'roster_row', ok: pr.ok && rowsOf(pr.body) === 1, words: pr.ok && rowsOf(pr.body) === 1 ? `the roster row reads ${JSON.stringify(newName)}.` : `the roster row did not change: ${fnWords(pr)}` })
+            }
+            // The desk's cascade (renameAccount → cascadePersonNameInPayTables): every name this account went by, in every name-keyed table.
+            const oldNames = [...new Set([u.name ?? '', world.person?.name ?? ''].map((s) => s.trim()).filter((s) => s && s !== newName))]
+            let moved = 0
+            const failed: string[] = []
+            for (const old of oldNames) {
+              for (const table of NAME_KEYED_PAY_TABLES) {
+                const c = await restRows(session, 'PATCH', table, `person_name=eq.${encodeURIComponent(old)}`, { person_name: newName }, 'return=representation')
+                if (c.ok) moved += rowsOf(c.body)
+                else failed.push(`${table}: ${fnWords(c)}`)
+              }
+            }
+            steps.push({ step: 'pay_rows', ok: failed.length === 0, words: failed.length === 0 ? `${moved} name-keyed pay and hours row${moved === 1 ? '' : 's'} follow${moved === 1 ? 's' : ''} the name.` : `${moved} rows followed; held: ${failed.join('; ')}` })
+          }
+        }
+        if (p.role) {
+          const r = await restRows(session, 'PATCH', 'users', `id=eq.${u.id}`, { role: p.role }, 'return=representation')
+          const landed = r.ok && rowsOf(r.body) === 1
+          steps.push({ step: 'set_role', ok: landed, words: landed ? `the role is ${p.role}.` : `the role did not change: ${r.ok ? 'RLS let no row through' : fnWords(r)}` })
+        }
+        if (p.email) {
+          if (u.login_attached_at) {
+            const r = await invokeAsDev(session, 'change-user-email', { user_id: u.id, email: p.email })
+            steps.push({ step: 'set_email', ok: r.ok, words: r.ok ? `the login and the app's copy read ${p.email}.` : `the address did not change: ${fnWords(r)}` })
+          } else {
+            const r = await restRows(session, 'PATCH', 'users', `id=eq.${u.id}`, { email: p.email }, 'return=representation')
+            const landed = r.ok && rowsOf(r.body) === 1
+            steps.push({ step: 'set_email', ok: landed, words: landed ? `the row reads ${p.email} (no login yet; plan_login attaches one on it).` : `the address did not change: ${r.ok ? 'RLS let no row through' : fnWords(r)}` })
+            if (landed && world.person) await restRows(session, 'PATCH', 'people', `id=eq.${world.person.id}`, { email: p.email })
+          }
+        }
+      }
+      const after = userId ? await readAccount(session, userId) : { user: null, person: null }
+      const ref = after.user?.id ?? built.target ?? ''
+      return ok({ steps, account: after.user ? accountFacts(after.user, after.person) : null, next: accountAppliedWords(steps, String(ref)) }, { target: after.user?.id ?? built.target })
+    }
+    case 'plan_login':
+    case 'apply_login': {
+      // v2.6792: the desk's Attach a login… and Remove the login… — create-user with user_id (the auth account made ON the row's
+      // own id, attachLoginDoor.ts's rules) then send-sign-in-email, or detach-login — as you, in the seat's grammar. The dry run
+      // is this server's read of the row; the functions' own dev gates and refusals hold besides.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as LoginPayload
+      const read = await readAccount(session, p.person)
+      if (read.refused) return refused(read.refused, { target: built.target })
+      const email = p.action === 'attach' ? (p.email ?? ((read.user?.email ?? '').toLowerCase() || null)) : null
+      const holders = email ? await readHolders(session, { exceptUserId: read.user?.id ?? null, name: null, email }) : { emailHolder: null }
+      const dry = loginDryRun(p, read.user, read.person, holders.emailHolder, { userId: who.userId })
+      if (!dry.ok) return refused(dry.refused, { target: read.user?.id ?? built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: read.user?.id ?? built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: read.user?.id ?? built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: read.user?.id ?? built.target })
+      const u = read.user!
+      const who_ = (u.name ?? '').trim() || u.email || u.id
+      let emailSent: boolean | null = null
+      let sendWhy: string | null = null
+      if (p.action === 'remove') {
+        const r = await invokeAsDev(session, 'detach-login', { user_id: u.id })
+        if (!r.ok) return refused(`Nothing removed: detach-login refused — ${fnWords(r)}`, { target: u.id })
+      } else {
+        const body: Record<string, unknown> = { user_id: u.id, email }
+        if (p.mode === 'password') body.password = p.password
+        const r = await invokeAsDev(session, 'create-user', body)
+        if (!r.ok) return refused(`Nothing attached: create-user refused — ${fnWords(r)}`, { target: u.id })
+        if (p.mode === 'email') {
+          const s = await invokeAsDev(session, 'send-sign-in-email', { email, redirectTo: `${appOrigin()}/dashboard` })
+          emailSent = s.ok
+          if (!s.ok) sendWhy = fnWords(s)
+        }
+      }
+      const after = await readAccount(session, u.id)
+      let auth: AuthState | null = null
+      try {
+        auth = after.user?.login_attached_at ? await hooks.authState(u.id) : null
+      } catch { /* the stamps are a courtesy here; get_login_state reads them again */ }
+      return ok({ action: p.action, account: after.user ? accountFacts(after.user, after.person) : null, email, email_sent: emailSent, ...(sendWhy ? { email_not_sent_why: sendWhy } : {}), auth, next: loginAppliedWords(p, who_, emailSent) }, { target: u.id })
+    }
+    case 'plan_password_reset':
+    case 'apply_password_reset': {
+      // v2.6792: the app's own Forgot password email (resetPasswordForEmail, the sign-in page's) to a teammate's login, or a
+      // password you dictate through set-user-password as you. The dry run reads the row and the auth account's stamps, so the
+      // ten-minute rule between sends is the seat's own, read off recovery_sent_at.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as PasswordResetPayload
+      const read = await readAccount(session, p.person)
+      if (read.refused) return refused(read.refused, { target: built.target })
+      let auth: AuthState | null = null
+      try {
+        auth = read.user?.login_attached_at ? await hooks.authState(read.user.id) : null
+      } catch (e) {
+        return { log: { status: 'error', target: read.user?.id ?? built.target, error: e instanceof Error ? e.message : String(e) }, text: `The auth account could not be read: ${e instanceof Error ? e.message : String(e)}`, isError: true }
+      }
+      const dry = passwordResetDryRun(p, read.user, read.person, auth, { userId: who.userId }, new Date().toISOString())
+      if (!dry.ok) return refused(dry.refused, { target: read.user?.id ?? built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: read.user?.id ?? built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: read.user?.id ?? built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: read.user?.id ?? built.target })
+      const u = read.user!
+      const who_ = (u.name ?? '').trim() || u.email || u.id
+      if (p.mode === 'password') {
+        const r = await invokeAsDev(session, 'set-user-password', { user_id: u.id, password: p.password })
+        if (!r.ok) return refused(`Nothing set: set-user-password refused — ${fnWords(r)}`, { target: u.id })
+      } else {
+        // The sign-in page's own call: the anon client, no session — the auth server mails the link itself through the project's SMTP.
+        const anon = createClient(env('SUPABASE_URL'), env('SUPABASE_ANON_KEY'), { auth: { autoRefreshToken: false, persistSession: false } })
+        const { error } = await anon.auth.resetPasswordForEmail(u.email!, { redirectTo: `${appOrigin()}/reset-password-confirm` })
+        if (error) return refused(`Nothing sent: the auth server refused the reset email — ${error.message}`, { target: u.id })
+      }
+      let authAfter: AuthState | null = auth
+      try {
+        authAfter = await hooks.authState(u.id)
+      } catch { /* the stamps are a courtesy here */ }
+      return ok({ action: p.mode === 'email' ? 'send_reset_email' : 'set_password', account: accountFacts(u, read.person), email: u.email, sent_at: p.mode === 'email' ? authAfter?.recovery_sent_at ?? null : null, auth: authAfter, next: passwordResetAppliedWords(p, who_, u.email, p.mode === 'email' ? authAfter?.recovery_sent_at ?? null : null) }, { target: u.id })
+    }
     case 'read_file_index_status': {
       // v2.6332 (punch list #240, PR 2): one GET of the dev-gated RPC as you; the reading line opens the reply.
       const res = await restGet(await jwt(), 'rpc/dev_file_index_status', '')
@@ -2490,6 +2860,19 @@ async function priorApply(admin: Admin, verb: string, hash: string): Promise<{ t
   return null
 }
 
+/**
+ * v2.6792: the auth account behind a users row, by id, as the service role — the fourth thing the service role is used for.
+ * Only the stamps the account verbs read (authStateOf picks them by name); a missing account is null, a failed read throws.
+ */
+async function authStateById(admin: Admin, userId: string): Promise<AuthState | null> {
+  const { data, error } = await admin.auth.admin.getUserById(userId)
+  if (error) {
+    if (/not found|does not exist/i.test(error.message) || (error as { status?: number }).status === 404) return null
+    throw new Error(`could not read the auth account: ${error.message}`)
+  }
+  return authStateOf((data?.user ?? null) as unknown as Record<string, unknown> | null)
+}
+
 async function callTool(req: Request, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
   const admin = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { autoRefreshToken: false, persistSession: false } })
   const dev = await resolveDev(admin, req)
@@ -2512,7 +2895,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       return finish({ ...out, text: out.isError ? out.text : `// read as ${target.name ?? target.email} (${target.role})\n${out.text}`, log: { ...out.log, target: `${verb}${out.log.target ? `:${out.log.target}` : ''}` } }, target.userId)
     }
     const me: Identity = { userId: dev.userId, email: dev.email, name: dev.name, role: 'dev' }
-    return finish(await runVerb(me, () => sessionFor(admin, me), name, args, { priorApply: (verb, hash) => priorApply(admin, verb, hash) }))
+    return finish(await runVerb(me, () => sessionFor(admin, me), name, args, { priorApply: (verb, hash) => priorApply(admin, verb, hash), authState: (userId) => authStateById(admin, userId) }))
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return finish({ log: { status: 'error', error: message }, text: `Tool error: ${message}`, isError: true })

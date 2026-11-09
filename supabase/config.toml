@@ -926,6 +926,9 @@ verify_jwt = false
 # Research (punch list #292, v2.6782): the nightly permit pull from a city's open-data feed; cron POST with X-Cron-Secret, or a signed-in researcher's JWT (the function checks user_can_research_permits() itself).
 [functions.permit-pull]
 verify_jwt = false
+# Research, Who pulled it (punch list #292, v2.6786): the card's two cached lookups (Google Places, the county's parcel layer); a researcher's JWT checked in-body (user_can_research_permits), the archived-caller guard.
+[functions.permit-lookup]
+verify_jwt = false
 # Stripe links (v2.3589): the nightly sweep that re-fetches every open Stripe bill's hosted link before Stripe's 30-days-past-due expiry; cron POST with X-Cron-Secret + service role.
 [functions.refresh-stripe-invoice-links]
 verify_jwt = false

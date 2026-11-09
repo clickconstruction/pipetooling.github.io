@@ -17,7 +17,9 @@ export const BANKING_ONLY_PATHS = ['/banking'] as const
 // '/training' (v2.5592): a course page is every signed-in role's; the policy in Settings → Training says who must
 // take it, and the Dashboard card's Start sent a helper here, where the guard bounced them home.
 // '/my-logbook' (v2.6502) is in every list: any teammate may be shown their logbook, and my_logbook() answers only then.
-export const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/my-logbook', '/calendar', '/checklist', '/settings', '/tally', '/help', '/training', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers'] as const
+// '/b' (v2.6796, punch list #294): the box label's QR lands on /b/:code, which forwards to the Tally's On site tab; without it
+// here a helper, a primary or a superintendent who scanned a label was sent to the Dashboard instead of the box.
+export const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/my-logbook', '/calendar', '/checklist', '/settings', '/tally', '/b', '/help', '/training', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers'] as const
 
 export const PRIMARY_PATHS = [
   '/dashboard',
@@ -38,6 +40,7 @@ export const PRIMARY_PATHS = [
   '/roadmap',
   '/settings',
   '/tally',
+  '/b',
   '/help',
   '/training',
   '/job-mode/schedule',
@@ -62,6 +65,7 @@ export const SUPERINTENDENT_PATHS = [
   '/checklist',
   '/settings',
   '/tally',
+  '/b',
   '/help',
   '/training',
   '/job-mode/schedule',
