@@ -5,17 +5,27 @@ import {
   COMPANY_OWNER_USER_ID_KEY,
   JOB_KINDS,
   JOB_OWNER_OVERRIDE_DEFAULT_KEY,
+  JOB_STATUSES,
   JOB_VERBS,
+  STATUS_WORDS,
+  UPDATE_COLUMNS,
   customerContact,
   isJobVerb,
   jobAppliedWords,
   jobInput,
   jobMasterUser,
   jobShortLabel,
+  jobUpdateAppliedWords,
+  jobUpdateDryRun,
+  jobUpdateInput,
   newJobDryRun,
   newJobRow,
+  readJobUpdateWorld,
   readNewJobWorld,
+  statusSteps,
   type JobReads,
+  type JobRow,
+  type JobUpdatePayload,
   type NewJobPayload,
   type NewJobWorld,
 } from '../../../supabase/functions/_shared/devMcpJobs'
@@ -63,7 +73,7 @@ const p = (over: Partial<Record<string, unknown>> = {}): NewJobPayload => {
 
 describe('devMcpJobs — the verbs on the allowlist', () => {
   it('are two write verbs with no RPC, plan before apply, and the server names both', () => {
-    expect(JOB_VERBS).toEqual(['plan_job', 'apply_job'])
+    expect(JOB_VERBS).toEqual(['plan_job', 'apply_job', 'plan_job_update', 'apply_job_update'])
     for (const v of JOB_VERBS) {
       expect(isJobVerb(v)).toBe(true)
       expect(isWriteVerb(v)).toBe(true)
@@ -72,9 +82,11 @@ describe('devMcpJobs — the verbs on the allowlist', () => {
       expect(SERVER).toContain(`name: '${v}',`)
     }
     expect(planVerbFor('apply_job')).toBe('plan_job')
+    expect(planVerbFor('apply_job_update')).toBe('plan_job_update')
     expect(isJobVerb('plan_bid')).toBe(false)
-    expect(SERVER).toContain('Writes are fifty-three verbs and nothing else:')
+    expect(SERVER).toContain('Writes are fifty-five verbs and nothing else:')
     expect(README).toContain('`plan_job(job)` · `apply_job(job, plan_hash)`')
+    expect(README).toContain('`plan_job_update(update)` · `apply_job_update(update, plan_hash)`')
   })
   it('holds the kinds and the owner keys to the app’s own', () => {
     expect([...JOB_KINDS]).toEqual([...APP_JOB_KINDS])
@@ -280,5 +292,124 @@ describe('the words after', () => {
     expect(jobAppliedWords({ id: 'j9' }, { asked: 'project', saved: false, why: 'refused' }).kind).toBe('not saved: refused')
     expect(jobAppliedWords({ id: 'j9' }, { asked: null, saved: false }).kind).toBeNull()
     expect(alreadyApplied('apply_job', { target: 'j9', at: null })).toContain('as job j9')
+  })
+})
+
+describe('the update verbs (v2.6793, PR 2)', () => {
+  const JOBID = '99999999-1111-4111-8111-111111111111'
+  const AM = 'ffffffff-3333-4333-8333-333333333333'
+  const row = (over: Partial<JobRow> = {}): JobRow => ({
+    id: JOBID, status: 'waiting', updated_at: '2026-11-09T15:00:00+00:00', master_user_id: OWNER,
+    job_name: 'ZZ TEST seat walk', job_address: '123 Main St, Austin TX 78701', hcp_number: '', click_number: '', customer_id: CUSTOMER, customer_name: 'ZZ Test Customer', customer_email: 'zz@example.com', customer_phone: null, service_type_id: SERVICE,
+    development_id: null, project_id: null, bid_id: null, bill_to_party: 'customer', gc_customer_id: null, google_drive_link: null, job_pictures_link: null, job_plans_link: null, account_manager_user_id: null, revenue: 1, pct_complete: 0, kind: null,
+    ...over,
+  })
+  const up = (over: Record<string, unknown>): JobUpdatePayload => {
+    const built = jobUpdateInput('plan_job_update', { update: { job_id: JOBID, ...over } })
+    if (!built.ok) throw new Error(built.error)
+    return built.p
+  }
+  it('holds the columns to the Edit Job form’s own payload and the statuses to the table’s CHECK', () => {
+    const SLICES = readFileSync('src/lib/jobs/jobFormAutosaveSlices.ts', 'utf8')
+    const payload = SLICES.slice(SLICES.indexOf('export function buildEditJobIdentityUpdatePayload'), SLICES.indexOf('export function identitySliceReadyToSave'))
+    for (const col of UPDATE_COLUMNS) {
+      if (col === 'revenue' || col === 'pct_complete' || col === 'kind') continue // the price slice, the Stages percent, the kind press
+      expect(payload).toContain(`${col}:`)
+    }
+    const BASELINE = readFileSync('supabase/migrations/20250101000000_baseline.sql', 'utf8')
+    expect(BASELINE).toContain(`CONSTRAINT "jobs_ledger_status_check" CHECK (("status" = ANY (ARRAY[${JOB_STATUSES.map((s) => `'${s}'::"text"`).join(', ')}])))`)
+    expect(Object.keys(STATUS_WORDS)).toEqual([...JOB_STATUSES])
+  })
+  it('shapes the set column by column, the status, the reason, and refuses an unknown column, a cleared required column or nothing to change', () => {
+    expect(up({ set: { job_address: ' 500 oak st ', revenue: '12.5', pct_complete: 40, kind: 'Project', customer_email: 'a@b.co', customer_phone: '' }, status: 'READY_TO_BILL', reason: 'the walk' })).toEqual({
+      action: 'update', job_id: JOBID, set: { job_address: '500 Oak St', revenue: 12.5, pct_complete: 40, kind: 'project', customer_email: 'a@b.co', customer_phone: null }, status: 'ready_to_bill', reason: 'the walk',
+    })
+    expect(up({ set: { development_id: null, kind: null } })).toMatchObject({ set: { development_id: null, kind: null } })
+    expect(jobUpdateInput('plan_job_update', { update: { job_id: JOBID } })).toMatchObject({ ok: false, error: expect.stringContaining('nothing to change') })
+    expect(jobUpdateInput('plan_job_update', { update: { job_id: JOBID, set: { status: 'billed' } } })).toMatchObject({ ok: false, error: expect.stringContaining('A status is `status`') })
+    expect(jobUpdateInput('plan_job_update', { update: { job_id: JOBID, set: { payments_made: 5 } } })).toMatchObject({ ok: false, error: expect.stringContaining('not a column this verb changes') })
+    expect(jobUpdateInput('plan_job_update', { update: { job_id: JOBID, set: { job_name: null } } })).toMatchObject({ ok: false, error: expect.stringContaining('cannot be cleared') })
+    expect(jobUpdateInput('plan_job_update', { update: { job_id: JOBID, set: { job_name: ' ' } } })).toMatchObject({ ok: false, error: expect.stringContaining('required') })
+    expect(jobUpdateInput('plan_job_update', { update: { job_id: JOBID, set: { pct_complete: 101 } } })).toMatchObject({ ok: false, error: expect.stringContaining('0 to 100') })
+    expect(jobUpdateInput('plan_job_update', { update: { job_id: JOBID, set: { customer_id: 'robert' } } })).toMatchObject({ ok: false, error: expect.stringContaining('find_customer') })
+    expect(jobUpdateInput('plan_job_update', { update: { job_id: JOBID, set: { kind: 'repair' } } })).toMatchObject({ ok: false, error: expect.stringContaining('kind') })
+    expect(jobUpdateInput('plan_job_update', { update: { job_id: JOBID, status: 'done' } })).toMatchObject({ ok: false, error: expect.stringContaining('status is one of') })
+    expect(jobUpdateInput('plan_job_update', { update: { job_id: 'JP972', status: 'working' } })).toMatchObject({ ok: false, error: expect.stringContaining('find_job') })
+    expect(jobUpdateInput('apply_job_update', { update: { job_id: JOBID, status: 'working' } })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
+    expect(writeRpcBody('apply_job_update', { update: { job_id: JOBID, status: 'working' }, plan_hash: HASH })).toMatchObject({ ok: true, rpc: null, step: 'apply', planHash: HASH, target: JOBID })
+  })
+  it('reads the job with every column and each row a new id names', async () => {
+    const seen: string[] = []
+    const reads: JobReads = { rows: async (table, query) => { seen.push(`${table}?${query}`); return table === 'jobs_ledger' ? [row()] : table === 'bids' ? [{ id: BID, project_name: 'Oak Hill' }] : [{ id: AM, name: 'Ana' }] } }
+    const w = await readJobUpdateWorld(reads, up({ set: { bid_id: BID, account_manager_user_id: AM, job_name: 'x' } }))
+    expect(seen[0]).toBe(`jobs_ledger?select=id,status,updated_at,master_user_id,${UPDATE_COLUMNS.join(',')}&id=eq.${JOBID}`)
+    expect(seen).toContain(`bids?select=id,project_name&id=eq.${BID}`)
+    expect(seen).toContain(`users?select=id,name&id=eq.${AM}`)
+    expect(seen).toHaveLength(3)
+    expect(w.named).toEqual({ bid_id: { id: BID, name: 'Oak Hill' }, account_manager_user_id: { id: AM, name: 'Ana' } })
+  })
+  it('walks the status one neighbour at a time, forward and back', () => {
+    expect(statusSteps('waiting', 'ready_to_bill')).toEqual(['working', 'ready_to_bill'])
+    expect(statusSteps('paid', 'working')).toEqual(['billed', 'ready_to_bill', 'working'])
+    expect(statusSteps('billed', 'billed')).toEqual([])
+    expect(statusSteps('waiting', 'paid')).toEqual(['working', 'ready_to_bill', 'billed', 'paid'])
+  })
+  it('the plan shows before → after with the no-ops dropped, the steps with the send-back warning, and refuses a plan that changes nothing', () => {
+    const dry = jobUpdateDryRun(up({ set: { revenue: 25, job_name: 'ZZ TEST seat walk', customer_phone: '5125550199' }, status: 'ready_to_bill' }), { job: row(), named: {} })
+    if (!dry.ok) throw new Error(dry.refused)
+    expect(dry.reply).toMatchObject({
+      action: 'update',
+      job: { id: JOBID, label: 'ZZ TEST seat walk', status: 'waiting', status_words: 'Waiting' },
+      changes: [{ column: 'revenue', before: 1, after: 25 }, { column: 'customer_phone', before: null, after: '5125550199' }],
+      patch: { revenue: 25, customer_phone: '5125550199' },
+      status: { from: 'waiting', to: 'ready_to_bill', steps: [{ to: 'working', words: 'Waiting → Working' }, { to: 'ready_to_bill', words: 'Working → Ready to Bill' }] },
+    })
+    const back = jobUpdateDryRun(up({ status: 'working' }), { job: row({ status: 'ready_to_bill' }), named: {} })
+    if (!back.ok) throw new Error(back.refused)
+    expect(String((back.reply.status as { steps: Array<{ words: string }> }).steps[0]?.words)).toContain('deletes the job')
+    const billed = jobUpdateDryRun(up({ status: 'billed' }), { job: row({ status: 'ready_to_bill' }), named: {} })
+    if (!billed.ok) throw new Error(billed.refused)
+    expect(String((billed.reply.status as { steps: Array<{ words: string }> }).steps[0]?.words)).toContain('plan_bill')
+    // A price typed as the row holds it is a no-op; so is the status it already has.
+    expect(jobUpdateDryRun(up({ set: { revenue: '1' }, status: 'waiting' }), { job: row(), named: {} })).toMatchObject({ ok: false, refused: expect.stringContaining('already reads that way') })
+    expect(jobUpdateDryRun(up({ set: { job_name: 'ZZ TEST seat walk' } }), { job: row(), named: {} })).toMatchObject({ ok: false, refused: expect.stringContaining('Nothing to apply') })
+  })
+  it('refuses a job or a named row not visible, a GC bill-to with no GC, and names the new row’s name in the change', () => {
+    expect(jobUpdateDryRun(up({ status: 'working' }), { job: null, named: {} })).toMatchObject({ ok: false, refused: expect.stringContaining('find_job') })
+    expect(jobUpdateDryRun(up({ set: { bid_id: BID } }), { job: row(), named: { bid_id: null } })).toMatchObject({ ok: false, refused: expect.stringContaining('find_bid') })
+    expect(jobUpdateDryRun(up({ set: { bill_to_party: 'gc' } }), { job: row(), named: {} })).toMatchObject({ ok: false, refused: expect.stringContaining('gc_customer_id') })
+    const dry = jobUpdateDryRun(up({ set: { bid_id: BID } }), { job: row(), named: { bid_id: { id: BID, name: 'Oak Hill' } } })
+    expect(dry).toMatchObject({ ok: true, reply: { changes: [{ column: 'bid_id', before: null, after: BID, named: 'Oak Hill' }] } })
+  })
+  it('hashes the before values and updated_at, so a row changed since refuses the apply', async () => {
+    const p1 = up({ set: { revenue: 25 } })
+    const a = jobUpdateDryRun(p1, { job: row(), named: {} })
+    const b = jobUpdateDryRun(p1, { job: row({ updated_at: '2026-11-09T15:01:00+00:00' }), named: {} })
+    const c = jobUpdateDryRun(p1, { job: row({ revenue: 2 }), named: {} })
+    if (!a.ok || !b.ok || !c.ok) throw new Error('refused')
+    const ha = await planHash('plan_job_update', p1, a.reply)
+    expect(await planHash('plan_job_update', p1, a.reply)).toBe(ha)
+    expect(await planHash('plan_job_update', p1, b.reply)).not.toBe(ha)
+    expect(await planHash('plan_job_update', p1, c.reply)).not.toBe(ha)
+    expect(planReply('plan_job_update', a.reply, ha).next).toContain('apply_job_update')
+    expect(alreadyApplied('apply_job_update', { target: JOBID, at: null })).toContain('on this job')
+  })
+  it('the words after: what landed, where the steps stopped, and the next press', () => {
+    const job = { id: JOBID, job_name: 'ZZ TEST seat walk' }
+    const fine = jobUpdateAppliedWords(job, { changes: [{ column: 'revenue', before: 1, after: 25 }], held: null }, { from: 'waiting', steps: [{ to: 'working', ok: true }, { to: 'ready_to_bill', ok: true }] })
+    expect(fine).toMatchObject({ job_id: JOBID, label: 'ZZ TEST seat walk', status: { from: 'waiting', now: 'ready_to_bill' } })
+    expect(String(fine.next)).toContain('plan_bill')
+    const stopped = jobUpdateAppliedWords(job, { changes: [], held: null }, { from: 'waiting', steps: [{ to: 'working', ok: true }, { to: 'ready_to_bill', ok: false, error: 'Not authorized to update job status' }] })
+    expect(stopped).toMatchObject({ status: { now: 'working' } })
+    expect(String(stopped.next)).toContain('stopped at Working: Not authorized')
+    const held = jobUpdateAppliedWords(job, { changes: [], held: 'This account could not change revenue on this job (RLS let no row through).' }, null)
+    expect(held.held).toContain('RLS')
+    expect(String(held.next)).toContain('get_job')
+  })
+  it('the server declares both verbs, PATCHes the row and walks update_job_status step by step', () => {
+    expect(SERVER).toContain("case 'plan_job_update':")
+    expect(SERVER).toContain("name: 'apply_job_update',")
+    expect(SERVER).toContain("await restRows(session, 'PATCH', 'jobs_ledger', `id=eq.${job.id}`, patch)")
+    expect(SERVER).toContain("await restPost(session, 'rpc/update_job_status', { p_job_id: job.id, p_to_status: to })")
   })
 })
