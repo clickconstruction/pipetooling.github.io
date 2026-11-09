@@ -1,9 +1,12 @@
 /** Settings → Data & recovery tab: dev-only JSON backup exporters + the draft-bills-on-paid-jobs sweep + the deleted-records archive.
  * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props.
- * The SettingsGroup wrapper and the `myRole === 'dev'` gate stay in the parent.
+ * Punch list #188 (v2.6766): the tab opens to the controller and the owner for their sweeps, so each block gates itself —
+ * the backups, ZZ test jobs, Recently deleted and the bulk-deletion alert a dev's, Draft bills the controller's, Link jobs the owner's.
  * Exception: DeletedRecordsSection is self-contained (owns its state via useDeletedRecordsArchive) —
  * it is single-surface, so threading its state through Settings.tsx would add props for no benefit. */
 import type { Dispatch, SetStateAction } from 'react'
+import type { UserRole } from '../../hooks/useAuth'
+import { isControllerOrDev, isOwnerOrDev } from '../../lib/doorRoles'
 import DeletedRecordsSection from './DeletedRecordsSection'
 import BulkDeleteAlertSettingsBlock from './BulkDeleteAlertSettingsBlock'
 import BidJobBackfillSettingsBlock from './BidJobBackfillSettingsBlock'
@@ -11,6 +14,7 @@ import StaleDraftBillsOnPaidJobsSection from './StaleDraftBillsOnPaidJobsSection
 import ZzTestJobSweepSection from './ZzTestJobSweepSection'
 
 export default function SettingsDataTab({
+  myRole,
   dataBackupSectionOpen,
   setDataBackupSectionOpen,
   exportError,
@@ -36,6 +40,7 @@ export default function SettingsDataTab({
   exportAllBackup,
   exportAllLoading,
 }: {
+  myRole: UserRole | null
   dataBackupSectionOpen: boolean
   setDataBackupSectionOpen: Dispatch<SetStateAction<boolean>>
   exportError: string | null
@@ -61,8 +66,10 @@ export default function SettingsDataTab({
   exportAllBackup: () => void
   exportAllLoading: boolean
 }) {
+  const isDev = myRole === 'dev'
   return (
     <>
+    {isDev && (
     <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
       <button
         type="button"
@@ -177,11 +184,12 @@ export default function SettingsDataTab({
         </div>
       )}
     </div>
-    <StaleDraftBillsOnPaidJobsSection />
-    <ZzTestJobSweepSection />
-    <DeletedRecordsSection />
-    <BulkDeleteAlertSettingsBlock />
-    <BidJobBackfillSettingsBlock />
+    )}
+    {isControllerOrDev(myRole) && <StaleDraftBillsOnPaidJobsSection />}
+    {isDev && <ZzTestJobSweepSection />}
+    {isDev && <DeletedRecordsSection />}
+    {isDev && <BulkDeleteAlertSettingsBlock />}
+    {isOwnerOrDev(myRole) && <BidJobBackfillSettingsBlock />}
     </>
   )
 }

@@ -240,7 +240,7 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
     expect(doors.filter(isDevOnly).length).toBeGreaterThan(20)
   })
 
-  it('gates: the punch list and the Bridge for the owner and the developers, Banking for the controller, no Crew P&L for the owner', () => {
+  it('gates: the punch list, the Bridge and Crew P&L for the owner and the developers, Banking for the controller', () => {
     const open = (role: DoorViewer['role'], id: string) => doorsFor(plainViewer(role), sources).some((d) => d.id === id)
     expect(open('dev', 'todo:126')).toBe(true)
     expect(open('master_technician', 'todo:126')).toBe(true)
@@ -248,7 +248,13 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
     expect(open('estimator', 'page:/punch-list')).toBe(false)
     expect(open('assistant', 'page:/banking')).toBe(false)
     expect(open('controller', 'page:/banking')).toBe(true)
-    expect(open('master_technician', 'page:/jobs?tab=teams-summary')).toBe(false)
+    // Crew P&L, the Bridge and Templates are the owner's since punch list #188 (v2.6757, v2.6763); Duplicates the estimator's (v2.6766).
+    expect(open('master_technician', 'page:/jobs?tab=teams-summary')).toBe(true)
+    expect(open('assistant', 'page:/jobs?tab=teams-summary')).toBe(false)
+    expect(open('master_technician', 'page:/bridge')).toBe(true)
+    expect(open('master_technician', 'page:/templates')).toBe(true)
+    expect(open('estimator', 'page:/duplicates')).toBe(true)
+    expect(open('assistant', 'page:/duplicates')).toBe(false)
     expect(open('assistant', 'page:/jobs?tab=combined-labor')).toBe(false)
     expect(open('controller', 'page:/jobs?tab=combined-labor')).toBe(true)
     expect(open('helpers', 'page:/dashboard')).toBe(true)

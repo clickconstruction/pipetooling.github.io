@@ -127,9 +127,10 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (isOwnerOrDev(r)) {
     groups.push({ id: 'settings-usage', label: 'Usage', zone: 'system', pagesHint: 'How the company actually uses the app — pages, clicks, and customer opens.' })
   }
-  // Data & recovery: a dev's backups and Recently deleted; since v2.6756 (punch list #188 row 25) the controller opens it for HCP reconcile.
-  if (isControllerOrDev(r)) {
-    groups.push({ id: 'settings-data', label: 'Data & recovery', zone: 'system', pagesHint: 'Backups, exports and Recently deleted for a dev; HCP reconcile for the controller.' })
+  // Data & recovery: a dev's backups and Recently deleted; the controller opens it for HCP reconcile and Draft bills on paid jobs
+  // (punch list #188 rows 25 and 74), the owner for Link jobs to their bids (row 77).
+  if (isControllerOrDev(r) || isOwnerOrDev(r)) {
+    groups.push({ id: 'settings-data', label: 'Data & recovery', zone: 'system', pagesHint: 'Backups, exports and Recently deleted for a dev; HCP reconcile and draft bills for the controller; linking jobs to bids for the owner.' })
   }
   if (r === 'dev') {
     groups.push({ id: 'settings-templates', label: 'Email templates & testing', zone: 'system', pagesHint: 'The emails the app sends, test tools, and easter eggs.' })

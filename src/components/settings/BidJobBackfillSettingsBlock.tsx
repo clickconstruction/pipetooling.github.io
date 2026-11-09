@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useTypedConfirm } from '../../hooks/useTypedConfirm'
+import { countWord } from '../../lib/typedConfirm'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { pairExactValueMatches, unambiguousMatches, type BackfillBid, type BackfillJob, type BidJobValueMatch } from '../../lib/jobs/bidJobValueMatches'
 
@@ -18,6 +20,7 @@ const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits
 export default function BidJobBackfillSettingsBlock() {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
+  const typedConfirm = useTypedConfirm()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -65,7 +68,8 @@ export default function BidJobBackfillSettingsBlock() {
   const linkAll = async () => {
     const todo = unambiguousMatches(pairs ?? [])
     if (todo.length === 0) return
-    const ok = await confirmDialog({ message: `Link ${todo.length} job${todo.length === 1 ? '' : 's'} to their bids? Each job is stamped with its bid, each bid reads Started, and each bid's estimate becomes its job's budget. Ambiguous rows are skipped.`, confirmLabel: `Link ${todo.length}` })
+    // Punch list #188 row 77 (v2.6766): it writes bid links across jobs by a value match, so the owner types the match count.
+    const ok = await typedConfirm({ title: `Link ${todo.length} job${todo.length === 1 ? '' : 's'} to their bids?`, act: `link ${todo.length === 1 ? 'this job' : 'these jobs'} to their bids`, word: countWord(todo.length), confirmLabel: `Link ${todo.length === 1 ? 'the job' : `${todo.length} jobs`}` })
     if (!ok) return
     setBusy('all')
     let done = 0
