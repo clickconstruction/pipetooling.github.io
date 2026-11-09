@@ -22,6 +22,13 @@
 // show the customer's estimate to anyone the text is forwarded to. The apex
 // clickplumbing.com is served by GitHub Pages with DNS-only records (no
 // Cloudflare proxy), so a Redirect Rule there could not fire; this host could.
+//
+// Since v2.6768 (punch list #290, 2026-11-08) the same Worker carries the bill
+// text's short link the same way: my.clickplumbing.com/pay/<bill id or code>
+// answers a 301 to clicktooling.com/pay/<the same>, lower-cased, before the slug
+// check. The app's /pay/:id page asks Stripe for the bill's current payment link
+// at click time, so the texted link never expires as Stripe's own does (30 days
+// after the due date). No shell and no card: a bill is a private page.
 
 // clicktooling since the domain cutover (v2.2495); pipetooling 301s here anyway.
 const TARGET = 'https://clicktooling.com/p/';
@@ -43,6 +50,8 @@ export default {
     const url = new URL(req.url);
     // #281: an estimate's short link forwards to the app's /e/:code route, lower-cased.
     if (url.pathname.startsWith('/e/')) return Response.redirect('https://clicktooling.com/e/' + url.pathname.slice(3).toLowerCase(), 301);
+    // #290: a bill's short link forwards to the app's /pay/:id route, lower-cased.
+    if (url.pathname.startsWith('/pay/')) return Response.redirect('https://clicktooling.com/pay/' + url.pathname.slice(5).toLowerCase(), 301);
     const slug = url.pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
     if (!slug || slug === 'favicon.ico' || slug === 'apple-touch-icon.png') {
       if (slug) return Response.redirect(ICON, 302);

@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { isOwnerOrDev } from '../lib/doorRoles'
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { getCurrentUserName as getCurrentUserNameById } from '../lib/getCurrentUserName'
 import { useAuth } from '../hooks/useAuth'
@@ -1612,7 +1613,8 @@ export default function Dashboard() {
           onLinkedSessionsUpdated={() => void myTeam.loadPending({ silent: true })}
         />
       )}
-      {isDev && authUser?.id && <DashboardDevRejectedNotification />}
+      {/* Punch list #188 row 33 (v2.6758): he approves hours, so the pay approved owner reviews what was rejected, with a dev. */}
+      {(isDev || (role === 'master_technician' && isPayApprovedMaster)) && authUser?.id && <DashboardDevRejectedNotification />}
       {authUser?.id && dispatchInboxEligible && (
         <DispatchDismissedItemsModal
           open={dispatchDismissedModalOpen}
@@ -1641,7 +1643,7 @@ export default function Dashboard() {
         <DashboardTeamsInboxCard
           dispatchInbox={dispatchInbox}
           estimatorInbox={estimatorInbox}
-          showHelpFeedback={isDev}
+          showHelpFeedback={isOwnerOrDev(role)}
           onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
           onLinkJobPictures={
             jobFormModal

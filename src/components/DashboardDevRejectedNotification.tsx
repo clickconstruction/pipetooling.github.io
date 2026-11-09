@@ -12,7 +12,8 @@ import { useDevRejectedSessionsCount } from '../hooks/useDevRejectedSessionsCoun
 const SNOOZE_MS = 24 * 60 * 60 * 1000
 
 /**
- * Dev-only: compact notice for org-wide rejected sessions this week; full list lives on People → Hours.
+ * A dev's and the pay approved owner's (punch list #188 row 33, v2.6758; a dev's alone before): compact notice for org-wide
+ * rejected sessions this week; full list lives on People → Hours.
  */
 export default function DashboardDevRejectedNotification() {
   const { user } = useAuth()

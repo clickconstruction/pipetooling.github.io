@@ -360,9 +360,13 @@ describe('buildNeedsYouItems', () => {
     expect(rm?.figure).toBe('56')
   })
 
-  it('roadmap nudge never reaches a non-dev stack — the builder drops it for every other role (Tier-2 #41)', () => {
+  it('roadmap nudge reaches the office (punch list #188 row 37, v2.6758) and the builder drops it for every other role (Tier-2 #41)', () => {
     const nudge = [{ roadmapId: 'r1', title: 'Farm 1', needsName: 56, ready: 4, next: null }]
-    for (const role of ['master_technician', 'assistant', 'controller', 'primary', 'estimator', 'superintendent', 'subcontractor', 'helpers', null] as const) {
+    for (const role of ['master_technician', 'assistant', 'controller'] as const) {
+      const items = buildNeedsYouItems(inputs({ role, roadmapNudges: nudge, teamReviewsOverdue: [{ id: 'u1', name: 'Ana' }] }))
+      expect(items.map((i) => i.key), `role ${role}`).toEqual(['team-reviews', 'roadmap-needs-person'])
+    }
+    for (const role of ['primary', 'estimator', 'superintendent', 'subcontractor', 'helpers', null] as const) {
       const items = buildNeedsYouItems(inputs({ role, roadmapNudges: nudge, teamReviewsOverdue: [{ id: 'u1', name: 'Ana' }] }))
       expect(items.map((i) => i.key), `role ${role}`).toEqual(['team-reviews'])
     }
@@ -373,7 +377,8 @@ describe('buildNeedsYouItems', () => {
     const roadmap: NeedsYouItem = { key: 'roadmap-needs-person', kind: 'roadmap', severity: 'amber', kicker: '', title: '', detail: '', figure: '5', actionLabel: '' }
     const company: NeedsYouItem = { key: 'team-reviews', severity: 'amber', kicker: '', title: '', detail: '', figure: '1', actionLabel: '' }
     expect(visibleNeedsYouItems([roadmap, company], 'dev')).toHaveLength(2)
-    expect(visibleNeedsYouItems([roadmap, company], 'assistant').map((i) => i.key)).toEqual(['team-reviews'])
+    expect(visibleNeedsYouItems([roadmap, company], 'assistant')).toHaveLength(2)
+    expect(visibleNeedsYouItems([roadmap, company], 'estimator').map((i) => i.key)).toEqual(['team-reviews'])
   })
 
   it('roadmap nudge sums and lists multiple roadmaps', () => {

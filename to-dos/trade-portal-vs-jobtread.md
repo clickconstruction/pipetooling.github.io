@@ -2,16 +2,16 @@
 name: "The trade partner's portal beside JobTread's job portal: what to borrow"
 number: 205
 group: ready
-status: the owner marked all five rows build on 2026-11-08 (row 5 as the Directions link only, the map canvas and the weather off; every trade's bars stay off) · PR 1 of six, the Directions link, built as v2.6701 · PRs 2 to 6 designed down to the file in the Build brief below, ready for any session to build in order
+status: the owner marked all five rows build on 2026-11-08 (row 5 as the Directions link only, the map canvas and the weather off; every trade's bars stay off) · PR 1 of six, the Directions link, built as v2.6701 · PRs 2 to 6 built 2026-11-08 and open as a stack, each on the one before: v2.6729 the job head (#7371, merged 2026-11-08 23:33Z; `gc-trade-portal` deployed from main 2026-11-09 00:47Z with `customer-portal`, `photo-save`, `quo-send` and `messages-nudge-dispatch`, the other importers the kernel copy drifted), v2.6744 the whole-job stages fold (#7373, merged 2026-11-09 00:51Z; its `gc-trade-portal` deploy covered by PR 4's at 02:25Z), v2.6746 the files list with Send Click a file and migration 20261109011500 (#7375, merged 2026-11-09 02:12Z; renumbered from 20261108220804 after main's migrations passed it, never applied; the migration pushed about 02:25Z, then `submit-gc-trade-portal` and `gc-trade-portal` deployed with `gc-trade-email`, `messages-email`, `send-contract-for-signature` and `submit-portal-request`, the ledger at 1185 = main's files and drift all 182 current), v2.6748 the thread with its reply box (#7379, merged 2026-11-09 03:30Z; `gc-trade-portal` and `submit-gc-trade-portal` deployed from main 03:33Z, then `submit-portal-request`, `gc-trade-email`, `messages-email` and `send-contract-for-signature`, the other importers of `gcTradeSubmit.ts`, by 03:34Z; drift all 182 current), v2.6752 Word to every trade (#7380, merged 2026-11-09 04:11Z; no function change, drift still all 182 current); every screen walked on the dev server (Walked, below); the two live checks are the owner's walk (How to verify)
 summary: >
   On 2026-10-27 the owner worked as a sub on another GC's job and saw JobTread's job portal. The
   question back was whether our subs have a job portal. They do, since v2.4920: one link per
   company, flow first. This card puts the two side by side and names five things worth borrowing.
   Each has a decision row for the owner.
-next: A session builds PRs 2 to 6 from the Build brief, one PR each, stacked in order (the job head, the whole-job stages fold, the files list with Send Click a file, the thread with its reply box, Word to every trade). It claims a version per PR with `npm run claim`, drops a session card, and names in its wrap-up which function to deploy and which migration to push after each merge. The coordinating session deploys and pushes.
+next: Nothing is owed by a dev: the six PRs are on main, the migration is in prod's ledger and every function is deployed (Deployed, below). Left is the owner's walk of the two live checks under How to verify: award a trade on *GC test project, delete me* to *GC test trade company, delete me* (none of its five trades is awarded today), press Word to every trade on its card, then open the company's portal from its window's **Their portal** and send a line from Messages. The card closes when that walk passes, or holds what it finds.
 size: S for the Directions link (built), the job head, the files list and the whole-job stages · M for the thread with its reply box · S for the word to every trade after it
 blocker: none for the build. A dev still makes every link until the trade wave, and Spanish stays behind PORTAL_SPANISH_ON.
-ver: v2.4920 · 5044 · 5048 · 5198 · 5200 · 5201 · 5315 · 5331 · 6701
+ver: v2.4920 · 5044 · 5048 · 5198 · 5200 · 5201 · 5315 · 5331 · 6701 · 6729 · 6744 · 6746 · 6748 · 6752
 opinion: your call — the thread with its reply box and the job head are what a sub feels every week; the map canvas, the forecast and a files bucket are looks.
 mockup: trade-portal-vs-jobtread-before-after.html
 ---
@@ -440,6 +440,27 @@ that `fieldJobLookup.ts` re-exports, and the `directions` key in `portalI18n.ts`
   `PROJECT_DOCUMENTATION.md` if it lists the card's presses, release note, fragment, and this card's `status`/`ver`.
 - **Verify**: one press sends one email per awarded company, and a second press sends nothing.
 
+## Walked (2026-11-08, the session that built PRs 2 to 6)
+
+On the dev server from the stacked branch, in the app's own pane. The functions deploy after each merge, so the deployed `gc-trade-portal` still answers the old shape; the new blocks were walked on `/t/sample` with the branch's own sample answer served to the page in place of the function's (a fetch hook in the pane, the page's code untouched), and the real link as the deployed function answers it.
+
+- **The job head** (PR 2): Sample Dental Office opened on *Started Oct 9 · Click plans to finish Dec 18 · 40 days left*, **Your work on this job** at *36% done · $17,496 of $48,600* with its bar and *Rough-in 60% · Trim and fixtures 0% · from the percents you reported*, then **Who to call** (Jordan Reyes) and **Needs you on this job · 5**, above the chart.
+- **The whole job** (PR 3): the fold under the bars opened to five stage rows, *Rough-in … 70% · your Rough-in is here* and *Finishes … not started · your Trim and fixtures is here* lit, then *Dates to meet: Roof on Nov 2, met · …* and *Click plans to finish Dec 18*.
+- **Your files on this job** (PR 4): three rows by what each is with the day and **Open ↗**, then **Send Click a file** with its picker, the one line and a dead **Send** until both are there. The send itself waits for the migration and the function.
+- **Messages** (PR 5): the tab reads **Messages** and draws the four lines oldest first (the text, Avery's email, the invitation email we sent, the portal line), **About** with the three jobs, the box and *Click answers in office hours. For something urgent on site, call Jordan Reyes.* A line sent waits for the function (the deployed one refuses the kind as a shape it does not know).
+- **The real link**: the dev-made link of *GC test trade company, delete me* (copied from its window's **Their portal**) opens on the deployed function as before, **Messages from Click** and no head, so the page reads an older answer whole.
+- **Word to every trade** (PR 6): on `/gc` the building card *GC test project, delete me* shows the door in its work set; the window names the job, lists no company (none is awarded there) and keeps **Tell companies** dead. One press per awarded company waits for a job with an award.
+
+PR 2's deploy (2026-11-09 00:47Z) put the job head's planned finish on the live answer; `check:edge-drift` on main no longer names `gc-trade-portal`. The head on a real link still waits for a ZZ job with a trade awarded to the test company.
+
+## Deployed (2026-11-09, the session that merged PRs 5 and 6)
+
+- **PR 5** (#7379) merged 03:30Z. The deployed `gc-trade-portal` and `submit-gc-trade-portal` were downloaded first and hashed equal to main before PR 5 in every file, so prod was not ahead. Both deployed from a tree equal to main at 03:33Z, then `submit-portal-request`, `gc-trade-email`, `messages-email` and `send-contract-for-signature`, which `check:edge-drift` named for the changed `gcTradeSubmit.ts`, by 03:34Z. All six answer OPTIONS 200; drift all 182 current.
+- **PR 6** (#7380) merged 04:11Z with nothing to deploy; drift all 182 current after it.
+- **Prod before the live checks**, read through the dev seat: *GC test project, delete me* is the one building GC project and none of its five trades is awarded, so Word to every trade lists nobody there until one is. *GC test trade company, delete me* has one portal link (opened 2026-10-08) and an example.com address, so a Word email to it lands in `gc_trade_messages` and the portal's Messages tab and bounces at the mailbox. The link's token is a credential the dev seat never shows, so the portal line is sent from the link in the company's window.
+
+Left for the owner's walk: a line from the portal on Messages within a minute, a text back in the portal, a note file in the job's folder, and one press of Word to every trade on a job with awarded companies sending once per company and nothing on a second press.
+
 ## The plan
 
 One PR per row the owner marks build, smallest first.
@@ -460,9 +481,12 @@ an older answer as it does today, so the client ships first.
   flag flips.
 - A real company's link, opened as the office, shows the job head's dates against the project's
   card and its bar against the Draws window's percents.
-- The thread: a line written from the portal shows on Messages under the company's contact
-  within a minute. A text from the company shows in the portal on its next load.
-- The word to every trade: one press sends one email per awarded company, and a second press
-  sends nothing.
+- The thread (the owner's walk; the functions are deployed): from the company's portal link, its
+  window's **Their portal**, a line written on Messages shows under the company's contact on
+  Messages within a minute. A text from the company shows in the portal on its next load.
+- The word to every trade (the owner's walk): on *GC test project, delete me*, award a trade to
+  *GC test trade company, delete me* first, since none is awarded there today. One press sends one
+  email per awarded company, logged in `gc_trade_messages` and on the company's portal Messages
+  tab; a second press of the same words sends nothing and says so.
 - The stage fold never names a company that is not before or after the company's own bars.
   The never-list in `tradePortalSchedule.test.ts` holds.

@@ -54,10 +54,24 @@ export type PayLinkPayload = {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** The bill's short code (#290, v2.6769): ten letters from the estimate link's no-look-alike alphabet, as `bill_pay_code` mints. */
+const PAY_CODE_RE = /^[23456789abcdefghjkmnpqrstuvwxyz]{10}$/
 
 /** A bill id is a UUID and nothing else — the function refuses anything shorter or longer before touching the database. */
 export function isPayLinkId(raw: unknown): raw is string {
   return typeof raw === 'string' && UUID_RE.test(raw.trim())
+}
+
+/** A bill's short code: exactly ten letters of the alphabet, lower-cased (the Worker lower-cases the path). */
+export function isPayCode(raw: unknown): raw is string {
+  return typeof raw === 'string' && PAY_CODE_RE.test(raw.trim().toLowerCase())
+}
+
+/** What `/pay/<x>` names: the bill's id, its short code, or nothing the function would look up. */
+export function payLinkRef(raw: unknown): { kind: 'id' | 'code'; value: string } | null {
+  if (isPayLinkId(raw)) return { kind: 'id', value: raw.trim().toLowerCase() }
+  if (isPayCode(raw)) return { kind: 'code', value: raw.trim().toLowerCase() }
+  return null
 }
 
 /** `/pay/<bill id>` — the route `src/pages/PayLink.tsx` serves. */
