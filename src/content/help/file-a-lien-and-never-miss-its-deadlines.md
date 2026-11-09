@@ -102,6 +102,8 @@ The **Mechanic's lien** tab refuses to generate until the paper trail is real. I
 
 When the gate clears, click {{button:outline-blue|Print for notarization}}. Sign before a notary. File it with the County Clerk in the property's county. Then click {{button:red|Record filing…}} with the recording number. The **serve-by date stamps itself**. A copy must reach the owner and contractor within 5 days. A red Dashboard card nags until you {{button:red|Record service…}}.
 
+The paper prints with nothing of the browser on it. It should not show the date and time, a web address or a page count. If yours does, open **More settings** in the print window. Untick **Headers and footers** there. The last numbered statement, the signature and the notary's block print together on one page.
+
 Was the lien filed without this tab, by counsel or on paper from elsewhere? The gate does not stop the record. Press {{button:outline|Already filed — record it…}} under the gate list. Type the county, the recording number and the day it was filed. The serve-by day and the year to sue count from that day.
 
 ## The year after filing
