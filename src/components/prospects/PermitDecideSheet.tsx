@@ -91,7 +91,7 @@ export function PermitDecideSheet({
                 type="button"
                 aria-pressed={on}
                 onClick={() => setVerdict(v)}
-                style={{ textAlign: 'left', border: on ? '1px solid #2563eb' : '1px solid var(--border)', boxShadow: on ? 'inset 0 0 0 1px #2563eb' : undefined, background: on ? 'var(--bg-100)' : 'var(--surface)', color: 'var(--text)', borderRadius: 8, padding: '10px 12px', minHeight: 44, cursor: 'pointer', font: 'inherit' }}
+                style={{ textAlign: 'left', border: on ? '1px solid #2563eb' : '1px solid var(--border)', boxShadow: on ? 'inset 0 0 0 1px #2563eb' : undefined, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'var(--text)', borderRadius: 8, padding: '10px 12px', minHeight: 44, cursor: 'pointer', font: 'inherit' }}
               >
                 <strong>{VERDICT_WORDS[v].press}</strong>
                 <br />
