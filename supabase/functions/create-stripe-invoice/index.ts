@@ -678,6 +678,17 @@ serve(async (req) => {
 
     const { error: upErr } = await admin.from('jobs_ledger_invoices').update(patch).eq('id', jobs_ledger_invoice_id)
 
+    // #290 (v2.6769): the bill's ten-letter short code, minted once so the share row's text carries it from the first
+    // draw. Best effort: the row asks again when it draws, and PR 1's /pay/<id> link stands until then.
+    if (!upErr) {
+      try {
+        const minted = await admin.rpc('bill_pay_code', { p_invoice_id: jobs_ledger_invoice_id })
+        if (minted.error) console.warn('create-stripe-invoice: bill_pay_code not minted —', minted.error.message)
+      } catch (e) {
+        console.warn('create-stripe-invoice: bill_pay_code not minted —', e instanceof Error ? e.message : String(e))
+      }
+    }
+
     if (upErr) {
       console.error('DB update after Stripe finalize:', upErr)
       return jsonResponse(
