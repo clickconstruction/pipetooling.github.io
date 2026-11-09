@@ -35,7 +35,7 @@ describe('buildLegalPacketPrintHtml — the cover sheet', () => {
     expect(plain).toContain('<h3>The claim</h3>')
     expect(plain).toContain('Open bills <span class="muted">fills in</span>')
     expect(plain).not.toContain('Materials left on site')
-    const typed = { ...packet, worth: { ...packet.worth, claimLines: [{ id: 'l1', kind: 'materials' as const, title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', documentId: 'd1', documentTitle: 'Materials on site — count.pdf' }], claimTyped: 5310, claim: packet.worth.claim + 5310 } }
+    const typed = { ...packet, worth: { ...packet.worth, claimLines: [{ id: 'l1', kind: 'materials' as const, title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', documentId: 'd1', documentTitle: 'Materials on site — count.pdf', settlementOnly: false }], claimTyped: 5310, claim: packet.worth.claim + 5310 } }
     const html = buildLegalPacketPrintHtml(typed, { preparedOn: payload.preparedOn, companyName: company.name })
     expect(html).toContain('<td>Materials left on site</td><td>contract ¶ 9</td><td>Materials on site — count.pdf</td><td class="num">$5,310.00</td>')
     expect(html).toContain('<b>The claim</b>')
@@ -45,5 +45,19 @@ describe('buildLegalPacketPrintHtml — the cover sheet', () => {
     const html = buildLegalPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name })
     expect(html).not.toContain('What each path nets')
     expect(html).toContain("What's left for us?")
+  })
+})
+
+describe('a settlement-only line (v2.6697, punch list #171)', () => {
+  it('is left off the printed table, with one sentence in its place', () => {
+    const { payload, packet } = sample()
+    const lines = [
+      { id: 'l1', kind: 'materials' as const, title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', documentId: null, documentTitle: '', settlementOnly: false },
+      { id: 'l2', kind: 'fees' as const, title: 'Fee waiver', amount: 400, basis: '', documentId: null, documentTitle: '', settlementOnly: true },
+    ]
+    const html = buildLegalPacketPrintHtml({ ...packet, worth: { ...packet.worth, claimLines: lines, claimTyped: 5310, claimSettlementOnly: 400, claim: packet.worth.claim + 5310, claimSettlement: packet.worth.claim + 5710 } }, { preparedOn: payload.preparedOn, companyName: company.name })
+    expect(html).toContain('<td>Materials left on site</td>')
+    expect(html).not.toContain('Fee waiver')
+    expect(html).toContain('One line, $400.00, is marked settlement only and left off this table.')
   })
 })

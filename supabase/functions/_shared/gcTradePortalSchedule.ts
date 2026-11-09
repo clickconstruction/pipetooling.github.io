@@ -30,6 +30,7 @@ import {
   withScheduleRows,
   type BoardRows,
   type CompanyRow,
+  type CustomerStage,
   type DrawTables,
   type GcProject,
   type GcProjectRows,
@@ -164,23 +165,54 @@ function jobStates(rows: TradeScheduleRows, companyId: string, today: string): {
 }
 
 /**
- * The company's chart as `gc-trade-portal` answers it (punch list #205, PR 2): `portalSchedule`'s answer, and the day we
- * plan to finish the job (`projectedFinish` as the customer's picture reads it, `standing.finish`), for the job head.
- * Unset on an answer from a function deployed before it, or when the picture did not read.
+ * One stage of the whole job as the trade sees it (punch list #205, PR 3, row 4): the customer's stage (`customerStages`:
+ * its name, dates, percent weighted by what each line is worth, and where it stands) with `yours`, the company's own
+ * bars inside it by label. No company's name: the stage view gives the sub the shape of the job without another trade's
+ * dates in full, as the rule stands (every trade's bars by name stay off, the owner's mark of 2026-11-08).
  */
-export interface TradePortalChart extends PortalSchedule {
-  finish?: string | null
+export interface PortalStage {
+  key: string
+  label: string
+  start: string
+  finish: string
+  pct: number
+  state: CustomerStage['state']
+  yours: string[]
 }
 
 /**
- * The day we plan to finish a job, from the customer's picture of its schedule. Nothing else of the picture leaves: the
- * contract's day, the percent planned and the whole job's done percent would name the other trades' pace.
+ * The company's chart as `gc-trade-portal` answers it (punch list #205, PR 2): `portalSchedule`'s answer, and the day we
+ * plan to finish the job (`projectedFinish` as the customer's picture reads it, `standing.finish`), for the job head.
+ * Since PR 3 the whole job's stages beside them (`stages`), for the fold under the chart. Unset on an answer from a
+ * function deployed before it, or when the picture did not read.
  */
-function plannedFinish(state: GcState, project: GcProject): string | null {
+export interface TradePortalChart extends PortalSchedule {
+  finish?: string | null
+  stages?: PortalStage[]
+}
+
+/**
+ * The day we plan to finish a job and its stages, from the customer's picture of its schedule. Nothing else of the
+ * picture leaves: the contract's day, the percent planned and the whole job's done percent would name the other trades'
+ * pace. The stage each of the company's own bars is in comes from the full chart drawn as a GC customer would read it
+ * (`customerRole: 'gc'`, whose groups are the same stage keys): the forced role lives here, and the full chart never
+ * leaves, only the company's own labels under their stage.
+ */
+function pictureFor(state: GcState, project: GcProject, mine: readonly string[]): { finish: string | null; stages: PortalStage[] } {
   try {
-    return customerSchedulePicture(state, project).standing.finish
+    const picture = customerSchedulePicture(state, project)
+    const own = new Set(mine)
+    const yours = new Map<string, string[]>()
+    for (const { group } of customerSchedulePicture(state, { ...project, customerRole: 'gc' }).fullChart) {
+      const labels = group.bars.filter((b) => own.has(b.item.activity.lineId)).map((b) => b.item.label)
+      if (labels.length > 0) yours.set(group.key, [...(yours.get(group.key) ?? []), ...labels])
+    }
+    return {
+      finish: picture.standing.finish,
+      stages: picture.stages.map((st) => ({ key: st.key, label: st.label, start: st.start, finish: st.finish, pct: st.pct, state: st.state, yours: yours.get(st.key) ?? [] })),
+    }
   } catch {
-    return null
+    return { finish: null, stages: [] }
   }
 }
 
@@ -192,7 +224,9 @@ export function portalSchedulesFromRows(rows: TradeScheduleRows, companyId: stri
   const out: Record<string, TradePortalChart> = {}
   for (const { projectId, state, project } of jobStates(rows, companyId, today)) {
     const chart = portalSchedule(state, companyId, project)
-    if (chart) out[projectId] = { ...chart, finish: plannedFinish(state, project) }
+    if (!chart) continue
+    const { finish, stages } = pictureFor(state, project, chart.mine.map((b) => b.lineId))
+    out[projectId] = { ...chart, finish, ...(stages.length > 0 ? { stages } : {}) }
   }
   return out
 }

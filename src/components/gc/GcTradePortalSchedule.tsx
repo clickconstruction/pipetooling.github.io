@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { GC_COMPANY } from '../../lib/gc/company'
 import { pDate } from '../../lib/gc/portalI18n'
 import { daysBetween } from '../../lib/gc/schedule/network'
-import { portalScheduleX, type PortalDate, type PortalPhase, type PortalSchedule, type PortalScheduleBar } from '../../lib/gc/schedule/portalSchedule'
+import { portalScheduleX, type PortalDate, type PortalPhase, type PortalScheduleBar } from '../../lib/gc/schedule/portalSchedule'
+import type { PortalStage, TradePortalChart } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import { HAIR, INK, MUTED, NOTE_BAND } from '../../lib/portal/portalTheme'
 import { usePortalLang } from './gcTradePortalLang'
 import { PortalBlock } from './GcTradePortalUi'
@@ -13,12 +15,14 @@ import { PortalBlock } from './GcTradePortalUi'
  * it, each by its company's name and never by price, on the portal's paper and in its language. It sits first on the
  * job's page, under the job's name (gc 3's pick, call 8). `ownRow` is a slot under each of its own bars, where the
  * Portal's late door can sit (call 9). Since #204's PR 6 (the owner's call 5), the job's phases as a strip with their
- * dates and the dates to meet sit above the bars, on the whole job's own axis, and never another company's bars.
+ * dates and the dates to meet sit above the bars, on the whole job's own axis, and never another company's bars. Since
+ * punch list #205's PR 3, **The whole job** folds open under the bars (`WholeJob`): the customer's stages with the
+ * company's own work lit inside its stage, the dates to meet and the planned finish; no company's name is in it.
  */
 
 const C = { blue: '#3b82f6', green: '#16a34a', faint: '#9ca3af' }
 
-export function GcTradePortalSchedule({ schedule, today, ownRow }: { schedule: PortalSchedule; today: string; ownRow?: (bar: PortalScheduleBar) => ReactNode }) {
+export function GcTradePortalSchedule({ schedule, today, ownRow }: { schedule: TradePortalChart; today: string; ownRow?: (bar: PortalScheduleBar) => ReactNode }) {
   const { lang, t } = usePortalLang()
   const s = schedule
   const x = (on: string) => `${portalScheduleX(s, on)}%`
@@ -83,8 +87,76 @@ export function GcTradePortalSchedule({ schedule, today, ownRow }: { schedule: P
             </span>
           </div>
         </div>
+        {s.stages && s.stages.length > 0 && <WholeJob stages={s.stages} dates={s.dates ?? []} finish={s.finish ?? null} today={today} />}
       </PortalBlock>
     </div>
+  )
+}
+
+/**
+ * The whole job (punch list #205, PR 3, row 4): a fold under the company's bars with one row a stage, on the stages' own
+ * axis (the first start to the last finish, the planned finish included), each *Rough-in · Oct 7 – Oct 31 · 70%* (or
+ * *done*, *behind*, *not started*) and *· your Rough-in is here* where the company's own work sits, that row lit like its
+ * bars. Under the rows, the dates to meet and the day we plan to finish. The shape of the job without another trade's
+ * dates in full: no company's name is in it.
+ */
+function WholeJob({ stages, dates, finish, today }: { stages: PortalStage[]; dates: PortalDate[]; finish: string | null; today: string }) {
+  const { lang, t } = usePortalLang()
+  const head = stages[0]
+  if (!head) return null
+  const first = stages.reduce((a, st) => (st.start < a ? st.start : a), head.start)
+  const last = [...stages.map((st) => st.finish), ...(finish ? [finish] : [])].reduce((a, b) => (b > a ? b : a), head.finish)
+  const days = Math.max(1, daysBetween(first, last) + 1)
+  const x = (on: string) => `${(Math.max(0, Math.min(days, daysBetween(first, on))) / days) * 100}%`
+  const w = (start: string, fin: string) => `${((daysBetween(start, fin) + 1) / days) * 100}%`
+  const standing = (st: PortalStage) =>
+    st.state === 'done' ? t('stageDone') : st.state === 'notStarted' ? t('stageNotStarted') : st.pct > 0 ? `${Math.round(st.pct)}%${st.state === 'behind' ? ` · ${t('stageBehind')}` : ''}` : t(st.state === 'behind' ? 'stageBehind' : 'stageUnderWay')
+  const todayOn = today >= first && today <= last
+  return (
+    <details data-portal-whole-job style={{ marginTop: '0.6rem', borderTop: `1px solid ${HAIR}`, paddingTop: '0.5rem' }}>
+      <summary style={{ cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: MUTED }}>{t('wholeJob')}</summary>
+      <div style={{ display: 'grid', gap: '0.15rem 0.6rem', gridTemplateColumns: 'minmax(7rem, 14rem) minmax(0, 1fr)', alignItems: 'center', marginTop: '0.4rem' }}>
+        {stages.map((st) => {
+          const mine = st.yours.length > 0
+          const done = st.state === 'done'
+          return (
+            <div key={st.key} data-portal-stage={mine ? 'mine' : 'theirs'} style={{ display: 'contents' }}>
+              <div style={{ minWidth: 0, fontSize: '0.85rem', color: mine ? INK : MUTED }}>
+                <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: mine ? 600 : 400 }}>{st.label}</div>
+                <div style={{ fontSize: '0.75rem', color: MUTED }}>
+                  {pDate(lang, st.start)} – {pDate(lang, st.finish)} · {standing(st)}
+                  {mine ? ` · ${t('stageYours', { work: st.yours.join(', ') })}` : ''}
+                </div>
+              </div>
+              <div style={{ position: 'relative', height: 26 }} title={`${st.label}: ${pDate(lang, st.start)} – ${pDate(lang, st.finish)}`}>
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: x(st.start),
+                    width: w(st.start, st.finish),
+                    top: 6,
+                    height: 14,
+                    borderRadius: 4,
+                    boxSizing: 'border-box',
+                    border: `1.5px solid ${done ? C.green : mine ? C.blue : HAIR}`,
+                    background: done ? 'var(--bg-green-200)' : mine ? 'var(--bg-blue-tint)' : NOTE_BAND,
+                    overflow: 'hidden',
+                    opacity: mine ? 1 : 0.8,
+                  }}
+                >
+                  {st.pct > 0 && !done && <span style={{ display: 'block', height: '100%', width: `${Math.min(100, st.pct)}%`, background: mine ? C.blue : HAIR, opacity: 0.75 }} />}
+                </span>
+                {todayOn && <span aria-hidden style={{ position: 'absolute', left: x(today), top: 2, bottom: 2, width: 2, background: C.blue, opacity: 0.5 }} />}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div data-portal-whole-foot style={{ display: 'grid', gap: '0.2rem', marginTop: '0.4rem', fontSize: '0.78rem', color: INK }}>
+        {dates.length > 0 && <div>{t('wholeDates', { list: dates.map((d) => `${d.label} ${pDate(lang, d.on)}${d.met ? `, ${t('schedMet')}` : ''}`).join(' · ') })}</div>}
+        {finish && <div>{t('wholeFinish', { gc: GC_COMPANY.shortName, date: pDate(lang, finish) })}</div>}
+      </div>
+    </details>
   )
 }
 

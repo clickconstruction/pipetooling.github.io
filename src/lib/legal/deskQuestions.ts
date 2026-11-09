@@ -43,7 +43,17 @@ export function canWeSue(packet: Pick<LegalPacket, 'theory' | 'account'>, read: 
   }
 }
 
-export function howMuch(packet: { account: Pick<LegalPacket['account'], 'jobs' | 'totals'>; worth: Pick<LegalPacket['worth'], 'balance' | 'claim' | 'retainageHeld' | 'retainageOnBills' | 'retainageAdded' | 'claimLines' | 'claimTyped'> }): DeskQuestion {
+type HowMuchWorth = Pick<LegalPacket['worth'], 'balance' | 'claim' | 'retainageHeld' | 'retainageOnBills' | 'retainageAdded' | 'claimLines' | 'claimTyped'> & Partial<Pick<LegalPacket['worth'], 'claimSettlementOnly'>>
+
+/** v2.6697 (punch list #171): the sentence after the demand's parts when a line is settlement only; '' when none. */
+function settlementOnlyWords(w: HowMuchWorth): string {
+  const n = w.claimLines.filter((l) => l.settlementOnly).length
+  const sum = w.claimSettlementOnly ?? 0
+  if (n === 0 || sum <= 0.005) return ''
+  return ` ${n === 1 ? 'One more line' : `${n} more lines`}, ${formatLegalMoney(sum)}, ${n === 1 ? 'is' : 'are'} settlement only and not in this figure.`
+}
+
+export function howMuch(packet: { account: Pick<LegalPacket['account'], 'jobs' | 'totals'>; worth: HowMuchWorth }): DeskQuestion {
   const n = packet.account.jobs.length
   const days = packet.account.totals.oldestDays
   const owed = `Owed on ${n} job${n === 1 ? '' : 's'}.`
@@ -54,15 +64,16 @@ export function howMuch(packet: { account: Pick<LegalPacket['account'], 'jobs' |
   if (w.claim > w.balance + 0.005) {
     const onBills = w.retainageOnBills > 0.005 ? ` Another ${formatLegalMoney(w.retainageOnBills)} of the retainage held is already on a bill.` : ''
     // v2.6680 (punch list #171 step 2): the typed lines — materials, damages, interest, fees — are the third part.
-    const typedCount = w.claimLines.length
+    // v2.6697: a settlement-only line is not in the demand, so it is counted apart and said after.
+    const typedCount = w.claimLines.filter((l) => !l.settlementOnly).length
     const typedWords = typedCount > 0 && w.claimTyped > 0.005 ? `${typedCount === 1 ? 'one typed line' : `${typedCount} typed lines`}, ${formatLegalMoney(w.claimTyped)}` : ''
     const retainageWords = w.retainageAdded > 0.005 ? `retainage ${formatLegalMoney(w.retainageAdded)} that no bill asks for yet` : ''
     const parts = [retainageWords, typedWords].filter(Boolean)
     const inside = `Open bills ${formatLegalMoney(w.balance)} inside it, plus ${parts.join(' and ')}.${onBills}`
-    return { label: 'How much?', answer: formatLegalMoney(w.claim), why: `${inside}${oldest}`, chip: { text: 'the claim', tone: 'ok' } }
+    return { label: 'How much?', answer: formatLegalMoney(w.claim), why: `${inside}${settlementOnlyWords(w)}${oldest}`, chip: { text: 'the claim', tone: 'ok' } }
   }
   const carried = w.retainageHeld > 0.005 ? ` The retainage held ${formatLegalMoney(w.retainageHeld)} is already inside the open bills.` : ''
-  return { label: 'How much?', answer: formatLegalMoney(w.balance), why: `${owed}${carried}${oldest}` }
+  return { label: 'How much?', answer: formatLegalMoney(w.balance), why: `${owed}${carried}${settlementOnlyWords(w)}${oldest}` }
 }
 
 const VERDICT_TONE: Record<LegalWorthVerdict, DeskQuestionTone> = { 'worth it': 'ok', marginal: 'warn', 'not worth it': 'stop' }
