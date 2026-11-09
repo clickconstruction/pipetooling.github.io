@@ -2,7 +2,7 @@
 name: "Counsel-only on a matter document, and the matter's documents as text the search can read"
 number: 288
 group: close
-status: SHIPPED — PR 1 v2.6716 (#7346, merged 2026-11-08), PR 2 v2.6720 (#7347, merged 2026-11-09 03:04 UTC) and PR 3 v2.6722 (#7348, merged 2026-11-09 05:15 UTC); the three migrations (20261108210000, 20261108230000, 20261108233000) are in prod's ledger, each pushed alone; legal-portal and dev-mcp 0.46.0 deployed and current; How to verify run through the seat on the ZZ TEST GC On Notice matter on 2026-11-09 (Where it stands)
+status: LIVE 2026-11-09 · the owner's pick of 2026-11-08, one documents table for people and matters · PR 1 the table and text documents (v2.6716, #7346), PR 2 the counsel-only mark (v2.6720, #7347), PR 3 the seat's section read (v2.6722, #7348) and the firm preview's Read here (v2.6770, #7416) merged; migrations 20261108210000, 20261108230000 and 20261108233000 on prod; legal-portal and dev-mcp 0.46.0 deployed; How to verify run on two ZZ TEST matters 2026-11-09 (Where it stands)
 summary: >
   The Legal desk's matter is what the firm reads, so it is the natural home for anything written
   for the attorney. Two things keep that from working for a case on a person: a matter document
@@ -12,9 +12,10 @@ summary: >
   the attorney by hand. Give a matter document a counsel-only mark the firm's portal and the agent
   role honor, and let a text document on a matter be text, read by section and searched like a
   named document.
-next: the owner's look at the Evidence tab of the ZZ TEST GC On Notice matter — the lock chip on the counsel-only memo and Read on the plain memo (both filed 2026-11-09). Two legs of How to verify wait on test data that does not exist: the search_case hit with its section needs a matter standing on a ZZ TEST person (plan_matter_open_person → apply_matter_open_person on one of the ZZ Test people; the only person-standing matter today is a real one and takes no test filings), and the portal's list and packet leaving the held document out need a test firm as counsel of record on the matter. The next types regen (chore(types) after the pushes) adds dev_matter_doc_read, hr_doc_slice, matter_counsel_only_count and matter_text_document_is_counsel_only to the catalog; the verbs run without it. Left for a later card: the seat writing a matter's text document by section (plan_person_doc's ops with a matter owner), once #286's and #287's hands are off dev_person_doc_write.
+next: The owner's two calls under Where it stands: whether to stand up a ZZ test firm for the one leg not walked (the live portal as a firm), and whether to keep or archive the ZZ TEST rows the verify left. Then delete this card. Owed by this session: a types PR once #7427 lands, for the two new read functions.
 size: M · PR 1 text on a matter document and the search union (S) · PR 2 the counsel-only mark on the document, the portal's and the agent's refusals (S) · PR 3 the seat's section reads on a matter document (S)
-blocker: none for the builder — what is left is the owner's look and two live legs that want test data (next).
+blocker: None.
+ver: v2.6716 · 6720 · 6722 · 6770
 opinion: build PR 1 and PR 2 now — the matter is where counsel reads, and today it is the one place in the case a session cannot search or hold; leave the table merge for when the Legal desk asks for it
 mockup: not required — the Evidence tab's row gains a lock chip and a text viewer; the desk and the portal are shipped surfaces
 ---
@@ -86,26 +87,22 @@ searches.
 
 ## Where it stands
 
-2026-11-09: the three PRs are on main and live. PR 2 (#7347) merged at 03:04 UTC; its migration was
-pushed alone (`--include-all`, since its stamp sits below the ledger's newest), `legal-portal` was
-redeployed from main and `dev-mcp` 0.45.0 from main's code with prod's own catalog kept (the deployed
-catalog was a regen off prod ahead of main; a plain deploy would have taken the `documents` table
-off it). PR 3 (#7348) retargeted to main by itself, took main's merge with the server at 0.46.0
-(main's 0.45.0 + 1; #285's #7344 sat at the same pin, so its session dequeued to let PR 3 go first
-and takes the next free number), and merged at 05:15 UTC after one re-arm; its migration was pushed
-alone and `dev-mcp` 0.46.0 deployed straight from main, whose catalog the types PR #7411 had just
-brought ahead of prod's. `check:migration-drift` reads fully applied after each push.
+2026-11-09, after the three PRs and the preview fix were live. Run as a dev through the seat, on the dev server against prod data in headless Chrome, and by read-only queries of prod's catalog. Every row written is a ZZ TEST row.
 
-How to verify, run through the seat on the ZZ TEST GC On Notice matter (a matter on a customer, no
-firm): a counsel-only memo filed with `plan_matter_document` → `apply_matter_document`
-(`counsel_only: true`, kept as text) is absent from the seat's `read_rows` on
-`legal_matter_documents` and on `documents`, `matter_counsel_only_count` counts it, and
-`dev_matter_doc_read` refuses it in words ("for counsel alone — refused to the seat as deployed").
-A plain memo with three numbered sections reads back: the index names the preamble and the three
-sections with their numbers and lines, section 2 comes back with its body and its neighbours named,
-and the older plain-text paper filed before PR 1 (bytes alone, no text row) is refused as "not a
-text document", pointing at its title and what it shows. Not covered on this matter: the
-`search_case` hit with its section (no ZZ TEST person has a matter) and the portal's list and packet
-as a test firm (the matter has no firm); the packet's omission is held by
-`legalFirmPacketPrint.test.ts`. The PDF leg (`content` null, title still searched) is PR 1's and
-was not re-run.
+- **A text document through the seat.** A ZZ TEST matter opened on the ZZ Test Hand file. A made-up `.md` filed with `markdown` kept its words in `documents`, and its Evidence row points at them.
+- **The search.** `search_case` for a phrase inside it returned one `matter_document` hit naming section 1. #285's file index also read the bytes, and that row was left out of the hits, so the line is found once.
+- **The desk.** The matter's Evidence tab showed **Read** on the memo and drew it with its two headings. The PDF had no Read. The counsel-only row wore the lock.
+- **Counsel-only.** The seat's `read_rows` on `legal_matter_documents` and on `documents` returned only the plain document; the counsel-only row and its words were refused. `search_case` returned that hit marked counsel-only. `hr_agent` holds no grant and no policy on either table. `get_matter_document` on it was refused with the count. On the ZZ TEST GC matter, the release sheet's **Preview what the firm sees** showed both counsel-only papers locked, with *For counsel alone. Not in the printed packet.*
+- **A PDF.** Filed as bytes, it kept no text and was found by its title alone. `get_matter_document` refused it as not a text document.
+- **The section read.** `get_matter_document` on the memo gave the section index, then section 1 alone with its neighbours named.
+
+**Found and fixed on the way.** The firm preview listed a text document with no **Read here**, because the desk never passed the words; v2.6770 reads them when the preview opens, and a re-walk showed three Read here presses. The queue's SQL beds refused PR 3's first migration (a doubled function header and a lost `DECLARE`); it was fixed and a test now holds each function whole.
+
+**Not walked.** The live portal as a firm. No ZZ matter is released to a firm and there is no test firm; releasing one would reach a real firm's portal. The printed packet leaving a counsel-only paper out is held by `legalFirmPacketPrint.test.ts`.
+
+**Left on prod.** The ZZ TEST matter on ZZ Test Hand with its three documents, the counsel-only memo on the ZZ TEST GC matter, and the ZZ TEST sink job flagged into Collections for the walk and back out.
+
+**The landing (the loving-dewdney session, 2026-11-09 03:00 to 05:30 UTC).** Each migration was pushed alone with `--include-all`, since both stamps sit below the ledger's newest; each dry run and push prompt listed exactly one file, so none of #188's `dev_gates_*` set rode along. After PR 2, `dev-mcp` 0.45.0 went out as main's code with prod's own `catalog.ts` kept: the deployed catalog was a regen off prod ahead of main (the `documents` table, `settlement_only`, the `file_index` columns), and a plain deploy would have taken them off. After PR 3, main's catalog was ahead (#7411's regen), so 0.46.0 deployed straight from main. PR 3 carried the same server pin as #285's #7344; the two conflicted in the queue, #285's session dequeued #7344 to let PR 3 go first, and PR 3 merged after one re-arm. The main checkout at the repo root sat on an old feature branch, so the pushes ran from a worktree fast-forwarded to `origin/main` with the Supabase link state copied in.
+
+**Watch.** #285's PR 2 (#7344) carries a `dev_case_search` body at `20261108220000`. It must drop that body or renumber after `20261108233000`, or a late push would wipe the counsel-only marks on matter-document hits.
+
