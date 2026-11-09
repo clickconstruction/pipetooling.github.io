@@ -276,7 +276,7 @@ export function baselineFrozenWords(b: CostsBaseline, fmtDay: (iso: string) => s
   if (frozenAt) parts.push(`${awardedAsThis ? 'Frozen' : 'Taken'} ${fmtDay(frozenAt)}`)
   if (b.kind === 'book') {
     if (b.book?.hoursPerThousand != null && b.book.priceUsd != null) parts.push(`${b.book.hoursPerThousand.toFixed(1)} h per $1k × ${usd0(b.book.priceUsd)}`)
-    if (b.book && b.book.n > 0) parts.push(`${b.book.n} ${b.book.scope === 'similar' ? 'similar projects' : 'projects'}`)
+    if (b.book && b.book.n > 0) parts.push(`${b.book.n} ${b.book.scope === 'similar' ? 'similar projects' : b.book.scope === 'band' && b.book.band ? `projects in the ${b.book.band} band` : 'projects'}`)
     parts.push('a guess, read as one')
   } else if (b.kind === 'typed') {
     if (b.note) parts.push(`"${b.note}"`)
