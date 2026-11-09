@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Write B · a plan made on a desk, recorded</title>
+<style>
+  :root { --surface:#fff; --bg:#f1f5f9; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --red:#b91c1c; --amber:#92400e; --green:#15803d; --blue:#2563eb; --redtint:#fef2f2; --ambertint:#fffbeb; --greentint:#f0fdf4; --bluetint:#eff6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding:24px 16px 48px; }
+  .page { max-width:1180px; margin:0 auto; }
+  .tag { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  h1 { font-size:1.5rem; margin:4px 0 6px; }
+  .ask { font-size:1rem; margin:0 0 6px; }
+  .ask b { color:var(--red); }
+  .lead { color:var(--muted); font-size:0.9rem; margin:0 0 18px; max-width:860px; }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+  .col h2 { font-size:0.8rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; margin:0 0 8px; color:var(--muted); }
+  .col h2 b { color:var(--text); }
+  .desk { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:0 12px 32px rgba(0,0,0,0.08); margin-bottom:12px; }
+  .desk .tag { margin-bottom:6px; display:block; }
+  .green { color:var(--green); } .amber { color:var(--amber); } .red { color:var(--red); } .grey { color:var(--muted); } .blue { color:var(--blue); }
+  .job { border:1px solid var(--border); border-radius:10px; margin-bottom:8px; background:var(--surface); border-left:4px solid var(--red); }
+  .jhead { display:flex; align-items:center; gap:10px; width:100%; padding:8px 12px; min-height:44px; flex-wrap:wrap; }
+  .jname { font-weight:700; flex:1 1 180px; min-width:0; }
+  .jname .sub { display:block; font-weight:400; font-size:0.78rem; color:var(--muted); }
+  .figs { display:flex; gap:14px; align-items:baseline; font-size:0.82rem; color:var(--muted); flex-wrap:wrap; }
+  .figs b { color:var(--text); }
+  .chip { display:inline-block; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .c-red { background:var(--redtint); color:var(--red); } .c-amber { background:var(--ambertint); color:var(--amber); } .c-green { background:var(--greentint); color:var(--green); } .c-grey { background:var(--bg); color:var(--muted); } .c-blue { background:var(--bluetint); color:var(--blue); }
+  .jdetail { padding:2px 12px 12px; border-top:1px solid var(--border); font-size:0.85rem; }
+  .jdetail p { margin:8px 0; }
+  .doors { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .door { font:inherit; font-size:0.82rem; font-weight:600; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0 12px; min-height:40px; display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+  .door.amber { border-color:var(--amber); color:var(--amber); }
+  .door.new { border-color:var(--blue); color:var(--blue); box-shadow:0 0 0 3px var(--bluetint); }
+  .plan { margin-top:10px; padding:10px 12px; border:1px dashed var(--blue); border-radius:8px; background:var(--bluetint); display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:0.85rem; }
+  .plan select, .plan input { font:inherit; font-size:0.82rem; padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); min-height:36px; }
+  .plan input { width:110px; }
+  .plan .lbl { font-weight:700; }
+  .dfoot { display:flex; justify-content:space-between; align-items:center; gap:10px; border-top:1px solid var(--border); margin-top:10px; padding-top:10px; flex-wrap:wrap; font-size:0.82rem; color:var(--muted); }
+  .btn { font:inherit; font-size:0.85rem; font-weight:700; border-radius:8px; min-height:40px; padding:0 14px; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text); }
+  .btn.go { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .btn:disabled { opacity:0.55; cursor:default; }
+  .step { display:flex; gap:10px; align-items:baseline; margin:14px 0 6px; }
+  .step .n { width:24px; height:24px; border-radius:999px; background:var(--text); color:#fff; font-weight:700; font-size:0.78rem; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+  .step b { font-size:0.9rem; }
+  .cap { font-size:0.82rem; color:var(--muted); margin:6px 0 0; }
+  .cap.red { color:var(--red); }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+  .card .tag { display:block; margin-bottom:6px; }
+  .linkdesk { border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:0.85rem; }
+  .linkdesk .h { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+  .linkdesk .h b { font-size:1rem; }
+  .linkdesk ol { margin:4px 0 0; padding-left:1.2rem; display:flex; flex-direction:column; gap:4px; }
+  .linkdesk li { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+  .linkdesk .own { font-size:0.78rem; border:1px solid var(--border); border-radius:5px; padding:2px 6px; color:var(--muted); background:var(--surface); min-width:70px; display:inline-block; }
+  .linkdesk .rec { margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .linkdesk .recbtn { font-size:0.82rem; font-weight:600; padding:0 10px; min-height:36px; border:1px solid var(--green); border-radius:6px; background:var(--greentint); color:var(--green); display:inline-flex; align-items:center; }
+  .sched { display:grid; grid-template-columns:70px 1fr; gap:4px 10px; font-size:0.82rem; align-items:center; }
+  .sched .d { color:var(--muted); font-size:0.75rem; }
+  .sched .blk { background:var(--bluetint); border-left:3px solid var(--blue); padding:4px 8px; border-radius:4px; }
+  .sched .none { color:var(--muted); font-style:italic; padding:4px 0; }
+  .recorded { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .recorded .stamp { color:var(--green); font-weight:600; }
+  .readback { display:grid; grid-template-columns:1fr; gap:12px; margin-top:8px; }
+  .score { display:grid; grid-template-columns:minmax(0,1fr) 70px 90px 40px; gap:4px 8px; font-size:0.8rem; align-items:baseline; }
+  .score .cap { margin:0; font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; }
+  .score b.yes { color:var(--green); } .score b.no { color:var(--red); }
+  .act { font-size:0.85rem; border-left:3px solid var(--border); padding:4px 10px; margin:6px 0; }
+  .act .when { color:var(--muted); font-size:0.75rem; }
+  table.rows { border-collapse:collapse; width:100%; font-size:0.78rem; margin-top:6px; }
+  table.rows th, table.rows td { border:1px solid var(--border); padding:4px 6px; text-align:left; vertical-align:top; }
+  table.rows th { background:var(--bg); font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
+  table.rows td.new { background:var(--bluetint); }
+  code { font-size:0.78rem; background:var(--bg); padding:1px 4px; border-radius:4px; }
+  .honest { margin-top:20px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+  .honest h2 { font-size:1rem; margin:0 0 8px; }
+  table.cmp { border-collapse:collapse; width:100%; font-size:0.85rem; }
+  table.cmp th, table.cmp td { border-bottom:1px solid var(--border); padding:8px 8px; text-align:left; vertical-align:top; }
+  table.cmp th { font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
+  table.cmp td:first-child { font-weight:700; width:26%; }
+  .cost { margin-top:16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+  .cost h2 { font-size:1rem; margin:0 0 6px; }
+  .cost ul { margin:0; padding-left:1.2rem; font-size:0.88rem; }
+  .cost li { margin:3px 0; }
+  .yesno { margin-top:16px; padding:14px 16px; border-radius:12px; background:var(--text); color:#fff; font-size:1rem; }
+  .yesno b { color:#fde68a; }
+  .yesno .rec { font-size:0.85rem; color:#cbd5e1; margin-top:4px; }
+  .pill { position:fixed; left:12px; bottom:12px; background:var(--ambertint); color:var(--amber); border:1px solid #fcd34d; font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:999px; z-index:60; }
+  #toast { position:fixed; left:50%; transform:translateX(-50%); bottom:52px; background:#0f172a; color:#fff; font-size:0.82rem; padding:8px 14px; border-radius:8px; opacity:0; transition:opacity 0.15s; z-index:70; max-width:90vw; }
+  #toast.on { opacity:1; }
+  @media (max-width:760px) {
+    .cols { grid-template-columns:1fr; }
+    .desk { padding:12px; }
+    .score { grid-template-columns:minmax(0,1fr) 60px 80px 36px; }
+    table.cmp thead { display:none; }
+    table.cmp, table.cmp tbody, table.cmp tr, table.cmp td { display:block; width:auto; }
+    table.cmp tr { border-bottom:1px solid var(--border); padding:6px 0; }
+    table.cmp td { border:0; padding:3px 0; }
+    table.cmp td:first-child { width:auto; }
+    table.cmp td[data-l]::before { content:attr(data-l); display:block; font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <span class="tag">Punch list #192 · the Bridge · the two writes, drawn · write B</span>
+  <h1>A plan made on a desk, recorded</h1>
+  <p class="ask">The question: <b>when the owner plans a move on a desk, is the plan recorded on bridge_calls with a kind marker, or does recording stay with the lit link only?</b></p>
+  <p class="lead">The plan in both columns is the same: on the Build desk, Monday Oct 26, the owner decides Jorge crews 878 on Tuesday. Left is what the app keeps today. Right is what the write would add. Invented jobs and names. Nothing here saves.</p>
+
+  <div class="cols">
+    <!-- TODAY -->
+    <div class="col">
+      <h2><b>Today</b> · the desk records nothing. The plan lands where the app already keeps it.</h2>
+      <div class="desk">
+        <span class="tag">Build desk · the row the owner reads</span>
+        <div class="job">
+          <div class="jhead">
+            <span class="jname">878 · Take 5 Seguin<span class="sub">$47.1k left of $124k · 62%</span></span>
+            <span class="figs"><span><b>0h</b> · 19 d quiet</span><span class="chip c-red">stalled · biggest money idle</span></span>
+          </div>
+          <div class="jdetail">
+            <p>$47.1k of sold work has had nobody on it for 19 days. The Schedule shows nobody this week either. Crew it, or name why it waits.</p>
+            <div class="doors">
+              <span class="door">Open the Schedule ›</span>
+              <span class="door">Open the job ›</span>
+              <span class="door amber">Set the % ›</span>
+            </div>
+          </div>
+        </div>
+        <div class="dfoot"><span>The week's call is recorded on the link desk above, not here. This desk is the diagnosis. The Schedule and the percent window are the fixes.</span></div>
+      </div>
+
+      <div class="card">
+        <span class="tag">Where the plan lands · the Schedule</span>
+        <div class="sched">
+          <span class="d">Mon Oct 26</span><span class="none">nobody on 878</span>
+          <span class="d">Tue Oct 27</span><span class="blk"><b>Jorge</b> · 878 Take 5 Seguin · placed Mon 7:14 AM</span>
+          <span class="d">Wed Oct 28</span><span class="none">nobody on 878</span>
+        </div>
+        <p class="cap">Open the Schedule, drop Jorge on Tuesday. That block is the record: who, which job, which day, placed when and by whom. Next Monday the desk reads the hours it produced.</p>
+      </div>
+
+      <div class="card">
+        <span class="tag">Where the plan lands · the link desk, only when Build is the lit link</span>
+        <div class="linkdesk">
+          <div class="h"><b>Build</b><span class="grey">· the field's pace</span><span class="grey" style="margin-left:auto">nominated by the page</span></div>
+          <div class="tag" style="margin-top:8px">If this is the link, this week we would</div>
+          <ol>
+            <li><span>☑ Set a percent on the open jobs without one <span class="grey">· 9 jobs today</span></span><span class="own">Dana</span></li>
+            <li><span>☑ Put a contract value on the open jobs that have none <span class="grey">· 2 jobs today</span></span><span class="own">owner</span></li>
+            <li><span>☑ Hold the schedule to what billing can turn, not to what was sold.</span><span class="own">owner</span></li>
+          </ol>
+          <div class="rec"><span class="own" style="min-width:200px">a note: Jorge crews 878 Tue</span><span class="recbtn" style="margin-left:auto">This is the link this week: Build</span></div>
+        </div>
+        <p class="cap">The call records the link, three moves with owners, a snapshot of the numbers and one free note. A job-level plan rides as the note's words. Friday scores the moves' numbers, not the note.</p>
+      </div>
+      <p class="cap red">When Build is not the lit link, nothing on the Bridge records the plan at all. Recording from a non-link desk is refused today because one recorded row holds the link for the week, and a Build plan would steal it from Bill.</p>
+    </div>
+
+    <!-- WITH THE WRITE -->
+    <div class="col">
+      <h2><b>With the write</b> · the desk's row takes the plan and records it beside the call, never as the call.</h2>
+
+      <div class="step"><span class="n">1</span><b>The plan line, on the row</b></div>
+      <div class="desk">
+        <div class="job">
+          <div class="jhead">
+            <span class="jname">878 · Take 5 Seguin<span class="sub">$47.1k left of $124k · 62%</span></span>
+            <span class="figs"><span><b>0h</b> · 19 d quiet</span><span class="chip c-red" id="row-chip">stalled · biggest money idle</span></span>
+          </div>
+          <div class="jdetail">
+            <p>$47.1k of sold work has had nobody on it for 19 days. The Schedule shows nobody this week either. Crew it, or name why it waits.</p>
+            <div class="doors">
+              <span class="door">Open the Schedule ›</span>
+              <span class="door">Open the job ›</span>
+              <span class="door amber">Set the % ›</span>
+            </div>
+            <div class="plan">
+              <span class="lbl">Plan</span>
+              <select id="move" aria-label="The move"><option>Crew it</option><option>Set the %</option><option>Price it</option><option>Something else</option></select>
+              <input id="who" placeholder="owner" value="Jorge" aria-label="Owner">
+              <input id="day" placeholder="day" value="Tue" aria-label="Day" style="width:70px">
+              <button type="button" class="btn" id="onsheet">Put it on the sheet</button>
+            </div>
+          </div>
+        </div>
+        <div class="dfoot">
+          <span id="sheetline">Nothing on the sheet yet. Plan a move on a row.</span>
+          <button type="button" class="btn go" id="record" disabled>Record the desk's plan</button>
+        </div>
+        <p class="cap">One line per row: the move, the owner, the day. The footer records the sheet when at least one move is on it, the way the Collect desk records its own.</p>
+      </div>
+
+      <div class="step"><span class="n">2</span><b>Afterwards</b> <span class="cap" style="margin:0">· the desk, same day</span></div>
+      <div class="desk">
+        <div class="recorded"><span class="stamp" id="stamp">Planned Mon, Oct 26 by Dana · 1 move. Friday reads it beside the week's call.</span></div>
+        <div class="job" style="margin-top:8px">
+          <div class="jhead">
+            <span class="jname">878 · Take 5 Seguin<span class="sub">$47.1k left of $124k · 62%</span></span>
+            <span class="figs"><span><b>0h</b> · 19 d quiet</span><span class="chip c-red">stalled · biggest money idle</span><span class="chip c-blue" id="planned-chip">planned · crew it · Jorge · Tue</span></span>
+          </div>
+        </div>
+        <p class="cap">The row keeps its red. A plan is not hours. The blue chip says who owes what by when. The plan locks once recorded, the way Sales locks its moves.</p>
+      </div>
+
+      <div class="step"><span class="n">3</span><b>Read back</b></div>
+      <div class="readback">
+        <div class="card" style="margin:0">
+          <span class="tag">The desk, next Monday Nov 2</span>
+          <div class="job">
+            <div class="jhead">
+              <span class="jname">878 · Take 5 Seguin<span class="sub">$42.2k left of $124k · 66%</span></span>
+              <span class="figs"><span><b>16h</b></span><span class="chip c-green">moving · $306/h</span><span class="chip c-blue">planned Oct 26 · crew it · Jorge · Tue · hours landed</span></span>
+            </div>
+          </div>
+          <p class="cap">The row reads its own plan from the week before and whether hours followed it. The desk can say that today too, without the plan: the 16h are on the row either way.</p>
+        </div>
+        <div class="card" style="margin:0">
+          <span class="tag">The Bridge · Last call card, a second block</span>
+          <div class="score">
+            <span class="cap">The Build desk's plan · Oct 26</span><span class="cap">owner</span><span class="cap">then → now</span><span class="cap">done</span>
+            <span>878 Take 5 Seguin: crew it · Tue</span><span class="grey">Jorge</span><span>0h → <b class="yes">16h</b></span><b class="yes">yes</b>
+          </div>
+          <p class="cap">Read beside the week's call, never as it. The lit link stays Bill. Friday asks about Bill. This block only says whether the desk's moves happened.</p>
+        </div>
+        <div class="card" style="margin:0">
+          <span class="tag">The job's Activity</span>
+          <div class="act" style="opacity:0.55"><div class="when">not here</div>bridge_calls is the Bridge's own table, read by devs. The job's Activity would show the plan only with a second write onto the job. The Schedule block already shows there.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <span class="tag">The table · one new column on bridge_calls</span>
+        <table class="rows">
+          <tr><th>week</th><th>link</th><th class="new" style="background:var(--bluetint)">kind</th><th>moves</th><th>note</th></tr>
+          <tr><td>Oct 25</td><td>bill</td><td class="new">call</td><td>Bill the finished work · Dana · $38k</td><td>—</td></tr>
+          <tr><td>Oct 25</td><td>build</td><td class="new">desk_plan</td><td>878 Take 5 Seguin: crew it · Jorge · Tue</td><td>the Build desk's sheet</td></tr>
+        </table>
+        <p class="cap"><code>kind text not null default 'call' check (kind in ('call','desk_plan'))</code>. The call reader takes only kind = call for the held link, the streak and Friday's verdict. A desk_plan row can never light a stage.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="honest">
+    <h2>How small the difference is</h2>
+    <table class="cmp">
+      <thead><tr><th></th><th>Today</th><th>With the write</th></tr></thead><tbody>
+      <tr><td>Who planned what, when</td><td data-l="Today">On the lit link's call, with owners, when the desk's stage is the link. Otherwise in the Schedule block, the % event or the bill send the plan becomes.</td><td data-l="With the write">On any desk, any week, with the row named. The same Schedule block still has to be placed for the crew to go.</td></tr>
+      <tr><td>Does the plan move the crew</td><td data-l="Today">No. The Schedule block does.</td><td data-l="With the write">No. The Schedule block does. The plan is a promise about it.</td></tr>
+      <tr><td>Friday's read</td><td data-l="Today">The link's weeks and pile, and the moves' numbers then → now.</td><td data-l="With the write">The same, plus each desk move's own number then → now in a second block.</td></tr>
+      <tr><td>What is lost without it</td><td colspan="2">A plan on a non-link desk is remembered, not recorded. If Jorge never goes, nothing says the owner planned it on Oct 26. The Schedule block, if placed, says it. If it was never placed, nothing does.</td></tr>
+      <tr><td>What it risks</td><td colspan="2">Two ceremonies on one page. The owner records a call on the link desk and a plan on a desk, and Friday reads two cards. The first-timer review already found the record step the hardest to read.</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="cost">
+    <h2>What it costs</h2>
+    <ul>
+      <li><b>One migration:</b> one column, kind, on bridge_calls with its default and check. Every existing row reads as a call.</li>
+      <li><b>The call reader</b> filters to calls for the held link, the streak and the verdict, so a desk plan never steals the link. One kernel change with tests.</li>
+      <li><b>Each desk</b> gains the plan line, the sheet footer, the recorded stamp and the chip. Four desks, four PRs, or one shared strip.</li>
+      <li><b>The Last call card</b> gains the second block.</li>
+    </ul>
+  </div>
+
+  <div class="yesno">
+    <b>Yes or no:</b> record a desk's plan on bridge_calls with a kind marker, or keep recording with the lit link only?
+    <div class="rec">The recommendation is no, for now. The lit link's call already records the week's plan with owners, and the Schedule, the percent window and the bill send record the moves themselves. A second ceremony adds a card to read and a migration, and the thing it saves is a promise the Schedule block already keeps. Say yes later if a Friday comes when the owner wants to know what he planned on a desk that was not the link.</div>
+  </div>
+</div>
+<div class="pill">mock-up · nothing saves</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+function toast(msg){
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.classList.add('on')
+  clearTimeout(toast._h)
+  toast._h = setTimeout(() => t.classList.remove('on'), 2600)
+}
+let onSheet = false
+const planWords = () => document.getElementById('move').value.toLowerCase() + ' · ' + (document.getElementById('who').value.trim() || 'no owner') + ' · ' + (document.getElementById('day').value.trim() || 'no day')
+document.getElementById('onsheet').onclick = () => {
+  onSheet = !onSheet
+  document.getElementById('onsheet').textContent = onSheet ? 'Take it off the sheet' : 'Put it on the sheet'
+  document.getElementById('sheetline').textContent = onSheet ? '1 move on the sheet: 878 ' + planWords() + '.' : 'Nothing on the sheet yet. Plan a move on a row.'
+  document.getElementById('record').disabled = !onSheet
+  toast(onSheet ? 'On the sheet. Record the desk’s plan is live.' : 'Off the sheet. Nothing to record.')
+}
+document.getElementById('record').onclick = () => {
+  const w = planWords()
+  document.getElementById('stamp').textContent = 'Planned Mon, Oct 26 by Dana · 1 move. Friday reads it beside the week’s call.'
+  document.getElementById('planned-chip').textContent = 'planned · ' + w
+  toast('Would insert one bridge_calls row, kind desk_plan, link build: 878 ' + w + '.')
+}
+</script>
+</body>
+</html>

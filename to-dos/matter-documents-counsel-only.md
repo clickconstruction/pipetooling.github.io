@@ -2,7 +2,7 @@
 name: "Counsel-only on a matter document, and the matter's documents as text the search can read"
 number: 288
 group: ready
-status: proposed 2026-11-08 · the owner's yes the same day · the shape picked the same day (the shared documents table) · PR 1 built as v2.6716 (migration 20261108210000, legal-portal and dev-mcp 0.44.0 to deploy after the push) · PR 2 built as v2.6720 (migration 20261108230000, stacked on PR 1; dev-mcp 0.45.0) · PR 3 next
+status: proposed 2026-11-08 · the owner's yes the same day · the shape picked the same day (the shared documents table) · PR 1 built as v2.6716 (migration 20261108210000, legal-portal and dev-mcp 0.44.0 to deploy after the push) · PR 2 built as v2.6720 (migration 20261108230000, stacked on PR 1; dev-mcp 0.45.0) · PR 3 built as v2.6722 (migration 20261108233000, stacked on PR 2; dev-mcp 0.46.0) · the three PRs draft until #286's and #287's migrations are on main, then armed in order, pushed and deployed, and How to verify run on a ZZ TEST matter
 summary: >
   The Legal desk's matter is what the firm reads, so it is the natural home for anything written
   for the attorney. Two things keep that from working for a case on a person: a matter document
@@ -12,7 +12,7 @@ summary: >
   the attorney by hand. Give a matter document a counsel-only mark the firm's portal and the agent
   role honor, and let a text document on a matter be text, read by section and searched like a
   named document.
-next: Merge PR 1 after #286's and #287's migrations are on main (they alter the table PR 1 renames), push the migration, deploy legal-portal and dev-mcp, regenerate the types and the catalog; then PR 2 the counsel-only mark on the Evidence row and PR 3 the seat's section reads on a matter's text document.
+next: Arm PR 1 once #286's and #287's migrations are on main (they alter the table PR 1 renames), push its migration, deploy legal-portal and dev-mcp, regenerate the types and the catalog; then PR 2 and PR 3 in order, each pushed and deployed; then How to verify on a ZZ TEST matter, recorded here. Left for a later card: the seat writing a matter's text document by section (plan_person_doc's ops with a matter owner), once #286's and #287's hands are off dev_person_doc_write.
 size: M · PR 1 text on a matter document and the search union (S) · PR 2 the counsel-only mark on the document, the portal's and the agent's refusals (S) · PR 3 the seat's section reads on a matter document (S)
 blocker: None on the shape (picked 2026-11-08); the firm portal's read of a held document is a product call for PR 2.
 opinion: build PR 1 and PR 2 now — the matter is where counsel reads, and today it is the one place in the case a session cannot search or hold; leave the table merge for when the Legal desk asks for it
@@ -74,7 +74,7 @@ hold on the matter.
 |---|---|---|
 | 1 | The shared `documents` table (the rename, `matter_id`, the views with the old names) and `legal_matter_documents.text_document_id`; the desk, the seat and the mail door keep text for a text file; the desk and the portal render it; `dev_case_search` searches it by section. Migration, `legal-portal` and `dev-mcp` redeployed. **Built: v2.6716.** | M |
 | 2 | `counsel_only` on a matter document: the tick on the desk's add form, the seat's and the mail door's field, the portal's list wearing the lock and the packet leaving it out, the seat refused the row and its words by policy (the agent role has none), the lock chip on the row and the menu's on and off, `ACCESS_CONTROL.md` and `docs/HR_FILES.md` stating the limit. **Built: v2.6720.** | S |
-| 3 | The seat reads a matter document by section (`get_matter_document { matter_id, doc_id, section? }`) and `search_case` hits on it carry the section, as a named document's do. | S |
+| 3 | The seat reads a matter document by section (`get_matter_document { matter_id, doc_id, section? }`) and `search_case` hits on it carry the section, as a named document's do (the hits since PR 1; the read through `hr_doc_slice`, the grammar `get_person_document` shares). **Built: v2.6722.** | S |
 
 ## How to verify
 
