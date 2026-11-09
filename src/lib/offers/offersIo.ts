@@ -31,6 +31,8 @@ export interface OfferMake {
   sendOn: string | null
   /** YYYY-MM-DD, the day the words are about (a moved visit's new day, v2.6387): past it the text is stale. Unset for a text about no day. */
   aboutOn?: string | null
+  /** ISO, the instant the run sends it (v2.6774, Send later); unset for the morning's or a press. */
+  sendAt?: string | null
 }
 
 export interface OffersIo {
@@ -42,9 +44,13 @@ export interface OffersIo {
   holdUntil(row: Pick<TodaysSend, 'id' | 'contactId' | 'jobKey'> & { stepKey: string }, untilYmd: string): Promise<void>
   stop(row: Pick<TodaysSend, 'id' | 'contactId' | 'jobKey'> & { stepKey: string }, why: string): Promise<void>
   make(input: OfferMake): Promise<string>
+  /** Change the time (v2.6774): an open office-made text goes at this instant instead, through `nudge_offer_retime`. A smoke may leave it out. */
+  retime?(id: string, sendAtIso: string): Promise<void>
 }
 
-const OFFER_COLUMNS = 'id, contact_id, step_key, bid_id, project_id, jobs_ledger_id, body, channel_id, prepared_at, prepared_by, send_on, about_on, held_why'
+const OFFER_COLUMNS = 'id, contact_id, step_key, bid_id, project_id, jobs_ledger_id, body, channel_id, prepared_at, prepared_by, send_on, send_at, about_on, held_why'
+/** The columns a client ahead of the push reads: `send_at` lands with `20261109090000`; until then the row reads with no time. */
+const OFFER_COLUMNS_BEFORE_SEND_AT = OFFER_COLUMNS.replace(', send_at', '')
 
 type OfferDbRow = {
   id: string
@@ -58,6 +64,7 @@ type OfferDbRow = {
   prepared_at: string
   prepared_by: string
   send_on: string | null
+  send_at?: string | null
   about_on: string | null
   held_why: string | null
 }
@@ -93,15 +100,17 @@ export async function withRatingLink(body: string, row: Pick<TodaysSend, 'contac
 
 export function supabaseOffersIo(client: unknown = supabase, ratingLinks: RatingLinkIo = supabaseRatingLinkIo(client)): OffersIo {
   const db = client as SupabaseClient
-  const open = () => db.from('nudge_offers').select(OFFER_COLUMNS).is('sent_at', null).is('dismissed_at', null).order('prepared_at')
+  const open = (columns: string = OFFER_COLUMNS) => db.from('nudge_offers').select(columns).is('sent_at', null).is('dismissed_at', null).order('prepared_at')
   return {
     async loadOpen() {
-      const result = await open()
+      let result = await open()
+      // A client ahead of the push (v2.6774): the table is there but `send_at` is not yet; read without it.
+      if (result.error && /send_at/.test(result.error.message ?? '')) result = await open(OFFER_COLUMNS_BEFORE_SEND_AT)
       if (result.error) {
         if (isNotThereYetError(result.error)) return { offers: [], names: {}, numbers: {}, stepNames: {} }
         checkSupabaseError(result, 'read today’s sends')
       }
-      const rows = (result.data ?? []) as OfferDbRow[]
+      const rows = (result.data ?? []) as unknown as OfferDbRow[]
       const contactIds = [...new Set(rows.map((o) => o.contact_id))]
       const channelIds = rows.flatMap((o) => (o.channel_id ? [o.channel_id] : []))
       // The reminders that went on the offers' people since the oldest was prepared (v2.6386), so a text whose step already
@@ -137,6 +146,7 @@ export function supabaseOffersIo(client: unknown = supabase, ratingLinks: Rating
         preparedAt: r.prepared_at,
         preparedBy: r.prepared_by === 'office' ? 'office' : 'app',
         sendOn: r.send_on,
+        sendAt: r.send_at ?? null,
         aboutOn: r.about_on,
         heldWhy: r.held_why,
       }))
@@ -177,9 +187,17 @@ export function supabaseOffersIo(client: unknown = supabase, ratingLinks: Rating
       checkSupabaseError(result, 'put the text away')
     },
     async make(input) {
-      const result = await db.rpc('nudge_offer_make', { p_contact: input.contactId, p_step: input.stepKey, ...jobArgs(input.jobKey), p_body: input.body, p_channel: input.channelId, p_send_on: input.sendOn, p_about_on: input.aboutOn ?? null })
-      checkSupabaseError(result, 'prepare the text for the morning')
+      const args = { p_contact: input.contactId, p_step: input.stepKey, ...jobArgs(input.jobKey), p_body: input.body, p_channel: input.channelId, p_send_on: input.sendOn, p_about_on: input.aboutOn ?? null }
+      // Send later (v2.6774): the time rides as the ninth argument; a client ahead of the push falls back to the morning
+      // alone, so the text still goes on its day.
+      let result = input.sendAt ? await db.rpc('nudge_offer_make', { ...args, p_send_at: input.sendAt }) : await db.rpc('nudge_offer_make', args)
+      if (result.error && input.sendAt && isNotThereYetError(result.error)) result = await db.rpc('nudge_offer_make', args)
+      checkSupabaseError(result, 'prepare the text for later')
       return String(result.data)
+    },
+    async retime(id, sendAtIso) {
+      const result = await db.rpc('nudge_offer_retime', { p_offer: id, p_send_at: sendAtIso })
+      checkSupabaseError(result, 'change when the text goes')
     },
   }
 }

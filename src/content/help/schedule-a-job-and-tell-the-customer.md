@@ -2,7 +2,7 @@
 title: schedule a job and tell the customer
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator
-keywords: schedule, booked, first visit, tell the customer, text, booked text, receipt, call, script, add job to schedule, customer, window, send in the morning, today's sends, add to my calls, make this the office's line, prefers email, my way
+keywords: schedule, booked, first visit, tell the customer, text, booked text, receipt, call, script, add job to schedule, customer, window, send later, send in the morning, when it goes, today's sends, add to my calls, make this the office's line, prefers email, my way
 where: /schedule-dispatch
 order: 40
 ---
@@ -47,15 +47,19 @@ Some customers ask to hear from us by email. The sheet says so under **What happ
 
 Move a first visit to another day or window, and the Rescheduled text waits on the Dashboard under Today's sends. Press it there, or put it away. See [work Today's sends](/help/work-todays-sends).
 
-## Send it in the morning instead
+## Send it later instead
 
-Booked a visit late in the day? Press **Send in the morning** beside Skip. The text waits, and the app sends it at 9 AM.
+Booked a visit late in the day? Press **Send later** beside Skip. The press names the time it would go, like *Send later · Tomorrow 9:00 AM*.
 
 1. Read and change the text as usual.
-2. Press **Send in the morning**. The sheet says which day it goes.
-3. Press **Done**.
+2. Press **Send later**. The **When it goes** window opens.
+3. Pick a chip. **Tomorrow 9:00 AM** is the usual pick. **Today 6:00 PM** shows while 6 PM is still ahead. **Now** sends the text right away.
+4. Or set the **Day** and the **Time** yourself. Texts go between 8 AM and 9 PM, so the time field stops there.
+5. Read the line under the fields. It says the exact time, like *Goes Tuesday, Nov 10 at 9:00 AM Central, in about 17 hours.*
+6. Press {{button:blue|Send Tuesday 9:00 AM}}. The sheet says when it goes.
+7. Press **Done**.
 
-Until then the text sits on the Dashboard under Today's sends. You can change it there, or take it back. See [work Today's sends](/help/work-todays-sends).
+Until then the text sits on the Dashboard under Today's sends. The time shows on its row. You can change the time there, or take the text back. See [work Today's sends](/help/work-todays-sends).
 
 ## The receipt, and the call
 

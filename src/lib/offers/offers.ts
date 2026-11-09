@@ -13,6 +13,7 @@ import { RUN_HOUR } from '../flows/nudgeRunLog'
 import { weekdayDate } from '../gc/words'
 import { jobRefOf } from '../messages/jobKeys'
 import { needsRatingLink } from '../ratings/ratingAsk'
+import { SEND_LATER_WORDS } from './sendLater'
 
 /** A `nudge_offers` row as the office reads it. */
 export interface OfferRow {
@@ -28,6 +29,8 @@ export interface OfferRow {
   preparedBy: 'app' | 'office'
   /** An office-made offer: the morning it goes (YYYY-MM-DD). */
   sendOn: string | null
+  /** An office-made offer handed to a time (v2.6774, Send later): the instant it goes, ISO; null when the morning's or waiting for a press. */
+  sendAt?: string | null
   /** The day the words are about, a moved visit's new day (YYYY-MM-DD, v2.6387); null for a text about no day. */
   aboutOn: string | null
   heldWhy: string | null
@@ -50,6 +53,10 @@ export interface TodaysSend {
   held: string | null
   /** Prepared by the office for a morning: the day the run sends it. */
   goesOn: string | null
+  /** Handed to a time (v2.6774): the instant the run sends it, in milliseconds; null for the morning's or a press. */
+  goesAt: number | null
+  /** The office prepared it, so its time can change (`nudge_offer_retime`). */
+  office: boolean
 }
 
 export interface TodaysSendsInput {
@@ -152,6 +159,8 @@ export function todaysSends(input: TodaysSendsInput, now: Date = new Date()): To
       jobKey: o.jobKey,
       held: (staleOn(o, today) && o.aboutOn ? heldStaleWords(o.aboutOn) : null) || o.heldWhy?.trim() || (o.channelId ? null : HELD_NO_NUMBER),
       goesOn: o.sendOn,
+      goesAt: o.sendAt ? (Number.isNaN(Date.parse(o.sendAt)) ? null : Date.parse(o.sendAt)) : null,
+      office: o.preparedBy === 'office',
     }),
   )
   const rank = (r: TodaysSend) => (r.held ? 2 : r.goesOn ? 1 : 0)
@@ -174,16 +183,26 @@ export function readyRows(rows: readonly TodaysSend[]): TodaysSend[] {
   return rows.filter((r) => !r.held && !r.goesOn)
 }
 
-/** The Dashboard's line: "3 texts ready to send", "1 text ready to send, 1 goes in the morning, 2 held", "2 held". */
+/**
+ * The Dashboard's line: "3 texts ready to send", "1 text ready to send, 1 goes in the morning, 2 held", "2 held". Since
+ * v2.6774 a text handed to a time counts as "goes later", and the whole group reads so once any row has a time.
+ */
 export function todaysSendsLine(rows: readonly TodaysSend[]): string {
   const ready = readyRows(rows).length
   const held = rows.filter((r) => r.held).length
-  const morning = rows.filter((r) => r.goesOn && !r.held).length
+  const waiting = rows.filter((r) => r.goesOn && !r.held)
+  const later = waiting.some((r) => r.goesAt != null)
   const parts: string[] = []
   if (ready) parts.push(`${ready} ${ready === 1 ? 'text' : 'texts'} ready to send`)
-  if (morning) parts.push(`${morning} ${morning === 1 ? 'goes' : 'go'} in the morning`)
+  if (waiting.length) parts.push(`${waiting.length} ${waiting.length === 1 ? 'goes' : 'go'} ${later ? 'later' : 'in the morning'}`)
   if (held) parts.push(`${held} held`)
   return parts.join(', ')
+}
+
+/** The row's line under a waiting text (v2.6774): "Goes Tue 9:00 AM" with a time, "Goes in the morning of Tue, Oct 20." without. */
+export function goesLine(row: Pick<TodaysSend, 'goesOn' | 'goesAt'>, nowMs: number): string | null {
+  if (row.goesAt != null) return SEND_LATER_WORDS.rowGoes(row.goesAt, nowMs)
+  return row.goesOn ? TODAYS_SENDS_WORDS.goesOn(weekdayDate(row.goesOn)) : null
 }
 
 /** The hour in the app's zone, 0 to 23. */
@@ -220,4 +239,7 @@ export const TODAYS_SENDS_WORDS = {
   putAway: 'Put away.',
   morningToast: (day: string) => `It goes in the morning of ${day}.`,
   sendInMorning: 'Send in the morning',
+  /** Send later (v2.6774): the row's press to change the time (the toast is `SEND_LATER_WORDS.timeChanged`), and the press that takes a waiting text back. */
+  changeTime: SEND_LATER_WORDS.changeTime,
+  takeBack: 'Take it back',
 } as const
