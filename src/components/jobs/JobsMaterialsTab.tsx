@@ -750,7 +750,7 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
           </div>
           <button type="button" style={{ ...btnPrimary, flex: '0 0 auto' }} onClick={() => window.print()}>{shown.length === 1 ? 'Print 1 label' : `Print ${shown.length} labels`}</button>
           {/* v2.6800 (punch list #294): one row per box for Brother's P-touch Editor, which merges a CSV into a tape label template. */}
-          {one ? null : <button type="button" style={{ ...btn, flex: '0 0 auto' }} title="One row per cage or box: the stencil, the place, the code with its dash, the address and the QR's text, for a label editor that merges a CSV" onClick={() => { const rows = labelsCsvRows(containers, places); downloadFile(new File([labelsCsvText(rows)], labelsCsvFileName(jl, new Date().toISOString().slice(0, 10)), { type: 'text/csv' })) }}>Export the labels as a CSV</button>}
+          {one ? null : <button type="button" style={{ ...btn, flex: '0 0 auto' }} title="One row per cage or box: the stencil, the place, the code with its dash, the address and the QR's text, for a label editor that merges a CSV" onClick={() => { const rows = labelsCsvRows(containers, places); downloadFile(new File([labelsCsvText(rows)], labelsCsvFileName(jl, todayYmdInAppTz()), { type: 'text/csv' })) }}>Export the labels as a CSV</button>}
           <button type="button" style={{ ...btn, flex: '0 0 auto' }} onClick={onClose}>Close</button>
         </div>
         <div className="on-site-labels-list" style={{ display: 'grid', gap: '0.9rem' }}>
