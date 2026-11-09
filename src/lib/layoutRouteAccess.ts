@@ -69,7 +69,7 @@ export const SUPERINTENDENT_PATHS = [
   '/job-mode/customers',
 ] as const
 
-function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
+function estimatorAllowedPaths(): string[] {
   return [
     '/dashboard',
     '/my-statement',
@@ -89,7 +89,8 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
     // The Development page (v2.6040): one site's bids and jobs, which the estimator reads as the Bid Board's rows.
     '/developments',
     '/job-mode',
-    ...(estimatorProspectsAccess ? ['/prospects'] : []),
+    // Prospects: the calling deck with the flag; the Research tab (punch list #292) for every estimator, so the path is open and the page keeps the deck behind the flag.
+    '/prospects',
     '/calendar',
     '/checklist',
     // '/people' dropped (v2.2920, journey map J32-N5): ACCESS_CONTROL's matrix has estimators ❌ on
@@ -117,9 +118,10 @@ function matchesAllowedRoot(roots: readonly string[], pathname: string): boolean
  * Estimator Layout guard: exact allowed path or a subpath (e.g. `/estimates/:id`, `/customers/.../edit`),
  * plus trailing-slash normalization.
  */
-export function isEstimatorPathAllowed(pathname: string, estimatorProspectsAccess: boolean): boolean {
+export function isEstimatorPathAllowed(pathname: string, _estimatorProspectsAccess: boolean): boolean {
   if (normalizeAppPathname(pathname) === '/') return false
-  return matchesAllowedRoot(estimatorAllowedPaths(estimatorProspectsAccess), pathname)
+  // The flag no longer moves a path (punch list #292): every estimator reaches /prospects for Research; the page keeps the deck behind the flag.
+  return matchesAllowedRoot(estimatorAllowedPaths(), pathname)
 }
 
 /** Whether `pathname` is allowed for `role` without Layout redirecting away (see Layout `useEffect` on `location.pathname`). */

@@ -170,15 +170,16 @@ function DeskShortcut({ desk, count, title, label, children, onOpen, to }: { des
 
 /**
  * The Lien desk in one click (v2.4520): the gavel beside the last stage, with the count of
- * notices to work while there are any.
+ * notices to work while there are any. Since punch list #182 the desk is a page, so the gavel
+ * is a link to it, `to`.
  */
-export function StagesLienDeskShortcut({ count, onOpen }: { count: number | null; onOpen: () => void }) {
+export function StagesLienDeskShortcut({ count, to }: { count: number | null; to: string }) {
   const due = typeof count === 'number' && count > 0 ? count : 0
   return (
     <DeskShortcut
       desk="lien"
       count={count}
-      onOpen={onOpen}
+      to={to}
       title="Lien desk: lien notices due per unpaid work month. Draft, approve, send"
       label={due > 0 ? `Open the Lien desk, ${due} to work` : 'Open the Lien desk'}
     >

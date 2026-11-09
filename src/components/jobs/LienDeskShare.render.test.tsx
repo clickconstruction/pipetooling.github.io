@@ -81,7 +81,7 @@ describe('LienDeskShare — the panel', () => {
     expect(preview()).toContain('We are about to send lien notices on 3 jobs.')
     expect(preview()).toContain('$53,225 is owed on them.')
     expect(preview()).toContain('• Take 5- Seguin, Southern Post Construction, $38,625')
-    expect(preview()).toContain(`${window.location.origin}/jobs?tab=stages&liendesk=1`)
+    expect(preview()).toContain(`${window.location.origin}/lien-desk`)
     expect(screen.getByText(/^as of /)).toBeTruthy()
   })
 
@@ -108,7 +108,7 @@ describe('LienDeskShare — the panel', () => {
     expect(preview()).toContain('RMC- Dudley Mason liens,')
     expect(preview()).toContain('• 258 Dudley Mason, Aug, $9,800, to draft')
     expect(preview()).toContain('Open the Lien desk on job 258:')
-    expect(preview()).toContain(`liendeskJob=${id(258)}`)
+    expect(preview()).toContain(`/lien-desk?tab=notices&job=${id(258)}`)
   })
 
   it('Send to a teammate… hands the share sheet the subject, the text and the link, then closes', async () => {
@@ -126,7 +126,7 @@ describe('LienDeskShare — the panel', () => {
     expect(arg.title).toBe('Liens, Oct 1: 3 notices due, $53,225, first by Oct 15')
     expect(arg.text.startsWith('Liens, ')).toBe(true)
     expect(arg.text.endsWith('Open the Lien desk:')).toBe(true)
-    expect(arg.url).toBe(`${window.location.origin}/jobs?tab=stages&liendesk=1`)
+    expect(arg.url).toBe(`${window.location.origin}/lien-desk`)
     expect(onClose).toHaveBeenCalled()
     fireEvent.click(document.querySelector('[data-lien-share-copy]')!)
     await settle()

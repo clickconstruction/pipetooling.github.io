@@ -3,7 +3,7 @@ title: send lien notices from the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: lien desk, lien notice, he is here, standing over me, typing it in, the attorney’s letter, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due, sent by hand, retainage release, pay application figure
-where: /jobs?tab=stages&liendesk=1
+where: /lien-desk
 ---
 Texas counts lien deadlines from the month the work was done, not from the bill. The Lien desk keeps every notice in one queue, so no deadline passes quietly.
 
@@ -11,7 +11,7 @@ On a job with a GC, every unpaid month needs its own § 53.056 notice. It is due
 
 ## Start on Do now
 
-Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do now** tab. The desk is a page of its own. Its address names the tab and the notice you are on. You can paste it to a teammate. Press {{button:outline|← Pipeline}} at the top left to go back. The browser's Back button goes back too. That is one list of every lien paper that needs someone to act. The {{button:outline|?}} at the end of the title line opens a card that says what each part of the desk holds. The card ends with a link to this guide.
+Open the Lien desk from the orange gavel on the Pipeline's stage bar. The ☰ **Section tools** menu and the {{button:outline|⋯}} menu list **Lien desk** too. So does the **Collections** header. The Dashboard's lien cards open it on their own list. It opens on its **Do now** tab. The desk is a page of its own. Its address names the tab and the notice you are on. You can paste it to a teammate. Hold ⌘ or Ctrl when you press the gavel to open the desk in a new tab. Press {{button:outline|← Pipeline}} at the top left to go back. The browser's Back button goes back too. That is one list of every lien paper that needs someone to act. The {{button:outline|?}} at the end of the title line opens a card that says what each part of the desk holds. The card ends with a link to this guide.
 
 - **Needs you now** holds what is late or due within seven days. **Coming up** holds the rest. Each group runs in date order.
 - Each row has a tag. It reads {{chip:blue|Notice}}, {{chip:red|Affidavit}} or {{chip:yellow|Retainage}}.

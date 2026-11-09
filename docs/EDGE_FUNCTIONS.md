@@ -3,9 +3,9 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 182 Supabase Edge Functions
+purpose: Complete API documentation for all 183 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-11-08
+last_updated: 2026-11-09
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -186,6 +186,7 @@ when_to_read:
    - [lien-pay-offer](#lien-pay-offer)
    - [owner-confirm-nightly](#owner-confirm-nightly)
    - [court-precinct-nightly](#court-precinct-nightly)
+   - [permit-pull](#permit-pull)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
    - [send-bid-pricing-package](#send-bid-pricing-package)
@@ -3500,6 +3501,12 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `court-precinct-nightly`, 06:20 UTC, migration `20261007120000`), or a signed-in office user — the function checks `is_office_staff()` under the caller's JWT, which is how the Map page's **Classify now** calls it (`supabase.functions.invoke`). `verify_jwt = false` in `config.toml`. **Body**: `{ dry_run?: boolean }`. **Answer**: `{ ok, dryRun, areas, rows, placed, outside, onLine, noPoint, written, geocoded, geocodeMisses, countyFilled, lookupsDeferred }`. **Deploy**: `supabase functions deploy court-precinct-nightly` after the two migrations are pushed.
 
+### permit-pull
+
+**Purpose** (v2.6782, punch list #292): pull a city's permits into `permits` for the Research tab under Prospects. San Antonio first: two CKAN datastores on the city's open-data portal (issued permits, submitted applications) read through the SQL door (`_shared/permitFeed.ts` writes the page query), the kept building types and every plumbing type filed since ten days before the newest row held (75 days back on a first run), paged oldest first, upserted on (city, source, number, type) so a re-read changes nothing; a State Plane point converted to degrees (`_shared/permitCoords.ts`). Each feed's run lands in `permit_pulls` with its counts or its error, and a stopped feed never stops the other.
+
+**Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `permit-pull`, 11:30 UTC, migration `20261109070000`), or a signed-in researcher — the function checks `user_can_research_permits()` under the caller's JWT, which is how the ledger's **Pull now** calls it. `verify_jwt = false` in `config.toml`. **Body**: `{ since?: 'YYYY-MM-DD', dry_run?: boolean }`. **Answer**: `{ ok, dryRun, feeds: [{ source, since, seen, kept, pages, error }], ms }`. **Deploy**: `supabase functions deploy permit-pull` after the migration is pushed.
+
 ### owner-confirm-nightly
 
 > **v2.6520 — a held pin or parcel is never saved**: the lookup runs the shared ladder of [`_shared/parcelPinLookup.ts`](../supabase/functions/_shared/parcelPinLookup.ts) (Google first, then the cache and the Census; the pin and situs gates of [`_shared/parcelPinMatch.ts`](../supabase/functions/_shared/parcelPinMatch.ts)); a property whose pin or parcel is not its lot is skipped, counted as **`held`** in the summary and the JSON, with the reason in `details`; since **v2.6570** a placeholder polygon — every roll field the word `Null`, a prop id alone — is nothing under the pin (`hasSubstance` in `_shared/txParcelRecord.ts` wants an owner or a legal description), so the nightly counts a miss rather than saving `Null` as the owner. **Redeploy after merge** (with `property-lookup`).
@@ -3842,7 +3849,7 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 **The code on a waiver (v2.5924)**: `{ "release_id": "<job_lien_releases.id>", "kind": "waiver_code_used" }` — the same sentence when his code signs a lien WAIVER in the Release of Lien window (migration 20261026193000, `sign_lien_release_with_code`). The release's mode must be `code` and the caller its `signed_on_device_of` (same 403/200 rules); the push goes to the signer only; the words come from `lienWaiverCodeUsedPush` (the job, the form's title, the money, the day, whose screen; the tap lands on the Pipeline, and the email says the signed waiver sits under *Already on this job*). A waiver made on a bid (v2.5958, migration 20261027020000: `job_lien_releases.bid_id`, no job) reads the bid instead (`bids.bid_number`, `project_name`): the line names *Bid 482 · Take 5 Seguin*, the tap lands on `/bids?tab=lien-release&bidId=<bid>`, and the email says the waiver sits under *Already on this bid*. Logged as `lien_waiver_code_used`. The client calls it best-effort from `signLienReleaseWithCode`. The day in this line, the notice code's and the pen record's is `signed_at`'s civil day in the app's zone (`signedYmdOf`, beside the words), never its UTC prefix (v2.6006).
 
-`due_ymd` is optional and must be a date; it is the only thing the caller may say. The function writes the words itself from [`_shared/lienApprovalPush.ts`](../supabase/functions/_shared/lienApprovalPush.ts) (re-exported at `src/lib/jobs/lienApprovalPush.ts`): title *Approve a lien notice*, body *891 · Take 5 Liberty Hill · $27,199 owed by Burd & Assoc. · mail by Oct 15 · 8 days*, the tap opening `/jobs?tab=stages&liendesk=1&liendeskPile=awaiting&liendeskJob=<job>`. The leader is the job's master when he holds a leader role (`dev`, `master_technician`), else every leader on the roster but the caller (`REAL_ACCOUNT`). One push per registered device (`push_subscriptions`); a leader with no device gets the same words by email to his own address (our own staff, so no sent copy). Each reached leader gets one `notification_history` row, `template_type = 'lien_approval_ask'`, `channel` push or email.
+`due_ymd` is optional and must be a date; it is the only thing the caller may say. The function writes the words itself from [`_shared/lienApprovalPush.ts`](../supabase/functions/_shared/lienApprovalPush.ts) (re-exported at `src/lib/jobs/lienApprovalPush.ts`; since v2.6780 the push's `url` is the desk's page, `/lien-desk?tab=notices&job=…&pile=awaiting` or `…&pile=ready`, punch list #182): title *Approve a lien notice*, body *891 · Take 5 Liberty Hill · $27,199 owed by Burd & Assoc. · mail by Oct 15 · 8 days*, the tap opening `/jobs?tab=stages&liendesk=1&liendeskPile=awaiting&liendeskJob=<job>`. The leader is the job's master when he holds a leader role (`dev`, `master_technician`), else every leader on the roster but the caller (`REAL_ACCOUNT`). One push per registered device (`push_subscriptions`); a leader with no device gets the same words by email to his own address (our own staff, so no sent copy). Each reached leader gets one `notification_history` row, `template_type = 'lien_approval_ask'`, `channel` push or email.
 
 #### Response
 
@@ -4883,7 +4890,7 @@ Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, 
 
 ### send-lien-desk-summary
 
-**Purpose** (v2.4311): the Lien desk's **Share → Email a teammate…** — where the liens stand (who we are about to lien, for how much, by when) emailed to people who use the desk. The browser sends the desk's numbers as a payload, never HTML: [`_shared/lienDeskStatus.ts`](../supabase/functions/_shared/lienDeskStatus.ts) parses it (`parseLienStatusPayload`: typed, capped, `jobId` uuid-shaped, five piles only) and renders the email (`lienStatusEmailHtml` / `lienStatusEmailText`) with the same renderer the browser previewed. Since v2.4407 a payload may carry `houses` (the lien jobs where a supply house is also owed: per job the two debts, the house whose own notice comes first and its date); when it does, the subject, the text and the email say that list instead of the notices, and a payload without it reads as before. **Redeploy required** for the list to email. Team email: From `EMAIL_FROM` (*ClickTooling*), Reply to the sender; the desk link is built from `APP_ORIGIN`. Client caller: [`LienDeskEmailSheet`](../src/components/jobs/LienDeskEmailSheet.tsx) through `sendLienStatusEmail` in [`lienDeskShareIo.ts`](../src/lib/jobs/lienDeskShareIo.ts).
+**Purpose** (v2.4311): the Lien desk's **Share → Email a teammate…** — where the liens stand (who we are about to lien, for how much, by when) emailed to people who use the desk. The browser sends the desk's numbers as a payload, never HTML: [`_shared/lienDeskStatus.ts`](../supabase/functions/_shared/lienDeskStatus.ts) (since v2.6780 its *Open the Lien desk* link is the desk's page, `/lien-desk`, punch list #182) parses it (`parseLienStatusPayload`: typed, capped, `jobId` uuid-shaped, five piles only) and renders the email (`lienStatusEmailHtml` / `lienStatusEmailText`) with the same renderer the browser previewed. Since v2.4407 a payload may carry `houses` (the lien jobs where a supply house is also owed: per job the two debts, the house whose own notice comes first and its date); when it does, the subject, the text and the email say that list instead of the notices, and a payload without it reads as before. **Redeploy required** for the list to email. Team email: From `EMAIL_FROM` (*ClickTooling*), Reply to the sender; the desk link is built from `APP_ORIGIN`. Client caller: [`LienDeskEmailSheet`](../src/components/jobs/LienDeskEmailSheet.tsx) through `sendLienStatusEmail` in [`lienDeskShareIo.ts`](../src/lib/jobs/lienDeskShareIo.ts).
 
 **Endpoint**: `POST /functions/v1/send-lien-desk-summary` · **Authentication**: Bearer JWT, `auth.getUser` in-body; the sender's `users` row read with the service role must be dev / master_technician / assistant / controller, not archived, not a sample, not `read_only` (a training account gets 403). `verify_jwt = false` on the gateway. **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, optional `APP_ORIGIN`, `EMAIL_FROM`.
 
