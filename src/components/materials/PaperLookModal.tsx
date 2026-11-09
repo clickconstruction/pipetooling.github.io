@@ -159,7 +159,7 @@ export function PaperLookModal({ paper, invoice, io, fileBytes, acceptedByName, 
               </div>
             ) : (
               <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 6, padding: '1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                {invoice.link ? 'The app has no copy of this PDF of its own. Open the row\'s link beside the lines.' : 'No PDF is on this bill.'}
+                {invoice.link ? 'The app has no copy of this PDF of its own. Open the row\'s link beside the lines.' : 'This bill has no PDF yet. Add one on the row to see the paper here.'}
               </div>
             )}
           </div>
