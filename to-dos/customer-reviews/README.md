@@ -15,9 +15,9 @@ summary: >
   put it on Google; at fewer, "what could we have done better" and a Needs you line so someone
   calls. Google's policy forbids asking only the happy customers to post, so the Google ask is
   the owner's call, with the recommendation to show it to everyone after the direct review.
-next: The owner or a dev sets the Google review link at Settings → What customers see → Reviews (the page never mentions Google while it is empty). The review text for the paid ZZ test job goes to the owner's own number from the 9:00 AM run on 2026-11-09 (the step is on Sends and reads now since the walk); he taps the stars, writes a line, and reads it on the job window's Review line, the Reviews block and the thread; then the owner's look and delete the folder. Nothing is left to push or deploy.
+next: The Google review link is set (2026-11-08, the owner's share link saved on Settings → What customers see → Reviews from his Chrome, read back as *Saved. The review page uses it now.*). The review text for the paid ZZ test job goes to the owner's own number from the 9:00 AM run on 2026-11-09 (the step is on Sends and reads now since the walk); he taps the stars, writes a line, and reads it on the job window's Review line, the Reviews block and the thread; then the owner's look and delete the folder. Nothing is left to push or deploy.
 size: M, as four PRs after this one, S M S M
-blocker: the owner's Google review link, and the owner's look at the live page.
+blocker: the owner's look at the live page; the review link is set since 2026-11-08.
 ver: v2.5934 · 5943 · 5946 · 5948 · 6007
 opinion: built as recommended on the one-tap rating (v2.5876), so the customer gets one ask; the folder closes on the owner's look
 mockup: to-dos/customer-reviews/mockup.html
