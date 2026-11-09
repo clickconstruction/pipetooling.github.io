@@ -4,7 +4,8 @@
  * the store's `priceOf` (the parts book's price, the invoice's past 90 days — `bookPrice.ts`).
  */
 import { containerLines, countDiffs, countIsDue, lastCountedAt, missingMoney, partKey, type Container, type Movement } from './onSite'
-import { priceOf } from './onSiteStore'
+import { listContainers, listMovements, priceOf, serverSummary } from './onSiteStore'
+import { jobMaterialsSummaryFromServer } from './onSiteServerSummary'
 
 export type JobMaterialsSummary = {
   containers: number
@@ -35,6 +36,16 @@ export function jobMaterialsSummary(containers: Container[], movements: Movement
   const stale = live.filter((c) => c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now))
   const credits = movements.filter((m) => m.reason === 'returned').length
   return { containers: live.length, onSiteLines: onSite.length, missingLines, missingMoneyWeek, stale, credits }
+}
+
+/**
+ * The job's summary from the store (v2.6743): the device's sums over the ledger it read, or the database's
+ * (`on_site_job_summary`) when the read came back capped at 5,000 rows. Every reader of the summary calls this.
+ */
+export function jobMaterialsSummaryFor(jobId: string, now: Date): JobMaterialsSummary {
+  const s = serverSummary(jobId)
+  if (s) return jobMaterialsSummaryFromServer(listContainers(jobId), s, now, priceOf)
+  return jobMaterialsSummary(listContainers(jobId), listMovements(jobId), now)
 }
 
 /** "A2, B1 due a count" on a small site; "28 due a count · A1, A7, A8…" on a big one. */
