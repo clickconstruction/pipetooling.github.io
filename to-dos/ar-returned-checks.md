@@ -16,23 +16,26 @@ status: >
   (both webhook endpoints carry the four events; the test one lives in the *PipeTooling sandbox*); step 2 opened two test-mode
   dispute cases and closed the second as lost with both notices sent, but **Put the bill back** never drew, because the webhook
   opened each case a few milliseconds before `invoice.paid` wrote the payment row, so the case holds no payment (the dispute test card
-  disputes the charge the instant it is paid). Left: a small migration so a later dispute event back-fills the case's payment, then
-  the press on the lost case that is waiting.
+  disputes the charge the instant it is paid). The back-fill shipped as v2.6775 (migration 20261109023000, on prod 2026-11-09
+  05:30 UTC): a later event of the same dispute now fills the case's payment. It runs only on a new event, and a resend of the
+  lost dispute's closing event from the Workbench is a duplicate to `stripe_webhook_events`, so the two cases from the walk still
+  hold no payment and the press has not been walked. Left: the owner's door, under `next`.
 summary: >
   Every check the bank sends back is now a case on top of To match, told to the office once,
   taken off every job in one press, closed when the new check lands. Four things were set aside
   on purpose and kept here so they were not lost; all four have shipped, and two live steps for the
   Stripe cases are what keeps the card open.
 next: >
-  Step 1 is done and step 2 ran (2026-11-09, under § Where it stands). One small PR: `record_ar_stripe_case` fills a case's
-  `payment_id` on a later event of the same dispute when it is still null (the first event can land before `invoice.paid`
-  writes the payment), so the lost case's pane draws **Put the bill back**; then press it on the lost ZZ TEST case that is
-  waiting on Came back (job 1114, the $1 bill) and read the four effects the brief names. The two ZZ TEST cases and the job stay
-  until then, or until the owner says to close them under More.
+  The code is done (v2.6775 live). The owner decides how the press gets its walk, since the two cases from 2026-11-09 cannot
+  take the back-fill (under § Where it stands): (a) one more $1 test bill on job 1114, paid with the dispute card and closed lost
+  from the sandbox Workbench Shell the way the second was, whose closing event now lands with the payment on the case, so
+  **Put the bill back** draws and is pressed there; or (b) the one `stripe_webhook_events` row of the lost dispute's closing event
+  deleted by a dev through the service role and the event resent. Either way, then close the two cases of 2026-11-09 under More
+  (*Settled another way*) and delete this card.
 flagged: true
 size: XS (two live steps, no code; a docs-only PR at the end)
-blocker: the back-fill migration for a case opened before its payment row existed (found 2026-11-09 on the test dispute, under § Where it stands); the Stripe side is done.
-ver: v2.4902 · 4950 · 5033 · 5091 · 5102
+blocker: the owner's pick between a third test dispute and a deleted dedupe row (under `next`); the migration is live and the Stripe side is done.
+ver: v2.4902 · 4950 · 5033 · 5091 · 5102 · 6775
 opinion: your call — the code is done; the two live steps are the office's and the owner's.
 mockup: not required — each piece copies the case and its words, which exist
 ---
@@ -63,6 +66,8 @@ The plan, the two critiques and the twelve boards: *Returned checks — #76 mock
 **Step 1, done 2026-11-09.** The account's own *Test mode* holds no webhook destination; the app's test keys belong to the *PipeTooling sandbox* (a second sandbox on the account), whose Workbench → Webhooks lists **pipe testing** on the stripe-webhook URL. Before: live **pipetooling** listened to 32 events, the three `charge.dispute.*` among them (with `funds_reinstated` and `funds_withdrawn`), `credit_note.created` and every `invoice.*` the Ops line names, but not `payment_intent.payment_failed`; test **pipe testing** listened to 33, the three `charge.dispute.*` among them, but neither `payment_intent.payment_failed` nor `credit_note.created`. Added and saved, on the owner's yes per endpoint: `payment_intent.payment_failed` on live (33 events after), `payment_intent.payment_failed` and `credit_note.created` on test (35 after). Nothing else on either endpoint changed. The Ops line of `docs/EDGE_FUNCTIONS.md` now says where the test endpoint lives.
 
 **Step 2, ran 2026-11-09; the lost press did not draw.** A new job *ZZ TEST dispute walk* (1114) on the ZZ customer whose contact is the dev-login address and the owner's number, one $5 line, moved to Ready to Bill, Bill Customer → Stripe → **Test**, **Create Stripe invoice** (the sandbox's own invoice), paid on the hosted page with the dispute test card. Within a minute `invoice.paid` marked the bill paid and `charge.dispute.created` opened the case: Accounts Receivable → Came back read *$5.00 Robert Test · card disputed · bill 1 on #1114 · answer by 11/17*, the pane *Robert Test disputed it. They say they did not make the payment. · #1114 reads paid. Stripe holds the $5 while the dispute runs. · Answer the dispute in Stripe by Nov 17.* with **Open the dispute in Stripe** and **They said…**, and the notice went out (`notified_at` set). Losing it: the Dashboard's Counter dispute wizard, with *losing_evidence* typed in its Other box and its additional-information box, submitted and left the dispute *under review* for good (the wizard does not write Stripe's `uncategorized_text`, and a submitted dispute takes no second submission and no close), and `charge.dispute.updated` brought the case to *under_review*. A second $1 line on the same job, billed again (**Bill this job again anyway**), paid with the same card, opened a second case; `stripe disputes update du_… -d "evidence[uncategorized_text]=losing_evidence" -d submit=true` in the sandbox's Workbench Shell closed it **lost** within a minute, the case read *lost* with `lost_notified_at` set, and Came back read *$1.00 Robert Test · dispute lost · #1114 reads paid*, the pane *They won the dispute. Stripe keeps the money. · #1114 reads paid. The $1 is gone. Put the bill back and it is billed again.* and *The money is gone. Put the bill back, then bill Robert Test again.* — but under it only **More ▾** (Settled another way…, Not coming…). **The defect:** `arReturnCase.ts` draws the press only with `payment_live`, the case's `payment_id` joined to a payment, and both cases hold `payment_id` null: `record_ar_stripe_case` picks the bill's payment when the case opens, and the dispute test card disputes the charge the instant it is paid, so `charge.dispute.created` was handled 13 ms before `invoice.paid` wrote the payment row (case 03:49:28.811, payment 03:49:28.824); the later events only bring the status up to date. A real dispute comes days after the payment, so the office would not meet this, but a case that reads *lost* with no press is a dead end, and the fix is one `CREATE OR REPLACE`: on an existing case with `payment_id` null, look the payment up again. **Put the bill back was not pressed.** Left as the step left it: job 1114 reads paid with two paid test bills ($5 and $1), the two cases sit open on Came back (one *card disputed · under review*, one *dispute lost*) and count on the Dashboard's Needs you; the sandbox holds the two invoices and disputes. The owner closes the cases under More or leaves them for the back-fill PR's walk. Screenshots `76-1` to `76-17` in the walk session's scratchpad.
+
+**The back-fill, 2026-11-09, and the resend that did not count.** v2.6775 (PR #7422, migration `20261109023000_ar_stripe_case_payment_backfill.sql`) merged at 05:29 UTC and went to prod with `supabase db push` at 05:30 UTC (the dev seat's `check_migration_ledger` read it applied under 20261109033000). `record_ar_stripe_case` now fills `payment_id` on any later event of a dispute case that holds none, bedded on a throwaway Postgres: the race, then the fill of the $1 payment and not an older $5 one on the same bill. The fix runs only when an event reaches the function, and the two cases of the walk cannot get one: the lost dispute's `charge.dispute.closed` (03:50:26 UTC) was resent from the sandbox's Workbench → Webhooks → **pipe testing** → Event deliveries → **Resend** at 05:33 UTC, and the webhook answers a resent event as a duplicate, because `stripe_webhook_events` already holds that event id from 03:50:24 and the dedupe insert comes before any handler. A closed dispute sends no further event. So both cases still hold no payment, **Put the bill back** was not pressed, and job 1114 reads as the walk left it (paid, two paid test bills, two open cases). The owner's two doors are under `next`; (a) is the one that also proves the fix end to end, since the new dispute's `funds_withdrawn`, `updated` and `closed` events all run the fill.
 
 The brief below stands for the press that is left.
 

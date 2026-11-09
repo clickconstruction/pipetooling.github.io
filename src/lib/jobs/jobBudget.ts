@@ -54,7 +54,8 @@ export function jobBudgetAwardOf(row: (JobBudgetAwardColumns & { kind?: string }
 }
 
 /** `completeness.book` on a book row: what the guess was computed from. */
-export type JobBudgetBookDetail = { hoursPerThousand: number | null; n: number; priceUsd: number | null; scope: 'similar' | 'all' | null }
+/** `scope` 'all' is what rows frozen before the size bands (the owner's call of 2026-11-09) carry; `band` names the band a 'band' row read. */
+export type JobBudgetBookDetail = { hoursPerThousand: number | null; n: number; priceUsd: number | null; scope: 'similar' | 'band' | 'all' | null; band: string | null }
 export function jobBudgetBookDetailOf(completeness: unknown): JobBudgetBookDetail | null {
   if (!completeness || typeof completeness !== 'object') return null
   const book = (completeness as Record<string, unknown>).book
@@ -62,7 +63,7 @@ export function jobBudgetBookDetailOf(completeness: unknown): JobBudgetBookDetai
   const b = book as Record<string, unknown>
   const hpt = n(b.hours_per_thousand)
   const price = n(b.price_usd)
-  return { hoursPerThousand: hpt > 0 ? hpt : null, n: n(b.n), priceUsd: price > 0 ? price : null, scope: b.scope === 'similar' || b.scope === 'all' ? b.scope : null }
+  return { hoursPerThousand: hpt > 0 ? hpt : null, n: n(b.n), priceUsd: price > 0 ? price : null, scope: b.scope === 'similar' || b.scope === 'band' || b.scope === 'all' ? b.scope : null, band: typeof b.band === 'string' && b.band ? b.band : null }
 }
 
 /** `job_budgets.completeness` as the RPC writes it. */

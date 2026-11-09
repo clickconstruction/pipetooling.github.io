@@ -8,7 +8,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
-import { loadNewestBillLink } from '../billing/billLinkIo'
+import { loadNewestBill } from '../billing/newestBillIo'
+import { boxSetting } from '../messages/boxes'
 import { portalShortUrl } from '../portal/portalShortOrigin'
 import type { Database } from '../../types/database'
 import { checkSupabaseError } from '../../utils/errorHandling'
@@ -16,7 +17,7 @@ import { customerLang } from '../messages/customerLang'
 import { contactForCustomer } from '../messages/messagesIo'
 import { jobKey } from '../messages/jobKeys'
 import type { RecipientLine } from '../messages/compose'
-import { makeUsualChannel, supabaseReplyIo } from '../messages/replyIo'
+import { loadBoxSettings, makeUsualChannel, supabaseReplyIo } from '../messages/replyIo'
 import { supabaseEstimateLinkIo } from '../messages/estimateLinkIo'
 import { estimateTextShareUrl } from './estimateTextLink'
 import { supabaseOffersIo } from '../offers/offersIo'
@@ -37,6 +38,8 @@ export interface TellJob {
   lang: PortalLang
   /** The job's newest billed bill's pay page, for `{bill}` (v2.5628); null with none. */
   billLink?: string | null
+  /** That bill's amount as words, for the Billed line's `{amount}` (v2.6771); null with none. */
+  billAmount?: string | null
   /** The customer's portal short address, when they have one (v2.5943). */
   portalUrl?: string | null
 }
@@ -99,6 +102,8 @@ export interface TellCustomerIo {
   saveOfficeLine(input: { lineId: string | null; stepKey: string; text: string; lang: PortalLang }): Promise<void>
   /** The To chip's tick (punch list #118, PR 2): make this number their usual, through `contact_channel_make_usual`. A smoke may leave it out. */
   makeUsual?(channelId: string): Promise<void>
+  /** The number a text goes from (v2.6771): the team box's, as Settings → Phone and texts keeps it; null while Settings holds none. A smoke may leave it out. */
+  loadFromNumber?(): Promise<string | null>
 }
 
 /** What the residential flow's step says about the call after its text. */
@@ -135,13 +140,13 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
       checkSupabaseError(job, 'read the job')
       const row = job.data as { customer_id: string | null; job_name: string | null; job_address: string | null } | null
       const customerId = row?.customer_id ?? null
-      const [c, billLink, slug] = await Promise.all([
+      const [c, bill, slug] = await Promise.all([
         customerId ? customerRow(customerId) : Promise.resolve(null),
-        loadNewestBillLink(jobId, client),
+        loadNewestBill(jobId, client),
         customerId ? db.from('customer_portal_slugs').select('slug').eq('customer_id', customerId).maybeSingle() : Promise.resolve({ data: null }),
       ])
       const slugValue = (slug?.data as { slug?: string | null } | null)?.slug?.trim() ?? ''
-      return { customerId, customerName: c?.name ?? null, jobName: row?.job_name ?? null, jobAddress: row?.job_address ?? null, lang: langOf(c?.language), billLink, portalUrl: slugValue ? portalShortUrl(slugValue) : null }
+      return { customerId, customerName: c?.name ?? null, jobName: row?.job_name ?? null, jobAddress: row?.job_address ?? null, lang: langOf(c?.language), billLink: bill?.link ?? null, billAmount: bill?.amount ?? null, portalUrl: slugValue ? portalShortUrl(slugValue) : null }
     },
     async loadCustomer(customerId) {
       const c = await customerRow(customerId)
@@ -221,6 +226,14 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
         sendOn: input.sendOn,
       }),
     makeUsual: (channelId) => makeUsualChannel(channelId),
+    async loadFromNumber() {
+      try {
+        const phone = boxSetting('team', await loadBoxSettings(db)).phone
+        return phone || null
+      } catch {
+        return null
+      }
+    },
     send: (input) =>
       supabaseReplyIo().sendText({
         contactId: input.contactId,

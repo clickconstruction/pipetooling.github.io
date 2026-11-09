@@ -25,8 +25,8 @@ Thank you!`)
     expect(body.startsWith('Hi there,')).toBe(true)
     expect(body).toContain('Job: — (HCP —)')
   })
-  it('SMS text is one line with the job or a generic fallback', () => {
-    expect(buildStripeInvoiceSmsText(input)).toBe('Your invoice for Smith residence ($1,250.00): https://pay.example/inv_1')
-    expect(buildStripeInvoiceSmsText({ ...input, jobName: '  ' })).toBe('Your invoice for your job ($1,250.00): https://pay.example/inv_1')
+  it('SMS text is the Billed line without its opening, the link last, with the job or a generic fallback (v2.6771)', () => {
+    expect(buildStripeInvoiceSmsText(input)).toBe('Your bill for Smith residence is ready, $1,250.00. Pay it here: https://pay.example/inv_1')
+    expect(buildStripeInvoiceSmsText({ ...input, jobName: '  ' })).toBe('Your bill for your job is ready, $1,250.00. Pay it here: https://pay.example/inv_1')
   })
 })
