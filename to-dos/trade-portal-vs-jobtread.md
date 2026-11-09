@@ -2,13 +2,13 @@
 name: "The trade partner's portal beside JobTread's job portal: what to borrow"
 number: 205
 group: ready
-status: the owner marked all five rows build on 2026-11-08 (row 5 as the Directions link only, the map canvas and the weather off; every trade's bars stay off) · PR 1 of six, the Directions link, built as v2.6701 · PRs 2 to 6 built 2026-11-08 and open as a stack, each on the one before: v2.6729 the job head (#7371, auto-merge armed), v2.6744 the whole-job stages fold (#7373), v2.6746 the files list with Send Click a file and migration 20261108220804 (#7375), v2.6748 the thread with its reply box (#7379), v2.6752 Word to every trade (#7380); every screen walked on the dev server (Walked, below)
+status: the owner marked all five rows build on 2026-11-08 (row 5 as the Directions link only, the map canvas and the weather off; every trade's bars stay off) · PR 1 of six, the Directions link, built as v2.6701 · PRs 2 to 6 built 2026-11-08 and open as a stack, each on the one before: v2.6729 the job head (#7371, merged 2026-11-08 23:33Z; `gc-trade-portal` deployed from main 2026-11-09 00:47Z with `customer-portal`, `photo-save`, `quo-send` and `messages-nudge-dispatch`, the other importers the kernel copy drifted), v2.6744 the whole-job stages fold (#7373, auto-merge armed), v2.6746 the files list with Send Click a file and migration 20261108220804 (#7375), v2.6748 the thread with its reply box (#7379), v2.6752 Word to every trade (#7380); every screen walked on the dev server (Walked, below)
 summary: >
   On 2026-10-27 the owner worked as a sub on another GC's job and saw JobTread's job portal. The
   question back was whether our subs have a job portal. They do, since v2.4920: one link per
   company, flow first. This card puts the two side by side and names five things worth borrowing.
   Each has a decision row for the owner.
-next: Merge the stack in order, re-arming each PR once its base lands on main (PR 2 is armed; a stacked PR is armed only once its base is main). After each merge, PR 2 deploys `gc-trade-portal` and every importer `check:edge-drift` names (the kernel copy's words); PR 3 deploys `gc-trade-portal`; PR 4 pushes `20261108220804_gc_trade_files_note` first, then deploys `submit-gc-trade-portal` and `gc-trade-portal`; PR 5 deploys `gc-trade-portal` then `submit-gc-trade-portal`; PR 6 deploys nothing. Then the live checks under How to verify, which wait for those deploys.
+next: Merge the rest of the stack in order, arming each PR once its base lands on main (PR 3 is armed; a stacked PR is armed only once its base is main). PR 2's deploy is done. After each merge, PR 3 deploys `gc-trade-portal`; PR 4 pushes `20261108220804_gc_trade_files_note` first, then deploys `submit-gc-trade-portal` and `gc-trade-portal`; PR 5 deploys `gc-trade-portal` then `submit-gc-trade-portal`; PR 6 deploys nothing. Then the live checks under How to verify, which wait for those deploys.
 size: S for the Directions link (built), the job head, the files list and the whole-job stages · M for the thread with its reply box · S for the word to every trade after it
 blocker: none for the build. A dev still makes every link until the trade wave, and Spanish stays behind PORTAL_SPANISH_ON.
 ver: v2.4920 · 5044 · 5048 · 5198 · 5200 · 5201 · 5315 · 5331 · 6701 · 6729 · 6744 · 6746 · 6748 · 6752
@@ -450,6 +450,8 @@ On the dev server from the stacked branch, in the app's own pane. The functions 
 - **Messages** (PR 5): the tab reads **Messages** and draws the four lines oldest first (the text, Avery's email, the invitation email we sent, the portal line), **About** with the three jobs, the box and *Click answers in office hours. For something urgent on site, call Jordan Reyes.* A line sent waits for the function (the deployed one refuses the kind as a shape it does not know).
 - **The real link**: the dev-made link of *GC test trade company, delete me* (copied from its window's **Their portal**) opens on the deployed function as before, **Messages from Click** and no head, so the page reads an older answer whole.
 - **Word to every trade** (PR 6): on `/gc` the building card *GC test project, delete me* shows the door in its work set; the window names the job, lists no company (none is awarded there) and keeps **Tell companies** dead. One press per awarded company waits for a job with an award.
+
+PR 2's deploy (2026-11-09 00:47Z) put the job head's planned finish on the live answer; `check:edge-drift` on main no longer names `gc-trade-portal`. The head on a real link still waits for a ZZ job with a trade awarded to the test company.
 
 Left for after the deploys: a line from the portal on Messages within a minute, a text back in the portal, a note file in the job's folder, and one press of Word to every trade on a job with awarded companies sending once per company and nothing on a second press.
 
