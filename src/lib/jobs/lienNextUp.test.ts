@@ -4,7 +4,7 @@ import type { LienAffidavitEntry, LienAffidavitPile } from './lienDeskAffidavits
 import type { LienRetainageEntry, LienRetainagePile } from './lienDeskRetainage'
 import type { LetterTwoStatus } from './lienLetterTwo'
 import type { CourtesyStatus } from './lienCourtesyNotice'
-import { buildLienNextUp, groupLienNextUp, lienNextUpCount, lienPrintedDaysWords, type LienNextUpInput } from './lienNextUp'
+import { buildLienNextUp, lienViewerLeadsJob, groupLienNextUp, lienNextUpCount, lienPrintedDaysWords, type LienNextUpInput } from './lienNextUp'
 
 const TODAY = '2026-10-05'
 
@@ -306,6 +306,50 @@ describe('Signed with your code, as recorded (v2.5791)', () => {
     expect(groups[0]!.group).toBe('pen')
     expect(groups[0]!.label).toBe('Signed with your code, as recorded')
     expect(build({ role: 'assistant', notices: [notice('j1', 'ready', { item: code })] }).find((r) => r.jobId === 'j1')!.action).toBe('send')
+  })
+})
+
+describe('another master’s jobs read as the office reads them (v2.6734, punch list #150 residual B)', () => {
+  const master = (id: string) => (id === 'j1' ? 'u-malachi' : id === 'j2' ? 'u-robert' : null)
+  const names = { leaderName: (id: string) => (id === 'j1' ? 'Malachi' : id === 'j2' ? 'Robert' : null) }
+  const submitted = { id: 'i1', status: 'awaiting_approval', submitted_at: '2026-10-04T15:00:00Z' } as unknown as LienDeskEntry['item']
+
+  it('awaiting approval: the dev’s own job and a job with no master say your approval; Malachi’s job waits on Malachi with no button, last on the list and out of the count', () => {
+    const rows = build({ role: 'dev', viewerUserId: 'u-robert', masterUserId: master, ...names, notices: [notice('j1', 'awaiting', { item: submitted }), notice('j2', 'awaiting'), notice('j3', 'awaiting')] })
+    const by = (id: string) => rows.find((r) => r.jobId === id)!
+    expect([by('j1').sub, by('j1').button]).toEqual(['Waiting on Malachi · since Oct 4', null])
+    expect([by('j2').sub, by('j2').button]).toEqual(['Waiting on your approval', 'Approve'])
+    expect([by('j3').sub, by('j3').button]).toEqual(['Waiting on your approval', 'Approve'])
+    const groups = groupLienNextUp(rows, { waitingOn: 'Malachi' })
+    expect(groups.map((g) => [g.label, g.rows.map((r) => r.jobId)])).toEqual([
+      ['Only you can approve', ['j2', 'j3']],
+      ['Waiting on Malachi', ['j1']],
+    ])
+    expect(lienNextUpCount(rows)).toBe(2)
+    // Without a viewer, every leader leads every job, as before.
+    expect(build({ role: 'dev', masterUserId: master, notices: [notice('j1', 'awaiting', { item: submitted })] })[0]!.sub).toBe('Waiting on your approval')
+    expect(lienViewerLeadsJob({ role: 'dev', viewerUserId: 'u-robert', masterUserId: master }, 'j1')).toBe(false)
+    expect(lienViewerLeadsJob({ role: 'dev', viewerUserId: 'u-robert', masterUserId: master }, 'j2')).toBe(true)
+    expect(lienViewerLeadsJob({ role: 'dev', viewerUserId: 'u-robert', masterUserId: master }, null)).toBe(true)
+    expect(lienViewerLeadsJob({ role: 'assistant', viewerUserId: 'u-wendi', masterUserId: master }, 'j2')).toBe(false)
+  })
+
+  it('ready: an unsigned notice on Malachi’s job is the office’s send row that waits on him, not the dev’s Sign row; his unconfirmed code signature there is the send row too', () => {
+    const unsigned = { id: 'i-word', status: 'approved', approval_mode: 'word', fields: {}, signed_at: null } as unknown as LienDeskEntry['item']
+    const code = { id: 'i-code', status: 'approved', approval_mode: 'leader', fields: {}, signed_at: '2026-10-23T19:14:00Z', signer_printed_name: 'Malachi', signer_signature_mode: 'code', signed_on_device_of: 'u-robert', signed_leader_confirmed_at: null } as unknown as LienDeskEntry['item']
+    const rows = build({ role: 'dev', viewerUserId: 'u-robert', masterUserId: master, ...names, notices: [notice('j1', 'ready', { item: unsigned }), notice('j2', 'ready', { item: unsigned, gcCustomerId: 'gc2' })] })
+    const his = rows.find((r) => r.jobId === 'j1')!
+    expect([his.action, his.button, his.sub]).toEqual(['send', 'Send', 'Approved · ready to send · unsigned, waits on Malachi'])
+    const mine = rows.find((r) => r.jobId === 'j2')!
+    expect([mine.action, mine.button, mine.sub]).toEqual(['sign', 'Sign', 'Approved on your word · unsigned'])
+    const codeRow = one({ role: 'dev', viewerUserId: 'u-robert', masterUserId: master, ...names, notices: [notice('j1', 'ready', { item: code })] })
+    expect(codeRow.action).toBe('send')
+    expect(one({ role: 'dev', viewerUserId: 'u-malachi', masterUserId: master, ...names, notices: [notice('j1', 'ready', { item: code })] }).action).toBe('confirm_pen')
+  })
+
+  it('an affidavit or retainage notice on Malachi’s job waits on him by name for the dev too', () => {
+    const rows = build({ role: 'dev', viewerUserId: 'u-robert', masterUserId: () => 'u-malachi', leaderName: () => 'Malachi', affidavits: [affidavit('j5', 'awaiting')], retainage: [retainage('j6', 'awaiting')] })
+    expect(rows.map((r) => [r.sub, r.button]).sort()).toEqual([['Affidavit · waiting on Malachi', null], ['Retainage · waiting on Malachi', null]])
   })
 })
 

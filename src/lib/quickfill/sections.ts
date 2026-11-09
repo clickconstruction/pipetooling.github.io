@@ -32,7 +32,6 @@ export const QUICKFILL_SECTIONS: { id: string; sectionId: string; label: string 
   { id: 'quickfill-cant-reach', sectionId: 'cant-reach', label: 'Unreachable Prospects' },
   { id: 'quickfill-prospects', sectionId: 'prospects', label: 'Prospects' },
   { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
-  { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
   { id: 'quickfill-complete-no-bill', sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' },
   { id: 'quickfill-undated-bills', sectionId: 'undated-bills', label: 'Missing bill dates' },
   { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Missing job info' },
@@ -57,9 +56,12 @@ export type QuickfillSectionMeta = (typeof QUICKFILL_SECTIONS)[number]
 /**
  * Stations folded into another (v2.6098, punch list #178): the old id's marks and history read under the new one, a
  * deep link to the old id lands on the new one, and the old label still names the events the old station left.
+ * Jobs Billing (v2.6750, punch list #176, decision 4): hidden by the org since April, its three checks now sit on
+ * Complete, no Total Bill's rows.
  */
 export const QUICKFILL_RETIRED_SECTIONS: Readonly<Record<string, { label: string; into: string }>> = {
   texts: { label: 'Texts', into: 'messages' },
+  'jobs-billing': { label: 'Jobs Billing', into: 'complete-no-bill' },
 }
 
 /** The station an event or a link means today: a retired id reads as the station it folded into. */
