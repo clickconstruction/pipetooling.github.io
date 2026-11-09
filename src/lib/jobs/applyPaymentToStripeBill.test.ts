@@ -64,4 +64,15 @@ describe('applyToStripeWords', () => {
     expect(customerPaymentTypeWord('other')).toBe('Payment')
     expect(customerPaymentTypeWord(null)).toBe('Payment')
   })
+
+  it('an in-kind row keeps its kind, so the credit line reads Credit applied (v2.6816)', () => {
+    expect(customerPaymentTypeWord('in-kind')).toBe('In kind')
+    const w = applyToStripeWords({
+      row: { amount: 1000, paid_on: '2026-03-03', payment_type: 'In kind', reference_number: null },
+      bill: { amount: 3850 },
+      openAfter: 2850,
+    })
+    expect(w.creditLine).toBe('Credit applied Mar 3 · $1,000.00')
+    expect(w.sentence).not.toMatch(/received/)
+  })
 })

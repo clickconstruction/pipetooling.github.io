@@ -33,7 +33,7 @@ import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
 import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './devMcpAccount.ts'
 import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
-import { isJobVerb, jobInput } from './devMcpJobs.ts'
+import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
@@ -148,6 +148,10 @@ export const WRITE_VERBS = {
   // the service type, the owner rule's settings and the live jobs wearing the name (devMcpJobs.ts).
   plan_job: { rpc: null, step: 'plan' },
   apply_job: { rpc: null, step: 'apply' },
+  // v2.6793 / 0.51.0 (numbered behind v2.6792's 0.50.0, which merged first): a job changed as Edit Job and the Pipeline change it — the form's columns as one PATCH under RLS,
+  // the status through the Pipeline's own update_job_status step by step; rpc is null, the dry run the server's read.
+  plan_job_update: { rpc: null, step: 'plan' },
+  apply_job_update: { rpc: null, step: 'apply' },
   // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
   // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
   // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
@@ -279,7 +283,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   }
   if (isJobVerb(verb)) {
     // v2.6790: the shape check is devMcpJobs'; the dry run is the server's read of the customer and the rest, not an RPC's.
-    const built = jobInput(verb, input)
+    const built = verb === 'plan_job' || verb === 'apply_job' ? jobInput(verb, input) : jobUpdateInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1087,6 +1091,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const personMatter = verb === 'apply_matter_open_person'
   const personDoc = verb === 'apply_person_doc'
   const job = verb === 'apply_job'
+  if (verb === 'apply_job_update') return `Nothing written: this plan was already applied on this job${when}. The job already reads that way; get_job shows it. A plan commits to the columns' before values and the job's updated_at, so a further change needs a new plan from the fresh row.`
   if (verb === 'apply_submittal_rows' || verb === 'apply_submittal_log') return `Nothing written: this plan was already applied on this bid${when}. get_submittals reads it back; a further change needs a new plan from the bid as it stands.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
   // v2.6792: the account verbs' plans commit to the row as it read, so a landed change hashes differently; this answers the odd replay.

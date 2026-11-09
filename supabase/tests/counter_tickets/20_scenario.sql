@@ -33,6 +33,14 @@ INSERT INTO public.mercury_transactions (id, mercury_id, mercury_account_id, amo
   ('00000000-0000-0000-0000-0000002950c2', '00000000-0000-0000-0000-0000002950d2', '00000000-0000-0000-0000-0000002950e1', -163.96, '2026-11-04 17:00+00', 'pending', 'debitCardTransaction', 'The Home Depot',
     jsonb_build_object('details', jsonb_build_object('debitCardInfo', jsonb_build_object('id', 'bbbbbbbb-0000-4000-8000-000000000295'))));
 
+-- A PO code the office made for Jordan at Ridgeway, and one for Sam at another house (migration *_po_code_read_by_its_person).
+INSERT INTO public.supply_houses (id, name) VALUES
+  ('00000000-0000-0000-0000-0000002950f1', 'Ridgeway Supply'),
+  ('00000000-0000-0000-0000-0000002950f2', 'Cedar Bend Hardware');
+INSERT INTO public.material_po_generator_entries (id, po_code, job_ledger_id, for_user_id, supply_house_id, created_by) VALUES
+  ('00000000-0000-0000-0000-0000002950e3', 41207, '00000000-0000-0000-0000-0000002950b1', '00000000-0000-0000-0000-0000002950a3', '00000000-0000-0000-0000-0000002950f1', '00000000-0000-0000-0000-0000002950a2'),
+  ('00000000-0000-0000-0000-0000002950e4', 41208, '00000000-0000-0000-0000-0000002950b2', '00000000-0000-0000-0000-0000002950a4', '00000000-0000-0000-0000-0000002950f2', '00000000-0000-0000-0000-0000002950a2');
+
 CREATE SCHEMA tk;
 GRANT USAGE ON SCHEMA tk TO authenticated;
 CREATE FUNCTION tk.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
@@ -88,8 +96,14 @@ SELECT tk.same('Jordan cannot write the office''s columns', tk.try($$UPDATE publ
 SELECT tk.same('they stay as they were', (SELECT coalesce(used_at::text, 'null') || ' ' || coalesce(paid_other, 'null') FROM public.counter_tickets WHERE id = '00000000-0000-0000-0000-000000295112'), 'null null');
 SELECT tk.same('Jordan reads his two tickets', (SELECT count(*)::text FROM public.counter_tickets), '2');
 
+-- The PO code made for him, and its house by name; never Sam's code or Sam's house.
+SELECT tk.same('Jordan reads the PO code made for him', (SELECT string_agg(po_code::text, ',') FROM public.material_po_generator_entries), '41207');
+SELECT tk.same('Jordan reads the house his code names', (SELECT string_agg(name, ',') FROM public.supply_houses), 'Ridgeway Supply');
+SELECT tk.same('Jordan saves a ticket on his PO code', tk.try($$UPDATE public.counter_tickets SET po_entry_id = '00000000-0000-0000-0000-0000002950e3' WHERE id = '00000000-0000-0000-0000-000000295112'$$), 'ok');
+
 -- Hal, a helper with no ticket: reads nothing.
 SELECT tk.sign_in('00000000-0000-0000-0000-0000002950a5');
+SELECT tk.same('Hal reads no PO code and no house', (SELECT count(*)::text FROM public.material_po_generator_entries) || ' ' || (SELECT count(*)::text FROM public.supply_houses), '0 0');
 SELECT tk.same('Hal reads no ticket and no page', (SELECT count(*)::text FROM public.counter_tickets) || ' ' || (SELECT count(*)::text FROM public.counter_ticket_pages), '0 0');
 SELECT tk.same('Hal cannot add a page to Jordan''s ticket', tk.try($$INSERT INTO public.counter_ticket_pages (ticket_id, by_user_id, storage_path) VALUES ('00000000-0000-0000-0000-000000295112', '00000000-0000-0000-0000-0000002950a5', 'h/t/p.jpg')$$), '42501');
 SELECT tk.same('Hal changes nothing on Jordan''s ticket', tk.try($$UPDATE public.counter_tickets SET note = 'mine now' WHERE id = '00000000-0000-0000-0000-000000295112'$$), 'ok');

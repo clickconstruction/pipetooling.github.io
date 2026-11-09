@@ -118,8 +118,29 @@ describe('readBillAnswer over the made-up set', () => {
     const read = readBillAnswer(answerOf('ridgeway-S1183420'))!
     expect(read).toMatchObject({ houseName: 'Ridgeway Supply', kind: 'invoice', number: 'S1183420', dateYmd: '2026-10-22', poText: '41207', accountRef: 'CLICK PLUMBING', terms: 'Net 30', totalCents: 95228, taxCents: 7258, subtotalCents: 87970 })
     expect(read.lines).toHaveLength(5)
-    expect(read.lines[0]).toEqual({ description: '3/4" Type L copper 20\'', quantity: 12, unitPriceCents: 4810, extendedCents: 57720 })
+    expect(read.lines[0]).toEqual({ description: '3/4" Type L copper 20\'', quantity: 12, unitPriceCents: 4810, extendedCents: 57720, lineKind: 'part', houseCode: '', mfrNumber: '', unit: '', qtyOrdered: null, qtyShipped: null, qtyBackordered: null, unitPrice: 48.1, pricingUnit: 'each' })
     expect(read.lines.reduce((s, l) => s + (l.extendedCents ?? 0), 0) + read.taxCents!).toBe(read.totalCents)
+    expect(read).toMatchObject({ orderNumber: '', freightCents: null })
+  })
+  it("reads the paper's own columns when the answer carries them (punch list #298): the code, the unit, the three quantities, the price whole with its pricing unit, the kind of line", () => {
+    const read = readBillAnswer({
+      document_kind: 'ship_ticket',
+      number: 'S2394388.004',
+      order_number: 'S2394388',
+      freight: '45.00',
+      lines: [
+        { line_kind: 'part', house_code: '48370', mfr_number: '', description: 'PIPE 2X20 PVC DWV', unit: 'FT', quantity: '', qty_ordered: '200', qty_shipped: '120', qty_backordered: '80', unit_price: '0.507', pricing_unit: 'each', extended: '60.84' },
+        { line_kind: 'charge', house_code: '', description: 'FUEL SURCHARGE', unit: '', quantity: '1', unit_price: '12.00', pricing_unit: 'EACH', extended: '12.00' },
+        { line_kind: 'component', house_code: '', description: 'KINGSTON TANK RH', unit: 'EA', quantity: '1', unit_price: '', extended: '' },
+        { line_kind: 'nonsense', house_code: 'C-10', description: '10 BRASS NIPPLE', unit: 'C', quantity: '10', unit_price: '79.31', pricing_unit: 'per_hundred', extended: '7.93' },
+      ],
+    })!
+    expect(read).toMatchObject({ kind: 'ship_ticket', orderNumber: 'S2394388', freightCents: 4500 })
+    expect(read.lines[0]).toMatchObject({ lineKind: 'part', houseCode: '48370', unit: 'FT', quantity: 120, qtyOrdered: 200, qtyShipped: 120, qtyBackordered: 80, unitPrice: 0.507, unitPriceCents: 51, pricingUnit: 'each', extendedCents: 6084 })
+    expect(read.lines[1]).toMatchObject({ lineKind: 'charge', pricingUnit: 'each', unitPrice: 12 })
+    expect(read.lines[2]).toMatchObject({ lineKind: 'component', unitPrice: null, extendedCents: null })
+    expect(read.lines[3]).toMatchObject({ lineKind: 'part', pricingUnit: 'per_hundred', unitPrice: 79.31 })
+    for (const kind of ['acknowledgement', 'quote', 'bid']) expect(readBillAnswer({ document_kind: kind })?.kind).toBe(kind)
   })
   it('the credit memo reads as a credit naming its invoice', () => {
     const read = readBillAnswer(answerOf('ridgeway-CM-20991'))!

@@ -4,9 +4,12 @@
  * in a stage counts in none of the owner's figures. `zzTestJobIds` is the shared id read (`zzTestJobRows.ts` on the
  * page, the service role's own read on the edge); null keeps every row, for a dev whose switch shows them. A row
  * that carries its job's names is dropped by them too, so a ZZ job made since the ids were read still leaves. Pure:
- * `loadBridgeData.ts` and `bill/loadBillDesk.ts` make the reads.
+ * `loadBridgeData.ts` and `bill/loadBillDesk.ts` make the reads, and since v2.6813 so do the Build pace, the people's
+ * reads (`loadBridgeVectors.ts`, `loadVectorDays.ts`), the demand read, the Market and Sales desks and the Collect
+ * scorecard: `bridgeZzJobIds` names the ZZ jobs a read's rows show, and `withoutZzJobKeyedRows` drops the rows keyed to
+ * one. A bid is not a job: the bids and estimates those reads count are not touched here.
  */
-import { withoutZzTestJobMoney, withoutZzTestJobRows } from '../jobs/zzTestJobVisibility'
+import { withoutZzTestJobMoney, withoutZzTestJobRows, zzTestJobIds as zzIdsAmong } from '../jobs/zzTestJobVisibility'
 
 /** The ZZ test jobs to leave out, or null to keep them (a dev whose switch shows them). */
 export type BridgeZzTestJobIds = ReadonlySet<string> | null
@@ -30,11 +33,34 @@ export function bridgeCollections(rows: Array<NamedJobRow & { revenue: number | 
   return { count: kept.length, openUsd: kept.reduce((sum, r) => sum + Math.max(0, Number(r.revenue ?? 0) - Number(r.payments_made ?? 0)), 0) }
 }
 
+/**
+ * Every ZZ test job a read knows: the shared ids, and the jobs its own rows name as ZZ (one made since the ids were
+ * read). Null when the viewer keeps them, so it passes straight on as the next read's `zzTestJobIds`.
+ */
+export function bridgeZzJobIds(namedRows: ReadonlyArray<NamedJobRow>, zzTestJobIds: BridgeZzTestJobIds): BridgeZzTestJobIds {
+  if (!zzTestJobIds) return null
+  const named = zzIdsAmong(namedRows)
+  if (named.size === 0) return zzTestJobIds
+  for (const id of zzTestJobIds) named.add(id)
+  return named
+}
+
+/**
+ * Rows keyed to a job by an id alone (a clock session, a percent point, a report, an activity event, a payment),
+ * without a ZZ test job's. A row on no job stays. The same array when none is dropped.
+ */
+export function withoutZzJobKeyedRows<T>(rows: T[], jobIdOf: (row: T) => string | null | undefined, zzTestJobIds: BridgeZzTestJobIds): T[] {
+  if (!zzTestJobIds || zzTestJobIds.size === 0) return rows
+  const isZz = (r: T) => {
+    const id = jobIdOf(r)
+    return id != null && zzTestJobIds.has(id)
+  }
+  return rows.some(isZz) ? rows.filter((r) => !isZz(r)) : rows
+}
+
 /** Field sessions without the ones clocked on a ZZ test job, so it is no job worked and earns nothing. */
 export function withoutZzFieldSessions<T extends { job_ledger_id: string | null }>(sessions: T[], zzTestJobIds: BridgeZzTestJobIds): T[] {
-  if (!zzTestJobIds || zzTestJobIds.size === 0) return sessions
-  const isZz = (s: T) => s.job_ledger_id != null && zzTestJobIds.has(s.job_ledger_id)
-  return sessions.some(isZz) ? sessions.filter((s) => !isZz(s)) : sessions
+  return withoutZzJobKeyedRows(sessions, (s) => s.job_ledger_id, zzTestJobIds)
 }
 
 /**
