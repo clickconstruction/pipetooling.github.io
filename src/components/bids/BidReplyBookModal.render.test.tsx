@@ -97,8 +97,8 @@ describe('BidReplyBookModal — who is given what', () => {
     expect(screen.getAllByRole('button', { name: /^Delete/ })).toHaveLength(2)
   })
 
-  it('a master, an assistant, a primary and a superintendent copy and post, and change nobody else’s', async () => {
-    for (const role of ['master_technician', 'assistant', 'controller', 'primary', 'superintendent']) {
+  it('an assistant, a controller, a primary and a superintendent copy and post, and change nobody else’s', async () => {
+    for (const role of ['assistant', 'controller', 'primary', 'superintendent']) {
       as({ id: `u-${role}`, role, name: 'Pat Example' })
       renderWithProviders(<BidReplyBookModal book={makeBook()} onClose={onClose} />)
       await settle()
@@ -107,6 +107,16 @@ describe('BidReplyBookModal — who is given what', () => {
       expect(screen.queryByRole('button', { name: /^(Edit|Delete)/ }), role).toBeNull()
       cleanup()
     }
+  })
+
+  it('the owner copies, posts and changes anybody’s reply (punch list #188 row 64)', async () => {
+    as({ id: 'u-owner', role: 'master_technician', name: 'Pat Example' })
+    renderWithProviders(<BidReplyBookModal book={makeBook()} onClose={onClose} />)
+    await settle()
+    expect(screen.getAllByRole('button', { name: /^Copy/ })).toHaveLength(2)
+    expect(screen.getByRole('button', { name: '+ Add a reply' })).toBeTruthy()
+    expect(screen.queryAllByRole('button', { name: /^(Edit|Delete)/ }).length).toBeGreaterThan(0)
+    cleanup()
   })
 
   it('training mode copies and nothing else', async () => {
