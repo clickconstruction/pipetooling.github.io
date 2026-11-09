@@ -9859,6 +9859,7 @@ export type Database = {
           last_mail_at: string | null
           last_read_at: string | null
           person_id: string | null
+          placed_by_app: boolean
           project_id: string | null
           tagged_at: string
           tagged_by: string | null
@@ -9875,6 +9876,7 @@ export type Database = {
           last_mail_at?: string | null
           last_read_at?: string | null
           person_id?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
@@ -9891,6 +9893,7 @@ export type Database = {
           last_mail_at?: string | null
           last_read_at?: string | null
           person_id?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
@@ -9936,6 +9939,32 @@ export type Database = {
           },
           {
             foreignKeyName: "email_tag_threads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_tag_threads_off: {
+        Row: {
+          gmail_thread_id: string
+          untagged_at: string
+          user_id: string
+        }
+        Insert: {
+          gmail_thread_id: string
+          untagged_at?: string
+          user_id: string
+        }
+        Update: {
+          gmail_thread_id?: string
+          untagged_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_tag_threads_off_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -10897,6 +10926,7 @@ export type Database = {
           bid_id: string | null
           bytes: number | null
           checked_at: string
+          counsel_only: boolean
           customer_id: string | null
           drive_file_id: string
           embed_note: string | null
@@ -10905,6 +10935,7 @@ export type Database = {
           folder_kind: string
           indexed_at: string
           jobs_ledger_id: string | null
+          matter_id: string | null
           mime: string
           modified_at: string | null
           name: string
@@ -10914,7 +10945,10 @@ export type Database = {
           pages: number | null
           pages_read: number | null
           path: string
+          person_id: string | null
           search: unknown
+          source: string
+          source_id: string | null
           text: string | null
           text_source: string | null
           text_why: string | null
@@ -10923,6 +10957,7 @@ export type Database = {
           bid_id?: string | null
           bytes?: number | null
           checked_at?: string
+          counsel_only?: boolean
           customer_id?: string | null
           drive_file_id: string
           embed_note?: string | null
@@ -10931,6 +10966,7 @@ export type Database = {
           folder_kind?: string
           indexed_at?: string
           jobs_ledger_id?: string | null
+          matter_id?: string | null
           mime: string
           modified_at?: string | null
           name: string
@@ -10940,7 +10976,10 @@ export type Database = {
           pages?: number | null
           pages_read?: number | null
           path?: string
+          person_id?: string | null
           search?: unknown
+          source?: string
+          source_id?: string | null
           text?: string | null
           text_source?: string | null
           text_why?: string | null
@@ -10949,6 +10988,7 @@ export type Database = {
           bid_id?: string | null
           bytes?: number | null
           checked_at?: string
+          counsel_only?: boolean
           customer_id?: string | null
           drive_file_id?: string
           embed_note?: string | null
@@ -10957,6 +10997,7 @@ export type Database = {
           folder_kind?: string
           indexed_at?: string
           jobs_ledger_id?: string | null
+          matter_id?: string | null
           mime?: string
           modified_at?: string | null
           name?: string
@@ -10966,7 +11007,10 @@ export type Database = {
           pages?: number | null
           pages_read?: number | null
           path?: string
+          person_id?: string | null
           search?: unknown
+          source?: string
+          source_id?: string | null
           text?: string | null
           text_source?: string | null
           text_why?: string | null
@@ -10991,6 +11035,20 @@ export type Database = {
             columns: ["jobs_ledger_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_index_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_index_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -26309,6 +26367,7 @@ export type Database = {
           mailbox: string | null
           office_only: boolean
           optout_line: string | null
+          placed_by_app: boolean
           project_id: string | null
           quick_reply_id: string | null
           quo_id: string | null
@@ -26351,6 +26410,7 @@ export type Database = {
           mailbox?: string | null
           office_only?: boolean
           optout_line?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           quick_reply_id?: string | null
           quo_id?: string | null
@@ -26393,6 +26453,7 @@ export type Database = {
           mailbox?: string | null
           office_only?: boolean
           optout_line?: string | null
+          placed_by_app?: boolean
           project_id?: string | null
           quick_reply_id?: string | null
           quo_id?: string | null
@@ -36655,6 +36716,7 @@ export type Database = {
           login_attached_at: string | null
           my_mail_hidden_labels: string[]
           my_mail_on: boolean
+          my_mail_sent_read_at: string | null
           name: string
           needs_supervision: boolean
           notes: string | null
@@ -36692,6 +36754,7 @@ export type Database = {
           login_attached_at?: string | null
           my_mail_hidden_labels?: string[]
           my_mail_on?: boolean
+          my_mail_sent_read_at?: string | null
           name: string
           needs_supervision?: boolean
           notes?: string | null
@@ -36729,6 +36792,7 @@ export type Database = {
           login_attached_at?: string | null
           my_mail_hidden_labels?: string[]
           my_mail_on?: boolean
+          my_mail_sent_read_at?: string | null
           name?: string
           needs_supervision?: boolean
           notes?: string | null
@@ -39555,6 +39619,35 @@ export type Database = {
           text: string
         }[]
       }
+      file_index_records_drop_gone: { Args: never; Returns: number }
+      file_index_records_due: {
+        Args: {
+          max_rows?: number
+          p_matter_id?: string
+          p_person_id?: string
+          retry_after?: string
+        }
+        Returns: {
+          bucket: string
+          bytes: number
+          counsel_only: boolean
+          drive_file_id: string
+          held: boolean
+          matter_id: string
+          mime: string
+          modified_at: string
+          name: string
+          path: string
+          person_id: string
+          record_day: string
+          record_id: string
+          record_kind: string
+          record_title: string
+          source: string
+          source_id: string
+          storage_path: string
+        }[]
+      }
       file_license_expiry_notice: {
         Args: { p_from_user_id: string; p_license_id: string; p_link: string }
         Returns: string
@@ -39968,6 +40061,10 @@ export type Database = {
           p_subject: string
         }
         Returns: string
+      }
+      gc_remove_bench_company: {
+        Args: { p_company_id: string }
+        Returns: undefined
       }
       gc_remove_punch_item: { Args: { p_item_id: string }; Returns: undefined }
       gc_retainage_held: { Args: { p_sow_id: string }; Returns: number }
