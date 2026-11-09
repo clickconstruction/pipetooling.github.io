@@ -18,7 +18,7 @@ Status: written 2026-11-09 00:30 UTC (the evening of 2026-11-08 in Austin) by th
    | #7384, #7377 | #263 B and C | `20261108223000_my_email_sent_side`, then `gmail-mine` |
    | #7344 | #285 PR 2 | `20261108220000_case_search_files`, then `dev-mcp`, `file-index-sweep`, `hr-evidence-drive` (PR 1's push and deploys are done) |
    | #7346, #7347, #7348 | #288 PRs 1 to 3 | `20261108210000_shared_documents`, `…230000_matter_document_counsel_only`, `…233000_matter_document_read_by_section`, then `dev-mcp`, `legal-portal` |
-   | #7386 to #7400 | #188 PRs 2 to 10 | `20261109001000` to `20261109006000`, the `dev_gates_*` set, then `paid-job-email`, `import-manual-transactions`, `manage-manual-account` |
+   | #7386 to #7405 | #188 PRs 2 to 14 | done 2026-11-09 by 12:14 UTC: every `dev_gates_*` migration (`20261109001000` to `20261109007000`) in the ledger, `paid-job-email`, `import-manual-transactions` and `manage-manual-account` redeployed (the card's *Where it stands*) |
 
    Every one is stamped above the newest applied version except #7321's below.
 
