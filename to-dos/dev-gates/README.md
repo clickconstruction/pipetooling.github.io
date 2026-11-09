@@ -211,6 +211,15 @@ The gate exists in code and the doc has no line for it (the *In AC* column's *no
 
 A **role** change is verified as the role: View as… the owner's sample account (or the controller's), open the door's link from the Dev doors card, and press the thing. A **confirm** change is verified the same way, plus one press with the wrong word typed. A **gate** row needs no test; the test on `devDoors.ts` fails when its gate text leaves the file.
 
+## The walk (2026-11-08)
+
+On the dev server (port 5188) at PR 14's head, which holds the whole build, as the dev through Settings → View as… and a role's sample account. The database policies were not yet on prod past PR 2, so the walk checked who sees which door, not the saves; it read and wrote nothing.
+
+- **Sample leader (the owner)**: the Settings rail lists Bids & materials, People & teams, Training, Emails & reports, What the team sees, Usage and Data & recovery, and not What everyone sees, Dev doors, Email templates & testing or Digital twins. People & teams shows Find duplicates…, the Task Dispatch and Estimator Inbox groups, Assistant hours visibility, Quick time add, Typed hours, Bulk hours alert, Team review cadence and the bonus share, and no Role visibility or Pay Approved Leaders. Jobs, bills and liens draws five headings and eighteen cards. Data & recovery shows Link jobs to their bids alone. Bids & materials shows the estimate wording, the public terms and the Bid Board value rule, and none of the estimators' blocks. Crew P&L, People → Review, the Bridge, Moneyfill and Templates all open.
+- **Sample assistant**: People & teams shows Additional People and the Accounts pointer alone; Jobs, bills and liens draws the office's eight cards. Crew P&L lands on Reports with *Crew P&L is for the owner — you're on Reports.*; the Bridge and Moneyfill land on the Dashboard.
+- **Sample controller**: Data & recovery shows Draft bills on paid jobs and HCP reconcile, not Link jobs, the backups or ZZ test jobs. Banking's strip shows Stripe and the Ledger.
+- **What the walk caught** (fixed on PR 8 before it merged): a `?product=stripe` link still turned into Mercury → Accounting for the controller, because the staff tabs' address rewrite ran for her too, and the Cost batches tab showed to her though it stays a dev's. Both are put right; the rewrite now runs for the owner alone.
+
 ## Where it stands
 
 Audited 2026-10-26 from the code at `17719c892` and the doc at its 2026-10-24 stamp. PR 2 built the card the same day.
