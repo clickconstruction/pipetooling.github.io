@@ -22,9 +22,13 @@ import {
   sitePaymentEvents,
   siteTeamLaborEvents,
   siteTimelineEndWords,
+  siteTimelineLeftOutJobs,
+  siteTimelineLeftOutReason,
   siteTimelineLeftOutWords,
   siteTimelinePrintHtml,
   siteTimelineScopeWords,
+  siteTimelineStripLines,
+  siteTimelineStripSum,
   siteTimelineValueWords,
   siteValueEventsFromRows,
   tagJob,
@@ -197,6 +201,17 @@ describe('foldSiteChargeEvents', () => {
     const three = foldSiteChargeEvents([labor('Luis', 8), labor('Mateo', 8), labor('Tom', 4)], label)
     expect(three[0]!.label).toBe('JP612 · team labor, 3 people, 20h')
     expect(foldSiteChargeEvents([labor('Luis', 8)], label)[0]!.label).toBe('JP612 · Luis — team labor (8h)')
+  })
+
+  it('the chip’s cost and the chart’s end for one job agree to the cent: the fold keeps the exact sum and the kernel rounds once (v2.6718)', () => {
+    // Two half-cent charges: rounded one by one they lose a cent (1.00 + 1.00); summed and rounded once they keep it (2.01).
+    const jobs: SiteTimelineJob[] = [{ jobId: 'j1', label: 'JP612', charges: [day({ amount: 1.005 }), day({ amount: 1.005 })], payments: [], values: [], revenue: null, fallbackPercent: null, overheadDays: [] }]
+    const model = buildSiteTimeline({ jobs, selected: new Set() })
+    expect(model.chips[0]!.endExpense).toBe(2.01)
+    expect(model.data.endExpense).toBe(2.01)
+    expect(model.data.endExpense).toBe(buildJobChargesTimelineChartData(jobs[0]!.charges, [], null).endExpense)
+    const folded = foldSiteChargeEvents(jobs[0]!.charges, label)
+    expect(folded[0]!.amount).toBeCloseTo(2.01, 10)
   })
 
   it('keeps the undated bucket apart and in front', () => {
@@ -417,11 +432,87 @@ describe('the words', () => {
     const untagged: JobPaymentEvent[] = [{ dateKey: null, amount: 1, label: 'x' }]
     expect(tagJob('j9', untagged)).toEqual([{ dateKey: null, amount: 1, label: 'x', jobId: 'j9' }])
     expect(siteTimelineLeftOutWords(0)).toBeNull()
-    expect(siteTimelineLeftOutWords(1)).toBe('1 job with no dated charge or payment is left out.')
-    expect(siteTimelineLeftOutWords(3)).toBe('3 jobs with no dated charge or payment are left out.')
+    expect(siteTimelineLeftOutWords(1)).toBe('1 job has no dated charge or payment. It is listed under the chart.')
+    expect(siteTimelineLeftOutWords(3)).toBe('3 jobs have no dated charge or payment. They are listed under the chart.')
     const chips = [{ jobId: 'a', label: 'A', endExpense: 0 }, { jobId: 'b', label: 'B', endExpense: 0 }]
     expect(siteTimelineScopeWords({ chips, drawn: new Set(['a', 'b']) })).toBe('all 2 jobs')
     expect(siteTimelineScopeWords({ chips, drawn: new Set(['a']) })).toBe('1 of 2 jobs')
+  })
+})
+
+describe('the ledger strip (v2.6711)', () => {
+  /** A job whose only charges carry no date: a sub sheet and two card lines. Its cost is real and nowhere on the chart. */
+  const undatedOnly: SiteTimelineJob = {
+    jobId: 'j5',
+    label: 'JP617',
+    charges: [
+      { source: 'sub_labor', dateKey: null, amount: 3480, label: 'Reyes Excavating — sub labor', jobId: 'j5', who: 'Reyes Excavating' },
+      { source: 'mercury_card', dateKey: null, amount: 100.1, label: 'Lowe’s', jobId: 'j5' },
+      { source: 'mercury_card', dateKey: null, amount: 0.2, label: 'Lowe’s', jobId: 'j5' },
+    ],
+    payments: [],
+    values: [],
+    revenue: null,
+    fallbackPercent: null,
+    overheadDays: [],
+  }
+  const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  it('lists the left-out jobs in the order given with their cost and the undated charges by source; a job with no event is $0', () => {
+    const jobs = [...jobsOf(), undatedOnly]
+    const left = siteTimelineLeftOutJobs(jobs)
+    expect(left.map((j) => j.jobId)).toEqual(['j3', 'j4', 'j5'])
+    expect(left[0]).toEqual({ jobId: 'j3', label: 'JP953', endExpense: 0, undated: [] })
+    expect(left[2]).toEqual({ jobId: 'j5', label: 'JP617', endExpense: 3580.3, undated: [{ source: 'sub_labor', count: 1 }, { source: 'mercury_card', count: 2 }] })
+    expect(buildSiteTimeline({ jobs, selected: new Set() }).leftOutJobs).toEqual(left)
+  })
+
+  it('the reason names the undated charges by source, singular and plural, or says nothing was charged', () => {
+    expect(siteTimelineLeftOutReason({ undated: [] })).toBe('nothing charged yet')
+    expect(siteTimelineLeftOutReason({ undated: [{ source: 'sub_labor', count: 1 }] })).toBe('1 sub labor sheet with no date · date it and the job joins the chart')
+    expect(siteTimelineLeftOutReason({ undated: [{ source: 'sub_labor', count: 1 }, { source: 'mercury_card', count: 2 }] })).toBe('1 sub labor sheet and 2 card charges with no date · date them and the job joins the chart')
+    expect(siteTimelineLeftOutReason({ undated: [{ source: 'supply_house', count: 2 }, { source: 'tally_part', count: 1 }, { source: 'billed_material', count: 3 }] })).toBe(
+      '2 supply house invoices, 1 tally part and 3 other job charges with no date · date them and the job joins the chart',
+    )
+    expect(siteTimelineLeftOutReason({ undated: [{ source: 'fuel', count: 1 }, { source: 'team_labor', count: 2 }] })).toBe('1 fuel charge and 2 team labor days with no date · date them and the job joins the chart')
+  })
+
+  it('the sum: the chart’s end plus the left-out cost is the jobs’ Costs column total plus the clock, the Scoreboard’s cost before overhead', () => {
+    const jobs = [...jobsOf(), undatedOnly]
+    const model = buildSiteTimeline({ jobs, selected: new Set() })
+    const sumLine = siteTimelineStripSum(model)
+    expect(sumLine.chartEnd).toBe(model.data.endExpense)
+    expect(sumLine.offChart).toBe(3580.3)
+    const costs = jobCostsFromRows(ROWS)
+    const column = ['j1', 'j2'].reduce((s, id) => s + costs.get(id)!.total, 0) + LABOR.byJobId.get('j1')!.costUsd + sum(undatedOnly.charges)
+    expect(sumLine.together).toBe(Math.round(column * 100) / 100)
+  })
+
+  it('a chip narrowing the chart leaves the strip on the whole site: the sum still reads the site’s end', () => {
+    const jobs = [...jobsOf(), undatedOnly]
+    const whole = buildSiteTimeline({ jobs, selected: new Set() })
+    const narrowed = buildSiteTimeline({ jobs, selected: new Set(['j2']) })
+    expect(narrowed.data.endExpense).toBeLessThan(whole.data.endExpense)
+    expect(narrowed.siteEndExpense).toBe(whole.data.endExpense)
+    expect(siteTimelineStripSum(narrowed)).toEqual(siteTimelineStripSum(whole))
+    expect(narrowed.leftOutJobs).toEqual(whole.leftOutJobs)
+  })
+
+  it('the print’s strip lines: the head, a line per job, the sum line; none when every job is dated', () => {
+    const jobs = [...jobsOf(), undatedOnly]
+    const model = buildSiteTimeline({ jobs, selected: new Set() })
+    const lines = siteTimelineStripLines(model, money)
+    expect(lines).toHaveLength(5)
+    expect(lines[0]).toBe('Not on the chart · 3 jobs with no dated charge or payment')
+    expect(lines[1]).toBe('JP953 · nothing charged yet · $0.00')
+    expect(lines[3]).toBe('JP617 · 1 sub labor sheet and 2 card charges with no date · date them and the job joins the chart · $3,580.30')
+    expect(lines[4]).toBe(`Chart ends at ${money(model.data.endExpense)} · Not on the chart $3,580.30 · Together ${money(model.data.endExpense + 3580.3)}, the Scoreboard’s cost before overhead`)
+    expect(siteTimelineStripLines(buildSiteTimeline({ jobs: jobs.filter(siteJobHasDatedEvent), selected: new Set() }), money)).toEqual([])
+    const html = siteTimelinePrintHtml({ siteName: 'Harlow Ranch', customerName: null, scopeLine: 'All 2 jobs on one chart.', endWords: [], keyLines: ['Red = cost to date'], svg: '<svg/>', printedAt: 'Nov 8, 2026, 10:00 AM', printedBy: null, stripLines: lines })
+    expect(html).toContain('<div class="strip"><p class="head">Not on the chart · 3 jobs with no dated charge or payment</p><p>JP953 · nothing charged yet · $0.00</p>')
+    expect(html.indexOf('class="key"')).toBeLessThan(html.indexOf('class="strip"'))
+    expect(html.indexOf('class="strip"')).toBeLessThan(html.indexOf('class="stamp"'))
+    expect(siteTimelinePrintHtml({ siteName: 'Harlow Ranch', customerName: null, scopeLine: '', endWords: [], keyLines: [], svg: '<svg/>', printedAt: '', printedBy: null })).not.toContain('class="strip"')
   })
 })
 

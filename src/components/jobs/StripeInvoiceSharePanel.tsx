@@ -1,11 +1,30 @@
+/**
+ * The share row under a sent Stripe bill: Copy link, Text, Email and the pay code, drawn on the Job window's Bills tab
+ * (`JobFormInvoiceList`), in View bill (`HostedStripeBillPanel`) and after Bill Customer makes a Stripe bill
+ * (`SendRecordInvoiceModal`). Since punch list #125 PR 6 (v2.6710) the two sends go through the company when the caller
+ * hands the job and its customer (`jobId`, `customerId`): **Email** shows the draft and its **Send the email** sends it
+ * from the office through `messages-email` (`billShareDoors.ts` picks the address), and **Text** opens the customer's box
+ * on Text (`ContractTextDoor`, PR 5's door) with the bill's words and pay link filled, the box's send window the confirm.
+ * Neither hands the words to the person's own phone or mail app any more. A caller that hands no job keeps the copy-only
+ * drafts.
+ */
 import type { CSSProperties } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { firstName, type Contact } from '../../lib/contacts/kernel'
+import { BILL_EMAIL_SEND_LABEL, BILL_EMAIL_SENDING_LABEL, BILL_TEXT_DOOR_TITLE, billEmailChannel, billEmailSentWords, billShareDoorsOffered, noEmailOnContactWords } from '../../lib/jobs/billShareDoors'
+import { signatureLines } from '../../lib/messages/compose'
+import { jobBoxJobKey, jobBoxJobName } from '../../lib/messages/jobBox'
+import { loadCustomerContact } from '../../lib/messages/messagesIo'
+import { replyCompany } from '../../lib/messages/replyBox'
+import { supabaseReplyIo, type ReplyIo } from '../../lib/messages/replyIo'
 import {
   buildStripeInvoiceEmailBody,
   buildStripeInvoiceEmailSubject,
   buildStripeInvoiceSmsText,
 } from '../../lib/stripeInvoiceShareCopy'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { ContractTextDoor } from './ContractTextDoor'
 import { EmailBillDraftModal } from './EmailBillDraftModal'
 import { SmsBillDraftModal } from './SmsBillDraftModal'
 import { BillQrModal } from './BillQrModal'
@@ -25,7 +44,7 @@ export type StripeInvoiceSharePanelProps = {
   omitCustomerPayPage?: boolean
   /** When true, hide “Open in Stripe” (e.g. shown in modal header). */
   omitOpenInStripe?: boolean
-  /** Label for the mailto button (default “Send email…”). */
+  /** Label for the Email press (default “Send email…”). */
   emailButtonLabel?: string
   /**
    * When true, copy link / SMS / email are icon buttons after “Payment Links:”
@@ -61,6 +80,19 @@ export type StripeInvoiceSharePanelProps = {
   billLabel?: string
   /** What is still owed, for the code's modal ("$4,660.00"); defaults to `amountLabel`. */
   remainingLabel?: string
+  /**
+   * The doors through the company (punch list #125 PR 6, v2.6710): with the job and its customer, Email sends from the
+   * office and Text opens the customer's box. Either left out, the row keeps the copy-only drafts.
+   */
+  jobId?: string | null
+  customerId?: string | null
+  /** The job's status, for the box's quick replies (v2.5629). */
+  jobStatus?: string | null
+  /** A send went: the caller reads again where it has a read. */
+  onSent?: () => void
+  /** For a smoke: the customer's contact and the sends. */
+  load?: (customerId: string) => Promise<Contact>
+  io?: ReplyIo
 }
 
 function shareCopyFromProps(p: StripeInvoiceSharePanelProps) {
@@ -86,13 +118,23 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const { showToast } = useToastContext()
   const [smsDraftOpen, setSmsDraftOpen] = useState(false)
   const [smsDraftText, setSmsDraftText] = useState('')
+  const [textDoorOpen, setTextDoorOpen] = useState(false)
   const [emailDraftOpen, setEmailDraftOpen] = useState(false)
   const [emailDraftSubject, setEmailDraftSubject] = useState('')
   const [emailDraftBody, setEmailDraftBody] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
   const emailLabel = (p.emailButtonLabel ?? 'Send email…').trim() || 'Send email…'
+  /** The doors through the company: the job and its customer at hand. */
+  const doors = billShareDoorsOffered(p)
+  const load = p.load ?? loadCustomerContact
+  const url = p.hostedInvoiceUrl.trim()
 
   function openSmsBillDraft() {
+    if (doors) {
+      setTextDoorOpen(true)
+      return
+    }
     setSmsDraftText(buildStripeInvoiceSmsText(shareCopyFromProps(p)))
     setSmsDraftOpen(true)
   }
@@ -103,13 +145,49 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
     setEmailDraftOpen(true)
   }
 
-  function openMailtoWithDraft() {
-    const to = encodeURIComponent((p.customerEmail ?? '').trim())
-    const subject = encodeURIComponent(buildStripeInvoiceEmailSubject(p.jobName))
-    const body = encodeURIComponent(buildStripeInvoiceEmailBody(shareCopyFromProps(p)))
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`
+  /**
+   * Send the email (#125 PR 6): the draft's subject and words go through `messages-email` to the customer's email on
+   * their contact, tied to the job, signed as the sender signs in the reply box; the function sets the office's box as
+   * Reply-To and files the sent copy. The draft window showed the words, so its press is the confirm. A refusal reads
+   * its reason; nothing goes to a `mailto:`.
+   */
+  async function sendBillEmail() {
+    if (!doors || emailSending) return
+    const jobId = (p.jobId ?? '').trim()
+    const customerId = (p.customerId ?? '').trim()
+    setEmailSending(true)
+    try {
+      const contact = await load(customerId)
+      const channel = billEmailChannel(contact, p.customerEmail)
+      if (!channel) throw new Error(noEmailOnContactWords(firstName(contact) || contact.name))
+      const io = p.io ?? supabaseReplyIo()
+      const jobKey = jobBoxJobKey(jobId)
+      const sender = await io.loadSender()
+      await io.sendEmail({
+        contactId: contact.id,
+        channelId: channel.id,
+        jobKey,
+        draft: { subject: emailDraftSubject, body: emailDraftBody, signature: signatureLines(sender, replyCompany(jobKey)) },
+      })
+      showToast(billEmailSentWords(channel.value), 'success')
+      setEmailDraftOpen(false)
+      p.onSent?.()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The email was not sent.'), 'error')
+    } finally {
+      setEmailSending(false)
+    }
   }
-  const url = p.hostedInvoiceUrl.trim()
+
+  // The text door's overlay closes on Escape, as the drafts do.
+  useEffect(() => {
+    if (!textDoorOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setTextDoorOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [textDoorOpen])
   const dashUrl = `https://dashboard.stripe.com/invoices/${encodeURIComponent(p.stripeInvoiceId.trim())}`
   const pad = p.compact ? '0.35rem' : '0.5rem'
   const btnStyle: CSSProperties = {
@@ -322,10 +400,49 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         subject={emailDraftSubject}
         body={emailDraftBody}
         overlayZIndex={emailZ}
-        showOpenInEmailApp={hasEmail}
-        onOpenMailto={openMailtoWithDraft}
+        onSend={doors ? () => void sendBillEmail() : undefined}
+        sending={emailSending}
+        sendLabel={BILL_EMAIL_SEND_LABEL}
+        sendingLabel={BILL_EMAIL_SENDING_LABEL}
         onCopy={() => void copyText(emailCopyText, showToast, 'Email draft copied')}
       />
+      {doors && textDoorOpen ? (
+        <div
+          role="presentation"
+          data-testid="bill-text-door-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: smsZ,
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
+          }}
+          onClick={() => setTextDoorOpen(false)}
+        >
+          <div role="dialog" aria-modal="true" aria-label={BILL_TEXT_DOOR_TITLE} style={{ width: '100%', maxWidth: 560, maxHeight: '100%', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <ContractTextDoor
+              title={BILL_TEXT_DOOR_TITLE}
+              jobId={(p.jobId ?? '').trim()}
+              jobName={jobBoxJobName({ job_name: p.jobName, hcp_number: p.hcpNumber })}
+              jobStatus={p.jobStatus ?? null}
+              customerId={(p.customerId ?? '').trim()}
+              typedPhone=""
+              words={buildStripeInvoiceSmsText(shareCopyFromProps(p))}
+              onClose={() => setTextDoorOpen(false)}
+              onSent={() => {
+                setTextDoorOpen(false)
+                p.onSent?.()
+              }}
+              onCopyLink={() => void copyText(url, showToast, 'Payment link copied')}
+              load={p.load}
+              io={p.io}
+            />
+          </div>
+        </div>
+      ) : null}
       {p.invoiceId ? (
         <BillQrModal
           open={qrOpen}

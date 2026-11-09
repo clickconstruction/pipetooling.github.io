@@ -12,3 +12,5 @@
 **Apply**: `supabase db push` from a clean checkout of `main` after this merges, with PR 2's two migrations if they are not yet pushed (the read joins `job_budgets.planned_finish`). The Scoreboard tab and the superintendent's card call the function and read a refusal as their own words until then.
 
 **Check**: `select pronargs, prosecdef from pg_proc where proname = 'superintendent_scores'` reads one row, 3 and true; `select value_text from app_settings where key = 'superintendent_bonus_v1'` reads the JSON.
+
+**Applied** to prod by 2026-11-08, read the same day through the dev seat's `check_migration_ledger`: 1166 versions applied against the 1166 files on `main`, this one among them (`npm run check:migration-drift` could not reach the database from this worktree — the IPv6-only path — so the ledger was the read).

@@ -2,7 +2,7 @@
 title: turn on reading the bids inbox
 category: Office
 roles: dev, master_technician
-keywords: bids inbox, bids@, read bids, email, gmail, reader, switch, phone and texts, settings, in clicktooling, label, messages, teammate, our team, copy the box, cc, notice, newsletter, left out, invitation to bid, bid it
+keywords: bids inbox, bids@, read bids, email, gmail, reader, switch, phone and texts, settings, in clicktooling, label, messages, teammate, our team, copy the box, cc, notice, newsletter, left out, invitation to bid, bid it, sent, sent folder, apple mail, answered from the inbox
 where: /settings?tab=settings-phone-texts#settings-phone-texts-read-bids
 order: 117
 ---
@@ -32,12 +32,24 @@ A teammate who emails a customer can copy the inbox. That email then lands on th
 Rosa emails Elena about Thursday and copies team@. Elena's thread shows *Rosa Diaz to Elena Marchetti · copied to team@*.
 :::
 
+## An email sent from the inbox
+
+The app reads what each inbox sends too. Answer a customer from bids@ in Apple Mail or in Gmail. The answer lands on the customer's thread as ours within a minute. The line carries the name the inbox signs with. Their move becomes the next one, and Went out lists the email.
+
+The name on the line is the name your mail app puts on the From. Set it to your own name and the line is yours.
+
+An email sent from the inbox to a teammate only stays in Gmail with no label. An email the app sent from the inbox is already on the thread. It gets the label and nothing more.
+
+:::example An estimator answers from the inbox
+Wendi answers Rusty from bids@ in Apple Mail. A minute later his thread shows *Wendi Doll to Rusty Cottar · sent from bids@*. The thread reads *Their move*.
+:::
+
 ## What it never does
 
 - The app never deletes, moves or archives an email.
 - The app never marks an email read.
 - A newsletter stays in Gmail with no label. The app knows one by its headers, or by the unsubscribe line at its foot.
-- An email the inbox sent itself, or the app sent, stays in Gmail with no label.
+- A draft stays in Gmail with no label. So does an email sent only to the team.
 
 ## A sender you marked a notice
 

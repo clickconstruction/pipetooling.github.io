@@ -76,7 +76,7 @@ The crews' photos draw lines too, at the time they were taken. Photos on one job
 2. Type a name, a number or a word into the search box, marked with a spyglass, to find a line.
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.
 
-A long line shows its first words and a **more** press. Press it and the whole line opens in a window.
+A long line shows its first words and a **more** press. Press it and the whole line opens in a window. The window reads the rest as it opens. A search reads every long line whole.
 
 Three or more like lines on one day fold into one line with the count. Like means the same act on the same record by the same person. Questions, answers and kept entries never fold. A search sees every line.
 
@@ -172,7 +172,7 @@ The red line is the cost to date. Every job's charges sit on it in date order. E
 
 Rest the pointer on a step to read its lines. Each line names the job and the kind of charge for that day. Three card charges on one job read as one line.
 
-Press a job's chip above the chart to narrow the chart to that job. Press more chips to add jobs. Press {{button:outline|All jobs}} to see the whole site again. A job with no dated charge or payment is not a chip. One line counts how many were left out.
+Press a job's chip above the chart to narrow the chart to that job. Press more chips to add jobs. Press {{button:outline|All jobs}} to see the whole site again. A job with no dated charge or payment is not a chip. It is listed under the chart with its cost and why it is off the chart. Press the job's name to open it. The last line adds the chart's end and the list. That sum is the Scoreboard's cost before overhead.
 
 Tick {{button:outline|Value created (right axis)}} to see the blue line. The blue line is each job's percent done times its price, added up over the site. The line steps on every field report and every hand set percent. A job with no dated percent adds its current percent at the end of the line.
 

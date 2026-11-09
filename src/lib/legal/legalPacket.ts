@@ -52,6 +52,7 @@ import { claimSettlementOnly, claimTyped, type LegalClaimLineLike } from './lega
 import { agreementCountsForSuit, signedAgreementBasis, theirPaperGapWords, theirPaperNotCounting } from './legalContractBasis'
 import { theirPaperTermLine } from '../jobs/theirPaper'
 import type { LegalMatterPersonLike } from './legalMatterPeople'
+import type { LegalProceedingLike } from './legalProceedings'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -279,6 +280,8 @@ export type LegalPacketInput = {
   claimLines?: ReadonlyArray<LegalClaimLineLike>
   /** The people on the matter (v2.6705, punch list #174), from `legal_matter_people`: who the letters pick from. Absent on an older caller, or while the account has no matter: none. */
   people?: ReadonlyArray<LegalMatterPersonLike>
+  /** The proceedings beside the claim (v2.6726, punch list #174), from `legal_matter_proceedings`: an agency complaint, a records request, each with its documents and its keep-out hold. Absent on an older caller, or while the account has no matter: none. */
+  proceedings?: ReadonlyArray<LegalProceedingLike>
   /** Promise details (who said it, how) — list_job_payment_promises. */
   promises: ReadonlyArray<PaymentPromise>
   /** Promise outcomes (kept / late / broken / open) — classifyPromises over list_payment_promise_records. */
@@ -623,6 +626,8 @@ export type LegalPacket = {
   theory: LegalTheory
   /** The people on the matter (v2.6705, punch list #174), in the order added; [] on an older caller or an account with no matter. */
   people: LegalMatterPersonLike[]
+  /** The proceedings beside the claim (v2.6726, punch list #174), in the order added; [] on an older caller or an account with no matter. */
+  proceedings: LegalProceedingLike[]
   worth: LegalWorth
   gaps: LegalGap[]
   /** `warns` counts only the unanswered notes (v2.5920); `answered` is every gap with an answer, red ones included. */
@@ -1285,6 +1290,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     feesAndSteps: { steps },
     theory,
     people: [...(input.people ?? [])],
+    proceedings: [...(input.proceedings ?? [])],
     worth,
     gaps,
     readiness: { stops, warns, answered, label: readinessLabel },

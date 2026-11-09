@@ -45,6 +45,11 @@ import { clausePaperPair, type ClauseAdmin } from '../_shared/clausePaper.ts'
  * beyond the visit row: an outside visit stamps the live link's first open (`first_opened_at`) once, never a staff look,
  * a preview or the sample.
  *
+ * Since punch list #205's PR 2 (v2.6729), each chart carries `finish`, the day we plan to finish the job from the same
+ * schedule read (`projectedFinish` through `customerSchedulePicture`), and the slice's `gc` row its `start_date` and
+ * `started_on`, so the job page opens on a head: the start, the planned finish and the days left. Nothing else of the
+ * customer's picture leaves.
+ *
  * Since Messages' cut 4c (v2.5329), a statement of work sent to sign that is built from clauses (`gc_sows.paper_id`)
  * carries its paper on its row as `clause_paper`: the job's clauses, then the exhibit for its package's trade, in English
  * and Spanish at one revision (`_shared/clausePaper.ts`). The page shows it and signs at that revision.
@@ -121,7 +126,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
   const jobRead = readJobWork(admin, awarded)
   const [projectRows, gcRows, scopeItems, exclusions, sets, questions, supers, billDayCutoffDays] = await Promise.all([
     admin.from('projects').select('id, name, address').in('id', projectIds).then(rowsOf),
-    admin.from('gc_projects').select('project_id, stage, bid_due, size_note, lost_on, lost_why, closed_on, project_manager_user_id, created_at').in('project_id', projectIds).then(rowsOf),
+    admin.from('gc_projects').select('project_id, stage, bid_due, size_note, lost_on, lost_why, closed_on, start_date, started_on, project_manager_user_id, created_at').in('project_id', projectIds).then(rowsOf),
     admin.from('gc_scope_items').select('*').in('package_id', packageIds).then(rowsOf),
     admin.from('gc_scope_exclusions').select('*').in('package_id', packageIds).then(rowsOf),
     admin.from('gc_plan_sets').select('id, project_id, rev, label, kind, issued_on, note, drive_url').in('project_id', projectIds).then(rowsOf),

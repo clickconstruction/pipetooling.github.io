@@ -134,6 +134,17 @@ export function offerHeldBlanks(left: readonly string[]): string {
 }
 
 /**
+ * A held row names the number it would go to (punch list #118, the card's call 3): a wrong usual is seen on Today's
+ * sends before a press. The STOP hold names the number that sent it; the other holds add the sentence.
+ */
+export function heldStopped(number: string): string {
+  return `${number} sent STOP. Call instead.`
+}
+export function heldWithNumber(held: string, number: string | null): string {
+  return number ? `${held} It would go to ${number}.` : held
+}
+
+/**
  * Why a due reminder of the app's did not go: its step is not switched on, a text for it already waits on Today's
  * sends, its channel is not a text, the person is snoozed on Follow up, one went inside its days, the number sent STOP
  * or there is none, the person already has a text this morning, or its line still has a blank the run cannot fill.
@@ -309,7 +320,15 @@ export function planNudgeRun(input: NudgeRunInput): NudgeRun {
       else if (mode === 'offer')
         offers.push({
           ...text(`The app prepared the ${def.name} reminder for Today’s sends.`),
-          held: !number?.number ? OFFER_HELD['no number'] : number.optedOut ? OFFER_HELD['opted out'] : emailOnly ? OFFER_HELD['prefers email'] : left.length ? offerHeldBlanks(left) : null,
+          held: !number?.number
+            ? OFFER_HELD['no number']
+            : number.optedOut
+              ? heldStopped(number.number)
+              : emailOnly
+                ? heldWithNumber(OFFER_HELD['prefers email'], number.number)
+                : left.length
+                  ? heldWithNumber(offerHeldBlanks(left), number.number)
+                  : null,
         })
       else if (!number?.number) keep('no number')
       else if (number.optedOut) keep('opted out')

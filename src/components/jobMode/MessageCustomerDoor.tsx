@@ -20,6 +20,8 @@ export interface MessageCustomerDoorProps {
   style?: CSSProperties
   /** After a text or a note went, so the card's Job updates reads it without a reload. */
   onDone?: () => void
+  /** Goes up when another press on the card asks the sheet to open (#125 PR 7: the details section's Message the customer). */
+  openRev?: number
   /** For a smoke. */
   io?: JobModeMessageIo
   today?: string
@@ -27,11 +29,16 @@ export interface MessageCustomerDoorProps {
 
 const dot: CSSProperties = { display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: 'var(--border-orange)' }
 
-export function MessageCustomerDoor({ jobId, jobName, jobAddress, userId, me, style, onDone, io: ioProp, today }: MessageCustomerDoorProps) {
+export function MessageCustomerDoor({ jobId, jobName, jobAddress, userId, me, style, onDone, openRev = 0, io: ioProp, today }: MessageCustomerDoorProps) {
   const io = useMemo(() => ioProp ?? supabaseJobModeMessageIo(), [ioProp])
   const [read, setRead] = useState<{ jobId: string; customer: JobModeCustomer | null; problem: string | null } | null>(null)
   const [open, setOpen] = useState(false)
   const [again, setAgain] = useState(0)
+
+  // Another press asked for the sheet: it opens once the customer is read, as the door's own press would.
+  useEffect(() => {
+    if (openRev > 0) setOpen(true)
+  }, [openRev])
 
   useEffect(() => {
     let live = true

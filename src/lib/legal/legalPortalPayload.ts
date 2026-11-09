@@ -28,6 +28,7 @@ import { feeModelOf, type LegalEntryRow, type LegalFirmRow } from './legalMatter
 import { parseLienBookRaw, type LienBookRaw } from '../jobs/lienTimelineBookAssemble'
 import { parseFirmCoverage, type FirmCoverage } from './legalFirmCoverage'
 import { claimLinesFromRows, type LegalClaimLineRow } from './legalClaimLines'
+import { parseLegalPortalProceedings, type LegalProceedingForFirm } from './legalProceedings'
 
 export type LegalPortalRecipient = { id: string; name: string; email: string; role: string; mode: 'now' | 'digest'; scope: 'all' | 'mine'; digestWeekday: number; digestTime: string; confirmed: boolean; paused: boolean; addedViaPortal: boolean; /** v2.4662: the day emails to this person began failing; null while they go through. */ failingSince: string | null }
 
@@ -56,6 +57,8 @@ export type LegalPortalMatter = {
   themes: LegalPortalTheme[]
   /** The claim's typed lines (v2.6696, punch list #171): materials, damages, interest, fees, other, as the desk stores them; [] from an older function. */
   claimLines: LegalClaimLineRow[]
+  /** The proceedings beside the claim (v2.6726, punch list #174): kind, name, agency, reference, the contact's name and role, status, the documents that travelled, keep out; [] from an older function. */
+  proceedings: LegalProceedingForFirm[]
   jobs: Array<JobWithDetails & { collections_by_name?: string | null }>
   customer: LegalCustomerLike
   contacts: LegalContactLike[]
@@ -172,6 +175,7 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       documents: parseLegalPortalDocuments(m.documents),
       themes: parseLegalPortalThemes(m.themes),
       claimLines: parseLegalPortalClaimLines(m.claimLines),
+      proceedings: parseLegalPortalProceedings(m.proceedings),
       heldDocumentCount: typeof m.heldDocumentCount === 'number' && Number.isFinite(m.heldDocumentCount) && m.heldDocumentCount > 0 ? Math.floor(m.heldDocumentCount) : 0,
       narrative: parseLegalNarrative(m.narrative),
       gapAnswers: Array.isArray(m.gapAnswers)

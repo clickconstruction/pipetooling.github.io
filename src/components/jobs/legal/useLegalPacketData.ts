@@ -29,6 +29,7 @@ import type { LegalGapAnswerLike } from '../../../lib/legal/legalGapAnswers'
 import { claimLinesFromRows, type LegalClaimLineLike, type LegalClaimLineRow } from '../../../lib/legal/legalClaimLines'
 import { peopleFromRows, type LegalMatterPersonLike, type LegalMatterPersonRow } from '../../../lib/legal/legalMatterPeople'
 import { MATTER_PEOPLE_SELECT } from '../../../lib/legal/legalMatterPeopleIo'
+import { proceedingsFromRows, type LegalMatterProceedingRow, type LegalProceedingLike } from '../../../lib/legal/legalProceedings'
 import { buildHoursStatement, type HoursStatementInput } from '../../../lib/people/hoursStatement'
 
 /**
@@ -61,6 +62,8 @@ const db = supabase as unknown as SupabaseClient
 
 /** PostgREST caps a plain select at 1,000 rows; Collections accounts sit far under it, and the cap is named here so a runaway one is a known shape. */
 const ROW_CAP = 1000
+/** `legal_matter_proceedings` as the desk reads it (v2.6726): the office's note included, which the firm never gets. */
+const MATTER_PROCEEDINGS_SELECT = 'id, kind, title, agency, reference, person_id, status, status_on, note, document_ids, keep_out, added_at'
 /** An embedded `users(name)`, as PostgREST hands it back: one row, or a one-row list on an older client. */
 function nameOf(v: { name: string | null } | Array<{ name: string | null }> | null | undefined): string | null {
   const one = Array.isArray(v) ? v[0] : v
@@ -257,6 +260,15 @@ export function useLegalPacketData(
         )) ?? []
         return peopleFromRows(rows)
       }, [])
+      // v2.6726 (punch list #174): the proceedings beside the claim, live rows only, for the list and the keep-out hold.
+      const proceedings = await src<LegalProceedingLike[]>('proceedings beside the claim', async () => {
+        if (!matterId) return []
+        const rows = (await withSupabaseRetry<LegalMatterProceedingRow[]>(
+          () => db.from('legal_matter_proceedings').select(MATTER_PROCEEDINGS_SELECT).eq('matter_id', matterId).is('removed_at', null).order('added_at').limit(ROW_CAP),
+          'load the proceedings beside the claim',
+        )) ?? []
+        return proceedingsFromRows(rows)
+      }, [])
       // v2.6413 (punch list #212 PR 4): the signed hours statements on the jobs, and the app's first clock day for the gap jobs.
       // The statements' policy is a dev's and the controller's (v2.6450); anyone else reads none, and the tab says so by showing none.
       const [hoursStatements, firstRecordedDay, sheetSubs] = await Promise.all([
@@ -356,6 +368,7 @@ export function useLegalPacketData(
           gapAnswers,
           claimLines,
           people,
+          proceedings,
         }),
       )
       setFailed(failures)

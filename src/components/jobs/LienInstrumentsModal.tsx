@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import type { PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
 import { ActionPhaseButton } from '../ActionPhaseButton'
@@ -72,7 +72,7 @@ import { supabase } from '../../lib/supabase'
 import LegalLetterRecipients from './legal/LegalLetterRecipients'
 import { payerForJob } from '../../lib/legal/legalPacket'
 import { loadMatterPeopleForPayer } from '../../lib/legal/legalMatterPeopleIo'
-import type { LegalMatterPersonLike } from '../../lib/legal/legalMatterPeople'
+import { letterCopies, type LegalMatterPersonLike } from '../../lib/legal/legalMatterPeople'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -553,6 +553,10 @@ export default function LienInstrumentsModal({
   // v2.6705 (punch list #174): the people on the payer's matter, for the letter's To — read when the window opens on a
   // job whose payer has a matter; nothing (and no strip) otherwise.
   const [matterPeople, setMatterPeople] = useState<LegalMatterPersonLike[]>([])
+  // v2.6741: the prefill rebuild reads the people through a ref, so the letter's first copies come from whichever lands
+  // first — the people or the prefill — without the rebuild re-running on every people read.
+  const matterPeopleRef = useRef(matterPeople)
+  matterPeopleRef.current = matterPeople
   useEffect(() => {
     if (!open || !effJob) {
       setMatterPeople([])
@@ -560,7 +564,13 @@ export default function LienInstrumentsModal({
     }
     let live = true
     loadMatterPeopleForPayer(supabase, payerForJob(effJob).key)
-      .then((found) => live && setMatterPeople(found?.people ?? []))
+      .then((found) => {
+        if (!live) return
+        const people = found?.people ?? []
+        setMatterPeople(people)
+        // The letter's Copies to line starts with every copy on the matter; a letter already holding a pick keeps it.
+        setFields((prev) => (prev && prev.copies === undefined ? { ...prev, copies: letterCopies(people) } : prev))
+      })
       .catch(() => live && setMatterPeople([]))
     return () => {
       live = false
@@ -608,10 +618,12 @@ export default function LienInstrumentsModal({
       withDoc.forEach((st, i) => enclosures.push({ label: labels.invoices[i]!, kind: 'invoice', title: exhibitATitle(st.invoiceNumber, st.sentYmd), pages: 0 }))
       if (signedAgreement && includeAgreement) enclosures.push({ label: labels.agreement, kind: 'agreement', title: signedAgreement.title, pages: 0 })
       if (includeDeliveryRecord) enclosures.push({ label: labels.delivery, kind: 'delivery', title: 'Delivery record', pages: 0 })
-      const nextWithExhibits = { ...next, enclosures }
+      const nextWithExhibits = { ...next, enclosures, copies: letterCopies(matterPeopleRef.current) }
       if (!prev) return nextWithExhibits
       return {
         ...nextWithExhibits,
+        // v2.6741: the copies the office picked stay through a rebuild.
+        copies: prev.copies ?? nextWithExhibits.copies,
         recipientAddress: addressTouched && prev.recipientAddress.trim() ? prev.recipientAddress : next.recipientAddress,
         deadlineDate: prev.deadlineDate || next.deadlineDate,
         paymentMethod: prev.paymentMethod,
@@ -1313,6 +1325,11 @@ export default function LienInstrumentsModal({
             <LegalLetterRecipients
               people={matterPeople}
               pickedName={fields.recipientName}
+              copies={new Set((fields.copies ?? []).map((c) => c.personId))}
+              onToggleCopy={(p) => {
+                const current = fields.copies ?? letterCopies(matterPeople)
+                setField('copies', current.some((c) => c.personId === p.id) ? current.filter((c) => c.personId !== p.id) : [...current, ...letterCopies([p])])
+              }}
               onPick={(p) => {
                 setField('recipientName', p.name)
                 setField('recipientEmail', p.email)

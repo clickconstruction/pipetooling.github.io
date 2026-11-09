@@ -2,7 +2,7 @@
 title: see where a job you bid stands on money
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator, primary
-keywords: estimator, won bid, job, money, open, billed, paid, promise, they said, they say they paid, write down their word, check in the mail, pay page, bill, customer, text, email, speech bubble, account manager, money lens, chase list, trail, dashboard
+keywords: estimator, won bid, signed estimate, red E, E chip, job, money, open, billed, paid, promise, they said, they say they paid, write down their word, check in the mail, pay page, bill, customer, text, email, speech bubble, account manager, money lens, chase list, trail, dashboard
 where: /bids
 order: 67
 ---
@@ -40,7 +40,11 @@ The speech bubble on the line opens the customer's door. Pick **Call**, **Text**
 
 ## Who sees the line
 
-The line shows for the job's people. That is the office, the job's account manager, and the estimator or account manager of the bid. When you open a job from your won bid, the app makes you its account manager. The office can change that on the job.
+The line shows for the job's people. That is the office, the job's account manager, and the estimator or account manager of the bid. The estimator who wrote a signed estimate counts too, when the job was made from that estimate. When you open a job from your won bid, the app makes you its account manager. The office can change that on the job.
+
+## The red E beside a name
+
+Wherever the office sees a job's people, the estimator who wrote its estimate wears a small red {{chip:red|E}}. You see it on the people line over Job activity and in the Assigned Team on the job's window. The chip also shows in **Everyone on the job** from the Pipeline's crew line. The estimator is listed there even when the office never put them on the team. Press the E and the estimate opens.
 
 ## Write down their word
 
@@ -49,7 +53,7 @@ Press {{button:outline|Write down their word}} on the line. A sheet opens with a
 - **They'll pay by…** is for a day the customer named. Pick the day, who said it and how, then press {{button:green|Save promise}}.
 - **They say they paid…** is for a customer who says the money is on its way. Pick how they paid, the day they name and who said it. Leave the amount blank when they paid all of it. Then press {{button:green|Write it down}}.
 
-The same press sits under the customer's own lines in [Messages](/messages). The word shows on the line and in the job's activity. The job stays billed until the money lands. The office pairs the word with the deposit. A wrong entry comes off with **Never said that** under the sheet.
+The same press sits under the customer's own lines in [Messages](/messages). The word shows on the line and in the job's activity. The office sees it on the Pipeline too, as **They say paid** on the job's Billed row. The job stays billed until the money lands. The office pairs the word with the deposit. A wrong entry comes off with **Never said that** under the sheet.
 
 When a week passes after the day they named and nothing lands, the word comes back to you. The line turns amber and says **nothing landed in 9 days**. Your [Dashboard](/dashboard) shows it under Needs you. Ask the customer before the office chases.
 

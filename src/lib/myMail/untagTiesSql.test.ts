@@ -32,9 +32,9 @@ describe('the untag and ties migration', () => {
     // The untag marks the row first, the follow passes a marked row by, and a tag clears the mark.
     expect(FUNCTION).toContain("update({ untagging_at: nowIso() })")
     expect(FUNCTION).toContain(".is('untagging_at', null)")
-    expect(FUNCTION).toContain('untagging_at: null, tied_line_ids: withTies(record?.tied, ties)')
+    expect(FUNCTION).toContain('untagging_at: null, placed_by_app: false, tied_line_ids: withTies(record?.tied, ties)')
     // The tag and the untag read the record, and the follow adds to it.
-    expect(FUNCTION).toContain("const TAG_ROW_COLUMNS = 'id, bid_id, project_id, jobs_ledger_id, tagged_by, tied_line_ids'")
+    expect(FUNCTION).toContain("const TAG_ROW_COLUMNS = 'id, bid_id, project_id, jobs_ledger_id, person_id, tagged_by, tied_line_ids, placed_by_app'")
     expect(FUNCTION).toContain('update({ tied_line_ids: withTies(live.tied_line_ids, ids) })')
   })
 })

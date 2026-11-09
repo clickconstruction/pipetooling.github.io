@@ -2,7 +2,7 @@
 name: "The To chip: pick the number, the address and the person a send goes to, and remember the pick"
 number: 118
 group: waiting
-status: BUILDING 2026-11-08 on the owner's word, which stood in for Grace's look (built as drawn) — PR 1 v2.6699 (the usual number `contact_channels.usual_at`, the rule, the To chip on the send window, Who is this? asks; migration `20261108170919_contact_channel_usual.sql`, pushed right after the merge, then `messages-nudge-dispatch` redeployed); PRs 2 to 4 not built
+status: BUILDING 2026-11-08 on the owner's word, which stood in for Grace's look (built as drawn) — PR 1 v2.6699 (the usual number `contact_channels.usual_at`, the rule, the To chip on the send window, Who is this? asks; migration `20261108170919_contact_channel_usual.sql`, pushed right after the merge, then `messages-nudge-dispatch` redeployed) merged; PR 2 v2.6732 (the chip on the Tell the customer sheet and On my way, the tech's gate, quo-send's tech path taking the channel, the call dial and the lien courtesy on the usual, a held row on Today's sends naming its number; migration `20261108205816_contact_channel_usual_tech.sql`, then `quo-send` and `messages-nudge-dispatch` redeployed) armed; PRs 3 and 4 not built
 summary: >
   Every send today picks the number and the address by a rule and offers no choice: the first number
   that can still take a text, the first address, the customer's own contact rather than a person at
@@ -12,11 +12,11 @@ summary: >
   job's people when a job has more than one, the starred one first. One recipient rule in one kernel
   feeds the thread, the sheets, the morning run, the call task's dial and the tech's text, so a pick
   made anywhere holds everywhere.
-next: Another session builds PR 2 from the hand-over section (the chip on the Tell the customer sheet and On my way, the tech's gate) once PR 1 is merged and pushed; the owner walks PR 1 on a ZZ Test customer with two numbers (How to verify, steps 1 to 3 and 5). Then PR 3 (Who on this job) and PR 4 (the address side).
-size: M as a train of four (the usual channel and the chip, the sheets and the tech, who on this job, the address side); each PR S or M; left: PRs 2 to 4 (S · M · S)
-blocker: none for PR 2; PR 3 and PR 4 wait on the owner's look at PR 1 and PR 2 live
+next: The owner walks PR 1 and PR 2 live on a ZZ Test customer with two numbers (How to verify, steps 1 to 3 and 5; the dev server walk of 2026-11-08 is under How to verify). Then PR 3 (Who on this job) and PR 4 (the address side), each from the hand-over's reading of the card.
+size: M as a train of four (the usual channel and the chip, the sheets and the tech, who on this job, the address side); each PR S or M; left: PRs 3 and 4 (M · S)
+blocker: PR 3 and PR 4 wait on the owner's look at PR 1 and PR 2 live
 opinion: build the usual channel and the chip first; it closes the gap where a customer texted from a second phone and the rule keeps answering the first. Who on this job second. The address side last, since the estimate already has an override box.
-ver: v2.6699
+ver: v2.6732
 mockup: to-dos/contact-picker/mockup.html
 ---
 
@@ -105,10 +105,12 @@ go to* waits on PR 2. Call 2's tech half and call 5 are PR 2's.
 5. **The tech's chip.** Shown, switchable, remembered as the usual only when the tech ticks *Make this
    their usual*; a plain switch is this once. The office sees the gray line either way.
 
-## Hand-over: PR 2, ready to build
+## Hand-over: PR 2, built
 
 The owner stopped the first session on 2026-11-08 after PR 1 so another machine can pick PR 2 up.
-Everything it needs is on `main` once PR 1 (v2.6699) merges and its migration is pushed.
+Another session built PR 2 (v2.6732) from this list the same day; `docs/recent-features/v2.6732.md` says what
+landed and where it read the list closer (the tech path's second choice, the chip drawn only when numbers were
+read, the held words' plain-words test). The list stays as the record of what PR 2 was asked to be.
 
 1. **The pieces PR 1 left.** `contact_channels.usual_at` and `contact_channel_make_usual(p_channel)`
    (gated by `follow_up_press`, the office team); `numberOrder` / `replyRecipient(contact, { lines,
@@ -205,3 +207,29 @@ Three things the first draft missed:
 4. A job with the customer and a person at the customer: the sheet offers both, the starred one
    first; pick the person; their thread gets the line and the receipt names them.
 5. STOP on the usual: the rule drops it; the chip shows the next and marks the stopped one.
+
+### The dev server walk, 2026-11-08 (PR 2, before its push)
+
+As the dev on this worktree's dev server against prod, in the owner's Chrome, on *ZZ TEST Owner On Notice* (one
+number, the owner's own test cell). A second number cannot be inserted on `contact_channels` by hand (the table
+grants SELECT and one UPDATE column), so the walk took Who is this?'s road: `contact_make_for_channel('phone',
+'(830) 555-0191')` then `name_contact(…, 'customers', <the ZZ customer>)`, which folded the test number onto the
+customer's own contact.
+
+- **Step 1, one number** was already the case on PR 1's live look; on the sheet the chip is a label (the smoke holds it).
+- **Step 2, the sheet with two numbers**: a block on *ZZ TEST sink* (its first visit) opened Tell the customer. The row
+  read *Text*, then the chip with the test cell's number and its ▾, then *ZZ reads English*; the chip a press. The menu listed the test cell first with *last
+  line today at 2:06 PM* (the thread's only text went there) and *(830) 555-0191 · no line yet* second, the tick
+  *Make this their usual number* on. Picking the second number turned the chip to *To (830) 555-0191*. **Send in the
+  morning** wrote, in order: `usual_at` on the picked channel, the gray line *Robert made (830) 555-0191 ZZ TEST Owner
+  On Notice's usual number.*, and the offer with `channel_id` the picked channel, *It goes in the morning of Mon Nov 9.*
+- **Step 3, this once** rests on the smoke (the tick off, the offer carries the pick, no star) rather than a second
+  live send: a second offer would have gone to the owner's cell at 9 AM.
+- **On my way**: the dev's role holds the text from the phone (*No text: your role does not text from the phone*),
+  so the chip is not drawn for the dev; the sheet's chip rests on `OnMyWaySheet.toChip.render.test.tsx` and the
+  tech's door on the bed's § 8 (CI). The owner's look as a tech, once the migration is pushed, is How to verify's
+  step 3 for the tech.
+
+Left as they were: the offer dismissed (*not this one*), the test block removed, the usual moved back onto the real
+number (a second gray line), both test numbers deleted from the two ZZ contacts, Job Mode's local switch cleared. The
+two gray lines stay on the ZZ thread.

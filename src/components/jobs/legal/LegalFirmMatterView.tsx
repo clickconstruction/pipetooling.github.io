@@ -44,6 +44,8 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 import { FIRM_TAB_LABELS, firmTabsFor, firmTabShown, portalBtn, portalCap, portalCard, portalH, portalNum, portalTd, portalTh, type FirmMatterLike, type FirmTab } from './legalFirmMatterViewShared'
 import { answeredGaps, gapAnswerByline } from '../../../lib/legal/legalGapAnswers'
+import { KEPT_OUT_WORDS, proceedingKindWords, proceedingStatusWords, type LegalProceedingForFirm } from '../../../lib/legal/legalProceedings'
+import { isPersonRole, personRoleWords } from '../../../lib/legal/legalMatterPeople'
 import { partiesStrip } from '../../../lib/legal/legalParties'
 import LegalPartiesStrip from './LegalPartiesStrip'
 
@@ -227,6 +229,46 @@ export function FirmClaimTable({ packet, documents }: { packet: LegalPacket; doc
   )
 }
 
+/**
+ * The proceedings beside the claim on the firm's Account tab (v2.6726, punch list #174, the owner's call: the firm sees
+ * the list): kind and name, the agency and its reference, the contact's name and role from the matter's people, where
+ * it stands and the documents behind it as links when they travelled. The office's note never arrives; a proceeding
+ * whose documents are kept out of settlement letters says so, so counsel's own letters honor the hold.
+ */
+export function FirmProceedingsTable({ proceedings, documents }: { proceedings: ReadonlyArray<LegalProceedingForFirm>; documents: ReadonlyArray<LegalPortalDocument> }) {
+  if (!proceedings.length) return null
+  const docCell = (p: LegalProceedingForFirm): JSX.Element => {
+    if (!p.documentIds.length) return <span style={{ color: FAINT }}>—</span>
+    return (
+      <span style={{ display: 'grid', gap: 2 }}>
+        {p.documentIds.map((id) => {
+          const doc = documents.find((d) => d.id === id)
+          if (!doc) return <span key={id} style={{ color: MUTED }}>a document the office holds</span>
+          return doc.url ? <a key={id} href={doc.url} target="_blank" rel="noreferrer" style={{ color: COPPER }}>{doc.title} ↗</a> : <span key={id}>{doc.title}</span>
+        })}
+        {p.keepOut ? <span data-legal-firm-proceeding-kept-out style={{ color: MUTED, fontSize: 12 }}>{KEPT_OUT_WORDS}</span> : null}
+      </span>
+    )
+  }
+  return (
+    <div data-legal-firm-proceedings>
+      <div style={portalH}>Beside the claim</div>
+      <PortalTable
+        head={['Proceeding', 'Agency · reference', 'Contact', 'Where it stands', 'Documents']}
+        rows={proceedings.map((p) => [
+          <span key="p" data-legal-firm-proceeding={p.id}><span style={{ color: MUTED }}>{proceedingKindWords(p.kind)} · </span><b>{p.title}</b></span>,
+          [p.agency, p.reference ? `ref ${p.reference}` : ''].filter(Boolean).join(' · ') || '—',
+          p.contactName ? `${p.contactName}${p.contactRole ? ` · ${isPersonRole(p.contactRole) ? personRoleWords(p.contactRole) : p.contactRole}` : ''}` : '—',
+          proceedingStatusWords(p.status, p.statusOn),
+          docCell(p),
+        ])}
+        empty=""
+      />
+      <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>What runs beside the collections claim: an agency complaint, a records request, a bond claim. A proceeding marked kept out of settlement letters holds its documents out of anything addressed to the other side.</p>
+    </div>
+  )
+}
+
 export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo, timelineActs }: { tab: FirmTab; packet: LegalPacket; matter: FirmMatterLike; companyName: string; acts?: ReactNode; /** #85 item 18: the firm undoes its own act, with a reason; absent on the desk's preview. */ onUndo?: (entryId: string, reason: string) => Promise<boolean>; /** v2.5800: the firm's own plan form under the Timeline; absent on the desk's preview. */ timelineActs?: ReactNode }) {
   if (tab === 'timeline') {
     // v2.5800: the same line the office reads, on the portal's paper; a held step never arrived, so nothing here is held.
@@ -268,6 +310,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo, 
         <WhereToFile account={a} />
         <div style={h}>Property record</div>
         <PortalTable head={['Job', 'Address', 'County', 'Owner of record', 'Owner’s mailing address', 'Legal description', 'Parcel', 'Kind']} rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, propertySourceNote(p.source) ? <span key="a">{p.address || '—'} <span style={{ color: MUTED }}>· {propertySourceNote(p.source)}</span></span> : p.address, p.county || '—', p.owner || '—', ownerMailingAddressCell(p), p.legalDescription || '—', p.parcelId || '—', propertyKindCell(p.propertyKind)])} empty="No property record on file." />
+        <FirmProceedingsTable proceedings={matter.proceedings ?? []} documents={matter.documents ?? []} />
       </div>
     )
   }
