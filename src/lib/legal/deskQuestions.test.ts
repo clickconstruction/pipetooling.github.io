@@ -55,7 +55,7 @@ describe('How much? and What\'s left for us?', () => {
     expect(part).toMatchObject({ answer: '$2,706.08', why: 'Open bills $2,028.04 inside it, plus retainage $678.04 that no bill asks for yet. Another $1,000.00 of the retainage held is already on a bill.', chip: { text: 'the claim', tone: 'ok' } })
     expect(plainWordsFailures(part.why)).toEqual([])
     // v2.6680 (punch list #171 step 2): the typed lines are the third part, with the retainage or alone.
-    const line = (id: string, amount: number) => ({ id, kind: 'materials' as const, title: 'Materials left on site', amount, basis: '', documentId: null, documentTitle: '' })
+    const line = (id: string, amount: number) => ({ id, kind: 'materials' as const, title: 'Materials left on site', amount, basis: '', documentId: null, documentTitle: '', settlementOnly: false })
     const both = howMuch(packet({ jobs: [job('891')], oldestDays: 94, worth: { balance: 14980, retainageHeld: 6420, retainageAdded: 6420, claim: 34084, claimLines: [line('a', 5310), line('b', 2800), line('c', 1074), line('d', 3500)], claimTyped: 12684 } }))
     expect(both).toMatchObject({ answer: '$34,084.00', why: 'Open bills $14,980.00 inside it, plus retainage $6,420.00 that no bill asks for yet and 4 typed lines, $12,684.00. The oldest bill is 94 days old.', chip: { text: 'the claim', tone: 'ok' } })
     const typedOnly = howMuch(packet({ jobs: [job('891')], oldestDays: null, worth: { balance: 2028.04, claim: 7338.04, claimLines: [line('a', 5310)], claimTyped: 5310 } }))
@@ -97,5 +97,20 @@ describe('the words', () => {
   it('pass the plain-words rules on every card', () => {
     const all = [packet(), packet({ theory: { key: 'none' }, worth: { flags: ['payer is a name only', 'dispute on record'] } }), packet({ theory: { key: 'lien' } })]
     for (const p of all) for (const q of deskQuestions(p)) expect(plainWordsFailures(`${q.answer}. ${q.why}`), `${q.label}: ${q.answer}. ${q.why}`).toEqual([])
+  })
+})
+
+describe('How much? with a settlement-only line (v2.6697, punch list #171)', () => {
+  const line = (id: string, amount: number, settlementOnly = false) => ({ id, kind: 'materials' as const, title: 'Materials left on site', amount, basis: '', documentId: null, documentTitle: '', settlementOnly })
+  it('counts only the lines in the demand, then says the settlement-only ones apart, in plain words', () => {
+    const q = howMuch(packet({ jobs: [job('891')], oldestDays: null, worth: { balance: 2028.04, claim: 7338.04, claimLines: [line('a', 5310), line('s', 400, true)], claimTyped: 5310, claimSettlementOnly: 400, claimSettlement: 7738.04 } }))
+    expect(q).toMatchObject({ answer: '$7,338.04', why: 'Open bills $2,028.04 inside it, plus one typed line, $5,310.00. One more line, $400.00, is settlement only and not in this figure.', chip: { text: 'the claim', tone: 'ok' } })
+    expect(plainWordsFailures(q.why)).toEqual([])
+    // A settlement-only line alone: the balance leads, no chip, and the sentence still says the line is there.
+    const alone = howMuch(packet({ jobs: [job('891')], oldestDays: 10, worth: { balance: 2028.04, claim: 2028.04, claimLines: [line('s', 400, true)], claimTyped: 0, claimSettlementOnly: 400, claimSettlement: 2428.04 } }))
+    expect(alone.answer).toBe('$2,028.04')
+    expect(alone.chip).toBeUndefined()
+    expect(alone.why).toBe('Owed on 1 job. One more line, $400.00, is settlement only and not in this figure. The oldest bill is 10 days old.')
+    expect(plainWordsFailures(alone.why)).toEqual([])
   })
 })

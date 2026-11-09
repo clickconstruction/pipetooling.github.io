@@ -147,6 +147,8 @@ export function parseLegalPortalClaimLines(raw: unknown): LegalClaimLineRow[] {
       basis: typeof l.basis === 'string' ? l.basis : '',
       document_id: typeof l.document_id === 'string' ? l.document_id : null,
       added_at: typeof l.added_at === 'string' ? l.added_at : '',
+      // v2.6697: in an offer, not in the demand; absent from an older function, false.
+      settlement_only: l.settlement_only === true,
     })
   }
   return out
