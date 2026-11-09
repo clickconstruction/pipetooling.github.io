@@ -8,7 +8,7 @@
 # supabase/migrations applied in order, then the bill pay codes migration a second time, which must change nothing.
 # The scenario, inside one transaction that rolls back: the office asks for two bills' codes and gets ten letters from
 # the alphabet with no look-alikes, a second ask answers the same code and the two bills differ; a bill not there, a
-# primary, a training account, a twin and anon are refused; the row keeps the code, the unique index and the shape
+# subcontractor, a training account, a twin and anon are refused; the row keeps the code, the unique index and the shape
 # check hold, and the function runs as its caller. It raises on its first failed assertion and ends with
 # "bill_pay_codes PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from
 # scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.

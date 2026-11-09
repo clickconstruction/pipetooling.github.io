@@ -1,27 +1,31 @@
 -- The bill's ten-letter short code (punch list #290 PR 2, migration *_bill_pay_codes): the office asks bill_pay_code for
 -- two bills and gets ten letters from the alphabet with no 0, O, 1, l or I, a second ask answers the same code, the two
--- bills differ; a primary, a training account, a twin and anon are refused; a bill not there is refused in words; the
+-- bills differ; a subcontractor, a training account, a twin and anon are refused; a bill not there is refused in words; the
 -- unique index refuses a second bill with the same code. Everything rolls back. Raises on the first failed assertion;
 -- ends with "bill_pay_codes PASSED". See scripts/pgtest-bill-pay-codes.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
 
--- The office (an assistant), a primary, an assistant in training mode and a digital twin.
+-- The office (an assistant), a subcontractor (off the office team), an assistant in training mode, a digital twin, and
+-- the master the customer and the job hang off.
 INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000b9a01', 'assistant@paycode.test'),
-  ('00000000-0000-0000-0000-0000000b9a02', 'primary@paycode.test'),
+  ('00000000-0000-0000-0000-0000000b9a02', 'sub@paycode.test'),
   ('00000000-0000-0000-0000-0000000b9a03', 'training@paycode.test'),
-  ('00000000-0000-0000-0000-0000000b9a04', 'twin@paycode.test');
+  ('00000000-0000-0000-0000-0000000b9a04', 'twin@paycode.test'),
+  ('00000000-0000-0000-0000-0000000b9a05', 'master@paycode.test');
 INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
   ('00000000-0000-0000-0000-0000000b9a01', 'assistant@paycode.test', 'Code Assistant', 'assistant', false, false),
-  ('00000000-0000-0000-0000-0000000b9a02', 'primary@paycode.test', 'Code Primary', 'primary', false, false),
+  ('00000000-0000-0000-0000-0000000b9a02', 'sub@paycode.test', 'Code Sub', 'subcontractor', false, false),
   ('00000000-0000-0000-0000-0000000b9a03', 'training@paycode.test', 'Code Training', 'assistant', true, false),
-  ('00000000-0000-0000-0000-0000000b9a04', 'twin@paycode.test', 'Code Twin', 'assistant', false, true)
+  ('00000000-0000-0000-0000-0000000b9a04', 'twin@paycode.test', 'Code Twin', 'assistant', false, true),
+  ('00000000-0000-0000-0000-0000000b9a05', 'master@paycode.test', 'Code Master', 'master_technician', false, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
-INSERT INTO public.customers (id, name) VALUES ('00000000-0000-0000-0000-0000000b9c01', 'Code Customer');
-INSERT INTO public.jobs_ledger (id, hcp_number, job_name, customer_name, customer_id, bill_to_party, revenue, payments_made, status) VALUES
-  ('00000000-0000-0000-0000-0000000b9d01', '990', 'Pay code walk', 'Code Customer', '00000000-0000-0000-0000-0000000b9c01', 'customer', 1500, 0, 'billed');
+INSERT INTO public.customers (id, name, master_user_id) VALUES ('00000000-0000-0000-0000-0000000b9c01', 'Code Customer', '00000000-0000-0000-0000-0000000b9a05');
+INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000b9f01', 'Pay Code Bed Work');
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number, job_name, customer_name, customer_id, bill_to_party, revenue, payments_made, status) VALUES
+  ('00000000-0000-0000-0000-0000000b9d01', '00000000-0000-0000-0000-0000000b9a05', '00000000-0000-0000-0000-0000000b9f01', '990', 'Pay code walk', 'Code Customer', '00000000-0000-0000-0000-0000000b9c01', 'customer', 1500, 0, 'billed');
 INSERT INTO public.jobs_ledger_invoices (id, job_id, sequence_order, status, amount, stripe_invoice_id, stripe_mode, hosted_invoice_url, stripe_invoice_status, external_send_channel) VALUES
   ('00000000-0000-0000-0000-0000000b9e01', '00000000-0000-0000-0000-0000000b9d01', 0, 'billed', 1000, 'in_pc1', 'test', 'https://invoice.stripe.com/pc1', 'open', 'stripe'),
   ('00000000-0000-0000-0000-0000000b9e02', '00000000-0000-0000-0000-0000000b9d01', 1, 'billed', 500, 'in_pc2', 'test', 'https://invoice.stripe.com/pc2', 'open', 'stripe');
@@ -74,9 +78,9 @@ SELECT bpc.same('a second ask answers the same code; the two bills differ',
           ((SELECT code FROM bpc.codes WHERE n = 1) <> (SELECT code FROM bpc.codes WHERE n = 2))::text), 'true true');
 SELECT bpc.refused('a bill not there', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9eff')$q$, 'not there');
 
--- 2 · The refusals: a primary (the table's policies), a training account (the read-only fence), a twin, anon.
+-- 2 · The refusals: a subcontractor (the table's policies), a training account (the read-only fence), a twin, anon.
 SELECT bpc.as_user('00000000-0000-0000-0000-0000000b9a02');
-SELECT bpc.refused('a primary', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9e02')$q$, '');
+SELECT bpc.refused('a subcontractor', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9e02')$q$, '');
 SELECT bpc.as_user('00000000-0000-0000-0000-0000000b9a03');
 SELECT bpc.refused('a training account', $q$SELECT public.bill_pay_code('00000000-0000-0000-0000-0000000b9e02')$q$, '');
 SELECT bpc.as_user('00000000-0000-0000-0000-0000000b9a04');
