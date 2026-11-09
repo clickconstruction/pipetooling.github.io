@@ -73,7 +73,9 @@ export function ProjectCardBody({ row, pace, target, events, valueEvents, dollar
     if (el.closest('button, a, input, textarea, select, label, [role="dialog"]')) return
     onExpand()
   }
-  const sourceWords = BUDGET_SOURCE_WORDS[moved || target ? 'target' : pace.baseSource]
+  // The budget frozen at award is the number the Scoreboard reads (the owner's call of 2026-11-09); the glyph's words and the big line say so.
+  const frozenWords = pace.baseFrozen && !(moved || target) ? ', frozen at award' : ''
+  const sourceWords = `${BUDGET_SOURCE_WORDS[moved || target ? 'target' : pace.baseSource]}${frozenWords}`
   return (
     <div data-testid={big ? 'project-card-big' : 'project-card'} data-tone={line.tone} onClick={openUnlessControl} title={opens ? 'Open this project large' : undefined} style={{ border: big ? 'none' : `1.5px solid ${toneBorder}`, borderRadius: 12, padding: big ? 0 : '0.7rem 0.8rem', display: 'grid', gap: big ? 14 : 8, background: 'var(--surface)', cursor: opens ? 'pointer' : undefined }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -120,7 +122,7 @@ export function ProjectCardBody({ row, pace, target, events, valueEvents, dollar
           <span style={{ flex: '0 0 auto', color: 'var(--text-muted)' }} title={sourceWords}>{sourceWords.split(' ')[0]}</span>
         </div>
         {range.pinned ? <div data-testid="project-pinned" style={{ fontSize: big ? '0.84rem' : '0.74rem', color: 'var(--text-red-700)' }}>{range.pinnedWords} {EXPECTED_HOURS_LEVER_WORDS}</div> : null}
-        {big ? <div style={muted}>{pace.budgetEdge} h labor budget · expected {hours} h · {Math.round(used)} h in · {Math.round(line.hoursPerDay)} h a day{line.hoursPerDayRead ? ' on this job' : ' assumed'}{line.daysUsed != null ? ` · ${Math.round(line.daysUsed)} days in` : ''} · the slider runs from {range.min} h in to the budget's edge at {range.max} h</div> : null}
+        {big ? <div style={muted}>{pace.budgetEdge} h labor budget{pace.baseFrozen ? ', frozen at award' : ''} · expected {hours} h · {Math.round(used)} h in · {Math.round(line.hoursPerDay)} h a day{line.hoursPerDayRead ? ' on this job' : ' assumed'}{line.daysUsed != null ? ` · ${Math.round(line.daysUsed)} days in` : ''} · the slider runs from {range.min} h in to the budget's edge at {range.max} h</div> : null}
         {moved ? (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }} data-testid="target-edit">
             <input type="text" value={why} onChange={(e) => setWhy(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && ok) void keep() }} maxLength={240} aria-label="Why the number moved" placeholder={`why ${current} → ${hours} h · the superintendent reads this`} style={{ ...field, flex: '1 1 200px' }} autoFocus />
