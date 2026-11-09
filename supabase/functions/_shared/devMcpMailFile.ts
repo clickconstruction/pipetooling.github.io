@@ -6,12 +6,25 @@
  * (`plan_matter_document` → `apply_matter_document`) — the bytes read from Gmail on the server and never passing
  * through the agent. The pure half: the arguments, the file picked off the mail by its name, the inner verb's
  * arguments, the job landing's commitment, the words.
+ *
+ * Server 0.51.0 (v2.6806): `read_mail_file` reads in pieces. The door cuts every reply at `REPLY_MAX_CHARS`, so a file
+ * over about 59 KB used to come back as base64 cut mid-string. A reply now carries at most `MAIL_FILE_SLICE_MAX_BYTES`
+ * of the file with `offset`, `length` and `next_offset`, the size and the sha256 of the whole, and the words that say
+ * which argument reads on (`mailFileReadReply`).
  */
+import { REPLY_MAX_CHARS, replyText } from './devMcpDoor.ts'
 import type { EmailFile } from './gcKernels/lib/emailIn/gmailMessage.ts'
 import type { MailAccount } from './devMcpMailSearch.ts'
 
 /** The most bytes a file off a mail may hold: the evidence and document doors' own cap, and drive-link's `put`. */
 export const MAIL_FILE_MAX_BYTES = 10 * 1024 * 1024
+
+/**
+ * The most bytes of a file one `read_mail_file` reply carries: 54,000 bytes are 72,000 base64 characters, which leaves
+ * the door's 80,000-character reply 8,000 for the file's facts and the words. A multiple of three, so pieces read at
+ * this length join as base64 text as well as bytes.
+ */
+export const MAIL_FILE_SLICE_MAX_BYTES = 54_000
 
 /** Where a file lands on a job, as drive-link's `put` names the landings (the Documents tab's Add a file sends `top`). */
 export const MAIL_FILE_JOB_WHERES = ['top', 'plans', 'pictures', 'sent', 'photos'] as const
@@ -39,11 +52,26 @@ const GMAIL_ID = /^[A-Za-z0-9_-]{4,64}$/
 
 const obj = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null)
 
-/** `read_mail_file`'s arguments: the account, the hit's id and the file's name. */
-export function mailFileReadArgs(args: Record<string, unknown>, known: readonly MailAccount[]): { ok: true; account: MailAccount; id: string; name: string } | { ok: false; error: string } {
+/** A whole number of bytes from an argument: a number or its digits, never a fraction or a negative. */
+function wholeNumber(v: unknown): number | null {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && /^\d{1,12}$/.test(v.trim()) ? Number(v.trim()) : NaN
+  return Number.isInteger(n) && n >= 0 ? n : null
+}
+
+/**
+ * `read_mail_file`'s arguments: the account, the hit's id and the file's name, and where in the file to read — `offset`
+ * (the byte to start at, 0 when left out) and `length` (the bytes asked for; the most a reply carries when left out,
+ * and never more than that).
+ */
+export function mailFileReadArgs(args: Record<string, unknown>, known: readonly MailAccount[]): { ok: true; account: MailAccount; id: string; name: string; offset: number; length: number | null } | { ok: false; error: string } {
   const base = mailFileBase(args, known, 'read_mail_file')
   if (!base.ok) return base
-  return { ok: true, account: base.account, id: base.id, name: base.name }
+  const given = (v: unknown) => v !== undefined && v !== null
+  const offset = given(args.offset) ? wholeNumber(args.offset) : 0
+  if (offset === null) return { ok: false, error: 'read_mail_file: offset is the byte to start at, a whole number from 0 (a reply’s next_offset).' }
+  const length = given(args.length) ? wholeNumber(args.length) : null
+  if (given(args.length) && (length === null || length < 1)) return { ok: false, error: `read_mail_file: length is how many bytes to hand back, a whole number from 1; a reply carries at most ${MAIL_FILE_SLICE_MAX_BYTES}.` }
+  return { ok: true, account: base.account, id: base.id, name: base.name, offset, length }
 }
 
 function mailFileBase(args: Record<string, unknown>, known: readonly MailAccount[], verb: string): { ok: true; account: MailAccount; id: string; name: string } | { ok: false; error: string } {
@@ -133,9 +161,53 @@ export interface MailFileBytes {
   content_base64: string
 }
 
-/** `read_mail_file`'s reply: the file whole, with where it came from. */
-export function mailFileReadReply(account: string, id: string, file: MailFileBytes): Record<string, unknown> {
-  return { account, id, ...file }
+/** A file off a mail as its bytes, before any of it is written as base64. */
+export interface MailFileRaw {
+  name: string
+  mime: string
+  sha256: string
+  bytes: Uint8Array
+}
+
+/** The file whole as base64, as the filing verbs send it on. */
+export function mailFileWhole(file: MailFileRaw): MailFileBytes {
+  return { name: file.name, mime: file.mime, size_bytes: file.bytes.length, sha256: file.sha256, content_base64: bytesToBase64(file.bytes) }
+}
+
+const count = (n: number): string => n.toLocaleString('en-US')
+
+/**
+ * `read_mail_file`'s reply: the bytes from `offset`, as many as were asked for and fit, as `content_base64`, with the
+ * size and the sha256 of the whole file, the piece's `offset` and `length`, and `next_offset` — the argument that reads
+ * on, null when this piece ends the file. A file that fits comes whole in one reply; one that does not says so in
+ * `read_next`, which stands before the bytes. The reply is measured as the door writes it and the piece shortened until
+ * it fits, so the door's cut never lands inside the base64.
+ */
+export function mailFileReadReply(account: string, id: string, file: MailFileRaw, ask: { offset: number; length: number | null } = { offset: 0, length: null }): { ok: true; reply: Record<string, unknown> } | { ok: false; error: string } {
+  const size = file.bytes.length
+  if (ask.offset >= size) return { ok: false, error: `offset ${count(ask.offset)} is past the end of ${file.name}, which is ${count(size)} bytes: offsets run from 0 to ${count(size - 1)}.` }
+  let length = Math.min(ask.length ?? MAIL_FILE_SLICE_MAX_BYTES, MAIL_FILE_SLICE_MAX_BYTES, size - ask.offset)
+  for (;;) {
+    const end = ask.offset + length
+    const next = end < size ? end : null
+    const reply: Record<string, unknown> = { account, id, name: file.name, mime: file.mime, size_bytes: size, sha256: file.sha256, offset: ask.offset, length, next_offset: next }
+    const words = mailFileReadNextWords({ size, offset: ask.offset, length, next })
+    if (words) reply.read_next = words
+    reply.content_base64 = bytesToBase64(file.bytes.subarray(ask.offset, end))
+    if (length <= 3 || replyText(reply).length <= REPLY_MAX_CHARS) return { ok: true, reply }
+    length = Math.max(3, Math.floor(length / 2 / 3) * 3)
+  }
+}
+
+/** What a piece says about itself and how to read on; nothing when the reply is the whole file. */
+export function mailFileReadNextWords(piece: { size: number; offset: number; length: number; next: number | null }): string | null {
+  const { size, offset, length, next } = piece
+  if (offset === 0 && next === null) return null
+  const span = `bytes ${count(offset)} to ${count(offset + length - 1)} of ${count(size)}`
+  const join = 'Decode each piece and join the bytes in order; sha256 is of the whole file, so check the joined bytes against it.'
+  if (next === null) return `This is the last piece, ${span}. ${join}`
+  const left = Math.ceil((size - next) / length)
+  return `This is ${span}, not the whole file: a reply is cut at ${count(REPLY_MAX_CHARS)} characters, so a file comes in pieces of at most ${count(MAIL_FILE_SLICE_MAX_BYTES)} bytes. Call read_mail_file again with the same account, id and name and offset: ${next}, and on until next_offset is null (${left} more ${left === 1 ? 'call' : 'calls'} at this length). ${join}`
 }
 
 /** The inner verb and its arguments for an evidence record or a matter document: the file as content_base64. */
