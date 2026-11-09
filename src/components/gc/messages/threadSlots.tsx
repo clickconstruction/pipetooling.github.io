@@ -17,12 +17,12 @@ import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
 import { FlowTab } from '../../flows/FlowTab'
 import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
+import { useOwnMailboxThreadSlots } from '../../messages/useOwnMailboxThreadSlots'
 import type { CourtFacts } from '../../../lib/followUp/courtFacts'
 import { useNewLaneThreadSlots } from '../../followUp/useNewLaneThreadSlots'
 import { useEmailViewerThreadSlots } from '../../messages/useEmailViewerThreadSlots'
 import { useLeadDoorThreadSlots } from '../../messages/useLeadDoorThreadSlots'
 import { useMyMailJobLineThreadSlots } from '../../messages/useMyMailJobLineThreadSlots'
-import { useOwnMailboxThreadSlots } from '../../messages/useOwnMailboxThreadSlots'
 import { hasBillOffer, hasPaperOffer } from '../../../lib/messages/lineFiles'
 import { PaperOffers } from './PaperOffers'
 import { NudgedReplyBox } from './reply/NudgedReplyBox'
@@ -155,7 +155,9 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
  */
 export function useThreadSlots(): ThreadSlots {
   // Cut 2 (Follow up): who has it, the back and snoozed pills, and ⋯'s state rows.
-  const followUp = useFollowUpThreadSlots()
+  // #207 (v2.6745): *Answered them from your own mailbox?* above the box, folded into cut 2's slots so it draws right
+  // after the owed strip, while the court is ours by their last word alone (`useOwnMailboxThreadSlots`).
+  const followUp = mergeThreadSlots(useFollowUpThreadSlots(), useOwnMailboxThreadSlots())
   // Every slot keys on the person with its own prefix: the slots sit side by side in the thread column, and two bare
   // `c.id` keys there (the New lane card above the lines and the box) logged a duplicate-key warning on every open.
   // Cut 3: the reply box, one per person, so a draft never crosses to the next thread. It reads the open thread itself
@@ -181,13 +183,10 @@ export function useThreadSlots(): ThreadSlots {
   const newLane = useNewLaneThreadSlots()
   // #140 PR 8: a lead's doors above the lines, Book a visit and Start an estimate, once they are named a lead.
   const leadDoors = useLeadDoorThreadSlots()
-  // #207 (v2.6745): *Answered them from your own mailbox?* above the box, after cut 2's owed strip, while the court is
-  // ours by their last word alone.
-  const ownMailbox = useOwnMailboxThreadSlots()
   // Punch list #263 PR A (v2.6730): above the box of a thread narrowed to a job, the person's own mail with its person
-  // that is not on that job yet, with Yes on each; after cut 2's owed strip and #207's strip in the slot they share.
+  // that is not on that job yet, with Yes on each; after cut 2's owed strip in the slot they share.
   const myMailJobLine = useMyMailJobLineThreadSlots()
-  // By cut number: cut 2's Follow up, #207's own-mailbox strip, cut 3's reply box, cut 4's flow, cut 4b's change
-  // orders, R8 · 8's estimate lines, #139's estimate door, cut 6's paper offer, R7's sort card, #263's My email line last.
-  return mergeThreadSlots(followUp, ownMailbox, replyBox, flow, changeOrders, emailViewer, estimateLines, estimateDoor, email, leadDoors, newLane, myMailJobLine)
+  // By cut number: cut 2's Follow up, cut 3's reply box, cut 4's flow, cut 4b's change orders, R8 · 8's estimate lines,
+  // #139's estimate door, cut 6's paper offer, R7's sort card.
+  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, emailViewer, estimateLines, estimateDoor, email, leadDoors, newLane, myMailJobLine)
 }
