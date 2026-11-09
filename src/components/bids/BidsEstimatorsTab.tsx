@@ -328,7 +328,8 @@ export function BidsEstimatorsTab({
   }, [days, searchActive, columnUsers, cellMap, matchedBidIds])
 
   const showManageBtn = canManageColumns(viewerRole)
-  const showCostModeToggle = viewerRole === 'dev'
+  // Punch list #188 row 63 (v2.6764): what estimating costs is the owner's number, so he turns cost mode on with a dev.
+  const showCostModeToggle = viewerRole === 'dev' || viewerRole === 'master_technician'
   const triggerReload = useCallback(() => setReloadKey((k) => k + 1), [])
 
   if (!active) return null

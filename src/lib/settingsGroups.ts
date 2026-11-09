@@ -66,7 +66,9 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (r === 'dev' || r === 'master_technician' || isAssistantLike(r)) {
     groups.push({ id: 'settings-jobs', label: 'Jobs, bills and liens', zone: 'company', pagesHint: 'Shows on: Pipeline, job windows, and the bills you send customers.' })
   }
-  if (r === 'dev' || r === 'estimator') {
+  // Bids & materials: the estimators' catalog; the owner since v2.6764 (punch list #188 rows 28 and 29) for the wording a
+  // customer meets and the Bid Board value rule, while the catalog blocks stay the estimators' and a dev's.
+  if (r === 'dev' || r === 'estimator' || r === 'master_technician') {
     groups.push({ id: 'settings-catalogs', label: 'Bids & materials', zone: 'company', pagesHint: 'Shows on: Bids, Takeoff, and Materials — trades, part types, and the books.' })
   }
   // People & teams (punch list #188 rows 8–13 and 22, v2.6755): the office's tab — Additional People is the office's filing, the sub
