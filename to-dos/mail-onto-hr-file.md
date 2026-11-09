@@ -2,7 +2,7 @@
 name: "A mail conversation onto an HR file: the seat's mail tag lands a thread as dated entries on a person, each with its Gmail id"
 number: 289
 group: ready
-status: built 2026-11-08 on claude/289-mail-onto-hr-file-1c7694 (v2.6715, one PR) · left after the merge — the migration push, gmail-mine then dev-mcp deployed, the live verify on a ZZ Test person
+status: built 2026-11-08 on claude/289-mail-onto-hr-file-1c7694 (v2.6715, one PR) · merged 2026-11-08 (#7342) with its migration `20261108194723` in prod's ledger · left: `gmail-mine` then `dev-mcp` deployed (`check:edge-drift` names both for v2.6715 on 2026-11-09 00:20 UTC), the live verify on a ZZ Test person
 summary: >
   The seat's mail tag (v2.6568) puts a whole Gmail conversation onto a job's Activity and notes,
   every mail at its own time. A conversation about a person has no such door: the mails that bear
@@ -11,7 +11,7 @@ summary: >
   Let the mail tag take a person as its target: each mail becomes an HR entry on its day with the
   sender, the recipients, the subject and the body as plain text, the entry carries the Gmail id
   and thread id, and a later mail in the thread follows by itself as the job tag's does.
-next: After the merge push 20261108194723_hr_mail_tag, deploy gmail-mine then dev-mcp, run How to verify on a ZZ Test person and record it below; then the October mails of the case go on as one tag each.
+next: Deploy gmail-mine then dev-mcp (the migration is pushed), run How to verify on a ZZ Test person and record it below; then the October mails of the case go on as one tag each.
 ver: v2.6715
 size: S
 blocker: None.
