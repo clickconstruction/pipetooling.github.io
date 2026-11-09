@@ -22,6 +22,9 @@ vi.mock('react-router-dom', async (orig) => ({ ...(await orig<typeof import('rea
 const fetchCalls: Array<{ door: string | undefined }> = []
 const served: { data: DevelopmentPageData | null } = { data: null }
 vi.mock('../lib/developments/fetchDevelopmentPage', () => ({
+  // The whole bodies the list did not read (punch list #280): nothing here is long enough to ask.
+  readHistoryBody: async () => '',
+  readHistoryBodies: async () => new Map<string, string>(),
   fetchDevelopmentPage: async (_id: string, _include: boolean, door?: string) => {
     fetchCalls.push({ door })
     if (!served.data) throw new Error('no data served')

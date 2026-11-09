@@ -102,6 +102,7 @@ import { useOwnLogbookShown } from '../hooks/useOwnLogbookShown'
 import { BookOpen } from 'lucide-react'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 import { canOpenMessages } from '../lib/gc/access'
+import { isOwnerOrDev } from '../lib/doorRoles'
 import { MessagesBadge } from './MessagesBadge'
 import { SKY_UNDER_WORDS } from '../lib/skyUnderWords'
 import { DESK_MARKS } from '../lib/messages/deskMarks'
@@ -460,7 +461,8 @@ export default function Layout() {
   }, [impersonating, navigate])
 
   useEffect(() => {
-    if (role === 'dev') {
+    // Punch list #188 row 32 (v2.6753): pinning a page for a person is a leader's nudge, so the owner holds it with a dev.
+    if (isOwnerOrDev(role)) {
       // Tier-2 #19 (J28-F10): "Pin for someone" offers live accounts only — no archived ghosts, no twins.
       activeUsersQuery('id, name, email, role, estimator_prospects_access', { includeDev: true, withLogin: true }).then(({ data }) => {
         const rows = (data ?? []) as Array<{ id: string; name: string; email: string; role: string | null; estimator_prospects_access: boolean | null }>
@@ -2121,7 +2123,7 @@ export default function Layout() {
                 </>
               )}
             </button>
-            {role === 'dev' && pinForUsers.length > 0 && (
+            {isOwnerOrDev(role) && pinForUsers.length > 0 && (
               <div ref={pinForRef} style={{ position: 'relative' }}>
                 <button
                   type="button"

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { formatErrorMessage } from '../utils/errorHandling'
-import type { AwardBaselineRpcArgs } from '../lib/jobs/awardBaseline'
+import { bidRateNeeded, type AwardBaselineRpcArgs } from '../lib/jobs/awardBaseline'
+import { saveBidLaborRate } from '../lib/jobs/bidLaborRateIo'
 
 /** A baseline landed on some job (punch list #234 PR 1a): the Needs you line's count reads again. */
 export const JOB_BUDGET_CHANGED_EVENT = 'job-budget-changed'
@@ -61,7 +62,8 @@ export type JobBudgetState = {
   /** The linked bid's live breakdown when the job carries a bid_id but no snapshot (or to compare against the snapshot). */
   linkedBreakdown: BidEstimateBreakdown | null
   reload: () => Promise<void>
-  linkAndSnapshot: (bidId: string) => Promise<boolean>
+  /** Take the bid's estimate; `fallbackRateUsd` is saved on a bid with hours and no rate of its own first. */
+  linkAndSnapshot: (bidId: string, fallbackRateUsd?: number | null) => Promise<boolean>
   /** The book's assumed hours as the budget, kind book (punch list #234 PR 1a). */
   setBook: (args: { laborHours: number; laborRate: number | null; book: Record<string, unknown> }) => Promise<boolean>
   /** The award press: the live row by its source, then the award stamped once (`award_job_baseline`). */
@@ -136,7 +138,16 @@ export function useJobBudget(jobId: string | null, linkedBidId: string | null, e
     [jobId, reload],
   )
 
-  const linkAndSnapshot = useCallback((bidId: string) => run(() => supabase.rpc('snapshot_job_budget_from_bid', { p_job_id: jobId!, p_bid_id: bidId }), 'Could not link the bid'), [run, jobId])
+  // `fallbackRateUsd`: the company rate, saved on a bid whose rows carry hours but whose estimate has no rate of its own
+  // before the snapshot, so the baseline reads the Labor tab's dollars (slip 8 of punch list #234's second walk).
+  const linkAndSnapshot = useCallback(
+    (bidId: string, fallbackRateUsd: number | null = null) =>
+      run(async () => {
+        if (fallbackRateUsd != null && fallbackRateUsd > 0 && linkedBreakdown?.bid_id === bidId && bidRateNeeded(linkedBreakdown)) await saveBidLaborRate(bidId, fallbackRateUsd)
+        return supabase.rpc('snapshot_job_budget_from_bid', { p_job_id: jobId!, p_bid_id: bidId })
+      }, 'Could not link the bid'),
+    [run, jobId, linkedBreakdown],
+  )
   const setTyped = useCallback(
     (args: { laborHours: number; laborRate: number | null; materialsUsd: number; subsUsd: number; otherUsd?: number; note?: string | null }) =>
       run(
@@ -168,6 +179,8 @@ export function useJobBudget(jobId: string | null, linkedBidId: string | null, e
   const award = useCallback(
     (args: AwardBaselineRpcArgs) =>
       run(async () => {
+        // A bid pick carrying the company rate saves it on the bid first (the kernel's cue; slip 8 of the second walk).
+        if (args.p_source === 'bid' && args.p_bid_id && args.p_labor_rate != null && args.p_labor_rate > 0) await saveBidLaborRate(args.p_bid_id, args.p_labor_rate)
         const res = await supabase.rpc('award_job_baseline' as never, { ...args, p_job_id: jobId! } as never)
         if (!res.error) window.dispatchEvent(new Event(JOB_BUDGET_CHANGED_EVENT))
         return res

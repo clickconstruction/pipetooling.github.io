@@ -49,6 +49,14 @@ describe('PeopleScoreboardTab', () => {
     expect(jobs).toContain('1042 Harbor Lane Offices · 48% signed off Oct 30 by Taunya · 206 h of 248 h earned · 42 h under the baseline')
     expect(jobs).toContain("#1050 Pruett · not scored: awarded on the book's hours, a guess; the score waits for a bid or typed baseline")
     expect(screen.getByText('Change the share in Settings → People')).toBeTruthy()
+    // No scored job here carries a plan: the Days column says so.
+    expect(trs[0]!.textContent).toContain('no plan')
+    cleanup()
+    // A plan with no hours yet waits on hours, never "no plan" (the second walk's slip 5).
+    read = { readsWages: true, sharePct: 10, burden: 1.2, fromYmd: '2026-11-01', toYmd: '2026-11-30', rows: [{ ...rows[0]!, plannedFinish: '2026-11-20', teamHours: 0, subHours: 0 }] }
+    renderWithProviders(<PeopleScoreboardTab />)
+    expect(screen.getAllByTestId('scoreboard-row')[0]!.textContent).toContain('waits on hours')
+    expect(screen.getAllByTestId('scoreboard-row')[0]!.textContent).not.toContain('no plan')
   })
   it('without payroll access the kept column is not drawn and the bonus still is; nothing waiting says so', () => {
     read = { readsWages: false, sharePct: 10, burden: 1.2, fromYmd: '2026-11-01', toYmd: '2026-11-30', rows: rows.map((r) => ({ ...r, earnedUsd: null, actualUsd: null, keptUsd: null })) }

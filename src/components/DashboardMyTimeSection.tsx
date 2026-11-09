@@ -8,6 +8,7 @@ import { getDefaultWeekRange, getLastWeekRange, localCalendarDayKey } from '../u
 import { DashboardMyTimeDayEditorModal } from './DashboardMyTimeDayEditorModal'
 import { PersonalTimeOffModal } from './PersonalTimeOffModal'
 import { EmptyState } from './EmptyState'
+import { DashboardMyHoursBlock } from './dashboard/DashboardMyHoursBlock'
 import { myTimeWeekEmptyWords } from '../lib/dashboard/dashboardEmptyWords'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
@@ -259,7 +260,7 @@ type Props = {
 
 export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disableDayEditor = false, onWeekSeconds }: Props) {
   const prefixMap = useLedgerPrefixMap()
-  const { user: authUser } = useAuth()
+  const { user: authUser, role: authRole } = useAuth()
   const myTimeSubjectDisplayName = useMemo(() => {
     if (authUser?.id === userId) return displayNameFromAuthUser(authUser)?.trim() || 'You'
     return 'User'
@@ -707,6 +708,8 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
           </div>
         </div>
       </div>
+      {/* Your hours (design spike): what you said you can work, this week against it, eight weeks as bars. */}
+      <DashboardMyHoursBlock userId={userId} displayName={myTimeSubjectDisplayName} role={authRole ?? ''} isSalary={disableDayEditor} />
       {renderHoursByDay(getDefaultWeekRange().start, secondsByDayThisWeek, {
         sessionCountByDay,
         onDayClick: disableDayEditor ? undefined : setEditorDate,

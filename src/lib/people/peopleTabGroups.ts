@@ -32,6 +32,7 @@ export type PeopleTab =
   | 'activity'
   | 'day_book'
   | 'whos_where'
+  | 'utilization'
 
 export type PeopleTabGroupId = 'people' | 'pay' | 'paperwork' | 'fleet' | 'review' | 'feedback'
 
@@ -50,6 +51,7 @@ export const PEOPLE_TABS: readonly PeopleTab[] = [
   'spending',
   'day_book',
   'whos_where',
+  'utilization',
   'hours',
   'pay_stubs',
   'offsets',
@@ -75,6 +77,7 @@ export const PEOPLE_TAB_LABELS: Record<PeopleTab, string> = {
   spending: 'Spending',
   day_book: 'Day book',
   whos_where: "Who's where",
+  utilization: 'Utilization',
   hours: 'Hours',
   pay_stubs: 'Payroll',
   offsets: 'Offsets',
@@ -93,7 +96,7 @@ export const PEOPLE_TAB_LABELS: Record<PeopleTab, string> = {
 }
 
 export const PEOPLE_TAB_GROUPS: readonly PeopleTabGroup[] = [
-  { id: 'people', label: 'People', views: ['users', 'subs', 'person', 'spending', 'day_book', 'whos_where'] },
+  { id: 'people', label: 'People', views: ['users', 'subs', 'person', 'spending', 'day_book', 'whos_where', 'utilization'] },
   { id: 'pay', label: 'Pay', views: ['hours', 'pay_stubs', 'offsets', 'employment', 'overhead'] },
   { id: 'paperwork', label: 'Paperwork', views: ['contracts', 'licenses', 'writeups', 'hr'] },
   { id: 'fleet', label: 'Fleet & Housing', views: ['vehicles', 'housing'] },

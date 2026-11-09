@@ -64,11 +64,14 @@ export interface GmailHistoryPage {
 }
 
 /**
- * The Inbox's new messages since a history point, a page at a time, oldest first: the messages added to it, and since
- * v2.5982 the ones given its label later (out of Spam, out of a filter's hold). 404 when Gmail no longer keeps the point.
+ * The box's new messages since a history point, a page at a time, oldest first: the messages added to it (the Inbox's,
+ * and since v2.6731 the ones the box itself sent), and since v2.5982 the ones given the Inbox label later (out of Spam,
+ * out of a filter's hold). 404 when Gmail no longer keeps the point.
  */
 export function gmailHistory(token: string, startHistoryId: string, pageToken?: string): Promise<GmailHistoryPage> {
-  return call(token, `/history?${q({ startHistoryId, historyTypes: 'messageAdded', labelId: 'INBOX', maxResults: '100', pageToken })}&historyTypes=labelAdded`)
+  // No `labelId` since v2.6731 (punch list #207 PR 3): Gmail's history takes one label at most, and the reader wants the
+  // Inbox and Sent both, so every record comes and `historyWalk.ts`'s `recordMessageIds` keeps the two labels' messages.
+  return call(token, `/history?${q({ startHistoryId, historyTypes: 'messageAdded', maxResults: '100', pageToken })}&historyTypes=labelAdded`)
 }
 
 /** Messages a Gmail search finds, a page at a time. */
