@@ -366,7 +366,7 @@ The owner's call of 2026-11-09, after two weeks with the Legal desk as a page: t
 |---|---|---|---|
 | 1 · the route, behind a redirect | `/lien-desk`, `lienDeskRoute.ts`, the `frame` prop, the `?liendesk=` and `?ownerrecords=` redirects, the Deadlines rows' kernel, the directory and the guide | v2.6777 | #7430, armed |
 | 2 · the doors go to the page | the gavel a link, the ☰ row, the ⋯ menu, the Collections header, the forecast, the Lien window's next step, the Dashboard's lines and card, the Materials line, the AR chip, the Development page, the Legal desk's door, the pushes, the guides; the mount and Records for an owner leave `JobsStagesTab` | v2.6780 | open |
-| 3 · the window frame goes | the overlay, the toggle and the ✕ go; the phone's list, then one notice with ← on top | | not started |
+| 3 · the window frame goes | the overlay, the toggle and the ✕ go; `LienDesk.tsx`; the phone's Notices list, then one notice with ← Notices on top; the address write keyed on the desk itself | v2.6781 | open |
 
 **The live walk, 2026-10-27.** On clicktooling.com as the dev, at 375, 768 and 1024 px, against
 `mockup.html` frame by frame. `docs/recent-features/v2.5984.md` holds it in full.

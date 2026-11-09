@@ -193,6 +193,32 @@ describe('LienDeskPage (/lien-desk)', () => {
     expect(door.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
+  it('on a phone (PR 3): the Notices list is the whole desk; a notice opens as a new entry with ← Notices, and ← Notices goes back to the list', async () => {
+    screenSize.phone = true
+    const { container } = renderWithProviders(<Harness start="/lien-desk?tab=notices" />)
+    await settle()
+    await waitFor(() => expect(container.querySelector('[data-lien-desk-list]')).not.toBeNull())
+    // The list writes nothing: no notice is picked for it.
+    expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices')
+    fireEvent.click(screen.getByRole('button', { name: /ATI Schertz/ }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices&job=j650'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Back to the notices' })).toBeTruthy())
+    expect(container.querySelector('[data-lien-desk-list]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the notices' }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices'))
+    await waitFor(() => expect(container.querySelector('[data-lien-desk-list]')).not.toBeNull())
+  })
+
+  it('on a phone, a notice reached by a link goes to the list in its own place', async () => {
+    screenSize.phone = true
+    const { container } = renderWithProviders(<Harness start="/lien-desk?tab=notices&job=j650&pile=to_draft" />)
+    await settle()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Back to the notices' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the notices' }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/lien-desk?tab=notices&pile=to_draft'))
+    await waitFor(() => expect(container.querySelector('[data-lien-desk-list]')).not.toBeNull())
+  })
+
   it('a role outside the office set lands on the Dashboard', async () => {
     auth.role = 'estimator'
     renderWithProviders(<Harness start="/lien-desk" />)
