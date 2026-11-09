@@ -2,7 +2,7 @@
 name: "The bill text's link: short, on a Click Plumbing address, and it never expires"
 number: 290
 group: ready
-status: asked 2026-11-08 · design agreed in chat the same evening · PR 1 (v2.6768: the Worker's /pay/ branch, the text and Copy link on my.clickplumbing.com/pay/<bill id>) built 2026-11-08 · PR 2 (v2.6769: the ten-letter code, migration `20261109033000`, pay-link by code) built 2026-11-08 on `claude/290-bill-pay-code`, stacked on PR 1
+status: asked 2026-11-08 · design agreed in chat the same evening · PR 1 (v2.6768: the Worker's /pay/ branch, live as version 82fda521, the text and Copy link on my.clickplumbing.com/pay/<bill id>) built and armed 2026-11-08 (#7414) · PR 2 (v2.6769: the ten-letter code, migration `20261109033000`, pay-link by code) built 2026-11-08 on `claude/290-bill-pay-code`, stacked on PR 1
 summary: >
   The text the share row sends with a Stripe bill ended in Stripe's own hosted link, about 160
   characters, which Stripe retires 30 days after the bill's due date. The app already had a door
@@ -82,5 +82,6 @@ PR 2: the same walk with the link ending in ten letters (43 characters); a bill 
 
 ## Where it stands
 
+- 2026-11-08, 21:25 CT: the Worker's `/pay/` line deployed in the dashboard as version `82fda521` (the owner signed in, the session typed the two lines under the `/e/` line and pressed Deploy); `curl -sI https://my.clickplumbing.com/pay/abc2def3gh` answers `HTTP/2 301` with `location: https://clicktooling.com/pay/abc2def3gh`, a capitalised bill id comes back lower-cased, `/e/` and a portal slug answer as before. PR 1 (#7414) armed and queued. PR 2 (#7415) opened on PR 1's branch; its SQL bed failed twice in CI (a customer with no master; a training account that read an existing code back, which is right) and was fixed; it is rebased onto main and armed once PR 1 lands.
 - 2026-11-08, later: PR 2 built as v2.6769 on `claude/290-bill-pay-code` (stacked on PR 1's branch): migration `20261109033000_bill_pay_codes.sql`, `pay-link` by code with the miss guard, the page's second shape, `billPayCodeIo` with the share row's and Collect payment's mint, the SQL bed `scripts/pgtest-bill-pay-codes.sh`. The Cloudflare dashboard asked for a sign-in the session cannot do, so the Worker's `/pay/` line is the owner's step (the exact line is in the mirror file); PR 1 is not armed until it is live.
 - 2026-11-08: asked, designed (the design's trade-offs above), the owner's yes the same evening. PR 1 built as v2.6768 on `claude/charming-golick-9e4bfc` (#7414). Left on PR 1: the Worker edit in the dashboard, the merge, the walk.
