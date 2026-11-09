@@ -67,6 +67,80 @@ const pick = async (input: HTMLElement, file: File) => {
 }
 const base64Of = (bytes: number[]) => btoa(String.fromCharCode(...bytes))
 
+describe('Your files on this job (punch list #205, PR 4)', () => {
+  it('lists what the company sent us by what each is, with the day and Open, and the plans we sent', async () => {
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Dental Office/ }))
+    const block = within(await screen.findByRole('region', { name: 'Your files on this job' }))
+    const table = block.getByRole('table')
+    const rows = [...table.querySelectorAll('tbody tr')].map((tr) => [tr.getAttribute('data-portal-file'), tr.textContent])
+    expect(rows.map((r) => r[0])).toEqual(['submittal', 'change', 'waiver'])
+    expect(rows[0]![1]).toContain('Panelboards cut sheet.pdf')
+    expect(rows[0]![1]).toContain('submittal')
+    expect(rows[0]![1]).toContain('Oct 3')
+    expect(rows[1]![1]).toContain('change you asked for')
+    expect(rows[2]![1]).toContain('waiver you signed')
+    const links = block.getAllByRole('link', { name: 'Open ↗' }) as HTMLAnchorElement[]
+    expect(links.map((a) => a.href)).toEqual(['https://drive.google.com/file/d/sample-submittal/view', 'https://drive.google.com/file/d/sample-change/view', 'https://drive.google.com/file/d/sample-waiver/view'])
+    expect(links.every((a) => a.target === '_blank')).toBe(true)
+    // The dental office's sets carry no Drive link in the sample, so no plans row; the block still draws under the statement of work.
+    expect(table.querySelector('[data-portal-file="plans"]')).toBeNull()
+    const sow = screen.getByRole('region', { name: 'Electrical · statement of work' })
+    const report = screen.getByRole('region', { name: 'Electrical · report your work and get paid' })
+    const files = screen.getByRole('region', { name: 'Your files on this job' })
+    expect(sow.compareDocumentPosition(files) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(files.compareDocumentPosition(report) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(files.textContent).not.toContain('never-passes')
+  })
+
+  it('sends Click a file with its one line as the kind file for note, and the file joins the list', async () => {
+    fileAnswer = { ok: true, body: { ok: true, value: { id: 'f9', name: 'Trench by the back door.pdf', url: 'https://drive.google.com/file/d/f9/view' } } }
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Dental Office/ }))
+    const block = within(await screen.findByRole('region', { name: 'Your files on this job' }))
+    expect(block.getByText('A photo or a PDF up to 10 MB. It goes to the office with your note.')).toBeTruthy()
+    const send = block.getByRole('button', { name: 'Send' }) as HTMLButtonElement
+    expect(send.disabled).toBe(true)
+    await pick(block.getByLabelText('Send Click a file'), pdf('IMG_0412.pdf'))
+    expect(send.disabled).toBe(true)
+    fireEvent.change(block.getByLabelText('What is it? One line.'), { target: { value: 'Trench by the back door' } })
+    expect(send.disabled).toBe(false)
+    fireEvent.click(send)
+    await waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toEqual({ token: TOKEN, kind: 'file', for: 'note', projectId: ID.job, name: 'IMG_0412.pdf', base64: base64Of([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]), note: 'Trench by the back door' })
+    expect(await block.findByText('Sent. The office has it.')).toBeTruthy()
+    const first = block.getByRole('table').querySelector('tbody tr')!
+    expect(first.getAttribute('data-portal-file')).toBe('note')
+    expect(first.textContent).toContain('Trench by the back door.pdf')
+    expect(first.textContent).toContain('a file you sent')
+    // Nothing read again: the answer is the row.
+    expect(reads).toHaveLength(1)
+  })
+
+  it('says a refused note file in the company’s words and keeps the line typed', async () => {
+    fileAnswer = { ok: false, body: { error: 'notAwarded' } }
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Dental Office/ }))
+    const block = within(await screen.findByRole('region', { name: 'Your files on this job' }))
+    await pick(block.getByLabelText('Send Click a file'), pdf('ticket.pdf'))
+    fireEvent.change(block.getByLabelText('What is it? One line.'), { target: { value: 'Dump ticket' } })
+    fireEvent.click(block.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(posts).toHaveLength(1))
+    expect(await block.findByText(/not awarded|not yours|did not go through|Click/i)).toBeTruthy()
+    expect((block.getByLabelText('What is it? One line.') as HTMLInputElement).value).toBe('Dump ticket')
+  })
+
+  it('draws no block when the answer has no files list and no plans link', async () => {
+    const { files: _files, ...older } = slice
+    slice = older as TradePortalSlice
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Dental Office/ }))
+    await screen.findByRole('region', { name: 'Electrical · report your work and get paid' })
+    // The block still offers Send Click a file: the list is empty, the press stands.
+    expect(within(screen.getByRole('region', { name: 'Your files on this job' })).queryByRole('table')).toBeNull()
+  })
+})
+
 describe('a file from the portal (P5a-1)', () => {
   it('sends a submittal round’s file first, then the round with its link', async () => {
     const report = await openJob()

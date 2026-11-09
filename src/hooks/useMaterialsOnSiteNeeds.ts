@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { deskLoadState, jobIdsWithData, jobLoadState, listContainers, listMovements, loadDesk } from '../lib/materials/onSiteStore'
-import { jobMaterialsSummary } from '../lib/materials/onSiteSummary'
+import { deskLoadState, jobIdsWithData, jobLoadState, loadDesk } from '../lib/materials/onSiteStore'
+import { jobMaterialsSummaryFor } from '../lib/materials/onSiteSummary'
 import { materialsNeeds, type MaterialsNeeds } from '../lib/needsYou/materialsOnSite'
 import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
 import { useOnSiteStoreVersion } from './useOnSiteStore'
@@ -50,7 +50,7 @@ export function useMaterialsOnSiteNeeds(enabled: boolean, opts: { hideZzTestJobs
     const facts = jobIdsWithData()
       .filter((id) => jobLoadState(id).loaded && !(zzIds?.has(id) ?? false))
       .map((id) => {
-        const s = jobMaterialsSummary(listContainers(id), listMovements(id), now)
+        const s = jobMaterialsSummaryFor(id, now)
         return { jobId: id, stale: s.stale.length, missingLines: s.missingLines, missingMoneyWeek: s.missingMoneyWeek }
       })
     return materialsNeeds(facts)
