@@ -2,7 +2,7 @@
 name: "A photo of the supply house ticket, taken at the counter"
 number: 295
 group: ready
-status: asked 2026-11-09 · Tally read on main, in prod and live · three shapes put to Diane, the second picked for a mock-up the same day · drawn as thirteen frames · her "is this the best we can do, did we cover the edge cases" the same day: the cases checked against the code and redrawn as fifteen frames · Diane said build as drawn the same day, with the picks she was shown on the calls · PR 1 (the ground, v2.6812) is in review · no screen yet
+status: asked 2026-11-09 · Tally read on main, in prod and live · three shapes put to Diane, the second picked for a mock-up the same day · drawn as thirteen frames · her "is this the best we can do, did we cover the edge cases" the same day: the cases checked against the code and redrawn as fifteen frames · Diane said build as drawn the same day, with the picks she was shown on the calls · PR 1 (the ground, pull request 7495) is in review · no screen yet
 mockup: to-dos/ticket-photo/mockup.html
 summary: >
   Two papers leave a supply house counter. A card receipt is the only list of what was bought, and
