@@ -105,6 +105,7 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
 
   // The matter: its steps and documents, when one stands on the person.
   const matter = matters.find((m) => !m.closed_at) ?? matters[0] ?? null
+  const counselOnlyHeld = matter ? await reader.rpc('matter_counsel_only_count', { p_matter_id: matter.id }).then((n) => (typeof n === 'number' ? n : 0)).catch(() => 0) : 0
   const [matterEntries, matterDocs] = matter
     ? await Promise.all([
         read<MatterEntryRow>('matter steps', () => reader.rows('legal_matter_entries', { select: 'id,kind,occurred_on,body,meta,voided_at', filters: eq('matter_id', matter.id), order: [{ column: 'occurred_on', ascending: true }], limit: READ_CAP })),
@@ -194,6 +195,8 @@ export async function getCaseBrief(reader: Reader, ask: CaseBriefAsk, who: CaseB
             .map((e) => ({ id: e.id, on: e.occurred_on, body: firstLine(e.body ?? '', 160), done: Boolean(e.meta?.done_at) })),
           events: matterEntries.filter((e) => e.kind !== 'plan' && !e.voided_at).length,
           documents: matterDocs.filter((d) => !d.voided_at).map((d) => ({ id: d.id, title: d.title, state: d.state, dated_on: d.dated_on, text: Boolean(d.mime && /^text\//.test(d.mime)) })),
+          // v2.6720 (punch list #288): how many of the matter's documents are for counsel alone and refused to the seat; a count, never a row.
+          counsel_only_held: counselOnlyHeld,
         }
       : null,
     themes: themeRows,
