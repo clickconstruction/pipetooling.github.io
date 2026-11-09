@@ -26,7 +26,8 @@ export type PersonDeskOpenArgs = {
 
 type PersonDeskContextValue = {
   open: (args: PersonDeskOpenArgs) => void
-  close: () => void
+  /** `forget` (v2.6802): the person is gone (deleted), so no "Back to their desk" is offered. */
+  close: (opts?: { forget?: boolean }) => void
   payload: PersonDeskOpenArgs | null
   /** Bumped by sections after a write so siblings and the header refetch. */
   changeKey: number
@@ -59,10 +60,11 @@ export function PersonDeskProvider({ children }: { children: ReactNode }) {
     setPayload({ userId, personId, payName, displayName: args.displayName?.trim() || payName, section: args.section ?? null, flow: args.flow ?? null })
   }, [])
 
-  const close = useCallback(() => {
+  const close = useCallback((opts?: { forget?: boolean }) => {
     const was = payloadRef.current
-    // The way back opens the same person, with no section ring and no window already up.
-    if (was) setLastClosed({ ...was, section: null, flow: null })
+    // The way back opens the same person, with no section ring and no window already up; a deleted person has no way back.
+    if (opts?.forget) setLastClosed(null)
+    else if (was) setLastClosed({ ...was, section: null, flow: null })
     setPayload(null)
   }, [])
   const markChanged = useCallback(() => setChangeKey((k) => k + 1), [])
