@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A text when a charge lands on your card, with a place to photograph the receipt</title>
+<style>
+  /* Punch list #299, the second door on #295. Everything here is made up: Jordan Reyes and the 555 numbers, Ridgeway
+     Supply and Lowe's, JP1042 Oak Hollow Bldg C, every amount, time and code. The phone frames are 390 wide as the
+     text-the-bill boards are (#291); the office's rows are 760. The link's page wears the portal's paper, the page a
+     box label opens (#294) and the pay page (#290): no app chrome, no sign-in. */
+  :root { color-scheme: light; --page: #eceae4; --strong: #111827; --ink: #1f2937; --muted: #6b7280; --border: #e5e7eb; --surface: #fff; --bg: #f9fafb; --blue: #2563eb; --green: #16a34a; --green-700: #15803d; --amber: #b45309; --amber-50: #fffbeb; --red: #dc2626; --copper: #9a5b2f; --link: #2563eb; --font: -apple-system, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.08); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 72px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--strong); max-width: 40ch; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2 { font-size: 20px; margin: 46px 0 6px; color: var(--strong); }
+  .lede { margin: 0 0 6px; color: #374151; max-width: 104ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p390 { flex: 0 0 390px; } .col.p760 { flex: 0 1 760px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .cap b { color: var(--copper); }
+  .say { margin: 0; font-size: 13px; color: #374151; max-width: 48ch; }
+  .frame { max-width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid #cfd4db; border-radius: 12px; box-shadow: var(--shadow); }
+  .note { margin: 18px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: #f4efe6; color: #374151; max-width: 104ch; }
+  .note b { color: var(--strong); }
+  ol.calls { margin: 10px 0 0; padding-left: 20px; max-width: 104ch; color: #374151; }
+  ol.calls li { margin: 0 0 6px; }
+
+  .screen { width: 390px; font-size: 16px; line-height: 1.45; color: var(--ink); background: var(--surface); position: relative; }
+  .screen.w760 { width: 760px; }
+  .pad { padding: 16px 18px 20px; }
+  .chip { display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 700; letter-spacing: .03em; }
+  .chip.amber { background: var(--amber); color: #fff; }
+  .chip.green { background: #dcfce7; color: var(--green-700); }
+  .chip.grey { background: var(--border); color: #374151; }
+  .press { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; border-radius: 10px; border: none; font: inherit; font-weight: 700; font-size: .9375rem; }
+  .press.blue { background: var(--blue); color: #fff; }
+  .press.line { background: var(--surface); color: var(--ink); border: 1px solid var(--border); font-weight: 600; }
+  .press.sm { min-height: 40px; font-size: .8125rem; border-radius: 8px; }
+  .lnk { color: var(--link); font-size: .8125rem; }
+  .muted { color: var(--muted); }
+  .small { font-size: .8125rem; }
+  .tiny { font-size: .75rem; }
+  .paper { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--bg); }
+  .fact { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .fact b { color: var(--strong); font-size: 1.125rem; font-variant-numeric: tabular-nums; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips span { border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: .8125rem; }
+  .chips span.on { border: 2px solid var(--blue); color: var(--strong); font-weight: 600; }
+  .thumb { width: 86px; height: 112px; border-radius: 8px; border: 1px solid var(--border); background: repeating-linear-gradient(#fff 0 10px, #eef1f5 10px 12px); position: relative; }
+  .thumb::after { content: "TICKET"; position: absolute; left: 8px; top: 8px; font-size: 9px; font-weight: 700; color: #374151; letter-spacing: .08em; }
+
+  /* the messages app */
+  .msgs { background: #f0f2f5; padding: 16px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 420px; }
+  .msgs .when { text-align: center; color: var(--muted); font-size: 12px; }
+  .bubble { max-width: 300px; background: #fff; border: 1px solid var(--border); border-radius: 18px 18px 18px 4px; padding: 12px 14px; line-height: 1.45; font-size: 15px; }
+  .bubble a { color: var(--link); word-break: break-all; }
+  .bubble.sys { background: var(--border); color: #374151; font-size: 14px; }
+  .bubble.mine { align-self: flex-end; background: #2563eb; color: #fff; border-radius: 18px 18px 4px 18px; border: none; }
+
+  /* the office */
+  .line { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-top: 8px; font-size: .875rem; }
+  .line .who { font-weight: 600; color: var(--strong); }
+  .line .amt { font-weight: 700; color: var(--strong); font-variant-numeric: tabular-nums; text-align: right; }
+  .line .sub { grid-column: 1 / -1; color: var(--muted); font-size: .8125rem; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .needs { border: 1px solid var(--border); border-left: 4px solid var(--amber); border-radius: 10px; padding: 12px 14px; background: var(--surface); margin-top: 10px; }
+  .needs .t { font-weight: 600; color: var(--strong); }
+  .needs .d { color: #374151; font-size: .875rem; margin-top: 2px; }
+  .needs .p { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .needs .p span { border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: .8125rem; font-weight: 600; }
+  .needs .p span.blue { background: var(--blue); color: #fff; border-color: var(--blue); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #299 · the second door on #295 · mock-up, nothing built</p>
+  <h1>A text when a charge lands on your card, with a place to photograph the receipt</h1>
+  <p>Diane, 2026-11-09: <em>whenever a user gets a charge on a card assigned to them, what if we sent them a text with a place to take a photo of their receipt and upload it.</em> Her calls the same day: every charge once it posts, no sign-in on the link, no quiet hours, a Needs you item for the office when the holder has no cell on file, and the push to Mercury's own receipt slot parked for much later (#300). The text carries its charge, so a photo taken through it lands on that charge with no guess. It writes the same ticket record as the Tally press (#295), and the office reads both the same way.</p>
+</header>
+
+<h2>T1 · The text, as Jordan sees it</h2>
+<p class="lede">From the company number, the moment the charge posts. A teammate's first text from the company number names the company, and the carriers' opt-out line rides under it once, as a customer's first text does (#291). Every later text is the one line.</p>
+<div class="row">
+  <div class="col p390">
+    <div class="cap">First text to this number</div>
+    <div class="frame"><div class="screen">
+      <div class="pad" style="border-bottom:1px solid var(--border)"><div class="tiny muted">What Jordan sees</div><div style="font-weight:600">(512) 555-0100</div><div class="tiny muted">The company number. Replies land in Messages as any text does.</div></div>
+      <div class="msgs">
+        <div class="when">Today 6:14 PM</div>
+        <div class="bubble">Hi Jordan, this is Click Plumbing. $228.58 at Ridgeway Supply posted to your card today. Snap the receipt here: <a href="#">my.clickplumbing.com/r/7KQ4M2</a></div>
+        <div style="max-width:300px"><div class="bubble sys">Click Plumbing: reply STOP to stop these texts.</div><div class="tiny muted" style="padding-left:6px">added by the app · a first text only</div></div>
+      </div>
+      <div class="pad small" style="border-top:1px solid var(--border)">One text, 142 characters, from the company number to the cell on Jordan's People row. The link is this charge's alone.</div>
+    </div></div>
+  </div>
+  <div class="col p390">
+    <div class="cap">A later text · two charges in one hour</div>
+    <div class="frame"><div class="screen">
+      <div class="msgs">
+        <div class="when">Today 6:14 PM</div>
+        <div class="bubble">$228.58 at Ridgeway Supply and $41.17 at Cedar Bend Hardware posted to your card today. Snap the receipts here: <a href="#">my.clickplumbing.com/r/7KQ4M2</a></div>
+        <div class="when">Tomorrow 6:00 PM</div>
+        <div class="bubble">Still no receipt for $228.58 at Ridgeway Supply. Snap it here: <a href="#">my.clickplumbing.com/r/7KQ4M2</a></div>
+        <div class="bubble mine">STOP</div>
+        <div class="bubble sys">You will get no more texts from Click Plumbing. Reply START to get them again.</div>
+      </div>
+      <div class="pad small">Two charges that post inside one hour go in one text; the link opens on both. One reminder the next evening, when the charge still has no receipt (call 2). A STOP is honoured by the carrier and by us: the next charge on that card makes a Needs you item instead (T7).</div>
+    </div></div>
+  </div>
+</div>
+
+<h2>T2 · The link's page, first visit</h2>
+<p class="lede">No sign-in. The code opens this one charge and nothing else: the merchant, the amount, the day, whose card, and the job when Tally already knows it. The camera is the one press.</p>
+<div class="row">
+  <div class="col p390">
+    <div class="cap">my.clickplumbing.com/r/7KQ4M2</div>
+    <div class="frame"><div class="screen"><div class="pad" style="display:grid;gap:14px">
+      <div><div class="tiny muted" style="letter-spacing:.06em;text-transform:uppercase;font-weight:700">Click Plumbing · receipt</div><div style="font-size:1.25rem;font-weight:700;color:var(--strong)">Ridgeway Supply</div></div>
+      <div class="paper">
+        <div class="fact"><span>Charged</span><b>$228.58</b></div>
+        <div class="fact small"><span class="muted">When</span><span>Tue, Nov 4, 10:02 AM</span></div>
+        <div class="fact small"><span class="muted">Card</span><span>Jordan's card, ending 4471</span></div>
+        <div class="fact small"><span class="muted">Job</span><span class="muted">not sorted yet</span></div>
+      </div>
+      <div class="press blue">📷 Take a photo of the receipt</div>
+      <div class="lnk" style="text-align:center">or choose a photo or a PDF you already have</div>
+      <div>
+        <div class="small" style="font-weight:600;color:var(--strong)">Which job was it for? <span class="muted" style="font-weight:400">You can skip this.</span></div>
+        <div class="chips" style="margin-top:8px"><span>JP1042, Oak Hollow Bldg C</span><span>JP1038, Cedar Bend water heater</span><span>Not for one job</span></div>
+        <div class="tiny muted" style="margin-top:6px">Your jobs on the day of the charge.</div>
+      </div>
+      <div class="tiny muted">This link is for this charge alone. It opens for 14 days and shows nothing else.</div>
+    </div></div></div>
+  </div>
+  <div class="col p390">
+    <div class="cap">The same page when Tally already knows the job</div>
+    <div class="frame"><div class="screen"><div class="pad" style="display:grid;gap:14px">
+      <div><div class="tiny muted" style="letter-spacing:.06em;text-transform:uppercase;font-weight:700">Click Plumbing · receipt</div><div style="font-size:1.25rem;font-weight:700;color:var(--strong)">Ridgeway Supply</div></div>
+      <div class="paper">
+        <div class="fact"><span>Charged</span><b>$228.58</b></div>
+        <div class="fact small"><span class="muted">When</span><span>Tue, Nov 4, 10:02 AM</span></div>
+        <div class="fact small"><span class="muted">Card</span><span>Jordan's card, ending 4471</span></div>
+        <div class="fact small"><span class="muted">Job</span><span>JP1042, Oak Hollow Bldg C</span></div>
+      </div>
+      <div class="press blue">📷 Take a photo of the receipt</div>
+      <div class="lnk" style="text-align:center">or choose a photo or a PDF you already have</div>
+      <div class="tiny muted">The office sorted this charge already, so the page asks no job. A photo still goes on it.</div>
+    </div></div></div>
+    <p class="say">A weak signal: the shrunk photo stays on the page with a Retry button until it sends. The page has no sign-in and so no queue; leaving the page before it sends loses the shot, and the page says so.</p>
+  </div>
+</div>
+
+<h2>T3 · After the upload · T4 · The charge already has its ticket · T5 · Expired</h2>
+<div class="row">
+  <div class="col p390">
+    <div class="cap">T3 · uploaded</div>
+    <div class="frame"><div class="screen"><div class="pad" style="display:grid;gap:14px">
+      <div class="chip green" style="justify-self:start">RECEIPT ON THE CHARGE</div>
+      <div style="font-size:1.125rem;font-weight:700;color:var(--strong)">Got it. The receipt is on $228.58 at Ridgeway Supply.</div>
+      <div style="display:flex;gap:12px;align-items:flex-start"><div class="thumb"></div><div class="small" style="display:grid;gap:6px"><span class="lnk">Retake</span><span class="lnk">+ Add a page</span><span class="muted tiny">A long receipt is two pages.</span></div></div>
+      <div class="chips"><span class="on">✓ JP1042, Oak Hollow Bldg C</span><span>JP1038, Cedar Bend water heater</span><span>Not for one job</span></div>
+      <div class="tiny muted">You can close this page. Open the link again to add a page or change the job.</div>
+    </div></div></div>
+  </div>
+  <div class="col p390">
+    <div class="cap">T4 · taken at the counter already</div>
+    <div class="frame"><div class="screen"><div class="pad" style="display:grid;gap:14px">
+      <div class="chip green" style="justify-self:start">RECEIPT ON THE CHARGE</div>
+      <div style="font-size:1.125rem;font-weight:700;color:var(--strong)">This charge has its ticket already.</div>
+      <div class="small">You took it in Tally at 10:02 AM, for JP1042, Oak Hollow Bldg C.</div>
+      <div style="display:flex;gap:12px;align-items:flex-start"><div class="thumb"></div><div class="small" style="display:grid;gap:6px"><span class="lnk">+ Add a page</span></div></div>
+      <div class="tiny muted">No text goes for a charge that has its ticket. This page is what the link shows when the ticket came after the text went.</div>
+    </div></div></div>
+  </div>
+  <div class="col p390">
+    <div class="cap">T5 · expired, or no such link</div>
+    <div class="frame"><div class="screen"><div class="pad" style="display:grid;gap:14px">
+      <div style="font-size:1.125rem;font-weight:700;color:var(--strong)">This link has closed.</div>
+      <div class="small">A receipt link opens for 14 days. Open Job Parts Tally in the app and press Photo of a ticket to add the receipt.</div>
+      <div class="press line sm">Open Job Parts Tally</div>
+      <div class="tiny muted">A code that opens nothing reads the same words with no press, and a phone that guesses twenty wrong codes in an hour is held off for the hour, as the box label page does.</div>
+    </div></div></div>
+  </div>
+</div>
+
+<h2>T6 · The office · the charge's line in the Team queue</h2>
+<p class="lede">The same line the Tally ticket draws (#295, frame J). The chip says where the receipt came from; the sort takes the ticket's job as its first choice either way.</p>
+<div class="row">
+  <div class="col p760">
+    <div class="cap">Jordan · Tue Nov 4 · 3 charges</div>
+    <div class="frame"><div class="screen w760"><div class="pad">
+      <div class="line"><span class="who">Ridgeway Supply</span><span class="amt">$228.58</span><span class="sub"><span class="chip amber">TEXTED 6:14 PM</span><span>no receipt yet</span><span class="lnk">+ Ticket</span></span></div>
+      <div class="line"><span class="who">Cedar Bend Hardware</span><span class="amt">$41.17</span><span class="sub"><span class="chip green">RECEIPT · FROM THE TEXT</span><span>JP1038 first</span><span class="lnk">Open</span></span></div>
+      <div class="line"><span class="who">The Home Depot</span><span class="amt">$163.96</span><span class="sub"><span class="chip green">TICKET · AT THE COUNTER</span><span>JP1042 first</span><span class="lnk">Open</span></span></div>
+      <div class="line"><span class="who">Lowe's</span><span class="amt">$84.21</span><span class="sub"><span class="chip grey">NO TEXT · CARD TIED TO NO ONE</span><span class="lnk">Tie the card</span></span></div>
+    </div></div></div>
+    <p class="say">The reminder's state reads on the line too: <em>texted 6:14 PM, reminded Wed 6:00 PM, no receipt yet</em>. A charge with no receipt after the reminder becomes the office's Needs you item below.</p>
+  </div>
+</div>
+
+<h2>T7 · The office · Needs you items</h2>
+<p class="lede">What the text cannot do by itself lands on the office's Needs you list. Each names the next press.</p>
+<div class="row">
+  <div class="col p760">
+    <div class="frame"><div class="screen w760"><div class="pad">
+      <div class="needs"><div class="t">Jordan has no cell on file, and $228.58 at Ridgeway Supply posted to his card.</div><div class="d">No text could go. Add his cell on People, and the next charge texts him. Or ask him for the receipt.</div><div class="p"><span class="blue">Add Jordan's cell</span><span>+ Ticket</span><span>Got it</span></div></div>
+      <div class="needs"><div class="t">$84.21 at Lowe's posted to a card tied to no one.</div><div class="d">Tie the card to its holder on Banking, and the charge texts them.</div><div class="p"><span class="blue">Tie the card</span><span>+ Ticket</span></div></div>
+      <div class="needs"><div class="t">Sam asked for no texts, and $163.96 at The Home Depot posted to his card.</div><div class="d">He replied STOP on Oct 2. The carriers refuse the text, so ask him for the receipt another way.</div><div class="p"><span>+ Ticket</span><span>Got it</span></div></div>
+      <div class="needs"><div class="t">Jordan was texted twice about $228.58 at Ridgeway Supply and sent no receipt.</div><div class="d">Texted Tue 6:14 PM, reminded Wed 6:00 PM. The link is open until Nov 18.</div><div class="p"><span>+ Ticket</span><span>Text again</span><span>Got it</span></div></div>
+    </div></div></div>
+  </div>
+</div>
+
+<div class="note"><b>The calls that are the owner's.</b>
+<ol class="calls">
+  <li><b>The reminder.</b> One the next evening when the charge still has no receipt, as drawn; or none; or one a day for three days.</li>
+  <li><b>The job question on the page.</b> As drawn, the day's jobs offered and skippable; or no job on the page at all, the office sorts as today.</li>
+  <li><b>Two charges in one hour, one text.</b> As drawn; or always one text a charge.</li>
+  <li><b>A push to the app too</b>, for a holder with the app installed, beside the text. Not instead of it.</li>
+  <li><b>Whose charges text.</b> Every linked card, the office's own included, as she said; or field roles only. On the two weeks read, the two office cards are near half the charges.</li>
+</ol></div>
+</div>
+</body>
+</html>
