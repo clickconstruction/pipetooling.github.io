@@ -2,7 +2,7 @@
 name: "Research: the permits a city issues, on a ledger and a map, so an estimator knows which to chase"
 number: 292
 group: ready
-status: asked 2026-11-09 · refined in chat the same day and the owner liked the shape (two signals, the ledger first, the map as a lens, one city at a time) · the first areas are the cities the Inspections tab's permit portals already serve · building 2026-11-09 night on claude/permit-research-card, the owner's word: every call the session's own, live by morning · PR 1 (v2.6782): the migration, permit-pull, the ledger, the Decide sheet, the door into a GC lead · PR 2 (v2.6784): the map lens, the hint from our own bid history, Who wins what
+status: asked 2026-11-09 · refined in chat the same day and the owner liked the shape (two signals, the ledger first, the map as a lens, one city at a time) · the first areas are the cities the Inspections tab's permit portals already serve · building 2026-11-09 night on claude/permit-research-card, the owner's word: every call the session's own, live by morning · PR 1 (v2.6782): the migration, permit-pull, the ledger, the Decide sheet, the door into a GC lead · PR 1 merged 2026-11-09 08:06Z, the migration pushed, permit-pull deployed, the first pull run from the app at 02:21 Central (329 permits in the 30-day window, 140 already with a plumber) and the ledger walked live: Look into it, Approach them (the lead landed on the Jobs to GC deck with the permit as its job, then was deleted), Not for us · PR 2 (v2.6784, #7447): the map lens, the hint from our own bid history, Who wins what, the value floor
 summary: >
   The owner wants more of the work we want. Every city publishes the permits it issues, and
   those permits say who is about to build what, where. A Research section under Prospects takes
@@ -11,7 +11,7 @@ summary: >
   get two lenses: a building permit with no plumbing permit yet is work we can still bid, and a
   plumbing permit names the plumber who already has it, which over a year draws who wins what
   where. A score from our own bid history sits beside each row as a hint; the estimator decides.
-next: Land PR 1 (v2.6782) and PR 2 (v2.6784), push both migrations, deploy permit-pull, run the first pull, walk the ledger and the map live; then the owner's look in the morning.
+next: Land PR 2 (#7447) and the types PR (#7446), push 20261109080000, redeploy dev-mcp for its catalog, walk the map and the hint live; then the owner's look in the morning. His first press is a hard reload if the Research tab is missing, since the service worker serves the old shell once.
 size: L as a train of four (M · S · M · S)
 blocker: None. The owner asked for no questions; § What the owner settles records the guesses made in his place.
 opinion: build, ledger first — the pins canvases, the geocode cache, the GC book and the prospect kinds already exist, so revision 1 is one table, one nightly pull, one kernel and one tab; the map is a day once the rows are there
@@ -203,4 +203,8 @@ made up (*Ridgeway Builders*, *100 Sample St*).
 
 ## Where it stands
 
-2026-11-09: card opened on the owner's ask and the refinement he liked. The same night, on his word to build it through to live with no questions, PR 1 (v2.6782) was written: the migration, the pull, the ledger, the sheet and the door, with the mock-ups revised on the second look. PR 2 (v2.6784) followed the same night: the map lens, the hint from our own bid history and Who wins what.
+2026-11-09: card opened on the owner's ask and the refinement he liked. The same night, on his word to build it through to live with no questions, PR 1 (v2.6782, #7439) was written: the migration, the pull, the ledger, the sheet and the door, with the mock-ups revised on the second look. It merged at 08:06Z after four CI rounds (the CSS tint tokens, the app time zone in the pull, the dev-mcp catalog, the egg-surface test on the open path); the migration was pushed and `permit-pull` deployed at once.
+
+**The walk, 2026-11-09 02:21 Central, on the live app in the owner's Chrome:** Pull now read 75 days of both feeds in about a minute; the window showed 329 permits, 189 waiting on a look and 140 with a plumber already. On a $1,500 application: Look into it with a reason drew the chip with the decider's name, the day and the look-again day, and the row left the waiting lens; Change → Approach them made a GC lead on the Jobs to GC deck named for the permit's contact, *General contractor · from A permit*, with *Commercial project at <the address>* as its job, and the row read *Approached · the GC lead*; the lead was deleted from its Edit window, and the row's link went with it; Change → Not for us closed the walk with its reason. Two things were learned: a third of the window's applications declare under $25k (signs, parking, small repairs), so PR 2 adds a declared-value floor at $25k by default; and a plain navigation served the old shell once (the service worker), so a hard reload is the first press if the tab is missing.
+
+PR 2 (v2.6784, #7447) followed the same night: the map lens, the hint from our own bid history, Who wins what, the header-search door and the value floor.
