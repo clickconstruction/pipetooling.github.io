@@ -414,7 +414,7 @@ pass (a count opens a segment, a segment's total is the count plus the changes a
 reads it into the kernel's shapes with parity tests against the kernel over one ledger; the store reads the ledger
 newest first, marks a full read `capped` and fetches the function, and `jobMaterialsSummaryFor` hands the desk, the
 job's page, the Job window, the ⋯ menu and the Needs you lines the database's sums; the job's page says so. The migration
-was pushed 2026-11-09 at 02:40Z, right after the merge, and the ledger reads fully applied. No job is near the cap today.
+was pushed 2026-11-09 at 02:34Z, right after the merge, and the ledger reads fully applied. No job is near the cap today.
 Walked 2026-11-08 on the dev server as the dev in Chrome before the push: the desk's three rows and JP1113's page read as
 before under the newest-first read (no job is capped, so the note is absent and the function is not called); the capped
 path is held by the parity tests until the live check after the push.
