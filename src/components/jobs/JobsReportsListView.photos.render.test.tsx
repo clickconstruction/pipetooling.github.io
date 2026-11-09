@@ -54,7 +54,7 @@ const rows: ReportsListRow[] = [
 ]
 
 const noop = () => {}
-const props = { authRole: 'assistant' as const, isDev: false, deletingId: null, onDelete: noop, onOpenFiles: noop, onOpenPictures: noop, onEditJob: noop, onPreviewJob: noop }
+const props = { authRole: 'assistant' as const, canDelete: false, deletingId: null, onDelete: noop, onOpenFiles: noop, onOpenPictures: noop, onEditJob: noop, onPreviewJob: noop }
 
 describe('JobsReportsListView, the photos on the rows (punch list #229, PR 3)', () => {
   it('reads the counts once for the rows and badges the card of the report with photos', async () => {

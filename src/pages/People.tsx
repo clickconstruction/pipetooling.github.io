@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { pageSubTabStyle, pageTabStyle } from '../lib/pageTabStyle'
+import { payReportPeriodWord, typedConfirmMessage, typedWordMatches } from '../lib/typedConfirm'
+import { isControllerOrDev } from '../lib/doorRoles'
 import { canManageActivityGrants, canPickOfficeJob, canSeePayrollViews, canSeeReviewTab, canSeeScoreboardTab, canUseUsersTags } from '../lib/people/peopleDoorGates'
 import {
   PEOPLE_TAB_GROUP_MEMORY_KEY,
@@ -626,6 +628,8 @@ export default function People() {
     authRole === 'dev' || (authRole === 'master_technician' && canAccessPay)
   const canDeletePeopleContracts =
     authRole !== null && ['dev', 'master_technician'].includes(authRole)
+  // Punch list #188 row 78 (v2.6765): the controller deletes a pay report behind the period's last day, typed.
+  const [payStubDeleteTyped, setPayStubDeleteTyped] = useState('')
   // Punch list #188 PR 4 (v2.6757): the doors the owner and the controller now hold, one gate each in peopleDoorGates.ts.
   const canSeeReview = canSeeReviewTab(isDev, authRole)
   const canSeeScoreboard = canSeeScoreboardTab(isDev, canAccessPay, authRole)
@@ -2036,7 +2040,7 @@ export default function People() {
           payConfig={payConfig}
           users={users}
           authUser={authUser}
-          isDev={isDev}
+          canDeletePayReports={isControllerOrDev(authRole)}
           error={error}
           onError={setError}
           loadPayStubs={loadPayStubs}
@@ -2082,20 +2086,36 @@ export default function People() {
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              Delete this pay report for {payStubDeleteConfirm.person_name} ({new Date(payStubDeleteConfirm.period_start + 'T12:00:00').toLocaleDateString()} – {new Date(payStubDeleteConfirm.period_end + 'T12:00:00').toLocaleDateString()})? A dev can put it back for 90 days from Settings → Data &amp; migration → Recently deleted.
+              Delete this pay report for {payStubDeleteConfirm.person_name} ({new Date(payStubDeleteConfirm.period_start + 'T12:00:00').toLocaleDateString()} – {new Date(payStubDeleteConfirm.period_end + 'T12:00:00').toLocaleDateString()})? A dev can put it back for 90 days from Settings → Data &amp; recovery → Recently deleted.
             </p>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>{typedConfirmMessage('delete this pay report', payReportPeriodWord(payStubDeleteConfirm.period_end))}</p>
+            <input
+              type="text"
+              aria-label="The period's last day"
+              value={payStubDeleteTyped}
+              onChange={(e) => setPayStubDeleteTyped(e.target.value)}
+              placeholder={payReportPeriodWord(payStubDeleteConfirm.period_end)}
+              autoComplete="off"
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem', boxSizing: 'border-box' }}
+            />
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                onClick={() => setPayStubDeleteConfirm(null)}
+                onClick={() => {
+                  setPayStubDeleteConfirm(null)
+                  setPayStubDeleteTyped('')
+                }}
                 style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={deletingPayStubId === payStubDeleteConfirm.id}
-                onClick={() => deletePayStub(payStubDeleteConfirm)}
+                disabled={deletingPayStubId === payStubDeleteConfirm.id || !typedWordMatches(payReportPeriodWord(payStubDeleteConfirm.period_end), payStubDeleteTyped)}
+                onClick={() => {
+                  setPayStubDeleteTyped('')
+                  void deletePayStub(payStubDeleteConfirm)
+                }}
                 style={{
                   padding: '0.5rem 1rem',
                   background: deletingPayStubId !== payStubDeleteConfirm.id ? '#dc2626' : DEAD_PRESS_FILL,
@@ -2168,7 +2188,7 @@ export default function People() {
           }}
           onViewStub={(stub) => void viewPayStub(stub)}
           onRecordPayment={openPayStubMarkPaidModal}
-          canDeletePayReports={isDev}
+          canDeletePayReports={isControllerOrDev(authRole)}
           onRequestDeleteStub={(stub) => setPayStubDeleteConfirm(stub)}
           deletingPayStubId={deletingPayStubId}
           markingPayStubId={markingPayStubId}

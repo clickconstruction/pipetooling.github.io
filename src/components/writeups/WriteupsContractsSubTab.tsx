@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useTypedConfirm } from '../../hooks/useTypedConfirm'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { SearchableSelectOption } from '../SearchableSelect'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
@@ -61,6 +62,9 @@ export function WriteupsContractsSubTab({
   myRole,
 }: Props) {
   const confirmDialog = useConfirmDialog()
+  const typedConfirm = useTypedConfirm()
+  // Punch list #188 row 79 (v2.6765): submitted rows are disclosure records, so the owner deletes one with a dev, behind the typed word.
+  const canDeleteSubmitted = isDev || myRole === 'master_technician'
   const { showToast } = useToastContext()
   const [templates, setTemplates] = useState<WriteupTemplateRow[]>([])
   const [writeups, setWriteups] = useState<WriteupListRow[]>([])
@@ -297,11 +301,13 @@ export function WriteupsContractsSubTab({
   )
 
   async function deleteWriteup(r: WriteupListRow) {
-    if (r.status === 'submitted' && !isDev) {
-      showToast('Only a dev can delete a submitted writeup.', 'warning')
+    if (r.status === 'submitted' && !canDeleteSubmitted) {
+      showToast('Only the owner or a dev can delete a submitted writeup.', 'warning')
       return
     }
-    if (
+    if (r.status === 'submitted') {
+      if (!(await typedConfirm({ title: `Delete this submitted writeup for ${r.subject_name}?`, act: 'delete this submitted writeup', word: 'DELETE', confirmLabel: 'Delete the writeup' }))) return
+    } else if (
       !(await confirmDialog({
         message: `Delete this ${r.status} writeup for ${r.subject_name}?`,
         confirmLabel: 'Delete',
@@ -516,7 +522,7 @@ export function WriteupsContractsSubTab({
                         >
                           {row.writeup.status === 'draft' ? 'Edit' : 'View'}
                         </button>
-                        {(row.writeup.status === 'draft' || isDev) && (
+                        {(row.writeup.status === 'draft' || canDeleteSubmitted) && (
                           <button
                             type="button"
                             onClick={() => deleteWriteup(row.writeup)}

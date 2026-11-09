@@ -47,7 +47,7 @@ export type JobsReportsListViewProps = {
   rows: ReportsListRow[]
   viewMode: 'newest' | 'job' | 'person'
   authRole: UserRole | null
-  isDev: boolean
+  canDelete: boolean
   deletingId: string | null
   onDelete: (id: string) => void
   onOpenFiles: (row: ReportsListRow) => void
@@ -151,7 +151,7 @@ export function JobsReportsListView(p: JobsReportsListViewProps) {
           </span>
           <ReportPhotoCount count={photoCounts.get(r.id)} style={{ marginLeft: 6 }} />
         </span>
-        {p.isDev ? (
+        {p.canDelete ? (
           <button
             type="button"
             onClick={() => p.onDelete(r.id)}

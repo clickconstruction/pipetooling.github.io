@@ -114,7 +114,7 @@ export type PeoplePayStubsTabProps = {
   payConfig: Record<string, PayConfigRow>
   users: UserRow[]
   authUser: User | null
-  isDev: boolean
+  canDeletePayReports: boolean
   error: string | null
   onError: (msg: string | null) => void
   /** Reload the shared pay-stub data layer (owned by the parent). */
@@ -158,7 +158,7 @@ export default function PeoplePayStubsTab({
   payConfig,
   users,
   authUser,
-  isDev,
+  canDeletePayReports,
   error,
   onError,
   loadPayStubs,
@@ -1052,11 +1052,11 @@ export default function PeoplePayStubsTab({
                             <button
                               type="button"
                               onClick={() => onPrintStub(stub)}
-                              style={{ padding: '2px 6px', fontSize: '0.8125rem', marginRight: isDev ? '0.35rem' : 0, background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                              style={{ padding: '2px 6px', fontSize: '0.8125rem', marginRight: canDeletePayReports ? '0.35rem' : 0, background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                             >
                               Print
                             </button>
-                            {isDev && (
+                            {canDeletePayReports && (
                               <button
                                 type="button"
                                 onClick={() => onRequestDeleteStub(stub)}
