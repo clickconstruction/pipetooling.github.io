@@ -2,7 +2,7 @@
 name: "Every supply house bill's lines as rows: what we buy, how often, at what price"
 number: 298
 group: gated
-status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question (the PDFs are private files in an office login's My Drive, not shared with the app) and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · split between two sessions, the pipe (PR 1 in PR, then PR 2 and the measure) and the screens (1b in PR: the Lines cell and the Look window) · left: step 0, PR 2, the measure, then 2a, 2b and the views
+status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question (the PDFs are private files in an office login's My Drive, not shared with the app) and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · split between two sessions, the pipe (PR 1 v2.6817 on main and pushed, then PR 2 and the measure) and the screens (1b v2.6819 on main, its migration pushed, walked live 2026-11-09 on a ZZ test house: a made-up bill filled from its PDF read *7 lines · The subtotal with tax and freight is $36.00 short of the total*, Look drew the paper beside the lines, Count it as read turned the row to *counted as read by Robert*) · left: step 0, PR 2, the measure, then 2a, 2b and the views
 mockup: to-dos/supply-bill-lines/mockup.html
 summary: >
   A supply house bill is recorded with its total, its job and a link to its PDF. The lines on the
@@ -14,11 +14,11 @@ summary: >
   backfill reads the 539 bills on file, about 520 of which link a PDF. Three views follow: what we
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
-next: PR 1 and 1b to main, both migrations pushed, the live check on one real bill from each of the three main houses through the form's upload path. Step 0, the owner's door, before PR 2 can read a bill on file: share the bills' Drive folder with the app's account, or move the bills into the Shared Drive.
+next: Step 0, the owner's door, before PR 2 can read a bill on file: share the bills' Drive folder with the app's account, or move the bills into the Shared Drive. Then PR 2 and the measure on the pipe side; the office's first real bill saved from its PDF shows the Lines cell on a real paper.
 size: XL as a train of about nine (PR 1 M · PR 2 M · then measure · 1b M · 2a M · 2b S · 4a M · 4b M · 4c S), the parsers optional and the joins of stage 5 apart
 blocker: For PR 2 and the backfill, step 0, the owner's door: the bills' folder is private to an office login and the app cannot open one of them today.
 opinion: build PR 1 and PR 2 first — the reader, the sum check and the PDFs all exist, and the real lines are what the matching list and the views should be designed from; the rest after a week of measured data
-ver: v2.6088 · v2.6095 (the bill reader this builds on)
+ver: v2.6817 · v2.6819 (PR 1 and 1b) · v2.6088 · v2.6095 (the bill reader this builds on)
 ---
 
 # Every supply house bill's lines as rows
@@ -513,7 +513,28 @@ New:
 
 ## Where it stands
 
-A design card with its mock-up. Nothing is built. The owner said on 2026-11-09 they want to build
+**PR 1 (v2.6817) and PR 1b (v2.6819) are on main and their migrations on prod** (2026-11-09). The
+live walk of 1b ran from a worktree dev server against prod, signed in through dev-login: the
+made-up *wrong total* bill from `src/test/fixtures/bills/` through *Another file…* on the ZZ test
+house filled the form (7 lines, $1,248.10 against a printed $1,284.10), Save wrote the paper
+through `supply_paper_save`, the row read *7 lines · The subtotal with tax and freight is $36.00
+short of the total · Look*, Look drew the PDF beside the seven lines with the strip in words and
+*Save 7 lines* dead, and *Count it as read anyway* → *Count it as read* turned the row to *7 lines ·
+counted as read by Robert*. No console error. What the walk left and found:
+
+- **A made-up test bill stays on the ZZ test house** (S1183455, $1,284.10, accepted). It is not
+  deleted because `supply_papers.invoice_id` is ON DELETE SET NULL: deleting the bill would leave an
+  accepted paper with no bill, and the purchase view would still count it. The pipe side should
+  either cascade the delete or have the view require a bill for an invoice or a credit; the test
+  row goes once that rule is in. The views of stage 4 leave ZZ test houses out either way.
+- **The made-up fixtures print no part codes** (they were drawn before PR 1's schema), so the Code
+  and Unit columns of Look were empty on the walk. A real bill fills them; the fixtures should
+  gain codes when the pipe side next touches `scripts/bills-fixtures.mjs`.
+- **A narrow price box in Look**: the Price column clips *31.40* to *31* at the window's width. A
+  width fix rides with the next screen PR (2a).
+- The code-in-text check did not run on this path, as designed: the client has no text layer.
+
+Earlier: a design card with its mock-up. Nothing was built until 2026-11-09 evening. The owner said on 2026-11-09 they want to build
 it; the nine frames were drawn the same day for their critique, and a measurement run on real bills
 the same evening answered the Drive question and reshaped the checks and the order of the PRs. The
 research above was read on 2026-11-09; the prod counts will drift. Two things were not checked and
