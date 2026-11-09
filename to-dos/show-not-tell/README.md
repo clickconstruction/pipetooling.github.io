@@ -1,8 +1,8 @@
 ---
 name: "Show it, don't say it: seven shapes for the 131 places the app still tells"
 number: 217
-group: gated
-status: scanned and drawn 2026-10-30 · eight read-only scans of main at 9e8f233, 131 findings, drawn as seven shapes with 67 before/after pairs and a second pass on each (shapes 1 and 2 drawn whole on the owner's asks the same day; Draft Payroll, the Pricing tab and the Project Board drawn on the pages they land on, on her notes) · waiting on the owner's picks on shapes 3 to 7 · twenty-one PRs from her picks on 1 and 2 (five shipped, v2.6140, v2.6145, v2.6154, v2.6155 and v2.6158; the rest prototypes on their places), each on its pair with the one command that opens it on any machine (`npm run proto -- <id>`)
+group: waiting
+status: scanned and drawn 2026-10-30 · eight read-only scans of main at 9e8f233, 131 findings, drawn as seven shapes with 67 before/after pairs and a second pass on each (shapes 1 and 2 drawn whole on the owner's asks the same day; Draft Payroll, the Pricing tab and the Project Board drawn on the pages they land on, on her notes) · waiting on the owner's picks on shapes 3 to 7 · twenty-one PRs from her picks on 1 and 2 (five shipped, v2.6140, v2.6145, v2.6154, v2.6155 and v2.6158; the rest prototypes on their places), each on its pair with the one command that opens it on any machine (`npm run proto -- <id>`) · parked 2026-11-09 on the owner's word: shapes 3 to 7 are picked at a later time
 mockup: to-dos/show-not-tell/mockup.html
 summary: >
   Taunya asked for a scan of the whole app for the places it tells instead of shows, so a reader sees
@@ -13,9 +13,9 @@ summary: >
   of seven shapes the app already has since #214 drew the Legal desk's four. The mock-up teaches each
   shape once with its strongest pairs and lists every other place under it, with Build · Later · Drop on
   each, so a yes can be a yes to a shape as much as to a screen.
-next: The owner's picks on shapes 3 to 7 (the claude.ai copy saves them as she presses; the repo copy's Copy my picks pastes them), and her verdict on each prototype once she has seen it live side by side. Then one build session per picked shape, cut by weight, each PR one screen or one kernel plus its places.
+next: The owner returns to the page and picks on shapes 3 to 7 when he chooses; no date set (2026-11-09). Shapes 1 and 2 stay in motion.
 size: XL as a program; each pair is XS to M on its own (the pairs say which), five need a function deploy, two a small migration
-blocker: The owner's picks.
+blocker: The owner's time. Parked 2026-11-09.
 opinion: build — start with shape 3 (a mark and a door, XS to S each, and field-1 fixes a wrong record), then shape 6 (the verdicts the office and the owner act on daily), then 1 and 2 (one kernel and one drawing each, reused across their places), then 4; 5 and 7 ride along as each surface is touched
 ---
 

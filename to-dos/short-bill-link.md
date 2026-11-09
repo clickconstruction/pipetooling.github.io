@@ -1,8 +1,8 @@
 ---
 name: "The bill text's link: short, on a Click Plumbing address, and it never expires"
 number: 290
-group: ready
-status: asked 2026-11-08 · design agreed in chat the same evening · PR 1 (v2.6768: the Worker's /pay/ branch, live as version 82fda521, the text and Copy link on my.clickplumbing.com/pay/<bill id>) built and armed 2026-11-08 (#7414) · PR 2 (v2.6769: the ten-letter code, migration `20261109033000`, pay-link by code) built 2026-11-08 on `claude/290-bill-pay-code`, stacked on PR 1
+group: close
+status: asked 2026-11-08 · design agreed in chat the same evening · PR 1 (v2.6768, #7414) and PR 2 (v2.6769, #7415) merged 2026-11-08 night, the migration pushed, pay-link and create-stripe-invoice deployed, the Worker's /pay/ line live as version 82fda521 · walked 2026-11-08 late on a ZZ Test bill: the text's link 43 characters, Stripe's live page, Paid after a test payment · left: the owner's own look, then retire the card
 summary: >
   The text the share row sends with a Stripe bill ended in Stripe's own hosted link, about 160
   characters, which Stripe retires 30 days after the bill's due date. The app already had a door
@@ -11,7 +11,7 @@ summary: >
   PRs: the text and Copy link move onto that page through the Worker on my.clickplumbing.com
   (69 characters, never expires), then a ten-letter code on the bill row takes the place of the
   36-character id (43 characters), with the estimate link's guess guard.
-next: The Worker's /pay/ line in the Cloudflare dashboard (the owner's sign-in), then PR 1 armed and merged; PR 2 rebased onto main and armed; after its merge the push, `supabase functions deploy pay-link create-stripe-invoice`, the ZZ TEST walk recorded here.
+next: Nothing to build. The walk of 2026-11-08 proved the text, the link, Stripe's live page and the Paid page. The types PR #7427 is armed. Retire the card once the owner has read a bill text of his own; the ZZ rows stay for him to look at (JP1111's one-dollar bill, paid, and the text in Robert Test's thread). Not built, not owed: the QR code and the bill email's Pay now on the code (both already never expire on /pay/<bill id>), the Messages text door recognising a /pay/ link.
 ver: v2.6768 (PR 1) · v2.6769 (PR 2)
 size: XS (PR 1, the Worker edit and a kernel) + S (PR 2, one migration and one function)
 blocker: None. The Worker edit is a Cloudflare dashboard step (the owner, or the session in his Chrome).
@@ -81,6 +81,9 @@ PR 1, on a ZZ TEST job with a sent Stripe bill (test mode) and a ZZ TEST custome
 PR 2: the same walk with the link ending in ten letters (43 characters); a bill made before the push gets its code on the first draw of the share row; 21 wrong codes from one phone in an hour and the 21st answers the guard's class.
 
 ## Where it stands
+
+- 2026-11-08, 23:30 CT, the walk (in the owner's Chrome, signed in as him, on JP1111 *ZZ Test bio walk*, whose customer is his own test contact; the rows stay for him to look at): a one-dollar line, **Bill Customer** in Stripe test mode, **Create Stripe invoice**; the row was born with its code (`create-stripe-invoice`'s mint) before the share row drew. **Text** opened the box reading *Your invoice for ZZ Test bio walk ($1.00): https://my.clickplumbing.com/pay/* and ten letters, 86 characters in all; **Send text…** named the contact's number and **Send as text** went from the company number, the `messages` row carrying the same words. The link in a fresh tab: the Worker's 301, the pay page's *Finding your bill…*, then Stripe's sandbox invoice page with the amount; the function answered `state: open` with Stripe's URL. Paid on Stripe's page with the published test card, save unticked. The same link again drew **Paid**, *This bill was paid on November 8, 2026. Nothing is owed on it*, and the function answered `state: paid`, `paidOn` the same day. Also proved by curl before the walk: an unknown code answers 404, a malformed one 400, so the lookup reads the column.
+- 2026-11-08, 23:05 CT: PR 2 merged (#7415). `scripts/db-push.sh` from the main checkout applied `20261109033000_bill_pay_codes` (the pending set was exactly that file; drift 1190 local / 1190 remote); the two live bundles were downloaded and hash-compared against main (only this PR's files differed, main ahead) and `pay-link` + `create-stripe-invoice` deployed from a tree equal to main; the types regenerated from prod as #7427 (armed). `check:edge-drift` still names six functions behind on `_shared/payLink.ts` (customer-portal, drive-link, gc-trade-portal, messages-nudge-dispatch, photo-save, dev-mcp through the gcKernels copy): the change there is two new exports, nothing they call, so they were left for their own sessions' next deploys.
 
 - 2026-11-08, 21:25 CT: the Worker's `/pay/` line deployed in the dashboard as version `82fda521` (the owner signed in, the session typed the two lines under the `/e/` line and pressed Deploy); `curl -sI https://my.clickplumbing.com/pay/abc2def3gh` answers `HTTP/2 301` with `location: https://clicktooling.com/pay/abc2def3gh`, a capitalised bill id comes back lower-cased, `/e/` and a portal slug answer as before. PR 1 (#7414) armed and queued. PR 2 (#7415) opened on PR 1's branch; its SQL bed failed twice in CI (a customer with no master; a training account that read an existing code back, which is right) and was fixed; it is rebased onto main and armed once PR 1 lands.
 - 2026-11-08, later: PR 2 built as v2.6769 on `claude/290-bill-pay-code` (stacked on PR 1's branch): migration `20261109033000_bill_pay_codes.sql`, `pay-link` by code with the miss guard, the page's second shape, `billPayCodeIo` with the share row's and Collect payment's mint, the SQL bed `scripts/pgtest-bill-pay-codes.sh`. The Cloudflare dashboard asked for a sign-in the session cannot do, so the Worker's `/pay/` line is the owner's step (the exact line is in the mirror file); PR 1 is not armed until it is live.

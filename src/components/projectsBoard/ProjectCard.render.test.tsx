@@ -100,6 +100,14 @@ describe('ProjectCard', () => {
     expect(screen.queryByRole('button', { name: 'back to the budget' })).toBeNull()
   })
 
+  it("says frozen at award on the glyph and the big line when the budget is the award's hours (the owner's call of 2026-11-09)", () => {
+    const frozen = projectPace({ job: { ...row, pct_complete: 50, budgetKind: 'bid', budgetHours: 220, labor: [], values: [], spentPct: null }, target: null, checklist: { answered: 0, asked: 0 }, settings, score: { certifiedPct: 50, signedOn: '2026-11-08', subHours: 0, awardedHours: 180, awardedKind: 'bid' } })
+    renderWithProviders(<ProjectCard row={row} pace={frozen} target={null} events={[]} valueEvents={[]} dollars canEdit onSetTarget={noop} onClearTarget={noop} />)
+    expect(screen.getByTitle('◆ from the bid, frozen at award')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Open J1044 · The Lodge large' }))
+    expect(screen.getByTestId('project-card-big').textContent).toContain('180 h labor budget, frozen at award · expected 180 h')
+  })
+
   it('opens the card large from its title, with − / + and a typed box', () => {
     renderWithProviders(<ProjectCard row={row} pace={pace({ hours: 48 })} target={null} events={events} valueEvents={[]} dollars canEdit onSetTarget={noop} onClearTarget={noop} />)
     fireEvent.click(screen.getByRole('button', { name: 'Open J1044 · The Lodge large' }))

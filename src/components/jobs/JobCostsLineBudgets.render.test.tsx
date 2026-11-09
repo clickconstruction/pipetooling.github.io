@@ -83,6 +83,13 @@ describe('JobCostsLineBudgets', () => {
     expect(card.textContent).toContain('2 ≈ assumed · 1 ✎ tuned')
   })
 
+  it("with an award the Labor bar reads against the hours frozen at award and the note says the lines' sum shows beside them, never scored (the owner's call of 2026-11-09)", () => {
+    renderWithProviders(<JobCostsLineBudgets fixtures={project} teamHours={12} spend={{ teamUsd: 500, subUsd: 250, partsUsd: 6200 }} jobPctDone={17} award={{ hours: 120, kind: 'bid' }} />)
+    const card = screen.getByTestId('job-costs-line-budgets')
+    expect(within(card).getByTestId('budget-pace-labor').textContent).toContain('12 h of 120 h frozen at award (10%) · the lines sum to 458 h')
+    expect(within(card).getByTestId('job-costs-beside-award').textContent).toBe('The score reads the 120 h frozen at award ◆ from the bid. The lines sum to 458 h: the line-by-line view, shown beside the award and never scored.')
+  })
+
   it('with nothing spent the kept figure stays quiet', () => {
     renderWithProviders(<JobCostsLineBudgets fixtures={project} teamHours={0} spend={{ teamUsd: 0, subUsd: 0, partsUsd: 0 }} jobPctDone={17} />)
     const card = screen.getByTestId('job-costs-line-budgets')

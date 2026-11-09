@@ -76,6 +76,10 @@ export const PREVIEW_WORDS = {
   /** A label over the bubble, not a sentence: the number as the app formats it. */
   textTo: (number: string) => `To ${number}`,
   textFrom: 'From the company number.',
+  /** The caption with the number the text goes from (v2.6771), when Settings holds one. */
+  textFromNumber: (number: string) => `From the company number ${number}.`,
   sampleLink: 'The link here is a sample. The real one fills in when the email goes.',
+  /** Under a bill text's bubble (v2.6771): the link is the real one. */
+  realLink: 'The link is the bill’s own pay page. It opens the bill with its Pay button.',
   back: 'Back to the sheet',
 } as const

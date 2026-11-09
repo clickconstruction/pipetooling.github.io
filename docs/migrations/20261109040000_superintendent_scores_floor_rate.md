@@ -1,0 +1,15 @@
+# 20261109040000_superintendent_scores_floor_rate.sql (2026-11-09, v2.6779)
+
+**What it does**: `superintendent_scores` on the owner's second and fourth calls of 2026-11-09 (punch list #234), `CREATE OR REPLACE` from the newest definition (`20261107200000_superintendent_scores.sql`), same signature.
+
+- **The roster's loaded rate prices the labor kept.** Labor earned was the award's labor dollars × the signed-off percent, the bid's price of the labor at the line budgets' rate ($45 on the walk). It is now the award's *hours* × the percent × the roster's loaded rate: recorded field sessions (`clock_sessions` clocked out, not rejected or revoked, on a job other than the office job in `app_settings.overhead_office_job_ledger_id_v1`) over the 90 days ending `p_to`, each priced at the person's field wage (`people_pay_config.hourly_wage` by `people.account_user_id` → `person_id`, else by the lower-cased trimmed name), Σ$ ÷ Σh × `labor_burden_factor_v1` — the arithmetic of `crewRateFromLedgerDays` ($29.01 on the walk). With no field hours in the window each row falls back to its award's own rate (`awarded_labor_usd ÷ awarded_labor_hours`) and the read says so.
+- **The job's price leaves with every row** (`price_usd`, `jobs_ledger.revenue`, null when none), so the client's one constant `BASELINE_PRICE_FLOOR_USD` ($2,500) keeps a job under it off the scoreboard and off the baseline deck alike. The function itself drops nothing: the floor is the client's rule, in one place.
+- **New JSON keys**: `rate_usd` (payroll access only, as a wage) and `rate_source` (`roster` | `award`) on the read; `price_usd`, `awarded_usd`, `rate_usd` on each row (the dollars to payroll access). Nothing removed; `hours_under` is unchanged.
+
+**Tables**: none created, so no fence is owed. **RLS**: unchanged. `SECURITY DEFINER` as before; the roster rate is computed inside and leaves only to payroll access.
+
+**Apply**: `supabase db push` from a clean checkout of `main` after this merges. Either order with the client deploy is safe: an old client ignores the new keys, and a new client reads a missing `rate_usd` as the award's rate and a missing `price_usd` as no floor.
+
+**Check**: `select pronargs, prosecdef from pg_proc where proname = 'superintendent_scores'` still reads one row, 3 and true; the read's JSON carries `rate_source` and every row a `price_usd` key.
+
+**Applied**: not yet.

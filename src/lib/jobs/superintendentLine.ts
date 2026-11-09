@@ -35,6 +35,8 @@ export type SuperintendentLineInput = {
   hoursBudget: number
   /** Where that budget came from — the same word the Costs strip wears, or the leader's open target. */
   budgetSource: 'bid' | 'typed' | 'book' | 'assumed' | 'target'
+  /** The budget is the hours frozen at award, the number the score reads (the owner's call of 2026-11-09); the words say so. */
+  budgetFrozen?: boolean
   /** When the budget is the leader's target: who set it, when, from what and why, so the card says so. */
   target?: { by: string; at: string; from: number | null; why: string } | null
   /** The money reading the Pipeline's burning card makes: direct spend against the direct-cost budget; null while not loaded. */
@@ -120,7 +122,8 @@ export function superintendentLine(i: SuperintendentLineInput): SuperintendentLi
   // Not capped at the budget's edge: a job 242 h past its budget is that far behind, never "on pace".
   const hoursPct = i.hoursBudget > 0 && used != null ? Math.max(0, (used / i.hoursBudget) * 100) : 0
   const subWords = subHours > 0 ? (i.hoursUsed != null && i.hoursUsed > 0 ? ` (${Math.round(subHours)} h on sub sheets)` : ', all on sub sheets') : ''
-  const hoursWords = i.hoursBudget > 0 ? `${Math.round(i.hoursBudget)} h budget ${BUDGET_SOURCE_WORDS[i.budgetSource]} · ${used != null ? Math.round(used) : '—'} h in${subWords}` : 'no hours budget yet'
+  const frozenWords = i.budgetFrozen && i.budgetSource !== 'target' ? ', frozen at award' : ''
+  const hoursWords = i.hoursBudget > 0 ? `${Math.round(i.hoursBudget)} h budget ${BUDGET_SOURCE_WORDS[i.budgetSource]}${frozenWords} · ${used != null ? Math.round(used) : '—'} h in${subWords}` : 'no hours budget yet'
   const early = i.pctDone == null || used == null || used < 8 || i.hoursBudget <= 0
   // Hours saved or lost against the work done, read in crew days.
   const hoursAhead = ((donePct - hoursPct) / 100) * i.hoursBudget

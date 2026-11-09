@@ -8,6 +8,8 @@ import { useEffect, type CSSProperties } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { PREVIEW_WORDS, previewKinds, splitLinks, textPreview, type PreviewEmail, type PreviewKind } from '../../lib/tellCustomer/preview'
 import { TELL_WORDS } from '../../lib/tellCustomer/tellCustomer'
+import { FIRST_TEXT_WORDS } from '../../lib/tellCustomer/firstTextIntro'
+import type { OptoutBubble } from '../../lib/messages/compose'
 
 export interface TellCustomerPreviewProps {
   first: string | null
@@ -19,6 +21,21 @@ export interface TellCustomerPreviewProps {
   /** The box's words, or null when no text goes. */
   textWords: string | null
   number: string | null
+  /** The number the text goes from (v2.6771), when Settings holds one. */
+  fromNumber?: string | null
+  /**
+   * The opt-out line the send adds under the words (v2.6771, punch list #291): on their first text from us, or after a
+   * quiet spell, as the box's own send window draws it. Null when no line rides.
+   */
+  optout?: OptoutBubble | null
+  /** Their first text from us: the phone wears the chip and the hint. */
+  firstText?: boolean
+  /** The words carry a real link already (a bill's pay page), so the window says what it opens instead of the sample note. */
+  realLink?: boolean
+  /** Not their first text from us, and the sheet knows it: the window says why no opt-out line shows. */
+  laterText?: boolean
+  /** The window's layer, over the sheet's (v2.6771). */
+  zIndex?: number
   onClose: () => void
 }
 
@@ -33,11 +50,15 @@ const phone: CSSProperties = { maxWidth: 360, margin: '0 auto', border: '1px sol
 const caption: CSSProperties = { margin: 0, textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }
 const bubble: CSSProperties = { margin: 0, maxWidth: '85%', padding: '0.6rem 0.8rem', borderRadius: 18, borderBottomLeftRadius: 6, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-strong)', fontSize: '0.9375rem', lineHeight: 1.4, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }
 const link: CSSProperties = { color: 'var(--text-link)', textDecoration: 'underline' }
+/** The opt-out line's bubble (v2.6771): grey and dashed, apart from the words, as the send window draws it. */
+const optoutBubbleStyle: CSSProperties = { ...bubble, background: 'var(--bg-muted)', borderStyle: 'dashed', fontSize: '0.875rem', color: 'var(--text-700)' }
+const optoutTag: CSSProperties = { margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '0.4rem' }
+const firstChip: CSSProperties = { display: 'inline-block', background: '#92400e', color: '#fff', borderRadius: 999, padding: '0.1rem 0.55rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase' }
 const note: CSSProperties = { margin: '0.4rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }
 const noteWarn: CSSProperties = { ...note, color: 'var(--text-amber-800)', fontWeight: 600 }
 const backBtn: CSSProperties = { minHeight: 46, padding: '0 0.9rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 600, cursor: 'pointer' }
 
-export function TellCustomerPreview({ first, kind, onKind, email, emailTo, textWords, number, onClose }: TellCustomerPreviewProps) {
+export function TellCustomerPreview({ first, kind, onKind, email, emailTo, textWords, number, fromNumber = null, optout = null, firstText = false, realLink = false, laterText = false, zIndex = 1250, onClose }: TellCustomerPreviewProps) {
   // Escape closes this window alone: taken in the capture phase, before the sheet's own window listener runs.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -60,7 +81,7 @@ export function TellCustomerPreview({ first, kind, onKind, email, emailTo, textW
     </div>
   )
   return (
-    <ResponsiveModalShell title={PREVIEW_WORDS.title(first)} onRequestClose={onClose} footer={footer} zIndex={1250} maxWidthDesktop={640}>
+    <ResponsiveModalShell title={PREVIEW_WORDS.title(first)} onRequestClose={onClose} footer={footer} zIndex={zIndex} maxWidthDesktop={640}>
       <div data-testid="tell-preview" data-kind={shown ?? ''}>
         {kinds.length > 1 ? (
           <div style={pills} role="tablist">
@@ -95,6 +116,12 @@ export function TellCustomerPreview({ first, kind, onKind, email, emailTo, textW
         {shown === 'text' && text ? (
           <div data-theme="light" style={lightBox} data-testid="tell-preview-text">
             <div style={phone}>
+              {firstText ? (
+                <p style={{ ...caption, display: 'grid', gap: '0.25rem', justifyItems: 'center' }} data-testid="tell-preview-first">
+                  <span style={firstChip}>{FIRST_TEXT_WORDS.previewChip(first)}</span>
+                  <span>{FIRST_TEXT_WORDS.previewHint}</span>
+                </p>
+              ) : null}
               <p style={caption} data-testid="tell-preview-caption">
                 {number ? (
                   <>
@@ -102,7 +129,7 @@ export function TellCustomerPreview({ first, kind, onKind, email, emailTo, textW
                     <br />
                   </>
                 ) : null}
-                {PREVIEW_WORDS.textFrom}
+                {fromNumber ? PREVIEW_WORDS.textFromNumber(fromNumber) : PREVIEW_WORDS.textFrom}
               </p>
               <p style={bubble} data-testid="tell-preview-words">
                 {splitLinks(text.words).map((p, i) =>
@@ -115,10 +142,28 @@ export function TellCustomerPreview({ first, kind, onKind, email, emailTo, textW
                   ),
                 )}
               </p>
+              {optout ? (
+                <div style={{ display: 'grid', gap: '0.2rem', maxWidth: '85%' }} data-testid="tell-preview-optout" title={`${optout.tip.name}. ${optout.tip.does} ${optout.tip.changes}`}>
+                  <p style={{ ...optoutBubbleStyle, maxWidth: '100%' }}>{optout.line}</p>
+                  <p style={optoutTag} data-testid="tell-preview-optout-tag">
+                    {optout.tag.join(' · ')}
+                  </p>
+                </div>
+              ) : null}
             </div>
             {text.sample ? (
               <p style={note} data-testid="tell-preview-sample">
                 {PREVIEW_WORDS.sampleLink}
+              </p>
+            ) : null}
+            {realLink && !text.sample && !text.left.length ? (
+              <p style={note} data-testid="tell-preview-real-link">
+                {PREVIEW_WORDS.realLink}
+              </p>
+            ) : null}
+            {laterText && !optout ? (
+              <p style={note} data-testid="tell-preview-later">
+                {FIRST_TEXT_WORDS.previewLater}
               </p>
             ) : null}
             {text.left.length ? <p style={noteWarn}>{TELL_WORDS.blanksLeft(text.left)}</p> : null}
