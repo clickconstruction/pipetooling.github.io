@@ -133,6 +133,7 @@ export default function GcTradePortal() {
           scheduleWork={page.scheduleWork}
           scheduleTodos={page.scheduleTodos}
           flow={page.flow}
+          thread={page.thread}
         />
         </PortalBillDayContext.Provider>
         </PortalPressContext.Provider>

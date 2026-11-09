@@ -14,6 +14,8 @@ import { GcTradePortalProject } from './GcTradePortalProject'
 import { PortalLangContext, usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
 import { GcTradePortalPeople } from './GcTradePortalPeople'
+import { GcTradePortalThread } from './GcTradePortalThread'
+import type { PortalThreadLine } from '../../lib/gc/tradePortalThread'
 import { GcTradePortalPaperwork, GcTradePortalPapersPage } from './GcTradePortalPapers'
 import { PortalBlock, PortalNote, PortalRow } from './GcTradePortalUi'
 import { GcTradePortalWhere } from './GcTradePortalWhere'
@@ -29,6 +31,10 @@ import { GcTradePortalWhere } from './GcTradePortalWhere'
  * (`flow`, `GcTradePortalWhere`). It carries the company's asks and its own papers, so Your jobs and Asked to bid
  * leave the home, and Needs you keeps what the flow has no step for. Without a flow (an older function, or one that
  * did not read) the home is as it was.
+ *
+ * Since punch list #205's PR 5 the Messages tab is the company's thread with its reply box (`GcTradePortalThread`) when
+ * the answer carries `thread`: the same lines the office reads on Messages, and the emails we sent. Without one (an
+ * older function, or a thread that did not read) the tab keeps the read-only list of what we sent.
  */
 
 const GC = GC_COMPANY.shortName
@@ -45,6 +51,7 @@ export function GcTradePortalView({
   scheduleWork = {},
   scheduleTodos = [],
   flow = null,
+  thread = null,
 }: {
   state: GcState
   partnerId: string
@@ -63,6 +70,8 @@ export function GcTradePortalView({
   scheduleTodos?: PortalTodo[]
   /** The company's trade flow rows, for the home's first page (Messages cut 8c). Null: the home as it was. */
   flow?: TradeFlowRows | null
+  /** Its thread on Messages (punch list #205, PR 5). Null: the tab keeps its read-only list. */
+  thread?: PortalThreadLine[] | null
 }) {
   const partner = state.partners.find((p) => p.id === partnerId)
   const [viewId, setViewId] = useState<string | null>(null)
@@ -126,13 +135,13 @@ export function GcTradePortalView({
           <div style={{ marginTop: '0.3rem', fontSize: '1rem', fontWeight: 600 }}>{partner.company}</div>
           <div role="tablist" aria-label={partner.company} style={{ display: 'flex', gap: '0.3rem', marginTop: '0.45rem' }}>
             {tab('portal', pt(lang, 'navPortal'))}
-            {tab('messages', pt(lang, 'navMessages', { gc: GC }))}
+            {tab('messages', thread ? pt(lang, 'navMessagesThread') : pt(lang, 'navMessages', { gc: GC }))}
           </div>
         </header>
         {banner && <div style={{ padding: '0.45rem 0.9rem', borderBottom: `1px solid ${HAIR}`, fontSize: '0.8rem', background: 'var(--bg-amber-100)' }}>{banner}</div>}
         {screen === 'messages' ? (
           <div style={{ padding: '0.9rem' }}>
-            <Messages partner={partner} messages={messages} onOpenPortal={() => go(null)} />
+            {thread ? <GcTradePortalThread lines={thread} messages={messages} projects={state.projects} /> : <Messages partner={partner} messages={messages} onOpenPortal={() => go(null)} />}
           </div>
         ) : screen === 'papers' ? (
           <GcTradePortalPapersPage state={state} partner={partner} onHome={() => go(null)} onOpenProject={(id) => go(id)} />
