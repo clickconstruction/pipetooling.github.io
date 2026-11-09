@@ -230,3 +230,99 @@ export function leadDoor(prospectId: string): string {
 export function lastLookedKey(userId: string, city: string): string {
   return `research:lastLooked:${userId}:${city}`
 }
+
+/**
+ * The names a permit's contact might be known by: the whole string and each comma part, as keys
+ * the database's `research_name_key` makes (lower-case letters and digits, the LLC/Inc/Co suffixes
+ * dropped). "Milton G. Ramirez, Synergy Construction, LLC" → the person, the company, and both.
+ */
+export function nameKey(name: string | null | undefined): string | null {
+  const lowered = (name ?? '').toLowerCase()
+  const stripped = lowered.replace(/\b(llc|l\.l\.c\.|inc|inc\.|co|co\.|corp|corp\.|ltd|ltd\.|llp|pllc|company|incorporated)\b/g, '')
+  const key = stripped.replace(/[^a-z0-9]+/g, '')
+  return key === '' ? null : key
+}
+
+export function contactKeys(contact: string | null | undefined): string[] {
+  const raw = (contact ?? '').trim()
+  if (raw === '') return []
+  const parts = raw.split(',').map((p) => p.trim()).filter(Boolean)
+  const keys = new Set<string>()
+  const whole = nameKey(raw)
+  if (whole) keys.add(whole)
+  for (const p of parts) {
+    const k = nameKey(p)
+    if (k && k.length >= 3) keys.add(k)
+  }
+  return [...keys]
+}
+
+/** One row of `research_contact_history`. */
+export type ContactHistory = { key: string; bids: number; won: number; last_bid_on: string | null; on_deck: boolean }
+
+export type HintTone = 'warm' | 'cold' | 'new' | 'seen'
+export type Hint = { tone: HintTone; word: string; detail: string }
+
+/** The hint beside who pulled it, from every key the contact matched folded together. Never the verdict. */
+export function hintFor(contact: string | null | undefined, history: ReadonlyMap<string, ContactHistory>): Hint {
+  const keys = contactKeys(contact)
+  let bids = 0
+  let won = 0
+  let onDeck = false
+  let last: string | null = null
+  const seenIds = new Set<string>()
+  for (const k of keys) {
+    const h = history.get(k)
+    if (!h || seenIds.has(k)) continue
+    seenIds.add(k)
+    bids = Math.max(bids, h.bids)
+    won = Math.max(won, h.won)
+    onDeck = onDeck || h.on_deck
+    if (h.last_bid_on && (!last || h.last_bid_on > last)) last = h.last_bid_on
+  }
+  const deck = onDeck ? ' · on the GCs deck' : ''
+  if (won > 0) return { tone: 'warm', word: 'warm', detail: `we won ${won} of ${bids} bids with this name${deck}` }
+  if (bids >= 3) return { tone: 'cold', word: 'cold', detail: `${bids} bids priced, nothing won${deck}` }
+  if (bids > 0) return { tone: 'seen', word: 'seen', detail: `${bids} bid${bids === 1 ? '' : 's'} priced, none won yet${deck}` }
+  if (onDeck) return { tone: 'seen', word: 'on the deck', detail: 'an open GC lead of this name is on the GCs deck' }
+  return { tone: 'new', word: 'new name', detail: 'no bid to this name in our history' }
+}
+
+/** Who wins what: the plumbers the window's taken rows name, most first. */
+export function plumberTally(rows: readonly ResearchPermitRow[], top = 8): Array<{ plumber: string; jobs: number }> {
+  const counts = new Map<string, number>()
+  for (const r of rows) {
+    if (!r.plumber) continue
+    counts.set(r.plumber, (counts.get(r.plumber) ?? 0) + 1)
+  }
+  return [...counts.entries()]
+    .map(([plumber, jobs]) => ({ plumber, jobs }))
+    .sort((a, b) => b.jobs - a.jobs || a.plumber.localeCompare(b.plumber))
+    .slice(0, top)
+}
+
+/** A pin's fill by lens: the ledger's own four colours. */
+export const LENS_PIN_COLOR: Record<Exclude<ResearchShowing, 'all'>, string> = {
+  waiting: '#2563eb',
+  look: '#1e40af',
+  approach: '#16a34a',
+  not_for_us: '#6b7280',
+  taken: '#9ca3af',
+}
+
+/** The rows the map can place: a point on them, on the lens shown. */
+export function researchPins(rows: readonly ResearchPermitRow[]): Array<{ id: string; lat: number; lng: number; color: string; title: string }> {
+  const out: Array<{ id: string; lat: number; lng: number; color: string; title: string }> = []
+  for (const r of rows) {
+    if (r.lat == null || r.lng == null) continue
+    out.push({ id: r.id, lat: r.lat, lng: r.lng, color: LENS_PIN_COLOR[rowLens(r)], title: `${r.address ?? r.permit_number} · ${workWords(r).main}` })
+  }
+  return out
+}
+
+/** The site in Google Maps, for the estimator's look before a call. */
+export function mapsDoor(row: Pick<ResearchPermitRow, 'address' | 'city' | 'zip'>): string | null {
+  if (!row.address) return null
+  const q = [row.address, row.city, 'TX', row.zip].filter(Boolean).join(', ')
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`
+}

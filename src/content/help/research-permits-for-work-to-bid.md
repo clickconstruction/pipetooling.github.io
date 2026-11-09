@@ -31,6 +31,16 @@ The **Plumber** column is the signal. **none yet** means no plumbing permit sits
 
 Press **map** beside an address to see the site in Google Maps.
 
+## Read the word under a name
+
+Under who pulled a permit sits one word from our own bid history with that name. **warm** means we have won with them. **cold** means three or more priced bids and nothing won. **new name** means we never bid to them. Hover the word for the reason. The word is a hint. You decide.
+
+## See the rows on a map
+
+Press **Map** beside **Ledger**. The same rows draw as pins, coloured by their lens. A number is a cluster. Click it to open it. The office is ringed at 25 and 50 miles.
+
+Click a pin to read the permit beside the map. Press {{button:blue|Decide…}} there the same as on the ledger.
+
 ## Decide on a row
 
 Press {{button:blue|Decide…}} on a row. One sheet opens with four verdicts.
@@ -73,6 +83,6 @@ After **Approach them**, the row reads **Approached** with a link to **the GC le
 
 The feed is read every morning before the office opens. Press **Pull now** to read it again. The city posts its permits a day or two after it issues them.
 
-## What the hints mean
+## See who wins what
 
-Under **Showing**, pick a lens to see the rows on it. **Everything** shows every permit in the window. **Already have a plumber** shows the jobs other plumbers hold. Over a season it tells you who wins what in each part of town.
+Under **Showing**, pick a lens to see the rows on it. **Everything** shows every permit in the window. **Already have a plumber** shows the jobs other plumbers hold. A strip above the rows counts the plumbers named in the window, most first. Over a season it tells you who wins what in each part of town.

@@ -8,7 +8,7 @@
 import { supabase } from '../supabase'
 import { resolveCompanyOwnerUserId } from '../companyOwner'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { leadFromPermit, type PermitLeadRole, type PermitVerdict, type ResearchPermitRow } from './permitResearch'
+import { leadFromPermit, type ContactHistory, type PermitLeadRole, type PermitVerdict, type ResearchPermitRow } from './permitResearch'
 
 function failed(error: unknown, doing: string): never {
   throw new Error(`Could not ${doing}: ${formatErrorMessage(error)}`)
@@ -99,4 +99,14 @@ export async function pullPermitsNow(): Promise<PullNowOutcome> {
   if (error) failed(error, 'run the pull')
   const body = (data ?? {}) as Partial<PullNowOutcome>
   return { ok: body.ok === true, feeds: body.feeds ?? [] }
+}
+
+/** The bid history behind the hint, by normalized name key, in one read. */
+export async function loadContactHistory(keys: readonly string[]): Promise<Map<string, ContactHistory>> {
+  const out = new Map<string, ContactHistory>()
+  if (keys.length === 0) return out
+  const { data, error } = await supabase.rpc('research_contact_history' as never, { p_keys: [...new Set(keys)] } as never)
+  if (error) failed(error, 'read our history with these names')
+  for (const r of (data ?? []) as ContactHistory[]) out.set(r.key, r)
+  return out
 }

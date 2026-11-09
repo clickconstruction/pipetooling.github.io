@@ -2,7 +2,7 @@
 name: "Research: the permits a city issues, on a ledger and a map, so an estimator knows which to chase"
 number: 292
 group: ready
-status: asked 2026-11-09 · refined in chat the same day and the owner liked the shape (two signals, the ledger first, the map as a lens, one city at a time) · the first areas are the cities the Inspections tab's permit portals already serve · building 2026-11-09 night on claude/permit-research-card, the owner's word: every call the session's own, live by morning · PR 1 (v2.6782): the migration, permit-pull, the ledger, the Decide sheet, the door into a GC lead
+status: asked 2026-11-09 · refined in chat the same day and the owner liked the shape (two signals, the ledger first, the map as a lens, one city at a time) · the first areas are the cities the Inspections tab's permit portals already serve · building 2026-11-09 night on claude/permit-research-card, the owner's word: every call the session's own, live by morning · PR 1 (v2.6782): the migration, permit-pull, the ledger, the Decide sheet, the door into a GC lead · PR 2 (v2.6784): the map lens, the hint from our own bid history, Who wins what
 summary: >
   The owner wants more of the work we want. Every city publishes the permits it issues, and
   those permits say who is about to build what, where. A Research section under Prospects takes
@@ -11,7 +11,7 @@ summary: >
   get two lenses: a building permit with no plumbing permit yet is work we can still bid, and a
   plumbing permit names the plumber who already has it, which over a year draws who wins what
   where. A score from our own bid history sits beside each row as a hint; the estimator decides.
-next: Land PR 1 (v2.6782), push the migration, deploy permit-pull, run the first pull, walk the ledger live; then PR 2 (the map lens, the hint from our own bid history, the who-wins-what lens).
+next: Land PR 1 (v2.6782) and PR 2 (v2.6784), push both migrations, deploy permit-pull, run the first pull, walk the ledger and the map live; then the owner's look in the morning.
 size: L as a train of four (M · S · M · S)
 blocker: None. The owner asked for no questions; § What the owner settles records the guesses made in his place.
 opinion: build, ledger first — the pins canvases, the geocode cache, the GC book and the prospect kinds already exist, so revision 1 is one table, one nightly pull, one kernel and one tab; the map is a day once the rows are there
@@ -149,13 +149,14 @@ Prospects, open to every estimator; the guide `research-permits-for-work-to-bid`
 1. **Revision 1 (M, PR 1, v2.6782): San Antonio, the ledger, the verdicts, the door.** As
    listed under What is new. Push the migration and deploy the function after the merge, then
    one POST with the cron secret reads the first 75 days.
-2. **Revision 2 (S): the map lens.** The map card over `PinsMapCanvas` beside the ledger, pins
-   by verdict and value, cluster at low zoom, the Inspections cities as the frame, a pin opening
-   the row's card. No migration.
-3. **Revision 3 (M): the score, and the second lens.** The score kernel over `bids` and the GC
-   book, drawn as one word with its reason; the *Already taken* rows and every plumbing permit on
-   a second lens, by plumber and by city, with a door to the Market desk's book. One column for
-   the named plumber if the feed does not already carry it.
+2. **Revisions 2 and 3 (S + S, PR 2, v2.6784): the map lens, the hint, who wins what.**
+   `ResearchMapCard` over the Bid Board's pins canvas, pins coloured by lens, clustered, the
+   office ringed, a pin opening the row's card with its Decide press; migration
+   `20261109080000_permit_research_hint.sql` (`research_name_key`, `research_contact_history`)
+   behind `hintFor` — warm, cold, seen, new name, with the reason on hover; `plumberTally` as the
+   Who wins what strip on the taken lens. The pin's size by declared value and the Inspections
+   cities as the opening frame were dropped: the office ring and Fit all frame it, and a
+   value-sized pin hid the small remodels that are most of the list.
 4. **Revision 4 (S): more cities, the file, and the digest.** Austin's Socrata feed (issued
    permits with contractor and applicant columns, a point on every row) as a second city; the
    suburbs' portals as a weekly export dropped on an **Add a permit file** press that reads the
@@ -193,12 +194,13 @@ On the dev server or the deployed app as the dev login, after the first pull:
 4. Press **Not for us** with a reason: the row leaves the default list and shows under the
    *Not for us* filter with its reason.
 5. The next morning the pull has added the day's permits and touched no verdict.
-6. Revision 2: the map frames the Inspections cities, a pin's color matches its row's verdict, and
-   clicking a pin opens the row's card.
+6. Press **Map**: a pin's colour matches its row's lens, a cluster opens on click, and a pin opens
+   the row's card beside the map with Decide… on it. The word under a name reads warm on a GC we
+   have won with; hover shows the reason.
 
 No live permit row, address or applicant goes in a test, a doc or a card; the test fixtures are
 made up (*Ridgeway Builders*, *100 Sample St*).
 
 ## Where it stands
 
-2026-11-09: card opened on the owner's ask and the refinement he liked. The same night, on his word to build it through to live with no questions, PR 1 (v2.6782) was written: the migration, the pull, the ledger, the sheet and the door, with the mock-ups revised on the second look. The map, the hint and the who-wins-what reading are PR 2.
+2026-11-09: card opened on the owner's ask and the refinement he liked. The same night, on his word to build it through to live with no questions, PR 1 (v2.6782) was written: the migration, the pull, the ledger, the sheet and the door, with the mock-ups revised on the second look. PR 2 (v2.6784) followed the same night: the map lens, the hint from our own bid history and Who wins what.

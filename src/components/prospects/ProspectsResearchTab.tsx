@@ -12,10 +12,14 @@ import {
   RESEARCH_SHOWING_WORDS,
   RESEARCH_WINDOWS,
   VERDICT_WORDS,
+  contactKeys,
+  hintFor,
   lastLookedKey,
   leadDoor,
   lensCounts,
+  mapsDoor,
   newSinceLooked,
+  plumberTally,
   pulledWords,
   rowLens,
   rowsShowing,
@@ -23,12 +27,16 @@ import {
   windowSinceYmd,
   windowWords,
   workWords,
+  type ContactHistory,
+  type Hint,
   type ResearchPermitRow,
   type ResearchShowing,
   type ResearchWindow,
 } from '../../lib/research/permitResearch'
-import { approachFromPermit, loadLatestPull, loadResearchPermits, pullPermitsNow, recordVerdict, type LatestPull } from '../../lib/research/permitResearchIo'
+import { approachFromPermit, loadContactHistory, loadLatestPull, loadResearchPermits, pullPermitsNow, recordVerdict, type LatestPull } from '../../lib/research/permitResearchIo'
 import { PermitDecideSheet, type PermitDecision } from './PermitDecideSheet'
+import { ResearchMapCard } from './ResearchMapCard'
+import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
  * Research (punch list #292): the permit ledger under Prospects. A city's building permits and
@@ -40,15 +48,15 @@ const selectStyle: CSSProperties = { border: '1px solid var(--border)', borderRa
 const thStyle: CSSProperties = { textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, padding: '8px 10px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
 const tdStyle: CSSProperties = { padding: '10px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.875rem' }
 const mutedStyle: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem' }
-const chipStyle = (tone: 'green' | 'grey' | 'blue'): CSSProperties => ({
+const chipStyle = (tone: 'green' | 'grey' | 'blue' | 'amber'): CSSProperties => ({
   display: 'inline-block',
   borderRadius: 999,
   padding: '2px 9px',
   fontSize: '0.75rem',
   fontWeight: 600,
   whiteSpace: 'nowrap',
-  background: tone === 'green' ? 'var(--bg-green-tint)' : tone === 'blue' ? 'var(--bg-blue-tint)' : 'var(--bg-200)',
-  color: tone === 'green' ? 'var(--text-green-700)' : tone === 'blue' ? 'var(--text-blue-800)' : 'var(--text-700)',
+  background: tone === 'green' ? 'var(--bg-green-tint)' : tone === 'blue' ? 'var(--bg-blue-tint)' : tone === 'amber' ? 'var(--bg-amber-tint)' : 'var(--bg-200)',
+  color: tone === 'green' ? 'var(--text-green-700)' : tone === 'blue' ? 'var(--text-blue-800)' : tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-700)',
 })
 
 function readLastLooked(key: string): string | null {
@@ -66,14 +74,22 @@ function writeLastLooked(key: string, ymd: string): void {
   }
 }
 
-export function mapsDoor(row: Pick<ResearchPermitRow, 'address' | 'city' | 'zip'>): string | null {
-  if (!row.address) return null
-  const q = [row.address, row.city, 'TX', row.zip].filter(Boolean).join(', ')
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`
+/** The hint under who pulled it: one word with its reason on hover. */
+export function HintChip({ hint }: { hint: Hint }) {
+  const tone = hint.tone === 'warm' ? 'amber' : hint.tone === 'new' ? 'blue' : 'grey'
+  return (
+    <span style={chipStyle(tone)} title={hint.detail}>
+      {hint.word}
+    </span>
+  )
 }
 
 export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const { showToast } = useToastContext()
+  const isMobile = useIsMobile()
+  const [view, setView] = useState<'ledger' | 'map'>('ledger')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [history, setHistory] = useState<Map<string, ContactHistory>>(new Map())
   const todayYmd = todayYmdInAppTz()
   const [city, setCity] = useState<string>(DEFAULT_RESEARCH_CITY)
   const [windowDays, setWindowDays] = useState<ResearchWindow>(30)
@@ -97,6 +113,12 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       setRows(list)
       setPull(latest)
       writeLastLooked(lastLookedKey(authUserId, city), todayYmd)
+      // The hint: our bid history with every name on the list, one read, fail-soft (the ledger stands without it).
+      try {
+        setHistory(await loadContactHistory(list.flatMap((r) => contactKeys(r.contact))))
+      } catch {
+        setHistory(new Map())
+      }
     } catch (e) {
       setError(formatErrorMessage(e))
     } finally {
@@ -111,6 +133,12 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const counts = useMemo(() => lensCounts(rows), [rows])
   const visible = useMemo(() => rowsShowing(rows, showing), [rows, showing])
   const line = pulledWords({ ranAt: pull.ranAt, error: pull.error, newCount: newSinceLooked(rows, lastLooked), lastLookedYmd: lastLooked, counts })
+  const tally = useMemo(() => (showing === 'taken' || showing === 'all' ? plumberTally(rows) : []), [rows, showing])
+  const selected = useMemo(() => visible.find((r) => r.id === selectedId) ?? null, [visible, selectedId])
+  const openDecide = (row: ResearchPermitRow) => {
+    setDecideError(null)
+    setDeciding(row)
+  }
 
   const decide = async (row: ResearchPermitRow, d: PermitDecision) => {
     setSaving(true)
@@ -189,6 +217,13 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
           Include houses
         </label>
         <span style={{ flex: '1 1 auto' }} />
+        <div role="group" aria-label="View" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+          {(['ledger', 'map'] as const).map((v) => (
+            <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} style={{ background: view === v ? 'var(--bg-200)' : 'var(--surface)', color: 'var(--text)', border: 0, borderRight: v === 'ledger' ? '1px solid var(--border)' : 0, padding: '7px 12px', fontSize: '0.8125rem', fontWeight: view === v ? 600 : 400, minHeight: 36, cursor: 'pointer' }}>
+              {v === 'ledger' ? 'Ledger' : 'Map'}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           onClick={() => void pullNow()}
@@ -210,9 +245,55 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         </div>
       )}
 
+      {tally.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: '0.8125rem', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', background: 'var(--surface)' }}>
+          <strong>Who wins what in {city}, this window:</strong>
+          {tally.map((t) => (
+            <span key={t.plumber} style={chipStyle('grey')}>
+              {t.plumber} · {t.jobs}
+            </span>
+          ))}
+        </div>
+      )}
+
       {!loading && !error && visible.length === 0 && emptyState()}
 
-      {visible.length > 0 && (
+      {view === 'map' && visible.length > 0 && (
+        <ResearchMapCard rows={visible} selectedId={selectedId} onSelect={setSelectedId} isMobile={isMobile}>
+          {selected && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.875rem' }}>
+              <div style={mutedStyle}>Selected pin</div>
+              <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{selected.address ?? selected.permit_number} · {workWords(selected).main}</div>
+              <div style={mutedStyle}>
+                {selected.permit_number} · {selected.stage} {shortDay(selected.filed_on)} · {workWords(selected).detail}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {selected.plumber ? <span style={chipStyle('grey')}>{selected.plumber} · plumbing permit {shortDay(selected.plumber_permit_on)}</span> : <span style={chipStyle('green')}>no plumber yet</span>}
+                <HintChip hint={hintFor(selected.contact, history)} />
+              </div>
+              <div>
+                <strong>Pulled by</strong> {selected.contact ?? 'nobody named'}
+              </div>
+              {selected.verdict && (
+                <div style={mutedStyle}>
+                  {VERDICT_WORDS[selected.verdict].chip} · {selected.verdict_by_name ?? 'someone'}, {shortDay(selected.verdict_at ? selected.verdict_at.slice(0, 10) : null)}
+                  {selected.verdict_reason ? ` · “${selected.verdict_reason}”` : ''}
+                </div>
+              )}
+              <button type="button" onClick={() => openDecide(selected)} style={{ alignSelf: 'flex-start', background: '#2563eb', color: '#ffffff', border: 0, borderRadius: 8, padding: '9px 14px', fontSize: '0.875rem', fontWeight: 600, minHeight: 40, cursor: 'pointer' }}>
+                {selected.verdict ? 'Change the verdict…' : 'Decide…'}
+              </button>
+              {mapsDoor(selected) && (
+                <a href={mapsDoor(selected) ?? '#'} target="_blank" rel="noreferrer" style={{ ...mutedStyle, color: 'var(--text-link)' }}>
+                  Open in Google Maps
+                </a>
+              )}
+            </div>
+          )}
+        </ResearchMapCard>
+      )}
+
+      {view === 'ledger' && visible.length > 0 && (
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
             <thead>
@@ -258,7 +339,11 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                       <br />
                       <span style={mutedStyle}>{work.detail}</span>
                     </td>
-                    <td style={tdStyle}>{row.contact ?? <span style={mutedStyle}>nobody named</span>}</td>
+                    <td style={tdStyle}>
+                      {row.contact ?? <span style={mutedStyle}>nobody named</span>}
+                      <br />
+                      <HintChip hint={hintFor(row.contact, history)} />
+                    </td>
                     <td style={tdStyle}>
                       {row.plumber ? (
                         <>
@@ -289,7 +374,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                             </span>
                           </span>
                           {row.verdict_reason && <span style={mutedStyle}>“{row.verdict_reason}”</span>}
-                          <button type="button" onClick={() => { setDecideError(null); setDeciding(row) }} style={{ alignSelf: 'flex-start', background: 'transparent', border: 0, padding: 0, color: 'var(--text-link)', fontSize: '0.78rem', cursor: 'pointer' }}>
+                          <button type="button" onClick={() => openDecide(row)} style={{ alignSelf: 'flex-start', background: 'transparent', border: 0, padding: 0, color: 'var(--text-link)', fontSize: '0.78rem', cursor: 'pointer' }}>
                             Change
                           </button>
                         </div>
@@ -298,12 +383,12 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
                           <span>
                             <span style={chipStyle('grey')}>Already has a plumber</span> <span style={mutedStyle}>· read off the feed</span>
                           </span>
-                          <button type="button" onClick={() => { setDecideError(null); setDeciding(row) }} style={{ alignSelf: 'flex-start', background: 'transparent', border: 0, padding: 0, color: 'var(--text-link)', fontSize: '0.78rem', cursor: 'pointer' }}>
+                          <button type="button" onClick={() => openDecide(row)} style={{ alignSelf: 'flex-start', background: 'transparent', border: 0, padding: 0, color: 'var(--text-link)', fontSize: '0.78rem', cursor: 'pointer' }}>
                             Decide anyway
                           </button>
                         </div>
                       ) : (
-                        <button type="button" onClick={() => { setDecideError(null); setDeciding(row) }} style={{ background: '#2563eb', color: '#ffffff', border: 0, borderRadius: 8, padding: '8px 14px', fontSize: '0.875rem', fontWeight: 600, minHeight: 36, cursor: 'pointer' }}>
+                        <button type="button" onClick={() => openDecide(row)} style={{ background: '#2563eb', color: '#ffffff', border: 0, borderRadius: 8, padding: '8px 14px', fontSize: '0.875rem', fontWeight: 600, minHeight: 36, cursor: 'pointer' }}>
                           Decide…
                         </button>
                       )}
@@ -317,7 +402,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       <div style={mutedStyle}>
-        <strong>Decide…</strong> opens one sheet: the four verdicts, a reason that cannot be empty, a look-again day. <strong>Approach them</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. A plumber's name means a plumbing permit on the same number or address already names them.
+        <strong>Decide…</strong> opens one sheet: the four verdicts, a reason that cannot be empty, a look-again day. <strong>Approach them</strong> makes a GC lead on the GCs deck with <em>A permit</em> as its source. A plumber's name means a plumbing permit on the same number or address already names them. The word under who pulled it reads our own bid history with that name and is never the verdict.
       </div>
 
       {deciding && <PermitDecideSheet row={deciding} todayYmd={todayYmd} saving={saving} error={decideError} onDecide={(d) => void decide(deciding, d)} onCancel={() => !saving && setDeciding(null)} />}
