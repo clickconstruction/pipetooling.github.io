@@ -30,17 +30,18 @@
  */
 import { billedExpectedPayModel, billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type ExpectedPayRowInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
+import { claimHow, claimOpen, claimStale, daysSinceClaim, staleWords, type PaidClaim } from './paidClaims'
 
 export type LedgerTone = 'done' | 'plain' | 'green' | 'amber' | 'red' | 'blue'
 export type LedgerAction = 'they-said' | 'new-date' | 'lien-desk'
 /** A filled dot is a fact behind us, the money, or the row that asks; a ring is a deadline still ahead. */
 export type LedgerDot = 'filled' | 'ring'
 
-export type LedgerRowKey = 'billed' | 'money' | 'notice' | 'lien' | 'filed' | 'closed'
+export type LedgerRowKey = 'billed' | 'money' | 'claim' | 'notice' | 'lien' | 'filed' | 'closed'
 
 export type LedgerRow = {
   key: LedgerRowKey
-  /** "Billed" · "Expected" · "They said" · "Lien notice" · "Lien" · "File the lien" · "Lien filed" · "Lien window closed" · "Notice window closed". */
+  /** "Billed" · "Expected" · "They said" · "They say paid" · "Lien notice" · "Lien" · "File the lien" · "Lien filed" · "Lien window closed" · "Notice window closed". */
   label: string
   /** The words between the label and the date: '' · 'by'. */
   joiner: string
@@ -66,7 +67,7 @@ export type LedgerRow = {
 export type LedgerLienState = { words: string; tone: LedgerTone; title?: string }
 
 export type LedgerVerdict = {
-  /** "Can run late" · "Notice first" · "File the lien first" · "Ask for a date" · "Lien gone". */
+  /** "Can run late" · "Notice first" · "File the lien first" · "Ask for a date" · "Nothing landed" · "Lien gone". */
   label: string
   /** "72d" · "4d short" · "12d past" · ''. */
   value: string
@@ -98,7 +99,17 @@ export type BilledDatesLedgerInput = {
   uncollectible?: boolean
   /** Where the job's lien paper stands, in the desk's words (v2.5491): the line under the lien row. Null or absent: the old "notice sent" line, when the runway knows one. */
   lienState?: LedgerLienState | null
+  /**
+   * The customer's word that they already paid (v2.6695, punch list #129): the job's open paid claim from
+   * `list_paid_claims` (`openClaimByJob`). It takes the money row's place as **They say paid** with the day they named,
+   * green for `STALE_AFTER_DAYS` and amber with *nothing landed in N days* after; its press is the same sheet. A claim
+   * something landed against is not open and draws nothing. Null or absent: the money row as before.
+   */
+  claim?: LedgerPaidClaim | null
 }
+
+/** What the ledger reads of a paid claim. */
+export type LedgerPaidClaim = Pick<PaidClaim, 'paidYmd' | 'method' | 'amount' | 'saidBy' | 'customerName' | 'heardByName' | 'landedSince'>
 
 const dWord = (n: number) => `${n}d`
 
@@ -110,7 +121,7 @@ function farWords(days: number, ahead: 'in' | 'bare'): string {
   return ahead === 'in' ? `in ${dWord(days)}` : dWord(days)
 }
 
-export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promise, runway, inCollections, uncollectible = false, lienState = null }: BilledDatesLedgerInput): BilledDatesLedger {
+export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promise, runway, inCollections, uncollectible = false, lienState = null, claim = null }: BilledDatesLedgerInput): BilledDatesLedger {
   const rows: LedgerRow[] = []
   /** The state line under a lien row (v2.5491), when the desk has one. */
   const state = lienState ? { sub: lienState.words, subTone: lienState.tone, subTitle: lienState.title ?? lienState.words } : null
@@ -122,15 +133,38 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
     rows.push({ key: 'billed', label: 'Billed', joiner: '', date: formatYmdMonthDay(billedYmd), far: farWords(-ago, 'bare'), tone: 'done', bold: false, dot: 'filled', action: null, title: `The bill went out ${formatYmdMonthDay(billedYmd)} — the day the pay estimate below counts from`, sub: '' })
   }
 
-  // The money — their word if they gave one, else the estimate from their pay history; none on a bill the office gave up on
-  const stat = row && !uncollectible ? billedExpectedPayModel(row, data, todayYmd, null, pace) : null
-  const promised = row && promise && !uncollectible ? billedExpectedPayModel(row, data, todayYmd, promise, pace) : null
+  // The money — their word if they gave one, else the estimate from their pay history; none on a bill the office gave up on.
+  // A word that they already paid (v2.6695) takes the row: nobody expects a day once the customer says the money is on its way.
+  const said = row && claim && !uncollectible && claimOpen(claim) ? claim : null
+  const saidStale = said ? claimStale(said, todayYmd) : false
+  const stat = row && !uncollectible && !said ? billedExpectedPayModel(row, data, todayYmd, null, pace) : null
+  const promised = row && promise && !uncollectible && !said ? billedExpectedPayModel(row, data, todayYmd, promise, pace) : null
   const moneyYmd = promised?.expectedYmd ?? stat?.expectedYmd ?? null
   const moneyTo = moneyYmd ? (daysBetweenYmd(todayYmd, moneyYmd) ?? 0) : null
   const moneyPast = moneyTo != null && moneyTo < 0
   const moneyAhead = moneyTo != null && !moneyPast
   const moneyAction: LedgerAction = promise ? 'new-date' : 'they-said'
   const moneyTitle = promised?.title ?? stat?.title ?? ''
+  if (said) {
+    const who = said.saidBy || said.customerName || 'They'
+    const since = daysSinceClaim(said, todayYmd)
+    const how = `${claimHow(said)}${said.amount != null ? ` · $${said.amount.toLocaleString('en-US', { maximumFractionDigits: 2 })}` : ''}`
+    rows.push({
+      key: 'claim',
+      label: 'They say paid',
+      joiner: '',
+      date: formatYmdMonthDay(said.paidYmd),
+      far: since < 0 ? farWords(-since, 'in') : farWords(-since, 'bare'),
+      tone: inCollections ? 'red' : saidStale ? 'amber' : 'green',
+      bold: false,
+      dot: 'filled',
+      action: 'they-said',
+      title: `${who} ${who === 'They' ? 'say' : 'says'} they paid ${formatYmdMonthDay(said.paidYmd)}, ${claimHow(said)}${said.heardByName ? `, heard by ${said.heardByName}` : ''}. ${saidStale ? `Nothing has landed on the job since; ask before chasing.` : 'The office pairs it with the deposit when it lands.'}`,
+      sub: saidStale ? staleWords(said, todayYmd) : how,
+      subTone: saidStale ? 'amber' : undefined,
+      subTitle: saidStale ? `${how} · ${staleWords(said, todayYmd)}` : undefined,
+    })
+  }
   if (moneyYmd && moneyTo != null) {
     const tone: LedgerTone = inCollections ? 'red' : moneyPast ? 'amber' : 'green'
     rows.push({
@@ -193,6 +227,9 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
           verdict = { label: 'Can run late', value: dWord(slack), tone: deadlineDays <= LIEN_RUNWAY_RED_DAYS ? 'amber' : 'green', action: 'lien-desk', title: `${moneyTitle ? `${moneyTitle} ` : ''}The money can land ${slack} ${slack === 1 ? 'day' : 'days'} later than expected before the ${noticeFirst ? 'notice has to go' : 'lien window closes'}.` }
         } else if (urgent) {
           verdict = null // the deadline row is the to-do; nothing repeats it
+        } else if (said) {
+          // Their word is that they paid: nothing to ask for until a week passes with nothing landed.
+          verdict = saidStale ? { label: 'Nothing landed', value: dWord(daysSinceClaim(said, todayYmd)), tone: 'amber', action: 'they-said', title: `They said they paid ${formatYmdMonthDay(said.paidYmd)} and nothing has landed on the job since — ask whether it went out` } : null
         } else if (moneyPast && moneyTo != null) {
           verdict = { label: 'Ask for a date', value: `${dWord(-moneyTo)} past`, tone: inCollections ? 'red' : 'amber', action: moneyAction, title: `${moneyTitle} — the date has gone by with the balance still open` }
         } else {

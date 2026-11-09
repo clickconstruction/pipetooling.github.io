@@ -2,6 +2,7 @@ import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
 import { canEditClause, canEditFlows, canOpenGcProjects } from './gc/access'
 import { canSeePhoneAndTexts } from './messages/assignRule'
+import { isOwnerOrDev } from './doorRoles'
 
 /**
  * Zoned Settings groups (v2.2088, reorg mockup A). The tab bar answers the
@@ -75,7 +76,8 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (r === 'dev') {
     groups.push({ id: 'settings-training', label: 'Training', zone: 'company', pagesHint: 'Shows on: the Dashboard under My Time, and People. Which courses each role must take, how long a pass is good for, and where everyone stands.' })
   }
-  if (r === 'dev') {
+  // Emails & reports (punch list #188 row 5, v2.6753): who gets which stream is the owner's call, so the owner reads it with a dev.
+  if (isOwnerOrDev(r)) {
     groups.push({ id: 'settings-emails', label: 'Emails & reports', zone: 'company', pagesHint: 'The scheduled email streams the office receives.' })
   }
   // v2.3507: the office sends these pages every day — dev, master and the assistant-like roles see them from the customer's side.
@@ -83,8 +85,11 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
     groups.push({ id: 'settings-what-customers-see', label: 'What customers see', zone: 'company', pagesHint: 'Every email and page anyone outside the company gets — customers, GCs, subs, supply houses and the collections firm — rendered live with sample data, in the order they meet them.' })
   }
   // v2.4142 (punch list #60): the other side of the mail — every email the team receives, as one person's week.
-  if (r === 'dev') {
+  // Punch list #188 row 4 (v2.6753): read-only samples, so the owner reads them with a dev; the open call of v2.4142 answered.
+  if (isOwnerOrDev(r)) {
     groups.push({ id: 'settings-what-the-team-sees', label: 'What the team sees', zone: 'company', pagesHint: 'Every email the app sends someone on the team — digests, notices, sign-in — as one person\u2019s week, with sample data.' })
+  }
+  if (r === 'dev') {
     // Punch list #194: every screen, as every role, in every state, drawn live by the real app in sealed frames.
     groups.push({ id: 'settings-what-everyone-sees', label: 'What everyone sees', zone: 'company', pagesHint: 'Every screen of the app, as every role and in every state, drawn live by the real app on an invented company.' })
   }

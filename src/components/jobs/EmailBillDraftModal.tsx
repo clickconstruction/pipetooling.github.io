@@ -1,3 +1,11 @@
+/**
+ * The bill's email draft window: the subject and the words of the pay-link email as the share row writes them
+ * (`stripeInvoiceShareCopy.ts`). Since punch list #125 PR 6 (v2.6710) the words are the confirm: **Send the email**
+ * sends them from the office through `messages-email` (`StripeInvoiceSharePanel`'s `sendBillEmail`), so the line lands
+ * in the customer's thread and the answer comes back to the office's box. **Copy** stays for pasting them elsewhere. The
+ * `mailto:` press (*Open in email app*) is gone: a send never hands the words to the person's own mail app. A row with no
+ * job or customer at hand (`onSend` left out) draws Copy alone.
+ */
 import { useEffect, type CSSProperties } from 'react'
 
 const preBox: CSSProperties = {
@@ -20,8 +28,10 @@ export function EmailBillDraftModal({
   subject,
   body,
   onCopy,
-  onOpenMailto,
-  showOpenInEmailApp,
+  onSend,
+  sending = false,
+  sendLabel = 'Send the email',
+  sendingLabel = 'Sending…',
   overlayZIndex = 1300,
 }: {
   open: boolean
@@ -29,8 +39,12 @@ export function EmailBillDraftModal({
   subject: string
   body: string
   onCopy: () => void
-  onOpenMailto: () => void
-  showOpenInEmailApp: boolean
+  /** Send the words from the office (`messages-email`). Left out, the window offers Copy alone. */
+  onSend?: () => void
+  /** The send is on its way: the press waits and reads `sendingLabel`. */
+  sending?: boolean
+  sendLabel?: string
+  sendingLabel?: string
   overlayZIndex?: number
 }) {
   useEffect(() => {
@@ -114,39 +128,55 @@ export function EmailBillDraftModal({
           >
             Close
           </button>
-          {showOpenInEmailApp ? (
+          <button
+            type="button"
+            onClick={() => onCopy()}
+            style={
+              onSend
+                ? {
+                    padding: '0.5rem 1rem',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                  }
+                : {
+                    padding: '0.5rem 1rem',
+                    border: 'none',
+                    background: '#2563eb',
+                    color: 'white',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                  }
+            }
+          >
+            Copy
+          </button>
+          {onSend ? (
             <button
               type="button"
-              onClick={() => onOpenMailto()}
+              onClick={() => onSend()}
+              disabled={sending}
+              data-testid="email-bill-draft-send"
               style={{
                 padding: '0.5rem 1rem',
-                border: '1px solid var(--border-strong)',
-                background: 'var(--surface)',
+                border: 'none',
+                background: '#2563eb',
+                color: 'white',
                 borderRadius: 4,
-                cursor: 'pointer',
+                cursor: sending ? 'default' : 'pointer',
+                opacity: sending ? 0.7 : 1,
                 fontSize: '0.875rem',
                 fontWeight: 500,
               }}
             >
-              Open in email app
+              {sending ? sendingLabel : sendLabel}
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={() => onCopy()}
-            style={{
-              padding: '0.5rem 1rem',
-              border: 'none',
-              background: '#2563eb',
-              color: 'white',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-            }}
-          >
-            Copy
-          </button>
         </div>
       </div>
     </div>

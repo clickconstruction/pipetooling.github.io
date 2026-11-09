@@ -3,7 +3,7 @@
 /**
  * Messages, cut 6 (email in): the mail the bids@ reader leaves out, so a thread holds people and not notices. It stays
  * in Gmail with no label. The rules, in order: spam and trash; anything not in the Inbox (the lead's answer to Q2:
- * Inbox only for now); the box's own address or the app's sender (the thread already shows what the app sent, as a
+ * Inbox only for now; since v2.6731 a mail the box itself sent is read first by `sentByTheBox` and never comes here); the box's own address or the app's sender (the thread already shows what the app sent, as a
  * sent copy); mail marked as a list, as bulk or as sent by a machine (an unsubscribe line, `Precedence`,
  * `Auto-Submitted`, which also catches an out-of-office reply); a no-reply sender; Gmail's Promotions, Social,
  * Updates and Forums; and since v2.6200 (punch list #223 PR 2) a body whose foot carries a list's own line, an
@@ -56,6 +56,18 @@ export function bulkByBody(text: string): boolean {
     .filter((l) => l !== '')
     .slice(-BODY_FOOT_LINES)
   return foot.some((line) => !PLATFORM_CHOICE.test(line) && BODY_BULK_CUES.some((cue) => cue.test(line)))
+}
+
+/**
+ * A mail the box itself sent (v2.6731, punch list #207 PR 3): in its Sent folder, not Spam or Trash, and from the box's
+ * own address. The reader takes it as ours, going out, to the first person named on it; `outsideInbox` and `leftOut`
+ * are never asked about it. The app's own send as the box (v2.6702) reads the same way and is held by its Message-ID.
+ */
+export function sentByTheBox(email: Pick<EmailIn, 'labels' | 'from'>, isTheBox: (address: string) => boolean): boolean {
+  const labels = new Set(email.labels)
+  if (!labels.has('SENT') || labels.has('SPAM') || labels.has('TRASH')) return false
+  const from = email.from?.address.trim().toLowerCase() ?? ''
+  return from !== '' && isTheBox(from)
 }
 
 /** Spam, trash, or not in the Inbox: the reader takes nothing else, a forwarded copy included. */

@@ -73,5 +73,9 @@ A press you got wrong has **Undo** under the card. A project with no usable bid 
 
 - A service call never sees any of this. The baseline is for jobs priced before the work.
 - A bid sent without hours gives the book the pick. The strip names the bid, so you can fill its Labor rows later.
+- A bid with hours on its rows and no rate of its own is still the pick. The block prices it at the company rate from Settings → Line budgets. Create Job saves that rate on the bid, the way the Labor tab's **save it on the bid** does.
+- A bid with no Labor rows says so. Add them on its Labor tab and the bid becomes the pick.
+- A weekend award counts its working days from the Monday after it.
+- Once a project is awarded, the strip offers no **Clear**. The award is written once. Take the bid's estimate or type a baseline to move the live figure.
 - The line that carries the bid's price also carries the bid's labor and materials shares. The Bill tab's quiet line reads **◆ workbench** on it. See [see what a line should cost and tune it](/help/see-what-a-line-should-cost).
 - A superintendent's bonus will read the frozen award, never the live row. That is why Refresh from bid cannot move it.

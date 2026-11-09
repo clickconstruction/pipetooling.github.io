@@ -3,14 +3,17 @@
 -- bid, a helper on the team and nobody signed in; the estimator writes a promise on their job with heard_by
 -- themselves, is refused in words on another's, reads their job's promises and no other job's, voids their own and
 -- the office's on the job, clears the board's date, and still gets NULL from the company-wide read; the primary who
--- is the job's account manager writes too, a primary who is not is refused. Everything rolls back. Raises on the first
--- failed assertion; ends with "job_people PASSED". See scripts/pgtest-job-people.sh. Never against prod.
+-- is the job's account manager writes too, a primary who is not is refused. Since v2.6694 (*_job_people_estimate_author)
+-- the author of the signed estimate a job came from is that job's: Nia, who wrote J4's estimate, is J4's and no other
+-- job's, writes on J4 and is refused on J1; the author of a change order on J3 is not J3's. Everything rolls back.
+-- Raises on the first failed assertion; ends with "job_people PASSED". See scripts/pgtest-job-people.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
 
 -- Theo (estimator, bid B1), Kim (estimator, bid B2's estimator and account manager), Rosa (assistant), Luis (primary,
 -- J1's and J3's account manager), Pat (primary on nothing), Marcus (helper on J1's team), Mo (the master the customer
--- belongs to, since a customer's master must be a master or a dev).
+-- belongs to, since a customer's master must be a master or a dev), Nia (estimator, the author of the signed estimate
+-- J4 came from, and of a change order on J3).
 INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000e4a01', 'theo@people.test'),
   ('00000000-0000-0000-0000-0000000e4a02', 'kim@people.test'),
@@ -18,7 +21,8 @@ INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000e4a04', 'luis@people.test'),
   ('00000000-0000-0000-0000-0000000e4a05', 'pat@people.test'),
   ('00000000-0000-0000-0000-0000000e4a06', 'marcus@people.test'),
-  ('00000000-0000-0000-0000-0000000e4a07', 'mo@people.test');
+  ('00000000-0000-0000-0000-0000000e4a07', 'mo@people.test'),
+  ('00000000-0000-0000-0000-0000000e4a08', 'nia@people.test');
 INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
   ('00000000-0000-0000-0000-0000000e4a01', 'theo@people.test', 'People Theo', 'estimator', false, false),
   ('00000000-0000-0000-0000-0000000e4a02', 'kim@people.test', 'People Kim', 'estimator', false, false),
@@ -26,7 +30,8 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VAL
   ('00000000-0000-0000-0000-0000000e4a04', 'luis@people.test', 'People Luis', 'primary', false, false),
   ('00000000-0000-0000-0000-0000000e4a05', 'pat@people.test', 'People Pat', 'primary', false, false),
   ('00000000-0000-0000-0000-0000000e4a06', 'marcus@people.test', 'People Marcus', 'helpers', false, false),
-  ('00000000-0000-0000-0000-0000000e4a07', 'mo@people.test', 'People Mo', 'master_technician', false, false)
+  ('00000000-0000-0000-0000-0000000e4a07', 'mo@people.test', 'People Mo', 'master_technician', false, false),
+  ('00000000-0000-0000-0000-0000000e4a08', 'nia@people.test', 'People Nia', 'estimator', false, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
 INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000e4b01', 'People Plumbing');
@@ -37,11 +42,19 @@ INSERT INTO public.bids (id, created_by, estimator_id, account_manager_id, servi
   ('00000000-0000-0000-0000-0000000e4d01', '00000000-0000-0000-0000-0000000e4a03', '00000000-0000-0000-0000-0000000e4a01', NULL, '00000000-0000-0000-0000-0000000e4b01', 'Whitfield repipe', '00000000-0000-0000-0000-0000000e4c01'),
   ('00000000-0000-0000-0000-0000000e4d02', '00000000-0000-0000-0000-0000000e4a03', '00000000-0000-0000-0000-0000000e4a02', '00000000-0000-0000-0000-0000000e4a02', '00000000-0000-0000-0000-0000000e4b01', 'Park water heater', '00000000-0000-0000-0000-0000000e4c01');
 
--- J1 came from B1 with Luis as its account manager; J2 from B2; J3 from no bid, Luis its account manager.
+-- J1 came from B1 with Luis as its account manager; J2 from B2; J3 from no bid, Luis its account manager; J4 from Nia's
+-- signed estimate E1, with no bid and no account manager (the shape auto_create_job_from_signed_estimate leaves).
 INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number, job_name, customer_name, customer_id, bill_to_party, revenue, payments_made, status, bid_id, account_manager_user_id, account_manager_relationship) VALUES
   ('00000000-0000-0000-0000-0000000e4f01', '00000000-0000-0000-0000-0000000e4a07', '00000000-0000-0000-0000-0000000e4b01', '1032', 'Whitfield repipe', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e4c01', 'customer', 4200, 0, 'billed', '00000000-0000-0000-0000-0000000e4d01', '00000000-0000-0000-0000-0000000e4a04', 'primary'),
   ('00000000-0000-0000-0000-0000000e4f02', '00000000-0000-0000-0000-0000000e4a07', '00000000-0000-0000-0000-0000000e4b01', '1040', 'Park water heater', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e4c01', 'customer', 2900, 0, 'billed', '00000000-0000-0000-0000-0000000e4d02', NULL, NULL),
-  ('00000000-0000-0000-0000-0000000e4f03', '00000000-0000-0000-0000-0000000e4a07', '00000000-0000-0000-0000-0000000e4b01', '1037', 'Ortega gas line', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e4c01', 'customer', 4800, 0, 'billed', NULL, '00000000-0000-0000-0000-0000000e4a04', 'primary');
+  ('00000000-0000-0000-0000-0000000e4f03', '00000000-0000-0000-0000-0000000e4a07', '00000000-0000-0000-0000-0000000e4b01', '1037', 'Ortega gas line', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e4c01', 'customer', 4800, 0, 'billed', NULL, '00000000-0000-0000-0000-0000000e4a04', 'primary'),
+  ('00000000-0000-0000-0000-0000000e4f04', '00000000-0000-0000-0000-0000000e4a07', '00000000-0000-0000-0000-0000000e4b01', '1041', 'Whitfield water heater', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e4c01', 'customer', 2100, 0, 'billed', NULL, NULL, NULL);
+-- E1: Nia's signed estimate, the one J4 came from. E2: a change order Nia wrote on J3, signed too — applied to the job,
+-- never its source, so it opens nothing. E3: a draft of Nia's pointing at J2 (linked by hand), not a sale yet.
+INSERT INTO public.estimates (id, master_user_id, created_by, customer_id, job_ledger_id, title, status, doc_kind) VALUES
+  ('00000000-0000-0000-0000-0000000e4e01', '00000000-0000-0000-0000-0000000e4a07', '00000000-0000-0000-0000-0000000e4a08', '00000000-0000-0000-0000-0000000e4c01', '00000000-0000-0000-0000-0000000e4f04', 'Whitfield water heater', 'customer_accepted', 'estimate'),
+  ('00000000-0000-0000-0000-0000000e4e02', '00000000-0000-0000-0000-0000000e4a07', '00000000-0000-0000-0000-0000000e4a08', '00000000-0000-0000-0000-0000000e4c01', '00000000-0000-0000-0000-0000000e4f03', 'Ortega gas line, the regulator', 'customer_accepted', 'change_order'),
+  ('00000000-0000-0000-0000-0000000e4e03', '00000000-0000-0000-0000-0000000e4a07', '00000000-0000-0000-0000-0000000e4a08', '00000000-0000-0000-0000-0000000e4c01', '00000000-0000-0000-0000-0000000e4f02', 'Park water heater, a second look', 'draft', 'estimate');
 INSERT INTO public.jobs_ledger_team_members (job_id, user_id) VALUES
   ('00000000-0000-0000-0000-0000000e4f01', '00000000-0000-0000-0000-0000000e4a04'),
   ('00000000-0000-0000-0000-0000000e4f01', '00000000-0000-0000-0000-0000000e4a06'),
@@ -70,11 +83,12 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', coalesce(p_user::text, ''), true);
   PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
--- The three jobs' answers as the signed-in person: "J1 t, J2 f, J3 f".
+-- The four jobs' answers as the signed-in person: "J1 t, J2 f, J3 f, J4 f".
 CREATE FUNCTION jpp.people() RETURNS text LANGUAGE sql AS $$
   SELECT 'J1 ' || left(public.is_job_people('00000000-0000-0000-0000-0000000e4f01')::text, 1)
       || ', J2 ' || left(public.is_job_people('00000000-0000-0000-0000-0000000e4f02')::text, 1)
       || ', J3 ' || left(public.is_job_people('00000000-0000-0000-0000-0000000e4f03')::text, 1)
+      || ', J4 ' || left(public.is_job_people('00000000-0000-0000-0000-0000000e4f04')::text, 1)
 $$;
 -- One job's live promises as the signed-in person, the latest day first (every row of one transaction shares its
 -- created_at, so the read's own newest-first order is not the bed's to assert): "Oct 28 …; Oct 25 …" or "NULL".
@@ -102,20 +116,23 @@ SET LOCAL ROLE authenticated;
 
 -- 1 · Who the job's people are.
 SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a01');
-SELECT jpp.same('Theo, the estimator of B1, is J1''s and no other job''s', jpp.people(), 'J1 t, J2 f, J3 f');
+SELECT jpp.same('Theo, the estimator of B1, is J1''s and no other job''s', jpp.people(), 'J1 t, J2 f, J3 f, J4 f');
 SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a02');
-SELECT jpp.same('Kim, B2''s estimator and account manager, is J2''s', jpp.people(), 'J1 f, J2 t, J3 f');
+SELECT jpp.same('Kim, B2''s estimator and account manager, is J2''s', jpp.people(), 'J1 f, J2 t, J3 f, J4 f');
 SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a03');
-SELECT jpp.same('Rosa, the office, is every job''s', jpp.people(), 'J1 t, J2 t, J3 t');
+SELECT jpp.same('Rosa, the office, is every job''s', jpp.people(), 'J1 t, J2 t, J3 t, J4 t');
 SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a04');
-SELECT jpp.same('Luis, the account manager on J1 and J3, is theirs', jpp.people(), 'J1 t, J2 f, J3 t');
+SELECT jpp.same('Luis, the account manager on J1 and J3, is theirs', jpp.people(), 'J1 t, J2 f, J3 t, J4 f');
 SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a05');
-SELECT jpp.same('Pat, a primary on nothing, is nobody''s', jpp.people(), 'J1 f, J2 f, J3 f');
+SELECT jpp.same('Pat, a primary on nothing, is nobody''s', jpp.people(), 'J1 f, J2 f, J3 f, J4 f');
 SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a06');
-SELECT jpp.same('Marcus, a helper on J1''s team, is nobody''s', jpp.people(), 'J1 f, J2 f, J3 f');
+SELECT jpp.same('Marcus, a helper on J1''s team, is nobody''s', jpp.people(), 'J1 f, J2 f, J3 f, J4 f');
 SELECT jpp.as_user(NULL);
-SELECT jpp.same('nobody signed in is nobody''s', jpp.people(), 'J1 f, J2 f, J3 f');
+SELECT jpp.same('nobody signed in is nobody''s', jpp.people(), 'J1 f, J2 f, J3 f, J4 f');
 SELECT jpp.same('a job that is not there is nobody''s', public.is_job_people('00000000-0000-0000-0000-0000000e4f99')::text, 'false');
+-- v2.6694: the author of the signed estimate a job came from is that job's; a change order's author and a draft's are not.
+SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a08');
+SELECT jpp.same('Nia, who wrote the signed estimate J4 came from, is J4''s and no other job''s (her change order on J3 and her draft on J2 count for nothing)', jpp.people(), 'J1 f, J2 f, J3 f, J4 t');
 
 -- 2 · Theo writes Dana's word on his job, and reads it.
 SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a01');
@@ -150,6 +167,16 @@ SELECT jpp.same('Pat, a primary, still reads J1''s through the old gate', jpp.pr
 SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a06');
 SELECT jpp.refused('Marcus, on the team, is refused', $q$SELECT public.add_job_payment_promise('00000000-0000-0000-0000-0000000e4f01', DATE '2026-11-05', 'Dana', 'phone')$q$, 'Not allowed to record payment promises');
 SELECT jpp.same('Marcus reads nothing', jpp.promises('00000000-0000-0000-0000-0000000e4f01'), 'NULL');
+
+-- 5 · Nia, the author of the signed estimate J4 came from (v2.6694), writes on J4 and is refused elsewhere.
+SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a08');
+SELECT jpp.same('Nia writes the word on J4, the job her estimate made', (public.add_job_payment_promise('00000000-0000-0000-0000-0000000e4f04', DATE '2026-11-12', 'Dana', 'text'))->>'promisedDate', '2026-11-12');
+SELECT jpp.same('the word is heard by Nia, from the office side', jpp.heard('00000000-0000-0000-0000-0000000e4f04'), 'People Nia / office');
+SELECT jpp.same('Nia reads J4''s word', jpp.promises('00000000-0000-0000-0000-0000000e4f04'), 'Nov 12 by text, Dana, heard by People Nia');
+SELECT jpp.refused('Nia is refused on J1, Theo''s bid', $q$SELECT public.add_job_payment_promise('00000000-0000-0000-0000-0000000e4f01', DATE '2026-11-12', 'Dana', 'text')$q$, 'Not allowed to record payment promises');
+SELECT jpp.refused('Nia is refused on J3, where she wrote only a change order', $q$SELECT public.add_job_payment_promise('00000000-0000-0000-0000-0000000e4f03', DATE '2026-11-12', 'Dana', 'text')$q$, 'Not allowed to record payment promises');
+SELECT jpp.same('Nia reads nothing of J3', jpp.promises('00000000-0000-0000-0000-0000000e4f03'), 'NULL');
+SELECT jpp.same('the company-wide read still answers Nia nothing', coalesce(public.list_job_payment_promises()::text, 'NULL'), 'NULL');
 
 DO $$ BEGIN RAISE NOTICE 'job_people PASSED'; END $$;
 ROLLBACK;

@@ -43,6 +43,10 @@ export type ChangeLine = {
   photos?: UploadedPhotoRow[]
   /** Words the search reads that the line does not print (every caption of a batch). */
   searchText?: string
+  /** A history entry's row id (punch list #280): what the window reads the whole body by. */
+  entryId?: string
+  /** `detail` is the first words of a longer body the list did not read (punch list #280); the window reads the rest by `entryId`. */
+  detailIsHead?: boolean
 }
 
 export type ChangeInputs = {
