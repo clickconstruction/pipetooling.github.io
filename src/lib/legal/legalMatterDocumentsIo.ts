@@ -83,6 +83,17 @@ export async function readLegalMatterDocumentText(db: SupabaseClient<Database>, 
   return typeof res.data.content === 'string' ? res.data.content : ''
 }
 
+/**
+ * Several text documents' words at once (v2.6770): the desk's *Preview what the firm sees* reads them in one query so it
+ * shows **Read here** as the firm's page does. Fail-soft: a failed read leaves the preview with the file alone, as before.
+ */
+export async function readLegalMatterDocumentTexts(db: SupabaseClient<Database>, textDocumentIds: ReadonlyArray<string>): Promise<Record<string, string>> {
+  if (textDocumentIds.length === 0) return {}
+  const res = (await documentsTable(db).select('id, content').in('id', [...textDocumentIds])) as { data: Array<{ id: string; content?: string }> | null; error: { message: string } | null }
+  if (res.error || !res.data) return {}
+  return Object.fromEntries(res.data.map((r) => [r.id, typeof r.content === 'string' ? r.content : '']))
+}
+
 /** Upload the file under the matter's folder, then the row. A failed row write removes the file again. */
 /** Who added it is stamped by the database from the session (`legal_matter_documents_stamp`). */
 export async function addLegalMatterDocument(db: SupabaseClient<Database>, matterId: string, draft: LegalMatterDocumentAdd, file: File): Promise<string> {
