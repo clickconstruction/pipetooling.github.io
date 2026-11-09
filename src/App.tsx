@@ -55,6 +55,7 @@ const Roadmap = lazy(() => import('./pages/Roadmap'))
 const PunchList = lazy(() => import('./pages/PunchList'))
 const JobTally = lazy(() => import('./pages/JobTally'))
 const BoxCode = lazy(() => import('./pages/BoxCode'))
+const BoxScan = lazy(() => import('./pages/BoxScan'))
 const MachineCode = lazy(() => import('./pages/MachineCode'))
 const ScheduleDispatch = lazy(() => import('./pages/ScheduleDispatch'))
 const Estimates = lazy(() => import('./pages/Estimates'))
@@ -262,6 +263,8 @@ function AppContent() {
         <Route path="/pay/:id" element={<PayLink />} />
         {/* #294 (v2.6797): a box label's code, prts.co/b/<code>. Signed out it is the public box page; signed in it opens the box on the On site tab. Outside the Layout so the sign-in gate never swallows a scan. */}
         <Route path="/b/:code" element={<BoxCode />} />
+        {/* #294 (v2.6799): bare prts.co lands here, Scan a label: type the code, or find a part on the site this phone last scanned. */}
+        <Route path="/b" element={<BoxScan />} />
         <Route path="/rate" element={<CustomerRating />} />
         <Route path="/s/:slug" element={<SubPortal />} />
         <Route path="/legal" element={<LegalPortal />} />
