@@ -2,7 +2,7 @@
 name: "The estimator's word on money: the leftovers"
 number: 129
 group: close
-status: BUILT 2026-11-08 on the owner's three calls of that day — yes to the estimate's author (PR 1 v2.6694, migration `20261108100000_job_people_estimate_author.sql`, to push after its merge), the job-accounts gate holds, seven days stays — with the first follow-up, *They say paid* on the Billed row (PR 2 v2.6695); the train of 2026-10-19/20 (v2.5646–v2.5651, v2.5655–v2.5659, v2.5668, v2.5670) is live; left: the live checks and the heard-day offer in Messages
+status: LANDED 2026-11-08 — the owner's three calls of that day built or held (yes to the estimate's author, #7316 v2.6694 with its migration `20261108100000_job_people_estimate_author.sql` pushed to prod the same evening; the job-accounts gate holds; seven days stays) and the first follow-up, *They say paid* on the Billed row, landed as #7317 v2.6695; both walks ran on the dev server and are recorded under *Where it stands*; the train of 2026-10-19/20 (v2.5646–v2.5651, v2.5655–v2.5659, v2.5668, v2.5670) is live; left: BP166 as an estimator, Messages' *Write down their word* on a real inbound line, the heard-day offer in Messages, the five untyped calls
 ver: v2.6694 · v2.6695
 summary: >
   The estimator who sold a job can now see its money and write down the customer's word on
@@ -12,7 +12,7 @@ summary: >
   a signed estimate is one of the job's people too, with a red E beside their name, and the office
   sees a paid claim on the Pipeline's Billed row. This to-do keeps what is left: the live checks
   and the heard-day offer in Messages.
-next: Push `20261108100000_job_people_estimate_author.sql` after PR 1 merges; then check BP166 reads *J878 opened from this bid* as an estimator, and open a job the Signed agreements made as the office to see the E beside the estimator's name.
+next: Nothing left to land. The live checks wait on real rows: BP166 read as an estimator (*J878 opened from this bid*), and *Write down their word* under a customer's line in Messages once a customer writes in. The heard-day offer in Messages is a small build of its own when wanted.
 size: XS each
 blocker: none — the owner's three calls are answered (2026-11-08)
 opinion: the heard-day offer in Messages is a small build of its own; the untyped calls are typed as each is touched (`list_paid_claims` typed in PR 2)
@@ -30,6 +30,34 @@ same press under a customer's line in Messages, v2.5650 the claim at the deposit
 week with nothing landed back to whoever heard it, v2.5651 the Money lens, the Dashboard card and
 the trail, v2.5655 a primary's paid verbs held to the job's people, v2.5656 the types. The guide is
 *see where a job you bid stands on money*.
+
+## Where it stands
+
+Landed 2026-11-08 by the landing session: #7316 (v2.6694, the estimate's author among the job's
+people with the red E chip, its migration) and #7317 (v2.6695, *They say paid* on the Billed row)
+merged through the queue; `20261108100000_job_people_estimate_author.sql` pushed to prod right
+after #7316 merged (the Applied line is on its page under `docs/migrations/`). Both branches were
+behind main when picked up and were brought level by merging main in (the card's README was the one
+conflict, the hand-off note against the BUILT text).
+
+The two walks ran on the dev server as the dev the same day:
+
+- **The E chip.** No ZZ test job comes from a signed estimate, so the read-only walk opened job
+  1082 *Johnson Post Test*, made from signed estimate #166: the Job window's Assigned Team lists
+  the two techs and the estimate's author with a small red **E** after her name, white on red,
+  whose link is `/estimates/166` and whose title reads *Wrote estimate #166, the one this job came
+  from. Opens it.* Nothing was pressed.
+- **They say paid on the Billed row.** On ZZ TEST sink (1064, Billed, parked in Collections) the
+  dates ledger read *Billed Oct 28 · 11d ago · Expected Oct 28 · 11d past*. Its press opened Write
+  down their word; *They say they paid…* with Nov 6 and a check in the mail, then **Write it
+  down**, and the ledger read *Billed Oct 28 · 11d ago · They say paid Nov 6 · 2d ago* in green with
+  the check-in-the-mail line under it and the title naming who said it and who heard it. The word
+  was then taken off with *never said that* and the ledger went back to *Expected Oct 28*;
+  `list_paid_claims` is empty again. (The Pipeline hides ZZ jobs per device: Hide groups → ZZ test
+  jobs shows them.)
+
+Left on the card: BP166 read as an estimator, Messages' *Write down their word* on a real inbound
+line, the heard-day offer in Messages, and the five calls still untyped.
 
 ## The owner's calls
 
@@ -80,6 +108,6 @@ Answered 2026-11-08.
 ## Retire when
 
 The three calls are answered and built or declined (done 2026-11-08), and the four follow-ups are
-shipped or moved to their own to-dos: the Pipeline chip shipped (PR 2); left are the live checks
-(BP166 as an estimator, the E on a job the Signed agreements made, Messages' *Write down their
-word* on a real inbound line), the heard-day offer in Messages, and the five calls still untyped.
+shipped or moved to their own to-dos: the Pipeline chip shipped (#7317) and the live check of the E chip
+ran (see *Where it stands*); left are BP166 as an estimator, Messages' *Write down their word* on a real
+inbound line, the heard-day offer in Messages, and the five calls still untyped.

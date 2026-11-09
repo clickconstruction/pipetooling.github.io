@@ -1,7 +1,7 @@
 /**
  * What a Quickfill station holds (punch list #187, PR 5): the card behind the ? on a station's question
- * line, one legend per station built from the registry, so thirty-two stations share one kernel and
- * not thirty-two hand-written cards. The question itself is not repeated: it is printed right above the
+ * line, one legend per station built from the registry, so every station shares one kernel and
+ * none has a hand-written card. The question itself is not repeated: it is printed right above the
  * ?. The rows say what the rest of the station is; the door is the station's own guide where it has one,
  * else *run the office day with Quickfill*. Held by `deskLegends.test.ts` for every station. Pure.
  */
@@ -21,7 +21,6 @@ export const STATION_GUIDES: Readonly<Record<string, { slug: string; title: stri
   'vehicle-odometers': { slug: 'manage-company-vehicles', title: 'manage company vehicles and track their odometers' },
   'banking-sorting': { slug: 'sort-the-bank-feed', title: 'sort the bank feed' },
   'billed-awaiting': { slug: 'chase-late-payments', title: 'chase late payments with call mode' },
-  'jobs-billing': { slug: 'ready-to-bill-pipeline', title: 'bill a customer and get paid' },
   'complete-no-bill': { slug: 'ready-to-bill-pipeline', title: 'bill a customer and get paid' },
   'property-kinds': { slug: 'mark-property-kinds-from-quickfill', title: 'mark property kinds from Quickfill' },
   'percent-complete': { slug: 'fix-a-jobs-percent-done-in-quickfill', title: "fix a job's percent done in Quickfill" },
