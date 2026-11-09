@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Text the bill · When it goes</title>
+<style>body{margin:0;padding:24px;background:#e5e7eb} a{color:#2563eb} a:hover{color:#1d4ed8}</style>
+</head>
+<body>
+<div style="width: 460px; height: 490px; box-sizing: border-box; padding: 22px 24px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 12px 32px rgba(17, 24, 39, 0.12); color: #1a1a1a; font-family: -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif; font-size: 14px; display: flex; flex-direction: column; gap: 14px">
+  <div style="display: flex; flex-direction: column; gap: 4px">
+    <h1 style="margin: 0; font-size: 17px; font-weight: 600">When it goes</h1>
+    <div style="color: #6b7280">From the company number to Dana’s mobile.</div>
+  </div>
+
+  <div style="display: flex; gap: 8px; flex-wrap: wrap">
+    <button type="button" style="background: #ffffff; color: #374151; border: 1px solid #d1d5db; border-radius: 999px; padding: 8px 14px; font-size: 13px; min-height: 36px">Now</button>
+    <button type="button" aria-pressed="true" style="background: #2563eb; color: #ffffff; border: 1px solid #2563eb; border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; min-height: 36px">Tomorrow 9:00 AM</button>
+    <button type="button" style="background: #ffffff; color: #374151; border: 1px solid #d1d5db; border-radius: 999px; padding: 8px 14px; font-size: 13px; min-height: 36px">Today 6:00 PM</button>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="day" style="font-size: 13px; color: #374151; font-weight: 600">Day</label>
+      <input id="day" type="date" value="2026-11-10" style="border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 14px; min-height: 44px; box-sizing: border-box; color: #1a1a1a; background: #ffffff">
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="time" style="font-size: 13px; color: #374151; font-weight: 600">Time</label>
+      <input id="time" type="time" value="09:00" min="08:00" max="21:00" step="900" style="border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 14px; min-height: 44px; box-sizing: border-box; color: #1a1a1a; background: #ffffff">
+    </div>
+  </div>
+
+  <div style="background: #f0f2f5; border-radius: 8px; padding: 12px 14px; color: #374151; line-height: 1.5; display: flex; flex-direction: column; gap: 6px">
+    <div>Goes <strong>Tuesday, Nov 10 at 9:00 AM</strong> Central, in about 17 hours.</div>
+    <div>Texts go between 8 AM and 9 PM only, so the time field stops there.</div>
+    <div>Until it goes, the text waits on the Dashboard under <strong>Today’s sends</strong>. The time shows on its row. You can change it or take it back there.</div>
+  </div>
+
+  <span style="flex: 1 1 auto"></span>
+
+  <div style="display: flex; gap: 10px; align-items: center; border-top: 1px solid #e5e7eb; padding-top: 14px">
+    <button type="button" style="background: #2563eb; color: #ffffff; border: 0; border-radius: 8px; padding: 11px 16px; font-size: 15px; font-weight: 600; min-height: 44px">Send Tuesday 9:00 AM</button>
+    <a href="sheet.html" style="display: inline-flex; align-items: center; justify-content: center; background: transparent; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 11px 14px; font-size: 14px; min-height: 44px; box-sizing: border-box; text-decoration: none">Back</a>
+  </div>
+</div>
+</body>
+</html>
