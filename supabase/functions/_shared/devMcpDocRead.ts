@@ -12,7 +12,7 @@ export function docReadInput(ask: DocReadAsk): { ok: true; docId: string | null;
   const docId = typeof ask.doc_id === 'string' ? ask.doc_id.trim().toLowerCase() : ''
   const kind = typeof ask.kind === 'string' ? ask.kind.trim() : ''
   if ((docId !== '') === (kind !== '')) return { ok: false, refused: 'get_person_document needs doc_id (a named document, from get_case_brief or get_person_file) or kind (summary | narrative), one of the two.' }
-  if (docId && !UUID_RE.test(docId)) return { ok: false, refused: 'get_person_document: doc_id must be a person_documents.id.' }
+  if (docId && !UUID_RE.test(docId)) return { ok: false, refused: 'get_person_document: doc_id must be a documents.id (a named document on the file).' }
   if (kind && kind !== 'summary' && kind !== 'narrative') return { ok: false, refused: 'get_person_document: kind must be summary or narrative.' }
   const section = typeof ask.section === 'number' && Number.isFinite(ask.section) ? String(Math.floor(ask.section)) : typeof ask.section === 'string' && ask.section.trim() ? ask.section.trim() : null
   if (section && section.length > 200) return { ok: false, refused: 'get_person_document: section is a number or a heading, under 200 characters.' }
