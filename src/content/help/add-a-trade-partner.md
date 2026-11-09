@@ -2,7 +2,7 @@
 title: add a trade partner
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, trade partners, add a company, subcontractor, sub, address, miles, drive, new to us, worked with them
+keywords: gc mode, trade partners, add a company, subcontractor, sub, address, miles, drive, new to us, worked with them, remove from the bench, no history
 where: /gc
 order: 95
 ---
@@ -70,6 +70,18 @@ Press Escape to leave the address as it was.
 
 - **When we ask** says how often they send a quote when we ask. *answers* is good, and *often silent* means they rarely reply.
 - **Asked right now** lists each open job we asked them about. A red chip means the day they promised has passed.
+
+## Remove a company with no history
+
+A company with no quote, no ask, no work order and no contact logged can leave the bench. Its row shows {{button:outline|Remove from the bench…}} under the address. Press it. A window asks to be sure. Press {{button:red|Remove from the bench}}. The row leaves Trade partners.
+
+A company with any history stays. Its row shows no Remove press. Use {{button:outline|Will not do it}} or {{button:outline|Cannot do it}} on its ask instead.
+
+A sub that came from Prospects goes back on the Subs lane. Its card keeps the calls logged there. The card reads *Removed from the bench* with the day.
+
+:::example A test company that never got an ask
+ZZ Test Sprinkler Co was added last week. Nobody asked it to quote. Its row reads new to us and never asked, with Remove from the bench… under the address. The press takes it off in one window.
+:::
 
 ## What comes next
 

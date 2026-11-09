@@ -37,3 +37,14 @@ describe('sectionBanners · every station asks a question (punch list #176, chan
     for (const id of ['warnings', 'jobs-cleanup', 'billed-awaiting']) expect(plainWordsFailures(defaultQuickfillSectionBanner(id)!), id).toEqual([])
   })
 })
+
+describe('sectionBanners · Complete, no Total Bill asks for the three fields (v2.6750, punch list #176, decision 4)', () => {
+  it('names Specific Work and the Total Bill in plain words; the old question and Jobs Billing’s are retired', () => {
+    expect(defaultQuickfillSectionBanner('complete-no-bill')).toBe('Does every finished job have its Specific Work and its Total Bill?')
+    expect(plainWordsFailures(defaultQuickfillSectionBanner('complete-no-bill')!)).toEqual([])
+    expect(defaultQuickfillSectionBanner('jobs-billing')).toBeNull()
+    expect(isRetiredQuickfillSectionBanner('complete-no-bill', 'Does every finished job have a bill total?')).toBe(true)
+    expect(isRetiredQuickfillSectionBanner('complete-no-bill', 'Is every finished job billed?')).toBe(true)
+    expect(isRetiredQuickfillSectionBanner('jobs-billing', 'Is every finished job billed?')).toBe(true)
+  })
+})

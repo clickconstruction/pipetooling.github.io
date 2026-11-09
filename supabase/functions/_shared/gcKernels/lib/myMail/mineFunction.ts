@@ -40,7 +40,7 @@ import {
   type MyMailTagPlanOk,
   type MyMailView,
 } from './contract.ts'
-import { subjectJobChip, type MyMailGuess, type MyMailGuessFacts } from './mailGuess.ts'
+import { guessJob, subjectJobChip, type MyMailGuess, type MyMailGuessFacts } from './mailGuess.ts'
 import type { MyMailPersonTagPlan } from './personTagPlan.ts'
 import {
   MY_MAIL_MAILBOX,
@@ -732,13 +732,15 @@ export function myMailTagEventRow(input: {
   who: { name: string; email: string }
   contactId: string
   jobColumns: MyMailTagPlan['jobColumns']
+  /** The app's own words when it placed the conversation from the person's Sent (punch list #263 PR B, `placedByAppWords`). */
+  words?: string
 }): Record<string, unknown> {
   return {
     contact_id: input.contactId,
     channel: 'event',
     direction: 'team',
     who_text: 'The app',
-    body: myMailTagEventWords(input.who),
+    body: input.words?.trim() || myMailTagEventWords(input.who),
     quo_id: myMailTagEventKey(input.tagRowId),
     ...input.jobColumns,
   }
@@ -873,6 +875,8 @@ export interface MyMailFollowUserRow {
   archived_at?: string | null
   /** The labels they leave out, by name (`myMailHiddenLabels` reads them): the follow never copies a mail under one. */
   my_mail_hidden_labels?: unknown
+  /** The Sent read's cursor (punch list #263 PR B): the newest sent mail read; null until the first run sets it. */
+  my_mail_sent_read_at?: string | null
 }
 
 /** A person whose tagged conversations the follow reads, as that person: their id, their name and their own address. */
@@ -989,6 +993,71 @@ export function planFollow(
 
 /** A followed conversation's `last_error` when Gmail no longer has it in the person's box: deleted there, nothing more lands. */
 export const MY_MAIL_FOLLOW_GONE = 'This conversation is gone from their Gmail. Later mail in it cannot land.'
+
+// ---------- the Sent side with no press (punch list #263 PR B, call 2) ----------
+
+/**
+ * The Gmail search the follow's Sent read makes for one person: their Sent since the cursor (`after:` in epoch seconds,
+ * the second the newest mail read was taken, so the read picks that mail up again and the lines' fences drop it),
+ * never a draft, Spam, Trash or a chat, never a mail the tag's label already marks, never a label the person leaves
+ * out. `myMailQuery` writes the hidden labels the same way.
+ */
+export function sentFollowQuery(since: string, hidden: readonly string[] = []): string {
+  const epoch = Math.floor(Date.parse(since) / 1000)
+  const parts = ['in:sent', `after:${Number.isFinite(epoch) ? epoch : 0}`, '-in:drafts', '-in:spam', '-in:trash', '-in:chats', `-label:"${MY_MAIL_GMAIL_LABEL}"`]
+  const seen = new Set<string>()
+  for (const name of hidden) {
+    const label = name.replace(/"/g, '').replace(/\s+/g, ' ').trim()
+    if (!label || seen.has(label.toLowerCase())) continue
+    seen.add(label.toLowerCase())
+    parts.push(`-label:"${label}"`)
+  }
+  return parts.join(' ')
+}
+
+/** How many sent mails one run reads for one person; the rest wait for the next run, five minutes on. */
+export const SENT_FOLLOW_PAGE = 25
+
+/**
+ * Whether a sent mail is new to the cursor: taken at or after it (Gmail's `after:` is by the second, and the fake and
+ * the real box may both answer the mail the cursor was set from; the lines' Message-ID fence drops it again). A mail
+ * with no time is left to the lines' fences too.
+ */
+export function sentSince(email: Pick<EmailIn, 'at'>, since: string): boolean {
+  const at = email.at ? Date.parse(email.at) : NaN
+  const from = Date.parse(since)
+  return !Number.isFinite(at) || !Number.isFinite(from) || at >= from
+}
+
+/**
+ * The job a sent mail lands on, by the guess's steps 3 and 4 alone (`guessJob` with no subject jobs): the party's
+ * address on exactly one open job (a starred one first), or its domain one customer's with exactly one open job. The
+ * subject is never read for the Sent side: a number in a subject is a person's hint to the tab, not a fact to act on.
+ */
+export function sentPlacement(party: MyMailParty, facts: MyMailGuessFacts): MyMailGuess | null {
+  return guessJob({ subject: MY_MAIL_NO_SUBJECT, who: party }, { ...facts, subjectJobs: [], taggedJob: null })
+}
+
+/** The grey line's words when the app placed a sent mail: who wrote to whom, where it went, why, and that later mail follows. */
+export function placedByAppWords(person: { name: string; email: string }, party: MyMailParty, chip: Pick<MyMailJobChip, 'num' | 'name'>, why: string): string {
+  const who = person.name.trim() || person.email.trim()
+  const them = party.name.trim() || party.address.trim()
+  const job = chip.num.trim() || chip.name.trim() || 'the job'
+  return `The app put ${who}'s mail to ${them} on ${job}, since ${why.trim()}. Later mail in it lands here by itself.`
+}
+
+/** The small print on a line the app placed: *from Wendi's mail · put here by the app*. */
+export function placedLineWords(name: string): string {
+  return `from ${name.trim() || 'their'}${name.trim() ? "'s" : ''} mail · put here by the app`
+}
+
+/** The words of the untag's confirm on such a line, and its press. */
+export const PLACED_LINE_WORDS = {
+  untag: 'Untag',
+  untagAsk: 'Take this conversation off the job? The lines the app put here go, with their files. The app will not put it back.',
+  untagged: 'The conversation is off the job. The app will not put it back.',
+  notUntagged: 'The conversation was not untagged.',
+} as const
 
 // ---------- the seat's dry run (server 0.30.0) ----------
 
