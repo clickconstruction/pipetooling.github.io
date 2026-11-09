@@ -2,7 +2,7 @@
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
 group: close
-status: the walks' slips fixed 2026-11-08 as v2.6737 (one PR, no migration) and walked on the dev server on the owner's ZZ Test rows — nine of the ten put right (slip 10 by v2.6706), slip 9 not reproduced and left for the owner to show again; the train of six is live with every migration pushed (PR 1 v2.6300, 1a v2.6646, 1b v2.6656, 1c v2.6662, 2 v2.6665, 4 v2.6666) and the types regenerated (#7264, #7276, #7290); left: four calls for the owner (Where it stands)
+status: the walks' slips fixed 2026-11-08 as v2.6737 (one PR, no migration) and walked on the dev server on the owner's ZZ Test rows — nine of the ten put right (slip 10 by v2.6706), slip 9 not reproduced and left for the owner to show again; the train of six is live with every migration pushed (PR 1 v2.6300, 1a v2.6646, 1b v2.6656, 1c v2.6662, 2 v2.6665, 4 v2.6666) and the types regenerated (#7264, #7276, then #7301 for PRs 2 and 4, #7290 closed as superseded); left: four calls for the owner (Where it stands)
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
