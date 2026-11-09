@@ -1309,3 +1309,151 @@ describe('gmail-mine: a conversation onto a person’s HR file (punch list #289)
     expect((await seat(ask(), 'marisol-jwt')).status).toBe(400)
   })
 })
+
+describe('gmail-mine: the Sent side with no press (punch list #263 PR B)', () => {
+  const marisol = () => db.rows('users').find((u) => u.id === 'u-marisol')!
+  const sentMail = (id: string, threadId: string, at: string, to: string, subject: string, text: string): FakeMail =>
+    mail(id, threadId, at, { From: `Marisol Vega <${MARISOL}>`, To: to, Subject: subject, 'Message-ID': `<${id}@clickplumbing.example>` }, text, { labelIds: ['SENT'] })
+  const placedLines = () => lines().filter((l) => l.placed_by_app === true)
+  const tombstones = () => db.rows('email_tag_threads_off')
+  const events = () => lines().filter((l) => l.channel === 'event')
+  const sentQueries = () => google.queries.filter((q) => q.startsWith('in:sent'))
+
+  beforeEach(() => {
+    google.boxes[MARISOL]!.mails = []
+    logged.length = 0
+  })
+
+  it('sets each person’s cursor to now on the first run and reads nothing: no backfill', async () => {
+    google.boxes[MARISOL]!.mails = [sentMail('g-old', 't-old', '2026-11-02T10:00:00.000Z', DALE, 'Thursday', 'Old mail, before the cursor.')]
+    const res = await cron({ action: 'follow' })
+    expect(res.status).toBe(200)
+    for (const id of ['u-marisol', 'u-rosa', 'u-dev']) {
+      const u = db.rows('users').find((x) => x.id === id)!
+      expect(Date.now() - Date.parse(String(u.my_mail_sent_read_at)), id).toBeLessThan(60_000)
+    }
+    // Off, in training, a sample, a twin, the tester and a sub: no cursor.
+    for (const id of ['u-off', 'u-trainee', 'u-sample', 'u-twin', 'u-tester', 'u-sub']) expect(db.rows('users').find((x) => x.id === id)!.my_mail_sent_read_at, id).toBeUndefined()
+    expect(sentQueries()).toEqual([])
+    expect(placedLines()).toEqual([])
+    expect(logged.find((l) => l.includes('"event":"gmail_mine_follow"'))).toContain('"cursorsSet":3')
+  })
+
+  it('lands a mail sent to a person on one open job on that job as ours, marked as the app’s, with the grey line and the label, and moves the cursor', async () => {
+    marisol().my_mail_sent_read_at = '2026-11-01T00:00:00.000Z'
+    google.boxes[MARISOL]!.mails = [
+      // Dale's starred job is JP1081; the treasurer's domain is Cedar Bend HOA's, with one open Pipeline job.
+      sentMail('g-sent-dale', 't-sent-dale', '2026-11-02T10:00:00.000Z', DALE, 'Thursday walk', 'See you Thursday at 9.'),
+      sentMail('g-sent-board', 't-sent-board', '2026-11-02T11:00:00.000Z', 'Cedar Bend Treasurer <treasurer@cedarbend.example>', 'Monday', 'The crew is on for Monday.'),
+    ]
+    const res = await cron({ action: 'follow' })
+    expect(res.status).toBe(200)
+    // The search: the person's Sent since the cursor, never the tag's label, never a label they leave out.
+    expect(sentQueries()).toEqual([`in:sent after:${Math.floor(Date.parse('2026-11-01T00:00:00.000Z') / 1000)} -in:drafts -in:spam -in:trash -in:chats -label:"${LABEL}" -label:"Personal"`])
+    const dale = lines().find((l) => l.gmail_id === 'g-sent-dale')!
+    expect(dale).toMatchObject({ direction: 'out', mailbox: 'mine', mail_user_id: 'u-marisol', who_user_id: 'u-marisol', jobs_ledger_id: HARBOR, placed_by_app: true, contact_id: 'c-dale' })
+    const board = lines().find((l) => l.gmail_id === 'g-sent-board')!
+    expect(board).toMatchObject({ direction: 'out', mailbox: 'mine', mail_user_id: 'u-marisol', jobs_ledger_id: MILL, placed_by_app: true })
+    // The rows are the app's, so the thread line says so and an untag leaves the tombstone.
+    const rows = db.rows('email_tag_threads').filter((r) => r.user_id === 'u-marisol')
+    expect(rows.map((r) => [r.gmail_thread_id, r.placed_by_app, r.jobs_ledger_id, r.tagged_by]).sort()).toEqual([
+      ['t-sent-board', true, MILL, 'u-marisol'],
+      ['t-sent-dale', true, HARBOR, 'u-marisol'],
+    ])
+    // The grey line in each party's thread says the app put it there and why.
+    expect(events().map((e) => e.body).sort()).toEqual([
+      'The app put Marisol Vega\'s mail to Cedar Bend Treasurer on JP1090, since cedarbend.example is Cedar Bend HOA. Later mail in it lands here by itself.',
+      'The app put Marisol Vega\'s mail to Dale Okafor on JP1081, since Dale Okafor is on this job. Later mail in it lands here by itself.',
+    ])
+    expect(events().every((e) => e.who_text === 'The app' && e.channel === 'event')).toBe(true)
+    // The label, and the cursor at the newest mail read.
+    const labelId = google.boxes[MARISOL]!.labels.find((l) => l.name === LABEL)?.id
+    expect(google.boxes[MARISOL]!.mails.filter((m) => m.labelIds.includes(labelId ?? '-')).map((m) => m.id).sort()).toEqual(['g-sent-board', 'g-sent-dale'])
+    expect(marisol().my_mail_sent_read_at).toBe('2026-11-02T11:00:00.000Z')
+    // Counts alone in the log, never a subject or an address.
+    const line = logged.find((l) => l.includes('"event":"gmail_mine_follow"'))!
+    expect(line).toContain('"placed":2')
+    for (const secret of ['Thursday', 'Monday', 'cedarbend.example', MARISOL]) expect(line).not.toContain(secret)
+    // The next run reads the same page again (Gmail's after: is by the second) and writes nothing twice.
+    const writesBefore = rpcs('email_write_line').length
+    await cron({ action: 'follow' })
+    expect(rpcs('email_write_line')).toHaveLength(writesBefore)
+    expect(placedLines()).toHaveLength(2)
+  })
+
+  it('lands nowhere a mail to nobody the app knows, a note to self, and a mail whose party has two open jobs; the cursor still moves', async () => {
+    marisol().my_mail_sent_read_at = '2026-11-01T00:00:00.000Z'
+    // Kim, at an open mail service (so the domain step never runs), on two open jobs with no star: step 3 names none.
+    db.rows('contacts').push({ id: 'c-kim', kind: 'customer', name: 'Kim Lau' })
+    db.rows('contact_channels').push({ id: 'ch-kim', contact_id: 'c-kim', kind: 'email', value: 'zz-test-kim-263@gmail.com', key: 'zz-test-kim-263@gmail.com' })
+    db.rows('contact_jobs').push({ contact_id: 'c-kim', bid_id: null, project_id: null, jobs_ledger_id: HARBOR, is_default: false }, { contact_id: 'c-kim', bid_id: null, project_id: null, jobs_ledger_id: ELM, is_default: false })
+    google.boxes[MARISOL]!.mails = [
+      sentMail('g-sent-jo', 't-sent-jo', '2026-11-02T10:00:00.000Z', 'Jo Park <jo@parkfamily.example>', 'Hello', 'Hi Jo.'),
+      sentMail('g-sent-self', 't-sent-self', '2026-11-02T10:30:00.000Z', MARISOL, 'Note', 'Buy fittings.'),
+      sentMail('g-sent-kim', 't-sent-kim', '2026-11-02T11:00:00.000Z', 'Kim Lau <zz-test-kim-263@gmail.com>', 'Walk', 'Tuesday then.'),
+    ]
+    await cron({ action: 'follow' })
+    expect(placedLines()).toEqual([])
+    expect(db.rows('email_tag_threads').filter((r) => r.user_id === 'u-marisol')).toEqual([])
+    expect(rpcs('email_write_line')).toHaveLength(0)
+    expect(marisol().my_mail_sent_read_at).toBe('2026-11-02T11:00:00.000Z')
+    expect(logged.find((l) => l.includes('"event":"gmail_mine_follow"'))).toContain('"nowhere":3')
+  })
+
+  it('passes by a conversation the person tagged, and one they untagged after the app placed it: the untag leaves a tombstone a tag by hand lifts', async () => {
+    marisol().my_mail_sent_read_at = '2026-11-01T00:00:00.000Z'
+    google.boxes[MARISOL]!.mails = [sentMail('g-sent-dale', 't-sent-dale', '2026-11-02T10:00:00.000Z', DALE, 'Thursday walk', 'See you Thursday at 9.')]
+    await cron({ action: 'follow' })
+    expect(placedLines()).toHaveLength(1)
+    // The person takes it off from the line: the lines go, and the tombstone stays.
+    const off = await post('marisol-jwt', { action: 'untag', threadId: 't-sent-dale' })
+    expect(off.status).toBe(200)
+    expect(placedLines()).toEqual([])
+    expect(tombstones()).toEqual([expect.objectContaining({ user_id: 'u-marisol', gmail_thread_id: 't-sent-dale' })])
+    expect(logged.find((l) => l.includes('"event":"gmail_mine_untag"'))).toContain('"tombstone":true')
+    // Later mail in it: never placed again.
+    google.boxes[MARISOL]!.mails.push(sentMail('g-sent-dale-2', 't-sent-dale', '2026-11-03T10:00:00.000Z', DALE, 'Re: Thursday walk', 'Make it 10.'))
+    await cron({ action: 'follow' })
+    expect(placedLines()).toEqual([])
+    expect(logged.filter((l) => l.includes('"event":"gmail_mine_follow"')).slice(-1)[0]).toContain('"skipped":2')
+    // A tag by hand lifts the tombstone, and the conversation follows as a tag's does.
+    const tagged = await post('marisol-jwt', { action: 'tag', threadId: 't-sent-dale', job: { kind: 'pipeline', id: HARBOR } })
+    expect(tagged.status).toBe(200)
+    expect(tombstones()).toEqual([])
+    expect(db.rows('email_tag_threads').find((r) => r.gmail_thread_id === 't-sent-dale')).toMatchObject({ placed_by_app: false })
+    // An untag of a conversation tagged by hand leaves no tombstone.
+    await post('marisol-jwt', { action: 'untag', threadId: 't-sent-dale' })
+    expect(tombstones()).toEqual([])
+  })
+
+  it('ties the loose line a box already holds instead of writing the mail twice, and records the tie on the app’s row', async () => {
+    marisol().my_mail_sent_read_at = '2026-11-01T00:00:00.000Z'
+    google.boxes[MARISOL]!.mails = [sentMail('g-sent-dale', 't-sent-dale', '2026-11-02T10:00:00.000Z', DALE, 'Thursday walk', 'See you Thursday at 9.')]
+    db.tables.messages = [{ id: 'm-box-sent', contact_id: 'c-dale', gmail_id: 'bx-sent', gmail_thread_id: 'bx-t-sent', rfc_message_id: '<g-sent-dale@clickplumbing.example>', mailbox: 'bids', mail_user_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, tied_by: null }]
+    await cron({ action: 'follow' })
+    expect(rpcs('email_write_line')).toHaveLength(0)
+    expect(lines().find((l) => l.id === 'm-box-sent')).toMatchObject({ jobs_ledger_id: HARBOR, tied_by: 'u-marisol' })
+    expect(db.rows('email_tag_threads').find((r) => r.gmail_thread_id === 't-sent-dale')).toMatchObject({ placed_by_app: true, tied_line_ids: ['m-box-sent'] })
+    expect(logged.find((l) => l.includes('"event":"gmail_mine_follow"'))).toContain('"tied":1')
+    // A line the office has placed elsewhere stays, and the mail lands nowhere.
+    Object.assign(lines().find((l) => l.id === 'm-box-sent')!, { jobs_ledger_id: ELM, tied_by: 'u-rosa' })
+    db.tables.email_tag_threads = []
+    marisol().my_mail_sent_read_at = '2026-11-01T00:00:00.000Z'
+    await cron({ action: 'follow' })
+    expect(lines().find((l) => l.id === 'm-box-sent')).toMatchObject({ jobs_ledger_id: ELM, tied_by: 'u-rosa' })
+    expect(db.rows('email_tag_threads')).toEqual([])
+  })
+
+  it('skips a person whose box Google refuses, and the next person still runs', async () => {
+    marisol().my_mail_sent_read_at = '2026-11-01T00:00:00.000Z'
+    const rosa = db.rows('users').find((u) => u.id === 'u-rosa')!
+    rosa.my_mail_sent_read_at = '2026-11-01T00:00:00.000Z'
+    google.refuse['rosa@clickplumbing.example'] = { status: 401, body: { error: 'unauthorized_client' } }
+    google.boxes[MARISOL]!.mails = [sentMail('g-sent-dale', 't-sent-dale', '2026-11-02T10:00:00.000Z', DALE, 'Thursday walk', 'See you Thursday at 9.')]
+    const res = await cron({ action: 'follow' })
+    expect(res.status).toBe(200)
+    expect(placedLines()).toHaveLength(1)
+    expect(logged.find((l) => l.includes('"event":"gmail_mine_follow"'))).toContain('"refusedPeople":')
+    expect(rosa.my_mail_sent_read_at).toBe('2026-11-01T00:00:00.000Z')
+  })
+})
