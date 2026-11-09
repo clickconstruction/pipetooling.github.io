@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { hidesZzTestJobs, withoutZzTestJobs } from '../jobs/zzTestJobVisibility'
-import { bridgeCollections, bridgeReadyToBill, bridgeZzJobIds, withoutZzBillDeskRows, withoutZzBridgeJobs, withoutZzBridgeMoney, withoutZzFieldSessions, withoutZzJobKeyedRows } from './zzTestJobs'
+import { bridgeCollections, bridgeReadyToBill, bridgeZzJobIds, withoutZzBillDeskRows, withoutZzBridgeBids, withoutZzBridgeJobs, withoutZzBridgeMoney, withoutZzFieldSessions, withoutZzJobKeyedRows } from './zzTestJobs'
 
 /**
  * v2.6807: the Bridge's own reads leave ZZ test jobs out by the Pipeline's rule. The office saw a count read one over
@@ -177,5 +177,28 @@ describe('rows keyed to a job by an id alone', () => {
   it('takes the ids a read found by name', () => {
     const seen = bridgeZzJobIds([{ id: 'zzNew', job_name: 'ZZ TEST seat walk', customer_name: 'Robert Test' }], new Set<string>())
     expect(withoutZzJobKeyedRows([{ jobId: 'zzNew' }, { jobId: 'real' }], (p) => p.jobId, seen)).toEqual([{ jobId: 'real' }])
+  })
+})
+
+/**
+ * v2.6823: the bids follow their own rule on the Bridge, for the same viewer. Prod on 2026-11-09 counted 71 bids
+ * opened in the window on Market; about 36 of them were the robots' shadow and backtest bids.
+ */
+describe('the ZZ bids', () => {
+  const bids = [
+    { id: 'b1', project_name: 'Elm Street clinic' },
+    { id: 'b2', project_name: 'ZZ Shadow AUTOZONE - KYLE, TX' },
+    { id: 'b3', project_name: 'zz twin HEB CSTORE (backtest)' },
+    { id: 'b4', project_name: 'ZZZ Corp warehouse' },
+    { id: 'b5', project_name: null },
+  ]
+  it('a robot\'s or a test bid leaves by its project name; ZZZ Corp and a nameless bid stay', () => {
+    expect(withoutZzBridgeBids(bids, sharedIds).map((b) => b.id)).toEqual(['b1', 'b4', 'b5'])
+    expect(withoutZzBridgeBids(bids, new Set()).map((b) => b.id)).toEqual(['b1', 'b4', 'b5'])
+  })
+  it('keeps every bid for a dev who shows ZZ rows, and the same array when none is dropped', () => {
+    expect(withoutZzBridgeBids(bids, null)).toBe(bids)
+    const clean = bids.filter((b) => b.id === 'b1' || b.id === 'b5')
+    expect(withoutZzBridgeBids(clean, sharedIds)).toBe(clean)
   })
 })

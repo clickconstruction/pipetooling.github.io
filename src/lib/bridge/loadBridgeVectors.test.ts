@@ -30,6 +30,12 @@ const rows = {
     { job_ledger_id: 'zzJob', created_by_user_id: 'u1', created_at: '2026-11-03T15:00:00+00:00' },
     { job_ledger_id: null, created_by_user_id: 'u1', created_at: '2026-11-03T15:00:00+00:00' },
   ],
+  // The fake hands the sent-bids read and the won-bids read the same rows (v2.6823).
+  bid_versions: [{ bid_id: 'bidReal', outcome_at: '2026-11-03T15:00:00+00:00' }, { bid_id: 'bidZz', outcome_at: '2026-11-03T15:00:00+00:00' }],
+  bids: [
+    { id: 'bidReal', bid_number: '600', project_name: 'Elm Street clinic', estimator_id: 'u1', bid_value: 8_000, agreed_value: null, bid_date_sent: '2026-11-02' },
+    { id: 'bidZz', bid_number: '601', project_name: 'ZZ Shadow AUTOZONE', estimator_id: 'u1', bid_value: 9_000, agreed_value: null, bid_date_sent: '2026-11-02' },
+  ],
 }
 const data = { windowStart: '2026-09-14', todayYmd: '2026-11-09', officeJobLedgerId: 'office', jobs: [], earned: { expectedHoursByJob: new Map() } } as unknown as BridgeData
 const zz = new Set(['zzJob'])
@@ -59,6 +65,8 @@ describe('loadBridgeVectorInputs', () => {
     expect(v.payments.map((e) => e.usd)).toEqual([500])
     expect(v.pctUpdates).toHaveLength(1)
     expect(v.fieldReports).toHaveLength(2)
+    expect(v.bidsSent.map((b) => b.usd)).toEqual([8_000])
+    expect(v.bidsWon.map((b) => b.usd)).toEqual([8_000])
     // The dropped bill's amount is never asked for.
     expect(proxyFakeCalls(reads, 'jobs_ledger_invoices', 'in')).toEqual([['id', ['i1']]])
   })
@@ -70,5 +78,7 @@ describe('loadBridgeVectorInputs', () => {
     expect(v.payments.map((e) => e.usd)).toEqual([500, 75])
     expect(v.pctUpdates).toHaveLength(2)
     expect(v.fieldReports).toHaveLength(3)
+    expect(v.bidsSent).toHaveLength(2)
+    expect(v.bidsWon).toHaveLength(2)
   })
 })

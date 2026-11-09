@@ -17,12 +17,14 @@ import type { Database } from '../../../types/database'
  *
  * A ZZ test job is no job a bid became (v2.6813): the caller passes the ZZ
  * ids, or null to keep them, and the job rows carry their names
- * (`../zzTestJobs.ts`). The bids and the estimates themselves are not touched.
+ * (`../zzTestJobs.ts`). Since v2.6823 a ZZ bid (`isZzBidName`: the robots' and the office's test bids) is no bid
+ * on the strip or in the book either, and makes no asker's first bid, for the same viewer. The estimates are not
+ * touched: they have no ZZ rule.
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
 import { ymdAddDays } from '../../../utils/dateUtils'
-import { withoutZzBridgeJobs, type BridgeZzTestJobIds } from '../zzTestJobs'
+import { withoutZzBridgeBids, withoutZzBridgeJobs, type BridgeZzTestJobIds } from '../zzTestJobs'
 import { MARKET_DESK_WEEKS, foldMarketRecord, marketAskerId, type MarketDeskBid, type MarketDeskEstimate, type MarketLifetime } from './marketDesk'
 
 /** The read starts this many days before the span: the answered bids behind each GC's answer pace, the way the demand read widens for the awaiting window. */
@@ -41,7 +43,7 @@ export type MarketDeskReads = {
 
 type BidRow = { id: string; created_at: string | null; bid_date_sent: string | null; bid_value: number | null; agreed_value: number | null; outcome: string | null; outcome_at: string | null; customer_id: string | null; gc_builder_id: string | null; project_name: string | null }
 type JobRow = { id: string; job_name: string | null; customer_name: string | null; bid_id: string | null; created_at: string | null; revenue: number | null; billing_only: boolean | null }
-type FirstBidRow = { customer_id: string | null; gc_builder_id: string | null; created_at: string | null; outcome: string | null }
+type FirstBidRow = { project_name: string | null; customer_id: string | null; gc_builder_id: string | null; created_at: string | null; outcome: string | null }
 type GcRow = { id: string; name: string }
 type CustomerRow = { id: string; name: string }
 type EstimateRow = { id: string; created_at: string; sent_at: string | null; status: string; total_cents: number | null; acceptor_consented_at: string | null; updated_at: string | null; doc_kind: string | null }
@@ -51,7 +53,7 @@ const ymdOf = (iso: string | null | undefined): string | null => (iso ? iso.slic
 export async function loadMarketDeskReads(db: SupabaseClient<Database>, opts: { todayYmd: string; zzTestJobIds: BridgeZzTestJobIds }): Promise<MarketDeskReads> {
   const sinceYmd = ymdAddDays(opts.todayYmd, -(MARKET_DESK_WEEKS * 7 + MARKET_READ_LEAD_DAYS))
   const sinceIso = `${sinceYmd}T00:00:00Z`
-  const [bidRows, firstRows, gcRows, estimateRows] = await Promise.all([
+  const [bidRead, firstRead, gcRows, estimateRows] = await Promise.all([
     fetchAllRows(
       async (from, to) => ({
         data: (await withSupabaseRetry(async () => db.from('bids').select('id, created_at, bid_date_sent, bid_value, agreed_value, outcome, outcome_at, customer_id, gc_builder_id, project_name').gte('created_at', sinceIso).order('id').range(from, to), 'market desk bids')) as BidRow[] | null,
@@ -62,7 +64,7 @@ export async function loadMarketDeskReads(db: SupabaseClient<Database>, opts: { 
     fetchAllRows(
       async (from, to) => ({
         // Every bid on record with an asker: a customer (the bid form's GC) or, failing that, a GC-list id.
-        data: (await withSupabaseRetry(async () => db.from('bids').select('customer_id, gc_builder_id, created_at, outcome').or('customer_id.not.is.null,gc_builder_id.not.is.null').order('id').range(from, to), 'market desk first bids')) as FirstBidRow[] | null,
+        data: (await withSupabaseRetry(async () => db.from('bids').select('project_name, customer_id, gc_builder_id, created_at, outcome').or('customer_id.not.is.null,gc_builder_id.not.is.null').order('id').range(from, to), 'market desk first bids')) as FirstBidRow[] | null,
         error: null,
       }),
       'market desk first bids',
@@ -82,6 +84,8 @@ export async function loadMarketDeskReads(db: SupabaseClient<Database>, opts: { 
       'market desk estimates',
     ),
   ])
+  const bidRows = withoutZzBridgeBids(bidRead, opts.zzTestJobIds)
+  const firstRows = withoutZzBridgeBids(firstRead, opts.zzTestJobIds)
   const ids = bidRows.map((r) => r.id)
   const jobRead = ids.length
     ? await fetchAllRowsChunkedIn<JobRow, string>(

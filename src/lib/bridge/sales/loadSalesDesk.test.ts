@@ -10,7 +10,7 @@ import { isWin } from './salesDesk'
 const bid = (id: string, projectName: string) => ({ id, bid_number: id, project_name: projectName, gc_builder_id: null, customer_id: null, bid_value: 8_000, agreed_value: null, bid_date_sent: '2026-10-02', created_at: '2026-10-01T15:00:00+00:00', next_followup_on: null, next_followup_reason: null, last_contact: null, outcome: null, outcome_at: null, loss_category: null, loss_reason: null })
 const job = (id: string, bidId: string, jobName: string, customerName: string) => ({ id, job_name: jobName, customer_name: customerName, bid_id: bidId, created_at: '2026-10-06T15:00:00+00:00', billing_only: false })
 const rows = {
-  bids: [bid('b1', 'Elm'), bid('b2', 'Oak'), bid('b3', 'Ash')],
+  bids: [bid('b1', 'Elm'), bid('b2', 'Oak'), bid('b3', 'Ash'), bid('zz', 'ZZ Shadow TARGET 2803')],
   jobs_ledger: [job('real', 'b1', 'Elm', 'Ann Lee'), job('zzById', 'b2', 'Renamed since', 'Ann Lee'), job('zzByName', 'b3', 'Walk through', 'ZZ Test Customer')],
   estimates: [],
 }
@@ -25,7 +25,20 @@ describe('loadSalesDeskReads', () => {
   it('keeps every job for a dev who shows them', async () => {
     const { db } = makeProxyFakeSupabase(rows)
     const reads = await loadSalesDeskReads(db, { todayYmd: '2026-10-26', zzTestJobIds: null })
-    expect(reads.openBids).toEqual([])
+    expect(reads.openBids.map((b) => b.id)).toEqual(['zz'])
     expect(reads.decidedBids.filter(isWin).map((b) => b.id)).toEqual(['b1', 'b2', 'b3'])
+  })
+})
+
+describe('loadSalesDeskReads: a ZZ bid is in neither pile (v2.6823)', () => {
+  it('a robot\'s sent bid is not open, and a ZZ bid marked won is no win', async () => {
+    const { db } = makeProxyFakeSupabase({
+      bids: [{ ...bid('zzOpen', 'ZZ Shadow TARGET 2803') }, { ...bid('zzWon', 'ZZ Test'), outcome: 'won', outcome_at: '2026-10-05T15:00:00+00:00' }, bid('b1', 'Elm')],
+      jobs_ledger: [],
+      estimates: [],
+    })
+    const reads = await loadSalesDeskReads(db, { todayYmd: '2026-10-26', zzTestJobIds: new Set() })
+    expect(reads.openBids.map((b) => b.id)).toEqual(['b1'])
+    expect(reads.decidedBids.map((b) => b.id)).toEqual([])
   })
 })
