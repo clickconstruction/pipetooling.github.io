@@ -624,7 +624,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, bi
                       <p style={firstHint}>{FIRST_TEXT_WORDS.hint(first)}</p>
                     </div>
                   ) : null}
-                  <textarea style={introHold ? { ...box, borderColor: 'var(--border-red)', borderStyle: 'solid' } : box} value={text} aria-label="The text" disabled={busy} onChange={(e) => setBody(e.target.value)} data-testid="tell-body" />
+                  <textarea style={introHold ? { ...box, border: '1.5px solid var(--border-red)' } : box} value={text} aria-label="The text" disabled={busy} onChange={(e) => setBody(e.target.value)} data-testid="tell-body" />
                   {introHold ? (
                     <div data-testid="tell-intro-hold">
                       <p role="alert" style={holdLine}>
