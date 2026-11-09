@@ -138,3 +138,46 @@ describe('the verdict', () => {
     expect(leadFromPermit(row({ contact: null }), 'owner', { userId: 'u1', masterUserId: 'm1' }).companyName).toBe('Who pulled the permit')
   })
 })
+
+describe('the hint', () => {
+  it('keys a contact by the whole name and each comma part, suffixes dropped', async () => {
+    const { contactKeys, nameKey } = await import('./permitResearch')
+    expect(nameKey('Ridgeway Builders, LLC')).toBe('ridgewaybuilders')
+    expect(nameKey('D Barnes Construction LLC')).toBe('dbarnesconstruction')
+    expect(contactKeys('Milton G. Ramirez, Synergy Construction, LLC')).toEqual(['miltongramirezsynergyconstruction', 'miltongramirez', 'synergyconstruction'])
+    expect(contactKeys('')).toEqual([])
+  })
+  it('reads warm, cold, seen and new name off the history', async () => {
+    const { hintFor } = await import('./permitResearch')
+    const h = new Map([
+      ['ridgewaybuilders', { key: 'ridgewaybuilders', bids: 5, won: 3, last_bid_on: '2026-09-01', on_deck: false }],
+      ['northgatebuilders', { key: 'northgatebuilders', bids: 6, won: 0, last_bid_on: '2026-08-01', on_deck: true }],
+      ['caldwellsons', { key: 'caldwellsons', bids: 1, won: 0, last_bid_on: null, on_deck: false }],
+    ])
+    expect(hintFor('Ridgeway Builders', h)).toEqual({ tone: 'warm', word: 'warm', detail: 'we won 3 of 5 bids with this name' })
+    expect(hintFor('Northgate Builders LLC', h).word).toBe('cold')
+    expect(hintFor('Northgate Builders LLC', h).detail).toContain('on the GCs deck')
+    expect(hintFor('Caldwell & Sons', h).word).toBe('seen')
+    expect(hintFor('Harlan Development Co.', h)).toEqual({ tone: 'new', word: 'new name', detail: 'no bid to this name in our history' })
+  })
+  it('tallies the plumbers on the taken rows and places only the rows with a point', async () => {
+    const { plumberTally, researchPins } = await import('./permitResearch')
+    const rows = [row({ plumber: 'A Plumbing' }), row({ id: 'p2', plumber: 'A Plumbing' }), row({ id: 'p3', plumber: 'B Plumbing' }), row({ id: 'p4', lat: null, lng: null })]
+    expect(plumberTally(rows)).toEqual([{ plumber: 'A Plumbing', jobs: 2 }, { plumber: 'B Plumbing', jobs: 1 }])
+    const pins = researchPins(rows)
+    expect(pins).toHaveLength(3)
+    expect(pins[0]).toMatchObject({ id: 'p1', lat: 29.4, lng: -98.5, color: '#9ca3af' })
+  })
+})
+
+describe('the value floor', () => {
+  it('keeps the big permits and the ones with no value, and drops the small', async () => {
+    const { rowsAboveFloor, valueFloorWords } = await import('./permitResearch')
+    const rows = [row({ declared_value: 1_500 }), row({ id: 'p2', declared_value: null }), row({ id: 'p3', declared_value: 80_000 })]
+    expect(rowsAboveFloor(rows, 25_000).map((r) => r.id)).toEqual(['p2', 'p3'])
+    expect(rowsAboveFloor(rows, 100_000).map((r) => r.id)).toEqual(['p2'])
+    expect(rowsAboveFloor(rows, 0)).toHaveLength(3)
+    expect(valueFloorWords(25_000)).toBe('$25k and up, or not declared')
+    expect(valueFloorWords(0)).toBe('Any value')
+  })
+})
