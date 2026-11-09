@@ -45,6 +45,12 @@ import { clausePaperPair, type ClauseAdmin } from '../_shared/clausePaper.ts'
  * beyond the visit row: an outside visit stamps the live link's first open (`first_opened_at`) once, never a staff look,
  * a preview or the sample.
  *
+ * Since punch list #205's PR 2 (v2.6729), each chart carries `finish`, the day we plan to finish the job from the same
+ * schedule read (`projectedFinish` through `customerSchedulePicture`), and the slice's `gc` row its `start_date` and
+ * `started_on`, so the job page opens on a head: the start, the planned finish and the days left. Nothing else of the
+ * customer's picture leaves. Since PR 4 (v2.6746) the slice carries `files`, the company's own uploads on its jobs
+ * (`gc_trade_files` by its company: what each is, its name, its link and its day), for Your files on this job.
+ *
  * Since Messages' cut 4c (v2.5329), a statement of work sent to sign that is built from clauses (`gc_sows.paper_id`)
  * carries its paper on its row as `clause_paper`: the job's clauses, then the exhibit for its package's trade, in English
  * and Spanish at one revision (`_shared/clausePaper.ts`). The page shows it and signs at that revision.
@@ -68,7 +74,7 @@ const ids = (rows: R[], f = 'id'): string[] => [...new Set(rows.map((r) => Strin
 async function readRows(admin: SupabaseClient, companyId: string): Promise<TradePortalRows | null> {
   const company = (await admin.from('gc_companies').select('*').eq('id', companyId).maybeSingle()).data as R | null
   if (!company) return null
-  const [people, invites, contacts, promises, messages, setSends, sows, backCharges, changeRequests, papers, vettingForms] = await Promise.all([
+  const [people, invites, contacts, promises, messages, setSends, sows, backCharges, changeRequests, papers, vettingForms, files] = await Promise.all([
     admin.from('gc_company_people').select('*').eq('company_id', companyId).is('removed_at', null).then(rowsOf),
     admin.from('gc_invites').select('id, package_id, company_id, status, invited_on, seen_rev, declined_why, declined_on').eq('company_id', companyId).then(rowsOf),
     admin.from('gc_company_contacts').select('id, company_id, invite_id, contacted_on, how, note, promised_by, created_at').eq('company_id', companyId).not('invite_id', 'is', null).then(rowsOf),
@@ -83,6 +89,8 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     admin.from('person_contract_documents').select('id, company_id, doc_type, status, sent_at, signed_at, expires_at, created_at').eq('company_id', companyId).then(rowsOf),
     // Its vetting form (P5b-1): the day it sent it, never its answers.
     admin.from('gc_company_vetting_forms').select('company_id, sent_on').eq('company_id', companyId).then(rowsOf),
+    // Its uploads (punch list #205, PR 4): what it sent us, newest first, for Your files on this job.
+    admin.from('gc_trade_files').select('id, company_id, project_id, purpose, paper, name, drive_url, uploaded_at, made_by').eq('company_id', companyId).order('uploaded_at', { ascending: false }).limit(200).then(rowsOf),
   ])
   const vettingForm = vettingForms[0] ?? null
   // The lines of its own statements of work (P2c-ii), for the sign screen and its report; the draws on them and the
@@ -114,14 +122,14 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
   ])
   const projectIds = ids(packages, 'project_id')
   if (projectIds.length === 0) {
-    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends, papers, vettingForm, ...work }
+    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends, papers, vettingForm, files, ...work }
   }
   // The job's work (P5c-1) on the trades awarded to it: Building's rows carry no company, so they are read by its trades.
   const awarded = packages.filter((k) => inviteIds.includes(String(k.awarded_invite_id ?? ''))).map((k) => String(k.id))
   const jobRead = readJobWork(admin, awarded)
   const [projectRows, gcRows, scopeItems, exclusions, sets, questions, supers, billDayCutoffDays] = await Promise.all([
     admin.from('projects').select('id, name, address').in('id', projectIds).then(rowsOf),
-    admin.from('gc_projects').select('project_id, stage, bid_due, size_note, lost_on, lost_why, closed_on, project_manager_user_id, created_at').in('project_id', projectIds).then(rowsOf),
+    admin.from('gc_projects').select('project_id, stage, bid_due, size_note, lost_on, lost_why, closed_on, start_date, started_on, project_manager_user_id, created_at').in('project_id', projectIds).then(rowsOf),
     admin.from('gc_scope_items').select('*').in('package_id', packageIds).then(rowsOf),
     admin.from('gc_scope_exclusions').select('*').in('package_id', packageIds).then(rowsOf),
     admin.from('gc_plan_sets').select('id, project_id, rev, label, kind, issued_on, note, drive_url').in('project_id', projectIds).then(rowsOf),
@@ -148,7 +156,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     ].filter((t): t is NonNullable<typeof t> => t !== null)
     return { project, gc, team }
   })
-  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, papers, vettingForm, billDayCutoffDays, ...work, ...job }
+  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, papers, vettingForm, billDayCutoffDays, files, ...work, ...job }
 }
 
 /**

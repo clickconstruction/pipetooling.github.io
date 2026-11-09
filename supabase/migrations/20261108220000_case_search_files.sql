@@ -70,7 +70,7 @@ BEGIN
            ts_rank_cd(to_tsvector('english', s.body), v_q),
            ts_headline('english', s.body, v_q, v_opts),
            NULL, NULL, NULL
-      FROM public.person_documents d
+      FROM public.documents d
       CROSS JOIN LATERAL public.hr_doc_sections(d.content) s
      WHERE d.person_id = p_person_id AND d.archived_at IS NULL AND (p_in IS NULL OR p_in = 'documents')
        AND to_tsvector('english', d.content) @@ v_q AND to_tsvector('english', s.body) @@ v_q

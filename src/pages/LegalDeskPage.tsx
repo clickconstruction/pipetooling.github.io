@@ -24,6 +24,7 @@ import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useJobContractCoverage } from '../hooks/useStagesRowFlags'
 import { useLegalMatters } from '../hooks/useLegalMatters'
 import { buildJobsStagesBoardLists } from '../lib/jobsStagesBoard'
+import { isOwnerOrDev } from '../lib/doorRoles'
 import { canManageCollections, isStagesOfficeRole } from '../lib/jobs/stagesRoleGates'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
 import { hasInAppHistory } from '../lib/inAppHistory'
@@ -180,7 +181,7 @@ export default function LegalDeskPage() {
         legal={legal}
         canMarkReady={role === 'dev'}
         canEditReview={isStagesOfficeRole(role)}
-        canEditFirm={role === 'dev'}
+        canEditFirm={isOwnerOrDev(role)}
         onOpenContract={(job) => {
           if (canSeeJobContracts) setContractJob(job)
         }}

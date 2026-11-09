@@ -1,0 +1,12 @@
+# 20261109000500_dev_gates_settings_tabs.sql (2026-11-08, v2.6753)
+
+Punch list #188, PR 1 of the dev gates: on 2026-11-08 the owner took every recommendation of the audit table (`to-dos/dev-gates/README.md`) as written. This migration is the database side of the Settings tabs and company cards the PR opens, rows 4, 5, 14, 15, 17, 18 and 32; without it the client lines would show the owner a card whose save the database refuses.
+
+- **Emails & reports (row 5)** — key-scoped `INSERT` and `UPDATE` policies on `app_settings` for `is_master_or_dev()` over the seven keys the Email streams section upserts (`paid_job_email_recipients_v1`, `payment_made_email_recipients_v1`, `portal_request_email_recipients_v1`, `ready_to_bill_notify_recipients_v2`, `signed_agreements_notify_recipients_v1`, `signed_agreements_auto_create_job_estimates`, `signed_agreements_auto_create_job_bids`); `master_or_dev_update_recurring_job_report_schedules` and `master_or_dev_delete_recurring_job_report_recipients`, so the owner flips any stream and removes any recipient (the office's own-scope policies stand beside them); and `get_global_email_schedule()` restated word for word from `20261106233000` with its gate reading `is_master_or_dev()` instead of `is_dev()`, so the tab fills for the owner and still reads `NULL` for anyone else.
+- **Office address (row 14)** — `INSERT`, `UPDATE` and `DELETE` on `app_settings.office_address_v1` for `is_master_or_dev()` (the block upserts and clears the row).
+- **Map default view (row 15)** — the same three on `app_settings.map_default_view_v1` for `is_office_staff()`.
+- **Pins on other people's dashboards (rows 18 and 32)** — `master_or_dev_select_any_pinned_tab`, `master_or_dev_insert_any_pinned_tab` and `master_or_dev_delete_any_pinned_tab` on `user_pinned_tabs`, the owner's copies of the dev's three any-row policies, behind Settings → Your dashboard's money cards for a leader and the pin footer's **Pin for someone**.
+
+No table is created, so no fence call is owed. Every policy is `DROP POLICY IF EXISTS` then `CREATE`, the function `CREATE OR REPLACE`: idempotent, additive. The dev's standing policies (`Devs can manage app settings`, the dev's three `user_pinned_tabs` policies) are untouched.
+
+**Order**: push right after the merge. The old client never shows these cards to the owner, so the order is safe either way; the new client shows them, and until the push the owner's save on one would come back as a refusal in words.

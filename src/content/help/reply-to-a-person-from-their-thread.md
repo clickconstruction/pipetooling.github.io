@@ -2,7 +2,7 @@
 title: reply to a person from their thread
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, laptop, short screen, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, call, log a call, phone call, they said, the day they gave, send, send window, subject, tie to, job, opt-out, stop, company number, signature, plain email, greeting, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
+keywords: gc mode, messages, laptop, short screen, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, call, log a call, phone call, they said, the day they gave, send, send window, subject, tie to, job, opt-out, stop, company number, signature, plain email, greeting, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal, own mailbox, answered from my own mailbox, sent mail, tag it, write it down
 where: /messages
 order: 117
 ---
@@ -181,6 +181,18 @@ Use the Call kind after you phone a person. It keeps what they said in the threa
 6. Press {{button:blue|Save the call}}.
 
 The call lands in the thread as our line. Only the team sees it. The row leaves Needs a reply. The thread's chip reads *Their move* until the day they gave.
+
+## Say you answered from your own mailbox
+
+Sometimes you answer a person from your own mailbox, not from bids@ or the team inbox. The app does not read your mailbox. The thread still reads *Our move*. A strip above the box asks **Answered them from your own mailbox?** It shows while the move is ours and we owe them nothing.
+
+Press {{button:outline|Find my sent mail}}. The app reads your own Sent folder through My email. It lists each email you sent them in the last 30 days. Press {{button:outline|Tag it}} on the right one. The email lands on the thread as ours, under your name. The move becomes theirs. An email already on the thread says so instead. This door needs **Show my mail** on. The guide [tag an email onto a job from your own mail](/help/tag-an-email-onto-a-job-from-your-own-mail) shows the switch.
+
+Press {{button:outline|I answered, write it down}} when there is no mail to find. Type one line of what you told them, or leave it blank. Press {{button:outline|Write it down}}. The answer lands on the thread as our line. Only the team sees it. The move becomes theirs.
+
+:::example Wendi answered from wendi@
+Wendi emailed Rusty from her own mailbox on Tuesday. On Wednesday his thread still read *Our move*. She pressed **Find my sent mail**, saw Tuesday's email and pressed **Tag it**. The thread read *Their move*.
+:::
 
 ## Add a note for the team
 

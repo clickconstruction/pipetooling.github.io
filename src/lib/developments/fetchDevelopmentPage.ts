@@ -10,6 +10,7 @@
 import { HISTORY_HEAD_COLUMNS, headRowToEntry, rowToEntry, type HistoryEntry, type HistoryHeadRow, type HistoryRow } from './history'
 import { supabase } from '../supabase'
 import { parsePaySpeedsRpc, type PaySpeedData } from '../jobs/billedExpectedPay'
+import { paySpeedPayerIds } from './siteMoney'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { addressSearchPattern, memberAddressKeys, splitMembers, type MemberBid, type MemberJob, type MemberRequest, type Members } from './overview'
 import { parseDevelopmentOverview, stripBidMoney, type DevelopmentDoor, type DevelopmentOverview } from './readDoor'
@@ -64,7 +65,7 @@ export type DevelopmentPageData = {
   names: Map<string, string>
   /** The robot estimators among the people named (`users.is_digital_twin`): their bids are shadows, shown and not counted. */
   twinUserIds: ReadonlySet<string>
-  /** The pay-speed read the Pipeline's billed rows make (`get_billed_customer_pay_speeds`), for the Money look's expected day; null when the read fails. */
+  /** The site's payers' pace (`get_customer_pay_speeds`, v2.6739; the Pipeline's whole-list read until its migration is pushed), for the Money look's expected day; null when the read fails or the site bills no one. */
   paySpeed: PaySpeedData | null
 }
 
@@ -163,6 +164,27 @@ export async function readRequestsWhere(lane: 'estimators' | 'dispatch', filter:
 
 /** PostgREST's answer for a relation the schema does not have (the view before its migration is pushed), or Postgres's. */
 const isMissingRelation = (code: string | null | undefined): boolean => code === 'PGRST205' || code === '42P01'
+/** PostgREST's answer for a function the schema does not have (the RPC before its migration is pushed), or Postgres's. */
+const isMissingFunction = (code: string | null | undefined): boolean => code === 'PGRST202' || code === '42883'
+
+/**
+ * The payers' pace for the Money look's expected day (punch list #280 PR 2, v2.6739): `get_customer_pay_speeds`
+ * cut to the site's payers — on the real site the whole list was 87,600 bytes on every open for one or two
+ * payers' entries. Until its migration is pushed the read falls back to the whole list, so the page stands
+ * either side; any other failure leaves the day out, never the page. No payer, no read.
+ */
+async function readPaySpeeds(payerIds: readonly string[]): Promise<PaySpeedData | null> {
+  if (payerIds.length === 0) return null
+  try {
+    const cut = await supabase.rpc('get_customer_pay_speeds' as never, { p_customer_ids: payerIds } as never)
+    if (!cut.error) return parsePaySpeedsRpc(cut.data as unknown)
+    if (!isMissingFunction((cut.error as { code?: string }).code)) return null
+    const whole = await supabase.rpc('get_billed_customer_pay_speeds' as never)
+    return whole.error ? null : parsePaySpeedsRpc(whole.data as unknown)
+  } catch {
+    return null
+  }
+}
 
 type HistoryHeadsRead = { data: Array<HistoryHeadRow | HistoryRow> | null; error: { message: string } | null }
 
@@ -221,19 +243,9 @@ export async function readUserNamesAndTwins(userIds: readonly string[]): Promise
 export async function fetchDevelopmentPage(developmentId: string, includeAddress: boolean, door: DevelopmentDoor = 'office'): Promise<DevelopmentPageData> {
   const office = door === 'office'
   // The read is four round trips deep, not seven (the Gun Dog spike, 2026-11-02): the row and the members go
-  // out together, the pay-speed RPC leaves at once since it depends on nothing here, the prior numbers ride in
-  // the fan-out, and only the names wait on everything.
-  // The Money look's expected day reads the payer's pace the way the Pipeline does; a failed read leaves the day out, never the page. The overview door has no Money look, so it does not ask.
-  const paySpeedP: Promise<PaySpeedData | null> = office
-    ? (async () => {
-        try {
-          const speeds = await supabase.rpc('get_billed_customer_pay_speeds' as never)
-          return speeds.error ? null : parsePaySpeedsRpc(speeds.data as unknown)
-        } catch {
-          return null
-        }
-      })()
-    : Promise.resolve(null)
+  // out together, the pay-speed read rides in the fan-out once the members name the payers (punch list #280 PR 2;
+  // it left at once for every billed customer before), the prior numbers ride there too, and only the names
+  // wait on everything.
   const [devRow, members] = await Promise.all([
     withSupabaseRetry(
       () => supabase.from('developments').select('id, name, gc_customer_id, city, notes, archived_at, created_at').eq('id', developmentId).maybeSingle(),
@@ -275,6 +287,8 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   }
 
   const customerIds = [customerId, development.gc_customer_id].filter((x): x is string => !!x)
+  // The Money look's expected day reads the site's payers' pace (every job the page holds, the ones at the address too, so the toggle asks nothing more); a failed read leaves the day out, never the page. The overview door has no Money look, so it does not ask.
+  const paySpeedP: Promise<PaySpeedData | null> = office ? readPaySpeeds(paySpeedPayerIds([...inIt.jobs, ...atAddress.jobs])) : Promise.resolve(null)
 
   const [estReq, dispReq, entriesRes, changesRes, eventsRes, invoicesRes, paymentsRes, notesRes, teamRes, customersRes, bidNotesRes, contactsRes, historyRes] = await Promise.all([
     readRequests('estimators', bidIds, jobIds, developmentId),

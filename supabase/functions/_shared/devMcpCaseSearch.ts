@@ -1,9 +1,10 @@
 // search_case (v2.6620, punch list #278 PR 2): the grep an agent has over a folder, over a person's case in the app —
 // one call of dev_case_search (migration 20261107070000) as the dev: the entries, the evidence titles and memos, the
 // named documents and the summary and narrative a section at a time, and the matter's narrative, entries and
-// documents' titles. Since v2.6719 (punch list #285 PR 2, migration 20261108220000) the files too: every record file
-// the index read (file_index, source hr_attachment or matter_document) is a `file` hit naming the record it hangs on.
-// The kernel resolves the person the way get_person_file does, shapes the ask, and names the verb
+// documents — their titles and what-it-shows lines, and since v2.6716 (punch list #288) a text document's words by
+// section. Since v2.6719 (punch list #285 PR 2, migration 20261108220000) the files too: every record file the index
+// read (file_index, source hr_attachment or matter_document) is a `file` hit naming the record it hangs on; a text
+// document's bytes are not a second hit. The kernel resolves the person the way get_person_file does, shapes the ask, and names the verb
 // that reads each hit further. Dev-only: another role is refused in words, since the RPC refuses it too.
 import type { Reader } from './devMcpComposites.ts'
 import { resolvePerson } from './devMcpPersonFile.ts'
@@ -35,7 +36,7 @@ export function readNextFor(source: string): string {
     case 'matter_entry':
       return 'read_rows on legal_matter_entries by id'
     case 'matter_document':
-      return 'the document on the matter\'s Evidence tab; its title and what it shows were searched here — its file\'s words are a file hit'
+      return 'the document on the matter\'s Evidence tab (read_rows on legal_matter_documents by id); a hit with a section is a text document\'s words — read_rows on documents (select content) by the row\'s text_document_id; a hit with no section is the title or what it shows, not the file — a PDF\'s or .eml\'s own words are a file hit'
     case 'file':
       return 'the file\'s words: read_rows on file_index (select text) by drive_file_id = id (the record file\'s own id); the record it hangs on: get_person_file (evidence, record_id) or read_rows on legal_matter_documents by record_id; the file itself opens from the record\'s chip on People → HR or the matter\'s Evidence tab'
     default:
@@ -75,7 +76,7 @@ export async function searchCase(reader: Reader, ask: CaseSearchAsk, who: { role
     shown: hits.length,
     by_source: bySource,
     hits,
-    note: 'A hit on a document names the section it sits in (section_n is the heading\'s number, when it carries one); the snippet marks the match with « ». A file hit (source file) is a record\'s file the index read — a transcript linked from Drive, a staged .eml or PDF, a matter document: title is the file\'s name, record_kind / record_id / record_title the evidence record, entry or matter document it hangs on; in: files narrows to them. A file the index has not read is not found (a scan, a kind it does not read, one filed in the last ten minutes): read_file_index_status\'s by_why and records_without_rows say how many wait. A document that transcribes a recording carries evidence_id, evidence_day and evidence_title, the record to cite. Counsel-only items are marked, not hidden.',
+    note: 'A hit on a document names the section it sits in (section_n is the heading\'s number, when it carries one); the snippet marks the match with « ». A matter document kept as text (a .md or .txt) is searched by section like a named document. A file hit (source file) is a record\'s file the index read — a transcript linked from Drive, a staged .eml or PDF, a matter document\'s PDF or .eml: title is the file\'s name, record_kind / record_id / record_title the evidence record, entry or matter document it hangs on; in: files narrows to them. A file the index has not read is not found (a scan, a kind it does not read, one filed in the last ten minutes): read_file_index_status\'s by_why and records_without_rows say how many wait. A document that transcribes a recording carries evidence_id, evidence_day and evidence_title, the record to cite. Counsel-only items are marked, not hidden.',
   }
 }
 

@@ -7,9 +7,10 @@ import { formatErrorMessage } from '../../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, todayYmdInAppTz } from '../../../utils/dateUtils'
 import { PORTAL_COMPANY } from '../../../../supabase/functions/_shared/portalCompany'
 import { EmptyState } from '../../EmptyState'
-import { LEGAL_DOCUMENT_FILTERS, LEGAL_DOCUMENT_SENT_HOWS, groupLegalDocumentsByWhose, legalDocumentDayWords, legalDocumentFilterCounts, legalDocumentFilterEmptyWords, legalDocumentFilterWords, legalDocumentGroupOf, legalDocumentKindWords, legalDocumentPassesFilter, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateChipWords, legalDocumentStateWords, legalDocumentTimelineDay, legalDocumentTitleFromName, legalDocumentWhoseChoices, legalDocumentWhoseGuess, legalDocumentWhoseOf, legalPortalDocumentFromRow, type LegalDocumentDraft, type LegalDocumentFilter, type LegalDocumentSentDraft, type LegalDocumentWhose } from '../../../lib/legal/legalMatterDocuments'
+import { LEGAL_DOCUMENT_FILTERS, LEGAL_DOCUMENT_SENT_HOWS, groupLegalDocumentsByWhose, legalDocumentDayWords, legalDocumentFilterCounts, legalDocumentFilterEmptyWords, legalDocumentFilterWords, legalDocumentGroupOf, legalDocumentIsText, legalDocumentKindWords, legalDocumentMime, legalDocumentPassesFilter, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateChipWords, legalDocumentStateWords, legalDocumentTimelineDay, legalDocumentTitleFromName, legalDocumentWhoseChoices, legalDocumentWhoseGuess, legalDocumentWhoseOf, legalPortalDocumentFromRow, type LegalDocumentDraft, type LegalDocumentFilter, type LegalDocumentSentDraft, type LegalDocumentWhose } from '../../../lib/legal/legalMatterDocuments'
+import { hrDocMarkdownToSafeHtml } from '../../../lib/people/hrDocMarkdown'
 import { EVIDENCE_LANDING_LIT_MS, evidenceLanding, evidenceRowSelector } from '../../../lib/legal/evidenceLanding'
-import { addLegalMatterDocument, markLegalMatterDocumentReceived, markLegalMatterDocumentSent, openLegalMatterDocument, retireLegalMatterDocument, setLegalMatterDocumentState, setLegalMatterDocumentWhose, updateLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
+import { addLegalMatterDocument, markLegalMatterDocumentReceived, markLegalMatterDocumentSent, openLegalMatterDocument, readLegalMatterDocumentText, retireLegalMatterDocument, setLegalMatterDocumentState, setLegalMatterDocumentWhose, updateLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { EVIDENCE_FROM_MESSAGES_WORDS, evidenceJobTiles, messagesLineHref, type EvidenceJobRow } from '../../../lib/legal/evidenceFromMessages'
 import { evidenceFromMessagesIo } from '../../../lib/legal/evidenceFromMessagesIo'
 import LegalEvidenceFromMessagesWindow from './LegalEvidenceFromMessagesWindow'
@@ -39,6 +40,10 @@ import LegalEvidenceFromMessagesWindow from './LegalEvidenceFromMessagesWindow'
  * email conversation on the account's jobs on the matter, one `.eml` per email (`LegalEvidenceFromMessagesWindow`),
  * shown while `fromMessages` is given: the upload's own gate on an open matter. A row made that way names its line
  * (`source_message_id`), and its ⋯ opens **The line in Messages** in a new tab.
+ *
+ * Since v2.6716 (punch list #288) a `.md` or `.txt` is a **text document**: its words are read in the browser when it is
+ * dropped and kept in the `documents` table beside the file (`text_document_id`), so the row's **Read** press renders them
+ * here, the firm's portal renders them, and the seat's `search_case` finds a line of them by section.
  */
 const shortDay = (ymd: string) => (ymd ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '')
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
@@ -70,6 +75,8 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
   const [receivedFor, setReceivedFor] = useState<{ id: string; on: string } | null>(null)
   const [whoseFor, setWhoseFor] = useState<{ id: string; whose: LegalDocumentWhose | '' } | null>(null)
   const [menuFor, setMenuFor] = useState<string | null>(null)
+  /** v2.6716: the text document open under its row — its rendered words, or why they could not be read. */
+  const [reading, setReading] = useState<{ id: string; html: string | null; why: string | null } | null>(null)
   /** v2.6276: the From the job's messages… window, and the door's reads for this matter and account. */
   const [pullOpen, setPullOpen] = useState(false)
   const pullJobs = fromMessages?.jobs
@@ -125,14 +132,24 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [landOn, filter, documents])
 
+  const patchPending = (key: string, patch: (x: Pending) => Pending) => setPending((list) => list.map((x) => (x.key === key ? patch(x) : x)))
   const take = (files: FileList | File[]) => {
     const next = [...files].map((file) => {
       const title = legalDocumentTitleFromName(file.name)
       return { key: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`, file, draft: { title, shows: '', datedOn: todayYmd, state: 'final' as const, receivedOn: '', whose: legalDocumentWhoseGuess({ title, state: 'final' }, payerName, OUR_NAME) }, whoseTouched: false, marks: EMPTY_MARK_DRAFT }
     })
     setPending((p) => [...p, ...next])
+    // v2.6716: a text file's words are read here, in the browser, and ride with the row so the desk and the portal render them.
+    for (const p of next) {
+      if (!legalDocumentIsText(legalDocumentMime(p.file))) continue
+      const reader = new FileReader()
+      reader.onload = () => {
+        const text = typeof reader.result === 'string' ? reader.result : ''
+        patchPending(p.key, (x) => ({ ...x, draft: { ...x.draft, text } }))
+      }
+      reader.readAsText(p.file)
+    }
   }
-  const patchPending = (key: string, patch: (x: Pending) => Pending) => setPending((list) => list.map((x) => (x.key === key ? patch(x) : x)))
   const act = async (fallback: string, fn: () => Promise<void>) => {
     setBusy(true)
     try {
@@ -156,6 +173,21 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
     }
   })
   const open = (d: LegalMatterDocumentRow) => void act('Could not open the document.', () => openLegalMatterDocument(supabase, d))
+  /** v2.6716: Read on a text document draws its words under the row; pressed again, it folds. */
+  const toggleRead = async (d: LegalMatterDocumentRow) => {
+    if (reading?.id === d.id) {
+      setReading(null)
+      return
+    }
+    if (!d.text_document_id) return
+    setReading({ id: d.id, html: null, why: null })
+    try {
+      const text = await readLegalMatterDocumentText(supabase, d.text_document_id)
+      setReading({ id: d.id, html: hrDocMarkdownToSafeHtml(text), why: null })
+    } catch (e) {
+      setReading({ id: d.id, html: null, why: formatErrorMessage(e, 'Could not read the document’s text.') })
+    }
+  }
 
   return (
     <div ref={rootRef} data-legal-matter-documents style={{ margin: '0 0 14px', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, display: 'grid', gap: 8 }}>
@@ -186,7 +218,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
           onDrop={(e) => { e.preventDefault(); setOver(false); if (e.dataTransfer.files.length) take(e.dataTransfer.files) }}
           style={{ border: `2px dashed ${over ? 'var(--text-700)' : 'var(--border-strong)'}`, borderRadius: 8, padding: '10px 12px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}
         >
-          Drop PDFs, images or .eml files here, or{' '}
+          Drop PDFs, images, .eml, .md or .txt files here, or{' '}
           <button type="button" onClick={() => fileRef.current?.click()} style={btn}>Choose files</button>
           {canPull ? (
             <>
@@ -196,8 +228,8 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
               </button>
             </>
           ) : null}
-          <input ref={fileRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.eml,.txt,application/pdf,image/*,message/rfc822,text/plain" aria-label="Choose documents" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.length) take(e.target.files); e.target.value = '' }} />
-          {' '}· each needs a title and one line on what it shows before it saves
+          <input ref={fileRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.eml,.txt,.md,.markdown,application/pdf,image/*,message/rfc822,text/plain,text/markdown" aria-label="Choose documents" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.length) take(e.target.files); e.target.value = '' }} />
+          {' '}· each needs a title and one line on what it shows before it saves · a .md or .txt is kept as text the desk, the portal and the search can read
         </div>
       ) : null}
       {pending.map((p) => {
@@ -217,7 +249,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
               {/* v2.6108: whose paper it is, guessed from the title until the person picks. */}
               <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>Whose<select aria-label="Whose paper it is" data-legal-document-whose-pick data-guessed={p.whoseTouched ? 'no' : 'yes'} value={p.draft.whose ?? ''} onChange={(e) => patchPending(p.key, (x) => ({ ...x, whoseTouched: true, draft: { ...x.draft, whose: (e.target.value || null) as LegalDocumentWhose | null } }))} style={{ ...input, width: 'auto' }}>{choices.map((c) => <option key={c.value} value={c.value}>{c.words}</option>)}</select></label>
             </span>
-            <span style={{ gridColumn: '1 / -1', ...MUTED, fontSize: '0.74rem' }}>{p.file.name} · {legalDocumentSizeWords(p.file.size)}{problem ? ` · ${problem}` : ''}</span>
+            <span style={{ gridColumn: '1 / -1', ...MUTED, fontSize: '0.74rem' }}>{p.file.name} · {legalDocumentSizeWords(p.file.size)}{p.draft.text !== undefined ? <span data-legal-document-pending-text> · kept as text · {p.draft.text.length.toLocaleString('en-US')} characters</span> : null}{problem ? ` · ${problem}` : ''}</span>
             {themes ? (
               <span style={{ gridColumn: '1 / -1' }} data-legal-document-themes>
                 <ThemeMarkPicker themes={themes} draft={p.marks} onChange={(next) => patchPending(p.key, (x) => ({ ...x, marks: next }))} testId={`document-theme-picker-${p.key}`} />
@@ -259,6 +291,8 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
                   <span style={{ display: 'flex', gap: '0 8px', alignItems: 'baseline', minWidth: 0, flexWrap: 'wrap' }}>
                     <button type="button" onClick={() => open(d)} title={`${d.title} · ${legalDocumentKindWords(d.mime)} · ${legalDocumentSizeWords(d.size_bytes)}`} style={{ ...btn, ...oneLine, border: 'none', padding: 0, height: 'auto', fontWeight: 600, color: 'var(--text-link)', flex: '0 1 auto', maxWidth: '100%', display: 'inline-block' }}>{d.title}</button>
                     <span data-legal-document-shows title={d.shows} style={{ ...MUTED, ...oneLine, flex: '1 1 14rem' }}>{d.shows}</span>
+                    {/* v2.6716: a text document's words, read here. */}
+                    {d.text_document_id ? <button type="button" data-legal-document-read aria-expanded={reading?.id === d.id} onClick={() => void toggleRead(d)} title="The document's words, rendered here" style={{ ...filterChip, height: 20 }}>{reading?.id === d.id ? 'Fold' : 'Read'}</button> : null}
                     {marks && marks.length > 0
                       ? (() => {
                           const live = marksOnTarget(marks, { kind: 'matter_document', id: d.id })
@@ -318,7 +352,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
                                 doc.state === 'final' ? { label: 'Received…', go: () => { setSentFor(null); setWhoseFor(null); setReceivedFor({ id: d.id, on: todayYmd }) } } : null,
                                 doc.state === 'sent' ? { label: 'Not sent after all', go: () => void act('Could not change the document.', () => setLegalMatterDocumentState(supabase, d.id, 'final')) } : null,
                                 doc.state === 'received' ? { label: 'Not received after all', go: () => void act('Could not change the document.', () => setLegalMatterDocumentState(supabase, d.id, 'final')) } : null,
-                                { label: 'Remove', go: () => void act('Could not remove the document.', () => retireLegalMatterDocument(supabase, d.id)) },
+                                { label: 'Remove', go: () => void act('Could not remove the document.', () => (d.text_document_id ? retireLegalMatterDocument(supabase, d.id, d.text_document_id) : retireLegalMatterDocument(supabase, d.id))) },
                               ] as Array<{ label: string; go: () => void } | null>).filter((m): m is { label: string; go: () => void } => Boolean(m)).map((m) => (
                                 <button key={m.label} type="button" role="menuitem" onClick={() => { setMenuFor(null); m.go() }} style={{ ...btn, border: 'none', justifyContent: 'flex-start', height: 28, borderRadius: 6, ...(m.label === 'Remove' ? { color: 'var(--text-red-700)' } : null) }}>{m.label}</button>
                               ))}
@@ -329,6 +363,11 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
                     </span>
                   ) : <span />}
                   {d.held_reason ? <div data-legal-document-held-words style={{ gridColumn: '1 / -1', color: 'var(--text-amber-700)', fontSize: '0.72rem', marginTop: -2 }}>Held from the firm: {d.held_reason}</div> : null}
+                  {reading?.id === d.id ? (
+                    <div data-legal-document-text style={{ gridColumn: '1 / -1', margin: '2px 0 6px', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', fontSize: '0.84rem', maxHeight: '60vh', overflow: 'auto' }}>
+                      {reading.why ? <span role="alert" style={{ color: 'var(--text-red-700)' }}>{reading.why}</span> : reading.html === null ? <span style={MUTED}>Reading…</span> : <div className="hr-doc-body" dangerouslySetInnerHTML={{ __html: reading.html }} />}
+                    </div>
+                  ) : null}
                   {canEdit && whoseFor?.id === d.id ? (
                     // v2.6108: *Whose paper…* — the pick, saved to the row; the guess stops once it is set.
                     <form data-legal-document-whose-form onSubmit={(e) => { e.preventDefault(); void act('Could not change whose paper it is.', async () => { await setLegalMatterDocumentWhose(supabase, d.id, whoseFor.whose || null); setWhoseFor(null) }) }} style={{ gridColumn: '1 / -1', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', margin: '2px 0 4px' }}>

@@ -75,7 +75,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Superintendent bonus', keywords: ['superintendent bonus', 'labor kept', 'hours saved', 'scoreboard share', 'bonus share'], tabId: 'settings-people', anchorId: 'settings-people-superintendent-bonus' },
   { label: 'Active accounts', keywords: ['who is active', 'logins'], tabId: 'settings-people' },
   { label: 'Report-enabled users', keywords: ['who can report'], tabId: 'settings-people' },
-  // Email & notifications (dev)
+  // Email & notifications (the owner or a dev since v2.6753, punch list #188 row 5)
   { label: 'Email streams', keywords: ['scheduled emails', 'email subscriptions', 'weekly emails'], tabId: 'settings-emails' },
   { label: 'My email schedule', keywords: ['when emails send', 'email times'], tabId: 'settings-emails' },
   { label: 'Workflow stage notifications', keywords: ['stage emails', 'workflow alerts'], tabId: 'settings-emails' },

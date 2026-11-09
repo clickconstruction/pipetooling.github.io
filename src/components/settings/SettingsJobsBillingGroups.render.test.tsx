@@ -75,16 +75,16 @@ describe('SettingsJobsBillingGroups (punch list #261)', () => {
     expect(head.getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('a master sees four headings and ten cards, the office two headings and no strip below two', () => {
+  it('a master sees five headings and eighteen cards, the office two headings and no strip below two (punch list #188, v2.6756)', () => {
     const master = renderWithProviders(<SettingsJobsBillingGroups role="master_technician" cards={stubs()} />)
-    expect([...master.container.querySelectorAll('[data-settings-jobs-group]')]).toHaveLength(4)
-    expect(master.container.querySelectorAll('[data-settings-card]')).toHaveLength(11)
+    expect([...master.container.querySelectorAll('[data-settings-jobs-group]')]).toHaveLength(5)
+    expect(master.container.querySelectorAll('[data-settings-card]')).toHaveLength(18)
     expect(master.container.querySelector('[data-settings-jobs-strip]')).toBeTruthy()
     master.unmount()
     const office = renderWithProviders(<SettingsJobsBillingGroups role="assistant" cards={stubs()} />)
     expect([...office.container.querySelectorAll('[data-settings-jobs-group]')]).toHaveLength(2)
     expect(office.container.querySelector('[data-settings-jobs-strip]')).toBeTruthy()
-    expect(jobsBillingGroupsFor('assistant').flatMap((g) => g.cards)).toHaveLength(5)
+    expect(jobsBillingGroupsFor('assistant').flatMap((g) => g.cards)).toHaveLength(8)
     office.unmount()
     const tech = renderWithProviders(<SettingsJobsBillingGroups role="helpers" cards={stubs()} />)
     expect(tech.container.querySelectorAll('[data-settings-card]')).toHaveLength(0)

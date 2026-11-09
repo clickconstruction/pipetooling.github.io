@@ -23,7 +23,7 @@ Press **Follow up** to go back to everyone waiting on us.
 
 - The tab reads your Inbox and Sent from Gmail when you open it.
 - A job window reads your mail with the job's people when it opens. So does a thread narrowed to one bid.
-- Nothing is kept until you tag a conversation.
+- Nothing is kept until you tag a conversation. The one exception is a mail you send to a person on one open job. See *Mail you send lands by itself*.
 - Drafts, Spam and Trash are never read.
 - A label you leave out is never read either.
 - Notices and newsletters fold into one line. Press **show** on that line to see them.
@@ -45,6 +45,8 @@ Press **Follow up** to go back to everyone waiting on us.
 ## Tag a conversation the app guessed
 
 The last column of a row says what the app thinks. A guess shows a job with a question mark.
+
+A conversation that is already on a job guesses that job for its newer mail. The row says *a mail of this conversation is on JP1077 already*.
 
 :::example A guess on Dale's mail
 ↓ &nbsp; **Dale Okafor** &nbsp; Re: 4 Elm Ct water heater &nbsp; 9:12 AM &nbsp; {{chip:blue|JP1077 · 4 Elm Ct?}} {{button:blue|Yes}} {{button:outline|other…}}
@@ -116,6 +118,35 @@ Press **Reply in Gmail ↗** at the foot to answer. You reply in Gmail as always
 After the tag, the bar on the mail turns green. Press **open the thread ›** to see the lines on the person's thread. The green bar also holds **Another job…** and **Untag**.
 
 A mail that came after the tag may not be on the job yet. Its row in the list says **not on the job yet ›**. Open it, and the bar says *This mail is not on the job yet.* Press {{button:blue|Put it on the job}} to bring it along.
+
+## Mail you send lands by itself
+
+You do not have to tag the mail you send. The app reads your Sent every five minutes.
+
+- Send a mail from your own Gmail to a person on exactly one open job. The mail lands on that job as ours, under your name.
+- Send a mail to a company with one open job. The mail lands on that job too.
+- A mail to someone the app does not know lands nowhere. So does a mail to yourself or to a teammate.
+- A mail to a person on two open jobs lands nowhere. Tag it yourself on the tab.
+- Mail you sent before this shipped is left alone.
+
+The line on the thread says *from Wendi's mail · put here by the app*. A grey line says why the app put it there.
+
+Later mail in that conversation lands on the job too, as it does after a tag.
+
+:::example A line the app put on the job
+↑ &nbsp; **Harbor Club pay app 3** &nbsp; Wendi to Rusty &nbsp; 9:12 AM
+*from Wendi's mail · put here by the app* &nbsp; {{button:outline|Untag}}
+:::
+
+### Take a mail the app placed off the job
+
+1. Find the line on the thread. Only you see **Untag** under your own line.
+2. Press **Untag**.
+3. Press {{button:red|Untag}} to say yes.
+
+The conversation comes off the job. The app will not put it back. Tag it yourself on the tab if you want it back, and later mail follows again.
+
+Your switch on [Your account](/settings?tab=settings-account) turns all of this off with the tab.
 
 ## Name a sender nobody knows
 

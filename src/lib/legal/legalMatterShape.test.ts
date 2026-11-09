@@ -9,6 +9,7 @@ import { PROCEEDING_PAYLOAD_KEYS } from '../../../supabase/functions/_shared/leg
 import {
   MATTER_ADDRESS_COLUMNS,
   MATTER_CLAIM_LINE_COLUMNS,
+  MATTER_CLAIM_LINE_PENDING_COLUMNS,
   MATTER_CONTRACT_COLUMNS,
   MATTER_COUNSEL_SELECT,
   MATTER_DEMAND_COLUMNS,
@@ -167,7 +168,9 @@ describe('the claim’s typed lines (v2.6696, punch list #171)', () => {
     const shaped = shapeMatterForCounsel({ jobs: [], claimLines: [{ matter_id: 'm-SECRET', id: 'l1', kind: 'materials', title: 'Materials left on site', amount: 5310, basis: 'contract ¶ 9', document_id: 'd1', added_at: '2026-11-01T00:00:00Z', added_by: 'u-SECRET', updated_by: 'u-SECRET', removed_at: null, removed_by: null }] }) as Row & { claimLines: Row[] }
     expect(Object.keys(shaped.claimLines[0]!).sort()).toEqual([...MATTER_CLAIM_LINE_COLUMNS].sort())
     expect(JSON.stringify(shaped)).not.toMatch(/SECRET/)
-    expect(MATTER_COUNSEL_SELECT.claimLines).toBe('matter_id, id, kind, title, amount, basis, document_id, added_at')
+    // v2.6697: settlement_only travels too; the function falls back to the select without it until the column is pushed.
+    expect(MATTER_COUNSEL_SELECT.claimLines).toBe('matter_id, id, kind, title, amount, basis, document_id, added_at, settlement_only')
+    expect(MATTER_CLAIM_LINE_PENDING_COLUMNS).toEqual(['settlement_only'])
   })
 })
 
